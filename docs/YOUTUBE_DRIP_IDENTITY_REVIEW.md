@@ -140,7 +140,11 @@ there automatically — this document only adds the drip's own per-page
 file, which carries the `source_url` the sheet does not. On a YouTube
 row, add "own channel" to `ryan_note` when the channel is the
 government's own; the apply then writes the `channel=` pin as well as
-the per-video ones (WO-244).
+the per-video ones (WO-244). As of WO-243, `apply_pin_worklist.py` can
+also mint a brand-new government straight through a shared host: an
+"ok mint" row with a per-video match (never a bare channel handle) now
+writes the curated row and the per-video pin itself, the same shape
+WO-220/WO-237 previously had to write by hand.
 
 ## What happens after a pin
 

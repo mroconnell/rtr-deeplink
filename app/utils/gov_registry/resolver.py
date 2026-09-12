@@ -1351,6 +1351,38 @@ def _curated_alias(name: str, state: str) -> Optional[Government]:
     return None
 
 
+def _curated_exact_match(name: str, state: str) -> Optional[Government]:
+    """A curated government named EXACTLY `name` (its own `gov_name`, or
+    a declared alias) -- state-scoped first, then stateless. No other
+    normalization at all, unlike `_curated_alias()` above.
+
+    Built for rung 1c (WO-243), which runs before rung 2's name repair
+    and therefore before rung 4's national-table lookup -- so it must
+    not reach for `_curated_alias()`'s `tables.lookup_keys()`
+    normalization, built for matching a *place* name against the
+    national tables' own conventions (it strips a trailing type word
+    among other things). That normalization is exactly what turns
+    "Boise County" into the candidate key "boise" and would hand the
+    COUNTY's own page to the curated Boise CITY alias before rung 4 ever
+    gets a chance to match "Boise County" to the real county it is --
+    caught by `test_the_county_itself_is_not_shadowed_by_the_citys_alias`
+    the first time this rung was tried with `_curated_alias()` directly.
+    A plain, un-normalized string is exactly what a curated row is an
+    assertion ABOUT, so equality is the right (and only safe) test here.
+    """
+    key = name.strip().lower()
+    if not key:
+        return None
+    aliases = registry.curated_aliases()
+    for scope in ((state or "").upper(), ""):
+        gov_id = aliases.get((scope, key))
+        if gov_id:
+            gov = registry.governments().get(gov_id)
+            if gov:
+                return gov
+    return None
+
+
 _NAME_TOKEN_RE = re.compile(r"[A-Za-z']+")
 # A US broadcast callsign: K or W plus 2-3 letters, optionally -TV/-FM/-AM
 # /-DT. A municipal access channel's callsign is not the government that
@@ -2027,6 +2059,54 @@ def _resolve_government_ladder(
             evidence=reason,
         )
         return _match(gov, TIER_BLANK, reason, finalized.meeting_body)
+
+    # 1c. Curated government match, by exact name or alias, BEFORE rung
+    #     2's name repair ever runs (WO-243). Rung 2's `finalize_
+    #     jurisdiction()` truncates a "<Entity> of <Place>"-shaped (or
+    #     otherwise bled) name down to whatever shorter tail happens to
+    #     validate against the place/county tables
+    #     (`_split_entity_prefix()`/`_trim_repair()` -- see their own
+    #     docstrings) -- correct for "City of Fresno" (no government
+    #     named bare "Fresno" would ever be confused for a different one),
+    #     but it runs on every name, curated or not, with no way to know a
+    #     curated row is waiting for the untruncated string. There is no
+    #     place called "Commerce" in Utah, so "Department of Commerce,
+    #     UT" truncated to "Commerce, UT" and minted `rtr:us:ut:commerce`
+    #     instead of matching WO-220's own curated
+    #     `rtr:us:ut:department-of-commerce` row -- confirmed live, and
+    #     the same shape truncated "Southwest Utah Public Health
+    #     Department" to "Southwest" and "Early Light Academy at
+    #     Daybreak" to "Early" (both curated by WO-220 too, both minted
+    #     wrong before this rung existed).
+    #
+    #     A curated row is a human's specific assertion about a name, so
+    #     it is tried against the name as the page actually wrote it --
+    #     only the state suffix, a trailing county qualifier and a
+    #     trailing paren-type come off (none of them shorten the name
+    #     itself the way rung 2's repair does), and the match itself is
+    #     exact (`_curated_exact_match()`, not `_curated_alias()` -- see
+    #     its own docstring for why the ordinary place-oriented
+    #     normalization can't be reused here without reintroducing the
+    #     exact "Boise County" collision it exists to avoid). This is a
+    #     pure no-op for every name with no curated row of its own --
+    #     "City of Fresno" included -- so rung 2 still runs exactly as
+    #     before for everything that isn't curated.
+    raw_stripped = (raw_name or "").strip()
+    if raw_stripped:
+        early_name, early_state = _split_state(raw_stripped)
+        early_name, _early_county = _strip_county_qualifier(early_name)
+        early_name, _early_paren_type = _strip_trailing_paren_type(early_name)
+        early_alias_hit = (
+            _curated_exact_match(early_name, early_state) if early_name else None
+        )
+        if early_alias_hit:
+            return _match(
+                early_alias_hit,
+                TIER_REGISTRY,
+                f"governments.csv curated alias {early_name!r} "
+                "(matched before name repair, WO-243)",
+                None,
+            )
 
     # 2. Repair the string. Called, not copied -- and the netloc goes with
     #    it so the subdomain cross-check runs exactly as it does at ingest.

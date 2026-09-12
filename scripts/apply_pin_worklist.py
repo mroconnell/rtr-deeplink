@@ -100,11 +100,18 @@ sys.path.insert(0, str(REPO_ROOT))
 from app.utils.gov_registry import (  # noqa: E402
     TIER_PINNED,
     TIER_REGISTRY,
+    TIER_UNVERIFIED,
+    Government,
+    GovernmentMatch,
+    classify_government_type,
     display_name,
     is_own_name,
+    is_multi_gov_host,
     registry,
     resolve_government,
+    slugify,
 )
+from app.utils.gov_registry import tables as gov_tables  # noqa: E402
 from scripts.build_pin_worklist import (  # noqa: E402
     WANTED_TIERS,
     WORKLIST,
@@ -136,6 +143,13 @@ MINT_TOKEN = "ok mint"
 # channel" in either column adds a `channel=@handle` pin, which keys
 # every future upload; without it only the archived videos are pinned.
 OWN_CHANNEL_TOKEN = "own channel"
+# A name's own trailing state/province suffix -- "Wasatch Front Regional
+# Council, UT" -> ("Wasatch Front Regional Council", "UT"). Same shape as
+# `resolver.py`'s own `_STATE_SUFFIX_RE`, duplicated rather than imported:
+# this script already reaches into `app.utils.gov_registry` submodules
+# directly (see `gov_tables` above), but the resolver's private regex
+# constants are not part of that seam.
+_TRAILING_STATE_RE = re.compile(r",\s*([A-Za-z]{2})\.?\s*$")
 # In EITHER of Ryan's two columns: this row is not a government, delete
 # every page it represents. Word-boundary matched so it can sit next to
 # other text ("DELETE - obviously a UAT tenant") without a false miss,
@@ -209,6 +223,56 @@ def _answer(row: dict) -> Tuple[str, str, str, bool]:
             may_mint,
         )
     return stated, "", "ryan_stated", may_mint
+
+
+def _mint_for_shared_host(name: str) -> Government:
+    """The `Government` an "ok mint" row's own `ryan_gov_name` describes,
+    built directly from the name and state a human typed -- WITHOUT ever
+    asking `resolve_government()` to do it (WO-243).
+
+    `resolve_government()` cannot mint at all on a `MULTI_GOV_HOSTS` host
+    (YouTube, youtu.be, Vimeo, ...) with no already-matching per-video/
+    channel/external-id pin: WO-210's rung 1b refuses to resolve ANYTHING
+    further -- not the name repair, not the national table, not a mint --
+    the instant a shared host has nothing to match against, because a
+    bare video/channel title is not evidence the whole tenant belongs to
+    the government it names. That is the right call for an unattended
+    resolve, but it also means this script's ordinary mint path (which
+    calls `resolve_government()` and only proceeds past a minted `rtr:`
+    id when the row says "ok mint") never even gets a minted id back to
+    approve -- it gets `rtr:unknown:<host>` (tier `blank`) instead, and
+    reports the row "unresolved". WO-237 hit exactly this minting
+    `rtr:us:ut:wasatch-front-regional-council` and had to write both the
+    curated row and the per-video pin by hand.
+
+    A human typing a specific name into `ryan_gov_name`, with "ok mint",
+    on a row this script already knows carries a concrete per-video match
+    (never a bare channel -- see `resolve_answer()`'s own call site) IS
+    the evidence rung 1b is protecting against the absence of. So this
+    builds the same shape a curated row already takes when minted by
+    hand: state split off the name's own trailing suffix, country from
+    it, `gov_type` classified the same way the ladder's own rung 3 would,
+    and a slug from the name with no state suffix -- identical in shape
+    to `resolver._mint()`'s own output, just reached without asking the
+    ladder to run on a host it refuses to run on at all.
+    """
+    match = _TRAILING_STATE_RE.search(name)
+    state = match.group(1).upper() if match else ""
+    gov_name = (_TRAILING_STATE_RE.sub("", name) if match else name).strip()
+    gov_name = gov_name.rstrip(".,;:").strip()
+    country = gov_tables.country_for_state(state) if state else "us"
+    gov_type = classify_government_type(gov_name, country=country) or "other"
+    slug = slugify(gov_name) or "unnamed"
+    scope = (state or "xx").lower()
+    return Government(
+        gov_id=f"rtr:{country}:{scope}:{slug}",
+        gov_name=gov_name,
+        gov_type=gov_type,
+        country=country,
+        state=state,
+        source="minted",
+        evidence=f"minted through a shared host from {name!r} (WO-243)",
+    )
 
 
 async def delete_pages(
@@ -314,11 +378,22 @@ def _youtube_match_values(
     return values
 
 
-def resolve_answer(name: str, host: str, may_mint: bool, accepted_gov_id: str = ""):
+def resolve_answer(
+    name: str,
+    host: str,
+    may_mint: bool,
+    accepted_gov_id: str = "",
+    match_value: str = "",
+):
     """(match, gov_id, gov_name, tier, outcome, detail) for one answer.
 
     `outcome` is what the report prints and what decides whether a pin is
     written: only "pin" is written.
+
+    `match_value` is the row's own `match` column, AS WRITTEN -- passed
+    only so this function can recognize the one case it must not hand to
+    `resolve_government()` at all (see the shared-host branch just
+    below). Every other outcome in this function ignores it completely.
     """
     if accepted_gov_id:
         gov = registry.government_for_id(accepted_gov_id)
@@ -342,6 +417,42 @@ def resolve_answer(name: str, host: str, may_mint: bool, accepted_gov_id: str = 
         )
     if not name:
         return None, "", "", "", "no_proposal", 'row says "ok" but has no proposed_name'
+    if (
+        may_mint
+        and match_value
+        and not match_value.startswith("@")
+        and is_multi_gov_host(host)
+    ):
+        # WO-243: a per-video match (a bare video id, never a channel
+        # handle -- a channel still needs `_youtube_match_values()`'s own
+        # expansion, which this function has no way to do without
+        # `pages_by_host`/`channels`, so it is deliberately left to fall
+        # through to the ordinary path below and report `unresolved`,
+        # same as before this fix) on a shared host is exactly the
+        # evidence `resolve_government()`'s rung 1b refuses to accept
+        # from a bare name/title alone. Mint directly from the row's own
+        # name/state instead of asking the ladder, which would only ever
+        # answer `rtr:unknown:<host>` here regardless of `may_mint` --
+        # see `_mint_for_shared_host()`'s own docstring.
+        gov = _mint_for_shared_host(name)
+        match = GovernmentMatch(
+            gov_id=gov.gov_id,
+            gov_name=gov.gov_name,
+            gov_type=gov.gov_type,
+            tier=TIER_UNVERIFIED,
+            evidence=gov.evidence,
+            country=gov.country,
+            state=gov.state,
+            government=gov,
+        )
+        return (
+            match,
+            gov.gov_id,
+            display_name(gov),
+            TIER_UNVERIFIED,
+            "pin",
+            f"minted through shared host {host}: {gov.evidence}",
+        )
     match = resolve_government(name, tenant_host=host)
     gov_name = display_name(match.government) if match.government else ""
     if not match.gov_id:
@@ -658,7 +769,7 @@ def main() -> None:
 
         name, accepted_gov_id, source, may_mint = _answer(row)
         resolved, gov_id, gov_name, tier, outcome, detail = resolve_answer(
-            name, host, may_mint, accepted_gov_id
+            name, host, may_mint, accepted_gov_id, row.get("match") or ""
         )
         if outcome == "pin" and stated_raw.lower().startswith(ACCEPT_PROPOSAL):
             detail = f"accepted proposal: {row.get('proposed_evidence') or detail}"
@@ -676,8 +787,15 @@ def main() -> None:
             continue
 
         # A YouTube channel is one decision and several pins -- see
-        # `_youtube_match_values()` for why the handle itself cannot be one.
-        if host in _YOUTUBE_HOSTS and (row.get("match") or ""):
+        # `_youtube_match_values()` for why the handle itself cannot be
+        # one. Gated on the "@" prefix specifically (WO-243): that is the
+        # only shape `build_pin_worklist.py`'s own `fetch_youtube_
+        # channels()` ever writes into `match` for a channel (see its
+        # docstring), so anything else non-blank here -- concretely, a
+        # bare per-video id, the shape `resolve_answer()`'s shared-host
+        # mint branch just keyed off of -- is already the per-video match
+        # itself and must not be treated as a channel to expand.
+        if host in _YOUTUBE_HOSTS and (row.get("match") or "").startswith("@"):
             match_values = _youtube_match_values(row, pages_by_host, channels)
             if not [v for v in match_values if not v.startswith("channel=")]:
                 results[-1]["outcome"] = "no_videos"

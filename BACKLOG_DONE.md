@@ -1,5 +1,72 @@
 # Backlog — done
 
+## WO-243: curated governments now match before name repair shortens them; the pin worklist can mint through a shared host [Done 2026-09-11]
+
+- **Why:** the Workers session found two real bugs applying WO-237's
+  drip round (PR #997), both in the identity tools rather than in any
+  one government's data. First: `resolve_government()`'s name-repair
+  step ran BEFORE it ever checked for a hand-written ("curated")
+  government. That step shortens a name down to whatever shorter piece
+  validates against the place/county tables — right for "City of
+  Fresno", wrong for "Department of Commerce, UT", which shortened to
+  "Commerce, UT" (no place called "Commerce" exists in Utah) and minted
+  a brand-new id, `rtr:us:ut:commerce`, instead of matching the curated
+  row WO-220 already added, `rtr:us:ut:department-of-commerce`. The same
+  shortening hit "Southwest Utah Public Health Department" and "Early
+  Light Academy at Daybreak" (both curated by WO-220 too). Second:
+  `scripts/apply_pin_worklist.py` could not mint a new government at all
+  when the video lived on a shared host (YouTube, youtu.be, Vimeo) —
+  the resolver refuses to look anything up on those hosts without an
+  existing per-video pin, "ok mint" or not, so WO-237 had to write the
+  Wasatch Front Regional Council's curated row and per-video pin by
+  hand (`rtr:us:ut:wasatch-front-regional-council`).
+- **What was done:** the resolver (`app/utils/gov_registry/resolver.py`)
+  now checks curated governments by their exact name or a declared alias
+  BEFORE it shortens the name at all — a new rung ahead of the name
+  repair, using an exact (not fuzzy) match so it can never grab an
+  unrelated real government by accident. Checked against "Boise County,
+  ID", which must still resolve to the real county, not the curated
+  Boise CITY alias, even though "Boise" is exactly the kind of name this
+  new rung matches. `app/utils/gov_registry/registry.py`'s
+  `curated_aliases()` was also widened to index a curated row's own
+  `gov_name`, not only its `aliases` column — the three WO-220 rows
+  above shipped with an empty `aliases` column, so nothing indexed their
+  own name until now. `scripts/apply_pin_worklist.py` now mints a new
+  government directly from Ryan's own typed name and state whenever a
+  row says "ok mint" and points at one specific video (never a whole
+  channel) on a shared host, writing the curated row and the one
+  per-video pin itself, without ever asking the resolver to resolve a
+  shared host — which it is built to always refuse.
+- **Result:**
+
+  | What was fixed | Count of 2 | What it means |
+  |---|---|---|
+  | Resolver: curated match before name repair | 1 | Four names now resolve correctly instead of minting a duplicate id — the three from WO-220, plus "Pennsylvania Department of Transportation" (curated by WO-201), which used to reach the right id only by coincidence, as a fresh mint rather than an actual match. |
+  | Pin worklist: mint through a shared host | 1 | A fixture "ok mint" row for one YouTube video now mints one curated government and writes exactly one per-video pin — never a blank-match pin, which the pins loader rejects outright on a shared host. |
+
+- **Caution:** the pin-script fix only covers a row that names one
+  specific video. A row whose match is a whole channel handle still
+  needs the existing channel-to-video expansion step first (so the
+  script knows how many real videos it is minting for), and that case is
+  unchanged — it still reports back to Ryan as `unresolved`, same as
+  before this fix. This is unaffected by WO-244's own new "own channel"
+  `channel=` pin, which lands below it on the same file and is a
+  different row shape.
+- **Recommendation:** deploy the resolver change — it needs the next
+  resolver and Archive deploy before it changes anything a real page
+  sees. The pin-script change needs no deploy: it is a local tool Ryan
+  or Platforms runs by hand, not something the running app calls.
+- **Tests:** `tests/test_gov_registry.py` gets four new cases (the three
+  WO-220 names plus PennDOT) and a regression case for the Boise
+  County/Boise city collision; `tests/test_pin_worklist.py` gets the
+  shared-host mint fixture plus two boundary cases (a blank match never
+  mints; a channel handle never triggers this path). All existing tests
+  stay green, `ruff check`/`ruff format --check` clean.
+- **Deploy:** the resolver fix (`app/utils/gov_registry/`) is on `main`
+  but not live until the next resolver + Archive deploy. The
+  `scripts/apply_pin_worklist.py` fix ships on `main` too but needs no
+  deploy at all.
+
 ## WO-244: channel pins for the drip's own-channel decisions — and the reason no YouTube `channel=` pin has ever fired: the adapter dropped the channel keys [Done 2026-09-11]
 
 - **Why:** Ryan noticed every one of WO-237's 38 pins was per-video, so the

@@ -525,6 +525,108 @@ def test_a_pin_written_against_a_video_id_actually_fires(monkeypatch, tmp_path):
         registry.clear_caches()
 
 
+# --------------------------------------------------------------------------
+# WO-243: minting through a shared host
+# --------------------------------------------------------------------------
+
+
+def test_a_shared_host_ok_mint_row_with_a_video_id_mints_one_government():
+    """WO-243's fixture: a youtu.be row marked "ok mint" with a bare
+    per-video id in `match` (never a channel handle -- see
+    `test_a_channel_handle_never_triggers_the_shared_host_mint` below)
+    must mint directly from the row's own name/state, the same shape
+    WO-237 had to write into `curated_governments.csv` by hand for
+    `rtr:us:ut:wasatch-front-regional-council` because this script could
+    not do it before this fix -- `resolve_government()` refuses to
+    resolve ANYTHING on a shared host with no matching pin, "ok mint" or
+    not."""
+    row = {
+        "tenant_host": "youtu.be",
+        "match": "GpgVPG7sOUY",
+        "ryan_gov_name": "Wasatch Front Regional Council, UT",
+        "ryan_note": "ok mint",
+        "proposed_name": "",
+    }
+    name, accepted_gov_id, _source, may_mint = apply_pin_worklist._answer(row)
+    assert may_mint is True
+    resolved, gov_id, gov_name, tier, outcome, _detail = (
+        apply_pin_worklist.resolve_answer(
+            name, row["tenant_host"], may_mint, accepted_gov_id, row["match"]
+        )
+    )
+    assert outcome == "pin"
+    assert gov_id == "rtr:us:ut:wasatch-front-regional-council"
+    assert gov_name == "Wasatch Front Regional Council, UT"
+    assert tier == "unverified"
+    assert resolved is not None and resolved.government is not None
+    assert resolved.government.gov_name == "Wasatch Front Regional Council"
+    assert resolved.government.state == "UT"
+
+    # The same match-value computation main()'s own loop does before it
+    # ever writes a pin -- a channel handle would expand via
+    # `_youtube_match_values()`; a bare video id like this one is already
+    # the per-video match and is used exactly as written.
+    if row["tenant_host"] in apply_pin_worklist._YOUTUBE_HOSTS and row[
+        "match"
+    ].startswith("@"):
+        match_values = apply_pin_worklist._youtube_match_values(row, {}, {})
+    else:
+        match_values = [row.get("match") or ""]
+    assert match_values == ["GpgVPG7sOUY"]
+    assert all(match_values), "must never write a blank-match pin on a shared host"
+
+
+def test_a_blank_match_on_a_shared_host_never_mints():
+    """No per-video match at all -- "ok mint" is not enough on its own,
+    since a pin with a blank `match` on a shared host is exactly what
+    `tenant_overrides.csv`'s own loader rejects (WO-210/WO-221). Falls
+    through to the ordinary path, which reports it `unresolved`, same as
+    before this fix."""
+    _resolved, gov_id, _gov_name, _tier, outcome, _detail = (
+        apply_pin_worklist.resolve_answer(
+            "Some New Council, UT", "youtu.be", True, "", ""
+        )
+    )
+    assert outcome == "unresolved"
+    assert gov_id == ""
+
+
+def test_a_channel_handle_never_triggers_the_shared_host_mint():
+    """A channel handle ("@..." -- the only shape `fetch_youtube_
+    channels()` ever writes into `match`, per its own docstring) is not a
+    per-video match: it still needs `_youtube_match_values()`'s own
+    expansion, which `resolve_answer()` has no way to do (it never sees
+    `pages_by_host`/`channels`). Deliberately out of scope for this fix --
+    left exactly as unresolved as it was before it, not silently minted
+    against a channel that might expand to zero real videos."""
+    _resolved, gov_id, _gov_name, _tier, outcome, _detail = (
+        apply_pin_worklist.resolve_answer(
+            "Some New Council, UT", "youtu.be", True, "", "@somehandle"
+        )
+    )
+    assert outcome == "unresolved"
+    assert gov_id == ""
+
+
+def test_the_shared_host_mint_never_fires_on_an_ordinary_host():
+    """The same "ok mint" + video-id-shaped match, on a host that is NOT
+    one of `MULTI_GOV_HOSTS`, must go through the ordinary
+    `resolve_government()` path unchanged -- this fix only ever applies
+    to a shared host."""
+    _resolved, gov_id, _gov_name, _tier, outcome, detail = (
+        apply_pin_worklist.resolve_answer(
+            "San Diego County Retirement Association, CA",
+            "sdcera.granicus.com",
+            True,
+            "",
+            "some-token",
+        )
+    )
+    assert outcome == "pin"
+    assert gov_id.startswith("rtr:")
+    assert "WO-243" not in detail
+
+
 def test_the_tooling_never_writes_an_authoritative_pin():
     """`authoritative` is the tier that overrides a working extraction. No
     tool takes it -- a wrong pin there is strictly worse than no pin."""
