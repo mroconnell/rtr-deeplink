@@ -29,6 +29,8 @@ import pytest
 
 from app.platforms.direct_file import (
     DirectFileAssetFinder,
+    _classify_laserfiche_media,
+    _is_laserfiche_edoc_url,
     _is_laserfiche_weblink_url,
     _laserfiche_sibling_caption_url,
     _resolve_direct_media_url,
@@ -87,6 +89,58 @@ JEFFERSON_CAPTION_URL = (
 # MP4 response (`ftypmp42` -- confirmed live 2026-09-12).
 JEFFERSON_MP4_MAGIC_BYTES = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"
 
+# --- WO-317 (2026-09-12): audio-only Laserfiche -------------------------
+# Two real, independently-confirmed audio-only sources named in
+# BACKLOG.md's Laserfiche entry (WO-305/WO-315's full-population census).
+# Re-derived live before building, per CLAUDE.md's "a backlog entry is a
+# lead, not a spec" rule -- and found TWO distinct real URL shapes, not
+# one (see direct_file.py's own module docstring's "Audio-only
+# Laserfiche" section for the full investigation).
+
+# Deschutes County, OR -- same extension-less `ElectronicFile.aspx?docid=`
+# shape as Jefferson County's video. Historic Landmarks Commission audio
+# minutes, 2021-08-05 (the newest entry in that folder), confirmed live
+# 2026-09-12 via a real browser walk of weblink.deschutes.org (docid
+# 94746, zero cookies, 31.7-minute real duration via ffprobe).
+DESCHUTES_AUDIO_URL = (
+    "https://weblink.deschutes.org/WebLink/ElectronicFile.aspx"
+    "?docid=94746&dbid=0&repo=LFPUB"
+)
+# The real first-64-bytes response, confirmed live 2026-09-12 (a ranged
+# GET with `Accept-Encoding: identity` -- see module docstring's caution
+# on this host's own gzip-on-range-response bug, hit on Ramsey below, not
+# Deschutes): a genuine ID3 tag, not the ISO-BMFF video this branch used
+# to assume.
+DESCHUTES_MP3_MAGIC_BYTES = (
+    b"ID3\x04\x00\x00\x00\x00\x01\x00TXXX\x00\x00\x00\x12\x00\x00\x03major_brand"
+    b"\x00mp42\x00TXXX\x00\x00\x00\x11\x00\x00\x03minor_version\x000"
+)
+
+# Ramsey city, MN -- an OLDER WebLink 9 install's different, friendlier
+# `/WebLink/<n>/edoc/<docid>/<filename>` download path (a real extension
+# already in the URL, unlike the docid-query shape above). Council Work
+# Session, 2026-09-08 (the newest entry in the "Recordings - Audio/Video"
+# folder), confirmed live 2026-09-12 via a real browser walk of
+# weblink.cityoframsey.com (docid 813049, zero cookies once the
+# gzip-on-range quirk is worked around, 82-minute real duration via
+# ffprobe).
+RAMSEY_AUDIO_URL = (
+    "https://weblink.cityoframsey.com/WebLink/0/edoc/813049/"
+    "Meeting%20AudioVideo%20-%20Council%20Work%20Session%20-%2009082026.mp3"
+)
+# The real first-64-bytes response, confirmed live 2026-09-12 -- also a
+# genuine ID3 tag. A first attempt with aiohttp's default
+# `Accept-Encoding: gzip` got a corrupt, undecompressable response from
+# this host's IIS dynamic-compression module misapplying gzip to a
+# 64-byte RANGED response (`zlib.error: invalid code lengths set`) --
+# `curl` never showed this because it doesn't request compression by
+# default. See `_laserfiche_classify_media()`'s own docstring.
+RAMSEY_MP3_MAGIC_BYTES = (
+    b"ID3\x03\x00\x00\x00\x00\x07vTXXX\x00\x00\x00\x0e\x00\x00\x00DDJ/VER"
+    b"\x000100\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+)
+
 
 @pytest.mark.parametrize(
     "url,expected",
@@ -97,6 +151,9 @@ JEFFERSON_MP4_MAGIC_BYTES = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"
         (DRIVE_VIEW_URL, True),
         (JEFFERSON_VIDEO_URL, True),
         (JEFFERSON_CAPTION_URL, True),
+        # WO-317: both real audio-only shapes are recognized too.
+        (DESCHUTES_AUDIO_URL, True),
+        (RAMSEY_AUDIO_URL, True),
         # A Drive FOLDER listing is a distinct, out-of-scope shape (see
         # module docstring) -- no file id to extract, no video extension.
         (
@@ -251,6 +308,110 @@ async def test_resolve_degrades_gracefully_when_laserfiche_bytes_are_not_video()
     }
     with mock_session(routes):
         result = await finder.resolve(JEFFERSON_VIDEO_URL)
+    assert result.video_url is None
+    assert result.video_warnings
+    assert "Laserfiche WebLink" in result.video_warnings[0]
+
+
+# --- WO-317 (2026-09-12): audio-only Laserfiche -------------------------
+
+
+def test_is_laserfiche_edoc_url():
+    assert _is_laserfiche_edoc_url(RAMSEY_AUDIO_URL) is True
+    assert _is_laserfiche_edoc_url(DESCHUTES_AUDIO_URL) is False
+    assert _is_laserfiche_edoc_url(PALISADE_URL) is False
+
+
+def test_classify_laserfiche_media_recognizes_real_video_bytes():
+    assert _classify_laserfiche_media(JEFFERSON_MP4_MAGIC_BYTES) == "video"
+
+
+def test_classify_laserfiche_media_recognizes_real_mp3_bytes():
+    # Both real WO-317 fixtures are ID3-tagged MP3 -- confirmed live
+    # against two independent governments on two different WebLink
+    # generations, not assumed from one.
+    assert _classify_laserfiche_media(DESCHUTES_MP3_MAGIC_BYTES) == "mp3"
+    assert _classify_laserfiche_media(RAMSEY_MP3_MAGIC_BYTES) == "mp3"
+
+
+def test_classify_laserfiche_media_recognizes_a_raw_mpeg_frame_sync():
+    # No real fixture on file needed this branch (both real examples carry
+    # an ID3 tag) -- synthetic bytes, not independently confirmed live,
+    # covering the no-ID3-tag MP3 case queue_probe.py's own bare-.mp3
+    # handling already assumes exists.
+    assert _classify_laserfiche_media(b"\xff\xfb\x90\x00" + b"\x00" * 60) == "mp3"
+
+
+def test_classify_laserfiche_media_recognizes_m4a_brand():
+    # Synthetic bytes -- no real Laserfiche .m4a fixture is on file (see
+    # direct_file.py's own module docstring caution); this only checks
+    # the brand-string distinction against Apple's documented "M4A "
+    # brand value, not a live-confirmed byte-for-byte match.
+    synthetic_m4a = b"\x00\x00\x00\x18ftypM4A \x00\x00\x00\x00M4A mp42"
+    assert _classify_laserfiche_media(synthetic_m4a) == "m4a"
+
+
+def test_classify_laserfiche_media_returns_none_for_unrecognized_bytes():
+    assert _classify_laserfiche_media(b"%PDF-1.4 not media at all") is None
+
+
+async def test_resolve_deschutes_audio_shape_sets_mp3_format():
+    finder = DirectFileAssetFinder()
+    routes = {
+        DESCHUTES_AUDIO_URL: FakeResponse(
+            status=206,
+            raw=DESCHUTES_MP3_MAGIC_BYTES,
+            headers={"Content-Type": "application/octet-stream"},
+        ),
+        # The sibling-docid caption check IS attempted for this shape
+        # (docid - 1) -- a real, expected miss (no VTT next to a plain
+        # audio recording), not a Zoom cloud recording.
+        "https://weblink.deschutes.org/WebLink/ElectronicFile.aspx"
+        "?docid=94745&dbid=0&repo=LFPUB": FakeResponse(status=404),
+    }
+    with mock_session(routes):
+        result = await finder.resolve(DESCHUTES_AUDIO_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == DESCHUTES_AUDIO_URL
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+    assert result.segments == []
+    assert "checked the docid immediately before it" in result.transcript_warnings[0]
+
+
+async def test_resolve_ramsey_edoc_shape_sets_mp3_format_and_skips_caption_lookup():
+    finder = DirectFileAssetFinder()
+    routes = {
+        RAMSEY_AUDIO_URL: FakeResponse(
+            status=206,
+            raw=RAMSEY_MP3_MAGIC_BYTES,
+            headers={"Content-Type": "application/octet-stream"},
+        ),
+    }
+    with mock_session(routes):
+        result = await finder.resolve(RAMSEY_AUDIO_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == RAMSEY_AUDIO_URL
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+    assert result.segments == []
+    # The edoc shape has no sibling-docid convention to check at all --
+    # the wording must not claim a lookup was attempted (WO-317).
+    assert "no known caption convention" in result.transcript_warnings[0]
+    assert "checked the docid" not in result.transcript_warnings[0]
+
+
+async def test_resolve_degrades_gracefully_for_edoc_shape_when_bytes_are_not_media():
+    finder = DirectFileAssetFinder()
+    routes = {
+        RAMSEY_AUDIO_URL: FakeResponse(
+            status=200,
+            raw=b"<html>Error.aspx</html>",
+            headers={"Content-Type": "text/html"},
+        ),
+    }
+    with mock_session(routes):
+        result = await finder.resolve(RAMSEY_AUDIO_URL)
     assert result.video_url is None
     assert result.video_warnings
     assert "Laserfiche WebLink" in result.video_warnings[0]

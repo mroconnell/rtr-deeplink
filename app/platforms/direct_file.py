@@ -102,6 +102,46 @@ entry -- deliberately out of scope for this "minimum" adapter), so a
 caption file at any other offset, or in a folder whose batch didn't
 follow this order, is a real, expected miss (surfaced as a plain
 `transcript_warnings` entry, not an error).
+
+**Audio-only Laserfiche (WO-317, 2026-09-12)** -- BACKLOG.md's Laserfiche
+entry named two real, independently-confirmed audio-only sources (WO-305/
+WO-315's census of all 79 named-government WebLink repositories): Ramsey
+city, MN's Council Work Session recordings and Deschutes County, OR's
+Historic Landmarks Commission audio minutes. Re-derived live against both
+before building (per CLAUDE.md's "a backlog entry is a lead, not a spec"
+rule) and found TWO distinct real URL shapes, not one:
+
+1. **Deschutes** uses the same extension-less `ElectronicFile.aspx?docid=`
+   shape as Jefferson County's video (confirmed live 2026-09-12: docid
+   94746, zero cookies, ranged GET returns 206 with a real ID3 tag
+   (`49 44 33`) at byte 0 -- an MP3, not the ISO-BMFF video this branch
+   used to assume).
+2. **Ramsey** is an OLDER WebLink 9 install that exposes a DIFFERENT,
+   friendlier download path -- `/WebLink/<n>/edoc/<docid>/<filename>.mp3`
+   -- with a real extension already in the URL. Confirmed live 2026-09-12
+   (docid 813049): a HEAD still 302s to the same `Error.aspx
+   ?aspxerrorpath=/WebLink/ElectronicFile.aspx` this module's HEAD-doesn't-
+   work note already documents (so this IS the same underlying
+   ElectronicFile.aspx serving path under the hood, just a different
+   public URL alias), and a plain ranged GET with ZERO cookies -- no
+   session bootstrap needed, despite this repository's own reject reason
+   being `weblink9-postback-login-gated` (that gate is on the folder
+   BROWSE UI needing a real browser's postback, not on the file download
+   itself) -- returns 206 with a real ID3 tag at byte 0.
+
+Both shapes are routed through the same `_resolve_laserfiche()` ranged-GET
+classification below. `_classify_laserfiche_media()` extends the existing
+ISO-BMFF check with an MP3 branch (ID3 tag or a raw MPEG frame sync at
+byte 0) and an M4A branch (ISO-BMFF carrying the `M4A ` brand instead of
+a video brand like `mp42`/`isom`) so a bare Laserfiche audio recording
+gets `video_format` set to its real format ("mp3"/"m4a") the same way
+`utah_pmn.py`'s own bare-file case already does for OTHER platforms --
+`media_probe.py`'s ffprobe-based duration probe and `player.js`'s native
+`<video>` fallback are already format-agnostic, so no new transcription
+or playback code is needed, only the confirmation + classification here.
+Caption-sibling lookup (`_laserfiche_sibling_caption_url()`) is skipped
+entirely for the edoc shape -- it has no known Zoom-sibling-docid
+convention, and neither government's file is a Zoom cloud recording.
 """
 
 import re
@@ -148,6 +188,18 @@ _LASERFICHE_ELECTRONIC_FILE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Laserfiche WebLink 9's older "friendly" download path -- confirmed real
+# live 2026-09-12 against Ramsey city, MN's `weblink.cityoframsey.com`
+# (WO-317; see module docstring's "Audio-only Laserfiche" section). A
+# HEAD on this path 302s to the exact same `Error.aspx?aspxerrorpath=
+# /WebLink/ElectronicFile.aspx` a HEAD on the docid-query shape above
+# does, confirming this is the same underlying serving path under a
+# different public URL, not a new host behavior to handle separately.
+_LASERFICHE_EDOC_RE = re.compile(
+    r"/WebLink/(?:\d+/)?edoc/(?P<docid>\d+)/",
+    re.IGNORECASE,
+)
+
 # The real ISO-BMFF ("MP4 family") container box markers -- confirmed
 # live 2026-09-12 in the first bytes of Jefferson County, WA's real
 # `ElectronicFile.aspx` video response. Used to confirm a Laserfiche
@@ -155,6 +207,25 @@ _LASERFICHE_ELECTRONIC_FILE_RE = re.compile(
 # `Content-Type` header, which this host always answers with a generic
 # `application/octet-stream` regardless of what the file actually is.
 _VIDEO_MAGIC_MARKERS = (b"ftyp", b"moov", b"mdat")
+
+# WO-317, 2026-09-12: an ISO-BMFF file carrying this brand instead of a
+# video brand (`mp42`/`isom`/etc) is Apple's own audio-only container --
+# no real .m4a fixture was on hand to confirm the exact brand string
+# against, so this is Apple's documented brand value, not (yet) checked
+# against a live Laserfiche .m4a byte-for-byte; both of WO-317's real
+# fixtures (Ramsey, Deschutes) are MP3, not M4A. Flagged in BACKLOG.md.
+_M4A_BRAND_MARKER = b"M4A "
+
+# MP3's own two real on-disk shapes: an ID3v2 tag at byte 0 (confirmed
+# live 2026-09-12 on both Ramsey's and Deschutes' real files -- `49 44
+# 33` at the very start of a ranged GET's first 64 bytes), or -- for an
+# MP3 with no ID3 tag at all -- a raw MPEG frame sync byte pair at byte
+# 0. Checked with `.startswith()`, not `in`, since a frame-sync-shaped
+# byte pair appearing later in an arbitrary binary blob would be a false
+# positive; neither real fixture on file needed the frame-sync branch,
+# so it's here for completeness (matching queue_probe.py's own bare
+# `.mp3` handling), not itself independently confirmed live.
+_MP3_FRAME_SYNC_PREFIXES = (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
 
 
 def is_direct_file_url(url: str) -> bool:
@@ -164,13 +235,17 @@ def is_direct_file_url(url: str) -> bool:
     served BY a recognized platform never reaches here."""
     if _DRIVE_FILE_ID_RE.search(url):
         return True
-    if _is_laserfiche_weblink_url(url):
+    if _is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url):
         return True
-    # A real video extension in the URL's own path -- covers a bare
-    # first-party file (Palisade/Dundee/Cayuga Heights) AND Dropbox's
-    # `/scl/fi/<id>/<filename>.mp4` shape, whose filename segment already
-    # carries the real extension.
-    return media_type(url) == "video"
+    # A real video OR audio extension in the URL's own path -- covers a
+    # bare first-party file (Palisade/Dundee/Cayuga Heights), Dropbox's
+    # `/scl/fi/<id>/<filename>.mp4` shape (whose filename segment already
+    # carries the real extension), and a bare hosted audio file (WO-317)
+    # such as Ramsey, MN's `.mp3` recordings served OFF the edoc path
+    # above -- "audio" added alongside the original "video"-only check so
+    # an audio-only direct file is recognized the same way utah_pmn.py's
+    # own bare-file case already is for a different platform.
+    return media_type(url) in ("video", "audio")
 
 
 def _is_laserfiche_weblink_url(url: str) -> bool:
@@ -179,6 +254,19 @@ def _is_laserfiche_weblink_url(url: str) -> bool:
     needs its own check rather than `media_type()`'s extension-based
     one (no extension ever appears in the URL itself)."""
     return bool(_LASERFICHE_ELECTRONIC_FILE_RE.search(url))
+
+
+def _is_laserfiche_edoc_url(url: str) -> bool:
+    """True for Laserfiche WebLink 9's older `/edoc/<docid>/<filename>`
+    download path (WO-317) -- see module docstring's "Audio-only
+    Laserfiche" section. Unlike `_is_laserfiche_weblink_url()`'s shape,
+    this one DOES carry a real filename/extension, but still needs its
+    own check (rather than relying on `media_type()` alone) so
+    `_resolve_laserfiche()`'s ranged-GET + magic-byte confirmation runs
+    for it too -- a plain HEAD 302s to the same generic `Error.aspx` the
+    other shape's HEAD does, so the generic own-domain HEAD-only check
+    below would misclassify a real file as unconfirmed."""
+    return bool(_LASERFICHE_EDOC_RE.search(url))
 
 
 def _laserfiche_sibling_caption_url(url: str) -> Optional[str]:
@@ -192,6 +280,19 @@ def _laserfiche_sibling_caption_url(url: str) -> Optional[str]:
         return None
     docid = int(match.group("docid"))
     return url.replace(f"docid={docid}&", f"docid={docid - 1}&", 1)
+
+
+def _classify_laserfiche_media(chunk: bytes) -> Optional[str]:
+    """`"video"`/`"m4a"`/`"mp3"` from the first bytes of a Laserfiche
+    WebLink download, or `None` when nothing recognized matched -- see
+    module docstring's "Audio-only Laserfiche" section (WO-317) for the
+    two real confirmed sources (Ramsey city, MN; Deschutes County, OR)
+    this extends the original video-only check to cover."""
+    if chunk.startswith(b"ID3") or chunk.startswith(_MP3_FRAME_SYNC_PREFIXES):
+        return "mp3"
+    if any(marker in chunk for marker in _VIDEO_MAGIC_MARKERS):
+        return "m4a" if _M4A_BRAND_MARKER in chunk else "video"
+    return None
 
 
 def _resolve_direct_media_url(url: str) -> str:
@@ -222,7 +323,7 @@ class DirectFileAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         media_url = _resolve_direct_media_url(url)
-        if _is_laserfiche_weblink_url(media_url):
+        if _is_laserfiche_weblink_url(media_url) or _is_laserfiche_edoc_url(media_url):
             # A distinct sub-path -- see module docstring -- since this
             # host answers HEAD with a redirect and GET with a generic
             # Content-Type, neither of which the check below can use.
@@ -259,21 +360,32 @@ class DirectFileAssetFinder(AssetFinder):
                 return resp.headers.get("Content-Type")
 
     async def _resolve_laserfiche(self, url: str, media_url: str) -> ResolvedMeeting:
-        if not await self._laserfiche_confirm_video(media_url):
+        media_kind = await self._laserfiche_classify_media(media_url)
+        if media_kind is None:
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
                 video_warnings=[
                     "direct_file: could not confirm this Laserfiche WebLink "
-                    "URL serves a playable video."
+                    "URL serves a playable video or audio file."
                 ],
             )
         resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=media_url,
-            video_format="mp4",
+            # "video" classifies as a real ISO-BMFF video brand -> "mp4"
+            # (same convention as before WO-317); "m4a"/"mp3" pass their
+            # own real format straight through, same as utah_pmn.py's own
+            # bare-file case -- see module docstring's "Audio-only
+            # Laserfiche" section.
+            video_format="mp4" if media_kind == "video" else media_kind,
         )
+        # Zoom's sibling-docid caption convention (docid - 1) only applies
+        # to the docid-query shape -- `_laserfiche_sibling_caption_url()`
+        # already returns None for the edoc shape (its regex doesn't
+        # match), and neither of WO-317's real audio fixtures is a Zoom
+        # cloud recording, so this is the correct, expected no-op for them.
         caption_url = _laserfiche_sibling_caption_url(media_url)
         cues, language = (
             await self._fetch_laserfiche_captions(caption_url)
@@ -293,34 +405,61 @@ class DirectFileAssetFinder(AssetFinder):
                     "This transcript looks garbled at the source (not a "
                     "parsing bug on our end) -- treat it as approximate."
                 ]
-        else:
+        elif caption_url:
+            # A sibling-docid lookup was actually attempted (the docid
+            # shape) and missed -- the original, still-accurate wording.
             resolved.transcript_warnings = [
                 "We couldn't find a caption file next to this Laserfiche "
                 "WebLink video (checked the docid immediately before it, "
                 "the confirmed real pattern -- see direct_file.py's own "
                 "module docstring)."
             ]
+        else:
+            # WO-317: the edoc shape has no known Zoom-sibling-docid
+            # convention to check at all (see module docstring's
+            # "Audio-only Laserfiche" section) -- a plain miss, not a
+            # failed lookup, so the wording shouldn't claim one was tried.
+            resolved.transcript_warnings = [
+                "We couldn't find a caption file for this Laserfiche "
+                "WebLink recording (no known caption convention exists "
+                "for this download-link shape)."
+            ]
         return resolved
 
     @staticmethod
-    async def _laserfiche_confirm_video(media_url: str) -> bool:
-        """A small ranged GET (not HEAD -- this host 302s on HEAD, see
-        module docstring) checked for a real ISO-BMFF box marker, since
-        this host's own `Content-Type` header is a generic
-        `application/octet-stream` even on a real video."""
+    async def _laserfiche_classify_media(media_url: str) -> Optional[str]:
+        """`"video"`/`"m4a"`/`"mp3"` from a small ranged GET's first bytes
+        (not HEAD -- this host 302s on HEAD, see module docstring), or
+        `None` if nothing recognized matched. Reads the actual bytes
+        rather than trusting `Content-Type`, since this host's own header
+        is a generic `application/octet-stream` on every real file
+        regardless of what it actually is.
+
+        `Accept-Encoding: identity` (WO-317, 2026-09-12) -- confirmed live
+        against Ramsey city, MN's older WebLink 9 install: its IIS
+        dynamic-compression module gzip-encodes a 64-byte RANGED response
+        on its own (aiohttp sends `Accept-Encoding: gzip` by default),
+        producing a truncated gzip stream that fails to decompress
+        (`zlib.error: invalid code lengths set`) -- a real server bug on
+        a byte-range response, not a network error. `curl` never hits
+        this because it doesn't request compression unless `--compressed`
+        is passed. Jefferson County, WA's newer WebLink install does NOT
+        do this (confirmed live, `curl --compressed` returns no
+        `Content-Encoding` at all) -- host-specific, not a general
+        Laserfiche WebLink behavior, but harmless to send everywhere."""
         try:
             async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
                 async with session.get(
                     media_url,
-                    headers={"Range": "bytes=0-63"},
+                    headers={"Range": "bytes=0-63", "Accept-Encoding": "identity"},
                     timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
                 ) as resp:
                     if resp.status not in (200, 206):
-                        return False
+                        return None
                     chunk = await resp.read()
         except aiohttp.ClientError:
-            return False
-        return any(marker in chunk for marker in _VIDEO_MAGIC_MARKERS)
+            return None
+        return _classify_laserfiche_media(chunk)
 
     @staticmethod
     async def _fetch_laserfiche_captions(
