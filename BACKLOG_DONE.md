@@ -826,6 +826,14 @@ townhallstreams.py`). It is on `main` after merge but **not live** until
 the resolver's next deploy (`render.yaml`'s `autoDeploy: false`) — the
 wrong-video bug stays live in production until that deploy happens.
 
+- **Follow-up, 2026-09-12 (Fable - Workers, after the deploy):** all 115
+  Town Hall Streams queue lines re-probed under the fixed adapter with
+  `probe_tier3_queue.py --reprobe`: accept 89, reject-dead 24 (23 whose
+  HLS playlist returns 404 on the vendor's own server, 1 with no video),
+  reject-short 2 (17 s and 42 s clips). The 26 rejects stay in the queue;
+  the WO-156 gate refuses them at feed time from the sidecar verdict, so
+  no hand edit. Before the fix the same lines were 116 of 125 "no video".
+
 ## WO-295: give scripts/backfill_archived_pages.py a --missing-channel-only filter [Done 2026-09-12]
 
 **What was done and why.** Until PR #999 (2026-09-11), the YouTube

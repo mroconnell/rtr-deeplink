@@ -5873,3 +5873,118 @@ https://www.youtube.com/watch?v=6U_2S0h673k,youtube,yt-dlp-metadata,7475.00,2026
 https://www.youtube.com/watch?v=gTvkvlErCgg&t=10s,youtube,yt-dlp-metadata,4164.00,2026-08-19,132045046,1,accept,,1.95,2026-09-12T15:36:02+00:00,bulk_ingest,0
 https://www.youtube.com/live/L0lsITl9_l0?si=Z26piE2eGFgC8O7-,youtube,yt-dlp-metadata,5710.00,2026-08-27,153485048,1,accept,,1.93,2026-09-12T15:36:08+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=9hrqwx3Vh8A,youtube,yt-dlp-metadata,2827.00,2026-01-06,61617897,1,accept,,1.85,2026-09-12T15:36:14+00:00,bulk_ingest,0
+https://townhallstreams.com/stream.php?location_id=23&id=76181,townhallstreams,hls-master+variant,295.14,,,0,accept,,2.50,2026-09-12T16:31:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=28&id=20324,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.47,2026-09-12T16:31:58+00:00,,0
+https://townhallstreams.com/stream.php?location_id=30&id=76187,townhallstreams,hls-master+variant,1143.61,,,1,accept,,1.63,2026-09-12T16:32:00+00:00,,0
+https://townhallstreams.com/stream.php?location_id=31&id=75859,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.47,2026-09-12T16:32:01+00:00,,0
+https://townhallstreams.com/stream.php?location_id=32&id=76212,townhallstreams,hls-master+variant,567.23,,,1,accept,,2.91,2026-09-12T16:32:04+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=76059,townhallstreams,hls-master+variant,10507.49,,,1,accept,,1.57,2026-09-12T16:32:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=34&id=76092,townhallstreams,hls-master+variant,5042.70,,,1,accept,,2.62,2026-09-12T16:32:08+00:00,,0
+https://townhallstreams.com/stream.php?location_id=35&id=76114,townhallstreams,hls-master+variant,2430.70,,,1,accept,,6.81,2026-09-12T16:32:15+00:00,,0
+https://townhallstreams.com/stream.php?location_id=36&id=76137,townhallstreams,hls-master+variant,307.76,,,0,accept,,3.81,2026-09-12T16:32:19+00:00,,0
+https://townhallstreams.com/stream.php?location_id=37&id=76119,townhallstreams,hls-master+variant,2567.83,,,1,accept,,4.23,2026-09-12T16:32:23+00:00,,0
+https://townhallstreams.com/stream.php?location_id=38&id=54156,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.46,2026-09-12T16:32:24+00:00,,0
+https://townhallstreams.com/stream.php?location_id=40&id=53966,townhallstreams,hls-master+variant,2534.39,,,1,accept,,4.49,2026-09-12T16:32:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=41&id=12206,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.39,2026-09-12T16:32:30+00:00,,0
+https://townhallstreams.com/stream.php?location_id=42&id=43305,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.45,2026-09-12T16:32:32+00:00,,0
+https://townhallstreams.com/stream.php?location_id=43&id=53616,townhallstreams,hls-master+variant,1948.05,,,1,accept,,3.19,2026-09-12T16:32:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=44&id=75536,townhallstreams,hls-master+variant,10798.40,,,1,accept,,11.13,2026-09-12T16:32:46+00:00,,0
+https://townhallstreams.com/stream.php?location_id=45&id=46031,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.51,2026-09-12T16:32:48+00:00,,0
+https://townhallstreams.com/stream.php?location_id=46&id=16240,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.50,2026-09-12T16:32:49+00:00,,0
+https://townhallstreams.com/stream.php?location_id=48&id=75409,townhallstreams,hls-master+variant,5407.55,,,1,accept,,1.68,2026-09-12T16:32:51+00:00,,0
+https://townhallstreams.com/stream.php?location_id=49&id=62383,townhallstreams,resolve,,,,0,reject-dead,resolve returned no video_url,0.37,2026-09-12T16:32:51+00:00,,0
+https://townhallstreams.com/stream.php?location_id=50&id=71267,townhallstreams,hls-master+variant,4556.24,,,1,accept,,3.10,2026-09-12T16:32:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=51&id=76131,townhallstreams,hls-master+variant,4067.17,,,1,accept,,6.29,2026-09-12T16:33:02+00:00,,0
+https://townhallstreams.com/stream.php?location_id=52&id=76246,townhallstreams,hls-master+variant,4695.03,,,1,accept,,3.38,2026-09-12T16:33:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=53&id=76143,townhallstreams,hls-master+variant,7191.62,,,1,accept,,3.26,2026-09-12T16:33:09+00:00,,0
+https://townhallstreams.com/stream.php?location_id=54&id=76177,townhallstreams,hls-master+variant,5528.00,,,1,accept,,7.22,2026-09-12T16:33:16+00:00,,0
+https://townhallstreams.com/stream.php?location_id=55&id=76010,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.45,2026-09-12T16:33:17+00:00,,0
+https://townhallstreams.com/stream.php?location_id=56&id=76286,townhallstreams,hls-master+variant,2282.32,,,1,accept,,4.79,2026-09-12T16:33:22+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76259,townhallstreams,hls-master+variant,3914.58,,,1,accept,,3.35,2026-09-12T16:33:25+00:00,,0
+https://townhallstreams.com/stream.php?location_id=58&id=60881,townhallstreams,hls-master+variant,7199.48,,,1,accept,,2.66,2026-09-12T16:33:28+00:00,,0
+https://townhallstreams.com/stream.php?location_id=61&id=44512,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.33,2026-09-12T16:33:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=62&id=75447,townhallstreams,hls-master+variant,507.45,,,0,accept,,1.64,2026-09-12T16:33:31+00:00,,0
+https://townhallstreams.com/stream.php?location_id=63&id=75325,townhallstreams,hls-master+variant,3963.33,,,1,accept,,4.48,2026-09-12T16:33:36+00:00,,0
+https://townhallstreams.com/stream.php?location_id=64&id=76171,townhallstreams,hls-master+variant,10919.32,,,1,accept,,2.22,2026-09-12T16:33:38+00:00,,0
+https://townhallstreams.com/stream.php?location_id=65&id=71382,townhallstreams,hls-master+variant,10487.40,,,1,accept,,2.86,2026-09-12T16:33:41+00:00,,0
+https://townhallstreams.com/stream.php?location_id=66&id=76288,townhallstreams,hls-master+variant,6443.82,,,1,accept,,5.16,2026-09-12T16:33:46+00:00,,0
+https://townhallstreams.com/stream.php?location_id=68&id=75868,townhallstreams,hls-master+variant,3062.50,,,1,accept,,2.34,2026-09-12T16:33:48+00:00,,0
+https://townhallstreams.com/stream.php?location_id=69&id=35034,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.43,2026-09-12T16:33:50+00:00,,0
+https://townhallstreams.com/stream.php?location_id=70&id=34502,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.49,2026-09-12T16:33:51+00:00,,0
+https://townhallstreams.com/stream.php?location_id=71&id=42640,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.48,2026-09-12T16:33:53+00:00,,0
+https://townhallstreams.com/stream.php?location_id=72&id=75323,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.40,2026-09-12T16:33:54+00:00,,0
+https://townhallstreams.com/stream.php?location_id=73&id=43847,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.47,2026-09-12T16:33:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=76&id=76205,townhallstreams,hls-master+variant,10798.56,,,1,accept,,2.98,2026-09-12T16:33:59+00:00,,0
+https://townhallstreams.com/stream.php?location_id=77&id=75043,townhallstreams,hls-master+variant,14415.13,,,1,accept,,2.73,2026-09-12T16:34:01+00:00,,0
+https://townhallstreams.com/stream.php?location_id=78&id=76122,townhallstreams,hls-master+variant,4611.02,,,1,accept,,2.38,2026-09-12T16:34:04+00:00,,0
+https://townhallstreams.com/stream.php?location_id=80&id=62200,townhallstreams,hls-master+variant,5888.64,,,1,accept,,3.27,2026-09-12T16:34:07+00:00,,0
+https://townhallstreams.com/stream.php?location_id=81&id=62237,townhallstreams,hls-master+variant,9914.09,,,1,accept,,9.25,2026-09-12T16:34:16+00:00,,0
+https://townhallstreams.com/stream.php?location_id=82&id=75236,townhallstreams,hls-master+variant,6125.29,,,1,accept,,2.52,2026-09-12T16:34:19+00:00,,0
+https://townhallstreams.com/stream.php?location_id=83&id=75869,townhallstreams,hls-master+variant,6715.90,,,1,accept,,7.22,2026-09-12T16:34:26+00:00,,0
+https://townhallstreams.com/stream.php?location_id=85&id=47620,townhallstreams,hls-master+variant,10807.01,,,1,accept,,1.58,2026-09-12T16:34:28+00:00,,0
+https://townhallstreams.com/stream.php?location_id=87&id=75893,townhallstreams,hls-master+variant,5662.58,,,1,accept,,2.30,2026-09-12T16:34:30+00:00,,0
+https://townhallstreams.com/stream.php?location_id=88&id=75491,townhallstreams,hls-master+variant,1031.10,,,1,accept,,5.44,2026-09-12T16:34:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=89&id=75988,townhallstreams,hls-master+variant,5413.87,,,1,accept,,1.58,2026-09-12T16:34:37+00:00,,0
+https://townhallstreams.com/stream.php?location_id=90&id=76295,townhallstreams,hls-master+variant,10782.78,,,1,accept,,9.24,2026-09-12T16:34:46+00:00,,0
+https://townhallstreams.com/stream.php?location_id=91&id=18731,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.39,2026-09-12T16:34:48+00:00,,0
+https://townhallstreams.com/stream.php?location_id=96&id=67218,townhallstreams,hls-master+variant,13711.50,,,1,accept,,1.69,2026-09-12T16:34:49+00:00,,0
+https://townhallstreams.com/stream.php?location_id=97&id=75659,townhallstreams,hls-master+variant,2505.71,,,1,accept,,5.40,2026-09-12T16:34:55+00:00,,0
+https://townhallstreams.com/stream.php?location_id=98&id=76161,townhallstreams,hls-master+variant,6666.14,,,1,accept,,3.15,2026-09-12T16:34:58+00:00,,0
+https://townhallstreams.com/stream.php?location_id=100&id=74869,townhallstreams,hls-master+variant,7654.96,,,1,accept,,3.27,2026-09-12T16:35:01+00:00,,0
+https://townhallstreams.com/stream.php?location_id=101&id=76027,townhallstreams,hls-master+variant,2565.27,,,1,accept,,5.03,2026-09-12T16:35:06+00:00,,0
+https://townhallstreams.com/stream.php?location_id=103&id=57839,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.36,2026-09-12T16:35:08+00:00,,0
+https://townhallstreams.com/stream.php?location_id=104&id=75974,townhallstreams,hls-master+variant,495.55,,,0,accept,,2.59,2026-09-12T16:35:10+00:00,,0
+https://townhallstreams.com/stream.php?location_id=107&id=76067,townhallstreams,hls-master+variant,5922.21,,,1,accept,,6.09,2026-09-12T16:35:16+00:00,,0
+https://townhallstreams.com/stream.php?location_id=109&id=60897,townhallstreams,hls-master+variant,5349.26,,,1,accept,,3.29,2026-09-12T16:35:20+00:00,,0
+https://townhallstreams.com/stream.php?location_id=110&id=76127,townhallstreams,hls-master+variant,3718.26,,,1,accept,,3.40,2026-09-12T16:35:23+00:00,,0
+https://townhallstreams.com/stream.php?location_id=112&id=68061,townhallstreams,hls-master+variant,4379.68,,,1,accept,,3.26,2026-09-12T16:35:26+00:00,,0
+https://townhallstreams.com/stream.php?location_id=114&id=76179,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.32,2026-09-12T16:35:28+00:00,,0
+https://townhallstreams.com/stream.php?location_id=115&id=76169,townhallstreams,hls-master+variant,5653.40,,,1,accept,,1.53,2026-09-12T16:35:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=116&id=76047,townhallstreams,hls-master+variant,975.50,,,1,accept,,2.39,2026-09-12T16:35:32+00:00,,0
+https://townhallstreams.com/stream.php?location_id=118&id=76252,townhallstreams,hls-master+variant,4647.95,,,1,accept,,2.85,2026-09-12T16:35:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=119&id=76140,townhallstreams,hls-master+variant,2620.53,,,1,accept,,2.62,2026-09-12T16:35:37+00:00,,0
+https://townhallstreams.com/stream.php?location_id=121&id=75716,townhallstreams,hls-master+variant,2102.77,,,1,accept,,3.43,2026-09-12T16:35:41+00:00,,0
+https://townhallstreams.com/stream.php?location_id=122&id=40784,townhallstreams,hls-master+variant,1859.71,,,1,accept,,1.48,2026-09-12T16:35:42+00:00,,0
+https://townhallstreams.com/stream.php?location_id=123&id=41513,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.26,2026-09-12T16:35:43+00:00,,0
+https://townhallstreams.com/stream.php?location_id=124&id=76053,townhallstreams,hls-master+variant,347.46,,,0,accept,,3.32,2026-09-12T16:35:47+00:00,,0
+https://townhallstreams.com/stream.php?location_id=125&id=76196,townhallstreams,hls-master+variant,41.47,,,0,reject-short,duration 41.5s is below the 60s meeting-plausibility floor,2.07,2026-09-12T16:35:49+00:00,,0
+https://townhallstreams.com/stream.php?location_id=126&id=76198,townhallstreams,hls-master+variant,438.38,,,0,accept,,2.71,2026-09-12T16:35:52+00:00,,0
+https://townhallstreams.com/stream.php?location_id=127&id=76107,townhallstreams,hls-master+variant,6415.49,,,1,accept,,4.02,2026-09-12T16:35:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=129&id=39509,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.37,2026-09-12T16:35:57+00:00,,0
+https://townhallstreams.com/stream.php?location_id=136&id=76240,townhallstreams,hls-master+variant,7819.28,,,1,accept,,1.56,2026-09-12T16:35:59+00:00,,0
+https://townhallstreams.com/stream.php?location_id=138&id=76117,townhallstreams,hls-master+variant,7180.30,,,1,accept,,6.93,2026-09-12T16:36:06+00:00,,0
+https://townhallstreams.com/stream.php?location_id=140&id=75839,townhallstreams,hls-master+variant,3248.93,,,1,accept,,3.06,2026-09-12T16:36:09+00:00,,0
+https://townhallstreams.com/stream.php?location_id=141&id=76028,townhallstreams,hls-master+variant,2442.55,,,1,accept,,2.58,2026-09-12T16:36:11+00:00,,0
+https://townhallstreams.com/stream.php?location_id=142&id=49821,townhallstreams,hls-master+variant,4959.54,,,1,accept,,3.16,2026-09-12T16:36:15+00:00,,0
+https://townhallstreams.com/stream.php?location_id=143&id=66294,townhallstreams,hls-master+variant,3202.43,,,1,accept,,4.21,2026-09-12T16:36:19+00:00,,0
+https://townhallstreams.com/stream.php?location_id=144&id=76255,townhallstreams,hls-master+variant,4885.56,,,1,accept,,6.79,2026-09-12T16:36:26+00:00,,0
+https://townhallstreams.com/stream.php?location_id=145&id=76049,townhallstreams,hls-master+variant,3481.98,,,1,accept,,1.51,2026-09-12T16:36:27+00:00,,0
+https://townhallstreams.com/stream.php?location_id=146&id=75023,townhallstreams,hls-master+variant,3672.40,,,1,accept,,1.53,2026-09-12T16:36:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=148&id=75896,townhallstreams,hls-master+variant,207.87,,,0,accept,,2.73,2026-09-12T16:36:31+00:00,,0
+https://townhallstreams.com/stream.php?location_id=149&id=76146,townhallstreams,hls-master+variant,6107.13,,,1,accept,,3.28,2026-09-12T16:36:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=150&id=73956,townhallstreams,hls-master+variant,148.50,,,0,accept,,1.43,2026-09-12T16:36:36+00:00,,0
+https://townhallstreams.com/stream.php?location_id=151&id=75888,townhallstreams,hls-master+variant,3436.80,,,1,accept,,3.21,2026-09-12T16:36:39+00:00,,0
+https://townhallstreams.com/stream.php?location_id=152&id=75784,townhallstreams,hls-master+variant,1812.28,,,1,accept,,1.45,2026-09-12T16:36:41+00:00,,0
+https://townhallstreams.com/stream.php?location_id=153&id=75989,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.41,2026-09-12T16:36:42+00:00,,0
+https://townhallstreams.com/stream.php?location_id=154&id=76250,townhallstreams,hls-master+variant,158.49,,,0,accept,,2.53,2026-09-12T16:36:45+00:00,,0
+https://townhallstreams.com/stream.php?location_id=155&id=76076,townhallstreams,hls-master+variant,5582.98,,,1,accept,,8.39,2026-09-12T16:36:53+00:00,,0
+https://townhallstreams.com/stream.php?location_id=156&id=76130,townhallstreams,hls-master+variant,8218.03,,,1,accept,,8.47,2026-09-12T16:37:02+00:00,,0
+https://townhallstreams.com/stream.php?location_id=157&id=60590,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.35,2026-09-12T16:37:03+00:00,,0
+https://townhallstreams.com/stream.php?location_id=158&id=76011,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.25,2026-09-12T16:37:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=159&id=76221,townhallstreams,hls-master+variant,2517.17,,,1,accept,,4.39,2026-09-12T16:37:09+00:00,,0
+https://townhallstreams.com/stream.php?location_id=160&id=76091,townhallstreams,hls-master+variant,3438.93,,,1,accept,,6.21,2026-09-12T16:37:15+00:00,,0
+https://townhallstreams.com/stream.php?location_id=161&id=75754,townhallstreams,hls-master+variant,1020.64,,,1,accept,,2.48,2026-09-12T16:37:18+00:00,,0
+https://townhallstreams.com/stream.php?location_id=162&id=75661,townhallstreams,hls-master+variant,6470.92,,,1,accept,,1.55,2026-09-12T16:37:19+00:00,,0
+https://townhallstreams.com/stream.php?location_id=166&id=74574,townhallstreams,hls-master+variant,5350.82,,,1,accept,,1.80,2026-09-12T16:37:21+00:00,,0
+https://townhallstreams.com/stream.php?location_id=168&id=75979,townhallstreams,hls-master+variant,6746.03,,,1,accept,,4.89,2026-09-12T16:37:26+00:00,,0
+https://townhallstreams.com/stream.php?location_id=170&id=76170,townhallstreams,hls-master+variant,9992.03,,,1,accept,,1.68,2026-09-12T16:37:28+00:00,,0
+https://townhallstreams.com/stream.php?location_id=171&id=76094,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.31,2026-09-12T16:37:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=172&id=76087,townhallstreams,hls-master+variant,580.96,,,1,accept,,2.64,2026-09-12T16:37:32+00:00,,0
+https://townhallstreams.com/stream.php?location_id=173&id=76257,townhallstreams,hls-master+variant,2378.31,,,1,accept,,3.15,2026-09-12T16:37:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=174&id=76216,townhallstreams,hls-master+variant,6820.78,,,1,accept,,11.19,2026-09-12T16:37:46+00:00,,0
+https://townhallstreams.com/stream.php?location_id=175&id=76135,townhallstreams,hls-master+variant,16.71,,,0,reject-short,duration 16.7s is below the 60s meeting-plausibility floor,1.46,2026-09-12T16:37:48+00:00,,0
+https://townhallstreams.com/stream.php?location_id=176&id=76043,townhallstreams,hls-master+variant,3616.75,,,1,accept,,6.88,2026-09-12T16:37:55+00:00,,0
+https://townhallstreams.com/stream.php?location_id=177&id=75919,townhallstreams,hls-master+variant,2669.33,,,1,accept,,4.75,2026-09-12T16:37:59+00:00,,0
+https://townhallstreams.com/stream.php?location_id=178&id=74225,townhallstreams,hls-master+variant,8210.47,,,1,accept,,6.69,2026-09-12T16:38:06+00:00,,0
+https://townhallstreams.com/stream.php?location_id=87&id=72598,townhallstreams,hls-master+variant,2084.67,,,1,accept,,2.56,2026-09-12T16:38:09+00:00,,0
+https://townhallstreams.com/stream.php?location_id=152&id=72646,townhallstreams,hls-master+variant,3884.43,,,1,accept,,1.51,2026-09-12T16:38:10+00:00,,0
