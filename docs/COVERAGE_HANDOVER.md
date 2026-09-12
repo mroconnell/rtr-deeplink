@@ -497,6 +497,19 @@ What the 2026-09-09 sweeps established about *where video is*:
   arrive keyed only as well as the deployed pins allow; the review
   procedure, the per-page file, and the video-vs-channel pin shapes are
   in `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` (2026-09-11).
+- **The drip's feed lane no longer writes its probe rows straight to the
+  tracked `scripts/tier3_auto_transcription_queue_probe.csv` (WO-248,
+  2026-09-12).** It used to, live, all day, while `main` grew the same
+  file through merged sweeps — a merge conflict on every `git pull` on
+  the drip Mac (append-only, nothing lost, but hand-resolved daily). Rows
+  now go to a local, gitignored buffer
+  (`scripts/tier3_auto_transcription_queue_probe.local.csv`), and the
+  drip's daily `advance` step (`fold_probe_sidecar()` in
+  `scripts/youtube_drip.py`) folds that buffer into the tracked file once
+  — keyed on `url`, skipping anything the tracked file already has a row
+  for — right before the one daily commit, then empties the buffer.
+  `docs/YOUTUBE_DRIP_RUNBOOK.md`'s "Once a day" section has the updated
+  commit command.
 - `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
   government's video channel, playlist or feed to its own calendar by body
   and date (pilot WO-158, about 5% yield). Read it before touching

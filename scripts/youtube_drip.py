@@ -11,7 +11,10 @@ the daily launchd burst was blocked within 9-38 pages every morning):
   feed      the YouTube lines of scripts/tier3_auto_transcription_queue.txt
             -> scripts/feed_tier3_auto_transcription._push_if_has_video(),
             so the WO-144 probe and WO-156 ingest gate are unchanged. A page
-            fed here is caption-fetched next by the captions lane.
+            fed here is caption-fetched next by the captions lane. Its
+            WO-144 probe rows go to a LOCAL, gitignored buffer
+            (tier3_auto_transcription_queue_probe.local.csv), not the
+            tracked sidecar CSV -- see `advance` below.
   audio     pages the captions lane marked "captions are disabled" ->
             audio download + local Whisper via
             scripts/transcribe_backlog_locally.process_one(), capped per day
@@ -30,8 +33,14 @@ so a restart resumes. A lock file stops a second instance on the same
 machine -- two pingers on one address is what this replaces. No alert
 emails: the three reused functions never send any, and a block is
 routine here, not an incident. Read docs/YOUTUBE_DRIP_RUNBOOK.md before
-running this. Never rewrites the queue file on its own: `advance` drops
-the fed lines for a daily PR, the same shape as the GitHub feed's.
+running this. Never rewrites a tracked file while the drip is running:
+`advance` drops the fed queue lines and folds the feed lane's local probe
+buffer into the tracked sidecar CSV (fold_probe_sidecar(), WO-248) --
+both for the one daily PR, the same shape as the GitHub feed's. Before
+WO-248, the feed lane appended straight to the tracked sidecar CSV live,
+hours ahead of that one daily commit, while `main` kept growing the same
+file through merged sweeps -- a merge conflict on every `git pull` on the
+drip Mac, append-only so nothing was lost, but hand-resolved every day.
 """
 
 import argparse
@@ -66,11 +75,25 @@ load_dotenv(REPO_ROOT / ".env")
 load_dotenv()
 
 from app.platforms.base import UnsupportedPlatformError, detect_platform  # noqa: E402
+from app.platforms.queue_probe import DEFAULT_SIDECAR_PATH  # noqa: E402
 from app.platforms.youtube import YOUTUBE_CAPTIONS_DISABLED_MARKER  # noqa: E402
 
 logger = logging.getLogger("youtube_drip")
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+# WO-248: the feed lane used to append every probe straight to the
+# tracked DEFAULT_SIDECAR_PATH (app/platforms/queue_probe.py), live,
+# while the drip ran for hours between the one daily `git pull` +
+# `advance` + PR. Meanwhile `main` kept growing the same tracked file
+# through merged sweeps elsewhere, so every pull on the drip Mac
+# conflicted on it -- confirmed, append-only so nothing was ever lost,
+# but the operator had to hand-resolve a union every single day. Rows
+# now land here instead (gitignored, local to this Mac) and `advance`
+# folds them into the tracked file once, right before the commit --
+# see fold_probe_sidecar() below.
+LOCAL_PROBE_SIDECAR_PATH = (
+    REPO_ROOT / "scripts" / "tier3_auto_transcription_queue_probe.local.csv"
+)
 DEFAULT_STATE_DIR = Path.home() / ".rtr" / "youtube_drip"
 
 SPACING_SECONDS = 180.0
@@ -185,6 +208,57 @@ def advance_queue_lines(lines: List[str], fed_urls: set) -> Tuple[List[str], int
                 continue
         kept.append(raw)
     return kept, dropped
+
+
+def fold_probe_sidecar(local_path: Path, tracked_path: Path) -> int:
+    """Append every row in the drip's local probe buffer (`local_path`) to
+    the tracked sidecar CSV (`tracked_path`) that isn't already there,
+    keyed on the `url` column -- the same "already probed" dedup every
+    other reader of this file already applies (e.g.
+    wo150_finish_tier3.py's `_load_probed_urls()`), so a URL the tracked
+    file already carries a row for is skipped rather than duplicated.
+    Returns how many rows were actually appended. Does not touch
+    `local_path` -- call `clear_local_probe_sidecar()` once this has run
+    to empty the buffer for the next day."""
+    if not local_path.exists():
+        return 0
+    with local_path.open(newline="") as f:
+        rows = list(csv.reader(f))
+    if len(rows) <= 1:
+        return 0
+    header, data_rows = rows[0], [r for r in rows[1:] if r]
+    if not data_rows:
+        return 0
+
+    existing_urls = set()
+    tracked_is_new = not tracked_path.exists()
+    if not tracked_is_new:
+        with tracked_path.open(newline="") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # header
+            existing_urls = {row[0] for row in reader if row}
+
+    tracked_path.parent.mkdir(parents=True, exist_ok=True)
+    appended = 0
+    with tracked_path.open("a", newline="") as f:
+        writer = csv.writer(f)
+        if tracked_is_new:
+            writer.writerow(header)
+        for row in data_rows:
+            if row[0] in existing_urls:
+                continue
+            writer.writerow(row)
+            existing_urls.add(row[0])
+            appended += 1
+    return appended
+
+
+def clear_local_probe_sidecar(local_path: Path) -> None:
+    """Empty the drip's local probe buffer after fold_probe_sidecar() has
+    copied its rows into the tracked file -- append_probe_row() recreates
+    the header on the next write, same as a brand-new file, so removing
+    it outright is enough."""
+    local_path.unlink(missing_ok=True)
 
 
 def audio_page_from_export_row(row: dict) -> Optional[dict]:
@@ -583,7 +657,9 @@ class Drip:
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
         else:
-            result = await feed._push_if_has_video(session, url, src)
+            result = await feed._push_if_has_video(
+                session, url, src, probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH
+            )
         if is_block_text(result):
             return True, self._block("blocked_until", "block_level", result)
         fed[url] = result[:200]
@@ -826,6 +902,14 @@ async def advance(state: State) -> None:
         1 for line in kept if line.strip() and not line.strip().startswith("#")
     )
     print(f"dropped {dropped} fed line(s); {remaining} remaining")
+
+    folded = fold_probe_sidecar(LOCAL_PROBE_SIDECAR_PATH, DEFAULT_SIDECAR_PATH)
+    clear_local_probe_sidecar(LOCAL_PROBE_SIDECAR_PATH)
+    print(
+        f"folded {folded} new probe row(s) from the local buffer into "
+        f"{DEFAULT_SIDECAR_PATH.name}; local buffer cleared"
+    )
+
     async with aiohttp.ClientSession() as session:
         try:
             async with session.post(

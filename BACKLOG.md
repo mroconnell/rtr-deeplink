@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (35)
+  `channel_name_plausible()`'s word-tokenizer rejects a real…
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -132,6 +133,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
+  The 6-hourly tier-3 feed GitHub Action never commits the probe rows…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   `tenant_overrides.csv`'s `evidence` text always says "WO-134…
@@ -150,8 +152,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
     [JUST-DO-IT] `[EXAMPLE]` Winona County, MN's own homepage links an…
     [JUST-DO-IT] `[EXAMPLE]` Imperial city, CA's own homepage links a…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  Production actions only Ryan should take  (13)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+  Production actions only Ryan should take  (15)
+    [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
+    [HUMAN] 1,676 archived YouTube video ids have no channel on record…
     [HUMAN] Sequatchie County, TN's page (id 7377) is not a real…
     [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
@@ -169,8 +173,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (156)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (158)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
+  [NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
@@ -253,8 +258,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (156)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (26)
-    `[NEEDS-AUDIT]` Franklin County MA's `jurisdiction_coverage.csv` row…
+  Jurisdiction extraction & backfill  (27)
+    `[NEEDS-AUDIT]` A real, live Archive page for the Town of Franklin,…
+    `[NEEDS-AUDIT]` 22 of WO-247's 564-government candidate band have a…
     `[NEEDS-AUDIT]` 14 of WO-235's 179-government candidate population…
     `[NEEDS-AUDIT]` A real "Hermantown" (city ending in "-town" as part…
     `[NEEDS-AUDIT]` A real, resolvable Albion, MI civicweb page archived…
@@ -407,9 +413,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Dormant — needs a real example first `[LATER]`  (2)
+Dormant — needs a real example first `[LATER]`  (1)
   Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20…
-  A BoxCast government reached only via a fresh per-meeting…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -676,6 +681,43 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- confirmed live on South River borough, NJ `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `scripts/wo230_agendacenter_followup.py`'s
+  `channel_name_plausible()` (and `_name_tokens()`, the same shape) splits
+  on `[a-z]+`, so a YouTube handle with no spaces between words
+  (`@southrivernjtv3564`) tokenizes as one blob (`southrivernjtv`) that
+  shares no token with "South River borough, NJ" -- even though the
+  channel's own real display name, confirmed live via YouTube's oEmbed
+  endpoint, is "South River NJ TV35": a real, own-government municipal TV
+  channel. The check compares the URL-derived handle text, never the
+  channel's actual display name, and a compound handle with no word
+  boundaries can never match the split-on-letters tokenizer no matter
+  whose channel it really is.
+- **Impact**: a real, own-government video is wrongly filed as kind-A
+  ("channel name shares no word with the government's own name") and the
+  government is recorded as no-usable-video, when a real meeting video
+  was right there. Confirmed on one row this WO found (South River
+  borough, NJ, "Borough Council meeting August 17 2026",
+  `https://www.youtube.com/watch?v=RXDl1mJNJBw` -- oEmbed's `author_name`
+  is "South River NJ TV35", `author_url` is
+  `https://www.youtube.com/@southrivernjtv3564`); likely affects any
+  other government whose own channel handle happens to run its name
+  together with no separating characters.
+- **Next action**: have `resolve_and_finish()` fetch the channel's real
+  display name (YouTube oEmbed on the video URL is free, no API key, and
+  already used elsewhere in this codebase for exactly this) and pass that
+  into `channel_name_plausible()` alongside (not instead of) the
+  URL-derived handle text, so a compound handle doesn't lose to a
+  correctly spaced real display name.
+- **Constraint**: don't just loosen the tokenizer to substring matching
+  generically -- that reopens the false-positive side this check exists
+  to close (a short generic government name token appearing inside an
+  unrelated longer word).
+- **History**: found during WO-249 (2026-09-12); see `BACKLOG_DONE.md`'s
+  WO-249 entry. South River borough, NJ's row was not re-ingested in that
+  WO -- this entry is the only record of the miss.
 
 ### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
 
@@ -1151,6 +1193,36 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** Found and worked around (not fixed) during WO-169,
   `BACKLOG_DONE.md` 2026-09-10.
 
+### The 6-hourly tier-3 feed GitHub Action never commits the probe rows it writes `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** found while building WO-248 (the YouTube drip's own version
+  of this same file-write problem, `BACKLOG_DONE.md`). Every run of
+  `.github/workflows/feed-tier3-transcription.yml` calls
+  `feed_tier3_auto_transcription.py`'s `_push_if_has_video()`, which
+  writes a row to `scripts/tier3_auto_transcription_queue_probe.csv` for
+  every URL it checks. But the workflow's commit step only ever does
+  `git add scripts/tier3_auto_transcription_queue.txt` (confirmed reading
+  that file directly) — the probe CSV's changes sit in the ephemeral
+  runner's working tree and are thrown away when the job ends, every
+  single run.
+- **Impact:** the tracked probe CSV is missing every row this cron job
+  has ever produced, 4x/day since the workflow started. Nothing breaks —
+  the probe always re-runs fresh before a video is queued either way —
+  but other scripts that skip a URL already in this file to avoid
+  re-probing it (e.g. `wo150_finish_tier3.py`'s `_load_probed_urls()`)
+  never benefit from this cron's work and may probe the same URL again
+  for no reason. The CSV also under-counts as a record of what's been
+  checked.
+- **Next action:** add
+  `git add scripts/tier3_auto_transcription_queue_probe.csv` alongside
+  the existing queue-file add, and check both paths' diff (not just the
+  queue file's) before deciding there's nothing to commit.
+- **Constraint:** the probe CSV is append-only and a shared file other
+  sessions also append to by hand — rebase as a union, same rule as the
+  queue file (`docs/COVERAGE_HANDOVER.md` §5 bullet 6).
+- **History:** `BACKLOG_DONE.md` WO-248, 2026-09-12 (the related drip fix,
+  not this one).
+
 ### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** `scripts/wo150_muni_ladder_sweep.py`'s access ladder calls
@@ -1321,6 +1393,20 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] Run `scripts/backfill_video_channel.py --apply` from the Archive's Render Shell to store the 1,903 known YouTube channels, then run the gov_id backfill.**
+  - **Issue**: WO-246 (2026-09-11) built and tested `scripts/backfill_video_channel.py`, which sets `meeting_pages.video_channel` from per-video maps already in the repo (`reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`) -- no YouTube calls. It has not been run against production: writing thousands of rows is exactly the "no bulk write from a laptop" standing decision, so it needs a human to run it from the Render Shell.
+  - **Impact**: until this runs, every one of the 1,138 `channel=@handle` pins in `tenant_overrides.csv` stays inert for already-archived pages -- `video_channel` is NULL on all 3,580 archived YouTube pages today. The script covers 1,903 of them (53%); the rest have no channel on record anywhere in the repo yet (see the next entry).
+  - **Next action**: from the Archive service's Render Shell: `python scripts/backfill_video_channel.py --dry-run` to confirm the count, then `python scripts/backfill_video_channel.py --apply --report /tmp/wo246_video_channel_report.csv`. Once that's done, run `python scripts/backfill_gov_id.py --apply` (also from the Render Shell) so pages whose new channel matches an existing pin get re-keyed -- WO-246's own report has a projected estimate.
+  - **Constraint**: run both scripts from the Render Shell, never from a laptop against the production `DATABASE_URL` -- both are safe to interrupt (commit-per-row, skip-already-set) and safe to re-run.
+  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
+
+- **[HUMAN] 1,676 archived YouTube video ids have no channel on record anywhere in the repo -- needs a real lookup from the YouTube-drip Mac, not this one.**
+  - **Issue**: WO-246 (2026-09-11) found no per-video channel record (in `reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`, or `tenant_overrides.csv`'s pin evidence) for 1,676 of the 3,562 distinct archived YouTube video ids. `scripts/backfill_archived_pages.py --platform youtube` would fill these in via a real yt-dlp re-resolve, but that calls YouTube, and this Mac's office connection has no YouTube budget of its own -- the drip Mac (Ol McClaude's) owns it (see MEMORY.md's "YouTube drip ownership" note).
+  - **Impact**: these pages' `channel=` pins (existing or future) stay unreachable until someone runs a real lookup from a machine with YouTube budget.
+  - **Next action**: from the YouTube-drip Mac, first `--dry-run` to see the diff, then apply: `python scripts/backfill_archived_pages.py --platform youtube --delay 3` (then re-run without `--dry-run` once the diff looks right; add `--limit 20` for a first smoke test). This re-resolves every native-YouTube page, including the 1,897 design (a) already covers -- there's no existing filter for "missing video_channel only" in that script, so it will re-touch already-covered pages too (harmless, just extra YouTube calls a future WO could avoid by adding such a filter).
+  - **Constraint**: run it on the drip Mac, one drip per office connection -- don't run it here or from any other machine sharing this office's connection.
+  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
 
 - **[HUMAN] Sequatchie County, TN's page (id 7377) is not a real government meeting -- a personal jam session video, delete or not is Ryan's call.**
   - **Issue**: WO-242 (2026-09-11), hand-checking a suspect per-video pin, found the video behind page 7377 (`sequatchie-county-tn-2026-09-09-ed-brown-jam-session-2024`) is "Ed Brown - Jam Session 2024" on the channel "BTC Fiber" (an internet provider) -- a personal music jam session, not any government's meeting. The wrong pin that keyed it to Sequatchie County has been deleted so it can't re-fire, but the page itself already exists and isn't a real meeting of any government.
@@ -1609,6 +1695,12 @@ of human step they need.
   - **Next action**: after 2026-09-13 19:56 UTC, `curl -sI https://rtr-deeplink-archive.onrender.com/m/livermore-falls-me-2026-09-01-livermore-falls-select-board-meeting-september-1st/video` (and Bartow's own slug) and confirm the redirect's `Location` carries an `Expires=` LATER than 1789329408, then confirm that URL actually plays. If it's still the same expired URL, this becomes a `[HUMAN]` item (BoxCast dashboard/support).
   - **Constraint**: can't be tested before the real expiry passes — don't reuse today's Expires value as a stand-in for "it works."
   - **History**: `BACKLOG_DONE.md`'s WO-229 entry.
+- **[NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant entry was waiting for: a BoxCast government only reachable via a per-meeting pseudo-channel on a SHARED account, so its own safe pin can't fire.**
+  - **Issue**: confirmed live 2026-09-12 (WO-245) while fixing the separate per-broadcast `external_id` bug: South Bay, FL's BoxCast account (`nqkdxkaoowxb8iyvornm`, "Primestar Digital Network - PALM SPRINGS, fl") is a SHARED regional vendor account also carrying at least seven other real Florida governments' own meetings (Boynton Beach, Boynton Beach CRA, Belle Glade, Clewiston, Pahokee, Mangonia Park, Delray Beach — confirmed by reading the account's own `GET /channels/{channel}/broadcasts` listing). South Bay's own distinct channel (`kddihfjxfiskfydfkwgy`, carrying only its own meetings, found on the city's site) has a correct, safe pin in `tenant_overrides.csv`. But the real page (8903) was ingested from a direct `boxcast.tv/view/{broadcast}` link, and `boxcast.py`'s `channel_hint` is only ever populated when the ORIGINAL url was itself a `/channel/{id}` scan — a direct `/view/` link never is, so the adapter has no way to discover South Bay's distinct channel from that URL alone, and its `video_channel` instead falls back to the shared account's own channel (confirmed by a real, read-only resolve: `boxcast:nvot5avtqaaljac4xhxt`). This is exactly the shape the earlier WO-227b Dormant entry on this subject ("A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED account") was waiting for a real example of.
+  - **Impact**: contained today — WO-245 deliberately did NOT widen South Bay's pin to the shared account channel (that would misattribute the other seven governments' broadcasts to South Bay the moment any of their own `/view/` links got ingested the same way). So the existing safe pin simply never fires for page 8903 or any future South Bay page ingested the same way; South Bay's identity still comes from the explicit `gov_id` every ingest payload now carries (CLAUDE.md's rule), not from this pin. No misattribution has happened.
+  - **Next action**: no fix without a second signal. Two real options, neither built: (a) teach the adapter to read the account's own broadcast listing at resolve time and cross-check whether it looks single- or multi-tenant (the same check this WO did by hand for Primestar, Mt. Blue Television and Media Mike), trusting `account.channel_id` only when it does; or (b) maintain a small hand-verified map (shared account id -> known distinct per-government channel ids), consulted when `distinct_channel` is None but the account is known-shared. Either needs at least one more confirmed shared-account case before shipping, per CLAUDE.md's "never build from one example" rule for a fix this shape.
+  - **Constraint**: never widen a `tenant_overrides.csv` boxcast pin to an account-level channel without first confirming via the account's own broadcast listing that it is single-tenant — this is exactly what caught Primestar. Don't re-pin South Bay to the shared channel as a workaround.
+  - **History**: `BACKLOG_DONE.md`'s WO-227b entry (the original Dormant version of this question, now superseded by this entry) and WO-245 entry; `app/platforms/boxcast.py`'s "An account can be a shared regional media operator" docstring section.
 - **[NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row says `reject_reason=no-video-found` while the same row already has `shares_video=True` and a real Swagit video URL on file.**
   - **Issue**: found 2026-09-11 while studying Port Arthur's Laserfiche WebLink repository for WO-233 (unrelated — that repo is confirmed agenda-only, not the source of this inconsistency). The row (`us:place:4858820`, domain `portarthurtx.new.swagit.com`) carries `shares_video=True` and `example_meeting_url=https://portarthurtx.new.swagit.com/videos/359787`, yet `reject_reason=no-video-found` — those two fields contradict each other on the same row.
   - **Impact**: unclear which field is stale. If the Swagit video was never actually ingested, `reject_reason` may be right and `shares_video`/`example_meeting_url` are the leftover of an earlier, since-superseded find. If it WAS ingested (or is a real, queueable tier-3 candidate), `reject_reason` is simply wrong and should be cleared.
@@ -1682,10 +1774,10 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`, WO-211, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` section 261.
 
 - **[NEEDS-AUDIT] A per-video fallback pin wins over the registry unconditionally (WO-221), so an old WRONG pin is just as authoritative as a right one — the design trade-off is still open even though the known-wrong pins are now fixed.**
-  - **Issue**: WO-221 made a matched per-video pin on a `MULTI_GOV_HOSTS` host win over the registry's own answer whenever both exist for the same video — correct for the case it fixed (Bronx County), but it makes no distinction between a pin that agrees with the video's own title/channel and one that doesn't. WO-231 (2026-09-11) found 13 wrong pins the hard way when a backfill made them fire; its own oEmbed audit of all 2,282 per-video pins flagged 97 more as suspect and 100 as video-gone. WO-242 (2026-09-11) hand-checked all 97 plus the 100: 61 were correct (heuristic false positives), 13 were wrong and are now corrected, 18 were deleted (9 unrelated to any government, 9 a different real body entirely — a state agency, a regional commission, a school district — logged in `rtr-business/research/wo242_owner_bodies.csv` for a future mint), 4 were already fixed by WO-231 itself, and 1 (Sussex, NJ) is still an open question for Ryan. 5 live pages were reverted to the correct government. Of the 100 video-gone rows, 83 pins were kept (still protecting a correctly-keyed page), 16 deleted (no page depends on them), and 1 corrected (disagreed with its own bare-form duplicate). See `BACKLOG_DONE.md`'s WO-242 entry for the full table.
+  - **Issue**: WO-221 made a matched per-video pin on a `MULTI_GOV_HOSTS` host win over the registry's own answer whenever both exist for the same video — correct for the case it fixed (Bronx County), but it makes no distinction between a pin that agrees with the video's own title/channel and one that doesn't. WO-231 (2026-09-11) found 13 wrong pins the hard way when a backfill made them fire; its own oEmbed audit of all 2,282 per-video pins flagged 97 more as suspect and 100 as video-gone. WO-242 (2026-09-11) hand-checked all 97 plus the 100: 62 were correct (heuristic false positives), 13 were wrong and are now corrected, 17 were deleted (8 unrelated to any government, 9 a different real body entirely — a state agency, a regional commission, a school district — logged in `rtr-business/research/wo242_owner_bodies.csv` for a future mint), 4 were already fixed by WO-231 itself, and 1 (Sussex, NJ) is still an open question for Ryan. 5 live pages were reverted to the correct government. Of the 100 video-gone rows, 83 pins were kept (still protecting a correctly-keyed page), 16 deleted (no page depends on them), and 1 corrected (disagreed with its own bare-form duplicate). See `BACKLOG_DONE.md`'s WO-242 entry for the full table.
   - **Impact**: the specific 97+100 pins that were wrong or suspect are fixed; the underlying design gap is not. Any NEW wrong pin written by a future sweep will still win over the registry unconditionally and go undetected until the next full audit (or a lucky backfill) surfaces it, exactly as happened here.
   - **Next action**: two different shapes of fix, either is a real option and this entry doesn't pick one: (a) give a per-video pin a "verified" strength distinct from plain `fallback` (only a verified pin beats the registry; an unverified `fallback` pin on a `MULTI_GOV_HOSTS` host defers to the registry the way it did before WO-221), migrating the now-confirmed-consistent pins to `verified`; or (b) have the resolver itself cross-check a matched pin's government name/type against the video's own title/channel at resolve time (an oEmbed call per resolve, cost TBD) and only let it win when consistent, falling back to the registry's answer otherwise. This is a design decision for Ryan, not a re-run of the hand-check.
-  - **Constraint**: three of WO-242's 9 Kind-A deletions (Tangent city OR, Canadice town NY, Spencer County IN) still have a live page mis-keyed to the wrong government, because no valid gov_id exists yet for the real owner (a school district, a state park agency, a state disability-services agency) to revert the page to — the wrong pin was deleted so it can't re-fire, but the pages themselves are unfixed until that owner body is minted. See `BACKLOG_DONE.md`'s WO-242 entry for the three page ids.
+  - **Constraint**: four of WO-242's 9 Kind-A deletions (Bland County VA, Tangent city OR, Canadice town NY, Spencer County IN) still have a live page mis-keyed to the wrong government, because no valid gov_id exists yet for the real owner (a regional commission, a school district, a state park agency, a state disability-services agency) to revert the page to — the wrong pin was deleted so it can't re-fire, but the pages themselves are unfixed until that owner body is minted. See `BACKLOG_DONE.md`'s WO-242 entry for the four page ids.
   - **History**: `BACKLOG_DONE.md`, WO-231 and WO-242, 2026-09-11; `rtr-business/research/wo231_pin_audit.csv`, `wo242_report.csv`, `wo242_owner_bodies.csv`; `rtr-business/research/ENUMERATION_METHODS.md` §275, §280; the WO-221 pin-wins rule itself is `BACKLOG_DONE.md`'s WO-221 entry.
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
@@ -3573,12 +3665,19 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
 
-- **`[NEEDS-AUDIT]` Franklin County MA's `jurisdiction_coverage.csv` row carries the Town of Franklin's domain, not the county's own — found by WO-235's channel pilot.**
-  - **Issue**: `us:county:25011` (Franklin County, MA)'s row has `domain=franklinma.gov` / `hub_url=https://franklinma.gov/AgendaCenter`. That is the Town of Franklin, MA's real corporate site (confirmed live: the site's own linked YouTube channel is "Franklin, MA Official", `@townoffranklinma104`, the Town's channel, not the county's).
-  - **Impact**: any sweep run against this row is checking the wrong government's website. The row's `meeting-without-video` reject reason may itself be wrong — it was never actually tested against the county's own site, if the county has one at all (many Massachusetts counties have little to no operating civic function post-1997 abolition, which may be why this slipped in unnoticed).
-  - **Next action**: find whether Franklin County, MA has its own working website at all; if not, this may be a `no-meeting-nor-video`/off-mission-shaped row rather than a fixable domain, and should say so rather than pointing at the Town's site.
-  - **Constraint**: don't key Franklin County MA to the Town of Franklin's video — they are different governments. The Town of Franklin's own channel/video is recorded in `rtr-business/research/wo235_owner_bodies.csv` for a later mint/lookup pass if the Town doesn't already have its own row.
-  - **History**: found 2026-09-11, WO-235 (`BACKLOG_DONE.md`).
+- **`[NEEDS-AUDIT]` A real, live Archive page for the Town of Franklin, MA's own video is keyed to Franklin County, MA instead — confirmed the exact risk WO-235's domain-mapping finding predicted.**
+  - **Issue**: `us:county:25011` (Franklin County, MA)'s row has `domain=franklinma.gov`, the Town of Franklin's real corporate site, not the county's (WO-235, 2026-09-11). WO-247 (2026-09-12) tried to ingest the Town's own row (`us:place:2525172`, "Franklin Town city, Massachusetts") against its own confirmed channel (`@townoffranklinma104`, "Franklin, MA Official") and hit a live `409`: page id 8878 (slug `franklin-county-ma-2021-04-01-community-preservation-committee-3-30-21`, the same video, "Community Preservation Committee 3/30/21") already exists keyed to `us:county:25011` — some other sweep ingested it under the county between WO-235's finding and now.
+  - **Impact**: one real, live page carries the wrong government's identity today — a reader looking up Franklin County, MA sees the Town's Community Preservation Committee meeting. Any future sweep that tries this same video against the Town's own row will keep hitting the same `409` rather than creating a duplicate, which is correct behavior but means the page stays mis-keyed until someone re-keys it by hand.
+  - **Next action**: re-key page id 8878 from `us:county:25011` to `us:place:2525172` (a single `POST /internal/jurisdiction/override` or equivalent manual correction — not `scripts/backfill_gov_id.py --apply`, which this repo's convention reserves for Ryan to run). Also still worth checking whether Franklin County, MA has any working site of its own (WO-235's original question, still open).
+  - **Constraint**: don't key Franklin County MA to the Town of Franklin's video — they are different governments. The Town of Franklin's own channel is confirmed by two independent sweeps now (WO-235's `wo235_owner_bodies.csv`, WO-247's `wo247_report.csv`/pin `www.youtube.com,channel=@townoffranklinma104,us:place:2525172`).
+  - **History**: found 2026-09-11, WO-235; confirmed still live and the predicted risk realized, 2026-09-12, WO-247 (`BACKLOG_DONE.md`).
+
+- **`[NEEDS-AUDIT]` 22 of WO-247's 564-government candidate band have a `jurisdiction_coverage.csv` `domain` that is a platform-tenant hostname, not the government's own corporate website — the same shape WO-235 found on 14 of 179.**
+  - **Issue**: `wo247_channel_band.py` fetches the recorded `domain` (and `hub_url`) looking for a footer/nav YouTube link, same as WO-235. 22 of the 564 candidates (3.9%) have a `domain` that is itself a meeting-platform tenant host: `pub-coldlake.escribemeetings.com`, `pub-chilliwack.escribemeetings.com`, `coronado.primegov.com`, `sanbruno.primegov.com`, `alachua.granicus.com`, `okaloosacountyfl.iqm2.com`, `bloomingtonil.iqm2.com`, `northbrookil.iqm2.com`, `pub-laporte.escribemeetings.com`, `reverema.iqm2.com`, `pub-saintjohn.escribemeetings.com`, `morristownnj.iqm2.com`, `granvilleconc.portal.civicclerk.com`, `minotnd.portal.civicclerk.com`, `greshamor.new.swagit.com`, `covingtonwa.primegov.com`, `pub-carletonplace.escribemeetings.com`, `pub-cavanmonaghan.escribemeetings.com`, `pub-hawkesbury.escribemeetings.com`, `pub-kincardine.escribemeetings.com`, `pub-newmarket.escribemeetings.com`, `reginask.iqm2.com`. 20 of the 22 have a real corporate domain already on file in `alternate_domains` (e.g. Coronado's `coronado.ca.us`, Minot's `minotnd.gov`); 2 (Bloomington IL, Saint John NB) have none on file at all.
+  - **Impact**: these 22 rows' `no-channel-linked` result (all 22 came back that way in WO-247) is unverified — a platform tenant page rarely carries the government's own footer/social links, same caution WO-235 filed.
+  - **Next action**: for the 20 with a real domain already in `alternate_domains`, re-run the discover step against that domain instead of the recorded one. For Bloomington IL and Saint John NB, find the real corporate domain by hand first (WebSearch/spot check, not a guess).
+  - **Constraint**: don't guess a domain from the government's name — verify with a real fetch first, same rule as every other domain-correction in this repo.
+  - **History**: found 2026-09-11, WO-235 (14 of 179); re-confirmed at larger scale 2026-09-12, WO-247 (22 of 564) (`BACKLOG_DONE.md`).
 
 - **`[NEEDS-AUDIT]` 14 of WO-235's 179-government candidate population have a `jurisdiction_coverage.csv` `domain` that is a platform-tenant hostname, not the government's own corporate website.**
   - **Issue**: WO-235's channel pilot fetches the recorded `domain` (and `hub_url`) looking for a footer/nav YouTube link. 14 of the 179 candidates (7.8%) have a `domain` that is itself a meeting-platform tenant host instead: `desmoines.civicweb.net`, `providenceri.iqm2.com`, `pub-winona.escribemeetings.com`, `amherstny.iqm2.com`, `pub-raleighnc.escribemeetings.com`, `pub-covinaca.escribemeetings.com`, `pattersonca.primegov.com`, `sanjacintoca.iqm2.com`, `pub-albanyga.escribemeetings.com`, `helenamt.primegov.com`, `niagarafalls.civicweb.net`, `camas.new.swagit.com`, `redmond.granicus.com`. A meeting-platform tenant page rarely carries the government's own footer/social-media links, so these 14 rows almost certainly under-report whether a YouTube channel is actually linked from the government's real site.
@@ -4173,10 +4272,10 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
 - **[NEEDS-AUDIT] The shared meeting-title filter (`wo134_confirmed_hits_ingest.MEETING_ALLOWLIST`/`PROMO_BLOCKLIST`) passes a "Recap" clip, a community-outreach session, a training session, a mayor's own podcast/town-hall, and a sub-minute interview.**
   - **Issue**: WO-235's by-hand review of 137 governments' YouTube candidates found five confirmed real misses the shared automated filter (`_looks_like_real_meeting()` + `classify_video_hand_check()`) let through, because each contains an allowlisted governing-body word without being a real meeting recording: Pullman WA's entire channel is "Pullman City Council **Recap**" clips (96-141 seconds, a condensed highlight, not the meeting); Alhambra CA's "Trash and Recycling **Community Meeting**"/two Historic Preservation "**Community Meeting**s"/"Advancing Alhambra **Community Meeting**" (public-outreach sessions, not a governing body's own proceeding); West Haven CT's "FDA Food Code **Training** Virtual Session" (a training session — the blocklist only matches the exact phrase "training video", not "training ... session"); Methuen MA's "Mayor Neil Perry Agenda Review **Podcast**" (the mayor's own explainer, not a Council session); Pittsylvania County VA's "Board of Supervisors Vice Chairman Robert Tucker on RiverStreet" (a 34-second interview clip, title contains "Board of Supervisors" but is not a meeting).
-  - **Impact**: every sweep script that imports this shared filter (at minimum `wo134_confirmed_hits_ingest.py`, `wo147_access_ladder_sweep.py`, `wo174_pipeline.py`, and now `wo235_channel_pilot.py`) inherits the same five gaps; each was only caught here because this WO's brief required an actual human read of every title before ingest, not because the code caught it.
-  - **Next action**: add "recap" and "community meeting" (as a phrase, not just "meeting") to `PROMO_BLOCKLIST`, broaden the "training video" phrase to also match "training session"/"training ... virtual session", and consider a floor on `duration` well above the existing bare non-zero check (a sub-2-minute video with a governing-body keyword is a very strong "not a real meeting" signal on its own — Athens AL's two hits were 95s/116s, Pittsylvania's interview was 34s).
-  - **Constraint**: keep the phrase list conservative (this repo's own convention) — a single unconfirmed inclusion (e.g. "town hall") isn't added here since a real "Town Hall" governing-body meeting exists in some jurisdictions; only add phrases confirmed wrong by a real, hand-checked example, the way this entry's five already are.
-  - **History**: found 2026-09-11, WO-235 (`BACKLOG_DONE.md`).
+  - **Impact**: every sweep script that imports this shared filter (at minimum `wo134_confirmed_hits_ingest.py`, `wo147_access_ladder_sweep.py`, `wo174_pipeline.py`, `wo235_channel_pilot.py`, and now `wo247_channel_band.py`) inherits the same gaps; each was only caught here because this WO's brief required an actual human read of every title before ingest, not because the code caught it. WO-247 (2026-09-12, the same method at 3x the population) hand-caught a further, larger batch of confirmed misses, the same shape: a Spanish-language "Recap"/"Resumen" clip (Worthington MN, 5 of 5 channel candidates, 58-75 seconds); a produced "Information Session" series with no governing-body proceeding (North Battleford SK's "UPAR Information Session", 5 of 5 candidates); board/commission recruitment PSAs ("Join the Lone Tree Planning Commission!", "...is Seeking New Members" — Lone Tree CO, all 3 candidates); a ceremonial "State of the City/County" mayoral address (Mobile County AL, Gadsden AL); a produced news-style update segment or community-affairs show ("Special Episode City Council Update" — Sidney OH; "Mayor's Minute" — Havelock NC; "Springboro: Here & There" — Springboro OH); a public information webinar or outreach/listening session with no governing-body proceeding (Sidney OH's Amazon-data-center webinar, Washougal WA's Regional Fire Authority info sessions, Greenfield CA's Groundwater Sustainability Agency meetings — a separate joint agency, not the city itself); a tourism/visitor-promotion channel mistaken for the government's own (Oconomowoc WI's "Visit Ocon", Rockingham County VA's `@VisitRockinghamVA`, Americus GA's "Americus Sumter Tourism", Pleasanton TX's unrelated "SAAE Society" — the last three only surfaced as bare video links with no channel page, so the title/channel had to be hand-checked via a direct yt-dlp lookup, not the channel-identity heuristic); a produced holiday/greeting message (Kingsville ON, Douglas AZ); and "Board's Personal Meeting Room" (Knox County IL, 2 of 5 candidates — almost certainly an unused Zoom waiting-room recording, not a meeting).
+  - **Next action**: add "recap"/"resumen" (Spanish), "information session", "is seeking new members"/"join the ... commission", "state of the city"/"state of the county", "personal meeting room", and a produced-show-title pattern (a colon- or dash-separated "Episode"/"Minute"/show-name prefix) to `PROMO_BLOCKLIST`; broaden the "training video" phrase to also match "training session"/"training ... virtual session"; and consider a floor on `duration` well above the existing bare non-zero check (a sub-2-minute video with a governing-body keyword is a very strong "not a real meeting" signal on its own — Athens AL's two hits were 95s/116s, Pittsylvania's interview was 34s, Kingsville ON's holiday message was 86s).
+  - **Constraint**: keep the phrase list conservative (this repo's own convention) — a single unconfirmed inclusion (e.g. "town hall") isn't added here since a real "Town Hall" governing-body meeting exists in some jurisdictions; only add phrases confirmed wrong by a real, hand-checked example, the way this entry's phrases already are.
+  - **History**: found 2026-09-11, WO-235; extended with a larger confirmed batch 2026-09-12, WO-247 (`BACKLOG_DONE.md`).
 
 - **[NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue lines resolve to no video at all — the adapter finds nothing playable on real `stream.php?location_id=…&id=…` pages.**
   - **Issue**: WO-205's probe (2026-09-11) ran every Town Hall Streams line in the tier-3 queue through `townhallstreams.py`'s `resolve()`: 116 returned no `video_url`, 2 returned an HLS master that 404s, 7 resolved (e.g. `stream.php?location_id=94&id=75799`, `location_id=47&id=21880` are two of the 116).
@@ -6437,38 +6536,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   `rtr-business/research/wo233_repositories.csv` (all 20 repositories,
   per-repo detail).
 
-### A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED (non-government) account would still get the wrong external_id `[LATER]`
-
-- **Issue:** WO-227b (2026-09-11) fixed `boxcast.py`'s `external_id`
-  computation for a government whose real, distinct, multi-broadcast
-  channel is reachable directly (Livermore Falls ME, Atlantic Beach SC —
-  both on a shared regional media operator's account, not the
-  government's own). The fix trusts that distinct channel over the
-  account. But Bartow FL's real shape — a FRESH single-broadcast
-  pseudo-channel per meeting, no distinct channel to prefer at all —
-  still falls back to `account.channel_id`, which is only correct
-  because Bartow's account happens to be single-tenant (confirmed live:
-  its channel lists only Bartow's own meetings). No real government has
-  been found yet whose account is BOTH a shared multi-tenant operator
-  AND only ever reachable via a fresh per-meeting pseudo-channel (never
-  a stable per-government channel link) — if one exists, this code would
-  silently compute the SAME external_id as every other government
-  sharing that account, the exact hazard this WO fixed for the
-  distinct-channel case.
-- **Impact:** none today (no known live case) — a bare BoxCast-video
-  page misattributed to another government sharing the same production
-  vendor's account, if it ever happens.
-- **Next action:** nothing to build without a real example. If one turns
-  up (a sweep finds two governments sharing a BoxCast account with
-  neither having a stable per-government channel URL anywhere), the fix
-  is a second signal beyond `account.channel_id` — e.g. cross-checking
-  the account's own broadcast history for other governments' names the
-  way this WO did by hand for Mt. Blue Television/Media Mike.
-- **Constraint:** don't build a speculative fix without a real account
-  to verify it against — CLAUDE.md's "test against a real, live URL
-  first" rule applies here as much as to a new adapter.
-- **History:** `BACKLOG_DONE.md`'s WO-227b entry; `app/platforms/boxcast.py`'s
-  "An account can be a shared regional media operator" docstring section.
 
 ## Parked deliberately — allowed back `[PARK]`
 

@@ -4,6 +4,7 @@ real lanes are the three existing scripts' own functions, covered by
 their own tests."""
 
 import asyncio
+import csv
 import sys
 from pathlib import Path
 
@@ -93,6 +94,195 @@ def test_advance_queue_lines_drops_only_fed_urls_and_keeps_comments():
         "https://www.youtube.com/watch?v=bbbbbbbbbbb",
         "https://cityoftacoma.granicus.com/player/clip/7460",
     ]
+
+
+# WO-248: real rows copied verbatim from the tail of
+# scripts/tier3_auto_transcription_queue_probe.csv (2026-09-12) -- the
+# shape (full 13-column header, including the WO-156 "caller" and WO-170
+# "chosen" columns) and the values are real; only the split across a
+# tracked file and a local buffer below is synthetic, per CLAUDE.md's
+# "synthetic tests reuse a real schema" convention.
+_PROBE_HEADER = [
+    "url",
+    "platform",
+    "probe_method",
+    "duration_seconds",
+    "date",
+    "size_bytes",
+    "over_nine_minutes",
+    "verdict",
+    "reason",
+    "probe_seconds",
+    "probed_at",
+    "caller",
+    "chosen",
+]
+_PROBE_ROW_ALREADY_TRACKED = [
+    "https://www.youtube.com/watch?v=qKVcd0uCrXU",
+    "youtube",
+    "yt-dlp-metadata",
+    "627.00",
+    "2026-07-15",
+    "17428006",
+    "1",
+    "accept",
+    "",
+    "3.02",
+    "2026-09-12T00:26:24+00:00",
+    "bulk_ingest",
+    "0",
+]
+_PROBE_ROW_NEW_1 = [
+    "https://www.youtube.com/watch?v=WQx8E-QozpU",
+    "youtube",
+    "yt-dlp-metadata",
+    "586.00",
+    "2026-09-01",
+    "15973103",
+    "1",
+    "accept",
+    "",
+    "1.94",
+    "2026-09-12T00:26:32+00:00",
+    "bulk_ingest",
+    "0",
+]
+_PROBE_ROW_NEW_2 = [
+    "https://www.youtube.com/watch?v=wTjmI6zMgXI",
+    "youtube",
+    "yt-dlp-metadata",
+    "559.00",
+    "2026-07-09",
+    "11129787",
+    "1",
+    "accept",
+    "",
+    "1.90",
+    "2026-09-12T00:26:43+00:00",
+    "bulk_ingest",
+    "0",
+]
+
+
+def _write_csv(path, header, rows):
+    with path.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(rows)
+
+
+def _read_csv(path):
+    with path.open(newline="") as f:
+        return list(csv.reader(f))
+
+
+def test_fold_probe_sidecar_appends_only_urls_the_tracked_file_lacks(tmp_path):
+    tracked = tmp_path / "tracked.csv"
+    _write_csv(tracked, _PROBE_HEADER, [_PROBE_ROW_ALREADY_TRACKED])
+
+    local = tmp_path / "local.csv"
+    # The drip re-probed a URL main already has a row for (a duplicate
+    # from a different day/run) plus two genuinely new ones.
+    _write_csv(
+        local,
+        _PROBE_HEADER,
+        [_PROBE_ROW_ALREADY_TRACKED, _PROBE_ROW_NEW_1, _PROBE_ROW_NEW_2],
+    )
+
+    appended = yd.fold_probe_sidecar(local, tracked)
+    assert appended == 2
+
+    rows = _read_csv(tracked)
+    assert rows[0] == _PROBE_HEADER
+    assert [r[0] for r in rows[1:]] == [
+        _PROBE_ROW_ALREADY_TRACKED[0],
+        _PROBE_ROW_NEW_1[0],
+        _PROBE_ROW_NEW_2[0],
+    ]
+    # fold_probe_sidecar never touches the local buffer itself.
+    assert local.exists()
+
+
+def test_fold_probe_sidecar_creates_the_tracked_file_when_it_does_not_exist(
+    tmp_path,
+):
+    local = tmp_path / "local.csv"
+    _write_csv(local, _PROBE_HEADER, [_PROBE_ROW_NEW_1])
+
+    tracked = tmp_path / "tracked.csv"
+    assert not tracked.exists()
+
+    appended = yd.fold_probe_sidecar(local, tracked)
+    assert appended == 1
+    assert _read_csv(tracked) == [_PROBE_HEADER, _PROBE_ROW_NEW_1]
+
+
+def test_fold_probe_sidecar_is_a_noop_for_a_missing_or_header_only_buffer(
+    tmp_path,
+):
+    tracked = tmp_path / "tracked.csv"
+    _write_csv(tracked, _PROBE_HEADER, [_PROBE_ROW_ALREADY_TRACKED])
+    before = tracked.read_text()
+
+    missing_local = tmp_path / "missing.csv"
+    assert yd.fold_probe_sidecar(missing_local, tracked) == 0
+
+    empty_local = tmp_path / "empty.csv"
+    _write_csv(empty_local, _PROBE_HEADER, [])
+    assert yd.fold_probe_sidecar(empty_local, tracked) == 0
+
+    assert tracked.read_text() == before  # untouched either way
+
+
+def test_clear_local_probe_sidecar_removes_the_file_and_is_safe_if_missing(
+    tmp_path,
+):
+    local = tmp_path / "local.csv"
+    _write_csv(local, _PROBE_HEADER, [_PROBE_ROW_NEW_1])
+    yd.clear_local_probe_sidecar(local)
+    assert not local.exists()
+
+    yd.clear_local_probe_sidecar(local)  # already gone -- must not raise
+
+
+def test_lane_feed_sends_the_local_probe_buffer_not_the_tracked_sidecar(
+    tmp_path, monkeypatch
+):
+    """WO-248: lane_feed must route every probe row through the drip's own
+    local, gitignored buffer (LOCAL_PROBE_SIDECAR_PATH), never the tracked
+    DEFAULT_SIDECAR_PATH -- that's the whole fix. Confirmed by monkeypatching
+    the real scripts.feed_tier3_auto_transcription._push_if_has_video and
+    capturing which sidecar path lane_feed actually passed it, rather than
+    trusting the call site wasn't changed back."""
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://www.youtube.com/watch?v=ccccccccccc\n")
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = yd.Drip(
+        yd.State(tmp_path / "state.json"),
+        dry_run=False,
+        lanes=("feed",),
+        audio_per_day=3,
+        spacing=100.0,
+        model_size=None,
+        cpu_threads=None,
+    )
+
+    captured = {}
+
+    async def fake_push(session, url, src=None, *, probe_sidecar_path=None):
+        captured["probe_sidecar_path"] = probe_sidecar_path
+        return f"[OK] {url} -> /m/example"
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", fake_push)
+
+    touched, override = asyncio.run(drip.lane_feed(None))
+    assert touched is True
+    assert override is None
+    assert captured["probe_sidecar_path"] == yd.LOCAL_PROBE_SIDECAR_PATH
+    assert captured["probe_sidecar_path"] != yd.DEFAULT_SIDECAR_PATH
 
 
 def test_audio_page_from_export_row_needs_youtube_and_the_marker():
