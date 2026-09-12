@@ -409,9 +409,21 @@ then applies the gate. `scripts/backfill_gov_id.py`'s "hub slugs retired"
 line now counts only slugs **no government owns** — a page changing
 government no longer retires a slug, which is the whole point.
 
-**§5, the inclusion rule, and §6, the unknown-bucket internal view**, ship
-as their own separate PRs behind this one, in that order, exactly as §7's
-recommendation says. This section is updated as each lands.
+**§5, the inclusion rule — built.** `crud._unkeyed_membership()` decides
+which un-keyed pages belong to a hub, from shared tenant host rather than
+raw jurisdiction text, and `_hub_page_condition()`'s second arm is now
+that page-id list. `MULTI_GOV_HOSTS` stays the source of truth for which
+hosts can never be keyed by host alone. Two smaller things fell out of the
+same change and are worth recording: the contamination mechanism was not
+only the text arm — `_hub_groups()` was also putting the shared
+`rtr:unknown:<host>` placeholder id into a real hub's `gov_ids`, which
+then matched *every* page carrying that placeholder, not only the
+text-matching one — and an un-keyed page nothing adopts still keeps its
+own raw-text hub, so no live URL disappears.
+
+**§6, the unknown-bucket internal view**, ships as its own PR behind this
+one, exactly as §7's recommendation says. This section is updated as each
+lands.
 
 Everything the §4 "What remains" list says this does not fix still does
 not: a genuine slug rename still costs one alias row, a merge of two

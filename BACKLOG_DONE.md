@@ -1,5 +1,67 @@
 # Backlog — done
 
+## WO-256 (part 2 of 3): a hub now decides which un-keyed meetings are its own by the website they came from, not by matching text [Done 2026-09-12]
+
+**What was done and why.** A hub page lists every meeting we hold for one
+government. Some archived meetings have no government on file yet. Until
+today a hub picked those up by **matching the text** on them: if a page's
+stored jurisdiction read "Orem, UT", it appeared on Orem's hub.
+
+That is a coincidence, not evidence. Measured on a fresh 8,222-page pull
+of production on 2026-09-11, four real hubs were showing unrelated
+YouTube video that had matched on text alone: Orem UT, Tooele UT, Box
+Elder County UT and Caledonia Township MI, 47 pages between them. A
+second, worse mechanism sat underneath it — once one such page landed on
+a real hub, the hub also picked up the shared "unidentified" marker those
+pages carry, and that marker then matched **every other page in the
+archive carrying the same marker**, not only the one whose text matched.
+
+A hub now asks a different question: does this un-keyed meeting come from
+the **same website** as meetings we already know are this government's?
+That is the same evidence WO-210, WO-214, WO-215 and WO-221 already treat
+as trustworthy for a shared host, and it cannot be a coincidence of
+spelling. Websites known to be shared by many unrelated governments
+(YouTube, Vimeo, ClerkHQ and the rest of `MULTI_GOV_HOSTS`) are excluded,
+exactly as WO-210 requires, and a website with two real governments on it
+adopts nothing at all.
+
+| Outcome | Count of the 418 un-keyed pages | What it means |
+| --- | --- | --- |
+| Gain a real hub they don't have today | 31 | 20 with no government at all, 11 with the "unidentified" marker, each on a website with exactly one real government on it |
+| Stay off every real hub | 64 | On YouTube or Vimeo — a shared website, so they need a per-video pin, not a guess |
+| Keep the hub their own text already gave them | the rest | Nothing changes for them; no live address disappears |
+
+**No live address disappears.** An un-keyed page that nothing adopts still
+gets the hub its own stored text has always given it, as long as no real
+government already owns that address. That was checked deliberately — the
+first design removed those hubs and would have 404'd links from the
+meeting pages themselves.
+
+**Caution — two small asymmetries, both accepted and both filed.** An
+adopted page with no jurisdiction text of its own appears on the hub but
+does not carry a link back to it. And an excluded page still links *to*
+the hub it is no longer listed on — that link resolves to a real page,
+it just will not find this meeting on it. Neither is a broken link.
+Fixing either properly needs the meeting page render to know the whole
+hub grouping, which it does not.
+
+**Verified in the browser, not only in tests.** A local Archive seeded
+with real Orem UT pages and both un-keyed shapes, with the resolver's
+stylesheet mounted: before the change `/j/orem-ut` listed the unrelated
+YouTube video; after it, that page is gone and the un-keyed work session
+from Orem's own Granicus website is listed instead.
+
+**Recommendation.** Nothing to run. This takes effect the moment the
+Archive is deployed.
+
+**Deploy status.** Merged to `main`, **not live** — needs an Archive
+deploy. Nothing here touches the resolver, and there is no migration and
+no backfill.
+
+**History.** `docs/investigations/hub_architecture_audit.md` §5 and §8;
+`STATE_HUB_PAGES.md` §6; `BACKLOG_DONE.md`'s WO-256 part 1 entry for the
+frozen hub address this builds beside.
+
 ## WO-256 (part 1 of 3): a government's hub address is now permanent, so identity fixes stop moving reader URLs [Done 2026-09-12]
 
 **What was done and why.** A "hub" is the page that lists every meeting

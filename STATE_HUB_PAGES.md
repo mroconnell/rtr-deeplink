@@ -322,6 +322,42 @@ a write inside a page render is how a slow render becomes an outage.
 as today — it is now rare (once per correction) instead of once per
 registry refresh.
 
+### Which pages a hub shows: host, never raw text — WO-256, 2026-09-12
+
+A hub shows every page keyed to its own `gov_id`, plus an un-keyed page
+**only** when that page sits on the same tenant host as a page already
+keyed to this government, and that host is not one of
+`MULTI_GOV_HOSTS` (YouTube, Vimeo, ClerkHQ, …). `crud._unkeyed_membership()`
+works that out — two small queries per render, one for the un-keyed pages
+(418 of 8,222 in the 2026-09-11 export) and one for the keyed pages that
+share their hosts — and `_hub_page_condition()` turns it into a page-id
+list.
+
+**What it replaced.** The old second arm was `gov_id IS NULL AND
+jurisdiction IN (this hub's raw strings)` — a *text* match. Measured on
+2026-09-11 it was putting unrelated YouTube video on four real
+governments' hubs (Orem UT, Tooele UT, Box Elder County UT, Caledonia
+Township MI) purely because the stored text matched, and — through
+`_hub_groups()` putting the shared `rtr:unknown:<host>` placeholder id
+into a hub's own id list — dragging in every other page carrying that same
+placeholder. A host answers the real question ("is this un-keyed page this
+government's?") with the evidence WO-210 already trusts, and with none of
+the coincidence.
+
+**Measured effect**: 31 un-keyed pages gain a real hub (20 blank-id, 11
+placeholder, each on a host with exactly one real government), and the
+four contamination hubs stop carrying video that was never theirs. A host
+with *two* keyed governments adopts nothing — splitting a genuinely shared
+tenant by guesswork is the failure this rule exists to prevent.
+
+**No live URL disappears.** An un-keyed page nothing adopts still gets the
+hub its own stored text has always given it, as long as no real government
+already owns that slug. Two small asymmetries are accepted and known: an
+adopted page with no text of its own shows on the hub without linking back
+to it, and an excluded contaminant still links *to* the hub it is no longer
+listed on (that link resolves, it just does not find the page). Both are
+filed in `BACKLOG.md`.
+
 ### Government grouping
 
 `archive/utils/gov_groups.py` maps each page's stored `gov_type` — the
