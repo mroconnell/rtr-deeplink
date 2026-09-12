@@ -1554,6 +1554,53 @@ def test_ends_with_known_entity_suffix_is_end_anchored_not_contains():
     )
 
 
+# --- WO-300, 2026-09-12: `resolve_government()` matching a name that
+# merely CONTAINS a real place/county name -- two of the five real Utah
+# PMN cases (BACKLOG.md's WO-299 entry) trace to `jurisdiction_enrich.py`
+# itself, not just the resolver ladder. -----------------------------
+
+
+def test_looks_like_bleed_protects_academy_of_sciences_tail():
+    # "Academy of Sciences" is real content (WO-299's real "Utah County
+    # Academy of Sciences" PMN entity), not bleed -- its lone lowercase
+    # word ("of") used to trip the general lowercase-word signal before
+    # the new WO-300 allowlist gets a chance to run.
+    assert je._looks_like_bleed("Academy of Sciences") is False
+    # Guelph/Kenora's real bleed cases must be completely unaffected --
+    # same shape (a lone interior "of"), opposite correct outcome.
+    assert je._looks_like_bleed("Committee of Adjustment") is True
+    assert je._looks_like_bleed("Committee of the Whole Agenda Thursday") is True
+
+
+def test_finalize_jurisdiction_does_not_trim_academy_of_sciences():
+    result = je.finalize_jurisdiction("Utah County Academy of Sciences, UT")
+    assert result.jurisdiction != "Utah County, UT"
+    assert result.confidence == "unverified"
+
+
+def test_ends_with_known_entity_suffix_recognizes_service_area():
+    # "Service Area" is a real special-district designation (WO-299's
+    # real "Ogden Valley Parks Service Area" and "Salt Lake Valley Law
+    # Enforcement Service Area" Utah PMN entities) -- without this, a
+    # discarded tail ending in it had no positive-evidence signal and
+    # defaulted to "assume bleed."
+    assert je._ends_with_known_entity_suffix("Valley Parks Service Area") is True
+    assert je._ends_with_known_entity_suffix("Law Enforcement Service Area") is True
+
+
+def test_finalize_jurisdiction_does_not_trim_ogden_valley_service_area():
+    result = je.finalize_jurisdiction("Ogden Valley Parks Service Area, UT")
+    assert result.jurisdiction != "Ogden, UT"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_still_resolves_ogden_and_utah_county_plainly():
+    # Positive controls: the real places/county, written plainly, are
+    # unaffected by the two WO-300 additions above.
+    assert je.finalize_jurisdiction("Ogden, UT").jurisdiction == "Ogden, UT"
+    assert je.finalize_jurisdiction("Utah County, UT").jurisdiction == "Utah County, UT"
+
+
 # --- Jurisdiction misattribution, confirmed 2026-08-19 (BACKLOG.md's
 # "Jurisdiction misattribution" entry) -- 4 real instances found via
 # incidental spot-checking, all real, verifiable places even where the
