@@ -251,6 +251,72 @@ deploy.
 `rtr-business/research/wo306_report.csv` (updated),
 `wo306_apply_to_jc.py` (updated).
 
+## WO-306 continued again: Castus's 5,000+ band done, and a real production data bug found and fixed [Done 2026-09-12]
+
+**What was done and why.** Same session, same work order, third and
+final round before stopping on budget: Castus's 5,000+ population band
+(7 governments) — the platform an earlier pass's own filter had
+completely missed.
+
+| Result | Count of 7 | What it means |
+|---|---|---|
+| Queued for transcription (video, no captions) | 5 | Decatur, AL; Lakewood, CA; Marathon, FL; Edgewood, KY; Independence, KY |
+| Page live now (real captions) | 1 | Billings, MT — the very tenant this adapter was originally built and tested against in August, but never actually turned into a real page until now |
+| Tenant confirmed dead | 1 | Cowlitz County, WA — its recorded address doesn't connect at all, and Castus's own systems have no record of it |
+
+**A real, live production bug found and fixed, more serious than
+either of this WO's earlier two.** Castus's video platform, unlike
+Cablecast or TelVue, is not one-subdomain-per-customer — every
+customer nationwide shares the exact same web address
+(`cloud.castus.tv`). This app's own settings had a rule saying "any
+video from this address belongs to Andover, MA" with no restriction —
+correct only because nobody had checked a second customer yet.
+Checking Decatur, Lakewood, Billings and two other real customers this
+round confirmed the rule was wrong, and worse: it had already
+mis-filed two OTHER real governments' pages under Andover's name in
+production — a real Waterford government's Board of Trustees meeting,
+and a real City of Vero Beach, FL city council meeting. Fixed the
+setting itself immediately (scoped to Andover's own address specifically,
+and added a permanent guard so this app's tools refuse this exact
+mistake on this address again). The two already-published mis-filed
+pages still need a human to move them to their real governments — filed
+in `BACKLOG.md`'s "Needs a human" section, since re-filing an existing
+page needs its own confirmed answer per page, not a guess.
+
+**A second, smaller real finding.** One of the five queued governments,
+Marathon, FL, currently reads as "Marathon, WI" internally when nothing
+else corrects it — a same-name mixup between two different real places.
+This session's own page is unaffected (it was told the correct answer
+directly), but the underlying mixup is still there for next time. Filed
+as a small, separate fix in `BACKLOG.md`'s "Ship next" section.
+
+**A real listing tool found, no new code needed.** Castus (unlike
+TelVue and Viebit) already has a working way to check a video's length
+before queuing it, so no new code was needed there. What it lacked was
+a way to browse a whole channel for a list of recent meetings —
+found live by watching a real channel page's own network traffic the
+same way TelVue's and Viebit's were, in this same work order.
+
+**Recommendation.** Two platforms remain at this population band
+(Boxcast, ChampDS — roughly 15 more governments), plus Google Drive (2)
+and every smaller-population row for all seven platforms. Boxcast
+already has its own working channel-browsing tool built in, so it
+should need no new code either. Filed in `BACKLOG.md`'s "Ship next"
+section, updated to reflect this.
+
+**Deploy status.** The settings fix (the Andover/Castus address rule)
+needs a deploy before it takes effect in production — until then, any
+NEW Castus government reached through this same address without its
+own explicit pin is still at risk of the same mistake. The 5 queued
+meetings' settings need the same deploy.
+
+**Files:** `app/utils/gov_registry/registry.py` (added
+`cloud.castus.tv` to the never-pin-by-address-alone list),
+`app/utils/jurisdiction_data/tenant_overrides.csv`,
+`scripts/tier3_auto_transcription_queue.txt`;
+`rtr-business/research/wo306_report.csv` (updated),
+`wo306_apply_to_jc.py` (updated).
+
 ## WO-292: school-district pilot — a school-board vocabulary measured first, then the v2 passive pipeline run on 1,000 districts; zero pages ingested, 72 real platforms confirmed, 310 leads handed to the drip [Done 2026-09-12]
 
 **What was done and why.** School districts are the largest untouched

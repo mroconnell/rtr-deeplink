@@ -223,6 +223,19 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # exception needs to be listed explicitly rather than guessed
         # from the domain suffix.
         "reflect-lmcc.cablecast.tv",
+        # Castus's own SaaS platform domain -- EVERY Castus customer's
+        # video lives under this one host (`/vod/{tenantSlug}/video/
+        # {id}`), unlike Cablecast/TelVue, where each tenant usually gets
+        # its own subdomain. Confirmed live 2026-09-12 (WO-306): this
+        # host was carrying a BLANK-match pin to Andover, MA -- meaning
+        # any Castus video from any OTHER real customer (Decatur AL,
+        # Lakewood CA, Billings MT, and Kentucky's own "tbnk" tenant,
+        # itself a shared regional commission for a dozen-plus cities --
+        # see that tenant's own real per-city playlist names) would have
+        # resolved to Andover the moment it lacked a more specific pin.
+        # The real identity signal here is the URL's own tenant-slug path
+        # segment (`/vod/{tenantSlug}/`), never the host alone.
+        "cloud.castus.tv",
     }
 )
 
