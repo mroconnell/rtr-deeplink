@@ -363,6 +363,123 @@ both updated to say the file is a union too and that CI now enforces it.
 **Deploy status.** Nothing to deploy. This work order only changed docs,
 `BACKLOG.md`/`BACKLOG_DONE.md`, a CI workflow, and a new script + tests.
 
+## WO-242: hand-verify the 97 suspect per-video pins from WO-231's audit -- correct, delete, and revert the pages they mis-keyed [Done 2026-09-11]
+
+**What was done and why.** WO-231 checked every YouTube/Vimeo per-video
+pin in `tenant_overrides.csv` against the video's own title and channel.
+Most pins agreed. 97 did not, and WO-231 left them for a follow-up. A
+wrong pin matters because of a rule shipped the same day (WO-221): a
+per-video pin now always wins over our own registry. That is right when
+the pin is right, and wrong every time it isn't. This work read all 97
+videos by hand, decided whether each pin was right, fixed it if not, and
+put back any live page it had mis-keyed. It then did a second, cheaper
+check on the 100 pins the same audit found pointed at videos that are
+simply gone now.
+
+**Result, the 97 suspect pins.**
+
+| Outcome | Count of 97 | What it means |
+|---|---|---|
+| Correct as pinned | 61 | The video really is this government's; the audit's check just missed it (a channel handle, an abbreviation, a shared community-media channel) |
+| Corrected | 13 | Named individually below; the pin now points at the right government |
+| Deleted, no government to key it to | 9 | The video is unrelated to any real government meeting (a tutorial, a jam session, a state association's own explainer) |
+| Deleted, belongs to a different real body | 9 | A state agency, a regional commission, or a school district actually owns the video, not the government the pin named; that body is logged for a future setup |
+| Already fixed | 4 | WO-231 itself had already corrected these; the audit file was just a snapshot taken before that fix |
+| Still an open question for Ryan | 1 | Sussex, NJ -- unchanged, same open question WO-231 already raised |
+
+The 13 corrected pins:
+
+| Page/pin | Was | Now |
+|---|---|---|
+| Gloucester Township video | Gloucester City city, NJ | Gloucester township, NJ |
+| Bridgeport Township video | Bridgeport city, NE | Bridgeport charter township, MI |
+| Essex, VT video | Essex County, VT | Essex town, VT (live page 7462 reverted) |
+| Sussex-area Norfolk Select Board video | Quincy city, MA | Norfolk town, MA |
+| Dillon, SC video | Dillon County, SC | Dillon city, SC |
+| Polk City, IA video | Polk County, IA | Polk City city, IA |
+| Franklin Township video | Franklin borough, NJ | Franklin township, Somerset County, NJ |
+| Talking Rock, GA video | Pickens County, GA | Talking Rock town, GA |
+| Gaylord, MN video | Fairfax city, MN | Gaylord city, MN |
+| Williamston, MI video | Perry city, UT | Williamston city, MI |
+| Town of Washington, VA video | Rappahannock County, VA | Washington town, VA |
+| Taylor, TX video | Taylor County, TX | Taylor city, TX |
+| Saginaw Zoning Board video | Saginaw County, MI | City of Saginaw, MI (live page 6841 already correct; only the pin needed fixing) |
+
+The 9 deleted for belonging to a different real body (logged in
+`rtr-business/research/wo242_owner_bodies.csv` for a future setup pass):
+Oklahoma Corporation Commission (was pinned to Creek County, OK), the
+Missouri Ethics Commission (Osage County, MO), the New River-Highlands
+Resource Conservation & Development Council (Bland County, VA), the New
+York State Board of Elections (Clinton County, NY), the Pennsylvania
+Fish and Boat Commission (Perry County, PA), Greater Albany Public
+Schools (Tangent city, OR), NY State Parks (Canadice town, NY), Indiana's
+Family and Social Services Administration (Spencer County, IN), and DC
+Public Schools (District of Columbia). Three of these nine (Tangent
+city, Canadice town, Spencer County) still have a live page showing the
+wrong government today -- their pins are gone so the mistake can't
+repeat, but the pages themselves stay wrong until the real owner gets
+its own government record; see `BACKLOG.md`'s live entry.
+
+One correction was reversed mid-work: the Oak Bluffs, MA Vimeo video was
+first read as an unrelated personal clip and marked for deletion, until
+a committed test failed and its own history explained why -- this exact
+video is the deliberate, narrow fix for an earlier incident (WO-183)
+where a blank pin on all of vimeo.com wrongly claimed other governments'
+videos for Oak Bluffs. Put back as correct before anything was pushed.
+
+**Live pages reverted: 5**, via the jurisdiction-override tool (dry run,
+then applied): Essex County, VT to Essex town, VT (1 page); Severn
+Township, ND to Severn, ON (3 pages -- one was the exact video the audit
+flagged, two more were found on the same host while checking); Prince
+Edward County, VA to Prince Edward, ON (1 page). While fixing the Prince
+Edward County page, a second bug turned up and was fixed at the same
+time: the host's own general rule (not just this one video) pointed at
+the Virginia county instead of the Ontario one, so every future page
+from that host would have kept getting mis-keyed the same way.
+
+**No hub-address changes needed.** All 3 governments above keep the web
+addresses they already had -- these were mistaken pages moving to the
+right government, not a government's own address changing, so nothing
+needed to redirect.
+
+**Result, the second check: 100 pins pointing at gone videos.**
+
+| Outcome | Count of 100 | What it means |
+|---|---|---|
+| Kept | 84 | The video is gone, but the pin still protects a live page that is correctly keyed |
+| Deleted | 16 | The video is gone and no live page depends on the pin |
+| Corrected | 1 | Disagreed with its own duplicate pin for the same video; fixed to match (Ripley County, IN, not Holton town, IN) |
+
+**One more page flagged, not deleted.** Page 7377 (Sequatchie County,
+TN) turned out to be a personal jam-session video, not a government
+meeting at all. Its wrong pin is deleted, but deleting the page itself
+is a bigger, human call -- filed in `BACKLOG.md`'s "Needs a human"
+section rather than done here.
+
+**Caution.** The design question behind all of this stays open: a
+per-video pin still always wins over the registry, right or wrong, until
+someone decides between the two fixes `BACKLOG.md`'s live entry lays
+out. Today's known-wrong pins are fixed; a new wrong one written
+tomorrow would go undetected the same way, until the next full audit.
+
+**Recommendation.** Deploy the resolver and Archive to pick up the 13
+corrected and 26 deleted pins in `tenant_overrides.csv` -- until then, a
+brand-new page from any of these videos, or the transcription worker's
+next re-resolve of one, could still recreate the wrong keying. The 5
+page reverts are already live and need no deploy.
+
+**Deploy status.** Pin file changes need the resolver deployed to take
+effect on new pages; the 5 page reverts (via the live override endpoint)
+are already in production.
+
+Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (13 corrected,
+26 deleted, 1 host-level fallback pin corrected), `rtr-business/
+research/wo242_report.csv` (all 197 rows), `rtr-business/research/
+wo242_owner_bodies.csv`, `rtr-business/research/wo242_decisions.csv`,
+`rtr-business/research/wo242_apply_pins.py`, `rtr-business/research/
+ENUMERATION_METHODS.md` §280, `BACKLOG.md` (the WO-221 precedence entry
+updated, a new "Needs a human" entry for page 7377).
+
 ## WO-231: correct the 13 wrong fallback pins the post-deploy backfill applied, settle 9 ambiguous re-keys, alias the correct hub moves, and audit every per-video pin on a shared host [Done 2026-09-11]
 
 **What was done and why.** Ryan deployed all four services today. The
