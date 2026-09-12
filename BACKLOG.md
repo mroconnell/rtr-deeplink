@@ -114,8 +114,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (45)
-  WO-306's small-video-platform sweep: Cablecast, TelVue and Viebit…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
+  WO-306's small-video-platform sweep: Cablecast, TelVue, Viebit and…
+  `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
@@ -162,7 +163,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (45)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
+  A blank-match pin on Castus's shared platform host mis-keyed at least…
   A `ryan_stated` TelVue org-token pin says Centre County, PA — the…
   51 research-file rows say `transcribed=true` with no matching Archive…
   Production actions only Ryan should take  (15)
@@ -721,50 +723,86 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### WO-306's small-video-platform sweep: Cablecast, TelVue and Viebit 5,000+ are done, four platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
+### WO-306's small-video-platform sweep: Cablecast, TelVue, Viebit and Castus 5,000+ are done, three platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
 
 - **Issue:** WO-306 (2026-09-12) built a row-by-row join of the 136
   no-page governments whose recorded URL/provider names Viebit,
   Cablecast, Castus, Boxcast, TelVue, ChampDS, eLocalLink or Google
-  Drive, then worked the Cablecast, TelVue and Viebit 5,000+ bands (10,
-  5 and 9 rows) live to completion — real ingests, tier-3 queueing,
-  pins, a `detect_platform()` fix (Cablecast on a government's own
-  domain, not just `*.cablecast.tv`), a `telvue.py`
+  Drive, then worked the Cablecast, TelVue, Viebit and Castus 5,000+
+  bands (10, 5, 9 and 7 rows) live to completion — real ingests, tier-3
+  queueing, pins, a `detect_platform()` fix (Cablecast on a
+  government's own domain, not just `*.cablecast.tv`), a `telvue.py`
   `list_playlist_items()` listing step, a `viebit.py`
-  `list_recent_videos()` listing step, and a real missing
-  `queue_probe.py` recipe for Viebit (every Viebit tier-3 candidate was
-  silently rejected as dead before this — see `BACKLOG_DONE.md`'s
-  entry). It stopped there on budget, per its own brief's "stop at a
-  platform boundary" rule.
-- **Impact:** Castus (8 rows, 5,000+), Boxcast (7), ChampDS (8), Google
-  Drive (2) 5,000+ bands are untouched, plus every under-5,000 and
-  unknown-population row for all seven platforms (roughly 90 more rows
+  `list_recent_videos()` listing step, a real missing `queue_probe.py`
+  recipe for Viebit (every Viebit tier-3 candidate was silently
+  rejected as dead before this — see `BACKLOG_DONE.md`'s entry), and a
+  real Castus listing endpoint found live
+  (`GET .../playlist/{tenantSlug}/{playlistName}`, no new code needed —
+  `queue_probe.py` already had a working HLS-based recipe for Castus).
+  It stopped there on budget, per its own brief's "stop at a platform
+  boundary" rule.
+- **Impact:** Boxcast (7 rows, 5,000+), ChampDS (8), Google Drive (2)
+  5,000+ bands are untouched, plus every under-5,000 and
+  unknown-population row for all seven platforms (roughly 80 more rows
   total). ChampDS almost certainly needs the same kind of new listing
   step TelVue/Viebit just got (its adapter also resolves only a single
-  URL); Castus has no listing step known at all yet (see this section's
-  own Castus entry, if filed, or file one when picked up).
+  URL); Boxcast already has a listing function
+  (`app/platforms/boxcast.py`'s `_search_channel`/
+  `_fetch_channel_broadcasts`), so that band should need no new code
+  either.
 - **Next action:** resume from
   `<scratchpad>/agents/a4b576e372dc43dc5/wo306_still_to_do.csv` (the
   exact row-by-row join, one row per platform×government with a reason
   for every already-covered row) — copy it into a fresh scratch
   directory first, the shared scratchpad is not preserved across
-  sessions. Work Castus 5,000+ next (same order the brief set: Castus,
-  Boxcast, ChampDS, Google Drive, then every under-5,000/unknown row),
-  one meeting per government, hand-read every video first.
-- **Constraint:** the same long-only rule this WO applied five times
+  sessions. Work Boxcast 5,000+ next (same order the brief set: Boxcast,
+  ChampDS, Google Drive, then every under-5,000/unknown row), one
+  meeting per government, hand-read every video first.
+- **Constraint:** the same long-only rule this WO applied several times
   already (Southfield MI, Sun Prairie WI, Auburn Hills MI, Delano MN,
-  Dayton MN all had a >90-minute newest video and a real shorter one
-  one meeting deeper on the same channel) — always look one meeting
-  deeper before deferring or queuing a long one. Also: check the
-  tier-3 queue for a same-tenant-different-URL hit before assuming a
-  government is untouched — the row-by-row join's domain-based matching
-  missed 4 real already-queued governments this round (Shorewood MN,
-  Delano MN, Monticello MN, Briarcliff Manor NY) because the queued URL
-  used a platform subdomain, not the research file's own recorded
-  domain.
-- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, two entries);
+  Dayton MN, Decatur AL all had a >90-minute (or broken) newest video
+  and a real shorter one one meeting deeper on the same channel) —
+  always look one meeting deeper before deferring or queuing a long
+  one; a real caption exists is grounds to ingest regardless of length
+  (Billings, MT's real 131-minute meeting, tier1/2, 1938 segments — the
+  long-only rule is a tier-3 rule only). Also: check the tier-3 queue
+  for a same-tenant-different-URL hit before assuming a government is
+  untouched — the row-by-row join's domain-based matching missed 4
+  real already-queued governments this round (Shorewood MN, Delano MN,
+  Monticello MN, Briarcliff Manor NY) because the queued URL used a
+  platform subdomain, not the research file's own recorded domain. And:
+  before pinning ANY shared-SaaS host blank-match, confirm it's really
+  single-tenant first — `cloud.castus.tv` (Castus's own shared platform
+  domain) had exactly this mistake already committed (see this file's
+  own "Needs a human" entry on the Andover/Waterford/Vero Beach
+  mis-keying); Castus tenants need per-tenant-slug or per-video pins,
+  never a blank host-wide one.
+- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, three entries);
   `rtr-business/research/wo306_report.csv` and
   `wo306_methods_section.md`.
+
+### `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong STATE for a real customer (Marathon, FL → "City Of Marathon, WI") `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** resolving a real Marathon, FL (Florida Keys) Castus video
+  (tenant slug `city-of-marathon`) returns `jurisdiction="City Of
+  Marathon, WI"` — the tenant-slug-based jurisdiction fallback picked
+  the wrong one of two real same-named places (Marathon, WI is also
+  real, as is Marathon County, WI).
+- **Impact:** low today (WO-306's own ingest from this tenant is safe
+  regardless, via an explicit `gov_id` pin), but any FUTURE resolve of
+  this tenant with no override would mis-tag the jurisdiction the same
+  way the Needham, AL/MA bug (`telvue.py`,
+  `_KNOWN_ORG_TOKEN_JURISDICTIONS`) already did for a different
+  platform — same root cause family, a bare place name resolving to the
+  wrong state.
+- **Next action:** add `"city-of-marathon": "Marathon, FL"` to
+  `castus.py`'s own known-tenant-slug jurisdiction map (same pattern as
+  `_KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS`/
+  `_KNOWN_TENANT_SLUG_JURISDICTIONS` already in that file), with a
+  regression test pinning the correct state.
+- **Constraint:** none.
+- **History:** WO-306 (2026-09-12), this session;
+  `rtr-business/research/wo306_report.csv`.
 
 ### The research file's `queued` column only catches 18.5% of tier-3 queue lines — persist the per-platform gov_id resolution WO-299 already proved out, instead of doing it ad hoc every time `[JUST-DO-IT]`
 
@@ -1694,6 +1732,41 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### A blank-match pin on Castus's shared platform host mis-keyed at least 2 live pages to Andover, MA — fixed going forward, the 2 existing pages still need re-keying `[HUMAN]`
+
+- **Issue:** `tenant_overrides.csv` carried a BLANK-match pin on
+  `cloud.castus.tv` to Andover, MA (`us:cousub:2500901465`) —
+  `cloud.castus.tv` is Castus's own shared SaaS domain, used by every
+  Castus customer nationwide (`/vod/{tenantSlug}/video/{id}`), not just
+  Andover. WO-306 (2026-09-12) found and fixed the pin itself (scoped to
+  `/vod/andover/` only, and added `cloud.castus.tv` to
+  `MULTI_GOV_HOSTS`) while working the Castus population band, but the
+  damage already done to two OTHER real governments' Archive pages is
+  still live in production.
+- **Impact:** confirmed live via the Archive's own export: a real
+  Waterford (tenant slug `waterford-media`, title "Board of Trustees
+  Meeting, 06/22/26" — state not yet confirmed) and a real City of Vero
+  Beach, FL page (tenant slug `vero-beach`, confirmed unambiguous —
+  `jurisdiction_coverage.csv`'s own row for Vero Beach city, FL,
+  `us:place:1274150`, already names this exact video URL) are both
+  currently filed under Andover, MA's `gov_id` instead of their own.
+  Nobody browsing Andover's page would notice; nobody looking for
+  Waterford's or Vero Beach's meeting would find it there.
+- **Next action:** re-key both existing pages to their real
+  governments via the Archive's admin tooling — Vero Beach to
+  `us:place:1274150` directly (confirmed); Waterford needs its state
+  confirmed first (a Waterford, CT/MI/NY/WI collision is plausible for
+  a "Board of Trustees" body — check the tenant's own real content, not
+  the slug alone) before it can be re-keyed. Also worth a quick check
+  of whether MORE than these 2 pages were affected — the Archive export
+  used to find them was not filtered exhaustively for every Castus
+  page, just the ones this WO's own population touched.
+- **Constraint:** this is an existing-page re-key, not a pin or ingest
+  fix — don't attempt it via a bulk script; each page needs its own
+  confirmed gov_id first.
+- **History:** WO-306 (2026-09-12), this session;
+  `rtr-business/research/wo306_report.csv`.
 
 ### A `ryan_stated` TelVue org-token pin says Centre County, PA — the live page says Bellefonte Borough Council `[HUMAN]`
 

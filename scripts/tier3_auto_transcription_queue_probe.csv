@@ -6007,3 +6007,10 @@ https://briarclifftv.viebit.com/watch?hash=UfrlDWseMb131YUX,viebit,viebit-page-c
 https://dayton.viebit.com/watch?hash=SVcE4kan8uELRHpa,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.60,2026-09-12T20:16:59+00:00,wo306_finish_small_video_platforms,0
 https://delano.viebit.com/watch?hash=cpi9yaPTzJ8UPaHa,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.63,2026-09-12T20:18:00+00:00,wo306_finish_small_video_platforms,0
 https://greatfallsmt.viebit.com/watch?hash=ZGTmixA15HNtvFkM,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.59,2026-09-12T20:18:01+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/comm7tv/video/6a8cf4a3cd460c00022081fc,castus,hls-master+variant,7857.00,,,1,accept,,0.59,2026-09-12T20:37:53+00:00,bulk_ingest,0
+https://cloud.castus.tv/vod/cityofdecatur/video/6aa09ed1395ba26e743581e9,castus,hls-master+variant,,,,0,reject-dead,HLS master playlist named no variant rendition,1.13,2026-09-12T20:38:16+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/lakewood/video/6aa177843110ea0002cc0771,castus,hls-master+variant,4526.00,,,1,accept,,0.92,2026-09-12T20:38:17+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/city-of-marathon/video/6a7c69dd59460f81148674af,castus,hls-master+variant,5315.00,,,1,accept,,1.08,2026-09-12T20:38:18+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/tbnk/video/6a83a7e2d4de120002b6d237,castus,hls-master+variant,5043.00,,,1,accept,,0.94,2026-09-12T20:38:19+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/tbnk/video/6a96cc3249a4ab0002c45396,castus,hls-master+variant,1683.00,,,1,accept,,0.71,2026-09-12T20:38:20+00:00,wo306_finish_small_video_platforms,0
+https://cloud.castus.tv/vod/cityofdecatur/video/6a737a201d8c086973a10c2d,castus,hls-master+variant,1087.00,,,1,accept,,0.86,2026-09-12T20:38:53+00:00,wo306_finish_small_video_platforms,0
