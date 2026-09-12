@@ -187,3 +187,60 @@ def test_build_embed_url_rebuilds_confirmed_safe_path():
         is None
     )
     assert ViebitAssetFinder._build_embed_url("not-a-real-url", "abc123") is None
+
+
+# WO-306 (2026-09-12): the minimal "list what's on this tenant" step the
+# brief asked for -- `resolve()` only ever handles one already-known video
+# URL. Found live via a real tenant's own page (Chelsea, MI) while watching
+# its network requests in a browser: `GET /vb/public/vod?...` on the
+# tenant's own host, confirmed to answer identically on 6 independent real
+# tenants. Fixture is the real (trimmed to 2 of 657) JSON response fetched
+# 2026-09-12.
+import json  # noqa: E402
+
+from app.platforms.viebit import _parse_hms, list_recent_videos  # noqa: E402
+
+CHELSEA_VOD_URL = (
+    "https://chelseami.viebit.com/vb/public/vod?f=0&ft=&fc=&s=3&d=DESC&p=1&l=6&sh="
+)
+
+
+def test_parse_hms_real_shapes():
+    assert _parse_hms("01:11:52") == 4312.0
+    assert _parse_hms("00:29:06") == 1746.0
+    assert _parse_hms(None) is None
+    assert _parse_hms("") is None
+    assert _parse_hms("not-a-duration") is None
+
+
+async def test_list_recent_videos_real_chelsea_fixture():
+    payload = load_fixture("viebit", "chelsea_vod_listing.json")
+
+    with mock_session({CHELSEA_VOD_URL: FakeResponse(status=200, text=payload)}):
+        items = await list_recent_videos("chelseami.viebit.com", limit=6)
+
+    assert len(items) == 2  # the trimmed real fixture's item count
+    assert items[0]["id"] == "VBwuRDGpdq355b0L"
+    assert items[0]["title"] == "DDA_Meeting_08_20_26.mp4"
+    assert items[0]["duration_seconds"] == 4312.0  # 01:11:52
+    assert items[0]["created_date"].year == 2026
+    assert items[0]["watch_url"] == (
+        "https://chelseami.viebit.com/watch?hash=VBwuRDGpdq355b0L"
+    )
+    # The second, shorter real item -- confirms ordering is preserved
+    # (newest-first, per the API's own d=DESC param), not re-sorted here.
+    assert items[1]["id"] == "ziNBfy0XiY5eCgxF"
+    assert items[1]["duration_seconds"] == 1746.0  # 00:29:06
+
+
+async def test_list_recent_videos_non_200_returns_empty_list():
+    with mock_session({CHELSEA_VOD_URL: FakeResponse(status=404, text="not found")}):
+        items = await list_recent_videos("chelseami.viebit.com", limit=6)
+    assert items == []
+
+
+async def test_list_recent_videos_skips_rows_with_no_id():
+    payload = json.dumps({"success": 1, "filtered": 1, "result": [{"title": "x"}]})
+    with mock_session({CHELSEA_VOD_URL: FakeResponse(status=200, text=payload)}):
+        items = await list_recent_videos("chelseami.viebit.com", limit=6)
+    assert items == []

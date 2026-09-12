@@ -267,6 +267,72 @@ async def test_probe_telvue_no_playlist_found_is_reject_dead():
     assert "no Player.setupData" in result.reason
 
 
+# --- Viebit ----------------------------------------------------------------
+# WO-306 (2026-09-12): every Viebit candidate died here as "no probe recipe"
+# before this -- resolve() rebuilds video_url as the safe-to-iframe
+# /embed/vod?v={id} page (see viebit.py's own docstring), never the raw HLS
+# master.m3u8, so this dispatch never saw anything HLS-shaped. The synthetic
+# pageConfig shape below is real and confirmed (a live Delano, MN fetch,
+# 2026-09-12) -- only the id/title/hash values here are made up.
+
+_SYNTHETIC_VIEBIT_PAGE_CONFIG = (
+    '<script>var pageConfig = {{"video":{{"id":"abc123","title":"City '
+    'Council Meeting","dateCreated":1787102320,"src":[{{"storage":'
+    '"https://vbfast-vod.viebit.com/example/abc123/","url":'
+    '"master.m3u8","type":"application/x-mpegurl"}}],"textTracks":[]}},'
+    '"hasAccess":{has_access}}};</script>'
+)
+
+
+async def test_probe_viebit_accepts_with_unknown_duration():
+    page_url = "https://example.viebit.com/watch?hash=abc123"
+    html = _SYNTHETIC_VIEBIT_PAGE_CONFIG.format(has_access="true")
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "accept"
+    assert result.duration_seconds is None
+    assert "CDN-gated" in result.reason
+
+
+async def test_probe_viebit_no_access_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=gated"
+    html = _SYNTHETIC_VIEBIT_PAGE_CONFIG.format(has_access="false")
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "hasAccess=false" in result.reason
+
+
+async def test_probe_viebit_no_page_config_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=missing"
+    with mock_session(
+        {page_url: FakeResponse(status=200, text="<html>nothing here</html>")}
+    ):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "no Viebit pageConfig" in result.reason
+
+
+async def test_probe_viebit_no_video_src_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=novideo"
+    html = (
+        '<script>var pageConfig = {"video":{"id":"abc123","src":[]},'
+        '"hasAccess":true};</script>'
+    )
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "no video.src" in result.reason
+
+
 # --- Vimeo oEmbed ---------------------------------------------------------
 
 

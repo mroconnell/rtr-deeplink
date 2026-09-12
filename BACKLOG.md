@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (45)
-  WO-306's small-video-platform sweep: Cablecast and TelVue 5,000+ are…
+  WO-306's small-video-platform sweep: Cablecast, TelVue and Viebit…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
@@ -721,40 +721,48 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### WO-306's small-video-platform sweep: Cablecast and TelVue 5,000+ are done, five platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
+### WO-306's small-video-platform sweep: Cablecast, TelVue and Viebit 5,000+ are done, four platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
 
 - **Issue:** WO-306 (2026-09-12) built a row-by-row join of the 136
   no-page governments whose recorded URL/provider names Viebit,
   Cablecast, Castus, Boxcast, TelVue, ChampDS, eLocalLink or Google
-  Drive, then worked the Cablecast 5,000+ band (10 rows) and TelVue
-  5,000+ band (5 rows) live to completion — real ingests, tier-3
-  queueing, pins, a `detect_platform()` fix (Cablecast on a government's
-  own domain, not just `*.cablecast.tv`), and a new `telvue.py`
-  `list_playlist_items()` listing step (with fixture + tests) for the
-  URL shape `resolve()` can't handle alone. It stopped there on budget,
-  per its own brief's "stop at a platform boundary" rule.
-- **Impact:** Viebit (13 rows, 5,000+), Castus (8), Boxcast (7), ChampDS
-  (8), Google Drive (2) 5,000+ bands are untouched, plus every
-  under-5,000 and unknown-population row for all seven platforms
-  (roughly 100 more rows total). Viebit and ChampDS need the same kind
-  of new listing step TelVue just got (their adapters also resolve only
-  a single URL); Castus has no listing step known at all yet (see this
-  section's own Castus entry, if filed, or file one when picked up).
+  Drive, then worked the Cablecast, TelVue and Viebit 5,000+ bands (10,
+  5 and 9 rows) live to completion — real ingests, tier-3 queueing,
+  pins, a `detect_platform()` fix (Cablecast on a government's own
+  domain, not just `*.cablecast.tv`), a `telvue.py`
+  `list_playlist_items()` listing step, a `viebit.py`
+  `list_recent_videos()` listing step, and a real missing
+  `queue_probe.py` recipe for Viebit (every Viebit tier-3 candidate was
+  silently rejected as dead before this — see `BACKLOG_DONE.md`'s
+  entry). It stopped there on budget, per its own brief's "stop at a
+  platform boundary" rule.
+- **Impact:** Castus (8 rows, 5,000+), Boxcast (7), ChampDS (8), Google
+  Drive (2) 5,000+ bands are untouched, plus every under-5,000 and
+  unknown-population row for all seven platforms (roughly 90 more rows
+  total). ChampDS almost certainly needs the same kind of new listing
+  step TelVue/Viebit just got (its adapter also resolves only a single
+  URL); Castus has no listing step known at all yet (see this section's
+  own Castus entry, if filed, or file one when picked up).
 - **Next action:** resume from
   `<scratchpad>/agents/a4b576e372dc43dc5/wo306_still_to_do.csv` (the
   exact row-by-row join, one row per platform×government with a reason
   for every already-covered row) — copy it into a fresh scratch
   directory first, the shared scratchpad is not preserved across
-  sessions. Work Viebit 5,000+ next (same order the brief set:
-  Viebit, Castus, Boxcast, ChampDS, Google Drive, then every
-  under-5,000/unknown row), one meeting per government, hand-read every
-  video first.
-- **Constraint:** the same long-only rule this WO already applied twice
-  (Southfield, MI and Sun Prairie, WI both had a >90-minute newest video
-  and a real shorter/captioned one one meeting deeper on the same
-  channel) — always look one meeting deeper before deferring or queuing
-  a long one.
-- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12);
+  sessions. Work Castus 5,000+ next (same order the brief set: Castus,
+  Boxcast, ChampDS, Google Drive, then every under-5,000/unknown row),
+  one meeting per government, hand-read every video first.
+- **Constraint:** the same long-only rule this WO applied five times
+  already (Southfield MI, Sun Prairie WI, Auburn Hills MI, Delano MN,
+  Dayton MN all had a >90-minute newest video and a real shorter one
+  one meeting deeper on the same channel) — always look one meeting
+  deeper before deferring or queuing a long one. Also: check the
+  tier-3 queue for a same-tenant-different-URL hit before assuming a
+  government is untouched — the row-by-row join's domain-based matching
+  missed 4 real already-queued governments this round (Shorewood MN,
+  Delano MN, Monticello MN, Briarcliff Manor NY) because the queued URL
+  used a platform subdomain, not the research file's own recorded
+  domain.
+- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, two entries);
   `rtr-business/research/wo306_report.csv` and
   `wo306_methods_section.md`.
 
