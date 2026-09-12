@@ -604,7 +604,13 @@ async def test_resolve_channel_link_picks_newest_meeting_like_broadcast_and_gets
     assert result.source_url == f"https://boxcast.tv/view/{AC_BROADCAST_SLUG}"
     assert result.date == "2026-08-19"
     assert result.jurisdiction == "City of Atlantic City, NJ"
-    assert result.external_id == f"boxcast:{AC_CHANNEL_ID}"
+    # WO-245: external_id is now the per-broadcast id (globally unique,
+    # never a shared government channel -- see
+    # test_resolve_two_broadcasts_from_the_same_channel_get_different_external_ids
+    # below for why), and the stable government channel rides in
+    # video_channel as a tenant_overrides.csv `channel=` pin hint instead.
+    assert result.external_id == f"boxcast:{AC_BROADCAST_ID}"
+    assert result.video_channel == f"boxcast:{AC_CHANNEL_ID}"
     assert result.platform == "boxcast"
     assert result.video_url == AC_VIEW["playlist"]
     assert result.video_format == "m3u8"
@@ -621,6 +627,74 @@ async def test_resolve_channel_link_picks_newest_meeting_like_broadcast_and_gets
     assert result.segments[-1].text.startswith("a conference room")
     assert result.transcript_language == "en"
     assert result.transcript_warnings == []
+
+
+async def test_resolve_two_broadcasts_from_the_same_channel_get_different_external_ids():
+    # WO-245's own real incident, reproduced: Atlantic City's real
+    # "City Council Meeting 08/19/26" (AC_BROADCAST_ID) and its real
+    # "CITISTAT" broadcast (both confirmed live, same account
+    # AC_ACCOUNT_ID, same government channel AC_CHANNEL_ID) used to get
+    # the SAME `external_id` (`boxcast:{AC_CHANNEL_ID}`) -- so ingesting
+    # the second one silently overwrote the first one's Archive page
+    # (`archive/db/crud.py`'s `_find_existing_page()` matches by
+    # `(platform, external_id)` before `source_url_normalized`). Each
+    # broadcast must get its OWN `external_id` while still sharing the
+    # same `video_channel` pin hint.
+    citistat_broadcast_id = "jgd724osemy5esg1lzsh"
+    citistat_slug = "citistat-smjo0e3651g4tf7c7x2h"
+    citistat_broadcast_full = {
+        "id": citistat_broadcast_id,
+        "name": "CITISTAT",
+        "starts_at": "2026-09-02T21:00:00Z",
+        "stops_at": "2026-09-02T21:21:00Z",
+        "timeframe": "past",
+        "time_zone_offset": -240,
+        "account_id": AC_ACCOUNT_ID,
+        "channel_id": citistat_slug,
+    }
+    citistat_view = {
+        "status": "recorded",
+        "playlist": "https://play.boxcast.com/p/citistat/v/all.m3u8"
+        "?Expires=1789257600&Signature=sigc&Key-Pair-Id=xyz",
+    }
+    routes_ac = {
+        _channel_broadcasts_url(AC_CHANNEL_ID): _json_response(AC_CHANNEL_BROADCASTS),
+        _broadcast_url(AC_BROADCAST_ID): _json_response(AC_BROADCAST_FULL),
+        _view_url(AC_BROADCAST_ID): _json_response(AC_VIEW),
+        _account_url(AC_ACCOUNT_ID): _json_response(AC_ACCOUNT),
+        AC_MASTER_URL: FakeResponse(status=200, text=AC_MASTER_M3U8),
+        AC_SUBTITLE_URL: FakeResponse(status=200, text=AC_SUBTITLE_MEDIA_M3U8),
+        AC_CAPTION_SEG_1_URL: FakeResponse(status=200, text=AC_CAPTION_SEG_1_TEXT),
+        AC_CAPTION_SEG_2_URL: FakeResponse(status=200, text=AC_CAPTION_SEG_2_TEXT),
+        AC_CAPTION_SEG_3_URL: FakeResponse(status=200, text=AC_CAPTION_SEG_3_TEXT),
+    }
+    with mock_session(routes_ac):
+        finder = boxcast.BoxcastAssetFinder()
+        council_result = await finder.resolve(
+            f"https://boxcast.tv/view-embed/{AC_CHANNEL_ID}?showTitle=1"
+        )
+
+    routes_citistat = {
+        _channel_broadcasts_url(citistat_slug): _json_response(
+            [citistat_broadcast_full]
+        ),
+        _broadcast_url(citistat_broadcast_id): _json_response(citistat_broadcast_full),
+        _view_url(citistat_broadcast_id): _json_response(citistat_view),
+        _account_url(AC_ACCOUNT_ID): _json_response(AC_ACCOUNT),
+    }
+    with mock_session(routes_citistat):
+        finder = boxcast.BoxcastAssetFinder()
+        citistat_result = await finder.resolve(
+            f"https://boxcast.tv/view/{citistat_slug}"
+        )
+
+    assert council_result.external_id == f"boxcast:{AC_BROADCAST_ID}"
+    assert citistat_result.external_id == f"boxcast:{citistat_broadcast_id}"
+    assert council_result.external_id != citistat_result.external_id
+    # Both still carry the SAME government channel as their pin hint --
+    # the part that's supposed to collide, unlike external_id.
+    assert council_result.video_channel == f"boxcast:{AC_CHANNEL_ID}"
+    assert citistat_result.video_channel == f"boxcast:{AC_CHANNEL_ID}"
 
 
 async def test_resolve_direct_view_link_to_a_broadcast_with_no_captions_is_video_only():
@@ -642,7 +716,8 @@ async def test_resolve_direct_view_link_to_a_broadcast_with_no_captions_is_video
     assert result.title == "Wilmington City Council Meeting 9/3/2026"
     assert result.date == "2026-09-03"
     assert result.jurisdiction == "City of Wilmington, OH"
-    assert result.external_id == f"boxcast:{WILM_CHANNEL_ID}"
+    assert result.external_id == f"boxcast:{WILM_BROADCAST_ID}"
+    assert result.video_channel == f"boxcast:{WILM_CHANNEL_ID}"
     assert result.video_url == WILM_VIEW["playlist"]
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
@@ -669,7 +744,8 @@ async def test_resolve_channel_link_for_hondo_picks_its_one_real_meeting_no_capt
     # Real, genuinely messy account name (missing its state) -- kept
     # as-is, never guessed/cleaned up.
     assert result.jurisdiction == "City of Hondo - ,"
-    assert result.external_id == f"boxcast:{HONDO_CHANNEL_ID}"
+    assert result.external_id == f"boxcast:{HONDO_BROADCAST_ID}"
+    assert result.video_channel == f"boxcast:{HONDO_CHANNEL_ID}"
     assert result.segments == []
 
 
@@ -696,7 +772,8 @@ async def test_resolve_channel_link_for_st_louis_county_picks_its_real_cow_meeti
     assert result.title == "9.9.26 - COW Meeting"
     assert result.date == "2026-09-09"
     assert result.jurisdiction == "St. Louis County - Clayton, MO"
-    assert result.external_id == f"boxcast:{STLOUIS_CHANNEL_ID}"
+    assert result.external_id == f"boxcast:{STLOUIS_BROADCAST_ID}"
+    assert result.video_channel == f"boxcast:{STLOUIS_CHANNEL_ID}"
     assert result.video_url == STLOUIS_VIEW["playlist"]
     assert result.source_url == f"https://boxcast.tv/view/{STLOUIS_BROADCAST_SLUG}"
 
@@ -864,7 +941,7 @@ LF_VIEW = {
 # The SHARED operator's own account -- its `channel_id`
 # (`ckxiq1bpg9hm3tt3zvsb`, confirmed live to be a DIFFERENT real channel
 # carrying Farmington/Jay/RSU 9 content, not re-exercised here) must NOT
-# end up as this government's external_id or jurisdiction.
+# end up as this government's video_channel or jurisdiction.
 LF_ACCOUNT = {
     "id": LF_ACCOUNT_ID,
     "name": "Mt. Blue Television - Farmington, ME",
@@ -928,11 +1005,14 @@ async def test_resolve_channel_link_for_livermore_falls_uses_distinct_channel_no
     assert result.title == "Livermore Falls Select Board Meeting - September 1st, 2026"
     assert result.date == "2026-09-01"
     # The distinct channel this scan actually reached, NOT the shared
-    # operator account's own channel (`ckxiq1bpg9hm3tt3zvsb`) -- this is
-    # the fix this WO made: before it, external_id would have been
-    # `boxcast:ckxiq1bpg9hm3tt3zvsb`, shared with every other government
-    # on the same Mt. Blue Television account.
-    assert result.external_id == f"boxcast:{LF_CHANNEL_ID}"
+    # operator account's own channel (`ckxiq1bpg9hm3tt3zvsb`) -- this was
+    # WO-227b's fix: before it, this value (then still `external_id`)
+    # would have been `boxcast:ckxiq1bpg9hm3tt3zvsb`, shared with every
+    # other government on the same Mt. Blue Television account. WO-245
+    # moved it from `external_id` to `video_channel`; `external_id` is
+    # now always the per-broadcast id, never a shared channel.
+    assert result.external_id == f"boxcast:{LF_BROADCAST_ID}"
+    assert result.video_channel == f"boxcast:{LF_CHANNEL_ID}"
     # The shared operator's own account name ("Mt. Blue Television -
     # Farmington, ME") is never this government's jurisdiction -- left
     # blank rather than guessed.
@@ -999,7 +1079,8 @@ async def test_resolve_channel_link_reuses_account_jurisdiction_when_it_matches_
             f"https://boxcast.tv/channel/{single_tenant_channel_id}"
         )
 
-    assert result.external_id == f"boxcast:{single_tenant_channel_id}"
+    assert result.external_id == f"boxcast:{broadcast_id}"
+    assert result.video_channel == f"boxcast:{single_tenant_channel_id}"
     assert result.jurisdiction == "Town of Example, ZZ"
 
 
@@ -1055,7 +1136,8 @@ async def test_resolve_bartow_via_per_meeting_pseudo_channel_uses_stable_account
         finder = boxcast.BoxcastAssetFinder()
         result = await finder.resolve(f"https://boxcast.tv/view/{pseudo_channel}")
 
-    assert result.external_id == f"boxcast:{stable_channel_id}"
+    assert result.external_id == f"boxcast:{broadcast_id}"
+    assert result.video_channel == f"boxcast:{stable_channel_id}"
     assert result.jurisdiction == "City of Bartow - Bartow, FL"
     # Stable per-broadcast URL, not the per-meeting pseudo-channel link
     # that was pasted in.
@@ -1124,3 +1206,56 @@ async def test_refresh_playlist_url_none_when_the_recording_is_gone():
             f"https://boxcast.tv/view/{WILM_BROADCAST_SLUG}"
         )
     assert fresh is None
+
+
+# --- video_channel reaches the tenant_overrides.csv `channel=` pin (WO-245) -
+
+from app.utils.gov_registry import registry, resolver  # noqa: E402
+
+
+def test_resolve_real_atlantic_city_broadcast_then_matches_a_channel_pin(monkeypatch):
+    """End-to-end: resolve a real Atlantic City fixture through the
+    adapter, build the same `page_hints_for()` dict `archive/db/crud.py`
+    builds from a stored `MeetingPage`, and confirm a `tenant_overrides.
+    csv` row keyed `channel=boxcast:{channel}` (the converted shape this
+    WO wrote -- see that file's real Atlantic City row) actually fires
+    through the resolver's rung 1b multi-gov-host pin (`boxcast.tv` is a
+    real `MULTI_GOV_HOSTS` entry, `registry.py`). This is the real
+    consumer of `video_channel` -- `external_id` alone (now per-broadcast)
+    could never serve as a stable pin key across two different meetings
+    from the same government."""
+    row = registry.TenantOverride(
+        tenant_host="boxcast.tv",
+        match=f"channel=boxcast:{AC_CHANNEL_ID}",
+        gov_id="us:place:3402080",  # Atlantic City city, NJ -- real place row
+        strength="fallback",
+        source="wo245",
+        evidence="test",
+    )
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {"boxcast.tv": [row]})
+
+    hints = resolver.page_hints_for(
+        "boxcast", f"boxcast:{AC_BROADCAST_ID}", channel=f"boxcast:{AC_CHANNEL_ID}"
+    )
+    assert hints["channel"] == f"boxcast:{AC_CHANNEL_ID}"
+
+    match = resolver.resolve_government(
+        None,
+        tenant_host="boxcast.tv",
+        path=f"/view/{AC_BROADCAST_SLUG}",
+        page_hints=hints,
+    )
+    assert match.gov_id == "us:place:3402080"
+    assert match.tier == resolver.TIER_PINNED
+
+    # A different government's broadcast on the same shared host, no
+    # matching channel -- the pin must not fire for it.
+    other_hints = resolver.page_hints_for(
+        "boxcast",
+        f"boxcast:{HONDO_BROADCAST_ID}",
+        channel=f"boxcast:{HONDO_CHANNEL_ID}",
+    )
+    other = resolver.resolve_government(
+        None, tenant_host="boxcast.tv", path="/view/x", page_hints=other_hints
+    )
+    assert other.gov_id != "us:place:3402080"
