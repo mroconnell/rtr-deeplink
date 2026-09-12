@@ -1,5 +1,110 @@
 # Backlog — done
 
+## WO-280: two small bugs from WO-259 — a two-letter word read as a state code, and the deferred-file guard that did not fire [Done 2026-09-12]
+
+**What this fixes and why.** WO-259 part 2 found two small but real
+bugs while scanning 533 governments for video. Both got filed for a
+later fix rather than fixed on the spot, since fixing either was bigger
+than the one row each had already been hand-corrected for. This work
+order fixes both.
+
+**Bug 1: a two-letter word inside a real place name got read as a state
+code.** The automatic check that looks for a wrong government
+(`_looks_wrong_government()` in `scripts/wo146_api_relist_sweep.py`) used
+to scan a whole block of resolved text for ANY standalone two-letter
+word, anywhere in it, and check whether that word also happened to be a
+real state or province code. "la" in "Portage la Prairie" (a real
+Manitoba city) matched as Louisiana, even though the row's own state
+(Manitoba) and the video's own title and channel all agreed it was
+right. The real video was auto-rejected before a person ever saw it, and
+had to be recovered by hand that session.
+
+The fix: a two-letter code is now only read when it directly follows a
+comma — the real shape every genuine catch this check relies on already
+has ("Loudoun County, VA", "Village of Winfield, IL"). A bare word
+inside a name, with no comma before it, is never read as a code now,
+no matter which real postal code it happens to match.
+
+Checked every place this function is used from, not just the one spot
+that broke. There is exactly one copy of the buggy scan
+(`wo146_api_relist_sweep._extract_state_from_text()`); eleven other
+sweep scripts all import that same function rather than keeping their
+own copy, so fixing it in one place fixes all of them. Two similar-
+looking checks elsewhere (`app/utils/gov_registry/resolver.py`'s
+`_STATE_ANYWHERE_RE`/`_BARE_STATE_SUFFIX_RE`, and `app/utils/
+jurisdiction_enrich.py`'s `_STATE_SUFFIX_RE`) were already written the
+safe, comma-or-end-anchored way and did not have this bug.
+
+| Real government checked | Word that used to cause a false match | Result now |
+|---|---|---|
+| Portage la Prairie, MB (the real WO-259 case) | "la" → Louisiana | No false match; real mismatches still caught |
+| Truth or Consequences city, NM | "or" → Oregon | No false match |
+| Ponce de Leon town, FL | "de" → Delaware | No false match |
+| Lake in the Hills village, IL | "in" → Indiana | No false match |
+| Grand Isle town, LA (positive control) | — | A genuine ", LA" suffix still reads as Louisiana |
+
+**Bug 2: the guard meant to stop a "deleted" long meeting coming back
+on a rebase did not fire.** `scripts/tier3_long_meetings_deferred.txt`
+holds meetings deliberately taken out of the transcription queue. The
+rule is: once a meeting is in that file, a rebase must never put it
+back in the queue. A test (`tests/test_transcription_queue_files.py`)
+is supposed to fail the build if that happens. During WO-259 part 2's
+own rebase, a real 2h55m Lake Havasu City, AZ meeting that was already
+in the deferred file would have been added back to the queue — caught
+only because the agent checked the diff by hand, not by the test.
+
+The cause: the test compared the two files' URLs as plain text, letter
+for letter. Two URLs can mean the exact same meeting and still not be
+spelled identically — `http://` vs `https://`, a trailing slash, or the
+same query parameters in a different order. The script that actually
+feeds this queue to the real transcription worker
+(`scripts/feed_tier3_auto_transcription.py`) already has a function for
+exactly this, `normalize_url()`, that turns any of those spellings into
+one shared, comparable form before using a URL as an identity key. The
+test just wasn't using it. It now is — the comparison happens after
+both sides are normalized, so a spelling difference can't slip a
+deleted meeting back in. A new test reproduces the real Lake Havasu
+City line from the deferred file and checks four differently-spelled
+forms of the same URL (different scheme, a trailing slash, reordered
+query parameters, a different-case host) are all still recognized as
+the same meeting.
+
+One more thing worth knowing: Ryan changed the rule the same day this
+bug was found — a long meeting is no longer parked just for being long;
+it only goes in this file for a WO-266-style reason (the government
+already has a transcript elsewhere). The deferred file's job, and this
+guard's job, is narrower now than when it was built. The test's own
+comment says so.
+
+**Caution.** The exact bad Lake Havasu City queue line from the real
+rebase was never committed anywhere (the agent fixed it by hand before
+pushing), so it could not be recovered to prove it was spelled
+differently from the deferred file's copy. The fix closes the whole
+class of spelling mismatch either way, using the same normalizing
+function the real ingest path already trusts, and the new test proves
+it catches scheme, trailing-slash, query-order, and host-case
+variations of the real deferred line.
+
+**Recommendation.** Both fixes are code and tests only — no government
+was processed, nothing was ingested, and no research file needed
+updating. Merge when CI is green.
+
+**Gates.** `ruff check`, `ruff format --check`, `python -m pytest`
+(3519 passed, 16 skipped, all pre-existing) all green. No model changed,
+so `alembic check` did not apply. `BACKLOG.md`'s matching `[NEEDS-AUDIT]`
+entry is removed now that this fixes it; TOC rebuilt.
+
+**Deploy status.** Bug 1 touches `app/`-adjacent code
+(`scripts/wo146_api_relist_sweep.py`, a script, not the resolver or
+Archive service itself) — no deploy needed, the next run of that script
+just picks up the fix. Bug 2 touches `scripts/`/`tests/` only — no
+deploy needed either. Nothing in this PR needs a production deploy.
+
+**Files:** `rtr-deeplink/scripts/wo146_api_relist_sweep.py`,
+`rtr-deeplink/tests/test_wo146_state_extraction.py` (new),
+`rtr-deeplink/tests/test_transcription_queue_files.py`,
+`rtr-deeplink/BACKLOG.md`.
+
 ## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
 
 **What was done and why.** WO-230 let 13 confirmed-wrong videos reach a
