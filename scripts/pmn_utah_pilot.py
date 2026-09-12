@@ -386,6 +386,20 @@ async def fetch_search_form_page(
     return _parse_results_table(html)
 
 
+_PMN_OUTAGE_RE = re.compile(r"tech\w*\s+difficulties", re.I)
+
+
+class PMNOutageError(Exception):
+    """Raised when /pmn/searchresult.html (the JSON pagination endpoint)
+    serves PMN's own outage page -- title "Techincal Difficulties" (sic,
+    PMN's own spelling), seen live since 2026-09-11 ~04:00 MT and still
+    down as of this fix (WO-297). Same regex
+    scripts/find_tier3_short_meeting_substitutes.py's pmn_entity_notices()
+    already uses to catch this. Distinct from "no more rows" (an empty
+    parsed table) -- collapsing the two made enumerate_notices() stop
+    early on an outage instead of falling back."""
+
+
 def _parse_results_table(html: str) -> List[Notice]:
     """Rows from either results shape: the JSON endpoint's fragment
     (`id="searchResultsTable"`) or the plain form POST's full page
@@ -435,7 +449,11 @@ async def fetch_search_page(
     """Real, confirmed-live API quirk (see module docstring point 2): the
     body MUST be JSON (not form-urlencoded) with Content-Type:
     application/JSON and X-Requested-With: XMLHttpRequest, or this
-    endpoint 200s with a generic error page instead of real results."""
+    endpoint 200s with a generic error page instead of real results.
+
+    Raises PMNOutageError if this endpoint itself is down and serving
+    its own outage page (seen live 2026-09-11, still down as of WO-297)
+    -- the caller falls back to fetch_search_form_page() for that."""
     payload = {
         "searchType": "entity",
         "entityName": "",
@@ -465,6 +483,11 @@ async def fetch_search_page(
     ) as resp:
         resp.raise_for_status()
         html = await resp.text()
+    if _PMN_OUTAGE_RE.search(html):
+        raise PMNOutageError(
+            "POST /pmn/searchresult.html returned PMN's own outage page "
+            '("Techincal Difficulties") instead of results'
+        )
     return _parse_results_table(html)
 
 
@@ -474,10 +497,44 @@ async def enumerate_notices(
     csrf_token, csrf_header = await fetch_csrf(session)
     all_notices: Dict[str, Notice] = {}
     starting_row = 0
+    # Set once the JSON endpoint (/pmn/searchresult.html) is found down
+    # (PMNOutageError) -- from then on every remaining page in this run
+    # goes through the search page's own form POST instead
+    # (fetch_search_form_page), which kept serving real rows through the
+    # same outage (confirmed live 2026-09-11). entity_name="" mirrors the
+    # JSON payload's own blank entityName above -- an unfiltered,
+    # all-entities search. fetch_search_form_page's own docstring confirms
+    # its date fields are ISO (YYYY-MM-DD, its <input type="date"> shape);
+    # this function's own start_date/end_date are already ISO too (every
+    # caller -- main()'s --start-date/--end-date -- passes ISO strings, see
+    # this module's Usage docstring), so they're passed straight through
+    # with no reformatting needed.
+    form_csrf: Optional[str] = None
+    switched_logged = False
     for page_num in range(MAX_ENUM_PAGES):
-        notices = await fetch_search_page(
-            session, csrf_token, csrf_header, start_date, end_date, starting_row
-        )
+        if form_csrf is None:
+            try:
+                notices = await fetch_search_page(
+                    session, csrf_token, csrf_header, start_date, end_date, starting_row
+                )
+            except PMNOutageError:
+                if not switched_logged:
+                    print(
+                        "  PMN's JSON search endpoint (/pmn/searchresult.html) is "
+                        'serving its outage page ("Techincal Difficulties") -- '
+                        "switching to the search page's own form POST "
+                        "(fetch_search_form_page) for this page and the rest of "
+                        "this run."
+                    )
+                    switched_logged = True
+                form_csrf = await fetch_form_csrf(session)
+                notices = await fetch_search_form_page(
+                    session, form_csrf, "", start_date, end_date, starting_row
+                )
+        else:
+            notices = await fetch_search_form_page(
+                session, form_csrf, "", start_date, end_date, starting_row
+            )
         if not notices:
             break
         new_count = 0
