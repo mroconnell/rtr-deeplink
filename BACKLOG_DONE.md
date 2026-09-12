@@ -1000,6 +1000,113 @@ immediately since it's a research file, not a deploy.
 list), `wo234_apply_to_jc.py` (the write script),
 `rtr-business/research/ENUMERATION_METHODS.md` section 278.
 
+## WO-235: pilot — the government's own site links a YouTube channel: 179 governments of 25,000+ on a platform with no video [Done 2026-09-11]
+
+**What was done and why.** Ryan asked, 2026-09-11: for governments whose
+recorded meeting platform carries no video, does the government's own
+website link a YouTube channel or playlist that carries its meetings
+anyway? His own same-day 30-row spot-check found nine real hits this
+way. This piloted the idea across the full population it applies to
+today: every government of 25,000+ with a known meeting platform, a
+`meeting-without-video`/`no-video-found` reject reason, and no Archive
+page — 179 governments, re-derived fresh from the coverage registry at
+run time (matching the brief's own estimate). For each: fetched the
+home page and recorded hub page, scanned every anchor for a YouTube
+channel/playlist/video link (footer icons and hover-only nav included),
+and for any channel found, ran one yt-dlp listing to get both the
+channel's own identity and its newest 30 uploads. Every channel found,
+and every candidate video's title, got a real read by this session —
+not just the automated pre-filter — before anything was ingested.
+
+**Result — of the 177 governments actually checked** (2 of the 179
+gained a page between the registry snapshot and this run and were
+excluded rather than reprocessed):
+
+| Result | Count of 177 |
+|---|---|
+| Site links no channel at all | 119 |
+| Site links a channel, hand-checked as the government's own | 53 |
+| Site links a channel, hand-checked as belonging to a different real government | 2 |
+| Site links a channel, hand-checked as a miss (tourism/promotion channel) | 1 |
+| Channel link found but its listing could not be fetched | 1 |
+| Bare video link found, unrelated content on inspection | 1 |
+| Home/hub page unreachable under every access rung | 1 |
+
+**Result — of the 53 own channels, the video split:**
+
+| Result | Count of 53 |
+|---|---|
+| Real captions found — page live now | 37 |
+| Real video, no captions — probed, accepted, queued for transcription | 1 |
+| Channel real, but no on-mission meeting among its newest 30 uploads | 15 |
+
+Zero candidates were deferred (over 90 minutes) this run.
+
+**The hand-check caught 12 wrong automated reads** (12 of 58 channels
+found, 20.7%; 12 of 177 checked, 6.8% — in line with CLAUDE.md's own
+"10-12% on small towns" prior). Four were channel-identity mistakes:
+Grant County WA's "Tour Grant County WA" is a tourism channel, not the
+county's; East Point GA's "East Point TV" is the city's own channel,
+corrected from an automated miss; Franklin County MA's recorded domain
+is actually the Town of Franklin's (a pre-existing wrong-domain-mapping
+bug, filed to `BACKLOG.md`); Niagara Falls city NY's found channel is
+Niagara Falls, ONTARIO's, a cross-border same-name collision. Eight more
+were video-title misses the automated filter missed and this session
+caught by hand: Pullman WA (29 "Recap" clips, 96-141 seconds, not full
+meetings), Alhambra CA (4 of 5 hits were "Community Meeting"
+outreach sessions), Athens AL (2 promotional clips), Elmira NY (a
+topic-specific public meeting naming no governing body), Pittsylvania
+County VA (a 34-second interview clip), Garfield Heights OH (a
+misspelled "Inaguration" ceremony), West Haven CT (an FDA training
+session and a mayor's town hall), and Methuen MA (the channel's only hit
+was the mayor's own agenda-review podcast — no usable fallback existed,
+so this one stayed a miss).
+
+**Yield by platform** (of the 38 real finds): civicplus 25 of 125
+candidates (20%), civicclerk 2 of 5 (40%), escribe 2 of 6 (33%),
+civicweb 1 of 7 (14%), municode_meetings 2 of 2, legistar 1 of 2,
+swagit 1 of 2, destinyhosted 1 of 1, youtube.com/embed 1 of 1, and 1 of
+4 rows already carrying `known_platform=youtube`. civicplus is by far
+the largest population share and the largest absolute yield, but its
+per-candidate rate trails several smaller platforms.
+
+**Caution.** 14 of the 179 candidates (7.8%) have a recorded `domain`
+that is itself a meeting-platform tenant hostname, not the government's
+real corporate site — these were very likely under-checked, since a
+platform tenant page rarely carries the government's own footer/social
+links. Filed to `BACKLOG.md` with the full list rather than guessed at
+here. Two more `BACKLOG.md` entries came out of this pass: the Franklin
+County MA domain bug above, and five confirmed gaps in the shared
+meeting-title filter every sweep script imports (a "Recap" clip, a
+community-outreach meeting, a training session, a mayor's podcast, a
+sub-minute interview — all passed the automated filter and were only
+caught by this session's own read).
+
+**Recommendation.** The 25,000+ band converted at 37/177 = 20.9% real
+pages, 21.5% total video-found. Nothing in the method depends on
+population size, so there's no structural reason to expect the
+remaining 239 governments of 10,000+ or 194 of 5,000+ (same platform/
+reject-reason/no-page shape, per `docs/BREADTH_SWEEP_BRIEF.md`) to
+convert meaningfully differently — but this pilot alone doesn't prove
+that either way. Worth running both bands next.
+
+**Deploy status.** The 37 real pages are live now (ingested via the
+same `POST /internal/ingest` primitive every sweep uses). 1 meeting is
+queued in `scripts/tier3_auto_transcription_queue.txt` and will drip in
+via the existing worker once deployed. 38 pins landed in
+`app/utils/jurisdiction_data/tenant_overrides.csv` (`channel=@handle`
+for the 37 own-channel governments' pins where new, a per-video id for
+the queued one) — these take effect for the transcription worker's own
+re-resolve and any FUTURE ingest on that host once this PR's merge is
+deployed; they were not needed for these 38 pages since `gov_id` was
+sent directly in every ingest payload (WO-222's rule).
+
+Files: `rtr-deeplink/scripts/wo235_channel_pilot.py` (the sweep, two
+subcommands `discover`/`finalize`, resumable). `rtr-business/research/
+wo235_discovery.csv`, `wo235_decisions.csv`, `wo235_report.csv`,
+`wo235_owner_bodies.csv`, `wo235_apply_to_jc.py`. Full write-up,
+`ENUMERATION_METHODS.md` §279.
+
 ## WO-228: hub links ranked and verified from real examples, replacing the first-match finder that recorded event calendars as meeting hubs [Done 2026-09-11]
 
 **What was done and why.** Ryan's 30-row spot-check found several
