@@ -1,12 +1,12 @@
 import asyncio
 import logging
-import re
 from typing import List, Optional, Tuple
 
 import yt_dlp
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
+from .youtube_ids import extract_video_id
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
@@ -19,9 +19,10 @@ logger = logging.getLogger("rtr_deeplink.youtube")
 
 TARGET_LANGUAGE = "en"
 
-_VIDEO_ID_RE = re.compile(
-    r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})"
-)
+# `_VIDEO_ID_RE`/id extraction now live in `youtube_ids.py` (yt-dlp-free,
+# WO-250) -- `extract_video_id()` above is re-exported from there, and
+# `YouTubeAssetFinder.extract_video_id()` below just delegates to it. See
+# youtube_ids.py's module docstring for why.
 
 # Permanent-failure markers (WO-135, 2026-09-09) -- confirmed via a real
 # yt-dlp metadata check (`_extract_info()` below) against the 96 real
@@ -217,8 +218,7 @@ class YouTubeAssetFinder(AssetFinder):
 
     @staticmethod
     def extract_video_id(url: str) -> Optional[str]:
-        match = _VIDEO_ID_RE.search(url)
-        return match.group(1) if match else None
+        return extract_video_id(url)
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         video_id = self.extract_video_id(url)
