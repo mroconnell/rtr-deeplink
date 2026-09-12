@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
   `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
@@ -155,6 +155,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
     [JUST-DO-IT] `[EASY]` A government that stops being ingested only…
     [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's…
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
+  34 of WO-271's WordPress governments have a front-page…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Production actions only Ryan should take  (15)
@@ -1458,6 +1459,14 @@ so that work reads together.
 - **Next action:** add the literal `"client challenge"` to the marker tuple (exact observed wording only — one sample, keep it narrow), with a synthetic fixture test built from the observed body shape.
 - **Constraint:** classification only; a challenge host is skipped, never retried headless.
 - **History:** WO-902 (`BACKLOG_DONE.md`, 2026-09-12).
+
+### 34 of WO-271's WordPress governments have a front-page `youtube.com`/`youtu.be` mention that never resolved to a classifiable channel link `[JUST-DO-IT]`
+
+- **Issue:** WO-271 ran all 1,355 WordPress governments through the front-page-YouTube-link check; 42 had the literal substring, but only 8 of those produced an anchor/iframe/onclick shape `find_youtube_links()` recognizes as a channel, playlist, or video. The other 34 were never inspected by hand — the likely shape is a `youtube-nocookie.com` embed (a different domain string the substring check doesn't match) or a share-widget link the classifier doesn't parse.
+- **Impact:** small — at most 34 governments, and WO-271's own measured yield (9.5% of linked governments) says most would resolve to nothing anyway. Not urgent.
+- **Next action:** read `rtr-business/research/wo271_discovery.csv`'s rows with `front_page_youtube_link=True` and a blank `channel_urls`; widen `find_youtube_links()` to also match a `youtube-nocookie.com` iframe/video `src`, and re-run discovery on just those 34 gov_ids.
+- **Constraint:** small population — a by-hand read of 34 rows, not a new bulk sweep.
+- **History:** `BACKLOG_DONE.md`'s WO-271 entry; `rtr-business/research/ENUMERATION_METHODS.md` §298.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 

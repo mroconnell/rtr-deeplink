@@ -5388,3 +5388,7 @@ https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838,grani
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1370,granicus,hls-master+variant,6477.07,,,1,accept,,1.29,2026-09-12T05:51:20+00:00,wo259,0
 https://vimeo.com/560189851,vimeo,vimeo-oembed,2897.00,2021-06-07,,1,accept,,0.15,2026-09-12T05:51:20+00:00,wo259,0
 https://www.youtube.com/live/SxSmj9yfWWw?si=mia1o3HzeFOJLTFQ,youtube,yt-dlp-metadata,2357.00,2026-09-01,70804667,1,accept,,1.43,2026-09-12T05:52:05+00:00,wo259_retry,0
+https://www.youtube.com/watch?v=09c4EEX5r98,youtube,yt-dlp-metadata,745.00,2026-03-24,27617471,1,accept,,1.57,2026-09-12T07:51:13+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=xwdX3VDCVHs,youtube,yt-dlp-metadata,638.00,2025-06-10,25128444,1,accept,,1.49,2026-09-12T07:51:19+00:00,wo271_wordpress_youtube_sweep,0
+https://www.youtube.com/watch?v=stj3C1JdCC4,youtube,yt-dlp-metadata,598.00,2025-03-14,33742455,1,accept,,1.77,2026-09-12T07:52:54+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=3rRCflMOu2Q,youtube,yt-dlp-metadata,1622.00,2026-05-28,45114884,1,accept,,1.59,2026-09-12T08:42:16+00:00,bulk_ingest,0
