@@ -114,7 +114,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (36)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (38)
+  WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
+  `channel_name_plausible()`'s word-tokenizer rejects a real…
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -694,6 +696,80 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### WO-259's full-ladder homepage re-scan: 431 of 964 governments done, 533 left -- method settled, just needs more runtime `[JUST-DO-IT]`
+
+- **Issue:** WO-259 (2026-09-11/12) re-scanned the front page of the 964
+  governments of 5,000+ in
+  `rtr-business/research/wo174_leftover_5k_plus.csv` flagged
+  `step_full_ladder=yes` (their only prior check was a plain HTTP fetch
+  plus a link scan) with the real access ladder -- plain honest HTTP,
+  browser headers after a 403/dropped connection, headless only when a
+  page loaded with no visible meeting link -- via
+  `scripts/wo259_full_ladder_scan.py`. 431 governments got a real,
+  terminal outcome; the remaining 533 were never reached (this was a
+  live, network-bound run: ~10s/government once warmed up, and headless
+  renders cost more).
+- **Impact:** 29 real pages already ingested and 4 more queued from just
+  the 431 done, at a similar rate the other 533 likely hold on the order
+  of another 30-40 real meetings. Nothing is lost by stopping -- the
+  script is resumable by gov_id and every row already worked has a
+  terminal outcome on file -- but the remaining population is real,
+  untested coverage sitting idle.
+- **Next action:** re-run
+  `DATABASE_URL="sqlite+aiosqlite:////tmp/woXXX_scratch.db"
+  .venv/bin/python scripts/wo259_full_ladder_scan.py` from the repo
+  root (regenerate `/tmp/wo259_inventory` first via
+  `scripts/export_meeting_inventory.py --out-dir /tmp/wo259_inventory
+  --source export`) -- it picks up exactly where this run left off. A
+  video candidate that clears the automatic wrong-government/phrase
+  checks parks in `rtr-business/research/wo259_pending_hand_read.csv`
+  and needs a real human read (title + channel) recorded as one line in
+  `wo259_hand_read_decisions.csv` before a second run will finish its
+  ingest/queue -- see the script's own docstring for the exact two-stage
+  shape. Budget real time: at the measured rate, the remaining 533 rows
+  are several more hours of wall clock, not minutes.
+- **Constraint:** one government at a time, real network calls -- don't
+  parallelize this without also parallelizing the per-host politeness
+  delays already built into `run_access_ladder()`.
+- **History:** `BACKLOG_DONE.md`, WO-259, 2026-09-11/12.
+
+### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- confirmed live on South River borough, NJ `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `scripts/wo230_agendacenter_followup.py`'s
+  `channel_name_plausible()` (and `_name_tokens()`, the same shape) splits
+  on `[a-z]+`, so a YouTube handle with no spaces between words
+  (`@southrivernjtv3564`) tokenizes as one blob (`southrivernjtv`) that
+  shares no token with "South River borough, NJ" -- even though the
+  channel's own real display name, confirmed live via YouTube's oEmbed
+  endpoint, is "South River NJ TV35": a real, own-government municipal TV
+  channel. The check compares the URL-derived handle text, never the
+  channel's actual display name, and a compound handle with no word
+  boundaries can never match the split-on-letters tokenizer no matter
+  whose channel it really is.
+- **Impact**: a real, own-government video is wrongly filed as kind-A
+  ("channel name shares no word with the government's own name") and the
+  government is recorded as no-usable-video, when a real meeting video
+  was right there. Confirmed on one row this WO found (South River
+  borough, NJ, "Borough Council meeting August 17 2026",
+  `https://www.youtube.com/watch?v=RXDl1mJNJBw` -- oEmbed's `author_name`
+  is "South River NJ TV35", `author_url` is
+  `https://www.youtube.com/@southrivernjtv3564`); likely affects any
+  other government whose own channel handle happens to run its name
+  together with no separating characters.
+- **Next action**: have `resolve_and_finish()` fetch the channel's real
+  display name (YouTube oEmbed on the video URL is free, no API key, and
+  already used elsewhere in this codebase for exactly this) and pass that
+  into `channel_name_plausible()` alongside (not instead of) the
+  URL-derived handle text, so a compound handle doesn't lose to a
+  correctly spaced real display name.
+- **Constraint**: don't just loosen the tokenizer to substring matching
+  generically -- that reopens the false-positive side this check exists
+  to close (a short generic government name token appearing inside an
+  unrelated longer word).
+- **History**: found during WO-249 (2026-09-12); see `BACKLOG_DONE.md`'s
+  WO-249 entry. South River borough, NJ's row was not re-ingested in that
+  WO -- this entry is the only record of the miss.
 
 ### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
 
