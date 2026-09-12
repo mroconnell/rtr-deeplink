@@ -448,6 +448,91 @@ re-run to actually pick up the fixed channel check (see Bug 1's
 Caution). No backlog entry needed for that — `BACKLOG.md`'s WO-249
 history note already says the row is ready for the next sweep.
 
+## WO-261: 316 `/AgendaCenter` pages that answered 200/202 but failed the strict CivicPlus marker — almost all soft 404s, one HCMS tenant chased to a real video, one CivicPlus tenant WO-174 missed [Done 2026-09-11]
+
+**What was tested and why.** WO-174's leftover list flags 316
+governments of 5,000+ where fetching `/AgendaCenter` got a real answer
+(HTTP 200 or 202) but the page failed WO-133's stricter check (the
+words "civicplus" and "agendacenter" both somewhere on the page). Three
+things could explain that: the page is really just the site's front
+page or a soft 404, it's a newer CivicPlus product that only draws its
+table with JavaScript ("HCMS" — `BACKLOG.md` already had one open
+example, El Mirage, AZ), or it's a real, different meetings page that
+happens to live at the same web address. This work re-checked all 316,
+first with a plain fetch, then read the actual page text by hand
+wherever the automatic check called something a real meetings page,
+since a first pass got that wrong.
+
+**Result.**
+
+| Shape | Count of 316 | What it means |
+|---|---|---|
+| Soft 404 or front-page redirect | 277 | A real, different site returns 200 at that exact address, but there is no real agenda content there — usually a "page not found" fallback or just the homepage |
+| Blocked or dead | 37 | Could not be read this time — 27 failed the secure-connection handshake, 5 timed out, 4 had no working web address, 1 refused the connection. None were a "prove you're human" page |
+| A newer CivicPlus page (HCMS), confirmed | 1 | El Mirage, AZ — see below |
+| A real CivicPlus page WO-174 missed | 1 | Paragould city, AR — see below |
+
+**The "real meetings page" bucket did not hold up on a closer read.** A
+first, automatic pass called 23 of the 316 a real, different meetings
+page, because the word "agenda" or "council" appeared somewhere on the
+page. Reading each one in full found every one was either a "page not
+found" message from the site's own content system, or the site's
+ordinary homepage with no agenda list at all — none had a real, dated
+list of meetings at that address. This is a useful finding on its own:
+in this group, guessing `/AgendaCenter` on a site that isn't CivicPlus
+almost never finds a real alternate meetings page.
+
+**El Mirage, AZ — the newer CivicPlus page was chased all the way to a
+real video, and it turned out not to need the new API `BACKLOG.md`'s
+open item was waiting on.** Loading `/AgendaCenter` itself with a real
+browser (waiting 15 seconds) confirmed the existing finding: the page
+stays empty, no meetings table ever appears. But clicking through the
+site's own menu ("Agendas, Minutes, Events & Open Meeting Law") reaches
+a different, real page, `elmirageaz.gov/meeting-agendas-minutes`. That
+page embeds another page from `public.destinyhosted.com` — a meetings
+system this repo already supports (`app/platforms/destinyhosted.py`),
+not a new one. That page links out to a real video system,
+`elmirageaz.granicus.com`, already fully supported
+(`app/platforms/granicus.py`). Its newest meeting with video, "Planning
+and Zoning Commission - 09/08/2026," was found, read by a person (its
+title, its meeting body, and its own city's video system all point to
+El Mirage's real Planning and Zoning Commission — no other reading is
+possible), checked (about 31.7 minutes, a real working video link, no
+existing caption file), and added to the queue for cloud transcription.
+
+**Paragould city, AR turned out to be a real, live CivicPlus page that
+an earlier check (WO-174) simply missed.**
+`paragouldcityar.gov/AgendaCenter` passed both the loose and the strict
+CivicPlus check this time. Reading its full meeting list (110 rows
+across 7 years) found no video anywhere on it — so the finding does not
+change what this government's record already said (`off-mission`, from
+an unrelated video found earlier on this government's other web
+address); one blank field (which meeting system it uses) was filled in.
+
+**Caution.** This was a check of one narrow question — what these 316
+pages actually are — not a full push to find video everywhere possible.
+314 of the 316 needed no further action; a "page not found" or a failed
+connection is not something more digging fixes without a different
+method. The 37 failed-connection pages were not retried with a
+browser-identity request in this pass; that is a reasonable next step,
+not something this work ruled out.
+
+**Recommendation.** Deploy `rtr-deeplink` so the new pin for
+`elmirageaz.granicus.com` (in `tenant_overrides.csv`) is live before the
+transcription worker reaches the newly queued video — otherwise the
+resulting page could lose its government link.
+
+**Files**: `rtr-business/research/wo261_report.csv` (all 316
+governments, with the reasoning), `rtr-business/research/
+jurisdiction_coverage.csv` (Paragould's meeting-system field filled in),
+`app/utils/jurisdiction_data/tenant_overrides.csv` (1 new pin,
+`elmirageaz.granicus.com`), `scripts/tier3_auto_transcription_queue.txt`
++ `tier3_auto_transcription_queue_probe.csv` (1 new queued video),
+`BACKLOG.md`'s HCMS entry (updated with this finding).
+`rtr-business/research/ENUMERATION_METHODS.md` §287 has the full
+technical detail (the exact web addresses, API calls seen, and how each
+step was checked).
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
