@@ -133,6 +133,63 @@ deploy needed either. Nothing in this PR needs a production deploy.
 
 **Deploy status.** The Aransas Pass page is live now; every ingest since WO-210/WO-222 carries the government's id directly, so a page never depends on a pin reaching production first. The new `@CityofAransasPass` channel pin needs the next resolver deploy before it affects any other video from that channel.
 
+## WO-278: WO-273's "147 confirmed" platforms were mostly a catch-all site answering its own probe, fixed the rule, and hand-read what survived it [Done 2026-09-12]
+
+**What was done and why.** WO-273 said 147 governments had a platform
+"confirmed" — a vendor signature matched a fetched page, and the page
+named the right government. The conductor found that claim was wrong:
+77 of the 147 domains had TWO OR MORE different platforms "confirmed"
+on the same government (a real site runs one platform), and 76 of
+those came entirely from a probe this repo's own scripts had built:
+fetching a guessed path like `/AgendaOnline/Meetings/ViewMeeting` on
+the government's OWN domain and matching the platform's signature
+against the fetched page's text PLUS the very URL just typed in. A
+catch-all site — one that answers any path with its own generic page —
+will "confirm" whichever platform you ask about, because the match came
+from the URL text, not the page. Fixed the rule so a match only counts
+when it comes from the real page content (or a different, real
+platform's host after a real redirect), added a second check that
+compares a page against a random made-up path on the same site and
+throws out a match if they look the same, and reran the check on the
+1,197 governments the wrong rule had touched. Then, since the real
+number was much smaller, read every one of the 60 real leads by hand
+and tried to turn each into a page.
+
+| Result | Count of 60 | What it means |
+|---|---|---|
+| Already had a page | 37 | Some other sweep had already found this government |
+| Real platform, no video found | 13 | The platform is real, but no meeting with video was there this time — an honest no, not a guess |
+| Host blocked the request | 6 | The specific page refused to load when this run tried it |
+| New page created | **1** | Marshalltown, IA — a real city council meeting, read and confirmed by hand |
+
+**Caution.** The corrected number (60) is far below the original claim
+(147), and Hyland — the platform the original report called the biggest
+find (75 governments) — turns out to be 0 real confirmations in this
+population once the rule was fixed. One government
+(`co.roseau.mn.us`) that the original report singled out as its one
+trustworthy, single-platform Hyland example turned out, on a fresh
+check, to be behind a bot-blocking page at the time — a second,
+independent false positive the original run had no way to catch, since
+that block page wasn't on this repo's list of known challenge pages
+(now added). One government (`pendercountync.gov`) still shows two
+platforms confirmed after the fix; this looks like a real case (two
+different real pages on the government's own site, not one page
+answering two guesses) and was left alone rather than coded around from
+a single example.
+
+**Recommendation.** Treat this entry, not the original WO-273 entry
+above, as the real count for this population. No further hand-read work
+is owed here — all 60 were checked. `docs/investigations/
+passive_discovery_full_scale.md` and `BACKLOG.md`'s matching entry are
+both corrected in this same change.
+
+**Deploy status.** The new city council meeting page for Marshalltown,
+IA is already live (an ingest, not a code change). The fix to
+`scripts/wo273_targeted.py`/`wo273_recon.py` is a script/test change
+only — no `app/`, `archive/`, or `worker/` code touched, so nothing
+else needs a deploy. Full numbers and file list:
+`rtr-business/research/ENUMERATION_METHODS.md` §302.
+
 ## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
 
 **What was done and why.** WO-230 let 13 confirmed-wrong videos reach a
@@ -47924,3 +47981,30 @@ Utah PMN 2, YouTube 1, Swagit 1. Re-run phase 1 once Internet Archive's
 CDX search recovers. Deploy status: nothing to deploy -- no app/archive/
 worker code changed, only new `scripts/`, a new test file, and docs.
 Rerun `scripts/build_backlog_toc.py` after this entry landed.
+
+**CORRECTION (WO-278, 2026-09-12): the 147 above is wrong -- the real
+number is 60, and Hyland's 75 is 0.** The confirmation rule let a
+platform "confirm" purely because the probed URL's own path text
+matched a signature -- a catch-all site (any path, same generic 200
+shell) "confirms" every platform asked about this way. Confirmed
+directly: 76 of the 147 confirmed domains had 2+ different platforms
+confirmed (a real site runs one), and 75 of those 76 were among the
+"Hyland 75" count -- including `co.roseau.mn.us`, the one domain this
+entry's own data called single-platform and therefore trustworthy (a
+fresh live re-check found it behind a Radware/ShieldSquare bot
+challenge at the time, not serving a real Hyland page at all). Fixed in
+`scripts/wo273_targeted.py`'s `fetch_and_score()` (page-content-only
+matching unless the URL was independently discovered by phase 2, or the
+response landed on a different host; a same-domain catch-all guard; an
+800-byte floor) and `scripts/wo273_recon.py`'s `CHALLENGE_MARKERS`
+(added the Radware/ShieldSquare signature). Phase 3 rerun on the 1,197
+affected governments (964 phase-2-flagged plus 233 more with a 200 on
+the original named-path probe) found **60** real confirmations: civicclerk
+23, granicus 19, civicweb 5, iqm2 4, escribe 3, proudcity 3, utah_pmn 2,
+youtube 1, swagit 1. All 60 were hand-read and run through the ingest
+pipeline (`scripts/wo278_confirmed_hits_ingest.py`): 37 already had an
+Archive page, 13 were real declines (platform confirmed, no video found
+this time), 6 hit a host-level block (HTTP 403/525) on the specific
+confirmed URL, and 1 new page was created and hand-verified (Marshalltown,
+IA -- "City Council Meeting", 2026-08-24, 2,886 segments). Full writeup:
+`rtr-business/research/ENUMERATION_METHODS.md` §302.

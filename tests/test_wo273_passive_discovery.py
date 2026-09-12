@@ -192,3 +192,132 @@ def test_name_matches_requires_both_city_and_state():
     assert not wo273_targeted.name_matches(
         "<html>nothing here</html>", "Sparta", "Tennessee"
     )
+
+
+# --- WO-278: the confirmation-rule correction --------------------------
+#
+# WO-273's original rule let a platform "confirm" purely because the URL
+# THIS SCRIPT constructed (a guessed first-party-path template) matched
+# its own path shape -- real, live-confirmed on 76 of 147 originally
+# "confirmed" domains (e.g. marengocountyal.com "confirmed" hyland, iqm2
+# AND civicweb off the same four-path probe; a real site runs one
+# platform). These tests cover the fix's pure logic: the catch-all body
+# comparison, the same-domain check, and fetch_and_score()'s
+# source_kind-gated trust of a matched URL's own text.
+
+
+def test_is_catch_all_response_true_on_size_match_to_reference():
+    # Geneva County, AL's real, live-confirmed shape (url_shape_mining.md):
+    # four different probed paths, same ~500-byte generic page every time.
+    body = b"x" * 500
+    refs = {"nonsense": (498, "deadbeef"), "homepage": None}
+    assert wo273_targeted.is_catch_all_response(body, refs)
+
+
+def test_is_catch_all_response_false_when_clearly_different_size():
+    body = b"x" * 20000
+    refs = {"nonsense": (500, "deadbeef"), "homepage": (510, "beefdead")}
+    assert not wo273_targeted.is_catch_all_response(body, refs)
+
+
+def test_is_catch_all_response_false_with_no_usable_reference():
+    # A reference fetch failure records None -- the guard fails open
+    # rather than blocking confirmation on a transient error.
+    assert not wo273_targeted.is_catch_all_response(b"x" * 500, {"nonsense": None})
+
+
+def test_is_same_domain_true_for_exact_and_subdomain():
+    assert wo273_targeted.is_same_domain("marengocountyal.com", "marengocountyal.com")
+    assert wo273_targeted.is_same_domain(
+        "www.marengocountyal.com", "marengocountyal.com"
+    )
+
+
+def test_is_same_domain_false_for_a_different_vendor_host():
+    assert not wo273_targeted.is_same_domain(
+        "exampleville-ca.granicus.com", "exampleville.ca.gov"
+    )
+
+
+def test_fetch_and_score_first_party_probe_never_confirms_from_url_text_alone(
+    monkeypatch,
+):
+    # The exact bug: a catch-all answers a guessed AgendaOnline path with
+    # its own generic shell (which names the government, is >=800 bytes,
+    # but never says "agendaonline"/"viewmeeting" anywhere) -- must not
+    # confirm hyland just because the URL we ourselves built has that path
+    # shape.
+    catch_all_body = (
+        "<html><body>Welcome to Example County, Alabama</body></html>" + "filler " * 200
+    )
+
+    class FakeResp:
+        def __init__(self, status_code, text, url):
+            self.status_code = status_code
+            self.text = text
+            self.content = text.encode("utf-8")
+            self.url = url
+
+    def fake_polite_fetch(url, method="GET"):
+        return FakeResp(200, catch_all_body, url)
+
+    monkeypatch.setattr(wo273_targeted, "polite_fetch", fake_polite_fetch)
+    monkeypatch.setattr(
+        wo273_targeted, "try_wayback_archived_body", lambda url: (None, False)
+    )
+
+    refs = wo273_targeted.fetch_domain_reference("examplecounty.al.us")
+    result = wo273_targeted.fetch_and_score(
+        "https://examplecounty.al.us/AgendaOnline/Meetings/ViewMeeting",
+        "Example County",
+        "Alabama",
+        "examplecounty.al.us",
+        refs,
+        "first_party_probe",
+    )
+    assert result["platform_confirmed"] == ""
+    assert result["catch_all"] is True
+
+
+def test_fetch_and_score_hub_sourced_url_still_confirms_via_its_own_shape(
+    monkeypatch,
+):
+    # A phase-2 "hub" URL (independently found in a real sitemap, not
+    # guessed by this script) is the pattern docs/investigations/
+    # platform_fingerprints.md says IS valid confirmation -- unaffected by
+    # this WO's fix.
+    granicus_body = (
+        "<html><body>City of Example, California -- Council Meeting"
+        + "agenda " * 200
+        + "</body></html>"
+    )
+    homepage_body = "<html><body>Exampleville homepage</body></html>"
+
+    class FakeResp:
+        def __init__(self, status_code, text, url):
+            self.status_code = status_code
+            self.text = text
+            self.content = text.encode("utf-8")
+            self.url = url
+
+    def fake_polite_fetch(url, method="GET"):
+        if "rtr-probe-" in url or url.rstrip("/").endswith(".gov"):
+            return FakeResp(200, homepage_body, url)
+        return FakeResp(200, granicus_body, url)
+
+    monkeypatch.setattr(wo273_targeted, "polite_fetch", fake_polite_fetch)
+    monkeypatch.setattr(
+        wo273_targeted, "try_wayback_archived_body", lambda url: (None, False)
+    )
+
+    refs = wo273_targeted.fetch_domain_reference("exampleville.ca.gov")
+    result = wo273_targeted.fetch_and_score(
+        "https://exampleville-ca.granicus.com/player/clip/42",
+        "Example",
+        "California",
+        "exampleville.ca.gov",
+        refs,
+        "hub",
+    )
+    assert result["platform_confirmed"] == "granicus"
+    assert result["catch_all"] is False

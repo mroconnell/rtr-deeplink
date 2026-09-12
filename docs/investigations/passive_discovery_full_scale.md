@@ -1,7 +1,29 @@
 # Full-scale passive platform discovery (WO-273): three phases, full
 population, one live Internet Archive outage hit along the way
 
-**Status: complete (WO-273, 2026-09-12).** WO-268 proved passive
+**CORRECTION (WO-278, 2026-09-12): the "147 confirmed" headline below is
+wrong — corrected to 60.** The confirmation rule let a platform
+"confirm" purely because the probed URL's own path text matched a
+signature, which a catch-all site (one that answers any path with its
+own generic 200 shell) happily does for every platform it's asked
+about. 76 of the 147 confirmed domains had 2+ different platforms
+confirmed this way (a real site runs one), 75 of them among the "Hyland
+75" figure below — after the fix, **Hyland drops to 0** confirmed in
+this population. The "Platform confirmed" row in the headline table,
+the "Top platforms confirmed" table, and the WO-268 regression numbers
+further down are all superseded by WO-278's corrected numbers; this
+file's text is left as originally written (the first pass) rather than
+edited in place, per this repo's "overwrite, don't silently rewrite
+history" convention for a correction this size. See
+`BACKLOG_DONE.md`'s WO-278 entry and `rtr-business/research/
+ENUMERATION_METHODS.md` §302 for the fix, the corrected rerun, and the
+hand-read pass over what survived it. The rest of this document (the
+phase 1/2 numbers, the Internet Archive CDX-degradation finding, the
+sitemap-source split) is unaffected — only phase 3's confirmation
+count and everything downstream of it is wrong.
+
+**Status: complete (WO-273, 2026-09-12), confirmation count superseded
+by WO-278 (2026-09-12).** WO-268 proved passive
 discovery (DNS/CNAME, sitemap+robots, Wayback CDX, Common Crawl) on 300
 governments, run one at a time with politeness waits inside every step
 (100 minutes for 300 domains). Ryan's design for this WO splits that into
@@ -202,6 +224,10 @@ bug in this sweep.
 
 ### The headline number
 
+**[First pass, superseded by WO-278's corrected rerun — see this doc's
+top-of-file correction note. The table below is left exactly as
+originally measured.]**
+
 | Outcome | Count of 2,571 | What it means |
 |---|---|---|
 | Platform confirmed (vendor/path signal AND the page names this government + its state) | **147** | A real, hand-verification-gated lead -- not yet a page or a queue line |
@@ -216,6 +242,9 @@ not a count" lesson WO-268 already drew, now measured end to end instead
 of estimated).
 
 ### Top platforms confirmed, phase 3
+
+**[First pass, superseded — Hyland drops to 0 in WO-278's corrected
+rerun; see this doc's top-of-file correction note.]**
 
 | Platform | Governments confirmed |
 |---|---|
@@ -241,6 +270,9 @@ surfaced, so phases 1-2 had no way to flag it; only the blind probe could
 find it.
 
 ### WO-268's 300-domain pilot, as a regression row
+
+**[First pass, superseded — these confirmed counts use the same wrong
+rule; see this doc's top-of-file correction note.]**
 
 294 of WO-268's original 300 domains are still in this population; of
 those, **27 confirmed** (9.2%) -- higher than the 5.7% overall rate,

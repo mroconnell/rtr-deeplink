@@ -114,8 +114,10 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (42)
   `pick_calendar_candidate()`'s ambiguous-candidate error message…
+  `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
+  WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
   `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
   `app/platforms/openmedia.py` doesn't accept the…
@@ -398,7 +400,7 @@ Trust, safety & data quality  (19)
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
   `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -430,7 +432,6 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
-  `[JUST-DO-IT]` Passive discovery scaled to the full population: 147…
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
 Dormant — needs a real example first `[LATER]`  (1)
@@ -727,6 +728,74 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   intended to.
 - **History:** found and fixed in one copy during WO-276 (2026-09-12);
   see `BACKLOG_DONE.md`'s WO-276 entry.
+
+### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo147_access_ladder_sweep.py`, `wo149_county_ladder_
+  sweep.py`, `wo176_path_pilot.py`, `wo270_wordpress_pilot.py`,
+  `wo265_school_district_sweep.py`, `wo268_passive_discovery.py`,
+  `wo272_probe_first_party_paths.py`, and `wo273_recon.py` each carry
+  their own copy of the same `CHALLENGE_MARKERS` list (used by
+  `is_challenge()` to stop before a human-verification gate). WO-278
+  (2026-09-12) found a real, live gap while rechecking a WO-273 finding:
+  a Radware/ShieldSquare bot-management challenge
+  (`validate.perfdrive.com`, `<title>Radware Block Page</title>`) served
+  with a real HTTP 200 after a 302, recognized by none of the 8 copies.
+  Its redirect URL echoes the requested target back as a query
+  parameter, which is how a government's own name can leak into a page
+  that never actually says anything about it -- a real false-positive
+  source for any script that checks page text against a government's
+  name without first checking `is_challenge()`.
+- **Impact:** `wo273_recon.py`'s copy is fixed (the 3 markers added);
+  the other 7 scripts still can't recognize this specific challenge, so
+  a future sweep that hits a Radware-protected host will silently treat
+  its block page as real content instead of stopping at the gate.
+- **Next action:** add the same 3 markers (`radware block page`,
+  `perfdrive.com`, `shieldsquare`) to the other 7 scripts' copies, or
+  better, factor `CHALLENGE_MARKERS`/`is_challenge()` into one shared
+  module every script imports -- the duplication itself is why this kind
+  of gap gets fixed once and stays open everywhere else.
+- **Constraint:** none -- pure addition to a marker list, no behavior
+  change for a host that isn't using this specific challenge vendor.
+- **History:** found and fixed in `wo273_recon.py` during WO-278
+  (2026-09-12); see `BACKLOG_DONE.md`'s WO-278 entry.
+
+### WO-259's full-ladder homepage re-scan: 431 of 964 governments done, 533 left -- method settled, just needs more runtime `[JUST-DO-IT]`
+
+- **Issue:** WO-259 (2026-09-11/12) re-scanned the front page of the 964
+  governments of 5,000+ in
+  `rtr-business/research/wo174_leftover_5k_plus.csv` flagged
+  `step_full_ladder=yes` (their only prior check was a plain HTTP fetch
+  plus a link scan) with the real access ladder -- plain honest HTTP,
+  browser headers after a 403/dropped connection, headless only when a
+  page loaded with no visible meeting link -- via
+  `scripts/wo259_full_ladder_scan.py`. 431 governments got a real,
+  terminal outcome; the remaining 533 were never reached (this was a
+  live, network-bound run: ~10s/government once warmed up, and headless
+  renders cost more).
+- **Impact:** 29 real pages already ingested and 4 more queued from just
+  the 431 done, at a similar rate the other 533 likely hold on the order
+  of another 30-40 real meetings. Nothing is lost by stopping -- the
+  script is resumable by gov_id and every row already worked has a
+  terminal outcome on file -- but the remaining population is real,
+  untested coverage sitting idle.
+- **Next action:** re-run
+  `DATABASE_URL="sqlite+aiosqlite:////tmp/woXXX_scratch.db"
+  .venv/bin/python scripts/wo259_full_ladder_scan.py` from the repo
+  root (regenerate `/tmp/wo259_inventory` first via
+  `scripts/export_meeting_inventory.py --out-dir /tmp/wo259_inventory
+  --source export`) -- it picks up exactly where this run left off. A
+  video candidate that clears the automatic wrong-government/phrase
+  checks parks in `rtr-business/research/wo259_pending_hand_read.csv`
+  and needs a real human read (title + channel) recorded as one line in
+  `wo259_hand_read_decisions.csv` before a second run will finish its
+  ingest/queue -- see the script's own docstring for the exact two-stage
+  shape. Budget real time: at the measured rate, the remaining 533 rows
+  are several more hours of wall clock, not minutes.
+- **Constraint:** one government at a time, real network calls -- don't
+  parallelize this without also parallelizing the per-host politeness
+  delays already built into `run_access_ladder()`.
+- **History:** `BACKLOG_DONE.md`, WO-259, 2026-09-11/12.
 
 ### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- now confirmed on 3 governments `[JUST-DO-IT]` `[EASY]`
 
@@ -6686,47 +6755,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `DAILY_REPORT_EMAIL_TO`'s prior `ryan@how-to-adu.com` default)
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
-### `[JUST-DO-IT]` Passive discovery scaled to the full population: 147 confirmed leads need a hand-read + ingest pass (added 2026-09-12)
-
-- **Issue**: WO-273 scaled WO-268's 300-domain pilot to the full
-  2,575-government "nothing found" population, split into three phases
-  (fast raw recon, offline scoring, targeted fetch of only the flagged
-  URLs). 147 of 2,571 governments (5.7%) got a platform CONFIRMED -- a
-  vendor/path signature matched on a live fetch AND the page names this
-  government's own city/county and state, not just a keyword hit. Top
-  platforms: Hyland (AgendaOnline) 75, CivicClerk 25, Granicus 20, IQM2
-  11, CivicWeb 6, eScribe 3, ProudCity 3, Utah PMN 2, YouTube 1, Swagit
-  1. Full writeup, including a real, live Internet Archive CDX-search
-  degradation hit and worked around mid-run (see that doc's own
-  section): `docs/investigations/passive_discovery_full_scale.md`.
-  Reports: `research/wo273_recon.jsonl`, `wo273_classified.csv`,
-  `wo273_targeted.csv`.
-- **Impact**: 147 real, named-government leads against a population the
-  keyword-guided access ladder had already rejected once -- none of
-  them ingested, queued, or written to `jurisdiction_coverage.csv` yet
-  (this WO was detection-only by design).
-- **Next action**: hand-read each of the 147 (`research/
-  wo273_targeted.csv`, filter `platform_confirmed != ""`) the way every
-  other sweep in this repo does -- confirm a real, reachable meeting
-  VIDEO exists (not just agenda-only) before any ingest or tier-3 queue
-  line, send the government's own `gov_id` in the ingest payload, and
-  check `tenant_overrides.csv` for an existing pin before minting a new
-  one. 75 of the 147 (the Hyland finds) came almost entirely from a
-  blind named-path probe on governments with zero sitemap/CDX signal,
-  not from a scored URL -- worth a slightly closer look before bulk
-  ingest, since that path never got the phase-2 "does this URL look like
-  a real hub" scoring the other platforms did.
-- **Constraint**: Internet Archive's CDX search API was confirmed, live,
-  intermittently failing for this entire run (44 of 2,574 domain-wide
-  CDX queries succeeded, 1.7%) -- almost the whole population took the
-  live-fallback path instead of the cheap archive-first one. Re-running
-  phase 1 (`scripts/wo273_recon.py`, resumable, no code change needed)
-  once Internet Archive's CDX search has recovered could plausibly
-  surface meaningfully more sitemap-sourced signal at near-zero cost to
-  the governments themselves.
-- **History**: `docs/investigations/passive_discovery_full_scale.md`,
-  `BACKLOG_DONE.md`'s WO-273 entry (WO-273, 2026-09-12).
-
 ### `[IMPROVEMENT-ROUND]` A path-probe builder from the hub path-frequency table (added 2026-09-12)
 
 - **Issue**: WO-268's sitemap rung produced a 1,127-pattern frequency
