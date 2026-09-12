@@ -5303,3 +5303,5 @@ https://shoholatwp.org,unknown,head+ffprobe,6.90,2026-06-20,15025512,0,reject-sh
 https://www.lyndonvt.org/?page_id=18,unknown,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.86,2026-09-11T09:03:45+00:00,,0
 https://libertygrovewi.gov,unknown,head+ffprobe,1.00,2025-03-05,1777,0,reject-short,duration 1.0s is below the 60s meeting-plausibility floor,0.52,2026-09-11T09:03:51+00:00,,0
 https://mwtown.gov,unknown,head+ffprobe,55.87,2020-03-04,17386045,0,reject-short,duration 55.9s is below the 60s meeting-plausibility floor,1.02,2026-09-11T09:04:12+00:00,,0
+https://mc-ala.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=5599,youtube,yt-dlp-metadata,589.00,2026-09-01,17488075,1,accept,,3.01,2026-09-12T04:55:10+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=6C1IPgak1x0,youtube,yt-dlp-metadata,1874.00,2026-09-09,14458508,1,accept,,1.91,2026-09-12T04:55:16+00:00,bulk_ingest,0
