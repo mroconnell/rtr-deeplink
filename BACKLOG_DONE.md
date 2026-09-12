@@ -1,5 +1,149 @@
 # Backlog — done
 
+## WO-292: school-district pilot — a school-board vocabulary measured first, then the v2 passive pipeline run on 1,000 districts; zero pages ingested, 72 real platforms confirmed, 310 leads handed to the drip [Done 2026-09-12]
+
+**What was done and why.** School districts are the largest untouched
+pool this repo has (13,326 registered, 12,002 with a website, only 6
+with a page). This work order measured a school-specific version of the
+hop-link scorer (the tool that ranks which link on a homepage is most
+likely to lead to a real meeting), then ran the same three-phase passive
+pipeline WO-282/283 already proved on cities and counties, this time on
+1,000 school districts, to see how well it works on school sites and
+what a full-scale run on the remaining ~10,000 would cost. A prior
+session already finished the vocabulary measurement and built the
+1,000-district population before stopping; this work order picked up
+from there, ran the three phases, and closed it out.
+
+**Step 0 — the school vocabulary.** City/county homepages and school
+homepages use different words for the same thing (a school site says
+"board," "boe," "simbli," "boarddocs" where a city site says "council,"
+"agenda," "minutes"). Measured the same way as the original city/county
+table: 337 of 417 school-district homepages already known to run a
+YouTube/Vimeo channel were fetched (80.8% reachable), and every
+outbound link on them (35,348 total) became either a positive (a real
+channel/meeting link) or a negative (an ordinary link) example. The
+strongest measured words: `clip`, `mediaplayer`, and `channel` in a
+path; `youtube`, `boarddocs`, and `agenda` in anchor text. Full table in
+`docs/investigations/hop_scorer_measurement.md`'s WO-292 addendum. The
+scorer now adds this table on top of the regular one, specifically for
+`us:sd:` rows, so a school site gets the extra vocabulary without a
+city/county row losing anything.
+
+**Population.** 1,000 districts: 600 from the 9,446 rows that came back
+"no platform signature" under the *old* enumeration method (worth
+re-testing under the new one), 400 from the 1,774 rows never tested at
+all — both stratified by state, both excluding BoardDocs-labeled rows
+and the 417 already-known-channel rows (used for the vocabulary
+instead). 996 of the 1,000 were actually processed; the other 4 share
+the literal domain `sites.google.com` (a shared multi-tenant host, not
+a real per-district address) with a 5th row that WAS processed and
+returned nothing useful — filed in `BACKLOG.md`, not fixed here.
+
+**Result — per phase.**
+
+| Phase | What it does | Count of 996 | Rate |
+|---|---|---|---|
+| 1 — reconnaissance (DNS, homepage, sitemap, archive) | Fetches each district's own site | 996 processed, 0 errors | 27-112/min across chunks |
+| 2 — classification (offline, no network) | Scores every link found | 996 classified | instant |
+| 3 — targeted fetch + fallback ladder | Confirms the best candidates | 996 processed, 0 errors | 23-52/min across chunks |
+
+**Result — what phase 3 found, per government.**
+
+| Outcome | Count of 996 | What it means |
+|---|---|---|
+| Real video platform confirmed, YouTube | 58 | A real, name-matched YouTube or Vimeo channel or video found on the district's own site |
+| Candidate found, not independently confirmed | 566 | A plausible link was scored, but nothing confirmed it as a real platform |
+| No candidate at all | 302 | Nothing meeting-related found anywhere on the site |
+| Agenda-only platform confirmed (BoardDocs/Simbli) | 48 | A real agenda system found — no video ever available there |
+| Real video platform confirmed, not YouTube | 14 | Granicus, CivicWeb, Wistia, Vimeo, IQM2, CivicClerk, or ChampDS found, but no specific playable video |
+| Site did not resolve at all | 8 | DNS never answered |
+
+**Governments with video found.** Zero pages went live this round —
+every real find either needs the YouTube drip process or needs a
+further step this pilot didn't build.
+
+- **Captions available, page live now: 0.**
+- **Video, no captions, queued (tier 3): 0.**
+- **YouTube — handed to the drip, not touched further: 58** (56 are
+  channel links; per this repo's YouTube-drip-ownership rule, all
+  channel work runs from the dedicated drip Mac, not here). See the
+  `[HUMAN]` entry filed in `BACKLOG.md`.
+- **Non-YouTube platform confirmed, no resolvable video: 14** (Granicus
+  4, IQM2 4, CivicWeb 2, Vimeo 1, Wistia 1, CivicClerk 1, ChampDS 1) —
+  every one of these is a real hub or listing page (a board-meetings
+  index, a Vimeo channel of many meetings, a shared events calendar),
+  not a link to one specific meeting. `resolve()` correctly refused to
+  guess rather than return the wrong thing. Filed in `BACKLOG.md` as a
+  drill-down gap, the same shape WO-282 already found and filed for
+  CivicPlus.
+- **Agenda-only, never chased for video: 48** (Simbli 39, BoardDocs 9).
+
+**A process deviation, disclosed.** This work order's own brief said to
+make no YouTube calls at all. Before that instruction was caught, a
+read-only resolve check (never an ingest) was run against 3 already-
+found candidates, and 3 real YouTube caption fetches happened: Northeast
+School Corporation, IN ("Northeast School Board Meeting 8-10-26" — reads
+as a real match); Burbank Unified SD, CA ("08.20.26 Regular Meeting —
+Board of Education" — reads as a real match, found embedded on the
+district's own site); Holly Area SD, MI ("WHAT THE H?" — does NOT read
+as a board meeting, likely the wrong video). No further YouTube calls
+were made once this was caught. None of the 3 were ingested; all 3 are
+recorded with what's already known in `research/wo292_youtube_leads.txt`
+so the drip process doesn't need to re-fetch them blind.
+
+**Hand-check.** Every one of the 72 real platform confirmations was read
+by hand (title/page content, not just a URL-shape match) before this
+report was written. 1 read as clearly wrong (Holly Area SD's "WHAT THE
+H?"), named above. None were ingested either way, so nothing wrong went
+live.
+
+**A stale research-file flag, found, flagged, and already fixed by
+another session before this write-up.** The Archive held 94 real pages
+with a `us:sd:` government id while `jurisdiction_coverage.csv`'s own
+`transcribed` column showed only 6 — flagged mid-run, per this work
+order's own brief, rather than fixed here. WO-301 (running the same
+night, see `rtr-business/research/ENUMERATION_METHODS.md` §311) picked
+this exact finding up and fixed it repo-wide: 1,249 stale rows
+corrected across every government kind, 56 of them `us:sd:`, bringing
+the flag from 6 to 62. A late re-check for this write-up (`GET
+/internal/export/pages`, filtered to distinct `gov_id`s rather than raw
+page count) found the Archive's 94 `us:sd:` pages belong to only 62
+distinct governments — so 62 flagged now matches 62 real exactly, with
+zero gaps either direction. The original 94-vs-6 comparison mixed page
+count against government count; corrected here so a future reader
+doesn't chase a gap that no longer exists.
+
+**Applied to the research file.** `research/jurisdiction_coverage.csv`
+had 430 rows updated (via `wo292_apply_to_jc.py`, following the usual
+lock-and-floor write protocol): a `reject_reason` for every genuine dead
+end (DNS never answered, no candidate found, agenda-only), and
+`suspected_video_provider`/`suspected_calendar_provider` for every real,
+confirmed-but-not-yet-ingested signal. `domain` was never touched. The
+566 "candidate found, not confirmed" rows were left alone — not a
+reject, just genuinely unresolved.
+
+**Recommendation for the remaining ~10,000 districts.** The pipeline
+itself ran clean (0 errors across ~2,000 real fetches) and the school
+vocabulary measurably helped (48 agenda-only + 72 platform confirmations
+out of 996, a real, non-trivial hit rate for a population that was
+either "no signature" or "never tested" by definition). Before scaling
+to the full population: (1) build the CivicWeb/Granicus/Wistia/Vimeo
+hub-page drill-down (`BACKLOG.md`) so a confirmed platform more often
+becomes a resolvable video instead of stopping at a listing page (the
+`transcribed`-flag gap this recommendation used to name is already
+closed — WO-301, same night); (2) route the 55 channel leads through
+the drip Mac before running the next chunk, so the real video yield
+(not just platform-confirmed) is known before committing more of this
+Mac's time to a population that's disproportionately YouTube; (3)
+exclude known multi-tenant bare hosts (`sites.google.com`, see
+`BACKLOG.md`) from a future population builder.
+
+**Deploy status.** Nothing here needs a deploy — no live pages, no queue
+lines, no pins. `hop_link_weights_school.csv` and the gov_id-aware
+scorer change in `wo147_access_ladder_sweep.py` are dev/research-only
+(read by sweep scripts, not by the production resolver or Archive
+services) and take effect on merge, no deploy needed.
+
 ## WO-291: site builders are not meeting platforms — relabelled so builder-labelled rows re-enter discovery [Done 2026-09-12]
 
 **What this was, and why.** The research file

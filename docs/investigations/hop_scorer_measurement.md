@@ -336,3 +336,71 @@ scope for this WO.
 - `tests/test_hub_link_ranking.py` -- unchanged behavior, now pinned to
   `legacy=True` explicitly (see its own WO-274 note) as the historical
   WO-228 record.
+
+## WO-292 addendum: a second, school-specific vocabulary (2026-09-12)
+
+This WO's own table above was measured on city/county homepage links
+only -- see "What this sample cannot show." School board sites carry a
+real, different vocabulary (`board`, `boe`, `simbli`, `boarddocs`,
+`superintendent`, `livestream`), so WO-292 (the school-district pilot)
+measured a second table the same way, rather than assuming the
+city/county weights transfer.
+
+**Positives**: every YouTube/Vimeo channel link found on the homepages
+of 417 school districts already known (`jurisdiction_coverage.csv`'s
+`suspected_video_provider`) to run one, plus the Archive's own 6
+existing `us:sd:` page source URLs. **Homepages fetched**: 337 of 417
+(80.8%) -- the rest were `blocked-plain-http` (mostly connection
+timeouts) or one `blocked-browser-headers`; the vocabulary is built only
+from the 337 that resolved, 35,348 outbound links recorded.
+**Negatives**: every other outbound link on those same 337 homepages
+(for the anchor-text tables), plus `derive_hop_weights.py`'s own
+existing "any ordinary link" pool where available (for the path/vendor
+tables). No network fetches happened past this one homepage pass --
+`scripts/wo292_derive_school_hop_weights.py` (the measurement script)
+and `scripts/wo292_fetch_vocab_homepages.py` (the fetch) are both
+read-only against public pages, same politeness rules as WO-274's own
+`derive_hop_weights.py`.
+
+Output: `app/utils/jurisdiction_data/hop_link_weights_school.csv`, same
+5-column shape (`vocabulary,token_or_bigram,kind,positives,negatives,
+lift,weight`) so `_load_hop_weights()` reads it unchanged. Strongest
+measured signal, path tokens:
+
+| Vocabulary | Token | Positives | Negatives | Weight |
+|---|---|---|---|---|
+| school_hub_vendor | goto | 7 | 0 | 7.0 |
+| school_hub_vendor | nsf | 21 | 2 | 7.0 |
+| school_meeting_vendor | clip | 32 | 0 | 7.0 |
+| school_meeting_vendor | mediaplayer | 12 | 0 | 7.0 |
+| school_meeting_vendor | channel | 73 | 19 | 5.944 |
+| school_hub_vendor | organization | 7 | 27 | 5.512 |
+
+Strongest measured signal, anchor text:
+
+| Vocabulary | Word | Positives | Negatives | Weight |
+|---|---|---|---|---|
+| school_channel_anchor_text | youtube | 84 | 11 | 7.0 |
+| school_hub_anchor_text | regulation | 5 | 2 | 6.832 |
+| school_hub_anchor_text | boarddocs | 6 | 4 | 6.411 |
+| school_channel_anchor_text | channel | 20 | 5 | 6.381 |
+| school_hub_anchor_text | agenda | 7 | 49 | 4.156 |
+
+`_weights_for_gov(gov_id)` in `wo147_access_ladder_sweep.py` (added by
+the WO-292 step-0 agent) ADDS this table to the default city/county one
+for a `us:sd:` row -- per-token, the higher of the two measured weights
+wins -- rather than replacing it, since a school site still carries real
+city/county-style hub words too (agendas, minutes, meetings). A
+non-`us:sd:` row is unaffected.
+
+**What this sample cannot show**: same caution as the parent table --
+337 homepages, all from districts ALREADY known to run a YouTube/Vimeo
+channel, so this table says nothing about vocabulary lift on a district
+with no known platform yet (exactly the population WO-292's own 1,000-
+district pilot sweeps). See `research/wo292_report.csv`/the WO-292
+`BACKLOG_DONE.md` entry for how the pilot's phase 2/3 scoring performed
+using this table.
+
+Files added: `scripts/wo292_fetch_vocab_homepages.py`,
+`scripts/wo292_derive_school_hop_weights.py`,
+`app/utils/jurisdiction_data/hop_link_weights_school.csv`.

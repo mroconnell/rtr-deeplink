@@ -602,6 +602,23 @@ _HOP_WEIGHTS_CSV = (
     / "jurisdiction_data"
     / "hop_link_weights.csv"
 )
+# WO-292 (2026-09-12): the city/county vocabulary above was measured on
+# city/county URLs only (hop_scorer_measurement.md's own "What this
+# sample cannot show" section says so directly). School board sites use
+# a different real vocabulary (board/boe/board-of-education/simbli/
+# boarddocs/livestream) -- see docs/investigations/hop_scorer_measurement.md's
+# WO-292 addendum and scripts/wo292_derive_school_hop_weights.py for how
+# this file was measured (417 known-YouTube/Vimeo-channel us:sd:
+# district homepages + the Archive's own us:sd: page source URLs as
+# positives). Loaded as a SEPARATE lookup, only merged in for a us:sd:
+# gov_id -- never applied to a city/county row.
+_HOP_WEIGHTS_SCHOOL_CSV = (
+    Path(__file__).resolve().parent.parent
+    / "app"
+    / "utils"
+    / "jurisdiction_data"
+    / "hop_link_weights_school.csv"
+)
 
 
 def _load_hop_weights(
@@ -635,6 +652,33 @@ def _load_hop_weights(
 
 
 _HOP_PATH_WEIGHTS, _HOP_ANCHOR_WEIGHTS = _load_hop_weights()
+_HOP_PATH_WEIGHTS_SCHOOL, _HOP_ANCHOR_WEIGHTS_SCHOOL = _load_hop_weights(
+    _HOP_WEIGHTS_SCHOOL_CSV
+)
+
+
+def _weights_for_gov(gov_id: str) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """Returns (path_weights, anchor_weights) for a candidate's own
+    government: the default city/county lookup, merged with the school
+    vocabulary (WO-292) ONLY when `gov_id` is a us:sd: row -- a school
+    site still carries real city/county-style hub words too (agendas,
+    minutes, meetings), so this ADDS the school words rather than
+    replacing the general vocabulary; per-token, the higher of the two
+    measured weights wins (same "never sum two measurements of the same
+    real-world word" rule `_load_hop_weights()` already applies across
+    its own multiple vocabularies)."""
+    if not (gov_id or "").startswith("us:sd:") or not _HOP_PATH_WEIGHTS_SCHOOL:
+        return _HOP_PATH_WEIGHTS, _HOP_ANCHOR_WEIGHTS
+    path_weights = dict(_HOP_PATH_WEIGHTS)
+    for token, weight in _HOP_PATH_WEIGHTS_SCHOOL.items():
+        if weight > path_weights.get(token, float("-inf")):
+            path_weights[token] = weight
+    anchor_weights = dict(_HOP_ANCHOR_WEIGHTS)
+    for token, weight in _HOP_ANCHOR_WEIGHTS_SCHOOL.items():
+        if weight > anchor_weights.get(token, float("-inf")):
+            anchor_weights[token] = weight
+    return path_weights, anchor_weights
+
 
 _HOP_TOKEN_RE = re.compile(r"[a-z]+")
 
@@ -700,7 +744,7 @@ def _nav_position_bonus(tag) -> float:
 
 
 def _score_hop_candidate_weighted(
-    text: str, href: str, full_url: str, base_netloc: str, tag
+    text: str, href: str, full_url: str, base_netloc: str, tag, *, gov_id: str = ""
 ) -> Optional[float]:
     """Returns None for a candidate that should never be offered at all
     (same vendor-marketing-apex and boilerplate-text guards as the
@@ -725,14 +769,15 @@ def _score_hop_candidate_weighted(
         path_tokens.extend(_hop_tokenize(name))
     anchor_words = _hop_tokenize(text)
 
+    path_weights, anchor_weights = _weights_for_gov(gov_id)
     path_score = 0.0
     for token in set(path_tokens):
-        path_score += _HOP_PATH_WEIGHTS.get(token, 0.0)
+        path_score += path_weights.get(token, 0.0)
     for bigram in set(_hop_bigrams(path_tokens)):
-        path_score += _HOP_PATH_WEIGHTS.get(bigram, 0.0)
+        path_score += path_weights.get(bigram, 0.0)
     anchor_score = 0.0
     for word in set(anchor_words):
-        anchor_score += _HOP_ANCHOR_WEIGHTS.get(word, 0.0)
+        anchor_score += anchor_weights.get(word, 0.0)
 
     target_bonus = 0.0
     is_vendor = bool(netloc) and netloc != base_netloc and is_vendor_href_host(netloc)
@@ -793,13 +838,17 @@ def is_vendor_href_host(netloc: str) -> bool:
     return any(h in n for h in vendor_hosts)
 
 
-def _find_hop_links_weighted(html_text: str, final_url: str) -> List[str]:
+def _find_hop_links_weighted(
+    html_text: str, final_url: str, *, gov_id: str = ""
+) -> List[str]:
     """Scores EVERY anchor on the page (no HOP1_HINT_WORDS pre-filter --
     the new vocabulary includes words, like "supervisors"/"boards", that
     never contained an old hint word as a substring, so a substring gate
     built for the old list would silently exclude the new list's own
     best signals) with `_score_hop_candidate_weighted()` and returns up
-    to MAX_HOP_LINKS URLs ranked best-first."""
+    to MAX_HOP_LINKS URLs ranked best-first. `gov_id` (WO-292) selects
+    the school vocabulary addition for a us:sd: row; empty/other prefix
+    -> the unchanged city/county-only vocabulary."""
     soup = _safe_soup(html_text)
     if soup is None:
         return []
@@ -815,7 +864,9 @@ def _find_hop_links_weighted(html_text: str, final_url: str) -> List[str]:
         full = urljoin(final_url, href)
         if full in seen or urlparse(full).scheme not in ("http", "https"):
             continue
-        score = _score_hop_candidate_weighted(text, href, full, base_netloc, a)
+        score = _score_hop_candidate_weighted(
+            text, href, full, base_netloc, a, gov_id=gov_id
+        )
         if score is None:
             continue
         seen.add(full)
@@ -862,20 +913,24 @@ def _find_hop_links_legacy(html_text: str, final_url: str) -> List[str]:
 
 
 def find_hop_links(
-    html_text: str, final_url: str, *, legacy: bool = False
+    html_text: str, final_url: str, *, legacy: bool = False, gov_id: str = ""
 ) -> List[str]:
     """Gathers hop-link candidates from a fetched page's anchors and
     returns up to MAX_HOP_LINKS URLs ranked best-first (a stable sort, so
     two candidates with an equal score keep their original document
-    order). Signature is unchanged (`legacy` is keyword-only, default
-    False) so every existing importer keeps working with the new,
-    measured scorer; pass `legacy=True` to get the WO-228 word-list
-    scorer back verbatim, kept only for the WO-274 before/after
-    comparison (see `docs/investigations/hop_scorer_measurement.md`) --
-    it is not meant to be used going forward."""
+    order). Signature is unchanged for existing callers (`legacy` and
+    `gov_id` are both keyword-only, both default to the old behavior) so
+    every existing importer keeps working with the new, measured scorer;
+    pass `legacy=True` to get the WO-228 word-list scorer back verbatim,
+    kept only for the WO-274 before/after comparison (see
+    `docs/investigations/hop_scorer_measurement.md`) -- it is not meant
+    to be used going forward. Pass `gov_id` (a us:sd: row) to add the
+    WO-292 school-board vocabulary on top of the default one -- see
+    `hop_link_weights_school.csv` and `_weights_for_gov()` above; any
+    other/empty gov_id leaves scoring unchanged."""
     if legacy:
         return _find_hop_links_legacy(html_text, final_url)
-    return _find_hop_links_weighted(html_text, final_url)
+    return _find_hop_links_weighted(html_text, final_url, gov_id=gov_id)
 
 
 # --- WO-228 rule 2: verify a fetched hop candidate actually looks like a

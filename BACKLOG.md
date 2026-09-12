@@ -160,11 +160,12 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (43)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
   51 research-file rows say `transcribed=true` with no matching Archive…
-  Production actions only Ryan should take  (15)
+  Production actions only Ryan should take  (16)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
+    [HUMAN] 310 real school-district YouTube/Vimeo leads from the WO-292…
     [HUMAN] Sequatchie County, TN's page (id 7377) is not a real…
     [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
@@ -182,7 +183,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (185)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (186)
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [EASY] A discarded trim/split tail that starts with a lowercase…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
@@ -199,6 +200,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (185)
   [NEEDS-AUDIT] Real Kind-A finds from hand-read gates, none of the…
   [NEEDS-AUDIT] A hop into an unrelated third-party payment portal can…
   [NEEDS-AUDIT] A CivicPlus AgendaCenter listing page needs a…
+  [NEEDS-AUDIT] Four more platforms' own hub/listing pages need the…
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] Hondo city, TX now has two different real BoxCast…
@@ -395,8 +397,9 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (20)
+Trust, safety & data quality  (21)
   `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
+  `jurisdiction_coverage.csv` has population rows sharing the bare,…
   `jurisdiction_coverage.csv`'s shared write helper still uses a…
   A tenant with no video content never runs the identity conflict…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
@@ -1657,6 +1660,13 @@ of human step they need.
   - **Constraint**: run it on the drip Mac, one drip per office connection -- don't run it here or from any other machine sharing this office's connection.
   - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11; WO-295, 2026-09-12.
 
+- **[HUMAN] 310 real school-district YouTube/Vimeo leads from the WO-292 pilot need the drip Mac, not this one -- including 3 already resolved once, by accident, before the "no YouTube calls" instruction was caught.**
+  - **Issue**: WO-292 (2026-09-12, school-district pilot) found 310 real YouTube/Vimeo links on 1,000 school-district homepages, of which 58 governments' links cleared a full name+state+fingerprint platform confirmation -- 55 are bare channel links (`/@handle`, `/c/...`, a legacy username, or `/channel/UC...`), which this WO did not scan (per this repo's YouTube-drip-ownership convention). 3 (Northeast School Corp IN, Holly Area SD MI, Burbank Unified SD CA) got a real `resolve()` call and real YouTube captions fetched BEFORE this WO's own brief's "make no YouTube calls" instruction was caught mid-run -- a real process deviation, disclosed rather than hidden. All 3 titles were read (not re-verified against their channel): "Northeast School Board Meeting 8-10-26" (plausible real match), "08.20.26 Regular Meeting - Board of Education" (plausible real match, found embedded on Burbank USD's own site), "WHAT THE H?" (does NOT read as a board meeting -- likely wrong video). None of the 3 were ingested.
+  - **Impact**: 310 real, name-matched leads sit unrouted; the 3 already-fetched ones represent wasted YouTube budget if the drip re-fetches them blind rather than starting from what's already known.
+  - **Next action**: `research/wo292_youtube_leads.txt` (tab-separated: domain, gov_id, name, state, url, anchor_text, position) is the drip's input, same shape as prior leads files. The last 2 lines are the 2 already-resolved (not-channel) leads, annotated with what's already known so the drip doesn't need to refetch to read the title again -- just confirm the channel and hand-check per this repo's usual rule before any ingest.
+  - **Constraint**: one drip per office connection, drip Mac only -- see MEMORY.md's "YouTube drip ownership" note.
+  - **History**: `BACKLOG_DONE.md`'s WO-292 entry; `rtr-business/research/wo292_youtube_leads.txt`, `wo292_targeted.csv`.
+
 - **[HUMAN] Sequatchie County, TN's page (id 7377) is not a real government meeting -- a personal jam session video, delete or not is Ryan's call.**
   - **Issue**: WO-242 (2026-09-11), hand-checking a suspect per-video pin, found the video behind page 7377 (`sequatchie-county-tn-2026-09-09-ed-brown-jam-session-2024`) is "Ed Brown - Jam Session 2024" on the channel "BTC Fiber" (an internet provider) -- a personal music jam session, not any government's meeting. The wrong pin that keyed it to Sequatchie County has been deleted so it can't re-fire, but the page itself already exists and isn't a real meeting of any government.
   - **Impact**: one live page shows non-meeting content under a real government's hub. Low volume (1 page), but it's exactly the kind of content this site's "only real government meetings" promise excludes.
@@ -1995,6 +2005,12 @@ of human step they need.
   - **Next action**: check whether `app/platforms/civicplus.py` or `base.py`'s `resolve_via_platform()` already has a listing-walk path some other caller (e.g. `/api/resolve` itself) uses that this WO's direct `finder.resolve()` call bypassed; if not, teach it to walk the listing's most recent entries the way `wo147_access_ladder_sweep.py`'s `find_calendar_entry_links()` does for a generic calendar page.
   - **Constraint**: only 2 real cases confirmed so far — verify against both before generalizing.
   - **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
+- **[NEEDS-AUDIT] Four more platforms' own hub/listing pages need the same drill-down CivicPlus AgendaCenter already needs (entry just above), on real school-district tenants.**
+  - **Issue**: found live 2026-09-12 (WO-292, school-district pilot) -- 14 governments cleared phase 3's full name+state+fingerprint confirmation bar, but a read-only resolve-diagnostic pass on every one found no directly resolvable video, because the confirmed URL is a hub/listing page, not a specific meeting: `lafsd.community.diligentoneplatform.com/Portal/MeetingTypeList.aspx` (CivicWeb/Diligent Community, `ValueError: Could not find an event ID in URL path: /`), `vimeo.com/channels/emeryfullboardmeeetings` (Vimeo channel/showcase, correctly raises `CalendarPageError`), `coronadousd.net/Board-of-Trustees/Board-Meetings/index.html` and 3 more Granicus-branded district pages (`ousd.org`, `manateeschools.net`, `chccs.org` -- all resolve to an informational page, `video_url=None`), `hesperiausd.org/page/board-meeting-videos` (Wistia listing page, same), plus 3 Vermont districts sharing one `thrillshare.com/events` generic events calendar (IQM2-tagged, `title='Events'`, no video).
+  - **Impact**: real coverage left on the table across 4 platforms this pilot's own population didn't need to guess at -- every one of these 14 is a confirmed, name-matched, real government meetings page, just one hop short of a resolvable video.
+  - **Next action**: same shape as the CivicPlus entry above -- for each platform, check whether `resolve_via_platform()`/the adapter already has a listing-walk it just isn't reached through (e.g. CivicWeb's `MeetingTypeList.aspx` likely links out to individual `MeetingInformation.aspx?Org=...&Id=...` entries the adapter already parses once given one), and where none exists, teach the adapter to walk the listing's most recent entry. The 3 shared Vermont `thrillshare.com/events` pages likely need a different fix entirely (that host looks like a generic school-website calendar widget, not a video platform at all -- worth checking whether it's even the right link before building a walker for it).
+  - **Constraint**: only 1-4 real cases per platform confirmed so far (see Issue) -- verify against a couple of real tenants per platform before generalizing any one walker, per this repo's "test against a real URL first" rule.
+  - **History**: `BACKLOG_DONE.md`'s WO-292 entry; `docs/investigations/passive_discovery_v2.md` (the CivicPlus precedent this generalizes); `rtr-business/research/wo292_report.csv`/`wo292_targeted.csv` for the full per-government list.
 - **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
   - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
   - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.
@@ -5864,6 +5880,33 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   worse than the current wrong value, which at least is visibly wrong
   once looked at directly.
 - **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
+
+### `jurisdiction_coverage.csv` has population rows sharing the bare, unresolvable multi-tenant host `sites.google.com` as `domain` `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-12 (WO-292) -- 5 rows in a 1,000-row
+  school-district population sample carried the literal `domain` value
+  `sites.google.com` (a Google-hosted multi-tenant site builder, not a
+  per-district host). A bare fetch of that host returns Google's own
+  generic Sites landing page, not any district's content. 4 of the 5
+  weren't even fetched (this WO's resumable per-domain dedupe treats
+  `sites.google.com` as "already done" for every row after the first),
+  and the one that was fetched returned nothing usable.
+- **Impact**: unknown scope beyond these 5, found in a 1,000-row sample
+  (0.5%) -- any government whose real Google Sites page never got its
+  full path captured into `domain` is both unresolvable as recorded AND
+  silently swallows every other row sharing the same bare host under a
+  domain-keyed resumable sweep.
+- **Next action**: search `jurisdiction_coverage.csv` for `domain ==
+  "sites.google.com"` (or any other known multi-tenant bare host) and,
+  for each, find the government's real full Google Sites URL (typically
+  `sites.google.com/<domain-or-district>/<site>/home` or a custom
+  domain) from `example_agenda_or_calendar_url`/a fresh search, moving
+  the bare host to `alternate_domains` once the real one is confirmed.
+- **Constraint**: don't treat a bare `sites.google.com` as a real,
+  fetchable domain in any future sweep's population builder -- add it
+  (and any other confirmed multi-tenant bare host) to a skip-list next
+  to the existing govAccess/Akamai CNAME check.
+- **History**: `BACKLOG_DONE.md`'s WO-292 entry.
 
 ### `jurisdiction_coverage.csv`'s shared write helper still uses a hardcoded 25,000-row floor, not the 99%-of-`HEAD` floor this repo's protocol now asks for `[NEEDS-AUDIT]`
 
