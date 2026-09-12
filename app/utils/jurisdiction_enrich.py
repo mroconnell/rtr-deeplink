@@ -1775,15 +1775,59 @@ def _table_lookup_strength(name: str) -> Optional[Tuple[str, List[str], bool]]:
     for variant in (slash_normalized, gov_stripped, combined):
         if variant != name:
             candidates.extend(_normalize_candidates(variant))
+    bare_query = name.strip().lower()
     for candidate in candidates:
         for label, table in tables:
             if candidate in table:
+                if (
+                    label == "county"
+                    and candidate == bare_query
+                    and _is_same_state_name_county_coincidence(candidate, table)
+                ):
+                    # WO-300, 2026-09-12: a bare query that IS a complete
+                    # US state (or Canadian province) name must never
+                    # validate against a county purely because that
+                    # county's own Census name, with its trailing
+                    # "County" stripped for indexing, collapses to the
+                    # same string. Real, confirmed-live case
+                    # (BACKLOG.md's WO-299 entry, `resolve_government()`
+                    # on real Utah PMN "Entity" names): "Utah Board of
+                    # Higher Education" and "Ascent Academies of Utah"
+                    # each trim/split down to bare "Utah", which then
+                    # "validates" only because Utah COUNTY's own
+                    # trailing-"County"-stripped key is also "utah" --
+                    # not because the page means the county. This is a
+                    # closed, confirmed coincidence: only four counties
+                    # nationally share their own state's exact name
+                    # (Idaho County ID, Iowa County IA, Oklahoma County
+                    # OK, Utah County UT -- confirmed against
+                    # us_counties.csv), so declining here costs nothing
+                    # for any other query and never blocks a query that
+                    # actually writes "County"/"Parish"/etc. (which
+                    # doesn't reduce to the bare candidate this checks).
+                    continue
                 return (
                     label,
                     sorted(set(table[candidate])),
                     candidate == primary_candidate,
                 )
     return None
+
+
+def _is_same_state_name_county_coincidence(
+    candidate: str, table: Dict[str, List[str]]
+) -> bool:
+    """True when `candidate` (already confirmed to be the query's own
+    bare, unstripped text, lowercased) is itself a complete US state or
+    Canadian province name, AND that same state/province is among the
+    states the county table lists for this key -- i.e. the only reason
+    it matched is that a county actually named "<That State> County"
+    happens to sit in that exact state. See the call site's own comment
+    for the real case this exists for."""
+    abbr = _STATE_NAME_TO_ABBR_LOWER.get(candidate) or _PROVINCE_NAME_TO_ABBR_LOWER.get(
+        candidate
+    )
+    return bool(abbr) and abbr.upper() in table[candidate]
 
 
 _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
@@ -1822,6 +1866,15 @@ _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
 # risking the false-positive side (see BACKLOG.md for the honest
 # accounting of what's still open).
 _MIN_BLEED_WORD_RUN = 4
+
+# WO-300, 2026-09-12: see `_looks_like_bleed()`'s own comment at the call
+# site for why this is checked separately from, and before,
+# `_ENTITY_TYPE_SUFFIX_WORDS`/`_ENTITY_TYPE_SUFFIX_PHRASES` -- those are
+# only reachable once a tail already has zero lowercase-word signal, and
+# this one specifically needs to survive a tail whose ONLY lowercase word
+# is an interior "of". Grounded in one real, confirmed case
+# (BACKLOG.md's WO-299 entry): "Academy of Sciences".
+_ENTITY_NAME_OF_SUFFIX_PHRASES = ("academy of sciences",)
 
 # Residual gap fix #2, 2026-08-17 (same investigation as
 # `_MIN_BLEED_WORD_RUN` above, found via the bleed-backfill-candidates
@@ -1917,6 +1970,18 @@ _ENTITY_TYPE_SUFFIX_WORDS = {
 _ENTITY_TYPE_SUFFIX_PHRASES = (
     "committee of adjustment",
     "committee of the whole",
+    # WO-300, 2026-09-12: "Service Area" is a real, formal special-
+    # district designation (confirmed live via WO-299's Utah PMN sweep:
+    # "Ogden Valley Parks Service Area", "Salt Lake Valley Law
+    # Enforcement Service Area", "Summit County Service Area 3" are all
+    # real, separate governments, not the county/city their name happens
+    # to start with). Without this, "Ogden Valley Parks Service Area"
+    # trimmed to bare "Ogden" -- a real, correct PLACE match on its own
+    # -- because its discarded tail "Valley Parks Service Area" has no
+    # lowercase/digit signal but also didn't end in any previously-listed
+    # suffix word, so the length-based default (assume bleed) trimmed it
+    # away.
+    "service area",
 )
 
 
@@ -2068,6 +2133,25 @@ def _looks_like_bleed(tail: str) -> bool:
     # the one real case found, per this repo's own "ground fixes in real
     # confirmed data" convention.
     if words[0].strip(".,;:").lower() == "of":
+        return False
+    # WO-300, 2026-09-12: a small, closed allowlist of real organization-
+    # name endings that use an INTERIOR (not leading) "of", checked before
+    # the general lowercase-word signal below so it doesn't have to touch
+    # that signal's existing behavior at all -- in particular Guelph's
+    # "Committee of Adjustment" and Kenora's "Committee of the Whole
+    # Agenda Thursday" (tests/test_jurisdiction_enrich.py) must keep
+    # tripping the lowercase check exactly as before, since both really
+    # are bleed. This list is deliberately narrower than that: full-
+    # phrase, end-anchored, and grounded in one real confirmed case
+    # (BACKLOG.md's WO-299 entry) -- "Utah County Academy of Sciences"'s
+    # discarded tail "Academy of Sciences" used to trip the lowercase
+    # check on its lone "of" and get treated as bleed, trimming a real
+    # charter-school-network name down to the county it happens to start
+    # with.
+    if any(
+        " ".join(w.strip(".,;:").lower() for w in words).endswith(phrase)
+        for phrase in _ENTITY_NAME_OF_SUFFIX_PHRASES
+    ):
         return False
     if any(w[0].islower() for w in words if w):
         return True

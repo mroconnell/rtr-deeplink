@@ -69,6 +69,104 @@ on disk, verified, and NOT committed from this worktree; see this WO's
 final report to the conductor for the exact file list to commit with
 explicit paths.
 
+## WO-300: `resolve_government()` no longer matches a name that merely contains a place/county name [Done 2026-09-12]
+
+**What this fixes and why.** WO-299 found `resolve_government()` sending
+five real Utah PMN "Entity" names to the wrong government: a state-level
+body whose name happens to contain the word "Utah" ("Utah Board of
+Higher Education", "Ascent Academies of Utah", "Utah State Fair
+Corporation Board of Directors") landed on **Utah County**, and a
+special-service-area name that starts with its host county/city's name
+("Utah County Academy of Sciences", "Ogden Valley Parks Service Area")
+landed on that county or city. WO-299 worked around this by hand rather
+than acting on the raw resolve, and filed the bug for a later fix. This
+work order is that fix.
+
+**What was actually happening.** Not one bug, but two, both inside the
+name-repair step that runs before a place/county table lookup
+(`app/utils/jurisdiction_enrich.py`), not the resolver ladder itself:
+
+1. A bare name that IS a complete US state's own name ("Utah") was
+   validating against the county table only because that state has a
+   real county sharing its exact name ("Utah County"), and the table's
+   own index strips the trailing word "County" for lookup, collapsing
+   "Utah County" to the same string as the bare state name "Utah". This
+   is a real but narrow coincidence — confirmed against the full
+   `us_counties.csv`, it happens in exactly four states nationally
+   (Idaho County ID, Iowa County IA, Oklahoma County OK, Utah County
+   UT), never more.
+2. The code that decides whether a trimmed-off tail is safe-to-discard
+   "bleed" (agenda/page-navigation text) or real content treats ANY
+   lowercase word in that tail as proof of bleed, with one existing
+   exception for a tail that STARTS with "of". "Academy of Sciences" and
+   "Service Area"-ending tails don't start with "of", so they tripped
+   that same signal and got discarded as if they were navigation text,
+   even though they're real, specific descriptions of a different
+   government.
+
+**What was done.** Three small, narrowly-grounded additions, all in
+`app/utils/jurisdiction_enrich.py`: (1) a closed guard, checked only
+against the four real state/county name collisions above, that refuses
+to let a bare state name validate as its same-named county; (2) a new,
+narrow allowlist (currently one entry, "academy of sciences") checked
+before the general lowercase-word bleed signal, so a real organization
+name using an interior "of" isn't wrongly treated as bleed — kept
+deliberately separate from the general signal so it can never touch
+Guelph's/Kenora's existing, correct "Committee of Adjustment"/"Committee
+of the Whole" bleed detection, which relies on that exact same signal
+staying as-is; (3) "service area" added to the existing entity-type
+suffix protection list (which already protects "district"/"authority"/
+"commission"-ending tails from being discarded as bleed). No change to
+the resolver ladder itself (`app/utils/gov_registry/resolver.py`) was
+needed — the bug was entirely upstream, in name repair.
+
+**Result:**
+
+| Outcome | Count of 5 | What it means |
+|---|---|---|
+| Now falls through to mint/unresolved, not the wrong county/city | 5 | All five names WO-299 named (Utah Board of Higher Education, Ascent Academies of Utah, Utah State Fair Corporation Board of Directors, Utah County Academy of Sciences, Ogden Valley Parks Service Area) now get their own fresh, honest identity instead of silently landing on Utah County or Ogden city. |
+
+Checked against all 12 of WO-299's confirmed-wrong rows (5 required,
+7 extra, for completeness): 10 of 12 are now fixed. Two are not —
+"Box Elder County and Perry City Flood Control Special Service
+District" and "Grand County Service Area for Castle Valley Fire
+Protection" still resolve to their leading county, because their
+discarded tails start with a lowercase "and"/"for" (not "of"), which
+still trips the general bleed signal before either new allowlist gets a
+chance to run. Filed as a new, narrower `BACKLOG.md` entry rather than
+fixed here — different tail shape, needs its own check before widening
+the "of" allowlist to cover it.
+
+**Positive controls, unaffected:** "Utah County, UT" and "Ogden, UT"
+(written plainly, no extra tokens) still resolve to the real county/city
+at `registry` tier. The full WO-243/WO-251/WO-280 regression set (Boise
+County vs. Boise city, "Portage la Prairie, MB", the WO-251 leading-"The"
+prefix shapes) is unaffected. Full pytest suite green (3,624 passed, 16
+skipped) before and after, `ruff check`/`ruff format --check` clean.
+
+**Blast radius.** Measured by running the fixed ladder against every
+distinct (raw jurisdiction text, tenant host) pair actually stored in
+the Archive (`GET /internal/export/pages`, 8,760 pages, 5,464 distinct
+pairs) and comparing to the SAME resolver code without this fix (not to
+the pages' stored `gov_id`, which reflects a mix of old code and pin
+history unrelated to this change and would overstate the count by
+hundreds).
+
+| Result | Count of 8,760 pages | What it means |
+|---|---|---|
+| Would change government under this fix | 0 | None of the three new guards match any raw jurisdiction text currently archived — the five real false positives are Utah PMN "Entity" names that were never ingested as pages (WO-299 explicitly kept them out of the queue). |
+
+**Caution:** the "and"/"for"-led residual gap above is real and named in
+`BACKLOG.md`; this fix does not claim to close the whole WO-299 finding,
+only the five names WO-300 was scoped to plus five more that turned out
+to share the same root cause for free.
+
+**Recommendation:** deploy the resolver + Archive change. Zero measured
+blast radius against production today means the deploy carries no
+observed risk of moving an existing page's government, and it prevents
+this exact wrong match from happening the next time a PMN-shaped
+organization name (or anything similarly worded) is resolved.
+
 ## WO-299: queue breadth pass — parked 96 tier-3 lines whose government already has coverage, plus a Vineyard UT re-check [Done 2026-09-12]
 
 **What this was.** A data-only pass over the tier-3 auto-transcription

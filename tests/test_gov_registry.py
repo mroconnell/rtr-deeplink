@@ -1481,6 +1481,95 @@ def test_curated_exact_match_does_not_reintroduce_the_boise_county_collision():
     assert resolve("Boise County, ID").gov_id == "us:county:16015"
 
 
+# --- WO-300: a name that merely CONTAINS a real place/county name must
+# never resolve to that place/county -- five real Utah PMN "Entity"
+# names WO-299 found wrongly matching Utah County or Ogden city, filed
+# in BACKLOG.md and fixed here. Same family as WO-251's name-repair gaps
+# and WO-280's state-code-in-name bug. -----------------------------------
+
+_WO300_FALSE_POSITIVES = [
+    # A state-level body whose name merely contains the word "Utah" --
+    # each trims/splits down to bare "Utah", which used to "validate"
+    # only because Utah COUNTY's own trailing-"County"-stripped index key
+    # is also "utah" (jurisdiction_enrich._table_lookup_strength()).
+    "Utah Board of Higher Education, UT",
+    "Ascent Academies of Utah, UT",
+    "Utah State Fair Corporation Board of Directors, UT",
+    # A real county's own literal name is a genuine PREFIX of a longer,
+    # different entity's name -- the discarded tail describes a specific
+    # different kind of body, not bleed.
+    "Utah County Academy of Sciences, UT",
+    # A special-service-area name that contains its host city's name.
+    "Ogden Valley Parks Service Area, UT",
+]
+
+
+@pytest.mark.parametrize("raw", _WO300_FALSE_POSITIVES)
+def test_name_merely_containing_a_place_name_does_not_resolve_to_it(raw):
+    match = resolve(raw)
+    # None of these five is a real registry government -- the honest
+    # outcome is a fresh mint (unverified/minted), never a match at
+    # TIER_REGISTRY on a place/county the raw text never actually names.
+    assert match.tier != resolver.TIER_REGISTRY
+    assert match.gov_id not in ("us:county:49049", "us:place:4955980")
+
+
+def test_utah_county_itself_still_resolves_registry_tier():
+    # Positive control: the real county, written plainly, must be
+    # unaffected by the WO-300 fix above.
+    match = resolve("Utah County, UT")
+    assert match.gov_id == "us:county:49049"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_ogden_itself_still_resolves_registry_tier():
+    # Positive control: the real city, written plainly, must be
+    # unaffected by the WO-300 fix above.
+    match = resolve("Ogden, UT")
+    assert match.gov_id == "us:place:4955980"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_same_state_name_county_coincidence_is_closed_not_general():
+    # Direct unit test of the new guard itself
+    # (jurisdiction_enrich._is_same_state_name_county_coincidence()):
+    # it must fire for the four real counties nationally that share
+    # their own state's exact name (Idaho County ID, Iowa County IA,
+    # Oklahoma County OK, Utah County UT -- confirmed against
+    # us_counties.csv), and must NOT fire for an unrelated state name
+    # colliding with a DIFFERENT state's same-named county (e.g.
+    # "Washington" is a real county name in ~20 states, but never in
+    # Washington state itself) or for a name that already says "County".
+    from app.utils import jurisdiction_enrich as je
+
+    def _county_hit(name):
+        hit = je._table_lookup_strength(name)
+        return hit if hit and hit[0] == "county" else None
+
+    assert _county_hit("Utah") is None
+    assert _county_hit("Idaho") is None
+    assert _county_hit("Iowa") is None
+    assert _county_hit("Oklahoma") is None
+    # A name that spells out "County" is untouched -- the guard only
+    # ever inspects the BARE, unstripped query text.
+    assert _county_hit("Utah County") is not None
+
+    # Direct unit test of the helper itself, sidestepping
+    # `_table_lookup_strength()`'s own place-before-county table order
+    # (several state names -- "Washington", "Delaware" -- also match a
+    # real PLACE first, which would return before county is ever tried):
+    # the guard fires ONLY when the query's own state IS among the
+    # matched county's states, never for an unrelated state's same-named
+    # county elsewhere.
+    washington_counties = {"washington": ["AL", "AR", "CO", "GA"]}  # never "WA"
+    assert (
+        je._is_same_state_name_county_coincidence("washington", washington_counties)
+        is False
+    )
+    utah_counties = {"utah": ["UT"]}
+    assert je._is_same_state_name_county_coincidence("utah", utah_counties) is True
+
+
 # --- WO-263: the Port of San Diego, minted on Ryan's call -------------
 
 
