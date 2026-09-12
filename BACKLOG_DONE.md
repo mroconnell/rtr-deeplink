@@ -470,6 +470,16 @@ about pin work.
 - **Verification:** queue-file guards and the full suite green; the
   drop list was built from `tenant_of()` on both sides and "real
   transcript" = an export version with segments.
+- **Follow-up, 2026-09-12 (routed from WO-197's close-out):** two
+  bare-site queue lines hand-read and dropped, not parked — neither is
+  a meeting. `https://greenfieldny.gov` (Town of Greenfield, NY): the
+  page's only media is a homepage promo, `Town-of-Greenfield-
+  Slideshow.mp4`; its boards publish agendas and minutes only.
+  `https://langhorneborough.com` (Langhorne Borough, PA): no video or
+  embed on the page at all; council agendas and minutes only. Both
+  governments are "no video found" cases for the research file, not
+  depth for later, so they do not go to the deferred file. Queue 2,249
+  → 2,247.
 - **A parked line is not rejected.** It waits behind its government's
   first meeting: the deferred file is the depth list, re-queued once the
   breadth pass has drained the queue, exactly like the long meetings
