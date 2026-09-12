@@ -1,5 +1,92 @@
 # Backlog — done
 
+## WO-233: Laserfiche WebLink studied as a meeting-video source — 20 real repositories, decision is defer [Done 2026-09-11]
+
+**What was tested, and why.** Ryan asked for a look at Laserfiche
+WebLink — a document system some governments use for agendas and
+minutes — to see if it is also a real source of meeting video. The
+reason to check: Jefferson County, WA already had one real example, a
+Board of Commissioners meeting stored as a Zoom recording (an MP4
+file) plus a real caption file (a WebVTT file), sitting inside a
+Laserfiche folder. The question was whether that was a one-off or a
+real, repeatable pattern worth building a reader for.
+
+This WO opened 20 real Laserfiche repositories by hand — one request
+at a time, a real pause between each, never signing in anywhere. That
+list included Port Arthur TX, Aiken SC, and Mebane NC (named directly),
+plus 17 more, both the kind a government runs itself (a "WebLink" or
+"WeblinkExternal" website) and the kind Laserfiche runs centrally for
+many governments at once (`portal.laserfiche.com`).
+
+**How the video request was captured.** Laserfiche's own web page
+builds one specific request to list a folder's contents. That request
+is not guessable — trying reasonable-looking versions of it failed.
+Reading the exact page code the site itself serves showed the real
+request line for line. Once captured, a plain command-line tool (no
+browser, no login, no cookie) could send that same request and get the
+same real answer back. That same plain tool could also download the
+actual video file directly — no special access token needed at all,
+contrary to what we expected going in. Only the small in-page video
+player (not the download) needed a real browser session; the file
+itself did not.
+
+**Result — what each of the 20 repositories held.**
+
+| Result | Count of 20 | What it means |
+|---|---|---|
+| Real meeting video found | 1 | Jefferson County, WA — the MP4 and the caption file are both real and downloadable with no login |
+| Documents only, no video anywhere | 8 | Port Arthur TX, Mebane NC, Wheat Ridge CO, Deschutes County OR, Monticello MN, Spokane Valley WA, one Laserfiche-run example, Lino Lakes MN |
+| Required signing in (we never tried) | 7 | Northfield MN, Ramsey MN, Westlake TX, Thousand Oaks CA, Dublin OH, one shared vendor site, Laramie County WY |
+| Blocked by a "prove you're human" page (we never tried to get past it) | 1 | Aiken SC |
+| Could not be reached at all (a dead address, or a broken security certificate) | 2 | Blair NE, Owensboro KY |
+| An older version of the site whose request shape we did not solve in time | 1 | Pittsylvania County VA |
+
+Every one of these governments except Jefferson County already has its
+real meeting video recorded correctly somewhere else (YouTube,
+Granicus, Swagit, and others) — Laserfiche is where they keep their
+paperwork, not their video.
+
+**Caution.** More than a third of the self-run Laserfiche sites (7 of
+20) require signing in before showing anything, which we will never do.
+And the one self-run site on an older software version used a request
+shape we could not work out in the time given — meaning even a working
+reader built today could quietly fail on a real government running
+older software, without any error to notice.
+
+**Recommendation.** Defer. Only 1 of 20 real repositories (5%) actually
+held meeting video, and that one government's files are already fully
+understood and do not need a general-purpose reader to use — it is one
+case, not a pattern. Building a general Laserfiche reader is not
+justified by what was found. Filed in `BACKLOG.md` under "Dormant,"
+tagged to revisit only if a second real government turns up with real
+meeting video sitting inside Laserfiche.
+
+**What was fixed along the way.** Two rows in the shared research
+spreadsheet were wrong and are now corrected: Jefferson County, WA now
+correctly shows it has real video (it previously said no, which was
+wrong once this check confirmed one exists). Aiken, SC previously said
+"no platform link found," which was wrong — the link was already on
+file; the real reason nothing more was found is the "prove you're
+human" page. A separate, already-existing inconsistency on Port
+Arthur's own row (it says "no video found" even though the same row
+already lists a real video) was found but left alone, since fixing it
+needs checking whether that video is already live, which is outside
+this WO's own question — filed as its own small `BACKLOG.md` item so
+it is not lost.
+
+**Deploy status.** Nothing here touches `app/`, `archive/`, `worker/`,
+or any file that needs a deploy to take effect — this is a research-only
+WO with no code change. The research-file corrections are already live
+in `rtr-business` (a separate, non-deployed repository).
+
+**History.** `rtr-business/research/ENUMERATION_METHODS.md` §277 (full
+per-repository writeup); `rtr-business/research/wo233_repositories.csv`
+(every repository, with URLs and notes); `rtr-business/research/
+wo233_apply_to_jc.py` (the two corrections). `BACKLOG.md`'s "Dormant"
+section carries the open follow-up and the exact technical recipe
+(request shape, headers, download URL pattern) for whoever picks this
+back up if a second real example turns up.
+
 ## WO-236: restored the small real damage from 22 "lost" BACKLOG_DONE.md headings, and a CI gate so a finished-work entry can never disappear again [Done 2026-09-11]
 
 **What was done and why.** The conductor found 22 `BACKLOG_DONE.md`
