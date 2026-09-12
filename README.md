@@ -781,6 +781,21 @@ headers, per-column filters, click-a-tile-to-filter, CSV download), and
 `summary.json`. Columns and derivations live in
 `archive/utils/meeting_inventory.py`.
 
+**The unidentified-pages view (WO-256, 2026-09-12)**: `GET
+/internal/unidentified-pages` (same token gate) groups every archived page
+that has no government yet -- a blank `gov_id`, or the
+`rtr:unknown:<host>` placeholder -- by the host it came from, biggest host
+first. Each row carries the page count, the blank-versus-placeholder
+split, whether the host is one of the confirmed multi-government hosts
+(`MULTI_GOV_HOSTS`, which can only ever be pinned per video or per
+channel), which real governments already have pages on that host, the one
+government whose hub already adopts those pages under the §5 inclusion
+rule (`adopted_by`, null for a shared host or a host with two
+governments), and a few example pages to recognise it by. `?host=` narrows
+to one host, `?limit=` caps the host rows. This replaces the
+export-and-grep step every identity work order used to repeat by hand --
+see `docs/investigations/hub_architecture_audit.md` §6.
+
 **Diagnosing transcription chunk failures**: `GET
 /internal/transcription-failure-analysis?days=N` (token-gated the same
 way, reachable only at the Archive service's own base URL) groups every

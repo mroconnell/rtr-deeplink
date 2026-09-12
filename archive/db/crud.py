@@ -11221,3 +11221,151 @@ async def get_meeting_inventory_summary() -> dict:
     async with async_session() as session:
         row = (await session.execute(stmt)).one()
     return dict(row._mapping)
+
+
+# How many example pages one host's row carries. Enough to recognise the
+# government by eye (a title and a URL are usually all it takes) without
+# turning a 126-host answer into a 418-row dump.
+UNIDENTIFIED_EXAMPLES_PER_HOST = 5
+
+
+async def list_unidentified_pages(host: Optional[str] = None, limit: int = 200) -> dict:
+    """Every archived page with no government yet, grouped by the host
+    it came from -- WO-256, the audit's §6, recommendation A restricted to
+    internal use.
+
+    **Why by host.** This is the exact shape of the job it exists for.
+    Every identity work order so far (WO-209, 210, 214, 215, 221, and the
+    audit itself) started by pulling `GET /internal/export/pages` and
+    grepping it, then worked host by host, because a host is what a pin is
+    written against. 418 of 8,222 pages had no government on 2026-09-11,
+    across 126 hosts; 27% of them were on the four confirmed
+    multi-government hosts and need a per-video or per-channel pin, and
+    the rest were mostly single-government Cablecast/Swagit/Castus hosts
+    with 1-3 pages each -- a same-day pin away from being fully keyed.
+    Sorting by page count puts the biggest wins first.
+
+    **Deliberately internal and not a `/j/` page.** A public per-host page
+    would be 126 thin, near-duplicate pages all saying "we don't know
+    whose meeting this is" -- exactly the thin-content pattern
+    `STATE_HUB_PAGES.md` §1 diagnosed Google penalising these hubs for.
+    The reader-facing answer stays what it is today: no public page for a
+    video until a real `gov_id` exists.
+
+    Every field is stored, never inferred. `already_keyed_governments` is
+    the set of real `gov_id`s that already have pages on this host, and
+    `adopted_by` is the one the §5 inclusion rule actually applies --
+    populated only for a host with exactly one such government that is not
+    a `MULTI_GOV_HOSTS` host, which is the same answer `/j/` renders from.
+    """
+    limit = max(1, min(limit, 500))
+    wanted_host = (host or "").strip().lower() or None
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.date,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.gov_id,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.video_url,
+                )
+                .where(
+                    or_(
+                        MeetingPage.gov_id.is_(None),
+                        MeetingPage.gov_id == "",
+                        MeetingPage.gov_id.like("rtr:unknown:%"),
+                    )
+                )
+                .order_by(MeetingPage.id.asc())
+            )
+        ).all()
+
+        buckets: dict[str, dict] = {}
+        for (
+            page_id,
+            slug,
+            title,
+            date,
+            jurisdiction,
+            gov_id,
+            platform,
+            url,
+            video_url,
+        ) in rows:
+            page_host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+            if wanted_host and page_host != wanted_host:
+                continue
+            b = buckets.setdefault(
+                page_host,
+                {
+                    "host": page_host,
+                    "pages": 0,
+                    "blank_gov_id": 0,
+                    "placeholder_gov_id": 0,
+                    "multi_government_host": is_multi_gov_host(page_host),
+                    "already_keyed_governments": [],
+                    "adopted_by": None,
+                    "examples": [],
+                },
+            )
+            b["pages"] += 1
+            if gov_id:
+                b["placeholder_gov_id"] += 1
+            else:
+                b["blank_gov_id"] += 1
+            if len(b["examples"]) < UNIDENTIFIED_EXAMPLES_PER_HOST:
+                b["examples"].append(
+                    {
+                        "id": page_id,
+                        "slug": slug,
+                        "title": title,
+                        "date": date,
+                        "jurisdiction": jurisdiction,
+                        "gov_id": gov_id,
+                        "platform": platform,
+                        "source_url": url,
+                        "video_url": video_url,
+                    }
+                )
+
+        hosts = {h for h in buckets if h}
+        if hosts:
+            keyed = (
+                await session.execute(
+                    select(MeetingPage.gov_id, MeetingPage.source_url_normalized).where(
+                        MeetingPage.gov_id.is_not(None),
+                        MeetingPage.gov_id != "",
+                        ~MeetingPage.gov_id.like("rtr:unknown:%"),
+                        _host_url_condition(hosts),
+                    )
+                )
+            ).all()
+            for gov_id, url in keyed:
+                page_host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+                b = buckets.get(page_host)
+                if b is not None and gov_id not in b["already_keyed_governments"]:
+                    b["already_keyed_governments"].append(gov_id)
+
+    for b in buckets.values():
+        b["already_keyed_governments"].sort()
+        if len(b["already_keyed_governments"]) == 1 and not b["multi_government_host"]:
+            b["adopted_by"] = b["already_keyed_governments"][0]
+
+    ordered = sorted(
+        buckets.values(), key=lambda b: (-b["pages"], b["host"] or "\uffff")
+    )
+    return {
+        "total_pages": sum(b["pages"] for b in ordered),
+        "total_hosts": len(ordered),
+        "on_multi_government_hosts": sum(
+            b["pages"] for b in ordered if b["multi_government_host"]
+        ),
+        "already_adopted_by_a_hub": sum(b["pages"] for b in ordered if b["adopted_by"]),
+        "limit": limit,
+        "hosts": ordered[:limit],
+    }

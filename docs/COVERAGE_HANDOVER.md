@@ -464,7 +464,11 @@ What the 2026-09-09 sweeps established about *where video is*:
    the same export: 31 un-keyed pages gain a real hub, and four real hubs
    (Orem UT, Tooele UT, Box Elder County UT, Caledonia Township MI) stop
    showing unrelated YouTube video that matched on text alone. See
-   `STATE_HUB_PAGES.md` §6 for both designs.
+   `STATE_HUB_PAGES.md` §6 for both designs. **And the export-and-grep
+   step is gone**: `GET /internal/unidentified-pages` groups every page
+   with no government by the host it came from, biggest first, saying for
+   each whether the host is multi-government, which real governments are
+   already on it, and whether a hub already adopts those pages.
 
 ## 6. What is honest but unfinished
 
