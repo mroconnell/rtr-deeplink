@@ -556,6 +556,22 @@ finish entry.
   instead of trusting the one stored at ingest (WO-229, 2026-09-11), but
   whether BoxCast actually re-signs with a later expiry once the current
   one passes is unconfirmed — see `BACKLOG.md`'s matching `[WAIT]` entry.
+- **WO-264's overnight sweep of the 10,016 governments under 5,000
+  people (2026-09-11/12) covers 1,894 of them; the remaining ~8,100 go
+  to the Platforms conductor's own passive-discovery pipeline (WO-282/
+  283), a different method, not a resume of this one.** The close-out's
+  hand-read gate found two real, generalizable gaps worth knowing about
+  before the next channel-scanning sweep: a French-language meeting
+  vocabulary ("séance"/"conseil") that an English-only keyword check
+  silently treats as off-mission (six real Quebec municipalities'
+  channels were initially miscounted this way; the *production*
+  `app/platforms/youtube_channel.py` already checks a channel's
+  `/streams` tab, not just `/videos` — a gap that only existed in this
+  close-out's own one-off checker script, already fixed by hand) — and
+  a real confirmed gap in the codebase itself: no adapter can pull a
+  playable video from a Google Drive share link, even when the file's
+  own title says "City Council Meeting" (Kemmerer city, WY; see
+  `BACKLOG.md`'s `[NEEDS-AUDIT]` entry).
 
 ## 7. Where to look first next time
 
