@@ -17,7 +17,9 @@ several entries, and that real, if tiny, loss is what this guards
 against going forward.
 
 What it checks (BACKLOG_DONE.md, blocking): every distinct `## ` heading
-present in BACKLOG_DONE.md at a BASE ref must still be present -- at
+present in BACKLOG_DONE.md at the merge-base of a BASE ref and the branch
+being checked (see WO-269 in the Usage section below for why it's the
+merge-base and not the BASE ref's own tip) must still be present -- at
 least once -- in the current working tree's BACKLOG_DONE.md. This is a
 plain set (existence) comparison, deliberately not a multiset/count one.
 BACKLOG_DONE.md has, at least once, genuinely had a whole 21-entry block
@@ -34,16 +36,18 @@ after the fact) is never flagged, only a heading that vanished outright.
 One known, accepted false-positive shape: an entry whose heading TEXT
 itself is later rewritten in place (e.g. a "priority bands, N of M,
 continuing" heading updated to "all M, done" once a sweep finishes) will
-show as "missing" its old exact text against a base ref old enough to
-predate the rewrite -- CI only ever compares against the immediately
-preceding commit/PR base, so this is not a practical risk in normal use,
-only a caveat for anyone re-running this against an old, arbitrary
-snapshot by hand.
+show as "missing" its old exact text against a comparison point old
+enough to predate the rewrite -- CI only ever compares against the
+merge-base with the branch's own fork point (or, on a direct push to
+main, the immediately preceding commit), so this is not a practical risk
+in normal use, only a caveat for anyone re-running this against an old,
+arbitrary snapshot by hand.
 
 What it checks (BACKLOG.md, warning only): a top-level entry (a
 `### ...` heading, or a `- **[TAG] ...` bullet -- the same shapes
 `scripts/build_backlog_toc.py` already recognizes as entries) present at
-the BASE ref but missing from the working tree is printed as a WARNING,
+that same merge-base but missing from the working tree is printed as a
+WARNING,
 never a failure, UNLESS its title also appears as a `## ` heading
 anywhere in the working tree's BACKLOG_DONE.md (the normal, healthy way
 an open entry leaves BACKLOG.md: the work got done and the entry moved).
@@ -60,11 +64,26 @@ entries did.
 
 Usage:
     python3 scripts/check_backlog_done_headings.py [--base-ref REF]
-        [--done-file PATH] [--backlog-file PATH] [--repo-root PATH]
+        [--head-ref REF] [--done-file PATH] [--backlog-file PATH]
+        [--repo-root PATH]
 
 REF defaults to origin/main. Exits non-zero (and lists every missing
 BACKLOG_DONE.md heading) only for a BACKLOG_DONE.md loss; a BACKLOG.md-only
 loss prints a warning to stderr and still exits zero.
+
+WO-269 (2026-09-12): the comparison point is the merge-base of
+--base-ref and --head-ref (HEAD by default), never --base-ref's own tip.
+Under a parallel wave, origin/main gains a BACKLOG_DONE.md heading every
+few minutes while several PRs sit open; comparing against its tip meant
+any PR whose branch point predated one of those new headings failed even
+though it never touched the file (hit at least four times on 2026-09-12,
+including #1027 twice and re-rebases of WO-241/WO-251 for the same
+reason). The check's actual purpose -- catching a PR that DROPS a
+heading it inherited -- only needs the state of --base-ref at the point
+the branch forked from it, which is exactly what the merge-base is. If
+git can't compute one (e.g. a shallow clone with too little fetched
+history, or two refs with no common history at all), this falls back to
+--base-ref's tip -- the previous behaviour -- rather than erroring out.
 """
 
 from __future__ import annotations
@@ -100,6 +119,40 @@ def git_show(ref: str, path: str, repo_root: Path = REPO_ROOT) -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout
+
+
+def resolve_merge_base(
+    base_ref: str, head_ref: str, repo_root: Path = REPO_ROOT
+) -> str:
+    """Return the merge-base commit of `base_ref` and `head_ref`.
+
+    WO-269: this is the fix for comparing against `base_ref`'s own tip,
+    which made the check fail PRs that never touched BACKLOG_DONE.md --
+    under a parallel wave, `origin/main` gains a heading every few
+    minutes while PRs sit open, so any branch point predating one of
+    those failed even though it inherited nothing missing. The merge-base
+    is the state of `base_ref` at the point `head_ref`'s branch actually
+    forked from it, which is what the check's heading-loss guarantee
+    needs -- a heading `base_ref` gained *after* that fork point was never
+    the branch's to lose.
+
+    Falls back to `base_ref` itself (the previous, tip-based behaviour)
+    if git can't compute a merge-base at all -- e.g. a shallow clone that
+    didn't fetch enough shared history, or two refs with no common
+    history. A script that hard-failed here would itself become the
+    thing blocking an unrelated PR, same reasoning as `git_show`'s
+    None-on-missing-ref handling above.
+    """
+    result = subprocess.run(
+        ["git", "merge-base", base_ref, head_ref],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    merge_base = result.stdout.strip()
+    if result.returncode != 0 or not merge_base:
+        return base_ref
+    return merge_base
 
 
 def done_headings(text: str) -> list[str]:
@@ -152,6 +205,15 @@ def main() -> int:
         help="git ref to compare against (default: origin/main)",
     )
     ap.add_argument(
+        "--head-ref",
+        default="HEAD",
+        help=(
+            "git ref for the branch being checked -- the comparison point "
+            "is this ref's merge-base with --base-ref, not --base-ref's own "
+            "tip (WO-269; default: HEAD)"
+        ),
+    )
+    ap.add_argument(
         "--done-file",
         default="BACKLOG_DONE.md",
         help="path (repo-relative) to the done-log file",
@@ -169,11 +231,19 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    base_done = git_show(args.base_ref, args.done_file, args.repo_root)
+    effective_base_ref = resolve_merge_base(
+        args.base_ref, args.head_ref, args.repo_root
+    )
+    print(
+        f"check_backlog_done_headings: comparing against the merge-base of "
+        f"{args.base_ref!r} and {args.head_ref!r}: {effective_base_ref}"
+    )
+
+    base_done = git_show(effective_base_ref, args.done_file, args.repo_root)
     if base_done is None:
         print(
             f"check_backlog_done_headings: could not read "
-            f"{args.base_ref}:{args.done_file} -- skipping "
+            f"{effective_base_ref}:{args.done_file} -- skipping "
             f"(nothing to compare against; a brand-new file or an "
             f"unfetched ref both land here)."
         )
@@ -189,9 +259,9 @@ def main() -> int:
         exit_code = 1
         print(
             f"BACKLOG_DONE.md is missing {len(missing_done)} heading(s) "
-            f"present at {args.base_ref} -- a finished-work entry never "
-            f"leaves this file (see CLAUDE.md). If a rebase/merge dropped "
-            f"these, restore them verbatim from git history (see "
+            f"present at {effective_base_ref} -- a finished-work entry "
+            f"never leaves this file (see CLAUDE.md). If a rebase/merge "
+            f"dropped these, restore them verbatim from git history (see "
             f"BACKLOG_DONE.md's WO-236 entry for how) rather than editing "
             f"around this check:",
             file=sys.stderr,
@@ -201,7 +271,7 @@ def main() -> int:
 
     # BACKLOG.md: warning-only. See module docstring for why this one
     # never fails the build.
-    base_backlog = git_show(args.base_ref, args.backlog_file, args.repo_root)
+    base_backlog = git_show(effective_base_ref, args.backlog_file, args.repo_root)
     if base_backlog is not None:
         working_backlog_path = args.repo_root / args.backlog_file
         working_backlog = working_backlog_path.read_text(encoding="utf-8")
@@ -221,10 +291,10 @@ def main() -> int:
         if genuinely_missing:
             print(
                 f"WARNING: {len(genuinely_missing)} BACKLOG.md entry title(s) "
-                f"present at {args.base_ref} are gone from the working tree "
-                f"and don't match a BACKLOG_DONE.md heading. This is not a "
-                f"failure -- an open entry legitimately gets rewritten as "
-                f"work narrows (see CLAUDE.md's overwrite-don't-append "
+                f"present at {effective_base_ref} are gone from the working "
+                f"tree and don't match a BACKLOG_DONE.md heading. This is "
+                f"not a failure -- an open entry legitimately gets rewritten "
+                f"as work narrows (see CLAUDE.md's overwrite-don't-append "
                 f"bullet) -- but if one of these was actually dropped rather "
                 f"than rewritten, move it to BACKLOG_DONE.md or say so in "
                 f"the PR body:",
