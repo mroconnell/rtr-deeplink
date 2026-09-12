@@ -173,7 +173,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (159)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (160)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
@@ -227,7 +227,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (159)
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
-  [NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
+  [NEEDS-AUDIT] No adapter for a meeting recording pointing at a
+  [NEEDS-AUDIT] `[EASY]` BoxCast has a real, working adapter
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
@@ -2871,34 +2872,76 @@ of human step they need.
     captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
     this is the first record of it.
 
-- **[NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
-  a general-purpose file host (Google Drive, SoundCloud) — 28 real,
-  confirmed-populated examples from one Utah scan.**
+- **[NEEDS-AUDIT] No adapter for a meeting recording pointing at a
+  general-purpose file host (Google Drive, Dropbox, SoundCloud) — 87
+  real, confirmed-populated examples now, from two independent sources.**
   - **Issue**: `utah_pmn.py` (see `BACKLOG_DONE.md`'s entry on that
-    adapter) resolves a same-domain uploaded file directly, but a
-    populated "Audio File Location" pointing to `drive.google.com` (21
-    real examples) or `soundcloud.com` (7) isn't a directly-fetchable
-    media URL the way a bare `utah.gov/pmn/files/*` file is — a Drive
-    share link needs its own redirect-chain/direct-download investigation
-    first.
-  - **Impact**: 28 real, confirmed-populated links currently unresolvable
-    — a small slice on their own, but the same pattern ("just put the
-    recording on Drive") is plausible nationwide for
-    smallest/least-resourced governments generally, not just Utah's PMN
-    notices specifically.
+    adapter) resolves a same-domain uploaded file directly, but a link
+    pointing to `drive.google.com`, `dropbox.com`, or `soundcloud.com`
+    isn't a directly-fetchable media URL the way a bare
+    `utah.gov/pmn/files/*` file is — a Drive/Dropbox share link needs its
+    own redirect-chain/direct-download investigation first. Originally
+    found narrowly (Utah's PMN "Audio File Location" field, 28 examples:
+    21 Drive, 7 SoundCloud). WO-197 (2026-09-11) confirmed this is not a
+    Utah/PMN-specific pattern: scanning 2,471 government listing pages
+    nationwide for direct video/audio found 59 more real `drive.google.
+    com` links and 11 real `dropbox.com` links (70 more, neither
+    SoundCloud), each one a link found directly on a government's own
+    agenda/meeting listing page, not a PMN notice.
+  - **Impact**: 87 real, confirmed-populated links currently
+    unresolvable — a real, recurring pattern ("just put the recording on
+    a personal cloud drive") across the smallest/least-resourced
+    governments generally, not one state or one notice schema. See
+    `~/Documents/rtr-business/research/wo197_report.csv` (`media_kind`
+    `gdrive`/`dropbox`) for the WO-197 links.
   - **Next action**: per this project's own rule against building an
     adapter without a live sample, fetch a handful of the real Drive/
-    SoundCloud links logged in `rtr-business/research/
-    pmn_utah_pilot_log.csv` (`skipped` outcome, reason containing "isn't
-    on a known video/audio platform") to confirm they're actually
-    fetchable server-side (Drive's sharing-link redirect chain,
-    direct-download vs. preview-only gating) before writing anything.
-  - **Constraint**: don't assume every Drive/SoundCloud link is a full
-    meeting recording without checking — a "Public Information Handout"
-    or similar could plausibly also live on Drive.
+    Dropbox/SoundCloud links (Utah's in `rtr-business/research/
+    pmn_utah_pilot_log.csv`, `skipped` outcome, reason containing "isn't
+    on a known video/audio platform"; WO-197's in `wo197_report.csv`) to
+    confirm they're actually fetchable server-side (Drive's and
+    Dropbox's sharing-link redirect chains, direct-download vs.
+    preview-only gating) before writing anything.
+  - **Constraint**: don't assume every Drive/Dropbox/SoundCloud link is a
+    full meeting recording without checking — a "Public Information
+    Handout" or similar could plausibly also live there.
   - **History**: found 2026-09-08 running the Utah PMN pilot; the
     same-domain-file half of this entry shipped 2026-09-09, see
-    `BACKLOG_DONE.md`.
+    `BACKLOG_DONE.md`. Widened by WO-197 (2026-09-11, `BACKLOG_DONE.md`)
+    from a Utah/PMN-specific gap to a confirmed general one.
+
+- **[NEEDS-AUDIT] `[EASY]` BoxCast has a real, working adapter
+  (`app/platforms/boxcast.py`) that is only reachable through ProudCity's
+  own delegation — a `boxcast.tv` link found on any OTHER kind of page has
+  no path to it.**
+  - **Issue**: `app/platforms/base.py::detect_platform()` and
+    `register_all_finders()` never register `"boxcast"` as a general
+    platform — `BoxCastAssetFinder` is only ever invoked directly by
+    `proudcity.py` when it recognizes ProudCity's own
+    `video_style === 'external'` channel-link shape. A `boxcast.tv`
+    channel link found on a non-ProudCity page (a WordPress site, a
+    plain HTML page) fingerprints as `"unknown"` to `detect_platform()`
+    and falls through to `GenericFallbackAssetFinder`, which has no
+    BoxCast-specific handling, so `get_finder("boxcast")` raises
+    `UnsupportedPlatformError` for it.
+  - **Impact**: small today (WO-197's 2,471-government listing-page scan
+    found exactly 1 real `boxcast.tv` link outside a ProudCity page), but
+    real and confirmed, and BoxCast's own adapter already does the hard
+    part (the channel-to-broadcast date-matching, a real unauthenticated
+    REST API) — this is a wiring gap, not a missing capability.
+  - **Next action**: register `"boxcast"` in `detect_platform()` for a
+    bare `boxcast.tv/channel/{id}` URL and in `register_all_finders()`,
+    reusing `BoxCastAssetFinder` as-is; confirm it still needs a known
+    meeting date to pick the right broadcast (same shape as
+    `youtube_channel.py`) and that a general (non-ProudCity) caller can
+    supply one.
+  - **Constraint**: don't just add the domain to `detect_platform()`
+    without checking `BoxCastAssetFinder`'s date-matching still has a
+    date to match against outside ProudCity's own calling convention —
+    see that file's own module docstring.
+  - **History**: BoxCast adapter built 2026-08-29 for ProudCity
+    (`BACKLOG_DONE.md`); the wiring gap found by WO-197 (2026-09-11,
+    `BACKLOG_DONE.md`).
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**

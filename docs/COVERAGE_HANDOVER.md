@@ -380,6 +380,29 @@ What the 2026-09-09 sweeps established about *where video is*:
 | Counties | Limited by stale data, not code: hundreds of NACo domains no longer resolve; several large counties sit behind web firewalls. | Fix the domain list before spending more resolver time. |
 | Two-hop and headless candidates | Once a platform is found, roughly half convert to a video page or a queue entry. | Discovery is the bottleneck, not resolution. |
 
+**Scanning a listing page itself for media, once no platform link was
+found (WO-197, 2026-09-11).** For the 2,471 governments left over from a
+listing-page sweep with no recognised platform, a cheap follow-up works:
+scan the page for a direct video/audio link or a link to YouTube/Vimeo/
+Google Drive/Dropbox/CivicWeb, follow one hop to a same-domain
+meeting-shaped link if the page itself has nothing, then check for a
+working RSS/Atom/ICS feed as a last resort. This found 29 real videos (18
+ingested, 11 queued) out of 2,471 — a small direct yield, but each one is
+a government no other method had reached. **The feed check is a lead,
+not a result**: it only confirms a feed URL exists and answers over
+HTTP — it never checks whether the feed lists meetings or links to
+video. 1,443 of the 2,471 (58%) had a feed answer, and 93% of those are
+plain WordPress `/feed` URLs (the site's generic content feed, not
+necessarily a meetings calendar). Worth a dedicated feed-parsing method
+later; not worth counting as coverage today. Every real video hit still
+needs the same hand-check as any other new source — this pass found 2
+wrong-government pages (a video for a completely different, unrelated
+government sitting on the right government's own listing page) and 1
+off-mission page (a real video, but a regional webinar, not a meeting of
+the government it was filed under), all fixed after the fact. Full
+write-up: `ENUMERATION_METHODS.md` §286; `BACKLOG_DONE.md`'s WO-197
+finish entry.
+
 ## 5. The breakthroughs worth carrying forward
 
 1. **Headless browsing recovers JavaScript-rendered navigation, not just

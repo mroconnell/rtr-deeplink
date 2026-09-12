@@ -5234,3 +5234,72 @@ https://www.youtube.com/watch?v=6OrJYiqt6B0,youtube,yt-dlp-metadata,293.00,2024-
 https://www.youtube.com/watch?v=R3pR5eQqY8A,youtube,yt-dlp-metadata,584.00,2026-09-02,18728354,1,accept,,1.68,2026-09-12T04:21:45+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=xFZct0HNN6M,youtube,yt-dlp-metadata,4336.00,2025-10-21,161583458,1,accept,,1.78,2026-09-12T04:21:50+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=wjKHB-YA_6I,youtube,yt-dlp-metadata,800.00,2026-07-14,25852576,1,accept,,1.72,2026-09-12T04:21:56+00:00,bulk_ingest,0
+https://newtonia.portal.civicclerk.com/event/831/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.newtongov.org/CivicMedia?VID=422,0.00,2026-09-12T03:13:37+00:00,wo230,0
+https://byramms.portal.civicclerk.com/event/1040/media,civicclerk,head+ffprobe,8212.45,2026-09-11,5851159935,1,accept,,3.85,2026-09-12T03:16:43+00:00,wo230,0
+https://www.youtube.com/watch?v=4kFzDylX1vQ,youtube,yt-dlp-metadata,4177.00,2024-10-10,138115898,1,accept,,2.08,2026-09-12T03:18:31+00:00,wo230,0
+https://www.youtube.com/watch?v=1IpMzuIvLz0,youtube,yt-dlp-metadata,6527.00,2026-05-26,210613080,1,accept,,2.05,2026-09-12T03:18:59+00:00,wo230,0
+https://www.youtube.com/watch?v=czPIIiqyGAQ,youtube,yt-dlp-metadata,458.00,2025-08-14,19906835,0,accept,,2.13,2026-09-12T03:19:28+00:00,wo230,0
+https://www.youtube.com/watch?v=Td4or5VSuZQ,youtube,yt-dlp-metadata,1600.00,2025-12-11,43136324,1,accept,,1.76,2026-09-12T03:19:51+00:00,wo230,0
+https://www.youtube.com/watch?v=5MAk8rdFoXE,youtube,yt-dlp-metadata,5577.00,2025-02-04,186850249,1,accept,,1.83,2026-09-12T03:20:10+00:00,wo230,0
+https://www.youtube.com/watch?v=Z_GsSDJogls,youtube,yt-dlp-metadata,8020.00,2026-09-09,160655627,1,accept,,2.22,2026-09-12T03:20:47+00:00,wo230,0
+https://www.youtube.com/embed/eAQusyLISpY?feature=oembed,youtube,yt-dlp-metadata,1238.00,2026-08-24,42954020,1,accept,,2.04,2026-09-12T04:09:42+00:00,,0
+https://stjosephcountymi.gov/,unknown,head+ffprobe,11.70,2026-03-19,3838983,0,reject-short,duration 11.7s is below the 60s meeting-plausibility floor,1.30,2026-09-11T08:52:13+00:00,,0
+https://clintoncounty-ia.gov,unknown,head+ffprobe,20.30,2022-07-13,19880827,0,reject-short,duration 20.3s is below the 60s meeting-plausibility floor,0.72,2026-09-11T08:52:26+00:00,,0
+https://www.youtube.com/watch?v=U1EPNdUJ1n4,youtube,yt-dlp-metadata,11229.00,2024-03-08,586104632,1,accept,,2.07,2026-09-11T08:53:03+00:00,bulk_ingest,0
+https://boonecounty.iowa.gov,unknown,head+ffprobe,23.23,2022-10-27,23971652,0,reject-short,duration 23.2s is below the 60s meeting-plausibility floor,0.61,2026-09-11T08:53:23+00:00,,0
+https://www.jonescountyiowa.gov/,unknown,head+ffprobe,20.03,2025-10-07,51123706,0,reject-short,duration 20.0s is below the 60s meeting-plausibility floor,0.93,2026-09-11T08:53:26+00:00,,0
+https://www.youtube.com/watch?v=IZeep4XuOtY,youtube,yt-dlp-metadata,18.00,2023-09-25,1075368,0,reject-short,duration 18.0s is below the 60s meeting-plausibility floor,1.62,2026-09-11T08:53:31+00:00,,0
+https://cedarcounty.iowa.gov,unknown,head+ffprobe,30.43,2021-11-30,26722978,0,reject-short,duration 30.4s is below the 60s meeting-plausibility floor,0.75,2026-09-11T08:53:35+00:00,,0
+https://hancockcountyia.gov,unknown,head+ffprobe,24.73,2025-03-28,63584103,0,reject-short,duration 24.7s is below the 60s meeting-plausibility floor,1.77,2026-09-11T08:53:57+00:00,,0
+https://mindenla.portal.civicclerk.com/event/113/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.70,2026-09-11T08:54:09+00:00,,0
+https://mindenla.portal.civicclerk.com/event/126/media,civicclerk,head+ffprobe,2103.14,2026-09-08,364598910,1,accept,,0.83,2026-09-11T08:54:09+00:00,,1
+https://worthcountyiowa.gov,unknown,head+ffprobe,9.20,2022-07-04,9062795,0,reject-short,duration 9.2s is below the 60s meeting-plausibility floor,1.64,2026-09-11T08:54:23+00:00,,0
+https://mccookcountysd.gov/?s=agenda,unknown,head+ffprobe,10.03,2025-08-27,8370552,0,reject-short,duration 10.0s is below the 60s meeting-plausibility floor,0.81,2026-09-11T08:54:28+00:00,,0
+https://www.youtube.com/embed/u08SYlpfLwU?autoplay=0&controls=1&enablejsapi=1&widgetid=1,youtube,yt-dlp-metadata,2155.00,2026-07-15,73160656,1,accept,,2.14,2026-09-11T08:54:43+00:00,bulk_ingest,0
+https://www.tallasseeal.gov/,unknown,head+ffprobe,33.83,2018-11-19,33280236,0,reject-short,duration 33.8s is below the 60s meeting-plausibility floor,1.16,2026-09-11T08:54:47+00:00,,0
+https://www.westreadingborough.com/,unknown,head+ffprobe,6.93,2025-10-31,3044536,0,reject-short,duration 6.9s is below the 60s meeting-plausibility floor,0.34,2026-09-11T08:54:51+00:00,,0
+https://www.youtube.com/watch?v=0SbyVUHd-Nc,youtube,yt-dlp-metadata,2879.00,2026-08-19,76501822,1,accept,,1.69,2026-09-11T08:55:07+00:00,bulk_ingest,0
+https://cayugaheights.gov/village-government/board-of-trustees/,unknown,head+ffprobe,2398.68,2025-10-02,485067736,1,accept,,0.46,2026-09-11T08:55:16+00:00,,1
+https://www.longprairie.net/,unknown,head+ffprobe,39.60,2024-07-09,15925031,0,reject-short,duration 39.6s is below the 60s meeting-plausibility floor,0.97,2026-09-11T08:55:22+00:00,,0
+https://auburn.ne.gov,unknown,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.38,2026-09-11T08:56:01+00:00,,0
+https://townofmaurice.gov,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.21,2026-09-11T08:56:17+00:00,,0
+https://vimeo.com/416357505,vimeo,vimeo-oembed,,,,0,reject-dead,"Vimeo oEmbed returned nothing -- likely a dead, private, or removed video",0.14,2026-09-11T08:56:27+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/872229.html,utah_pmn,head+ffprobe,21811.23,2023-11-16,174493911,1,flag-long,"duration 6.06h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",0.44,2026-09-11T08:56:39+00:00,,1
+https://www.galvail.gov/,youtube,yt-dlp-metadata,287.00,2022-06-15,17947894,0,accept,,1.81,2026-09-11T08:56:48+00:00,bulk_ingest,0
+https://www.tooltexas.org/,unknown,head+ffprobe,27.96,2026-01-14,15341017,0,reject-short,duration 28.0s is below the 60s meeting-plausibility floor,0.57,2026-09-11T08:56:51+00:00,,0
+https://www.youtube.com/embed/S7SLep244ss?feature=oembed,youtube,yt-dlp-metadata,1810.00,2018-07-01,37372129,1,accept,,1.92,2026-09-11T08:57:05+00:00,,1
+https://www.youtube.com/watch?v=KAlL7fzsxEg,youtube,yt-dlp-metadata,13637.00,2025-12-03,566249771,1,accept,,1.74,2026-09-11T08:57:14+00:00,bulk_ingest,0
+https://mygatecity.com,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.11,2026-09-11T08:57:27+00:00,,0
+https://langhorneborough.com,unknown,head+ffprobe,70.27,2025-11-07,878559364,0,accept,,2.59,2026-09-11T08:57:46+00:00,,1
+https://www.cityofemory.com/,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 404,0.67,2026-09-11T08:57:57+00:00,,0
+https://townofbentley.ca,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.11,2026-09-11T08:58:12+00:00,,0
+https://player.vimeo.com/video/1127701338?badge=0&autopause=0&player_id=0&app_id=58479,vimeo,vimeo-oembed,4621.00,2025-10-15,,1,accept,,0.29,2026-09-11T08:58:33+00:00,bulk_ingest,0
+https://byrdstowntn.gov,unknown,head+ffprobe,18.00,,1161314,0,reject-short,duration 18.0s is below the 60s meeting-plausibility floor,0.92,2026-09-11T08:58:42+00:00,,0
+https://beiseker.com,unknown,head+ffprobe,10.00,2022-05-12,12709572,0,reject-short,duration 10.0s is below the 60s meeting-plausibility floor,0.66,2026-09-11T08:58:49+00:00,,0
+https://marblecliff.org,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.12,2026-09-11T08:59:00+00:00,,0
+https://www.youtube.com/embed/qGbzqb6Qj1I?feature=oembed&autoplay=1,youtube,yt-dlp-metadata,5885.00,2026-04-03,437197204,1,accept,,1.53,2026-09-11T08:59:05+00:00,bulk_ingest,0
+https://olantasc.com,unknown,head+ffprobe,68.23,2022-12-13,74363524,0,accept,,1.57,2026-09-11T08:59:20+00:00,,1
+https://vimeo.com/1221566195/15dd591d05,vimeo,vimeo-oembed,1234.00,2026-08-26,,1,accept,,0.22,2026-09-11T08:59:33+00:00,bulk_ingest,0
+https://mdacadia.ab.ca,unknown,head+ffprobe,7.94,2025-09-11,5757951,0,reject-short,duration 7.9s is below the 60s meeting-plausibility floor,0.50,2026-09-11T08:59:36+00:00,,0
+https://cityofwoodlandmn.gov,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.36,2026-09-11T08:59:50+00:00,,0
+https://lewisberryborough.org/residents/meeting-agendas-and-minutes/,unknown,head+ffprobe,4683.20,2022-06-22,64448638,1,accept,,2.67,2026-09-11T08:59:55+00:00,,1
+https://morell.ca,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/6uzfNitWPi0,0.00,2026-09-11T09:00:00+00:00,,0
+https://www.youtube.com/watch?v=EzKImzjwGyM,youtube,yt-dlp-metadata,13.00,2014-11-19,961677,0,reject-short,duration 13.0s is below the 60s meeting-plausibility floor,1.85,2026-09-11T09:00:05+00:00,,0
+https://svyellowstone.ca/?s=agenda,unknown,head+ffprobe,10.00,2026-03-10,6287349,0,reject-short,duration 10.0s is below the 60s meeting-plausibility floor,0.80,2026-09-11T09:00:20+00:00,,0
+https://www.youtube.com/live/A8JtPbMX_q8?si=CvyI0QKYmzP3olcz,youtube,yt-dlp-metadata,7778.00,2026-03-23,303650444,1,accept,,1.85,2026-09-11T09:00:46+00:00,bulk_ingest,0
+https://youtu.be/BtuDT6fQLCc,youtube,yt-dlp-metadata,1081.00,2025-01-15,44690485,1,accept,,1.71,2026-09-11T09:01:00+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=o9Uhdad-M-I,youtube,yt-dlp-metadata,7474.00,2023-11-03,195197768,1,accept,,1.73,2026-09-11T09:01:09+00:00,bulk_ingest,0
+https://rumfordme.org,unknown,head+ffprobe,21.35,2021-02-15,11830715,0,reject-short,duration 21.4s is below the 60s meeting-plausibility floor,0.61,2026-09-11T09:01:12+00:00,,0
+https://williamstownma.gov/2026-elections-and-town-meeting/,unknown,head+ffprobe,1108.57,2026-04-29,355182532,1,accept,,3.44,2026-09-11T09:01:33+00:00,,1
+https://vimeo.com/495858574,vimeo,vimeo-oembed,315.00,2020-12-30,,0,accept,,0.14,2026-09-11T09:01:40+00:00,,1
+https://videoplayer.telvue.com/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/stream/537?showtabssearch=false&show_title_description_summary=false&autostart=false&schedule_view=t&fullscreen=true,telvue,telvue-page-json,,,,0,reject-dead,"TelVue duration is 0 -- a live placeholder, not an archived recording",0.31,2026-09-11T09:02:11+00:00,,0
+https://townofkirkwood.gov,unknown,head+ffprobe,54.45,2025-06-24,73120606,0,reject-short,duration 54.5s is below the 60s meeting-plausibility floor,1.20,2026-09-11T09:02:27+00:00,,0
+https://townofbeekman.gov/planning-board/,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.11,2026-09-11T09:02:34+00:00,,0
+https://greenfieldny.gov,unknown,head+ffprobe,64.40,2022-11-30,162021266,0,accept,,1.72,2026-09-11T09:03:11+00:00,,1
+https://www.youtube.com/watch?v=oTG0XWhElvE,youtube,yt-dlp-metadata,7135.00,2026-08-25,197963930,1,accept,,1.91,2026-09-11T09:03:19+00:00,bulk_ingest,0
+https://tatetownship.org/trustees-and-clerk/meeting-minutes/2025-trustee-meeting-minutes-videos/,unknown,head+ffprobe,7099.97,2025-05-14,427925397,1,accept,,1.67,2026-09-11T09:03:23+00:00,,1
+https://www.youtube.com/watch?v=eGulSgrkbA8,youtube,yt-dlp-metadata,8553.00,2026-04-30,217347831,1,accept,,1.86,2026-09-11T09:03:29+00:00,bulk_ingest,0
+https://shoholatwp.org,unknown,head+ffprobe,6.90,2026-06-20,15025512,0,reject-short,duration 6.9s is below the 60s meeting-plausibility floor,1.86,2026-09-11T09:03:36+00:00,,0
+https://www.lyndonvt.org/?page_id=18,unknown,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.86,2026-09-11T09:03:45+00:00,,0
+https://libertygrovewi.gov,unknown,head+ffprobe,1.00,2025-03-05,1777,0,reject-short,duration 1.0s is below the 60s meeting-plausibility floor,0.52,2026-09-11T09:03:51+00:00,,0
+https://mwtown.gov,unknown,head+ffprobe,55.87,2020-03-04,17386045,0,reject-short,duration 55.9s is below the 60s meeting-plausibility floor,1.02,2026-09-11T09:04:12+00:00,,0
