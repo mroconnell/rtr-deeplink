@@ -1,5 +1,36 @@
 # Backlog — done
 
+## WO-266: 274 queue lines for governments that already have a live transcript parked for depth later [Done 2026-09-12]
+
+- **Why:** Ryan asked how many of the tier-3 queue's non-YouTube tenant
+  sites already have transcripts live. Measured against the 2026-09-11
+  export: 251 of the 432 sites do, 303 lines — about a quarter of the
+  non-YouTube queue was depth for governments already on the site while
+  164 governments with no page at all sat behind them. Ryan's call:
+  park those lines, leave the four shared hosts (vimeo.com,
+  cloud.castus.tv, videoplayer.telvue.com, play.champds.com — several
+  governments each), unless a real user requested one. No user request
+  can be in the queue file (requests attach to live pages through
+  `transcription_jobs`), so none was.
+- **What was done:** 274 lines (247 tenant sites; Granicus 134,
+  CivicClerk 44, IQM2 33, CivicWeb 23, Swagit 15, Cablecast 8, eScribe 6,
+  PrimeGov 6, other 5) moved from `scripts/tier3_auto_transcription_
+  queue.txt` to `scripts/tier3_long_meetings_deferred.txt` under a dated
+  comment, carrying the live page's gov_id (266 of 274) and jurisdiction
+  and the probed length where the sidecar has one (255). Queue 2,523 →
+  2,249 lines; deferred 574 → 848. YouTube, Utah PMN and Town Hall
+  Streams lines untouched; the 17 sites with a page but no transcript
+  (20 lines) and the 164 with no page (200 lines) stay. The WO-212 guard
+  keeps the parked lines out through any rebase.
+- **Verification:** queue-file guards and the full suite green; the
+  drop list was built from `tenant_of()` on both sides and "real
+  transcript" = an export version with segments.
+- **A parked line is not rejected.** It waits behind its government's
+  first meeting: the deferred file is the depth list, re-queued once the
+  breadth pass has drained the queue, exactly like the long meetings
+  WO-205 parked and the bulk-queued tenants WO-213 trimmed.
+- **Deploy:** none (data files).
+
 ## WO-263: mint the Port of San Diego and pin its Granicus host [Done 2026-09-12]
 
 **Why this ran.** Ryan's 2026-09-11 run of `scripts/backfill_gov_id.py
