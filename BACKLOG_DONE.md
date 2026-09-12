@@ -1,5 +1,79 @@
 # Backlog — done
 
+## WO-268: a passive, light-touch way to find a government's meeting platform — DNS, sitemap, and archive lookups, tried on 300 governments [Done 2026-09-12]
+
+**What was done and why.** Today's way of finding a government's meeting
+platform (Granicus, CivicPlus, and so on) reads the government's own
+homepage and clicks one link deeper. That only works if the link is
+there. Ryan asked for a lighter-touch pass first, one that barely touches
+the government's own site: (1) look up its DNS records, (2) read its
+sitemap and robots.txt file, (3) look it up in two outside archives of
+the web (the Wayback Machine and Common Crawl) instead of visiting the
+site at all. This was a trial run on 300 governments with no platform on
+file, to see whether each of those three ways is worth running at full
+scale, before running it on the much larger pool.
+
+**A real problem was caught and fixed before the real run.** Four of the
+six platforms this check guesses a government's account name against
+(Granicus, Legistar, IQM2, CivicClerk) answer "yes" to *any* guessed name,
+even a made-up one — their DNS has no real "does this account exist"
+answer built in. The first test run found eight unrelated counties all
+"matching" the exact same made-up account. That was fixed before the real
+300-government run: only two of the six platforms (CivicWeb, PrimeGov)
+give a trustworthy DNS answer on their own; the other four need a direct
+look at the page, which this pass does not do.
+
+**Result.**
+
+| Result | Count of 300 | What it means |
+|---|---|---|
+| Real platform found | 25 | A known platform's web address or page style was found — 21 CivicPlus, 3 CivicWeb, 1 PrimeGov |
+| Page found, but weak | 238 | A page turned up with a loosely matching word (like "meeting" or "board") — most of these are not a real meeting page |
+| Nothing found | 37 | No page or platform turned up at all |
+
+**A closer look at the 238 "weak" rows matters.** Most of them are not
+real leads. A page only counts as a strong lead when it has both the
+word "agenda" and the word "minutes" in its address — that rule already
+proved itself elsewhere in this project (14 real hits out of 14 tries).
+Applying it here: only 16 of the 238 are strong. Adding those 16 to the
+25 real platform finds gives **41 of 300 (about 1 in 7)** worth a closer
+look — not 263.
+
+**The sitemap and the Wayback Machine lookup were the two useful
+methods**, each finding a real platform on about 1 in 17 governments (6%)
+on their own. The DNS check found the fewest (4 of 300), because of the
+four-platform problem above. The Common Crawl archive lookup found the
+least overall (3 of 300) — and about 40% of the time it could not be
+reached at all during this run. Repeating the same check directly
+against Common Crawl's own lookup address, three times after the run
+finished, got no response each time — a real outage on their end tonight,
+not a mistake in this script.
+
+**A separate, unrelated mix-up was found and fixed in passing.** A
+`BACKLOG.md` entry filed by the WO-267 session had already guessed "WO-
+268" as the number for a different, not-yet-started task (wiring
+`scripts/platform_fingerprints.py` into a homepage-fetch pass) — before
+the conductor had assigned WO-268 to this task. That entry's heading no
+longer claims a number; it's still open, just unnumbered until a session
+actually builds it. The conductor assigns WO numbers centrally for
+exactly this reason — see `CLAUDE.md`'s "WO numbers" bullet.
+
+**Caution.** No meeting page was opened to confirm it actually shows a
+real meeting or video — that is the next step, not this one. A single
+quick check (no full page load) was allowed only to drop a dead link, and
+66 of the candidate pages found this way turned out to be dead.
+
+**Recommendation.** Run the sitemap and Wayback Machine checks at full
+scale first — they found the most, and barely touch the government's own
+site. Check DNS only for the two platforms where it gives a real answer.
+Try Common Crawl again before relying on it; it may just have been down
+tonight. Always apply the "agenda and minutes together" rule before
+calling a weak match a real lead.
+
+**Deploy status.** Nothing to deploy — this added a script, a report, and
+two write-ups. No code path in the live site changed. Full detail:
+`docs/investigations/passive_platform_discovery_pilot.md`.
+
 ## WO-269: the BACKLOG_DONE.md heading gate compares against the branch point, not main's moving tip [Done 2026-09-12]
 
 **What was done and why.** `scripts/check_backlog_done_headings.py`
