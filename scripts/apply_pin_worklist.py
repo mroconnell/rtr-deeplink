@@ -391,9 +391,10 @@ def resolve_answer(
     written: only "pin" is written.
 
     `match_value` is the row's own `match` column, AS WRITTEN -- passed
-    only so this function can recognize the one case it must not hand to
-    `resolve_government()` at all (see the shared-host branch just
-    below). Every other outcome in this function ignores it completely.
+    only so this function can recognize the two shared-host shapes it
+    must not hand to `resolve_government()` with its ordinary `host`
+    (see the two branches just below). Every other outcome in this
+    function ignores it completely.
     """
     if accepted_gov_id:
         gov = registry.government_for_id(accepted_gov_id)
@@ -424,16 +425,13 @@ def resolve_answer(
         and is_multi_gov_host(host)
     ):
         # WO-243: a per-video match (a bare video id, never a channel
-        # handle -- a channel still needs `_youtube_match_values()`'s own
-        # expansion, which this function has no way to do without
-        # `pages_by_host`/`channels`, so it is deliberately left to fall
-        # through to the ordinary path below and report `unresolved`,
-        # same as before this fix) on a shared host is exactly the
-        # evidence `resolve_government()`'s rung 1b refuses to accept
-        # from a bare name/title alone. Mint directly from the row's own
-        # name/state instead of asking the ladder, which would only ever
-        # answer `rtr:unknown:<host>` here regardless of `may_mint` --
-        # see `_mint_for_shared_host()`'s own docstring.
+        # handle -- see the WO-298 branch just below for that shape) on a
+        # shared host is exactly the evidence `resolve_government()`'s
+        # rung 1b refuses to accept from a bare name/title alone. Mint
+        # directly from the row's own name/state instead of asking the
+        # ladder, which would only ever answer `rtr:unknown:<host>` here
+        # regardless of `may_mint` -- see `_mint_for_shared_host()`'s own
+        # docstring.
         gov = _mint_for_shared_host(name)
         match = GovernmentMatch(
             gov_id=gov.gov_id,
@@ -453,7 +451,29 @@ def resolve_answer(
             "pin",
             f"minted through shared host {host}: {gov.evidence}",
         )
-    match = resolve_government(name, tenant_host=host)
+    resolve_host = host
+    if may_mint and match_value.startswith("@") and is_multi_gov_host(host):
+        # WO-298: a channel row is one human decision naming the WHOLE
+        # channel's government, not one video's title -- the same
+        # evidence rung 1b is protecting against the absence of, just
+        # reached through `_youtube_match_values()`'s channel-to-videos
+        # expansion in `main()` rather than a single per-video match. But
+        # unlike the bare-video-id branch above, a channel can just as
+        # easily name a government that DOES have a national-table row
+        # (a real city or county's own channel) as one that doesn't, so
+        # this must not skip straight to minting -- it asks the full
+        # ladder, withholding only the host, mirroring
+        # `test_every_proposal_is_a_national_id_and_the_governments_own_
+        # name` in tests/test_pin_worklist.py: `tenant_host=None` makes
+        # rung 1b's `multi_gov_host` check false (there being no host for
+        # it to look at), so name repair, classify and the national table
+        # all still run, and rung 7 only mints if none of them matched.
+        # Everything below this point -- the `rtr:` may_mint gate,
+        # `is_own_name()`, the tier check -- runs exactly as it does for
+        # an ordinary non-shared-host name, so a national-id hit here
+        # pins to that id and never mints.
+        resolve_host = None
+    match = resolve_government(name, tenant_host=resolve_host)
     gov_name = display_name(match.government) if match.government else ""
     if not match.gov_id:
         return match, "", gov_name, match.tier, "unresolved", match.evidence

@@ -1,5 +1,90 @@
 # Backlog — done
 
+## WO-298: an "ok mint" answer on a YouTube channel row can now mint the government and write its pins [Done 2026-09-12]
+
+- **Why:** WO-243 fixed `scripts/apply_pin_worklist.py` so it could mint
+  a new government through a shared host (YouTube, youtu.be, Vimeo) when
+  Ryan's answer pointed at one specific VIDEO — but it deliberately left
+  a whole CHANNEL row unresolved, because the resolver's rung 1b refuses
+  to look anything up on a shared host without an already-matching pin,
+  and a channel handle alone isn't one. WO-237 (2026-09-11) hit this for
+  real: `@wfrcvideo` on `youtu.be`, the Wasatch Front Regional Council's
+  own channel, came back "unresolved: shared, multi-government host with
+  no matching per-video/channel/external-id pin" even with "ok mint" on
+  the row, and had to be minted and pinned by hand
+  (`rtr:us:ut:wasatch-front-regional-council`, per-video pin on
+  `youtu.be/GpgVPG7sOUY`). That row is still on today's
+  `reports/pin_worklist.csv`, now marked `skip` with a note not to
+  re-resolve it — checked before writing this entry, so this fix has
+  nothing live to apply to right now; it closes the gap for the next
+  channel row that reaches the sheet.
+- **What was done:** `resolve_answer()` in `apply_pin_worklist.py` gets a
+  second shared-host branch, alongside WO-243's per-video one. A channel
+  row (`match` starts with `@`) with "ok mint" no longer falls through to
+  the ordinary `resolve_government(name, tenant_host=host)` call, which
+  is what produced "unresolved" before — it now calls
+  `resolve_government(name, tenant_host=None)` instead, the same way
+  `test_every_proposal_is_a_national_id_and_the_governments_own_name`
+  withholds the host on a multi-gov host. Withholding the host (rather
+  than an empty string) makes the resolver's rung 1b refusal never
+  trigger at all, so the full ladder runs — name repair, the national
+  table, curated governments — and only mints a fresh `rtr:` id at the
+  very end if nothing else matched. This is a different shape from
+  WO-243's video-row fix on purpose: a bare video id is title text with
+  no name-matching value, so that branch mints directly and skips the
+  ladder; a channel handle is a human naming the WHOLE channel's
+  government, which could just as easily be a real, already-known
+  government as a new one. Once resolved, everything downstream is
+  unchanged: the existing `_append_minted_governments()` call writes one
+  `curated_governments.csv` row when (and only when) a fresh `rtr:` id
+  came back, and the existing `_youtube_match_values()` expansion turns
+  the one channel decision into a pin for every archived video on that
+  channel, plus a `channel=@handle` pin when the row also says "own
+  channel" (WO-244) — no changes needed to either of those, since both
+  already key off the resolved `gov_id`/`outcome`, not off which branch
+  produced them.
+- **Result — confirmed with two new tests, both against real names
+  already used elsewhere in the suite:**
+
+  | Case | What happens now | Before this fix |
+  |---|---|---|
+  | Channel + "ok mint", name has no national row ("San Diego County Retirement Association, CA") | Mints one government, writes a pin for every archived video on the channel plus `channel=` for "own channel" | Reported back as `unresolved` |
+  | Channel + "ok mint", name matches a real national government ("Prince George's County Public Schools, MD") | Pins to that government's real id — no mint | Reported back as `unresolved` |
+
+- **Caution:** a channel row still needs `_youtube_match_values()`'s own
+  expansion to find any archived videos at all — an "ok mint" channel row
+  whose channel has zero archived videos on the sheet still reports
+  `no_videos`, same as before this fix; that outcome is untouched. A
+  channel row with "ok mint" but no matching per-video/channel pin AND
+  `may_mint=False` still correctly reports `unresolved` (covered by
+  `test_a_channel_handle_without_ok_mint_is_still_reported_back`, the
+  renamed replacement for the old test that used to assert `unresolved`
+  for the `may_mint=True` case this fix now changes).
+- **Recommendation:** nothing to deploy or run right now — no channel
+  row on the current worklist sheet is both unresolved and marked "ok
+  mint" (the one real example, WFRC, is already `skip`d with its own
+  note). This is ready for the next round of the pin worklist that has a
+  channel row Ryan wants to mint.
+- **Tests:** `tests/test_pin_worklist.py` —
+  `test_a_channel_row_ok_mint_mints_one_government_and_expands_to_its_videos`
+  and
+  `test_a_channel_row_ok_mint_on_a_national_name_pins_without_minting`
+  are new;
+  `test_a_channel_handle_without_ok_mint_is_still_reported_back` replaces
+  the old `test_a_channel_handle_never_triggers_the_shared_host_mint`,
+  narrowed to the `may_mint=False` case this fix leaves unchanged. All
+  four CI gates run clean locally: `ruff check`, `ruff format --check`,
+  `pytest` (3,595 passed, 16 skipped, same as before this change), and
+  `alembic check` for both `archive/` and `app/` (no schema touched, so
+  neither reported a diff).
+- **Deploy:** none needed. `scripts/apply_pin_worklist.py` is a local
+  tool Ryan or Platforms runs by hand against the Archive's HTTP export —
+  it writes only local, committed data files
+  (`app/utils/jurisdiction_data/curated_governments.csv` and
+  `tenant_overrides.csv`), never anything the running app serves
+  directly, so merging this ships nothing on its own (same as WO-243's
+  own "Deploy" note).
+
 ## WO-294: Town Hall Streams adapter audit — fixed the real embed-shape change, plus a hidden wrong-video bug [Done 2026-09-12]
 
 **What was done and why.** `BACKLOG.md` carried a `[NEEDS-AUDIT]` entry
