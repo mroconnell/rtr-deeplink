@@ -153,6 +153,23 @@ CHALLENGE_MARKERS = [
     "captcha-delivery",
     "request unsuccessful. incapsula",
     "access to this page has been denied",
+    # WO-278 (2026-09-12): confirmed live against co.roseau.mn.us while
+    # rechecking WO-273's single Hyland "single-platform" domain -- a
+    # Radware/ShieldSquare bot-management challenge, served with a real
+    # HTTP 200 after a 302 through validate.perfdrive.com, that this list
+    # didn't recognize. Without this, the challenge page's own body (which
+    # never mentions the government) would just read as "no name match",
+    # but its REDIRECT URL echoes the original target back as a query
+    # parameter (ssc=https%3A%2F%2Fco.roseau.mn.us%2F...), so a careless
+    # url-inclusive match could spuriously "confirm" a platform from a
+    # block page. Not wired into a body/url decision here either way --
+    # is_challenge() is checked before that code runs regardless, so this
+    # is the correct, general fix for any future host behind the same
+    # vendor. See BACKLOG.md for the wider gap this same marker list is
+    # duplicated (unfixed elsewhere) across 7 other scripts.
+    "radware block page",
+    "perfdrive.com",
+    "shieldsquare",
 ]
 
 # Vendor host aliases, copied from scripts/wo147_access_ladder_sweep.py's
