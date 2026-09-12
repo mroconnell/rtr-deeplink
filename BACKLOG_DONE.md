@@ -152,6 +152,154 @@ resolver AND the Archive both classify a web address (both import
 `app/platforms`), for future resolves only -- pages already on the
 site are unaffected either way. Needs a deploy of both services before
 it takes effect in production.
+## WO-271: the WordPress feed-check population run through the YouTube-channel method, all 1,355 rows -- 3 pages, 1 queued [Done 2026-09-12]
+
+**What was done and why.** WO-270 measured every cheap WordPress surface
+(feed, REST API, sitemap, search, front page) on 277 real WordPress
+governments and found nothing cleared Platforms' 90%-hit/5%-false bar —
+only 14 of 127 known-video governments were reachable through any
+WordPress surface at all, the other 113 came from a YouTube channel
+scan. So this WO did not build a WordPress playbook. It ran the same
+YouTube-channel method WO-235/WO-247/WO-252 already use against
+`rtr-business/research/wo_wordpress_pilot_targets.csv` — the 1,355
+WordPress governments WO-197's feed check found, none with a page or a
+confirmed video yet — recording WO-270's own front-page-`youtube.com`-
+link signal per government so its yield could be measured on this
+larger, harder population.
+
+**The population.** All 1,355 rows, not a sample: 103 of 5,000+
+population, 1,252 under 5,000 (370 have no population figure on file at
+all in either source file — banded "under 5,000" by default, a real
+gap, not a confirmed fact).
+
+**Reach.** 1,333 of 1,355 front pages answered (1,329 plain HTTP, 4 more
+after escalating to browser headers). 14 were dead. 8 already had a live
+page. Zero hit a human-verification gate.
+
+**The front-page-link signal, by population band, with the yield inside
+each cell (a real video found: ingested or queued):**
+
+| Population band | Front page links youtube.com/youtu.be | Count of 1,355 | Video found | Yield |
+|---|---|---|---|---|
+| 5,000+ | No | 92 | 0 | 0.0% |
+| 5,000+ | Yes | 11 | 2 | 18.2% |
+| Under 5,000 | No | 1,221 | 0 | 0.0% |
+| Under 5,000 | Yes | 31 | 2 | 6.5% |
+
+Every real video came from a government whose front page linked
+YouTube; zero of the 1,313 without that link produced anything.
+Combined, 4 of 42 (9.5%) linked governments yielded a real video. The
+link rate itself (3.1% overall) is far below WO-270's 65%, because that
+65% was measured only on governments already confirmed to have video;
+this population is specifically the leftover no-video-yet governments.
+
+**Of the 42 governments with a front-page link, only 8 led to a
+classifiable channel/playlist link at all** (the other 34 were a bare
+mention or an embed shape the scanner does not classify as a channel).
+Every one of the 8 was hand-checked, by a person reading its channel
+identity and, where a candidate existed, its video's own title:
+
+| Channel identity | Count of 8 |
+|---|---|
+| Confirmed the government's own channel | 6 |
+| Found, ownership unconfirmed / every candidate off-mission (Euclid Community Television, OH -- a PEG channel; its 4 candidates were an infrastructure-project public meeting, two ward-level constituent meetings, and a voter-education town hall, not a full governing-body session) | 1 |
+| Found, not a government channel at all (Glen Rock borough, PA -- the only front-page YouTube link was a shopping app's Shorts feed) | 1 |
+| Belongs to another real public body (Kind A) | 0 |
+
+**Video outcome for the 8:**
+
+| Outcome | Count of 8 |
+|---|---|
+| Captions available, page live now | 3 |
+| Video, no captions, queued for cloud transcription (a queue count, not pages) | 1 |
+| Deferred, over 90 minutes | 0 |
+| Rejected by the tier-3 probe | 0 |
+| Own channel confirmed, no on-mission video on it | 2 (Mayfield village OH, Sunrise Beach Village city TX -- neither channel's handful of uploads cleared the automated filter, so neither reached a video hand-read) |
+| Channel found but not a real meeting record for this government | 2 (Euclid city OH, Glen Rock borough PA) |
+
+**The 3 live pages:** Tangipahoa Parish, LA (a Parish Fire Board meeting
+-- a subordinate board of the parish, on the parish's own "Tangipahoa
+Parish Government" channel), Austin city, IN (an Austin Common Council
+meeting on the city's own official channel), Perinton town, NY (a
+Perinton Town Board meeting on "Town of Perinton," whose own description
+names "the Town of Perinton community"). **The 1 queued:** Miller
+County, AR (a Quorum Court meeting -- Arkansas's county governing body --
+on the county's own "Miller County" channel, description "Watch Quorum
+Court and budget sessions live").
+
+**The hand-read gate.** 5 governments had a real candidate video read;
+4 passed (Tangipahoa Parish, Miller County, Austin city, Perinton town,
+each with a one-line reason in `research/wo271_decisions.csv`) and 1
+failed (Euclid city, OH -- every candidate off-mission). 3 more reached
+the channel-identity check with no candidate to read at all (Mayfield
+village, Sunrise Beach Village, Glen Rock).
+
+**None of the 6 own-channel confirmations needed the WO-254 tokenizer
+fix** -- every one matched on an ordinary shared word, so this run adds
+no new confirmed case of the run-together-handle fix mattering.
+
+**WO-257, named in this WO's brief as landed ("resolve identity with
+WO-257's oEmbed lookup"), was not found** in this repo or in
+`rtr-business/research/` at run time -- no script, no `BACKLOG_DONE.md`
+entry. Per this repo's own "verify a brief's claim before acting on it"
+rule, this run used the identity signal WO-235/WO-247/WO-252 already get
+free from one yt-dlp flat-listing call instead (channel name, uploader
+id, description) -- that is what actually determined every identity
+call above.
+
+**Pins, queue lines, pages.** 4 `channel=@handle` pins added to
+`tenant_overrides.csv` (Tangipahoa Parish, Miller County, Austin city,
+Perinton town), every one for a hand-verified own channel per WO-222's
+rule; 0 per-video pins needed. 1 queue line added (Miller County). 3
+Archive page ids created.
+
+**Overlap with sibling WOs.** 0 of 1,355 overlap WO-253's 41-government
+population (disjoint by subject -- platform-tenant-domain corrections).
+0 overlap WO-273's 2,573-government candidate list -- expected by
+construction, since WO-273's population is explicitly governments with
+NO known platform on file, and this WO's population is defined by
+HAVING `wordpress` as the known platform.
+
+**Caution.** The 370-government population-unknown gap (27%) means the
+band split above should be read with that caveat. The front-page-link
+signal is a literal substring check and misses a `youtube-nocookie.com`
+embed with nothing else on the page. This run is the full population,
+not a sample -- no further pass is needed on these same 1,355 rows
+unless a new video signal is added.
+
+**Recommendation.** The front-page `youtube.com` link remains the right
+first filter -- every real hit came from a linked government, and
+nothing came from an unlinked one. But its yield here (9.5% of linked
+governments, 0.3% of the population overall) is far below WO-270's own
+65%/127-government figure, because this population is specifically the
+governments no other method has found video for yet. This confirms
+WO-270's conclusion at full scale: WordPress governments are better
+served by the general breadth-sweep method (the YouTube-channel scan
+itself, platform APIs) than by a dedicated WordPress path.
+
+**Deploy status.** The 3 pages are live now (ingested with `gov_id` in
+the payload, per WO-222 -- did not depend on a pin reaching production).
+The 1 queued meeting will drip in via the existing transcription worker
+once deployed. The 4 new `channel=@handle` pins are on `main` after this
+PR merges but only take effect for a *future* upload on those channels
+once the next deploy ships them; they were not needed for this run's own
+3 ingests. Research-file rows and the ENUMERATION_METHODS.md section
+need no deploy.
+
+**What is undone.** Nothing from this WO's own population is left
+unworked -- all 1,355 rows were processed. The 34 governments whose
+front page mentioned `youtube.com`/`youtu.be` but produced no
+classifiable channel link were not manually inspected further (a
+plausible next, smaller pass, likely dominated by `youtube-
+nocookie.com` embeds this substring check can't see).
+
+Files: `scripts/wo271_wordpress_youtube_sweep.py` (the sweep script,
+`discover`/`finalize` split, reusing `scripts/wo252_channel_band.py`'s
+own code and `scripts/wo230_agendacenter_followup.py`'s WO-254-fixed
+`channel_name_plausible()`); `rtr-business/research/wo271_discovery.csv`
+(1,355 rows), `wo271_decisions.csv` (8), `wo271_report.csv` (8),
+`wo271_apply_to_jc.py` and its `wo271_jc_*.csv` outcome logs;
+`ENUMERATION_METHODS.md` §298.
 
 ## WO-270: WordPress surface pilot -- no signal clears the bar, front-page YouTube link is the closest lead [Done 2026-09-12]
 

@@ -5485,3 +5485,7 @@ www.youtube.com,youtube:9HBZW2m4BiM,us:place:0162328,fallback,wo259_full_ladder_
 www.youtube.com,youtube:jBeYXXQBM-k,us:place:3726880,fallback,wo259_full_ladder_scan,"Goldsboro city -- WO-134 confirmed hit, gov_id=us:place:3726880"
 www.youtube.com,youtube:9it2EcyhsJc,us:place:2659920,fallback,wo259_full_ladder_scan,"Oak Park city -- WO-134 confirmed hit, gov_id=us:place:2659920"
 www.youtube.com,youtube:6x4mvHQWAJ4,us:county:47065,fallback,wo259_full_ladder_scan,"Hamilton County -- WO-259 full-ladder find, gov_id=us:county:47065"
+www.youtube.com,channel=@tangipahoaparishgovernment8921,us:county:22105,fallback,wo271_wordpress_youtube_sweep,"Tangipahoa Parish, LA -- WO-271 WordPress/YouTube sweep, gov_id=us:county:22105"
+www.youtube.com,channel=@MillerCountyAR,us:county:05091,fallback,wo271_wordpress_youtube_sweep,"Miller County, AR -- WO-271 WordPress/YouTube sweep, gov_id=us:county:05091"
+www.youtube.com,channel=@CityofAustin-Indiana,us:place:1802800,fallback,wo271_wordpress_youtube_sweep,"Austin city, IN -- WO-271 WordPress/YouTube sweep, gov_id=us:place:1802800"
+www.youtube.com,channel=@townofperinton,us:cousub:3605557221,fallback,wo271_wordpress_youtube_sweep,"Perinton town, NY -- WO-271 WordPress/YouTube sweep, gov_id=us:cousub:3605557221"
