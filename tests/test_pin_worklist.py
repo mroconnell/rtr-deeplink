@@ -591,23 +591,6 @@ def test_a_blank_match_on_a_shared_host_never_mints():
     assert gov_id == ""
 
 
-def test_a_channel_handle_never_triggers_the_shared_host_mint():
-    """A channel handle ("@..." -- the only shape `fetch_youtube_
-    channels()` ever writes into `match`, per its own docstring) is not a
-    per-video match: it still needs `_youtube_match_values()`'s own
-    expansion, which `resolve_answer()` has no way to do (it never sees
-    `pages_by_host`/`channels`). Deliberately out of scope for this fix --
-    left exactly as unresolved as it was before it, not silently minted
-    against a channel that might expand to zero real videos."""
-    _resolved, gov_id, _gov_name, _tier, outcome, _detail = (
-        apply_pin_worklist.resolve_answer(
-            "Some New Council, UT", "youtu.be", True, "", "@somehandle"
-        )
-    )
-    assert outcome == "unresolved"
-    assert gov_id == ""
-
-
 def test_the_shared_host_mint_never_fires_on_an_ordinary_host():
     """The same "ok mint" + video-id-shaped match, on a host that is NOT
     one of `MULTI_GOV_HOSTS`, must go through the ordinary
@@ -625,6 +608,126 @@ def test_the_shared_host_mint_never_fires_on_an_ordinary_host():
     assert outcome == "pin"
     assert gov_id.startswith("rtr:")
     assert "WO-243" not in detail
+
+
+def test_a_channel_handle_without_ok_mint_is_still_reported_back():
+    """A channel handle ("@..." -- the only shape `fetch_youtube_
+    channels()` ever writes into `match`, per its own docstring) on a
+    shared host with no per-video/channel/external-id pin is exactly rung
+    1b's refusal case -- WITHOUT "ok mint" nothing here should reach past
+    it, same as a bare name on that host with no answer at all."""
+    _resolved, gov_id, _gov_name, _tier, outcome, _detail = (
+        apply_pin_worklist.resolve_answer(
+            "Some New Council, UT", "youtu.be", False, "", "@somehandle"
+        )
+    )
+    assert outcome == "unresolved"
+    assert gov_id == ""
+
+
+# --------------------------------------------------------------------------
+# WO-298: minting through a shared host's CHANNEL row (the WO-243 gap)
+# --------------------------------------------------------------------------
+
+
+def test_a_channel_row_ok_mint_mints_one_government_and_expands_to_its_videos():
+    """WO-243 minted a bare per-video match but deliberately left a
+    channel handle unresolved (see the test just above, which used to
+    assert this for `may_mint=True` too -- see its old docstring in git
+    history). WO-237's real incident (2026-09-11) was actually a CHANNEL
+    row -- `@wfrcvideo` on `youtu.be`, Wasatch Front Regional Council, UT
+    -- and had to be minted and pinned by hand because of exactly this
+    gap.
+
+    Unlike the bare-video-id fix, this does not build the `Government`
+    directly with `_mint_for_shared_host()`: a channel names a whole
+    government by NAME, and that name could just as easily already have
+    a national-table row (see the sibling test below) as not, so this
+    asks the full ladder with `tenant_host=None`, the same way
+    `test_every_proposal_is_a_national_id_and_the_governments_own_name`
+    withholds the host on a multi-gov host. "San Diego County Retirement
+    Association, CA" is the same real, confirmed-unminted name the
+    ordinary (non-shared-host) `ok mint` tests above already use, so this
+    confirms the fix genuinely mints -- not just resolves to a government
+    that happened to exist already, the way `@wfrcvideo` itself now
+    would, since WO-237's hand-written row is still in
+    `curated_governments.csv`."""
+    channels = {
+        "aaaaaaaaaaa": {
+            "channel": "@sdceravideo",
+            "channel_title": "SDCERA Video",
+        },
+        "bbbbbbbbbbb": {
+            "channel": "@sdceravideo",
+            "channel_title": "SDCERA Video",
+        },
+    }
+    pages_by_host = {
+        "youtu.be": [
+            {"source_url_normalized": "https://youtu.be/aaaaaaaaaaa"},
+            {"source_url_normalized": "https://youtu.be/bbbbbbbbbbb"},
+        ]
+    }
+    row = {
+        "tenant_host": "youtu.be",
+        "match": "@sdceravideo",
+        "ryan_gov_name": "San Diego County Retirement Association, CA",
+        "ryan_note": "ok mint, own channel -- name says the association",
+        "proposed_name": "",
+    }
+    name, accepted_gov_id, _source, may_mint = apply_pin_worklist._answer(row)
+    assert may_mint is True
+    resolved, gov_id, gov_name, tier, outcome, detail = (
+        apply_pin_worklist.resolve_answer(
+            name, row["tenant_host"], may_mint, accepted_gov_id, row["match"]
+        )
+    )
+    assert outcome == "pin"
+    assert gov_id == "rtr:us:ca:san-diego-county-retirement-association"
+    assert gov_name == "San Diego County Retirement Association, CA"
+    assert tier == "unverified"
+    assert resolved is not None and resolved.government is not None
+    assert resolved.government.gov_name == "San Diego County Retirement Association"
+    assert resolved.government.state == "CA"
+    assert "minted" in detail
+
+    # The same expansion main()'s own loop runs before it ever writes a
+    # pin -- a channel handle (the "@" prefix) always goes through
+    # `_youtube_match_values()`, and "own channel" in `ryan_note` adds
+    # the `channel=` pin on top of the per-video ones (WO-244).
+    assert row["tenant_host"] in apply_pin_worklist._YOUTUBE_HOSTS
+    assert row["match"].startswith("@")
+    match_values = apply_pin_worklist._youtube_match_values(
+        row, pages_by_host, channels
+    )
+    assert match_values == ["aaaaaaaaaaa", "bbbbbbbbbbb", "channel=@sdceravideo"]
+    assert all(match_values), "must never write a blank-match pin on a shared host"
+
+
+def test_a_channel_row_ok_mint_on_a_national_name_pins_without_minting():
+    """The sibling case the fix above must not blow past: a channel can
+    just as easily name a government the national table already has, and
+    `tenant_host=None` must still find it there rather than minting over
+    it. "Prince George's County Public Schools, MD" is the same real name
+    `test_a_plain_english_name_becomes_a_national_pin` already resolves
+    on an ordinary host; here it comes in on a channel row's `ryan_gov_
+    name` instead, and the answer must be the same national id, not a
+    fresh `rtr:` mint."""
+    resolved, gov_id, gov_name, tier, outcome, _detail = (
+        apply_pin_worklist.resolve_answer(
+            "Prince George's County Public Schools, MD",
+            "youtu.be",
+            True,
+            "",
+            "@pgcpsvideo",
+        )
+    )
+    assert outcome == "pin"
+    assert gov_id == "us:sd:2400510"
+    assert not gov_id.startswith("rtr:")
+    assert gov_name == "Prince George's County Public Schools, MD"
+    assert tier == "registry"
+    assert resolved is not None
 
 
 def test_the_tooling_never_writes_an_authoritative_pin():
