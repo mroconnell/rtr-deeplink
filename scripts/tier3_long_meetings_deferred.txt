@@ -89,7 +89,6 @@ https://morgantown.granicus.com/player/clip/897?view_id=2		rtr:us:wv:morgantown-
 https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=109ce607-21c0-4495-9bfc-e2024d85afac&Agenda=Agenda		us:place:0660620	Richmond, CA	8:57:58	Special Closed Session
 https://harrisoncountyin.portal.civicclerk.com/event/1068/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/	us:county:18061	Harrison County, IN	2:09:38	September 9, 2026 Council Budget Session
 https://guadalupe.granicus.com/ViewPublisher.php?view_id=1	https://www.guadalupetx.gov/page/commcourt.agendas	us:county:48187	Guadalupe County	2:33:34	Main View - Granicus Content
-https://lynnhavenfl.portal.civicclerk.com/event/2117/media	https://cityoflynnhaven.gov	us:place:1241825	Lynn Haven, FL	2:17:54	09/09/26 Charter Review Advisory Committee
 https://stjosephmo.portal.civicclerk.com/event/1310/media			City of St. Joseph	1:31:57	One Time Event
 https://grantconm.portal.civicclerk.com/event/883/media		us:county:35017	Grant County	2:34:28	Board of Commissioners - 2nd  Regular Meeting
 https://lantanafl.granicus.com/MediaPlayer.php?view_id=1&clip_id=257		us:place:1239375	Town of Lantana, FL	1:35:24	Town Council Meeting
@@ -572,11 +571,6 @@ https://www.utah.gov/pmn/sitemap/notice/1064549.html			Beaver County School Dist
 https://www.utah.gov/pmn/sitemap/notice/1066677.html			Dairy Commission, Utah	1:45:11	Joint Meeting Notice Regular Meeting of the Idaho Dairy Products Commission, Oregon Dairy Products Commission, Utah Dairy Commission, Washington Dairy Products Commission, and the Dairy West Board of Directors
 https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=861		us:place:2730392	Hugo city, MN	02:06:52	WO-217 found-alternate lead, over 90 min
 https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy	https://www.acnj.gov/pages/meeting-recordings	us:place:3402080	City of Atlantic City, NJ	1:46:41	City Council Meeting 08/19/26
-https://inglesidetx.portal.civicclerk.com/event/597/media		us:place:4836008	Ingleside, TX	2:53:37	City Council Meeting
-https://www.youtube.com/watch?v=FHaiGhehAlE	https://crookcountyor.gov/agendacenter	us:county:41013	Crook County, OR	3:48:53
-https://www.youtube.com/watch?v=RLhUOmshDCg	https://lincolncosd.portal.civicclerk.com/event/952/media	us:county:46083	Lincoln County, SD	1:40:35
-https://southernpinesnc.portal.civicclerk.com/event/484/media	https://southernpines.net/AgendaCenter	us:place:3763120	Southern Pines town, NC	2:26:49	Town Council Business Meeting
-https://byramms.portal.civicclerk.com/event/1040/media	https://www.byram-ms.us/AgendaCenter	us:place:2810140	Byram city, MS	2:16:52	Mayor and Board of Aldermen Meeting
 # WO-266 (2026-09-12, Ryan): queue lines for governments whose tenant site already has a live page with a real transcript, parked for depth later (breadth rule: one meeting per government first). gov_id/jurisdiction are the live page's. The four shared hosts (vimeo.com, cloud.castus.tv, videoplayer.telvue.com, play.champds.com) were left in the queue.
 https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656		ca:csd:3514004	Brighton, ON		
 https://cialbionmius.civicweb.net/Portal/MeetingInformation.aspx?Id=375			City of Albion	0:38:53	
@@ -852,5 +846,3 @@ https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9		us:cousub:23
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council		rtr:unknown:reflect-vsctv.cablecast.tv		1:39:34	
 https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1			Town of Brunswick	3:57:51	
 https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter	us:cousub:2300140770	Livermore Falls, ME	0:51:33	
-https://stanwoodwa.portal.civicclerk.com/event/1040/media	https://stanwoodwa.org/AgendaCenter	us:place:5367455	Stanwood city, WA	1:42:26	City Council Meeting
-https://boxcast.tv/channel/thzz3mve4hxxwwce9csj	https://louisburgkansas.gov/agendacenter	us:place:2042875	Louisburg city, KS	2:09:06	Louisburg City Council
