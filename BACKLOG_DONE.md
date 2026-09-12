@@ -480,6 +480,20 @@ about pin work.
   governments are "no video found" cases for the research file, not
   depth for later, so they do not go to the deferred file. Queue 2,249
   → 2,247.
+- **Follow-up 2, 2026-09-12 (the last three bare-site lines, from the
+  conductor's count):** hand-read the same way. `https://sheboygan-wi.
+  municodemeetings.com/` (Sheboygan, WI) is a Municode Meetings hub whose
+  listing rows carry no video link, but the Common Council meeting page
+  embeds YouTube — replaced with `youtube.com/watch?v=5QV8GitLo1Q` and
+  the meeting page as the TAB source (Tenth Regular Common Council
+  Meeting, 2026-08-17; the drip's feed lane probes YouTube lines itself).
+  `https://www.mywinterhaven.com` (Winter Haven, FL): the homepage .mp4 is
+  a banner promo; the real recordings are on Granicus — replaced with
+  `winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616`
+  (City Commission Meeting, 2026-08-24, probed 1:08:45, accepted).
+  `https://olantasc.com` (Town of Olanta, SC): the homepage .mp4 is a
+  promo and the agendas page is 23 PDFs, no video — dropped. Queue 2,247
+  → 2,246. Bare-site lines left in the queue: 0.
 - **A parked line is not rejected.** It waits behind its government's
   first meeting: the deferred file is the depth list, re-queued once the
   breadth pass has drained the queue, exactly like the long meetings

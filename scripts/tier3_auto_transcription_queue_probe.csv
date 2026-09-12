@@ -5305,3 +5305,4 @@ https://libertygrovewi.gov,unknown,head+ffprobe,1.00,2025-03-05,1777,0,reject-sh
 https://mwtown.gov,unknown,head+ffprobe,55.87,2020-03-04,17386045,0,reject-short,duration 55.9s is below the 60s meeting-plausibility floor,1.02,2026-09-11T09:04:12+00:00,,0
 https://mc-ala.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=5599,youtube,yt-dlp-metadata,589.00,2026-09-01,17488075,1,accept,,3.01,2026-09-12T04:55:10+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=6C1IPgak1x0,youtube,yt-dlp-metadata,1874.00,2026-09-09,14458508,1,accept,,1.91,2026-09-12T04:55:16+00:00,bulk_ingest,0
+https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616,granicus,hls-master+variant,4125.33,,,1,accept,,4.59,2026-09-12T05:22:25+00:00,,0
