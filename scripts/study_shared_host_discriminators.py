@@ -302,9 +302,22 @@ async def _oembed(session, family: str, video_id: str) -> Optional[dict]:
 
 
 async def fetch_lookups(
-    keys: List[str], cache: Dict[str, dict], delay: float
+    keys: List[str],
+    cache: Dict[str, dict],
+    delay: float,
+    backoff_delay: Optional[float] = None,
 ) -> Counter:
-    """Round-robin across families so no single host sees a burst."""
+    """Round-robin across families so no single host sees a burst.
+
+    `backoff_delay` (defaults to `delay`, i.e. no backoff): the wait used
+    immediately after a miss/failure instead of `delay`. This script has
+    no block-detection of its own -- a miss is as likely to be one dead
+    video as the start of a block -- so the cheap, safe response to ANY
+    miss is to slow down for the next request rather than wait for a
+    run of misses to confirm a pattern. Drops back to `delay` the moment
+    a lookup succeeds again.
+    """
+    backoff_delay = delay if backoff_delay is None else backoff_delay
     todo = [k for k in keys if k not in cache]
     stats: Counter = Counter()
     if not todo:
@@ -318,6 +331,7 @@ async def fetch_lookups(
         + ", ".join(f"{f} {len(queues[f])}" for f in order)
     )
     done = 0
+    last_was_miss = False
     async with aiohttp.ClientSession(headers={"User-Agent": USER_AGENT}) as session:
         while any(queues.values()):
             for fam in order:
@@ -334,11 +348,13 @@ async def fetch_lookups(
                         "channel_title": (payload.get("author_name") or "").strip(),
                     }
                     stats[f"{fam}_ok"] += 1
+                    last_was_miss = False
                 else:
                     # Deleted/private/blocked: cache the miss so it is never
                     # re-fetched; the status is kept for the summary only.
                     cache[key] = {"channel": "", "channel_title": ""}
                     stats[f"{fam}_miss_{(payload or {}).get('_status', 'err')}"] += 1
+                    last_was_miss = True
                 done += 1
                 if done % 25 == 0:
                     save_cache(cache)
@@ -346,7 +362,7 @@ async def fetch_lookups(
                     f"  [{done}/{len(todo)}] {key} {cache[key]['channel_title'][:40]}",
                     end="\r",
                 )
-                await asyncio.sleep(delay)
+                await asyncio.sleep(backoff_delay if last_was_miss else delay)
     save_cache(cache)
     print(" " * 78, end="\r")
     return stats
@@ -411,6 +427,13 @@ def main() -> None:
         "--no-network", action="store_true", help="use the lookup cache only"
     )
     ap.add_argument("--delay", type=float, default=LOOKUP_DELAY_SECONDS)
+    ap.add_argument(
+        "--backoff-delay",
+        type=float,
+        default=None,
+        help="wait used right after a miss/failure instead of --delay "
+        "(default: same as --delay, i.e. no backoff)",
+    )
     args = ap.parse_args()
 
     out_dir = args.out or (
@@ -446,7 +469,7 @@ def main() -> None:
     keys = sorted({k for _, _, k, _ in classified if k})
     stats = Counter()
     if not args.no_network:
-        stats = asyncio.run(fetch_lookups(keys, cache, args.delay))
+        stats = asyncio.run(fetch_lookups(keys, cache, args.delay, args.backoff_delay))
     else:
         print(
             f"  --no-network: {sum(1 for k in keys if k in cache)}/{len(keys)} keys cached"
