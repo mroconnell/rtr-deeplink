@@ -168,7 +168,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (153)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (156)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
@@ -252,7 +252,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (153)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (24)
+  Jurisdiction extraction & backfill  (26)
+    `[NEEDS-AUDIT]` Franklin County MA's `jurisdiction_coverage.csv` row…
+    `[NEEDS-AUDIT]` 14 of WO-235's 179-government candidate population…
     `[NEEDS-AUDIT]` A real "Hermantown" (city ending in "-town" as part…
     `[NEEDS-AUDIT]` A real, resolvable Albion, MI civicweb page archived…
     `[NEEDS-AUDIT]` `[EXAMPLE]` The county-form name of a fully…
@@ -277,9 +279,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (153)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (48)
+  Adapter & platform gaps  (49)
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
     [NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload…
+    [NEEDS-AUDIT] The shared meeting-title filter…
     [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
@@ -3562,6 +3565,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
 
+- **`[NEEDS-AUDIT]` Franklin County MA's `jurisdiction_coverage.csv` row carries the Town of Franklin's domain, not the county's own — found by WO-235's channel pilot.**
+  - **Issue**: `us:county:25011` (Franklin County, MA)'s row has `domain=franklinma.gov` / `hub_url=https://franklinma.gov/AgendaCenter`. That is the Town of Franklin, MA's real corporate site (confirmed live: the site's own linked YouTube channel is "Franklin, MA Official", `@townoffranklinma104`, the Town's channel, not the county's).
+  - **Impact**: any sweep run against this row is checking the wrong government's website. The row's `meeting-without-video` reject reason may itself be wrong — it was never actually tested against the county's own site, if the county has one at all (many Massachusetts counties have little to no operating civic function post-1997 abolition, which may be why this slipped in unnoticed).
+  - **Next action**: find whether Franklin County, MA has its own working website at all; if not, this may be a `no-meeting-nor-video`/off-mission-shaped row rather than a fixable domain, and should say so rather than pointing at the Town's site.
+  - **Constraint**: don't key Franklin County MA to the Town of Franklin's video — they are different governments. The Town of Franklin's own channel/video is recorded in `rtr-business/research/wo235_owner_bodies.csv` for a later mint/lookup pass if the Town doesn't already have its own row.
+  - **History**: found 2026-09-11, WO-235 (`BACKLOG_DONE.md`).
+
+- **`[NEEDS-AUDIT]` 14 of WO-235's 179-government candidate population have a `jurisdiction_coverage.csv` `domain` that is a platform-tenant hostname, not the government's own corporate website.**
+  - **Issue**: WO-235's channel pilot fetches the recorded `domain` (and `hub_url`) looking for a footer/nav YouTube link. 14 of the 179 candidates (7.8%) have a `domain` that is itself a meeting-platform tenant host instead: `desmoines.civicweb.net`, `providenceri.iqm2.com`, `pub-winona.escribemeetings.com`, `amherstny.iqm2.com`, `pub-raleighnc.escribemeetings.com`, `pub-covinaca.escribemeetings.com`, `pattersonca.primegov.com`, `sanjacintoca.iqm2.com`, `pub-albanyga.escribemeetings.com`, `helenamt.primegov.com`, `niagarafalls.civicweb.net`, `camas.new.swagit.com`, `redmond.granicus.com`. A meeting-platform tenant page rarely carries the government's own footer/social-media links, so these 14 rows almost certainly under-report whether a YouTube channel is actually linked from the government's real site.
+  - **Impact**: up to 14 governments in this WO's own population (and likely a similar share of the wider 612-government band `docs/BREADTH_SWEEP_BRIEF.md`/`CLAUDE.md` describe) were recorded `no-channel-linked` on a technicality, not a real absence.
+  - **Next action**: for these 14, find and record the government's own real corporate domain by hand (a WebSearch/spot check, not a guess — see this file's own Standing-decisions entry on guessing a bare tenant name) and re-run WO-235's discovery step against it.
+  - **Constraint**: don't guess a domain from the government's name — verify with a real fetch first, same rule as every other domain-correction in this repo.
+  - **History**: found 2026-09-11, WO-235 (`BACKLOG_DONE.md`).
+
 - **`[NEEDS-AUDIT]` A real "Hermantown" (city ending in "-town" as part of its own proper name) resolved live to a different, much smaller "Herman Town" government.**
   - **Issue**: WO-148 ingested a real CivicClerk page for Hermantown city, MN (`hermantownmn.portal.civicclerk.com`, 2,174 real transcript segments, a genuine city council meeting) — but the archived page keyed to `us:place:2728646` ("Herman Town, MN"), a different, much smaller township, not Hermantown's own `us:place:2728682`. The page's own slug and stored jurisdiction both read "Herman Town, MN". Looks like the same shape as the already-fixed "city and borough"/"urban county" stripping bugs (`BACKLOG_DONE.md`, 2026-09-10 consolidated-governments entry) — something on the jurisdiction-extraction path is treating the trailing "town" in "Hermantown" as a government-type suffix to strip, turning the proper name "Hermantown" into "Herman" + "Town".
   - **Impact**: at least one live, real page misattributed to the wrong (and much smaller) government; the failure mode is name-shape-general (any real place name ending in "town", "city", "burg", etc. as part of the proper noun rather than a suffix) so likely more than one instance nationwide.
@@ -4146,6 +4163,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't regress a page whose title genuinely has no
     parseable date -- upload date is still the only signal for those.
   - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+- **[NEEDS-AUDIT] The shared meeting-title filter (`wo134_confirmed_hits_ingest.MEETING_ALLOWLIST`/`PROMO_BLOCKLIST`) passes a "Recap" clip, a community-outreach session, a training session, a mayor's own podcast/town-hall, and a sub-minute interview.**
+  - **Issue**: WO-235's by-hand review of 137 governments' YouTube candidates found five confirmed real misses the shared automated filter (`_looks_like_real_meeting()` + `classify_video_hand_check()`) let through, because each contains an allowlisted governing-body word without being a real meeting recording: Pullman WA's entire channel is "Pullman City Council **Recap**" clips (96-141 seconds, a condensed highlight, not the meeting); Alhambra CA's "Trash and Recycling **Community Meeting**"/two Historic Preservation "**Community Meeting**s"/"Advancing Alhambra **Community Meeting**" (public-outreach sessions, not a governing body's own proceeding); West Haven CT's "FDA Food Code **Training** Virtual Session" (a training session — the blocklist only matches the exact phrase "training video", not "training ... session"); Methuen MA's "Mayor Neil Perry Agenda Review **Podcast**" (the mayor's own explainer, not a Council session); Pittsylvania County VA's "Board of Supervisors Vice Chairman Robert Tucker on RiverStreet" (a 34-second interview clip, title contains "Board of Supervisors" but is not a meeting).
+  - **Impact**: every sweep script that imports this shared filter (at minimum `wo134_confirmed_hits_ingest.py`, `wo147_access_ladder_sweep.py`, `wo174_pipeline.py`, and now `wo235_channel_pilot.py`) inherits the same five gaps; each was only caught here because this WO's brief required an actual human read of every title before ingest, not because the code caught it.
+  - **Next action**: add "recap" and "community meeting" (as a phrase, not just "meeting") to `PROMO_BLOCKLIST`, broaden the "training video" phrase to also match "training session"/"training ... virtual session", and consider a floor on `duration` well above the existing bare non-zero check (a sub-2-minute video with a governing-body keyword is a very strong "not a real meeting" signal on its own — Athens AL's two hits were 95s/116s, Pittsylvania's interview was 34s).
+  - **Constraint**: keep the phrase list conservative (this repo's own convention) — a single unconfirmed inclusion (e.g. "town hall") isn't added here since a real "Town Hall" governing-body meeting exists in some jurisdictions; only add phrases confirmed wrong by a real, hand-checked example, the way this entry's five already are.
+  - **History**: found 2026-09-11, WO-235 (`BACKLOG_DONE.md`).
 
 - **[NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue lines resolve to no video at all — the adapter finds nothing playable on real `stream.php?location_id=…&id=…` pages.**
   - **Issue**: WO-205's probe (2026-09-11) ran every Town Hall Streams line in the tier-3 queue through `townhallstreams.py`'s `resolve()`: 116 returned no `video_url`, 2 returned an HLS master that 404s, 7 resolved (e.g. `stream.php?location_id=94&id=75799`, `location_id=47&id=21880` are two of the 116).
