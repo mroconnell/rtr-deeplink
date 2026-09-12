@@ -192,6 +192,65 @@ tenant_overrides.csv`, `scripts/tier3_auto_transcription_queue.txt`,
 `rtr-business/research/wo306_report.csv`,
 `wo306_apply_to_jc.py`, `wo306_methods_section.md`.
 
+## WO-306 continued: Viebit's 5,000+ band done too — a real listing endpoint and a real missing probe recipe, both fixed [Done 2026-09-12]
+
+**What was done and why.** Same session, same work order, picking up
+where the entry above stopped: Viebit's 5,000+ population band (9
+governments).
+
+| Result | Count of 9 | What it means |
+|---|---|---|
+| Queued for transcription (video, no captions) | 4 | Chelsea, MI; North Mankato, MN; Great Falls, MT; Dayton, MN |
+| Already covered (missed by the first check) | 3 | Delano, Monticello and Briarcliff Manor, MN/NY — each already had a real meeting sitting in the transcription queue from an earlier sweep |
+| Wrong government on file | 1 | La Porte, IN — see caution below |
+| Real tenant, but nothing current | 1 | Limestone County, AL — its video archive stopped in 2023; its real current video is behind a login |
+
+**Two real gaps fixed, not just found.** Viebit's own adapter could only
+ever look up ONE already-known video, with no way to browse a
+government's channel for what else is there. Watching a real tenant's
+page load in a browser (the same method used for TelVue in the entry
+above) found the real, plain, public endpoint it calls internally to
+list recent videos — confirmed working the same way on 6 independent
+real tenants across two different page designs. Separately, and more
+serious: NO Viebit video could be queued for transcription at all,
+ever, before this — the system that checks a video is real and playable
+before queuing it had no recipe for Viebit specifically, so it silently
+threw every one of them away as if they were dead links. Fixed by
+reading the same channel-listing page's real "is this video allowed to
+play" field instead of the video file itself, which is blocked to
+automated checks.
+
+**Caution — a live pin was wrong and has been fixed.** Checking
+Shorewood, MN's channel [see the entry above] found the same shape of
+problem here too: La Porte, Indiana's recorded website
+(`laporteco.in.gov`) turns out to belong to LA PORTE COUNTY, not the
+city — confirmed live, that page's own title says so — and its video
+channel is livestream-only, no archive at all. The city's own backup
+address on file doesn't work either (it doesn't resolve to anything).
+No page was created from this row; it needs a human to find La Porte
+city's real, current website.
+
+**Recommendation.** Four platforms remain at this population band
+(Castus, Boxcast, ChampDS, Google Drive — roughly 30 more governments),
+plus every smaller-population row for all seven platforms. Filed in
+`BACKLOG.md`'s "Ship next" section, updated to reflect this.
+
+**Deploy status.** `app/platforms/queue_probe.py` and
+`app/platforms/viebit.py`'s changes need a deploy before they take
+effect in production (the probe fix in particular — without it, every
+future Viebit candidate keeps failing the same way this entry's four
+queued meetings almost did). The 4 queued meetings' pins need the same
+deploy.
+
+**Files:** `app/platforms/viebit.py` (`list_recent_videos()`),
+`app/platforms/queue_probe.py` (`_probe_viebit()`),
+`app/utils/jurisdiction_data/tenant_overrides.csv`,
+`scripts/tier3_auto_transcription_queue.txt`, `tests/test_viebit.py`,
+`tests/test_queue_probe.py`,
+`tests/fixtures/viebit/chelsea_vod_listing.json`;
+`rtr-business/research/wo306_report.csv` (updated),
+`wo306_apply_to_jc.py` (updated).
+
 ## WO-292: school-district pilot — a school-board vocabulary measured first, then the v2 passive pipeline run on 1,000 districts; zero pages ingested, 72 real platforms confirmed, 310 leads handed to the drip [Done 2026-09-12]
 
 **What was done and why.** School districts are the largest untouched

@@ -79,6 +79,7 @@ from .base import (
 )
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
+from .viebit import ViebitAssetFinder
 from .vimeo import VimeoAssetFinder, parse_vimeo_video
 from .wistia import (
     WistiaAssetFinder,
@@ -605,6 +606,100 @@ async def _probe_wistia(
     return _finish(url, "wistia", method, float(duration), date, size_bytes, start)
 
 
+# --- Viebit --------------------------------------------------------------
+
+
+async def _probe_viebit(
+    url: str, source_page_url: Optional[str], start: float
+) -> ProbeResult:
+    """WO-306 (2026-09-12): the one real, confirmed gap this platform has
+    had since it was built (2026-08-08) -- `viebit.py`'s own `resolve()`
+    always rebuilds `video_url` as the safe-to-iframe `/embed/vod?v={id}`
+    page (see that module's docstring), never the raw HLS
+    `master.m3u8` its pageConfig JSON also carries, so this function's
+    dispatch never sees anything HLS-shaped to hand to `_probe_hls()`
+    above -- every Viebit candidate died here as "no probe recipe" even
+    when the video is real and playable.
+
+    **No duration recipe exists, and none is being added.** Confirmed
+    live: the raw `master.m3u8` URL 403s even with a matching Referer/
+    Origin/realistic User-Agent (the same CDN gate `viebit.py`'s own
+    docstring already documents for playback) -- not merely unbuilt, a
+    real wall this probe can't get past without a browser. Viebit's own
+    `pageConfig` JSON carries no duration field of its own either
+    (confirmed against a real sample, Delano, MN). So this probe accepts
+    with `duration_seconds=None` (unknown) rather than reject-dead --
+    `finish_candidate()`'s `duration = result.duration_seconds or 0.0`
+    already treats an unknown duration as "never defer", which is the
+    honest answer here: we genuinely don't know, not that it's short.
+    The real, available signal instead is `pageConfig.hasAccess` --
+    Viebit's own gate for whether this viewer can actually play the
+    video -- and a JSON parse failure or an empty `video.src` catches a
+    genuinely dead/removed video the same way `_probe_telvue()`'s
+    "no playlist found" does.
+    """
+    method = "viebit-page-config"
+    page_url = source_page_url or url
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": _POLITE_UA}) as session:
+            async with session.get(
+                page_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status >= 400:
+                    return _dead(
+                        url,
+                        "viebit",
+                        method,
+                        start,
+                        f"Viebit page returned HTTP {response.status}",
+                    )
+                html = await response.text(errors="replace")
+    except asyncio.TimeoutError:
+        return _dead(url, "viebit", method, start, "Viebit page fetch timed out")
+    except aiohttp.ClientError as e:
+        return _dead(url, "viebit", method, start, f"Viebit page fetch failed: {e}")
+
+    config = ViebitAssetFinder._extract_page_config(html)
+    if not config:
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "no Viebit pageConfig found on this page",
+        )
+    if config.get("hasAccess") is False:
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "Viebit pageConfig reports hasAccess=false -- not publicly playable",
+        )
+    video = config.get("video") or {}
+    if not video.get("src"):
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "Viebit pageConfig has no video.src -- nothing to play",
+        )
+
+    return ProbeResult(
+        url=url,
+        platform="viebit",
+        probe_method=method,
+        duration_seconds=None,
+        date=None,
+        size_bytes=None,
+        verdict="accept",
+        reason="duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",
+        probe_seconds=time.monotonic() - start,
+        over_nine_minutes=False,
+    )
+
+
 # --- HLS (Granicus, Swagit, Cablecast) --------------------------------
 
 
@@ -932,6 +1027,8 @@ async def probe_queue_entry(
         return await _probe_telvue(url, video_url, source_page_url, start)
     if resolved_platform == "wistia":
         return await _probe_wistia(url, external_id, start)
+    if resolved_platform == "viebit" or video_format == "viebit":
+        return await _probe_viebit(url, source_page_url, start)
     # WO-205's own "dispatch on what the video IS" reasoning above
     # applies here too -- a CivicClerk event delegates to a SuiteOne
     # player page (`.../web/Player.aspx?id=...`), so `video_url` carries
