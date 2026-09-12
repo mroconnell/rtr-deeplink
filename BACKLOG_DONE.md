@@ -1821,6 +1821,11 @@ meeting of that government. `rtr-business/research/ENUMERATION_METHODS.md`
 
 ## WO-258: the alternate-domain one hop on the WO-174 leftover population — 297 of 466 governments worked, 24 real transcripts live, 3 queued [Done 2026-09-12]
 
+**Update, part 2 (2026-09-12): all 466 of 466 done, 26 transcripts live,
+4 queued.** The heading above is kept verbatim (CI's heading-integrity
+check requires it); the real, current combined totals for both parts
+are below.
+
 **What was tested and why.** `wo174_leftover_5k_plus.csv` lists 1,484
 governments of 5,000+ people. WO-174's CivicPlus AgendaCenter guess
 found nothing for any of them, and none has an Archive page yet. 466 of
@@ -1832,50 +1837,51 @@ this list: Gooding County, Idaho is recorded under
 `goodingcountyid.gov`, but its real meetings page is
 `goodingcounty.org/agendacenter`, a completely different address.
 
-This session tested that second domain for each of these 466
-governments: could a real person read the page, find a known video
-platform, and — if a video existed — confirm by hand that the video is
-a real meeting of that specific government (not a different government
-with a similar name, and not an unrelated video).
+This tested that second domain for each of these 466 governments: could
+a real person read the page, find a known video platform, and — if a
+video existed — confirm by hand that the video is a real meeting of that
+specific government (not a different government with a similar name,
+and not an unrelated video). Done across two sessions: 297 of 466 the
+first evening (2026-09-11), the remaining 169 the next day
+(2026-09-12), resumed with no code changes.
 
-**Result.** 297 of the 466 governments were checked before this session
-ended. 169 remain; the work resumes cleanly (see "What is left" below).
+**Result.** All 466 governments checked.
 
 **Result, by step of the test.**
 
-| Step | Result | Count of 297 |
+| Step | Result | Count of 466 |
 |---|---|---|
-| Reach | Answered (the page loaded) | 249 |
-| Reach | Dead (no page loaded, or no second domain was really different from the first) | 41 |
-| Reach | Blocked (a "prove you're human" page) | 7 |
-| Find | Nothing on the page | 142 |
-| Find | A real meetings or agenda page, but no known video platform | 85 |
-| Find | A known video platform | 70 |
+| Reach | Answered (the page loaded) | 368 |
+| Reach | Dead (no page loaded, or no second domain was really different from the first) | 79 |
+| Reach | Blocked (a "prove you're human" page) | 19 |
+| Find | Nothing on the page | 228 |
+| Find | A real meetings or agenda page, but no known video platform | 108 |
+| Find | A known video platform | 130 |
 
-Of the 70 with a known platform, most (54) were YouTube; the rest were
-spread across CivicPlus (8), CivicClerk (3), and five other platforms
-(1 each).
+Of the 130 with a known platform, most (87) were YouTube; the rest were
+spread across CivicPlus (18), CivicClerk (10), Granicus (6), BoxCast (2),
+Vimeo (2), and four other platforms (1 each).
 
-| Video, of the 70 with a platform | Count of 70 |
+| Video, of the 130 with a platform | Count of 130 |
 |---|---|
-| Captions available, page live now | 24 |
-| Video, no captions, queued | 3 |
+| Captions available, page live now | 26 |
+| Video, no captions, queued | 4 |
 | Rejected by probe | 0 |
-| Meeting without video | 0 |
-| Error (a real code bug, see below) | 2 |
-| Nothing usable found | 41 |
+| Meeting without video | 1 |
+| Error (a real code bug, see below) | 4 |
+| Nothing usable found | 95 |
 
-Of the 24 with captions live now, 14 are brand-new pages and 10 already
+Of the 26 with captions live now, 16 are brand-new pages and 10 already
 existed under a different path — found again here through the second
 domain, which fixed the bookkeeping even though the page itself was not
-new. All 3 queued videos passed the pre-queue check; one of them (a
+new. All 4 queued videos passed the pre-queue check; one of them (a
 Habersham County, GA commission meeting) is a real 3.2-hour recording,
 kept rather than rejected, per this project's rule that a long meeting
 is not queued out just for being long.
 
 **Hand-read: every candidate with a video was read by a person before
-counting.** 32 candidates were read. 27 were approved as real. 5 were
-turned away:
+counting.** 60 candidates were read (32 the first evening, 28 the
+second day). 30 were approved as real. 30 were turned away:
 
 | Government | What the video actually was |
 |---|---|
@@ -1884,53 +1890,56 @@ turned away:
 | Josephine County, OR | A narrow "Cannabis Advisory Panel" meeting from 2017 — not the county's own governing board |
 | Otter Tail County, MN | A "Workforce Partner Meeting" — a coordination meeting, not the County Board |
 | Marshall County, IN | "Marshall County's Personal Meeting Room" — a Zoom default name, not a real meeting recording |
+| Aliso Viejo city, CA | "2020 Summer Camp Video" — a parks/recreation promo, not a governing-body meeting |
+| Oregon city, OH | A department's single-project "Stakeholders Meeting" — not the Council or a standing board |
+| Humboldt city, TN | The Chamber of Commerce's own channel — a private business group, not the city government |
+| Springfield city, MA | The SCHOOL COMMITTEE's own meeting — a lead for the school district, not the city |
+| 22 more (second day only) | Real, on-mission videos, but the government already had a DIFFERENT real video recorded by a same-day sweep working a different list — not a failure, just not a second page for the same government |
 
-**A real code bug found, not fixed here.** Floyd County, GA's video
-platform is SuiteOne Media, at
+**Two real code bugs found, neither fixed here.** Floyd County, GA's
+video platform is SuiteOne Media, at
 `floydcoin.suiteonemedia.com/web/live/`. This project's SuiteOne code
 could not read an id out of that exact web address and raised an error
-instead of skipping cleanly. Filed in `BACKLOG.md`.
+instead of skipping cleanly. El Mirage city, AZ's CivicPlus page raised
+a text-decoding error instead of skipping cleanly, on a real, live page
+(reproduced once, not a one-off network glitch). One more row (White
+Oak borough, PA) was a YouTube video scheduled to go live 9 days in the
+future — correctly not resolved, since there is nothing to find yet, not
+a bug. All filed in `BACKLOG.md`.
 
 **A real gap found in shared code, not fixed here.** BoxCast is a video
-host used by several governments (Habersham County, GA is one). This
-project's shared ingest code has no BoxCast support at all for writing
-down which government owns a BoxCast video queued for later
-transcription — checked directly, not assumed. Habersham County's own
-pin was added by hand this session, but the next BoxCast video queued
+host used by several governments (Habersham County, GA and Hondo city,
+TX are two). This project's shared ingest code has no BoxCast support at
+all for writing down which government owns a BoxCast video queued for
+later transcription — checked directly, not assumed. Both governments'
+pins were added by hand this session, but the next BoxCast video queued
 through this same code will silently miss the same step. Filed in
-`BACKLOG.md`.
+`BACKLOG.md`. (Hondo also turned up a second, different real BoxCast
+channel id than the one already on file for it from an earlier session —
+both are kept; which one BoxCast treats as current was not settled here.)
 
 **Domain changes made were conservative, on purpose.** This project
 never changes a government's main recorded domain by itself. When the
 second domain was clearly better and the main domain still loads, the
 second domain was moved to the front of the "other domains" list
-instead — 1 government. When the main domain does not load at all, and
+instead — 2 governments. When the main domain does not load at all, and
 the second domain found something real, nothing was reordered — the
-finding was written down instead, for a person to decide later. 10
-governments are in that second group, including Karnes County, TX,
-whose main domain does not load and whose real video is on the second
-domain.
+finding was written down instead, for a person to decide later. 13
+governments are in that second group, including Karnes County, Goliad
+County, and Swisher County, all TX, and Bridge City city, TX, each with
+a dead `.gov` domain and a real, reachable alternate.
 
-**Overlap with WO-253**, a same-day session correcting government
-domains recorded on a shared hosting company's own domain: zero. The
-two lists do not share any of the same governments.
+**Overlap with WO-253**, a set of sessions correcting government domains
+recorded on a shared hosting company's own domain: zero, checked both
+times. The two lists do not share any of the same governments.
 
-**What is left.** 169 of 466 governments were not reached this session.
-Nothing was lost — every finished government is recorded, and the same
-script skips them automatically on the next run:
-
-```
-DATABASE_URL="sqlite+aiosqlite:////tmp/wo258_resume.db" \
-  python3 scripts/wo258_alt_hop_sweep.py --stage ladder
-```
-
-**What is live now, and what needs a deploy.** The 14 new pages and the
-10 re-found pages are live on the site right now — publishing a page
-does not wait for a deploy. 21 new pins (a permanent record of which
-government owns which video, for future re-checks) and 2 new
-lines in the video-transcription queue are saved in this repository but
-need `rtr-deeplink` to be deployed before they take effect for a future
-re-check of the same videos.
+**What is live now, and what needs a deploy.** All 26 new/re-found pages
+are live on the site right now — publishing a page does not wait for a
+deploy. 24 pins (a permanent record of which government owns which
+video, for future re-checks) and 4 lines in the video-transcription
+queue are saved in this repository but need `rtr-deeplink` to be
+deployed before they take effect for a future re-check of the same
+videos.
 
 **Files**: `scripts/wo258_alt_hop_sweep.py` (rtr-deeplink, new),
 `~/Documents/rtr-business/research/wo258_apply_to_jc.py` (new),
