@@ -187,7 +187,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (183)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (184)
   [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
@@ -324,7 +324,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (183)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (50)
+  Adapter & platform gaps  (51)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -357,6 +357,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (183)
     [LATER] YouTube Whisper fallback for videos with no captions at all…
     [IMPROVEMENT-ROUND] Cablecast, TelVue, Swagit, and YouTube still…
     [NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no…
+    [NEEDS-AUDIT] ChampDS's `MediaInfo.Captions` is no longer…
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
     [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
@@ -5439,6 +5440,36 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     same.
   - **History**: `BACKLOG_DONE.md` (video-indexing investigation); moved
     out of Dormant 2026-08-30.
+
+- **[NEEDS-AUDIT] ChampDS's `MediaInfo.Captions` is no longer confirmed-always-empty — a real, populated example exists.**
+  - **Issue**: `champds.py`'s own docstring and `BACKLOG_DONE.md` both say
+    `MediaInfo.Captions` was empty on every one of the 6 real customers
+    checked when the adapter was built (2026-08-13), so it's
+    deliberately never read. WO-308 (2026-09-12) found a real,
+    populated counterexample while capturing listing-step fixtures:
+    Atlanta GA event 1077 (`playapi.champds.com/atlantaga/event/1077`)
+    returns `"Captions": [{"LanguageName": "English", "LanguageID":
+    "en", "MediaPath": "/2026-03/eaec74850c81b8ef2877faa746c28b61dc836fb4.vtt"}]`.
+    Not chased further — out of scope for a listing-step PR.
+  - **Impact**: an unknown number of ChampDS meetings may have real,
+    fetchable VTT captions this adapter currently reports as "No
+    captions found" for. Given champds.py's own already-documented VOD2
+    referer-lock issue blocks the majority of customers from having a
+    playable video at all (see the entry directly above), the practical
+    reach of a caption fix is capped by that — likely biggest for the
+    minority (`DownloadURL`) customers.
+  - **Next action**: fetch that exact `.vtt` path (unconfirmed which
+    host serves it — try `play.champds.com{MediaPath}` first, the same
+    pattern `DownloadURL` uses) against Atlanta event 1077 to confirm
+    it's a real, parseable, non-garbled transcript before wiring it into
+    `resolve()`; check a couple more customers for a second positive
+    example before trusting the field generally (this repo's "don't
+    claim a data path works without a positive example" convention).
+  - **Constraint**: don't assume every customer's Captions array is
+    populated just because one is — the 6-customer sample WO-308 didn't
+    re-check might still be representative of most.
+  - **History**: `BACKLOG_DONE.md`'s WO-308 entry (the listing step this
+    was found while building).
 
 - **[NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates correctly; the real video is still unreachable behind client-side JS.**
   - **Issue**: escalation itself is fixed (a SharePoint-specific
