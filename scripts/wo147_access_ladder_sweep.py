@@ -94,7 +94,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urljoin, urlparse
 
 import certifi
 
@@ -583,13 +583,257 @@ def _score_hop_candidate(
     return score
 
 
-def find_hop_links(html_text: str, final_url: str) -> List[str]:
-    """Gathers every anchor whose text/href matches HOP1_HINT_WORDS (same
-    candidate gate as before -- WO-228 changes the ORDER, not the set),
-    scores each with `_score_hop_candidate()`, and returns up to
-    MAX_HOP_LINKS URLs ranked best-first (a stable sort, so two candidates
-    with an equal score keep their original document order). Signature
-    and MAX_HOP_LINKS are unchanged so every importer keeps working."""
+# --- WO-274 (2026-09-12): re-weighted scorer, replacing the hand-picked
+# HOP1_HINT_WORDS gate above with vocabulary measured against real data.
+# See `scripts/derive_hop_weights.py` (produces the CSV below) and
+# `docs/investigations/hop_scorer_measurement.md` for the full method
+# and the before/after measurement on 180 real homepages. Root finding:
+# the old word list has it backwards -- "calendar"/singular "agenda" are
+# near noise on a government's own site (lift 2-6x), "video"/"stream"
+# almost never appear on a hub page at all, while plural/role words the
+# old list lacked are the strongest signal (agendas, meetings,
+# commissioners, boards, supervisors) and named platform paths
+# (AgendaCenter, Hyland's ViewMeeting/AgendaOnline) are close to
+# perfect.
+_HOP_WEIGHTS_CSV = (
+    Path(__file__).resolve().parent.parent
+    / "app"
+    / "utils"
+    / "jurisdiction_data"
+    / "hop_link_weights.csv"
+)
+
+
+def _load_hop_weights(
+    path: Path = _HOP_WEIGHTS_CSV,
+) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """Loads `hop_link_weights.csv` into two lookups: path token/bigram
+    weight and anchor-text word weight. A token/bigram appearing under
+    more than one vocabulary (e.g. "meetings" in both the hub and
+    meeting positive sets) keeps its HIGHEST weight rather than summing
+    them -- summing would double-count the same real-world word just
+    because two measurement passes both happened to see it. Missing file
+    -> both lookups empty, so a fresh checkout without the data file
+    degrades to "no vocabulary score" rather than crashing."""
+    path_weights: Dict[str, float] = {}
+    anchor_weights: Dict[str, float] = {}
+    if not path.exists():
+        return path_weights, anchor_weights
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            try:
+                weight = float(row["weight"])
+            except (KeyError, ValueError):
+                continue
+            token = (row.get("token_or_bigram") or "").strip()
+            if not token:
+                continue
+            target = anchor_weights if row.get("kind") == "anchor" else path_weights
+            if weight > target.get(token, float("-inf")):
+                target[token] = weight
+    return path_weights, anchor_weights
+
+
+_HOP_PATH_WEIGHTS, _HOP_ANCHOR_WEIGHTS = _load_hop_weights()
+
+_HOP_TOKEN_RE = re.compile(r"[a-z]+")
+
+
+def _hop_tokenize(text_or_path: str) -> List[str]:
+    """Same tokenizer as derive_hop_weights.py's tokenize_url() path half
+    (split on non-letters, drop tokens under 3 letters) -- kept in sync
+    by hand since this module doesn't import the derive script (a
+    one-shot offline tool, not a runtime dependency)."""
+    return [t for t in _HOP_TOKEN_RE.findall(text_or_path.lower()) if len(t) >= 3]
+
+
+def _hop_bigrams(tokens: List[str]) -> List[str]:
+    return [f"{a}-{b}" for a, b in zip(tokens, tokens[1:])]
+
+
+# Named first-party path shapes that are themselves near-perfect
+# platform confirmation once seen (measured in platform_fingerprints.md
+# and this WO's own MEETING(first-party) table: viewmeeting/doctype hit
+# 12/12 real Hyland tenants with zero of 29,032 ordinary first-party
+# links) -- given a flat bonus on top of whatever their own tokens
+# already score, so a link matching one of these shapes reliably makes
+# the top MAX_HOP_LINKS even on a page with several other qualifying
+# candidates.
+_NAMED_FIRSTPARTY_PATH_RE = re.compile(
+    r"agendacenter|agendaonline|viewmeeting|/citizens/|portal/meetinginformation",
+    re.I,
+)
+_TARGET_SHAPE_BONUS = (
+    20.0  # deliberately large -- "jumps to the top" per this WO's brief
+)
+_NAV_BONUS = 3.0
+_FOOTER_PENALTY = -3.0
+_MENU_LIST_BONUS = 1.0
+
+
+def _nav_position_bonus(tag) -> float:
+    """+bonus inside <nav>/<header> (real site navigation), -penalty
+    inside <footer> (a footer link is disproportionately a
+    Terms-of-Service/social-media/vendor-marketing link, not a meeting
+    hub -- the same intuition WO-228's own vendor-marketing-apex guard
+    already encodes for footer badges specifically), a small +bonus
+    inside a <ul>/<ol> anywhere else (menu-shaped, still more likely
+    than a bare paragraph link), 0 otherwise."""
+    footer_hit = False
+    nav_hit = False
+    list_hit = False
+    for parent in tag.parents:
+        name = getattr(parent, "name", None)
+        if name in ("nav", "header"):
+            nav_hit = True
+        elif name == "footer":
+            footer_hit = True
+        elif name in ("ul", "ol"):
+            list_hit = True
+    if nav_hit:
+        return _NAV_BONUS
+    if footer_hit:
+        return _FOOTER_PENALTY
+    if list_hit:
+        return _MENU_LIST_BONUS
+    return 0.0
+
+
+def _score_hop_candidate_weighted(
+    text: str, href: str, full_url: str, base_netloc: str, tag
+) -> Optional[float]:
+    """Returns None for a candidate that should never be offered at all
+    (same vendor-marketing-apex and boilerplate-text guards as the
+    legacy scorer); otherwise a signed float score, higher is better.
+    Score = matched path-vocabulary weight + matched anchor-text-
+    vocabulary weight + a nav-position bonus/penalty + a target-shape
+    bonus (vendor host, or a named first-party path) + the legacy
+    routine-word penalty (kept -- still real signal for "this is a
+    general city-events calendar, not a meeting hub", independent of
+    which vocabulary flags a link in the first place)."""
+    netloc = urlparse(full_url).netloc.lower()
+    if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+
+    hay = f"{text} {href}".lower()
+    if any(p in hay for p in _BOILERPLATE_PHRASES):
+        return None
+
+    path = urlparse(full_url).path
+    path_tokens = _hop_tokenize(path)
+    for name, _value in parse_qsl(urlparse(full_url).query, keep_blank_values=True):
+        path_tokens.extend(_hop_tokenize(name))
+    anchor_words = _hop_tokenize(text)
+
+    path_score = 0.0
+    for token in set(path_tokens):
+        path_score += _HOP_PATH_WEIGHTS.get(token, 0.0)
+    for bigram in set(_hop_bigrams(path_tokens)):
+        path_score += _HOP_PATH_WEIGHTS.get(bigram, 0.0)
+    anchor_score = 0.0
+    for word in set(anchor_words):
+        anchor_score += _HOP_ANCHOR_WEIGHTS.get(word, 0.0)
+
+    target_bonus = 0.0
+    is_vendor = bool(netloc) and netloc != base_netloc and is_vendor_href_host(netloc)
+    if is_vendor:
+        target_bonus = _TARGET_SHAPE_BONUS
+    elif _NAMED_FIRSTPARTY_PATH_RE.search(hay):
+        target_bonus = _TARGET_SHAPE_BONUS
+
+    if path_score <= 0.0 and target_bonus <= 0.0:
+        # Anchor-text vocabulary alone can never qualify a candidate --
+        # real, confirmed false positive building this WO's own
+        # regression tests: a CivicAlerts.aspx PRESS RELEASE headlined
+        # "Board of County Commissioners Response to Call for Special
+        # Election" scores high purely on its prose ("board", "of",
+        # "commissioners" all real hub-anchor words) despite being a
+        # news item, not a meeting page. Requiring real PATH or
+        # target-shape evidence keeps that class of link out entirely.
+        return None
+
+    routine_penalty = -8.0 if any(w in hay for w in _ROUTINE_WORDS) else 0.0
+    position_bonus = _nav_position_bonus(tag)
+
+    return path_score + anchor_score + target_bonus + routine_penalty + position_bonus
+
+
+def is_vendor_href_host(netloc: str) -> bool:
+    """Same "is this a meeting-vendor host" test `derive_hop_weights.py`
+    uses to split first-party from vendor positives -- duplicated here
+    (rather than imported) since the derive script is an offline tool
+    that itself imports FROM this module, and it stays deliberately
+    small so the two lists are easy to eyeball together."""
+    n = (netloc or "").lower()
+    if n.startswith("www."):
+        n = n[4:]
+    vendor_hosts = set(_VENDOR_MARKETING_APEX) | {
+        "destinyhosted.com",
+        "youtube.com",
+        "youtu.be",
+        "vimeo.com",
+        "wistia.com",
+        "wistia.net",
+        "hylandcloud.com",
+        "databankcloud.com",
+        "suiteonemedia.com",
+        "viebit.com",
+        "townhallstreams.com",
+        "boxcast.tv",
+        "castus.tv",
+        "proudcity.com",
+        "invintus.com",
+        "legistar.council.nyc.gov",
+        "chicityclerkelms.chicago.gov",
+        # NOT included: meetings.municode.com -- see
+        # derive_hop_weights.py's matching comment (real regression: an
+        # ADA-accessible mirror of a tenant's own meeting entry outranked
+        # the tenant's own real listing page).
+    }
+    return any(h in n for h in vendor_hosts)
+
+
+def _find_hop_links_weighted(html_text: str, final_url: str) -> List[str]:
+    """Scores EVERY anchor on the page (no HOP1_HINT_WORDS pre-filter --
+    the new vocabulary includes words, like "supervisors"/"boards", that
+    never contained an old hint word as a substring, so a substring gate
+    built for the old list would silently exclude the new list's own
+    best signals) with `_score_hop_candidate_weighted()` and returns up
+    to MAX_HOP_LINKS URLs ranked best-first."""
+    soup = _safe_soup(html_text)
+    if soup is None:
+        return []
+    base_netloc = urlparse(final_url).netloc.lower()
+    scored: List[Tuple[float, int, str]] = []  # (score, doc_order, url)
+    seen = set()
+    doc_order = 0
+    for a in soup.find_all("a", href=True):
+        text = (a.get_text() or "").strip()
+        href = a["href"]
+        if href.startswith(("javascript:", "mailto:", "tel:", "#")):
+            continue
+        full = urljoin(final_url, href)
+        if full in seen or urlparse(full).scheme not in ("http", "https"):
+            continue
+        score = _score_hop_candidate_weighted(text, href, full, base_netloc, a)
+        if score is None:
+            continue
+        seen.add(full)
+        scored.append((score, doc_order, full))
+        doc_order += 1
+
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [url for _, _, url in scored[:MAX_HOP_LINKS]]
+
+
+def _find_hop_links_legacy(html_text: str, final_url: str) -> List[str]:
+    """The WO-228 scorer, kept verbatim behind `legacy=True` for the
+    WO-274 before/after comparison only -- see
+    `docs/investigations/hop_scorer_measurement.md`. Gathers every anchor
+    whose text/href matches HOP1_HINT_WORDS, scores each with
+    `_score_hop_candidate()`, and returns up to MAX_HOP_LINKS URLs
+    ranked best-first (a stable sort, so two candidates with an equal
+    score keep their original document order)."""
     soup = _safe_soup(html_text)
     if soup is None:
         return []
@@ -615,6 +859,23 @@ def find_hop_links(html_text: str, final_url: str) -> List[str]:
 
     scored.sort(key=lambda t: (-t[0], t[1]))
     return [url for _, _, url in scored[:MAX_HOP_LINKS]]
+
+
+def find_hop_links(
+    html_text: str, final_url: str, *, legacy: bool = False
+) -> List[str]:
+    """Gathers hop-link candidates from a fetched page's anchors and
+    returns up to MAX_HOP_LINKS URLs ranked best-first (a stable sort, so
+    two candidates with an equal score keep their original document
+    order). Signature is unchanged (`legacy` is keyword-only, default
+    False) so every existing importer keeps working with the new,
+    measured scorer; pass `legacy=True` to get the WO-228 word-list
+    scorer back verbatim, kept only for the WO-274 before/after
+    comparison (see `docs/investigations/hop_scorer_measurement.md`) --
+    it is not meant to be used going forward."""
+    if legacy:
+        return _find_hop_links_legacy(html_text, final_url)
+    return _find_hop_links_weighted(html_text, final_url)
 
 
 # --- WO-228 rule 2: verify a fetched hop candidate actually looks like a
