@@ -1,5 +1,55 @@
 # Backlog — done
 
+## WO-297: the pilot's own search mode now survives PMN's JSON outage too — same fallback the WO-205 follow-up already shipped for the entity search, ported to enumerate_notices() [Done 2026-09-12]
+
+**What was wrong.** Utah PMN's JSON search endpoint
+(`/pmn/searchresult.html`) has served its own outage page — titled
+"Techincal Difficulties" (sic, PMN's own spelling) — since 2026-09-11
+around 4am Mountain time. The WO-205 follow-up (PR #968) already fixed
+this for one caller,
+`find_tier3_short_meeting_substitutes.py`'s `pmn_entity_notices()`. It
+left one caller unfixed on purpose: `scripts/pmn_utah_pilot.py`'s own
+date-range search loop (`enumerate_notices()`), which paginates through
+PMN's *entire* notice list rather than one government's notices. That
+entry's own "Still true" line named this exact gap.
+
+The bug this caused: `enumerate_notices()` treats "no rows on this page"
+as "the search is over" and stops. PMN's outage page also parses to zero
+rows, so the loop was silently stopping on page 1 every time, with no
+error and no indication anything was wrong.
+
+**Fix.** `fetch_search_page()` (the JSON call) now raises a new
+`PMNOutageError` when the response matches the outage page (same
+`tech\w*\s+difficulties` regex the WO-205 follow-up already uses in
+`find_tier3_short_meeting_substitutes.py`), instead of silently parsing
+it as an empty page. `enumerate_notices()` catches that once, prints a
+one-line notice that it's switching, fetches a form CSRF token, and
+moves every remaining page in the run to `fetch_search_form_page()` (the
+search page's own form POST) — the same fallback already proven live by
+the WO-205 follow-up. No second copy of either function was written;
+both callers now share the same two functions.
+
+Two tests added in `tests/test_pmn_utah_pilot.py`, both fully mocked
+(no network): one confirms the switch happens and the fixture-backed
+rows come through the form path, the other confirms later pages in the
+same run go straight to the form path without retrying the JSON
+endpoint.
+
+**Live check.** Ran the real search for the last 7 days (capped at 3
+pages, ~75 notices, to keep it small and polite). Result: PMN's JSON
+endpoint has come back up since the WO was written — it returned 75 real
+notices directly, no outage page, so this particular run exercised the
+normal (now-working) path rather than the fallback. Confirmed directly
+with a raw POST to `/pmn/searchresult.html`: status 200, a real
+37KB results page, no match against the outage regex. The fallback logic
+itself is verified by the two unit tests above, built from the same real
+fixture (`tests/fixtures/pmn_search_form_results_provo.html`) the
+WO-205 follow-up's tests use — this session did not fabricate an outage
+to force a live demonstration of it.
+
+**Deploy.** `scripts/` changes need no deploy — nothing here runs as a
+Render service.
+
 ## WO-298: an "ok mint" answer on a YouTube channel row can now mint the government and write its pins [Done 2026-09-12]
 
 - **Why:** WO-243 fixed `scripts/apply_pin_worklist.py` so it could mint
