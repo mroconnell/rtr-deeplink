@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (32)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -132,14 +132,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (32)
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
-  4 more wrong-government domain mappings, same fix shape as the 17…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   `tenant_overrides.csv`'s `evidence` text always says "WO-134…
   `wo145_api_first_sweep.py`'s `_title_place_conflict()`…
   The wrong-government checks never look at the resolved video's own…
   A YouTube short-link (`youtu.be/...`) dedup check runs before the…
-  Coverage registry: per-state view and other dashboard additions…  (8)
+  Coverage registry: per-state view and other dashboard additions…  (10)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
     [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
     [JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result…
@@ -148,6 +147,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (32)
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
     [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
+    [JUST-DO-IT] `[EXAMPLE]` Winona County, MN's own homepage links an…
+    [JUST-DO-IT] `[EXAMPLE]` Imperial city, CA's own homepage links a…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Production actions only Ryan should take  (12)
@@ -1144,42 +1145,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** Found and worked around (not fixed) during WO-169,
   `BACKLOG_DONE.md` 2026-09-10.
 
-### 4 more wrong-government domain mappings, same fix shape as the 17 already corrected `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** WO-146's re-verification (`BACKLOG_DONE.md`, 2026-09-10)
-  found `jurisdiction_coverage.csv` rows whose `domain` actually belongs
-  to a different, same-named or same-CDN-slug government: Providence
-  County, RI (`providenceri.iqm2.com` is really the City of Providence
-  -- and Rhode Island has no functioning county governments at all, so
-  there may be no real target row to move the domain to), Winona
-  County, MN (`pub-winona.escribemeetings.com` is really Winona city),
-  Imperial city, CA (`imperial.granicus.com` is really Imperial
-  COUNTY), Colorado County, TX (`coloradoga.granicus.com` is the
-  Colorado state legislature's own Granicus tenant, not a local
-  government at all), and Arkansas County, AR
-  (`arkansas-sc.granicus.com` is the Arkansas Supreme Court's).
-- **Impact:** these 4 domains stay wrongly attributed and will keep
-  producing the same wrong "found it" result if anyone re-sweeps them.
-- **Next action:** apply the same clear-source/set-target pattern
-  `research/wo146_wrong_domain_fix.py` already used for the other 17 --
-  for the two state-entity cases (Colorado, Arkansas), there is no local
-  government to redirect to, so just clear the domain and record
-  `reject_reason=off-mission`, not `wrong-domain-mapping`.
-- **Constraint:** Colorado County, TX's row already has `transcribed=
-  True` from an older, unrelated sweep, which is why WO-146's own
-  backfill left it alone (the standing "never overwrite a real True"
-  rule) -- but a fresh `/internal/export/pages` check found ZERO live
-  pages under this gov_id, so that `True` is stale, not evidence of a
-  real page. WO-153 (2026-09-10) already cleared this exact staleness
-  for Providence County, RI and Winona County, MN (both were in its
-  transcribed-but-no-page sweep, confirmed the same way: the archived
-  page really is the city's, not the county's) -- their `transcribed`
-  flags are already cleared, so only the `domain` field itself still
-  needs the clear-source/set-target fix described above. Worth a fresh
-  look at what `transcribed=True` is actually
-  based on for this row before trusting it elsewhere.
-- **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
-
 ### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** `scripts/wo150_muni_ladder_sweep.py`'s access ladder calls
@@ -1328,6 +1293,20 @@ so that work reads together.
   - **Next action**: deploy WO-214 (resolver + Archive); after that, this entry closes and a future re-resolve sweep is safe. Do not run a re-resolve sweep over CivicPlus-origin pages before then.
   - **Constraint**: `scripts/backfill_gov_id.py --apply` will not pick these up — a targeted re-push of a specific URL is the only fix for a page that has already gone blank.
   - **History**: `BACKLOG_DONE.md`'s WO-214 entry (fix, sizing method, and the same-day override follow-up).
+
+- **[JUST-DO-IT] `[EXAMPLE]` Winona County, MN's own homepage links an AgendaCenter and a YouTube page, neither checked for a real current meeting yet.**
+  - **Issue**: WO-238 (2026-09-11) promoted `co.winona.mn.us` into the county's `domain` field (it was a wrong-government mapping before, `pub-winona.escribemeetings.com`, which is really Winona city's). While verifying the real domain live, its homepage was found to link `/AgendaCenter` and `/youtube` — a real, unswept lead for the county's own meeting coverage.
+  - **Impact**: Winona County, MN has no meeting/video coverage recorded at all today (`reject_reason` blank after WO-238's fix) despite having a plausible real path to one.
+  - **Next action**: hand-check `co.winona.mn.us/AgendaCenter` for a real, current meeting, and check whether `/youtube` is a real channel with meeting recordings (per `CLAUDE.md`'s hand-check rule — confirm it's the county's own channel, not a wrong body reached through it).
+  - **Constraint**: none known — this is a fresh, unswept lead, not yet even fetched past the homepage.
+  - **History**: `BACKLOG_DONE.md`'s WO-238 entry, 2026-09-11.
+
+- **[JUST-DO-IT] `[EXAMPLE]` Imperial city, CA's own homepage links a CivicClerk portal and a YouTube page, neither checked for a real current meeting yet.**
+  - **Issue**: WO-238 (2026-09-11) promoted `cityofimperial.org` into the city's `domain` field (it was a wrong-government mapping before, `imperial.granicus.com`, which is really Imperial County's). While verifying the real domain live, its homepage was found to link `imperialca.portal.civicclerk.com` and `/youtube` — a real, unswept lead for the city's own meeting coverage. The CivicClerk portal's root page is a JS-rendered shell on a plain fetch (33 lines, generic "Public Portal • CivicClerk" title) — the access ladder's browser-headers or headless rung, not a plain HTTP GET, is what's needed to actually read it.
+  - **Impact**: Imperial city, CA has no meeting/video coverage recorded at all today (`reject_reason` blank after WO-238's fix) despite having a plausible real path to one.
+  - **Next action**: fetch `imperialca.portal.civicclerk.com` with browser headers (or headless if that still returns an empty shell), find a real current meeting, and check whether `/youtube` is a real channel with meeting recordings (per `CLAUDE.md`'s hand-check rule).
+  - **Constraint**: none known — this is a fresh, unswept lead, not yet even fetched past the homepage.
+  - **History**: `BACKLOG_DONE.md`'s WO-238 entry, 2026-09-11.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
