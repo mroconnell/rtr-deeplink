@@ -335,7 +335,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (158)
     [NEEDS-AUDIT] A jurisdiction string naming its state as a full word…
     [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
     [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
-    [JUST-DO-IT] `[EASY]` Several already-covered governments have a…
+    [JUST-DO-IT] `[EASY]` `[WAIT]` Three of WO-234's nine Laserfiche…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -4917,12 +4917,11 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't fold accents in a way that creates a new collision (two distinctly-named real governments that only differ by a diacritic) — check for that before shipping.
   - **History**: gov-id enumeration audit, 2026-09-10. This entry itself was silently dropped from `BACKLOG.md` by a later merge and restored 2026-09-11 from git history — see `BACKLOG_DONE.md`'s recovery note.
 
-- **[JUST-DO-IT] `[EASY]` Several already-covered governments have a confirmed second real domain not recorded in `alternate_domains`, found chasing Laserfiche WebLink hosts (WO-234).**
-  - **Issue**: WO-234's Laserfiche WebLink discovery pass (2026-09-11) found real, live WebLink document hosts on a SECOND domain for governments that already have a research-file row and, in most cases, an already-transcribed page: Alameda County CA (`weblink.alamedacountyca.gov`; file domain `alamedacounty.granicus.com`/`acgov.org`), Riverside County CA (`weblink.rctlma.org`, its Transportation & Land Management Agency), Kent city WA (`documents.kentwa.gov`; file domain `kentwa.iqm2.com`), San Bernardino city CA (`edocs.sbcity.org`; file domain `sanbernardinocityca.iqm2.com`/`ci.san-bernardino.ca.us`), Northampton city MA (`archive.northamptonit.info`, confirmed via its own `repo=CityOfNorthampton` query param; file domain `northamptonma.gov`), St. Lucie County FL (`documents.stlucieco.gov`; file domain `stluciefl.iqm2.com`), South Orange NJ (`southorange.no-ip.org`; file domain `www.southorange.org`), Aurora ON (`records.aurora.ca`; file domain `pub-auroraon.escribemeetings.com`, `www.aurora.ca` already an alternate), Pickering ON (`corporate.pickering.ca`; file domain `www.pickering.ca`).
-  - **Impact**: real, working document hosts these governments actually publish through — worth having on file for the next domain-alias/coverage pass. None add video (Laserfiche WebLink is a document repository, not a video source), so none change ingest status.
-  - **Next action**: add each confirmed host to its government's `alternate_domains` in `jurisdiction_coverage.csv`, following §158's write protocol. The exact hosts are in `research/wo234_laserfiche_governments.csv` (rows with a non-blank `gov_id` and a note mentioning "jurisdiction_coverage.csv row exists").
-  - **Constraint**: don't add these as the PRIMARY `domain` — every one already has a working, already-tested primary domain; this is purely an `alternate_domains` addition.
-  - **History**: `BACKLOG_DONE.md`'s WO-234 entry; full list in `rtr-business/research/wo234_laserfiche_governments.csv`.
+- **[JUST-DO-IT] `[EASY]` `[WAIT]` Three of WO-234's nine Laserfiche second-domain candidates didn't re-confirm live when WO-255 checked (2026-09-12) — worth one more try later.**
+  - **Issue**: WO-255 re-confirmed all nine of WO-234's candidate second domains with a fresh GET before filing any of them as `alternate_domains`. Six held up and are now on file (see `BACKLOG_DONE.md`'s WO-255 entry). Three didn't: Riverside County CA's `weblink.rctlma.org` now sits behind a Cloudflare "Verify you are human" challenge; San Bernardino city CA's `edocs.sbcity.org` is DNS-unresolvable (NXDOMAIN); Northampton city MA's `archive.northamptonit.info` timed out on both http and https.
+  - **Impact**: three more working-looking document hosts not yet on file, each blocked by what looks like ordinary host volatility rather than a real, permanent outage — not urgent, since none of these add video.
+  - **Next action**: re-run a plain GET against the three hosts (see `rtr-business/research/wo255_not_reconfirmed.csv` for the exact hosts and reasons) next time coverage work touches these governments; add whichever re-confirm to `alternate_domains` following §158's write protocol. Never cross the Cloudflare challenge on Riverside's host — that's the standing policy above, not a thing to retry differently.
+  - **History**: `BACKLOG_DONE.md`'s WO-255 entry; `rtr-business/research/wo255_not_reconfirmed.csv`.
 
 ## Reliability, ops & cost
 

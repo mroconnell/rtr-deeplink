@@ -1,5 +1,93 @@
 # Backlog — done
 
+## WO-255: the nine WO-234 Laserfiche second domains, re-confirmed live and filed as `alternate_domains` [Done 2026-09-12]
+
+**What this was.** WO-234 found a second, real document-hosting domain
+for nine governments the site already covers — each one a Laserfiche
+WebLink site, which holds documents, not video. Nothing about how these
+governments get ingested changes; this was purely about recording the
+second domain so a future coverage pass knows it exists. Before writing
+anything, this work order checked that each of the nine hosts was still
+live, since WO-234 found them a day earlier and a dead link is worse
+than no link.
+
+**One thing to flag about WO-234's own notes.** The work order describing
+this task said the nine rows in WO-234's research file carry a note
+saying the government's row "exists" in the main research file. The
+actual note says the opposite-sounding thing — that the new host didn't
+match any existing row — which is normal, since the host is new. All
+nine governments do have a real row in the main research file; that was
+checked directly by looking up each one's government id, not assumed
+from the note text.
+
+**Result.** Six of the nine hosts answered normally and were added to
+that government's `alternate_domains` column. Three did not answer and
+were left alone.
+
+| Government | Host | Result |
+|---|---|---|
+| Alameda County, CA | weblink.alamedacountyca.gov | Live — added |
+| Kent, WA | documents.kentwa.gov | Live — added |
+| St. Lucie County, FL | documents.stlucieco.gov | Live — added |
+| South Orange, NJ | southorange.no-ip.org | Live — added |
+| Aurora, ON | records.aurora.ca | Live — added |
+| Pickering, ON | corporate.pickering.ca | Live — added |
+| Riverside County, CA | weblink.rctlma.org | Blocked by a "prove you're human" challenge page — not added |
+| San Bernardino, CA | edocs.sbcity.org | Address no longer resolves at all — not added |
+| Northampton, MA | archive.northamptonit.info | Timed out, no response — not added |
+
+**Caution.** The three that didn't answer may just be having a bad day —
+a challenge page, a dead address, and a timeout are all things that can
+clear up on their own. None were added on the assumption they would come
+back; a later check can add them if they do. The primary domain and
+every government's ingest status are untouched — this task only ever
+touched the `alternate_domains` column.
+
+**Recommendation.** No action needed now. `BACKLOG.md` carries a small
+follow-up entry to re-check the three hosts that didn't answer next time
+coverage work touches these nine governments.
+
+**Deploy status.** No deploy needed. This is a research-file-only
+change — it never touches the app, the Archive, or production. No pages
+were created or changed.
+
+**A tool limitation blocked committing the research-file change.** This
+work order's agent runs inside an isolated `rtr-deeplink` git worktree,
+and that isolation refuses any `git` command aimed at a different repo —
+including `rtr-business`, which is where the research file lives, even
+though it's a separate, unrelated repository rather than another
+agent's workspace. The file itself was read, re-confirmed, and updated
+correctly (see below), but this session could not run `git add`/`git
+commit` in `rtr-business` to record that change. A session with
+ordinary `rtr-business` access should run:
+
+```
+git -C ~/Documents/rtr-business add \
+  research/jurisdiction_coverage.csv \
+  research/wo255_apply_to_jc.py \
+  research/wo255_live_check_report.csv \
+  research/wo255_not_reconfirmed.csv \
+  research/ENUMERATION_METHODS.md
+git -C ~/Documents/rtr-business commit -m "WO-255: file six re-confirmed Laserfiche second domains as alternate_domains" -- \
+  research/jurisdiction_coverage.csv \
+  research/wo255_apply_to_jc.py \
+  research/wo255_live_check_report.csv \
+  research/wo255_not_reconfirmed.csv \
+  research/ENUMERATION_METHODS.md
+```
+
+**Files touched (uncommitted in `rtr-business` as of this entry):**
+`research/jurisdiction_coverage.csv` (six rows' `alternate_domains`
+updated — row count unchanged, 45,609 data rows before and after),
+`research/wo255_apply_to_jc.py` (the write script, following §158's
+lock/re-read/floor/atomic-write protocol), `research/
+wo255_live_check_report.csv` (all nine hosts, outcome per host),
+`research/wo255_not_reconfirmed.csv` (the three that didn't answer, with
+reasons), `research/ENUMERATION_METHODS.md` §284 (the full write-up).
+
+**History**: `BACKLOG_DONE.md`'s WO-234 entry (the discovery pass this
+closes out); `rtr-business/research/ENUMERATION_METHODS.md` §284.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
