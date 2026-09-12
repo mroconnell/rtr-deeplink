@@ -1,5 +1,103 @@
 # Backlog — done
 
+## WO-256 (part 1 of 3): a government's hub address is now permanent, so identity fixes stop moving reader URLs [Done 2026-09-12]
+
+**What was done and why.** A "hub" is the page that lists every meeting
+we hold for one government — `/j/orem-ut`, for example. Until today that
+address was worked out fresh on every single visit, from whatever name
+the government currently has on file. So anything that changed the name
+also changed the address: a spelling correction, a human override, a
+re-run of the identity backfill, a newly minted government getting its
+proper record. The old address then stopped working, and the only way to
+keep it alive was for a person to notice and hand-write a redirect. 829
+of those redirects had built up, covering 784 governments.
+
+On the evening of 2026-09-11 one backfill run retired 35 hub addresses at
+once. Twelve of them were retired **wrongly** — Redmond WA, Harrisonburg
+VA, Amarillo TX, East Lansing MI, Lake Havasu AZ, Collierville TN, North
+Salem NY, the three Long Island towns and others — because a bug in the
+resolver (WO-243, being fixed as WO-251) turned "The City of Redmond, WA"
+into a brand-new made-up government. Under the change made here, those
+pages would still have changed government and **no reader's address would
+have moved**.
+
+So a government's hub address is now stored once, in a new small table in
+the Archive database, and simply read back. The government's displayed
+name still changes freely; only the address is fixed.
+
+**Ryan's gate, and why it matters.** The address does not become
+permanent straight away. It is recorded the first time we see a
+government, and it keeps following the live calculation until two things
+are both true: the hub has existed for 7 days, and it holds more than one
+meeting. Only then is it frozen. This is deliberate — a brand-new
+government is exactly the one whose identity is still being argued over
+by pins, name repairs and mints, and that argument settles on its own
+inside a week.
+
+**Day one moves nothing.** The stored address is defined as "whatever the
+site computes today", so the one-time backfill changes zero live URLs.
+That claim is checked by a test, not asserted: it records and freezes
+every government in a seeded database and compares every page's hub
+address before and after.
+
+| Outcome | Count of 3 | What it means |
+| --- | --- | --- |
+| Reader URLs that move on cutover day | 0 | The frozen address is today's computed address, by definition |
+| Live redirect rows still needed | 829, unchanged | The existing `hub_slug_aliases.csv` carries forward untouched |
+| New redirect rows a future rename needs | 1 per rename | Was one per registry refresh; now only a deliberate correction |
+
+**What changed in the code.**
+
+- `hub_slugs(gov_id, hub_slug, first_seen_at, frozen_at)` — a new Archive
+  table, Alembic revision `e2a1c7b45d93`. The government registry is a
+  CSV file, not a database table, which is why this is its own table
+  rather than a column (the audit said to check which, first).
+- `archive/db/hub_slugs.py` — the read and write path. The read is
+  synchronous because `crud._hub_identity()` is, so the frozen rows sit
+  in a small process cache reloaded at most once a minute by whichever
+  page render runs first. A cold cache, or a database where the migration
+  has not run, falls back to exactly the old live calculation — so the
+  code and its migration are safe to deploy in either order, the same
+  discipline `crud._fts_available()` already follows.
+- Writers no longer invent a hub address. Ingest
+  (`crud._find_or_create_page()`), the override endpoint
+  (`crud.override_jurisdiction()`) and the sweep all call
+  `hub_slugs.record_government()` instead.
+- `scripts/freeze_hub_slugs.py` — the one-time backfill and the ongoing
+  catch-up sweep. Dry run by default, commit per government, skips
+  anything already frozen, so a re-run resumes rather than restarts.
+- `scripts/backfill_gov_id.py`'s "hub slugs retired" line now counts only
+  addresses **no government owns any more**. A page changing government
+  does not retire an address — that is the entire point — so the old
+  count was measuring the wrong thing from now on.
+
+**The gate runs on writes and in the sweep, never on a page render.** The
+Archive service has no scheduler of its own. A government still being
+ingested freezes on its next ingest once it is eligible (one extra count
+query, once in its life); one that has stopped being ingested freezes on
+the next sweep run. A write inside a page render was rejected outright:
+that is how a slow render becomes an outage.
+
+**Caution.** Freezing is a one-way door by design. Once an address is
+frozen, deciding later that it was badly named costs one redirect row
+instead of being free. That was Ryan's decision to make and he made it.
+Nothing un-freezes in bulk, on purpose — there is no script for it.
+
+**Recommendation.** Deploy the Archive, then run
+`python scripts/freeze_hub_slugs.py` (dry run) on the Archive's Render
+shell and read the counts, then `--apply`. Until that runs the table is
+empty and every hub behaves exactly as it did yesterday, so there is no
+hurry and no risk in waiting.
+
+**Deploy status.** Merged to `main`, **not live**. This needs an Archive
+deploy (the migration runs as part of it, via `preDeployCommand`). The
+backfill is a separate, manual Render-shell step after that deploy.
+Nothing here changes the resolver.
+
+**History.** `docs/investigations/hub_architecture_audit.md` §4 and §8
+(the audit that measured all of this, WO-232); `STATE_HUB_PAGES.md` §6
+for the design; `docs/COVERAGE_HANDOVER.md` §5 item 7 for what it changes
+about pin work.
 ## WO-266: 274 queue lines for governments that already have a live transcript parked for depth later [Done 2026-09-12]
 
 - **Why:** Ryan asked how many of the tier-3 queue's non-YouTube tenant

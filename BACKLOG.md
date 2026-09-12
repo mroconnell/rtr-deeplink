@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (34)
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -138,7 +138,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
   `wo145_api_first_sweep.py`'s `_title_place_conflict()`…
   The wrong-government checks never look at the resolved video's own…
   A YouTube short-link (`youtu.be/...`) dedup check runs before the…
-  Coverage registry: per-state view and other dashboard additions…  (10)
+  Coverage registry: per-state view and other dashboard additions…  (11)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
     [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
     [JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result…
@@ -149,6 +149,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
     [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
     [JUST-DO-IT] `[EXAMPLE]` Winona County, MN's own homepage links an…
     [JUST-DO-IT] `[EXAMPLE]` Imperial city, CA's own homepage links a…
+    [JUST-DO-IT] `[EASY]` A government that stops being ingested only…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Production actions only Ryan should take  (15)
@@ -169,7 +170,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
   Decisions about already-live content  (2)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
-    [HUMAN] Hub identity: freeze slugs to gov_id (decision)
+    [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (158)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
@@ -1316,6 +1317,12 @@ so that work reads together.
   - **Next action**: fetch `imperialca.portal.civicclerk.com` with browser headers (or headless if that still returns an empty shell), find a real current meeting, and check whether `/youtube` is a real channel with meeting recordings (per `CLAUDE.md`'s hand-check rule).
   - **Constraint**: none known — this is a fresh, unswept lead, not yet even fetched past the homepage.
   - **History**: `BACKLOG_DONE.md`'s WO-238 entry, 2026-09-11.
+- **[JUST-DO-IT] `[EASY]` A government that stops being ingested only freezes its hub slug when somebody runs the sweep by hand**
+  - **Issue**: WO-256's freeze gate runs in two places — on the writer path (so an actively-ingested government freezes on its next ingest once eligible) and in `scripts/freeze_hub_slugs.py`. The Archive service has no scheduler, so a government that gained its second page and then went quiet sits unfrozen until a human runs the sweep.
+  - **Impact**: small and self-correcting — an unfrozen government behaves exactly as every hub did before WO-256 (slug computed live), so the only cost is that it keeps the old churn risk until the next sweep.
+  - **Next action**: either run `python scripts/freeze_hub_slugs.py --apply` as a standing step after each pin round (it is already in the WO-256 entry's recommendation), or add it to a worker's idle-time loop the way the re-resolve sweep works.
+  - **Constraint**: don't put the gate on a read path — a write inside a page render is how a slow render becomes an outage, which is why it isn't there today.
+  - **History**: `BACKLOG_DONE.md`'s WO-256 entry; `archive/db/hub_slugs.py`'s `apply_gate()` docstring.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -1572,51 +1579,12 @@ of human step they need.
     candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
-- **[HUMAN] Hub identity: freeze slugs to gov_id (decision)**
-  - **Issue**: a `/j/{slug}` hub's slug is computed **live**, on every
-    request, from either the government registry (`hub_slug(gov)`, when
-    `gov_id` has a registry row) or the page's own raw jurisdiction text
-    (when it doesn't) — never stored, never frozen. So any operation that
-    changes what a `gov_id` resolves to (a rename, a Census correction, a
-    `POST /internal/jurisdiction/override`, a `backfill_gov_id.py --apply`
-    run, a curated-government mint getting scored) can move a page's URL,
-    and nothing writes the alias that keeps the old URL alive — that's a
-    manual, ad hoc step (`hub_slug_aliases.csv`), already skipped on
-    purpose 6 times in one afternoon (WO-209) for good reasons a human had
-    to work out case by case. Full measurement, code paths, and a worked
-    example set: `docs/investigations/hub_architecture_audit.md`.
-  - **Impact**: measured from a fresh 8,222-page export — 829 alias rows
-    exist today (784 distinct governments), 25 of them still have live
-    pages under BOTH the old and new slug at once. 5 hubs currently mix
-    2+ distinct real `gov_id`s on one slug (3 of them a minted `rtr:` id
-    colliding by coincidence with a national `us:`/`ca:` id for what looks
-    like the same real government). 4 hubs have an unrelated
-    `rtr:unknown:<host>` page riding along by raw-text coincidence (47
-    pages). None of this is visible until a reader hits a 404 or a human
-    runs an export and greps it, which is what every one of WO-209/210/
-    214/215/221 and this audit itself had to do by hand.
-  - **Next action**: the audit doc proposes minting one `hub_slug` per
-    `gov_id` (from exactly today's `hub_slug(gov)` output, so zero
-    reader-visible change on cutover), stored on the government registry
-    rather than recomputed from a page — plus a host-based (not text-
-    based) rule for letting an un-keyed page join an already-identified
-    government's hub (measured: 31 pages would gain a real hub under it,
-    with zero new ambiguity), and a token-gated internal per-host view of
-    the `rtr:unknown` bucket (220 pages, 126 hosts, 27% on a
-    `MULTI_GOV_HOSTS` host needing a per-video pin) to replace the
-    export-and-grep step. **Ryan's decision**: whether to commit to the
-    slug freeze — once frozen, a naming-convention "fix" always costs one
-    alias row instead of being free, a real permanent trade for a churn
-    source that mostly goes away. See the audit doc's §7 for the full
-    options table.
-  - **Constraint**: this is a design decision plus a migration, not a
-    same-session fix — no code was changed by the audit itself (WO-232
-    was read-only by design). Building it needs its own work order once
-    Ryan decides.
-  - **History**: `docs/investigations/hub_architecture_audit.md` (WO-232,
-    2026-09-11); background in `STATE_HUB_PAGES.md` and
-    `docs/COVERAGE_HANDOVER.md` §3; the churn this responds to is
-    documented across `BACKLOG_DONE.md`'s WO-209/210/214/215/221 entries.
+- **[HUMAN] Five `/j/` hubs really do hold two different governments each — a human has to say, per hub, which is right**
+  - **Issue**: measured on a fresh 8,222-page export (WO-232): 5 hub slugs carry 2+ distinct real `gov_id`s, 11 pages in all — 3 hubs where a minted `rtr:` id and a national `us:`/`ca:` id look like the same real government and coincidentally slugify the same (6 pages), 1 where two genuinely different governments legitimately share a display name (Yarmouth County, NS vs. the Municipality of Yarmouth, NS — 3 pages), and 1 where two different not-yet-scored Nova Scotia subdivisions collide (Lunenburg, 2 pages).
+  - **Impact**: each of those hubs shows one government's meetings mixed with another's. WO-256's slug freeze stops *new* collisions of this shape forming by coincidence, but it does not retroactively separate the 5 that already exist.
+  - **Next action**: for each of the 5, decide whether the two ids are one government (merge them — one id wins, one `hub_slug_aliases.csv` row for the retired one) or two (give the second its own frozen slug in `hub_slugs`, which needs a name that distinguishes it). The audit's §2 table names all 5.
+  - **Constraint**: not a code fix and not guessable — Yarmouth is a real case of two separate governments that share a name, so a rule that merges on name collision would be wrong.
+  - **History**: `docs/investigations/hub_architecture_audit.md` §2 and §8; `BACKLOG_DONE.md`'s WO-256 entry.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 

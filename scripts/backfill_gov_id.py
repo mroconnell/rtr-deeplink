@@ -135,13 +135,15 @@ async def main() -> None:
         page_hints_for,
         resolve_government,
     )
+    from archive.db import hub_slugs as hub_slug_table
     from archive.db.engine import async_session
-    from archive.db.crud import _display_from_registry, _display_jurisdiction
-    from archive.db.models import MeetingPage
-    from archive.utils.jurisdiction_format import (
-        jurisdiction_hub_slug,
-        normalize_state_suffix,
+    from archive.db.crud import (
+        _display_from_registry,
+        _display_jurisdiction,
+        live_hub_slug,
     )
+    from archive.db.models import MeetingPage
+    from archive.utils.jurisdiction_format import normalize_state_suffix
 
     # The one tier this sweep must not overwrite. Imported by value
     # rather than re-spelled, so a rename cannot silently un-protect
@@ -152,6 +154,15 @@ async def main() -> None:
     print(f"gov_id backfill -- {mode}")
 
     async with async_session() as session:
+        # WO-256: the hubs this run could move a page between are read off
+        # the frozen `hub_slugs` table, not recomputed from each page's
+        # text. That is the whole point of the freeze: a page changing
+        # GOVERNMENT no longer retires a SLUG, so the "hub slugs retired"
+        # line below counts only a slug that genuinely stops belonging to
+        # anybody. Empty before the migration/backfill has run, which just
+        # means the report falls back to the live computation it used
+        # before.
+        await hub_slug_table.refresh(session, force=True)
         stmt = select(
             MeetingPage.id,
             MeetingPage.slug,
@@ -258,6 +269,12 @@ async def main() -> None:
     tiers: Counter = Counter()
     unchanged = 0
     hub_moves: Counter = Counter()
+    # Every slug some real government owns, so the report can tell a slug
+    # that MOVED PAGES (normal, and no longer a URL change for anybody)
+    # from one that genuinely stops belonging to anybody (WO-256). Seeded
+    # with every frozen slug, then extended with the live slug of each
+    # government this run touches.
+    owned_slugs: set = set(hub_slug_table.frozen_hub_slugs().values())
 
     for row, host, path, raw, hints in keep:
         (
@@ -385,8 +402,22 @@ async def main() -> None:
             unchanged += 1
             continue
 
-        old_hub = jurisdiction_hub_slug(jurisdiction)
-        new_hub = match.hub_slug or jurisdiction_hub_slug(new_jurisdiction)
+        # A government's FROZEN slug first, then the live computation for
+        # a government that has not got one yet (WO-256). `match.hub_slug`
+        # is the resolver's own live answer for the new id and is still
+        # the right fallback for one the freeze has never seen.
+        old_hub = hub_slug_table.frozen_hub_slug(current_gov_id) or live_hub_slug(
+            current_gov_id, jurisdiction
+        )
+        new_hub = (
+            hub_slug_table.frozen_hub_slug(new_gov_id)
+            or match.hub_slug
+            or live_hub_slug(new_gov_id, new_jurisdiction)
+        )
+        if old_hub and current_gov_id and not current_gov_id.startswith("rtr:unknown:"):
+            owned_slugs.add(old_hub)
+        if new_hub and new_gov_id and not new_gov_id.startswith("rtr:unknown:"):
+            owned_slugs.add(new_hub)
         if old_hub and new_hub and old_hub != new_hub:
             hub_moves[(old_hub, new_hub)] += 1
 
@@ -440,10 +471,10 @@ async def main() -> None:
                         page.jurisdiction_confidence = match.tier
                 await write_session.commit()
 
-    _report(changes, tiers, hub_moves, unchanged, overrides, args)
+    _report(changes, tiers, hub_moves, owned_slugs, unchanged, overrides, args)
 
 
-def _report(changes, tiers, hub_moves, unchanged, overrides, args) -> None:
+def _report(changes, tiers, hub_moves, owned_slugs, unchanged, overrides, args) -> None:
     print("")
     label = "changed          " if args.apply else "would change     "
     print(f"  {label} : {len(changes)}")
@@ -465,7 +496,15 @@ def _report(changes, tiers, hub_moves, unchanged, overrides, args) -> None:
     merges = Counter()
     for (old_hub, new_hub), n in hub_moves.items():
         merges[new_hub] += n
-    print(f"  hub slugs retired         : {len({o for o, _ in hub_moves})}")
+    # WO-256: a page changing government no longer retires a slug -- the
+    # government keeps its own frozen hub whether or not this page stays
+    # on it. A slug is only really retired when NO government owns it,
+    # which since the freeze means an un-keyed page's raw-text hub losing
+    # its last page. That is the number that needs a
+    # `hub_slug_aliases.csv` row; the rest need nothing.
+    retired = {o for o, _ in hub_moves if o not in owned_slugs}
+    print(f"  hub slugs retired         : {len(retired)} (no government owns them)")
+    print(f"  pages moving to another hub: {sum(hub_moves.values())}")
     print(f"  hubs receiving pages      : {len(merges)}")
     print("")
     print("  largest hub moves:")

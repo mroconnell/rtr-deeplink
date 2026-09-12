@@ -906,3 +906,58 @@ class SearchQuery(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+class HubSlug(Base):
+    """One permanent `/j/{slug}` per government -- WO-256, built from
+    `docs/investigations/hub_architecture_audit.md` §4.
+
+    **Why this table exists.** A hub's slug used to be computed live on
+    every request, from the registry's *current* display name for the
+    page's `gov_id` (or, for a minted id with no registry row yet, from
+    the page's own raw jurisdiction text). So every operation that
+    changed what a `gov_id` rendered as -- a rename, a Census correction,
+    a `POST /internal/jurisdiction/override`, a
+    `scripts/backfill_gov_id.py --apply` run, a curated mint getting
+    scored -- silently moved a live, indexed, already-linked URL, and
+    nothing wrote the `hub_slug_aliases.csv` row that keeps the old one
+    alive. 829 alias rows for 784 governments had accumulated by
+    2026-09-11, and on the evening of 2026-09-11 one backfill run retired
+    35 hubs of which 12 were retired *wrongly*, by a resolver regression
+    (WO-243/WO-251). A slug stored once and read back is immune to all of
+    that: the government a page belongs to can still change, but the URL
+    a reader bookmarked does not move because of it.
+
+    **The gate (Ryan, 2026-09-12).** A row is written the first time a
+    government is seen, and its `hub_slug` keeps tracking the live
+    computation until `frozen_at` is set -- so the early pin/identity
+    churn on a brand-new government settles on its own before anything
+    becomes permanent. `frozen_at` is set once the government has been
+    known for `hub_slugs.FREEZE_AFTER` (7 days) AND has more than one
+    page. After that the stored slug is authoritative and a genuine
+    rename costs exactly one `hub_slug_aliases.csv` row, the same
+    mechanism as today.
+
+    `gov_id` is the primary key -- one government, one hub, and an
+    ingest racing another ingest for the same brand-new government
+    inserts at most one row (`ON CONFLICT DO NOTHING`, see
+    `archive/db/hub_slugs.py`). String(320) matches
+    `MeetingPage.gov_id`'s own derived width (migration d8b2c5e07a41).
+    """
+
+    __tablename__ = "hub_slugs"
+
+    gov_id: Mapped[str] = mapped_column(String(320), primary_key=True)
+    # Not unique: two different governments CAN legitimately share a
+    # display name, and so a slug (Yarmouth County, NS vs. the
+    # Municipality of Yarmouth, NS -- a real measured case in the audit's
+    # §2). Indexed because the reader path asks "whose hub is this slug?"
+    hub_slug: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # NULL until the gate above passes. The one column that decides
+    # whether `hub_slug` is authoritative or still provisional.
+    frozen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

@@ -442,6 +442,23 @@ What the 2026-09-09 sweeps established about *where video is*:
    conflict there is exactly as likely to silently drop a finished-work
    entry as it is a queue or pin line, and as of WO-236 (2026-09-11) CI
    fails a PR that does.
+7. **A hub's URL is now frozen to the government, not to its name**
+   (WO-256, 2026-09-12, built from `docs/investigations/
+   hub_architecture_audit.md`). Identity work used to move reader URLs:
+   every rename, override, mint-scoring pass and `backfill_gov_id.py
+   --apply` run recomputed a government's `/j/` slug from its *current*
+   display name, and nothing wrote the alias that keeps the old URL
+   alive — 829 alias rows for 784 governments by 2026-09-11, and on that
+   evening one backfill run retired 35 hubs of which 12 were retired
+   wrongly by a resolver regression (WO-243/WO-251). The slug now lives
+   in an Archive table (`hub_slugs`, one row per `gov_id`), minted from
+   exactly today's computed slug and frozen once the government has been
+   known 7 days and has more than one page. **What this changes for pin
+   work**: a page changing government no longer changes any URL, so the
+   "does this re-key need an alias row?" review step after a pin round is
+   gone. `scripts/freeze_hub_slugs.py --apply` (Render shell) is the
+   one-time backfill and the catch-up sweep. See `STATE_HUB_PAGES.md` §6
+   for the design.
 
 ## 6. What is honest but unfinished
 
