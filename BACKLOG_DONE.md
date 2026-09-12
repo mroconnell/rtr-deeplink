@@ -302,6 +302,109 @@ deploy before they take effect for the transcription worker's re-resolve
 this only matters for a future re-resolve of the same video). No queue
 lines were added this round.
 
+## WO-279: a second look at tonight's length-deferred and turned-away governments — 36 pages live, 7 queued, 37 confirmed no video [Done 2026-09-12]
+
+**What was done and why.** Tonight's sweeps (WO-230, WO-235, WO-247,
+WO-249, WO-252, WO-253, WO-258, WO-259, WO-271, WO-276) each looked at
+one candidate video per government. When that video was over 90
+minutes, the government was deferred. When the one candidate the
+hand-read checked was not a real meeting, the government was recorded
+as no-video. Ryan's rule: both are verdicts on one video, not on the
+government. Look deeper on the same channel or hub before accepting
+either outcome as final.
+
+**Population.** Built from the sweeps' own decision files, not from
+memory, then re-checked against a fresh copy of the research file
+before doing any work (this repo's own rule: a lead is a lead, not a
+spec).
+
+| Group | Source WO | Count |
+|---|---|---|
+| Deferred for length | WO-205 (pre-existing) | 1 |
+| Deferred for length | WO-226 | 2 |
+| Deferred for length | WO-227b | 1 |
+| Deferred for length | WO-230 | 1 |
+| Deferred for length | WO-249 | 1 |
+| Deferred for length | WO-276 | 2 |
+| Deferred for length total | — | 8 |
+| Turned away, right channel wrong video (Kind B) | union of WO-235/247/249/252/253/258/259/271/230's own decision files | 103 |
+| — of those, already gained a page since (dropped) | — | 31 |
+| Turned away, real population | — | 72 |
+| **Total governments looked at** | | **80** |
+
+**Result.**
+
+| Outcome | Count of 80 | What it means |
+|---|---|---|
+| Real captions found, page live now | 36 | A deeper look found a real, on-mission meeting with a transcript |
+| No on-mission meeting found in the uploads read | 37 | A wider, deeper read confirms the original call — a real negative, not a gap |
+| Video found, no captions, queued for cloud transcription | 7 | A real meeting, no reachable captions yet |
+
+Of the 36 pages, 34 came from the 72 turned-away governments and 2 from
+the 8 length-deferred governments (Crook County OR: 228.9min → a real
+21.1min meeting; Lincoln County SD: 100.6min → a real 45.4min meeting).
+Of the 7 queued, 1 is Edwardsville city, IL (turned-away population, no
+captions) and 6 are length-deferred governments that now have a
+shorter (or, for two of them, still-long-but-shorter) meeting queued
+instead of sitting deferred: Lynn Haven FL (137.9min -> 75.6min), Byram
+MS (136.9min -> 52.2min), Stanwood WA (102.4min -> 37.8min, inside the
+ideal 9-40 minute window), Southern Pines NC (146.8min -> 93.8min,
+still over 90 but queued anyway per Ryan's rule), Ingleside TX and
+Louisburg KS (no shorter meeting found; the original long meeting
+queued anyway per Ryan's rule rather than staying deferred).
+
+**The hand-check caught one real wrong pick before it reached ingest.**
+West Bend city, WI's automated top pick was a "School Board Meeting" —
+`classify_video_hand_check()` correctly flagged this Kind A: the School
+Board is a different real government (the West Bend School District)
+sharing the city's own YouTube channel. Not ingested; the city's own
+"BID Board" meeting was used instead. Filed as an owner-body lead in
+`rtr-business/research/wo279_owner_bodies.csv` for a later mint/pin
+pass (the school district's own `gov_id` was not confirmed in this
+pass, left blank rather than guessed).
+
+No YouTube block signature was hit at any point in this run.
+
+**Caution.** Two structural gaps limited this pass and are filed in
+`BACKLOG.md`, not fixed here: (1) the shared title-keyword filter
+(`classify_video_hand_check()`) misses French meeting titles,
+abbreviated shorthand ("MV Council", "BZA"), and a colon-separated
+title shape ("Common Council: Meeting of..."), each confirmed on one
+real channel apiece — three governments' real meetings were only found
+because this session read past the filter's own rejections by hand.
+(2) Two governments organize their channel's videos into playlists
+(by committee, or by year) rather than flat uploads, which a plain
+flat-listing scan reads as zero candidates; one (Watertown SD) was
+recovered by manually expanding the relevant playlist, the other
+(Groton CT, whose real governing body splits meetings across dozens of
+per-committee playlists) was not — recorded as a real, honest "no
+meeting found," not a confirmed negative.
+
+**Recommendation.** Deploy this PR so the 43 new/updated pins reach
+production (pins only apply to a fresh ingest after a deploy) and the
+7 queued meetings can be picked up by the transcription worker. Widen
+`classify_video_hand_check()`'s allowlist per the two `BACKLOG.md`
+entries filed above once a second real example of each missed shape
+turns up — three governments is not enough to generalize a fix from
+yet.
+
+**Deploy status.** 36 pages are live now (ingest is immediate, no
+deploy needed). The 43 pin rows in `tenant_overrides.csv` and the 3 new
+queue lines in `scripts/tier3_auto_transcription_queue.txt` need the
+next deploy before they take effect for a future re-resolve or drip
+pass — today's 36 pages already carry their `gov_id` directly in the
+ingest payload, so they are correctly keyed regardless of deploy
+timing.
+
+Files: `research/wo279_report.csv`, `research/wo279_apply_to_jc.py`,
+`research/wo279_owner_bodies.csv`, `research/wo279_methods_section.md`
+(rtr-business, left on disk for the conductor to commit — see this
+WO's final report for the exact file list and the 43 gov_ids touched
+in `jurisdiction_coverage.csv`); `scripts/wo279_second_look.py`,
+`app/utils/jurisdiction_data/tenant_overrides.csv`,
+`scripts/tier3_auto_transcription_queue.txt`,
+`scripts/tier3_long_meetings_deferred.txt` (rtr-deeplink, this PR).
+
 ## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
 
 **What was done and why.** WO-230 let 13 confirmed-wrong videos reach a
