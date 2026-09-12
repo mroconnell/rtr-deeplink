@@ -618,15 +618,21 @@ MAPLEWOOD_SHOW_URL = "https://vod.maplewoodmn.gov/CablecastPublicSite/show/1719?
 
 def test_detect_platform_recognizes_cablecast_publicsite_on_government_domain():
     assert detect_platform(MAPLEWOOD_SHOW_URL) == "cablecast"
-    # The other two URL shapes (the Remix "/internetchannel/show/{id}"
-    # template and the bare "/show/{id}" template) stay scoped to real
-    # cablecast.tv netlocs -- the bare form especially is too weak a
-    # signal to trust against an arbitrary government domain that just
-    # happens to have a "/show/123" path for something unrelated.
+    # The bare "/show/{id}" template stays scoped to real cablecast.tv
+    # netlocs -- too weak a signal to trust against an arbitrary
+    # government domain that just happens to have a "/show/123" path for
+    # something unrelated.
     assert detect_platform("https://vod.maplewoodmn.gov/show/1719") == "unknown"
+    # WO-309 (2026-09-12): the Remix "/internetchannel/show/{id}" template
+    # no longer requires "cablecast.tv" in netloc either, for the same
+    # reason as the CablecastPublicSite branch above -- confirmed live on
+    # Edison, NJ's own custom-domain tenant
+    # (`cablecast.edisonnj.org/internetchannel/show/{id}?site=1`), a real
+    # Remix-template Cablecast page with real captions, not on a
+    # cablecast.tv subdomain at all.
     assert (
         detect_platform("https://vod.maplewoodmn.gov/internetchannel/show/1719")
-        == "unknown"
+        == "cablecast"
     )
 
 

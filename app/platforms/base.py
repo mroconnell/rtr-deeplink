@@ -379,9 +379,10 @@ def detect_platform(url: str) -> str:
     _cablecast_bare_show_id = (
         path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
     )
-    if "/cablecastpublicsite/show/" in path or (
-        "cablecast.tv" in netloc
-        and ("/internetchannel/show/" in path or _cablecast_bare_show_id.isdigit())
+    if (
+        "/cablecastpublicsite/show/" in path
+        or "/internetchannel/show/" in path
+        or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
@@ -425,11 +426,22 @@ def detect_platform(url: str) -> str:
         # "Heritage Preservation Commission" as the title and "September
         # 10, 2026" as the jurisdiction) plus a false "not officially
         # supported" warning, even though the real adapter handles this
-        # exact API correctly once reached. The other two path variants
-        # ("/internetchannel/show/" and the bare "/show/{id}") stay scoped
-        # to `cablecast.tv` netlocs -- especially the bare form, which is
-        # too weak a signal on its own to trust against an arbitrary
-        # government domain.
+        # exact API correctly once reached. The bare "/show/{id}" form
+        # stays scoped to `cablecast.tv` netlocs -- too weak a signal on
+        # its own to trust against an arbitrary government domain.
+        #
+        # WO-309 (2026-09-12): "/internetchannel/show/" no longer requires
+        # "cablecast.tv" in netloc either, for the same reason as WO-306's
+        # fix above -- confirmed live on Edison, NJ's own custom-domain
+        # tenant (`cablecast.edisonnj.org/internetchannel/show/{id}?
+        # site=1`), which is not on a cablecast.tv subdomain at all but
+        # resolves through cablecast.py's Remix path exactly like every
+        # cablecast.tv-hosted tenant -- real jurisdiction ("Township of
+        # Edison"), real captions (a positive, hand-checked example, not
+        # a schema guess). Before this fix the same generic_fallback
+        # gap WO-306 documented for CablecastPublicSite applied here too:
+        # a real Cablecast Remix page on a government's own domain never
+        # reached cablecast.py at all.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
