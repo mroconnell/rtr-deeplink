@@ -771,6 +771,91 @@ research/ENUMERATION_METHODS.md` §274 for the full method and every
 number above; `rtr-deeplink/scripts/wo225_build_candidates.py`,
 `wo225_access_ladder_sweep.py`.
 
+## WO-234: finding every government that publishes through Laserfiche WebLink — own data, Wayback CDX, urlscan.io, DNS patterns [Done 2026-09-11]
+
+**What was done and why.** Ryan asked for another way to find more
+governments that use Laserfiche WebLink — a document-archive product
+some cities and counties run, either on their own server or on
+Laserfiche's own shared cloud portal — to hand to WO-233's study of
+whether that product ever carries real meeting video. This WO did not
+test any of them for video and did not build anything; it only found and
+listed them, using four methods in order of expected yield: our own
+already-collected data first (including WO-233's own 20-repository
+read, which landed mid-way through this WO and was folded in rather than
+duplicated), then Wayback Machine searches, then a cross-site search
+tool (urlscan.io), then a guess-and-check pass on likely subdomain names
+for large governments, plus a plain web search as a sanity check.
+
+**A starting assumption in the brief was wrong, and worth fixing before
+building on it.** The brief assumed Laserfiche's shared cloud portal
+names each government in its own web address, like
+`portal.laserfiche.com/Public/springfield`. A live check of the Wayback
+Machine's archive found zero pages ever saved at that address. The real
+address looks like `portal.laserfiche.com/Portal/Browse.aspx?repo=r-
+a1b2c3d4` — a meaningless code, not the government's name. That code is
+real and countable, but it does not say which government it belongs to.
+A second surprise: the Wayback Machine cannot search "any website with
+this web address shape" at all — only one already-known website at a
+time. `urlscan.io`, a different tool this repo already knew about, can
+search across different websites and was the real substitute.
+
+**Result — what each method found.**
+
+| Method | Count of 302 | What it means |
+|---|---|---|
+| Own data (re-scanning already-collected files, plus WO-233's own 20-repository read, folded in) | 42 | Free or already done — real government names attached to 39 of the 42 |
+| Wayback Machine search of the shared cloud portal | 194 | A real, counted web address with no government name attached — the cloud portal's own address never says who owns it (see above) |
+| Cross-site search (urlscan.io) plus a plain web-search sanity check | 46 | 20 of the 46 carry a real government name |
+| Guessing likely subdomains for large governments, then checking | 20 | Real hits, about 1 in 20 checked (400 of 4,827 candidates checked, largest first) |
+
+**Result — how many by kind, and which are worth acting on.**
+
+| Kind of web address | Count of 302 |
+|---|---|
+| Government's own website | 91 |
+| Laserfiche's shared cloud portal | 211 |
+
+Of the 302, **79 carry a real government name** (71 self-hosted, 8 on
+the shared cloud portal); the other 223 are a real, counted web address
+with no government attached yet, mostly the cloud-portal code problem
+described above. **66 of the 79 have 5,000 people or more and no page on
+the site today.**
+
+**Caution.** A handful of found addresses are not governments at all —
+found and removed by hand: a homeowners'-association property manager,
+the Laserfiche product's own marketing page, one broken/unrelated web
+page, and a newspaper's own document archive. A few more are real but
+outside what this site tracks — a joint water/power authority, two state
+government agencies, and a Native American tribal government — kept in
+the list with a note, not counted as a new government. Nine already-
+covered governments (Alameda County CA, Riverside County CA, Kent WA,
+San Bernardino CA, Northampton MA, St. Lucie County FL, South Orange NJ,
+Aurora ON, Pickering ON) turned out to have a SECOND real web address not
+yet on file — filed as its own small, easy fix in `BACKLOG.md` rather
+than fixed here, since adding it wasn't this WO's job.
+
+**Recommendation.** WO-233 already read 20 of these real document
+archives and decided, while this WO was still running, not to build a
+general Laserfiche adapter — only 1 of the 20 (Jefferson County, WA,
+already known) actually had meeting video. This WO's list is broader
+than what WO-233 tested, so it stands as the full reference for later,
+not something that needs action now. If a future check wants a bigger
+sample, the subdomain-guessing method here still has 4,427 of its 4,827
+candidate governments unchecked
+(`python3 wo234_dns_pattern_sweep.py --limit <n>` in
+`rtr-business/research/`, resumable).
+
+**Deploy status.** Nothing here touches the live site — no page, queue
+line, or pin was created. `jurisdiction_coverage.csv` gained a note
+(`alternate_urls`/`suspected_calendar_provider`) for 47 governments that
+did not already have a working meeting source on file; that takes effect
+immediately since it's a research file, not a deploy.
+
+**History.**
+`rtr-business/research/wo234_laserfiche_governments.csv` (the full
+list), `wo234_apply_to_jc.py` (the write script),
+`rtr-business/research/ENUMERATION_METHODS.md` section 278.
+
 ## WO-228: hub links ranked and verified from real examples, replacing the first-match finder that recorded event calendars as meeting hubs [Done 2026-09-11]
 
 **What was done and why.** Ryan's 30-row spot-check found several
