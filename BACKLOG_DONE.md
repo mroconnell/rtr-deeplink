@@ -142,6 +142,89 @@ untouched — filed as the resumable `BACKLOG.md` entry. Two ChampDS
 customers (Fulton County, GA; Collegedale, TN) and two TelVue rows
 (Oradell, NJ; Roselle, NJ) looked stale on a quick check but were not
 chased to completion — also in that entry.
+## WO-315: browser-walking the 16 Laserfiche repositories a plain fetch couldn't read — zero new video, the adapter decision stands [Done 2026-09-12]
+
+**What this was for.** WO-305 (below) read all 79 named Laserfiche
+WebLink repositories with a plain HTTP client and found 1 with real
+meeting video. 16 of the 79 could not be read that way at all: 11
+answer every request with a "cookies are not enabled" page even with a
+real cookie jar attached, and 5 are WebLink 9 systems whose folder
+navigation is a form postback a plain fetch cannot make. Ryan asked to
+try these 16 in a real browser session so the census would be complete,
+not "complete except for a tooling gap."
+
+**What was done.** Walked all 16 repositories in the in-app Chromium
+browser (`mcp__Claude_Browser__*`): opened each repo URL, retried the
+plain browse root once if redirected to a login page, then walked the
+folder tree toward any folder matching the meeting/council/commission/
+board/agenda keyword list, into the newest year folder, checking for
+mp4/m4a/mp3/wav/vtt/srt files. No sign-in, no challenge-solving. One
+repository (Longwood, FL) needed Ryan's own Chrome as a fallback per the
+brief's rule for a host the in-app browser refuses outright — even that
+unmodified browser hit a hard TLS certificate error, not a bot gate.
+
+**Result, the 11 cookie-check repositories:**
+
+| Outcome | Count of 11 | What it means |
+|---|---|---|
+| Loaded with no gate at all, or one workaround URL, once opened for real | 9 | The plain-fetch cookie block was a client-capability problem, not a real server-side gate, for 9 of the 11 |
+| Genuinely login-gated | 1 | St. Lucie County FL — a real Sign In page with a password field |
+| Still blocked | 1 | Longwood FL — a real TLS certificate error, confirmed in two different real browsers |
+
+**Result, the 5 postback repositories:**
+
+| Outcome | Count of 5 | What it means |
+|---|---|---|
+| Loaded with no gate at all once opened directly | 5 | The postback classification from a plain HTTP client was a false read on every one of the 5 |
+
+**Summary, all 16:**
+
+| Outcome | Count of 16 | What it means |
+|---|---|---|
+| Meeting folders found, no media in them | 11 | Real agenda/minutes archive confirmed; no video or audio files found |
+| Real media found, audio only | 1 | Ramsey, MN — genuine Council Work Session and Canvassing Board recordings 2022-2026, every one an .mp3 despite the folder being named "Audio/Video" |
+| Repository reached, no government meeting content in it | 2 | Alameda County CA (Health department only) and Outagamie County WI (Highway/Planning-Zoning only) |
+| Genuinely login-gated | 1 | St. Lucie County FL |
+| Still blocked (real TLS error) | 1 | Longwood FL |
+
+**Zero new video, zero new pages, zero new queue lines.** Ramsey's real
+recordings are audio-only, which this repo's video-only rule keeps out
+of both the Archive and the tier-3 queue.
+
+**Adapter decision: still no.** Combined with WO-305's 79, this walk
+adds zero repositories with usable video — the count stays at 1 of 79
+(Jefferson County, WA, already live), well below the 5-repository bar
+`full_wo305.md` set for building `app/platforms/laserfiche.py`. The
+decision not to build the adapter now rests on a real-browser read of
+every one of the 79 named repositories, not just the ones a plain HTTP
+client could reach.
+
+**Caution.** Seven of the 16 governments already have real video
+coverage from another platform (Granicus, YouTube, eScribe, IQM2,
+CivicClerk) and this Laserfiche host was only ever a secondary lead for
+them — their `jurisdiction_coverage.csv` rows were left untouched.
+Soldotna AK's and Mansfield MA's newest folders could not be directly
+opened in this run (a virtual-scroll UI limitation, not a guess at their
+contents — see `ENUMERATION_METHODS.md` §322 for the full explanation);
+their `meeting-without-video` outcome rests on every other folder
+actually opened plus, for Mansfield, the site's own text search, not a
+direct check of the one unopened folder.
+
+**Recommendation.** No further action on Laserfiche unless a future,
+unrelated find turns up a Laserfiche repository with real video — the
+census is now genuinely complete (79 of 79 read for real) and the
+answer is the same either way.
+
+`jurisdiction_coverage.csv`: 4 rows corrected (Ramsey MN, Pickering ON,
+Soldotna AK, Union County NC — the 4 governments where this Laserfiche
+host was the primary unresolved lead), applied via `research/
+wo315_apply_to_jc.py`, committed by the conductor (git access to
+`rtr-business` is refused from this worktree) — see this session's
+final report for the exact file list and the 2 unrelated pre-existing
+uncommitted rows (Clinton village/town, NY) found already sitting in the
+same working tree from another session, left untouched. No deploy
+needed — no code, pins, or queue lines changed in `rtr-deeplink`; only
+docs and research files.
 
 ## WO-305: Laserfiche WebLink video census, all 79 named repositories read, adapter not built [Done 2026-09-12]
 
