@@ -508,7 +508,9 @@ def pick_calendar_candidate(candidates: List[dict]) -> Tuple[Optional[dict], str
     ):
         return candidates[0], ""
 
-    top_titles = [c.get("title") for c in (dated[:5] or candidates[:5])]
+    top_titles = [c.get("title") for _, c in dated[:5]] or [
+        c.get("title") for c in candidates[:5]
+    ]
     return None, f"ambiguous: no clean recent candidate among {top_titles!r}"
 
 

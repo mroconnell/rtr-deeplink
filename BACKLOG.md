@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (41)
+  `pick_calendar_candidate()`'s ambiguous-candidate error message…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
   `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
@@ -701,6 +702,32 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+### `pick_calendar_candidate()`'s ambiguous-candidate error message crashes on a `(date, candidate)` tuple -- fixed in one of five identical copies, four remain `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** every copy of `pick_calendar_candidate()` builds `dated` as
+  a list of `(datetime, candidate_dict)` tuples, then its own fallback
+  "no clean recent candidate" error-message line does
+  `[c.get("title") for c in (dated[:5] or candidates[:5])]` -- when
+  `dated` is non-empty, `c` is the tuple, not the dict, and `.get()`
+  raises `AttributeError: 'tuple' object has no attribute 'get'`. Hit
+  live by WO-276 (2026-09-12) on the very first government whose
+  candidate list was genuinely ambiguous, crashing the whole sweep.
+- **Impact:** any sweep that reaches a real ambiguous-candidate case
+  (at least one dated-but-unclean candidate, more than one candidate
+  total) crashes outright instead of recording a clean "ambiguous"
+  outcome and moving on.
+- **Next action:** `scripts/nationwide_2404_ingest.py`'s copy is fixed
+  (`top_titles = [c.get("title") for _, c in dated[:5]] or [c.get("title")
+  for c in candidates[:5]]`). Four identical copies still carry the bug:
+  `scripts/nationwide_1911_ingest.py`, `scripts/nationwide_395_ingest.py`,
+  `scripts/nationwide_431_ingest.py`, `scripts/wo130_county_ingest.py` --
+  apply the same one-line fix to each.
+- **Constraint:** none -- this is a pure bug fix, not a behavior change;
+  the corrected line produces the identical error message it always
+  intended to.
+- **History:** found and fixed in one copy during WO-276 (2026-09-12);
+  see `BACKLOG_DONE.md`'s WO-276 entry.
+
 ### WO-259's full-ladder homepage re-scan: 431 of 964 governments done, 533 left -- method settled, just needs more runtime `[JUST-DO-IT]`
 
 - **Issue:** WO-259 (2026-09-11/12) re-scanned the front page of the 964
@@ -738,7 +765,7 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   delays already built into `run_access_ladder()`.
 - **History:** `BACKLOG_DONE.md`, WO-259, 2026-09-11/12.
 
-### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- confirmed live on South River borough, NJ `[JUST-DO-IT]` `[EASY]`
+### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- now confirmed on 3 governments `[JUST-DO-IT]` `[EASY]`
 
 - **Issue**: `scripts/wo230_agendacenter_followup.py`'s
   `channel_name_plausible()` (and `_name_tokens()`, the same shape) splits
@@ -754,13 +781,18 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Impact**: a real, own-government video is wrongly filed as kind-A
   ("channel name shares no word with the government's own name") and the
   government is recorded as no-usable-video, when a real meeting video
-  was right there. Confirmed on one row this WO found (South River
-  borough, NJ, "Borough Council meeting August 17 2026",
+  was right there. Confirmed on **three** rows now: South River borough,
+  NJ ("Borough Council meeting August 17 2026",
   `https://www.youtube.com/watch?v=RXDl1mJNJBw` -- oEmbed's `author_name`
   is "South River NJ TV35", `author_url` is
-  `https://www.youtube.com/@southrivernjtv3564`); likely affects any
-  other government whose own channel handle happens to run its name
-  together with no separating characters.
+  `https://www.youtube.com/@southrivernjtv3564`, found WO-249); Kenilworth
+  borough, NJ (handle `kenilworthtvnj5571`, real title "2026 Meeting of
+  Mayor & Council September 2, 2026"); De Soto city, KS (handle
+  `DeSotoKansas`, real title "November 21st, 2024, City Council
+  Meeting") -- the last two found WO-276 (2026-09-12), same run-together
+  shape, both governments' own real meetings turned away as a result.
+  Likely affects any other government whose own channel handle happens
+  to run its name together with no separating characters.
 - **Next action**: have `resolve_and_finish()` fetch the channel's real
   display name (YouTube oEmbed on the video URL is free, no API key, and
   already used elsewhere in this codebase for exactly this) and pass that
@@ -772,8 +804,10 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   to close (a short generic government name token appearing inside an
   unrelated longer word).
 - **History**: found during WO-249 (2026-09-12); see `BACKLOG_DONE.md`'s
-  WO-249 entry. South River borough, NJ's row was not re-ingested in that
-  WO -- this entry is the only record of the miss.
+  WO-249 entry. Two more confirmed instances found during WO-276
+  (2026-09-12); see `BACKLOG_DONE.md`'s WO-276 entry. None of the three
+  governments' rows have been re-ingested yet -- this entry is the only
+  record of the miss.
 
 ### `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`) recognizes `municodemeetings.com` but not the related marketing apex `municode.com`, letting a "Powered by Municode" link outrank a tenant's own real meeting page `[JUST-DO-IT]` `[EASY]`
 
