@@ -454,7 +454,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
 Dormant — needs a real example first `[LATER]`  (1)
-  Laserfiche WebLink: a general adapter is answered "no" now, and the…
+  Laserfiche WebLink: a general adapter is answered "no" now (79 of 79…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -7249,57 +7249,64 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-### Laserfiche WebLink: a general adapter is answered "no" now, and the one live gap is audio-only tier-3 handling `[LATER]` `[EXAMPLE]`
+### Laserfiche WebLink: a general adapter is answered "no" now (79 of 79 read for real), and the audio-only tier-3 gap now has a second confirmed example `[LATER]` `[EXAMPLE]`
 
 - **Issue**: WO-305 (2026-09-12, two passes) censused all 79 named-
   government Laserfiche WebLink repositories from WO-234's 302-host
-  discovery (`research/wo234_laserfiche_governments.csv`) — every one
-  actually read, not just attempted. Combined with WO-233's earlier
-  20-repository study, that's every real-named Laserfiche repository on
-  file. Exactly one holds real, ingestable meeting video: Jefferson
-  County, WA (already live, WO-304). Two more real media files turned up
-  and were hand-checked away: Westlake, TX's one .mov file sits in a
-  Board of Trustees agenda-packet folder alongside three unrelated
-  presentation PDFs — supplementary material for one agenda item, not a
-  meeting recording (`video-without-meeting`). Deschutes County, OR has 6
-  real mp3 files under its Historic Landmarks Commission's own
-  meeting-minutes folder (a real appointed commission, not — as
-  suspected — the County Recorder's land-records archive) but no video,
-  and this repo's standing rule is video-only.
-- **Impact**: the general-adapter question is now answered with a full
-  population, not a 20-repository sample — building `app/
-  platforms/laserfiche.py` is not justified by anything on file. The one
-  remaining live gap is narrower and different in kind: **no tier-3
-  probe recipe exists for an audio-only Laserfiche source**, so
-  Deschutes County's real commission audio can't be queued the way a
+  discovery (`research/wo234_laserfiche_governments.csv`) with a plain
+  HTTP client; WO-315 (2026-09-12) then walked the 16 of those 79 a
+  plain fetch couldn't read at all (11 JS-cookie-check gates, 5 WebLink 9
+  postback gates) in a real browser, so all 79 are now genuinely read,
+  not "read except for a tooling gap." Exactly one holds real,
+  ingestable meeting video: Jefferson County, WA (already live, WO-304).
+  Three more real media files turned up and were hand-checked away:
+  Westlake, TX's one .mov file sits in a Board of Trustees agenda-packet
+  folder alongside three unrelated presentation PDFs — supplementary
+  material for one agenda item, not a meeting recording
+  (`video-without-meeting`). Deschutes County, OR has 6 real mp3 files
+  under its Historic Landmarks Commission's own meeting-minutes folder
+  (a real appointed commission, not — as suspected — the County
+  Recorder's land-records archive) but no video. Ramsey, MN (found by
+  WO-315, real browser walk) has a "Meeting Recordings" folder with
+  genuine Council Work Session and Canvassing Board recordings spanning
+  2022-2026 — every sampled entry across two years an .mp3 despite the
+  folder itself being named "Recordings - Audio/Video." All three are
+  video-only-rule rejects (audio-without-video never becomes a page or a
+  queue line).
+- **Impact**: the general-adapter question is now answered with a full,
+  real-browser-verified population, not a partial one — building `app/
+  platforms/laserfiche.py` is not justified by anything on file. The
+  live gap is narrower and different in kind: **no tier-3 probe recipe
+  exists for an audio-only Laserfiche source**, so Deschutes County's
+  and Ramsey's real commission/council audio can't be queued the way a
   video-with-no-captions meeting can. That gap isn't Laserfiche-specific
-  in principle (any audio-only source hits the same wall) but Deschutes
-  is the only real example on file today.
-- **Next action**: nothing to build for a general Laserfiche adapter
-  without a real example bigger than one government. For the audio-only
-  gap: nothing to build either without a second real audio-only source
-  to confirm the shape against (CLAUDE.md's synthetic-test rule already
-  forbids inventing one) — if a second turns up, `app/
-  platforms/direct_file.py`'s existing Laserfiche extension
-  (`ElectronicFile.aspx?docid=<entryId>&dbid=0&repo=<repo>`, no cookie,
-  honors Range) already fetches the raw bytes; what's missing is a
-  `queue_probe.py` recipe that accepts an audio-only candidate at all
-  (today's probe assumes a video file). Threshold to revisit either
-  half: a second real government, for the adapter question ideally one
-  with meeting video AND a different WebLink API generation than
-  Jefferson County's 11.0.2411.10 (Pittsylvania County VA's 10.1.1 SPA
-  front-end is now a confirmed second generation, still with 0 media
-  found in its own repository); for the audio-only question, any second
-  real audio-only meeting source at all.
-- **Constraint**: don't build a speculative general adapter against one
-  confirmed government, and don't build a speculative audio-only probe
-  recipe against one confirmed source — CLAUDE.md's "test against a
-  real, live URL first, several examples" rule applies to both.
-- **History**: `BACKLOG_DONE.md`'s WO-226, WO-233, WO-304 and WO-305
-  entries; `rtr-business/research/ENUMERATION_METHODS.md` §277 (WO-233),
-  §278 (WO-234), §318 (WO-305); `rtr-business/research/
-  wo233_repositories.csv` (the first 20) and `wo305_report.csv` (all
-  79, one row per government, hand-check verdicts included).
+  in principle (any audio-only source hits the same wall), but there are
+  now **two** confirmed real examples on file, not one — Ramsey closes
+  the "needs a second real source to confirm the shape against" gate
+  this entry used to cite as the reason to wait.
+- **Next action**: nothing to build for a general Laserfiche adapter —
+  that question is closed. For the audio-only gap: with two real,
+  independently-confirmed sources now on file (a county commission and a
+  city council, on two different WebLink generations), the
+  CLAUDE.md synthetic-test bar for building a probe recipe against a
+  real, confirmed shape is arguably met — worth a session actually
+  building `queue_probe.py`'s audio-only acceptance path rather than
+  waiting further. `app/platforms/direct_file.py`'s existing Laserfiche
+  extension (`ElectronicFile.aspx?docid=<entryId>&dbid=0&repo=<repo>`,
+  no cookie, honors Range) already fetches the raw bytes from either
+  government; what's missing is only the probe recipe (today's assumes
+  a video file) and, since Ramsey names its meetings "Council Work
+  Session" and "Canvassing Board" while Deschutes names its "Historic
+  Landmarks Commission," a hand-check step to confirm the audio is a
+  real governing-body meeting, same as any video candidate.
+- **Constraint**: still don't build a speculative general adapter — the
+  full-population read now makes that a settled "no," not a placeholder.
+- **History**: `BACKLOG_DONE.md`'s WO-226, WO-233, WO-304, WO-305 and
+  WO-315 entries; `rtr-business/research/ENUMERATION_METHODS.md` §277
+  (WO-233), §278 (WO-234), §318 (WO-305), §322 (WO-315);
+  `rtr-business/research/wo233_repositories.csv` (the first 20),
+  `wo305_report.csv` (63 of the 79 read directly by WO-305) and
+  `wo315_report.csv` (the other 16, read by real browser).
 
 
 ## Parked deliberately — allowed back `[PARK]`
