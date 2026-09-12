@@ -944,3 +944,4 @@ https://wrightcountymn.portal.civicclerk.com/event/2682/media		us:county:27171	W
 https://wrightcountymn.portal.civicclerk.com/event/30/media		us:county:27171	Wright County, MN		
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238
 https://pub-edmonton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6f5d15ef-01bf-411b-8af1-0b22d2f92009&Item=54&Tab=attachments&lang=English		us:place:2123968		18:19:08
+https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	ca:cd:5917	Capital Regional District, BC	2:48:38	
