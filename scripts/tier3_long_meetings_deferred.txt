@@ -577,3 +577,278 @@ https://www.youtube.com/watch?v=FHaiGhehAlE	https://crookcountyor.gov/agendacent
 https://www.youtube.com/watch?v=RLhUOmshDCg	https://lincolncosd.portal.civicclerk.com/event/952/media	us:county:46083	Lincoln County, SD	1:40:35
 https://southernpinesnc.portal.civicclerk.com/event/484/media	https://southernpines.net/AgendaCenter	us:place:3763120	Southern Pines town, NC	2:26:49	Town Council Business Meeting
 https://byramms.portal.civicclerk.com/event/1040/media	https://www.byram-ms.us/AgendaCenter	us:place:2810140	Byram city, MS	2:16:52	Mayor and Board of Aldermen Meeting
+# WO-266 (2026-09-12, Ryan): queue lines for governments whose tenant site already has a live page with a real transcript, parked for depth later (breadth rule: one meeting per government first). gov_id/jurisdiction are the live page's. The four shared hosts (vimeo.com, cloud.castus.tv, videoplayer.telvue.com, play.champds.com) were left in the queue.
+https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656		ca:csd:3514004	Brighton, ON		
+https://cialbionmius.civicweb.net/Portal/MeetingInformation.aspx?Id=375			City of Albion	0:38:53	
+https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2268			Spring Town	1:59:34	
+https://clearwatercounty.civicweb.net/Portal/MeetingInformation.aspx?Id=490		ca:csd:4809002	Clearwater County, AB	0:29:00	
+https://eastgwillimbury.civicweb.net/Portal/MeetingInformation.aspx?Id=2010		ca:csd:3519054	East Gwillimbury, ON	0:36:18	
+https://georgianbay.civicweb.net/Portal/MeetingInformation.aspx?Id=1887		ca:csd:3544065	Georgian Bay, ON	1:53:50	
+https://greyhighlands.civicweb.net/Portal/MeetingInformation.aspx?Id=3178		ca:csd:3542015	Grey Highlands, ON	1:53:25	
+https://hubbardcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=6037		us:county:27057	Hubbard County, MN	1:29:36	
+https://montesereno.civicweb.net/Portal/MeetingInformation.aspx?Id=7472		us:place:0648956	Monte Sereno, CA	3:39:54	
+https://nelson.civicweb.net/Portal/MeetingInformation.aspx?Id=2083		ca:csd:5903015	Nelson, BC	1:43:29	
+https://townofchenango.civicweb.net/Portal/MeetingInformation.aspx?Id=2287		us:cousub:3600715110	Chenango Town, NY	1:59:28	
+https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Id=2339		us:place:4175650	Umatilla, OR	0:05:46	
+http://sancarlosca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1050&Format=Agenda		us:place:0665070	San Carlos, CA	4:21:21	
+http://santapaulaca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1351&Format=Agenda		us:place:0670042	Santa Paula, CA	2:12:21	
+http://sfwmd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1598&Format=None&MediaFileFormat=wmv		rtr:us:fl:south-florida-water-management	South Florida Water Management District, FL	3:06:18	
+http://victoriacountytx.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1314&MinutesID=1329&FileFormat=pdf&Format=Minutes&MediaFileFormat=mpeg4		us:county:48469	Victoria County, TX	1:46:11	
+http://wacocitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3347&MediaPosition=2761.611&ID=8728&CssClass=		us:place:4876000	Waco, TX	1:46:14	
+http://wappingertownny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1563&MediaPosition=&ID=5704&CssClass=		us:cousub:3602778157	Wappinger Town, NY	1:24:20	
+http://washingtoncountyva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2231&MediaPosition=&ID=2391&CssClass=		us:county:51191	Washington County, VA	4:53:12	
+http://wentzvillemo.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2112&MediaPosition=&ID=7899&CssClass=		us:place:2978442	Wentzville, MO	1:29:48	
+http://westwendovernv.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2378&MediaPosition=7273.254&ID=2368&CssClass=		us:place:3283730	West Wendover, NV	3:19:09	
+http://winchesterva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1774&MediaPosition=&ID=2024&CssClass=		us:place:5186720	Winchester, VA	0:52:45	
+https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1881&MediaPosition=10535.215&ID=10968&CssClass=		us:county:06087	Santa Cruz County, CA	5:08:19	
+https://stcroixcountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3661&MediaPosition=8924.113&ID=10801&CssClass=		us:county:55109	St. Croix County, WI	2:31:05	
+https://texarkanacitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1079&MediaPosition=1944.848&ID=1545&CssClass=		us:place:4872368	Texarkana, TX	1:07:18	
+https://tompkinscountyny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4213&MediaPosition=&ID=13804&CssClass=		us:county:36109	Tompkins County, NY	3:22:33	
+https://yuccavalleyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1335&MediaPosition=2805.288&ID=2233&CssClass=		us:place:0687056	Yucca Valley, CA	1:04:26	
+https://walworthcowi.portal.civicclerk.com/event/2599/media		us:place:5583250	Walworth (village), WI	0:26:31	
+https://cosumnescommunityservices.portal.civicclerk.com/event/562/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:37:47	
+https://neoshomo.portal.civicclerk.com/event/1340/media		us:place:2951572	Neosho, MO	0:00:57	
+https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954		us:county:06025	Imperial County, CA	1:28:53	
+https://winchendon.cablecast.tv/CablecastPublicSite/gallery/5?site=1		us:cousub:2502780405	Winchendon, MA	0:44:36	
+https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5669		us:place:1608830	Boise, ID	0:28:28	
+https://agourahills.granicus.com/MediaPlayer.php?view_id=2&clip_id=2084		us:place:0600394	Agoura Hills, CA	1:26:51	
+https://buffalony.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3434		us:place:3611000	Buffalo, NY	0:39:09	
+https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932		us:cousub:3602725978	Fishkill (town), NY	0:13:06	
+https://bchd.granicus.com/MediaPlayer.php?view_id=2&clip_id=766		rtr:us:ca:beach-cities-health-district	Beach Cities Health District, CA	1:05:03	
+https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2656		us:county:06077	San Joaquin County, CA	1:12:16	
+https://washingtoncountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3494		us:county:51191	Washington County, VA	0:01:30	
+https://chanhassen.granicus.com/MediaPlayer.php?view_id=1&clip_id=2065		us:place:2710918	Chanhassen, MN	0:07:49	
+https://pub-guelph.escribemeetings.com/Meeting.aspx?Id=77aa8796-b281-43d5-a540-833c5c73e18a		ca:csd:3523008	Guelph, ON	0:20:55	
+https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4241		us:county:19103	Johnson County, IA	1:08:35	
+https://metro.granicus.com/MediaPlayer.php?view_id=2&clip_id=4243		rtr:us:ca:los-angeles-county-metropolitan-transportation-authority	Los Angeles County Metropolitan Transportation Authority, CA	1:20:32	
+https://payson.granicus.com/MediaPlayer.php?view_id=2&clip_id=1271		us:place:0453700	Payson, AZ	0:02:51	
+https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1532			San Mateo County Transit District	1:57:51	
+https://villagenpb.new.swagit.com/videos/399555		us:place:1249600	North Palm Beach, FL	1:12:31	
+https://winterparkfl.portal.civicclerk.com/event/2729/media		us:place:1278300	Winter Park, FL	0:17:21	
+http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1		rtr:unknown:agawamvod.cablecast.tv		0:59:56	
+https://westfargond.portal.civicclerk.com/event/1044/media		us:place:3884780	West Fargo, ND	1:09:02	
+https://centervilleut.portal.civicclerk.com/event/1700/media		us:place:4911980	Centerville, UT		
+https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas	us:place:0680854	Tustin, CA	0:12:36	
+https://southelmonteca.portal.civicclerk.com/event/582/media	https://www.cityofsouthelmonte.org/129/Meeting-Agendas-Minutes	us:place:0672996	South El Monte, CA	0:59:21	
+https://eagle-id.granicus.com/ViewPublisher.php?view_id=1	https://www.cityofeagle.org/	us:place:1623410	Eagle, ID	4:27:29	
+https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php	us:place:0654274	Orland, CA		
+https://kaysvilleut.portal.civicclerk.com/event/1264/media		us:place:4940360	Kaysville, UT	0:31:31	
+https://summitcounty.granicus.com/player/clip/1286		us:county:49043	Summit County, UT	0:22:38	
+https://hebercityut.portal.civicclerk.com/event/527/media		us:place:4934200	Heber, UT	0:38:10	
+https://parkcityut.portal.civicclerk.com/event/3931/media		us:place:4958070	Park City, UT	1:11:38	
+https://wasatchcout.portal.civicclerk.com/event/1618/media		us:county:49051	Wasatch County, UT	0:27:18	
+https://wasatchcout.portal.civicclerk.com/event/1619/media		us:county:49051	Wasatch County, UT	0:16:52	
+https://wasatchcout.portal.civicclerk.com/event/1620/media		us:county:49051	Wasatch County, UT	0:44:08	
+https://wasatchcout.portal.civicclerk.com/event/1812/media		us:county:49051	Wasatch County, UT	0:02:58	
+https://wasatchcout.portal.civicclerk.com/event/1621/media		us:county:49051	Wasatch County, UT	0:17:33	
+https://churchillconv.portal.civicclerk.com/event/4000/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	0:46:11	
+https://churchillconv.portal.civicclerk.com/event/3990/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	0:42:43	
+https://churchillconv.portal.civicclerk.com/event/3900/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	2:08:56	
+https://churchillconv.portal.civicclerk.com/event/3850/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	1:17:34	
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=2&clip_id=9691		us:place:0973000	Stamford, CT	1:14:50	
+https://bocaraton.granicus.com/MediaPlayer.php?view_id=3&clip_id=546		us:place:1207300	Boca Raton, FL	0:00:45	
+https://coralgables.granicus.com/MediaPlayer.php?view_id=2&clip_id=4044		us:place:1214250	Coral Gables, FL	0:29:57	
+https://cityofdoral.granicus.com/MediaPlayer.php?view_id=2&clip_id=848		us:place:1217935	Doral, FL	0:12:47	
+https://dunnellon.granicus.com/MediaPlayer.php?view_id=1&clip_id=561		us:place:1218675	Dunnellon, FL	0:46:41	
+https://citynmb.granicus.com/MediaPlayer.php?view_id=1&clip_id=2042		us:place:1249475	North Miami Beach, FL	0:28:06	
+https://pinecrest.granicus.com/MediaPlayer.php?view_id=2&clip_id=834		us:place:1256625	Pinecrest, FL	0:49:56	
+https://pompano.granicus.com/MediaPlayer.php?view_id=2&clip_id=2651		us:place:1258050	Pompano Beach, FL	2:17:15	
+https://puntagorda.granicus.com/MediaPlayer.php?view_id=1&clip_id=1371		us:place:1259200	Punta Gorda, FL	0:21:26	
+https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2696		us:place:1263700	Sanibel, FL	0:51:04	
+https://townofsurfsidefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=542		us:place:1270075	Surfside, FL	1:20:13	
+https://brevardfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=638		us:county:12009	Brevard County, FL	0:49:26	
+https://hernandoschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=472		us:county:12053	Hernando County, FL	1:22:38	
+https://manateeschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=346		us:sd:1201230	Manatee County School District, FL	1:00:20	
+https://nassaufl.granicus.com/MediaPlayer.php?view_id=2&clip_id=2416		us:county:12089	Nassau County, FL	0:23:50	
+https://mauicounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490		us:county:15009	Maui County, HI	2:28:19	
+https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4246		us:county:19103	Johnson County, IA	1:02:46	
+https://cityofmalden.granicus.com/MediaPlayer.php?view_id=2&clip_id=275		us:place:2537875	Malden, MA	1:11:42	
+https://ravalli-mt.granicus.com/MediaPlayer.php?view_id=1&clip_id=2559		us:county:30081	Ravalli County, MT	0:14:22	
+https://cityofstillwater.granicus.com/MediaPlayer.php?view_id=3&clip_id=1895		us:place:2762824	Stillwater (city), MN	1:12:44	
+https://ashecounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=678		us:county:37009	Ashe County, NC	0:48:49	
+https://chathamnc.granicus.com/MediaPlayer.php?view_id=2&clip_id=576		us:county:37037	Chatham County, NC	8:27:42	
+https://mecklenburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=3281		us:county:37119	Mecklenburg County, NC	2:47:07	
+https://chemungny.granicus.com/MediaPlayer.php?view_id=1&clip_id=878		us:county:36015	Chemung County, NY	1:03:18	
+https://sullivancountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2239		us:county:36105	Sullivan County, NY	0:49:51	
+https://allegheny.granicus.com/MediaPlayer.php?view_id=2&clip_id=1052		us:county:42003	Allegheny County, PA	1:04:27	
+https://lackawanna.granicus.com/MediaPlayer.php?view_id=2&clip_id=503		us:county:42069	Lackawanna County, PA	1:23:44	
+https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790		us:place:5103368	Ashland, VA	0:34:18	
+https://fallschurch-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=3513		us:place:5127200	Falls Church, VA	0:32:56	
+https://leesburgva.granicus.com/MediaPlayer.php?view_id=2&clip_id=2981		us:place:5144984	Leesburg, VA	1:04:07	
+https://richmondva.granicus.com/MediaPlayer.php?view_id=1&clip_id=5000		us:place:5167000	Richmond, VA	0:05:06	
+https://vienna-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1994		us:place:5181072	Vienna, VA	0:24:43	
+https://clallam.granicus.com/MediaPlayer.php?view_id=2&clip_id=2181		us:county:53009	Clallam County, WA	1:00:16	
+https://whatcom.granicus.com/MediaPlayer.php?view_id=1&clip_id=1569		us:county:53073	Whatcom County, WA	0:59:29	
+https://longview-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=207		us:place:5340245	Longview, WA	0:18:47	
+https://marysville.granicus.com/MediaPlayer.php?view_id=2&clip_id=664		us:place:5343955	Marysville, WA	1:28:52	
+https://mukilteo-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=2022		us:place:5347735	Mukilteo, WA	0:37:25	
+https://olympia.granicus.com/MediaPlayer.php?view_id=2&clip_id=3013		us:place:5351300	Olympia, WA	0:11:05	
+https://cityofpt.granicus.com/MediaPlayer.php?view_id=2&clip_id=3908		us:place:5355855	Port Townsend, WA		
+https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405		rtr:us:wa:redmond	The City of Redmond, WA	1:11:37	
+https://sequim-wa.granicus.com/MediaPlayer.php?view_id=1&clip_id=723		us:place:5363385	Sequim, WA	1:22:14	
+https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292		us:county:53061	Snohomish County, WA	0:03:12	
+https://cityoftacoma.granicus.com/MediaPlayer.php?view_id=2&clip_id=7795		us:place:5370000	Tacoma, WA	0:25:12	
+https://sauk.granicus.com/MediaPlayer.php?view_id=2&clip_id=2950		us:county:55111	Sauk County, WI	0:00:08	
+https://lincolnri.portal.civicclerk.com/event/5463/media	https://www.lincolnri.gov	us:cousub:4400741500	Lincoln, RI	0:56:55	
+https://ryeny.new.swagit.com/videos/80201		us:place:3664309	Rye (city), NY	0:21:19	
+https://sachsetx.new.swagit.com/videos/01192022-801		us:place:4864064	Sachse, TX	0:18:02	
+https://salem.cablecast.tv/internetchannel/show/19115			Salem	0:12:37	
+https://sanbenitotx.new.swagit.com/videos/135693		us:place:4865036	San Benito, TX	0:01:54	
+https://sanjoseca.new.swagit.com/videos/304643		us:place:0668000	San Jose, CA	0:53:24	
+https://sanpatriciocountytx.new.swagit.com/videos/353476		us:county:48409	San Patricio County, TX	1:16:35	
+https://sapatv.cablecast.tv/internetchannel/show/35396?site=2		rtr:unknown:sapatv.cablecast.tv		1:15:29	
+https://scarsdaleny.new.swagit.com/videos/249667		us:place:3665431	Scarsdale, NY	1:27:34	
+https://sccoe.new.swagit.com/videos/247894/transcript		us:county:06085	Santa Clara County, CA	2:09:57	
+https://sccwi.portal.civicclerk.com/event/923/media		us:county:55109	St. Croix County, WI		
+https://scgtv.new.swagit.com/videos/27666		rtr:unknown:scgtv.new.swagit.com		3:45:45	
+https://schertztx.new.swagit.com/videos/381442		us:place:4866128	Schertz, TX	1:18:58	
+https://seasideheightsnj.new.swagit.com/videos/267408/download_section		us:place:3466450	Seaside Heights, NJ	0:17:30	
+https://sedonaaz.new.swagit.com/videos/06302022-516		us:place:0465350	Sedona, AZ	0:02:48	
+https://sedrowoolleywa.portal.civicclerk.com/event/184/media		us:place:5363210	Sedro-Woolley, WA		
+https://sewardcountyks.new.swagit.com/videos/364518		us:county:20175	Seward County, KS	2:20:40	
+https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731		us:place:0600674	Albany, CA	1:00:01	
+https://arvin.granicus.com/MediaPlayer.php?view_id=2&clip_id=346		us:place:0602924	Arvin, CA		
+https://atherton.primegov.com/Portal/Meeting?meetingTemplateId=2464		us:place:0603092	Atherton, CA	1:42:00	
+https://auburn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1687		us:place:0603204	Auburn, CA	0:01:03	
+https://bcnv.primegov.com/Portal/Meeting?meetingTemplateId=3504		us:place:3206500	Boulder City, NV	1:31:00	
+https://belleplaine.granicus.com/MediaPlayer.php?view_id=2&clip_id=954		us:place:2704834	Belle Plaine (city), MN	0:58:19	
+https://berkeley.granicus.com/MediaPlayer.php?view_id=2&clip_id=5700		us:place:0606000	Berkeley, CA	0:53:39	
+https://brokenarrow.granicus.com/MediaPlayer.php?view_id=2&clip_id=2614		us:place:4009050	Broken Arrow, OK	0:58:44	
+https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=650		us:place:2410900	Brunswick, MD	1:02:42	
+https://buttecoca.portal.civicclerk.com/event/1078/media		us:county:06007	Butte County, CA	1:22:02	
+https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=603		us:place:0609780	California City, CA		
+https://calumetcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=3281		us:county:55015	Calumet County, WI	0:44:04	
+https://camarillo.primegov.com/Portal/Meeting?meetingTemplateId=7030		us:place:0610046	Camarillo, CA	1:07:25	
+https://carpinteria.granicus.com/MediaPlayer.php?view_id=2&clip_id=1783		us:place:0611446	Carpinteria, CA	4:30:03	
+https://casselberryfl.portal.civicclerk.com/event/524/media		us:place:1211050	Casselberry, FL	1:18:03	
+https://cathedralcity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2898		us:place:0612048	Cathedral City, CA	0:10:46	
+https://chaffeecoco.portal.civicclerk.com/event/1671/media		us:county:08015	Chaffee County, CO	1:27:39	
+https://charlestonwv.portal.civicclerk.com/event/3736/media		us:place:5414600	Charleston, WV	0:00:02	
+https://chinohills.granicus.com/MediaPlayer.php?view_id=2&clip_id=702		us:place:0613214	Chino Hills, CA	1:40:08	
+https://churchillconv.portal.civicclerk.com/event/4243/media		us:county:32001	Churchill County, NV	0:21:38	
+https://citwentynine-palmsca.civicweb.net/Portal/MeetingInformation.aspx?Id=10712		us:place:0680994	Twentynine Palms, CA	1:20:15	
+https://cityofdhs.civicweb.net/Portal/MeetingInformation.aspx?Id=4455		us:place:0618996	Desert Hot Springs, CA	0:40:05	
+https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=769		us:place:0640032	La Mirada, CA	0:46:13	
+https://cityoflawton.granicus.com/MediaPlayer.php?view_id=1&clip_id=2104		us:place:4041850	Lawton, OK	0:01:26	
+https://cityofmerced.granicus.com/MediaPlayer.php?view_id=1&clip_id=1153		us:place:0646898	Merced, CA	3:35:34	
+https://cityoforange.granicus.com/MediaPlayer.php?view_id=2&clip_id=1037		us:place:0653980	Orange, CA	1:32:52	
+https://cityofoviedo.primegov.com/Portal/Meeting?meetingTemplateId=10905		us:place:1253575	Oviedo, FL	0:41:25	
+https://cityofrehoboth.civicweb.net/Portal/MeetingInformation.aspx?Id=14580		us:place:1060290	Rehoboth Beach, DE		
+https://cityofrsm.granicus.com/MediaPlayer.php?view_id=2&clip_id=979		us:place:0659587	Rancho Santa Margarita, CA	0:00:39	
+https://cityofventura.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		us:place:0665042	Ventura, CA	4:24:24	
+https://claremontca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1912		us:place:0613756	Claremont, CA	0:46:07	
+https://cobergennj.granicus.com/MediaPlayer.php?view_id=1&clip_id=428		us:county:34003	Bergen County, NJ	0:40:19	
+https://costamesa.granicus.com/MediaPlayer.php?view_id=4&clip_id=4427		us:place:0616532	Costa Mesa, CA	0:35:50	
+https://danvilleva.portal.civicclerk.com/event/2582/media		us:place:5121344	Danville, VA	0:21:22	
+https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294		us:place:1623410	Eagle, ID	1:39:14	
+https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707		us:place:0622594	Emeryville, CA	0:16:28	
+https://huntingtonpark.granicus.com/player/clip/566?view_id=2		rtr:us:ca:huntington-park	The City of Huntington Park, CA	0:58:00	
+https://buttecoca.portal.civicclerk.com/event/140/media		us:county:06007	Butte County, CA	0:01:26	
+https://norwalk.primegov.com/Portal/Meeting?meetingTemplateId=7634		us:place:0652526	Norwalk, CA	1:09:13	
+https://blackfordcoin.portal.civicclerk.com/event/2157/media		us:county:18009	Blackford County, IN	0:46:55	
+https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=586		us:place:5317635	Des Moines, WA		
+https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=910		ca:csd:5907024	Princeton, BC	0:43:22	
+http://agawamvod.cablecast.tv/internetchannel/show/2912?site=1	http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1	rtr:unknown:agawamvod.cablecast.tv		0:23:14	
+https://longbeach.primegov.com/Portal/Meeting?meetingTemplateId=36784		us:place:0643000	Long Beach, CA		
+https://pub-lincoln.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=08e3d8fe-c855-4b61-9c1c-4a1bcec8fcab&lang=English		ca:csd:3526057	Lincoln, ON		
+http://colonieny.iqm2.com/Citizens/SplitView.aspx?Format=Minutes&MeetingID=1083&Mode=Video		us:place:3617332	Colonie (village), NY	0:39:03	
+https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=1998&Org=Cal		ca:csd:3526043	Niagara Falls, ON		
+https://whitehouse.civicweb.net/Portal/MeetingInformation.aspx?Id=5493		us:place:4878388	Whitehouse, TX		
+https://douglas-mi.municodemeetings.com/bc-citycouncil/page/regular-meeting-city-council-91		us:place:2622740	Douglas, MI		
+https://harrisonburg-va.granicus.com/player/clip/1234?view_id=4		rtr:us:va:harrisonburg	The City of Harrisonburg, VA	2:16:53	
+https://snohomish.granicus.com/player/clip/9589?view_id=18		us:county:53061	Snohomish County, WA	1:08:30	
+https://hartford.civicweb.net/Portal/MeetingInformation.aspx?Id=3385		us:place:0937000	Hartford, CT		
+https://watertown.civicweb.net/Portal/MeetingInformation.aspx?Id=117			Watertown		
+https://laramiecounty.granicus.com/player/clip/841?view_id=1		us:county:56021	Laramie County, WY	1:00:27	
+https://pub-elgincounty.escribemeetings.com/Meeting.aspx?Id=401f3f40-356d-4776-bb76-b6061d58f2a5		ca:cd:3534	Elgin, ON	1:16:46	
+https://brewstercotx.portal.civicclerk.com/event/95/media	https://www.brewstercounty.gov/page/comm.court.home	us:county:48043	Brewster County, TX		
+https://polkcotx.portal.civicclerk.com/event/1892/media	https://www.polktx.gov	us:county:48373	Polk County, TX		
+https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/	rtr:us:az:lake-havasu	City of Lake Havasu, AZ	2:55:50	
+https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2		rtr:us:ca:huntington-park	The City of Huntington Park, CA	1:15:49	
+https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2		us:county:02195	Petersburg Borough, AK	0:09:13	
+https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8878?seekto=21&site=5&query=conservation+commission		rtr:unknown:reflect-townofmerrimack.cablecast.tv		1:09:57	
+https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings		Twpec	0:55:00	
+https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov		TV, NY	0:04:50	
+https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077	San Joaquin County, CA	1:00:28	
+https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036		us:county:06085	Santa Clara County, CA	1:15:04	
+https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns-river-water-management-district	St. Johns River Water Management District, FL	1:06:15	
+https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655		rtr:us:ny:southampton-long-island	Town of Southampton, Long Island, NY	0:19:04	
+https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303		us:place:0668378	San Ramon, CA	1:33:22	
+https://shelbytownmi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1549		us:place:2672840	Shelby (village), MI	0:45:07	
+https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3027		us:county:06101	Sutter County, CA	1:15:00	
+https://losaltoshillsca.portal.civicclerk.com/event/4638/media		us:place:0643294	Los Altos Hills, CA	1:05:50	
+https://neoshomo.portal.civicclerk.com/event/1339/media		us:place:2951572	Neosho, MO	0:21:10	
+https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=600		us:place:0609780	California City, CA	1:19:06	
+https://chccs.granicus.com/MediaPlayer.php?view_id=2&clip_id=787		rtr:us:nc:chapel-hill-carrboro-city-schools-board-of-education	Chapel Hill-Carrboro City Schools Board of Education, NC	0:22:36	
+https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3500		us:county:06065	Riverside County, CA	0:45:14	
+https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301		us:cousub:3400372360	Teaneck Township, NJ	0:27:58	
+https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=285		us:place:0608058	Brawley, CA	0:09:50	
+https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=f2ac295e-a967-4c2b-a06d-e176120a9db8&Agenda=Agenda&lang=English		ca:csd:4811049	Spruce Grove, AB	3:04:12	
+https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1007		us:county:51079	Greene County, VA	0:21:05	
+https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2872		us:cousub:3611951693	North Castle Town, NY	1:34:20	
+https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4714		us:place:4869140	South Padre Island, TX	1:35:42	
+https://bucoks.granicus.com/MediaPlayer.php?view_id=1&clip_id=649		us:county:20015	Butler County, KS	0:54:39	
+https://portagecowi.portal.civicclerk.com/event/9367/media		us:county:55097	Portage County, WI	0:21:18	
+https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2424		us:place:4938710	Ivins, UT	0:35:00	
+https://cityofmaricopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=643		us:place:0444410	Maricopa, AZ	1:13:41	
+https://danbury.granicus.com/MediaPlayer.php?view_id=2&clip_id=3779		us:place:0918430	Danbury, CT	0:51:18	
+https://bethanybeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1223		us:place:1005690	Bethany Beach, DE	0:55:36	
+https://deltona.granicus.com/MediaPlayer.php?view_id=1&clip_id=1714		us:place:1217200	Deltona, FL	1:20:49	
+https://dunedin.granicus.com/MediaPlayer.php?view_id=2&clip_id=1007		us:place:1218575	Dunedin, FL	2:40:25	
+https://city-lighthousepoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=812		us:place:1240450	Lighthouse Point, FL	0:51:10	
+https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1092		us:place:1243125	Margate, FL	0:23:44	
+https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1085		us:place:1245975	Miramar, FL	1:35:09	
+https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1414		us:place:1250575	Oakland Park, FL	0:20:16	
+https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1228		us:place:1269700	Sunrise, FL	1:03:48	
+https://martin.granicus.com/MediaPlayer.php?view_id=2&clip_id=5762		us:county:12085	Martin County, FL	3:22:25	
+https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=584		us:county:37071	Gaston County, NC	1:23:02	
+https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1116		us:county:37133	Onslow County, NC	1:07:22	
+https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8468		us:county:36119	Westchester County, NY	1:15:40	
+https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=865		us:place:4964340	Riverton, UT	2:46:49	
+https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1529		us:county:51041	Chesterfield County, VA	2:08:16	
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1359		rtr:us:va:harrisonburg	The City of Harrisonburg, VA	2:05:15	
+https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=248		us:place:5320750	Edmonds, WA	0:15:32	
+https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6854		us:place:5584250	Waukesha (city), WI	0:28:06	
+https://rowletttx.new.swagit.com/videos/35358		us:place:4863572	Rowlett, TX	0:31:03	
+https://saltlakecounty.portal.civicclerk.com/event/4172/media		us:place:4967000	Salt Lake City, UT	0:39:43	
+https://sandyspringsga.portal.civicclerk.com/event/2144/media		us:place:1368516	Sandy Springs, GA	0:34:03	
+https://sanjuancowa.portal.civicclerk.com/event/4366/media		us:county:53055	San Juan County, WA	0:44:23	
+https://santarosacofl.portal.civicclerk.com/event/1689/media		us:place:1245750	Milton, FL	0:18:54	
+https://anacorteswa.portal.civicclerk.com/event/1447/media		us:place:5301990	Anacortes, WA	0:39:24	
+https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3663		us:place:0602000	Anaheim, CA	0:39:46	
+https://annapolismd.granicus.com/MediaPlayer.php?view_id=1&clip_id=1596		us:place:2401600	Annapolis, MD	0:57:56	
+https://antiochca.portal.civicclerk.com/event/1088/media		us:place:0602252	Antioch, CA	1:23:07	
+https://bainbridgeislandwa.portal.civicclerk.com/event/1109/media		us:place:5303736	Bainbridge Island, WA	1:10:43	
+https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171		us:place:0604030	Barstow, CA	0:15:58	
+https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=893		us:place:2406925	Berwyn Heights, MD	0:33:20	
+https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4991		us:place:0613210	Chino, CA	3:02:24	
+https://cityfortbragg.granicus.com/MediaPlayer.php?view_id=1&clip_id=1556		us:place:0625058	Fort Bragg, CA	4:12:12	
+https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=826		us:place:2408775	Bowie, MD	1:06:47	
+https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2235		us:place:0647710	Mill Valley, CA	1:55:29	
+https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024		us:place:4449960	Newport, RI	1:15:28	
+https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3649		us:place:0662896	Rosemead, CA	0:24:59	
+https://college-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1717		us:place:2418750	College Park, MD	2:01:18	
+https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=759		us:place:0668252	San Mateo, CA	2:19:16	
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1784		us:county:34011	Cumberland County, NJ	1:10:17	
+https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1525		us:place:0622230	El Monte, CA	0:54:51	
+https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1833		rtr:us:az:lake-havasu	City of Lake Havasu, AZ	0:50:36	
+https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6006		us:place:2017800	Derby, KS	0:44:24	
+https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2947		us:county:06025	Imperial County, CA	3:13:40	
+https://jacksoncomi.portal.civicclerk.com/event/1088/media		us:county:26075	Jackson County, MI	0:29:00	
+https://leacountynm.portal.civicclerk.com/event/593/media		us:county:35025	Lea County, NM	0:10:22	
+https://albemarle.granicus.com/MediaPlayer.php?view_id=1&clip_id=1530		us:county:51003	Albemarle County, VA	4:31:08	
+https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3406		rtr:us:wa:redmond	The City of Redmond, WA	0:20:50	
+https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395		rtr:us:wv:morgantown	The City of Morgantown, WV	1:50:20	
+https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=c3c39254-53cc-4461-9b85-041288171803&Agenda=Agenda&lang=English		us:place:0660620	Richmond, CA	2:09:07	
+https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1903		us:cousub:3602725978	Fishkill (town), NY	1:15:59	
+https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		rtr:us:nh:hooksett	The Town of Hooksett, NH	1:43:28	
+https://minnesotapuc.granicus.com/MediaPlayer.php?view_id=2&clip_id=2729		us:county:27007	Beltrami County, MN	1:08:29	
+https://reflect-vsctv.cablecast.tv/internetchannel/show/7442?site=1		rtr:unknown:reflect-vsctv.cablecast.tv		0:10:12	
+https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=859		us:county:06033	Lake County, CA	0:42:17	
+https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true		us:county:32003	Clark County, NV	0:47:08	
+https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669	https://huntingtonpark.granicus.com/account/forgotpassword	rtr:us:ca:huntington-park	The City of Huntington Park, CA	0:30:34	
+https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hooksett.granicus.com/ViewPublisher.php?view_id=2	rtr:us:nh:hooksett	The Town of Hooksett, NH	0:50:01	
+https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9		us:cousub:2300140770	Livermore Falls, ME	0:18:48	
+https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council		rtr:unknown:reflect-vsctv.cablecast.tv		1:39:34	
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1			Town of Brunswick	3:57:51	
+https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter	us:cousub:2300140770	Livermore Falls, ME	0:51:33	

@@ -1,22 +1,12 @@
-https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656
 https://cfrs-ca.civicweb.net/Portal/MeetingInformation.aspx?Id=4478
-https://cialbionmius.civicweb.net/Portal/MeetingInformation.aspx?Id=375
-https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2268
-https://clearwatercounty.civicweb.net/Portal/MeetingInformation.aspx?Id=490
 https://codb.civicweb.net/Portal/MeetingInformation.aspx?Id=3550
 https://coforsythnc.civicweb.net/Portal/MeetingInformation.aspx?Id=511
 https://demo.civicweb.net/Portal/MeetingInformation.aspx?Id=778
 https://diligentny.civicweb.net/Portal/MeetingInformation.aspx?Id=778
-https://eastgwillimbury.civicweb.net/Portal/MeetingInformation.aspx?Id=2010
-https://georgianbay.civicweb.net/Portal/MeetingInformation.aspx?Id=1887
-https://greyhighlands.civicweb.net/Portal/MeetingInformation.aspx?Id=3178
-https://hubbardcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=6037
 https://ingersoll.civicweb.net/Portal/MeetingInformation.aspx?Id=847
 https://kindersley.civicweb.net/Portal/MeetingInformation.aspx?Id=983
 https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1234
-https://montesereno.civicweb.net/Portal/MeetingInformation.aspx?Id=7472
 https://nederlandco.civicweb.net/Portal/MeetingInformation.aspx?Id=1935
-https://nelson.civicweb.net/Portal/MeetingInformation.aspx?Id=2083
 https://orillia.civicweb.net/Portal/MeetingInformation.aspx?Id=4587
 https://pilottestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
 https://rctestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
@@ -24,28 +14,11 @@ https://riverside.civicweb.net/Portal/MeetingInformation.aspx?Id=171
 https://solonohio.civicweb.net/Portal/MeetingInformation.aspx?Id=2711
 https://sylvaniatownship.civicweb.net/Portal/MeetingInformation.aspx?Id=3879
 https://townofbeechmountain.civicweb.net/Portal/MeetingInformation.aspx?Id=3707
-https://townofchenango.civicweb.net/Portal/MeetingInformation.aspx?Id=2287
 https://townofpembrokepark.civicweb.net/Portal/MeetingInformation.aspx?Id=8161
 https://townshipofhornepayne.civicweb.net/Portal/MeetingInformation.aspx?Id=477
 https://tppfl.civicweb.net/Portal/MeetingInformation.aspx?Id=8161
-https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Id=2339
-http://sancarlosca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1050&Format=Agenda
-http://santapaulaca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1351&Format=Agenda
-http://sfwmd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1598&Format=None&MediaFileFormat=wmv
 http://stluciefl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2070&MediaPosition=&ID=2780&CssClass=
 http://traviscountytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2025&MediaPosition=&ID=24610&CssClass=
-http://victoriacountytx.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1314&MinutesID=1329&FileFormat=pdf&Format=Minutes&MediaFileFormat=mpeg4
-http://wacocitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3347&MediaPosition=2761.611&ID=8728&CssClass=
-http://wappingertownny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1563&MediaPosition=&ID=5704&CssClass=
-http://washingtoncountyva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2231&MediaPosition=&ID=2391&CssClass=
-http://wentzvillemo.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2112&MediaPosition=&ID=7899&CssClass=
-http://westwendovernv.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2378&MediaPosition=7273.254&ID=2368&CssClass=
-http://winchesterva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1774&MediaPosition=&ID=2024&CssClass=
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1881&MediaPosition=10535.215&ID=10968&CssClass=
-https://stcroixcountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3661&MediaPosition=8924.113&ID=10801&CssClass=
-https://texarkanacitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1079&MediaPosition=1944.848&ID=1545&CssClass=
-https://tompkinscountyny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4213&MediaPosition=&ID=13804&CssClass=
-https://yuccavalleyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1335&MediaPosition=2805.288&ID=2233&CssClass=
 https://townhallstreams.com/stream.php?location_id=94&id=75799
 https://townhallstreams.com/stream.php?location_id=47&id=21880
 https://townhallstreams.com/stream.php?location_id=69&id=26034
@@ -172,11 +145,9 @@ https://townhallstreams.com/stream.php?location_id=177&id=75919
 https://townhallstreams.com/stream.php?location_id=178&id=74225
 https://wrightcountymn.portal.civicclerk.com/event/1667/media
 https://wrightcountymn.portal.civicclerk.com/event/2682/media
-https://walworthcowi.portal.civicclerk.com/event/2599/media
 https://wrightcountymn.portal.civicclerk.com/event/30/media
 https://wrightcountymn.portal.civicclerk.com/event/31/media
 https://sanfordnc.portal.civicclerk.com/event/2049/media
-https://cosumnescommunityservices.portal.civicclerk.com/event/562/media
 https://claytonca.portal.civicclerk.com/event/22/media
 https://cocoafl.portal.civicclerk.com/event/1351/media
 https://waycrossga.portal.civicclerk.com/event/441/media
@@ -187,7 +158,6 @@ https://frasermi.portal.civicclerk.com/event/1034/media
 https://excelsiormn.portal.civicclerk.com/event/3241/media
 https://shorewoodmn.portal.civicclerk.com/event/409/media
 https://thiefriverfallsmn.portal.civicclerk.com/event/446/media
-https://neoshomo.portal.civicclerk.com/event/1340/media
 https://highpointnc.portal.civicclerk.com/event/1073/media
 https://cantonoh.portal.civicclerk.com/event/2105/media
 https://goodlettsvilletn.portal.civicclerk.com/event/3490/media
@@ -197,28 +167,13 @@ https://kermittx.portal.civicclerk.com/event/172/media
 https://rockporttx.portal.civicclerk.com/event/1101/media
 https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431
 https://eauclairecountywi.granicus.com/MediaPlayer.php?view_id=1&clip_id=221
-https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954
 https://pueblocounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=9
-https://winchendon.cablecast.tv/CablecastPublicSite/gallery/5?site=1
 https://aledoisdtx.swagit.com/play/08082019-1085
 https://play.champds.com/atlantaga/event/1000
 https://play.champds.com/bellemeadetn/event/200
 https://play.champds.com/chathamma/event/2500
 https://play.champds.com/collegedaletn/event/50
 https://play.champds.com/mentoroh/event/200
-https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5669
-https://agourahills.granicus.com/MediaPlayer.php?view_id=2&clip_id=2084
-https://buffalony.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3434
-https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932
-https://bchd.granicus.com/MediaPlayer.php?view_id=2&clip_id=766
-https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2656
-https://washingtoncountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3494
-https://chanhassen.granicus.com/MediaPlayer.php?view_id=1&clip_id=2065
-https://pub-guelph.escribemeetings.com/Meeting.aspx?Id=77aa8796-b281-43d5-a540-833c5c73e18a
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4241
-https://metro.granicus.com/MediaPlayer.php?view_id=2&clip_id=4243
-https://payson.granicus.com/MediaPlayer.php?view_id=2&clip_id=1271
-https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1532
 https://shelby.granicus.com/MediaPlayer.php?view_id=2&clip_id=2965
 https://www.youtube.com/embed/JVYzmjogFKM?autoplay=0&start=0&rel=0
 https://youtu.be/IhGE9TwsrDs?si=ZKa7yDYUOm1CtT4t
@@ -232,10 +187,8 @@ https://bethelak.portal.civicclerk.com/event/1143/media
 https://crestviewfl.portal.civicclerk.com/event/1381/media
 https://longwoodfl.portal.civicclerk.com/event/869/media
 https://lynnhavenfl.portal.civicclerk.com/event/2112/media
-https://villagenpb.new.swagit.com/videos/399555
 https://www.youtube.com/live/_RZBcYEbQr4?si=ZWq-eD1hKQwGjiiZ
 https://youtube.com/live/3OOngsiBb0A?feature=share
-https://winterparkfl.portal.civicclerk.com/event/2729/media
 https://youtu.be/LXaYHmU9YqY
 https://harrisoncountyin.portal.civicclerk.com/event/1066/media
 https://www.youtube.com/watch?v=lKH5HrGfbss&t=275s
@@ -247,7 +200,6 @@ https://www.youtube.com/watch?v=X8byP_KTNkE
 https://youtube.com/live/dMDTgIVM9_c?feature=share
 https://www.youtube.com/live/7YbqdtcDVd4?si=BKpLSF8E7UM6ULJM
 https://youtube.com/live/LujQlJ1LnC4
-http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1
 https://youtu.be/1VtOGgQY0sw
 https://youtu.be/9KVFYpXYR80
 https://www.youtube.com/embed/treoXyXfv6g?enablejsapi=1&autoplay=0&cc_load_policy=0&cc_lang_pref=&iv_load_policy=1&loop=0&rel=0&fs=1&playsinline=0&autohide=2&theme=dark&color=red&controls=1&disablekb=0
@@ -258,7 +210,6 @@ https://burkeconc.portal.civicclerk.com/event/983/media
 https://www.youtube.com/watch?v=H2CzbGvQ_l4
 https://youtube.com/embed/w2fhi7R6WLk
 https://mandannd.portal.civicclerk.com/event/344/media
-https://westfargond.portal.civicclerk.com/event/1044/media
 https://www.youtube.com/watch?v=_adivav_vag
 https://www.youtube.com/live/FMMpEcupCXw?si=P-3Nxm6Y8sUxbrJJ
 https://scottsbluffne.portal.civicclerk.com/event/951/media
@@ -266,7 +217,6 @@ https://www.youtube.com/watch?v=6xBTQYtTi4c
 http://www.youtube.com/embed/hhU7j0za5So?si=BWxYlXbVe8kxZ5yB
 https://www.youtube.com/live/uIVCu3gqNUM?si=b1qLX9tQVkFThWYx
 https://www.youtube.com/watch?v=QpksKuumxoo&t=1s
-https://centervilleut.portal.civicclerk.com/event/1700/media
 https://youtu.be/M6cMFza8BCg
 https://www.youtube.com/live/tET2EUqdYTM?si=WQCUkurtDxJw73-s
 https://youtube.com/live/d7_TJJkxQio?feature=share
@@ -282,12 +232,9 @@ https://youtu.be/svk7OsRpw8E
 https://aac.cablecast.tv/cablecastapi/live?channel_id=1&use_cdn=true
 https://youtube.com/live/KLaCh93rKGo?feature=share	https://www.charlevoixcounty.org/
 https://www.youtube.com/embed/ESfzST-yOSM?si=4EKaKTtJZK4jTT-q	https://www.middletown.delaware.gov/events/97568/
-https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas
-https://southelmonteca.portal.civicclerk.com/event/582/media	https://www.cityofsouthelmonte.org/129/Meeting-Agendas-Minutes
 https://carmelbytheseaca.portal.civicclerk.com/event/912/media	https://ci.carmel.ca.us/
 https://www.youtube.com/embed/PvV--2X7Qco?modestbranding=1&hd=1&vq=hd720&rel=0&playsinline=1	https://publicinput.com/cityofindustry
 https://caleraal.portal.civicclerk.com/event/803/media	https://www.cityofcalera.org/429/Agendas-and-Minutes
-https://eagle-id.granicus.com/ViewPublisher.php?view_id=1	https://www.cityofeagle.org/
 https://www.youtube.com/live/O0rA3d4CF84?si=hjSFoQPXVBb3-vnu	https://www.belairmd.org/
 https://townhallstreams.com/stream.php?location_id=87&id=72598	https://www.choosecambridge.com/
 https://www.youtube.com/live/uQ3rK9rI1g8	https://www.townofcentreville.org/
@@ -295,12 +242,10 @@ https://salisburymd.granicus.com/ViewPublisher.php?view_id=1	https://salisbury.m
 https://youtu.be/33WZKCGJNmg	https://www.boonton.org/
 https://videoplayer.telvue.com/player/xAkU_1Eb4e9C1-YCioqZmvaGx4GumMyB/playlists/3943/stream/393	https://www.cliftonnj.org/
 https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/1298/stream/67?autostart=false&showtabssearch=true&fullscreen=false	https://www.oradell.org/oradell-public-television/pages/live-stream
-https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php
 https://youtu.be/zSh2DIrld8E	https://stoneharbornj.org/agendameetings/watch-mayor-and-council-meetings-online/borough-council-agendas-minutes/
 https://byramms.portal.civicclerk.com/event/2238/media	https://www.byram-ms.us
 https://youtube.com/live/NiWgzVNU8ik
 https://youtu.be/gd7DWmsqFVc
-https://kaysvilleut.portal.civicclerk.com/event/1264/media
 https://www.youtube.com/watch?v=hb9uFmMTfBs
 https://www.youtube.com/watch?v=7GJ57vgKy2M
 https://www.youtube.com/watch?v=YavJncgqinc&list=PLicvhyhiZ7gzoNt4olVP-3LGGOM0oWC9E&index=1
@@ -319,13 +264,10 @@ https://youtube.com/live/T-vtfoTP1xc
 https://youtu.be/XXc0JfG02Bs
 https://youtube.com/live/C_5INZB_pjM
 https://youtu.be/x5mNdymgG8w
-https://summitcounty.granicus.com/player/clip/1286
 https://youtu.be/aQuY4e7wu18
 https://youtube.com/live/1Bs5za9GfUo
-https://hebercityut.portal.civicclerk.com/event/527/media
 https://youtu.be/TPfxCUb632w
 https://youtu.be/HSeZ-fmWnmM
-https://parkcityut.portal.civicclerk.com/event/3931/media
 https://www.youtube.com/live/YEgksexqfpA
 https://www.youtube.com/watch?v=sWP2LG-RLqs
 https://www.youtube.com/watch?v=tD-DTUDaWXU&list=PLicvhyhiZ7gyjMzt7NxqLeGECYABoqWNe&index=1
@@ -335,63 +277,9 @@ https://www.youtube.com/watch?v=SxyFXH5YwnY
 https://www.youtube.com/watch?v=Pff2be9KsUc
 https://www.youtube.com/watch?v=mQZiMYr-zho
 https://youtu.be/4D1rlcI5EHU
-https://wasatchcout.portal.civicclerk.com/event/1618/media
-https://wasatchcout.portal.civicclerk.com/event/1619/media
-https://wasatchcout.portal.civicclerk.com/event/1620/media
-https://wasatchcout.portal.civicclerk.com/event/1812/media
-https://wasatchcout.portal.civicclerk.com/event/1621/media
 https://youtu.be/MvBKkL0vxaA
 https://www.youtube.com/watch?v=PiunVGKidIk&list=PLnGV6r4WDnpY2MjIzqfPNe37UHs60U5Vb&index=4
 https://www.youtube.com/watch?v=u-Td937EG8I&list=PLnGV6r4WDnpY2MjIzqfPNe37UHs60U5Vb&index=2
-https://churchillconv.portal.civicclerk.com/event/4000/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3990/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3900/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3850/media	https://churchillcountynv.gov
-https://cityofstamford.granicus.com/MediaPlayer.php?view_id=2&clip_id=9691
-https://bocaraton.granicus.com/MediaPlayer.php?view_id=3&clip_id=546
-https://coralgables.granicus.com/MediaPlayer.php?view_id=2&clip_id=4044
-https://cityofdoral.granicus.com/MediaPlayer.php?view_id=2&clip_id=848
-https://dunnellon.granicus.com/MediaPlayer.php?view_id=1&clip_id=561
-https://citynmb.granicus.com/MediaPlayer.php?view_id=1&clip_id=2042
-https://pinecrest.granicus.com/MediaPlayer.php?view_id=2&clip_id=834
-https://pompano.granicus.com/MediaPlayer.php?view_id=2&clip_id=2651
-https://puntagorda.granicus.com/MediaPlayer.php?view_id=1&clip_id=1371
-https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2696
-https://townofsurfsidefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=542
-https://brevardfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=638
-https://hernandoschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=472
-https://manateeschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=346
-https://nassaufl.granicus.com/MediaPlayer.php?view_id=2&clip_id=2416
-https://mauicounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4246
-https://cityofmalden.granicus.com/MediaPlayer.php?view_id=2&clip_id=275
-https://ravalli-mt.granicus.com/MediaPlayer.php?view_id=1&clip_id=2559
-https://cityofstillwater.granicus.com/MediaPlayer.php?view_id=3&clip_id=1895
-https://ashecounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=678
-https://chathamnc.granicus.com/MediaPlayer.php?view_id=2&clip_id=576
-https://mecklenburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=3281
-https://chemungny.granicus.com/MediaPlayer.php?view_id=1&clip_id=878
-https://sullivancountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2239
-https://allegheny.granicus.com/MediaPlayer.php?view_id=2&clip_id=1052
-https://lackawanna.granicus.com/MediaPlayer.php?view_id=2&clip_id=503
-https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790
-https://fallschurch-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=3513
-https://leesburgva.granicus.com/MediaPlayer.php?view_id=2&clip_id=2981
-https://richmondva.granicus.com/MediaPlayer.php?view_id=1&clip_id=5000
-https://vienna-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1994
-https://clallam.granicus.com/MediaPlayer.php?view_id=2&clip_id=2181
-https://whatcom.granicus.com/MediaPlayer.php?view_id=1&clip_id=1569
-https://longview-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=207
-https://marysville.granicus.com/MediaPlayer.php?view_id=2&clip_id=664
-https://mukilteo-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=2022
-https://olympia.granicus.com/MediaPlayer.php?view_id=2&clip_id=3013
-https://cityofpt.granicus.com/MediaPlayer.php?view_id=2&clip_id=3908
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405
-https://sequim-wa.granicus.com/MediaPlayer.php?view_id=1&clip_id=723
-https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292
-https://cityoftacoma.granicus.com/MediaPlayer.php?view_id=2&clip_id=7795
-https://sauk.granicus.com/MediaPlayer.php?view_id=2&clip_id=2950
-https://lincolnri.portal.civicclerk.com/event/5463/media	https://www.lincolnri.gov
 https://www.utah.gov/pmn/sitemap/notice/1103253.html
 https://www.utah.gov/pmn/sitemap/notice/1103725.html
 https://www.utah.gov/pmn/sitemap/notice/1073417.html
@@ -962,64 +850,12 @@ https://www.utah.gov/pmn/sitemap/notice/1069249.html
 https://www.utah.gov/pmn/sitemap/notice/1071907.html
 https://www.utah.gov/pmn/sitemap/notice/1076865.html
 https://www.utah.gov/pmn/sitemap/notice/1076885.html
-https://ryeny.new.swagit.com/videos/80201
-https://sachsetx.new.swagit.com/videos/01192022-801
-https://salem.cablecast.tv/internetchannel/show/19115
-https://sanbenitotx.new.swagit.com/videos/135693
 https://sanbernardino.cablecast.tv/internetchannel/show/3557?site=1
 https://sandovalcountynm.new.swagit.com/videos/07112019-1080/4/
-https://sanjoseca.new.swagit.com/videos/304643
-https://sanpatriciocountytx.new.swagit.com/videos/353476
 https://santacruzcountyca.new.swagit.com/videos/337126
-https://sapatv.cablecast.tv/internetchannel/show/35396?site=2
-https://scarsdaleny.new.swagit.com/videos/249667
-https://sccoe.new.swagit.com/videos/247894/transcript
-https://sccwi.portal.civicclerk.com/event/923/media
-https://scgtv.new.swagit.com/videos/27666
-https://schertztx.new.swagit.com/videos/381442
 https://sdmf.new.swagit.com/videos/334434
-https://seasideheightsnj.new.swagit.com/videos/267408/download_section
-https://sedonaaz.new.swagit.com/videos/06302022-516
-https://sedrowoolleywa.portal.civicclerk.com/event/184/media
 https://severanceco.portal.civicclerk.com/event/1379/media
-https://sewardcountyks.new.swagit.com/videos/364518
-https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731
-https://arvin.granicus.com/MediaPlayer.php?view_id=2&clip_id=346
-https://atherton.primegov.com/Portal/Meeting?meetingTemplateId=2464
-https://auburn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1687
-https://bcnv.primegov.com/Portal/Meeting?meetingTemplateId=3504
-https://belleplaine.granicus.com/MediaPlayer.php?view_id=2&clip_id=954
-https://berkeley.granicus.com/MediaPlayer.php?view_id=2&clip_id=5700
-https://brokenarrow.granicus.com/MediaPlayer.php?view_id=2&clip_id=2614
-https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=650
-https://buttecoca.portal.civicclerk.com/event/1078/media
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=603
-https://calumetcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=3281
-https://camarillo.primegov.com/Portal/Meeting?meetingTemplateId=7030
-https://carpinteria.granicus.com/MediaPlayer.php?view_id=2&clip_id=1783
-https://casselberryfl.portal.civicclerk.com/event/524/media
-https://cathedralcity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2898
-https://chaffeecoco.portal.civicclerk.com/event/1671/media
-https://charlestonwv.portal.civicclerk.com/event/3736/media
-https://chinohills.granicus.com/MediaPlayer.php?view_id=2&clip_id=702
-https://churchillconv.portal.civicclerk.com/event/4243/media
-https://citwentynine-palmsca.civicweb.net/Portal/MeetingInformation.aspx?Id=10712
-https://cityofdhs.civicweb.net/Portal/MeetingInformation.aspx?Id=4455
-https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=769
-https://cityoflawton.granicus.com/MediaPlayer.php?view_id=1&clip_id=2104
-https://cityofmerced.granicus.com/MediaPlayer.php?view_id=1&clip_id=1153
-https://cityoforange.granicus.com/MediaPlayer.php?view_id=2&clip_id=1037
-https://cityofoviedo.primegov.com/Portal/Meeting?meetingTemplateId=10905
-https://cityofrehoboth.civicweb.net/Portal/MeetingInformation.aspx?Id=14580
-https://cityofrsm.granicus.com/MediaPlayer.php?view_id=2&clip_id=979
-https://cityofventura.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917
-https://claremontca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1912
-https://cobergennj.granicus.com/MediaPlayer.php?view_id=1&clip_id=428
-https://costamesa.granicus.com/MediaPlayer.php?view_id=4&clip_id=4427
 https://crestviewfl.portal.civicclerk.com/event/1370/media
-https://danvilleva.portal.civicclerk.com/event/2582/media
-https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294
-https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707
 https://youtu.be/MW7uV8fohm0	https://www.macomb-mi.gov/
 https://www.youtube.com/embed/fMfmeh2OtQY?feature=oembed	https://bramptonbot.com/
 https://youtu.be/V_Yb9586WDU	https://sccmo.org
@@ -1328,46 +1164,33 @@ https://www.youtube.com/watch?v=NKPwfgOK77w	https://5-rivers.ca/index.asp?SEC=A9
 https://www.youtube.com/live/Je4pi72iBBM?feature=share
 https://youtu.be/em6xC15jPms	https://vilsv.ca/village-office/council/council-meeting-minutes
 https://www.youtube.com/embed/JqON_-LqX4Y
-https://huntingtonpark.granicus.com/player/clip/566?view_id=2
 https://www.youtube.com/watch?v=hdPayV4oLd4
 https://www.youtube.com/watch?v=kZJQsApBQw4
 https://www.youtube.com/watch?v=rzpT6rIoRlI
 https://fremont.primegov.com/Portal/Meeting?meetingTemplateId=557
-https://buttecoca.portal.civicclerk.com/event/140/media
-https://norwalk.primegov.com/Portal/Meeting?meetingTemplateId=7634
 https://www.youtube.com/watch?v=5zc-w-kaRfE
 https://www.youtube.com/watch?v=OZannXzgsXo
 https://www.youtube.com/watch?v=w5zkWsb_BHo
 https://www.youtube.com/watch?v=L0S5TklwxIY
 https://www.youtube.com/watch?v=q3U6ZVJZswU
 https://www.youtube.com/watch?v=xkZjMGFrWUg
-https://blackfordcoin.portal.civicclerk.com/event/2157/media
 https://www.youtube.com/watch?v=2H2SozMslPk
-https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=586
 https://www.youtube.com/watch?v=G8myJ6ZmN70
 https://www.youtube.com/watch?v=Q1b4LUA8CVo
 https://www.youtube.com/watch?v=M6Rf_W5cdyY
-https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=910
 https://www.youtube.com/watch?v=ovoSOginpBs
 https://www.youtube.com/watch?v=rkdMLMNIgKE
-http://agawamvod.cablecast.tv/internetchannel/show/2912?site=1	http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1
 https://www.youtube.com/watch?v=GSTZcOcMgJs
 https://www.youtube.com/watch?v=kS6fNXK9-4o
 https://buffalo.viebit.com/watch?hash=11TLAPa5nJChjObE	https://ci.buffalo.mn.us/AgendaCenter
-https://longbeach.primegov.com/Portal/Meeting?meetingTemplateId=36784
-https://pub-lincoln.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=08e3d8fe-c855-4b61-9c1c-4a1bcec8fcab&lang=English
 https://www.youtube.com/watch?v=T3VwKCAj64o
 https://www.youtube.com/watch?v=fnnKLtVdaFo
 https://www.youtube.com/watch?v=7Rc-p4JjrhU
-http://colonieny.iqm2.com/Citizens/SplitView.aspx?Format=Minutes&MeetingID=1083&Mode=Video
 https://www.youtube.com/watch?v=q5Gvlzvztpo
-https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=1998&Org=Cal
 https://www.youtube.com/watch?v=uGjiNOTkOoM
 https://www.youtube.com/watch?v=CtT4GtYujpg
 https://www.youtube.com/watch?v=HzjMQP1ToH0
 https://www.youtube.com/watch?v=fnZup1KBfr4
-https://whitehouse.civicweb.net/Portal/MeetingInformation.aspx?Id=5493
-https://douglas-mi.municodemeetings.com/bc-citycouncil/page/regular-meeting-city-council-91
 https://www.youtube.com/watch?v=0xRPRA4MI-0
 https://www.youtube.com/watch?v=cn8cmR4Gkk8
 https://www.youtube.com/watch?v=G3OmQMWslVE
@@ -1377,14 +1200,8 @@ https://www.youtube.com/watch?v=71Sx5WhXULs
 https://www.youtube.com/watch?v=HnMjtCFKC4c
 https://www.youtube.com/embed/tET2EUqdYTM
 https://www.youtube.com/watch?v=tJg0xjN8VDI
-https://harrisonburg-va.granicus.com/player/clip/1234?view_id=4
-https://snohomish.granicus.com/player/clip/9589?view_id=18
-https://hartford.civicweb.net/Portal/MeetingInformation.aspx?Id=3385
-https://watertown.civicweb.net/Portal/MeetingInformation.aspx?Id=117
-https://laramiecounty.granicus.com/player/clip/841?view_id=1
 https://www.youtube.com/watch?v=L2vPFXq-e2U
 https://www.youtube.com/watch?v=zXY8UlA7kYI
-https://pub-elgincounty.escribemeetings.com/Meeting.aspx?Id=401f3f40-356d-4776-bb76-b6061d58f2a5
 https://youtu.be/C7xyE4XVMPw
 https://www.youtube.com/watch?v=UY7iMN0YIiM
 https://delano.viebit.com/watch?hash=cpi9yaPTzJ8UPaHa
@@ -1446,8 +1263,6 @@ https://montgomeryconc.portal.civicclerk.com/event/5/media	https://www.montgomer
 https://www.youtube.com/watch?v=_6BmRBMtkK8	https://www.pikepa.org/
 https://www.youtube.com/watch?v=VHX5Aeh70zY	https://www.sumtercountysc.gov/
 https://www.youtube.com/watch?v=KE1hRa780GI	https://senecacountyohio.gov
-https://brewstercotx.portal.civicclerk.com/event/95/media	https://www.brewstercounty.gov/page/comm.court.home
-https://polkcotx.portal.civicclerk.com/event/1892/media	https://www.polktx.gov
 https://pueblococo.portal.civicclerk.com/event/6424/media	https://pueblocounty.gov
 https://www.youtube.com/watch?v=Xjun9K7WEak	https://jeffersoncountywi.gov
 https://sheboygan-wi.municodemeetings.com/	https://www.sheboyganwi.gov
@@ -1527,7 +1342,6 @@ https://www.youtube.com/embed/pH4QOP-vqr0?feature=oembed	https://lewiscountywa.g
 https://www.youtube.com/watch?v=urHz3VISUvM	https://www.fairfaxcounty.gov/boardofsupervisors/
 https://youtu.be/coDPUTYFtl8	https://countyofelkpa.gov/elk-county-offices/board-of-commissioners/meeting-minutes-and-agendas/
 https://www.youtube.com/watch?v=vEYcAon81TU	https://www.bridgeportct.gov/
-https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/
 https://youtube.com/live/qobK8hBVjXQ?feature=share	https://www.steinbach.ca/city-hall/city-council/
 https://www.mywinterhaven.com
 https://www.youtube.com/embed/gMWk4Rf40Ys?si=GXd0OxdLmAUuaNhr	https://www.thompson.ca/p/meeting-videos
@@ -1631,12 +1445,10 @@ https://www.youtube.com/watch?v=ktgYPhnicvU&list=PLuOvQjp9VUNM2wKjIu3hPaXEkCvVy7
 https://pleasantprairiewi.granicus.com/MediaPlayer.php?view_id=1&clip_id=899
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254
 https://www.youtube.com/watch?v=Yc7Lap20wwQ	https://www.torringtonwy.gov/AgendaCenter
-https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2
 https://grantconm.portal.civicclerk.com/event/704/media
 https://ozaukeecowi.portal.civicclerk.com/event/5776/media
 https://bighorncomt.portal.civicclerk.com/event/1058/media
 https://lumbertonnc.portal.civicclerk.com/event/267/media
-https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2
 https://www.youtube.com/live/a_XGQ23FJX4?si=1iQuWHwgyRdXNfnw
 https://youtu.be/vQ1refIODXc
 https://youtu.be/pC7ij0xMs64?si=Q_m5x9H_0NWylQPp
@@ -1710,7 +1522,6 @@ https://www.youtube.com/watch?v=zFXOv2z3fIE
 https://www.youtube.com/watch?v=gw4N-YkXUEY	https://www.youtube.com/DavidsonCountyNC/
 https://www.youtube.com/watch?v=lZkch9T-ZfQ	https://www.youtube.com/channel/UCpBRcD4gxDnyejPd0ufR5dQ
 https://www.youtube.com/watch?v=bBonOjC49Uk	https://www.youtube.com/@sullivancountycommission255/streams
-https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8878?seekto=21&site=5&query=conservation+commission
 https://www.youtube.com/watch?v=DgvPOFTI3c0	https://www.youtube.com/channel/UCYoes-UXdq_mCDY4-fmSduQ
 https://www.youtube.com/watch?v=dt_eMQAkHTc	https://www.youtube.com/channel/UCk7OM8Pm_tfLfXW7wrVL6kA
 https://www.youtube.com/watch?v=UxevVljp1nU	https://www.youtube.com/channel/UC6CuqfASFGDNUC1n-S7CHLw
@@ -1765,8 +1576,6 @@ https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1
 https://www.youtube.com/watch?v=jnHV1mqRQFc	https://www.cityofgraham.com/agendas-minutes/
 https://www.youtube.com/watch?v=TopVL6GwVZQ	https://www.beechgrove.com/watch-city-meetings
 https://spenceria.portal.civicclerk.com/event/65/media	https://spenceriowacity.com/departments/administration/meeting-agendas-minutes/
-https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings
-https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov
 https://www.youtube.com/watch?v=hqmonbdLaYA
 https://www.youtube.com/watch?v=0IKo-nP2O0I
 https://www.youtube.com/watch?v=QQjG_GjDJ1M
@@ -2295,89 +2104,18 @@ https://www.youtube.com/watch?v=x2rRqLhkQPU	https://www.waterfordct.gov/AgendaCe
 https://www.youtube.com/watch?v=xh4DlMrr5ME	https://rousespointny.gov/government_departments/administration_village_board/youtube_council_meetings.php
 https://youtu.be/e8Jr18zynxs
 https://vimeo.com/646562708
-https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654
-https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036
-https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252
-https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655
-https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303
-https://shelbytownmi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1549
-https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3027
-https://losaltoshillsca.portal.civicclerk.com/event/4638/media
-https://neoshomo.portal.civicclerk.com/event/1339/media
 https://mabletonga.portal.civicclerk.com/event/672/media
 https://hobbsnm.portal.civicclerk.com/event/212/media
 https://manliusny.portal.civicclerk.com/event/1095/media
 https://spearfishsd.portal.civicclerk.com/event/3353/media
 https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2260
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=600
-https://chccs.granicus.com/MediaPlayer.php?view_id=2&clip_id=787
-https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3500
-https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301
-https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=285
-https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=f2ac295e-a967-4c2b-a06d-e176120a9db8&Agenda=Agenda&lang=English
-https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1007
-https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2872
-https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4714
 https://jupiterislandfl.portal.civicclerk.com/event/341/media
-https://bucoks.granicus.com/MediaPlayer.php?view_id=1&clip_id=649
 https://mcphersoncoks.portal.civicclerk.com/event/547/media
-https://portagecowi.portal.civicclerk.com/event/9367/media
 https://portervilleca.portal.civicclerk.com/event/554/media	https://www.ci.porterville.ca.us/government/city_council/meeting_agendas___minutes.php
 https://rollinghillsca.portal.civicclerk.com/event/808/media	https://www.rolling-hills.org/
-https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2424
 https://fernleynv.portal.civicclerk.com/event/520/media	http://www.cityoffernley.org
-https://cityofmaricopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=643
-https://danbury.granicus.com/MediaPlayer.php?view_id=2&clip_id=3779
-https://bethanybeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1223
-https://deltona.granicus.com/MediaPlayer.php?view_id=1&clip_id=1714
-https://dunedin.granicus.com/MediaPlayer.php?view_id=2&clip_id=1007
-https://city-lighthousepoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=812
-https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1092
-https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1085
-https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1414
-https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1228
-https://martin.granicus.com/MediaPlayer.php?view_id=2&clip_id=5762
-https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=584
-https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1116
-https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8468
-https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=865
-https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1529
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1359
-https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=248
 https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=794
-https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6854
-https://rowletttx.new.swagit.com/videos/35358
-https://saltlakecounty.portal.civicclerk.com/event/4172/media
-https://sandyspringsga.portal.civicclerk.com/event/2144/media
-https://sanjuancowa.portal.civicclerk.com/event/4366/media
-https://santarosacofl.portal.civicclerk.com/event/1689/media
 https://saratogaspringsny.new.swagit.com/videos/133742
-https://anacorteswa.portal.civicclerk.com/event/1447/media
-https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3663
-https://annapolismd.granicus.com/MediaPlayer.php?view_id=1&clip_id=1596
-https://antiochca.portal.civicclerk.com/event/1088/media
-https://bainbridgeislandwa.portal.civicclerk.com/event/1109/media
-https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171
-https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=893
-https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4991
-https://cityfortbragg.granicus.com/MediaPlayer.php?view_id=1&clip_id=1556
-https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=826
-https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2235
-https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024
-https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3649
-https://college-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1717
-https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=759
-https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1784
-https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1525
-https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1833
-https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6006
-https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2947
-https://jacksoncomi.portal.civicclerk.com/event/1088/media
-https://leacountynm.portal.civicclerk.com/event/593/media
-https://albemarle.granicus.com/MediaPlayer.php?view_id=1&clip_id=1530
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3406
-https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395
-https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=c3c39254-53cc-4461-9b85-041288171803&Agenda=Agenda&lang=English
 https://harrisoncountyin.portal.civicclerk.com/event/1067/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/
 https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1168	https://www.guadalupetx.gov/page/commcourt.agendas
 https://lynnhavenfl.portal.civicclerk.com/event/2115/media	https://cityoflynnhaven.gov
@@ -2387,10 +2125,7 @@ https://lantanafl.granicus.com/MediaPlayer.php?view_id=1&clip_id=255
 https://ottawaks.portal.civicclerk.com/event/1101/media
 https://richfieldmn.portal.civicclerk.com/event/2605/media
 https://hcnv.granicus.com/MediaPlayer.php?view_id=2&clip_id=36
-https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1903
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917
 https://levycofl.portal.civicclerk.com/event/2033/media
-https://minnesotapuc.granicus.com/MediaPlayer.php?view_id=2&clip_id=2729
 https://brecksvilleoh.portal.civicclerk.com/event/1425/media	https://brecksville.oh.us
 https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1371
 https://www.youtube.com/watch?v=IPLLmvDDvjE	https://www.youtube.com/@rockspringswy
@@ -2408,7 +2143,6 @@ https://www.youtube.com/watch?v=CRjz_MamYYA	https://www.youtube.com/@Townofandre
 https://www.youtube.com/watch?v=cD4bPov9BQQ	https://www.youtube.com/channel/UCAgMZD_gMuhgTdpQmZn2ACg
 https://edmundsgovtech.wistia.com/medias/cmc7wzifwc
 https://parkland.legistar.com/Video.aspx?Mode=Granicus&ID1=1327&Mode2=Video	https://www.parklandcounty.com/
-https://reflect-vsctv.cablecast.tv/internetchannel/show/7442?site=1
 https://madisoncoil.portal.civicclerk.com/event/560/media
 https://guadalupe.granicus.com/player/clip/1160?view_id=1&redirect=true
 https://wisecountytx.new.swagit.com/videos/398832
@@ -2416,13 +2150,11 @@ https://winterhaven-fl.granicus.com/player/clip/616?view_id=1&redirect=true
 https://manortx.new.swagit.com/videos/400366
 https://hcnv.granicus.com/player/clip/44?view_id=2&redirect=true
 https://reidsville.granicus.com/MediaPlayer.php?clip_id=51&view_id=1
-https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=859
 https://www.youtube.com/watch?v=C5Rztq-zC34	https://youtu.be/C5Rztq-zC34
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57519?site=1
 https://pembrokeparkfl.portal.civicclerk.com/event/4284/media
 https://whiteville.granicus.com/player/clip/388?view_id=1&redirect=true
 https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=93708097-20f9-4e71-8dcd-221550f099f5&Agenda=Agenda&lang=English
-https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true
 https://glendale.granicus.com/MediaPlayer.php?clip_id=8524&view_id=2
 https://www.youtube.com/watch?v=sWUkyx7R7XA	https://youtube.com/live/sWUkyx7R7XA?feature=share
 https://www.youtube.com/watch?v=I0PSbsgUEMg	https://youtu.be/I0PSbsgUEMg?list=PL1FNTHBBwsYsZDEGIw0wQo2wEYCgu_qG5
@@ -2479,7 +2211,6 @@ https://www.youtube.com/watch?v=4O873q7Q-1U	https://www.youtube.com/@TexasWorkfo
 https://madisoncoil.portal.civicclerk.com/event/417/media	https://madisoncoil.portal.civicclerk.com/?category_id=26
 https://cantonoh.portal.civicclerk.com/event/2106/media	https://cantonohio.gov
 https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=617	https://winterhaven-fl.granicus.com/ViewPublisher.php?view_id=1
-https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669	https://huntingtonpark.granicus.com/account/forgotpassword
 https://hobbsnm.portal.civicclerk.com/event/119/media	https://hobbsnm.portal.civicclerk.com/
 https://www.youtube.com/watch?v=QUoRTvjmRQ4	https://www.youtube.com/@CityofRichfield
 https://howardcotx.portal.civicclerk.com/event/179/media	https://howardcotx.portal.civicclerk.com/
@@ -2493,14 +2224,10 @@ https://northwoodoh.portal.civicclerk.com/event/297/media	https://northwoodoh.po
 https://godleytx.portal.civicclerk.com/event/6070/media	https://godleytx.gov
 https://seadrifttx.portal.civicclerk.com/event/21/media	https://www.seadrifttx.org/agendacenter
 https://www.youtube.com/watch?v=1s9vw8DXQzk	https://www.youtube.com/embed/1s9vw8DXQzk?si=L0IAcx8CawjYzUgj
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hooksett.granicus.com/ViewPublisher.php?view_id=2
 https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1170	https://guadalupe.granicus.com/ViewPublisher.php?view_id=1
 https://www.youtube.com/watch?v=PqH6BABYbGg	https://www.youtube.com/user/CityofBrandonMB
 https://sccity.granicus.com/MediaPlayer.php?view_id=1&clip_id=257	https://sccity.granicus.com/account/forgotpassword
 https://youtu.be/tGIY22V-HNI?si=fc2-uWXm8KyUkDap
-https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9
-https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council
-https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1
 https://www.youtube.com/watch?v=9FigxVpUzT0
 https://cloud.castus.tv/vod/andover/video/6254e320aa3c200009aac94e?page=HOME
 https://cloud.castus.tv/vod/littleton/video/6a57b6bfb0f73f000288066b?page=HOME
@@ -2516,7 +2243,6 @@ https://www.youtube.com/watch?v=WzqIpTCYPOU	https://rileycoks.portal.civicclerk.
 https://www.youtube.com/watch?v=5OFSWnNQ6qA	https://www.youtube.com/@ButteSilverBow/playlists
 https://www.youtube.com/watch?v=hNTApwbDndM	https://clinton-county.org/agendacenter
 https://www.utah.gov/pmn/sitemap/notice/1089851.html	https://cityofhurricane.com/AgendaCenter
-https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter
 https://www.youtube.com/watch?v=YfCQuZlKm7o	https://www.youtube.com/@FranklinVotes/videos
 https://www.youtube.com/watch?v=hd6VzRitAM8	https://www.youtube.com/user/cityofkamloops
 https://www.youtube.com/watch?v=gD0j8h3psZA	https://youtube.com/channel/UCdDeXn3nyRcDuK4qB9bwl1A
