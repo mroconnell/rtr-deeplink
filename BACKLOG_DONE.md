@@ -2190,22 +2190,65 @@ overlap with the 36 governments a separate session (WO-253) is
 correcting for a different, older mistake (recorded tenant domain
 instead of the government's own).
 
-**Recommendation.** Deploy `rtr-deeplink` when convenient — 30 new pins
-landed in `app/utils/jurisdiction_data/tenant_overrides.csv`, and while
-the 29 live pages already carry their own government id and don't need
-a deploy to show correctly, the pins matter for the transcription
-worker's later re-checks. Continuing the remaining 533 governments (the
-exact resume command is in `BACKLOG.md`'s Ship-next section) would keep
-finding more real meetings at roughly this same rate.
+**Recommendation (part 1).** Deploy `rtr-deeplink` when convenient — 30
+new pins landed in `app/utils/jurisdiction_data/tenant_overrides.csv`,
+and while the 29 live pages already carry their own government id and
+don't need a deploy to show correctly, the pins matter for the
+transcription worker's later re-checks. Continuing the remaining 533
+governments would keep finding more real meetings at roughly this same
+rate.
+
+**Part 2 (2026-09-12): the remaining 533 governments, all 964 now
+done.** Same script, same steps, picked up exactly where part 1 left
+off. 380 answered on a plain fetch, 127 needed the real browser, and 24
+were blocked or timed out one way or another. 510 of those reached a
+real page; 81 had a platform on it (69 YouTube, 6 CivicClerk, 4
+CivicPlus, 1 CivicWeb, 1 SuiteOne Media).
+
+38 candidates reached a person for the required read: 33 approved (25
+became a page, 8 went into the transcription queue), 5 turned away — 2
+were real video that was not a governing-body meeting (a candidate
+information session ahead of an election, a holiday greeting from the
+mayor), and 3 belonged to a different real government (a Town's video
+wrongly matched to the separate, same-named Village of Goshen, NY; a
+different town's video wrongly matched to Ste. Genevieve city, MO,
+whose real owner already has its own page; the Indiana Governor's own
+press conference wrongly matched to Porter town, IN).
+
+**A second real mistake was found and fixed, this time in a shared
+safety check.** One candidate, Portage la Prairie, MB, was turned away
+automatically — the check that looks for the wrong government's name in
+a video's title mistook the word "la" in "Portage la Prairie" for the
+two-letter code for Louisiana. The row's own state (Manitoba) and the
+video's own title and channel all agree it is the right government; this
+was a false alarm, not a real mismatch. Checked by hand and put back in
+by hand (78 real caption segments, page live). The same mistake could
+happen again on other short, ordinary words that happen to match a
+state or province code ("or", "in", "de", and others) — filed as its own
+entry in `BACKLOG.md` rather than fixed here, since fixing the check
+itself is bigger than fixing this one row.
+
+**Recommendation (part 2).** All 964 governments in this list are now
+done — nothing left to resume. Combined across both parts: 55 real
+pages live, 12 in the transcription queue, 30 pins from part 1 plus 30
+more from part 2 (60 total) waiting on the next `rtr-deeplink` deploy.
+454 of part 2's 533 governments (85%) also appear on WO-273's much
+larger passive-discovery list; the two checks look for different things
+(an active browser walking each page here, DNS/sitemap/Wayback signals
+there), so this is not wasted work, but Ryan should know the two
+sessions covered much of the same ground at the same time.
 
 **Files:** `rtr-deeplink/scripts/wo259_full_ladder_scan.py` (new),
-`rtr-deeplink/app/utils/jurisdiction_data/tenant_overrides.csv` (30 new
-pins), `rtr-deeplink/scripts/tier3_auto_transcription_queue.txt` (1 new
-line), `rtr-business/research/wo259_report.csv`, `wo259_pending_hand_
-read.csv`, `wo259_hand_read_decisions.csv`, `wo259_hand_check_log.csv`,
-`wo259_host_access_modes.csv`, `wo259_tier3_pending.csv` (all new),
-`jurisdiction_coverage.csv` (updated per government processed),
-`ENUMERATION_METHODS.md` §292.
+`rtr-deeplink/app/utils/jurisdiction_data/tenant_overrides.csv` (60 new
+pins across both parts), `rtr-deeplink/scripts/tier3_auto_transcription_
+queue.txt` (6 new lines across both parts), `rtr-business/research/
+wo259_report.csv`, `wo259_pending_hand_read.csv`, `wo259_hand_read_
+decisions.csv`, `wo259_hand_check_log.csv`, `wo259_host_access_modes.csv`,
+`wo259_tier3_pending.csv` (all extended across both parts),
+`jurisdiction_coverage.csv` (updated per government processed, plus two
+hand-corrected rows for Goshen village/town NY and Ste. Genevieve city
+MO), `wo247_headless_budget_used.txt` (shared counter),
+`ENUMERATION_METHODS.md` §292 (both parts).
 
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
