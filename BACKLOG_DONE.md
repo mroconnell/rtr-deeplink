@@ -1,5 +1,185 @@
 # Backlog — done
 
+## WO-266: 274 queue lines for governments that already have a live transcript parked for depth later [Done 2026-09-12]
+
+- **Why:** Ryan asked how many of the tier-3 queue's non-YouTube tenant
+  sites already have transcripts live. Measured against the 2026-09-11
+  export: 251 of the 432 sites do, 303 lines — about a quarter of the
+  non-YouTube queue was depth for governments already on the site while
+  164 governments with no page at all sat behind them. Ryan's call:
+  park those lines, leave the four shared hosts (vimeo.com,
+  cloud.castus.tv, videoplayer.telvue.com, play.champds.com — several
+  governments each), unless a real user requested one. No user request
+  can be in the queue file (requests attach to live pages through
+  `transcription_jobs`), so none was.
+- **What was done:** 274 lines (247 tenant sites; Granicus 134,
+  CivicClerk 44, IQM2 33, CivicWeb 23, Swagit 15, Cablecast 8, eScribe 6,
+  PrimeGov 6, other 5) moved from `scripts/tier3_auto_transcription_
+  queue.txt` to `scripts/tier3_long_meetings_deferred.txt` under a dated
+  comment, carrying the live page's gov_id (266 of 274) and jurisdiction
+  and the probed length where the sidecar has one (255). Queue 2,523 →
+  2,249 lines; deferred 574 → 848. YouTube, Utah PMN and Town Hall
+  Streams lines untouched; the 17 sites with a page but no transcript
+  (20 lines) and the 164 with no page (200 lines) stay. The WO-212 guard
+  keeps the parked lines out through any rebase.
+- **Verification:** queue-file guards and the full suite green; the
+  drop list was built from `tenant_of()` on both sides and "real
+  transcript" = an export version with segments.
+- **A parked line is not rejected.** It waits behind its government's
+  first meeting: the deferred file is the depth list, re-queued once the
+  breadth pass has drained the queue, exactly like the long meetings
+  WO-205 parked and the bulk-queued tenants WO-213 trimmed.
+- **Deploy:** none (data files).
+
+## WO-263: mint the Port of San Diego and pin its Granicus host [Done 2026-09-12]
+
+**Why this ran.** Ryan's 2026-09-11 run of `scripts/backfill_gov_id.py
+--apply` on the Archive shell reported one host "left unresolved (want a
+pin)": `portofsandiego.granicus.com`. Ryan's call: "mint the port of san
+diego." The Port of San Diego (legal name: San Diego Unified Port
+District) is a California special district with its own Board of Port
+Commissioners — not a department of the City or County of San Diego, so
+neither of those governments' ids would be correct for it.
+
+**What was checked first.** The brief said the backfill's own count was
+"1" unresolved page on that host. Re-derived against the live Archive
+(`GET /internal/pages/all-urls`, then a full scan of `/internal/export/
+pages` for each matching slug): the real count is **2**, both with
+`gov_id` NULL — page ids 2661 (ingested 2026-08-25) and 5892 (ingested
+2026-09-06). The backfill's count was stale, not the host.
+
+| Check | Result | What it means |
+|---|---|---|
+| Host is single-tenant | Confirmed live | `portofsandiego.granicus.com/ViewPublisher.php?view_id=1` is "Port of San Diego Streaming Media Archive" — Board of Port Commissioners plus its own committees (Environmental Advisory Committee, Chula Vista Bayfront Facilities Financing Authority, Wildlife Advisory Group, Audit Oversight Committee, Arts, Culture & Design Committee, San Diego Harbor Safety Committee), no other government's meetings |
+| Pages on the host needing this pin | 2, not 1 | ids 2661 and 5892, both `gov_id` NULL today |
+
+**What was built**, following WO-220's mint pattern exactly (curated row
++ host pin, no code change):
+
+- `app/utils/jurisdiction_data/curated_governments.csv`: one new row,
+  `rtr:us:ca:port-of-san-diego`, gov_type `special_district`, state `CA`,
+  aliases `San Diego Unified Port District|San Diego Unified Port
+  District Board of Port Commissioners|Board of Port Commissioners`,
+  `source=curated+ryan_stated`.
+- `app/utils/jurisdiction_data/tenant_overrides.csv`: one host-wide pin
+  (blank `match`, single-tenant Granicus host), `portofsandiego.granicus.
+  com` → the new id, `strength=authoritative`, `source=ryan_stated`.
+  `portofsandiego.granicus.com` is not in the `MULTI_GOV_HOSTS` list
+  (that's YouTube/Vimeo only), so a blank-match pin here is the normal,
+  accepted shape — same as every other `*.granicus.com` row in the file.
+- Unlike WO-220's "Department of Commerce"/"Southwest Utah" rows, no
+  name-repair-truncation fix was needed: "Port of San Diego" classifies
+  `special_district` directly off the raw name's "port of" phrase
+  (`app/utils/gov_registry/classify.py`'s `_RULES`), before any place
+  lookup or truncation step runs.
+- Two new tests in `tests/test_gov_registry.py`: resolving "Port of San
+  Diego, CA" by name reaches the curated row at `TIER_REGISTRY`, and
+  resolving no name at all on the pinned host reaches it at
+  `TIER_PINNED` — same shape as the existing `test_the_nine_mislabelled_
+  tenants_are_pinned_to_the_right_government`. Full suite (3,369 tests)
+  and both `ruff` gates pass.
+
+**Caution.** The two existing pages (2661, 5892) are NOT re-keyed by
+this PR — per the brief, that's the conductor's job, run as a backfill
+dry run after this deploys, so the people watching it can confirm the
+pin actually keys them before it goes live for real.
+
+**Recommendation.** No further code needed. The research file
+(`rtr-business/research/jurisdiction_coverage.csv`) was not touched —
+WO-220, the pattern this WO followed, didn't add rows there either for
+its mints, so this single host-mint skips it too.
+
+**Deploy status.** Data files only (`app/utils/jurisdiction_data/*.csv`)
+— on `main` but not live until the next resolver deploy. No app code
+changed. After that deploy, the conductor's backfill dry run should
+confirm pages 2661 and 5892 key to `rtr:us:ca:port-of-san-diego`.
+## WO-255: the nine WO-234 Laserfiche second domains, re-confirmed live and filed as `alternate_domains` [Done 2026-09-12]
+
+**What this was.** WO-234 found a second, real document-hosting domain
+for nine governments the site already covers — each one a Laserfiche
+WebLink site, which holds documents, not video. Nothing about how these
+governments get ingested changes; this was purely about recording the
+second domain so a future coverage pass knows it exists. Before writing
+anything, this work order checked that each of the nine hosts was still
+live, since WO-234 found them a day earlier and a dead link is worse
+than no link.
+
+**One thing to flag about WO-234's own notes.** The work order describing
+this task said the nine rows in WO-234's research file carry a note
+saying the government's row "exists" in the main research file. The
+actual note says the opposite-sounding thing — that the new host didn't
+match any existing row — which is normal, since the host is new. All
+nine governments do have a real row in the main research file; that was
+checked directly by looking up each one's government id, not assumed
+from the note text.
+
+**Result.** Six of the nine hosts answered normally and were added to
+that government's `alternate_domains` column. Three did not answer and
+were left alone.
+
+| Government | Host | Result |
+|---|---|---|
+| Alameda County, CA | weblink.alamedacountyca.gov | Live — added |
+| Kent, WA | documents.kentwa.gov | Live — added |
+| St. Lucie County, FL | documents.stlucieco.gov | Live — added |
+| South Orange, NJ | southorange.no-ip.org | Live — added |
+| Aurora, ON | records.aurora.ca | Live — added |
+| Pickering, ON | corporate.pickering.ca | Live — added |
+| Riverside County, CA | weblink.rctlma.org | Blocked by a "prove you're human" challenge page — not added |
+| San Bernardino, CA | edocs.sbcity.org | Address no longer resolves at all — not added |
+| Northampton, MA | archive.northamptonit.info | Timed out, no response — not added |
+
+**Caution.** The three that didn't answer may just be having a bad day —
+a challenge page, a dead address, and a timeout are all things that can
+clear up on their own. None were added on the assumption they would come
+back; a later check can add them if they do. The primary domain and
+every government's ingest status are untouched — this task only ever
+touched the `alternate_domains` column.
+
+**Recommendation.** No action needed now. `BACKLOG.md` carries a small
+follow-up entry to re-check the three hosts that didn't answer next time
+coverage work touches these nine governments.
+
+**Deploy status.** No deploy needed. This is a research-file-only
+change — it never touches the app, the Archive, or production. No pages
+were created or changed.
+
+**A tool limitation blocked committing the research-file change.** This
+work order's agent runs inside an isolated `rtr-deeplink` git worktree,
+and that isolation refuses any `git` command aimed at a different repo —
+including `rtr-business`, which is where the research file lives, even
+though it's a separate, unrelated repository rather than another
+agent's workspace. The file itself was read, re-confirmed, and updated
+correctly (see below), but this session could not run `git add`/`git
+commit` in `rtr-business` to record that change. A session with
+ordinary `rtr-business` access should run:
+
+```
+git -C ~/Documents/rtr-business add \
+  research/jurisdiction_coverage.csv \
+  research/wo255_apply_to_jc.py \
+  research/wo255_live_check_report.csv \
+  research/wo255_not_reconfirmed.csv \
+  research/ENUMERATION_METHODS.md
+git -C ~/Documents/rtr-business commit -m "WO-255: file six re-confirmed Laserfiche second domains as alternate_domains" -- \
+  research/jurisdiction_coverage.csv \
+  research/wo255_apply_to_jc.py \
+  research/wo255_live_check_report.csv \
+  research/wo255_not_reconfirmed.csv \
+  research/ENUMERATION_METHODS.md
+```
+
+**Files touched (uncommitted in `rtr-business` as of this entry):**
+`research/jurisdiction_coverage.csv` (six rows' `alternate_domains`
+updated — row count unchanged, 45,609 data rows before and after),
+`research/wo255_apply_to_jc.py` (the write script, following §158's
+lock/re-read/floor/atomic-write protocol), `research/
+wo255_live_check_report.csv` (all nine hosts, outcome per host),
+`research/wo255_not_reconfirmed.csv` (the three that didn't answer, with
+reasons), `research/ENUMERATION_METHODS.md` §284 (the full write-up).
+
+**History**: `BACKLOG_DONE.md`'s WO-234 entry (the discovery pass this
+closes out); `rtr-business/research/ENUMERATION_METHODS.md` §284.
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
