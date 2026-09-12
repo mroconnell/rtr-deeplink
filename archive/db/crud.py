@@ -1765,6 +1765,14 @@ async def list_all_page_urls() -> list[dict]:
                 # purely additive for the existing consumer, which reads
                 # slug/platform/source_url_normalized only.
                 "created_at": page.created_at.isoformat() if page.created_at else None,
+                # Added WO-295 for scripts/backfill_archived_pages.py's
+                # --missing-channel-only: lets that sweep restrict to pages
+                # whose video_channel is still NULL (the ~1,676 YouTube
+                # pages WO-246's map-file backfill couldn't fill), instead
+                # of re-resolving all ~3,464 affected pages -- each an
+                # actual YouTube call that has to be paced from the drip
+                # Mac. Free here, same reasoning as created_at above.
+                "video_channel": page.video_channel,
             }
             for page in pages
         ]
