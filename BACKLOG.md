@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
+  Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
@@ -177,7 +178,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (182)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (181)
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
@@ -311,14 +312,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (182)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (52)
+  Adapter & platform gaps  (51)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
     [EASY] `scripts/wo288_youtube_date_backfill.py` is built and dry-run…
     [NEEDS-AUDIT] The shared meeting-title filter…
-    [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` Archive's two own copies of the YouTube…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
@@ -711,6 +711,27 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Reprobe the rest of the Town Hall Streams tier-3 queue now that the adapter is fixed `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** WO-294 (2026-09-12) fixed `app/platforms/townhallstreams.py`
+  against a real site-wide embed-shape change (see `BACKLOG_DONE.md`) and
+  reprobed a random 10-line sample of the tier-3 queue's 116-line
+  "resolve returned no video_url" bucket: 9 of 10 now accept. Only those
+  10 lines (plus the 8 previously-"accept" lines, also reprobed) have
+  been re-checked against the fix — the other ~106 lines in that bucket
+  still carry the pre-fix `reject-dead` verdict in the probe sidecar.
+- **Impact:** most of those ~106 lines are very likely real, recoverable
+  meetings sitting idle in the queue until reprobed — WO-294's sample
+  puts the recovery rate around 90%.
+- **Next action:** `python scripts/probe_tier3_queue.py --urls-file
+  <the remaining townhallstreams.com "resolve returned no video_url"
+  lines> --reprobe` (one host, so this is a single slow run, not a sweep
+  needing a worklist).
+- **Constraint:** this is a read-only reprobe of already-queued lines —
+  no adapter or queue-file change needed, just running the probe again
+  now that the code is fixed.
+- **History:** `BACKLOG_DONE.md`, WO-294 (2026-09-12).
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
 
@@ -4563,13 +4584,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: add "recap"/"resumen" (Spanish), "information session", "is seeking new members"/"join the ... commission", "state of the city"/"state of the county", "personal meeting room", and a produced-show-title pattern (a colon- or dash-separated "Episode"/"Minute"/show-name prefix) to `PROMO_BLOCKLIST`; broaden the "training video" phrase to also match "training session"/"training ... virtual session"; and consider a floor on `duration` well above the existing bare non-zero check (a sub-2-minute video with a governing-body keyword is a very strong "not a real meeting" signal on its own — Athens AL's two hits were 95s/116s, Pittsylvania's interview was 34s, Kingsville ON's holiday message was 86s).
   - **Constraint**: keep the phrase list conservative (this repo's own convention) — a single unconfirmed inclusion (e.g. "town hall") isn't added here since a real "Town Hall" governing-body meeting exists in some jurisdictions; only add phrases confirmed wrong by a real, hand-checked example, the way this entry's phrases already are.
   - **History**: found 2026-09-11, WO-235; extended with a larger confirmed batch 2026-09-12, WO-247 (`BACKLOG_DONE.md`).
-
-- **[NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue lines resolve to no video at all — the adapter finds nothing playable on real `stream.php?location_id=…&id=…` pages.**
-  - **Issue**: WO-205's probe (2026-09-11) ran every Town Hall Streams line in the tier-3 queue through `townhallstreams.py`'s `resolve()`: 116 returned no `video_url`, 2 returned an HLS master that 404s, 7 resolved (e.g. `stream.php?location_id=94&id=75799`, `location_id=47&id=21880` are two of the 116).
-  - **Impact**: 118 queued Town Hall Streams meetings can never pass the ingest gate; the platform's queue share is dead weight until the adapter learns whatever those pages now embed.
-  - **Next action**: open 3–4 of the 116 in a real browser and compare the working 7 — a changed player embed or a login/age gate is the likely shape; fix the adapter against real pages, then re-probe with `scripts/probe_tier3_queue.py --reprobe`.
-  - **Constraint**: don't drop the 116 lines from the queue — the probe sidecar already marks them, so the feed skips them at no cost.
-  - **History**: `BACKLOG_DONE.md` WO-205 (2026-09-11).
 
 - **[JUST-DO-IT] `[EASY]` Archive's two own copies of the YouTube video-id regex (`archive/db/crud.py`, `archive/utils/video_thumbnail.py`) still have the same missing-end-boundary bug WO-296 just fixed in `app/`.**
   - **Issue**: `_YOUTUBE_VIDEO_ID_RE` (`archive/db/crud.py`) and `_YOUTUBE_ID_RE` (`archive/utils/video_thumbnail.py`) are each a standalone copy of the exact same unbounded `([A-Za-z0-9_-]{11})` pattern `app/platforms/youtube_ids.py` had before WO-296 — both files' own comments say they're duplicated on purpose rather than imported, since Archive doesn't depend on `app/`. Neither was touched by WO-296's fix, so both can still turn a longer path segment (e.g. `/embed/videoseries?list=...`, `/embed/live_stream?channel=...`) into a fake 11-character id the same way `app/`'s copy used to.
