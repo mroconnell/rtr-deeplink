@@ -88,6 +88,110 @@ hand.
 WebLink Dormant entry (updated); `rtr-business/research/
 ENUMERATION_METHODS.md` §277 (WO-233) and its own new WO-304 section.
 
+## WO-306: finish the small video platforms — Cablecast and TelVue's 5,000+ bands done, five platforms left [Done 2026-09-12]
+
+**What was done and why.** An earlier pass (WO-289) found 228
+governments whose recorded website already names a video platform this
+app supports, but had no page yet, and worked most of them — except 24
+whose adapter only resolves one specific video URL and has no way to
+list what else is on that tenant, plus Castus, which its own filter had
+missed entirely. This work order picked that gap back up: seven
+platforms (Viebit, Cablecast, Castus, Boxcast, TelVue, ChampDS, Google
+Drive), starting with the largest population band (5,000+ people) on
+the two platforms whose real listing tools already existed — Cablecast
+and TelVue.
+
+**Step 1 — find the exact remaining list.** Matched all 136 no-page
+rows against a fresh Archive export and the tier-3 queue/deferred files,
+row by row, not just by platform name. 119 had no match anywhere and
+were real candidates; 17 turned out to already have a page or a queued
+meeting under a slightly different URL than the research file recorded.
+
+**Step 2 — Cablecast, 10 governments.** Cablecast already has a real
+listing tool (a shared enumerator built in an earlier work order), so
+this band needed no new code, just running it.
+
+| Result | Count of 10 | What it means |
+|---|---|---|
+| Page live now (real captions) | 2 | Barnstable, MA and Southfield, MI |
+| Queued for transcription (video, no captions) | 2 | Maplewood, MN and Bethel Park, PA |
+| Already covered (missed by the first check) | 1 | Shorewood, MN — see caution below |
+| Tenant not found | 4 | Champaign County, IL; Allen County, IN; Davidson County (Nashville), TN; Yakima County, WA |
+| Wrong government on file | 1 | Merrimack County, NH — see caution below |
+
+**Step 3 — TelVue, 5 governments.** TelVue's tool only ever handled one
+video at a time. Built the missing piece: a way to list everything on
+one of its channels, the same way a person would browse it, found by
+watching what the real webpage itself asks for when it loads.
+
+| Result | Count of 5 | What it means |
+|---|---|---|
+| Page live now (real captions) | 3 | Auburn Hills, MI; Bellefonte, PA; Sun Prairie, WI |
+| Queued for transcription (video, no captions) | 1 | Rochester, MI |
+| Tenant confirmed dead | 1 | Marina, CA — the recorded link and its whole channel are gone |
+
+**A rule worth naming: look one meeting deeper before taking a long
+one.** Twice (Southfield, MI and Sun Prairie, WI), the newest video on a
+government's channel ran over 90 minutes. Both times, the very next
+meeting on the same channel was shorter AND had real captions — a
+better pick, not just a shorter one. Checking one meeting deeper paid
+for itself both times.
+
+**Caution — a live pin was wrong and has been fixed.** Checking
+Shorewood, MN's channel found that `reflect-lmcc.cablecast.tv` (a
+regional cable commission's shared channel) was pinned in this app's
+own settings to Shorewood alone, with no restriction — meaning any
+other city's real meeting on that same shared channel would have been
+wrongly filed under Shorewood too. Confirmed live: this one channel
+actually carries at least seven different Minnesota cities' meetings.
+Fixed: removed the blanket pin, added the channel to the app's list of
+"never pin this to one government," and pinned the two specific
+meetings already in play to Shorewood by video, not by channel.
+
+**Caution — one government's website points at the wrong government's
+video system.** Merrimack County, NH's website address on file
+(`merrimacknh.gov`) turned out to be the TOWN of Merrimack's own
+website, not the county's — confirmed live: the county's real website
+is `merrimackcounty.net`, which was already on file as a backup address
+but never used as the primary one. Fixed the address; did not use the
+town's meeting as the county's, since that would have been the same
+kind of mistake. No page was created for either government from this
+row — the county still needs its own real meeting found, and the town
+doesn't have its own entry in this app's records yet to attach one to.
+
+**Caution — a second live pin needs Ryan's call, not a guess.** A
+different TelVue channel is currently pinned to Centre County, PA, but
+the one page ingested from it this session is plainly a Bellefonte
+Borough Council meeting (the page's own title says so). This could be a
+deliberate choice — filing a shared media channel's whole catalog under
+the county on purpose — or it could simply be wrong. Left it alone;
+filed in `BACKLOG.md`'s "Needs a human" section rather than guessed.
+
+**Recommendation.** Five platforms remain at the same population band
+(Viebit, Castus, Boxcast, ChampDS, Google Drive — roughly 40 more
+governments), plus every smaller-population row for all seven
+platforms (roughly 100 more). The exact resumable list and the same
+"look one meeting deeper" rule are filed in `BACKLOG.md`'s "Ship next"
+section.
+
+**Deploy status.** The two adapter changes (Cablecast now recognizes a
+tenant hosted on a government's own website, not just `*.cablecast.tv`;
+TelVue can now list a channel's videos, not just resolve one) need a
+deploy before they take effect in production. The 5 pages already
+created are live now regardless. The 3 queued meetings and all pin/
+settings changes need the same deploy to take effect for future
+re-resolves.
+
+**Files:** `app/platforms/base.py` (Cablecast detection fix),
+`app/platforms/telvue.py` (`list_playlist_items()`),
+`app/utils/gov_registry/registry.py` (added the shared Cablecast channel
+to the never-pin-by-host-alone list), `app/utils/jurisdiction_data/
+tenant_overrides.csv`, `scripts/tier3_auto_transcription_queue.txt`,
+`tests/test_cablecast.py`, `tests/test_telvue.py`,
+`tests/fixtures/telvue/bellefonte_council_4806_playlist_items_offset0.html`;
+`rtr-business/research/wo306_report.csv`,
+`wo306_apply_to_jc.py`, `wo306_methods_section.md`.
+
 ## WO-292: school-district pilot — a school-board vocabulary measured first, then the v2 passive pipeline run on 1,000 districts; zero pages ingested, 72 real platforms confirmed, 310 leads handed to the drip [Done 2026-09-12]
 
 **What was done and why.** School districts are the largest untouched

@@ -605,6 +605,31 @@ def test_detect_platform_recognizes_cablecast_publicsite_show_url():
     )
 
 
+# WO-306 (2026-09-12): a real CablecastPublicSite customer hosted on its
+# OWN government domain, not a *.cablecast.tv subdomain -- confirmed live,
+# Maplewood, MN (`vod.maplewoodmn.gov`). Its `/cablecastapi/v1/shows/{id}`
+# API answers in the exact same shape as the vendor-subdomain tenants
+# above. Before this fix, detect_platform()'s CablecastPublicSite branch
+# required "cablecast.tv" in netloc, so this real URL fell through to
+# generic_fallback -- reached only by fixing this branch to key off the
+# distinctive "/cablecastpublicsite/show/" path alone, not the host.
+MAPLEWOOD_SHOW_URL = "https://vod.maplewoodmn.gov/CablecastPublicSite/show/1719?site=1"
+
+
+def test_detect_platform_recognizes_cablecast_publicsite_on_government_domain():
+    assert detect_platform(MAPLEWOOD_SHOW_URL) == "cablecast"
+    # The other two URL shapes (the Remix "/internetchannel/show/{id}"
+    # template and the bare "/show/{id}" template) stay scoped to real
+    # cablecast.tv netlocs -- the bare form especially is too weak a
+    # signal to trust against an arbitrary government domain that just
+    # happens to have a "/show/123" path for something unrelated.
+    assert detect_platform("https://vod.maplewoodmn.gov/show/1719") == "unknown"
+    assert (
+        detect_platform("https://vod.maplewoodmn.gov/internetchannel/show/1719")
+        == "unknown"
+    )
+
+
 async def test_resolve_real_urbana_publicsite_show():
     show_json = load_fixture("cablecast", "urbana_publicsite_show_870.json")
     vod_json = load_fixture("cablecast", "urbana_publicsite_vod_1207.json")

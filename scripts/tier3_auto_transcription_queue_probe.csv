@@ -5990,3 +5990,13 @@ https://townhallstreams.com/stream.php?location_id=87&id=72598,townhallstreams,h
 https://townhallstreams.com/stream.php?location_id=152&id=72646,townhallstreams,hls-master+variant,3884.43,,,1,accept,,1.51,2026-09-12T16:38:10+00:00,,0
 https://test.co.jefferson.wa.us/WeblinkExternal/ElectronicFile.aspx?docid=10559483&dbid=0&repo=Jefferson,direct_file,,,,,0,reject-dead,no probe recipe for this media shape: https://test.co.jefferson.wa.us/WeblinkExternal/ElectronicFile.aspx?docid=10559483&dbid=0&repo=Jefferson,0.00,2026-09-12T19:25:51+00:00,bulk_ingest,0
 https://test.co.jefferson.wa.us/WeblinkExternal/ElectronicFile.aspx?docid=10559483&dbid=0&repo=Jefferson,direct_file,head+ffprobe,17650.39,,2038,1,accept,,2.58,2026-09-12T19:27:49+00:00,bulk_ingest,0
+http://barnstable.cablecast.tv/internetchannel/show/12469,cablecast,hls-master+variant,13290.00,,,1,accept,,0.97,2026-09-12T19:37:57+00:00,bulk_ingest,0
+http://southfield.cablecast.tv/internetchannel/show/2154?channel=2,cablecast,hls-master+variant,5928.84,,,1,accept,,1.21,2026-09-12T19:39:44+00:00,wo306_finish_small_video_platforms,0
+https://vod.maplewoodmn.gov/CablecastPublicSite/show/1719?site=1,cablecast,head+ffprobe,3359.42,2026-09-11,2148854478,1,accept,,2.75,2026-09-12T19:39:47+00:00,wo306_finish_small_video_platforms,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57844?site=1,cablecast,head+ffprobe,15145.54,2026-08-25,8050676215,1,accept,,5.93,2026-09-12T19:39:53+00:00,wo306_finish_small_video_platforms,0
+https://reflect-bethelpark-cable.cablecast.tv/CablecastPublicSite/show/46?site=1,cablecast,head+ffprobe,4894.41,2026-06-24,1770494868,1,accept,,2.02,2026-09-12T19:39:55+00:00,wo306_finish_small_video_platforms,0
+http://southfield.cablecast.tv/internetchannel/show/2153?channel=2,cablecast,hls-master+variant,12239.93,,,1,accept,,0.72,2026-09-12T19:41:56+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1033771,telvue,telvue-page-json,1390.00,,,1,accept,,0.44,2026-09-12T19:49:25+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS/media/1042475,telvue,telvue-page-json,2518.00,,,1,accept,,0.44,2026-09-12T19:54:12+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1036180,telvue,telvue-page-json,2309.00,,,1,accept,,0.35,2026-09-12T19:54:15+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/bXdwUSrnr6QUGN4_JWYERXfbtl3o_jt2/media/1041358,telvue,telvue-page-json,4322.00,,,1,accept,,0.85,2026-09-12T19:54:38+00:00,wo306_finish_small_video_platforms,0
