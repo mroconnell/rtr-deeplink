@@ -2261,3 +2261,7 @@ https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1370	http
 https://www.youtube.com/watch?v=xwdX3VDCVHs	https://www.youtube.com/@MillerCountyAR
 https://boxcast.tv/channel/aetaajdf64jalxx20o9a	https://boxcast.tv/channel/aetaajdf64jalxx20o9a
 https://tollesonaz.portal.civicclerk.com/event/234/media	https://tolleson.az.gov/AgendaCenter
+https://calhouncotx.portal.civicclerk.com/event/386/media	https://calhouncotx.portal.civicclerk.com
+https://www.youtube.com/watch?v=P9fjphPtFjw	https://www.youtube.com/user/cityofnewtonnc
+https://lakedallastx.portal.civicclerk.com/event/1431/media	https://lakedallastx.portal.civicclerk.com/
+https://laurelmt.portal.civicclerk.com/event/2386/media	https://laurelmt.portal.civicclerk.com/
