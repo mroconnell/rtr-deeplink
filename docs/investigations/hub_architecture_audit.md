@@ -1,6 +1,7 @@
 # Hub architecture audit: how `/j/*` and `/state/*` include and exclude meetings and governments
 
-**Status: closed, one-time audit (WO-232, 2026-09-11).** Ryan asked,
+**Status: audit closed (WO-232, 2026-09-11); the build Ryan decided on is
+under way as WO-256 — see §8 at the bottom for what exists now.** Ryan asked,
 verbatim: "we are constantly messing with hubs and redirects after pin
 work. The hubs were designed before any of the gov id work or pinning.
 Should we audit the architecture of the hubs and permanently improve how
@@ -385,3 +386,34 @@ freeze at all — once a slug is frozen, "fixing" a hub's naming
 convention later always costs one alias row instead of being free, which
 is a real, permanent trade for a churn source that mostly goes away. See
 `BACKLOG.md`'s `[HUMAN]` entry for the decision framed on its own.
+
+---
+
+## 8. What Ryan decided, and what was built (WO-256, 2026-09-12)
+
+**Ryan decided: do all three, with one addition.** The slug freeze is
+*gated* — a slug becomes permanent only once the hub has existed for 7
+days AND has more than one meeting, so a brand-new government's pin and
+identity churn settles on its own before anything is frozen. Before that
+the slug may still recompute. `hub_slug_frozen_at` is recorded.
+
+**§4, the freeze — built.** `hub_slugs(gov_id, hub_slug, first_seen_at,
+frozen_at)` is a new Archive table (Alembic `e2a1c7b45d93`), read and
+written through `archive/db/hub_slugs.py`, and consulted first by
+`crud._hub_identity()`. The government registry is a CSV, so this is the
+table the §4 "Migration size" note said to check for and build.
+`scripts/freeze_hub_slugs.py` is the one-time backfill: it mints one row
+per government from exactly today's computed slug (so day one moves zero
+URLs) with `first_seen_at` backdated to that government's oldest page,
+then applies the gate. `scripts/backfill_gov_id.py`'s "hub slugs retired"
+line now counts only slugs **no government owns** — a page changing
+government no longer retires a slug, which is the whole point.
+
+**§5, the inclusion rule, and §6, the unknown-bucket internal view**, ship
+as their own separate PRs behind this one, in that order, exactly as §7's
+recommendation says. This section is updated as each lands.
+
+Everything the §4 "What remains" list says this does not fix still does
+not: a genuine slug rename still costs one alias row, a merge of two
+`gov_id`s still needs a human decision, and the 5 real mixed-identity
+hubs measured in §2 still need one each.
