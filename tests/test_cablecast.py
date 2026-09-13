@@ -967,3 +967,161 @@ async def test_resolve_publicsite_show_with_no_vods_reports_no_video():
     assert result.video_url is None
     assert result.video_warnings == ["No video found for this meeting."]
     assert result.jurisdiction == "Urbana, IL"
+
+
+# --------------------------------------------------------------------
+# WO-344: the third real Cablecast template -- the same "cablecast-
+# public-site" Ember/FastBoot app as the CablecastPublicSite tests above,
+# mounted at a custom domain's own ROOT instead of under
+# "/CablecastPublicSite/", so neither of the two branches above reaches
+# it (the Remix path finds no `window.__remixContext`; the PublicSite
+# JSON API 404s on this tenant's own subdomain). Confirmed live
+# 2026-09-13 on Dyersville, IA (`city-dyersville-ia.cablecast.tv/show/
+# 3660?site=1`, real "City Council Meeting 2026-09-08" content, filed as
+# an adapter gap in WO-309 (resume), BACKLOG.md). Fixtures are real,
+# unmodified content fetched live the same day -- the two caption
+# segment/playlist fixtures are trimmed from the real show's own 221
+# segments down to the first 2 (the m3u8 playlist edited to list only
+# those two URIs, each segment file itself byte-for-byte the real
+# response), kept small for a fast test while still exercising real
+# content and the real absolute-timestamp/concatenation behavior.
+# --------------------------------------------------------------------
+
+DYERSVILLE_SHOW_URL = "https://city-dyersville-ia.cablecast.tv/show/3660?site=1"
+
+
+async def test_resolve_real_dyersville_fastboot_show():
+    routes = {
+        "http://city-dyersville-ia.cablecast.tv/show/3660?site=1": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_show_3660_raw.html"),
+        ),
+        "http://city-dyersville-ia.cablecast.tv/": FakeResponse(
+            status=200, text=load_fixture("cablecast", "dyersville_root.html")
+        ),
+        "http://city-dyersville-ia.cablecast.tv/embed/vod?show=3660&site=1": (
+            FakeResponse(
+                status=200,
+                text=load_fixture("cablecast", "dyersville_embed_vod_3660.html"),
+            )
+        ),
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/vod.m3u8"
+        ): FakeResponse(
+            status=200, text=load_fixture("cablecast", "dyersville_vod_3660.m3u8")
+        ),
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/captions.en.m3u8"
+        ): FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_3660.m3u8"),
+        ),
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/subtitles/28986/"
+            "captions.en.00000.vtt?duration=10"
+        ): FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_00000.vtt"),
+        ),
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/subtitles/28986/"
+            "captions.en.00001.vtt?duration=10"
+        ): FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_00001.vtt"),
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(DYERSVILLE_SHOW_URL)
+
+    assert result.platform == "cablecast"
+    assert result.title == "City Council Meeting 2026-09-08"
+    # The embed page carries no separate eventDate field -- extracted from
+    # the real title text instead (see cablecast.py's module docstring).
+    assert result.date == "2026-09-08"
+    # No Remix `site` object exists on this template -- confirmed real
+    # `validated_subdomain_extract()` + `resolve_state()` fallback.
+    assert result.jurisdiction == "Dyersville, IA"
+    assert result.video_url == (
+        "https://city-dyersville-ia.cablecast.tv/vod/"
+        "3660-City-Council-Meeting-2026-09-08-v2/vod.m3u8"
+    )
+    assert result.video_format == "m3u8"
+    assert result.external_id == "cablecast:city-dyersville-ia.cablecast.tv:3660"
+    # 5 real cues from segment 0 + 3 from segment 1, already-absolute
+    # timestamps concatenated with no offset and no duplicates -- see
+    # cablecast.py's module docstring point 2.
+    assert len(result.segments) == 8
+    assert result.segments[0].start == 1.43
+    assert result.segments[0].text == "And I wish I wouldn't\neven said that."
+    assert result.segments[-1].start == 12.91
+    assert result.segments[-1].text == "Right."
+    assert result.transcript_warnings == []
+
+
+async def test_resolve_fastboot_embed_returns_none_without_a_source_tag():
+    # Synthetic (no real video-less FastBoot show confirmed yet -- see
+    # this repo's "don't claim a data path works without a positive
+    # example" convention): reuses the real embed page's own confirmed
+    # `window.TRMS` shape, minus the `<source>` tag a genuinely video-less
+    # show would presumably lack. Confirms `_resolve_fastboot_embed()`
+    # returns `None` (not a fabricated "no video" ResolvedMeeting) so the
+    # caller's own standard no-video message applies instead.
+    embed_html_no_source = (
+        "<html><head><script>window.TRMS = {siteId: 'x', "
+        "showTitle: 'Special Meeting 2026-01-05', showId: 42};"
+        "</script></head><body></body></html>"
+    )
+    routes = {
+        "http://city-dyersville-ia.cablecast.tv/show/42?site=1": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_show_3660_raw.html"),
+        ),
+        "http://city-dyersville-ia.cablecast.tv/": FakeResponse(
+            status=200, text=load_fixture("cablecast", "dyersville_root.html")
+        ),
+        "http://city-dyersville-ia.cablecast.tv/embed/vod?show=42&site=1": (
+            FakeResponse(status=200, text=embed_html_no_source)
+        ),
+    }
+    url = "https://city-dyersville-ia.cablecast.tv/show/42?site=1"
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
+
+
+async def test_resolve_fastboot_fallback_is_not_tried_for_a_show_the_remix_path_found():
+    # Huron charter Township, MI's real tenant uses this exact bare
+    # "/show/{id}" URL shape but IS the Remix template (see BACKLOG.md's
+    # WO-309 (resume) entry) -- the FastBoot fallback must never run once
+    # the Remix path already found a real show, or it would waste a real
+    # network round-trip on every ordinary newer-template resolve. Reuses
+    # satellitebeach's real root-catalog fixture (which embeds a real
+    # show 535) as the direct show-page response, purely to get a
+    # real `window.__remixContext` payload the Remix path can match on
+    # the FIRST fetch -- not a claim that satellitebeach's own site
+    # serves this content at this exact path.
+    show_html = load_fixture("cablecast", "satellitebeach_root.html")
+    routes = {
+        "http://satellitebeach.cablecast.tv/show/535": FakeResponse(
+            status=200, text=show_html
+        ),
+    }
+    url = "https://satellitebeach.cablecast.tv/show/535"
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    # Only the one route above is mocked -- if the fallback were
+    # incorrectly tried, `mock_session` would raise on the unmocked
+    # "/embed/vod" request instead of returning a normal result.
+    assert result.video_url is not None
