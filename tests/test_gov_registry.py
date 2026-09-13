@@ -3310,6 +3310,33 @@ def test_videoplayer_telvue_com_is_a_multi_gov_host():
     )
     assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
     assert match.tier == resolver.TIER_BLANK
+
+
+def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
+    """WO-336: reflect-tst-mn.cablecast.tv is Town Square Television's
+    shared Cablecast station, confirmed live to serve at least South St.
+    Paul, Mendota Heights, West St. Paul and Inver Grove Heights, MN,
+    distinguished by a `site=` query parameter -- a blank match here
+    would key every unpinned show on the whole station to one government,
+    the same Oak Bluffs-shaped mistake `MULTI_GOV_HOSTS` exists to catch.
+    An unpinned show (no matching `site=` pin) must resolve to nothing,
+    not a name guess; the real, already-ingested Inver Grove Heights show
+    (site=6) still resolves through its own pin."""
+    assert registry.is_multi_gov_host("reflect-tst-mn.cablecast.tv")
+    unpinned = resolver.resolve_government(
+        "Mendota Heights, MN",
+        tenant_host="reflect-tst-mn.cablecast.tv",
+        path="/internetchannel/show/99999?site=8",
+    )
+    assert not unpinned.gov_id or unpinned.gov_id.startswith("rtr:unknown:")
+    assert unpinned.tier == resolver.TIER_BLANK
+
+    pinned = resolver.resolve_government(
+        None,
+        tenant_host="reflect-tst-mn.cablecast.tv",
+        path="/internetchannel/show/5961?site=6",
+    )
+    assert pinned.gov_id == "us:place:2731076"  # Inver Grove Heights city, MN
     # A real, already-pinned player hash on the same host still resolves
     # -- the host-wide safeguard doesn't touch the per-video pins already
     # on file for Derry NH, Natick MA, etc.

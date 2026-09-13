@@ -223,6 +223,23 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # exception needs to be listed explicitly rather than guessed
         # from the domain suffix.
         "reflect-lmcc.cablecast.tv",
+        # Town Square Television's shared Cablecast station -- confirmed
+        # live 2026-09-13 (WO-336): one subdomain serves at least South
+        # St. Paul, Mendota Heights, West St. Paul and Inver Grove
+        # Heights, MN, each real government distinguished by its own
+        # `site=` query parameter (confirmed via the page's own
+        # `window.__remixContext` data: `site=6` -> "Inver Grove
+        # Heights", `site=8` -> "Mendota Heights", `site=13` -> "South
+        # St. Paul", `site=15` -> "West St. Paul"; `site=18` is the
+        # station's own umbrella "Town Square Television" identity, not
+        # a government). Same shared-regional-station shape as
+        # `reflect-lmcc.cablecast.tv` above, just a different real
+        # customer -- the per-video `match=` pins below are scoped to
+        # `site=` rather than a per-show id specifically because `site=`
+        # identifies the GOVERNMENT (every show that government ever
+        # publishes), where a per-show id only ever covers the one show
+        # it names.
+        "reflect-tst-mn.cablecast.tv",
         # Castus's own SaaS platform domain -- EVERY Castus customer's
         # video lives under this one host (`/vod/{tenantSlug}/video/
         # {id}`), unlike Cablecast/TelVue, where each tenant usually gets
