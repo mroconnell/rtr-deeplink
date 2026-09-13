@@ -2047,3 +2047,6 @@ https://cloud.castus.tv/vod/andover/video/6254e320aa3c200009aac94e?page=HOME
 https://southfultonga.portal.civicclerk.com/event/1773/media	https://www.cityofsouthfultonga.gov/AgendaCenter
 https://waconiamn.portal.civicclerk.com/event/411/media	https://waconiamn.gov
 https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.us
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/Board+of+Finance+Regular+Meeting+8.17.2026-20260817_190208-Meeting+Recording.mp4
+https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1917
+https://oakgrove.granicus.com/MediaPlayer.php?view_id=2&clip_id=737

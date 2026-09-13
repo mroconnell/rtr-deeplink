@@ -172,6 +172,184 @@ round's rule against a subagent committing there itself.
 more governments than before this WO** — see `BACKLOG.md`'s CivicPlus
 entry (now closed) and this WO's own final report for the exact count;
 not run here, since WO-338 owns that rerun.
+## WO-338: the verifier-fix rerun — checking 2,825 governments the broken checker had already looked at once, with the fixed checker [Done 2026-09-13]
+
+**Why this ran.** WO-333 (just above) fixed a real bug in the automatic
+video-finding step: it had been finding real video on only 1 of 15
+governments where video was already known to exist. Before that fix,
+several earlier searches (WO-273 through WO-292) had already looked at
+thousands of governments and recorded "meeting found, no video" or
+"nothing found at all" — but some of those "nothing found" answers were
+wrong, caused by the same broken step. This WO re-checked the
+governments most likely to have been wrongly marked: every one whose
+last answer was "meeting, no video" or "nothing found" (not "no website
+found at all", a different, unrelated problem). That is 2,825
+governments — 1,750 said "meeting, no video" and 1,075 said "nothing
+found at all."
+
+**Step 1: re-visit each website, but only where needed.** 2,179 of the
+2,825 already had a usable website snapshot saved from an earlier
+search. Those were reused, not re-fetched. The other 646 needed a fresh
+visit.
+
+| Step 1 result | Count of 646 | What it means |
+|---|---|---|
+| Website answered | 638 | saved for the next step |
+| Blocked by the Akamai/govAccess firewall | 6 | recorded separately, not retried |
+| Website never answered at all | 2 | two Canadian small-town sites hung past a generous wait on two separate tries; DNS itself answered fine by hand, so this was the site being slow or broken, not a lookup failure — recorded "timeout" |
+
+A separate check found 10 more governments whose saved-snapshot record
+pointed at a file that didn't actually contain them (a bookkeeping
+mismatch from an earlier search) — those 10 were also freshly checked.
+646 + 10 = 656 fresh checks; all 2,825 governments now have a usable
+website snapshot.
+
+**Step 2: read what's on each website, no new website visits.** Every
+snapshot was scored for a real government meeting platform.
+
+| Step 2 confidence | Count of 2,825 | What it means |
+|---|---|---|
+| High | 670 | a strong, named platform link found |
+| Medium | 1,953 | some kind of usable link found |
+| None | 194 | nothing usable spotted on the page |
+| Low | 8 | a weak signal only |
+
+**Step 3: visit the best-scoring links and see what's really there.**
+12,820 individual page visits across all 2,825 governments (top
+candidates plus a fallback search for governments step 2 found nothing
+for).
+
+| Step 3 result | Count of 2,825 | What it means |
+|---|---|---|
+| A real platform confirmed | 623 | a real meeting-hosting system was actually found |
+| No platform confirmed | 2,202 | nothing real enough to check further |
+
+**Step 4: walk each confirmed platform to an actual meeting, with the
+fixed checker.** For every one of the 623 confirmed platforms, the
+fixed checker (from WO-333) walked the platform's own meeting list to
+find the newest real meeting and checked it for video and captions.
+
+| What the fixed checker found | Count of 623 | What it means |
+|---|---|---|
+| Meeting found, no video | 401 | matches the "meeting, no video" label |
+| Nothing usable found | 201 | the confirmed platform turned out empty or unreachable this time |
+| Video with captions this app can read | 2 | a real page, ready to publish |
+| Video with YouTube's own captions | 5 | a lead for the separate YouTube process, never fetched directly |
+| Video, no captions | 14 | a tier-3 candidate — video exists, needs machine transcription |
+
+**Step 5: read every video candidate by hand before trusting it.** Every
+one of the 21 "video found" results (2 + 5 + 14 above) was checked by a
+person reading its title and context — this repo's standing rule, and
+this batch shows exactly why it matters.
+
+| Hand-check result | Count of 21 | What it means |
+|---|---|---|
+| Real, correct video, kept | 5 | 1 with captions (published), 4 without (queued) |
+| YouTube video, correct, left as a lead | 5 | never fetched directly, handed to the separate YouTube process |
+| Wrong — not actually a meeting | 5 | a township welcome video, a history documentary, two nature clips, and a storm-update message, all found as plain homepage video links |
+| Wrong — the wrong government's meeting | 2 | a neighboring city's meeting, found through a website shared by more than one town |
+| Wrong — a join-link, not a recording | 1 | a live-meeting Zoom link, not a saved video |
+| Correct, but already handled elsewhere | 1 | Augusta, GA already has a different real video on file under this same record |
+
+Wrong count on real hand-checked video candidates (excluding YouTube
+leads, which are never fetched to verify): **11 of 16, 69%.** That is
+higher than this repo's usual 10-12% wrong rate on small towns — this
+batch happened to be unusually rich in the two highest-risk shapes: a
+bare homepage video link with no listing to check it against, and a
+website shared by more than one government.
+
+**One video found real, hand-checked correct, but not queued anyway.**
+Oak Grove, MN's first real video was 108.5 minutes — over this repo's
+90-minute cutoff. Its own meeting list was checked for a shorter
+meeting instead (the "look deeper before deferring" rule) and a real
+29.1-minute Council Work Session was found and queued in its place.
+
+**What changed on the record.**
+
+| Before → after | Count of 44 | What it means |
+|---|---|---|
+| Nothing found → meeting, no video | 34 | the fixed checker actually found a real meeting listing this time |
+| Meeting, no video → nothing usable found | 6 | a hand-check correction after a video candidate turned out wrong |
+| Meeting, no video → video queued, no captions | 3 | Oak Grove MN, Canton CT, Dixon USD CA |
+| Meeting, no video → published with captions | 1 | Sparwood, BC |
+
+**2,781 records were left alone on purpose.** For every government
+where the fixed checker could not reconfirm a platform this run, or
+reconfirmed one but the walk came back empty, the prior record was kept
+as-is rather than downgraded — a failed re-check is not evidence the
+earlier finding was wrong. (Full reasoning and the platform breakdown:
+`BACKLOG.md`'s new entries on the listing-walk wrong-government risk,
+the bare-video-link risk, and the still-unsupported platforms.)
+
+**Video split.**
+
+| Video found | Count | What it means |
+|---|---|---|
+| Captions available, page live now | 1 | Sparwood, BC — `/m/sparwood-bc-2026-08-04-informal-public-hearing-04-aug-2026` |
+| Video, no captions, queued | 3 | Oak Grove MN, Canton CT, Dixon Unified School District CA |
+
+**YouTube leads.** 129 new YouTube addresses were recorded for the
+separate YouTube process during this run (124 found while checking
+websites, 5 found while walking a confirmed platform's meeting list) —
+none were fetched directly, per the standing "never fetch YouTube" rule.
+
+**A real data problem found along the way.** 9 website addresses in the
+tracking file are attached to more than one government. One was checked
+by hand: `stearnscountymn.gov` is attached to both Lake Henry, MN and
+Spring Hill, MN — two real, separate small towns that almost certainly
+don't both actually use that address as their own site. Filed to
+`BACKLOG.md` for a proper audit; a YouTube lead found through that
+address was attributed to Spring Hill only, with a note about the
+ambiguity, rather than credited to both.
+
+**Four new bugs filed to `BACKLOG.md`**, found by hand-checking the
+video candidates: the platform walker can attribute another
+government's real meeting to the wrong one on a shared website
+(2 real cases this run); a homepage video link is accepted with no
+check that it's actually a meeting (5 of 8 such links this run were
+not); TelVue can return a never-ending live channel instead of one
+saved meeting; and CivicClerk can return a Zoom join-link as if it were
+a saved video (a repeat of a WO-325 finding, not new, but confirmed
+again).
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `jurisdiction_coverage.csv` (rtr-business) | 44 rows updated with a corrected finding; 2,781 left untouched on purpose (see above). |
+| `youtube_channel_leads.csv` (rtr-business) | 129 new rows added, all unverified. |
+| Archive | 1 new page published (Sparwood, BC), 3 new tier-3 queue lines added (Oak Grove MN, Canton CT, Dixon USD CA). |
+| `BACKLOG.md` | 4 new entries (listing-walk wrong-government risk, bare-video-link risk, TelVue live-stream risk, CivicClerk Zoom-link repeat) plus the TOC rebuilt. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new methods section with the full method and numbers. |
+
+**Deploy status.** The 1 new published page is live now — Archive pages
+publish immediately on ingest, no deploy needed. The 3 new tier-3 queue
+lines need the next deploy of the transcription worker before they're
+picked up for machine transcription; they sit in
+`scripts/tier3_auto_transcription_queue.txt` on `main` until then. No
+pin file changed (every host found was a government-specific address,
+not a shared one).
+
+**What's still undone.** 2,102 of the 2,825 governments still carry
+their original "nothing found" or "meeting, no video" label from before
+this fix, unconfirmed either way, because the fixed checker also came
+back empty for them this run — for 2,202 with no platform reconfirmed
+at all, and 105 more where a platform WAS reconfirmed but the walk came
+back empty on a platform this repo already knows has gaps (CivicClerk,
+eScribe, Town Hall Streams, and others not yet checked one by one). The
+remaining 10,208 "nothing found" governments from the original filter
+were out of scope for this WO on purpose (a later WO, referred to as
+"WO-338b" in this WO's brief).
+
+**Recommendation.** Send the 105 held-back rows to a focused follow-up
+once the platform walker covers CivicClerk/eScribe/Town Hall Streams/
+iQM2's second shape fully — three sibling WOs running today (WO-342,
+WO-343, WO-344) each report building exactly one of those walkers,
+which would likely close most of this gap once merged; worth checking
+what landed before re-running rather than re-fixing the same walkers a
+fourth time. Separately, a person should decide the right fix for the
+shared-website data problem before more automatic searches run on top
+of it.
 
 ## WO-333: a shared step that walks a confirmed hub to a real meeting, so the pipeline resolves video on its own again [Done 2026-09-13]
 
