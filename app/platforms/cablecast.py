@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from typing import List, Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import aiohttp
 
@@ -15,6 +15,7 @@ from ..utils.vtt_parser import (
     decode_vtt_bytes,
     detect_language_from_texts,
     normalize_shouting_caption,
+    parse_vtt,
 )
 
 logger = logging.getLogger("rtr_deeplink.cablecast")
@@ -133,6 +134,84 @@ _REMIX_CONTEXT_RE = re.compile(
 # guessing at one.
 _PUBLICSITE_SHOW_ID_RE = re.compile(r"/CablecastPublicSite/show/(\d+)")
 
+# WO-344: a THIRD, genuinely different real shape -- not a different
+# vendor product, the same "cablecast-public-site" Ember/FastBoot app as
+# above, but mounted at a custom domain's own ROOT (bare `/show/{id}
+# ?site=N`, no `/CablecastPublicSite/` prefix) with its own subdomain's
+# JSON API 404ing, so `_resolve_publicsite()`'s own API calls can't reach
+# it -- confirmed live 2026-09-13 on Dyersville, IA
+# (`city-dyersville-ia.cablecast.tv/show/3660?site=1`, real "City Council
+# Meeting 2026-09-08" content, filed as an adapter gap in WO-309 (resume),
+# BACKLOG.md). The SAME bare `/show/{id}` URL shape is also what the
+# newer Remix template uses (satellitebeach.cablecast.tv, see
+# `_SHOW_ID_SHORT_RE` above) and what Huron charter Township, MI's tenant
+# uses -- Huron already resolves fine via the plain Remix path despite
+# the identical URL, so this is a FALLBACK, tried only once the Remix
+# path (including its own root-fallback retry) has already failed to
+# find the show, never a first choice.
+#
+# Two real things make this template's own video/captions reachable with
+# no headless browser at all, confirmed live via
+# `mcp__Claude_Browser__read_network_requests` on Dyersville's real show
+# page (the raw HTML has no video/caption data anywhere -- Ember renders
+# client-side, same as CablecastPublicSite):
+#
+# 1. `GET {origin}/embed/vod?show={id}&site={site}` -- a plain,
+#    unauthenticated, non-JS HTML fragment (confirmed fetches fine via a
+#    bare `curl`/`aiohttp` GET, not just via the browser) that the site's
+#    own video-js player iframe loads. It embeds a
+#    `window.TRMS = {siteId, showTitle, showId, ...}` object and a
+#    `<source src="{vod_base}/vod.m3u8">` tag -- everything needed for
+#    title and video. No `eventDate` field of its own; Dyersville's real
+#    `showTitle` already carries the date as literal text ("City Council
+#    Meeting 2026-09-08"), extracted separately below rather than assumed
+#    to always be the last word of the title (kept honest as best-effort:
+#    if no `YYYY-MM-DD` is found in the title, date stays `None`, the same
+#    "don't guess" posture as `_format_date()`'s own ValueError handling).
+# 2. The `vod.m3u8` HLS master playlist itself declares a real subtitle
+#    track inline -- `#EXT-X-MEDIA:TYPE=SUBTITLES,...,URI="captions.en.
+#    m3u8",LANGUAGE="en"` -- confirmed real and populated on the same
+#    Dyersville show (221 ten-second `.vtt` segments, real spoken-word
+#    content, e.g. "Does anyone have any questions on the bills as
+#    presented?"). Each segment's own WEBVTT cue timestamps are already
+#    ABSOLUTE (segment 10 of 10s each starts its cues at 00:01:40, i.e.
+#    10*10s), not segment-relative -- confirmed by comparing a segment's
+#    own `#EXTINF` position in the subtitle playlist against its cues'
+#    timestamps -- so no per-segment time offset is needed, only
+#    concatenation (`_fetch_fastboot_captions()` still dedupes identical
+#    (start, text) pairs defensively, in case a future tenant's segments
+#    do overlap at the boundary; unconfirmed on Dyersville's own real
+#    track, which showed no such overlap).
+#
+# This is the SAME underlying Ember app ("cablecast-public-site", visible
+# in the root page's own `<meta name="cablecast-public-site/config/
+# environment">` tag) as `_resolve_publicsite()` targets -- just mounted
+# differently, with its data reached through the embed/HLS path instead
+# of the `cablecastapi/v1/` JSON API. Kept as a separate resolve branch
+# rather than merged into `_resolve_publicsite()`, since that function's
+# whole contract is "no HTML scraping, two JSON calls" and this one is
+# the opposite.
+_FASTBOOT_EMBED_SHOW_TITLE_RE = re.compile(r"showTitle:\s*'((?:[^'\\]|\\.)*)'")
+_FASTBOOT_EMBED_SOURCE_RE = re.compile(r'<source\s+src="([^"]+\.m3u8[^"]*)"')
+_FASTBOOT_TITLE_DATE_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+_FASTBOOT_SUBTITLE_URI_RE = re.compile(
+    r'#EXT-X-MEDIA:TYPE=SUBTITLES,[^\n]*URI="([^"]+)"[^\n]*LANGUAGE="([a-zA-Z-]+)"'
+)
+_FASTBOOT_SEGMENT_URI_RE = re.compile(r"^(?!#)(\S+\.vtt(?:\?\S*)?)\s*$", re.MULTILINE)
+# Real, confirmed cost of this shape: a ~37-minute Dyersville meeting
+# (show 3660) is already 221 ten-second caption segments -- a 90-minute
+# meeting could be ~540. Fetched with bounded concurrency, not serially,
+# same "walk cost is real, bound it" posture as this module's other
+# network loops (`asyncio.gather()` over `vodTranscripts` above).
+_FASTBOOT_CAPTION_CONCURRENCY = 10
+# A FastBoot root page's own real show listing (see the listing-walker
+# note in `passive_verify.py`) is server-rendered newest-first -- capped
+# here too so a resolve() call on a single already-known show URL never
+# needs it; this constant exists for the listing walker, kept next to the
+# rest of this template's constants since it's part of the same real
+# investigation.
+_FASTBOOT_SHOW_LINK_RE = re.compile(r'href="(/show/\d+(?:\?[^"]*)?)"')
+
 # Confirmed live 2026-08-29: this API answers over HTTPS on some tenants
 # (urbana) and only over plain HTTP on others (smyrna -- HTTPS times out
 # outright on port 443, the same asymmetry the Remix template's own
@@ -241,7 +320,9 @@ class CablecastAssetFinder(AssetFinder):
     template -- see module docstring above and `_extract_jurisdiction()`
     for how the two are told apart), plus Urbana, IL and Smyrna, TN's
     (the separate CablecastPublicSite/Ember.js template -- see the
-    `_PUBLICSITE_SHOW_ID_RE` module note above for how that one works)."""
+    `_PUBLICSITE_SHOW_ID_RE` module note above for how that one works),
+    plus Dyersville, IA's (WO-344: the same Ember app mounted at a custom
+    domain root -- see `_FASTBOOT_EMBED_SHOW_TITLE_RE`'s module note)."""
 
     platform_name = "cablecast"
 
@@ -297,6 +378,21 @@ class CablecastAssetFinder(AssetFinder):
                     site = site or self._find_site(root_remix)
 
         jurisdiction = self._extract_jurisdiction(site, url) if site else None
+
+        if not show and _SHOW_ID_SHORT_RE.search(urlparse(fetch_url).path):
+            # Neither the direct fetch nor the root-fallback retry above
+            # found a Remix show for this bare "/show/{id}" URL -- try the
+            # third, FastBoot/Ember template before concluding "no video"
+            # (see `_FASTBOOT_EMBED_SHOW_TITLE_RE`'s module docstring).
+            # Only tried for the bare-"/show/" shape, matching the one
+            # real confirmed customer (Dyersville, IA) -- the older
+            # "/internetchannel/show/{id}" shape has no confirmed FastBoot
+            # example.
+            fastboot_result = await self._resolve_fastboot_embed(
+                fetch_url, show_id, jurisdiction
+            )
+            if fastboot_result is not None:
+                return fastboot_result
 
         if not show or not show.get("vodUrl"):
             # Real bug found 2026-08-29 investigating a user report on
@@ -490,6 +586,167 @@ class CablecastAssetFinder(AssetFinder):
             # the module-level note above _PUBLICSITE_SHOW_ID_RE.
             transcript_warnings=["No transcript found for this event."],
         )
+
+    @staticmethod
+    async def _resolve_fastboot_embed(
+        fetch_url: str, show_id: int, jurisdiction: Optional[str]
+    ) -> Optional[ResolvedMeeting]:
+        """WO-344: the third real Cablecast template's own resolve path --
+        see `_FASTBOOT_EMBED_SHOW_TITLE_RE`'s module docstring for the
+        real investigation this is built on. Returns `None` (not a
+        video-less `ResolvedMeeting`) when the embed endpoint itself
+        doesn't answer with the expected shape, so `resolve()`'s caller
+        falls through to its own standard "no video found" response
+        rather than this function inventing one -- this only returns a
+        real `ResolvedMeeting` once it has confirmed this tenant really is
+        this template.
+        """
+        parsed = urlparse(fetch_url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        site = (parse_qs(parsed.query).get("site") or ["1"])[0]
+        embed_url = f"{origin}/embed/vod?show={show_id}&site={site}"
+        embed_html = await CablecastAssetFinder._fetch_html(embed_url)
+        if embed_html is None:
+            return None
+
+        title_match = _FASTBOOT_EMBED_SHOW_TITLE_RE.search(embed_html)
+        source_match = _FASTBOOT_EMBED_SOURCE_RE.search(embed_html)
+        if not source_match:
+            # Real embed page found, but no video source -- not this
+            # template's shape after all, or a genuinely video-less show
+            # (no confirmed real example of the latter yet). Let the
+            # caller's standard no-video response handle it.
+            return None
+
+        raw_title = title_match.group(1).replace("\\'", "'") if title_match else None
+        date = None
+        if raw_title:
+            date_match = _FASTBOOT_TITLE_DATE_RE.search(raw_title)
+            if date_match:
+                date = "-".join(date_match.groups())
+
+        if not jurisdiction:
+            # No Remix `site` object exists on this template (the whole
+            # reason this branch runs at all), so fall back to the same
+            # known-domain / validated-subdomain tiers `_extract_jurisdiction()`
+            # itself falls back to -- confirmed live 2026-09-13:
+            # `validated_subdomain_extract()` already correctly reads
+            # "Dyersville" off `city-dyersville-ia.cablecast.tv`'s own
+            # subdomain (its "city-...-ia" shape is exactly the "concatenated
+            # slug, maybe with a trailing state abbreviation" pattern that
+            # helper already handles), and `resolve_state()` resolves "IA"
+            # for it via the Census-unambiguous-name lookup with no
+            # allowlist entry needed.
+            known = jurisdiction_enrich.lookup_by_domain(parsed.netloc.lower())
+            if known:
+                jurisdiction = f"{known.name}, {known.state}"
+            else:
+                subdomain_name = jurisdiction_enrich.validated_subdomain_extract(
+                    fetch_url
+                )
+                if subdomain_name:
+                    state = jurisdiction_enrich.resolve_state(
+                        subdomain_name, "city", netloc=parsed.netloc
+                    )
+                    jurisdiction = (
+                        f"{subdomain_name}, {state}" if state else subdomain_name
+                    )
+
+        video_url = urljoin(embed_url, source_match.group(1))
+        segments: List[TranscriptSegment] = []
+        transcript_warnings: List[str] = []
+        cues = await CablecastAssetFinder._fetch_fastboot_captions(video_url)
+        if cues:
+            segments = [TranscriptSegment(**cue) for cue in cues]
+        else:
+            transcript_warnings.append("No transcript found for this event.")
+
+        return ResolvedMeeting(
+            platform=CablecastAssetFinder.platform_name,
+            source_url=fetch_url,
+            # Same host-namespaced external_id shape as the Remix/
+            # PublicSite paths above -- see their own comments for the
+            # real duplicate-page bug this avoids.
+            external_id=f"cablecast:{parsed.netloc.lower()}:{show_id}",
+            title=raw_title,
+            date=date,
+            jurisdiction=jurisdiction,
+            video_url=video_url,
+            video_format="m3u8",
+            segments=segments,
+            transcript_warnings=transcript_warnings,
+        )
+
+    @staticmethod
+    async def _fetch_fastboot_captions(vod_m3u8_url: str) -> List[dict]:
+        """Given the FastBoot template's real `vod.m3u8` HLS master
+        playlist URL, finds and fetches its real English subtitle track
+        (see the module docstring's point 2) -- confirmed real cue text
+        on Dyersville's own show 3660. Returns `[]` on any failure or when
+        no subtitle track is declared (no confirmed real example of a
+        FastBoot-template show with zero captions yet -- treated the same
+        as "no transcript" either way, matching every other adapter's
+        degrade-honestly posture here)."""
+        playlist = await CablecastAssetFinder._fetch_html(vod_m3u8_url)
+        if not playlist:
+            return []
+        subtitle_match = _FASTBOOT_SUBTITLE_URI_RE.search(playlist)
+        if not subtitle_match or subtitle_match.group(2).lower() != TARGET_LANGUAGE:
+            return []
+        subtitle_playlist_url = urljoin(vod_m3u8_url, subtitle_match.group(1))
+        subtitle_playlist = await CablecastAssetFinder._fetch_html(
+            subtitle_playlist_url
+        )
+        if not subtitle_playlist:
+            return []
+        segment_paths = _FASTBOOT_SEGMENT_URI_RE.findall(subtitle_playlist)
+        if not segment_paths:
+            return []
+
+        semaphore = asyncio.Semaphore(_FASTBOOT_CAPTION_CONCURRENCY)
+
+        async def _fetch_segment(
+            session: aiohttp.ClientSession, segment_url: str
+        ) -> List[dict]:
+            async with semaphore:
+                try:
+                    async with session.get(
+                        segment_url, timeout=aiohttp.ClientTimeout(total=15)
+                    ) as response:
+                        if response.status != 200:
+                            return []
+                        raw = await response.read()
+                except Exception:  # noqa: BLE001
+                    logger.warning(
+                        "Cablecast FastBoot caption segment fetch failed for %s",
+                        segment_url,
+                        exc_info=True,
+                    )
+                    return []
+            try:
+                return parse_vtt(decode_vtt_bytes(raw))
+            except Exception:  # noqa: BLE001
+                return []
+
+        async with aiohttp.ClientSession() as session:
+            results = await asyncio.gather(
+                *(
+                    _fetch_segment(session, urljoin(subtitle_playlist_url, path))
+                    for path in segment_paths
+                )
+            )
+
+        seen: set = set()
+        cues: List[dict] = []
+        for segment_cues in results:
+            for cue in segment_cues:
+                key = (cue.get("start"), cue.get("text"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                cues.append(cue)
+        cues.sort(key=lambda c: c.get("start") or 0.0)
+        return cues
 
     @staticmethod
     async def _fetch_publicsite_json(netloc: str, path: str) -> Optional[dict]:

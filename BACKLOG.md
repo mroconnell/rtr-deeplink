@@ -118,7 +118,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
-  `cablecast.py`: two more real URL/data quirks found by WO-309…
+  `cablecast.py`: a resolve()-level fallback for Niagara Falls City SD…
   `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses…
   `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
@@ -186,14 +186,13 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url`…
   [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
   [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
-  [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
   [NEEDS-AUDIT] A hand-verification script that calls the real…
   [JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()`…
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
@@ -215,7 +214,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
   [NEEDS-AUDIT] `find_video_candidates()`'s video-file-extension regex…
   [NEEDS-AUDIT] Real Kind-A finds from hand-read gates, none of the…
   [NEEDS-AUDIT] A CivicPlus AgendaCenter listing page needs a…
-  [EASY] Four platform gaps left after WO-333's shared…
+  [EASY] Two CivicPlus gaps left after WO-333's shared…
   [NEEDS-AUDIT] CivicClerk's `videoUrl`/`externalVideoUrl` sometimes…
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
@@ -337,7 +336,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (59)
+  Adapter & platform gaps  (61)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -397,6 +396,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
     [NEEDS-AUDIT] TelVue's `resolve()` can return a perpetual…
     [NEEDS-AUDIT] A bare homepage link to a video file (`direct_file`…
     [NEEDS-AUDIT] `civicclerk.py`'s `resolve()` can return a Zoom join…
+    [NEEDS-AUDIT] Fishkill village, NY's real iQM2 meeting (via the…
+    [NEEDS-AUDIT] Hilliard, OH's stored iQM2 tenant URL…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -838,46 +839,30 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   `ENUMERATION_METHODS.md` §328 (appended as §327, renumbered at commit
   because WO-318 took §327 first).
 
-### `cablecast.py`: two more real URL/data quirks found by WO-309 (resume), neither fixed yet `[NEEDS-AUDIT]`
+### `cablecast.py`: a resolve()-level fallback for Niagara Falls City SD NY's 404-then-CablecastPublicSite shape `[NEEDS-AUDIT]`
 
-- **Issue:** (1) A genuinely new, third CablecastPublicSite URL
-  template, confirmed live on Dyersville, IA
-  (`city-dyersville-ia.cablecast.tv/show/{id}?site=1`) and (in a working
-  form) Huron charter Township, MI: an Ember/FastBoot app mounted at a
-  custom domain's ROOT, using bare `/show/{id}?site=1` URLs -- neither
-  of `cablecast.py`'s two existing resolve paths handles Dyersville's
-  variant (the Remix-scrape path matches the URL shape but finds no
-  Remix context since this is Ember, not Remix; the true
-  CablecastPublicSite JSON API 404s on Dyersville's own subdomain,
-  unlike Huron Township's, which resolves fine via the Remix path
-  despite the same URL shape -- the two tenants are NOT running the same
-  underlying template despite the identical URL). (2) On Niagara Falls
-  City School District, NY's shared tenant
+- **Issue:** on Niagara Falls City School District, NY's shared tenant
   (`reflect-niagarafallsosc.cablecast.tv`), the normal
   `/internetchannel/show/{id}?channel=1` path 404s outright, but
   `/CablecastPublicSite/show/{id}?site=1` works and returns real data --
   worth a resolve()-level fallback (try the CablecastPublicSite path
   when the Remix path 404s) rather than requiring a hand-found URL
   rewrite every time this shape recurs.
-- **Impact:** Dyersville, IA (real City Council content, confirmed via
-  browser render) stays unresolved. The Niagara Falls shape may recur on
-  other tenants silently -- anyone pasting the "natural"
-  `/internetchannel/show/{id}` URL for such a tenant gets a false
-  "no video" instead of the real content.
-- **Next action:** for (2), add a fallback in `CablecastAssetFinder.resolve()`:
+- **Impact:** the Niagara Falls shape may recur on other tenants
+  silently -- anyone pasting the "natural" `/internetchannel/show/{id}`
+  URL for such a tenant gets a false "no video" instead of the real
+  content.
+- **Next action:** add a fallback in `CablecastAssetFinder.resolve()`:
   when the Remix path's HTML fetch 404s (not just when Remix context is
   missing), retry via `/CablecastPublicSite/show/{id}?site=<n>` before
   giving up -- the `site=`/`channel=` query value must be preserved or
   guessed (Niagara Falls used `site=1`, its own URL had `channel=1`, so
-  a plain re-map might work as a first attempt). For (1), needs a
-  browser session to find the real client-side data-fetch call
-  Dyersville's Ember app makes (a plain `curl`/`aiohttp` fetch of the
-  show page returns no video data at all, real or otherwise) --
-  `mcp__Claude_Browser__read_network_requests` after navigating to the
-  show page and letting it fully render.
+  a plain re-map might work as a first attempt).
 - **Constraint:** none.
-- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
-  `rtr-business/research/wo309b_report.csv`.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12), WO-344
+  (2026-09-13, closed this entry's other half -- the genuinely new third
+  CablecastPublicSite/FastBoot URL template, confirmed on Dyersville, IA
+  -- see that entry); `rtr-business/research/wo309b_report.csv`.
 
 ### `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses the wrong STATE for Wellfleet, MA (returns "Town of Wellfleet, NE") `[JUST-DO-IT]` `[EASY]`
 
@@ -2177,13 +2162,6 @@ of human step they need.
   - **Constraint**: verify the fix against `floydcoin.suiteonemedia.com` itself before trusting it on another SuiteOne tenant — this repo's "test against a real URL first" rule, and this is currently the only SuiteOne sample in hand for this specific bare-homepage shape.
   - **History**: `BACKLOG_DONE.md`'s WO-325 entry.
 
-- **[NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no listing-walk drill-down for a multi-meeting page, unlike CivicPlus's AgendaCenter.**
-  - **Issue**: found live 2026-09-12 (WO-321). York County, ME's confirmed Town Hall Streams page (`https://townhallstreams.com/towns/york_meetings`) is a listing of that town's meetings, not one specific meeting — `resolve()` returned `video_url=None`/`title=None`/`agenda_link=False` for it, meaning it never picked a specific meeting to check. `civicplus.py`'s own `resolve()` already checks the 5 most recent postings on an AgendaCenter listing page for real video before giving up (`NoVideoCandidateFound`); `townhallstreams.py` has no equivalent.
-  - **Impact**: every Town Hall Streams *town-listing* URL (as opposed to a URL for one specific meeting) currently resolves to nothing, even when the town's listing has a real video-bearing meeting on it — an undercount specific to this platform's listing-page shape.
-  - **Next action**: give `townhallstreams.py`'s `resolve()` the same shape of listing-walk CivicPlus already has: when the URL is a listing rather than a specific meeting, check the N most recent entries for a real video before raising `NoVideoCandidateFound`/returning empty.
-  - **Constraint**: build and verify this against a second real Town Hall Streams listing page before trusting the drill-down count logic across tenants — this repo's own "test against a real URL first" rule (`CLAUDE.md`), and York County, ME is only one real sample.
-  - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
-
 - **[NEEDS-AUDIT] A hand-verification script that calls the real `resolve()` pipeline on a confirmed candidate page can still end up fetching a youtube.com URL, even when the candidate page itself is never a YouTube URL — the "never fetch youtube.com" rule only guards the discovery phases' own candidate list, not what `resolve()` does downstream.**
   - **Issue**: found live 2026-09-12 (WO-323) — `scripts/wo323_resolve_diagnostic.py` (read-only, never POSTs) called the real `finder.resolve()` on 47 confirmed first-party government pages, none of them youtube.com/youtu.be URLs. One, `www.tweed.ca` (Tweed, Ontario — a CivicWeb-recognized page), embeds a YouTube video; `resolve()` followed that embed and fetched real caption/segment data from YouTube's own servers (`segments=13` came back). This WO's launch instructions said, in the same literal terms as every sibling WO this round, "never fetch a youtube.com or youtu.be URL for any reason" — the discovery phases (recon/classify/targeted) never did, but this one downstream `resolve()` call did, unintentionally.
   - **Impact**: low this time (one call, no block signature hit, and the video itself was hand-check-rejected as a tourism promo, not a real meeting, so nothing from it was used) — but every sibling/future WO in this round (WO-320 through WO-325) uses the identical `*_resolve_diagnostic.py` verification step, and any of them could hit the same thing the moment a confirmed candidate happens to embed a YouTube video. WO-320 didn't hit it only because none of its 46 confirmed candidates had a video at all. **WO-324 (group 5) built and confirmed the fix this entry recommends, but only in its own copy of the script** — `wo324_resolve_diagnostic.py` now does one honest plain GET of each candidate page and skips `resolve()` (recording a YouTube lead instead) when the page's own HTML contains a youtube.com/youtu.be link; it caught one real case live (Claresholm, AB) before any resolve() call was made.
@@ -2314,10 +2292,10 @@ of human step they need.
   - **Next action**: re-check La Pine, OR and Ketchum, ID's specific AgendaCenter URLs against current code to see which of the two civicplus.py code paths they hit, per the corrected entry above, before writing any new drill-down code.
   - **Constraint**: only 2 real cases confirmed so far — verify against both before generalizing.
   - **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
-- **[EASY] Four platform gaps left after WO-333's shared verification-walk fix (2026-09-13) -- the residual of WO-331's "most adapters return no video on their own listing page" finding.**
-  - **Issue**: WO-333 built `app/platforms/passive_verify.py`'s `verify_hub()` -- a shared listing-walk + ranking fix used by every `wo3NN_resolve_diagnostic.py`-style sweep -- and raised unaided `video_found` on WO-331's 15 phase-3-confirmed controls from 1/15 to 9/15. Five real gaps remained, one per government in that same control set: (1) **iQM2, a different tenant shape** (Knoxville TN) -- `resolve()` comes back completely empty and no registered/generic listing walker finds a meeting id on the confirmed page. (2) **CivicPlus, wrong starting URL** (Monroe County FL `/Boards-Committees`, Webb County TX `/Pay`) -- phase 3's own confirmed URL was never a real AgendaCenter listing; the new `/AgendaCenter`-guess fallback 404s for Monroe County and needs a category parameter for Webb County that wasn't chased down. (3) **CivicPlus, video one hop deeper** (Jefferson County WA) -- 15 real rows checked (the WO-333-raised retry limit), genuinely no direct video link in any row; the real vendor (a direct file, per WO-331) is only reachable by following an individual row's own agenda/minutes document. (4) **Town Hall Streams** (Troy NH) -- no listing walker exists; `resolve()` on the confirmed town-hub URL returns empty with no further link to hop to. (5) ~~**eScribe** (Victoria BC) -- `resolve()` finds a real page ("eSCRIBE Published Meetings") but no video; no listing walker built yet to drill into a specific committee's own meeting list.~~ **Fixed by WO-343 (2026-09-13)** -- see `BACKLOG_DONE.md`. CivicClerk (mentioned only in this entry's own Next action, never one of "the five") is also done -- **Fixed by WO-342 (2026-09-13)** -- see `BACKLOG_DONE.md`.
-  - **Impact**: these four remaining, generalized by platform via WO-331's own row-count estimate (`jurisdiction_coverage.csv`, ENUMERATION_METHODS.md §337), cover most of the remaining "meeting-without-video"/"no-meeting-nor-video" rows on tested platforms: iqm2 38, townhallstreams 3, plus the CivicPlus-specific wrong-URL/deeper-hop shapes (part of civicplus's 576). CivicWeb (125), Granicus (47), eScribe (61, WO-343) and CivicClerk (WO-342) are already fixed by new listing walkers; ChampDS (small) and Legistar (3) too.
-  - **Next action**: iQM2 (38, a second tenant shape beyond the one WO-333 already handles via internal-YouTube-delegation), then a CivicPlus canonical-listing-URL retry robust to a wrong phase-3 URL (Monroe County FL/Webb County TX), then Town Hall Streams (3) and the CivicPlus deeper-hop case (Jefferson County WA) as the smallest-yield items.
+- **[EASY] Two CivicPlus gaps left after WO-333's shared verification-walk fix (2026-09-13) -- the residual of WO-331's "most adapters return no video on their own listing page" finding.**
+  - **Issue**: WO-333 built `app/platforms/passive_verify.py`'s `verify_hub()` -- a shared listing-walk + ranking fix used by every `wo3NN_resolve_diagnostic.py`-style sweep -- and raised unaided `video_found` on WO-331's 15 phase-3-confirmed controls from 1/15 to 9/15. Five real gaps remained, one per government in that same control set: (1) ~~**iQM2, a different tenant shape** (Knoxville TN) -- `resolve()` comes back completely empty and no registered/generic listing walker finds a meeting id on the confirmed page.~~ **Fixed by WO-344 (2026-09-13)** -- `_iqm2_walker()` in `passive_verify.py`, see `BACKLOG_DONE.md`. (2) **CivicPlus, wrong starting URL** (Monroe County FL `/Boards-Committees`, Webb County TX `/Pay`) -- phase 3's own confirmed URL was never a real AgendaCenter listing; the new `/AgendaCenter`-guess fallback 404s for Monroe County and needs a category parameter for Webb County that wasn't chased down. (3) **CivicPlus, video one hop deeper** (Jefferson County WA) -- 15 real rows checked (the WO-333-raised retry limit), genuinely no direct video link in any row; the real vendor (a direct file, per WO-331) is only reachable by following an individual row's own agenda/minutes document. (4) ~~**Town Hall Streams** (Troy NH) -- no listing walker exists; `resolve()` on the confirmed town-hub URL returns empty with no further link to hop to.~~ **Fixed by WO-344 (2026-09-13)** -- `_townhallstreams_walker()` in `passive_verify.py`, see `BACKLOG_DONE.md`. (5) ~~**eScribe** (Victoria BC) -- `resolve()` finds a real page ("eSCRIBE Published Meetings") but no video; no listing walker built yet to drill into a specific committee's own meeting list.~~ **Fixed by WO-343 (2026-09-13)** -- see `BACKLOG_DONE.md`. CivicClerk (mentioned only in this entry's own Next action, never one of "the five") is also done -- **Fixed by WO-342 (2026-09-13)** -- see `BACKLOG_DONE.md`.
+  - **Impact**: the two CivicPlus items remaining, generalized by platform via WO-331's own row-count estimate (`jurisdiction_coverage.csv`, ENUMERATION_METHODS.md §337), cover the CivicPlus-specific wrong-URL/deeper-hop shapes (part of civicplus's 576 open rows). Every other platform this entry originally named -- iQM2, Town Hall Streams, eScribe (WO-343), CivicClerk (WO-342), CivicWeb (125), Granicus (47), ChampDS, Legistar -- is already fixed by a new listing walker.
+  - **Next action**: a CivicPlus canonical-listing-URL retry robust to a wrong phase-3 URL (Monroe County FL/Webb County TX), then the CivicPlus deeper-hop case (Jefferson County WA) as the smallest-yield item.
   - **Constraint**: each of these needs its own real fixture + test before landing (this repo's own "test against a real URL first" rule) -- `passive_verify.py`'s walker-registration pattern (`register_listing_walker()`) is already built to take a new platform's walker as a small, isolated addition, so this doesn't need a redesign, just per-platform investigation time.
   - **History**: `BACKLOG_DONE.md`'s WO-333 and WO-331 entries; `docs/investigations/wo333_verification_walk.md`; `docs/investigations/passive_discovery_v2.md`; `rtr-business/research/wo333_verify_controls.csv` for the full before/after per government; `rtr-business/research/ENUMERATION_METHODS.md` §337 (WO-331) and its WO-333 follow-up section.
 - **[NEEDS-AUDIT] CivicClerk's `videoUrl`/`externalVideoUrl` sometimes points at a live-meeting join link (WebEx, Zoom) or an unprobeable Google Drive share page, not a real recording -- `civicclerk.py` reports `video_found=True` on these anyway.**
@@ -5810,6 +5788,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: have `civicclerk.py`'s `resolve()` recognize a `zoom.us`/`meet.google.com`/`teams.microsoft.com` (or similar live-meeting-join) domain in the raw `video_url` field it reads from CivicClerk's API and treat it as "no video" (a live-meeting link, not a recording) rather than passing it through as a real `video_url`.
   - **Constraint**: match by domain, not by guessing at a URL shape — a real recording URL hosted on a video vendor should never collide with this check.
   - **History**: `BACKLOG_DONE.md`'s WO-325 and WO-338 entries.
+
+- **[NEEDS-AUDIT] Fishkill village, NY's real iQM2 meeting (via the already-pinned `fishkilltownny.iqm2.com`) may actually belong to the neighboring TOWN of Fishkill, not the Village.**
+  - **Issue**: found live 2026-09-13 (WO-344). `tenant_overrides.csv` already pins `fishkilltownny.iqm2.com` to Fishkill village, NY (`us:place:3625967`, confirmed via `vofishkill.gov`'s own real link to this tenant). WO-344's new iQM2 listing walker independently found a different real meeting on the same tenant (`Detail_Meeting.aspx?ID=1738`) whose own outline page reads `jurisdiction='Town of Fishkill, New York'` and title "Town Board Regular Meeting" — a real, different body (the Village's own governing body is a Village Board, not a Town Board). Not queued or ingested under either government this WO.
+  - **Impact**: one real meeting sits unresolved rather than wrongly keyed; low urgency, but this tenant may host BOTH the Village's and the Town's meetings, meaning any future automated walk of it needs to tell the two apart by meeting TYPE, not just tenant.
+  - **Next action**: hand-check a few more real meetings on this tenant (`calendar.aspx?View=List`) to see whether "Town Board"-titled meetings are consistently a different, real, distinct government (Town of Fishkill, NY) sharing the same iQM2 tenant as the Village — if so, mint/confirm the Town's own gov_id and pin it separately (likely keyed by meeting-type text, not URL shape).
+  - **Constraint**: don't override the existing Village pin without confirming this first — it's independently well-sourced.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §345 (WO-344's own registry-sample note).
+
+- **[NEEDS-AUDIT] Hilliard, OH's stored iQM2 tenant URL (`hilliardoh.iqm2.com`) redirects to the vendor's own generic ErrorPage.aspx — likely a dead/wrong subdomain, not a temporary outage.**
+  - **Issue**: found live 2026-09-13 (WO-344). The stored URL (`http://hilliardoh.iqm2.com:80/Citizens/SplitView.aspx?...`) 302s to `hilliardoh.iqm2.com/Citizens/ErrorPage.aspx` on a plain fetch — the same generic-error shape a real-but-wrong iQM2 subdomain gives (compare Knoxville, TN: `knoxvilletn.iqm2.com` also ErrorPage.aspx, while the REAL tenant is `knoxvillecitytn.iqm2.com`, found this same WO). Not chased further — no obvious real alternate subdomain guessed.
+  - **Impact**: one government stays unresolved under a likely-wrong domain.
+  - **Next action**: check Hilliard, OH's own city website for its real linked iQM2 URL (same method that found Knoxville's real `knoxvillecitytn.iqm2.com`), rather than guessing subdomain variants.
+  - **Constraint**: none.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §345 (WO-344's own registry-sample note).
 
 ## Reliability, ops & cost
 

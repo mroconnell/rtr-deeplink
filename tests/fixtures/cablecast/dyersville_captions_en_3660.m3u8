@@ -1,0 +1,9 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:10
+#EXT-X-MEDIA-SEQUENCE:1
+#EXTINF:10,
+subtitles/28986/captions.en.00000.vtt?duration=10
+#EXTINF:10,
+subtitles/28986/captions.en.00001.vtt?duration=10
+#EXT-X-ENDLIST

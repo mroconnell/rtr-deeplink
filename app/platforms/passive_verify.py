@@ -859,6 +859,307 @@ async def _civicplus_walker(hub_url: str) -> List[dict]:
     return candidates
 
 
+_IQM2_MEETING_LINK_RE = re.compile(r"Detail_Meeting\.aspx\?ID=(\d+)")
+# Real row anchor text confirmed live 2026-09-13 on both Monroe County FL
+# and Knoxville TN ("Dec 13, 2023 9:00 AM", "Nov 25, 2025 6:00 PM") --
+# abbreviated month name, not the `M/D/YYYY` query-string format the
+# walker's own `calendar.aspx?...From=/To=` URL uses.
+_IQM2_MONTH_ABBREVIATIONS = {
+    "Jan": 1,
+    "Feb": 2,
+    "Mar": 3,
+    "Apr": 4,
+    "May": 5,
+    "Jun": 6,
+    "Jul": 7,
+    "Aug": 8,
+    "Sep": 9,
+    "Oct": 10,
+    "Nov": 11,
+    "Dec": 12,
+}
+_IQM2_ROW_DATE_RE = re.compile(
+    r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})"
+)
+# Narrow-first, widen-on-empty -- same shape as eScribe's own window pair
+# above. Narrow (400 days) covers an ordinarily-active tenant (confirmed
+# live 2026-09-13: catches Knoxville, TN's real newest meeting, Oct 14
+# 2025, ~334 days before this WO's "today"). The wide fallback (3 years)
+# exists for a tenant that's gone dormant in the Citizens calendar itself
+# -- confirmed live the same day: Monroe County FL's calendar has nothing
+# in the narrow window, but the wide one reaches its real Dec 13 2023
+# meeting (real video, no captions -- this WO's own with-video control).
+_IQM2_WINDOW_DAYS = 400
+_IQM2_FALLBACK_WINDOW_DAYS = 1095
+
+
+async def _iqm2_calendar_candidates(
+    origin: str, start: _dt.date, end: _dt.date
+) -> List[dict]:
+    """One `calendar.aspx?View=List&From=..&To=..` fetch -- the real
+    listing endpoint IQM2's own "Meeting Calendar" page calls (confirmed
+    live 2026-09-13 against Atlanta, GA's already-known-active tenant,
+    Monroe County FL, and Knoxville, TN -- see `_iqm2_walker()`'s own
+    docstring). Real, plain server-rendered HTML, no JS execution needed.
+    Dates are a US `M/D/YYYY` query format -- confirmed via the page's own
+    "View=List&From=1/1/2026&To=12/31/2026" links."""
+    url = (
+        f"{origin}/Citizens/calendar.aspx?View=List"
+        f"&From={start.month}/{start.day}/{start.year}"
+        f"&To={end.month}/{end.day}/{end.year}"
+    )
+    html, _, err = await _fetch(url)
+    if err or html is None:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    seen_ids: set = set()
+    parsed: List[tuple] = []
+    for a in soup.find_all("a", href=True):
+        match = _IQM2_MEETING_LINK_RE.search(a["href"])
+        if not match:
+            continue
+        meeting_id = match.group(1)
+        if meeting_id in seen_ids:
+            continue
+        seen_ids.add(meeting_id)
+        text = a.get_text(" ", strip=True)
+        date_match = _IQM2_ROW_DATE_RE.search(text)
+        row_date = None
+        if date_match:
+            month_abbr, day, year = date_match.groups()
+            try:
+                row_date = _dt.date(
+                    int(year), _IQM2_MONTH_ABBREVIATIONS[month_abbr], int(day)
+                )
+            except ValueError:
+                row_date = None
+        parsed.append(
+            (
+                row_date,
+                {
+                    "title": text,
+                    "date": row_date.isoformat() if row_date else None,
+                    "url": f"{origin}/Citizens/Detail_Meeting.aspx?ID={meeting_id}",
+                },
+            )
+        )
+    # Same "the feed itself isn't reliably ordered, sort ourselves" shape
+    # as the eScribe walker above -- confirmed live 2026-09-13: Knoxville's
+    # own list mixes committee/task-force/council rows by meeting type,
+    # not strictly by date.
+    parsed.sort(key=lambda pair: pair[0] or _dt.date.min, reverse=True)
+    return [candidate for _, candidate in parsed]
+
+
+async def _iqm2_walker(hub_url: str) -> List[dict]:
+    """WO-344: iQM2's real listing walker -- fixes the "second tenant
+    shape" gap WO-333 left. `iqm2.py`'s own `resolve()` only ever handles
+    a URL that's already a specific `Detail_Meeting.aspx?ID=`/
+    `SplitView.aspx?...MeetingID=` page -- given a tenant root/Citizens-
+    portal hub URL (`Default.aspx`, or any other page on the same tenant)
+    it has no meeting id to extract and comes back empty, exactly
+    WO-333's confirmed Knoxville, TN miss (`resolved_empty`, hub =
+    `knoxvillecitytn.iqm2.com/Citizens/Default.aspx`, reached from
+    `knoxvilletn.gov`'s own agendas-and-minutes page -- see
+    `docs/investigations/wo333_verification_walk.md`). Every real IQM2
+    tenant checked (Atlanta GA, Santa Clara County CA, Monroe County FL,
+    Knoxville TN) serves the SAME real `calendar.aspx?View=List` endpoint
+    regardless of tenant activity level -- confirmed live 2026-09-13 -- so
+    this walker only needs the tenant's own origin, not a special case per
+    shape. `_walk_candidates()`'s existing real `iqm2.py` adapter does the
+    actual video/caption resolve on each candidate, same as every other
+    walker in this module.
+    """
+    parsed_hub = urlparse(hub_url)
+    if "iqm2.com" not in parsed_hub.netloc.lower():
+        return []
+    origin = f"{parsed_hub.scheme}://{parsed_hub.netloc}"
+    today = _dt.datetime.now(_dt.timezone.utc).date()
+    candidates = await _iqm2_calendar_candidates(
+        origin,
+        today - _dt.timedelta(days=_IQM2_WINDOW_DAYS),
+        today + _dt.timedelta(days=30),
+    )
+    if not candidates:
+        candidates = await _iqm2_calendar_candidates(
+            origin,
+            today - _dt.timedelta(days=_IQM2_FALLBACK_WINDOW_DAYS),
+            today + _dt.timedelta(days=30),
+        )
+    return candidates
+
+
+_THS_STREAM_LINK_RE = re.compile(r"/?stream\.php\?location_id=\d+&id=\d+")
+_THS_MONTHS = {
+    name: i + 1
+    for i, name in enumerate(
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+    )
+}
+_THS_ROW_DATE_RE = re.compile(
+    r"(January|February|March|April|May|June|July|August|September|October|"
+    r"November|December)\s+(\d{1,2}),\s*(\d{4})"
+)
+
+
+async def _townhallstreams_walker(hub_url: str) -> List[dict]:
+    """WO-344: townhallstreams.com's real listing walker. Real gap this
+    closes: `townhallstreams.py`'s own `resolve()` only ever handles a URL
+    that already has both `location_id` and `id` query params (one
+    specific meeting's own `stream.php` page) -- given the town's own hub
+    page (`townhallstreams.com/towns/{slug}`) it finds no video/caption JS
+    on that page (it's a listing, not a player) and comes back empty,
+    exactly WO-333's confirmed Troy, NH miss (`resolved_empty`, hub =
+    `www.townhallstreams.com/towns/troy_nh`, "handed the real town hub
+    directly -- still empty" per this WO's brief).
+    Confirmed live 2026-09-13: that hub page's own static HTML (no JS
+    needed) lists every real meeting for the town as a plain
+    `stream.php?location_id={town}&id={meeting}` link, with the meeting's
+    real title AND date as the anchor's own visible text (e.g. "Board of
+    Selectmen September 17, 2026 - 06:00 pm to 09:00 pm (EST)") -- 131 real
+    rows found for Troy, NH alone, several dated in the future (upcoming
+    scheduled meetings with no recording yet), so this walker filters to
+    `date <= today` before handing candidates to `_walk_candidates()`,
+    same "a future meeting's video status lies" filter the Legistar walker
+    above already applies for the same reason.
+    """
+    if "townhallstreams.com" not in urlparse(hub_url).netloc.lower():
+        return []
+    html, final_url, err = await _fetch(hub_url)
+    if err or html is None:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    today = _dt.datetime.now(_dt.timezone.utc).date()
+    parsed: List[tuple] = []
+    seen: set = set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not _THS_STREAM_LINK_RE.search(href):
+            continue
+        full_url = urljoin(final_url, href)
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+        text = a.get_text(" ", strip=True)
+        date_match = _THS_ROW_DATE_RE.search(text)
+        row_date = None
+        if date_match:
+            month_name, day, year = date_match.groups()
+            try:
+                row_date = _dt.date(int(year), _THS_MONTHS[month_name], int(day))
+            except ValueError:
+                row_date = None
+        if row_date is not None and row_date > today:
+            # Upcoming, not-yet-recorded meeting -- see the docstring's
+            # "a future meeting's video status lies" note.
+            continue
+        parsed.append(
+            (
+                row_date,
+                {
+                    "title": text,
+                    "date": row_date.isoformat() if row_date else None,
+                    "url": full_url,
+                },
+            )
+        )
+    parsed.sort(key=lambda pair: pair[0] or _dt.date.min, reverse=True)
+    return [candidate for _, candidate in parsed]
+
+
+_CABLECAST_FASTBOOT_SHOW_LINK_RE = re.compile(r'/show/\d+(?:\?[^"\'\s]*)?')
+# Mirrors cablecast.py's own `_FASTBOOT_TITLE_DATE_RE` (kept as a
+# separate compiled copy rather than importing it, since this module
+# lazily imports each platform's adapter module and shouldn't need
+# cablecast.py's own regex module-level just to use one pattern).
+_FASTBOOT_TITLE_DATE_RE_MIRROR = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+
+
+async def _cablecast_walker(hub_url: str) -> List[dict]:
+    """WO-344: a listing walker for Cablecast's third real template (the
+    "cablecast-public-site" Ember/FastBoot app mounted at a custom
+    domain's own root -- see `cablecast.py`'s own module docstring for the
+    full investigation, confirmed live 2026-09-13 on Dyersville, IA).
+    Real gap this closes: neither of `cablecast.py`'s existing resolve
+    paths has a listing/hub concept at all (both need an already-known
+    show id) -- given the tenant's own root page, this walker fetches it
+    and scans for real `/show/{id}` links, which the FastBoot app's own
+    server-side rendering already embeds in the plain HTML (confirmed
+    live: a bare `curl`/`aiohttp` GET of Dyersville's root page returns
+    128 real `/show/{id}` links, no JS execution needed) in newest-first
+    document order (confirmed: the first link is the tenant's own newest
+    show). Each link's own real anchor text already carries the meeting's
+    title AND date as one string ("City Council Meeting 2026-09-08"),
+    matching the real title shape `cablecast.py`'s own FastBoot resolve
+    path extracts from the per-show embed page -- reused here as this
+    walker's own `title`/`date`, though `_walk_candidates()`'s real
+    `resolve()` call is still what confirms video/captions, not this
+    listing step. This walker is not scoped to the FastBoot template
+    specifically (it would also find real `/show/` links on a Remix
+    tenant's own root page) -- harmless either way, since
+    `_walk_candidates()` always re-resolves each candidate through the
+    real, registered `cablecast.py` adapter regardless of which template
+    actually serves it.
+    """
+    if "cablecast.tv" not in urlparse(hub_url).netloc.lower():
+        # Scoped to the confirmed real *.cablecast.tv host family for now
+        # -- a custom-domain Cablecast tenant (e.g. Edison, NJ's
+        # `cablecast.edisonnj.org`) is real (see cablecast.py's own
+        # `detect_platform()` note) but this walker has no confirmed real
+        # example of one serving this same root-listing shape yet, so it
+        # declines rather than guessing.
+        return []
+    parsed_hub = urlparse(hub_url)
+    root_url = f"{parsed_hub.scheme}://{parsed_hub.netloc}/"
+    html, final_url, err = await _fetch(root_url)
+    if err or html is None:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    seen: set = set()
+    out: List[dict] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not _CABLECAST_FASTBOOT_SHOW_LINK_RE.fullmatch(href):
+            continue
+        full_url = urljoin(final_url, href)
+        text = a.get_text(" ", strip=True)
+        if not text:
+            # Real pages checked (Dyersville) render each show as TWO
+            # anchors to the same href -- an image link with no text, and
+            # a text link right after it. Skip the empty one WITHOUT
+            # marking the href seen -- real bug fixed here 2026-09-13:
+            # marking it seen on the empty-text anchor discarded the very
+            # next (real-title) anchor to the same href too, since it hit
+            # the dedup check first. The real title-bearing anchor is the
+            # one this walker keeps.
+            continue
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+        date_match = _FASTBOOT_TITLE_DATE_RE_MIRROR.search(text)
+        out.append(
+            {
+                "title": text,
+                "date": date_match.group(0) if date_match else None,
+                "url": full_url,
+            }
+        )
+    return out
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -871,6 +1172,9 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("escribe", _escribe_walker)
     register_listing_walker("civicclerk", _civicclerk_walker)
     register_listing_walker("civicplus", _civicplus_walker)
+    register_listing_walker("iqm2", _iqm2_walker)
+    register_listing_walker("townhallstreams", _townhallstreams_walker)
+    register_listing_walker("cablecast", _cablecast_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks

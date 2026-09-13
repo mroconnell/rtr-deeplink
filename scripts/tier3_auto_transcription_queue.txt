@@ -2050,3 +2050,11 @@ https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.us
 https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/Board+of+Finance+Regular+Meeting+8.17.2026-20260817_190208-Meeting+Recording.mp4
 https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1917
 https://oakgrove.granicus.com/MediaPlayer.php?view_id=2&clip_id=737
+https://jeffersoncityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1749	https://jeffersoncityga.iqm2.com/Citizens/Default.aspx
+https://townhallstreams.com/stream.php?location_id=153&id=76303	https://townhallstreams.com/towns/dorchestercountymd
+https://townhallstreams.com/stream.php?location_id=166&id=73625	https://townhallstreams.com/towns/rindge_nh
+https://townhallstreams.com/stream.php?location_id=114&id=75836	https://townhallstreams.com/towns/orringme
+https://townhallstreams.com/stream.php?location_id=140&id=75885	https://townhallstreams.com/towns/union_me
+https://townhallstreams.com/stream.php?location_id=48&id=76573	https://townhallstreams.com/towns/wells_maine
+https://townhallstreams.com/stream.php?location_id=127&id=76628	https://townhallstreams.com/towns/neptune_nj
+https://townhallstreams.com/stream.php?location_id=119&id=76366	https://townhallstreams.com/towns/eastgreenbushny

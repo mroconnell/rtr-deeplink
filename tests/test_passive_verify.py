@@ -22,17 +22,23 @@ from app.platforms.base import (
     NoVideoCandidateFound,
     register,
 )
+from app.platforms.cablecast import CablecastAssetFinder
 from app.platforms.civicclerk import CivicClerkAssetFinder
 from app.platforms.civicplus import CivicPlusAssetFinder
 from app.platforms.escribe import EscribeAssetFinder
 from app.platforms.granicus import GranicusAssetFinder
+from app.platforms.iqm2 import IQM2AssetFinder
+from app.platforms.townhallstreams import TownHallStreamsAssetFinder
 from app.platforms.models import ResolvedMeeting, TranscriptSegment
 from app.platforms.passive_verify import (
+    _cablecast_walker,
     _civicclerk_walker,
     _civicplus_walker,
     _civicweb_walker,
     _escribe_walker,
+    _iqm2_walker,
     _legistar_walker,
+    _townhallstreams_walker,
     verify_hub,
 )
 
@@ -79,14 +85,18 @@ def _resolved(
 
 @pytest.fixture(autouse=True)
 def _register_real_finders():
-    # civicplus.py/granicus.py/escribe.py/civicclerk.py are real,
-    # already-tested adapters used by the end-to-end tests below;
-    # registered here so `get_finder()` finds them the same way
-    # `register_all_finders()` would in production.
+    # civicplus.py/granicus.py/escribe.py/civicclerk.py/iqm2.py/
+    # townhallstreams.py/cablecast.py are real, already-tested adapters
+    # used by the end-to-end tests below; registered here so
+    # `get_finder()` finds them the same way `register_all_finders()`
+    # would in production.
     register(CivicPlusAssetFinder())
     register(GranicusAssetFinder())
     register(EscribeAssetFinder())
     register(CivicClerkAssetFinder())
+    register(IQM2AssetFinder())
+    register(TownHallStreamsAssetFinder())
+    register(CablecastAssetFinder())
 
 
 # `detect_platform()` never recognizes "fake_platform"'s made-up host, so
@@ -1153,3 +1163,363 @@ async def test_ranking_fix_4_tries_platform_listing_walker_after_no_video_in_lis
     assert result.video_found is True
     assert result.meeting_url == real_video_url
     assert result.ranking_fix_applied is True
+
+
+# --- WO-344: iQM2's second tenant shape -------------------------------
+#
+# Real gap this closes: `iqm2.py`'s own `resolve()` only ever handles a
+# URL that's already a specific `Detail_Meeting.aspx?ID=`/`SplitView.
+# aspx?...MeetingID=` page -- given a tenant root/Citizens-portal hub
+# URL it has no meeting id to extract and comes back empty, WO-333's
+# confirmed Knoxville, TN miss (`resolved_empty`, hub =
+# `knoxvillecitytn.iqm2.com/Citizens/Default.aspx`, reached from
+# `knoxvilletn.gov`'s own real agendas-and-minutes page -- see
+# `docs/investigations/wo333_verification_walk.md`). `_iqm2_walker()`
+# calls IQM2's own real `calendar.aspx?View=List` endpoint (confirmed
+# live 2026-09-13 against Atlanta GA's already-active tenant, Monroe
+# County FL, and Knoxville TN) and returns real candidates newest-first;
+# `_walk_candidates()`'s real, registered `iqm2.py` adapter does the
+# actual video/caption resolve, same division of labor as every other
+# walker in this module.
+
+
+def _iqm2_calendar_url(origin: str, days_back: int) -> str:
+    """Mirrors `_iqm2_walker()`'s own URL construction exactly, so these
+    tests don't need to mock "today" -- whatever real date the test runs
+    on, the walker builds the identical URL (same pattern the Legistar
+    walker's own test above already uses)."""
+    import datetime as _dt
+
+    today = _dt.datetime.now(_dt.timezone.utc).date()
+    start = today - _dt.timedelta(days=days_back)
+    end = today + _dt.timedelta(days=30)
+    return (
+        f"{origin}/Citizens/calendar.aspx?View=List"
+        f"&From={start.month}/{start.day}/{start.year}"
+        f"&To={end.month}/{end.day}/{end.year}"
+    )
+
+
+async def test_iqm2_walker_real_monroecountyfl_widens_to_fallback_window():
+    # Monroe County FL's real tenant (this WO's own with-video control)
+    # has nothing in the narrow (400-day) window -- confirmed live
+    # 2026-09-13, its calendar has been dormant since Dec 2023 -- so the
+    # walker must widen to the 3-year fallback before it finds anything.
+    origin = "https://monroecountyfl.iqm2.com"
+    narrow_url = _iqm2_calendar_url(origin, 400)
+    wide_url = _iqm2_calendar_url(origin, 1095)
+    calendar_html = load_fixture("iqm2", "monroecountyfl_calendar_list.html")
+
+    routes = {
+        narrow_url: FakeResponse(status=200, text="<html><body></body></html>"),
+        wide_url: FakeResponse(status=200, text=calendar_html),
+    }
+
+    with mock_session(routes):
+        candidates = await _iqm2_walker(f"{origin}/Citizens/Default.aspx")
+
+    assert len(candidates) == 2
+    # Newest first -- Dec 13 2023 (ID 1180, this WO's control) ahead of
+    # Nov 8 2023 (ID 1179), even though 1179 appears first in the real
+    # calendar page's own row order.
+    assert candidates[0]["url"] == f"{origin}/Citizens/Detail_Meeting.aspx?ID=1180"
+    assert candidates[0]["date"] == "2023-12-13"
+    assert candidates[1]["url"] == f"{origin}/Citizens/Detail_Meeting.aspx?ID=1179"
+
+
+async def test_iqm2_walker_real_knoxvillecitytn_narrow_window_finds_candidates():
+    # Knoxville, TN's real tenant IS active in the narrow window (its
+    # newest real meeting is ~334 days back from this WO's "today",
+    # confirmed live 2026-09-13) -- no widening needed, unlike Monroe
+    # County FL above.
+    origin = "https://knoxvillecitytn.iqm2.com"
+    narrow_url = _iqm2_calendar_url(origin, 400)
+    calendar_html = load_fixture("iqm2", "knoxvillecitytn_calendar_list.html")
+
+    routes = {narrow_url: FakeResponse(status=200, text=calendar_html)}
+
+    with mock_session(routes):
+        candidates = await _iqm2_walker(f"{origin}/Citizens/Default.aspx")
+
+    assert len(candidates) == 2
+    assert candidates[0]["url"] == f"{origin}/Citizens/Detail_Meeting.aspx?ID=1691"
+    assert candidates[0]["date"] == "2025-12-09"
+    assert candidates[1]["url"] == f"{origin}/Citizens/Detail_Meeting.aspx?ID=1690"
+
+
+async def test_iqm2_walker_non_iqm2_host_returns_empty():
+    assert await _iqm2_walker("https://example.gov/meetings") == []
+
+
+async def test_real_monroecountyfl_iqm2_hub_walks_to_video_no_captions():
+    # End-to-end, real fixtures: this WO's own with-video control. The
+    # hub is the bare tenant root (no meeting id) -- the same shape
+    # WO-333 confirmed empty on Knoxville -- walking it reaches a real
+    # meeting with a real Granicus-hosted video and a genuinely blank
+    # caption track (tier 3, not tier 1 -- confirmed live: MeetingID
+    # 1180's own TranscriptGet.aspx is a real HTTP 200 empty placeholder).
+    origin = "https://monroecountyfl.iqm2.com"
+    hub_url = f"{origin}/Citizens/Default.aspx"
+    narrow_url = _iqm2_calendar_url(origin, 400)
+    wide_url = _iqm2_calendar_url(origin, 1095)
+    calendar_html = load_fixture("iqm2", "monroecountyfl_calendar_list.html")
+    outline_url = (
+        f"{origin}/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+        f"&Mode=Video&Frame=Nothing&ID=1180"
+    )
+    split_url = (
+        f"{origin}/Citizens/SplitView.aspx?Mode=Video&MeetingID=1180&Format=Minutes"
+    )
+
+    routes = {
+        narrow_url: FakeResponse(status=200, text="<html><body></body></html>"),
+        wide_url: FakeResponse(status=200, text=calendar_html),
+        outline_url: FakeResponse(
+            status=200, text=load_fixture("iqm2", "monroecountyfl_1180_outline.html")
+        ),
+        split_url: FakeResponse(
+            status=200, text=load_fixture("iqm2", "monroecountyfl_1180_split.html")
+        ),
+    }
+
+    with mock_session(routes):
+        result = await verify_hub(hub_url, platform_hint="iqm2")
+
+    assert result.meeting_found is True
+    assert result.video_found is True
+    assert result.captions_found is False
+    assert result.platform == "iqm2"
+    assert result.tier == 3
+    assert result.meeting_url == f"{origin}/Citizens/Detail_Meeting.aspx?ID=1180"
+
+
+async def test_real_knoxvillecitytn_iqm2_hub_walks_real_candidates_no_video():
+    # End-to-end, real fixtures, the opposite real shape: Knoxville's own
+    # City Council meetings genuinely have no video in this tenant's
+    # narrow window (confirmed live 2026-09-13 -- both SplitView pages
+    # carry an empty `<!-- MEDIA URL: -->` comment). A real "meeting
+    # found, no video" verdict (tier 4), not a false "no meeting" -- the
+    # exact fix for WO-333's `resolved_empty` miss on this government.
+    origin = "https://knoxvillecitytn.iqm2.com"
+    hub_url = f"{origin}/Citizens/Default.aspx"
+    narrow_url = _iqm2_calendar_url(origin, 400)
+    calendar_html = load_fixture("iqm2", "knoxvillecitytn_calendar_list.html")
+    outline_1691 = (
+        f"{origin}/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+        f"&Mode=Video&Frame=Nothing&ID=1691"
+    )
+    split_1691 = (
+        f"{origin}/Citizens/SplitView.aspx?Mode=Video&MeetingID=1691&Format=Minutes"
+    )
+    outline_1690 = (
+        f"{origin}/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+        f"&Mode=Video&Frame=Nothing&ID=1690"
+    )
+    split_1690 = (
+        f"{origin}/Citizens/SplitView.aspx?Mode=Video&MeetingID=1690&Format=Minutes"
+    )
+
+    routes = {
+        narrow_url: FakeResponse(status=200, text=calendar_html),
+        outline_1691: FakeResponse(
+            status=200, text=load_fixture("iqm2", "knoxvillecitytn_1691_outline.html")
+        ),
+        split_1691: FakeResponse(
+            status=200, text=load_fixture("iqm2", "knoxvillecitytn_1691_split.html")
+        ),
+        outline_1690: FakeResponse(
+            status=200, text=load_fixture("iqm2", "knoxvillecitytn_1690_outline.html")
+        ),
+        split_1690: FakeResponse(
+            status=200, text=load_fixture("iqm2", "knoxvillecitytn_1690_split.html")
+        ),
+    }
+
+    with mock_session(routes):
+        result = await verify_hub(hub_url, platform_hint="iqm2")
+
+    assert result.meeting_found is True
+    assert result.video_found is False
+    assert result.tier == 4
+    assert result.candidates_checked == 2
+    assert result.verdict == "listing_walked_no_video"
+
+
+# --- WO-344: townhallstreams.com's real listing walker -----------------
+#
+# Real gap this closes: `townhallstreams.py`'s own `resolve()` only ever
+# handles a URL that already has both `location_id` and `id` query
+# params -- given the town's own hub page it finds no video/caption JS on
+# that page (it's a listing, not a player) and comes back empty, exactly
+# WO-333's confirmed Troy, NH miss (`resolved_empty`, hub =
+# `www.townhallstreams.com/towns/troy_nh`, "handed the real town hub
+# directly -- still empty").
+
+
+async def test_townhallstreams_walker_real_troynh_hub_filters_future_and_sorts():
+    hub_url = "https://www.townhallstreams.com/towns/troy_nh"
+    hub_html = load_fixture("townhallstreams", "troynh_hub_towns_page.html")
+
+    routes = {hub_url: FakeResponse(status=200, text=hub_html, url=hub_url)}
+
+    with mock_session(routes):
+        candidates = await _townhallstreams_walker(hub_url)
+
+    # The real fixture has 3 rows -- one (id 76219, Sept 14 2026) is
+    # dated AFTER this WO's "today" (2026-09-13) and must be filtered
+    # out, same "a future meeting's video status lies" rule the Legistar
+    # walker's own EventDate filter already applies.
+    assert len(candidates) == 2
+    assert candidates[0]["url"] == (
+        "https://www.townhallstreams.com/stream.php?location_id=169&id=76647"
+    )
+    assert candidates[0]["date"] == "2026-09-10"
+    assert (
+        candidates[0]["title"]
+        == "Water & Sewer Commision September 10, 2026 - 06:00 pm to 10:00 pm (EST)"
+    )
+    assert candidates[1]["url"] == (
+        "https://www.townhallstreams.com/stream.php?location_id=169&id=75863"
+    )
+
+
+async def test_townhallstreams_walker_non_townhallstreams_host_returns_empty():
+    assert await _townhallstreams_walker("https://example.gov/meetings") == []
+
+
+async def test_real_troynh_townhallstreams_hub_walks_to_video():
+    # End-to-end, real fixtures: this WO's own control. The hub is the
+    # real town listing page WO-333 confirmed empty -- walking it reaches
+    # a real, currently live meeting video (tier 3 -- townhallstreams.py
+    # has no confirmed real caption path, see its own module docstring).
+    hub_url = "https://www.townhallstreams.com/towns/troy_nh"
+    hub_html = load_fixture("townhallstreams", "troynh_hub_towns_page.html")
+    meeting_url = "https://www.townhallstreams.com/stream.php?location_id=169&id=76647"
+    meeting_html = load_fixture("townhallstreams", "troynh_stream_76647.html")
+    transcript_url = (
+        "https://townhallstreams.com/stream.php?full=1&location_id=169"
+        "&id=76647&action=get_transcriptions"
+    )
+
+    routes = {
+        hub_url: FakeResponse(status=200, text=hub_html, url=hub_url),
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        transcript_url: FakeResponse(status=200, text=""),
+    }
+
+    with mock_session(routes):
+        result = await verify_hub(hub_url, platform_hint="townhallstreams")
+
+    assert result.meeting_found is True
+    assert result.video_found is True
+    assert result.captions_found is False
+    assert result.platform == "townhallstreams"
+    assert result.tier == 3
+    assert result.meeting_url == meeting_url
+
+
+# --- WO-344: Cablecast's third template's own listing walker -----------
+#
+# Real gap this closes: neither of `cablecast.py`'s resolve paths has a
+# listing/hub concept at all (both need an already-known show id) --
+# `_cablecast_walker()` fetches the tenant's own root page, which the
+# real FastBoot app server-renders with a real show catalog (confirmed
+# live 2026-09-13 on Dyersville, IA -- see `cablecast.py`'s own module
+# docstring for the full investigation).
+
+
+async def test_cablecast_walker_real_dyersville_root_newest_first():
+    root_url = "https://city-dyersville-ia.cablecast.tv/"
+    root_html = load_fixture("cablecast", "dyersville_root.html")
+
+    routes = {root_url: FakeResponse(status=200, text=root_html, url=root_url)}
+
+    with mock_session(routes):
+        candidates = await _cablecast_walker(
+            "https://city-dyersville-ia.cablecast.tv/show/1?site=1"
+        )
+
+    assert len(candidates) == 46
+    assert candidates[0]["url"] == (
+        "https://city-dyersville-ia.cablecast.tv/show/3660?site=1"
+    )
+    assert candidates[0]["title"] == "City Council Meeting 2026-09-08"
+    assert candidates[0]["date"] == "2026-09-08"
+    # Confirms the real duplicate-anchor bug this walker had to avoid: the
+    # real page renders TWO anchors per show (an empty-text image link,
+    # then the real title link) to the SAME href -- each show appears
+    # here only once, keeping the title-bearing anchor.
+    assert len({c["url"] for c in candidates}) == 46
+
+
+async def test_cablecast_walker_non_cablecast_host_returns_empty():
+    assert await _cablecast_walker("https://example.gov/meetings") == []
+
+
+async def test_real_dyersville_cablecast_hub_walks_to_video_and_captions():
+    # End-to-end, real fixtures: a bare tenant root URL has no show id at
+    # all (`_extract_show_id()` returns None immediately) -- confirms the
+    # walker is reached and finds this WO's own real Dyersville control,
+    # tier 1 (real video AND real captions -- see cablecast.py's own
+    # FastBoot module docstring for the full investigation).
+    origin = "http://city-dyersville-ia.cablecast.tv"
+    hub_url = f"{origin}/"
+    root_html = load_fixture("cablecast", "dyersville_root.html")
+    show_url = f"{origin}/show/3660?site=1"
+    show_html = load_fixture("cablecast", "dyersville_show_3660_raw.html")
+    embed_url = f"{origin}/embed/vod?show=3660&site=1"
+    embed_html = load_fixture("cablecast", "dyersville_embed_vod_3660.html")
+    vod_url = f"{origin}/vod/3660-City-Council-Meeting-2026-09-08-v2/vod.m3u8".replace(
+        "http://", "https://"
+    )
+    captions_url = (
+        "https://city-dyersville-ia.cablecast.tv/vod/"
+        "3660-City-Council-Meeting-2026-09-08-v2/captions.en.m3u8"
+    )
+    seg0_url = (
+        "https://city-dyersville-ia.cablecast.tv/vod/"
+        "3660-City-Council-Meeting-2026-09-08-v2/subtitles/28986/"
+        "captions.en.00000.vtt?duration=10"
+    )
+    seg1_url = (
+        "https://city-dyersville-ia.cablecast.tv/vod/"
+        "3660-City-Council-Meeting-2026-09-08-v2/subtitles/28986/"
+        "captions.en.00001.vtt?duration=10"
+    )
+
+    routes = {
+        # cablecast.py's own resolve() always forces http for its two
+        # direct-fetch attempts (the show path itself, then the root
+        # fallback) -- both come back with no `window.__remixContext`
+        # (real FastBoot/Ember content, not Remix), so `show` stays None
+        # and the FastBoot fallback (and, once that also 404s below, this
+        # walker) is what actually finds the video.
+        hub_url: FakeResponse(status=200, text=root_html, url=hub_url),
+        show_url: FakeResponse(status=200, text=show_html, url=show_url),
+        embed_url: FakeResponse(status=200, text=embed_html, url=embed_url),
+        vod_url: FakeResponse(
+            status=200, text=load_fixture("cablecast", "dyersville_vod_3660.m3u8")
+        ),
+        captions_url: FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_3660.m3u8"),
+        ),
+        seg0_url: FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_00000.vtt"),
+        ),
+        seg1_url: FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "dyersville_captions_en_00001.vtt"),
+        ),
+    }
+
+    with mock_session(routes):
+        result = await verify_hub(hub_url, platform_hint="cablecast")
+
+    assert result.meeting_found is True
+    assert result.video_found is True
+    assert result.captions_found is True
+    assert result.platform == "cablecast"
+    assert result.tier == 1
+    assert result.meeting_url == f"{origin}/show/3660?site=1"

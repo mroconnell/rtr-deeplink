@@ -1,5 +1,120 @@
 # Backlog — done
 
+## WO-344: three small verification gaps — iQM2's second tenant shape, a Town Hall Streams listing walker, Cablecast's third template [Done 2026-09-13]
+
+This WO closes three of the smallest gaps WO-333 and WO-309 (resume)
+left behind: iQM2 (a government whose real page wasn't the one shape the
+site already knew how to read), Town Hall Streams (a town's own meeting
+list page, not yet readable at all), and one real Cablecast customer
+(Dyersville, IA) running a third, different version of that vendor's
+software the site didn't know about yet.
+
+**What was built.** Three fixes, each proven against a real government
+before being trusted more broadly.
+
+1. **iQM2's second shape.** The site already knew how to read one
+   specific meeting's page on this platform. It did not know how to
+   start from a government's general meeting-list page and find the
+   newest meeting on its own. Fixed: given that list page, the site now
+   asks the vendor's own calendar for real, recent meetings and checks
+   the newest ones for video, the same way it already does once handed
+   one specific meeting.
+2. **Town Hall Streams' listing page.** Same shape of gap. A town's own
+   page (e.g. `townhallstreams.com/towns/troy_nh`) lists many real
+   meetings, but the site had no way to read that list — only a single
+   already-known meeting. Fixed the same way as above: the site reads
+   the real list, in order, newest first, and skips any meeting still in
+   the future (those don't have a recording yet).
+3. **Cablecast's third version.** Two versions of this vendor's video
+   software were already supported. Dyersville, IA turned out to run a
+   third, different one — real city council video, real closed
+   captions, but nothing the site could read yet. Fixed: the site now
+   reads that version's own video page and, new this WO, its real
+   captions too (the earlier two versions of this vendor never had
+   captions available at all).
+
+**Each control, before and after.**
+
+| Government | Before this WO | After this WO |
+|---|---|---|
+| Knoxville, TN (iQM2, second shape) | A real page was found, but nothing readable on it (WO-333) | The site finds 15 real recent meetings; correctly reports none of them has video — an honest answer instead of "nothing here" |
+| Monroe County, FL (iQM2, with video) | No way to reach a specific meeting from the government's own page | A real meeting found, with real video (no captions on this one) |
+| Troy, NH (Town Hall Streams) | A real page was found, but nothing readable on it (WO-333) | A real, current meeting found, with real video |
+| Dyersville, IA (Cablecast, third version) | Real city council video existed but the site could not read this version at all | A real meeting found, with real video AND real captions — now a live page |
+
+**Then checked against real, open governments already on file for each
+platform** — up to 20 per platform, all of them for Town Hall Streams
+since fewer than 20 were on file.
+
+| Platform | Result | Count | What it means |
+|---|---|---|---|
+| iQM2 (20 checked) | Video found, no captions | 6 | A real meeting with video, no readable captions |
+| iQM2 (20 checked) | Meeting found, no video | 13 | A real, current meeting list found; none of the recent meetings had video |
+| iQM2 (20 checked) | Neither | 1 | Hilliard, OH — the government's own iQM2 address on file redirects to the vendor's generic error page, likely a wrong or outdated address |
+| Town Hall Streams (11 checked) | Video found, no captions | 10 | A real meeting with video; this platform has no known way to read captions yet |
+| Town Hall Streams (11 checked) | No meetings found | 1 | Chelsea, ME — a real page, but nothing posted on it right now |
+
+**Video split.** Of the video found above, split by what happens next:
+
+| Result | Count | What it means |
+|---|---|---|
+| Captions available, page live now | 1 | Dyersville, IA (Cablecast) |
+| Video, no captions, queued | 8 | Jefferson, GA; Dorchester County, MD; Rindge, NH; Orrington, ME; Union, ME; Wells, ME; Neptune, NJ; East Greenbush, NY |
+| Video, no captions, already queued by earlier work | 4 | Brewer, ME; Sagadahoc County, ME; Pleasanton, TX; Petersburgh, NY — found again by this WO's sample, but a real meeting for each was already in the queue, so nothing new was added |
+
+For Union, ME and Neptune, NJ, the newest real meeting ran over 90
+minutes. Both were checked for a shorter recent meeting on the same
+government's page first, per the standing "long meetings" rule: Union,
+ME had one (35 minutes, queued instead of the 151-minute one); Neptune,
+NJ did not — its two next-newest real meetings ran even longer (121 and
+202 minutes) — so the original long meeting was queued rather than
+skipped.
+
+**Hand-check.** Every video found above was read by hand — its own
+title and government — before being queued or made into a page.
+
+| Result | Count of 16 | What it means |
+|---|---|---|
+| Confirmed, correct government | 13 | Every Town Hall Streams find (10) plus Jefferson, GA and Pleasanton, TX (iQM2) |
+| Wrong government — a real, different government's meeting | 3 | All iQM2: `boisecityid.iqm2.com` (filed under Boise **County**, ID) is really the City of Boise's own address; `tonawandatownny.iqm2.com` (filed under Tonawanda **city**, NY) is really the Town of Tonawanda's; `amherstny.iqm2.com` (filed under Amherst **County**, VA) is really the Town of Amherst, Erie County, **NY**'s |
+
+All three wrong ones turned out to already have their real government
+correctly on file elsewhere in the records — so nothing new needs
+minting, the three affected rows just needed their wrong address
+corrected (moved to a spare "other addresses tried" field, not deleted,
+per the standing rule). A fourth iQM2 result (Fishkill village, NY) was
+held back rather than guessed at: the government's own address on file
+is already correctly confirmed, but the SPECIFIC meeting this WO found
+reads "Town Board," which may belong to a neighboring, different real
+government sharing the same address — filed as its own open item rather
+than queued either way. Dyersville, IA's Cablecast page was also
+confirmed by hand in the browser: video plays, and the live captions
+match the source exactly.
+
+**Rerun count.** 26 of the platforms' real, open governments (matched by
+address on the vendor's own domain) were sampled this WO — 20 of iQM2's
+and all 11 real Town Hall Streams addresses found. iQM2 has more real
+open governments than were sampled this round; a full rerun is a
+reasonable next step once other concurrent coverage work settles.
+Cablecast's gap was scoped to the one known affected government
+(Dyersville, IA) — no broader rerun population exists for this fix.
+
+**Deploy status.** The code fix (`app/platforms/passive_verify.py`,
+`app/platforms/cablecast.py`) is on `main` after merge — live only after
+the next resolver deploy. Dyersville's own page is live now regardless
+(ingest is a direct API call, not deploy-gated). The 8 new queue lines
+and the pins backing them reach production tier-3 transcription only
+after the next resolver deploy.
+
+**Recommendation.** Deploy when convenient to pick up the 8 queued
+meetings and the corrected iQM2 addresses. Separately, ask whether
+Fishkill village, NY's real government is worth a closer look — it may
+turn out the same iQM2 address serves two real, different governments
+(a village and its neighboring town), which would need its own small
+fix once confirmed.
+
+**Rerun `scripts/build_backlog_toc.py` after this entry landed.**
+
 ## WO-343: an eScribe listing walker, closing the last of WO-333's five platform gaps [Done 2026-09-13]
 
 WO-333 built a shared step that walks from a confirmed government page to
