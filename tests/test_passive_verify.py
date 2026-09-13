@@ -1,4 +1,4 @@
-"""Tests for `app/platforms/passive_verify.py` (WO-333).
+"""Tests for `app/platforms/passive_verify.py` (WO-333, extended WO-341).
 
 Two layers, matching how the rest of this repo tests an orchestration
 module vs. an adapter: (1) unit tests against a small FAKE AssetFinder
@@ -8,6 +8,10 @@ correctness (already covered by that adapter's own test file); (2) one
 real, fixture-backed end-to-end test through the Granicus listing walker
 this WO added, and one through the real Franklin NH CivicPlus ranking
 scenario, to prove the wiring works against real pages, not just fakes.
+
+WO-341 added `_civicplus_walker()` (real fixtures: Hobart IN, Monroe
+County FL, Webb County TX -- the WO-333 residual misses this closes) and
+ranking-fix #4 (the Jefferson County WA `no_video_in_listing` shape).
 """
 
 import pytest
@@ -25,6 +29,7 @@ from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.models import ResolvedMeeting, TranscriptSegment
 from app.platforms.passive_verify import (
     _civicclerk_walker,
+    _civicplus_walker,
     _civicweb_walker,
     _escribe_walker,
     _legistar_walker,
@@ -907,3 +912,244 @@ async def test_real_hazelton_escribe_hub_walks_real_candidates_no_video():
     assert result.tier == 4
     assert result.candidates_checked == 2
     assert result.verdict == "listing_walked_no_video"
+
+
+# -- WO-341: `_civicplus_walker()` -- Hobart IN, Monroe County FL, Webb
+# County TX real fixtures (the WO-333 residual misses this closes), plus
+# ranking-fix #4 (Jefferson County WA's `no_video_in_listing` shape). --
+
+
+async def test_civicplus_walker_step1_agendacenter_category_real_hobart_park_board():
+    # Real, raw-saved page -- cityofhobart.org/AgendaCenter/
+    # Board-of-Park-Commissioners-8, fetched live 2026-09-13. `hub_url`
+    # below stands in for a confirmed-but-wrong starting page (Monroe/
+    # Webb's own WO-333 "confirmed URL was never the real listing page"
+    # shape) -- both routes serve the SAME real fixture, since it happens
+    # to link back to its own category URL; the walker discovers that
+    # link and walks it exactly like it would a real nav link on a
+    # different page.
+    category_url = (
+        "https://www.cityofhobart.org/AgendaCenter/Board-of-Park-Commissioners-8"
+    )
+    hub_url = "https://www.cityofhobart.org/Boards-Committees"
+    fixture_html = load_fixture("civicplus", "hobart_parkboard_agendacenter.html")
+    routes = {
+        hub_url: FakeResponse(status=200, text=fixture_html, url=hub_url),
+        category_url: FakeResponse(status=200, text=fixture_html, url=category_url),
+    }
+
+    with mock_session(routes):
+        candidates = await _civicplus_walker(hub_url)
+
+    assert candidates, "expected at least one real video-bearing row"
+    # CivicMedia links (the WO-341 video path) now come through
+    # `_is_real_video_link()` since `detect_platform()` recognizes them --
+    # this is the real per-video link this WO's own Hobart end-to-end
+    # resolve test (tests/test_civicmedia.py) confirms plays with real
+    # captions.
+    assert candidates[0]["url"].startswith(
+        "https://www.cityofhobart.org/CivicMedia?VID="
+    )
+    assert candidates[0]["date"] == "2026-08-10"
+
+
+async def test_civicplus_walker_step2_meeting_nav_link_real_monroe_county():
+    # Real, raw-saved pages -- fl-monroecounty2.civicplus.com/291/
+    # Boards-Committees (the WO-333 confirmed-but-wrong hub) links a
+    # plain "Meetings" nav item to monroecounty-fl.gov/meetings, which
+    # embeds a real, direct `monroecounty-fl.granicus.com/ViewPublisher.
+    # php?view_id=1` link -- fetched live 2026-09-13. Granicus's own
+    # listing-walk/resolve behavior on that URL is covered by its own
+    # test file, so it's faked here (isolating this walker's own nav-
+    # discovery logic, same "unit test against a FAKE AssetFinder" split
+    # the module docstring describes).
+    hub_url = "https://fl-monroecounty2.civicplus.com/291/Boards-Committees"
+    # The real "/meetings" nav link is host-relative, so it resolves
+    # against the tenant subdomain `hub_url` itself was fetched from
+    # (`urljoin()`, same as a real browser) -- the fixture content is the
+    # same real page either way (Monroe County's `www.monroecounty-fl.gov`
+    # white-labeled domain and its `fl-monroecounty2.civicplus.com`
+    # tenant both serve it, confirmed live).
+    meetings_url = "https://fl-monroecounty2.civicplus.com/meetings"
+    vendor_url = "https://monroecounty-fl.granicus.com/ViewPublisher.php?view_id=1"
+    routes = {
+        hub_url: FakeResponse(
+            status=200,
+            text=load_fixture("civicplus", "monroe_boards_committees.html"),
+            url=hub_url,
+        ),
+        meetings_url: FakeResponse(
+            status=200,
+            text=load_fixture("civicplus", "monroe_meetings.html"),
+            url=meetings_url,
+        ),
+    }
+    fake_granicus = _FakeFinder(
+        {
+            vendor_url: _resolved(
+                video_url="https://example.test/budget-meeting.mp4",
+                title="BUDGET MEETING 2026-09-09",
+                source_url=vendor_url,
+            )
+        }
+    )
+    fake_granicus.platform_name = "granicus"
+    register(fake_granicus)
+    try:
+        with mock_session(routes):
+            candidates = await _civicplus_walker(hub_url)
+    finally:
+        register(GranicusAssetFinder())  # restore the real one for later tests
+
+    assert candidates == [{"title": "", "date": None, "url": vendor_url}]
+
+
+async def test_civicplus_walker_step2_video_nav_link_real_webb_county():
+    # Real, raw-saved pages -- webbcountytx.gov/327/Agendas-Minutes (the
+    # WO-333 confirmed-but-wrong hub) links "Commissioners Court Live &
+    # Archived Videos"/"Live Broadcast & Archives" to /889/Live-Archived-
+    # Videos, which iframe-embeds `webbcountytx.swagit.com` directly --
+    # fetched live 2026-09-13. Swagit's own resolve() is faked here, same
+    # reasoning as the Monroe County test above.
+    hub_url = "https://www.webbcountytx.gov/327/Agendas-Minutes"
+    nav_url = "https://www.webbcountytx.gov/889/Live-Archived-Videos"
+    vendor_url = "https://webbcountytx.swagit.com"
+    # The real page has FOUR "video"/"meeting"-matching nav links --
+    # `_CIVICPLUS_MAX_VIDEO_NAV_LINKS` tries the first 3 (this exact one
+    # is 3rd, after the self-referencing "/327/Agendas-Minutes" link is
+    # excluded as `final_url`) -- mock all 3 so the walker's own real
+    # ordering is exercised, not just the one link that happens to matter.
+    bland = "<html><body>No video vendor link here.</body></html>"
+    routes = {
+        hub_url: FakeResponse(
+            status=200,
+            text=load_fixture("civicplus", "webb_agendas_minutes.html"),
+            url=hub_url,
+        ),
+        "https://www.webbcountytx.gov/889/Commissioners-Court-Live-Archived-Videos": (
+            FakeResponse(status=200, text=bland)
+        ),
+        "https://www.webbcountytx.gov/335/Commissioners-Court-Meeting-Dates-Deadli": (
+            FakeResponse(status=200, text=bland)
+        ),
+        nav_url: FakeResponse(
+            status=200,
+            text=load_fixture("civicplus", "webb_live_archived_videos.html"),
+            url=nav_url,
+        ),
+    }
+    fake_swagit = _FakeFinder(
+        {
+            vendor_url: _resolved(
+                video_url="https://example.test/commissioners-court.mp4",
+                title="Commissioners Court Meeting",
+                source_url=vendor_url,
+            )
+        }
+    )
+    fake_swagit.platform_name = "swagit"
+    register(fake_swagit)
+    try:
+        with mock_session(routes):
+            candidates = await _civicplus_walker(hub_url)
+    finally:
+        from app.platforms.swagit import SwagitAssetFinder
+
+        register(SwagitAssetFinder())  # restore the real one for later tests
+
+    assert candidates == [{"title": "", "date": None, "url": vendor_url}]
+
+
+def test_generic_meeting_links_matches_real_swagit_video_urls():
+    # Real, raw-saved (truncated to 20KB) page -- webbcountytx.new.
+    # swagit.com/views/482, the bare-tenant-root redirect target, fetched
+    # live 2026-09-13. Confirms the `/videos/\d` addition to
+    # `_MEETING_DETAIL_HINTS` (WO-341) actually matches Swagit's real
+    # per-meeting link shape -- before that fix, this generic fallback
+    # walker found zero candidates on a page that lists real, on-mission
+    # Commissioners Court meetings.
+    from app.platforms.passive_verify import _generic_meeting_links
+
+    html = load_fixture("civicplus", "webb_swagit_views_482_excerpt.html")
+    links = _generic_meeting_links(
+        html, "https://webbcountytx.new.swagit.com/views/482"
+    )
+    target = "https://webbcountytx.new.swagit.com/videos/399801"
+    urls = {c["url"] for c in links}
+    assert target in urls
+    real_titles = {c["title"] for c in links if c["url"] == target}
+    assert any("Commissioners Court" in t for t in real_titles)
+
+
+async def test_ranking_fix_4_tries_platform_listing_walker_after_no_video_in_listing():
+    # WO-341 fix #4 -- the Jefferson County WA shape: a confirmed
+    # AgendaCenter category page with real rows and NO video
+    # (`no_video_in_listing`, `candidates_checked>0`) used to return
+    # immediately without ever trying a listing walker. Real fixture:
+    # ks-desoto.civicplus.com's AgendaCenter page (already used by
+    # test_civicplus.py's own `test_real_desoto_listing_page_finds_zero_
+    # video_candidates` -- 12 real rows, every `td.media` link a YouTube
+    # channel/live shape `_is_real_video_link()` correctly rejects, so
+    # `NoVideoCandidateFound(candidates_checked=12)`).
+    #
+    # `_civicplus_walker` itself is swapped for a scripted fake here --
+    # this test is about the RANKING FIX calling the walker at all, not
+    # about the real walker's own logic (covered by the tests above).
+    from app.platforms import passive_verify as pv
+
+    hub_url = "https://ks-desoto.civicplus.com/AgendaCenter/City-Council-1"
+    fixture_html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+    # Not `.mp4`/any other direct-file-shaped extension -- `detect_platform()`
+    # would otherwise route it to the real, unmocked DirectFileAssetFinder
+    # (WO-303's `is_direct_file_url()`) instead of falling back to the
+    # walker's own declared "civicplus" platform, the thing this test
+    # actually wants to exercise.
+    real_video_url = "https://example.test/real-council-meeting"
+
+    async def fake_walker(url):
+        assert url == hub_url
+        return [{"title": "City Council", "date": "2026-09-01", "url": real_video_url}]
+
+    class _DelegatingCivicPlusFinder(AssetFinder):
+        # `_walk_candidates()` (called by the ranking-fix's own retry of
+        # `_try_listing_walker`) uses `detect_platform(candidate_url)`,
+        # which won't recognize `example.test` -- falls back to the
+        # walker's own declared platform ("civicplus"), so the fake
+        # candidate resolution has to be registered under that SAME key
+        # the real `CivicPlusAssetFinder` already owns. Rather than
+        # replacing it outright (which would also fake out the real,
+        # load-bearing `ks-desoto` fixture parse this test needs to
+        # genuinely raise `NoVideoCandidateFound(candidates_checked=12)`),
+        # this delegates to the real finder for everything except the
+        # one scripted candidate URL.
+
+        platform_name = "civicplus"
+
+        def __init__(self):
+            self._real = CivicPlusAssetFinder()
+
+        async def resolve(self, url: str) -> ResolvedMeeting:
+            if url == real_video_url:
+                return _resolved(
+                    video_url=real_video_url,
+                    title="City Council",
+                    source_url=real_video_url,
+                )
+            return await self._real.resolve(url)
+
+    pv._ensure_walkers_registered()  # make sure the real registrations exist first
+    original_walker = pv._LISTING_WALKERS["civicplus"]
+    original_civicplus_finder = CivicPlusAssetFinder()
+    pv.register_listing_walker("civicplus", fake_walker)
+    register(_DelegatingCivicPlusFinder())
+    try:
+        routes = {hub_url: FakeResponse(status=200, text=fixture_html, url=hub_url)}
+        with mock_session(routes):
+            result = await verify_hub(hub_url, platform_hint="civicplus")
+    finally:
+        pv.register_listing_walker("civicplus", original_walker)
+        register(original_civicplus_finder)
+
+    assert result.video_found is True
+    assert result.meeting_url == real_video_url
+    assert result.ranking_fix_applied is True

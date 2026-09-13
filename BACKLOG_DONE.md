@@ -73,6 +73,106 @@ entry on the wrong-platform-on-file problem found this WO.
 table; `research/ENUMERATION_METHODS.md` §342 has the full write-up,
 including the real eScribe calendar request this WO found and used.
 
+## WO-341: CivicPlus's own video widget gets a real adapter, and the passive-verify step learns to walk a wrong starting page to the right one [Done 2026-09-13]
+
+WO-333 built the shared step that walks a confirmed government page to a
+real meeting and checks it for video. Four CivicPlus governments were
+left over from that work as open questions: Hobart IN had a real video
+on a system nothing in this repo could read, and Monroe County FL, Webb
+County TX, and Jefferson County WA all had a confirmed page that turned
+out to be the wrong one to start from. This WO closes the first gap and
+most of the second.
+
+**What was built.** `app/platforms/civicmedia.py` — a new adapter for
+CivicPlus's own "CivicMedia" video product (backed by TikiLive), the
+video system Hobart, IN uses. Given a government's own CivicMedia page,
+it reads the real video title, finds the real playable video file, and
+fetches real closed captions when the video has them. `app/platforms/
+passive_verify.py`'s `_civicplus_walker()` — given any confirmed CivicPlus
+page, even the wrong one, it looks at that government's own site
+navigation for a real agenda category, a real "Videos"/"Meetings"-labeled
+link, or the site's separate Calendar tool, and checks each for a real
+video. `/videos/` was also added to the small list of link shapes the
+existing generic listing-walker already recognizes (Swagit's own video
+pages use that shape and were being missed).
+
+**Tested on Hobart IN first**, per this repo's own rule of testing
+against a real page before building from it: the Park Board meeting from
+August 10, 2026 now resolves with a real, playable video and 708 real
+caption lines.
+
+**Then re-tested on the three CivicPlus governments WO-333 left open**:
+
+| Government | Before this WO | After this WO | What it means |
+|---|---|---|---|
+| Monroe County FL | No video found | Real video, real captions | A real Budget Meeting from September 9, 2026 |
+| Webb County TX | No video found | Real video, no captions | A real Commissioners Court meeting from September 2, 2026 |
+| Jefferson County WA | No video found | No video found | Still open — see caution below |
+
+**Then run on a 20-government sample** of the largest CivicPlus
+governments with no page and no queue line yet, taken from the coverage
+registry:
+
+| Result | Count of 20 | What it means |
+|---|---|---|
+| Real video, real captions | 1 | East Baton Rouge Parish, LA — ingested as a real page |
+| Real video, no captions | 1 | Pierce County, WA — but hand-check rejected it, see caution |
+| Real video, on YouTube | 1 | Hampden County, MA — a lead only, never fetched, per this repo's own rule |
+| Meeting found, no video | 8 | A real listing was seen, no video on it |
+| No meeting found | 9 | Neither a listing nor a meeting was found on the page tried |
+
+Comparing the same 20 governments against the code as it stood before
+this WO: 2 of the 20 changed — Hampden County (no video found before, a
+YouTube lead after) and East Baton Rouge Parish (no video found before,
+real video and real captions after). The other 18 read the same both
+ways.
+
+**Every video found was read by hand before being counted.** East Baton
+Rouge Parish's video is a real, current Council Zoning meeting — ingested.
+Pierce County WA's video turned out to be a stale meeting from May 2022
+for a board that may not even be this government's own — not counted,
+not queued, and left alone in the research file since another concurrent
+work order already owns that government's queue entry (a discrepancy
+worth someone checking, filed in `BACKLOG.md`). Hampden County's video is
+on YouTube, so it was never opened at all, per the standing rule against
+fetching YouTube directly — recorded as a lead only.
+
+**Caution.** Jefferson County WA's real video was not found. WO-333's
+own earlier investigation already traced it to a direct video file
+linked from inside one meeting's own agenda document, one level deeper
+than any of this WO's new checks reach — filed as its own `BACKLOG.md`
+entry rather than guessed at from one example. Rowan County NC, one of
+the 20 sampled governments, resolved through a different video system
+than the research file expected — also filed, not guessed at. CivicPlus's
+CivicMedia video files are time-limited signed links, the same shape
+BoxCast already has — the Archive already re-fetches BoxCast's links
+fresh each time someone watches the page, and now does the same for
+CivicMedia, so a page doesn't go dark after its first day.
+
+**Recommendation.** Deploy the resolver — Hobart's real page and the
+Monroe County FL / Webb County TX fixes only take effect once
+`app/platforms/` ships. The one new Archive page (East Baton Rouge
+Parish) is already live now — ingest goes straight to the Archive, no
+deploy needed for it specifically, but it only stays resolvable/re-fetchable
+by these new code paths after the resolver deploy too.
+
+**What needs a deploy.** `app/platforms/civicmedia.py`,
+`app/platforms/passive_verify.py`, `app/platforms/base.py`,
+`app/platforms/__init__.py`, `archive/utils/video_refresh.py`,
+`archive/db/crud.py` all changed — none of this is live until the
+resolver and the Archive are both deployed.
+
+**rtr-business.** `research/wo341_report.csv` (20 rows), `research/
+wo341_apply_to_jc.py`, `research/wo341_jc_applied_gov_ids.txt`,
+`research/ENUMERATION_METHODS.md` §329 all updated/added — left
+uncommitted for the conductor to commit with explicit paths, per this
+round's rule against a subagent committing there itself.
+
+**A rerun of WO-338's full open-CivicPlus population would now cover
+more governments than before this WO** — see `BACKLOG.md`'s CivicPlus
+entry (now closed) and this WO's own final report for the exact count;
+not run here, since WO-338 owns that rerun.
+
 ## WO-333: a shared step that walks a confirmed hub to a real meeting, so the pipeline resolves video on its own again [Done 2026-09-13]
 
 Ryan's own framing: the pipeline got dependent on a human checking the

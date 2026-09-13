@@ -105,6 +105,11 @@ CANARY_URLS: dict[str, list[str]] = {
     # long as real per-meeting candidates come back (31 rows, 22 with a
     # real video link, confirmed at canary-build time).
     "civicplus": ["https://nc-durham.civicplus.com/AgendaCenter/City-Council-4"],
+    # Hobart, IN's CivicMedia (TikiLive-hosted) video -- confirmed live
+    # 2026-09-13 (WO-341), a real resolve with real video AND real
+    # captions (708 caption segments) -- see civicmedia.py's own module
+    # docstring.
+    "civicmedia": ["https://www.cityofhobart.org/CivicMedia?VID=326"],
     "civicweb": [
         "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
     ],

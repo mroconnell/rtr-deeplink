@@ -646,6 +646,219 @@ async def _civicclerk_walker(hub_url: str) -> List[dict]:
     ]
 
 
+# WO-341: a real, confirmed gap in WO-333's own residual-miss list --
+# Monroe County FL and Webb County TX's phase-3-confirmed hub URLs were
+# never the real listing page at all (a `/Boards-Committees` page, a
+# `/Pay` page -- see docs/investigations/wo333_verification_walk.md's
+# "CivicPlus, wrong starting URL" note). `_resolve_and_walk()` already
+# falls back to a platform's registered listing walker when the given
+# hub URL itself has zero real candidates -- CivicPlus had none
+# registered, so it fell all the way through to
+# `_probe_first_party_agenda_pages()`'s canonical `/AgendaCenter` guess,
+# which 404s for a tenant (like Monroe County's) that doesn't happen to
+# use that exact path. This walker instead reads the CONFIRMED page's
+# own real site navigation -- every real CivicPlus tenant checked here
+# (Hobart IN, Monroe County FL, Webb County TX, Jefferson County WA)
+# links its real agenda/video hub from ordinary nav/related-page links,
+# not just the one URL phase 3 happened to land on.
+_CIVICPLUS_AGENDACENTER_CATEGORY_RE = re.compile(
+    # A real category-listing link (e.g. "/AgendaCenter/Board-of-Park-
+    # Commissioners-8") -- excludes "/AgendaCenter/PreviousVersions/..."
+    # (a per-document view link, same trailing `-\d+` shape but not a
+    # listing) and "/AgendaCenter/ViewFile/..." (a direct file link),
+    # both real, confirmed noise on every real AgendaCenter page checked.
+    r"/AgendaCenter/(?!PreviousVersions|ViewFile)[^\"'#?]+-\d+",
+    re.IGNORECASE,
+)
+_CIVICPLUS_CALENDAR_EID_RE = re.compile(r"/Calendar\.aspx\?EID=\d+", re.IGNORECASE)
+_CIVICPLUS_EID_NUM_RE = re.compile(r"EID=(\d+)", re.IGNORECASE)
+_CIVICPLUS_CALENDAR_TITLE_RE = re.compile(
+    r"<title>\s*Calendar\s*[•\-]\s*([^<]*?)\s*</title>", re.IGNORECASE
+)
+# Real, confirmed nav-link text this WO found linking a CivicPlus
+# tenant's real video hub from an unrelated confirmed page -- Webb
+# County TX's own "Commissioners Court Live & Archived Videos"/"Live
+# Broadcast & Archives" nav items (found live on its `/327/
+# Agendas-Minutes` page, nowhere near the real video hub itself).
+# "meeting" added after Monroe County FL confirmed a real, plainer case:
+# its own `/meetings` ("BOCC Meetings & Agendas") page, linked from its
+# `/291/Boards-Committees` page with no "video"/"broadcast" wording at
+# all, is a real listing embedding a direct
+# `monroecounty-fl.granicus.com/ViewPublisher.php?view_id=1` link --
+# Monroe County's real Calendar.aspx `EID=` events (step 3, tried first
+# for a bare calendar walk since it needs no anchor-text match at all)
+# turned out to be ordinary county calendar entries (park closures,
+# waste collection), not Commission meetings, so this nav-text step is
+# what actually finds the real video hub for this tenant.
+_CIVICPLUS_VIDEO_NAV_RE = re.compile(r"video|broadcast|webcast|meeting", re.IGNORECASE)
+
+_CIVICPLUS_MAX_AGENDACENTER_CATEGORIES = 4
+_CIVICPLUS_MAX_VIDEO_NAV_LINKS = 3
+_CIVICPLUS_MAX_CALENDAR_EIDS = 8
+
+
+async def _add_vendor_candidate(
+    add: Callable[[Optional[str], Optional[str], Optional[str]], None],
+    vendor_url: str,
+    vendor_platform: str,
+    *,
+    title: Optional[str] = None,
+) -> None:
+    """A vendor link found by scanning some OTHER page (`find_platform_
+    link()`, in `_civicplus_walker()`'s steps 2/3) is very often itself a
+    LISTING for that vendor, not one specific meeting -- confirmed live,
+    Monroe County FL's own `/meetings` page links straight to
+    `monroecounty-fl.granicus.com/ViewPublisher.php?view_id=1`, Granicus's
+    channel-listing page, not a single clip. `_walk_candidates()` (the
+    caller of this walker's return value) only ever calls a candidate's
+    OWN `.resolve()` directly -- it never consults that platform's own
+    registered listing walker the way the top-level `_resolve_and_walk()`
+    does, so handing it a raw listing URL here would just fail quietly
+    (`CalendarPageError`/`NoVideoCandidateFound` caught and skipped, see
+    that function's own docstring) instead of ever reaching Granicus's
+    real, already-working `_granicus_walker()`.
+    Resolves fully here instead (reusing `_resolve_and_walk()`, which
+    already falls back to the vendor's own listing walker) and, only when
+    that found real video, adds the SPECIFIC resolved meeting's own URL
+    as the candidate -- already proven playable, so `_walk_candidates()`'s
+    later re-resolve of it is a cheap confirmation, not a second cold
+    search. Adds nothing when no real video was found, same as this
+    walker's other steps only ever surfacing video-bearing rows.
+    """
+    result = await _resolve_and_walk(vendor_url, vendor_platform)
+    if result.video_found and result.meeting_url:
+        add(title, None, result.meeting_url)
+
+
+async def _civicplus_walker(hub_url: str) -> List[dict]:
+    """Given ANY confirmed CivicPlus URL (not necessarily a real
+    AgendaCenter listing itself), find a real video-bearing meeting.
+    Tries, in order, the highest-fidelity source first:
+
+    1. AgendaCenter category pages linked from the confirmed page (or the
+       canonical `/AgendaCenter` guess as a last resort) -- reuses
+       `civicplus.py`'s own already-proven `tr.catAgendaRow` parser, so a
+       real per-meeting title/date/video link comes back exactly as it
+       would from a category page phase 3 confirmed directly.
+    2. Nav links whose own anchor text/href suggests a dedicated video
+       hub page (confirmed real shape: Webb County TX's "Commissioners
+       Court Live & Archived Videos") -- fetched and scanned with
+       `find_platform_link()` for a real, non-CivicPlus vendor link
+       (confirmed real: a `<iframe src="https://webbcountytx.swagit.
+       com">` on exactly this kind of page).
+    3. CivicPlus's own `Calendar.aspx` module -- a real, distinct listing
+       from AgendaCenter (confirmed live: Monroe County FL and Jefferson
+       County WA both link `/Calendar.aspx?EID=<id>` event pages directly
+       from their own homepage). Newest EIDs first (EID is assigned
+       sequentially at creation time, confirmed by the real numbers found
+       on both sites) -- each event page scanned the same way as step 2.
+
+    Stops and returns as soon as a step finds anything, rather than
+    spending more real HTTP requests on a lower-fidelity source once a
+    higher one already answered -- same "several most-recent candidates,
+    not an unbounded scan" posture every walker/retry-limit in this repo
+    already uses.
+    """
+    # Local import: `civicplus.py`'s own module-level imports (granicus.py
+    # for `US_STATE_ABBREVIATIONS`, jurisdiction_enrich) are heavier than
+    # this module wants to require just to register a walker -- same
+    # lazy-import reasoning `_ensure_walkers_registered()`'s own docstring
+    # gives for every bespoke walker here.
+    from .civicplus import CivicPlusAssetFinder
+
+    html, final_url, err = await _fetch(hub_url)
+    if err or html is None:
+        return []
+    base = f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}"
+    soup = BeautifulSoup(html, "html.parser")
+
+    candidates: List[dict] = []
+    seen_urls: set = set()
+
+    def _add(title: Optional[str], date: Optional[str], url: Optional[str]) -> None:
+        if not url or url in seen_urls:
+            return
+        seen_urls.add(url)
+        candidates.append({"title": title or "", "date": date, "url": url})
+
+    # Step 1: AgendaCenter category pages.
+    finder = CivicPlusAssetFinder()
+    category_links = {
+        urljoin(base, m.group(0))
+        for m in _CIVICPLUS_AGENDACENTER_CATEGORY_RE.finditer(html)
+    }
+    if not category_links:
+        category_links = {f"{base}/AgendaCenter"}
+    for category_url in list(category_links)[:_CIVICPLUS_MAX_AGENDACENTER_CATEGORIES]:
+        category_html, category_final, category_err = await _fetch(category_url)
+        if category_err or category_html is None:
+            continue
+        category_soup = BeautifulSoup(category_html, "html.parser")
+        for row in finder._find_candidate_rows(category_soup, category_final):
+            if row.get("url"):
+                _add(row.get("title"), row.get("date"), row["url"])
+    if candidates:
+        return candidates
+
+    # Step 2: video-shaped nav links.
+    video_nav_urls: List[str] = []
+    for a in soup.find_all("a", href=True):
+        text = a.get_text(" ", strip=True)
+        href = a["href"]
+        if not (
+            _CIVICPLUS_VIDEO_NAV_RE.search(text) or _CIVICPLUS_VIDEO_NAV_RE.search(href)
+        ):
+            continue
+        full = urljoin(base, href)
+        if full != final_url and full not in video_nav_urls:
+            video_nav_urls.append(full)
+    for nav_url in video_nav_urls[:_CIVICPLUS_MAX_VIDEO_NAV_LINKS]:
+        nav_html, nav_final, nav_err = await _fetch(nav_url)
+        if nav_err or nav_html is None:
+            continue
+        match = find_platform_link(
+            nav_html, nav_final, exclude=frozenset({"youtube", "civicplus"})
+        )
+        if match:
+            vendor_url, vendor_platform = match
+            await _add_vendor_candidate(_add, vendor_url, vendor_platform)
+    if candidates:
+        return candidates
+
+    # Step 3: Calendar.aspx?EID= events, newest first.
+    eid_links = {
+        urljoin(base, m.group(0)) for m in _CIVICPLUS_CALENDAR_EID_RE.finditer(html)
+    }
+    if not eid_links:
+        cal_html, cal_final, cal_err = await _fetch(f"{base}/Calendar.aspx")
+        if not cal_err and cal_html:
+            eid_links = {
+                urljoin(cal_final, m.group(0))
+                for m in _CIVICPLUS_CALENDAR_EID_RE.finditer(cal_html)
+            }
+
+    def _eid_num(url: str) -> int:
+        match = _CIVICPLUS_EID_NUM_RE.search(url)
+        return int(match.group(1)) if match else 0
+
+    for eid_url in sorted(eid_links, key=_eid_num, reverse=True)[
+        :_CIVICPLUS_MAX_CALENDAR_EIDS
+    ]:
+        eid_html, eid_final, eid_err = await _fetch(eid_url)
+        if eid_err or eid_html is None:
+            continue
+        match = find_platform_link(
+            eid_html, eid_final, exclude=frozenset({"youtube", "civicplus"})
+        )
+        if match:
+            vendor_url, vendor_platform = match
+            title_match = _CIVICPLUS_CALENDAR_TITLE_RE.search(eid_html)
+            title = title_match.group(1) if title_match else None
+            await _add_vendor_candidate(_add, vendor_url, vendor_platform, title=title)
+
+    return candidates
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -657,6 +870,7 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("legistar", _legistar_walker)
     register_listing_walker("escribe", _escribe_walker)
     register_listing_walker("civicclerk", _civicclerk_walker)
+    register_listing_walker("civicplus", _civicplus_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks
@@ -673,11 +887,24 @@ def _ensure_walkers_registered() -> None:
 # -- a bespoke one (Granicus's RSS feed, ChampDS's search API) is always
 # preferred where one exists, since it carries a real title/date and
 # doesn't depend on a page's own link text/href shape holding up.
+#
+# `/videos/\d` added WO-341, 2026-09-13: Swagit's own per-meeting URL
+# shape (`{tenant}.swagit.com/videos/{id}`, confirmed live on Webb County
+# TX's real "Commissioners Court Meeting"/"Commissioners Court Special
+# Meeting" rows) wasn't matched by anything above -- a bare Swagit tenant
+# root redirects to its own `/views/{id}` archive LISTING page (no
+# registered Swagit listing walker exists yet), so without this the
+# generic scan silently found zero candidates on a page that lists real,
+# on-mission meetings. Scoped the same way `show/\d` is (a path segment
+# followed by a real digit), not a bare `/videos/` substring, so a
+# `/videos/{id}/transcript` or `/videos/{id}/agenda` sibling link still
+# matches too (harmless: `_walk_candidates()` just spends one extra,
+# cheap resolve() call on it before moving to the next real candidate).
 _MEETING_DETAIL_HINTS = re.compile(
     r"(MeetingDetail|meeting-detail|MeetingInformation|Meeting\.aspx|"
     r"ViewMeeting|/meeting/|/meetings/|/event/|/events/|clip_id|player/clip|"
     r"MediaPlayer\.php|AgendaViewer\.php|show/\d|/vod/|AgendaViewer|"
-    r"agenda-and-minutes|page/[a-z0-9-]+-\d+$)",
+    r"agenda-and-minutes|page/[a-z0-9-]+-\d+$|/videos/\d)",
     re.IGNORECASE,
 )
 
@@ -1123,5 +1350,35 @@ async def _verify_hub_impl(
                     )
                     vendor_result.ranking_fix_applied = True
                     return vendor_result
+
+        # WO-341 fix #4: neither the direct resolve nor the same-page
+        # vendor-link scan above found video -- try the platform's own
+        # registered listing walker on the ORIGINAL hub page too, not
+        # just on `candidate_url` (`_resolve_and_walk()`'s own fallback
+        # already tried that, but only reaches the walker at all when
+        # `candidate_url` itself had zero real candidates). Real,
+        # confirmed gap this closes: Jefferson County WA's confirmed
+        # AgendaCenter category page has 15 real candidate rows and
+        # `NoVideoCandidateFound(candidates_checked=15)` -- a genuinely
+        # confident "no video in THIS category" answer, so
+        # `_resolve_and_walk()`'s own `no_video_in_listing` branch
+        # returns immediately without ever trying a listing walker (that
+        # branch already has its confident real answer for the category
+        # it checked). But the same GOVERNMENT can have a different real
+        # video-bearing category or video hub page the walker can reach
+        # from the hub page's own site navigation -- this is exactly what
+        # `_civicplus_walker()` was built to find (step 1 tries OTHER
+        # AgendaCenter categories first, for exactly this reason).
+        walked = await _try_listing_walker(hub_url, platform)
+        if walked is not None and (
+            walked.video_found or (not result.meeting_found and walked.meeting_found)
+        ):
+            walked.evidence = (
+                f"ranking fix: {platform!r}'s own listing walker on the original "
+                f"hub page found real video after the direct resolve did not -- "
+                f"{walked.evidence}"
+            )
+            walked.ranking_fix_applied = True
+            return walked
 
     return result

@@ -186,9 +186,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (201)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
   [NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url`…
-  [NEEDS-AUDIT] No adapter for CivicPlus's "CivicMedia" video widget…
+  [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
+  [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
@@ -2136,12 +2137,19 @@ of human step they need.
   - **Constraint**: don't blank-overwrite `known_platform` from a single failed resolve alone — Missoula's own case shows the URL itself can just be pointed at the wrong page for the row's real platform, not necessarily that the platform is unknown.
   - **History**: `BACKLOG_DONE.md`'s WO-343 entry; `rtr-business/research/wo343_report.csv` for the full 20-row table; `rtr-business/research/ENUMERATION_METHODS.md` §342.
 
-- **[NEEDS-AUDIT] No adapter for CivicPlus's "CivicMedia" video widget (TikiLive-hosted), confirmed real on Hobart city, IN.**
-  - **Issue**: WO-336 (2026-09-13) hand-checked `cityofhobart.org/CivicMedia?VID=326` (also reachable via that site's own AgendaCenter "Videos" tab). The real, on-mission video ("Video - Park Board 08-10-26") is embedded via `<iframe id="videoPlayer" src="https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=160547&autoplay=yes">` — CivicPlus's own CivicMedia product, backed by TikiLive's API, not any platform `app/platforms/` already resolves (checked: no `tikilive`/`civicmedia` adapter exists).
-  - **Impact**: Hobart city, IN (`us:place:1834114`) stays no-video-found even though a real meeting video exists, and any other CivicPlus customer using the CivicMedia widget (unknown how common — not surveyed this WO) has the same gap.
-  - **Next action**: build a `tikilive`/`civicmedia` adapter once a second real example turns up (this repo's own working convention: one sample isn't enough to build from, per `CLAUDE.md`'s adapter-building rule) — confirm the `embed?scheme=embedVod&videoId=` shape holds and find whether TikiLive exposes captions/duration via a plain API the way Cablecast's `cablecastapi` does, or only the signed iframe.
-  - **Constraint**: not yet known whether this is common enough to be worth a dedicated adapter versus a one-off; don't build from this single sample alone.
-  - **History**: WO-336, 2026-09-13 (this WO's Part 3 rider list).
+- **[NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop deeper than any listing walker reaches — inside an individual row's own agenda/minutes document, not a `td.media` link.**
+  - **Issue**: WO-341 (2026-09-13) confirmed live: `www.co.jefferson.wa.us/AgendaCenter` has 15 real (title+date) rows, none with a `td.media` video link — `_civicplus_walker()`'s own nav-link scan and `Calendar.aspx?EID=` walk (built this WO) both come back empty too, since neither the confirmed page nor its nav links nor its newest calendar events carry a recognizable vendor link. WO-333's own investigation doc already named the real vendor as "a direct file," reachable only by opening an individual row's agenda/minutes PDF and finding a link inside it — not built this WO (a single-tenant PDF-drilling feature, not a generalizable pattern across the 3 real tenants a listing walker was built from).
+  - **Impact**: Jefferson County WA (`us:county:53031`) stays a confident tier-4 "meeting found, no video" rather than reaching the real video that exists — one government, not surveyed for prevalence elsewhere.
+  - **Next action**: once a second real CivicPlus tenant shows the same "video only inside an agenda PDF" shape, build a bounded PDF-link-scan step (open the row's own `agenda_link`, regex-scan for a recognized vendor URL) — one sample isn't enough to generalize from yet, per `CLAUDE.md`'s adapter-building rule.
+  - **Constraint**: don't build a PDF-fetching step from this one tenant alone — real cost (PDF fetch + parse per row) for an unconfirmed-common shape.
+  - **History**: `docs/investigations/wo333_verification_walk.md` ("CivicPlus, video one hop deeper"), `BACKLOG_DONE.md`'s WO-341 entry.
+
+- **[NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry known_platform that looks wrong, and a queued tier-3 video that hand-check rejects as stale/wrong-body.**
+  - **Issue**: WO-341's own 20-government CivicPlus sample (largest-population open rows, `research/coverage_registry/coverage_registry.csv`) found two real, confirmed data-quality problems it didn't fix itself, since neither is this WO's platform to correct: (1) Rowan County NC (`us:county:37159`, registry `known_platform=civicplus`) — the real link found on its confirmed page resolves as CivicClerk, not CivicPlus, and errors out (`resolve_error`); the registry's own platform tag looks stale/wrong for this tenant. (2) Pierce County WA (`us:county:53053`) is already `queued=true`/`reject_reason=video-no-captions-queued` in `jurisdiction_coverage.csv` (owned by another concurrent WO, not touched by this one) — but `verify_hub()` independently found a DIFFERENT real Vimeo video on its confirmed hub page, "SSHAP Executive Board Meeting - May 6, 2022": a hand-read confirms this is stale (over 4 years old) and not clearly Pierce County's own governing body. Worth checking whether the ALREADY-queued tier-3 entry for Pierce County is this same wrong video or a different, real one.
+  - **Impact**: Rowan County NC's real platform is misidentified in the registry (low-impact by itself — this WO left its `jurisdiction_coverage.csv` row alone rather than guess a re-tag). Pierce County WA risks a wrong/stale video reaching the tier-3 transcription queue if the already-queued entry is the same one this WO's hand-check rejected.
+  - **Next action**: whoever owns Pierce County WA's existing queue entry should confirm whether it's the same stale 2022 Vimeo video or a different, real one before it gets transcribed. Rowan County NC needs a fresh phase-3-style platform check, not a guess from this WO.
+  - **Constraint**: this WO deliberately did not touch either row (Pierce is owned by another concurrent WO's queue entry; Rowan's mismatch needs a real re-check, not a guessed re-tag).
+  - **History**: `research/wo341_report.csv` (rtr-business), `BACKLOG_DONE.md`'s WO-341 entry.
 
 - **[NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung indefinitely on one real domain (rankincounty.org, Rankin County MS), reproduced twice, root cause not isolated.**
   - **Issue**: WO-321 (2026-09-12) hit a hang partway through a 220-domain sweep that otherwise finished in under 3 minutes. Reproduced a second time in isolation (`--limit 1 --concurrency 1`, same domain) with the same result — still hanging after 60+ seconds, so it isn't thread contention. The government's own homepage answers a plain `curl` in well under a second, so this isn't a dead host; the hang is inside one of recon's other steps (DNS lookup, robots.txt, or the wayback/common-crawl probes — `cdx_healthy` was already `False` for this run, so the wayback branch should have been skipped, but that wasn't independently confirmed by isolating each step).
