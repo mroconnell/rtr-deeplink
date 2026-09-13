@@ -102,7 +102,20 @@ class CivicPlusAssetFinder(AssetFinder):
     # since -- unlike IQM2 -- every row here already came from the one
     # page fetch already in hand, so this bounds *how far back* a stale
     # video is worth surfacing, not network cost.
-    _RETRY_LIMIT = 5
+    #
+    # WO-333, 2026-09-13: raised from 5 to 15 after a real, confirmed
+    # miss -- Franklin, NH's real AgendaCenter page (see WO-331's
+    # positive-control run, `tests/fixtures/civicplus/
+    # franklinnh_agendacenter.html`) posts audio-only SoundCloud links on
+    # several of its most recent rows before the next real Vimeo video,
+    # which landed at row 6 -- one past the old limit of 5. The old limit
+    # reported "Checked 5 ... found no real video link" on a page that,
+    # walked two rows further, has 26 real video candidates. 15 is not a
+    # proof against every possible gap (a government could still post
+    # more than 15 non-video rows between videos), just a limit wide
+    # enough to clear this real, measured case without scanning
+    # unboundedly far back on every page.
+    _RETRY_LIMIT = 15
 
     def __init__(self):
         self.headers = {

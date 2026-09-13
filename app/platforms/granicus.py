@@ -1360,3 +1360,86 @@ class GranicusAssetFinder(AssetFinder):
                         )
 
         return jurisdiction, body, item_date
+
+
+_RSS_ITEM_RE = re.compile(r"<item>(?:(?!</item>).)*?</item>", re.DOTALL)
+_RSS_ITEM_TITLE_RE = re.compile(r"<title>([^<]*)</title>")
+_RSS_ITEM_CLIP_ID_RE = re.compile(r"clip_id=(\d+)")
+
+
+async def list_recent_video_meetings(
+    url: str, *, limit: int = 15
+) -> List[Dict[str, Optional[str]]]:
+    """WO-333: the minimal "list what's on this tenant" step for Granicus,
+    same idea as WO-306/308's TelVue/ChampDS listing helpers. Confirmed
+    live 2026-09-13 on Prince William County, VA (`pwcgov.granicus.com`,
+    view_id=23): `find_platform_link()` on a government's own page
+    sometimes surfaces the AGENDA-mode RSS feed
+    (`ViewPublisherRSS.php?view_id=X&mode=agendas`), whose `<link>`
+    entries are `AgendaViewer.php?...` pages -- these carry no video at
+    all even when a clip_id is present, because the agenda feed lists
+    every meeting an agenda was posted for, video or not. The VIDEO-mode
+    feed (`mode=video`, already used by `_fetch_channel_info()` above for
+    single-clip metadata, see `tests/fixtures/granicus/
+    pwcva_view23_rss_video.xml`) only lists meetings that actually have a
+    video attached, with `<link>` already in the real `MediaPlayer.php?
+    view_id=X&clip_id=Y` shape `GranicusAssetFinder.resolve()` expects --
+    so this function always uses `mode=video` regardless of what mode the
+    input URL's own feed (if it was one) carried, and accepts ANY
+    granicus.com URL that carries a `view_id` query param (an
+    AgendaViewer/MediaPlayer/ViewPublisher/ViewPublisherRSS link all do).
+
+    Returns up to `limit` items, newest first (the feed's own order --
+    confirmed live, not re-sorted here), as
+    `{"title", "date", "url"}` dicts ready to feed straight into
+    `GranicusAssetFinder.resolve()` via `url`. Returns `[]` if the input
+    URL has no `view_id`, or the feed is unreachable/empty -- a
+    best-effort listing step, not a guaranteed one, same posture as
+    `_fetch_channel_info()` above.
+    """
+    query = parse_qs(urlparse(url).query)
+    view_id = query.get("view_id", [None])[0]
+    if not view_id:
+        return []
+    domain = urlparse(url).netloc
+    rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                rss_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    return []
+                xml = await response.text()
+    except Exception:
+        logger.warning("Granicus video-RSS fetch failed for %s", rss_url, exc_info=True)
+        return []
+
+    items: List[Dict[str, Optional[str]]] = []
+    for item_xml in _RSS_ITEM_RE.findall(xml)[:limit]:
+        clip_match = _RSS_ITEM_CLIP_ID_RE.search(item_xml)
+        if not clip_match:
+            # An item with no clip_id in its <link> has no video attached
+            # (same "video feed only lists real video" property the module
+            # docstring above describes) -- not a real video candidate.
+            continue
+        clip_id = clip_match.group(1)
+        title_match = _RSS_ITEM_TITLE_RE.search(item_xml)
+        title = title_match.group(1).strip() if title_match else ""
+        date = None
+        parts_tag = re.search(r"<gran:pubDateParts\b[^>]*/?>", item_xml)
+        if parts_tag:
+            tag = parts_tag.group(0)
+            yr = re.search(r"yr=['\"](\d{4})['\"]", tag)
+            mo = re.search(r"mo=['\"](\d{1,2})['\"]", tag)
+            day = re.search(r"day=['\"](\d{1,2})['\"]", tag)
+            if yr and mo and day:
+                date = f"{int(yr.group(1)):04d}-{int(mo.group(1)):02d}-{int(day.group(1)):02d}"
+        items.append(
+            {
+                "title": title,
+                "date": date,
+                "url": f"https://{domain}/MediaPlayer.php?view_id={view_id}&clip_id={clip_id}",
+            }
+        )
+    return items

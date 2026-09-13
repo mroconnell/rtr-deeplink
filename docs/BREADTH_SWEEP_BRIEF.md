@@ -79,6 +79,16 @@ For every government in the candidate list:
      a CivicPlus signature; the calendar feed is a cheap meeting list
      (body, date, time) for sites without an AgendaCenter. Feeds carry no
      video.
+   WO-333 (2026-09-13) built the equivalent of this step for the
+   resolver's own `app/platforms/` pipeline (a separate codebase from
+   rtr-discovery, used by the `wo3NN_resolve_diagnostic.py` sweep family,
+   not by Breadth) -- `app/platforms/passive_verify.py`'s `verify_hub()`,
+   with the same Granicus video-feed-before-agenda-table rule, plus new
+   listing walkers for Legistar and CivicWeb ported from `meeting_url_
+   finder.py`'s already-validated Step 2/Step 3 lookups (see that WO's
+   `docs/investigations/wo333_verification_walk.md` for the full
+   writeup) -- worth checking before building a fourth independent
+   implementation of any of these three platforms' listing behavior.
 2. **Plain HTTP with honest headers** for governments with a domain but
    no signature: fetch the home page and one hop of meeting links, look
    for a platform link. "Works" means the listing or a platform link was

@@ -121,10 +121,15 @@ async def test_real_desoto_listing_page_raises_no_video_candidate_found():
     #
     # Updated 2026-09-07 alongside the `NoVideoCandidateFound` fix: this
     # page has 33 real (title+date) rows -- the channel-link filter above
-    # means none of the first `_RETRY_LIMIT` (5) has a real video link,
-    # so `resolve()` now raises `NoVideoCandidateFound` after checking
-    # exactly 5, rather than falling back to a fabricated `ResolvedMeeting`
-    # keyed to the bare listing URL.
+    # means none of the first `_RETRY_LIMIT` has a real video link, so
+    # `resolve()` raises `NoVideoCandidateFound` after checking exactly
+    # that many, rather than falling back to a fabricated
+    # `ResolvedMeeting` keyed to the bare listing URL. Updated again
+    # WO-333, 2026-09-13: `_RETRY_LIMIT` raised 5 -> 15 (see that
+    # constant's own comment for the real Franklin NH case that drove
+    # it) -- this real page still has zero video candidates in its first
+    # 15 rows (all YouTube channel/handle links), so it's still a real
+    # `NoVideoCandidateFound`, just checking 15 now instead of 5.
     url = "https://ks-desoto.civicplus.com/AgendaCenter"
     html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
 
@@ -134,7 +139,7 @@ async def test_real_desoto_listing_page_raises_no_video_candidate_found():
         with pytest.raises(NoVideoCandidateFound) as exc_info:
             await CivicPlusAssetFinder().resolve(url)
 
-    assert exc_info.value.candidates_checked == 5
+    assert exc_info.value.candidates_checked == 15
     assert exc_info.value.jurisdiction_hint == "Desoto, KS"
 
 
@@ -449,10 +454,11 @@ async def test_real_candidates_with_no_video_raises_no_video_candidate_found():
 
 async def test_video_beyond_retry_limit_is_not_walked():
     # Confirms the retry limit is a real bound, not just documentation:
-    # 6 real candidate rows, newest-first, where only the 6th (oldest,
-    # beyond `_RETRY_LIMIT` == 5) has a real video link. resolve() should
-    # give up after checking the first 5 rather than walking the whole
-    # page, since a video that stale isn't worth surfacing as "the"
+    # 16 real candidate rows, newest-first, where only the 16th (oldest,
+    # beyond `_RETRY_LIMIT` == 15 -- see WO-333's real Franklin NH finding
+    # for why this was raised from 5) has a real video link. resolve()
+    # should give up after checking the first 15 rather than walking the
+    # whole page, since a video that stale isn't worth surfacing as "the"
     # meeting for this listing page.
     url = "https://example.civicplus.com/AgendaCenter"
     no_video_row = """
@@ -472,14 +478,7 @@ async def test_video_beyond_retry_limit_is_not_walked():
     html = (
         "<table>"
         + "".join(
-            no_video_row.format(date=d)
-            for d in (
-                "Sep 05, 2026",
-                "Sep 04, 2026",
-                "Sep 03, 2026",
-                "Sep 02, 2026",
-                "Sep 01, 2026",
-            )
+            no_video_row.format(date=f"Sep {15 - i:02d}, 2026") for i in range(15)
         )
         + video_row
         + "</table>"
@@ -491,7 +490,33 @@ async def test_video_beyond_retry_limit_is_not_walked():
         with pytest.raises(NoVideoCandidateFound) as exc_info:
             await CivicPlusAssetFinder().resolve(url)
 
-    assert exc_info.value.candidates_checked == 5
+    assert exc_info.value.candidates_checked == 15
+
+
+async def test_real_franklin_nh_video_beyond_old_retry_limit_is_now_found():
+    # WO-333, 2026-09-13: real, raw-saved Franklin, NH AgendaCenter page
+    # (fetched live the same day WO-331's positive-control run flagged
+    # it -- see BACKLOG_DONE.md's WO-331 entry). The old `_RETRY_LIMIT`
+    # of 5 reported "Checked 5 ... found no real video link" on this
+    # exact page even though it has real video: the 5 most recent rows
+    # post audio-only SoundCloud links (or nothing), and the first real
+    # video (a Vimeo link) is on the 6th row. With `_RETRY_LIMIT` raised
+    # to 15, this page correctly comes back as a real multi-candidate
+    # listing (CalendarPageError), whose newest video candidate is that
+    # same Vimeo link.
+    url = "https://franklinnh.gov/agendacenter"
+    html = load_fixture("civicplus", "franklinnh_agendacenter.html")
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicPlusAssetFinder().resolve(url)
+
+    candidates = exc_info.value.candidates
+    video_candidates = [c for c in candidates if c["url"]]
+    assert video_candidates, "expected at least one real video candidate"
+    assert video_candidates[0]["url"].startswith("https://vimeo.com/1222880162")
 
 
 # _jurisdiction_from_subdomain() coverage. Real subdomains throughout --
