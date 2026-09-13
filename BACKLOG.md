@@ -186,7 +186,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
   [NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url`…
   [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
   [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
@@ -337,7 +337,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (55)
+  Adapter & platform gaps  (59)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -393,6 +393,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
     [NEEDS-AUDIT] `generic_fallback.py`'s embedded-YouTube delegation…
     [NEEDS-AUDIT] `cablecast.py` returns `segments=0` for a show whose…
     [NEEDS-AUDIT] The passive-discovery-v2 pipeline (WO-283/WO-320…
+    [NEEDS-AUDIT] `verify_hub()`'s listing walk…
+    [NEEDS-AUDIT] TelVue's `resolve()` can return a perpetual…
+    [NEEDS-AUDIT] A bare homepage link to a video file (`direct_file`…
+    [NEEDS-AUDIT] `civicclerk.py`'s `resolve()` can return a Zoom join…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -440,7 +444,8 @@ Trust, safety & data quality  (24)
   `[LATER]` Prompt injection isn't a live product risk today, but the…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
-  `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
+  `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
+    [NEEDS-AUDIT] At least 9 `domain` values in…
 
 Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
   `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
@@ -5778,6 +5783,34 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't guess a listing URL shape from the bare tenant root — use each adapter's own, already-built listing logic.
   - **History**: `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
 
+- **[NEEDS-AUDIT] `verify_hub()`'s listing walk (`app/platforms/passive_verify.py`) never checks the walked meeting's own title/channel against the target government's name, so a shared multi-tenant host can attribute another government's real meeting to the wrong one.**
+  - **Issue**: found live, WO-338, 2026-09-13, hand-checking `verify_hub()`'s own tier 1-3 output (21 governments) title by title. 2 of 16 non-YouTube candidates (12.5%) were a real meeting belonging to a DIFFERENT real government reached through a shared host: West St Paul, MN (`wspmn.gov`) resolved to "Mendota Heights Natural Resources Commission" via the shared `townsquaretv` Granicus tenant (both cities' real meetings live on the same tenant, the walk just picked the wrong clip); Lemon Township, OH (`lemon-township.org`) resolved to Butler County OH's own "Board of Commissioners Work Session" because the township's homepage links out to the county's site and the walk followed it to the county's real meeting instead of the township's own. Phase 3's own `fetch_and_score()` already runs a `name_matches()` check requiring the fetched page to name the target city AND state before confirming a platform — `verify_hub()`'s own listing walk (`_walk_candidates()`/the registered per-platform walkers) has no equivalent check on the SPECIFIC meeting it lands on.
+  - **Impact**: this is the exact 10-12% wrong-rate CLAUDE.md's own hand-check rule was written to catch, still live in the newer verifier — without a hand read, both of these would have been ingested/queued under the wrong government's gov_id.
+  - **Next action**: after a listing walk resolves a specific meeting, run the same (or an equivalent) `name_matches()` check the phase-3 fetch already does — title/page text against the target government's name and state — before returning a `video_found`/`meeting_found` verdict; downgrade to a `wrong_body` verdict (not `no_video_in_listing`) when it fails, so a caller can tell "found nothing" apart from "found someone else's meeting."
+  - **Constraint**: don't reject a legitimate shared regional-consortium tenant outright (see the existing entry above on `_host_name_conflict()` re: Shorewood MN's real, legitimate zero-name-overlap Cablecast clip) — a failed name check should flag for a hand read, not auto-reject silently.
+  - **History**: `BACKLOG_DONE.md`'s WO-338 entry; `rtr-business/research/ENUMERATION_METHODS.md`, WO-338's section.
+
+- **[NEEDS-AUDIT] TelVue's `resolve()` can return a perpetual live-channel stream (no fixed start/end) indistinguishable from a specific completed meeting recording.**
+  - **Issue**: found live, WO-338, 2026-09-13. Two governments' confirmed TelVue hub pages (Oshtemo Charter Township, MI's own "Watch Live & Recorded Meetings" page; Cranford, NJ's Calendar EID page) both resolved via `verify_hub()` to a titled "LIVE" stream (`PMN Three - LIVE`, `Cranford TV-35 Live Stream`) rather than one specific past meeting — `resolve()` returned a real `video_url` (an `.m3u8` playlist) with no signal distinguishing "this is a 24/7 public-access channel" from "this is one saved meeting."
+  - **Impact**: a live channel has no fixed duration, so it can't be safely queued to the tier-3 auto-transcription pipeline (which expects a bounded recording) — both were hand-rejected this WO rather than queued, but an unaudited sweep could queue an indefinite live stream by mistake.
+  - **Next action**: check whether TelVue's API surfaces a `live`/`scheduled` flag or a null/absent duration for a channel stream vs. a VOD item, and have `telvue.py`'s `resolve()` refuse (or flag) a video_url with no derivable duration rather than returning it as if it were a normal meeting video.
+  - **Constraint**: don't reject every TelVue live URL outright — a `probe_tier3_queue.py` duration probe might already catch some of these naturally (no duration = reject); confirm what the probe actually does with an indefinite `.m3u8` before assuming this needs an adapter-level fix rather than a probe-level one.
+  - **History**: `BACKLOG_DONE.md`'s WO-338 entry.
+
+- **[NEEDS-AUDIT] A bare homepage link to a video file (`direct_file` platform) is accepted as a meeting candidate with no meeting-context signal at all, and is wrong most of the time.**
+  - **Issue**: found live, WO-338, 2026-09-13, hand-checking `verify_hub()`'s tier-3 `resolved` verdicts. 5 of 8 (62.5%) `direct_file` candidates that came from a bare homepage `<a>` link to an `.m4v`/`.mp4`/`.mov` file were NOT meeting recordings: a township welcome video ("HELLO GEISTOWN"), a historical dredge documentary, two community/nature clips ("Planting Activities", "Forest Overview"), and a generic "Download the video" link with no further context. Nothing in the candidate-scoring or `verify_hub()` path checks the link's own anchor text, surrounding page text, or filename for any meeting-shaped signal (a date, "meeting"/"council"/"agenda"/a body name) before accepting it.
+  - **Impact**: on this WO's own small sample, a `direct_file` homepage-link candidate is wrong more often than right — the highest false-positive rate of any candidate kind hand-checked this WO (compare: 2/16 wrong-body, 1/16 Zoom-link, 5/16 not-a-meeting-at-all — this bucket alone accounts for over half the wrong candidates).
+  - **Next action**: before accepting a bare homepage video-file link as a real candidate, require some minimal meeting-context signal near it (anchor text or a nearby heading containing a meeting-body keyword and/or a recent date) — the same kind of check `civicplus.py`'s AgendaCenter listing walk already applies to a *row*, just not yet applied to a raw homepage `<a href=".mp4">` scan.
+  - **Constraint**: don't require a full listing/calendar context — some real small-town sites genuinely do post one meeting recording as a bare homepage link with no listing page at all; the fix should raise the bar on the SIGNAL required, not require a platform shape that doesn't exist for these tenants.
+  - **History**: `BACKLOG_DONE.md`'s WO-338 entry.
+
+- **[NEEDS-AUDIT] `civicclerk.py`'s `resolve()` can return a Zoom join link as `video_url`, a second confirmed occurrence of the same content shape.**
+  - **Issue**: WO-325 (2026-09-12) first found this on Jo Daviess County, IL — a CivicClerk event whose `video_url` field is a live-meeting Zoom join link (`us06web.zoom.us/j/...`), not a saved recording. WO-338 (2026-09-13) hit the exact same government and event field shape again (a DIFFERENT event id, `event/7503`) via `verify_hub()`'s listing walk. Both times a hand-check caught it before anything was queued.
+  - **Impact**: low severity (always caught by the hand-check gate so far) but a repeat, predictable false-tier-3 candidate on at least one real CivicClerk tenant, and any government whose CivicClerk instance is configured to post the Zoom join link in the same field would hit it too.
+  - **Next action**: have `civicclerk.py`'s `resolve()` recognize a `zoom.us`/`meet.google.com`/`teams.microsoft.com` (or similar live-meeting-join) domain in the raw `video_url` field it reads from CivicClerk's API and treat it as "no video" (a live-meeting link, not a recording) rather than passing it through as a real `video_url`.
+  - **Constraint**: match by domain, not by guessing at a URL shape — a real recording URL hosted on a video vendor should never collide with this check.
+  - **History**: `BACKLOG_DONE.md`'s WO-325 and WO-338 entries.
+
 ## Reliability, ops & cost
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
@@ -6908,6 +6941,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   untouched on purpose — normalizing `domain` on a already-corrupted row
   doesn't fix the corruption, and guessing the intended shift wasn't in
   scope for a domain-shape pass.
+
+- **[NEEDS-AUDIT] At least 9 `domain` values in `jurisdiction_coverage.csv` are shared by 2-3 different `gov_id` rows, and at least one pair is clearly wrong rather than a legitimate shared host.**
+  - **Issue**: found live, WO-338, 2026-09-13, building a 2,825-row population from the file. 9 domains repeat across distinct gov_id rows: `assumptionla.com`, `thomascountyks.gov`, `townofdelmar.us`, `bacacountyco.gov`, `co.berks.pa.us` (×3), `rmofmarquis.com`, `jansen.ca`, `stearnscountymn.gov`, `blueponyk12.com`. `stearnscountymn.gov` is checked directly: it's attached to both "Lake Henry city MN" (`us:place:2734478`) and "Spring Hill city MN" (`us:place:2761888`) — two real, distinct small towns, neither of which plausibly owns Stearns County's own domain as its "own" website; this looks like a data-entry artifact (a county-hosted subpage domain copy-pasted onto two unrelated town rows) rather than two towns genuinely sharing one site.
+  - **Impact**: any sweep keyed by `domain` (the whole passive-discovery-v2 family, `wo1xx`-`wo3xx`) silently applies the SAME phase-1/2/3 finding to every gov_id sharing that domain, which is only correct for a genuinely shared host (a real joint city-county site) and wrong for a data-entry collision. WO-338 hit this live: a YouTube lead found via `stearnscountymn.gov` had to be hand-attributed to one of the two gov_ids with a caveat rather than confidently applied to both.
+  - **Next action**: audit all 9 (and re-run the check periodically, since new rows are still being added) — for each, confirm via a live fetch whether the domain is genuinely that government's own site, a genuine shared host, or a copy-paste artifact that should be corrected to the real domain (or blanked, going through `alternate_domains` per this repo's own "never delete or blank a domain, move a wrong one to alternate_domains" rule).
+  - **Constraint**: don't bulk-fix by assuming every duplicate is wrong — a real shared regional site (a joint city-county government, a consolidated service) is a legitimate case; check each one individually before changing it.
+  - **History**: `BACKLOG_DONE.md`'s WO-338 entry.
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
 
