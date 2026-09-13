@@ -1382,9 +1382,22 @@ def parse_pin_row(pin_row: Optional[str]) -> Optional[dict]:
     evidence` shape the newer access-ladder sweeps write (WO-183/WO-191/
     WO-216's own `pin_row` CSV column) into the field names
     `write_pin_row()` takes. Returns None for a blank/malformed row (fewer
-    than 6 fields, or a blank host/match/gov_id) rather than raising --
-    same tolerance every existing `_apply_pin_row()`/`_write_pin()` copy
+    than 6 fields, or a blank host/gov_id) rather than raising -- same
+    tolerance every existing `_apply_pin_row()`/`_write_pin()` copy
     already has for a malformed row.
+
+    A blank `match` is NOT rejected here (WO-321, 2026-09-12): it is
+    exactly the shape a single-tenant host's pin_row legitimately has
+    (`bedfordoh.primegov.com||us:county:39035|...` -- one government per
+    tenant, no discriminator needed), and `write_pin_row()` already
+    accepts a blank match for anything that isn't a `MULTI_GOV_HOSTS`
+    host (fixed WO-307 after `buffalo.viebit.com` hit the same gap this
+    function still had). Before this fix, a caller going through
+    `parse_pin_row()` (unlike one calling `write_pin_row()` directly)
+    silently dropped every single-tenant pin with a blank match instead
+    of writing it -- `write_pin_row()`'s own multi-gov-host check still
+    applies downstream, so a blank match on an actual shared host is
+    still refused, just one level down from here.
 
     WO-150's own pending rows use a different, older
     `key=value;key=value` shape -- not handled here; a caller still
@@ -1396,7 +1409,7 @@ def parse_pin_row(pin_row: Optional[str]) -> Optional[dict]:
     if len(parts) < 6:
         return None
     host, match, gov_id, strength, source, evidence = parts
-    if not host or not match or not gov_id:
+    if not host or not gov_id:
         return None
     return {
         "host": host,

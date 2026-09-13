@@ -1329,6 +1329,25 @@ def test_parse_pin_row_malformed_returns_none():
     assert queue_probe.parse_pin_row(None) is None
 
 
+def test_parse_pin_row_blank_match_single_tenant_host():
+    """WO-321, 2026-09-12: a blank match is a legitimate single-tenant
+    pin_row shape (one government per tenant host, no discriminator
+    needed) and must not be dropped here -- write_pin_row() already
+    accepts a blank match for anything that isn't a MULTI_GOV_HOSTS host
+    (WO-307), but parse_pin_row() used to refuse it one step earlier."""
+    parsed = queue_probe.parse_pin_row(
+        "bedfordoh.primegov.com||us:county:39035|fallback|wo321|evidence text"
+    )
+    assert parsed == {
+        "host": "bedfordoh.primegov.com",
+        "match": "",
+        "gov_id": "us:county:39035",
+        "strength": "fallback",
+        "source": "wo321",
+        "evidence": "evidence text",
+    }
+
+
 def test_write_pin_row_dedupe_checked(tmp_path):
     pins_path = tmp_path / "pins.csv"
     kwargs = dict(

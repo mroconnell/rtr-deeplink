@@ -1,5 +1,146 @@
 # Backlog — done
 
+## WO-321: passive discovery v2 on group 2 (US counties) of the "neither pass" population -- 24 platforms confirmed, 0 videos, 218 jurisdiction_coverage.csv rows updated, 70 YouTube leads to the drip [Done 2026-09-12]
+
+**What was done and why.** Breadth split the governments that had never
+been touched by either the ladder sweeps (WO-147..264) or the passive
+sweeps (WO-268..292) into four groups, prioritized by population. This
+work order ran WO-283's own three-phase passive-discovery pipeline
+against group 2: 223 US counties with a website on file and no meeting
+ever transcribed. The goal was the same as every sweep this cycle — one
+meeting with video per government — done through DNS/homepage/sitemap
+reconnaissance, offline scoring, then a real fetch of the best
+candidates, with every real find hand-checked before anything was
+ingested or queued, per this repo's own rule that a platform match is
+not proof a specific meeting is real.
+
+Two rules needed a real code change to hold, not just a process step.
+First, this repo's absolute rule against any YouTube network call: the
+pipeline's own candidate-ranking step treats a YouTube link as a real
+"platform" find like any other, which is exactly how the same pipeline
+(WO-283) accidentally made 439 real page-fetches to YouTube before
+being caught. This run added a guard at every point the pipeline could
+fetch a YouTube URL — before the fetch, not after — so it never touched
+YouTube at all; every YouTube link found was instead recorded as a lead
+for the separate drip/hand-check lane. Second, a handful of rows in
+this population have a website field that is itself a meeting-platform
+address (like `denver.granicus.com`), not the county's own site — those
+got treated as a confirmed platform straight from the address, since
+depending on that page having a normal government homepage layout can
+fail even when the address is completely correct.
+
+**Result.**
+
+| Phase | Result |
+|---|---|
+| Reconnaissance (phase 1) | 219 of 220 counties completed; 1 (Rankin County, MS) hung on a step this work order could not isolate in time, recorded separately below |
+| Offline scoring (phase 2) | 92 counties scored high confidence, 93 medium, 34 none |
+| Real fetch (phase 3) | 24 of 219 counties had a real, name-and-state-matched platform confirmed |
+
+| Result of the real fetch (phase 3) | Count of 219 | What it means |
+|---|---|---|
+| Platform confirmed | 24 | A real, current meeting/agenda page on the correct county |
+| Candidate found, not confirmed | 162 | Fetched, but no platform match, or the wrong name/state |
+| No candidate at all | 32 | Nothing found even after trying a deeper link, a full page render, and known listing-page shortcuts |
+| Website did not respond | 1 | Rankin County, MS |
+
+Every one of the 24 confirmed platforms was then checked for real
+content the same way this project checks any meeting before ingest —
+not just "the right kind of page," but "does it actually have a video."
+
+| What the 24 confirmed pages actually had | Count of 24 | What it means |
+|---|---|---|
+| A real meeting page, no video | 23 | The county publishes its meetings without video |
+| Not actually a meeting page | 1 | Brunswick County, VA's confirmed page turned out to be an unrelated budget spreadsheet that happened to mention the county and state by name |
+| A real video, ready to use | 0 | none found |
+
+Two of the 23 needed a second look before counting them as "no video."
+Isle of Wight County, VA's page pointed at a live-stream address that
+returns "not found" right now — a watch-live-now page, not a saved
+recording, so there is nothing to save. Scott County, IN's page is a
+list of many meetings, not one specific meeting, so nothing could be
+picked automatically.
+
+**70 YouTube leads were found and recorded, not fetched.** Every one of
+these was a link the sweep found on a county's own website pointing at
+YouTube — a channel or a specific video. None were opened or checked;
+each was written to the shared `youtube_channel_leads.csv` list for the
+separate YouTube hand-check lane, exactly as this repo's YouTube rule
+requires.
+
+**No wrong governments (Kind A) and no `already-covered-other-id`
+cases.** Every one of the 24 confirmed pages belonged to the county it
+was checked against — no case of a confirmed page actually belonging to
+a different public body. None of this group's 223 rows had a prior
+"already covered, but no page today" flag to check.
+
+**Two rows needed a judgment call instead of a fresh finding, and were
+left as they were.** San Francisco County, CA and Denver County, CO are
+both counted twice in the Census (once as a county, once as a
+consolidated city) — this repo already has a standing rule to leave the
+county-level row alone in that case, so neither was touched. Charleston
+County, SC's row pointed at a website clearly built for Charleston,
+WEST VIRGINIA, not South Carolina — that row already said so before
+this work order started, and it still checks out, so nothing changed.
+
+**Summary.**
+
+| Outcome | Count of 223 | What it means |
+|---|---|---|
+| Meeting page found, no video | 23 | Real meeting page, nothing to record |
+| Nothing found at all | 161 | Checked, genuinely nothing there |
+| Website blocked the check | 31 | Worth trying again with a different approach later |
+| Not checked (YouTube-only address) | 3 | The website field itself was a bare YouTube address with no page or video attached — nothing to check |
+| Website did not respond in time | 1 | Rankin County, MS |
+| Wrong government/website mismatch (already known) | 1 | Charleston County, SC — confirmed again, not new |
+| Counted elsewhere in the Census (left alone) | 2 | San Francisco County, CA and Denver County, CO |
+| YouTube links found and handed off, not opened | 70 | For the separate YouTube hand-check lane |
+| Real video found and ready to use | 0 | none found |
+
+**A caution.** This group's real yield was zero videos — every county
+that had a real, confirmed meeting page turned out to already publish
+without video. That is a genuine, checked answer, not a sign the sweep
+missed something; see `research/wo321_report.csv` and
+`wo321_final_classification.csv` in the `rtr-business` repo for the
+full per-county detail behind every number above.
+
+**Two small code fixes rode along with this work**, both small enough
+to fix directly rather than filed as open items: `app/platforms/
+queue_probe.py`'s `parse_pin_row()` was silently refusing to write a
+pin for a government whose own platform tenant serves only that one
+government (a blank "match" field, which is the correct, expected shape
+for that case) — fixed to match what `write_pin_row()` already allows,
+with a regression test added. Two new, unrelated gaps found along the
+way were filed as open `BACKLOG.md` entries instead, since neither was
+small enough to fix in this same pass: the Rankin County, MS hang
+(worth a focused re-run with per-step timing to find exactly which
+step hangs), and a real gap in how `townhallstreams.py` handles a
+meeting-list page instead of a single meeting (it should check the
+newest few meetings the way the CivicPlus adapter already does, and
+does not yet).
+
+**Recommendation.** Nothing here needs a deploy — no page went live, no
+queue line was written, and no pin changed. The `jurisdiction_coverage.
+csv` updates and the YouTube leads are already live in the shared
+research file (not part of any deploy). If group 2's zero-video result
+holds for the other three groups in this same wave, that is itself a
+useful, honest signal about how much video-bearing coverage is left to
+find this way in the "neither pass" population.
+
+**Deploy status.** Nothing to deploy. This work order touched only the
+shared research files (`rtr-business`) and this repo's own scripts/
+docs — no page, queue line, or pin was created.
+
+**What's undone.** Rankin County, MS was never actually checked (the
+hang). The 70 YouTube leads and the Charleston County, SC mismatch are
+recorded, not acted on further — both wait on the existing separate
+processes for them. The `townhallstreams.py` listing-walk gap is filed,
+not built.
+
+**The main takeaway: this group of 223 US counties added zero new
+video-bearing meetings, but the negative result is a checked one, not a
+guess — every step of why is written down.**
+
 ## WO-319: Huron charter Township, Wayne County MI -- pin repointed, page 3938 re-keyed [Done 2026-09-12]
 
 Ryan's call (2026-09-12) on the `[HUMAN]` entry WO-309 (resume) filed:
