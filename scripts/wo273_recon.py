@@ -555,15 +555,30 @@ CA_PROVINCE_SUFFIX_LABELS = frozenset(
 )
 
 
+# Generic infix labels that sit between a government's own name and its
+# public suffix in the US state-suffix shape (x.k12.oh.us, ci.x.wa.us,
+# co.x.il.us, www.x.y.us): none of them is ever the government's slug.
+GENERIC_INFIX_LABELS = frozenset(
+    {"k12", "ci", "co", "city", "town", "twp", "village", "vil", "cty", "www"}
+)
+
+
 def registrable_label(domain: str) -> str:
     parts = domain.lower().strip(".").split(".")
     if len(parts) < 2:
         return domain.lower()
+    idx = -2
     if len(parts) >= 3 and parts[-1] == "us" and len(parts[-2]) <= 3:
-        return parts[-3]
-    if len(parts) >= 3 and parts[-1] == "ca" and parts[-2] in CA_PROVINCE_SUFFIX_LABELS:
-        return parts[-3]
-    return parts[-2]
+        idx = -3
+    elif (
+        len(parts) >= 3 and parts[-1] == "ca" and parts[-2] in CA_PROVINCE_SUFFIX_LABELS
+    ):
+        idx = -3
+    # Step past generic infixes (x.k12.oh.us -> "x", not "k12") while a
+    # label remains to the left.
+    while parts[idx] in GENERIC_INFIX_LABELS and -idx < len(parts):
+        idx -= 1
+    return parts[idx]
 
 
 def label_is_guessable(label: str) -> bool:
@@ -573,7 +588,11 @@ def label_is_guessable(label: str) -> bool:
     those hosts resolve to vendors' regional pages (qc.primegov.com), so
     a hit there would be a false platform signal, not a tenant."""
     label = (label or "").strip().lower()
-    return len(label) > 2 and label not in CA_PROVINCE_SUFFIX_LABELS
+    return (
+        len(label) > 2
+        and label not in CA_PROVINCE_SUFFIX_LABELS
+        and label not in GENERIC_INFIX_LABELS
+    )
 
 
 def dns_lookup(domain: str) -> dict:

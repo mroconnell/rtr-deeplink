@@ -451,6 +451,7 @@ def registrable_label(domain: str) -> str:
     parts = domain.lower().strip(".").split(".")
     if len(parts) < 2:
         return domain.lower()
+    idx = -2
     # Handle the common two-label public suffixes this corpus actually
     # has (.gov/.org/.com/.us + a state code like .oh.us), and Canada's
     # province suffixes (ville.sthonore.qc.ca -> "sthonore"; without this
@@ -458,8 +459,8 @@ def registrable_label(domain: str) -> str:
     # qc.primegov.com page -- WO-324, ENUMERATION_METHODS §333). Same rule
     # as wo273_recon.registrable_label(), kept in step by hand.
     if len(parts) >= 3 and parts[-1] == "us" and len(parts[-2]) <= 3:
-        return parts[-3]
-    if (
+        idx = -3
+    elif (
         len(parts) >= 3
         and parts[-1] == "ca"
         and parts[-2]
@@ -480,8 +481,23 @@ def registrable_label(domain: str) -> str:
             "gc",
         )
     ):
-        return parts[-3]
-    return parts[-2]
+        idx = -3
+    # Step past generic infixes (x.k12.oh.us -> "x", not "k12"), same set
+    # as wo273_recon.GENERIC_INFIX_LABELS, kept in step by hand.
+    while parts[idx] in (
+        "k12",
+        "ci",
+        "co",
+        "city",
+        "town",
+        "twp",
+        "village",
+        "vil",
+        "cty",
+        "www",
+    ) and -idx < len(parts):
+        idx -= 1
+    return parts[idx]
 
 
 def dns_lookup(domain: str) -> dict:

@@ -369,3 +369,32 @@ def test_dns_lookup_never_guesses_a_vendor_tenant_from_a_province_code(monkeypat
     assert "qc.primegov.com" not in asked
     assert "sthonore.primegov.com" in asked
     assert all(not h.startswith("qc.") for h in vendor_hosts)
+
+
+def test_registrable_label_steps_past_generic_us_infixes():
+    # *.k12.xx.us, ci.x.xx.us, co.x.xx.us, www.x.xx.us shapes from the research file
+    assert wo273_recon.registrable_label("www.somerset.k12.pa.us") == "somerset"
+    assert wo273_recon.registrable_label("district.k12.wi.us") == "district"
+    assert wo273_recon.registrable_label("ci.kelso.wa.us") == "kelso"
+    assert wo273_recon.registrable_label("www.co.lake.il.us") == "lake"
+    assert wo273_recon.registrable_label("co.lake.il.us") == "lake"
+    assert wo273_recon.registrable_label("www.ci.buffalo.mn.us") == "buffalo"
+    assert not wo273_recon.label_is_guessable("k12")
+    assert not wo273_recon.label_is_guessable("www")
+
+
+def test_wo268_copy_agrees_with_wo273_on_every_shape():
+    import scripts.wo268_passive_discovery as wo268
+
+    for d in (
+        "www.ville.sthonore.qc.ca",
+        "www.saint-lambert.ca",
+        "www.claresholm.ab.ca",
+        "www.somerset.k12.pa.us",
+        "ci.kelso.wa.us",
+        "www.co.lake.il.us",
+        "www.ci.buffalo.mn.us",
+        "baldwincountyal.gov",
+        "lincoln.ne.gov",
+    ):
+        assert wo268.registrable_label(d) == wo273_recon.registrable_label(d), d
