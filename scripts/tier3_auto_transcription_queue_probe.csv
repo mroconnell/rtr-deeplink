@@ -6130,3 +6130,9 @@ https://townhallstreams.com/stream.php?location_id=68&id=75868,townhallstreams,h
 https://reflect-tst-mn.cablecast.tv/internetchannel/show/5964?site=8,cablecast,hls-master+variant,9312.84,,,1,accept,,0.86,2026-09-13T14:39:15+00:00,bulk_ingest,0
 https://reflect-tst-mn.cablecast.tv/internetchannel/show/5959?site=15,cablecast,hls-master+variant,5421.93,,,1,accept,,0.32,2026-09-13T14:39:17+00:00,bulk_ingest,0
 https://pub-clarkcounty.escribemeetings.com/Meeting.aspx?Id=1d486787-292f-4649-9a31-dd0a41ca37a9,escribe,hls-master+variant,1792.88,,,1,accept,,0.54,2026-09-13T16:01:05+00:00,bulk_ingest,0
+https://waconiamn.portal.civicclerk.com/event/473/media,civicclerk,head+ffprobe,3275.36,2026-09-09,644350649,1,accept,,13.54,2026-09-13T16:00:56+00:00,,0
+https://pueblococo.portal.civicclerk.com/event/9191/media,civicclerk,resolve,,,,0,reject-dead,resolve raised: ,20.06,2026-09-13T16:01:02+00:00,,0
+https://hendersontx.portal.civicclerk.com/event/176/media,civicclerk,resolve,,,,0,reject-dead,resolve raised: ,20.06,2026-09-13T16:01:02+00:00,,0
+https://pueblococo.portal.civicclerk.com/event/9191/media,civicclerk,head+ffprobe,2418.78,2026-09-10,1504424251,1,accept,,8.25,2026-09-13T16:01:48+00:00,,0
+https://hendersontx.portal.civicclerk.com/event/176/media,civicclerk,head+ffprobe,1853.32,2026-09-11,1518989926,1,accept,,6.84,2026-09-13T16:01:55+00:00,,0
+https://waconiamn.portal.civicclerk.com/event/411/media,civicclerk,head+ffprobe,2093.76,2026-08-10,249854175,1,accept,,8.83,2026-09-13T16:04:05+00:00,,0
