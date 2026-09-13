@@ -114,7 +114,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
+  `record_youtube_lead()` hardcodes `source_wo="WO-320"` regardless of…
+  Check the full tier-3 queue file for real videos with no…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -751,6 +753,58 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `record_youtube_lead()` hardcodes `source_wo="WO-320"` regardless of the real caller `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo320_targeted.py`'s shared `record_youtube_lead()`
+  helper writes a literal `"WO-320"` into `youtube_channel_leads.csv`'s
+  `source_wo` column on every call, no matter which WO actually calls
+  it — found live 2026-09-13 when WO-345 called it for a real Cochise
+  County, AZ lead and the written row said `WO-320`. Same class of bug
+  already flagged for two other shared helpers
+  (`ENUMERATION_METHODS.md` §230: `maybe_write_tenant_override()` and
+  `tier3_pending_handler()` both hardcode their own originating WO the
+  same way).
+- **Impact:** every future caller of `record_youtube_lead()` that isn't
+  literally WO-320 writes a mislabeled row — makes `source_wo` useless
+  for auditing which WO actually found a given lead, the exact thing
+  §230's note about the other two helpers already warns about.
+- **Next action:** add a `source_wo: str` parameter to
+  `record_youtube_lead()` (no default, so every call site is forced to
+  pass its own real WO number) and update its one current call site.
+- **Constraint:** don't just fix WO-345's own already-written row (done,
+  by hand) without fixing the helper — the next caller hits the same
+  bug.
+- **History:** `BACKLOG_DONE.md`'s WO-345 entry; `~/Documents/
+  rtr-business/research/ENUMERATION_METHODS.md` §230 for the sibling bug
+  in the other two hardcoded-WO helpers.
+
+### Check the full tier-3 queue file for real videos with no `tenant_overrides.csv` owner recorded `[JUST-DO-IT]`
+
+- **Issue:** WO-345 (2026-09-13) found 15 real Town Hall Streams
+  location_ids already sitting in `scripts/tier3_auto_transcription_
+  queue.txt` (13 added by an earlier WO, 2 added by WO-345 itself) with
+  no `tenant_overrides.csv` pin at all — a shared multi-government host
+  with no per-government record, so the transcription worker's
+  re-resolve at ingest time would have no way to tell which government
+  a transcribed recording belongs to. WO-345 only found these because
+  its own 108-government population happened to include them; the rest
+  of the 2,069-line queue file was never checked the same way.
+- **Impact:** an unknown number of already-queued real videos across
+  the whole file may ingest with `gov_id=rtr:unknown` (no hub link, no
+  identity) once transcribed — the exact failure CLAUDE.md's "Send the
+  government's id in every ingest payload" bullet describes, just
+  discovered from the pin side rather than the ingest side.
+- **Next action:** write a small script that reads every URL in
+  `scripts/tier3_auto_transcription_queue.txt`, extracts each one's
+  tenant identity (host, plus `location_id`/`channel=`/etc. for a known
+  shared-host platform), and checks it against `tenant_overrides.csv`
+  and the ordinary per-host resolver ladder — report every queue entry
+  that would still resolve to `rtr:unknown` today.
+- **Constraint:** this is a read-only audit script, not a bulk-pin
+  writer — a missing pin needs a real government match (name, state,
+  the same care WO-345's own 20 pins took), not an automated guess.
+- **History:** `BACKLOG_DONE.md`'s WO-345 entry.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
