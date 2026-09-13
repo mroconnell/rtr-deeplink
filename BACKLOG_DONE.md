@@ -245,18 +245,21 @@ The same rerun was also run on WO-324's separate, larger population
 | Result | Count of 258 | What it means |
 |---|---|---|
 | Top-ranked link changed | 157 | Same real improvement pattern as WO-323's population |
-| Rows affected by the qc.primegov.com bug above | 66 | Matches the conductor's own estimate exactly; all 66 confirmed false by hand, same as the 23 above |
+| Rows affected by the qc.primegov.com bug above | 70 | Matches the conductor's own estimate (66-70) exactly; all 70 confirmed false by hand, same as the 23 above |
 
 Following those better links to a real page, WO-324's population is 177
-governments (of the 258) with a real candidate to check at all. A
-first, full 90-government slice was checked live:
+governments (of the 258) with a real candidate to check at all. This
+was checked live in two passes — a first 90-government slice, then a
+second pass specifically re-verifying the 70 qc.primegov.com-affected
+rows once WO-328's real fix landed (25 of those 70 were outside the
+first 90, adding real new coverage rather than just re-confirming):
 
-| Result | Count of 90 checked (of 177 total to check) | What it means |
+| Result | Count of 115 checked so far (of 177 total to check) | What it means |
 |---|---|---|
-| A real, matching council page confirmed | 45 | Same pattern as WO-323's population |
+| A real, matching council page confirmed | 55 | Same pattern as WO-323's population |
 | A known video vendor confirmed | 0 | Same finding: small custom Quebec town sites, no video vendor |
 
-The remaining 87 of 177 were not reached by the time this closed — see
+The remaining 62 of 177 were not reached by the time this closed — see
 "What's not done" for the exact command to finish them.
 
 **What's not done.** No archive page was created by this work — the
@@ -264,18 +267,33 @@ job was to fix the discovery tool and measure the result, not to add
 new pages. A second, follow-up word list for "what does a real posted
 meeting video link look like on a Quebec page" needs more real examples
 first (only 2 exist so far); see `BACKLOG.md`. WO-324's live-fetch check
-covered 90 of its 177 candidate rows; resume the rest with:
+covered 115 of its 177 candidate rows; resume the rest with:
 
 ```
 DATABASE_URL="sqlite+aiosqlite:////tmp/wo327_wo324_resume.db" \
   .venv/bin/python scripts/wo327_rerun_quebec_phases.py \
   --recon-jsonl ~/Documents/rtr-business/research/wo324_recon.jsonl \
-  --out-prefix wo327_qc324 --source-wo WO-327 --skip 90
+  --out-prefix wo327_qc324_pass3 --source-wo WO-327
 ```
 
-(`--skip 90` resumes past the 90 already checked; the reclassify step
-re-runs harmlessly, phase 3 appends to the existing
-`research/wo327_qc324_retargeted.csv`.)
+(a fresh `--out-prefix` since the two existing output files together
+already cover 115 governments in an order this command's own `--skip`
+wouldn't line up with cleanly; the reclassify step re-runs harmlessly on
+all 258, phase 3 will re-touch the 115 already-checked governments too
+— harmless, but if avoiding that matters, filter `wo327_qc324_pass3_
+reclassified.csv` to domains not already in `research/wo327_qc324_
+retargeted.csv` + `research/wo327_qc324_refixed_retargeted.csv` before
+running phase 3 by hand.)
+
+Applied to `jurisdiction_coverage.csv` across both WO-323 and WO-324's
+combined 85 real, name-matched governments: 57 rows corrected to
+`reject_reason=meeting-without-video` with a real evidence URL (47 from
+the first pass, already `deferred-french-vocab`/`no-platform-link-
+found`; 10 more from a second incremental pass after the
+qc.primegov.com re-verification surfaced more real matches; 1 row was
+already correctly `meeting-without-video`). 27 of the 85 read
+`reject_reason=off-mission` and were deliberately NOT touched — see
+`BACKLOG.md`'s new anomaly entry.
 
 **Deploy note.** The new word list and the code that uses it live in
 this repo (`app/utils/jurisdiction_data/hop_link_weights_fr.csv`,
