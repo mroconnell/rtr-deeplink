@@ -114,9 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
   `wo323_classify.py`'s and `wo324_classify.py`'s…
-  Town of Lincoln, Ontario's own eScribe tenant has a real, current,…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
   `cablecast.py`: two more real URL/data quirks found by WO-309…
   `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses…
@@ -187,12 +186,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (199)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (198)
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
   [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
-  [NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a…
   [NEEDS-AUDIT] A hand-verification script that calls the real…
   [JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()`…
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
@@ -774,27 +772,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   the same gap independently — not verified in this pass.
 - **History:** `docs/investigations/hop_scorer_measurement.md`'s French
   section; `BACKLOG_DONE.md`'s WO-327 entry.
-
-### Town of Lincoln, Ontario's own eScribe tenant has a real, current, on-mission meeting but its research row still says no platform found `[JUST-DO-IT]`
-
-- **Issue:** WO-326 (2026-09-12) confirmed `pub-lincoln.escribemeetings.com`
-  is a real, live eScribe tenant for the Town of Lincoln, Ontario, Canada
-  (`ca:csd:3526057`, already pinned) — real committee names (Council
-  Meeting, Committee of the Whole, Committee of Adjustment, Heritage
-  Advisory Committee), e.g. a July 27, 2026 "Council Meeting"
-  (`Meeting.aspx?Id=406d7685-41ab-4128-87f7-8ebd187e1e62`). Its own
-  `jurisdiction_coverage.csv` row still reads
-  `reject_reason=no-platform-link-found`.
-- **Impact:** one real, ready government with a real video tenant sits
-  unrecorded and unresolved on the coverage dashboards.
-- **Next action:** correct `ca:csd:3526057`'s row (`domain` ->
-  `pub-lincoln.escribemeetings.com`, `reject_reason` cleared) and
-  hand-read + ingest its newest on-mission Council meeting, same pattern
-  as WO-326's Lincoln city NE fix.
-- **Constraint:** none — the gov_id and pin already exist, no mint pass
-  needed.
-- **History:** `rtr-business/research/wo326_owner_bodies.csv`;
-  `ENUMERATION_METHODS.md` §331.
 
 ### The small-video-platform sweep's leftover 8 rows: real hits or fetch failures WO-309 (resume) didn't finish chasing `[JUST-DO-IT]`
 
@@ -2186,13 +2163,6 @@ of human step they need.
   - **Next action**: give `townhallstreams.py`'s `resolve()` the same shape of listing-walk CivicPlus already has: when the URL is a listing rather than a specific meeting, check the N most recent entries for a real video before raising `NoVideoCandidateFound`/returning empty.
   - **Constraint**: build and verify this against a second real Town Hall Streams listing page before trusting the drill-down count logic across tenants — this repo's own "test against a real URL first" rule (`CLAUDE.md`), and York County, ME is only one real sample.
   - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
-
-- **[NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a Canadian `*.qc.ca`-style domain's province code as if it were the government's own name, producing a false shared-host platform "confirmation" on every such row — 66-70 of WO-324's 258 Quebec rows in one run.**
-  - **Issue**: found live 2026-09-12 (WO-324, group 5). `registrable_label(domain)` takes a domain's second-to-last label as the government's slug to guess a vendor tenant host from (`{label}.primegov.com`, `{label}.civicweb.net`). For `www.ville.contrecoeur.qc.ca` that label is `qc` — Quebec's own province code, not the government's name — and `qc.primegov.com` genuinely resolves (`onemeeting-qc.primegov.com`, PrimeGov's own regional "OneMeeting Quebec" landing page, not any one government's tenant). `dns_platform()` (both the recon-time original and `wo273_classify.py`'s duplicate) treats any resolving guess as real evidence, so every `*.qc.ca` row in the population got `platform=primegov, confidence=high` regardless of whether that government uses PrimeGov at all — confirmed: 0 of the 66-70 affected rows had any other real PrimeGov signal (no PrimeGov URL anywhere in their sitemap/Wayback/Common-Crawl data). The `<slug>.civicweb.net` guesses from the same mechanism are NOT affected — each resolving one was checked and is a real, government-specific tenant (e.g. `kamloops.civicweb.net`), because Kamloops's own domain (`www.kamloops.ca`) doesn't end in a two-level province suffix.
-  - **Impact**: every future Canadian sweep that reuses this shared recon step (WO-320 through WO-327 and beyond) will get the same false `primegov, confidence=high` on any `*.qc.ca` domain, and potentially the same shape of bug on other two-level Canadian suffixes (`*.on.ca`, `*.bc.ca`, `*.ab.ca`, etc.) if PrimeGov or CivicWeb ever stands up a similar shared regional host under one of those labels — none currently do (checked: only `qc.primegov.com` resolves among all province-code guesses across WO-324's 493-row population). This run's own phase 3 was never exposed to it (candidates are scored off real ranked URLs, never off this bare DNS-guess string) and it never reached `jurisdiction_coverage.csv` (every Quebec row in this run was `deferred-french-vocab` regardless of phase 2's output) — but a future sweep that trusts `wo273_classify.py`'s `confidence=high` directly, without a phase-3 re-verification step in between, would apply a wrong `suspected_meeting_link_provider=primegov` to dozens of real governments in one pass.
-  - **Next action**: fix `registrable_label()` to strip a known two-level Canadian province/territory suffix (`qc`, `on`, `bc`, `ab`, `mb`, `sk`, `nb`, `ns`, `pe`, `nl`, `nt`, `nu`, `yt`, each preceded by `.ca`) before taking the next label as the government's slug, the same way it already special-cases `.us` domains with a short second-to-last label. Belt-and-braces: also reject a `resolving_vendor_labels` guess outright when the guessed label IS one of those codes, regardless of TLD shape.
-  - **Constraint**: verify the fix against a real `.on.ca`/`.bc.ca` domain too, not just `.qc.ca` — this repo's own "one platform's real file is not enough" rule (`CLAUDE.md`), and the only confirmed live instance of the bug firing is the `qc.primegov.com` host specifically.
-  - **History**: `rtr-business/research/wo324_methods_section.md`; `BACKLOG_DONE.md`'s WO-324 entry.
 
 - **[NEEDS-AUDIT] A hand-verification script that calls the real `resolve()` pipeline on a confirmed candidate page can still end up fetching a youtube.com URL, even when the candidate page itself is never a YouTube URL — the "never fetch youtube.com" rule only guards the discovery phases' own candidate list, not what `resolve()` does downstream.**
   - **Issue**: found live 2026-09-12 (WO-323) — `scripts/wo323_resolve_diagnostic.py` (read-only, never POSTs) called the real `finder.resolve()` on 47 confirmed first-party government pages, none of them youtube.com/youtu.be URLs. One, `www.tweed.ca` (Tweed, Ontario — a CivicWeb-recognized page), embeds a YouTube video; `resolve()` followed that embed and fetched real caption/segment data from YouTube's own servers (`segments=13` came back). This WO's launch instructions said, in the same literal terms as every sibling WO this round, "never fetch a youtube.com or youtu.be URL for any reason" — the discovery phases (recon/classify/targeted) never did, but this one downstream `resolve()` call did, unintentionally.
