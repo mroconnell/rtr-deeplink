@@ -183,7 +183,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (188)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (190)
+  [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
+  [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
   [NEEDS-AUDIT] 6 of the ~40 pages formerly keyed to Pittsford…
   [NEEDS-AUDIT] Nothing has found which sweep/script ingests a Viebit…
@@ -2040,6 +2042,20 @@ of human step they need.
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung indefinitely on one real domain (rankincounty.org, Rankin County MS), reproduced twice, root cause not isolated.**
+  - **Issue**: WO-321 (2026-09-12) hit a hang partway through a 220-domain sweep that otherwise finished in under 3 minutes. Reproduced a second time in isolation (`--limit 1 --concurrency 1`, same domain) with the same result — still hanging after 60+ seconds, so it isn't thread contention. The government's own homepage answers a plain `curl` in well under a second, so this isn't a dead host; the hang is inside one of recon's other steps (DNS lookup, robots.txt, or the wayback/common-crawl probes — `cdx_healthy` was already `False` for this run, so the wayback branch should have been skipped, but that wasn't independently confirmed by isolating each step).
+  - **Impact**: one government left un-swept per occurrence; low by itself, but a hang with no timeout can silently stall a whole concurrent batch if it recurs on a government processed early in a `ThreadPoolExecutor` batch rather than last.
+  - **Next action**: instrument `wo273_recon.py`'s per-step calls (DNS/robots/sitemap/common-crawl) with an explicit per-step timeout (`requests` calls already take a `timeout=` kwarg in most call sites — check whether one is missing on this specific path) rather than relying on the overall process to eventually finish. Re-run against `rankincounty.org` alone with each step print-timed to isolate which one hangs.
+  - **Constraint**: don't just add a blanket "kill after N seconds" wrapper at the sweep level — that hides which specific step is missing a timeout, and the next domain to hit it would silently lose the same amount of real data.
+  - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
+
+- **[NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no listing-walk drill-down for a multi-meeting page, unlike CivicPlus's AgendaCenter.**
+  - **Issue**: found live 2026-09-12 (WO-321). York County, ME's confirmed Town Hall Streams page (`https://townhallstreams.com/towns/york_meetings`) is a listing of that town's meetings, not one specific meeting — `resolve()` returned `video_url=None`/`title=None`/`agenda_link=False` for it, meaning it never picked a specific meeting to check. `civicplus.py`'s own `resolve()` already checks the 5 most recent postings on an AgendaCenter listing page for real video before giving up (`NoVideoCandidateFound`); `townhallstreams.py` has no equivalent.
+  - **Impact**: every Town Hall Streams *town-listing* URL (as opposed to a URL for one specific meeting) currently resolves to nothing, even when the town's listing has a real video-bearing meeting on it — an undercount specific to this platform's listing-page shape.
+  - **Next action**: give `townhallstreams.py`'s `resolve()` the same shape of listing-walk CivicPlus already has: when the URL is a listing rather than a specific meeting, check the N most recent entries for a real video before raising `NoVideoCandidateFound`/returning empty.
+  - **Constraint**: build and verify this against a second real Town Hall Streams listing page before trusting the drill-down count logic across tenants — this repo's own "test against a real URL first" rule (`CLAUDE.md`), and York County, ME is only one real sample.
+  - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
 
 - **[JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County PA) is keyed correctly but its permalink slug still carries the government it was first keyed to (`oak-bluffs-ma-…`) — a misleading URL, not a mis-key.**
   - **Issue**: WO-316 (2026-09-12) filed this page as "really an Oak Bluffs, MA meeting" from its slug and title alone. Checked the same day against the video itself, independently, by both this session and Breadth (2026-09-12): Vimeo `1224013872`'s own oEmbed author is "Middletown Township" (`vimeo.com/middletowndelco`), the title is "September 2, 2026 Council Meeting", the live page displays "Middletown (township), PA", the row is `gov_id=us:cousub:4204549136` with `manual_override`, and Oak Bluffs, MA (`us:cousub:2500750390`) has no page in today's inventory and its own Vimeo pin is a different video (`1199438213`). This session's own hand-check went one step further and read the video's real transcript segments directly: a speaker gives her home address as "51 Oriole Avenue in Lima" (a real village inside Middletown Township) and references "the Delco Cruisers" ("Delco" is the common short name for Delaware County, PA) — direct spoken confirmation, not just channel/oEmbed metadata. WO-310's "already correct" call stands; WO-316's "new bug" paragraph in `ENUMERATION_METHODS.md` §324 is wrong on the key. The only Oak Bluffs trace is the frozen page slug, left over from the page's first (wrong) key — itself residue of the already-fixed WO-183 blank-`vimeo.com`-match bug, which `tenant_overrides.csv`'s own WO-183 row documents as having mis-attributed "Middletown township PA" to Oak Bluffs, MA.
