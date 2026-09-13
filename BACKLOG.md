@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (49)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
   Town of Lincoln, Ontario's own eScribe tenant has a real, current,…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
   `cablecast.py`: two more real URL/data quirks found by WO-309…
@@ -165,6 +165,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (49)
     [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's…
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
+  `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -184,7 +185,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (194)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (198)
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
   [NEEDS-AUDIT] The passive-discovery hop-link scorer's vocabulary is…
@@ -331,7 +332,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (194)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (51)
+  Adapter & platform gaps  (55)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -383,6 +384,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (194)
     [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
     [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
     [JUST-DO-IT] `[EASY]` `[WAIT]` Three of WO-234's nine Laserfiche…
+    [NEEDS-AUDIT] A slow-trickling response can hang a sweep past every…
+    [NEEDS-AUDIT] `generic_fallback.py`'s embedded-YouTube delegation…
+    [NEEDS-AUDIT] `cablecast.py` returns `segments=0` for a show whose…
+    [NEEDS-AUDIT] The passive-discovery-v2 pipeline (WO-283/WO-320…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -1787,6 +1792,14 @@ so that work reads together.
 - **Next action:** `find_youtube_links()`/`classify_youtube_url()` are fixed (WO-285: raw-text scan for a de-escaped youtube.com/youtu.be URL, plus `/embed/{id}` and `youtube-nocookie.com` support for defense in depth) in all three copies (`scripts/wo235_channel_pilot.py`, `scripts/wo247_channel_band.py`, `scripts/wo252_channel_band.py`). What's still open: re-run discovery on the remaining 22 of the 34 gov_ids not yet checked by hand (`rtr-business/research/wo271_discovery.csv`'s rows with `front_page_youtube_link=True` and a blank `channel_urls`, minus the 12 WO-285 already read).
 - **Constraint:** small population — a by-hand read of the remaining 22 rows, not a new bulk sweep.
 - **History:** `BACKLOG_DONE.md`'s WO-271 entry; `rtr-business/research/ENUMERATION_METHODS.md` §298; WO-285, 2026-09-12 (`BACKLOG_DONE.md`) fixed the classifier and checked 12 of the 34.
+
+### `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds its lock across the network call, so one slow probe can stall an entire chunk `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `maybe_refresh_cdx_health()` holds `_cdx_health_lock` across the actual `probe_cdx_health()` network call, not just the counter/flag it protects. Every government's own call into this function (unconditional, at the top of `process_government_v2`) goes through the same lock, so one slow/hung health probe blocks every other in-flight government behind it. Confirmed live, WO-322, 2026-09-12: a 400-row chunk (concurrency 48) stalled at 399/400 for 13+ minutes — zero CPU, zero open connections, exactly this shape.
+- **Impact:** any WO-3xx passive-discovery-v2 recon run at a chunk size that crosses a `CDX_HEALTH_EVERY` (200-government) boundary risks the same multi-minute stall, wasting real wall-clock time on every affected sweep, not just WO-322's.
+- **Next action:** apply the fix already made in `scripts/wo322_recon.py`'s own copy — release the lock before calling `probe_cdx_health()`, re-acquire only to write the result — to `wo283_recon.py` and every other WO-3xx copy that still carries the original.
+- **Constraint:** small, mechanical fix; no behavior change when CDX is healthy or the probe is fast.
+- **History:** `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -5652,6 +5665,34 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Impact**: three more working-looking document hosts not yet on file, each blocked by what looks like ordinary host volatility rather than a real, permanent outage — not urgent, since none of these add video.
   - **Next action**: re-run a plain GET against the three hosts (see `rtr-business/research/wo255_not_reconfirmed.csv` for the exact hosts and reasons) next time coverage work touches these governments; add whichever re-confirm to `alternate_domains` following §158's write protocol. Never cross the Cloudflare challenge on Riverside's host — that's the standing policy above, not a thing to retry differently.
   - **History**: `BACKLOG_DONE.md`'s WO-255 entry; `rtr-business/research/wo255_not_reconfirmed.csv`.
+
+- **[NEEDS-AUDIT] A slow-trickling response can hang a sweep past every configured `requests` timeout, since `timeout=` bounds each read op, not the whole request.**
+  - **Issue**: found live, WO-322, 2026-09-12 — two domains (`cityofclaycenter.com`, `roselandgov.org`) hung 250-290+ seconds on every retry (concurrency 1 through 15, Internet Archive CDX healthy and unhealthy both tried), despite `wo273_recon.py`'s `polite_request()` passing an explicit `timeout=6`. A plain `curl` to the same homepage returned in under 2 seconds, so the domain itself isn't slow — something else in the recon pipeline (robots/sitemap fetch, or a redirect target) is. `requests`' `timeout` resets on each partial socket read rather than bounding total request duration, so a server that dribbles bytes slowly enough never trips it.
+  - **Impact**: any passive-discovery-v2 sweep can lose several minutes per affected domain; at scale (thousands of governments), a handful of these domains materially slows a chunked sweep and risks looking like a deadlock (it did, until traced).
+  - **Next action**: wrap the request in a real wall-clock timeout (a `concurrent.futures` call with `.result(timeout=N)`, or a watchdog thread that closes the underlying socket) rather than relying on `requests`' own `timeout=` parameter alone. WO-322 worked around this operationally with an external process-level watchdog (`wo322_run_chunk.sh`, kills the whole sweep process after a wall-clock deadline) rather than fixing the library call itself.
+  - **Constraint**: don't just raise the `timeout=` value — that makes the worst case slower without fixing the underlying gap.
+  - **History**: `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
+
+- **[NEEDS-AUDIT] `generic_fallback.py`'s embedded-YouTube delegation makes a real YouTube network call during a sweep explicitly told to make none.**
+  - **Issue**: found live, WO-322, 2026-09-12 — a "no YouTube calls" sweep patched its own phase-3 targeted fetch to skip any youtube.com/youtu.be candidate URL, but a URL `detect_platform()` can't map to a named vendor host still routes to `GenericFallbackAssetFinder` (`platform_name = "unknown"`), whose `resolve()` scans the fetched page's own HTML for an embedded YouTube video id (`_find_youtube_video_id()`, a free, offline regex scan) and, if one is found, calls `YouTubeAssetFinder.resolve_video_id()` — a real network call. This is the same class of mistake WO-283 disclosed (`BACKLOG_DONE.md`'s WO-283 entry) recurring through a different code path: WO-283's own accidental calls came from its discovery pipeline's homepage fetch touching youtube.com URLs directly; WO-322's came from the *real resolve() pipeline itself*, on a plain government-domain page that merely embeds a video.
+  - **Impact**: any future sweep that hand-verifies a confirmed candidate through the real `resolve()` pipeline while under a "no YouTube calls" instruction can trip this the same way, with no warning — `resolve_diagnostic`-style scripts print `platform=unknown` or `platform=youtube` in their output, but nothing distinguishes "this call never touched YouTube" from "this call did" at the point of the call.
+  - **Next action**: give `GenericFallbackAssetFinder` (and/or `resolve()` generally) an opt-out flag that skips its YouTube-embed delegation, for callers operating under a YouTube-call restriction; or have it raise a distinct, catchable signal before making the network call so a caller can choose not to proceed.
+  - **Constraint**: the regex scan itself (`_find_youtube_video_id()`) is free/offline and should stay — only the follow-up `resolve_video_id()` call needs gating.
+  - **History**: `BACKLOG_DONE.md`'s WO-322 entry (found and disclosed the one real instance: Plainfield town, VT, withheld from ingest and recorded as an unverified `youtube_channel_leads.csv` lead instead); `rtr-business/research/ENUMERATION_METHODS.md` §334.
+
+- **[NEEDS-AUDIT] `cablecast.py` returns `segments=0` for a show whose own Cablecast API record says `hasCaptions: true`.**
+  - **Issue**: found live, WO-322, 2026-09-12 — Orion charter Township, MI's Cablecast show (id 5821, `playback.orionontv.org`) has `"hasCaptions": true, "captionProvider": "CablecastCloudServices"` in its own `GET /cablecastapi/v1/shows/{id}` response, but `app/platforms/cablecast.py`'s `resolve()` still returned `segments=0` for the same show.
+  - **Impact**: unmeasured how many other Cablecast tenants/shows carry the same `CablecastCloudServices` caption provider with real, fetchable captions this adapter isn't reading — this is the only confirmed instance so far.
+  - **Next action**: check whether `CablecastCloudServices`-provided captions are reachable via a documented Cablecast API endpoint (a captions/transcript sub-resource keyed by show or vod id) and, if so, add it to `cablecast.py`'s fallback chain, the same way its existing chain already covers other Cablecast caption shapes.
+  - **Constraint**: per this repo's "don't claim a caption path works without a positive example" rule — confirm a real, populated captions response before wiring it into the adapter, not just the `hasCaptions: true` flag.
+  - **History**: `BACKLOG_DONE.md`'s WO-322 entry (queued the same show to tier 3 without captions in the meantime); `rtr-business/research/ENUMERATION_METHODS.md` §334.
+
+- **[NEEDS-AUDIT] The passive-discovery-v2 pipeline (WO-283/WO-320 onward) treats a vendor-tenant-host domain like an ordinary government homepage, which can miss real content the adapter's own listing view would find.**
+  - **Issue**: found live, WO-322, 2026-09-12 — 12 of WO-322's 1,266 rows carry a vendor tenant subdomain (CivicClerk/Swagit/Granicus/PrimeGov/eScribe) as their own `domain` column, not the government's own website. The recon->classify->targeted chain fetches that tenant root the same as any other homepage; a direct `resolve()` against the bare tenant root mostly hit each adapter's own "no event id in this URL" error, since these adapters expect a specific listing/event URL, not the root. All 12 landed as `no-platform-link-found`, which may understate what's actually there.
+  - **Impact**: small (12 rows in this one population), but the same gap likely affects every sibling WO-3xx population that also carries vendor-tenant-host rows, and undercounts real coverage on each.
+  - **Next action**: for a row whose `domain` matches a known vendor-tenant host shape, phase 1/3 should call that platform's own listing-discovery step (the same one `bulk_ingest.py`/the ladder sweeps use to find a specific meeting from a tenant's listing) instead of the generic homepage-hop path.
+  - **Constraint**: don't guess a listing URL shape from the bare tenant root — use each adapter's own, already-built listing logic.
+  - **History**: `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
 
 ## Reliability, ops & cost
 

@@ -210,6 +210,73 @@ not built.
 **The main takeaway: this group of 223 US counties added zero new
 video-bearing meetings, but the negative result is a checked one, not a
 guess — every step of why is written down.**
+## WO-322: passive discovery v2 on 1,266 small US municipalities/townships — 1 real meeting queued, 1 more real find held back for a YouTube check, and a real sweep bug fixed along the way [Done 2026-09-12]
+
+**What was done and why.** This WO ran the repo's passive-discovery
+method (look at a government's own website for a real meeting platform,
+without needing a login or a browser) on 1,266 small US towns and
+townships (under 5,000 people) that no earlier sweep had ever reached.
+The goal is the same as every sweep like it: find one meeting with
+video per government, add it to the site or the transcription queue,
+and record an honest "nothing here" for the rest.
+
+**Result.**
+
+| Outcome | Count of 1,266 | What it means |
+|---|---|---|
+| Real meeting, queued for transcription | 1 | Orion charter Township, MI — added to the queue now |
+| Real meeting with real captions, held back | 1 | Plainfield town, VT — not published yet, see caution below |
+| Real meeting or agenda page, but no video | 180 | A real government website, nothing to show yet |
+| Platform found, but no real meeting on it | 41 | The right kind of website, empty or unreachable listing |
+| Nothing found | 1,043 | No usable platform found on this government's site |
+
+**A caution: one government's real meeting is being held back, not
+published.** This session made an accidental call to YouTube while
+checking a page — a page on Plainfield, Vermont's own town website has
+a YouTube video embedded in it, and reading that page triggered a
+real request to YouTube. This repo has a firm rule: only one machine is
+allowed to talk to YouTube, so several machines don't trip YouTube's
+block at once. This session was not supposed to touch YouTube at all
+and caught the mistake only after it happened. The real find — a 2026
+Town Meeting video with 1,705 lines of real captions — was NOT
+published. It is written down as an unconfirmed lead for the one
+approved machine to check first.
+
+**A second caution: this session found and fixed a real bug that was
+slowing down the tool itself.** Partway through, the tool that fetches
+each government's website froze for over 13 minutes on a single batch,
+for no clear reason. The cause: the tool holds a lock (a "wait your
+turn" flag) while it makes one particular health-check call to Internet
+Archive, and every other website it was checking at the same time had
+to wait behind that one call. This is now fixed in this session's own
+copy of the tool. The same bug likely still exists in the shared copy
+other sessions use — see the new `BACKLOG.md` entry.
+
+**Recommendation.** Deploy `main` so Orion charter Township's queued
+meeting reaches the transcription worker and its pin takes effect. Have
+the YouTube-approved machine check the Plainfield, Vermont lead next —
+it is a real, ready-to-publish meeting once someone on that machine
+confirms it.
+
+**Deploy status.** The queue line and the new pin are on `main` but
+need the next deploy before the transcription worker or a future
+re-check can use them. Nothing was published directly to the site by
+this session — the government-record updates (see below) went to a
+separate research file that a different process (Breadth) commits on
+its own schedule.
+
+**What's undone.** Plainfield, VT's real find waits on the YouTube
+machine. 12 governments whose website IS a shared meeting-vendor page
+(not their own site) got a shallower check than they deserve — a
+proper check needs to browse that vendor's own meeting list, which this
+run didn't build. 9 governments marked "already covered" by an earlier
+pass couldn't be double-checked against the live site records — the
+lookup tool this session tried gave an error every time, for reasons
+not yet understood. Both are recorded as open items for whoever picks
+this up next.
+
+Full breakdown, every file touched, and the code fixes:
+`rtr-business/research/ENUMERATION_METHODS.md` §334.
 
 ## WO-319: Huron charter Township, Wayne County MI -- pin repointed, page 3938 re-keyed [Done 2026-09-12]
 
