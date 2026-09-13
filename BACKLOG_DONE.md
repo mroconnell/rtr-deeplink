@@ -1,5 +1,89 @@
 # Backlog — done
 
+## WO-331: positive controls for passive discovery v2 -- does it still find video we already know is there? [Done 2026-09-13]
+
+Ryan asked for a sanity check: the passive v2 sweeps (WO-320 through
+WO-327) have been writing a lot of "meeting-without-video" results
+lately. Before trusting that those governments really have no video,
+this WO ran one known-video government per platform through the exact
+same pipeline the sweeps use, to see whether the pipeline can still find
+video when we already know it is there.
+
+**What was tested.** 26 governments, one per platform (granicus,
+legistar, civicplus, civicclerk, swagit, escribe, civicweb, primegov,
+iqm2, hyland, cablecast, castus, boxcast, telvue, champds, viebit,
+townhallstreams, municode_meetings, utah_pmn, suiteone, civiclive,
+vimeo, youtube, direct_file, plus one extra each for swagit and escribe
+after the first pick got blocked -- see below). Every one was picked
+because the Archive already has a real page for it, with real captions
+and a real video, from that government's own domain. Two of the 26
+(Johnson County TX, Gainesville FL) hit the known Akamai/govAccess
+block on this machine and were swapped for Webb County TX and Victoria
+BC, which are not on that block.
+
+**What happened, step by step:**
+
+| Step | Outcome | Count of 24 (26 minus the 2 blocked) | What it means |
+|---|---|---|---|
+| Phase 3 (the sweep's own fetch+confirm step) | Confirmed a real platform | 15 | The pipeline found and confirmed a platform link on the government's own site. |
+| Phase 3 | Found candidates but confirmed none | 8 | The pipeline saw the site but never recognized any platform on it, even though the government has real video today. |
+| Phase 3 | Found no candidate link at all | 1 | Utah's own state meeting-notice portal link never surfaced from the town's homepage. |
+| Hand-check (the sweep's own `resolve()` call, run on whatever Phase 3 confirmed) | Found real video | 1 | Plymouth, MI -- the only one of 15 confirmed governments where the sweep's own check, unmodified, found the video. |
+| Hand-check | Found no video | 14 | Every other confirmed government -- despite each one having real video today. |
+| One extra hop (this WO's own addition, not part of the sweep) | Found real video | 1 more | Queen Anne's County, MD -- following one link off the confirmed CivicPlus page reached a specific Telvue player and found 1,283 real captions. |
+| One extra hop | Still no video | 13 | The hop mostly reached the *next* listing page up (a vendor's own tenant home page, or a second calendar page), not a specific meeting -- so it still came back empty. |
+
+**Why it happens.** Two different real causes, both confirmed live:
+
+1. The page the sweep checks is often a listing (an AgendaCenter, a
+   Legistar calendar, a CivicWeb portal, a TownHallStreams town hub),
+   not one specific meeting. `resolve()` on a listing page returns "no
+   video" honestly -- it isn't wrong, it just was never given a specific
+   meeting to check. Only `civicplus.py` currently tries a few recent
+   listings before giving up; the other platforms tested here do not.
+2. On several governments, the page the sweep confirms is CivicPlus
+   (a very common, easy-to-recognize link), even though the government's
+   real video lives on a completely different platform (iqm2, Telvue,
+   granicus, swagit) linked from the same page. The pipeline's ranking
+   picks CivicPlus first and never checks the platform that actually has
+   the video.
+
+**How big this is.** The research file (`jurisdiction_coverage.csv`)
+has 957 rows marked "no meeting" or "meeting, no video" whose suspected
+platform is one of the ones this WO tested live. 576 of those 957 (60%)
+are CivicPlus. The wave's own finished files (WO-321, 324, 325, 326)
+show the same shape on 176 "meeting-without-video" rows: 78 of them are
+CivicPlus. A separate hand-check run the same day, by a different
+session, checked 18 real "no meeting" rows in a browser and found 16 of
+18 had a real, live agenda page after all.
+
+**Caution.** This WO's own "one extra hop" was a simple, generic
+link-picker, not a real fix -- it mostly proved that a naive hop isn't
+enough, not that the platforms can't be fixed. `civicplus.py` already
+proves an adapter CAN walk a few recent listings and find real video;
+the other platforms tested here (civicweb, escribe, iqm2, granicus,
+legistar, townhallstreams, municode_meetings) do not have that yet.
+No page was created and nothing was written to the research file or
+queue -- every control government already had a real page before this
+WO started.
+
+**Recommendation.** Before re-running the sweeps on their
+"meeting-without-video" governments, give the adapters (or the sweep's
+own verification step) a real walk to the newest specific meeting --
+starting with CivicPlus (576 of 957 affected rows) and CivicWeb/
+escribe/iqm2 (a combined 229 more). Re-running the sweeps as-is would
+likely just repeat the same false "no video" result at full sweep cost.
+
+**Deploy status.** Nothing here touches production code, so there is
+nothing to deploy. The finding is a recommendation for how the *next*
+sweep or adapter fix should work.
+
+Full per-government detail: `rtr-business/research/wo331_report.csv`,
+`wo331_handcheck.csv`, `wo331_vendor_hop.csv`.
+Methods: `rtr-business/research/ENUMERATION_METHODS.md` §337.
+BACKLOG: the "Confirmed, quantified, and generalized (WO-331)" entry
+under Open bugs.
+
 ## WO-329: Sheboygan County, WI and Plainfield, VT queued for the YouTube drip [Done 2026-09-13]
 
 Ryan's call (2026-09-13) on the two real transcripts WO-325 and WO-322
