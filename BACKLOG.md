@@ -168,7 +168,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   34 of WO-271's WordPress governments have a front-page…
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
+  54 real West Virginia towns/cities share one placeholder domain…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -186,12 +187,13 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (208)
   [NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url`…
   [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
   [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
+  [NEEDS-AUDIT] `wo273_targeted.py`'s fallback rung 2 (headless render…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
   [NEEDS-AUDIT] A hand-verification script that calls the real…
   [JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()`…
@@ -1843,6 +1845,38 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
+### 54 real West Virginia towns/cities share one placeholder domain (`local.wv.gov`) on file, so no automated sweep can tell them apart `[HUMAN]`
+
+- **Issue:** WO-337 (2026-09-13, passive discovery v2 group 7) found
+  `research/passive_neither_7-us-muni-twp-ladder-only.csv` carries 54
+  different real West Virginia towns/cities all recorded with the exact
+  same `domain`, `local.wv.gov` -- not a real per-government website,
+  apparently a statewide portal placeholder an earlier enumeration pass
+  filled in when no individual site was found. 5 more governments (in
+  smaller 2-3-way groups) share a domain for a real, legitimate reason
+  (a town and its co-located village, or a small multi-tenant community
+  portal) rather than a placeholder.
+- **Impact:** a single automated fetch of `local.wv.gov` cannot tell
+  which, if any, of the 54 towns its content is actually about, so all
+  54 (minus the one WO-337's own report happened to attribute the fetch
+  to, Wellsburg city) are left with no fresh finding at all -- a real,
+  honest gap in this WO's own coverage, recorded as
+  `shared-domain-not-verified` and deliberately not written to
+  `jurisdiction_coverage.csv`.
+- **Next action:** for each of the 54 West Virginia governments, find
+  its real individual government website by hand (a search engine query
+  or the WV Secretary of State's municipal directory is the fastest
+  route) and correct its `domain` in `jurisdiction_coverage.csv`
+  (moving `local.wv.gov` to `alternate_domains`, per this repo's
+  never-blank-a-domain rule) before any future sweep touches these rows
+  again -- otherwise the same 54-way collision recurs every time.
+- **Constraint:** don't try to automate this one — a search for each
+  town's real site needs a human to confirm the result actually belongs
+  to that specific town, not a same-named place in another state.
+- **History:** this WO's `BACKLOG_DONE.md` entry;
+  `research/wo337_report.csv` (`shared_domain_primary=False` rows) has
+  the full list of 54 gov_ids.
+
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
 - **Issue:** WO-301 (2026-09-12) found 51 `jurisdiction_coverage.csv`
@@ -2154,6 +2188,13 @@ of human step they need.
   - **Next action**: give `wo325_resolve_diagnostic.py` (and its siblings, `wo283_resolve_diagnostic.py` etc.) a pre-check: for a candidate whose platform is a known YouTube/Vimeo-delegating one (`municode_meetings`, `primegov`, the Chicago City Clerk ELMS path), either skip the real `resolve()` call and instead scan the page's own HTML for an embedded youtube.com/vimeo.com link (recording it as a lead, same as the direct-YouTube-URL case), or require an explicit opt-in flag before running `resolve()` on that platform under a "no YouTube calls" WO. Also cover `GenericFallbackAssetFinder` (`platform=unknown`) itself, not just the named wrapper adapters — it does its own regex scan for an embedded YouTube video id and calls `YouTubeAssetFinder.resolve_video_id()` when it finds one, which is a second, separate route into the same problem.
   - **Constraint**: don't widen the fix to skip `resolve()` on every platform that COULD theoretically embed a YouTube video (most html-based platforms could) — only the platforms that are documented, structural wrappers per `CLAUDE.md`'s own list, plus `GenericFallbackAssetFinder`.
   - **History**: `BACKLOG_DONE.md`'s WO-325 entry. **Not a one-off**: `rtr-business/research/ENUMERATION_METHODS.md` §334 (WO-322, running the same family of WOs in parallel, on a different population) independently hit the identical gap through `GenericFallbackAssetFinder`'s own YouTube-id regex scan — Plainfield town, VT, 1,705 real caption segments, also withheld rather than ingested. Two independent WOs hitting this the same day on two different population groups is a real, repeatable gap, not population-specific bad luck.
+
+- **[NEEDS-AUDIT] `wo273_targeted.py`'s fallback rung 2 (headless render via `wo147_access_ladder_sweep.fetch_headless_sync`) can wedge a whole phase-3 chunk with zero warning — no timeout on Chromium launch itself, only on page navigation.**
+  - **Issue**: found live 2026-09-13 (WO-337). A 400-government phase-3 chunk at `--concurrency 32` produced zero new rows in `wo337_targeted.csv` for 9+ minutes, with the process's own CPU time barely moving — not a network stall (plain-HTTP fetches are bounded by `GOV_TIMEOUT`), consistent with several concurrent `confidence=none` governments all triggering rung 2's headless render at once and jamming on this machine's resources. `fetch_headless_sync()`'s `page.goto(..., timeout=15000)` and `page.wait_for_timeout(3000)` are both bounded, but `sync_playwright()`'s own startup and `p.chromium.launch()` are not — nothing times out a hung browser launch.
+  - **Impact**: a phase-3 sweep can silently hang for the rest of its process lifetime (had to be killed by hand) any time enough same-batch governments hit the headless fallback rung together. Every WO in the WO-273/28x/3xx family that imports this function inherits the same exposure.
+  - **Next action**: give `fetch_headless_sync()` itself a hard wall-clock deadline around `p.chromium.launch()` (not just `page.goto`), and cap how many headless renders run concurrently regardless of the caller's own `--concurrency`. WO-337 worked around this in its own copy only (`scripts/wo337_targeted.py`'s `HEADLESS_SEMAPHORE` + `call_headless_with_deadline()`, a 4-way semaphore plus a 40s hard deadline via a small dedicated thread pool) rather than editing the shared `wo147_access_ladder_sweep.py`, since other WOs were running concurrently against it — the shared module still needs the real fix.
+  - **Constraint**: a deadline via `Future.result(timeout=...)` doesn't actually kill the underlying thread/browser process in Python — it just stops waiting on it, so a genuinely wedged launch leaks a stuck worker/Chromium process rather than being cleaned up. Any real fix should either use a subprocess-based Chromium launch (killable by PID) or otherwise ensure the browser process itself is torn down on deadline, not just abandoned.
+  - **History**: this WO's `BACKLOG_DONE.md` entry.
 
 - **[NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event id from a bare fragment-only SuiteOne URL (`https://floydcoin.suiteonemedia.com/#home`), so a real, name-and-state-confirmed SuiteOne tenant fails to resolve at all.**
   - **Issue**: found live 2026-09-12 (WO-325), Floyd County, IN (`us:county:18043`). The confirmed candidate URL is the tenant's bare homepage with only a `#home` hash fragment, which SuiteOne's own client-side routing turns into the real event listing after a page render — but `suiteone.py`'s `resolve()` raised `ValueError: Could not find a SuiteOne tenant/event id in URL` before any fetch, since the fragment carries no id the adapter's URL parser recognizes.
