@@ -1,5 +1,71 @@
 # Backlog — done
 
+## WO-328 / WO-326b: registrable_label() province-suffix fix, and the Town of Lincoln, Ontario row corrected [Done 2026-09-13]
+
+Two entries closed by work that landed 2026-09-12/13, both verified live.
+
+**WO-328 (Breadth, PR #1111, ea2a45f).** `registrable_label()` in
+`scripts/wo273_recon.py` and its copy in `wo268_passive_discovery.py`
+read a `*.qc.ca` domain's province code as the government's own label,
+so the DNS tenant guess asked `qc.primegov.com` -- a real regional
+PrimeGov landing page -- and WO-324 saw 66-70 false PrimeGov
+"confirmations" (excluded by hand; none reached a research row). Fixed:
+Canadian two-level province suffixes are stepped past; a
+`label_is_guessable()` guard in `dns_lookup()` refuses province codes
+and 1-2-character labels; the US rule now also steps past
+k12/ci/co/city/town/twp/village/vil/cty/www infixes it never stripped;
+a cross-copy test asserts both scripts agree on nine real shapes; four
+tests use real WO-324 domains with a stubbed `dig()` proving
+`qc.primegov.com` is never asked. WO-327 confirmed by hand that none of
+the 93 affected Quebec towns run PrimeGov or CivicWeb.
+
+| Result | Count | What it means |
+|---|---|---|
+| False PrimeGov hits in WO-324 before the fix | 66-70 | all from one regional page |
+| Research rows that had carried the false hit | 0 | intermediate files only |
+| Tests added | 4 + 1 cross-copy | real domains, no network |
+
+**WO-326b (Breadth, rtr-business 2fcb7c9 + 77ea995).** Town of Lincoln,
+Ontario (`ca:csd:3526057`) already held 4 transcribed pages (newest a
+2026-07-27 Council Meeting, page 4111) yet its research row said
+`no-platform-link-found` with no meeting URL. Root cause was the
+same-name trap WO-326 hit from the other side: `pub-lincoln.
+escribemeetings.com` had been recorded on Lincoln, NEBRASKA's row. Row
+corrected: alternate_urls carries the eScribe tenant, reject_reason
+blank, example_meeting_url = page 4111's source.
+
+Original entries, moved here verbatim:
+
+### Town of Lincoln, Ontario's own eScribe tenant has a real, current, on-mission meeting but its research row still says no platform found `[JUST-DO-IT]`
+
+- **Issue:** WO-326 (2026-09-12) confirmed `pub-lincoln.escribemeetings.com`
+  is a real, live eScribe tenant for the Town of Lincoln, Ontario, Canada
+  (`ca:csd:3526057`, already pinned) — real committee names (Council
+  Meeting, Committee of the Whole, Committee of Adjustment, Heritage
+  Advisory Committee), e.g. a July 27, 2026 "Council Meeting"
+  (`Meeting.aspx?Id=406d7685-41ab-4128-87f7-8ebd187e1e62`). Its own
+  `jurisdiction_coverage.csv` row still reads
+  `reject_reason=no-platform-link-found`.
+- **Impact:** one real, ready government with a real video tenant sits
+  unrecorded and unresolved on the coverage dashboards.
+- **Next action:** correct `ca:csd:3526057`'s row (`domain` ->
+  `pub-lincoln.escribemeetings.com`, `reject_reason` cleared) and
+  hand-read + ingest its newest on-mission Council meeting, same pattern
+  as WO-326's Lincoln city NE fix.
+- **Constraint:** none — the gov_id and pin already exist, no mint pass
+  needed.
+- **History:** `rtr-business/research/wo326_owner_bodies.csv`;
+  `ENUMERATION_METHODS.md` §331.
+
+
+- **[NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a Canadian `*.qc.ca`-style domain's province code as if it were the government's own name, producing a false shared-host platform "confirmation" on every such row — 66-70 of WO-324's 258 Quebec rows in one run.**
+  - **Issue**: found live 2026-09-12 (WO-324, group 5). `registrable_label(domain)` takes a domain's second-to-last label as the government's slug to guess a vendor tenant host from (`{label}.primegov.com`, `{label}.civicweb.net`). For `www.ville.contrecoeur.qc.ca` that label is `qc` — Quebec's own province code, not the government's name — and `qc.primegov.com` genuinely resolves (`onemeeting-qc.primegov.com`, PrimeGov's own regional "OneMeeting Quebec" landing page, not any one government's tenant). `dns_platform()` (both the recon-time original and `wo273_classify.py`'s duplicate) treats any resolving guess as real evidence, so every `*.qc.ca` row in the population got `platform=primegov, confidence=high` regardless of whether that government uses PrimeGov at all — confirmed: 0 of the 66-70 affected rows had any other real PrimeGov signal (no PrimeGov URL anywhere in their sitemap/Wayback/Common-Crawl data). The `<slug>.civicweb.net` guesses from the same mechanism are NOT affected — each resolving one was checked and is a real, government-specific tenant (e.g. `kamloops.civicweb.net`), because Kamloops's own domain (`www.kamloops.ca`) doesn't end in a two-level province suffix.
+  - **Impact**: every future Canadian sweep that reuses this shared recon step (WO-320 through WO-327 and beyond) will get the same false `primegov, confidence=high` on any `*.qc.ca` domain, and potentially the same shape of bug on other two-level Canadian suffixes (`*.on.ca`, `*.bc.ca`, `*.ab.ca`, etc.) if PrimeGov or CivicWeb ever stands up a similar shared regional host under one of those labels — none currently do (checked: only `qc.primegov.com` resolves among all province-code guesses across WO-324's 493-row population). This run's own phase 3 was never exposed to it (candidates are scored off real ranked URLs, never off this bare DNS-guess string) and it never reached `jurisdiction_coverage.csv` (every Quebec row in this run was `deferred-french-vocab` regardless of phase 2's output) — but a future sweep that trusts `wo273_classify.py`'s `confidence=high` directly, without a phase-3 re-verification step in between, would apply a wrong `suspected_meeting_link_provider=primegov` to dozens of real governments in one pass.
+  - **Next action**: fix `registrable_label()` to strip a known two-level Canadian province/territory suffix (`qc`, `on`, `bc`, `ab`, `mb`, `sk`, `nb`, `ns`, `pe`, `nl`, `nt`, `nu`, `yt`, each preceded by `.ca`) before taking the next label as the government's slug, the same way it already special-cases `.us` domains with a short second-to-last label. Belt-and-braces: also reject a `resolving_vendor_labels` guess outright when the guessed label IS one of those codes, regardless of TLD shape.
+  - **Constraint**: verify the fix against a real `.on.ca`/`.bc.ca` domain too, not just `.qc.ca` — this repo's own "one platform's real file is not enough" rule (`CLAUDE.md`), and the only confirmed live instance of the bug firing is the `qc.primegov.com` host specifically.
+  - **History**: `rtr-business/research/wo324_methods_section.md`; `BACKLOG_DONE.md`'s WO-324 entry.
+
+
 ## WO-325: passive discovery v2 on group 6 (US counties, ladder-only) -- 117 platforms confirmed, 0 real videos applied, 1 real video withheld pending a human call, 116 YouTube leads to the drip [Done 2026-09-12]
 
 **What was done and why.** Breadth split the "neither pass" governments
