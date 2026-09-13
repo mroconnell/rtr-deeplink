@@ -178,6 +178,14 @@ CORPORATE_HOSTS_BY_PLATFORM: dict[str, FrozenSet[str]] = {
             "diligentoneplatform.com",
             "www.diligentoneplatform.com",
             "oidc.diligentoneplatform.com",
+            # WO-348 (2026-09-13): a THIRD real, live CivicWeb/Diligent
+            # domain shape, confirmed on Eatwp township, PA
+            # (eatwp.diligent.community, real "Meeting Portal" link from
+            # the township's own homepage, MeetingTypeList.aspx page with
+            # real meeting ids) -- distinct from both civicweb.net and
+            # the community.diligentoneplatform.com shape already
+            # handled below.
+            "diligent.community",
         }
     ),
     "iqm2": frozenset({"iqm2.com", "www.iqm2.com"}),
@@ -317,7 +325,14 @@ def detect_platform(url: str) -> str:
         # AgendaCenter, self-hosted on roswell-nm.gov rather than
         # *.civicplus.com, links straight to a destinyhosted.com URL.
         return "destinyhosted"
-    if "civicweb.net" in netloc or "diligentoneplatform.com" in netloc:
+    if (
+        "civicweb.net" in netloc
+        or "diligentoneplatform.com" in netloc
+        # WO-348 (2026-09-13): a third real domain shape, confirmed on
+        # eatwp.diligent.community (Eatwp township, PA) -- see
+        # CORPORATE_HOSTS_BY_PLATFORM's "civicweb" entry above for detail.
+        or "diligent.community" in netloc
+    ):
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
         # -- see civicweb.py's own module docstring. The

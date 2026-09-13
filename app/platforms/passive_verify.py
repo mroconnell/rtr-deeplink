@@ -351,6 +351,25 @@ _CIVICWEB_TENANT_RE = re.compile(r"^([^.]+)\.civicweb\.net$")
 _CIVICWEB_MEETING_ID_RE = re.compile(r"MeetingInformation\.aspx\?[^\"']*Id=(\d+)")
 _CIVICWEB_IDS_TO_CHECK = 8
 
+# WO-348 (2026-09-13): CivicWeb/Diligent's real tenant hostname takes (at
+# least) three different shapes on file -- `<tenant>.civicweb.net`,
+# `<tenant>.community.diligentoneplatform.com`, and, confirmed live this
+# WO on Eatwp township PA, `<tenant>.diligent.community` -- and the
+# tenant is always the FIRST dns label regardless of which shape it is,
+# so one regex covers all three rather than hardcoding `.civicweb.net`.
+_CIVICWEB_ANY_TENANT_RE = re.compile(
+    r"^([^.]+)\.(?:civicweb\.net|community\.diligentoneplatform\.com|diligent\.community)$"
+)
+
+# WO-348 (2026-09-13): confirmed live that a real tenant's own meeting
+# listing can sit at EITHER path -- Eatwp township PA's real "Meeting
+# Portal" nav link goes to MeetingTypeList.aspx (the only path this
+# walker tried before this WO), while Ferris TX and Lower Saucon
+# township PA's real "Calendar" nav link goes to MeetingSchedule.aspx
+# instead, which came back completely empty from MeetingTypeList.aspx.
+# Both real, both live; try both rather than picking one.
+_CIVICWEB_LISTING_PATHS = ("Portal/MeetingTypeList.aspx", "Portal/MeetingSchedule.aspx")
+
 
 async def _civicweb_walker(hub_url: str) -> List[dict]:
     """Ported from `~/Documents/rtr-business/research/meeting_url_finder.py`'s
@@ -365,23 +384,27 @@ async def _civicweb_walker(hub_url: str) -> List[dict]:
     `civicweb.py` adapter, rather than duplicating its `/api/videolink/`
     logic here a second time.
     """
-    match = _CIVICWEB_TENANT_RE.match(_host(hub_url))
+    match = _CIVICWEB_ANY_TENANT_RE.match(_host(hub_url))
     if not match:
         return []
-    tenant = match.group(1)
-    html, _, err = await _fetch(
-        f"https://{tenant}.civicweb.net/Portal/MeetingTypeList.aspx"
-    )
-    if err or html is None:
+    origin = f"https://{_host(hub_url)}"
+    ids: set[int] = set()
+    for path in _CIVICWEB_LISTING_PATHS:
+        html, _, err = await _fetch(f"{origin}/{path}")
+        if err or html is None:
+            continue
+        ids |= {int(i) for i in _CIVICWEB_MEETING_ID_RE.findall(html)}
+        if ids:
+            break
+    if not ids:
         return []
-    ids = sorted({int(i) for i in _CIVICWEB_MEETING_ID_RE.findall(html)}, reverse=True)
     return [
         {
             "title": "",
             "date": None,
-            "url": f"https://{tenant}.civicweb.net/Portal/MeetingInformation.aspx?Id={mid}",
+            "url": f"{origin}/Portal/MeetingInformation.aspx?Id={mid}",
         }
-        for mid in ids[:_CIVICWEB_IDS_TO_CHECK]
+        for mid in sorted(ids, reverse=True)[:_CIVICWEB_IDS_TO_CHECK]
     ]
 
 
@@ -572,7 +595,18 @@ async def _escribe_walker(hub_url: str) -> List[dict]:
     return [candidate for _, candidate in parsed]
 
 
-_CIVICCLERK_TENANT_RE = re.compile(r"^([^.]+)\.(?:portal|api)\.civicclerk\.com$")
+# WO-348: a THIRD real CivicClerk tenant domain shape beyond
+# `.portal.`/`.api.` -- confirmed live on Upper Providence Township, PA
+# (`upperprovidencetwppa.civicclerk.com`, no infix at all). It 301s
+# straight to the `.portal.` host, but the walker is handed the
+# pre-redirect URL (phase 3's own confirmed hub), so it needs to
+# recognize the bare shape directly rather than relying on a redirect it
+# never follows itself. `www.civicclerk.com` is excluded -- that's
+# CivicClerk's own corporate/marketing host (`CORPORATE_HOSTS_BY_
+# PLATFORM`), never a real tenant.
+_CIVICCLERK_TENANT_RE = re.compile(
+    r"^(?!www\.)([^.]+)\.(?:(?:portal|api)\.)?civicclerk\.com$"
+)
 
 
 async def _civicclerk_walker(hub_url: str) -> List[dict]:
@@ -1277,8 +1311,436 @@ _CATCH_ALL_BODY_FLOOR = 800
 # directly.
 _CIVICPLUS_MARKERS = ("catagendarow", "/areas/agendacenter/")
 
+# --- WO-348: "look one hop deeper" ------------------------------------
+#
+# WO-347's 60-government hand audit (`research/wo347_audit_sample.csv`)
+# found the pipeline's two negative verdicts -- "nothing walkable" (a
+# confirmed hub whose walk came back empty) and "candidate-not-confirmed"
+# (phase 3 tried a candidate and rejected it) -- wrong most of the time:
+# 13 of 20 and 17 of 20. WO-348 measured WHY on the 30 wrong rows, live
+# (`research/wo348_hop_measurements.csv`): of 24 rows with a real,
+# fetchable page to measure from (one row was skipped rather than
+# fetching a youtube.com URL -- see this WO's own report), 3 were
+# already-fixed or walker-accuracy gaps at the SAME page (no real hop),
+# and of the rest, ~20 were reachable by ONE direct link from the page
+# the pipeline had already stopped at -- a real nav/content anchor whose
+# text was almost always some combination of "agenda", "minutes",
+# "meeting", "council", "board", "committee", "calendar", "document
+# center" or "portal" -- with a handful needing a second hop through an
+# intermediate section page (e.g. "Government" -> a department page ->
+# the real agendas/minutes page). Never a guess: every keyword below is
+# the literal (or near-literal) anchor text of a real link that led to a
+# real government meetings page, confirmed live this WO.
+#
+# The French table is NOT measured from this audit (no French-language
+# tenant was in the 30 wrong rows) -- it generalizes the same real
+# pattern to Francophone Canadian municipalities using standard municipal
+# vocabulary, per this WO's brief. Flagged here, and in the methods
+# writeup, as unconfirmed-by-audit so a later reader doesn't mistake it
+# for a measured finding the way the English table is.
+_HOP_WEIGHTS_EN: tuple[tuple[str, float], ...] = (
+    ("agenda", 3.0),
+    ("minutes", 3.0),
+    ("meeting", 2.5),
+    ("calendar", 1.5),
+    ("document center", 1.5),
+    ("meeting portal", 1.5),
+    ("zoning", 1.0),
+    ("council", 1.0),
+    ("board", 1.0),
+    ("committee", 1.0),
+    ("supervisors", 1.0),
+    ("document", 0.75),
+    ("portal", 0.75),
+    ("government", 0.5),
+    ("city administrator", 0.5),
+    ("clerk", 0.5),
+)
+_HOP_WEIGHTS_FR: tuple[tuple[str, float], ...] = (
+    ("ordre du jour", 3.0),
+    ("procès-verbaux", 3.0),
+    ("proces-verbaux", 3.0),
+    ("procès-verbal", 3.0),
+    ("séances", 2.5),
+    ("seances", 2.5),
+    ("réunion", 2.5),
+    ("reunion", 2.5),
+    ("conseil", 1.0),
+    ("comité", 1.0),
+    ("comite", 1.0),
+    ("calendrier", 1.5),
+    ("greffe", 0.5),
+)
+_HOP_WEIGHTS = _HOP_WEIGHTS_EN + _HOP_WEIGHTS_FR
 
-async def _probe_first_party_agenda_pages(hub_url: str) -> Optional[VerifyResult]:
+# WO-348: bound the whole deeper-hop mechanism the same way every other
+# retry limit in this module is bounded (WALK_LIMIT, _RETRY_LIMIT, ...) --
+# per the brief, at most this many extra fetches per government, not per
+# call site, so a government that fails the guessable-path probe AND the
+# listing-walker fallback still costs at most 3 extra requests total.
+_MAX_DEEPER_FETCHES = 3
+
+# Known third-party bill-pay vendors a small government's own site
+# sometimes links prominently (sometimes MORE prominently than its own
+# agenda page) -- never a real meetings page, so never worth an extra
+# fetch. Same "payment-portal guard" phase 3's own targeted scripts
+# already carry.
+_PAYMENT_PORTAL_HOSTS = frozenset(
+    {
+        "paymentus.com",
+        "xpress-pay.com",
+        "municipalonlinepayments.com",
+        "invoicecloud.com",
+        "govhub.com",
+        "citypay.com",
+        "officialpayments.com",
+        "grantstreet.com",
+        "paygov.us",
+        "clickpay.com",
+        "govpaynow.com",
+    }
+)
+
+
+def _is_payment_portal(url: str) -> bool:
+    host = _host(url)
+    return any(host == h or host.endswith("." + h) for h in _PAYMENT_PORTAL_HOSTS)
+
+
+def _score_hop_link(text: str, href: str) -> float:
+    hay = f"{(text or '').lower()} {(href or '').lower()}"
+    return sum(weight for keyword, weight in _HOP_WEIGHTS if keyword in hay)
+
+
+def _extract_hop_candidates(
+    html: str, base_url: str, *, exclude_urls: frozenset[str] = frozenset()
+) -> List[tuple[float, str, str]]:
+    """Score every real `<a href>` on `html` against `_HOP_WEIGHTS` and
+    return `(score, absolute_url, anchor_text)` tuples, highest first.
+    Never returns a youtube.com/youtu.be link -- a YouTube lead is
+    handled elsewhere (as a `youtube_lead` verdict, never fetched), not
+    as a hop candidate to follow."""
+    soup = BeautifulSoup(html, "html.parser")
+    base_norm = base_url.rstrip("/")
+    seen: set[str] = set()
+    out: List[tuple[float, str, str]] = []
+    for a in soup.find_all("a", href=True):
+        href = (a.get("href") or "").strip()
+        if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+            continue
+        abs_url = urljoin(base_url, href)
+        if _is_youtube_host(abs_url) or _is_payment_portal(abs_url):
+            continue
+        norm = abs_url.rstrip("/")
+        if norm == base_norm or norm in exclude_urls or norm in seen:
+            continue
+        text = a.get_text(" ", strip=True)
+        score = _score_hop_link(text, href)
+        if score <= 0:
+            continue
+        seen.add(norm)
+        out.append((score, abs_url, text[:120]))
+    out.sort(key=lambda t: -t[0])
+    return out
+
+
+def _random_nonsense_path() -> str:
+    import random
+    import string
+
+    return (
+        "/" + "".join(random.choices(string.ascii_lowercase, k=24)) + "-rtr-wo348-probe"
+    )
+
+
+async def _catchall_signature(base_url: str) -> Optional[tuple[int, str]]:
+    """A cheap catch-all/parked-template detector -- fetch one nonsense
+    path on the same host and remember its (length, hash); a deeper-hop
+    candidate whose response matches this signature is the same
+    catch-all template answering every path with 200, not a real page.
+    Same real, confirmed shape phase 3's own `catchall_signature()`
+    already uses (`scripts/wo337_targeted.py`)."""
+    import hashlib
+
+    parsed = urlparse(base_url)
+    probe_url = f"{parsed.scheme}://{parsed.netloc}{_random_nonsense_path()}"
+    html, _, err = await _fetch(probe_url)
+    if err or html is None:
+        return None
+    return len(html), hashlib.sha256(html.encode("utf-8", "replace")).hexdigest()
+
+
+def _is_catchall(html: str, sig: Optional[tuple[int, str]]) -> bool:
+    if sig is None:
+        return False
+    import hashlib
+
+    length, hsh = sig
+    if len(html) != length:
+        return False
+    return hashlib.sha256(html.encode("utf-8", "replace")).hexdigest() == hsh
+
+
+# WO-348: proving the fix against WO-347's real 40 negative-class rows
+# hit this live, in both directions: Fernie BC's real agenda page never
+# spells out "British Columbia" -- only "BC" -- while Ephrata township
+# PA's real homepage never spells out "PA" -- only "Pennsylvania". A bare
+# `state.lower() in text` substring check (the same shape `scripts/
+# wo273_targeted.py`'s own `name_matches()` already uses) misses
+# whichever form the government's own page didn't happen to use. Accept
+# either form; the abbreviation is matched as a whole word (`\bpa\b`),
+# not a bare substring, since a 2-letter code is otherwise a real
+# false-positive risk (it could match inside any unrelated word).
+_US_STATE_ABBREVIATIONS: dict[str, str] = {
+    "alabama": "al",
+    "alaska": "ak",
+    "arizona": "az",
+    "arkansas": "ar",
+    "california": "ca",
+    "colorado": "co",
+    "connecticut": "ct",
+    "delaware": "de",
+    "florida": "fl",
+    "georgia": "ga",
+    "hawaii": "hi",
+    "idaho": "id",
+    "illinois": "il",
+    "indiana": "in",
+    "iowa": "ia",
+    "kansas": "ks",
+    "kentucky": "ky",
+    "louisiana": "la",
+    "maine": "me",
+    "maryland": "md",
+    "massachusetts": "ma",
+    "michigan": "mi",
+    "minnesota": "mn",
+    "mississippi": "ms",
+    "missouri": "mo",
+    "montana": "mt",
+    "nebraska": "ne",
+    "nevada": "nv",
+    "new hampshire": "nh",
+    "new jersey": "nj",
+    "new mexico": "nm",
+    "new york": "ny",
+    "north carolina": "nc",
+    "north dakota": "nd",
+    "ohio": "oh",
+    "oklahoma": "ok",
+    "oregon": "or",
+    "pennsylvania": "pa",
+    "rhode island": "ri",
+    "south carolina": "sc",
+    "south dakota": "sd",
+    "tennessee": "tn",
+    "texas": "tx",
+    "utah": "ut",
+    "vermont": "vt",
+    "virginia": "va",
+    "washington": "wa",
+    "west virginia": "wv",
+    "wisconsin": "wi",
+    "wyoming": "wy",
+    "alberta": "ab",
+    "british columbia": "bc",
+    "manitoba": "mb",
+    "new brunswick": "nb",
+    "newfoundland and labrador": "nl",
+    "nova scotia": "ns",
+    "ontario": "on",
+    "prince edward island": "pe",
+    "quebec": "qc",
+    "saskatchewan": "sk",
+}
+_US_STATE_ABBREVIATIONS_REVERSED = {v: k for k, v in _US_STATE_ABBREVIATIONS.items()}
+
+
+def _state_hit(text: str, state: str) -> bool:
+    state_lower = state.lower().strip()
+    if state_lower in text:
+        return True
+    # Try the other form (full name -> abbreviation, or vice versa),
+    # matched as a whole word for the (usually 2-letter) abbreviation so
+    # it can't false-positive-match inside an unrelated word.
+    other = _US_STATE_ABBREVIATIONS.get(state_lower) or (
+        _US_STATE_ABBREVIATIONS_REVERSED.get(state_lower)
+        if len(state_lower) <= 3
+        else None
+    )
+    if not other:
+        return False
+    if len(other) <= 3:
+        return re.search(rf"\b{re.escape(other)}\b", text) is not None
+    return other in text
+
+
+def _name_state_matches(html: str, name: Optional[str], state: Optional[str]) -> bool:
+    """Same shape as `scripts/wo273_targeted.py`'s `name_matches()` --
+    reimplemented here (not imported) so this module stays independent
+    of the wo3NN script family's own import chain. Only applied when a
+    caller actually has a government name/state to check against (the
+    rerun scripts do; a bare `verify_hub()` call without one skips this
+    and relies on the floor/keyword/catch-all checks alone)."""
+    if not html or not name:
+        return True
+    text = html.lower()
+    name_tokens = re.findall(r"[a-z]+", name.lower())
+    name_hit = any(len(t) > 2 and t in text for t in name_tokens)
+    if not state:
+        return name_hit
+    return name_hit and _state_hit(text, state)
+
+
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_H1_RE = re.compile(r"<h1[^>]*>(.*?)</h1>", re.IGNORECASE | re.DOTALL)
+
+
+def _has_agenda_minutes_content(html: str, text_lower: Optional[str] = None) -> bool:
+    """WO-348's own proof run (`research/wo348_hop_measurements.csv`,
+    rerunning the fix against WO-347's real 40 negative-class rows) found
+    real evidence both ways on the bare "agenda"/"minutes"/"meeting"
+    keyword question: requiring "agenda" or "minutes" ANYWHERE in the
+    body is the right floor (accepting a bare "meeting" anywhere let a
+    real false positive through -- Argyle WI's site-wide nav mentions
+    "meeting" on every page via a "Village Board Meeting" boilerplate
+    link, which wrongly credited a Community Building rental-form page;
+    Plainsboro NJ's own nav did the same to a Museum Youth Advisory
+    Council page). But "agenda"/"minutes" alone is too strict: Woodruff
+    UT's real /meetings/ page and Doylestown PA's real IQM2 Meeting
+    Calendar page both render their actual agenda/minutes content via a
+    JS-loaded public-meeting-notice widget (Utah's own `utah.gov/pmn/`
+    system, and IQM2's own calendar widget respectively) that never puts
+    the literal words "agenda"/"minutes" in the plain-fetched HTML at
+    all. The real, confirmed distinguishing signal (checked live on all
+    four): a page-SPECIFIC `<title>`/`<h1>` mentioning "meeting" is a
+    strong signal (Woodruff's is literally "Meetings"; Doylestown's is
+    "Meeting Calendar"), while sitewide nav boilerplate never reaches the
+    title or the page's own first heading (Argyle's and Plainsboro's
+    titles are about a rental form and a youth council, not a meeting)."""
+    text_lower = text_lower if text_lower is not None else html.lower()
+    if "agenda" in text_lower or "minutes" in text_lower:
+        return True
+    title_match = _TITLE_RE.search(html)
+    if title_match and "meeting" in title_match.group(1).lower():
+        return True
+    h1_match = _H1_RE.search(html)
+    return bool(h1_match and "meeting" in h1_match.group(1).lower())
+
+
+async def _deeper_hop_search(
+    html: str,
+    base_url: str,
+    *,
+    exclude_urls: frozenset[str] = frozenset(),
+    name: Optional[str] = None,
+    state: Optional[str] = None,
+) -> Optional[VerifyResult]:
+    """WO-348's "look one hop deeper" fix. `html`/`base_url` are a page
+    the pipeline already stopped at (a confirmed hub, or a homepage with
+    no known vendor link). Scores every link on it against
+    `_HOP_WEIGHTS`, and follows up to `_MAX_DEEPER_FETCHES` of the
+    highest-scoring ones, applying the same evidence checks phase 3 uses
+    (800-byte floor, catch-all guard, optional name+state match) before
+    crediting a deeper page as a real meeting/agenda page. Returns a
+    `VerifyResult` (tier 4 -- meeting found, no video identified from
+    this page alone) for the first candidate that passes, or `None` if
+    none did. Never fetches a youtube.com/youtu.be URL or a known
+    payment-portal host (`_extract_hop_candidates()`'s own guards).
+    """
+    candidates = _extract_hop_candidates(html, base_url, exclude_urls=exclude_urls)
+    if not candidates:
+        return None
+    catchall_sig = await _catchall_signature(base_url)
+    checked = 0
+    for score, url, text in candidates:
+        if checked >= _MAX_DEEPER_FETCHES:
+            break
+        checked += 1
+        deep_html, final_url, err = await _fetch(url)
+        if err or deep_html is None or len(deep_html) < _CATCH_ALL_BODY_FLOOR:
+            continue
+        if _is_catchall(deep_html, catchall_sig):
+            continue
+        text_lower = deep_html.lower()
+        if not _has_agenda_minutes_content(deep_html, text_lower):
+            continue
+        if not _name_state_matches(deep_html, name, state):
+            continue
+        return VerifyResult(
+            meeting_found=True,
+            video_found=False,
+            captions_found=False,
+            meeting_url=final_url,
+            platform=None,
+            verdict="hop_deeper_found",
+            evidence=(
+                f"one hop deeper (score {score:.1f}, link text {text!r}) found a "
+                f"real agenda/minutes page at {url} that the direct scan missed"
+            ),
+            candidates_checked=checked,
+        )
+    return None
+
+
+async def _try_deeper_hop_on_url(
+    url: str, *, name: Optional[str] = None, state: Optional[str] = None
+) -> Optional[VerifyResult]:
+    """Fetch `url` (a hub/candidate page a give-up branch is about to
+    stop at) and run `_deeper_hop_search()` on it. A small convenience
+    wrapper for the several `_resolve_and_walk()` give-up points that
+    don't already have the page's HTML in hand (unlike
+    `_probe_first_party_agenda_pages()`'s caller, which always does)."""
+    if _is_youtube_host(url):
+        return None
+    html, final_url, err = await _fetch(url)
+    if err or html is None:
+        return None
+    return await _deeper_hop_search(html, final_url or url, name=name, state=state)
+
+
+_AUDIO_ONLY_EXTENSIONS = (".mp3", ".wav", ".m4a", ".aac", ".wma", ".ogg")
+
+
+def _looks_like_audio_only_url(url: str) -> bool:
+    return urlparse(url).path.lower().endswith(_AUDIO_ONLY_EXTENSIONS)
+
+
+async def _confirm_not_audio_only(url: str) -> bool:
+    """WO-347 finding, fixed here: a resolved `video_url` can be a real,
+    live audio-only file -- confirmed live, Olmos Park city TX's
+    CivicClerk listing walker returned a `video_url` ending in `.mp3`
+    whose own `Content-Type: audio/mp3` header confirms it (a real 58 MB
+    file, the exact shape `civicclerk.py`'s own module docstring already
+    documents for Highland, CA). Returns True when it's safe to credit
+    the URL as real video, False when it's confirmed (or presumed, on a
+    failed HEAD) audio. Only ever a HEAD request -- never downloads the
+    file itself (this project's "never download a media file" rule)."""
+    if not _looks_like_audio_only_url(url):
+        return True
+    try:
+        async with aiohttp.ClientSession(headers=_HEADERS) as session:
+            async with session.head(
+                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                content_type = (response.headers.get("Content-Type") or "").lower()
+    except Exception:  # noqa: BLE001
+        # HEAD failed -- the extension alone is already real evidence of
+        # audio; treat as audio (the safer wrong answer: a missed real
+        # video, not a wrongly-queued audio-only file -- Ryan's "only
+        # meetings with video become pages" rule).
+        return False
+    return not content_type.startswith("audio/")
+
+
+async def _probe_first_party_agenda_pages(
+    hub_url: str,
+    *,
+    home_html: Optional[str] = None,
+    home_final_url: Optional[str] = None,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
+) -> Optional[VerifyResult]:
     """Conductor's fix, WO-332, 2026-09-13: when `find_platform_link()`
     (already tried by the caller) found no known vendor link at all, try
     a short list of guessable first-party agenda/minutes paths on the
@@ -1288,16 +1750,56 @@ async def _probe_first_party_agenda_pages(hub_url: str) -> Optional[VerifyResult
     tier 4, not "no meeting"); if its own markup is recognizably
     CivicPlus, delegates to the real `civicplus.py` walk instead of
     stopping at "some agenda page, unknown platform."
+
+    WO-348 (2026-09-13) adds two more stages, run in order, before giving
+    up: (1) check the HOME page's own body (not just guessable subpaths)
+    for real agenda/minutes content -- confirmed live on Ephrata
+    township, PA, whose real content sits directly on its homepage, not
+    a subpath any guessable-path list would find; (2) `_deeper_hop_search()`
+    -- follow the home page's own highest-scoring real links (see that
+    function's docstring) before concluding "no meeting." `home_html`/
+    `home_final_url` let a caller that already fetched the hub page (the
+    `detect_platform() == "unknown"` branch in `_verify_hub_impl` always
+    has) pass it in rather than fetching it a second time.
     """
     parsed = urlparse(hub_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
+
+    if home_html is None:
+        home_html, home_final_url, _err = await _fetch(hub_url)
+
+    # Stage 0 (WO-348): the home page's own body, not just a guessable
+    # subpath -- Ephrata township PA's real agenda PDFs sit directly on
+    # its homepage.
+    if home_html is not None and len(home_html) >= _CATCH_ALL_BODY_FLOOR:
+        text_lower = home_html.lower()
+        if ("agenda" in text_lower or "minutes" in text_lower) and _name_state_matches(
+            home_html, name, state
+        ):
+            if any(marker in text_lower for marker in _CIVICPLUS_MARKERS):
+                return await _resolve_and_walk(home_final_url or hub_url, "civicplus")
+            return VerifyResult(
+                meeting_found=True,
+                video_found=False,
+                captions_found=False,
+                meeting_url=home_final_url or hub_url,
+                platform=None,
+                verdict="first_party_agenda_page",
+                evidence=(
+                    "real agenda/minutes content found directly on the home page "
+                    "(no known video vendor link on it)"
+                ),
+            )
+
     for path in _FIRST_PARTY_AGENDA_PATHS:
         candidate = base + path
         html, final_url, err = await _fetch(candidate)
         if err or html is None or len(html) < _CATCH_ALL_BODY_FLOOR:
             continue
         text_lower = html.lower()
-        if "agenda" not in text_lower and "minutes" not in text_lower:
+        if not _has_agenda_minutes_content(html, text_lower):
+            continue
+        if not _name_state_matches(html, name, state):
             continue
         if any(marker in text_lower for marker in _CIVICPLUS_MARKERS):
             return await _resolve_and_walk(final_url, "civicplus")
@@ -1313,10 +1815,29 @@ async def _probe_first_party_agenda_pages(hub_url: str) -> Optional[VerifyResult
                 "(no known video vendor link on it)"
             ),
         )
+
+    # Stage 2 (WO-348): the guessable-path list came up empty -- follow
+    # the home page's own highest-scoring real links one hop deeper
+    # before giving up.
+    if home_html is not None:
+        hopped = await _deeper_hop_search(
+            home_html,
+            home_final_url or hub_url,
+            name=name,
+            state=state,
+        )
+        if hopped is not None:
+            return hopped
     return None
 
 
-async def _try_listing_walker(hub_url: str, platform: str) -> Optional[VerifyResult]:
+async def _try_listing_walker(
+    hub_url: str,
+    platform: str,
+    *,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
+) -> Optional[VerifyResult]:
     _ensure_walkers_registered()
     walker = _LISTING_WALKERS.get(platform, _generic_link_scan_walker)
     walker_kind = (
@@ -1339,11 +1860,18 @@ async def _try_listing_walker(hub_url: str, platform: str) -> Optional[VerifyRes
         )
     if not candidates:
         return None
-    return await _walk_candidates(candidates, platform, base_verdict=walker_kind)
+    return await _walk_candidates(
+        candidates, platform, base_verdict=walker_kind, name=name, state=state
+    )
 
 
 async def _walk_candidates(
-    candidates: List[dict], platform: str, *, base_verdict: str
+    candidates: List[dict],
+    platform: str,
+    *,
+    base_verdict: str,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
 ) -> VerifyResult:
     checked = 0
     for candidate in candidates[:WALK_LIMIT]:
@@ -1383,6 +1911,11 @@ async def _walk_candidates(
             continue
         except Exception:  # noqa: BLE001
             continue
+        if resolved.video_url and not await _confirm_not_audio_only(resolved.video_url):
+            # WO-347/WO-348: a real, live audio-only file (e.g. a
+            # CivicClerk `.mp3`), not video -- keep walking rather than
+            # crediting it as a found video.
+            continue
         if resolved.video_url:
             # Report the candidate's OWN resolved platform, not the
             # listing's -- a generic-link-scan or CalendarPageError walk
@@ -1421,14 +1954,23 @@ async def _walk_candidates(
     )
 
 
-async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
+async def _resolve_and_walk(
+    url: str,
+    platform: str,
+    *,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
+) -> VerifyResult:
     """Call platform's resolve() on url and interpret the result. When
     resolve() comes back empty (no video, no title/agenda -- the WO-331
     "this was actually a listing page" shape) or fails outright, falls
     back to that platform's registered listing walker (or the generic
     link-scan one) before giving up -- conductor's fix #2: an
     UNSUPPORTED/RESOLVE_FAILED verdict on a hub must trigger the listing
-    walk before any no-video verdict."""
+    walk before any no-video verdict. WO-348 adds one more fallback,
+    after the listing walker also comes up empty: `_deeper_hop_search()`
+    on this same page, before finally giving up (see that function's own
+    docstring and this module's "look one hop deeper" section)."""
     if _is_youtube_host(url):
         return _youtube_lead(url, "candidate URL is itself a youtube.com/youtu.be host")
 
@@ -1459,7 +2001,11 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
         # real listing -- meeting_found=True regardless of whether any
         # candidate turns out to have video.
         return await _walk_candidates(
-            list(e.candidates), platform, base_verdict="calendar_page"
+            list(e.candidates),
+            platform,
+            base_verdict="calendar_page",
+            name=name,
+            state=state,
         )
     except NoVideoCandidateFound as e:
         if e.candidates_checked > 0:
@@ -1480,9 +2026,12 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
         # listing walker before concluding there's no meeting at all;
         # this url may simply be the wrong page on this tenant (WO-331's
         # Monroe County FL / Webb County TX finding).
-        walked = await _try_listing_walker(url, platform)
+        walked = await _try_listing_walker(url, platform, name=name, state=state)
         if walked is not None:
             return walked
+        hopped = await _try_deeper_hop_on_url(url, name=name, state=state)
+        if hopped is not None:
+            return hopped
         return VerifyResult(
             meeting_found=False,
             video_found=False,
@@ -1494,9 +2043,12 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
             candidates_checked=0,
         )
     except Exception as e:  # noqa: BLE001
-        walked = await _try_listing_walker(url, platform)
+        walked = await _try_listing_walker(url, platform, name=name, state=state)
         if walked is not None:
             return walked
+        hopped = await _try_deeper_hop_on_url(url, name=name, state=state)
+        if hopped is not None:
+            return hopped
         return VerifyResult(
             meeting_found=False,
             video_found=False,
@@ -1507,7 +2059,15 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
             evidence=f"{type(e).__name__}: {e}",
         )
 
-    if resolved.video_url:
+    video_confirmed = bool(resolved.video_url) and await _confirm_not_audio_only(
+        resolved.video_url
+    )
+    # WO-347/WO-348: a real, live audio-only file (e.g. a CivicClerk
+    # `.mp3`), not video -- fall through to the "no video" handling below
+    # rather than crediting a video verdict (same guard `_walk_candidates()`
+    # applies).
+
+    if video_confirmed:
         # Same "report the actual resolved platform, not the one that was
         # asked to resolve" fix as `_walk_candidates()`'s found-video
         # branch -- civicplus.py/legistar.py/etc. can internally delegate
@@ -1529,15 +2089,24 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
             evidence="resolve() found real video directly",
         )
 
-    # resolve() succeeded but found no video. Could be a genuine single
-    # meeting with no video yet (real title/agenda present), or -- the
-    # WO-331 finding -- a listing/hub page whose resolve() quietly
-    # returned empty because it was never given one specific meeting.
-    walked = await _try_listing_walker(url, platform)
+    # resolve() succeeded but found no video (or found one that turned out
+    # to be audio-only). Could be a genuine single meeting with no video
+    # yet (real title/agenda present), or -- the WO-331 finding -- a
+    # listing/hub page whose resolve() quietly returned empty because it
+    # was never given one specific meeting.
+    walked = await _try_listing_walker(url, platform, name=name, state=state)
     if walked is not None and walked.meeting_found:
         return walked
 
     has_real_content = bool(resolved.title) or bool(resolved.agenda_items)
+    if not has_real_content:
+        # WO-348: neither the direct resolve nor the listing walker found
+        # real content -- look one hop deeper on this same page before
+        # giving up (see `_deeper_hop_search()`'s docstring).
+        hopped = await _try_deeper_hop_on_url(url, name=name, state=state)
+        if hopped is not None:
+            return hopped
+
     return VerifyResult(
         meeting_found=has_real_content,
         video_found=False,
@@ -1554,13 +2123,24 @@ async def _resolve_and_walk(url: str, platform: str) -> VerifyResult:
     )
 
 
-async def verify_hub(hub_url: str, platform_hint: Optional[str] = None) -> VerifyResult:
+async def verify_hub(
+    hub_url: str,
+    platform_hint: Optional[str] = None,
+    *,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
+) -> VerifyResult:
     """The shared step. `hub_url` is a confirmed hub/tenant URL for a
     government (whatever a sweep's phase 3 already confirmed);
     `platform_hint` is that phase's own best guess at the platform, used
     when `detect_platform(hub_url)` itself can't tell (a government page
     that merely embeds/links a platform, rather than being a URL on that
     platform's own domain -- conductor's fix #2's starting point).
+    `name`/`state` (WO-348, both optional -- existing callers are
+    unaffected) are the government's own name and state/province; when
+    given, they strengthen the "look one hop deeper" evidence check
+    (`_name_state_matches()`) the same way phase 3's own targeted scripts
+    already check a candidate page's content before confirming it.
 
     The entire walk runs under `_youtube_resolve_guard()` -- not just the
     top-level hub URL -- so a candidate reached partway through (a
@@ -1569,11 +2149,15 @@ async def verify_hub(hub_url: str, platform_hint: Optional[str] = None) -> Verif
     caught the same way, never actually fetched.
     """
     with _youtube_resolve_guard():
-        return await _verify_hub_impl(hub_url, platform_hint)
+        return await _verify_hub_impl(hub_url, platform_hint, name=name, state=state)
 
 
 async def _verify_hub_impl(
-    hub_url: str, platform_hint: Optional[str] = None
+    hub_url: str,
+    platform_hint: Optional[str] = None,
+    *,
+    name: Optional[str] = None,
+    state: Optional[str] = None,
 ) -> VerifyResult:
     if _is_youtube_host(hub_url):
         return _youtube_lead(hub_url, "hub URL is itself a youtube.com/youtu.be host")
@@ -1615,9 +2199,19 @@ async def _verify_hub_impl(
     if platform is None:
         # WO-332 fix: no vendor link was found anywhere -- before giving
         # up, check whether this government has a real first-party
-        # agenda/minutes page at a guessable path (see
-        # `_probe_first_party_agenda_pages()`'s own docstring).
-        probed = await _probe_first_party_agenda_pages(hub_url)
+        # agenda/minutes page at a guessable path, its own home page
+        # body, or one hop deeper (see
+        # `_probe_first_party_agenda_pages()`'s own docstring, WO-348).
+        # `html`/`final_url` were already fetched above when `detected`
+        # was unknown (always true on this branch) -- reuse them rather
+        # than fetching the hub a second time.
+        probed = await _probe_first_party_agenda_pages(
+            hub_url,
+            home_html=html if detected == "unknown" else None,
+            home_final_url=final_url if detected == "unknown" else None,
+            name=name,
+            state=state,
+        )
         if probed is not None:
             return probed
         return VerifyResult(
@@ -1630,7 +2224,7 @@ async def _verify_hub_impl(
             evidence="detect_platform() -> unknown and no platform hint given",
         )
 
-    result = await _resolve_and_walk(candidate_url, platform)
+    result = await _resolve_and_walk(candidate_url, platform, name=name, state=state)
 
     # Ranking fix (conductor's fix #3): the platform reached is a known
     # aggregator and it found no video -- check the ORIGINAL hub page for
@@ -1643,7 +2237,9 @@ async def _verify_hub_impl(
             )
             if vendor_match:
                 vendor_url, vendor_platform = vendor_match
-                vendor_result = await _resolve_and_walk(vendor_url, vendor_platform)
+                vendor_result = await _resolve_and_walk(
+                    vendor_url, vendor_platform, name=name, state=state
+                )
                 if vendor_result.video_found or (
                     not result.meeting_found and vendor_result.meeting_found
                 ):
@@ -1673,7 +2269,7 @@ async def _verify_hub_impl(
         # from the hub page's own site navigation -- this is exactly what
         # `_civicplus_walker()` was built to find (step 1 tries OTHER
         # AgendaCenter categories first, for exactly this reason).
-        walked = await _try_listing_walker(hub_url, platform)
+        walked = await _try_listing_walker(hub_url, platform, name=name, state=state)
         if walked is not None and (
             walked.video_found or (not result.meeting_found and walked.meeting_found)
         ):
@@ -1684,5 +2280,14 @@ async def _verify_hub_impl(
             )
             walked.ranking_fix_applied = True
             return walked
+
+        if not result.meeting_found:
+            # WO-348: still nothing -- look one hop deeper on the
+            # original hub page itself before giving up (covers e.g. a
+            # CivicPlus tenant whose confirmed AgendaCenter page links a
+            # real vendor/section page none of the above reached).
+            hopped = await _try_deeper_hop_on_url(hub_url, name=name, state=state)
+            if hopped is not None:
+                return hopped
 
     return result
