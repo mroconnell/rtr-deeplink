@@ -6136,3 +6136,16 @@ https://hendersontx.portal.civicclerk.com/event/176/media,civicclerk,resolve,,,,
 https://pueblococo.portal.civicclerk.com/event/9191/media,civicclerk,head+ffprobe,2418.78,2026-09-10,1504424251,1,accept,,8.25,2026-09-13T16:01:48+00:00,,0
 https://hendersontx.portal.civicclerk.com/event/176/media,civicclerk,head+ffprobe,1853.32,2026-09-11,1518989926,1,accept,,6.84,2026-09-13T16:01:55+00:00,,0
 https://waconiamn.portal.civicclerk.com/event/411/media,civicclerk,head+ffprobe,2093.76,2026-08-10,249854175,1,accept,,8.83,2026-09-13T16:04:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=160&id=76091,townhallstreams,hls-master+variant,3438.93,,,1,accept,,1.72,2026-09-13T16:37:43+00:00,,0
+https://townhallstreams.com/stream.php?location_id=160&id=76091,townhallstreams,hls-master+variant,3438.93,,,1,accept,,0.30,2026-09-13T16:37:44+00:00,feed_tier3_auto_transcription,0
+https://cocoafl.portal.civicclerk.com/event/1351/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.21,2026-09-13T16:37:50+00:00,,0
+https://excelsiormn.portal.civicclerk.com/event/3241/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57831?site=1,0.00,2026-09-13T16:37:56+00:00,,0
+https://thiefriverfallsmn.portal.civicclerk.com/event/446/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.17,2026-09-13T16:38:02+00:00,,0
+https://inglesidetx.portal.civicclerk.com/event/591/media,civicclerk,hls-master+variant,16108.15,,,1,accept,,0.37,2026-09-13T16:38:09+00:00,,0
+https://inglesidetx.portal.civicclerk.com/event/591/media,civicclerk,hls-master+variant,16108.15,,,1,accept,,0.14,2026-09-13T16:38:09+00:00,feed_tier3_auto_transcription,0
+https://kermittx.portal.civicclerk.com/event/172/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.20,2026-09-13T16:38:16+00:00,,0
+https://collegeplacewa.portal.civicclerk.com/event/125/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://studio.youtube.com/video/DUySM-3-ctQ/edit,0.00,2026-09-13T16:38:20+00:00,,0
+https://stanwoodwa.portal.civicclerk.com/event/706/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.17,2026-09-13T16:38:28+00:00,,0
+https://bethelak.portal.civicclerk.com/event/1143/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.17,2026-09-13T16:38:34+00:00,,0
+https://youtube.com/live/3OOngsiBb0A?feature=share,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] 3OOngsiBb0A: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.58,2026-09-13T16:38:40+00:00,,0
+https://burkeconc.portal.civicclerk.com/event/983/media,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] 0NqRIpLGwTA: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.62,2026-09-13T16:38:50+00:00,,0
