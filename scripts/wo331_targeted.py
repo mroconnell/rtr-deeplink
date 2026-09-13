@@ -229,7 +229,14 @@ def record_youtube_lead(
                     "gov_id": gov_id,
                     "government": government,
                     "state": state,
-                    "source_wo": "WO-325",
+                    # WO-346: this was hardcoded "WO-325" -- a leftover
+                    # from copying wo325_targeted.py that was never
+                    # updated for this script's own WO number, the exact
+                    # `record_youtube_lead()` bug class BACKLOG.md's
+                    # "hardcodes source_wo regardless of the real caller"
+                    # entry (history: WO-345) describes, just found in a
+                    # sibling copy rather than the imported one.
+                    "source_wo": "WO-331",
                     "kind": youtube_kind(url),
                     "verified": "false",
                     "note": note,
@@ -566,7 +573,7 @@ def process_with_candidates(row: dict) -> list[dict]:
                 gov_id,
                 name,
                 state,
-                note=f"WO-325 phase-3 candidate rank={rank} source={c.get('source', '')}",
+                note=f"WO-331 phase-3 candidate rank={rank} source={c.get('source', '')}",
             )
             results.append(
                 {
@@ -661,7 +668,7 @@ def process_fallback_ladder(row: dict) -> list[dict]:
                 row.get("gov_id", ""),
                 name,
                 state,
-                note="WO-325 fallback-rung1-onehop best link",
+                note="WO-331 fallback-rung1-onehop best link",
             )
             best = None
         if best and third_party_portal_host(best[0], domain):
@@ -708,7 +715,7 @@ def process_fallback_ladder(row: dict) -> list[dict]:
                     row.get("gov_id", ""),
                     name,
                     state,
-                    note="WO-325 fallback-rung2-headless best link",
+                    note="WO-331 fallback-rung2-headless best link",
                 )
                 best = None
             if best and third_party_portal_host(best[0], domain):

@@ -114,9 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
-  `record_youtube_lead()` hardcodes `source_wo="WO-320"` regardless of…
-  Check the full tier-3 queue file for real videos with no…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -189,7 +187,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (208)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
+  [NEEDS-AUDIT] `[BIG]` 146 tier-3 queue/deferred lines have no owner…
+  [NEEDS-AUDIT] `[EASY]` 286 tier-3 queue/deferred lines are…
   [NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url`…
   [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
   [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
@@ -753,58 +753,6 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### `record_youtube_lead()` hardcodes `source_wo="WO-320"` regardless of the real caller `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `scripts/wo320_targeted.py`'s shared `record_youtube_lead()`
-  helper writes a literal `"WO-320"` into `youtube_channel_leads.csv`'s
-  `source_wo` column on every call, no matter which WO actually calls
-  it — found live 2026-09-13 when WO-345 called it for a real Cochise
-  County, AZ lead and the written row said `WO-320`. Same class of bug
-  already flagged for two other shared helpers
-  (`ENUMERATION_METHODS.md` §230: `maybe_write_tenant_override()` and
-  `tier3_pending_handler()` both hardcode their own originating WO the
-  same way).
-- **Impact:** every future caller of `record_youtube_lead()` that isn't
-  literally WO-320 writes a mislabeled row — makes `source_wo` useless
-  for auditing which WO actually found a given lead, the exact thing
-  §230's note about the other two helpers already warns about.
-- **Next action:** add a `source_wo: str` parameter to
-  `record_youtube_lead()` (no default, so every call site is forced to
-  pass its own real WO number) and update its one current call site.
-- **Constraint:** don't just fix WO-345's own already-written row (done,
-  by hand) without fixing the helper — the next caller hits the same
-  bug.
-- **History:** `BACKLOG_DONE.md`'s WO-345 entry; `~/Documents/
-  rtr-business/research/ENUMERATION_METHODS.md` §230 for the sibling bug
-  in the other two hardcoded-WO helpers.
-
-### Check the full tier-3 queue file for real videos with no `tenant_overrides.csv` owner recorded `[JUST-DO-IT]`
-
-- **Issue:** WO-345 (2026-09-13) found 15 real Town Hall Streams
-  location_ids already sitting in `scripts/tier3_auto_transcription_
-  queue.txt` (13 added by an earlier WO, 2 added by WO-345 itself) with
-  no `tenant_overrides.csv` pin at all — a shared multi-government host
-  with no per-government record, so the transcription worker's
-  re-resolve at ingest time would have no way to tell which government
-  a transcribed recording belongs to. WO-345 only found these because
-  its own 108-government population happened to include them; the rest
-  of the 2,069-line queue file was never checked the same way.
-- **Impact:** an unknown number of already-queued real videos across
-  the whole file may ingest with `gov_id=rtr:unknown` (no hub link, no
-  identity) once transcribed — the exact failure CLAUDE.md's "Send the
-  government's id in every ingest payload" bullet describes, just
-  discovered from the pin side rather than the ingest side.
-- **Next action:** write a small script that reads every URL in
-  `scripts/tier3_auto_transcription_queue.txt`, extracts each one's
-  tenant identity (host, plus `location_id`/`channel=`/etc. for a known
-  shared-host platform), and checks it against `tenant_overrides.csv`
-  and the ordinary per-host resolver ladder — report every queue entry
-  that would still resolve to `rtr:unknown` today.
-- **Constraint:** this is a read-only audit script, not a bulk-pin
-  writer — a missing pin needs a real government match (name, state,
-  the same care WO-345's own 20 pins took), not an automated guess.
-- **History:** `BACKLOG_DONE.md`'s WO-345 entry.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
@@ -2207,6 +2155,20 @@ of human step they need.
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `[BIG]` 146 tier-3 queue/deferred lines have no owner and no evidence on file to pin them from — need a real hand-read, not a guess.**
+  - **Issue**: WO-346 (2026-09-13) audited every line of `scripts/tier3_auto_transcription_queue.txt` (2,069 lines) and `scripts/tier3_long_meetings_deferred.txt` (943 data lines) the same way `archive/db/crud.py`'s `_resolve_page_government()` resolves ownership at ingest time (`app/platforms/queue_probe.py`'s new `has_owner()`). 478 lines sit on a `MULTI_GOV_HOSTS` host (youtube.com/youtu.be/vimeo.com/cloud.castus.tv/boxcast.tv/videoplayer.telvue.com/reflect-lmcc.cablecast.tv/drive.google.com) with no `tenant_overrides.csv` pin. 332 of those had a confirmed, non-conflicting gov_id already on file in a `research/wo*_report.csv`/`jurisdiction_coverage.csv` row naming that exact URL — pinned this WO (see `BACKLOG_DONE.md`'s WO-346 entry). The remaining 146 have no such evidence anywhere this WO checked.
+  - **Impact**: each of these 146 lines will ingest as `rtr:unknown:{host}` (no hub link, no government identity) the moment the tier-3 feed reaches it — WO-346's new `has_owner()` guard in `scripts/feed_tier3_auto_transcription.py` now refuses to advance them (they stay in the queue rather than ingesting wrong), so nothing breaks silently, but real coverage sits stalled until someone determines the real owner.
+  - **Next action**: hand-read each URL in `scripts/wo346_hand_read.csv` (title/channel/page content, the same care `CLAUDE.md`'s hand-check rule describes) and write a real per-video/channel `tenant_overrides.csv` pin once the government is confirmed — never guess from the video id or a plausible-sounding channel name alone.
+  - **Constraint**: 9 of the lines this WO checked had two evidence sources (a `wo*_report.csv` row and a `jurisdiction_coverage.csv` row) disagreeing on the gov_id for the same URL — left unpinned rather than picking one; check both sources by hand for any of the 146 that turn out to have partial evidence.
+  - **History**: `BACKLOG_DONE.md`'s WO-346 entry; `scripts/wo346_ownership_audit.csv` (the full audit) and `scripts/wo346_hand_read.csv` (just the 146) in this repo.
+
+- **[NEEDS-AUDIT] `[EASY]` 286 tier-3 queue/deferred lines are already-ingested tier-1/2 pages elsewhere — stale queue entries wasting worker time.**
+  - **Issue**: found incidentally while building WO-346's queue ownership audit (2026-09-13). 286 distinct URLs in `scripts/tier3_auto_transcription_queue.txt`/`scripts/tier3_long_meetings_deferred.txt` exactly match a `hit_url`/`meeting_url`/`video_url` on a `research/wo*_report.csv` row whose own `outcome=ingested_tier1_2` — meaning that exact video already has a real Archive page with real captions, confirmed live (e.g. Jesup city, IA / `us:place:1939585`, `https://www.youtube.com/embed/FoF8epxWCjg`, already a tier-1/2 page per `wo190_report.csv`, still sitting in the tier-3 queue).
+  - **Impact**: low-severity but real waste — the tier-3 feed will eventually re-resolve and re-probe these, and `_find_or_create_page()`'s own dedupe by `source_url_normalized` means no duplicate page gets created, but every one of these 286 burns a queue slot, a feed-script network round-trip, and (if it ever reaches the worker) a transcription job on a meeting that already has a transcript.
+  - **Next action**: write a small sweep that checks every queue/deferred line's URL against the Archive's own `MeetingPage.source_url_normalized` (or the same `wo*_report.csv` outcome signal WO-346's evidence index already builds) and removes a confirmed-already-covered line from the queue file.
+  - **Constraint**: match on the SAME safe-outcome/URL-column discipline WO-346's `scripts/wo346_queue_ownership_audit.py::load_evidence_index()` uses (`ingested_tier1_2`/`hit_url`/`meeting_url`/`video_url` only) — a looser match risks dropping a queue line that only LOOKS covered.
+  - **History**: `BACKLOG_DONE.md`'s WO-346 entry.
 
 - **[NEEDS-AUDIT] `coverage_registry.csv`'s `known_platform`/`hub_url` columns carry stale or wrong values on a real, non-trivial share of "open eScribe" rows — found running WO-343's 20-government sample.**
   - **Issue**: WO-343 (2026-09-13) ran `verify_hub()` against a 20-government sample of registry rows labeled `known_platform=escribe` with zero Archive pages. 8 of 20 (40%) never reached a genuine eScribe host at all: Missoula County, MT's own `hub_url` is a CivicPlus AgendaCenter URL (`Calendar.aspx?EID=...`), not eScribe; Perry city, GA and Thorold, ON's own `hub_url` fields are themselves youtube.com channel URLs; Ottawa ON, Burlington County NJ, Welland ON and Richmond city IN's recorded URLs don't link a recognizable eScribe tenant at all (a plain-HTTP fetch either found nothing platform-shaped or fell through to a `platform_hint` guess with zero real listing data behind it); Milton city, GA's domain didn't answer.
