@@ -140,6 +140,149 @@ video-bearing pages to the site today, but it did surface one real,
 ready transcript that needs a human decision, and two real software
 gaps worth fixing before the next sweep of this kind.**
 
+## WO-327: a measured French vocabulary for the hop-link scorer, then rerun the Quebec rows [Done 2026-09-13]
+
+WO-323 (2026-09-12) checked 247 never-swept Canadian governments for a
+real meeting page and confirmed 0 of the 92 in Quebec, while Ontario
+confirmed 27 of 56 and Alberta 9 of 16 in the same run. The reason was
+found: the tool that scores a homepage's links only knows English words
+("agenda," "council," "meeting"). Quebec sites use French words for the
+same thing ("conseil," "séances," "procès-verbaux"), so those real links
+scored zero, the same as an unrelated link. This work built a real
+French word list from real Quebec pages and reran the Quebec rows with
+it.
+
+**Building the word list.** There was no shortcut available — the
+project's own record of "governments already known to have a working
+video system" (used to build the English list) has zero Quebec rows in
+it. So a person read every one of WO-323's 92 saved Quebec homepages by
+hand, looking for the real link to that town's council-meeting page.
+
+| Result | Count of 92 | What it means |
+|---|---|---|
+| Hub link found and confirmed by hand | 70 | Real council-session/minutes page identified |
+| Homepage loaded, no such link on it | 3 | Site has no visible meeting page linked from its home page |
+| Homepage would not load at all | 19 | A certificate error or an access block — a technical problem, not proof the town has no content |
+
+One more polite step past each of those 70 pages, looking for an actual
+video, found only 2 real posted meeting videos (both on Vimeo — Mirabel
+and Canton de Hatley) and 25 leads to a town's YouTube channel, which
+were logged for later hand-review rather than opened (per this
+project's standing rule that YouTube is checked by a person, not
+fetched automatically). Two real videos was too few to build a second,
+separate "what a real meeting video link looks like" word list — that
+part was skipped and left as a known gap.
+
+The strongest French words found, ranked by how much more often they
+appear on a real council page than an ordinary page:
+
+| Word or phrase | How much more often on a real page | Seen on |
+|---|---|---|
+| "diffusion" (in the page's own address) | 105x | 4 of 70 real pages |
+| "séances" | 104x | 41 of 70 |
+| "procès" / "verbaux" | 27x | 20 of 70 |
+| "conseil" | 24x | 38 of 70 |
+| "séances-conseil" (two words together) | 155x | 27 of 70 |
+
+**Deciding when a page counts as French.** A page's own language tag
+was used first when present; when it was missing, French words were
+simply counted against English ones. Tested against all 73 real,
+loadable Quebec pages and all 52 real, loadable Ontario pages from the
+same batch:
+
+| Rule tried | Correct on Quebec (of 73) | Wrong on Ontario (of 52) |
+|---|---|---|
+| Page's own language tag only | 57 | 0 |
+| Word count only | 62 | 1 |
+| Tag first, word count as backup (shipped) | 65 | 0 |
+
+The shipped rule is the only one of the three that never mistook a real
+English Ontario page for French, while also catching the most real
+French pages. It ships as its own file
+(`app/utils/jurisdiction_data/hop_link_weights_fr.csv`), separate from
+the English list — the English list itself was not touched, and every
+English government scores exactly as it did before (checked against all
+52 real Ontario pages, byte-for-byte identical either way).
+
+**A second, real bug, found independently and then confirmed by the
+conductor mid-task.** The same rerun also hit a bug affecting Quebec
+towns specifically: the tool guesses a town's video-vendor address by
+taking a piece of its own web address — for any `*.qc.ca` town, that
+piece is literally "qc," and `qc.primegov.com` happens to be a real,
+working address (PrimeGov's own general Quebec page, not any one
+town's). The tool had been treating that as a real, confirmed hit. It
+was not: once the real fix (built separately as WO-328) let the tool
+guess the town's real name instead of "qc," none of the 23 affected
+Quebec towns in this rerun's population turned out to run PrimeGov (or
+CivicWeb) at all — checked by hand, one at a time, after the real fix
+landed.
+
+**Rerunning the Quebec rows with the fixed word list.**
+
+| Result | Count of 92 (WO-323's population) | What it means |
+|---|---|---|
+| Top-ranked link on the page changed | 50 | The French word list picked a real, different, better link |
+| Same top link either way | 42 | No change — mostly because a video vendor was already found some other way |
+
+Following those better links to a real page (a live fetch of each one,
+same as this project's other passive checks):
+
+| Result | Count of 73 governments checked | What it means |
+|---|---|---|
+| A real, matching council page confirmed | 30 | The page is genuinely about this town's council — checked by matching the town's own name on the page |
+| A known video vendor (like YouTube or a paid meeting-hosting service) confirmed on that page | 0 | These are small towns publishing their own plain web pages, not running a video service |
+
+Zero video-vendor confirmations sounds like no progress, but it is a
+real, useful finding, not a failure: it means most small Quebec towns
+post their meeting minutes as plain text/PDF on their own site, with no
+video system attached at all — which is a genuinely different, and now
+correctly identified, situation from "we can't find anything about this
+town's meetings," which is what the old English-only tool reported.
+
+The same rerun was also run on WO-324's separate, larger population
+(258 Quebec rows, all previously marked "wait for this fix"):
+
+| Result | Count of 258 | What it means |
+|---|---|---|
+| Top-ranked link changed | 157 | Same real improvement pattern as WO-323's population |
+| Rows affected by the qc.primegov.com bug above | 66 | Matches the conductor's own estimate exactly; all 66 confirmed false by hand, same as the 23 above |
+
+Following those better links to a real page, WO-324's population is 177
+governments (of the 258) with a real candidate to check at all. A
+first, full 90-government slice was checked live:
+
+| Result | Count of 90 checked (of 177 total to check) | What it means |
+|---|---|---|
+| A real, matching council page confirmed | 45 | Same pattern as WO-323's population |
+| A known video vendor confirmed | 0 | Same finding: small custom Quebec town sites, no video vendor |
+
+The remaining 87 of 177 were not reached by the time this closed — see
+"What's not done" for the exact command to finish them.
+
+**What's not done.** No archive page was created by this work — the
+job was to fix the discovery tool and measure the result, not to add
+new pages. A second, follow-up word list for "what does a real posted
+meeting video link look like on a Quebec page" needs more real examples
+first (only 2 exist so far); see `BACKLOG.md`. WO-324's live-fetch check
+covered 90 of its 177 candidate rows; resume the rest with:
+
+```
+DATABASE_URL="sqlite+aiosqlite:////tmp/wo327_wo324_resume.db" \
+  .venv/bin/python scripts/wo327_rerun_quebec_phases.py \
+  --recon-jsonl ~/Documents/rtr-business/research/wo324_recon.jsonl \
+  --out-prefix wo327_qc324 --source-wo WO-327 --skip 90
+```
+
+(`--skip 90` resumes past the 90 already checked; the reclassify step
+re-runs harmlessly, phase 3 appends to the existing
+`research/wo327_qc324_retargeted.csv`.)
+
+**Deploy note.** The new word list and the code that uses it live in
+this repo (`app/utils/jurisdiction_data/hop_link_weights_fr.csv`,
+`scripts/wo147_access_ladder_sweep.py`) and only take effect in
+production sweeps after the next resolver deploy — tonight's runs used
+the code straight from this session's own checkout.
+
 ## WO-326: Lincoln city NE, Lovington city NM, Agawam Town city MA -- WO-320's three leftover leads hand-read [Done 2026-09-12]
 
 WO-320 found 8 governments wrongly marked "already covered" — a bug in

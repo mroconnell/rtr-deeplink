@@ -619,6 +619,25 @@ _HOP_WEIGHTS_SCHOOL_CSV = (
     / "jurisdiction_data"
     / "hop_link_weights_school.csv"
 )
+# WO-327 (2026-09-13): a Quebec-measured FRENCH vocabulary. WO-323 found
+# 0 of 92 never-swept Quebec governments confirmed with the (English-
+# only) vocabulary above, while Ontario/Alberta same-population runs
+# found real hits -- see docs/investigations/hop_scorer_measurement.md's
+# French section and scripts/derive_hop_weights_fr.py for the
+# measurement (a hand-labelled positive set, since jurisdiction_
+# coverage.csv has zero transcribed=true Quebec rows to pull a positive
+# set from the WO-274 way). Loaded as a SEPARATE lookup, only merged in
+# for a `ca:` gov_id AND when `looks_french()` says the fetched page
+# itself is French -- never applied to an English-language Canadian row
+# (measured zero-regression on 52 real Ontario homepages, see
+# `looks_french()`'s own docstring).
+_HOP_WEIGHTS_FR_CSV = (
+    Path(__file__).resolve().parent.parent
+    / "app"
+    / "utils"
+    / "jurisdiction_data"
+    / "hop_link_weights_fr.csv"
+)
 
 
 def _load_hop_weights(
@@ -655,28 +674,89 @@ _HOP_PATH_WEIGHTS, _HOP_ANCHOR_WEIGHTS = _load_hop_weights()
 _HOP_PATH_WEIGHTS_SCHOOL, _HOP_ANCHOR_WEIGHTS_SCHOOL = _load_hop_weights(
     _HOP_WEIGHTS_SCHOOL_CSV
 )
+_HOP_PATH_WEIGHTS_FR, _HOP_ANCHOR_WEIGHTS_FR = _load_hop_weights(_HOP_WEIGHTS_FR_CSV)
+
+# WO-327: <html lang> when present, else a French/English function-word
+# density check on the first 20KB of the fetched page. Measured
+# 2026-09-13 against WO-323's real saved homepages -- 73 fetched Quebec
+# + 52 fetched Ontario governments from the same "never-swept" sweep:
+#
+#   | Rule                                   | QC correct FR | ON correct NOT-FR |
+#   |-----------------------------------------|---------------|--------------------|
+#   | <html lang> alone (61/73 QC had one)     | 57/61         | 52/52              |
+#   | density alone                            | 62/73         | 51/52              |
+#   | lang if present, else density (SHIPPED)  | 65/73         | 52/52              |
+#
+# The shipped combined rule is the only one of the three with ZERO
+# Ontario false positives while also covering the most real Quebec
+# pages -- see docs/investigations/hop_scorer_measurement.md's French
+# section for the full table and the 8 real QC misses (mostly genuinely
+# anglophone Quebec municipalities -- Stanbridge East, Nemaska -- where
+# "not detected as French" is the correct answer, not a miss).
+_HTML_LANG_RE = re.compile(r'<html[^>]*\blang=["\']?([a-zA-Z-]+)', re.I)
+_FR_STOPWORD_RE = re.compile(
+    r"\b(de|la|le|les|des|du|et|un|une|pour|dans|sur|au|aux|votre|vos)\b", re.I
+)
+_EN_STOPWORD_RE = re.compile(r"\b(the|and|for|with|our|your|home|city|town|of)\b", re.I)
 
 
-def _weights_for_gov(gov_id: str) -> Tuple[Dict[str, float], Dict[str, float]]:
+def looks_french(html_text: str) -> bool:
+    """True when a fetched page's own `<html lang>` says French, or (no
+    lang attribute at all) French function words measurably outnumber
+    English ones in the first 20KB. See this module's WO-327 comment
+    block above for the measurement this rule is chosen from."""
+    if not html_text:
+        return False
+    m = _HTML_LANG_RE.search(html_text[:2000])
+    if m:
+        return m.group(1).lower().startswith("fr")
+    sample = html_text[:20000]
+    fr_count = len(_FR_STOPWORD_RE.findall(sample))
+    en_count = len(_EN_STOPWORD_RE.findall(sample))
+    return fr_count >= 5 and fr_count > en_count
+
+
+def _weights_for_gov(
+    gov_id: str, *, html_text: str = ""
+) -> Tuple[Dict[str, float], Dict[str, float]]:
     """Returns (path_weights, anchor_weights) for a candidate's own
     government: the default city/county lookup, merged with the school
-    vocabulary (WO-292) ONLY when `gov_id` is a us:sd: row -- a school
-    site still carries real city/county-style hub words too (agendas,
-    minutes, meetings), so this ADDS the school words rather than
-    replacing the general vocabulary; per-token, the higher of the two
-    measured weights wins (same "never sum two measurements of the same
-    real-world word" rule `_load_hop_weights()` already applies across
-    its own multiple vocabularies)."""
-    if not (gov_id or "").startswith("us:sd:") or not _HOP_PATH_WEIGHTS_SCHOOL:
+    vocabulary (WO-292) ONLY when `gov_id` is a us:sd: row, and/or with
+    the French vocabulary (WO-327) ONLY when `gov_id` is a `ca:` row AND
+    `looks_french(html_text)` says the fetched page itself is French --
+    a school site still carries real city/county-style hub words too
+    (agendas, minutes, meetings), and a French Quebec site still carries
+    a few English/named-platform tokens too (php, index, AgendaCenter),
+    so both ADD rather than replace the general vocabulary; per-token,
+    the higher of the two (or three) measured weights wins (same "never
+    sum two measurements of the same real-world word" rule
+    `_load_hop_weights()` already applies across its own multiple
+    vocabularies). English (non-`ca:`) rows are completely unaffected by
+    this function's French branch, by construction."""
+    is_school = (gov_id or "").startswith("us:sd:") and bool(_HOP_PATH_WEIGHTS_SCHOOL)
+    is_french = (
+        (gov_id or "").startswith("ca:")
+        and bool(_HOP_PATH_WEIGHTS_FR)
+        and looks_french(html_text)
+    )
+    if not is_school and not is_french:
         return _HOP_PATH_WEIGHTS, _HOP_ANCHOR_WEIGHTS
     path_weights = dict(_HOP_PATH_WEIGHTS)
-    for token, weight in _HOP_PATH_WEIGHTS_SCHOOL.items():
-        if weight > path_weights.get(token, float("-inf")):
-            path_weights[token] = weight
     anchor_weights = dict(_HOP_ANCHOR_WEIGHTS)
-    for token, weight in _HOP_ANCHOR_WEIGHTS_SCHOOL.items():
-        if weight > anchor_weights.get(token, float("-inf")):
-            anchor_weights[token] = weight
+    if is_school:
+        for token, weight in _HOP_PATH_WEIGHTS_SCHOOL.items():
+            if weight > path_weights.get(token, float("-inf")):
+                path_weights[token] = weight
+        for token, weight in _HOP_ANCHOR_WEIGHTS_SCHOOL.items():
+            if weight > anchor_weights.get(token, float("-inf")):
+                anchor_weights[token] = weight
+    if is_french:
+        for token, weight in _HOP_PATH_WEIGHTS_FR.items():
+            if weight > path_weights.get(token, float("-inf")):
+                path_weights[token] = weight
+        for token, weight in _HOP_ANCHOR_WEIGHTS_FR.items():
+            if weight > anchor_weights.get(token, float("-inf")):
+                anchor_weights[token] = weight
     return path_weights, anchor_weights
 
 
@@ -744,7 +824,14 @@ def _nav_position_bonus(tag) -> float:
 
 
 def _score_hop_candidate_weighted(
-    text: str, href: str, full_url: str, base_netloc: str, tag, *, gov_id: str = ""
+    text: str,
+    href: str,
+    full_url: str,
+    base_netloc: str,
+    tag,
+    *,
+    gov_id: str = "",
+    html_text: str = "",
 ) -> Optional[float]:
     """Returns None for a candidate that should never be offered at all
     (same vendor-marketing-apex and boilerplate-text guards as the
@@ -769,7 +856,7 @@ def _score_hop_candidate_weighted(
         path_tokens.extend(_hop_tokenize(name))
     anchor_words = _hop_tokenize(text)
 
-    path_weights, anchor_weights = _weights_for_gov(gov_id)
+    path_weights, anchor_weights = _weights_for_gov(gov_id, html_text=html_text)
     path_score = 0.0
     for token in set(path_tokens):
         path_score += path_weights.get(token, 0.0)
@@ -848,7 +935,10 @@ def _find_hop_links_weighted(
     best signals) with `_score_hop_candidate_weighted()` and returns up
     to MAX_HOP_LINKS URLs ranked best-first. `gov_id` (WO-292) selects
     the school vocabulary addition for a us:sd: row; empty/other prefix
-    -> the unchanged city/county-only vocabulary."""
+    -> the unchanged city/county-only vocabulary. `gov_id` starting
+    `ca:` PLUS this page's own `html_text` looking French (WO-327,
+    `looks_french()`) selects the French vocabulary addition the same
+    way."""
     soup = _safe_soup(html_text)
     if soup is None:
         return []
@@ -865,7 +955,7 @@ def _find_hop_links_weighted(
         if full in seen or urlparse(full).scheme not in ("http", "https"):
             continue
         score = _score_hop_candidate_weighted(
-            text, href, full, base_netloc, a, gov_id=gov_id
+            text, href, full, base_netloc, a, gov_id=gov_id, html_text=html_text
         )
         if score is None:
             continue
@@ -927,7 +1017,11 @@ def find_hop_links(
     to be used going forward. Pass `gov_id` (a us:sd: row) to add the
     WO-292 school-board vocabulary on top of the default one -- see
     `hop_link_weights_school.csv` and `_weights_for_gov()` above; any
-    other/empty gov_id leaves scoring unchanged."""
+    other/empty gov_id leaves scoring unchanged. A `ca:` gov_id whose
+    OWN `html_text` looks French (WO-327, `looks_french()`) gets the
+    French vocabulary added the same way -- see
+    `hop_link_weights_fr.csv`; a `ca:` row whose page is not detected as
+    French, or any non-`ca:` row, is unaffected."""
     if legacy:
         return _find_hop_links_legacy(html_text, final_url)
     return _find_hop_links_weighted(html_text, final_url, gov_id=gov_id)
