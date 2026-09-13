@@ -1,5 +1,64 @@
 # Backlog — done
 
+## WO-329: Sheboygan County, WI and Plainfield, VT queued for the YouTube drip [Done 2026-09-13]
+
+Ryan's call (2026-09-13) on the two real transcripts WO-325 and WO-322
+found behind a YouTube embed on a government's own page and withheld
+under the no-YouTube rule: "just get them queued and the rest just
+happens" -- the drip on Ol McClaude's Mac feeds the YouTube lines of the
+tier-3 queue and re-probes them there, so no YouTube call is made from
+this machine. Done by the conductor: one per-video pin each in
+`tenant_overrides.csv` (`youtube:wmqe8C6b8DE` -> `us:county:55117`,
+`youtube:5v2GccMk9ho` -> `us:cousub:5002355825`) and one queue line each
+in `scripts/tier3_auto_transcription_queue.txt`. No probe sidecar row
+was written on purpose (the feed step probes).
+
+| Government | Video | Hand-read (from the finding WO) | Result |
+|---|---|---|---|
+| Sheboygan County, WI | Public Works 2026-08-24 (166 real cues) | county's own Municode Meetings calendar page embeds it | queued, pinned |
+| Plainfield town, VT | Town Meeting (1,705 real cues) | town's own site embeds it | queued, pinned |
+
+Original entry, moved here verbatim:
+
+### Sheboygan County, WI has a real, ready-to-ingest transcript, reached only through a YouTube fetch this WO's own rule forbade `[HUMAN]`
+
+- **Issue:** WO-325 (2026-09-12) hand-verified 117 platform-confirmed
+  candidates by calling the real `app/platforms/*` `resolve()` pipeline
+  on each one, exactly as every WO in this family does before ingesting
+  anything. For Sheboygan County, WI (`us:county:55117`), the confirmed
+  candidate was a Municode Meetings calendar page
+  (`www.sheboyganwi.gov/calendar.aspx?CID=14,28`); Municode Meetings'
+  own adapter (`app/platforms/municode_meetings.py`) legitimately
+  delegates to YouTube when a meeting embeds one (documented, same
+  pattern as PrimeGov/CivicPlus/Legistar). That delegation made a real
+  fetch to YouTube and returned a genuine result: title "Public Works
+  2026 08 24", `video_url=https://www.youtube.com/embed/wmqe8C6b8DE`,
+  166 real caption segments. This WO's own rule, read literally, was
+  "never fetch a youtube.com or youtu.be URL for any reason" — this
+  fetch happened through the adapter's own documented delegation, not
+  through this WO's candidate-ranking/fetch code (which does correctly
+  skip every youtube.com/youtu.be URL it ranks — see `wo325_targeted.py`'s
+  `is_youtube_url()` gate, 116 such leads recorded and never fetched
+  this same run).
+- **Impact:** one real, government-published meeting with a working
+  transcript exists and is not on the site. It was found only because
+  this WO's hand-check step ran the real resolve() pipeline, which is
+  the same step `bulk_ingest.py` would use to actually publish it.
+- **Next action:** Ryan decides whether to ingest this page. If yes,
+  `scripts/bulk_ingest.py --gov-id us:county:55117
+  "https://www.sheboyganwi.gov/calendar.aspx?CID=14,28"` (the real
+  resolve() result is already known-good from this WO's own diagnostic
+  run). If no, record `meeting-without-video` is factually wrong for
+  this row — leave `jurisdiction_coverage.csv`'s row for this gov_id
+  untouched (this WO deliberately left it blank rather than writing a
+  reason that isn't true) until a real decision is made either way.
+- **Constraint:** don't treat this as license to relax the no-YouTube
+  rule elsewhere — see the matching Open bugs entry below for the
+  methodology gap that let this happen despite the rule being followed
+  at the candidate-ranking level.
+- **History:** `BACKLOG_DONE.md`'s WO-325 entry.
+
+
 ## WO-328 / WO-326b: registrable_label() province-suffix fix, and the Town of Lincoln, Ontario row corrected [Done 2026-09-13]
 
 Two entries closed by work that landed 2026-09-12/13, both verified live.
