@@ -399,8 +399,10 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (21)
+Trust, safety & data quality  (23)
   `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
+  Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a…
+  8 rows carrying `prior_reject_reason=already-covered` checked live,…
   `jurisdiction_coverage.csv` has population rows sharing the bare,…
   `jurisdiction_coverage.csv`'s shared write helper still uses a…
   A tenant with no video content never runs the identity conflict…
@@ -6060,6 +6062,60 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   worse than the current wrong value, which at least is visibly wrong
   once looked at directly.
 - **History**: `BACKLOG_DONE.md`'s WO-282 and WO-283 entries; `docs/investigations/passive_discovery_v2.md`; `rtr-business/research/ENUMERATION_METHODS.md` §325.
+
+### Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a third-party ad-lander, not the government's own site `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-12 (WO-320). `cityoflakecityfl.gov`
+  (`us:place:1237775`) answers plain HTTP with a 200 from
+  `search-domainparking.com` -- a domain-parking ad redirect page, not
+  Lake City's own content. `jurisdiction_coverage.csv`'s
+  `prior_reject_reason` for this row already said `already-covered`
+  from an older pass, which WO-320 confirmed is also wrong: a live
+  `/internal/jurisdiction/search?q=Lake City` check against the Archive
+  returns only Salt Lake City, UT pages (a substring match on "Lake
+  City" inside "Salt Lake City"), nothing for the real Lake City, FL.
+- **Impact**: this government has no real domain on file at all right
+  now -- any sweep that trusts `domain` will keep hitting the same
+  ad-lander and recording a false "reached, nothing found" outcome
+  instead of the true "we don't have this government's real website"
+  gap.
+- **Next action**: find Lake City, FL's real current municipal domain (a
+  short, targeted lookup) and move `cityoflakecityfl.gov` into
+  `alternate_domains` per this file's domain-promotion convention,
+  same as the entry above.
+- **Constraint**: don't guess a replacement domain without confirming it
+  first -- same reasoning as the entry above.
+- **History**: `rtr-business/research/wo320_report.csv` (row for
+  `cityoflakecityfl.gov`).
+
+### 8 rows carrying `prior_reject_reason=already-covered` checked live, all 8 were stale `[NEEDS-AUDIT]`
+
+- **Issue**: WO-320's brief flagged `already-covered` (no page today) as
+  meaning the government is probably keyed to a different `gov_id` for
+  the same real government elsewhere in the Archive, and asked for a
+  live check before trusting it. All 8 rows in WO-320's own 194-row
+  population carrying that reason (Lincoln city NE, Jefferson City MO,
+  Agawam Town MA, Pleasantville NJ, Cambridge MD, Lake City FL,
+  Lovington NM, London KY) were checked live against
+  `/internal/jurisdiction/search` by name -- every one came back either
+  empty or matching only a different, same-named government in another
+  state/province (Lincoln ON/OR/RI, Salt Lake City UT, Pleasantville NY/
+  OH, Cambridge MA/ON, London ON, Londonderry NH, New London NH/WI).
+  None of the 8 is actually covered anywhere in the Archive today.
+- **Impact**: at least these 8 rows have a misleading `reject_reason`
+  that would make a future sweep skip a government that actually has no
+  coverage at all. Unknown how many more of the reason's other
+  occurrences across the full file are similarly stale -- this WO only
+  checked its own 8.
+- **Next action**: a small follow-up sweep of every `already-covered`
+  row in `jurisdiction_coverage.csv` against `/internal/jurisdiction/
+  search`, correcting the reason (or clearing it) wherever no real match
+  exists.
+- **Constraint**: none beyond the usual per-name-query politeness; this
+  is a read-only Archive endpoint check, no fetching of government sites
+  needed.
+- **History**: `rtr-business/research/wo320_report.csv`; this WO's final
+  report.
 
 ### `jurisdiction_coverage.csv` has population rows sharing the bare, unresolvable multi-tenant host `sites.google.com` as `domain` `[NEEDS-AUDIT]`
 

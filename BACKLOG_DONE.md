@@ -51546,3 +51546,95 @@ and after). Deploy status: the resolver needs a deploy before the
 change made today is already live and needed no deploy. Rerun
 `scripts/build_backlog_toc.py` after this entry landed (already done in
 this PR).
+
+## WO-320: passive discovery v2 on group 1 of the "neither pass" population — 194 US towns and cities, 46 real pages found, 0 videos [Done 2026-09-12]
+
+**What this was for.** Ryan asked for a fresh search on governments that
+had never been checked by either of the two standing search methods —
+the "ladder sweep" or the "passive run." This group was the 194 largest
+(population 5,000+) US cities and towns in that leftover list. The goal
+was the same as always: find one real meeting with video per government.
+
+**Method.** Reused WO-283's three-step search exactly: (1) visit each
+government's website and save what is there, (2) score the saved pages
+offline to guess where a meeting might be listed, (3) actually fetch the
+best guesses and confirm which ones are real. All three steps ran to
+completion with zero errors.
+
+| Step | Outcome | Count of 194 | What it means |
+|---|---|---|---|
+| Step 1 (visit) | Website reached | 193 | one address never resolved at all |
+| Step 1 (visit) | Blocked by a known firewall | 3 | Milton GA, Commerce CA, Medina MN — set aside, not retried, per a same-day standing block |
+| Step 3 (confirm) | Real meeting page found and confirmed | 46 | fetched, and the page genuinely names this government |
+| Step 3 (confirm) | Not confirmed | 122 | a guess existed but failed the check (wrong government named, a fake "works for any address" page, or nothing useful came back) |
+| Step 3 (confirm) | Nothing found at all | 22 | every fallback attempt came up empty |
+
+**Result: 46 real pages found, 0 had video.** Every one of the 46 was
+checked through the real pipeline that decides what a page contains.
+None had a video. 30 had a real meeting page with agenda content but no
+video. 15 had a page that exists but currently lists no meeting content
+at all. One (cityofmarkham.net) timed out — a temporary problem, not
+recorded, worth trying again later.
+
+| What the confirmed page turned out to be | Count of 46 | What it means |
+|---|---|---|
+| A real meeting page, no video | 30 | recorded in the research file as "meeting, no video" |
+| A page that exists but lists no meetings right now | 15 | recorded as "no meeting, no video" |
+| Timed out, not recorded | 1 | cityofmarkham.net — try again later |
+
+Because no video was found anywhere outside YouTube, there was nothing
+to hand-check, no video to queue, and no page to add to the live site
+this time.
+
+**YouTube: never touched, as instructed.** This work order's launch
+instructions said never to fetch a youtube.com or youtu.be address for
+any reason. 113 such addresses turned up during the search (54 channel
+addresses, 59 single-video links). Every one was written down in the
+shared `youtube_channel_leads.csv` list for a human (or the separate
+YouTube process) to check later — none was ever fetched. Checked after
+the run: zero of those 113 rows show any sign of a real network request
+having been made.
+
+**A caution from the brief, handled directly: some "domain" addresses
+were really a shared meeting-hosting company's page, not the
+government's own website** (example: `pub-lincoln.escribemeetings.com`
+for Lincoln, NE). Added a small fix to the scoring step so that address
+is tried directly even if nothing on it looked like a normal city
+website link. Two governments were found this way: Doylestown borough,
+PA and Shelburne town, VT — both turned out to have no meeting listed
+right now.
+
+**A second caution, checked and found wrong every time it applied.**
+Eight rows in this group were marked from an older search as "already
+have a page somewhere else." All eight were checked directly against
+the live site's own search. None of the eight actually has a page
+anywhere, under any name. This old label was wrong for all eight —
+filed to `BACKLOG.md` so someone checks whether it is wrong elsewhere
+too.
+
+**A real, separate problem found along the way.** Lake City, FL's
+website address does not go to the city at all — it goes to an ad page
+that squatters put up when a domain name lapses. The city's real current
+website is still unknown. Filed to `BACKLOG.md` as its own item, since
+it needs a person to find the right address, not a guess.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `jurisdiction_coverage.csv` (rtr-business) | 45 rows updated with the real finding — 30 "meeting, no video," 15 "no meeting, no video." Existing web addresses already on file were never overwritten, only filled in where blank. |
+| `youtube_channel_leads.csv` (rtr-business) | 113 new rows added, all unverified, all clearly marked as not yet checked by a person. |
+| `BACKLOG.md` | two new items: Lake City FL's dead web address, and the "already have a page" label being wrong for all 8 checked rows. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new §329 section with the full method and numbers. |
+
+**Deploy status.** Nothing here needs a deploy. No page was added to the
+live site, no video was queued for transcription, and no pin was
+written. The only code change was to two copied, one-off research
+scripts (`scripts/wo320_classify.py`, `scripts/wo320_targeted.py`), not
+to anything the live site runs.
+
+**Recommendation.** Group 1 of this population is largely already
+covered by good websites with no video — a real, if unexciting, result.
+The two data-quality problems found (Lake City FL's dead address, and
+the stale "already covered" label) are worth a short, separate follow-up
+since they may repeat elsewhere in the file.
