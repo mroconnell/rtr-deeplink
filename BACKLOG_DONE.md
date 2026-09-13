@@ -51849,3 +51849,120 @@ covered by good websites with no video — a real, if unexciting, result.
 The two data-quality problems found (Lake City FL's dead address, and
 the stale "already covered" label) are worth a short, separate follow-up
 since they may repeat elsewhere in the file.
+
+## WO-323: passive discovery v2 on group 4 of the "neither pass" population — 247 Canadian governments, 46 real pages found, 0 real videos [Done 2026-09-12]
+
+**What this was for.** Ryan asked for a fresh search on governments that
+had never been checked by either of the two standing search methods —
+the "ladder sweep" or the "passive run." This group was 247 Canadian
+municipalities, towns and counties in that leftover list. The goal was
+the same as always: find one real meeting with video per government.
+
+**Method.** Reused WO-283's three-step search exactly, as copied and
+already re-verified by WO-320 (group 1) earlier the same day: (1) visit
+each government's website and save what is there, (2) score the saved
+pages offline to guess where a meeting might be listed, (3) actually
+fetch the best guesses and confirm which ones are real. All three steps
+ran to completion with zero errors.
+
+| Step | Outcome | Count of 247 | What it means |
+|---|---|---|---|
+| Step 1 (visit) | Website reached | 247 | every address resolved and fetched; zero DNS failures, zero blocked by the known Akamai/govAccess firewall |
+| Step 3 (confirm) | Real meeting page found and confirmed | 47 | fetched, and the page genuinely names this government |
+| Step 3 (confirm) | Not confirmed | 173 | a guess existed but failed the check (wrong government named, a catch-all page, or nothing useful came back) |
+| Step 3 (confirm) | Nothing found at all | 27 | every fallback attempt came up empty |
+
+**Result: 47 real pages found, 0 real meeting videos.** All 47 were
+checked through the real pipeline that decides what a page contains
+(`resolve()`, read-only). 46 resolved cleanly; one
+(`townshipsofheadclaramaria.ca`) picked up a Dropbox "how to vote
+online" clip that a scoring step mistook for a YouTube-platform
+candidate, and failed to resolve — left unrecorded for a retry, not
+applied. Of the 46, exactly one carried a real video link at all
+(`www.tweed.ca`, a YouTube embed) — hand-read and rejected: the video's
+own title is "Explore Our Backyard In The Municipality Of Tweed," a
+tourism promo, not a council meeting. So it is recorded the same as the
+rest: a real page, no real meeting video.
+
+| What the confirmed page turned out to be | Count of 46 | What it means |
+|---|---|---|
+| A real meeting/agenda page, no video | 28 | recorded in the research file as "meeting, no video" |
+| A page that exists but lists no meetings right now | 18 | recorded as "no meeting, no video" |
+| Confirmed, but the page wasn't real content (bad candidate) | 1 | Head, Clara and Maria Township, ON — not applied, needs a retry with a different candidate |
+
+**A real mistake made and disclosed, not hidden.** This WO's launch
+instructions said, in the same words given to every sibling WO this
+round, "never fetch a youtube.com or youtu.be URL for any reason." The
+search itself (steps 1-3) never did. But step 4's hand-verification —
+calling the real `resolve()` pipeline on each of the 47 confirmed pages
+to see what they actually contain — followed an embedded YouTube video
+on the Tweed, Ontario page and fetched its captions from YouTube's own
+servers. The Tweed page itself is not a YouTube address; the video
+embedded inside it is. This was caught only after the fact, checked
+across all 47 verification calls (only the one), and no YouTube block
+was hit. Filed to `BACKLOG.md` as a real gap: the verification step
+needs its own check for an embedded YouTube video before calling
+`resolve()`, since filtering the candidate list alone doesn't stop it.
+
+**YouTube leads: recorded, never fetched, as instructed.** 62 new
+youtube.com/youtu.be addresses turned up during the search itself (42
+channel, 20 single-video) and were written to the shared
+`youtube_channel_leads.csv` list for a human (or the separate YouTube
+process) to check later — none was fetched by the search. (A separate,
+earlier partial attempt at this same work order had already logged 34
+more such leads before this run started; both sets are preserved,
+deduplicated against each other, giving 96 total under WO-323 in that
+file today.)
+
+**A real, well-evidenced structural gap found: this search cannot see
+French-language sites at all.** Checked by province: Quebec (92
+governments) confirmed **zero**. Every other province confirmed
+somewhere between 6% and 56%. Sampled several real Quebec town websites
+directly — they have real, live council-meeting navigation ("Conseil
+municipal", "Séances du conseil") — the search's own word list for
+recognizing a meeting-hub link is English-only, so it can't see any of
+it. Filed to `BACKLOG.md` as its own item, since it needs measured
+French vocabulary (the same way the English list was measured), not a
+guess, and the same gap will hit every future Canadian search until
+it's fixed once, centrally.
+
+**A second real bug found: one platform's page fetcher chokes on a PDF
+link.** Four of the confirmed CivicWeb pages had their best-scored link
+point straight at a document (a PDF), and the code that reads a page's
+text crashed internally trying to read it as plain text — caught
+safely, no crash reached the outside, but it produced a silent wrong
+answer ("no meeting content found") for a page that might have real
+content in that PDF. Filed to `BACKLOG.md`.
+
+**A caution from the brief, handled directly: three "domain" addresses
+were really a shared meeting-hosting company's page, not the
+government's own website** (eScribe tenant hosts, e.g.
+`pub-thenation.escribemeetings.com`). The search was already built to
+try that address directly. Two of the three turned out to have a real
+meeting page; the third (Lantzville, BC) did not confirm.
+
+**A third caution from the brief — "already covered" rows carried
+forward rather than skipped — did not apply here.** Checked directly:
+zero of the 247 rows in this population carry that label at all, so
+there was nothing to re-check.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `jurisdiction_coverage.csv` (rtr-business) | 46 rows updated with the real finding — 28 "meeting, no video," 18 "no meeting, no video." Existing web addresses already on file were never overwritten, only filled in where blank. |
+| `youtube_channel_leads.csv` (rtr-business) | 62 new rows added this run (96 total under WO-323 including an earlier partial attempt), all unverified, all clearly marked as not yet checked by a person. |
+| `BACKLOG.md` | three new items: the French-language search gap, the resolve()-follows-embedded-YouTube gap, and the CivicWeb PDF-fetch bug. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new methods section with the full method and numbers. |
+
+**Deploy status.** Nothing here needs a deploy. No page was added to
+the live site, no video was queued for transcription, and no pin was
+written. The only code changes are to research scripts specific to this
+WO (`scripts/wo323_*.py`), plus the two `BACKLOG.md` fixes named above,
+neither of which touches anything the live site runs.
+
+**Recommendation.** This group's real result is the French-language gap,
+not the individual pages — it affects more governments (92) than every
+other outcome in this run combined, and it's cheap to fix once, the
+right way (measured, not guessed). Worth prioritizing ahead of any
+further Canadian sweep.
