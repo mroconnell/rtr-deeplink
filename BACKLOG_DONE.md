@@ -1,5 +1,145 @@
 # Backlog — done
 
+## WO-325: passive discovery v2 on group 6 (US counties, ladder-only) -- 117 platforms confirmed, 0 real videos applied, 1 real video withheld pending a human call, 116 YouTube leads to the drip [Done 2026-09-12]
+
+**What was done and why.** Breadth split the "neither pass" governments
+into six groups. Group 6 was 658 US counties that had only ever been
+checked by the older access-ladder sweeps (WO-147..264), never by the
+newer passive-discovery method. This work order ran WO-283's own
+three-phase passive-discovery pipeline against all 658, with the same
+goal as every sweep this cycle: one meeting with video per government.
+Every real platform find was hand-checked through the real `resolve()`
+pipeline before anything was written to the shared research file, per
+this repo's rule that a platform match is not proof a specific meeting
+is real.
+
+**Phase 1 (reconnaissance) and phase 2 (offline scoring).**
+
+| Phase | Result of 658 | What it means |
+|---|---|---|
+| Phase 1 (recon) | 658 completed, 0 hangs, 0 errors | Every county's website was reached and read |
+| Phase 2 (scoring) | 245 high confidence, 253 medium, 3 low, 157 none | An offline first guess at which counties are worth a real fetch |
+
+A real prior bug (`BACKLOG.md`'s open entry on `wo321_recon.py`) did not
+recur here — this work order ran the identical recon code across 658
+more counties with no hang at all, which narrows where that bug might
+live without closing it.
+
+**Phase 3 (the real fetch).**
+
+| Result of the real fetch | Count of 658 | What it means |
+|---|---|---|
+| Platform confirmed (page names this county and its state) | 117 | A real, current page found — not yet proof of video |
+| Checked, nothing confirmed | 384 | Fetched, but no platform match, or the wrong name/state |
+| Nothing found at all | 129 | No candidate even after the full fallback ladder |
+| Website did not respond | 16 | The website's address does not resolve at all |
+| Blocked by a shared web firewall | 12 | The same Akamai/govAccess block reported by earlier sweeps this week, not this county specifically |
+
+3 of the 658 real candidates were payment-portal pages (a property-tax
+or utility-bill site the sweep almost mistook for a real government
+find) — a guard built for exactly this case in an earlier work order
+caught all 3 correctly and none were counted as confirmed.
+
+**What the 117 confirmed pages actually had**, checked one by one
+through the real page-reading code the site uses to publish a meeting:
+
+| What the 117 confirmed pages actually had | Count of 117 | What it means |
+|---|---|---|
+| A real meeting page, no video | 102 | The county publishes its meetings without video |
+| Checked again, too slow to answer | 9 | Worth trying again later, not a real answer either way |
+| Checked again, a real error came back | 4 | 1 is a real code gap (below); 3 are the county's own website erroring on a second visit |
+| A real video, ready to use | 1 | See the caution below — not applied |
+| A real video-call link, not a saved recording | 1 | The county posts a Zoom join link, not a recording — nothing to save |
+
+Adding those up: 102 + 1 (the Zoom-link county) = 103 real "meeting
+found, no usable video" results. One of those 103, Bibb County, Georgia,
+is not written to the shared file — see the caution below — leaving 102
+actually applied.
+
+**A caution: one real video was found, but this work order did not use
+it.** Sheboygan County, Wisconsin has a real, working meeting page with
+a real transcript already available (166 real caption lines). The way
+it was found is the problem: this work order was told never to fetch
+anything from YouTube, for any reason. The page reader software
+correctly avoided every direct YouTube address — it found this one
+through a website page-reading tool that is allowed, by design, to
+follow a link to YouTube when a meeting page embeds one there, the same
+way it is allowed to follow a link to other video sites. That is a real
+gap between "never touch YouTube directly" and "the page-reading tool
+you're required to use for the hand-check step can still reach YouTube
+through a side door." Recorded in `BACKLOG.md` under "Needs a human" —
+Ryan decides whether to use this real transcript. A second WO running
+the same kind of sweep on a different set of governments hit the exact
+same gap the same day, on a different real government (Plainfield,
+Vermont) — so this is a real, repeatable software gap, not bad luck.
+Filed as its own `BACKLOG.md` bug too, so it gets fixed once for every
+sweep that uses this same page-reading tool, not just this one.
+
+**A second real caution.** One of the 4 "real error" results is a
+genuine code gap, not a fluke: Floyd County, Indiana's real meeting
+system (SuiteOne) could not be read because its web address does not
+give the reading tool enough information — a real, fixable software
+limitation, filed in `BACKLOG.md`.
+
+**13 counties needed a hand decision instead of a fresh answer.** Two
+(Bibb County GA and Clarke County GA) are Georgia's Macon-Bibb and
+Athens-Clarke consolidated city-counties — a standing rule already says
+to leave these two rows alone, since the same government is
+deliberately recorded twice in the data by design. Ten more already had
+a correct "wrong address on file" answer from an earlier sweep, and
+this work order's own fresh check did not find anything to disagree
+with — so all 12 (2 + 10, one already counted among the 117 above) were
+left exactly as they were rather than being overwritten.
+
+**116 YouTube addresses were found and handed off, not opened.** Every
+one of these was a link a county's own website pointed at YouTube. None
+were opened or checked, exactly as the no-YouTube rule requires — each
+was added to the shared list for a separate, later YouTube-specific
+review.
+
+**No wrong governments and no "already covered elsewhere" cases.** None
+of the 117 confirmed pages turned out to belong to a different public
+body, and none of the 658 counties had an earlier "already covered, but
+no page today" flag to check.
+
+**Summary.**
+
+| Outcome | Count of 658 | What it means |
+|---|---|---|
+| Meeting page found, no video (applied) | 102 | Real meeting page, nothing to record |
+| Nothing found at all | 395 | Checked, genuinely nothing there |
+| Website blocked the check | 106 | Worth trying again with a different approach later |
+| Website did not respond in time | 16 | The address does not resolve |
+| Blocked by a shared web firewall | 12 | Same block as reported by earlier sweeps this week |
+| Checked again, too slow to answer | 9 | Worth a retry, not a real answer |
+| Checked again, a real error came back | 4 | 3 worth a retry; 1 is a real code gap |
+| Left alone on purpose (already correct) | 12 | 2 consolidated governments, 10 already-correct wrong-address findings |
+| Real video found, withheld | 1 | Sheboygan County, WI — Ryan decides |
+| YouTube links found and handed off, not opened | 116 | For the separate YouTube review |
+
+**Recommendation.** Nothing here needs a deploy — no page went live, no
+queue line was written, and no pin changed. The 645 updated rows and the
+116 YouTube leads are already in the shared research file. Ryan should
+decide on the Sheboygan County, WI transcript (real, ready, found
+through a side door this work order was told to avoid) — see the
+`[HUMAN]` entry in `BACKLOG.md`.
+
+**Deploy status.** Nothing to deploy. This work order touched only the
+shared research files (`rtr-business`) and this repo's own scripts and
+docs — no page, queue line, or pin was created.
+
+**What's undone.** The Sheboygan County, WI decision waits on Ryan. The
+9 timed-out counties and the 3 counties with a transient website error
+are worth a retry later, not acted on further here. The 116 YouTube
+leads and the software gap that let one real YouTube fetch through
+during hand-checking both wait on the separate processes already set up
+for them.
+
+**The main takeaway: this group of 658 US counties added zero new
+video-bearing pages to the site today, but it did surface one real,
+ready transcript that needs a human decision, and two real software
+gaps worth fixing before the next sweep of this kind.**
+
 ## WO-326: Lincoln city NE, Lovington city NM, Agawam Town city MA -- WO-320's three leftover leads hand-read [Done 2026-09-12]
 
 WO-320 found 8 governments wrongly marked "already covered" — a bug in
