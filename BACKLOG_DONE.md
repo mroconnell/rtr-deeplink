@@ -1,5 +1,61 @@
 # Backlog — done
 
+## WO-319: Huron charter Township, Wayne County MI -- pin repointed, page 3938 re-keyed [Done 2026-09-12]
+
+Ryan's call (2026-09-12) on the `[HUMAN]` entry WO-309 (resume) filed:
+the `huron-township.cablecast.tv` pin matched the same-named Huron
+township in Huron County; the government's own site
+(`hurontownship-mi.gov`) says Huron CHARTER Township, Wayne County.
+Done by the conductor: pin repointed to `us:cousub:2616340040`
+(`tenant_overrides.csv`, still `ryan_stated`), page 3938
+(`/m/huron-township-2026-07-30-zba-8-10-26`) re-keyed via
+`POST /internal/jurisdiction/override` (dry run, then apply, `updated=1`),
+research-file rows swapped by Breadth. Still to do once the resolver
+deploy carrying WO-309b's `cablecast.py` transcript-parser fix is live:
+re-resolve page 3938 via `/admin/recheck-archive-page` so its captions
+come through the fixed parser.
+
+| Result | Count | What it means |
+|---|---|---|
+| Pin repointed | 1 | Future resolves on this tenant key to Wayne County |
+| Live page re-keyed | 1 | Page 3938 now shows Huron Charter Township, MI |
+| Pages left wrong | 0 | The tenant had one page |
+
+Original entry, moved here verbatim:
+
+### A live Archive page is keyed to the wrong Michigan township — Huron charter Township, Wayne County, not Huron township, Huron County `[HUMAN]`
+
+- **Issue:** WO-309 (resume) (2026-09-12) found a real Cablecast tenant
+  (`huron-township.cablecast.tv`) for Huron charter Township, MI
+  (`us:cousub:2616340040`, Wayne County) while working the small-video-
+  platform sweep's leftover rows. `bulk_ingest.py` refused with a 409:
+  an EXISTING live Archive page (id 3938,
+  `/m/huron-township-2026-07-30-zba-8-10-26`) is already keyed to
+  `us:cousub:2606340020` ("Huron township", HURON County, MI) via a
+  `ryan_stated` `tenant_overrides.csv` pin. The government's own website
+  (`hurontownship-mi.gov`, the domain the Cablecast link was found on)
+  confirms live it is "Huron CHARTER Township" in "Wayne County" — a
+  different real Michigan township from the one the existing pin names.
+  Two real, distinct governments named "Huron township" exist in
+  Michigan (`us_cousubs.csv`: `2606340020` "Huron township" and
+  `2616340040` "Huron charter township"), which is how this happened.
+- **Impact:** one live page (id 3938) is keyed to the wrong government,
+  and the real ZBA meeting this WO found (show 480, "ZBA 8-10-26", real
+  coherent captions after this WO's own cablecast.py transcript-parser
+  fix) can't be ingested until the conflict is resolved.
+- **Next action:** Ryan decides whether to re-key page 3938 to
+  `us:cousub:2616340040` and update the `tenant_overrides.csv` pin
+  (`huron-township.cablecast.tv,,us:cousub:2606340020,fallback,
+  ryan_stated,...`) to point at the Wayne County township instead —
+  this WO did not touch either, since overriding a `ryan_stated` pin on
+  its own judgment is exactly the mistake this repo's conventions warn
+  against. Once decided, the real ZBA meeting (show 480) is ready to
+  ingest with the corrected `gov_id`.
+- **Constraint:** none.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
+  `rtr-business/research/wo309b_report.csv`.
+
+
 ## WO-317: audio-only Laserfiche joins tier 3 — Ramsey city, MN and Deschutes County, OR queued [Done 2026-09-12]
 
 **What this was for.** Ryan asked: "didn't we build audio tier 3 for

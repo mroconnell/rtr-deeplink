@@ -165,8 +165,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (48)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  A live Archive page is keyed to the wrong Michigan township — Huron…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -1764,38 +1763,6 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-### A live Archive page is keyed to the wrong Michigan township — Huron charter Township, Wayne County, not Huron township, Huron County `[HUMAN]`
-
-- **Issue:** WO-309 (resume) (2026-09-12) found a real Cablecast tenant
-  (`huron-township.cablecast.tv`) for Huron charter Township, MI
-  (`us:cousub:2616340040`, Wayne County) while working the small-video-
-  platform sweep's leftover rows. `bulk_ingest.py` refused with a 409:
-  an EXISTING live Archive page (id 3938,
-  `/m/huron-township-2026-07-30-zba-8-10-26`) is already keyed to
-  `us:cousub:2606340020` ("Huron township", HURON County, MI) via a
-  `ryan_stated` `tenant_overrides.csv` pin. The government's own website
-  (`hurontownship-mi.gov`, the domain the Cablecast link was found on)
-  confirms live it is "Huron CHARTER Township" in "Wayne County" — a
-  different real Michigan township from the one the existing pin names.
-  Two real, distinct governments named "Huron township" exist in
-  Michigan (`us_cousubs.csv`: `2606340020` "Huron township" and
-  `2616340040` "Huron charter township"), which is how this happened.
-- **Impact:** one live page (id 3938) is keyed to the wrong government,
-  and the real ZBA meeting this WO found (show 480, "ZBA 8-10-26", real
-  coherent captions after this WO's own cablecast.py transcript-parser
-  fix) can't be ingested until the conflict is resolved.
-- **Next action:** Ryan decides whether to re-key page 3938 to
-  `us:cousub:2616340040` and update the `tenant_overrides.csv` pin
-  (`huron-township.cablecast.tv,,us:cousub:2606340020,fallback,
-  ryan_stated,...`) to point at the Wayne County township instead —
-  this WO did not touch either, since overriding a `ryan_stated` pin on
-  its own judgment is exactly the mistake this repo's conventions warn
-  against. Once decided, the real ZBA meeting (show 480) is ready to
-  ingest with the corrected `gov_id`.
-- **Constraint:** none.
-- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
-  `rtr-business/research/wo309b_report.csv`.
 
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
