@@ -1,5 +1,78 @@
 # Backlog — done
 
+## WO-343: an eScribe listing walker, closing the last of WO-333's five platform gaps [Done 2026-09-13]
+
+WO-333 built a shared step that walks from a confirmed government page to
+a real meeting, so the site can find video on its own instead of a human
+checking the last step by hand. It worked for most platforms it was
+tested on, but left five gaps. This WO closes the last of those five:
+eScribe, the platform behind "Published Meetings" pages used by Victoria,
+BC and about 65 other governments (mostly Canadian cities and counties,
+plus some U.S. counties and school boards).
+
+**What was built.** A new listing walker for eScribe, plugged into the
+same shared step WO-333 built. Given a government's eScribe page, it now
+asks eScribe's own calendar for that government's real, recent meetings
+(the same request the page's own calendar makes when a person visits it),
+picks the newest one, and checks it for video and captions the same way
+the site already does for a single known meeting. This needed no change
+to how a meeting page itself is read — only the missing step of finding
+which meeting to read.
+
+**Proven against the government WO-333 flagged as still broken.**
+
+| Government | Before this WO | After this WO |
+|---|---|---|
+| Victoria, BC | A real page was found, but no video (the page it was given was a listing, not one meeting) | A real, specific Council meeting found, with real video and real English captions |
+
+**Then checked against 20 more governments** that use eScribe and don't
+have a page on the site yet (the 20 largest by population, out of 77
+total).
+
+| Result | Count of 20 | What it means |
+|---|---|---|
+| Real video and captions found | 1 | Clark County, IN — now a live page on the site |
+| Real meeting checked, no video on any recent one | 11 | A genuine eScribe page was found and its recent meetings checked; none had video |
+| Video found on YouTube instead | 2 | Perry, GA and Thorold, ON — the site's own records pointed straight at a YouTube channel, not eScribe; left as a YouTube lead, not looked into further this round |
+| Not a real eScribe page at all | 6 | The site's own records for these 6 pointed at the wrong page or a page that no longer works |
+
+Every real video found was read by hand before anything was published,
+to confirm it is really that government's own meeting and not someone
+else's. Clark County's video was a real "Clark County Plan Commission"
+meeting, confirmed by its own title — the page is now live.
+
+**Caution.** Two things worth flagging. First, 6 of the 20 governments
+checked — 3 in 10 — turned out to have wrong or outdated information on
+file about which page eScribe uses (this is a data problem with our own
+records, not something wrong with the government's real page). One,
+Missoula County, MT, was recorded as an eScribe government but its real
+page is actually a different platform entirely. That's now filed as its
+own backlog item, since it likely affects other governments the same
+way, on eScribe and probably other platforms too. Second, this WO did
+not re-check all 77 open eScribe governments — only the 20 largest. A
+full re-check is a separate, already-flagged next step.
+
+**Recommendation.** Run the full 77-government re-check next, now that
+the fix is live — expect roughly 3 to 4 more real finds, going by this
+WO's 20-government sample, though a chunk of the remaining 57 will
+likely turn out to have the same wrong-platform-on-file problem found
+here rather than a real eScribe page to check.
+
+**What's live now, what needs a deploy.** Clark County, IN's page is
+already live on the site — ingesting a page doesn't need a deploy. The
+listing-walker code itself is merged to `main` but needs the resolver
+service deployed before any other sweep can use it.
+
+**For the record:** eScribe joins CivicWeb, Granicus, ChampDS, and
+Legistar as platforms whose listing can be walked on its own — see
+`BACKLOG.md`'s "Five platform gaps" entry (now four) for what's left
+(iQM2, Town Hall Streams, and two CivicPlus edge cases), and its new
+entry on the wrong-platform-on-file problem found this WO.
+
+`rtr-business/research/wo343_report.csv` has the full 20-government
+table; `research/ENUMERATION_METHODS.md` §342 has the full write-up,
+including the real eScribe calendar request this WO found and used.
+
 ## WO-333: a shared step that walks a confirmed hub to a real meeting, so the pipeline resolves video on its own again [Done 2026-09-13]
 
 Ryan's own framing: the pipeline got dependent on a human checking the
