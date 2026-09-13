@@ -1,5 +1,90 @@
 # Backlog — done
 
+## WO-346: audited the whole tier-3 queue for missing owners, pinned what evidence already proved, and added a guard so this can't recur silently [Done 2026-09-13]
+
+**Why this ran.** WO-345 found 13 real videos already sitting in the
+machine-transcription queue with no record of which government owned
+them. That was a small sample — 108 governments out of thousands. This
+WO checked every line in both queue files, using the exact same
+ownership check the machine-transcription feed and the Archive itself
+use, to find out how big the real gap was, fix what could be fixed
+safely, and stop it from happening again.
+
+**Result — every line in both files (2,069 in the main queue, 943 in the
+parked-for-later file), checked the way the feed script and the Archive
+will check them:**
+
+| Outcome | Count of 3,012 | What it means |
+|---|---|---|
+| Already owned — one government per website, no owner record needed | 924 | e.g. a Granicus or CivicClerk site built one-government-per-address; there's no way for it to be mixed up |
+| Already owned — the parked file already had the government written down | 842 | an earlier WO recorded who owns it when the line was parked |
+| Already owned — a record already existed saying who owns it | 768 | a prior WO already wrote this one down correctly |
+| No owner on file, now fixed — a real record elsewhere named the government, and it matched the video | 332 | e.g. a YouTube or Vimeo video shared by many governments, now written down |
+| No owner on file, still unresolved — nothing on file says who this is | 146 | needs a person to open the page and read it |
+
+**A shared website (YouTube, Vimeo, and a handful of others) is the
+whole problem.** A government's own website is never confused with
+another government's — each one is its own address. YouTube and Vimeo
+are different: one website, thousands of unrelated governments, so the
+only way to know who owns a specific video is a record written down
+for that exact video. All 478 of the "no owner" lines above were on one
+of these shared websites.
+
+**The 332 fixed were not guesses.** Each one had a written record
+elsewhere — a report from an earlier WO, or the coverage spreadsheet —
+naming the exact same video URL and the exact same government, with a
+result that wasn't itself a reject or a skip. Nine lines had two
+different records that disagreed with each other on who owned the
+video; none of those nine were written down — they went to the
+"unresolved" pile instead, since picking one record over the other
+would have been a guess.
+
+**Caution.** The 146 unresolved lines need a person to open each page
+and read it — the list is `scripts/wo346_hand_read.csv`, one row per
+line, with the website and any partial evidence already found. Filed
+as a new BACKLOG.md entry so it isn't lost. A second, smaller finding
+turned up by accident while building the record-search: 286 of the
+3,012 lines are videos that already have a real, finished page
+elsewhere on the site — they're just sitting in the queue doing
+nothing. Also filed as its own BACKLOG.md entry; not fixed here since
+it's a different kind of problem (a wasted queue slot, not a missing
+owner).
+
+**Three smaller fixes, same visit.** (1) A shared helper function that
+writes down which WO found a YouTube lead was writing the wrong WO
+number every time, no matter who actually called it — confirmed live
+when WO-345 used it and it wrote "WO-320" for a WO-345 find. Fixed so
+every caller has to say its own name; a second copy of the same
+function (in a different WO's script) had the identical bug with a
+different wrong number baked in, also fixed. (2) A new check now runs
+before every video is sent to the machine-transcription queue's next
+step: if the check can't find an owner, the video is skipped and stays
+in the queue — not thrown away — so this exact problem can't happen
+again quietly. (3) When that check DOES find the owner from a written
+record, the government's own id now rides along with the video to the
+Archive directly, instead of counting on the Archive's own copy of the
+ownership records being current — closes a real gap CLAUDE.md's rule
+on this already calls out. A test proves all three fixes.
+
+**Recommendation.** Merge and, once merged, no further action is
+needed for the machine-transcription feed itself — it is a scheduled
+GitHub Actions job that reads this repo fresh on every run, so the new
+refuse-to-advance check and the 332 new ownership records apply the
+next time it runs, automatically. Separately, ask the Archive service
+to be redeployed so its OWN internal lookup (used for the 924 lines
+that are owned by their website's structure, not a written record, and
+for any older already-ingested page still showing no government) also
+picks up the new records. After that, hand this WO's 146-line list and
+the 286-line stale-queue list to a session that can read pages, to
+close the remaining gap.
+
+**What needs a deploy, and what doesn't.** The machine-transcription
+feed script needs no deploy — it runs from a fresh copy of this repo on
+every scheduled run, so merging is enough. The Archive service's own
+internal lookup does need a redeploy to see the 332 new records for
+everything that isn't sent an id directly. Nothing in this WO created,
+changed, or deleted an Archive page.
+
 ## WO-345 (= WO-338b): rerunning WO-338's walker-gap residual now that the six listing walkers have all landed [Done 2026-09-13]
 
 **Why this ran.** WO-338 checked 2,825 governments for real video and

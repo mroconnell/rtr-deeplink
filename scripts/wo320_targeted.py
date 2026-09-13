@@ -208,13 +208,21 @@ def _load_youtube_leads_seen() -> set:
 
 
 def record_youtube_lead(
-    domain: str, gov_id: str, name: str, state: str, url: str
+    domain: str, gov_id: str, name: str, state: str, url: str, source_wo: str
 ) -> None:
     """Appends a not-fetched YouTube URL to the shared
     youtube_channel_leads.csv lead list (never fetched by this WO --
     per the no-YouTube-calls rule, kind is inferred from the URL SHAPE
     only, never from a live page/oembed check). Deduped against what's
-    already in the file (loaded once, before any writes)."""
+    already in the file (loaded once, before any writes).
+
+    `source_wo` (WO-346, fixing a bug WO-345 filed): no default, so every
+    caller is forced to pass its own real WO number -- this helper used
+    to hardcode a literal "WO-320" regardless of which WO actually called
+    it, found live 2026-09-13 when WO-345 called it for a real Cochise
+    County, AZ lead and the written row said WO-320 (fixed by hand at the
+    time; this is the real fix). See BACKLOG.md's matching entry
+    (history: BACKLOG_DONE.md's WO-345 entry) for the full incident."""
     kind = (
         "channel"
         if any(m in url for m in _YOUTUBE_CHANNEL_PATH_MARKERS)
@@ -252,7 +260,7 @@ def record_youtube_lead(
                     "gov_id": gov_id,
                     "government": name,
                     "state": state,
-                    "source_wo": "WO-320",
+                    "source_wo": source_wo,
                     "kind": kind,
                     "verified": "false",
                     "note": "not fetched -- WO-320's no-YouTube-calls rule; URL-shape kind guess only",
@@ -566,7 +574,7 @@ def process_with_candidates(row: dict) -> list[dict]:
             )
             continue
         if youtube_host(c["url"]):
-            record_youtube_lead(domain, gov_id, name, state, c["url"])
+            record_youtube_lead(domain, gov_id, name, state, c["url"], "WO-320")
             results.append(
                 _youtube_skip_result(
                     c["url"],
@@ -631,7 +639,9 @@ def process_fallback_ladder(row: dict) -> list[dict]:
             )
             best = None
         if best and youtube_host(best[0]):
-            record_youtube_lead(domain, row.get("gov_id", ""), name, state, best[0])
+            record_youtube_lead(
+                domain, row.get("gov_id", ""), name, state, best[0], "WO-320"
+            )
             results.append(
                 _youtube_skip_result(
                     best[0],
@@ -686,7 +696,9 @@ def process_fallback_ladder(row: dict) -> list[dict]:
                 )
                 best = None
             if best and youtube_host(best[0]):
-                record_youtube_lead(domain, row.get("gov_id", ""), name, state, best[0])
+                record_youtube_lead(
+                    domain, row.get("gov_id", ""), name, state, best[0], "WO-320"
+                )
                 results.append(
                     _youtube_skip_result(
                         best[0],

@@ -70,6 +70,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yt_dlp
 
+from ..utils.gov_registry.resolver import _matched_multi_gov_pin, _tenant_host
 from . import media_probe
 from .base import (
     CalendarPageError,
@@ -1238,6 +1239,56 @@ def _first_field_urls(path: Path) -> set[str]:
             if line and not line.startswith("#"):
                 urls.add(line.split("\t", 1)[0])
     return urls
+
+
+def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
+    """WO-346: the same owner check `archive/db/crud.py`'s
+    `_resolve_page_government()` makes at ingest time (rung 1b of
+    `app/utils/gov_registry/resolver.py`'s `_resolve_government_ladder()`)
+    -- reused here, not reimplemented, so a queue-advance guard can never
+    silently drift from what ingest itself will actually do.
+
+    `source_url` is the URL identity will key off: the meeting's own
+    `ResolvedMeeting.source_url` (a queue line's second tab-field, when
+    present, overrides what gets recorded there -- see
+    `scripts/feed_tier3_auto_transcription.py::_parse_queue_line()`'s own
+    docstring), never the raw queue URL when the two differ.
+
+    Returns `(owned, gov_id, reason)`:
+
+    * `(True, None, "")` -- this host resolves to exactly one government
+      on its own (not a `MULTI_GOV_HOSTS` host, e.g. a Granicus/
+      CivicClerk/eScribe tenant subdomain -- ownership comes from the
+      tenant structure itself, no pin needed, and no cheap gov_id to hand
+      back without running the full ladder server-side has ingest does).
+    * `(True, gov_id, "")` -- a `tenant_overrides.csv` per-video/channel/
+      external-id pin matches, and its gov_id is handed back so the
+      caller can put it straight into the ingest payload (CLAUDE.md's
+      "send the government's id in every ingest payload" rule) instead
+      of depending on the Archive service's OWN deployed copy of
+      `tenant_overrides.csv` being up to date.
+    * `(False, None, reason)` -- the host is a `MULTI_GOV_HOSTS` host
+      with no matching pin -- ingest would land this page on
+      `rtr:unknown:{host}` (TIER_BLANK), exactly the gap WO-345/WO-346
+      found sitting unrecorded in the tier-3 queue and the deferred file.
+    """
+    parsed = urlparse(source_url)
+    host = _tenant_host(parsed.netloc)
+    if not host:
+        return False, None, f"unparseable host in {source_url!r}"
+    if not is_multi_gov_host(host):
+        return True, None, ""
+    path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    matched = _matched_multi_gov_pin(host, path, {})
+    if matched:
+        gov, _evidence = matched
+        return True, gov.gov_id, ""
+    return (
+        False,
+        None,
+        f"{host} is a shared, multi-government host with no tenant_overrides.csv "
+        f"pin matching {source_url!r} -- would ingest as rtr:unknown:{host}",
+    )
 
 
 def is_queued(meeting_url: str, *, queue_path: Path = TIER3_QUEUE_FILE) -> bool:
