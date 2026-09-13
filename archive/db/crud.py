@@ -5407,6 +5407,13 @@ async def find_new_matches_for_saved_search(
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
+    # CivicPlus's own "CivicMedia" video widget (TikiLive-hosted) --
+    # WO-341, 2026-09-13. A real, direct video host in its own right (not
+    # a calendar/agenda router like "civicplus" itself, excluded below):
+    # civicmedia.py keeps `resolved.platform = "civicmedia"` on every
+    # pushable result, so a real row lands labeled this way. See
+    # civicmedia.py's own module docstring.
+    "civicmedia": "CivicMedia (CivicPlus/TikiLive)",
     "swagit": "Swagit",
     "viebit": "Viebit",
     "escribe": "eScribe",

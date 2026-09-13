@@ -11,6 +11,11 @@ ingested 2026-09-11 (Livermore Falls ME, Bartow FL), whose stored
 playlist expires 2026-09-13. See `app/platforms/boxcast.py`'s module
 docstring for the full investigation.
 
+CivicMedia (CivicPlus's own TikiLive-hosted video widget) is the second
+confirmed exception, WO-341 (2026-09-13): its own signed HLS playlist
+carries `stime=`/`etime=` query values roughly 24h apart at generation
+time -- see `app/platforms/civicmedia.py`'s module docstring.
+
 Rather than re-ingesting a page every few days to refresh its stored
 `video_url` (a standing sweep with no natural trigger and no way to know
 ahead of time which pages need it), the meeting page route
@@ -51,7 +56,7 @@ from typing import Awaitable, Callable, Dict, Optional, Tuple
 # the raw stored URL. Every other platform's stored `video_url` is
 # either an iframe-embed page or a plain, non-expiring media URL, so
 # this set is deliberately small and additive.
-NEEDS_REFRESH: frozenset = frozenset({"boxcast"})
+NEEDS_REFRESH: frozenset = frozenset({"boxcast", "civicmedia"})
 
 # Keyed by the page's slug (stable across a refresh, unlike the signed
 # URL itself) -- a few minutes is enough to collapse a burst of views on
@@ -73,8 +78,20 @@ async def _refresh_boxcast(source_url: str) -> Optional[str]:
     return await refresh_playlist_url(source_url)
 
 
+async def _refresh_civicmedia(source_url: str) -> Optional[str]:
+    # Same lazy-import convention as `_refresh_boxcast()` above. CivicPlus's
+    # CivicMedia widget (TikiLive-hosted) is the second confirmed signed-
+    # and-expiring platform -- WO-341, 2026-09-13, see
+    # app/platforms/civicmedia.py's own module docstring ("signed and
+    # time-limited", `stime`/`etime` ~24h apart at generation time).
+    from app.platforms.civicmedia import refresh_playlist_url
+
+    return await refresh_playlist_url(source_url)
+
+
 _REFRESHERS: Dict[str, Callable[[str], Awaitable[Optional[str]]]] = {
     "boxcast": _refresh_boxcast,
+    "civicmedia": _refresh_civicmedia,
 }
 
 

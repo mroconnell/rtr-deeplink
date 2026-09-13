@@ -247,6 +247,7 @@ def detect_platform(url: str) -> str:
     # (see its case below for why), and that parsing belongs with the
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
+    from .civicmedia import is_civicmedia_page_url
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
     from .invintus import is_invintus_meeting_url
     from .az_legislature import is_az_legislature_video_url
@@ -496,6 +497,22 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if netloc == "civplus.tikiliveapi.com" or is_civicmedia_page_url(url):
+        # CivicPlus's own "CivicMedia" video widget (TikiLive-hosted) --
+        # confirmed live 2026-09-13 (WO-341) against Hobart, IN
+        # (`cityofhobart.org/CivicMedia?VID=326`), a real meeting video
+        # with real captions -- see civicmedia.py's own module docstring
+        # for the full investigation. Two real shapes claimed: the
+        # government's own `/CivicMedia`/`/CivicMedia.aspx?VID=` page
+        # (self-hosted, same white-labeling as every other CivicPlus
+        # product -- see civicplus.py's own module docstring for why this
+        # can't be a netloc check) and the TikiLive embed host itself.
+        # Checked BEFORE the `/agendacenter` path check just below, on
+        # purpose: both are path-only checks with no netloc signal, and a
+        # `/CivicMedia` URL should never fall through to CivicPlus's own
+        # AgendaCenter row-parsing (which expects `tr.catAgendaRow`
+        # markup this page doesn't have).
+        return "civicmedia"
     if path.startswith("/agendacenter"):
         # CivicPlus "AgendaCenter" -- identical shape to Hyland's path
         # check just above: most real CivicPlus tenants are white-labeled
