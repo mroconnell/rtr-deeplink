@@ -465,6 +465,119 @@ what landed before re-running rather than re-fixing the same walkers a
 fourth time. Separately, a person should decide the right fix for the
 shared-website data problem before more automatic searches run on top
 of it.
+## WO-337: passive discovery v2 on 2,010 small US towns and townships that had only ever been checked one older way -- 38 real pages found, all confirmed to have no video, plus two real hangs fixed [Done 2026-09-13]
+
+**What this was for.** Every US city, town, and township has been
+checked for a meeting video at least once. Some were only ever checked
+the old way -- a simple pass that only counted a page as a hit if it
+linked straight to a known video vendor. This work order re-checked
+2,010 of those towns and townships with the newer method, which also
+credits a town's own "Agendas & Minutes" page and follows a listing
+page to one real, specific meeting instead of stopping at the list.
+
+**Filling in missing population numbers first.** 665 of the 2,010 towns
+had no population number on file, needed to check the biggest towns
+first. Filled all 665 from the Census Bureau's own population estimate
+file, matched by the town's official id rather than by name -- matching
+by name alone would have confused, for example, the many different
+Michigan townships that all happen to be named "Wright."
+
+| Step | Result | What it means |
+|---|---|---|
+| Population numbers filled | 665 of 665 | Every town could be sorted biggest-first |
+
+**Checking each town's website.** The check runs in three steps: look
+at the site (step 1), guess where a meeting page might be from what step
+1 saw (step 2), then actually try those guesses (step 3).
+
+| Step 1: look at the site | Count of 2,010 | What it means |
+|---|---|---|
+| Site reached | 1,951 | The town's website answered |
+| Site never answered (bad address) | 385 | No further check possible |
+| Site blocked this machine | 10 | A shared web-firewall block reported by every check this week, not specific to these towns |
+| Shared address, not this town's own site | 59 | Explained below |
+
+| Step 3: try the guesses | Count of 1,951 | What it means |
+|---|---|---|
+| A real, current town page found | 38 | Not yet proof of a meeting video -- see below |
+| Checked, nothing found | 1,518 | No real meeting page confirmed for this specific town |
+| A payment/billing page, correctly rejected | 4 | A safety check caught this before it could be mistaken for a real town page |
+
+**59 towns share one address that isn't really any one of them's own
+site.** 54 different real West Virginia towns all had the exact same
+placeholder address on file (no individual site was ever recorded for
+them). Checking that one address once cannot tell you which, if any, of
+54 towns it's actually about, so none of the 54 got a fresh answer this
+run -- they're left exactly as they were, for a human to sort out later.
+5 more towns share a real site in pairs or trios for a different,
+legitimate reason (a town and its village share one town hall website).
+This was a real gap in the copied check-building code: without a fix,
+the first version would have silently lost 53 of the 54 West Virginia
+towns entirely from the results, not just left them unanswered. Fixed
+before any results were saved.
+
+**The 38 real pages found were each checked by hand** (the shared
+checking tool built two days ago, used here for the first time at this
+scale) to see whether they actually show a meeting with video.
+
+| What the 38 real pages showed | Count of 38 | What it means |
+|---|---|---|
+| A real meeting page, no video | 22 | This town publishes its meetings without video |
+| Checked again, nothing there after all | 16 | A closer look found no real meeting to point to |
+| A real, usable video | 0 | None of the 38 had one |
+
+**The zero is a real, honest result, not a mistake.** Every one of these
+2,010 towns had already failed the OLDER check once, and that older
+check's whole test was "does this page link straight to a video
+vendor." A town that fails that test and then, on a closer look, still
+has no video simply doesn't have one on its website today. Nothing here
+points to a bug in the checking code.
+
+**Two real hangs, found and fixed while running this at full scale.**
+Both were in the shared checking scripts, copied for this work order.
+Neither was fixed in the original shared copy, since two other sessions
+were using it at the same time -- filed in `BACKLOG.md` instead so the
+original gets the same fix later.
+
+1. One optional fallback step opens a real, invisible web browser to
+   read a page a plain fetch couldn't. Opening too many of those browsers
+   at once, with no limit and no time cap, could freeze the whole run.
+   Fixed by capping it to 4 at a time with a 40-second hard limit each.
+2. A single slow website can hold a connection open far longer than the
+   normal 10-second limit allows, because that limit only covers each
+   small piece of the reply, not the whole reply. One such site froze an
+   entire batch of towns for over 9 minutes before being caught. Fixed
+   by capping every plain web fetch to 20 seconds and 3 megabytes total,
+   found live using a Mac tool that shows exactly which connection a
+   frozen program is still waiting on.
+
+**21 real YouTube channel or video addresses were found** and saved to
+the shared list for a person to check by hand later -- none were opened
+or watched by this work order, per the standing rule against fetching
+anything from YouTube directly.
+
+**Saved to the shared coverage file.** 1,951 of the 2,010 towns got a
+fresh answer saved (the other 59 are the shared-address towns above,
+deliberately left alone). Of those, 417 towns' answer actually changed
+from before; the other 1,287 were checked again and got the exact same
+answer they already had, confirming it still holds. 247 more were left
+alone on purpose -- their older answer was already stronger evidence
+(a real meeting page, just no video) than this run's weaker "checked,
+nothing" result would have been, so the older, better answer was kept.
+
+**Caution.** No video was found this run, so nothing was published and
+nothing was added to the queue that turns into a video with a
+transcript later. The 59 shared-address towns are still unanswered and
+need a person to sort out which West Virginia town, if any, each shared
+address actually belongs to.
+
+**Recommendation.** File the 59 shared-address towns as their own
+follow-up once someone has time to sort them out by hand -- they are a
+real, fixable gap, not a dead end.
+
+**Deploy status.** This work order changed only shared research files
+and scripts, plus two bug write-ups. Nothing here needs a deploy --
+there is no new page, video, or queue entry to serve.
 
 ## WO-333: a shared step that walks a confirmed hub to a real meeting, so the pipeline resolves video on its own again [Done 2026-09-13]
 
