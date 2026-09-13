@@ -2174,3 +2174,5 @@ https://reflect-kckps.cablecast.tv/internetchannel/show/611?channel=1	https://re
 https://reflect-niagarafallsosc.cablecast.tv/CablecastPublicSite/show/2160?site=1	https://reflect-niagarafallsosc.cablecast.tv/cablecastapi/v1/shows?pageSize=50&sortColumn=cablecastShowID&sortDirection=DESC&channel=1
 http://agawamvod.cablecast.tv/internetchannel/show/2825?site=1
 https://playback.orionontv.org/internetchannel/show/5821?site=3
+https://www.youtube.com/watch?v=wmqe8C6b8DE
+https://www.youtube.com/watch?v=5v2GccMk9ho

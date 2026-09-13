@@ -167,8 +167,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
   34 of WO-271's WordPress governments have a front-page…
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  Sheboygan County, WI has a real, ready-to-ingest transcript, reached…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -1820,44 +1819,6 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-### Sheboygan County, WI has a real, ready-to-ingest transcript, reached only through a YouTube fetch this WO's own rule forbade `[HUMAN]`
-
-- **Issue:** WO-325 (2026-09-12) hand-verified 117 platform-confirmed
-  candidates by calling the real `app/platforms/*` `resolve()` pipeline
-  on each one, exactly as every WO in this family does before ingesting
-  anything. For Sheboygan County, WI (`us:county:55117`), the confirmed
-  candidate was a Municode Meetings calendar page
-  (`www.sheboyganwi.gov/calendar.aspx?CID=14,28`); Municode Meetings'
-  own adapter (`app/platforms/municode_meetings.py`) legitimately
-  delegates to YouTube when a meeting embeds one (documented, same
-  pattern as PrimeGov/CivicPlus/Legistar). That delegation made a real
-  fetch to YouTube and returned a genuine result: title "Public Works
-  2026 08 24", `video_url=https://www.youtube.com/embed/wmqe8C6b8DE`,
-  166 real caption segments. This WO's own rule, read literally, was
-  "never fetch a youtube.com or youtu.be URL for any reason" — this
-  fetch happened through the adapter's own documented delegation, not
-  through this WO's candidate-ranking/fetch code (which does correctly
-  skip every youtube.com/youtu.be URL it ranks — see `wo325_targeted.py`'s
-  `is_youtube_url()` gate, 116 such leads recorded and never fetched
-  this same run).
-- **Impact:** one real, government-published meeting with a working
-  transcript exists and is not on the site. It was found only because
-  this WO's hand-check step ran the real resolve() pipeline, which is
-  the same step `bulk_ingest.py` would use to actually publish it.
-- **Next action:** Ryan decides whether to ingest this page. If yes,
-  `scripts/bulk_ingest.py --gov-id us:county:55117
-  "https://www.sheboyganwi.gov/calendar.aspx?CID=14,28"` (the real
-  resolve() result is already known-good from this WO's own diagnostic
-  run). If no, record `meeting-without-video` is factually wrong for
-  this row — leave `jurisdiction_coverage.csv`'s row for this gov_id
-  untouched (this WO deliberately left it blank rather than writing a
-  reason that isn't true) until a real decision is made either way.
-- **Constraint:** don't treat this as license to relax the no-YouTube
-  rule elsewhere — see the matching Open bugs entry below for the
-  methodology gap that let this happen despite the rule being followed
-  at the candidate-ranking level.
-- **History:** `BACKLOG_DONE.md`'s WO-325 entry.
 
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
