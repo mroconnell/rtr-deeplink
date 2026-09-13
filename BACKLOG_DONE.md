@@ -1,5 +1,75 @@
 # Backlog — done
 
+## WO-326: Lincoln city NE, Lovington city NM, Agawam Town city MA -- WO-320's three leftover leads hand-read [Done 2026-09-12]
+
+WO-320 found 8 governments wrongly marked "already covered" — a bug in
+an earlier check. Three of the eight had a real meeting or video URL on
+file. This work order read each one by hand to find out what was
+actually there.
+
+The city of Lincoln, Nebraska had the wrong web address on file. The
+address on file (`pub-lincoln.escribemeetings.com`) turned out to
+belong to a different government with the same name — the Town of
+Lincoln, Ontario, Canada. Reading a real meeting page there showed
+Canadian terms like "Committee of Adjustment," confirming the mix-up.
+Lincoln, Nebraska's real video system is called LNKTV City. Its newest
+City Council meeting (August 31, 2026) has a real, readable transcript
+naming real council members. That meeting is now a live page.
+
+Lovington, New Mexico had a similar mix-up. The web address on file
+belonged to Lea County's own meeting system, not the city's. Reading
+the meeting there confirmed it was a County Commissioners meeting, not
+a Lovington city meeting. Lovington does have its own meeting system
+(a Granicus site), which is real and current, but every meeting on it
+says "no video available." Lovington's meetings are agenda text only.
+Nothing was added to the site for Lovington, per the rule that only
+meetings with video become pages.
+
+Agawam, Massachusetts had a real address on file, but it pointed to a
+"Mayor's Cafe Chat" video, not a City Council meeting. The real City
+Council meetings have no captions at all — checked the newest 11, all
+came back empty. One of them (June 1, 2026) runs about 31 minutes,
+inside the length this project prefers for the auto-transcription
+queue. That meeting is now in the queue; the site's transcription robot
+will add its transcript automatically once it reaches it.
+
+| Government | What was found | Outcome |
+|---|---|---|
+| Lincoln city, NE | Wrong web address on file; real address found with a real transcript | Live page now |
+| Lovington city, NM | Wrong web address on file (belonged to the county); city's own system has no video | Not added — no video anywhere |
+| Agawam Town city, MA | Real address, but wrong video; found a real Council meeting with no captions | Added to the transcription queue |
+
+| Outcome | Count of 3 | What it means |
+|---|---|---|
+| Live page now | 1 | Lincoln, NE has a real transcript on the site today |
+| In the transcription queue | 1 | Agawam, MA will get a transcript once the queue reaches it |
+| Not added, no video found | 1 | Lovington, NM only posts text agendas, not video |
+
+A caution: the Lincoln, Ontario mix-up is not fixed yet on Lincoln,
+Ontario's own record — that government's file still says no video
+system was found, even though one clearly exists. That's a quick fix
+for someone, logged in `BACKLOG.md`, but it was left alone here because
+this work order's job was Lincoln, Nebraska, not Lincoln, Ontario.
+
+Two new pins were added to the site's config so future videos from
+these two governments key to the right one automatically: Lincoln,
+NE's LNKTV City system, and Agawam's Cablecast system.
+
+**Deploy status:** Lincoln, NE's page is live on the site right now — no
+deploy needed for a page. The two new pins and the one new queue entry
+need the resolver service's next deploy before they take effect for any
+*future* meeting from these governments.
+
+**Bold takeaway: two of three leftover leads were the same mistake — a
+web address that actually belonged to a different, same-named
+government — and fixing that found one real transcript and one real
+queue entry that a stale address had been hiding.**
+
+**Files**: `rtr-business/research/wo326_report.csv`,
+`rtr-business/research/wo326_apply_to_jc.py`,
+`rtr-business/research/wo326_owner_bodies.csv`;
+`rtr-business/research/ENUMERATION_METHODS.md` §331.
+
 ## WO-321: passive discovery v2 on group 2 (US counties) of the "neither pass" population -- 24 platforms confirmed, 0 videos, 218 jurisdiction_coverage.csv rows updated, 70 YouTube leads to the drip [Done 2026-09-12]
 
 **What was done and why.** Breadth split the governments that had never
