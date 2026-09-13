@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+  `wo323_classify.py`'s and `wo324_classify.py`'s…
   Town of Lincoln, Ontario's own eScribe tenant has a real, current,…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
   `cablecast.py`: two more real URL/data quirks found by WO-309…
@@ -186,12 +187,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (200)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (199)
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
   [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
-  [NEEDS-AUDIT] The passive-discovery hop-link scorer's vocabulary is…
   [NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a…
   [NEEDS-AUDIT] A hand-verification script that calls the real…
   [JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()`…
@@ -414,7 +414,8 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (23)
+Trust, safety & data quality  (24)
+  27 real Quebec municipalities are marked `reject_reason=off-mission`,…
   `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
   Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a…
   8 rows carrying `prior_reject_reason=already-covered` checked live,…
@@ -740,6 +741,39 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `wo323_classify.py`'s and `wo324_classify.py`'s `homepage_candidates()` never pass `gov_id` into `find_hop_links()`, so the school and French vocabularies are silently never applied `[JUST-DO-IT]`
+
+- **Issue:** WO-327 (2026-09-13) found that both committed passive-
+  discovery-v2 classify scripts call
+  `w147.find_hop_links(html, final_url)` with no `gov_id=` keyword —
+  `homepage_candidates()` in `scripts/wo323_classify.py` (line ~144) and
+  the same function in `scripts/wo324_classify.py`. `find_hop_links()`
+  only adds the WO-292 school vocabulary (`us:sd:` rows) or the WO-327
+  French vocabulary (`ca:` rows whose page is French) when `gov_id` is
+  passed — with it always blank, every classify run these two scripts
+  do defaults to the English city/county-only vocabulary, no matter the
+  government. Confirmed live: WO-323's own 92 Quebec rows scored a
+  correct French council-hub link in the top-1 slot on 50 of 92 once
+  WO-327 re-ran classification WITH `gov_id` passed — proof the gap is
+  real and costly, not theoretical.
+- **Impact:** every `us:sd:` or `ca:` (French) government run through
+  either script gets systematically worse hop-link ranking than the
+  vocabulary already shipped for it — WO-323's "0 of 92 Quebec
+  confirmed" headline result is partly an artifact of this gap, not
+  only of the (now-fixed, WO-327) missing French vocabulary itself.
+- **Next action:** add `gov_id=rec.get("gov_id", "")` to both scripts'
+  `find_hop_links()` call. Small, mechanical, one line each — see
+  `scripts/wo327_rerun_quebec_phases.py`'s `homepage_candidates_fr()`
+  for the exact diff (a verbatim copy of `wo323_classify.homepage_
+  candidates()` with only that one line changed). Once fixed, WO-324's
+  258-row Quebec `deferred-french-vocab` rows (and any future run of
+  either script) get the French/school vocabulary for free.
+- **Constraint:** don't touch `wo268_passive_discovery.py`'s or
+  `wo273_classify.py`'s own copies without checking whether they have
+  the same gap independently — not verified in this pass.
+- **History:** `docs/investigations/hop_scorer_measurement.md`'s French
+  section; `BACKLOG_DONE.md`'s WO-327 entry.
 
 ### Town of Lincoln, Ontario's own eScribe tenant has a real, current, on-mission meeting but its research row still says no platform found `[JUST-DO-IT]`
 
@@ -2152,13 +2186,6 @@ of human step they need.
   - **Next action**: give `townhallstreams.py`'s `resolve()` the same shape of listing-walk CivicPlus already has: when the URL is a listing rather than a specific meeting, check the N most recent entries for a real video before raising `NoVideoCandidateFound`/returning empty.
   - **Constraint**: build and verify this against a second real Town Hall Streams listing page before trusting the drill-down count logic across tenants — this repo's own "test against a real URL first" rule (`CLAUDE.md`), and York County, ME is only one real sample.
   - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
-
-- **[NEEDS-AUDIT] The passive-discovery hop-link scorer's vocabulary is English-only, so it finds nothing on French-language municipal sites — confirmed 0 of 92 Quebec governments confirmed, against 6%-56% everywhere else in the same run.**
-  - **Issue**: found live 2026-09-12 (WO-323), running the "neither pass" discovery pipeline (`wo273_classify.py`'s `hub_score()`/`meeting_score()`, and `wo147_access_ladder_sweep.py`'s `hop_link_weights.csv`-driven `find_hop_links()`) against 247 Canadian governments. By province: Quebec 0/92 (0%), Saskatchewan 2/31 (6%), Newfoundland and Labrador 1/8 (12%), British Columbia 6/35 (17%), New Brunswick 1/4 (25%), Manitoba 1/3 (33%), Ontario 27/56 (48%), Alberta 9/16 (56%). Sampled real, live Quebec homepages directly (not just the scores) to confirm this isn't "these towns have no meeting content": www.saint-lambert.ca's own nav has "Conseil municipal", "Séances du conseil", "Consultations publiques"; www.ville.sthonore.qc.ca has "Membres du conseil", "Séances du conseil" — real council-meeting hub links, just in French. Every weighted word in `hop_link_weights.csv` (both `kind=anchor` and path-token rows) is English: agendas/minutes/council/boards/commissioners/meetings/etc. None of the French equivalents (conseil, séances, ordre du jour, procès-verbaux, comités, réunions) are in that file, so a French link scores exactly the same as an unrelated one — zero.
-  - **Impact**: every French-speaking Canadian government (Quebec entirely, plus francophone municipalities elsewhere) is structurally invisible to this discovery method, not just under-covered — 92 governments in this one population alone. The same gap will reproduce in WO-324 (group 5, Canadian ladder-only) and any future Canadian/francophone sweep until fixed once, centrally.
-  - **Next action**: measure real French lift weights the same way WO-274 measured the English ones (`scripts/derive_hop_weights.py`, real positive/negative samples) rather than guessing translations, and add them to the shared `app/utils/jurisdiction_data/hop_link_weights.csv` (as `kind=anchor` and path-token rows, French terms alongside the existing English ones) so every future sweep benefits, not just a copy of this WO's own scripts. Also check whether URL slugs themselves are French (e.g. `/conseil-municipal/`) or transliterated (e.g. `/proces-verbaux/` without the accent) — accented vs. unaccented anchor text both need covering since HTML anchor text keeps accents but URL slugs are inconsistent.
-  - **Constraint**: don't hand-guess weights and ship them uncalibrated — the whole reason the English list works is that it was measured against real hit/miss samples (see `hop_link_weights.csv`'s own header); an invented French list risks false-positiving on unrelated French words (e.g. "conseil" alone is common outside government contexts too) with no way to know until it's measured.
-  - **History**: `rtr-business/research/wo323_methods_section.md` (this WO's methods section in `ENUMERATION_METHODS.md`); `BACKLOG_DONE.md`'s WO-323 entry.
 
 - **[NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a Canadian `*.qc.ca`-style domain's province code as if it were the government's own name, producing a false shared-host platform "confirmation" on every such row — 66-70 of WO-324's 258 Quebec rows in one run.**
   - **Issue**: found live 2026-09-12 (WO-324, group 5). `registrable_label(domain)` takes a domain's second-to-last label as the government's slug to guess a vendor tenant host from (`{label}.primegov.com`, `{label}.civicweb.net`). For `www.ville.contrecoeur.qc.ca` that label is `qc` — Quebec's own province code, not the government's name — and `qc.primegov.com` genuinely resolves (`onemeeting-qc.primegov.com`, PrimeGov's own regional "OneMeeting Quebec" landing page, not any one government's tenant). `dns_platform()` (both the recon-time original and `wo273_classify.py`'s duplicate) treats any resolving guess as real evidence, so every `*.qc.ca` row in the population got `platform=primegov, confidence=high` regardless of whether that government uses PrimeGov at all — confirmed: 0 of the 66-70 affected rows had any other real PrimeGov signal (no PrimeGov URL anywhere in their sitemap/Wayback/Common-Crawl data). The `<slug>.civicweb.net` guesses from the same mechanism are NOT affected — each resolving one was checked and is a real, government-specific tenant (e.g. `kamloops.civicweb.net`), because Kamloops's own domain (`www.kamloops.ca`) doesn't end in a two-level province suffix.
@@ -6185,6 +6212,46 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### 27 real Quebec municipalities are marked `reject_reason=off-mission`, including Terrebonne (population 119,944) and Rivière-du-Loup (20,118) `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-13 (WO-327), rerunning WO-323's 92 and
+  WO-324's 258 Quebec rows with the new French hop-link vocabulary. 75
+  governments got a real, name-matched council-session page confirmed
+  (`www.ville.terrebonne.qc.ca/conseil-municipal/`,
+  `www.villerdl.ca` -> a real Rivière-du-Loup council page, etc.). Of
+  those 75, this WO safely applied `reject_reason=meeting-without-video`
+  to the 47 whose CURRENT reason was `deferred-french-vocab` or
+  `no-platform-link-found` (both clearly meant to be superseded). The
+  other 27 currently read `reject_reason=off-mission` -- a real,
+  deliberate-sounding classification this WO has no record of the
+  reasoning for, and no `note`-shaped field exists on the row to explain
+  it. Every one of the 27 has a real domain, a real population, and (per
+  this rerun) a real, current, name-matched municipal council page --
+  nothing in the 27 examples looks like a genuine off-mission entity
+  (a federal/tribal body, a private organization, a defunct
+  municipality). Not overwritten here, on purpose: this project's own
+  "off-mission" reason is presumably a real, considered call somewhere,
+  and a name-match on a fetched page is real but not strong enough
+  evidence to unilaterally reverse it without knowing why it was set.
+- **Impact**: potentially 27 real, current Quebec municipalities
+  (including at least one major city, Terrebonne, ~120K population) are
+  being silently skipped by every future sweep that filters out
+  `off-mission` rows, for a reason nobody can currently reconstruct.
+- **Next action**: find where/when `off-mission` was set for these 27
+  gov_ids (git-blame or a prior WO's own findings/report file naming
+  them) to learn the real reason; if it turns out to be a stale/wrong
+  bulk classification, correct it the same way this WO corrected the 47
+  safe rows. The full list of 27 (gov_id, domain, city_name,
+  population_estimate, the real URL this WO found) is in this WO's own
+  `research/wo327_off_mission_anomaly.json` (on disk, not committed by
+  this WO per the never-commit-in-rtr-business rule).
+- **Constraint**: don't bulk-overwrite `off-mission` rows from a
+  name-match signal alone across the wider population -- this is a
+  27-row anomaly found by chance in one rerun's output, not a general
+  audit of every `off-mission` row in the file.
+- **History**: `BACKLOG_DONE.md`'s WO-327 entry;
+  `ENUMERATION_METHODS.md` §336.
 
 ### `jurisdiction_coverage.csv` has at least 5 rows where a smaller government's `domain` is really its county's or state's domain `[NEEDS-AUDIT]`
 

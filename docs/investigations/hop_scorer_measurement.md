@@ -404,3 +404,267 @@ using this table.
 Files added: `scripts/wo292_fetch_vocab_homepages.py`,
 `scripts/wo292_derive_school_hop_weights.py`,
 `app/utils/jurisdiction_data/hop_link_weights_school.csv`.
+
+## WO-327 addendum: a French vocabulary for Quebec (2026-09-13)
+
+### Why
+
+WO-323 (2026-09-12, ENUMERATION_METHODS §332) ran passive discovery v2
+on 247 never-swept Canadian governments and confirmed 0 of 92 Quebec
+sites, while Ontario came back 27 of 56 and Alberta 9 of 16. Real Quebec
+homepages carry live "Conseil municipal", "Séances du conseil", "Ordre
+du jour", "Procès-verbaux", "Webdiffusion" navigation -- but
+`find_hop_links()`'s vocabulary (`hop_link_weights.csv`) is English-only
+and scores none of it.
+
+### The catch, and the method
+
+`jurisdiction_coverage.csv` holds 1,288 Quebec rows and ZERO with
+`transcribed=true`, so WO-274's method (pull a positive set from
+already-transcribed governments' recorded hub/meeting URLs) has no
+French positives to pull. This WO built the positive set by hand
+instead: every one of WO-323's 92 saved Quebec homepages
+(`~/Documents/rtr-business/research/wo323_recon.jsonl`, already
+fetched, no new network calls for this step) was scored against real
+French council-vocabulary phrases and the printed top candidate read by
+hand for every row (`scripts/wo327_hand_label_quebec_hubs.py`) --
+70 of 92 produced a real hub link, 3 fetched with no qualifying link, 19
+were unreachable (SSL certificate failures / 403s -- an access problem,
+not a content one). Two real false positives were caught and fixed
+during the hand-read: Terrebonne's "Figurants pour photos et vidéos"
+(a casting call for a promotional shoot, not a meeting) and Albanel's
+"CONSEIL" nav link, which actually resolves to a councillor-roster/bio
+page, not a session page -- the same distinction this doc's own Table 1
+draws for an English "Council-Members" roster page.
+
+One more polite hop past each of the 70 hub URLs
+(`scripts/wo327_fetch_quebec_hub_links.py`, plain HTTP, honest headers,
+2s apart, never fetching youtube.com/youtu.be) found only 2 real
+archived meeting videos (Mirabel and Canton de Hatley, both Vimeo) plus
+one live Microsoft Teams meeting-join link (Saint-Jacques-le-Mineur --
+a recurring live link, not an archived meeting, not counted) and 25
+YouTube channel/video leads, recorded to `research/youtube_channel_
+leads.csv` with `verified=false` per CLAUDE.md's "YouTube is a drip
+lead" rule, never fetched. 2 real meeting URLs is far short of this
+WO's own >= 15 floor for building a separate `meeting_firstparty_fr`
+vocabulary, so that vocabulary was not built -- see
+`scripts/derive_hop_weights_fr.py`'s module docstring.
+
+### Hand-label result, of the 92 Quebec homepages
+
+| Result | Count of 92 | What it means |
+|---|---|---|
+| Hub link found and confirmed by hand | 70 | Real council-session/minutes/webcast page identified |
+| Homepage fetched, no qualifying link found | 3 | Site has no visible meeting/session navigation |
+| Homepage unreachable | 19 | SSL certificate failure or HTTP 403 -- access problem |
+
+### Measured vocabulary (the deliverable)
+
+Positives: the 70 hand-confirmed hub URLs. Negatives: every other
+outbound link on the same 92 homepages (5,755 ordinary links). Same
+method as WO-274's `derive_hop_weights.py` (log-lift, +0.5 smoothing,
+capped at +/-7.0), but with a much smaller support floor (3 positive
+occurrences, not 10) since the whole positive sample is 70 URLs, not
+956 -- `scripts/derive_hop_weights_fr.py`'s own comment states this
+explicitly as a real, deliberate scale difference, not an oversight.
+
+**Top path tokens, `hub_firstparty_fr`:**
+
+| Token | Lift | Positives/Negatives | Weight |
+|---|---|---|---|
+| diffusion | 105.0x | 4/3 | 4.65 |
+| seances | 104.2x | 41/32 | 4.65 |
+| proces | 27.2x | 20/61 | 3.30 |
+| verbaux | 27.2x | 20/61 | 3.30 |
+| conseil | 23.7x | 38/132 | 3.17 |
+| democratique | 12.0x | 4/30 | 2.49 |
+| municipal | 6.4x | 10/133 | 1.86 |
+| calendrier | 6.3x | 9/123 | 1.84 |
+
+**Top bigrams:**
+
+| Bigram | Lift | Positives/Negatives | Weight |
+|---|---|---|---|
+| ville-seances | 571.5x | 3/0 | 6.35 |
+| democratique-seances | 190.5x | 3/1 | 5.25 |
+| seances-conseil | 154.8x | 27/14 | 5.04 |
+| diffusion-des | 114.3x | 3/2 | 4.74 |
+| des-seances | 95.8x | 13/11 | 4.56 |
+| proces-verbaux | 27.2x | 20/61 | 3.30 |
+| conseil-municipal | 12.3x | 10/69 | 2.51 |
+
+**Top anchor-text words** (accents stripped, see below):
+
+| Word | Lift | Positives/Negatives | Weight |
+|---|---|---|---|
+| diffusion | 145.3x | 3/1 | 4.98 |
+| seances | 106.2x | 43/25 | 4.67 |
+| proces | 29.5x | 22/47 | 3.38 |
+| conseil | 26.7x | 40/94 | 3.28 |
+| calendrier | 10.9x | 12/71 | 2.39 |
+| ordre | 8.9x | 3/24 | 2.19 |
+
+Notably, "webdiffusion" never clears the support floor as its own
+token -- real Quebec homepages overwhelmingly write it as two
+tokenizable words ("Diffusion des séances", `/diffusion-des-seances`),
+not the single compound the brief's own prose used. The measured
+vocabulary reflects what real pages actually contain, not the
+assumption.
+
+Output: `app/utils/jurisdiction_data/hop_link_weights_fr.csv`, 43 rows,
+same 5-column shape (`vocabulary,token_or_bigram,kind,positives,
+negatives,lift,weight`) `_load_hop_weights()` already reads.
+
+### Accent handling
+
+Two real, confirmed data-quality issues had to be handled before the
+table above was trustworthy:
+
+1. **Mojibake.** 2 of the 92 pages' anchor text decoded as
+   "SÃ©ances"/"SÃ©ance" instead of "Séances"/"Séance" -- real UTF-8
+   bytes for an accented character, misread one byte at a time as
+   Latin-1. Left unfixed, tokenizing "SÃ©ances" manufactures two fake
+   tokens ("sa", "ances") purely from the encoding artifact, and "ances"
+   cleared the support floor on that noise alone. Fixed with a
+   round-trip repair (`s.encode("latin1").decode("utf-8")`,
+   `derive_hop_weights_fr.fix_mojibake()`), applied before tokenizing.
+2. **Real accents.** Anchor text is genuinely accented ("Séances",
+   "Procès-verbaux"); URL paths are not (Quebec sites overwhelmingly use
+   unaccented, hyphenated path segments -- confirmed against all 70 real
+   hub URLs). Anchor tokens are NFD-normalized and stripped of combining
+   marks before matching. A side-by-side comparison of stripped vs.
+   accent-kept lift on the same sample (printed by
+   `derive_hop_weights_fr.py`, "Accent handling comparison") shows every
+   accented variant matching its stripped form's lift closely or falling
+   below the support floor on its own spelling variant -- stripping
+   pools real signal that would otherwise split across spelling variants
+   (WordPress vs. custom-CMS templates spell "séance"/"seance"
+   differently on real pages in this sample). **Decision: ship the
+   accent-stripped vocabulary only** -- no accented form is kept
+   separately in the output CSV.
+
+### Language rule: when does a `ca:` row get the French vocabulary?
+
+`looks_french(html_text)` in `wo147_access_ladder_sweep.py`: the page's
+own `<html lang>` attribute when present, else a French/English
+function-word density comparison on the first 20KB. Three candidate
+rules were measured against the SAME 73 fetched Quebec + 52 fetched
+Ontario real homepages from WO-323's recon (both populations already on
+disk, no new fetches needed for this measurement):
+
+| Rule | QC correctly detected French | ON correctly NOT detected French |
+|---|---|---|
+| `<html lang>` alone (61 of 73 QC pages had one at all) | 57 of 61 | 52 of 52 |
+| Function-word density alone | 62 of 73 | 51 of 52 |
+| **Shipped: `<html lang>` if present, else density** | **65 of 73** | **52 of 52** |
+
+The shipped rule is the only one of the three with ZERO Ontario false
+positives while also covering the most real Quebec pages. Of the 8
+Quebec pages the shipped rule still misses, most are genuinely
+defensible: Stanbridge East and Nemaska are real anglophone Quebec
+municipalities whose homepages are, in fact, primarily English (not a
+miss at all), and 2 (`piopolis.quebec`, `val-racine.com`) have a
+`<html lang="en">` attribute that is simply wrong on a page that is
+otherwise overwhelmingly French by word count -- a `<html lang>` value
+can itself be stale/wrong on a real site, which is exactly why the
+density check exists as a fallback rather than the sole rule; it was
+not widened to override a present-but-wrong `lang` attribute in this
+pass, since doing so cost 1 real Ontario false positive
+(`townshipofmorley.ca`, a bilingual page) when tested. **No Ontario
+regression on either the 92-homepage Quebec population's own English
+control rows or on the separate 52-homepage Ontario population** -- see
+`tests/test_hop_scorer_french.py` for the pinned regression tests
+(`test_ontario_homepage_scoring_is_byte_identical_with_and_without_
+gov_id`, checked against all 52 real Ontario homepages while building
+this WO, not just the one committed fixture).
+
+### Wiring
+
+`_weights_for_gov(gov_id, *, html_text="")` in
+`wo147_access_ladder_sweep.py` now merges in the French table when
+`gov_id` starts `ca:` AND `looks_french(html_text)` is true -- same
+per-token "higher of the two measured weights wins" rule the WO-292
+school-vocabulary merge already uses, so a Quebec homepage still gets
+credit for any English/named-platform tokens too (AgendaCenter, php,
+index). A non-`ca:` row, or a `ca:` row whose page is not detected
+French, is completely unaffected -- `find_hop_links()`'s existing
+`gov_id` keyword parameter already threads through; only the new
+`html_text` keyword on `_score_hop_candidate_weighted()`/
+`_weights_for_gov()` is new plumbing. The English weights file itself
+was not touched.
+
+### Real example: before vs. after, on real saved pages
+
+| Government | Old top candidate (no French vocab) | New top candidate (French vocab) |
+|---|---|---|
+| Mirabel, QC | YouTube channel link | `mirabel.ca/seances-conseil` (real council-session hub) |
+| Saint-Georges, QC | YouTube channel link | `saint-georges.ca/.../calendrier-des-seances-du-conseil-municipal` |
+| Saint-Calixte, QC | A youtu.be link | `saint-calixte.ca/municipalite/mairie/seances-du-conseil` |
+
+### Before/after on the 92 Quebec rows: reclassification (offline, no network)
+
+Re-running phase 2 (`scripts/wo327_rerun_quebec_phases.py`, a French-
+aware, gov_id-passing rewrite of `wo323_classify.py`'s own
+`homepage_candidates()` -- see `BACKLOG.md`'s new entry: neither
+`wo323_classify.py` nor `wo324_classify.py` ever passed `gov_id` into
+`find_hop_links()` at all, so this rewrite was required just to exercise
+the vocabulary, not optional) on the same 92 recon rows:
+
+| Result | Count of 92 | What it means |
+|---|---|---|
+| Top-ranked homepage candidate changed | 50 | The French vocabulary picked a materially different (and, hand-checked, better) link |
+| Top-ranked candidate unchanged | 42 | Same link either way (mostly: a known vendor platform was already found by DNS/URL-shape, independent of hop-link scoring) |
+
+Of the 50 changed rows, the OLD top-1 candidate was overwhelmingly noise
+that happened to outrank everything under English-only scoring: a room-
+rental page, a bizpal permit portal, a Twitter share link, an
+`etatcivil.gouv.qc.ca` government-of-Quebec vital-records page, and a
+YouTube channel link (which is real signal, just not as directly useful
+as the government's own session-hub page) -- see the full list in
+`research/wo327_qc323_reclassified.csv` vs. WO-323's own committed
+`research/wo323_classified.csv`.
+
+### A second real bug found and excluded, not by this WO's own testing but flagged by the conductor mid-run
+
+WO-324's separate 258-row Quebec population measured 66-70 false
+PrimeGov "confirmations": `wo273_recon.py`'s DNS tenant-guess took the
+SECOND-TO-LAST label of a domain as a guessed vendor subdomain -- for
+any `*.qc.ca` government that label is literally "qc", and
+`qc.primegov.com` genuinely resolves (to PrimeGov's own regional
+"OneMeeting Quebec" landing page, not any tenant). This WO's own 92-row
+rerun hit the identical bug independently (23 of 92 rows) before the
+conductor's message arrived. WO-328 (merged to `main`, #1111) fixed
+`registrable_label()` upstream; this WO's rerun used a hand-exclusion
+first (never trust a `qc.primegov.com` hit as evidence) and then, once
+WO-328 landed, re-queried DNS for the affected domains with the FIXED
+label (`scripts/wo327_refix_qc_primegov.py`) -- see the report for
+which of the 23 domains had a DIFFERENT real vendor host once queried
+with the correct label instead of just having the false one removed.
+
+### Rerun results (phases 2-3, live)
+
+See the WO-327 `BACKLOG_DONE.md` entry for the final funnel tables (hub-
+scorer rerun on WO-323's 92 rows, WO-324's 258 `deferred-french-vocab`
+rows, and the qc.primegov.com refix) -- kept there rather than
+duplicated here, per this repo's own rule that a `BACKLOG_DONE.md` entry
+carries the numbers a builder needs and this doc carries the
+measurement method and reasoning behind them.
+
+### Files
+
+- `scripts/wo327_hand_label_quebec_hubs.py` -- hand-label the hub link
+  on WO-323's 92 saved Quebec homepages (no network calls).
+- `scripts/wo327_fetch_quebec_hub_links.py` -- one polite hop past each
+  hand-labelled hub, looking for a real meeting/video link.
+- `scripts/derive_hop_weights_fr.py` -- derive the French vocabulary
+  from the hand labels (no network calls).
+- `app/utils/jurisdiction_data/hop_link_weights_fr.csv` -- the shipped
+  weight data.
+- `scripts/wo147_access_ladder_sweep.py` -- `looks_french()`,
+  `_weights_for_gov()`'s French branch.
+- `scripts/wo327_rerun_quebec_phases.py` -- French-aware, gov_id-passing
+  rerun of phases 2-3 for a Quebec recon population.
+- `scripts/wo327_refix_qc_primegov.py` -- re-derive the DNS vendor-label
+  guess for rows the qc.primegov.com bug hit, using WO-328's fix.
+- `tests/test_hop_scorer_french.py` -- real-fixture tests (Mirabel,
+  Saint-Georges, Adelaide-Metcalfe ON).
