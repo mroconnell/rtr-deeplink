@@ -1,5 +1,83 @@
 # Backlog — done
 
+## WO-333: a shared step that walks a confirmed hub to a real meeting, so the pipeline resolves video on its own again [Done 2026-09-13]
+
+Ryan's own framing: the pipeline got dependent on a human checking the
+last step by hand, and lost the habit of resolving a meeting and its
+video programmatically. WO-331 (further below) found why: given a
+confirmed government page, the pipeline's own `resolve()` call found
+real video on only 1 of 15 governments already known to have it. This
+WO built one shared step, used by every sweep script, that walks from
+that confirmed page to a real, specific meeting and reports whether a
+meeting was found, whether it has video, and whether it has captions we
+can fetch ourselves.
+
+**What was built.** `app/platforms/passive_verify.py`'s `verify_hub()`.
+Given a confirmed page and (when known) its platform, it: follows a real
+listing to a specific meeting instead of stopping at the listing page;
+tries the platform's own meeting-list feed or API where one is known
+(new ones added this WO for Granicus, CivicWeb, and Legistar -- CivicWeb
+and Legistar reused real, already-proven lookups from a separate,
+earlier project session rather than being built from scratch); when a
+government uses one platform for its agendas and a different one for its
+actual video, checks the second platform too instead of stopping at the
+first; and when no platform link exists at all, tries a short list of
+guessable "Agendas & Minutes"-style page paths before giving up (a
+second gap found the same day by a parallel session working the access
+side of this same problem). It never fetches YouTube itself -- a YouTube
+video found along the way is recorded as found, and left for the
+separate YouTube process to pick up.
+
+**Tested on the same 15 governments WO-331 used**, since all 15 are
+already known to have real video today:
+
+| Outcome | Count of 15 | What it means |
+|---|---|---|
+| Real video found, unaided, before this WO | 1 | The old pipeline's own single `resolve()` call, no extra step |
+| Real video found, unaided, after this WO | 9 | This WO's shared step, run the same way a sweep would run it |
+| Meeting found, no video | 2 | A real page was seen, but no video was found on it (Victoria BC, Jefferson County WA) |
+| No meeting found at all | 4 | Neither a specific meeting nor a listing was found (Knoxville TN, Monroe County FL, Troy NH, Webb County TX) |
+
+**A real safety bug was caught and fixed during this WO's own testing,
+not found by review.** Partway through testing, this WO's own step
+actually fetched a real YouTube video and its captions -- exactly what
+it is built never to do. The cause: one government-page platform
+(Legistar, and separately PrimeGov per this repo's own notes) hands a
+YouTube video off to the YouTube-fetching code by a second, different
+door than the one this WO's guard was watching. Both doors are now
+guarded, and a test was added for each so this specific mistake cannot
+silently come back. No YouTube captions were kept from that one real
+fetch; nothing was saved or reported from it.
+
+**Caution.** Five platforms out of the ones tested still need more
+work: iQM2 (a different setup than the one already fixed), CivicPlus
+(when the confirmed page was the wrong page to begin with), Town Hall
+Streams, and eScribe. These are filed as their own, smaller backlog
+entry, in the order they are worth doing next. A 20-government check
+against pages already confirmed to have NO video found the same "no
+video" result 18 times out of 20; the 2 that changed were checked by
+hand and turned out to be pages that now have real video posted since
+the original check was done, not a mistake in this WO's own work.
+
+**Recommendation.** Rerun the passive-discovery sweeps' governments now
+marked "no video" through this new shared step before treating that
+mark as final -- WO-331 already showed most of those marks were wrong,
+not real. That rerun is a separate decision for Ryan, not part of this
+WO.
+
+**Deploy status.** This WO only changed sweep-script code
+(`app/platforms/`, `scripts/`) that Ryan's own sweep sessions run
+directly from a checked-out branch -- nothing here runs as part of the
+live resolver or Archive service, so there is nothing to deploy for it
+to take effect.
+
+Full detail: `docs/investigations/wo333_verification_walk.md`.
+Per-government before/after: `rtr-business/research/
+wo333_verify_controls.csv`. Regression check: `rtr-business/research/
+wo333_regression_check.csv`. Methods: `rtr-business/research/
+ENUMERATION_METHODS.md` (WO-333 section).
+BACKLOG: the five-platform-gaps entry under Open bugs.
+
 ## WO-335: Apptegy/Thrillshare -- an index-driven discovery run for small governments built on the school-CMS wrapper, and a real caution about matching a town to its own school district [Done 2026-09-13]
 
 Ryan asked for a discovery run after a hand-check found two small cities

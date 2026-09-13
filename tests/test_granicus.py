@@ -8,6 +8,7 @@ from app.platforms.granicus import (
     GranicusAssetFinder,
     _is_broken_s3_underscore_host,
     _s3_path_style,
+    list_recent_video_meetings,
 )
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -1332,3 +1333,49 @@ async def test_resolve_new_player_ui_genuinely_empty_video_url_is_honest_no_vide
 
     assert result.video_url is None
     assert result.video_warnings == ["No playable video found on this page."]
+
+
+async def test_list_recent_video_meetings_real_pwcva_feed():
+    # WO-333: real, raw-saved Granicus "Videos Feed" for Prince William
+    # County, VA (view_id=23), fetched live 2026-09-13. This is the
+    # WO-331 control case where the passive-discovery pipeline confirmed
+    # a plain "AgendaViewer.php" link from `find_platform_link()` (the
+    # AGENDA-mode feed the government's own page happened to link to)
+    # and found no video, even though a real video exists two meetings
+    # back -- confirmed live that Granicus's separate VIDEO-mode feed for
+    # the same view_id lists it directly. The newest item in this real
+    # feed (Board of County Supervisors Work Session, Sep 15) has no
+    # clip_id in its <link> yet (an agenda posted with no video attached
+    # -- Granicus's normal "not recorded yet" shape) and must be skipped;
+    # the second item (Joint Interjurisdictional Ad Hoc Committee, Sep
+    # 09, clip_id=3903) is the newest one with real video.
+    url = "https://pwcgov.granicus.com/AgendaViewer.php?view_id=23&clip_id=3903"
+    rss_xml = load_fixture("granicus", "pwcva_view23_rss_video.xml")
+
+    routes = {
+        "https://pwcgov.granicus.com/ViewPublisherRSS.php?view_id=23&mode=video": (
+            FakeResponse(status=200, text=rss_xml)
+        ),
+    }
+
+    with mock_session(routes):
+        items = await list_recent_video_meetings(url)
+
+    assert len(items) >= 2
+    assert items[0]["url"] == (
+        "https://pwcgov.granicus.com/MediaPlayer.php?view_id=23&clip_id=3903"
+    )
+    assert items[0]["date"] == "2026-09-09"
+    assert (
+        items[0]["title"] == "Joint Interjurisdictional Ad Hoc Committee - Sep 09, 2026"
+    )
+
+
+async def test_list_recent_video_meetings_no_view_id_returns_empty():
+    # A Granicus URL with no view_id at all (e.g. a bare /player/clip/{id}
+    # short-link) has nothing to build a feed URL from -- returns [],
+    # never raises, same best-effort posture as _fetch_channel_info().
+    items = await list_recent_video_meetings(
+        "https://napacity.granicus.com/player/clip/3450"
+    )
+    assert items == []
