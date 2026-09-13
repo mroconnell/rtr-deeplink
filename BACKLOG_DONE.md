@@ -51966,3 +51966,140 @@ not the individual pages — it affects more governments (92) than every
 other outcome in this run combined, and it's cheap to fix once, the
 right way (measured, not guessed). Worth prioritizing ahead of any
 further Canadian sweep.
+
+## WO-324: passive discovery v2 on group 5 of the "neither pass" population — 493 Canadian governments that only ever had the access ladder, 51 real pages found, 0 real videos, 258 deferred for the French-language fix [Done 2026-09-12]
+
+**What this was for.** Same standing goal as every WO in this round:
+find one real meeting with video per government, on governments no
+standing search method had found anything for yet. This group was 493
+Canadian municipalities, towns and counties whose only prior look ever
+came from the older "ladder sweep" method — mostly recorded then as "no
+platform found" (228) or "a real meeting, no video" (77).
+
+**Method.** The same three-step search WO-320/321/323 already used: (1)
+visit each government's website and save what's there, (2) score the
+saved pages offline to guess where a meeting might be listed, (3)
+actually fetch the best guesses and confirm which ones are real.
+
+| Step | Outcome | Count of 493 | What it means |
+|---|---|---|---|
+| Step 1 (visit) | Website reached | 471 | resolved and fetched |
+| Step 1 (visit) | Address never resolved at all | 22 | recorded "address doesn't work" |
+| Step 1 (visit) | Blocked by the Akamai/govAccess firewall | 1 | recorded separately, not retried |
+
+**A mid-run change of plan, acted on immediately.** Partway through step
+3, the person running this round of searches (via the conductor) passed
+along a finding from a sister search running at the same time (WO-323,
+group 4): the scoring step in step 2 only recognizes ENGLISH words for
+"council," "agenda," "meeting," and so on. On real Quebec town websites
+that say "Conseil municipal" and "Séances du conseil" instead, it finds
+nothing — not because there's no meeting page, but because it can't read
+French. WO-323 measured this directly: 0 of 92 Quebec governments
+confirmed, against 6%-56% everywhere else. 258 of this group's 493
+governments are in Quebec, so continuing to spend step-3 effort on them
+would have produced negative results — this would look identical to "no
+platform found," but for the wrong reason. Stopped step 3 for every
+Quebec row on the spot. Step 1 had already run for all of them, so
+nothing is lost — the saved pages are ready for a French-aware rerun. Of
+those 258, 151 had already been stepped through step 3 before the
+instruction arrived; their results are set aside rather than trusted, for
+the same reason.
+
+| Step 3 (confirm), non-Quebec only | Outcome | Count of 235 | What it means |
+|---|---|---|---|
+| Confirmed | Real meeting page found and confirmed | 51 | fetched, and the page genuinely names this government |
+| Not confirmed | Nothing usable found | 184 | a guess existed but failed the check, or the site was unreachable |
+
+**Result: 51 real pages found, 0 real meeting videos.** All 51 were
+checked through the real pipeline that decides what a page contains
+(`resolve()`, read-only) before anything was recorded. 48 resolved
+cleanly with no video; 2 more (both listing pages on one platform,
+CivicPlus) came back through that platform's own "no video among the
+recent postings" answer — same real result, different path. One more,
+Claresholm AB, was never checked this way at all: its confirmed page
+embeds a real YouTube video, and this round's rule is never to fetch a
+youtube.com address for any reason — including the one the real-content
+check itself would have followed to read that video. This was a known
+risk by the time this WO ran (a sister search, WO-323, had just hit it
+by accident on a different page) — the check here was built to look for
+that shape first and skip verifying, rather than repeat the mistake.
+Claresholm is recorded as an unverified YouTube lead, not as a finding.
+
+| What the confirmed page turned out to be | Count of 51 | What it means |
+|---|---|---|
+| A real meeting/agenda page, no video | 50 | recorded in the research file as "meeting, no video" |
+| A real page with a YouTube video, not checked | 1 | Claresholm, AB — recorded as a YouTube lead, not a finding |
+
+**Everything else, all 493.**
+
+| Outcome | Count of 493 | What it means |
+|---|---|---|
+| Deferred for the French-language fix | 258 | not a finding — homepage saved, waiting on a follow-up search that can read French |
+| No platform found | 138 | site reached, nothing usable found on it |
+| Real meeting, no video | 50 | see above |
+| Website never answered plainly | 20 | worth a later retry |
+| A real "prove you're human" wall | 15 | not retried, per standing policy |
+| Address never resolved | 7 | recorded "address doesn't work" |
+| Website blocked even after retrying politely | 3 | worth a later retry |
+| Blocked by the Akamai/govAccess firewall | 1 | recorded separately |
+| YouTube video found, not checked | 1 | Claresholm, AB — see above |
+
+**A real bug found in the shared search code, disclosed and worked
+around, not fixed at its source.** The part of the shared search code
+that guesses a shared hosting company's address for a government (e.g.
+guessing that a town might be at `townname.civicweb.net`) takes a
+website address's second-to-last piece as the town's name. For a
+`something.qc.ca` address, that piece is literally `qc` — Quebec's own
+two-letter code, not any town's name — and `qc.primegov.com` genuinely
+exists as a real, working address (a PrimeGov regional page for all of
+Quebec, not any one town's page). The search code read that as "found
+it!" for every single `.qc.ca` address in this batch — 66 to 70
+governments — even though none of them actually use that company. This
+never reached the real search results (step 3 never trusted this
+guess by itself, and every Quebec row was deferred anyway) and it never
+reached the research file. But the same shared code will make the same
+wrong guess on every future Canadian search until it's fixed once.
+Filed to `BACKLOG.md`.
+
+**A second thing filed, not new.** The same French-language gap and the
+same "resolve() can follow an embedded YouTube video" risk that WO-323
+found were both already filed to `BACKLOG.md` by that WO. This WO's own
+fix for the YouTube risk (checking a page for an embedded YouTube video
+before reading it, rather than after) is real and worked — it caught
+Claresholm before any YouTube address was touched — but it was only
+built into this WO's own copy of the checking script. Filed as a
+follow-up: make it a shared piece of code so the next search in this
+round doesn't have to build it again from scratch.
+
+**YouTube leads: recorded, never fetched, as instructed.** 91 new
+youtube.com addresses turned up during the search itself (83 channels, 8
+single videos) and were written to the shared `youtube_channel_leads.csv`
+list for a human (or the separate YouTube process) to check later — none
+was fetched by the search.
+
+**Two cautions from the brief, checked directly.** 11 of the 493
+addresses were themselves a shared meeting-hosting company's address,
+not the government's own website (10 eScribe, 1 a different platform) —
+the search was already built to try those directly. Zero of the 493 rows
+carried the "already covered somewhere else" label from an earlier
+search, so there was nothing to cross-check there.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `jurisdiction_coverage.csv` (rtr-business) | 418 rows updated with a fresh finding; 74 rows already had a real web address on file and were left untouched rather than overwritten. |
+| `youtube_channel_leads.csv` (rtr-business) | 91 new rows added this run, all unverified, all clearly marked as not yet checked by a person. |
+| `BACKLOG.md` | one new item (the `qc.primegov.com` guessing bug) plus a note added to WO-323's existing YouTube-risk item pointing at the fix this WO built. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new methods section with the full method and numbers. |
+
+**Deploy status.** Nothing here needs a deploy. No page was added to the
+live site, no video was queued for transcription, and no pin was
+written. The only code changes are to research scripts specific to this
+WO (`scripts/wo324_*.py`) and the `BACKLOG.md` entries named above,
+neither of which touches anything the live site runs.
+
+**Recommendation.** Wait for WO-327's French-language fix, then re-run
+step 3 on the 258 deferred Quebec governments before drawing any
+conclusion about how much real coverage this group has — more than half
+of it hasn't actually been checked yet.
