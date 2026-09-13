@@ -62,7 +62,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Dict, List, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -572,6 +572,80 @@ async def _escribe_walker(hub_url: str) -> List[dict]:
     return [candidate for _, candidate in parsed]
 
 
+_CIVICCLERK_TENANT_RE = re.compile(r"^([^.]+)\.(?:portal|api)\.civicclerk\.com$")
+
+
+async def _civicclerk_walker(hub_url: str) -> List[dict]:
+    """WO-342: ported from `~/Documents/rtr-business/research/
+    meeting_url_finder.py`'s `find_civicclerk_meeting()` (itself a port
+    of that same directory's earlier `civicclerk_live_lookup.py`'s own
+    `find_video()`) -- same prior-art note as the CivicWeb/Legistar
+    walkers above. WO-333's own residual miss on this platform was Lake
+    County FL, never reached at all (phase 3 left it
+    `candidate-not-confirmed`); this closes that gap the same way the
+    other two were closed.
+
+    Unlike the original script, this walker doesn't call
+    `EventsMedia/{id}` itself for every candidate to decide which one has
+    video -- CivicClerk's own Events LIST response already carries a
+    real `hasMedia` flag per event, confirmed live 2026-09-13 against two
+    real tenants with opposite shapes: southfultonga.api.civicclerk.com
+    (event 1773 and 5 of its other 9 most recent events all `hasMedia:
+    true`, real `mediaStreamPath` present) and edinburgtx.api.civicclerk.
+    com (all 10 of its most recent events `hasMedia: false` -- a real
+    tenant that simply doesn't post video, not a broken fetch;
+    vancouverwa.portal.civicclerk.com is a second confirmed example of
+    the same without-media shape, see BACKLOG_DONE.md's WO-342 entry).
+    ighmn.api.civicclerk.com (Inver Grove Heights, MN) is a third real
+    with-media tenant, confirmed live the same day: event 2199 sits 4th
+    in its own most-recent-10 list (three newer events all `hasMedia:
+    false`), which is exactly why sorting hasMedia-first matters here --
+    a plain newest-first walk would burn 3 candidates on video-less
+    events before ever reaching the one that has video. So this walker
+    sorts hasMedia-true events first (newest-first within each group,
+    a stable sort over the API's own newest-first order) and leaves the
+    actual per-event video/caption check to `_walk_candidates()`'s own
+    call into the real, registered `civicclerk.py` adapter -- same
+    "don't duplicate the adapter's own logic in the walker" reasoning
+    `_civicweb_walker()` already documents.
+    """
+    match = _CIVICCLERK_TENANT_RE.match(_host(hub_url))
+    if not match:
+        return []
+    tenant = match.group(1)
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    filter_val = quote(f"eventDate lt {now}", safe="")
+    orderby_val = quote("eventDate desc", safe="")
+    api_url = (
+        f"https://{tenant}.api.civicclerk.com/v1/Events"
+        f"?$filter={filter_val}&$orderby={orderby_val}&$top=10"
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                api_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    return []
+                data = await response.json(content_type=None)
+    except Exception:  # noqa: BLE001
+        logger.warning("CivicClerk events fetch failed for %s", api_url, exc_info=True)
+        return []
+    events = data.get("value") if isinstance(data, dict) else None
+    if not events:
+        return []
+    events = [e for e in events if e.get("id") is not None and not e.get("isDeleted")]
+    events.sort(key=lambda e: not e.get("hasMedia"))
+    return [
+        {
+            "title": e.get("eventName") or "",
+            "date": (e.get("eventDate") or "")[:10] or None,
+            "url": f"https://{tenant}.portal.civicclerk.com/event/{e['id']}/media",
+        }
+        for e in events
+    ]
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -582,6 +656,7 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("civicweb", _civicweb_walker)
     register_listing_walker("legistar", _legistar_walker)
     register_listing_walker("escribe", _escribe_walker)
+    register_listing_walker("civicclerk", _civicclerk_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks

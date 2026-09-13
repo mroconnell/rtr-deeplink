@@ -18,11 +18,13 @@ from app.platforms.base import (
     NoVideoCandidateFound,
     register,
 )
+from app.platforms.civicclerk import CivicClerkAssetFinder
 from app.platforms.civicplus import CivicPlusAssetFinder
 from app.platforms.escribe import EscribeAssetFinder
 from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.models import ResolvedMeeting, TranscriptSegment
 from app.platforms.passive_verify import (
+    _civicclerk_walker,
     _civicweb_walker,
     _escribe_walker,
     _legistar_walker,
@@ -72,12 +74,14 @@ def _resolved(
 
 @pytest.fixture(autouse=True)
 def _register_real_finders():
-    # civicplus.py/granicus.py/escribe.py are real, already-tested adapters
-    # used by the end-to-end tests below; registered here so `get_finder()`
-    # finds them the same way `register_all_finders()` would in production.
+    # civicplus.py/granicus.py/escribe.py/civicclerk.py are real,
+    # already-tested adapters used by the end-to-end tests below;
+    # registered here so `get_finder()` finds them the same way
+    # `register_all_finders()` would in production.
     register(CivicPlusAssetFinder())
     register(GranicusAssetFinder())
     register(EscribeAssetFinder())
+    register(CivicClerkAssetFinder())
 
 
 # `detect_platform()` never recognizes "fake_platform"'s made-up host, so
@@ -540,6 +544,120 @@ async def test_legistar_walker_real_a2gov_webapi():
 
 async def test_legistar_walker_non_legistar_host_returns_empty():
     assert await _legistar_walker("https://example.gov/meetings") == []
+
+
+async def test_civicclerk_walker_real_southfultonga_sorts_media_first():
+    # Real, raw-saved live response -- southfultonga.api.civicclerk.com's
+    # Events list, fetched 2026-09-13 (WO-342). Ported from
+    # `meeting_url_finder.py`'s `find_civicclerk_meeting()`, adapted to
+    # use the listing's own real `hasMedia` flag instead of calling
+    # EventsMedia/{id} itself for every row (see `_civicclerk_walker()`'s
+    # own docstring). Of the 10 most recent real events here, 8 carry
+    # `hasMedia: true` (including event 1773, WO-341/342/343's shared
+    # brief's own named example) and 2 (1792, 1763) carry `hasMedia:
+    # false` -- this only asserts the walker sorts the real hasMedia-true
+    # rows first while keeping each group newest-first; whether any of
+    # them actually has playable video/captions is civicclerk.py's own
+    # resolve() job (covered by test_civicclerk.py), not duplicated here.
+    import datetime as _dt
+    from urllib.parse import quote as _quote
+
+    listing = load_fixture("civicclerk", "southfultonga_events_listing.json")
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    filter_val = _quote(f"eventDate lt {now}", safe="")
+    orderby_val = _quote("eventDate desc", safe="")
+    api_url = (
+        f"https://southfultonga.api.civicclerk.com/v1/Events"
+        f"?$filter={filter_val}&$orderby={orderby_val}&$top=10"
+    )
+    routes = {api_url: FakeResponse(status=200, text=listing, url=api_url)}
+
+    with mock_session(routes):
+        candidates = await _civicclerk_walker(
+            "https://southfultonga.portal.civicclerk.com/"
+        )
+
+    assert len(candidates) == 10
+    ids = [int(c["url"].rsplit("/event/", 1)[1].split("/")[0]) for c in candidates]
+    # Real hasMedia-true ids (newest-first among themselves): 1775, 1774,
+    # 1773, 1766, 1765, 1764, 1791, 1762 -- then the two hasMedia-false
+    # ones (1792, 1763), also newest-first among themselves.
+    assert ids == [1775, 1774, 1773, 1766, 1765, 1764, 1791, 1762, 1792, 1763]
+    assert all(
+        c["url"].startswith("https://southfultonga.portal.civicclerk.com/event/")
+        and c["url"].endswith("/media")
+        for c in candidates
+    )
+    assert candidates[2]["title"] == "City Council Work Session"  # event 1773
+
+
+async def test_civicclerk_walker_real_edinburgtx_without_media_shape():
+    # Real, raw-saved live response -- edinburgtx.api.civicclerk.com's
+    # Events list, fetched 2026-09-13 (WO-342). A real tenant, real
+    # events, `hasMedia: false` on every one of its 10 most recent rows
+    # -- the "without-media" shape named alongside Vancouver WA in
+    # WO-341/342/343's shared brief (`vancouverwa.portal.civicclerk.com`
+    # confirmed live the same way, not fixture-backed here to avoid a
+    # redundant second fixture for the identical shape). The walker must
+    # still return real candidates (newest-first, unsorted since there's
+    # no hasMedia-true group to promote) -- `_walk_candidates()` walking
+    # all of them and finding no video is what turns this into an honest
+    # tier-4 "meeting found, no video" verdict, not "no meeting found".
+    import datetime as _dt
+    from urllib.parse import quote as _quote
+
+    listing = load_fixture("civicclerk", "edinburgtx_events_listing.json")
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    filter_val = _quote(f"eventDate lt {now}", safe="")
+    orderby_val = _quote("eventDate desc", safe="")
+    api_url = (
+        f"https://edinburgtx.api.civicclerk.com/v1/Events"
+        f"?$filter={filter_val}&$orderby={orderby_val}&$top=10"
+    )
+    routes = {api_url: FakeResponse(status=200, text=listing, url=api_url)}
+
+    with mock_session(routes):
+        candidates = await _civicclerk_walker(
+            "https://edinburgtx.portal.civicclerk.com/"
+        )
+
+    assert len(candidates) == 10
+    ids = [int(c["url"].rsplit("/event/", 1)[1].split("/")[0]) for c in candidates]
+    # No hasMedia-true group to promote here -- the API's own newest-first
+    # order (real ids) is preserved exactly.
+    assert ids == [1585, 290, 1582, 204, 1546, 302, 1583, 1581, 289, 1545]
+    assert all(
+        c["url"] == f"https://edinburgtx.portal.civicclerk.com/event/{eid}/media"
+        for c, eid in zip(candidates, ids)
+    )
+
+
+async def test_civicclerk_walker_uses_api_host_tenant_too():
+    # `_CIVICCLERK_TENANT_RE` accepts either the portal or api subdomain
+    # for the hub URL passed in -- a caller may reach here via either.
+    listing = load_fixture("civicclerk", "edinburgtx_events_listing.json")
+    import datetime as _dt
+    from urllib.parse import quote as _quote
+
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    filter_val = _quote(f"eventDate lt {now}", safe="")
+    orderby_val = _quote("eventDate desc", safe="")
+    api_url = (
+        f"https://edinburgtx.api.civicclerk.com/v1/Events"
+        f"?$filter={filter_val}&$orderby={orderby_val}&$top=10"
+    )
+    routes = {api_url: FakeResponse(status=200, text=listing, url=api_url)}
+
+    with mock_session(routes):
+        candidates = await _civicclerk_walker(
+            "https://edinburgtx.api.civicclerk.com/v1/Events/1585"
+        )
+
+    assert candidates
+
+
+async def test_civicclerk_walker_non_civicclerk_host_returns_empty():
+    assert await _civicclerk_walker("https://example.gov/meetings") == []
 
 
 async def test_first_party_agenda_page_credited_as_meeting_found_no_video():

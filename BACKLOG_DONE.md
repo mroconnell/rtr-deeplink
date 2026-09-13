@@ -52997,3 +52997,111 @@ otherwise a future unpinned video there risks landing with no
 government at all rather than the wrong one, which is safe but still
 worth closing. Build a TikiLive/CivicMedia adapter only once a second
 real example turns up.
+
+## WO-342: a CivicClerk listing walker closes Lake County FL's control gap, plus a 20-government sample and a real WebEx/Zoom/Drive false-positive found [Done 2026-09-13]
+
+**Why this WO ran.** WO-333 built a shared step (`verify_hub()`) that
+walks a government's confirmed platform page to its newest meeting and
+checks for real video and captions. It worked for most platforms, but
+not CivicClerk — its one CivicClerk test case, Lake County FL, was never
+even reached. This WO builds CivicClerk's own walker and proves it on
+Lake County FL plus 20 more real CivicClerk governments.
+
+**What was built.** `_civicclerk_walker()`, added to
+`app/platforms/passive_verify.py`. It calls CivicClerk's own public
+events list for a government's tenant, then hands each event to the
+CivicClerk page-reader this site already has, newest meeting first. It
+is a port of a working method from `rtr-business/research/
+meeting_url_finder.py`, credited in the code. One real improvement over
+that method: CivicClerk's event list already says, per event, whether it
+has video — the walker checks those events first, instead of asking the
+server about every event one at a time.
+
+**Proof: the missed control, plus 20 more real governments.**
+
+| Result | Count of 21 (1 control + 20 sample) | What it means |
+|---|---|---|
+| Video found, no captions | 10 | Includes the control, Lake County FL, and 9 of the sample — a real, playable meeting found on the government's own site |
+| Meeting found, no video | 9 | A real meeting page exists but has no video attached |
+| Video found on YouTube, not opened | 2 | CivicClerk points at a YouTube video; per this project's rule, that video is never opened here — it is logged for the separate YouTube process |
+
+Every one of the 20 sample governments came back with a real, honest
+answer — none were unreachable and none crashed.
+
+**A real gap found while checking the videos before queueing them.**
+Before any video goes on the transcription queue, a separate check tries
+to actually read its length. For 3 of the 9 "video found, no captions"
+governments, that check failed — not because the file was broken, but
+because it wasn't a video at all. CivicClerk had stored a WebEx or Zoom
+"join this meeting" link, or a Google Drive share page, in the field
+meant for the real recording. Bemidji, MN; Jo Daviess County, IL; and
+Mableton, GA are the three real examples. This is a genuine gap in how
+the CivicClerk reader handles those fields — logged as its own new item
+in `BACKLOG.md` rather than fixed here, since fixing it means building
+real WebEx/Zoom/Drive support, which is its own separate piece of work.
+
+**Hand-check: 0 wrong.** Every video's title and government body was
+read by eye and checked against the government it was found on — 15
+checks in total (the control, all 9 real videos, two shorter
+replacements described below, and the two YouTube leads' titles, read
+from CivicClerk's own page, never by opening YouTube). All 15 matched.
+
+**Two governments got a shorter video instead of a long one.** Harrison
+County, IN and Waconia, MN each had a newest video over the preferred
+length (129 and 55 minutes). Both had a real, shorter meeting from the
+same government further down their own list (37 and 35 minutes), so
+those were used instead, per Ryan's standing rule to look for a shorter
+one before settling for a long one. A third case, Waycross, GA, needed
+the same swap, but the shorter meeting was already independently queued
+by other work under the same government — confirmed, not duplicated.
+
+**What was queued, and what was already covered.** 2 real meetings were
+newly added to the transcription queue: Waconia, MN and Henderson, TX.
+4 more of the 9 real videos (Ozaukee County WI, Harrison County IN,
+Waycross GA, Pueblo County CO) turned out to already be queued by other,
+concurrent work on the same government — checked before writing, so
+nothing was duplicated. The research file was corrected for all 6 to
+show the real finding either way.
+
+**Regression.** WO-333's own list of governments that should still come
+back "no video" has no CivicClerk rows in it — nothing to check for a
+regression there.
+
+**Rerun coverage, for the next full CivicClerk pass.** This WO's own
+20-government sample was drawn from a narrower list than the shared
+planning brief's own estimate (148 open CivicClerk governments): only
+open governments that already carry a confirmed CivicClerk tenant
+address, which numbered 44, not 148 — the wider 148 also counts
+governments whose only signal is a stale "known platform" label with no
+confirmed address yet, which this walker cannot use directly. Of the 44,
+20 were sampled here; the other 24, plus however many of the wider 148
+turn out to have a real, confirmable address once checked, are what a
+full rerun would still cover.
+
+**Caution.** The WebEx/Zoom/Drive gap above means "video found" is not
+always "video that can actually be transcribed" for CivicClerk — a
+future queue-builder should keep using the length-check step before
+queueing anything, the way this WO did, rather than trusting the video
+flag alone.
+
+**Recommendation.** Deploy the resolver so this walker is live in
+production, then hand this method to the next full CivicClerk rerun
+(the 44 confirmed-address governments first, then the wider list once
+their addresses are confirmed).
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `app/platforms/passive_verify.py` (rtr-deeplink) | `_civicclerk_walker()` added and registered. |
+| `tests/test_passive_verify.py`, `tests/fixtures/civicclerk/southfultonga_events_listing.json`, `tests/fixtures/civicclerk/edinburgtx_events_listing.json` (rtr-deeplink) | 4 new tests, 2 new real fixtures (with-media and without-media shapes). |
+| `scripts/wo342_civicclerk_verify.py` (rtr-deeplink) | the live proof script used for the control and the 20-sample. |
+| `scripts/tier3_auto_transcription_queue.txt` (rtr-deeplink) | 2 new lines: Waconia MN, Henderson TX. |
+| `BACKLOG.md` (rtr-deeplink) | the CivicClerk item closed in the existing "Five platform gaps" entry; one new item opened for the WebEx/Zoom/Drive gap. |
+| `jurisdiction_coverage.csv` (rtr-business) | 20 rows updated with fresh findings. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new methods section (§343) with the full method and numbers. |
+| `wo342_report.csv`, `wo342_apply_to_jc.py`, `wo342_jc_applied_gov_ids.txt`, `wo342_methods_section.md` (rtr-business) | this WO's own working files. |
+
+**Deploy status.** `app/platforms/passive_verify.py` changed — needs a
+resolver deploy before this walker runs in production. The 2 new queue
+lines reach the transcription worker only after that same deploy.
