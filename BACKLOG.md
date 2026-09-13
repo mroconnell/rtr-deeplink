@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+  Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
   `cablecast.py`: two more real URL/data quirks found by WO-309…
@@ -738,6 +739,34 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
+
+- **Issue:** WO-335 (2026-09-13) confirmed the Apptegy site-builder's
+  `/o/{org}/page/{slug}` URL shape on 71 real small governments (site
+  builder is now recorded on their rows). Reading each one's own saved
+  homepage for its real nav links found two shapes worth a scorer
+  token: a video-carrying "Livestream" page (`page/livestream`,
+  `page/square-livestream`, `page/channel-<n>` — 3 confirmed, all link
+  real embedded video, 1 Swagit + 2 YouTube) and the far more common
+  agenda/meeting hub shape (`page/agendas-minutes`, `page/city-council`
+  — 51 of 53 governments with any `/o/.../page/` link on their
+  homepage).
+- **Impact:** small on its own (3 video hits), but the hub shape (51 of
+  53) is a real, currently-unscored path token that could help
+  `find_hop_links()` rank the right link on any of the (currently
+  unknown count of) other Apptegy-built small-government sites.
+- **Next action:** run `scripts/derive_hop_weights.py` (or the same
+  measured-lift method WO-274 used) against a sample that includes
+  these Apptegy path tokens, the same way `hop_link_weights_school.csv`
+  and `hop_link_weights_fr.csv` were derived for their own populations,
+  before adding either token to `hop_link_weights.csv` by hand.
+- **Constraint:** don't guess the weight from this WO's own small
+  sample (3 video, 53 hub) — too small to derive a number from
+  directly; measure it properly the way every other weight in that file
+  was measured.
+- **History:** `~/Documents/rtr-business/research/ENUMERATION_
+  METHODS.md` §339; `BACKLOG_DONE.md`'s WO-335 entry.
 
 ### `wo323_classify.py`'s and `wo324_classify.py`'s `homepage_candidates()` never pass `gov_id` into `find_hop_links()`, so the school and French vocabularies are silently never applied `[JUST-DO-IT]`
 

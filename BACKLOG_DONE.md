@@ -1,5 +1,79 @@
 # Backlog — done
 
+## WO-335: Apptegy/Thrillshare -- an index-driven discovery run for small governments built on the school-CMS wrapper, and a real caution about matching a town to its own school district [Done 2026-09-13]
+
+Ryan asked for a discovery run after a hand-check found two small cities
+(Greer SC, Sherwood AR) built on Apptegy ("Thrillshare"), a CMS best
+known for schools. The question: how many other small governments does
+this same CMS reach, and is its Livestream page worth teaching the hop
+scorer about?
+
+**What was tested.** Two seed sites confirmed the fingerprints first
+(the `/o/{org}/page/{slug}` URL shape, the `thrillshare`/`apptegy.net`
+CDN strings). Then: saved recon files already on disk from 10 earlier
+sweeps (13,144 governments, offline, free, done first); Wayback CDX
+(four domain-wide queries); one Common Crawl snapshot; urlscan.io's free
+search tier. No government website was crawled live except to verify a
+finding already made another way.
+
+| Step | Outcome | Count | What it means |
+|---|---|---|---|
+| Saved recon (offline) | Same-site Apptegy fingerprint found | 368 candidate governments | Free, no network call. |
+| Saved recon | Already a known school district | 297 | Most of what this CMS reaches is schools, as expected. |
+| Saved recon | Real, non-school government, already on file with a domain | 71 | The confirmed yield: `site_builder=apptegy` filled on all 71, one domain correction (Stratford CT was on a stale domain; its live Apptegy site is `stratfordct.gov`). |
+| Wayback CDX, `sites.thrillshare.com` (complete, no cap hit) | Real tenant subdomains found | 2,339 | A rich list, but see the caution below. |
+| Reverse-match those 2,339 against the research file by name+state | Matched a row with a BLANK domain (looked like new coverage) | 16 | Every one hand-checked; every one was wrong (see caution). |
+| Reverse-match, spot-check of 6 more (row already had a domain) | Confirmed real on the government's own domain | 1 of 6 | Beebe, AR. The other 5 were that town's own school district, not the town. |
+
+**The caution.** A `*.sites.thrillshare.com` tenant label reads as
+`townname` + `state`, with nothing distinguishing a town from its
+same-named school district. Reverse-matching those labels by name+state
+found 16 governments that looked like brand-new coverage (blank domain
+on file) -- all 16, hand-checked live, turned out to be that town's
+school district, not the town government. A further spot-check found
+the same problem on 5 of 6 rows that already had a domain on file. **Net
+confirmed rate for this specific method: 1 of 22 checked.** None of the
+unconfirmed matches were written to the research file -- the 71 real
+governments above were all confirmed a different, solid way (the saved
+recon already knew their own domain from an earlier sweep, not a
+name+state guess).
+
+**What else was checked and came back empty.** A domain-wide Wayback
+scan of the bare `thrillshare.com` host (200,000 rows, capped) found
+zero customer pages -- every capture was an embedded widget API call
+from OTHER, unrelated sites. A scan of `files-backend.assets.thrillshare.com`
+(the agenda-PDF host, 50,000 rows, capped) found zero customer signal in
+any filename -- they're all opaque content-hash ids. DNS wildcard search
+does not apply -- Apptegy tenants sit on custom domains or a
+non-wildcarding subdomain, not a guessable DNS pattern.
+
+**The Livestream page.** Sherwood AR's own `/o/cos/page/livestream` slug
+does not generalize -- it 404'd on all 71 confirmed governments. Reading
+each government's own saved homepage for its real nav links (offline,
+no new fetch) found two shapes worth teaching the hop scorer: a
+video-carrying Livestream-style page (`page/livestream`,
+`page/square-livestream`, `page/channel-<n>` -- 3 confirmed, all real
+video, 1 Swagit + 2 YouTube) and the far more common agenda/meeting hub
+shape (`page/agendas-minutes`, `page/city-council` -- 51 of 53
+governments with any such link at all). Filed in `BACKLOG.md`'s Ship
+next to measure a real weight for both before adding either.
+
+**Recommendation.** Treat any name+state match against a shared-CMS
+tenant label as a lead, never a fact, when the label carries no
+government-type signal of its own -- verify with a live fetch of the
+government's own already-on-file domain (or the tenant page's own
+`<title>`) before writing anything. That is what caught this WO's own
+16 false positives before they reached the research file.
+
+**Deploy status.** `jurisdiction_coverage.csv` changes (71 `site_builder`
+fills, 1 domain correction) are committed data, not code -- no deploy
+needed. This WO shipped no code change to `rtr-deeplink` beyond the
+`BACKLOG.md` entry above and this write-up.
+
+Full fingerprint table, per-source query table, and the reverse-match
+false-positive detail: `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §339.
+
 ## WO-331: positive controls for passive discovery v2 -- does it still find video we already know is there? [Done 2026-09-13]
 
 Ryan asked for a sanity check: the passive v2 sweeps (WO-320 through
