@@ -56,6 +56,8 @@ rule every WO-3xx script already follows. Never downloads a media file.
 from __future__ import annotations
 
 import contextlib
+import datetime as _dt
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -437,6 +439,139 @@ async def _legistar_walker(hub_url: str) -> List[dict]:
     ]
 
 
+_ESCRIBE_CALENDAR_HEADERS = {
+    "User-Agent": _HEADERS["User-Agent"],
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
+# First window is generous enough to find a recent meeting on an active
+# council (Victoria BC, real live check 2026-09-13: 23 real meetings
+# across all types in a 3.5-month window) without over-fetching; the
+# fallback widens to ~18 months for a smaller/less frequent tenant before
+# giving up -- same "narrow first, widen on empty" shape as other
+# walkers' retry limits in this module.
+_ESCRIBE_WINDOW_DAYS = 180
+_ESCRIBE_FALLBACK_WINDOW_DAYS = 545
+_ESCRIBE_DATE_FORMATS = ("%Y/%m/%d %H:%M:%S", "%Y/%m/%d")
+
+
+async def _escribe_calendar_meetings(host: str, start: str, end: str) -> List[dict]:
+    """One call to eScribe's own `MeetingsCalendarView.aspx/GetCalendarMeetings`
+    PageMethod -- the same endpoint the "Published Meetings" listing page's
+    own calendar widget calls client-side (confirmed live 2026-09-13 by
+    reading `pub-victoria.escribemeetings.com`'s own page JS: `events:
+    function(info, successCallback, ...)` POSTs `{calendarStartDate,
+    calendarEndDate}` here). Returns every real meeting across every
+    meeting type in the date range -- Council, committees, boards, all of
+    them -- each carrying a real `ID` (GUID), `StartDate`, `MeetingType`,
+    and a platform-reported `HasVideo` flag. Confirmed live on all four of
+    this WO's real tenants: Victoria BC (`pub-victoria`), Calgary AB
+    (`pub-calgary`), Peel Region ON (`pub-peelregion`), Essex County ON
+    (`coe-pub`) -- and on a real no-"pub-"-prefix self-hosted tenant,
+    Kingsville ON (`kingsville-pub`), confirming the endpoint isn't tied to
+    the "pub-" naming convention. Returns `[]` on any HTTP error or
+    unparseable response -- a best-effort listing step, not a guaranteed
+    one, same posture as this module's other listing walkers.
+    """
+    url = f"https://{host}/MeetingsCalendarView.aspx/GetCalendarMeetings"
+    payload = json.dumps({"calendarStartDate": start, "calendarEndDate": end})
+    try:
+        async with aiohttp.ClientSession(headers=_ESCRIBE_CALENDAR_HEADERS) as session:
+            async with session.post(
+                url, data=payload, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
+                if response.status != 200:
+                    return []
+                data = await response.json(content_type=None)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "eScribe GetCalendarMeetings fetch failed for %s", url, exc_info=True
+        )
+        return []
+    items = data.get("d") if isinstance(data, dict) else None
+    return items if isinstance(items, list) else []
+
+
+def _escribe_parse_start(raw: Optional[str]) -> Optional[_dt.datetime]:
+    if not raw:
+        return None
+    for fmt in _ESCRIBE_DATE_FORMATS:
+        try:
+            return _dt.datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+async def _escribe_walker(hub_url: str) -> List[dict]:
+    """WO-343: eScribe's "Published Meetings" listing walker. Real gap this
+    closes: `escribe.py`'s own `resolve()` only ever handles ONE already-
+    known `Meeting.aspx` page -- given a hub/tenant root (or an embed URL
+    like `pub-victoria.escribemeetings.com?fillWidth=1?&wmode=transparent`,
+    the shape `find_platform_link()` surfaces from a government's own page)
+    it has no way to walk to a specific recent meeting, which is exactly
+    WO-333's control-set miss for Victoria BC (`resolved_no_video`: a real
+    title found, zero video, because the URL handed to it was never one
+    specific meeting). Delegates the actual video/caption check back to
+    the real, registered `escribe.py` adapter via `_walk_candidates()` --
+    this function only lists real candidate meeting URLs, newest first,
+    across every meeting type on the tenant (Council, committees, boards
+    alike; eScribe's own listing API has no reliable single "governing
+    body" marker across every real tenant checked -- Victoria's own
+    highest-volume type is "Committee of the Whole", not "Council" --
+    so rather than guess a body name, every real meeting on the tenant is
+    a valid candidate and `_walk_candidates()`'s existing WALK_LIMIT stops
+    the walk at real network/verification cost, same as every other
+    walker in this module).
+    """
+    host = _host(hub_url)
+    if not host.endswith("escribemeetings.com"):
+        return []
+    today = _dt.datetime.now(_dt.timezone.utc).date()
+    end = today.isoformat()
+    items = await _escribe_calendar_meetings(
+        host, (today - _dt.timedelta(days=_ESCRIBE_WINDOW_DAYS)).isoformat(), end
+    )
+    if not items:
+        items = await _escribe_calendar_meetings(
+            host,
+            (today - _dt.timedelta(days=_ESCRIBE_FALLBACK_WINDOW_DAYS)).isoformat(),
+            end,
+        )
+    if not items:
+        return []
+
+    seen_ids: set = set()
+    parsed: List[tuple] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        meeting_id = item.get("ID")
+        if not meeting_id or meeting_id in seen_ids:
+            continue
+        seen_ids.add(meeting_id)
+        start_dt = _escribe_parse_start(item.get("StartDate"))
+        parsed.append(
+            (
+                start_dt,
+                {
+                    "title": item.get("MeetingType") or item.get("MeetingName") or "",
+                    "date": start_dt.date().isoformat() if start_dt else None,
+                    "url": f"https://{host}/Meeting.aspx?Id={meeting_id}",
+                },
+            )
+        )
+    # Newest first -- the API's own response order is not reliably
+    # date-sorted (confirmed live 2026-09-13: Victoria's response mixed
+    # meeting types out of chronological order), so this walker sorts
+    # itself rather than trusting the feed's order the way Granicus's RSS
+    # walker can.
+    parsed.sort(key=lambda pair: pair[0] or _dt.datetime.min, reverse=True)
+    return [candidate for _, candidate in parsed]
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -446,6 +581,7 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("champds", _champds_walker)
     register_listing_walker("civicweb", _civicweb_walker)
     register_listing_walker("legistar", _legistar_walker)
+    register_listing_walker("escribe", _escribe_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks

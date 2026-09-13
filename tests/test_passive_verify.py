@@ -19,10 +19,12 @@ from app.platforms.base import (
     register,
 )
 from app.platforms.civicplus import CivicPlusAssetFinder
+from app.platforms.escribe import EscribeAssetFinder
 from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.models import ResolvedMeeting, TranscriptSegment
 from app.platforms.passive_verify import (
     _civicweb_walker,
+    _escribe_walker,
     _legistar_walker,
     verify_hub,
 )
@@ -70,11 +72,12 @@ def _resolved(
 
 @pytest.fixture(autouse=True)
 def _register_real_finders():
-    # civicplus.py/granicus.py are real, already-tested adapters used by
-    # the end-to-end tests below; registered here so `get_finder()` finds
-    # them the same way `register_all_finders()` would in production.
+    # civicplus.py/granicus.py/escribe.py are real, already-tested adapters
+    # used by the end-to-end tests below; registered here so `get_finder()`
+    # finds them the same way `register_all_finders()` would in production.
     register(CivicPlusAssetFinder())
     register(GranicusAssetFinder())
+    register(EscribeAssetFinder())
 
 
 # `detect_platform()` never recognizes "fake_platform"'s made-up host, so
@@ -625,3 +628,164 @@ async def test_first_party_agenda_page_recognized_as_civicplus_delegates_to_real
     assert result.platform == "granicus"
     assert result.video_found is True
     assert result.meeting_found is True
+
+
+# --- WO-343: eScribe "Published Meetings" listing walker ---------------
+#
+# Real gap this closes: `escribe.py`'s own `resolve()` only ever handles
+# ONE already-known `Meeting.aspx` page -- exactly WO-333's own control-
+# set miss for Victoria BC (`resolved_no_video`: a real title found, zero
+# video, because the hub URL handed to it was never one specific
+# meeting). `_escribe_walker()` calls eScribe's own
+# `MeetingsCalendarView.aspx/GetCalendarMeetings` PageMethod (confirmed
+# live 2026-09-13 by reading a real tenant's own page JS -- the same
+# endpoint its "Published Meetings" calendar widget calls client-side)
+# and returns real candidate meeting URLs newest-first; the actual
+# video/caption check is left to the real, registered `escribe.py`
+# adapter via `_walk_candidates()`, same division of labor as the
+# CivicWeb/Legistar walkers above.
+
+
+async def test_escribe_walker_real_peel_region_getcalendarmeetings_sorts_newest_first():
+    # Real, raw-saved live response (trimmed to 3 of the real 8 entries,
+    # kept in the API's own un-sorted array order) -- Peel Region ON's
+    # `pub-peelregion.escribemeetings.com`, fetched 2026-09-13. Includes
+    # the SAME real "Regional Council" meeting (Id
+    # c129beef-a3cf-49ae-827d-27c6b3a547a5, 2026-07-09) that
+    # `peel_region_page.html`/`peel_region_captions.vtt` already cover in
+    # test_escribe.py -- this only asserts the walker extracts and sorts
+    # real candidates newest-first; whether that meeting has video is
+    # `escribe.py`'s own `resolve()`'s job (covered below and in
+    # test_escribe.py), not duplicated here.
+    payload = load_fixture("escribe", "peelregion_calendar_meetings.json")
+    post_routes = {
+        "https://pub-peelregion.escribemeetings.com/MeetingsCalendarView.aspx/GetCalendarMeetings": (
+            FakeResponse(status=200, text=payload)
+        ),
+    }
+
+    with mock_session({}, post_routes=post_routes):
+        candidates = await _escribe_walker("https://pub-peelregion.escribemeetings.com")
+
+    assert len(candidates) == 3
+    assert candidates[0]["url"] == (
+        "https://pub-peelregion.escribemeetings.com/Meeting.aspx"
+        "?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5"
+    )
+    assert candidates[0]["date"] == "2026-07-09"
+    assert candidates[0]["title"] == "Regional Council"
+    # The other two real entries share a date (2026-06-18) but different
+    # times -- confirms the walker sorts on the full real datetime, not
+    # just the date part.
+    assert [c["date"] for c in candidates[1:]] == ["2026-06-18", "2026-06-18"]
+
+
+async def test_escribe_walker_real_hazelton_no_video_candidates():
+    # Real, raw-saved live response (trimmed to 2 of the real 7 entries)
+    # -- Hazelton BC's `pub-hazelton.escribemeetings.com`, fetched
+    # 2026-09-13 -- both real entries carry `HasVideo: false`, matching
+    # the confirmed real absence of an `#isi_player` div on both meeting
+    # pages (see the end-to-end no-video test below).
+    payload = load_fixture("escribe", "hazelton_calendar_meetings.json")
+    post_routes = {
+        "https://pub-hazelton.escribemeetings.com/MeetingsCalendarView.aspx/GetCalendarMeetings": (
+            FakeResponse(status=200, text=payload)
+        ),
+    }
+
+    with mock_session({}, post_routes=post_routes):
+        candidates = await _escribe_walker("https://pub-hazelton.escribemeetings.com")
+
+    assert len(candidates) == 2
+    assert candidates[0]["date"] == "2026-09-08"
+    assert candidates[1]["date"] == "2026-08-04"
+    assert all(
+        c["url"].startswith("https://pub-hazelton.escribemeetings.com/Meeting.aspx?Id=")
+        for c in candidates
+    )
+
+
+async def test_escribe_walker_non_escribe_host_returns_empty():
+    assert await _escribe_walker("https://example.gov/meetings") == []
+
+
+async def test_real_peel_region_escribe_hub_walks_to_video_and_captions():
+    # End-to-end, real fixtures: WO-333's own control set never reached a
+    # specific eScribe meeting at all (Victoria BC: `resolved_no_video`,
+    # real title, zero video -- see this WO's BACKLOG_DONE entry for the
+    # live re-check of Victoria itself). This proves the fix's wiring
+    # against a DIFFERENT real tenant with real captions on file: the hub
+    # root -> `_escribe_walker()` listing walk -> the real registered
+    # `escribe.py` adapter's own `resolve()` on the real Peel Region
+    # "Regional Council" meeting page, reaching real video + real
+    # captions (tier 1).
+    hub_url = "https://pub-peelregion.escribemeetings.com"
+    root_html = load_fixture("escribe", "peelregion_root.html")
+    calendar_payload = load_fixture("escribe", "peelregion_calendar_meetings.json")
+    meeting_url = (
+        "https://pub-peelregion.escribemeetings.com/Meeting.aspx"
+        "?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5"
+    )
+    meeting_html = load_fixture("escribe", "peel_region_page.html")
+    encoded = "New%20Encoder_Regional%20Council_2026-07-09-09-30.mp4"
+    vtt_url = f"https://video.isilive.ca/peelregion/{encoded}.vtt"
+    vtt = load_fixture("escribe", "peel_region_captions.vtt")
+
+    routes = {
+        hub_url: FakeResponse(status=200, text=root_html, url=hub_url),
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        vtt_url: FakeResponse(status=200, text=vtt, url=vtt_url),
+    }
+    post_routes = {
+        f"{hub_url}/MeetingsCalendarView.aspx/GetCalendarMeetings": FakeResponse(
+            status=200, text=calendar_payload
+        ),
+    }
+
+    with mock_session(routes, post_routes=post_routes):
+        result = await verify_hub(hub_url)
+
+    assert result.meeting_found is True
+    assert result.video_found is True
+    assert result.captions_found is True
+    assert result.platform == "escribe"
+    assert result.tier == 1
+    assert result.meeting_url == meeting_url
+
+
+async def test_real_hazelton_escribe_hub_walks_real_candidates_no_video():
+    # End-to-end, real fixtures, the opposite real shape: Hazelton BC's
+    # own tenant genuinely has no video on either of its two most recent
+    # real meetings (confirmed live 2026-09-13 -- neither page carries an
+    # `#isi_player` div, matching the real `HasVideo: false` flag eScribe's
+    # own listing API already reports for both). A real "meeting found, no
+    # video" verdict (tier 4), not a false "no meeting" -- same honest
+    # distinction `NoVideoCandidateFound`-based walkers draw elsewhere in
+    # this module.
+    hub_url = "https://pub-hazelton.escribemeetings.com"
+    root_html = load_fixture("escribe", "hazelton_root.html")
+    calendar_payload = load_fixture("escribe", "hazelton_calendar_meetings.json")
+    meeting_url_1 = f"{hub_url}/Meeting.aspx?Id=cf30ccc6-ca29-4c29-b4d7-9525fcf1853d"
+    meeting_url_2 = f"{hub_url}/Meeting.aspx?Id=560f9cb4-5106-4ba7-a66e-56e4b6a8cc27"
+    meeting_html_1 = load_fixture("escribe", "hazelton_meeting_20260908_no_video.html")
+    meeting_html_2 = load_fixture("escribe", "hazelton_meeting_20260804_no_video.html")
+
+    routes = {
+        hub_url: FakeResponse(status=200, text=root_html, url=hub_url),
+        meeting_url_1: FakeResponse(status=200, text=meeting_html_1, url=meeting_url_1),
+        meeting_url_2: FakeResponse(status=200, text=meeting_html_2, url=meeting_url_2),
+    }
+    post_routes = {
+        f"{hub_url}/MeetingsCalendarView.aspx/GetCalendarMeetings": FakeResponse(
+            status=200, text=calendar_payload
+        ),
+    }
+
+    with mock_session(routes, post_routes=post_routes):
+        result = await verify_hub(hub_url)
+
+    assert result.meeting_found is True
+    assert result.video_found is False
+    assert result.tier == 4
+    assert result.candidates_checked == 2
+    assert result.verdict == "listing_walked_no_video"
