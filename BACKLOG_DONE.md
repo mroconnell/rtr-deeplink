@@ -52832,3 +52832,95 @@ neither of which touches anything the live site runs.
 step 3 on the 258 deferred Quebec governments before drawing any
 conclusion about how much real coverage this group has — more than half
 of it hasn't actually been checked yet.
+
+## WO-336: Town Square Television's shared Cablecast station gets its own pin rule, plus six hand-read riders — 2 pages live, 1 queued, 1 real adapter gap found [Done 2026-09-13]
+
+**What this was for.** Two governments (Sherwood AR, Inver Grove
+Heights MN) had been ingested directly and needed pins so a future
+re-resolve keys them the same way. A shared Cablecast station (Town
+Square Television, `reflect-tst-mn.cablecast.tv`) needed the same
+multi-government safeguard other shared hosts already carry, so no
+blank pin can ever mis-key a video to the wrong city. Two more
+governments on that same station (Mendota Heights, West St. Paul MN)
+had been checked before and marked "meeting, no video" — worth a second
+look now that the station itself was found. And six governments from
+earlier no-meeting checks got one more hand-read pass each.
+
+**Part 1 correction, found before building anything.** The work order
+said Inver Grove Heights' CivicClerk page had already been ingested. A
+full check of every page in the Archive (8,886 of them) found no page
+on that host at all. The pin was written anyway, since the government
+is confirmed — but no page uses it yet.
+
+**Part 2: found and added two real pages.** Mendota Heights and West
+St. Paul's newest City Council meetings are both on Town Square
+Television's Cablecast station, told apart from the other cities on the
+same station by a `site=` number in the URL (6 = Inver Grove Heights, 8
+= Mendota Heights, 13 = South St. Paul, 15 = West St. Paul). Both
+meetings have real, readable captions already attached to the video —
+checked the actual caption file before trusting either one, not just
+that a caption file existed. Both are over 90 minutes (155 and 90
+minutes), but that limit is only for a meeting with NO captions that
+still needs machine transcription — a meeting with real captions
+already ingests regardless of length. Both pages are live now, each
+keyed straight to its own government.
+
+**Part 3: six governments re-checked, one real meeting queued, one
+real gap found, four unchanged.**
+
+| Outcome | Count of 8 | What it means |
+|---|---|---|
+| Page live now (real captions) | 2 | Mendota Heights and West St. Paul, from Part 2 above. |
+| Video, no captions, queued | 1 | South Fulton GA — see below. |
+| Real video found, no way to add it yet | 1 | Hobart IN — a real meeting video exists, but it's on a video system (TikiLive, reached through CivicPlus's "CivicMedia" widget) this site doesn't know how to read yet. |
+| No video found, unchanged | 3 | East Mountain TX, Alma Center WI, Edinburg TX — checked again, still nothing to add. |
+| No video where checked, but a real lead found elsewhere | 1 | Vancouver WA — its CivicClerk system has no video, but its real YouTube channel was found (never opened, per this round's rule against touching YouTube directly) and logged for the separate YouTube process to pick up later. |
+
+**South Fulton GA in more detail, since it took extra digging.** The
+newest real City Council meeting's video file failed the length check
+with an error ("moov atom not found") even though the file plays fine
+at 192 MB and the government is real and confirmed. Rather than give
+up, five older meetings from the same government were checked the same
+way — all five read their length fine, so this looks like one specific
+broken file, not a broken host. The shortest of the five (an 83-minute
+Work Session) was queued instead. Logged both facts — the broken file
+and the working alternates — on the existing open item about this exact
+kind of failure, instead of opening a new one that says the same thing.
+
+**Hand-read check: 0 wrong.** Every video found this WO was checked by
+eye against its government's name before being used — title, city name
+and channel all matched every time. No wrong video, no borrowed
+channel, nothing to correct.
+
+**Caution.** Vancouver WA's real channel was found but not opened —
+that is a lead for the separate YouTube process, not a confirmed
+meeting. Hobart IN's real video was found but nothing was built to read
+it — one example isn't enough to justify building that yet, per this
+repo's own rule about building from a real sample, not a guess.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `app/utils/jurisdiction_data/tenant_overrides.csv` (rtr-deeplink) | 6 new pins: Sherwood AR, Inver Grove Heights MN (two hosts), Mendota Heights MN, West St. Paul MN, South Fulton GA. |
+| `app/utils/gov_registry/registry.py` (rtr-deeplink) | Town Square Television's Cablecast station added to the shared-host list, with a test. |
+| `scripts/tier3_auto_transcription_queue.txt` (rtr-deeplink) | 1 new line: South Fulton GA's Work Session. |
+| `BACKLOG.md` (rtr-deeplink) | one new item (Hobart IN's video system has no adapter yet) and one existing item updated with new evidence (the broken-file pattern). |
+| `jurisdiction_coverage.csv` (rtr-business) | 5 rows updated with fresh findings. |
+| `ENUMERATION_METHODS.md` (rtr-business) | new methods section (§341) with the full method and numbers. |
+
+**Deploy status.** Sherwood AR and Inver Grove Heights' cablecast page
+are live already (ingested directly, keyed by their own government id
+at the time). Mendota Heights and West St. Paul's new pages are live
+now too, same way. The pins and the shared-host rule need the next
+resolver deploy before they take effect for any FUTURE page on these
+hosts — until then, a fresh page on any of them would depend on being
+ingested with its government id already attached, the same safety net
+that already covered everything ingested this WO.
+
+**Recommendation.** Deploy the resolver so the new pins are live before
+running another sweep anywhere near Town Square Television's station —
+otherwise a future unpinned video there risks landing with no
+government at all rather than the wrong one, which is safe but still
+worth closing. Build a TikiLive/CivicMedia adapter only once a second
+real example turns up.

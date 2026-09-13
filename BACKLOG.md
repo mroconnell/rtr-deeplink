@@ -186,7 +186,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (198)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (199)
+  [NEEDS-AUDIT] No adapter for CivicPlus's "CivicMedia" video widget…
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
   [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
@@ -2126,6 +2127,13 @@ of human step they need.
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] No adapter for CivicPlus's "CivicMedia" video widget (TikiLive-hosted), confirmed real on Hobart city, IN.**
+  - **Issue**: WO-336 (2026-09-13) hand-checked `cityofhobart.org/CivicMedia?VID=326` (also reachable via that site's own AgendaCenter "Videos" tab). The real, on-mission video ("Video - Park Board 08-10-26") is embedded via `<iframe id="videoPlayer" src="https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=160547&autoplay=yes">` — CivicPlus's own CivicMedia product, backed by TikiLive's API, not any platform `app/platforms/` already resolves (checked: no `tikilive`/`civicmedia` adapter exists).
+  - **Impact**: Hobart city, IN (`us:place:1834114`) stays no-video-found even though a real meeting video exists, and any other CivicPlus customer using the CivicMedia widget (unknown how common — not surveyed this WO) has the same gap.
+  - **Next action**: build a `tikilive`/`civicmedia` adapter once a second real example turns up (this repo's own working convention: one sample isn't enough to build from, per `CLAUDE.md`'s adapter-building rule) — confirm the `embed?scheme=embedVod&videoId=` shape holds and find whether TikiLive exposes captions/duration via a plain API the way Cablecast's `cablecastapi` does, or only the signed iframe.
+  - **Constraint**: not yet known whether this is common enough to be worth a dedicated adapter versus a one-off; don't build from this single sample alone.
+  - **History**: WO-336, 2026-09-13 (this WO's Part 3 rider list).
+
 - **[NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung indefinitely on one real domain (rankincounty.org, Rankin County MS), reproduced twice, root cause not isolated.**
   - **Issue**: WO-321 (2026-09-12) hit a hang partway through a 220-domain sweep that otherwise finished in under 3 minutes. Reproduced a second time in isolation (`--limit 1 --concurrency 1`, same domain) with the same result — still hanging after 60+ seconds, so it isn't thread contention. The government's own homepage answers a plain `curl` in well under a second, so this isn't a dead host; the hang is inside one of recon's other steps (DNS lookup, robots.txt, or the wayback/common-crawl probes — `cdx_healthy` was already `False` for this run, so the wayback branch should have been skipped, but that wasn't independently confirmed by isolating each step).
   - **Impact**: one government left un-swept per occurrence; low by itself, but a hang with no timeout can silently stall a whole concurrent batch if it recurs on a government processed early in a `ThreadPoolExecutor` batch rather than last.
@@ -4004,7 +4012,18 @@ of human step they need.
   CDN host generally doesn't work." `MEDIA_ATTEMPTS` is the tuning knob
   once the answer is known.
 - **History**: split out of the retry work, `BACKLOG_DONE.md` #305/#306
-  (2026-08-22).
+  (2026-08-22). WO-336 (2026-09-13) found a related but distinct
+  `cpmedia.azureedge.net` failure on a different tenant, useful evidence
+  for the "host-wide or file-specific" question above: South Fulton GA's
+  `southfultonga.api.civicclerk.com` event 1775 (192 MB, HTTP 200, a real
+  `content-length`) fails `ffprobe`/`queue_probe.py` with "moov atom not
+  found" (`reject-dead`) -- looks like a moov-atom-at-the-end encoding on
+  that one file, not a host outage, since 5 other same-tenant azureedge
+  mp4s (events 1757/1762/1764/1773/1774, probed the same session) all
+  read their duration fine. Confirms "this specific file" over "this CDN
+  host generally doesn't work" for at least this tenant; worked around by
+  picking a different candidate (event 1773) rather than investigating
+  the encoding itself.
 
 - **[LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
   the same connection-level timeout (10s, no TLS handshake), now 3 for

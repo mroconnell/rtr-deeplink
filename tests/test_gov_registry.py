@@ -3319,14 +3319,18 @@ def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
     distinguished by a `site=` query parameter -- a blank match here
     would key every unpinned show on the whole station to one government,
     the same Oak Bluffs-shaped mistake `MULTI_GOV_HOSTS` exists to catch.
-    An unpinned show (no matching `site=` pin) must resolve to nothing,
-    not a name guess; the real, already-ingested Inver Grove Heights show
-    (site=6) still resolves through its own pin."""
+    An unpinned show (no matching `site=` pin -- `site=99`, a channel
+    number never confirmed real on this station) must resolve to
+    nothing, not a name guess; the real, already-ingested Inver Grove
+    Heights show (site=6) still resolves through its own pin. (Part 2 of
+    this WO later added real pins for site=8/15 too -- this test uses an
+    id outside that whole confirmed range so it keeps meaning "unpinned"
+    regardless.)"""
     assert registry.is_multi_gov_host("reflect-tst-mn.cablecast.tv")
     unpinned = resolver.resolve_government(
         "Mendota Heights, MN",
         tenant_host="reflect-tst-mn.cablecast.tv",
-        path="/internetchannel/show/99999?site=8",
+        path="/internetchannel/show/99999?site=99",
     )
     assert not unpinned.gov_id or unpinned.gov_id.startswith("rtr:unknown:")
     assert unpinned.tier == resolver.TIER_BLANK
