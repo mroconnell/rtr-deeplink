@@ -452,10 +452,34 @@ def registrable_label(domain: str) -> str:
     if len(parts) < 2:
         return domain.lower()
     # Handle the common two-label public suffixes this corpus actually
-    # has (.gov/.org/.com/.us + a state code like .oh.us)
-    if len(parts) >= 3 and parts[-2] in ("us",) and len(parts[-1]) <= 3:
+    # has (.gov/.org/.com/.us + a state code like .oh.us), and Canada's
+    # province suffixes (ville.sthonore.qc.ca -> "sthonore"; without this
+    # every *.qc.ca domain guessed "qc" and hit PrimeGov's own regional
+    # qc.primegov.com page -- WO-324, ENUMERATION_METHODS §333). Same rule
+    # as wo273_recon.registrable_label(), kept in step by hand.
+    if len(parts) >= 3 and parts[-1] == "us" and len(parts[-2]) <= 3:
         return parts[-3]
-    if len(parts) >= 3 and parts[-1] == "us" and len(parts[-2]) == 2:
+    if (
+        len(parts) >= 3
+        and parts[-1] == "ca"
+        and parts[-2]
+        in (
+            "ab",
+            "bc",
+            "mb",
+            "nb",
+            "nl",
+            "ns",
+            "nt",
+            "nu",
+            "on",
+            "pe",
+            "qc",
+            "sk",
+            "yk",
+            "gc",
+        )
+    ):
         return parts[-3]
     return parts[-2]
 

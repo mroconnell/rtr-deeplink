@@ -544,13 +544,36 @@ def dig(record_type: str, host: str) -> list:
         return []
 
 
+# Canada's two-level public suffixes: a government's own label sits one
+# level above the province code (ville.sthonore.qc.ca -> "sthonore").
+# Without this, every *.qc.ca domain guessed "qc", and qc.primegov.com
+# really resolves -- to PrimeGov's own regional "OneMeeting Quebec"
+# landing page, not any government's tenant. WO-324 (2026-09-12) measured
+# 66-70 false PrimeGov hits from exactly that; see ENUMERATION_METHODS §333.
+CA_PROVINCE_SUFFIX_LABELS = frozenset(
+    {"ab", "bc", "mb", "nb", "nl", "ns", "nt", "nu", "on", "pe", "qc", "sk", "yk", "gc"}
+)
+
+
 def registrable_label(domain: str) -> str:
     parts = domain.lower().strip(".").split(".")
     if len(parts) < 2:
         return domain.lower()
     if len(parts) >= 3 and parts[-1] == "us" and len(parts[-2]) <= 3:
         return parts[-3]
+    if len(parts) >= 3 and parts[-1] == "ca" and parts[-2] in CA_PROVINCE_SUFFIX_LABELS:
+        return parts[-3]
     return parts[-2]
+
+
+def label_is_guessable(label: str) -> bool:
+    """A vendor tenant guess ("{label}.primegov.com") is only worth a DNS
+    lookup when the label could be a government's own slug. A bare
+    province/state code or any one- or two-character label never is --
+    those hosts resolve to vendors' regional pages (qc.primegov.com), so
+    a hit there would be a false platform signal, not a tenant."""
+    label = (label or "").strip().lower()
+    return len(label) > 2 and label not in CA_PROVINCE_SUFFIX_LABELS
 
 
 def dns_lookup(domain: str) -> dict:
@@ -583,6 +606,8 @@ def dns_lookup(domain: str) -> dict:
         )
     label = registrable_label(domain)
     for template, platform in VENDOR_LABEL_TEMPLATES:
+        if not label_is_guessable(label):
+            break
         host = template.format(label=label)
         a = dig("A", host)
         cname = (dig("CNAME", host) or [""])[0]

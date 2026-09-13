@@ -321,3 +321,51 @@ def test_fetch_and_score_hub_sourced_url_still_confirms_via_its_own_shape(
     )
     assert result["platform_confirmed"] == "granicus"
     assert result["catch_all"] is False
+
+
+# --- registrable_label / label_is_guessable (WO-324's qc.primegov.com bug) ---
+# Real domains from research/passive_neither_5-canada-ladder-only.csv and
+# WO-324's report: a *.qc.ca government used to guess the label "qc", and
+# qc.primegov.com genuinely resolves to PrimeGov's regional landing page.
+
+
+def test_registrable_label_skips_canadian_province_suffix():
+    assert wo273_recon.registrable_label("www.ville.sthonore.qc.ca") == "sthonore"
+    assert wo273_recon.registrable_label("ville.sthonore.qc.ca") == "sthonore"
+    assert wo273_recon.registrable_label("www.saint-lambert.ca") == "saint-lambert"
+    assert wo273_recon.registrable_label("www.tweed.ca") == "tweed"
+    assert wo273_recon.registrable_label("www.claresholm.ab.ca") == "claresholm"
+
+
+def test_registrable_label_keeps_us_state_suffix_rule():
+    assert wo273_recon.registrable_label("www.ci.buffalo.mn.us") == "buffalo"
+    assert wo273_recon.registrable_label("baldwincountyal.gov") == "baldwincountyal"
+    assert (
+        wo273_recon.registrable_label("lincoln.ne.gov") == "ne"
+    )  # unchanged: .gov is single-level
+
+
+def test_label_is_guessable_rejects_province_codes_and_short_labels():
+    assert not wo273_recon.label_is_guessable("qc")
+    assert not wo273_recon.label_is_guessable("on")
+    assert not wo273_recon.label_is_guessable("ab")
+    assert not wo273_recon.label_is_guessable("x")
+    assert wo273_recon.label_is_guessable("sthonore")
+    assert wo273_recon.label_is_guessable("saint-lambert")
+
+
+def test_dns_lookup_never_guesses_a_vendor_tenant_from_a_province_code(monkeypatch):
+    # dig() is stubbed: any vendor-label host resolves (as qc.primegov.com
+    # really does), but a *.qc.ca government must never reach that lookup.
+    asked = []
+
+    def fake_dig(rtype, host):
+        asked.append(host)
+        return ["203.0.113.1"] if rtype == "A" else []
+
+    monkeypatch.setattr(wo273_recon, "dig", fake_dig)
+    out = wo273_recon.dns_lookup("ville.sthonore.qc.ca")
+    vendor_hosts = [d["host"] for d in out["resolving_vendor_labels"]]
+    assert "qc.primegov.com" not in asked
+    assert "sthonore.primegov.com" in asked
+    assert all(not h.startswith("qc.") for h in vendor_hosts)
