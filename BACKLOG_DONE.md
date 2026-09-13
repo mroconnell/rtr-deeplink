@@ -53821,3 +53821,86 @@ their addresses are confirmed).
 **Deploy status.** `app/platforms/passive_verify.py` changed — needs a
 resolver deploy before this walker runs in production. The 2 new queue
 lines reach the transcription worker only after that same deploy.
+
+## [Done 2026-09-13] WO-347: the tier-4 walker rerun WO-345 didn't cover (281 governments), plus a 60-government hand audit of the week's passive-pipeline reruns — 30 real jc.csv corrections, a 62% false-negative rate found in two "nothing found" buckets
+
+- **Issue**: WO-345 (§348) reran WO-338's 108-row "confirmed platform,
+  walk came back empty" residual once the five listing walkers landed,
+  but left WO-338's OTHER residual untouched: 281 governments WO-338
+  itself had already classified tier 4 ("meeting, no video") on those
+  same five platforms (civicplus 222, escribe 33, civicclerk 19, iqm2 4,
+  townhallstreams 3) — a tier-4 verdict isn't necessarily final, since
+  the walkers keep improving. Separately, Ryan asked for a "satisfactory
+  audit" of the week's reruns — nobody had hand-read a sample of the
+  rerun verdicts themselves.
+- **Impact — Part A (the 281 rerun)**: 259 reconfirmed tier 4 (no change
+  needed), 3 came back with no signal (an access/no-signal result never
+  overwrites a content-class finding, left untouched per the standing
+  guard), and 19 came back with a real video or YouTube lead. Every one
+  was hand-checked (title/jurisdiction cross-check against the target
+  government): 0 of 16 non-YouTube candidates were wrong (0%, a marked
+  contrast with WO-338's own 69% wrong rate on its residual). 4 real
+  tier-1 finds were ingested (Isanti County MN, Surry County VA,
+  Markstay-Warren ON, Middleton town MA); 9 real tier-3 finds were
+  queued (Lenawee County MI, Amherst NS, St. Stephen NB, Pittsboro town
+  IN, Lac la Biche County AB, Leduc County AB, Eliot town ME, Boothbay
+  town ME, Hampton Falls town NH — 4 of these had a newest candidate
+  over the 90-minute defer threshold and were looked at one meeting
+  deeper on the same tenant, per CLAUDE.md's "long-only videos" rule); 3
+  real YouTube leads were logged (never fetched); 2 were held back at
+  the hand-read gate (Larned city KS — a real Vimeo video with no
+  obtainable title even via the WO-86 domain-Referer trick; Olmos Park
+  city TX — CivicClerk's `video_url` is a genuine `audio/mp3` file, not
+  video, confirmed by a live `Content-Type` check).
+- **Impact — Part B (the 60-government audit)**: a stratified sample
+  (seed 347, fixed and recorded), 20 each from the final tier-4 verdict
+  (409-government population), the final "nothing walkable" verdict
+  (146-government population), and WO-337's `candidate-not-confirmed`
+  outcome (1,145-government population, its largest bucket), hand-
+  checked via the real access ladder
+  (`scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()`: plain
+  fetch -> browser headers -> headless, never a youtube.com/youtu.be
+  URL). The tier-4 stratum held up perfectly: 20/20 confirmed correct
+  (0% false-negative). The other two strata told a very different
+  story: **25 of 40 sampled governments (62.5%) actually have a real,
+  findable agendas/minutes page** the passive sweep's own homepage-only
+  hop scan never reached (real dated PDF archives, real CivicPlus/
+  CivicWeb/CivicClerk/IQM2 listings, clearly-named first-party agenda
+  pages), one of them (Upper Providence township, PA) with a real, live,
+  unqueued video (CivicClerk delegating to Swagit — hand-read gate
+  passed despite a postal-address quirk in CivicClerk's own jurisdiction
+  field, "Phoenixville, PA"; queued, 81.6 min). 6 more sampled
+  governments (15%) had a wrong or stale `domain` on file — 3 real
+  domain migrations, 3 domains fully repurposed by an unrelated site
+  (a laser-engraving company, a tourism bureau's YouTube channel, and,
+  oddly for a `.gov`, a ghost-sightings page).
+- **Next action**: none for this WO's own scope — see `BACKLOG.md`'s
+  three new entries for the residual work this audit surfaced (the
+  hop-scorer reach gap behind the 62% false-negative rate, `verify_hub()`'s
+  missing `Content-Type` check for audio-only "video," and a dedicated
+  domain-health sweep).
+- **Constraint**: never fetched a youtube.com/youtu.be URL anywhere in
+  either part, including the hand-audit ladder — YouTube channel finds
+  (Columbus GA, Camrose AB, Clinton County NY, Groton CT) were logged as
+  unconfirmed leads only, verified where possible via the public oEmbed
+  title endpoint (metadata only, same method as §230) rather than a
+  direct fetch.
+- **History**: full numbers, the per-government hand-check tables, and
+  the "what this means" analysis are in `rtr-business/research/
+  ENUMERATION_METHODS.md` §NNN (WO-347, appended by the coverage
+  session). Files: `research/wo347_population.csv`,
+  `wo347_rerun_verify.csv`, `wo347_audit_sample.csv`,
+  `wo347_audit_raw_findings.csv`, `wo347_audit_verify2.csv`,
+  `wo347_wrong_domain_findings.csv`, `wo347_report.csv`,
+  `wo347_jc_applied_gov_ids.txt` (rtr-business); `scripts/wo347_verify.py`,
+  `wo347_apply_to_jc.py`, `wo347_handcheck.py`, `wo347_finish_tier3.py`,
+  `wo347_long_lookdeeper.py`, `wo347_replacement_resolve.py`,
+  `wo347_audit_sample_run.py`, `wo347_audit_verify.py`,
+  `wo347_deep_verify.py`, `wo347_deep_verify2.py`, `wo347_finish_partb.py`,
+  `wo347_partb_apply_to_jc.py` (rtr-deeplink, this WO's own PR).
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+and `scripts/tier3_auto_transcription_queue.txt` changed — need the
+resolver/worker deploy before the 10 new pins and 9 new tier-3 queue
+lines take effect. `jurisdiction_coverage.csv`'s 30 corrections (both
+parts) are research-file changes with no deploy dependency.
