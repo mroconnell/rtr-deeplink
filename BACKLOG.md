@@ -750,7 +750,8 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Constraint:** none.
 - **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
   `rtr-business/research/wo309b_report.csv`;
-  `ENUMERATION_METHODS.md` §327.
+  `ENUMERATION_METHODS.md` §328 (appended as §327, renumbered at commit
+  because WO-318 took §327 first).
 
 ### `cablecast.py`: two more real URL/data quirks found by WO-309 (resume), neither fixed yet `[NEEDS-AUDIT]`
 
