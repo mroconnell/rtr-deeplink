@@ -546,7 +546,7 @@ humalertca.gov,,rtr:us:ca:humboldt-county-sheriff,fallback,ryan_stated,"Ryan 202
 huntingtonny.granicus.com,,us:cousub:3610337000,fallback,archive_study_2026-09-09,4 solid page(s) all us:cousub:3610337000; 1 weak page(s) e.g. /m/town-of-huntington-long-island-ny-2026-09-03-special-town-board-workshop-meeting
 huntsvilleal.granicus.com,,us:place:0137000,fallback,ryan_stated,"Huntsville, AL -- us_places.csv Huntsville city"
 huntsvilleon.civicweb.net,,ca:csd:3544042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Huntsville
-huron-township.cablecast.tv,,us:cousub:2606340020,fallback,ryan_stated,"Huron Township, MI -- us_cousubs.csv Huron township"
+huron-township.cablecast.tv,,us:cousub:2616340040,fallback,ryan_stated,"Huron charter Township, Wayne County, MI (hurontownship-mi.gov says Huron CHARTER Township, Wayne County; the earlier pin matched the same-named Huron township in Huron County) -- Ryan 2026-09-12, WO-319"
 huron.granicus.com,,ca:cd:3540,fallback,wildcard_http_sweep_1,HTTP 302 -> registry: ca_cd.csv Huron
 huronkinloss.escribemeetings.com,,ca:csd:3541015,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron-Kinloss
 huronshores.escribemeetings.com,,ca:csd:3557035,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron Shores
