@@ -6105,3 +6105,25 @@ http://lnktv.lincoln.ne.gov/internetchannel/show/4442?channel=1,cablecast,hls-ma
 http://agawamvod.cablecast.tv/internetchannel/show/2825?site=1,cablecast,hls-master+variant,1843.14,,,1,accept,,0.17,2026-09-13T05:29:16+00:00,wo326,0
 https://playback.orionontv.org/internetchannel/show/5760?site=3,cablecast,hls-master+variant,5681.06,,,1,accept,,0.80,2026-09-13T06:45:49+00:00,wo322_finish_tier3,0
 https://playback.orionontv.org/internetchannel/show/5821?site=3,cablecast,hls-master+variant,2075.00,,,1,accept,,0.59,2026-09-13T06:46:47+00:00,wo322_finish_tier3,0
+https://townhallstreams.com/stream.php?location_id=54&id=76177,townhallstreams,hls-master+variant,5528.00,,,1,accept,,11.63,2026-09-13T12:17:38+00:00,,0
+https://townhallstreams.com/stream.php?location_id=54&id=76177,townhallstreams,hls-master+variant,5528.00,,,1,accept,,0.47,2026-09-13T12:17:38+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=55&id=76010,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.33,2026-09-13T12:17:41+00:00,,0
+https://townhallstreams.com/stream.php?location_id=56&id=76286,townhallstreams,hls-master+variant,2282.32,,,1,accept,,1.86,2026-09-13T12:17:46+00:00,,0
+https://townhallstreams.com/stream.php?location_id=56&id=76286,townhallstreams,hls-master+variant,2282.32,,,1,accept,,0.51,2026-09-13T12:17:46+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=57&id=76259,townhallstreams,hls-master+variant,3914.58,,,1,accept,,1.66,2026-09-13T12:17:50+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76259,townhallstreams,hls-master+variant,3914.58,,,1,accept,,0.46,2026-09-13T12:17:51+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=58&id=60881,townhallstreams,hls-master+variant,7199.48,,,1,accept,,3.86,2026-09-13T12:17:57+00:00,,0
+https://townhallstreams.com/stream.php?location_id=58&id=60881,townhallstreams,hls-master+variant,7199.48,,,1,accept,,0.48,2026-09-13T12:17:58+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=61&id=44512,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.26,2026-09-13T12:18:00+00:00,,0
+https://townhallstreams.com/stream.php?location_id=62&id=75447,townhallstreams,hls-master+variant,507.45,,,0,accept,,0.34,2026-09-13T12:18:03+00:00,,0
+https://townhallstreams.com/stream.php?location_id=62&id=75447,townhallstreams,hls-master+variant,507.45,,,0,accept,,0.32,2026-09-13T12:18:04+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=63&id=75325,townhallstreams,hls-master+variant,3963.33,,,1,accept,,5.79,2026-09-13T12:18:12+00:00,,0
+https://townhallstreams.com/stream.php?location_id=63&id=75325,townhallstreams,hls-master+variant,3963.33,,,1,accept,,5.04,2026-09-13T12:18:17+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=64&id=76171,townhallstreams,hls-master+variant,10919.32,,,1,accept,,0.74,2026-09-13T12:18:20+00:00,,0
+https://townhallstreams.com/stream.php?location_id=64&id=76171,townhallstreams,hls-master+variant,10919.32,,,1,accept,,0.50,2026-09-13T12:18:20+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=65&id=71382,townhallstreams,hls-master+variant,10487.40,,,1,accept,,1.22,2026-09-13T12:18:24+00:00,,0
+https://townhallstreams.com/stream.php?location_id=65&id=71382,townhallstreams,hls-master+variant,10487.40,,,1,accept,,0.50,2026-09-13T12:18:24+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=66&id=76288,townhallstreams,hls-master+variant,6443.82,,,1,accept,,6.50,2026-09-13T12:18:33+00:00,,0
+https://townhallstreams.com/stream.php?location_id=66&id=76288,townhallstreams,hls-master+variant,6443.82,,,1,accept,,3.66,2026-09-13T12:18:37+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=68&id=75868,townhallstreams,hls-master+variant,3062.50,,,1,accept,,4.66,2026-09-13T12:18:44+00:00,,0
+https://townhallstreams.com/stream.php?location_id=68&id=75868,townhallstreams,hls-master+variant,3062.50,,,1,accept,,3.02,2026-09-13T12:18:47+00:00,feed_tier3_auto_transcription,0
