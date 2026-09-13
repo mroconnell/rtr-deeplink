@@ -2184,3 +2184,4 @@ https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/7568?channel=1
 https://cloud.castus.tv/vod/littleton/video/6aa2e20e9a0aed0002091584	https://cloud.castus.tv/vod/littleton/?page=RECENT
 https://reflect-kckps.cablecast.tv/internetchannel/show/611?channel=1	https://reflect-kckps.cablecast.tv/cablecastapi/v1/shows?pageSize=50&sortColumn=cablecastShowID&sortDirection=DESC&channel=1
 https://reflect-niagarafallsosc.cablecast.tv/CablecastPublicSite/show/2160?site=1	https://reflect-niagarafallsosc.cablecast.tv/cablecastapi/v1/shows?pageSize=50&sortColumn=cablecastShowID&sortDirection=DESC&channel=1
+http://agawamvod.cablecast.tv/internetchannel/show/2825?site=1

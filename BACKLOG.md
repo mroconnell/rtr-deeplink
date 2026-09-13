@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (48)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (49)
+  Town of Lincoln, Ontario's own eScribe tenant has a real, current,…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
   `cablecast.py`: two more real URL/data quirks found by WO-309…
   `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses…
@@ -727,6 +728,27 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Town of Lincoln, Ontario's own eScribe tenant has a real, current, on-mission meeting but its research row still says no platform found `[JUST-DO-IT]`
+
+- **Issue:** WO-326 (2026-09-12) confirmed `pub-lincoln.escribemeetings.com`
+  is a real, live eScribe tenant for the Town of Lincoln, Ontario, Canada
+  (`ca:csd:3526057`, already pinned) — real committee names (Council
+  Meeting, Committee of the Whole, Committee of Adjustment, Heritage
+  Advisory Committee), e.g. a July 27, 2026 "Council Meeting"
+  (`Meeting.aspx?Id=406d7685-41ab-4128-87f7-8ebd187e1e62`). Its own
+  `jurisdiction_coverage.csv` row still reads
+  `reject_reason=no-platform-link-found`.
+- **Impact:** one real, ready government with a real video tenant sits
+  unrecorded and unresolved on the coverage dashboards.
+- **Next action:** correct `ca:csd:3526057`'s row (`domain` ->
+  `pub-lincoln.escribemeetings.com`, `reject_reason` cleared) and
+  hand-read + ingest its newest on-mission Council meeting, same pattern
+  as WO-326's Lincoln city NE fix.
+- **Constraint:** none — the gov_id and pin already exist, no mint pass
+  needed.
+- **History:** `rtr-business/research/wo326_owner_bodies.csv`;
+  `ENUMERATION_METHODS.md` §331.
 
 ### The small-video-platform sweep's leftover 8 rows: real hits or fetch failures WO-309 (resume) didn't finish chasing `[JUST-DO-IT]`
 
