@@ -6168,3 +6168,40 @@ https://townhallstreams.com/stream.php?location_id=140&id=76125,townhallstreams,
 https://townhallstreams.com/stream.php?location_id=140&id=75885,townhallstreams,hls-master+variant,2102.72,,,1,accept,,3.51,2026-09-13T16:54:24+00:00,,0
 https://townhallstreams.com/stream.php?location_id=140&id=75886,townhallstreams,hls-master+variant,4699.03,,,1,accept,,2.95,2026-09-13T16:54:25+00:00,,0
 http://city-dyersville-ia.cablecast.tv/show/3660?site=1,cablecast,hls-master+variant,2203.33,,,1,accept,,0.63,2026-09-13T16:56:13+00:00,bulk_ingest,0
+https://drive.google.com/file/d/1h7Pfp4UKVEGE5UV36IQQLr0oqjzrlmOa/view?usp=sharing,direct_file,head+ffprobe,544.44,2026-08-07,45412386,1,accept,,5.33,2026-09-13T18:15:00+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21878,iqm2,head+ffprobe,7111.47,2025-11-25,563989726,1,accept,,6.81,2026-09-13T18:15:02+00:00,,0
+https://wimberleytx.portal.civicclerk.com/event/1510/media,civicclerk,head+ffprobe,3505.21,2026-09-11,738259386,1,accept,,7.30,2026-09-13T18:15:02+00:00,,0
+https://tv.sharontv.com/internetchannel/show/15269,cablecast,hls-master+variant,2742.99,,,1,accept,,1.42,2026-09-13T18:15:03+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76678,townhallstreams,hls-master+variant,8964.07,,,1,accept,,4.52,2026-09-13T18:15:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=54&id=76609,townhallstreams,hls-master+variant,540.48,,,1,accept,,2.89,2026-09-13T18:15:05+00:00,,0
+https://www.hudsonctv.com/internetchannel/show/20916?site=3,cablecast,hls-master+variant,4996.90,,,1,accept,,2.10,2026-09-13T18:15:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73863,townhallstreams,hls-master+variant,10807.05,,,1,accept,,3.37,2026-09-13T18:15:08+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2369/media,civicclerk,head+ffprobe,3.08,2026-09-09,508395,0,reject-short,duration 3.1s is below the 60s meeting-plausibility floor,7.31,2026-09-13T18:15:12+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21881,iqm2,resolve,,,,0,reject-dead,resolve returned no video_url,0.94,2026-09-13T18:16:46+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21880,iqm2,resolve,,,,0,reject-dead,resolve returned no video_url,0.89,2026-09-13T18:16:47+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21855,iqm2,resolve,,,,0,reject-dead,resolve returned no video_url,0.96,2026-09-13T18:16:49+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76629,townhallstreams,hls-master+variant,3604.77,,,1,accept,,2.55,2026-09-13T18:16:50+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21879,iqm2,resolve,,,,0,reject-dead,resolve returned no video_url,0.82,2026-09-13T18:16:50+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76598,townhallstreams,hls-master+variant,1084.47,,,1,accept,,3.19,2026-09-13T18:16:54+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76594,townhallstreams,hls-master+variant,124.47,,,0,accept,,3.18,2026-09-13T18:16:55+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73862,townhallstreams,hls-master+variant,7196.61,,,1,accept,,4.13,2026-09-13T18:16:58+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=76562,townhallstreams,hls-master+variant,7195.90,,,1,accept,,3.32,2026-09-13T18:16:58+00:00,,0
+https://townhallstreams.com/stream.php?location_id=57&id=76586,townhallstreams,hls-master+variant,7216.70,,,1,accept,,9.75,2026-09-13T18:16:59+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73861,townhallstreams,hls-master+variant,10798.04,,,1,accept,,3.29,2026-09-13T18:17:01+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2343/media,civicclerk,head+ffprobe,24454.60,2026-08-12,8144164536,1,flag-long,"duration 6.79h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",4.36,2026-09-13T18:17:04+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2344/media,civicclerk,head+ffprobe,16886.75,2026-09-02,5623995125,1,accept,,6.65,2026-09-13T18:17:05+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2366/media,civicclerk,resolve,,,,0,reject-dead,resolve raised: ,20.83,2026-09-13T18:17:22+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21877,iqm2,resolve,,,,0,reject-dead,resolve returned no video_url,1.18,2026-09-13T18:17:52+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21876,iqm2,head+ffprobe,2850.59,2025-11-12,226331589,1,accept,,4.77,2026-09-13T18:17:57+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21875,iqm2,head+ffprobe,4651.51,2025-10-28,371766073,1,accept,,4.43,2026-09-13T18:17:58+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73860,townhallstreams,hls-master+variant,7189.00,,,1,accept,,2.96,2026-09-13T18:18:01+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21874,iqm2,head+ffprobe,9383.35,2025-10-21,542693118,1,accept,,6.07,2026-09-13T18:18:01+00:00,,0
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21854,iqm2,head+ffprobe,4249.24,2025-11-20,337990404,1,accept,,5.04,2026-09-13T18:18:02+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73859,townhallstreams,hls-master+variant,13689.94,,,1,accept,,3.51,2026-09-13T18:18:05+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73858,townhallstreams,hls-master+variant,10819.21,,,1,accept,,3.43,2026-09-13T18:18:06+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=73857,townhallstreams,hls-master+variant,7198.63,,,1,accept,,3.87,2026-09-13T18:18:08+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2365/media,civicclerk,head+ffprobe,20268.64,2026-07-15,6751213484,1,accept,,6.07,2026-09-13T18:18:12+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2342/media,civicclerk,head+ffprobe,2.92,2026-07-16,59641,0,reject-short,duration 2.9s is below the 60s meeting-plausibility floor,8.56,2026-09-13T18:18:13+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2364/media,civicclerk,head+ffprobe,4111.77,2026-07-08,1368659811,1,accept,,9.90,2026-09-13T18:18:18+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2341/media,civicclerk,head+ffprobe,17734.57,2026-06-24,5906284496,1,accept,,8.37,2026-09-13T18:18:21+00:00,,0
+https://northhempsteadny.portal.civicclerk.com/event/2340/media,civicclerk,head+ffprobe,11546.97,2026-06-10,3843596165,1,accept,,7.55,2026-09-13T18:18:21+00:00,,0

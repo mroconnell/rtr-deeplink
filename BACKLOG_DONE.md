@@ -1,5 +1,130 @@
 # Backlog — done
 
+## WO-345 (= WO-338b): rerunning WO-338's walker-gap residual now that the six listing walkers have all landed [Done 2026-09-13]
+
+**Why this ran.** WO-338 checked 2,825 governments for real video and
+left an honest leftover pile: 108 governments where the site had
+already confirmed a real video platform, but reading that platform's
+own meeting list came back empty. That emptiness had one likely cause —
+the site did not yet know how to read a listing page on six specific
+platforms (CivicPlus, CivicClerk, eScribe, iQM2, Town Hall Streams,
+Cablecast). By the time this WO started, all six had been fixed by
+earlier work this same day. This WO re-checked all 108 governments with
+the fixed reading step, to see how many of those "nothing found"
+answers were actually wrong.
+
+**Result.**
+
+| Result | Count of 108 | What it means |
+|---|---|---|
+| Real video found | 28 | a specific meeting with real video, checked by a person |
+| Meeting found, no video | 30 | a real, current meeting list exists, none of it has video |
+| Still nothing found | 50 | reading the listing came back empty again, same as before |
+
+**Every video found was checked by a person** — this repo's standing
+rule, reading the actual title and government name side by side, never
+trusting the automatic match alone.
+
+| Hand-check result | Count of 28 | What it means |
+|---|---|---|
+| Real, correct video, for this exact government | 25 | queued for machine transcription, or already correctly on file from earlier work |
+| Real video, but the recording is now gone | 1 | New Boston, NH — the link was real when the site checked it; a second, direct check of the video itself found it already deleted |
+| Real video, but the wrong government | 1 | Melvern, KS — the recording is real ("Osage County Commission Meeting"), but the site had Melvern's page wrongly pointed at Osage County's own meeting system. Not filed under Melvern. |
+| Real YouTube video, correct, left as a lead | 1 | Cochise County, AZ — never opened directly, handed to the separate YouTube process, same standing rule as every other WO |
+
+Wrong count on real, checked video (leaving out the YouTube lead, which
+is never opened directly to check): **1 of 26, about 4%.** That is much
+lower than WO-338's own 69% wrong rate on this same kind of leftover
+pile, because this time the video was found by reading a government's
+own confirmed page directly, not by guessing from a page that turned
+out to belong to someone else — which is exactly how Melvern's one
+wrong case happened.
+
+**A second problem found while checking: real videos already sitting in
+the machine-transcription queue with no way to tell whose government
+they belong to.** 13 of the 25 correct finds were not new — an earlier
+WO had already added them to the queue, but never recorded which real
+place government owned each one. Fixed for these 13, and for the 15
+Town Hall Streams entries this WO touched — Town Hall Streams is one
+website shared by many towns, so without this fix a machine-transcribed
+recording from it could come back with no government attached at all.
+
+**Melvern, KS — a real video pointed at the wrong government.** The
+recording found is genuinely real: Osage County's own commission
+meeting. But the page the site had on file for Melvern was, by mistake,
+Osage County's own meeting page, not Melvern's. Fixed: Melvern's own
+record now says "wrong page on file," and the real owner (Osage County,
+which does have its own government record already) is written down
+separately so a later pass can give the county its own real meeting
+page.
+
+**York, Maine — a video correctly found, filed under the wrong-sized
+government.** The video is real and belongs to the town of York's own
+Budget Committee. The leftover-pile record for this page had it filed
+under York COUNTY instead of the town — a different, larger government
+whose own seat is a different town entirely. The town of York already
+had its own correct record on file; this WO's finding was written there
+instead of the county's.
+
+**Video split.**
+
+| Video found | Count | What it means |
+|---|---|---|
+| Real video, real captions this app can read, page live now | 0 | none this run |
+| Real video, YouTube's own captions, lead only | 1 | Cochise County, AZ |
+| Real video, no captions yet, queued for machine transcription | 25 | 9 newly added, 13 already queued by earlier work but now correctly filed, 3 already both queued and correctly filed |
+| Real video, but not usable | 2 | Melvern KS (wrong government), New Boston NH (recording now gone) |
+
+**Picking which meeting to queue.** This repo's rule is to prefer a
+meeting 9 to 40 minutes long, or the shortest real one available, and to
+look for a shorter meeting before giving up on a government whose
+newest meeting runs long. Three of the nine newly-queued governments
+needed this: Crow Wing County, MN's newest meeting ran 118.5 minutes —
+checked 10 real meetings back to December 2025 (the county's own
+listing has nothing newer, confirmed by hand, not a reading error) and
+queued the shortest one found, 47.5 minutes. Kennebunkport, ME's newest
+ran 149.4 minutes — checked 6 more and queued an 18.1-minute Budget
+Board meeting instead. Sand Lake, NY's newest ran 180.1 minutes — checked
+8 real meetings across a month, none under about two hours, so per the
+standing rule this WO queued the shortest one found (119.9 minutes)
+rather than leaving the government unqueued. North Hempstead, NY's
+newest listed meeting turned out to be a broken, 3-second file on a
+direct check of the recording itself — checked 8 more, passed two real
+multi-hour Zoning Appeals meetings, and queued a real 68.5-minute Town
+Board meeting.
+
+**A hardcoded work-order label found while recording the Cochise County
+lead.** `scripts/wo320_targeted.py`'s shared `record_youtube_lead()`
+helper writes `source_wo="WO-320"` on every row it writes, regardless of
+which WO actually calls it — the same class of bug already flagged for
+two other shared helpers (`ENUMERATION_METHODS.md` §230's note on
+`maybe_write_tenant_override()`/`tier3_pending_handler()`). Caught and
+hand-corrected for this WO's one row; filed to `BACKLOG.md` since the
+helper itself still mislabels every future caller.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `jurisdiction_coverage.csv` (rtr-business) | 53 rows touched (30 meeting-no-video, 22 video-queued, 1 wrong-page-on-file); 26 of the 53 changed the file's actual text, the rest already carried the correct answer from earlier work. |
+| `youtube_channel_leads.csv` (rtr-business) | 1 new row (Cochise County, AZ). |
+| `wo345_owner_bodies.csv` (rtr-business, new) | 1 row (Osage County, KS — Melvern's real owner government). |
+| `scripts/tier3_auto_transcription_queue.txt` | 9 new lines. |
+| `app/utils/jurisdiction_data/tenant_overrides.csv` | 20 new government-ownership records (15 Town Hall Streams towns, 3 CivicClerk pages, 2 Cablecast stations) — 13 of the 15 Town Hall Streams ones fix videos already queued by earlier work with no owner recorded. |
+| `BACKLOG.md` | 2 new entries: the hardcoded work-order label bug above, and a systemic check — how many more of the 2,069 queued videos across the whole file are missing an owner record, beyond the 13 this WO happened to find. |
+
+**Deploy status.** The 9 new queue lines and the 20 new ownership
+records are on `main`, not live yet — they need the next resolver and
+transcription-worker deploy before the machine-transcription step picks
+them up and files them correctly. No page was published directly by
+this WO (every real find here needs machine transcription first, none
+had ready-made captions).
+
+**Recommendation.** Run the same "is every queued video's owner
+recorded" check across the full queue file, not just this WO's own 108
+governments — 13 missing owner records out of a leftover pile of just
+25 correct finds is a high enough rate to be worth checking everywhere.
+
 ## WO-344: three small verification gaps — iQM2's second tenant shape, a Town Hall Streams listing walker, Cablecast's third template [Done 2026-09-13]
 
 This WO closes three of the smallest gaps WO-333 and WO-309 (resume)
