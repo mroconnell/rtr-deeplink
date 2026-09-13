@@ -167,7 +167,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
   34 of WO-271's WordPress governments have a front-page…
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
+  Sheboygan County, WI has a real, ready-to-ingest transcript, reached…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -185,8 +186,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (198)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (200)
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
+  [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
+  [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
   [NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no…
   [NEEDS-AUDIT] The passive-discovery hop-link scorer's vocabulary is…
   [NEEDS-AUDIT] `wo273_recon.py`'s `registrable_label()` reads a…
@@ -1807,6 +1810,44 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
+### Sheboygan County, WI has a real, ready-to-ingest transcript, reached only through a YouTube fetch this WO's own rule forbade `[HUMAN]`
+
+- **Issue:** WO-325 (2026-09-12) hand-verified 117 platform-confirmed
+  candidates by calling the real `app/platforms/*` `resolve()` pipeline
+  on each one, exactly as every WO in this family does before ingesting
+  anything. For Sheboygan County, WI (`us:county:55117`), the confirmed
+  candidate was a Municode Meetings calendar page
+  (`www.sheboyganwi.gov/calendar.aspx?CID=14,28`); Municode Meetings'
+  own adapter (`app/platforms/municode_meetings.py`) legitimately
+  delegates to YouTube when a meeting embeds one (documented, same
+  pattern as PrimeGov/CivicPlus/Legistar). That delegation made a real
+  fetch to YouTube and returned a genuine result: title "Public Works
+  2026 08 24", `video_url=https://www.youtube.com/embed/wmqe8C6b8DE`,
+  166 real caption segments. This WO's own rule, read literally, was
+  "never fetch a youtube.com or youtu.be URL for any reason" — this
+  fetch happened through the adapter's own documented delegation, not
+  through this WO's candidate-ranking/fetch code (which does correctly
+  skip every youtube.com/youtu.be URL it ranks — see `wo325_targeted.py`'s
+  `is_youtube_url()` gate, 116 such leads recorded and never fetched
+  this same run).
+- **Impact:** one real, government-published meeting with a working
+  transcript exists and is not on the site. It was found only because
+  this WO's hand-check step ran the real resolve() pipeline, which is
+  the same step `bulk_ingest.py` would use to actually publish it.
+- **Next action:** Ryan decides whether to ingest this page. If yes,
+  `scripts/bulk_ingest.py --gov-id us:county:55117
+  "https://www.sheboyganwi.gov/calendar.aspx?CID=14,28"` (the real
+  resolve() result is already known-good from this WO's own diagnostic
+  run). If no, record `meeting-without-video` is factually wrong for
+  this row — leave `jurisdiction_coverage.csv`'s row for this gov_id
+  untouched (this WO deliberately left it blank rather than writing a
+  reason that isn't true) until a real decision is made either way.
+- **Constraint:** don't treat this as license to relax the no-YouTube
+  rule elsewhere — see the matching Open bugs entry below for the
+  methodology gap that let this happen despite the rule being followed
+  at the candidate-ranking level.
+- **History:** `BACKLOG_DONE.md`'s WO-325 entry.
+
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
 - **Issue:** WO-301 (2026-09-12) found 51 `jurisdiction_coverage.csv`
@@ -2089,7 +2130,21 @@ of human step they need.
   - **Impact**: one government left un-swept per occurrence; low by itself, but a hang with no timeout can silently stall a whole concurrent batch if it recurs on a government processed early in a `ThreadPoolExecutor` batch rather than last.
   - **Next action**: instrument `wo273_recon.py`'s per-step calls (DNS/robots/sitemap/common-crawl) with an explicit per-step timeout (`requests` calls already take a `timeout=` kwarg in most call sites — check whether one is missing on this specific path) rather than relying on the overall process to eventually finish. Re-run against `rankincounty.org` alone with each step print-timed to isolate which one hangs.
   - **Constraint**: don't just add a blanket "kill after N seconds" wrapper at the sweep level — that hides which specific step is missing a timeout, and the next domain to hit it would silently lose the same amount of real data.
-  - **History**: `BACKLOG_DONE.md`'s WO-321 entry.
+  - **History**: `BACKLOG_DONE.md`'s WO-321 entry. **Update, WO-325 (2026-09-12)**: ran the same `wo273_recon.py` machinery (via `wo325_recon.py`, its own copy) against 658 more US counties, in three chunks, at concurrency 16 — 0 hangs, 0 errors. Consistent with this being specific to `rankincounty.org` itself (or another factor unique to that run) rather than a systemic gap in every recon step's timeout coverage; doesn't close the entry, since the root cause still isn't isolated, but narrows where to look.
+
+- **[NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's copy of it) has no guard against a delegating adapter making a real YouTube fetch during a hand-check `resolve()` call, even though the candidate-ranking/fetch code already skips youtube.com/youtu.be URLs correctly.**
+  - **Issue**: WO-325 (2026-09-12) found this live. Every WO in the WO-320..325 family follows the same two-stage design: phase 3 (`wo325_targeted.py`) never fetches a youtube.com/youtu.be URL directly (`is_youtube_url()` gates every candidate fetch, and correctly recorded 116 YouTube leads without touching them this run) — but the separate hand-check stage (`wo325_resolve_diagnostic.py`) calls the REAL `app/platforms/*` `resolve()` pipeline on every confirmed non-YouTube candidate, and at least one real platform (`municode_meetings`, and per `CLAUDE.md`'s own platform-wrapper bullet, also PrimeGov and Chicago's City Clerk ELMS for Vimeo) legitimately delegates to YouTube/Vimeo mid-`resolve()` when a meeting embeds one. That delegation is correct, intentional adapter behavior for a real ingest — but it is exactly the "fetch a youtube.com URL" this WO's own rule said never to do, and nothing in the hand-check step's own code checks for it before or after the fact. See the matching `[HUMAN]` entry above (Sheboygan County, WI) for the one real case this run hit.
+  - **Impact**: a sweep operating under an explicit no-YouTube-fetch constraint can still make one, silently, any time its hand-check step happens to confirm a candidate on a YouTube/Vimeo-delegating platform. Low volume so far (1 of 117 hand-checked this run) but not zero, and not something the existing `is_youtube_url()` gate catches since the URL passed to `resolve()` was never a youtube.com URL itself.
+  - **Next action**: give `wo325_resolve_diagnostic.py` (and its siblings, `wo283_resolve_diagnostic.py` etc.) a pre-check: for a candidate whose platform is a known YouTube/Vimeo-delegating one (`municode_meetings`, `primegov`, the Chicago City Clerk ELMS path), either skip the real `resolve()` call and instead scan the page's own HTML for an embedded youtube.com/vimeo.com link (recording it as a lead, same as the direct-YouTube-URL case), or require an explicit opt-in flag before running `resolve()` on that platform under a "no YouTube calls" WO. Also cover `GenericFallbackAssetFinder` (`platform=unknown`) itself, not just the named wrapper adapters — it does its own regex scan for an embedded YouTube video id and calls `YouTubeAssetFinder.resolve_video_id()` when it finds one, which is a second, separate route into the same problem.
+  - **Constraint**: don't widen the fix to skip `resolve()` on every platform that COULD theoretically embed a YouTube video (most html-based platforms could) — only the platforms that are documented, structural wrappers per `CLAUDE.md`'s own list, plus `GenericFallbackAssetFinder`.
+  - **History**: `BACKLOG_DONE.md`'s WO-325 entry. **Not a one-off**: `rtr-business/research/ENUMERATION_METHODS.md` §334 (WO-322, running the same family of WOs in parallel, on a different population) independently hit the identical gap through `GenericFallbackAssetFinder`'s own YouTube-id regex scan — Plainfield town, VT, 1,705 real caption segments, also withheld rather than ingested. Two independent WOs hitting this the same day on two different population groups is a real, repeatable gap, not population-specific bad luck.
+
+- **[NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event id from a bare fragment-only SuiteOne URL (`https://floydcoin.suiteonemedia.com/#home`), so a real, name-and-state-confirmed SuiteOne tenant fails to resolve at all.**
+  - **Issue**: found live 2026-09-12 (WO-325), Floyd County, IN (`us:county:18043`). The confirmed candidate URL is the tenant's bare homepage with only a `#home` hash fragment, which SuiteOne's own client-side routing turns into the real event listing after a page render — but `suiteone.py`'s `resolve()` raised `ValueError: Could not find a SuiteOne tenant/event id in URL` before any fetch, since the fragment carries no id the adapter's URL parser recognizes.
+  - **Impact**: one real, confirmed SuiteOne tenant (and plausibly others reached the same way — a bare tenant homepage rather than a deep link) can't be resolved at all until this is fixed.
+  - **Next action**: check whether SuiteOne's own site structure exposes a listing/event API at a fixed path off the tenant root (the way other vendor adapters in this repo derive a listing URL from just the tenant hostname) that `resolve()` could fall back to when the given URL carries no parseable id.
+  - **Constraint**: verify the fix against `floydcoin.suiteonemedia.com` itself before trusting it on another SuiteOne tenant — this repo's "test against a real URL first" rule, and this is currently the only SuiteOne sample in hand for this specific bare-homepage shape.
+  - **History**: `BACKLOG_DONE.md`'s WO-325 entry.
 
 - **[NEEDS-AUDIT] `app/platforms/townhallstreams.py`'s `resolve()` has no listing-walk drill-down for a multi-meeting page, unlike CivicPlus's AgendaCenter.**
   - **Issue**: found live 2026-09-12 (WO-321). York County, ME's confirmed Town Hall Streams page (`https://townhallstreams.com/towns/york_meetings`) is a listing of that town's meetings, not one specific meeting — `resolve()` returned `video_url=None`/`title=None`/`agenda_link=False` for it, meaning it never picked a specific meeting to check. `civicplus.py`'s own `resolve()` already checks the 5 most recent postings on an AgendaCenter listing page for real video before giving up (`NoVideoCandidateFound`); `townhallstreams.py` has no equivalent.
