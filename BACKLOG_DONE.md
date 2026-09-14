@@ -1,5 +1,65 @@
 # Backlog — done
 
+## WO-368: walked all 20 "video, not a meeting" hubs from WO-361/WO-364 one hub deeper — every one had only the one video already found; all 20 moved to off-mission [Done 2026-09-14]
+
+**Why this ran.** Ryan asked, after seeing WO-364's results: "For the 10
+videos that were not a meeting in wo 364, can you check another video or
+two at each of those hubs, to make sure we get at least one real meeting
+from the hub? If you exhaust all the videos in the hub, tag that row as
+off mission." Breadth widened this to all 20 rows from WO-361 and WO-364
+combined, since WO-361's own half had never had this second look either.
+
+**What was checked.** For each of the 20 governments, this re-opened the
+same hub WO-361/WO-364 had already found and asked it for up to 2 more
+videos, past the one already read and rejected — 3 videos seen in total,
+or stop early if the hub runs out first.
+
+| Result | Count of 20 | What it means |
+|---|---|---|
+| Hub had only the one video already found | 20 | No second or third video existed to check — the government's homepage carries exactly one video link, and it was already the wrong one |
+| A new real meeting found | 0 | — |
+| A new off-mission video found | 0 | — |
+
+**Result.** All 20 hubs turned out to be a single decorative or
+promotional video sitting directly on the government's own homepage —
+a "Welcome to our town" clip, a tourism reel, a contractor's project
+video — with nothing else behind it. Asking the hub for more did not
+turn up anything new on any of the 20; the search was genuinely
+exhausted, not just short. 19 of the 20 rows moved from
+`video-without-meeting` to `off-mission` in `jurisdiction_coverage.csv`.
+
+**Caution.** The 20th, Mount Joy township PA, was left alone on
+purpose. WO-364 had already found that its one video belongs to
+Lancaster County's Election Board, not the township — a different real
+government owns it (recorded again in `research/wo368_owner_bodies.csv`
+for a later mint pass). Its research row already carries the more
+accurate `no-platform-link-found` from WO-364, so this WO did not
+overwrite it with `off-mission`. One small limitation found while
+checking: the tool that resolved this hub returns as soon as it finds
+one working video, so it never tried the county page's *other*
+agenda categories for a Mount Joy video of its own. That's a real gap,
+noted in `BACKLOG.md`'s existing `run_access_ladder()` decorative-hit
+entry (folded WO-368's evidence in rather than opening a new one), not
+something this WO fixed.
+
+**Recommendation.** No further action needed on these 20 — the search
+was real and thorough, and the result was checked, not assumed. The
+`run_access_ladder()` fix `BACKLOG.md` already tracks (climb past a
+decorative hit via a different path off the homepage, not a deeper walk
+of the decorative video itself) is the only way any of these
+governments would gain a real video later.
+
+**Deploy status.** Research-file only — `jurisdiction_coverage.csv`,
+`BACKLOG.md`. Nothing here touches resolver or Archive code, so nothing
+needs a deploy.
+
+Files: `scripts/wo368_walk.py` (rtr-deeplink); `research/wo368_walk.csv`,
+`wo368_handread.csv` (empty — no new candidate ever reached hand-read),
+`wo368_apply_to_jc.py`, `wo368_jc_applied_gov_ids.txt`,
+`wo368_jc_off_mission.csv`, `wo368_jc_skipped_kind_a.csv`,
+`wo368_owner_bodies.csv`, `wo368_methods_section.md` (ENUMERATION_
+METHODS.md section number assigned by Breadth at append time).
+
 ## `jurisdiction_coverage.csv` mojibake `city_name` rows — 23 repaired at source (Doña Ana County NM and 22 more) [Done 2026-09-14]
 
 Found by WO-366 (2026-09-14) on `us:county:35013`: `city_name` stored as
