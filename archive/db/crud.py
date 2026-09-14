@@ -5647,6 +5647,19 @@ COVERAGE_EXCLUSIONS: dict[str, str] = {
         "in 'What about Platform XYZ?' prose and recoverable in the "
         "'Detail page' column via _wrapper_detail_label()."
     ),
+    "boarddocs": (
+        "Same shape as primegov, WO-365 (2026-09-14): boarddocs.py calls "
+        "YouTubeAssetFinder.resolve_video_id()/VimeoAssetFinder."
+        "resolve_video_id() directly (not resolve_via_platform()), so a "
+        "pushable row's MeetingPage.platform ends up 'youtube'/'vimeo', "
+        "never 'boarddocs' -- its own label only ever appears on a "
+        "no-video/unmapped-service return, which is never pushed (no "
+        "segments/agenda_items/video_url). source_url IS preserved as "
+        "the original go.boarddocs.com meeting page, so "
+        "_wrapper_detail_label() still names it in the 'Detail page' "
+        "column. Named in coverage.html's 'What about Platform XYZ?' "
+        "prose."
+    ),
     "municode_meetings": (
         "Same calendar/agenda-router shape as legistar/civicplus above -- "
         "municode_meetings.py delegates via resolve_via_platform() (to "
@@ -6003,6 +6016,11 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
         return "PrimeGov"
     if netloc.endswith("civicweb.net"):
         return "CivicWeb"
+    if netloc == "go.boarddocs.com":
+        # WO-365, 2026-09-14 -- same primegov.com shape just above:
+        # boarddocs.py preserves the original go.boarddocs.com meeting
+        # URL as source_url on every delegated (YouTube/Vimeo) result.
+        return "BoardDocs"
     return None
 
 

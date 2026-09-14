@@ -1,5 +1,115 @@
 # Backlog — done
 
+## WO-365: BoardDocs video adapter — built, video-only, on-demand, never a scan [Done 2026-09-14]
+
+**Why this ran.** BoardDocs is mostly a school-board agenda tool with no
+video (969 of 972 research rows that mention it are school districts).
+Ryan asked for an adapter anyway after a real exception turned up:
+Tallahassee, FL runs its City Commission on BoardDocs with real
+per-meeting YouTube video, exposed through a fixed, unauthenticated
+mechanism that `docs/investigations/boarddocs_video_adapter.md` had
+already specced from live data the day before. This WO built the
+adapter from that spec, tested it against the same 2 real tenants plus
+4 negative controls Ryan named, and shipped it.
+
+**What was built.** `app/platforms/boarddocs.py`: reads one tenant's
+video-service flag, its meeting list, then POSTs for one meeting's video
+id at a time (newest first, capped at 40) until it finds one with video
+— then hands the id to `YouTubeAssetFinder`/`VimeoAssetFinder` for
+playback and captions, the same delegation shape PrimeGov already uses
+(the original BoardDocs meeting page stays `source_url`). The agenda
+outline's real per-item timestamps (`data-videohours/minutes/seconds`)
+turned out to be richer than the spec expected — the spec said "no
+times"; a real fixture proved that wrong, and the adapter uses the real
+offsets. Two real identity pins were added (path-scoped, since
+`go.boarddocs.com` is one host shared by hundreds of unrelated tenants):
+Tallahassee city, FL and Colorado City Unified School District, AZ.
+
+**The house rule, respected throughout.** `go.boarddocs.com/robots.txt`
+disallows every automated agent with a 1000-second crawl delay. This
+adapter reads one tenant, one meeting, on demand — never a sweep — and
+that rule is written into the adapter's own module docstring so it
+can't be missed later. Building and testing it stayed inside the 2 real
+tenants + 4 negative controls Ryan named, one request at a time, at
+least 1.5 seconds apart — 21 live requests total, logged below.
+
+| Tenant | Flag | Meetings checked | With a video id | Video service | Resolver result |
+|---|---|---|---|---|---|
+| Tallahassee city, FL (`fla/talgov`) | 1 (YouTube) | 1 of 967 (newest, 2026-09-09) | 1 | YouTube | Real video (`IwHZSEpgwDw`), 27 real timed agenda items, jurisdiction "City of Tallahassee, FL" |
+| Colorado City Unified SD, AZ (`az/ccschools`) | 1 (YouTube) | 3 of 92 checked (newest 2 + the 2025-06-09 meeting) | 1 | YouTube | Real video (`jbnk6tAyhlw`), 10 real timed agenda items, jurisdiction "Colorado City Unified School District, AZ" |
+| Austin ISD, TX (`tx/austinisd`) | 2 (Vimeo) | 1 of 780 (newest) | 0 | — | Clean "no video," not an error |
+| Northside ISD, TX (`tx/nisd`) | 1 (YouTube) | 1 of 260 (newest) | 0 | — | Clean "no video," not an error |
+| St. Charles R-VI SD, MO (`mo/cscsdr6`) | 1 (YouTube) | 1 of 398 (newest) | 0 | — | Clean "no video," not an error |
+| Vacaville USD, CA (`ca/vusdca`) | 1 (YouTube) | 1 of 151 (newest) | 0 | — | Clean "no video," not an error |
+
+Video split: captions available, page live now: 0 (nothing was ingested
+this WO — see "What's undone" below). Video, no captions, queued: 0.
+Both real tenants' video is a delegated YouTube video, which carries its
+own real YouTube captions once ingested — not a video-without-captions
+case.
+
+| Outcome | Count of 6 tenants tested | What it means |
+|---|---|---|
+| Real video found, resolver confirms it | 2 | Tallahassee FL and Colorado City AZ schools — both delegate cleanly to YouTube with real title/date/agenda from BoardDocs' own data |
+| Clean "no video," not an error | 4 | The 4 negative controls Ryan named — flag on, zero video ids on the newest meetings checked, adapter degrades honestly |
+| Hand-check wrong / Kind A owner-body mismatch | 0 | not applicable — no video was hand-checked against the wrong government this WO |
+| YouTube block hit | 0 | none — every YouTube fetch happened on delegation only, verified via fixture-backed tests with a monkeypatched `YouTubeAssetFinder._extract_info`, never a real `youtube.com` call from this machine |
+| Bad Archive pages created | 0 | nothing was ingested this WO |
+
+**Two real, confirmed findings beyond the original spec.** (1) A
+mailing address sometimes sits where the organisation name should be —
+confirmed on 2 of 3 real tenants (Colorado City schools' `SiteTitle2`
+is a PO Box address; Austin ISD's is a street address) — the adapter
+falls back to the `<title>` tag (with its "BoardDocs® {tier}" suffix
+stripped) when that happens. (2) The research file's own stored example
+URL for Tallahassee (`research/jurisdiction_coverage.csv`) carries an
+agenda-ITEM id, not the meeting's own id — doesn't affect this adapter
+(it derives its own meeting URL from the real API), but is worth knowing
+if another script ever trusts that stored URL. Both are written up in
+detail in `docs/investigations/boarddocs_video_adapter.md`'s new "Built
+(WO-365)" section.
+
+**Tests.** `tests/test_boarddocs.py` — 25 tests, all against real
+HTML/JSON fixtures captured live from the 2 real tenants plus Austin ISD
+(`tests/fixtures/boarddocs/`), covering URL detection, the agenda-item
+timestamp parser, the address-vs-org-name fallback, full `resolve()` for
+both the tenant-level and meeting-level URL shapes, the multi-candidate
+newest-first walk, and the clean "no video"/"no video service" paths.
+All five CI gates pass (`ruff check`, `ruff format --check`, `pytest` —
+3,889 passed, `alembic check` not needed since no model changed, the
+BACKLOG TOC script).
+
+**Caution.** No BoardDocs meeting was ingested into the Archive this
+WO — Ryan's own hand-check-before-ingest rule applies, and this WO's
+scope was the adapter and its tests, not a push. The two real meetings
+found (Tallahassee's 2026-09-09 City Commission meeting, Colorado
+City's 2025-06-09 Regular Meeting) are ready to hand-check and ingest
+in a follow-up.
+
+**Recommendation.** Deploy this PR (it touches `app/` and
+`archive/db/crud.py`), then hand-check and ingest Tallahassee's newest
+meeting as the first real BoardDocs page — its size (205,000 residents)
+makes it worth doing before the older Colorado City one.
+
+**What needs a deploy.** `app/platforms/boarddocs.py` and its
+registration, the `tenant_overrides.csv`/`MULTI_GOV_HOSTS` pins, and the
+`archive/db/crud.py` coverage-registry entries are all on `main` after
+merge but not live until the next deploy of the resolver and Archive
+services (`render.yaml`'s `autoDeploy: false`).
+
+**What's undone.** No page was ingested (see Caution above) — the two
+real meeting URLs are named in the table above, ready for a hand-check
+pass. `scripts/adapter_canary.py` gained a `"boarddocs"` entry pointed
+at Tallahassee's 2026-09-09 meeting; its first live run happens on the
+next scheduled canary job. The residual `jurisdiction_coverage.csv`
+stale-id finding above is recorded, not fixed (read-only per this WO's
+scope).
+
+**Bold takeaway: the adapter is built, tested, and respects the
+robots.txt crawl-delay rule end to end — two real governments (one of
+them a 205,000-person city) are ready to ingest as soon as someone
+hand-checks the meetings named above and the next deploy ships.**
+
 ## WO-363: queue Excelsior MN and Brookline MA back in — WO-358's duration-probe rejects reversed by Ryan [Done 2026-09-14]
 
 **Why this ran.** WO-358 (2026-09-14, the entry right below this one)

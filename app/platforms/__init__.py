@@ -11,6 +11,7 @@ def register_all_finders() -> None:
     from .aurora import AuroraTvAssetFinder
     from .az_legislature import ArizonaLegislatureAssetFinder
     from .base import register
+    from .boarddocs import BoardDocsAssetFinder
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
     from .castus import CastusAssetFinder
@@ -89,6 +90,7 @@ def register_all_finders() -> None:
     register(WistiaAssetFinder())
     register(BoxcastAssetFinder())
     register(DirectFileAssetFinder())
+    register(BoardDocsAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

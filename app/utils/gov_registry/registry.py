@@ -270,6 +270,14 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # Pittsford video needs its own per-player pin, same as every
         # other real government already listed for this host.
         "videoplayer.telvue.com",
+        # BoardDocs (Diligent) -- every tenant lives on this one shared
+        # host, the government encoded as a `/{st}/{slug}/Board.nsf/...`
+        # path segment (WO-365, 2026-09-14; see app/platforms/boarddocs.py
+        # for the full mechanism). Same shape as ClerkBase/Castus above:
+        # a whole-host pin would key every other tenant's meetings to
+        # whichever government got pinned first, so a row here must
+        # `match=` a specific `/{st}/{slug}/` path.
+        "go.boarddocs.com",
     }
 )
 
