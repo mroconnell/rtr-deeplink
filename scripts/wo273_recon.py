@@ -26,13 +26,35 @@ Per government this script records, and does NOT classify:
     primegov.com (the other four named vendors wildcard their own DNS --
     WO-268's confirmed, live-tested finding; see
     docs/investigations/passive_platform_discovery_pilot.md).
-  - Wayback CDX for the domain itself: TWO bounded queries -- a broad one
-    (`url=<domain>/*`, `collapse=urlkey`, `filter=statuscode:200`,
-    `filter=mimetype:text/html`, `from=` 3 years back, `limit=2000`) and
-    a narrower one restricted to a meeting/agenda path regex, which is
-    the one phase 2 actually scores from (so a big city's unrelated news
-    archive doesn't crowd out the meeting paths). The narrow query pages
-    (`page=`) up to 3 times only when it hits its own row limit.
+  - Wayback CDX for the domain itself (WO-366 redesign, 2026-09-14 --
+    Ryan's own read of the run numbers: the old broad query was counted
+    and discarded, only a run-summary distribution line ever used
+    `broad_row_count`, and WO-337/WO-338 got an archive answer for only
+    20/1,951 and 16/2,825 governments the rest of the time): ONE bounded
+    query per government, `url=<domain>&matchType=domain` (not
+    `url=<domain>/*` -- `matchType=domain` also covers subdomains, which
+    is where real content sometimes lives and a path-prefix match can
+    never see it: Sedgwick County KS's 115 OnBase meeting pages are all
+    on `imaging.sedgwickcounty.org`, a subdomain, not a path under
+    `sedgwickcounty.org`), `collapse=urlkey`, `filter=statuscode:200`,
+    `filter=mimetype:text/html`, `from=` 3 years back, `limit=2000`. Every
+    URL this returns is scored client-side with the same `hub_score()`/
+    `meeting_score()` phase 2 uses on sitemap URLs (moved into this module
+    so both phases import one copy), and only the top `WAYBACK_TOP_N`
+    scored URLs are kept -- not the first N in whatever order CDX
+    returned them, which was the old `narrow_urls[:60]` truncation's real
+    flaw. The narrow meeting/agenda-path-regex query (below) is now a
+    FALLBACK, run only when the single query comes back truncated at its
+    own `limit=2000` row cap -- its URLs get folded into the same
+    scoring/top-N step, not kept separately. `cdx_get()` retries each
+    call up to 3 times (2s/8s backoff between attempts, 20s timeout per
+    attempt) before giving up, and `cmd_sweep()` runs a second pass at the
+    end of its chunk over every government the archive never answered for
+    in the first pass, instead of leaving the rest of a run marked
+    unhealthy after early failures (that skip-after-failure pattern is
+    what produced WO-337/338's low answer rates in the first place).
+    `wayback_index.reachable` / `cdx_truncated` are still recorded per
+    government so a run summary reports the real answer rate.
   - Common Crawl: probed once at the start of the whole run; the entire
     run skips it if that first probe fails (same pattern WO-268 used
     after finding a real, live Common Crawl outage that session).
@@ -130,10 +152,13 @@ MAX_SUB_SITEMAPS = 6
 MAX_FLAGGED_RECORDED = 60
 STALE_DAYS = 547  # ~18 months
 
-# CDX is confirmed live-degraded this session (see module docstring) --
-# short timeouts, one retry, then give up and fall through to live.
-CDX_TIMEOUT = 9
-CDX_RETRY_BACKOFF = 2
+# CDX is confirmed live-degraded (see module docstring). WO-366
+# (2026-09-14) widened the retry budget from the original 2-attempt/2s
+# version after WO-337/338 got an archive answer for only 20/1,951 and
+# 16/2,825 governments under it: 3 attempts total, 20s timeout per
+# attempt (Ryan's per-call cap), CDX_RETRY_BACKOFFS between attempts.
+CDX_TIMEOUT = 20
+CDX_RETRY_BACKOFFS = [2, 8]
 ARCHIVE_CONCURRENCY = 8
 
 # Same marker list as scripts/wo147_access_ladder_sweep.py's
@@ -294,6 +319,38 @@ MEETING_WORD_HIT = {
 KEYWORD_RE = re.compile(
     r"meeting|agenda|minutes|council|commission|board|video|stream", re.I
 )
+
+
+# --------------------------------------------------------------------------
+# Pure URL scoring (WO-366, 2026-09-14): moved here from wo273_classify.py
+# so phase 1 can score and keep the top-N Wayback CDX URLs live, not just
+# discard everything but the first 60 in CDX's own urlkey order. Phase 2
+# (wo273_classify.py) imports these two functions from here now instead of
+# keeping its own copy -- one implementation, so the two scripts can't
+# drift apart, same reasoning the HUB_WORD_LIFT/HUB_BIGRAM_LIFT/
+# MEETING_WORD_HIT tables above already used.
+# --------------------------------------------------------------------------
+
+
+def hub_score(url: str) -> float:
+    path_lower = urlparse(url).path.lower()
+    score = 0.0
+    for word, lift in HUB_WORD_LIFT.items():
+        if word in path_lower:
+            score = max(score, lift)
+    for bigram, lift in HUB_BIGRAM_LIFT.items():
+        if bigram.replace("-", "") in path_lower.replace("-", "").replace("/", ""):
+            score = max(score, lift)
+    return score
+
+
+def meeting_score(url: str) -> float:
+    path_lower = urlparse(url).path.lower()
+    score = 0.0
+    for word, hit in MEETING_WORD_HIT.items():
+        if word in path_lower:
+            score = max(score, hit)
+    return score
 
 
 def log(msg: str) -> None:
@@ -643,10 +700,13 @@ def dns_lookup(domain: str) -> dict:
 
 
 def cdx_get(url: str) -> requests.Response | None:
-    """One CDX call, short timeout, ONE retry after a short backoff, then
-    give up -- per this session's confirmed live CDX degradation (see
-    module docstring). Capped at ARCHIVE_CONCURRENCY in flight globally."""
-    for attempt in range(2):
+    """One CDX call, up to 3 attempts total (WO-366, 2026-09-14 -- widened
+    from the original 2-attempt/2s-backoff version, see CDX_TIMEOUT's own
+    comment), CDX_TIMEOUT per attempt, CDX_RETRY_BACKOFFS between
+    attempts, then give up. Capped at ARCHIVE_CONCURRENCY in flight
+    globally."""
+    attempts = len(CDX_RETRY_BACKOFFS) + 1
+    for attempt in range(attempts):
         with _ARCHIVE_SEMA:
             try:
                 resp = requests.get(url, headers=HEADERS, timeout=CDX_TIMEOUT)
@@ -654,8 +714,8 @@ def cdx_get(url: str) -> requests.Response | None:
                     return resp
             except Exception:  # noqa: BLE001
                 pass
-        if attempt == 0:
-            time.sleep(CDX_RETRY_BACKOFF)
+        if attempt < len(CDX_RETRY_BACKOFFS):
+            time.sleep(CDX_RETRY_BACKOFFS[attempt])
     return None
 
 
@@ -938,28 +998,110 @@ def fetch_live_sitemap(domain: str, robots_info: dict) -> dict:
 # pagination" note)
 # --------------------------------------------------------------------------
 
+# WO-366 (2026-09-14): widened with Ryan's three real tokens --
+# civicmedia, vod, event, stream, live, show -- on top of the original
+# set. This is now a FALLBACK query only (see fetch_wayback_domain_index
+# below), used when the single domain-wide query hits its own row cap.
+# Every new token has a real, confirmed URL behind it (see
+# tests/test_wo273_passive_discovery.py's
+# test_meeting_path_regex_matches_new_token_* cases for the exact URLs
+# and their source):
+#   civicmedia -- cityofhobart.org/CivicMedia?VID=326
+#   vod        -- cloud.castus.tv/vod/comm7tv/video/...; TelVue's own vod
+#                 CDN host is telvuevod-secure.akamaized.net (41 CDX pages
+#                 confirmed, ENUMERATION_METHODS.md)
+#   event      -- play.champds.com/atlantaga/event/1227
+#   stream     -- archive-stream.granicus.com/OnDemand/... (Granicus's CDN)
+#   live       -- youtube.com/live/{id} (Fair Oaks Ranch TX, Santa Barbara)
+#   show       -- lnktv.lincoln.ne.gov/internetchannel/show/4442 (Lincoln
+#                 NE's own self-hosted Cablecast-template page) and
+#                 pgcps.cablecast.tv/show/3178 (Cablecast's bare /show/)
+#
+# WO-366 also adds a `(?i)` case-insensitive prefix, a real correctness
+# fix found while sourcing the civicmedia example: CDX's `filter=` regex
+# runs against the "original" field, which preserves the page's real
+# capitalization (not the lowercased/SURT-normalized urlkey), and
+# Hobart, IN's real page is `/CivicMedia?VID=326` -- mixed case. A
+# case-sensitive "civicmedia" token would silently miss the exact URL
+# shape it exists to catch (confirmed live: a CDX query filtered on
+# lowercase "civicmedia" against cityofhobart.org surfaced two unrelated
+# lowercase civicmedia.xml/RSS paths, not the real mixed-case page).
+# `(?i)` is valid in both Python's re module and the CDX server's Java
+# regex engine, so this is safe for the live filter string too, not just
+# this module's own local matching.
 MEETING_PATH_REGEX = (
-    r".*(agenda|minutes|meeting|council|commission|board|video|clip|player|watch).*"
+    r"(?i).*(agenda|minutes|meeting|council|commission|board|video|clip|player|watch"
+    r"|civicmedia|vod|event|stream|live|show).*"
 )
+
+# WO-366 (2026-09-14): picked from the real score distribution on a
+# 10-government sample (research/wo366_methods_section.md Table 2).
+# Keeping the old default of 60 genuinely under-counted on two of the ten
+# real domains sampled: LaSalle, IL (1,054 URLs seen, 75 score >0 -- the
+# score at rank 60 was still 7.0, meaning 15 real candidates were being
+# cut) and Grand Isle County, VT (728 URLs seen, 212 score >0 -- the
+# score at rank 150 was STILL 10.0, meaning the true candidate tail runs
+# well past 150). 200 comfortably covers LaSalle's full 75 and nearly all
+# of Grand Isle's 212 (a documented, accepted gap on that one real
+# outlier, not silently assumed complete) while staying a bounded
+# constant rather than growing open-ended for one heavy-tailed domain.
+# Replaces the old flat narrow_urls[:MAX_FLAGGED_RECORDED] (60) trunca-
+# tion, which kept whichever 60 URLs CDX's own urlkey order put first,
+# not the most relevant 60 -- see fetch_wayback_domain_index() below.
+WAYBACK_TOP_N = 200
+
+
+def _score_and_keep_top(urls: list[str], top_n: int) -> list[str]:
+    """Score every URL with hub_score()/meeting_score() (WO-366) and keep
+    the top_n by combined relevance, instead of the first N in whatever
+    order CDX returned them."""
+    scored = [(max(hub_score(u), meeting_score(u)), u) for u in urls]
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return [u for _, u in scored[:top_n]]
 
 
 def fetch_wayback_domain_index(domain: str) -> dict:
+    """WO-366 (2026-09-14) redesign: ONE domain-wide CDX query
+    (matchType=domain, so subdomains count -- see module docstring),
+    scored client-side and trimmed to the top WAYBACK_TOP_N URLs. The old
+    meeting/agenda-path-regex query only runs as a FALLBACK, when the
+    single query above comes back truncated at its own row cap (meaning
+    real meeting URLs could have been crowded out before CDX ever got to
+    them).
+
+    KNOWN, MEASURED LIMIT (research/wo366_methods_section.md): CDX's
+    urlkey sort puts every bare-domain URL before ANY subdomain URL, so
+    on a domain whose OWN url count already exceeds the 2,000-row cap
+    (confirmed live on Sedgwick County KS: 538k population, its own pages
+    alone fill all 2,000 rows), the primary query alone still won't reach
+    a subdomain like imaging.sedgwickcounty.org even though matchType=
+    domain makes it structurally reachable now (confirmed separately: a
+    direct query scoped to that subdomain returns 200+ real captures,
+    including real meeting agenda packets -- the content is indexed, it's
+    a row-budget/ordering problem, not an absence). The fallback query
+    exists to rescue exactly this case, but is itself vulnerable to the
+    same CDX degradation this module already documents, and a regex
+    filter combined with matchType=domain on a large site was confirmed
+    live, repeatedly, to time out for Sedgwick specifically. Not solved
+    by this WO -- logged in BACKLOG.md as a live gap (a DNS-enumerated
+    per-subdomain query, or a per-subdomain row budget, would be the next
+    step)."""
     out = {
         "reachable": None,
         "broad_row_count": 0,
         "narrow_row_count": 0,
-        "narrow_urls": [],
+        "top_urls": [],
         "cdx_truncated": False,
         "error": "",
     }
     from_date = time.strftime("%Y%m%d", time.gmtime(time.time() - 3 * 365 * 86400))
-    broad_url = (
+    domain_url = (
         "https://web.archive.org/cdx/search/cdx"
-        f"?url={domain}/*&collapse=urlkey&filter=statuscode:200"
+        f"?url={domain}&matchType=domain&collapse=urlkey&filter=statuscode:200"
         f"&filter=mimetype:text/html&from={from_date}&fl=original,timestamp"
         "&limit=2000&output=json"
     )
-    resp = cdx_get(broad_url)
+    resp = cdx_get(domain_url)
     if resp is None:
         out["reachable"] = False
         out["error"] = "cdx-unavailable"
@@ -970,32 +1112,41 @@ def fetch_wayback_domain_index(domain: str) -> dict:
     except Exception:  # noqa: BLE001
         rows = []
     out["broad_row_count"] = len(rows)
+    all_urls = [r[0] for r in rows if r]
+    seen = set(all_urls)
+    truncated = len(rows) >= 2000
+    out["cdx_truncated"] = truncated
 
-    narrow_base = (
-        "https://web.archive.org/cdx/search/cdx"
-        f"?url={domain}/*&collapse=urlkey&filter=statuscode:200"
-        f"&filter=mimetype:text/html&from={from_date}"
-        f"&filter=original:{MEETING_PATH_REGEX}"
-        "&fl=original,timestamp&limit=2000&output=json"
-    )
-    narrow_urls = []
-    for page in range(3):
-        page_url = narrow_base + (f"&page={page}" if page else "")
-        resp = cdx_get(page_url)
-        if resp is None:
-            break
-        try:
-            rows = json.loads(resp.text)[1:]
-        except Exception:  # noqa: BLE001
-            rows = []
-        if not rows:
-            break
-        narrow_urls.extend(r[0] for r in rows if r)
-        if len(rows) < 2000:
-            break
-        out["cdx_truncated"] = True
-    out["narrow_row_count"] = len(narrow_urls)
-    out["narrow_urls"] = narrow_urls[:MAX_FLAGGED_RECORDED]
+    if truncated:
+        narrow_base = (
+            "https://web.archive.org/cdx/search/cdx"
+            f"?url={domain}&matchType=domain&collapse=urlkey&filter=statuscode:200"
+            f"&filter=mimetype:text/html&from={from_date}"
+            f"&filter=original:{MEETING_PATH_REGEX}"
+            "&fl=original,timestamp&limit=2000&output=json"
+        )
+        narrow_urls = []
+        for page in range(3):
+            page_url = narrow_base + (f"&page={page}" if page else "")
+            resp = cdx_get(page_url)
+            if resp is None:
+                break
+            try:
+                rows = json.loads(resp.text)[1:]
+            except Exception:  # noqa: BLE001
+                rows = []
+            if not rows:
+                break
+            narrow_urls.extend(r[0] for r in rows if r)
+            if len(rows) < 2000:
+                break
+        out["narrow_row_count"] = len(narrow_urls)
+        for u in narrow_urls:
+            if u not in seen:
+                seen.add(u)
+                all_urls.append(u)
+
+    out["top_urls"] = _score_and_keep_top(all_urls, WAYBACK_TOP_N)
     return out
 
 
@@ -1160,7 +1311,7 @@ def process_government(row: dict) -> dict:
                 "reachable": wayback_index["reachable"],
                 "broad_row_count": wayback_index["broad_row_count"],
                 "narrow_row_count": wayback_index["narrow_row_count"],
-                "narrow_urls": wayback_index["narrow_urls"],
+                "top_urls": wayback_index["top_urls"],
                 "cdx_truncated": wayback_index["cdx_truncated"],
                 "error": wayback_index["error"],
             },
@@ -1216,6 +1367,7 @@ def cmd_sweep(limit: int, concurrency: int) -> None:
     start = time.monotonic()
     completed = 0
     errors = 0
+    chunk_records: dict[str, dict] = {}  # domain -> record, this chunk only
     with (
         open(RECON_JSONL, "a", encoding="utf-8") as out,
         ThreadPoolExecutor(max_workers=concurrency) as pool,
@@ -1235,6 +1387,7 @@ def cmd_sweep(limit: int, concurrency: int) -> None:
                     "error": str(e)[:300],
                     "sitemap_source": "error",
                 }
+            chunk_records[domain] = record
             with _write_lock:
                 out.write(json.dumps(record) + "\n")
                 out.flush()
@@ -1249,11 +1402,56 @@ def cmd_sweep(limit: int, concurrency: int) -> None:
 
     elapsed = time.monotonic() - start
     rate = len(to_process) / (elapsed / 60) if elapsed > 0 else 0
+    answered = sum(
+        1
+        for rec in chunk_records.values()
+        if (rec.get("wayback_index") or {}).get("reachable")
+    )
     log(
         f"chunk done: {len(to_process)} processed in {elapsed:.0f}s "
         f"({rate:.2f} governments/min), {errors} errors, "
-        f"{len(remaining) - len(to_process)} remain unprocessed."
+        f"{len(remaining) - len(to_process)} remain unprocessed. "
+        f"archive answered for {answered}/{len(to_process)} before second pass."
     )
+
+    # WO-366 (2026-09-14): second pass over every government in THIS chunk
+    # the archive never answered for, instead of leaving them unanswered
+    # for the rest of the run -- the old skip-after-early-failure pattern
+    # is what produced WO-337/338's 20/1,951 and 16/2,825 answer rates.
+    # Only re-runs the archive step (fetch_wayback_domain_index), not the
+    # whole per-government pipeline (sitemap/DNS/common-crawl already
+    # succeeded or failed independently and don't need refetching).
+    unanswered_domains = [
+        domain
+        for domain, rec in chunk_records.items()
+        if not (rec.get("wayback_index") or {}).get("reachable")
+    ]
+    if unanswered_domains:
+        log(f"second pass: retrying archive step for {len(unanswered_domains)} domains")
+        recovered = 0
+        with open(RECON_JSONL, "a", encoding="utf-8") as out:
+            for domain in unanswered_domains:
+                wi = fetch_wayback_domain_index(domain)
+                if not wi["reachable"]:
+                    continue
+                rec = dict(chunk_records[domain])
+                rec["wayback_index"] = {
+                    "reachable": wi["reachable"],
+                    "broad_row_count": wi["broad_row_count"],
+                    "narrow_row_count": wi["narrow_row_count"],
+                    "top_urls": wi["top_urls"],
+                    "cdx_truncated": wi["cdx_truncated"],
+                    "error": wi["error"],
+                }
+                rec["second_pass_recovered"] = True
+                rec["processed_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                out.write(json.dumps(rec) + "\n")
+                out.flush()
+                recovered += 1
+        log(
+            f"second pass done: {recovered}/{len(unanswered_domains)} recovered "
+            f"(archive now answered for {answered + recovered}/{len(to_process)})"
+        )
 
 
 # --------------------------------------------------------------------------
@@ -1262,19 +1460,29 @@ def cmd_sweep(limit: int, concurrency: int) -> None:
 
 
 def load_all_records() -> list:
-    records = []
+    """WO-366 (2026-09-14): dedups by domain, LAST line wins. Needed now
+    that a second pass (cmd_sweep) can append a fresh, updated record for
+    a domain already written earlier in the same file -- append-only on
+    disk (kill-safe), but a report/reclassification should only ever see
+    each domain's most current record."""
+    by_domain: dict[str, dict] = {}
+    order: list[str] = []
     if not RECON_JSONL.exists():
-        return records
+        return []
     with open(RECON_JSONL, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             try:
-                records.append(json.loads(line))
+                rec = json.loads(line)
             except Exception:  # noqa: BLE001
                 continue
-    return records
+            domain = rec.get("domain")
+            if domain not in by_domain:
+                order.append(domain)
+            by_domain[domain] = rec
+    return [by_domain[d] for d in order]
 
 
 def cmd_finalize() -> None:

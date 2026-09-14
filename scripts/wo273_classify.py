@@ -2,8 +2,13 @@
 offline classification over phase 1's raw recon file.
 
 Reads `research/wo273_recon.jsonl` (written by `wo273_recon.py`) and scores
-every URL phase 1 saw -- sitemap URLs, the Wayback CDX narrow-query URLs,
-Common Crawl URLs, and DNS evidence -- with NO network access, so the
+every URL phase 1 saw -- sitemap URLs, the Wayback CDX top-N scored URLs
+(`top_urls`, WO-366, 2026-09-14 -- phase 1 already scores and keeps the
+best-scored N itself now, rather than handing phase 2 the first N in
+CDX's own urlkey order; `hub_score()`/`meeting_score()` below are
+imported from `wo273_recon.py`, not redefined here, so phase 1's live
+top-N selection and phase 2's offline reclassification can never
+disagree), Common Crawl URLs, and DNS evidence -- with NO network access, so the
 scoring rules can be rerun and improved without refetching anything (this
 is the whole point of splitting phase 1/phase 2 per Ryan's 2026-09-12
 design). Writes `research/wo273_classified.csv`, one row per government:
@@ -68,11 +73,10 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wo273_recon import (  # noqa: E402
-    HUB_BIGRAM_LIFT,
-    HUB_WORD_LIFT,
-    MEETING_WORD_HIT,
     _PATH_SHAPE_PLATFORMS,
     _PLATFORM_ALIASES,
+    hub_score,
+    meeting_score,
 )
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
@@ -101,32 +105,14 @@ def _tokenize_path(url: str) -> list:
     return [seg for seg in path.replace("-", " ").replace("_", " ").split("/") if seg]
 
 
-def hub_score(url: str) -> float:
-    path_lower = urlparse(url).path.lower()
-    score = 0.0
-    for word, lift in HUB_WORD_LIFT.items():
-        if word in path_lower:
-            score = max(score, lift)
-    for bigram, lift in HUB_BIGRAM_LIFT.items():
-        if bigram.replace("-", "") in path_lower.replace("-", "").replace("/", ""):
-            score = max(score, lift)
-    return score
-
-
-def meeting_score(url: str) -> float:
-    path_lower = urlparse(url).path.lower()
-    score = 0.0
-    for word, hit in MEETING_WORD_HIT.items():
-        if word in path_lower:
-            score = max(score, hit)
-    return score
-
-
 def all_urls_from_record(rec: dict) -> list:
     """Every URL phase 1 saw for this government, from every source it
     recorded -- deduplicated, order preserved (sitemap first, since it's
-    the government's own stated navigation; then the Wayback narrow
-    index; then Common Crawl)."""
+    the government's own stated navigation; then the Wayback CDX top-N
+    scored URLs -- `top_urls`, WO-366's rename of the old `narrow_urls`
+    field now that phase 1 already scores and keeps the best N itself
+    rather than handing phase 2 the first N in CDX's own urlkey order;
+    then Common Crawl)."""
     urls = []
     seen = set()
 
@@ -137,7 +123,7 @@ def all_urls_from_record(rec: dict) -> list:
                 urls.append(u)
 
     add_many(rec.get("sitemap_urls"))
-    add_many((rec.get("wayback_index") or {}).get("narrow_urls"))
+    add_many((rec.get("wayback_index") or {}).get("top_urls"))
     add_many((rec.get("common_crawl") or {}).get("urls"))
     return urls
 

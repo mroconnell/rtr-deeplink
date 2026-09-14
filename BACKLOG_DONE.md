@@ -344,6 +344,119 @@ wo364_methods_section.md` (already appended to `ENUMERATION_METHODS.md`
 as §365 by this session — the conductor's commit should cover both
 files together).
 
+## WO-366: widen the passive recon's CDX queries, then a redesign, plus a 50-government reverse-query pilot [Done 2026-09-14]
+
+**Why this ran.** The passive discovery pipeline's recon step
+(`scripts/wo273_recon.py`) asks the Wayback Machine (a public archive of
+old web pages) for a government's own archived pages, then looks through
+them for a meeting-video platform. Ryan asked for three widenings to
+that step. Partway through, the conductor relayed a bigger change from
+Ryan after he read the real run numbers: two recent runs (WO-337,
+WO-338) only got an answer back from the archive for 20 of 1,951 and 16
+of 2,825 governments. He asked for the step to be rebuilt, not just
+widened. The third ask — try a *reverse* search, asking a vendor's own
+site for a government's name instead of asking the government's own
+site for the vendor — stayed as first asked, as a 50-government test
+run.
+
+**Part 1: the archive step, rebuilt.**
+
+| Change | Before | After |
+|---|---|---|
+| What is asked for | the government's own web address, path-matched only | the government's own web address AND its subdomains |
+| Which pages are kept | the first 60 pages, in whatever order the archive listed them | the 200 pages that score highest for looking like a real meeting page |
+| Retries on a failed request | 1 retry, 2 seconds later, 9-second time limit | 3 tries total, 2 and 8 seconds apart, 20-second time limit each |
+| A government the archive never answers for | left unanswered for the rest of the run | tried again once more at the end of the run |
+
+The 200-page number came from checking real numbers, not a guess: on a
+10-government sample, keeping only 60 cut off real candidate pages on 2
+of the 10 — one government (LaSalle, IL) had 75 real candidate pages,
+another (Grand Isle County, VT) had 212. 200 catches nearly all of both
+without growing without limit for one unusual case.
+
+**Table — the 10-government sample, before vs. after the retry change:**
+
+| Measure | Count of 10 |
+|---|---|
+| Archive answered, old 1-try method | 7 |
+| Archive answered, new 3-try method | 10 |
+| Archive answered, after the extra end-of-run retry | 10 (not needed — the 3-try method alone reached all 10) |
+
+**The subdomain fix is real but not complete on its own.** Sedgwick
+County, KS was the motivating example: 115 of its real meeting pages
+live on a *subdomain* (`imaging.sedgwickcounty.org`), which the old
+method could never see at all — that's now fixed and checked. But
+Sedgwick's own main site alone has more than 2,000 archived pages, which
+is the most the archive will hand back in one request, and the archive
+lists the main site's own pages before any subdomain's pages. So for a
+government this size, the subdomain pages still never get reached in
+practice. This residual gap is filed as its own `BACKLOG.md` entry.
+
+**Six new words were added to the search that decides which archived
+pages look like a real meeting page**: civicmedia, vod, event, stream,
+live, show. Each one has one real, already-confirmed page behind it in
+this repo (a full table is in `research/wo366_methods_section.md` §366).
+One real bug was caught building this: the archive's search is
+case-sensitive, and the real CivicMedia example page is spelled with
+capital letters (`/CivicMedia?VID=326`) — a lowercase-only search would
+have missed the exact page it was built to catch. Fixed by making the
+search case-blind.
+
+**Part 2: the 50-government reverse-search test.** For 50 governments
+with no known video platform, the test asked each of 10 common vendor
+sites (Granicus, CivicPlus, Legistar, CivicClerk, eScribe, iQM2,
+Cablecast, Town Hall Streams, Viebit, CivicWeb) directly for pages
+containing that government's name, instead of asking the government's
+own site.
+
+| Result | Count of 50 |
+|---|---|
+| A real meeting page found for that government | 0 |
+| A real page found, but for a different government | 0 |
+| A vendor answered and found nothing | 2 |
+| No vendor ever answered | 48 |
+
+**This result says more about the archive's search tonight than about
+the reverse-search idea.** The same connection failure the archive step
+above already works around got worse partway through this test — not
+just slow, but refusing the connection outright — confirmed separately
+with a plain, direct check of the same address right after. The test
+recovered and was run a second time about 15 minutes later; the exact
+same thing happened again, in the same shape (a few real answers in the
+first few governments, then a full stop). Running it a third time
+tonight would very likely just repeat this. The test only spent 33 real
+requests finding this out, not 500, because it stops asking a vendor
+once that vendor has failed 3 times in a row.
+
+**Caution.** Only 4 of the 50 governments got a real answer at all
+(2 governments answered empty by 2 vendors each), and none of those
+answers found a page. That is nowhere near enough to say whether asking
+a vendor's own site works better or worse than asking the government's
+own site — the test could not really run tonight.
+
+**Recommendation.** Rerun the reverse-search test once the archive's
+search answers a plain, filtered request reliably — the script picks up
+exactly where it left off, so this is one command, not a rebuild.
+
+**Deploy status.** Scripts only — no deploy needed and none requested.
+
+**Data-quality finding, filed separately.** One government's name is
+stored wrong in the shared research file (`jurisdiction_coverage.csv`)
+— "Doña Ana County, NM" is stored as "DoÃ±a Ana County", a text-encoding
+error. Worked around for this run using the government's own, correctly
+stored web address instead. Filed as its own `BACKLOG.md` entry, since
+there may be more rows with the same error.
+
+**Where the code lives.** `scripts/wo273_recon.py` (the rebuilt archive
+step, the widened search, the scoring functions moved here from
+`wo273_classify.py` so both scripts always agree), `scripts/
+wo273_classify.py` (now reads those scoring functions from
+`wo273_recon.py` instead of keeping its own copy), `tests/
+test_wo273_passive_discovery.py` (new tests, one real example page per
+new search word). Full detail, every real URL, and the score numbers:
+`research/wo366_methods_section.md` (rtr-business), appended to
+`research/ENUMERATION_METHODS.md` as §366.
+
 ## WO-363: queue Excelsior MN and Brookline MA back in — WO-358's duration-probe rejects reversed by Ryan [Done 2026-09-14]
 
 **Why this ran.** WO-358 (2026-09-14, the entry right below this one)
