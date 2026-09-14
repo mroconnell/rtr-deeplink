@@ -1,5 +1,152 @@
 # Backlog — done
 
+## WO-358: the CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket — the 148 governments WO-350 sized but never walked [Done 2026-09-14]
+
+**Why this ran.** WO-350 (2026-09-13) walked the "confirmed tenant"
+half of the CivicClerk/eScribe/iQM2/Town Hall Streams open-government
+population and sized, but did not walk, a second half: 148 governments
+whose registry row names one of these four platforms but carries no
+confirmed tenant URL on file. Ryan asked for this bucket to be run.
+
+**Population, re-derived.** WO-350's population-builder script was
+never committed to the repo, only described. This WO rebuilt the same
+filter from `coverage_registry.csv`, checked against a fresh live
+Archive page scan (9,056 pages) and every `wo34N_jc_applied_gov_ids.txt`
+file WO-341 through WO-352 have written since WO-350 sized this bucket.
+The live population is smaller than the bucket's original count — other
+sweeps have already resolved 12 of the 148 governments in the five days
+since.
+
+| Platform | WO-350's count | This WO's live count |
+|---|---|---|
+| CivicClerk | 97 | 91 |
+| eScribe | 32 | 29 |
+| iQM2 | 14 | 13 |
+| Town Hall Streams | 5 | 3 |
+| **Total** | **148** | **136** |
+
+**Method.** `verify_hub()` against two entry points per government, in
+order: the registry's own `hub_url` (a first-party agenda page, when on
+file) and the bare domain homepage. Both rely on `verify_hub()`'s
+existing "unknown hub" fallback — fetch once, look for an embedded/
+linked vendor link, else probe guessable first-party agenda paths one
+hop deeper. No new discovery code; this is the shortcut BACKLOG.md's own
+entry proposed. All 136 live governments were run.
+
+| Tier | Count of 136 | What it means |
+|---|---|---|
+| 3 — video, no captions | 9 | real meeting, real video, no reachable captions |
+| 2 — YouTube lead | 6 | a YouTube embed/channel link found — never fetched, recorded as a lead |
+| 4 — meeting, no video | 64 | a real meeting/listing was confirmed but no video found |
+| no meeting found | 8 | the one-hop fallback found nothing at all |
+| error | 48 | the hop itself failed — no domain link led to a derivable tenant |
+| skipped, no domain | 1 | per the standing "ignore rows without a domain" rule |
+
+**Hand-read: 9 tier-3 candidates, 1 wrong, 8 real.** Every candidate was
+resolved a second time and its own title/date/jurisdiction read against
+the government's name and state. All 9 resolved jurisdictions matched
+their government by name and state/province — no county-tenant or
+US/Canada namesake trap this round.
+
+| Government | What the candidate was | Verdict |
+|---|---|---|
+| Petersburgh town, NY | first find: "Medicare Seminar," Feb 4 2026 | wrong — not a deliberative meeting (Kind B); this exact video was also found sitting in the production queue, a real bug — removed |
+| Petersburgh town, NY | walked the town's real listing by hand (252 rows); newest past meeting: "C8 Committee," Sep 3 2026 | real, but a different meeting ("Planning Board," already queued) turned out to cover this government already |
+| Greencastle city, IN | "Park and Recreation Board Meeting," Sep 2 2026 | real, but a different meeting from this government was already queued |
+| Godley city, TX | "City Council Meeting," Sep 1 2026 | real, but a different meeting from this government was already queued |
+| Seadrift city, TX | "City Council Workshop," Sep 10 2026 | real, but a different meeting from this government was already queued |
+| Excelsior city, MN | "Parks and Recreation Commission," Aug 11 2026 | real, but links a Cablecast "show" landing page the prober can't read |
+| Venus town, TX | "City Council Work Session and Council Meeting," Aug 24 2026 | real, but a different meeting from this government was already queued |
+| Pleasanton city, TX | "City Council Regular Session," Apr 9 2026 | real (5 months old — no freshness cutoff), but a different meeting from this government was already queued |
+| Sagadahoc County, ME | "Board of Commissioners Meeting," Sep 8 2026 | real, but a different meeting from this government was already queued |
+| Brookline town, MA | "Community Preservation Act Committee Housing Subgroup Meeting," Sep 10 2026 | real, but links a Zoom cloud-recording share page the prober can't read |
+
+**Video split.** Captions available, page live now: 0 (no tier-1 finds
+this run). Video, no captions, queued: 0 — every one of the 9 real
+tier-3 candidates turned out to duplicate a meeting some earlier WO had
+already queued for that same government, or (2 of them) could not
+actually be queued at all. See the correction below for how this was
+caught.
+
+**A real mistake caught and corrected before this WO finished: 6 of 9
+"queued" candidates were actually duplicates, not new queue lines.**
+The finish step checks whether its OWN exact candidate URL is already
+queued, not whether the government already has a DIFFERENT meeting
+queued under a different URL. A closer check of
+`scripts/tier3_auto_transcription_queue.txt` against each tenant host
+(not just the candidate URL) showed all 6 "queued" governments already
+had a different meeting from an earlier WO on the same tenant: Venus TX
+(event/295, already queued), Greencastle IN (event/1585), Seadrift TX
+(event/20), Pleasanton TX (ID=1371), Sagadahoc County ME
+(location_id=154, id=75643), and Petersburgh town NY
+(location_id=152, id=75784, "Planning Board"). This WO's own duplicate
+queue lines were removed. One further, real bug surfaced while checking
+Petersburgh: the government's ALREADY-queued tenant carried a second
+line — id=72646, "Medicare Seminar" — the exact non-meeting this WO's
+own hand-check had separately rejected earlier the same run, sitting in
+production's queue from an earlier WO that evidently skipped its own
+hand-check gate. Removed. `jurisdiction_coverage.csv` for these 6
+governments was corrected to the real state (`duplicate-queued` where
+this WO's own find was the duplicate; reverted to each row's own
+pre-existing, already-correct value where this WO's first write had
+clobbered it) via `wo358_apply_correction.py`. Net effect on the queue
+file: **one line removed, zero added.**
+
+| Outcome | Count of 9 | What it means |
+|---|---|---|
+| Duplicate-queued | 7 | Venus TX, Greencastle IN, Seadrift TX, Pleasanton TX, Sagadahoc ME, Petersburgh NY, Godley TX — a different meeting from this government was already queued |
+| Rejected by probe | 2 | Excelsior city MN, Brookline town MA — real video, no readable media shape |
+
+**A code-versus-instruction conflict, also resolved and then reverted.**
+The shared `finish_candidate()` helper still auto-defers any tier-3
+candidate over 90 minutes into `tier3_long_meetings_deferred.txt` — a
+rule written before Ryan's 2026-09-13 evening standing decision that a
+long tier-3 video is queued, never parked. Three candidates (Venus TX
+5h39m, Pleasanton TX 3h44m, Sagadahoc ME 2h34m) hit that old gate and
+were moved by hand into the real queue — then found to be duplicates
+(above) and left out again. `finish_candidate()`'s own helper code was
+not changed — flagged in `BACKLOG.md` for whoever next touches
+`queue_probe.py` to fix the 90-minute default so a future run doesn't
+need the same manual correction.
+
+**Leads.** 6 YouTube leads appended to `youtube_channel_leads.csv`
+(never fetched, `verified=false`): Zephyrhills city FL, Toledo city OR,
+New Trier township IL, Perry city GA, Alfred and Plantagenet ON, Norfolk
+County ON.
+
+**Kind A (owner-body mismatches).** None found this run — every
+hand-checked candidate's resolved jurisdiction matched its government by
+name and state/province.
+
+**Apply.** `wo358_apply_to_jc.py` (first pass, modeled on
+`wo349_apply_to_jc.py`'s §158 protocol) then `wo358_apply_correction.py`
+(the fix described above), both: flock, re-read after lock, a row-count
+floor from `git show HEAD`, re-check before write, atomic replace,
+line-based in-place edit only. First pass: 56 of 81 candidate rows
+changed; 25 left alone under the WO-226 stronger-reason guard; 49 error
+rows left alone entirely. Correction pass: 6 of 6 rows fixed. A separate
+follow-up (`wo358_fix_stale_queued_flag.py`) cleared one stale
+`queued=true` flag left on Excelsior city, MN from an earlier sweep.
+
+**Undone.** The 48 error-row governments need a real phase-1-3 discovery
+pass (robots.txt/sitemap/Wayback), not the two-entry-point shortcut this
+WO used — filed as its own `BACKLOG.md` entry.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+(4 new pins, correctly attributing each tenant to its government even
+though the specific meeting this WO found wasn't the one that ended up
+queued) and `scripts/tier3_auto_transcription_queue.txt` (net: one bad
+line removed) changed — these reach production only after the next
+resolver deploy. No live Archive pages were created this run (zero
+tier-1 finds), so nothing here needs a page rebuild.
+
+**For the record:** `research/wo358_population.csv`, `wo358_verify.csv`,
+`wo358_handcheck.csv`, `wo358_report.csv`, `wo358_owner_bodies.csv`
+(empty — no Kind A this run), `wo358_jc_applied_gov_ids.txt`,
+`wo358_methods_section.md` (ENUMERATION_METHODS.md §361), and the
+`youtube_channel_leads.csv` append are on disk in rtr-business for the
+conductor to commit — this WO does not commit there per its own brief.
+
 ## WO-357: the 234 CivicPlus "label-only" governments — a full pipeline run, and one live Archive bug found [Done 2026-09-14]
 
 **Why this ran.** Ryan asked for this directly: "The 234 label-only
@@ -388,7 +535,6 @@ standing no-self-commit rule for `rtr-business`.
 (`ENUMERATION_METHODS.md` §359), `research/wo356_verify.csv`,
 `research/wo356_report.csv`, `research/wo349_handcheck.csv` (the four
 item-5 candidates' original WO-349 rejection detail).
-
 ## WO-352: chunk 1 of ~15 — re-verifying WO-338's "nothing confirmed" governments with `verify_hub()`'s bare-homepage fallback [Done 2026-09-14]
 
 **Why this ran.** WO-338 reran a 2,825-government population through
