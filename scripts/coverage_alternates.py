@@ -84,6 +84,7 @@ CONTENT_REASONS = frozenset(
         "no-platform-link-found",
         "meeting-without-video",
         "meeting-without-video-unverified",  # WO-351: same finding, pre-fix method
+        "cablecast-no-vod",  # 2026-09-14: Cablecast tenant lists meetings, empty vods
         "no-meeting-nor-video",
         "video-without-meeting",
         "off-mission",
@@ -125,8 +126,19 @@ NO_MEETING_CONTENT_REASONS = frozenset(
 # finding written by a pre-WO-333 method (the ladder or the first passive
 # runs), renamed so it can be seen and rerun; it means the same thing to
 # every consumer here until a rerun writes the plain label back.
+# 2026-09-14 (Ryan, after the Topeka KS spot-check): "cablecast-no-vod" is
+# a real Cablecast tenant that lists the government's meetings (the
+# adapter reads titles and dates) but whose API returns an empty `vods`
+# field on every show for at least a month -- meetings found, nothing to
+# fetch. Same class: the alternate hop fires (the government's own
+# YouTube channel is the usual fallback), the tenant is never retried.
 MEETING_FOUND_NO_VIDEO_REASONS = frozenset(
-    {"meeting-without-video", "meeting-without-video-unverified", "no-video-found"}
+    {
+        "meeting-without-video",
+        "meeting-without-video-unverified",
+        "cablecast-no-vod",
+        "no-video-found",
+    }
 )
 
 # WO-184: the full explicit "never retry, under either trigger" list from

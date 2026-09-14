@@ -912,3 +912,14 @@ def test_unverified_meeting_without_video_is_the_same_finding():
     assert "meeting-without-video-unverified" in CONTENT_REASONS
     assert "meeting-without-video-unverified" in NEVER_RETRY_REASONS
     assert not is_retry_worthy("meeting-without-video-unverified", trigger="no-meeting")
+
+
+def test_cablecast_no_vod_is_meeting_found_no_video():
+    # 2026-09-14 (Topeka KS spot-check): a real Cablecast tenant whose API
+    # returns an empty `vods` field on every show for a month is a
+    # "meeting found, no video" finding -- content class, alternate hop
+    # fires, never retried under the no-meeting trigger.
+    assert "cablecast-no-vod" in MEETING_FOUND_NO_VIDEO_REASONS
+    assert "cablecast-no-vod" in CONTENT_REASONS
+    assert "cablecast-no-vod" in NEVER_RETRY_REASONS
+    assert not is_retry_worthy("cablecast-no-vod", trigger="no-meeting")
