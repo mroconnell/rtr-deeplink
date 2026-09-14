@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -167,6 +167,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
+  `civicclerk.py`'s `resolve()` can return a bare…
+  The CivicClerk/eScribe "confirmed tenant, stale label" buckets (148…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   54 real West Virginia towns/cities share one placeholder domain…
@@ -1842,6 +1844,69 @@ so that work reads together.
 - **Next action:** apply the fix already made in `scripts/wo322_recon.py`'s own copy — release the lock before calling `probe_cdx_health()`, re-acquire only to write the result — to `wo283_recon.py` and every other WO-3xx copy that still carries the original.
 - **Constraint:** small, mechanical fix; no behavior change when CDX is healthy or the probe is fast.
 - **History:** `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
+
+### `civicclerk.py`'s `resolve()` can return a bare `youtube.com/channel/...` URL as `video_url`, bypassing `verify_hub()`'s YouTube guard `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** confirmed live 2026-09-13 (WO-350) on South Kingstown town,
+  RI (`southkingstownri.portal.civicclerk.com/event/2286/media`):
+  CivicClerk's own `externalMediaUrl`/`externalVideoUrl` field was
+  itself a `https://www.youtube.com/channel/...` string, which
+  `civicclerk.py` hands straight through as `ResolvedMeeting.video_url`.
+  `verify_hub()`'s `_youtube_resolve_guard()` only blocks an ADAPTER
+  dispatching a fetch to a youtube.com host (`YouTubeAssetFinder.resolve`/
+  `resolve_video_id`) — it never inspects a vendor API field that is
+  already a youtube.com string being passed through as-is. The result
+  came back `verdict=resolved`, `video_found=True`, not the
+  `youtube_lead` verdict this should produce.
+- **Impact:** a sweep that queues tier 3 off `video_found=True` alone
+  (without independently checking whether `video_url`'s own host is
+  youtube.com) would try to queue an unusable, non-specific channel URL
+  — not a real meeting. This WO caught it only because of the hand-check
+  gate; recorded as a YouTube lead instead of queued (see
+  `research/youtube_channel_leads.csv`), so no bad page/queue line
+  resulted this time.
+- **Next action:** in `civicclerk.py` (and any other adapter that passes
+  a vendor-supplied `externalVideoUrl`/`externalMediaUrl` field straight
+  through as `video_url`), check whether that URL's host is a
+  `MULTI_GOV_HOSTS` host (youtube.com/youtu.be/vimeo.com/...) before
+  accepting it as a real video — treat it the same way a real embedded
+  YouTube link would be treated (a lead, never fetched), not a resolved
+  video.
+- **Constraint:** only known confirmed instance is South Kingstown, RI;
+  worth a quick grep of `civicclerk.py`'s other `externalMediaUrl`/
+  `externalVideoUrl` call sites before assuming it's isolated to one
+  code path.
+- **History:** `BACKLOG_DONE.md`'s WO-350 entry; `rtr-business/research/
+  ENUMERATION_METHODS.md` §352.
+
+### The CivicClerk/eScribe "confirmed tenant, stale label" buckets (148 governments) were sized but never walked `[JUST-DO-IT]`
+
+- **Issue:** WO-350 (2026-09-13) built the full open-government
+  population for CivicClerk/eScribe/iQM2/Town Hall Streams from
+  `research/coverage_registry/coverage_registry.csv`, split into a
+  "confirmed tenant URL on file" bucket (68 governments, fully walked
+  this WO) and a "registry names the platform but no tenant URL is on
+  file" bucket (97 CivicClerk + 32 eScribe + 14 iQM2 + 5 Town Hall
+  Streams = 148), which was sized but not run.
+- **Impact:** 148 more governments this repo already suspects use one
+  of these four platforms have never had `verify_hub()` run against
+  them at all — a real, sized, not-yet-collected yield.
+- **Next action:** run `verify_hub()` against each government's own
+  domain (not a platform tenant URL, since none is on file) with
+  `platform_hint=<platform>` — the module's own "unknown hub" fallback
+  already does a single hop looking for an embedded/linked vendor URL,
+  so this may resolve a real share of the bucket without a full
+  phase-1-3 discovery pass first. Population files:
+  `wo350_pop_{civicclerk,escribe,iqm2,townhallstreams}_stale.csv`
+  (WO-350's private scratch directory — regenerate from the registry
+  using `wo350_build_population.py`'s method if the files themselves
+  aren't available).
+- **Constraint:** hand-check every tier 1-3 candidate the same way
+  WO-350 did — this bucket is unverified registry data, likely to carry
+  the same county-tenant and Canada/US-namesake traps WO-350 found in
+  the confirmed bucket.
+- **History:** `BACKLOG_DONE.md`'s WO-350 entry; `rtr-business/research/
+  ENUMERATION_METHODS.md` §352.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
