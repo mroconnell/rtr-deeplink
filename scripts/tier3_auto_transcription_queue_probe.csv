@@ -6234,3 +6234,9 @@ https://www.utah.gov/pmn/sitemap/notice/1081495.html,utah_pmn,head+ffprobe,,,,0,
 https://www.utah.gov/pmn/sitemap/notice/1107363.html,utah_pmn,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.10,2026-09-13T21:08:25+00:00,,0
 https://www.utah.gov/pmn/sitemap/notice/1032973.html,utah_pmn,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.10,2026-09-13T21:08:27+00:00,,0
 https://www.utah.gov/pmn/sitemap/notice/1055725.html,utah_pmn,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-09-13T21:08:28+00:00,,0
+https://vimeo.com/1225272170?share=copy,vimeo,vimeo-oembed,4774.00,2026-09-09,,1,accept,,0.16,2026-09-13T22:41:07+00:00,wo348,0
+https://cityofenumclaw.net/CivicMedia?VID=497,civicmedia,hls-master+variant,2113.88,,,1,accept,,1.24,2026-09-13T22:41:32+00:00,wo348,0
+https://vimeo.com/1219554442,vimeo,vimeo-oembed,,,,0,reject-dead,"Vimeo oEmbed returned nothing -- likely a dead, private, or removed video",5.05,2026-09-13T22:41:58+00:00,wo348,0
+https://boxcast.tv/view/city-council-work-session-nt9q4bsnt9xuckwizr0a,boxcast,hls-master+variant,6205.91,,,1,accept,,1.42,2026-09-13T22:42:00+00:00,wo348,0
+https://vimeo.com/1225272170?share=copy,vimeo,vimeo-oembed,4774.00,2026-09-09,,1,accept,,0.17,2026-09-13T23:56:45+00:00,bulk_ingest,0
+https://cityofenumclaw.net/CivicMedia?VID=497,civicmedia,hls-master+variant,2113.88,,,1,accept,,1.37,2026-09-13T23:56:58+00:00,bulk_ingest,0

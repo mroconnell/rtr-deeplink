@@ -27,6 +27,8 @@ Township, PA (301s to the `.portal.` host, but the walker is handed the
 pre-redirect URL).
 """
 
+from app.platforms.base import register
+from app.platforms.youtube import YouTubeAssetFinder
 from app.platforms.passive_verify import (
     _CIVICCLERK_TENANT_RE,
     _civicweb_walker,
@@ -475,3 +477,43 @@ def test_civicclerk_tenant_regex_excludes_corporate_www_host():
     # www.civicclerk.com is CivicClerk's own marketing site, never a real
     # tenant (CORPORATE_HOSTS_BY_PLATFORM's own comment).
     assert _CIVICCLERK_TENANT_RE.match("www.civicclerk.com") is None
+
+
+# --- youtube_resolve_guard: a platform_hint="youtube" must not fabricate
+# a lead out of a non-youtube URL (WO-348, found live in this WO's own
+# group-1 rerun) --------------------------------------------------------
+
+
+async def test_platform_hint_youtube_on_non_youtube_url_falls_through_to_hop_search():
+    register(YouTubeAssetFinder())
+    # Real, confirmed live bug (Ravenna OH, Helotes TX, Groton CT, Sugar
+    # Grove IL, Austell GA, Broadview IL, Blythewood SC, Bellevue WI):
+    # phase 3 tagged these governments' `platform_hint` as "youtube" (an
+    # earlier scan's own signal, e.g. a footer social icon -- CLAUDE.md's
+    # documented Aurora CO false-positive shape), but `verify_hub()`'s own
+    # scan of the hub page found no vendor link at all. Before this fix,
+    # `_verify_hub_impl()` still set `platform="youtube"` and called
+    # `YouTubeAssetFinder.resolve()` on the ORIGINAL non-youtube hub page
+    # -- and the guard's own `_blocked()` raised unconditionally for ANY
+    # url, fabricating a `youtube_lead` whose `meeting_url` was just the
+    # hub page again, not a real YouTube URL. Now it must fall through to
+    # the real "look one hop deeper" mechanism instead.
+    home_html = '<html><body><a href="/meetings/">Meetings</a></body></html>'
+    real_page_html = (
+        "<html><body><h1>Ravenna, Ohio</h1>"
+        + "<p>City Council Meeting Agenda and Minutes</p>" * 40
+        + "</body></html>"
+    )
+    routes = {
+        "https://example.gov": FakeResponse(status=200, text=home_html),
+        "https://example.gov/meetings/": FakeResponse(status=200, text=real_page_html),
+    }
+    with mock_session(routes):
+        result = await verify_hub(
+            "https://example.gov", "youtube", name="Ravenna", state="Ohio"
+        )
+
+    assert result.verdict != "youtube_lead"
+    assert result.meeting_url != "https://example.gov"
+    assert result.meeting_found is True
+    assert result.tier == 4

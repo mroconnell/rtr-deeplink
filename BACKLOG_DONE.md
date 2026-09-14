@@ -53904,3 +53904,99 @@ and `scripts/tier3_auto_transcription_queue.txt` changed — need the
 resolver/worker deploy before the 10 new pins and 9 new tier-3 queue
 lines take effect. `jurisdiction_coverage.csv`'s 30 corrections (both
 parts) are research-file changes with no deploy dependency.
+
+## WO-348 (resume): fixed a fabricated-video bug in the "look one hop deeper" fix, then reran it on 1,514 governments — 2 pages live, 1 queued, 8 of 11 video finds were wrong on hand-read [Done 2026-09-13]
+
+**Why this WO ran.** WO-347's own hand audit found the passive pipeline
+stopped looking one step too early most of the time. WO-348 (the earlier
+part of this same work order) built a fix and shipped it as its own PR
+(#1137) — a bounded "look one hop deeper" search before the pipeline
+gives up. That PR was fix-and-tests only. This session picks up the
+rerun: prove the fix pays, then run it for real on the governments it
+was built for.
+
+**A bug found running the fix for the first time.** Before this fix, if
+an earlier step merely guessed a government might use YouTube (say, from
+a footer icon), the checker would report "video found" without ever
+really checking — because its own YouTube-blocking guard raised an error
+for every URL, blocking the real check the same way it was supposed to
+block a real YouTube fetch. 8 real governments got a fake "video found"
+result this way in this WO's own first rerun attempt (Ravenna OH, Helotes
+TX, Groton CT, Sugar Grove IL, Austell GA, Broadview IL, Blythewood SC,
+and one more on a linked PDF page, Bellevue WI). Fixed: the guard now
+only blocks a URL that is actually a YouTube link.
+
+**What was reran.** 1,514 governments — every one WO-337 had already
+tried and failed on, either because a real candidate page was rejected
+(1,145) or because nothing was found at all (369). Every one was run
+again through the fixed checker.
+
+| Result | Count of 1,514 | What it means |
+|---|---|---|
+| Meeting found, no video | 917 | A real meetings/agendas page exists, found one hop deeper than before |
+| Video found, no captions | 9 | A real video exists — every one hand-checked before being queued |
+| Video found, with captions | 2 | A real video with a real transcript — every one hand-checked before being made into a page |
+| Still nothing found | 586 | No change from before — the fix did not help these |
+
+**Every video find was hand-checked before it became a page or a queue
+line — 3 of 11 were real.** This is the most important finding in this
+report. Checking each one by hand (the meeting's real title, date, and
+government, read from the source):
+
+| Government | What the checker found | Hand-check result |
+|---|---|---|
+| Libertyville village, IL | Vimeo video, real captions | Real — a real Village Board meeting. Page made live |
+| Enumclaw city, WA | CivicMedia video, real captions | Real — a real "Regular Meeting". Page made live |
+| Scandia city, MN | BoxCast video | Real — queued (its only meeting runs long; no shorter one exists on the same channel) |
+| Winter Garden city, FL | CivicClerk video | The meeting is real, but the video link itself is dead (a 404) — not queued |
+| Milan city, MI | Vimeo video | The government's agenda page is real, but the specific video is dead — not queued, needs another look |
+| Pea Ridge city, AR | A video on the meetings page | It's a "State of the City" address by the mayor, not a council meeting — a judgment call, flagged for Ryan |
+| Dummerston town, VT | A video file named "videobg" | A decorative background video on the homepage, not a meeting |
+| Forest Park city, GA | CivicClerk video | The event is literally titled "TEST 3" with no real agenda — a test upload, not a real meeting |
+| Boley town, OK | A video on an event page | The page is for a rodeo, not a government meeting |
+| Coatesville town, IN | A video on the recorded website | That website is no longer the town's — it now belongs to an unrelated foreign gambling site |
+| Genoa village, WI | The exact same video file as Coatesville | Same problem — a different unrelated site now uses that domain, and both sites happen to share the same stock video |
+
+**What this means.** The fix genuinely works for finding real
+meetings-without-video pages (tier 4) — nothing here contradicts WO-347's
+finding that once a platform is confirmed, the checker is reliable. But
+for the "a video was found" claim specifically, the checker is still
+wrong more often than not — 8 of 11 here. Every one of those 8 was
+caught only because a person checked before anything was queued or made
+into a page, exactly as this project's rule requires. Filed as a new,
+separate `BACKLOG.md` entry (not folded into a general one) so the two
+different accuracy rates — meetings-found vs. videos-found — don't get
+confused with each other.
+
+**What went live.** 2 pages: Libertyville village, IL and Enumclaw city,
+WA, both with real captions. 1 government queued for automatic
+transcription: Scandia city, MN (its only meeting runs 103 minutes, over
+the usual 90-minute limit, but no shorter one exists, so it was queued
+anyway per the standing rule for that case).
+
+**Research file.** 928 of the 1,514 rows changed to something other than
+"still nothing" — `rtr-business/research/wo348_group1_report.csv`, applied
+to `jurisdiction_coverage.csv` via `wo348_apply_to_jc.py` (created on
+disk, not committed by this session — see the conductor's own commit).
+926 of 928 rows actually changed a field; 2 were left exactly as found
+(Forest Park and Boley's real status is still unknown). Two follow-up
+correction scripts fixed a leftover contradiction from an earlier sweep
+(a row correctly relabeled "no video," but still carrying a stale "has
+video" flag and URL from before) on 18 rows.
+
+**What is not done.** Three more groups from the same brief were not
+rerun this session: WO-338's 201 "nothing walkable" rows plus WO-345's
+50, and WO-338's largest group, 2,202 "nothing confirmed" rows — left for
+last on purpose, only worth running if the earlier groups show the fix
+pays. Given this session's own rate (3 of 11 video finds real, but 917 of
+1,514 meetings-without-video found), the meetings-without-video side
+clearly pays; the video side needs the same hand-check discipline every
+time, not a lighter touch at larger scale.
+
+**Deploy status.** `app/platforms/passive_verify.py` changed — needs the
+resolver deploy. `app/utils/jurisdiction_data/tenant_overrides.csv` and
+`scripts/tier3_auto_transcription_queue.txt` also changed — need the
+resolver/worker deploy before Libertyville's pin and Scandia's queue line
+take effect (the 2 ingested pages are already live on the Archive, deploy-
+independent). `jurisdiction_coverage.csv`'s changes are research-file
+only, no deploy dependency.
