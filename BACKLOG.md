@@ -114,8 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
-  Look one meeting deeper on 2 CivicPlus tenants deferred for length…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -171,8 +170,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   `civicclerk.py`'s `resolve()` can return a bare…
   The CivicClerk/eScribe "confirmed tenant, stale label" buckets (148…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
-  How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   54 real West Virginia towns/cities share one placeholder domain…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
@@ -191,7 +189,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (217)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
+  [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
   [NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical,…
   [EASY] Sec 23's reject-reason taxonomy has no bucket for a real…
@@ -764,30 +763,6 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### Look one meeting deeper on 2 CivicPlus tenants deferred for length instead of finding a shorter meeting `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** WO-349 (2026-09-13) accepted and duration-probed 2 real
-  tier-3 candidates that came back over the 90-minute cutoff and went to
-  `scripts/tier3_long_meetings_deferred.txt` instead of the queue: Cudahy
-  city CA (townhallstreams.com, 90.5 min) and Port Orchard city WA
-  (CivicClerk, 170 min). `CLAUDE.md`'s "long-only videos" rule says to
-  look deeper on the same tenant for a shorter meeting (prefer 9-40 min)
-  before accepting the long one, or deferring it — this WO didn't have
-  budget left to do that lookup for these two.
-  - **Impact:** both real governments sit parked rather than queued;
-  low-severity (deferred lines re-queue once the main queue empties, per
-  the standing re-queue policy) but a shorter meeting, if one exists,
-  would reach the queue sooner.
-- **Next action:** run `scripts/wo347_long_lookdeeper.py`'s pattern
-  against `townhallstreams.com` (Cudahy's own listing already showed 19
-  real candidates, only 2 walked) and Port Orchard's CivicClerk tenant;
-  queue the shortest 9-40 min real candidate found, or leave deferred if
-  none exists.
-- **Constraint:** one meeting per government — don't queue a second
-  meeting for either if the long one somehow already got queued
-  elsewhere.
-- **History:** `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_verify.csv`.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
@@ -1945,32 +1920,6 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
-
-- **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
-  identifiable, correctly-bodied videos that the listing walker reached
-  as the *newest* candidate at its search depth, but that are 21-52
-  months old: Grinnell city IA ("Regular City Council Session", Dec
-  2024), Hastings-on-Hudson village NY ("Information Session on the Plus
-  One ADU Program", Oct 2024 — also not clearly a legislative meeting),
-  Easton town CT ("Affordable Housing Committee", Apr 2022). This round's
-  only precedent (WO-341, Pierce County WA) rejected a similarly-shaped
-  find, but that video was over 4 years old *and* of uncertain body —
-  these three are less extreme and split on the second factor.
-  Left un-applied to `jurisdiction_coverage.csv` rather than guessed
-  either way (`research/wo349_handcheck.csv`).
-- **Impact:** 3 real governments' only known video sits unused pending a
-  policy call; the same ambiguity will recur every time a listing walker
-  finds only one, old candidate — not a one-off.
-- **Next action:** Ryan decides a freshness cutoff (or "no cutoff, queue
-  it regardless of age" per the existing "queue a long one rather than
-  defer" precedent for duration) — then whichever of the 3 above still
-  qualifies gets applied via a small follow-up to `wo349_apply_to_jc.py`'s
-  pattern.
-- **Constraint:** don't invent a cutoff and apply it silently — this is
-  exactly the kind of judgment call this section exists for.
-- **History:** `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`.
-
 ### 54 real West Virginia towns/cities share one placeholder domain (`local.wv.gov`) on file, so no automated sweep can tell them apart `[HUMAN]`
 
 - **Issue:** WO-337 (2026-09-13, passive discovery v2 group 7) found
@@ -2280,6 +2229,13 @@ of human step they need.
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in `tenant_overrides.csv` never actually matches any real Vimeo URL — 8 committed rows are silently dead.**
+  - **Issue**: found live 2026-09-13 (WO-356), while pinning Easton town CT's real, queued Vimeo meeting. `app/utils/gov_registry/resolver.py`'s `_match_override()` treats a row's `match` value as a literal substring of the URL's path (`needle in haystack`); a real `vimeo.com/<id>/...` URL's path is just `/697711522/...`, which never contains the literal text `vimeo:`. So the `vimeo:<id>` shape some rows use (e.g. `vimeo.com,vimeo:1199438213,us:cousub:2500750390,...` for Oak Bluffs town, MA, WO-145) can never match — the pin silently never applies, and the government falls through to whatever the rest of the identity ladder finds instead. The other, working shape is a bare numeric id with no prefix (e.g. `vimeo.com,1219072948,us:place:3657023,...` for Pelham Manor village, NY). 8 of the file's Vimeo rows currently use the broken `vimeo:` prefix (`grep -c '^vimeo.com,vimeo:'`).
+  - **Impact**: up to 8 real governments' Vimeo pins are dead weight — the intended government never actually gets keyed by them, and nothing fails loudly to say so (CLAUDE.md's own "flag risky optional config" pattern: this is exactly a silent-on-bad-input case). CLAUDE.md itself documents the `vimeo:<id>` shape as the convention ("Wistia `external_id=`... Vimeo `vimeo:<id>`"), so a future pin is likely to be written the same broken way unless this is fixed.
+  - **Next action**: either (a) strip the `vimeo:` prefix at load time in `_load_tenant_overrides()` before the row is stored (cheapest, fixes all 8 existing rows with no data migration), or (b) rewrite the 8 rows to the bare-id shape and update CLAUDE.md's own stated convention to match. Re-verify each of the 8 governments' Vimeo video still resolves to the same id before changing anything (a video can be deleted/replaced).
+  - **Constraint**: don't silently change CLAUDE.md's documented convention without also fixing the 8 rows (or vice versa) — the two need to agree, and a test (`tests/test_gov_registry.py` already covers the blank-match safeguard) should assert the `vimeo:<id>` shape actually matches a real sample URL, so this can't regress silently again.
+  - **History**: `BACKLOG_DONE.md`'s WO-356 entry; `rtr-business/research/wo356_methods_section.md` (ENUMERATION_METHODS.md §359).
+
 - **[NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no recipe for a `resolve()`-returned Vimeo URL carrying tracking query params (`?share=copy&fl=sv&fe=ci`), so a real, hand-confirmed tier-3 video can't be probed or queued at all.**
   - **Issue**: found live 2026-09-13 (WO-349), two CivicPlus governments in the same run: Western Springs village, IL (`us:place:1780242`, "Board of Trustees Meeting", 2026-08-10) and Edgewood city, WA (`us:place:5320645`, "1st - Regular Council Meeting", 2026-09-08). Both hand-checked real and current — `resolve()` itself succeeded and returned a real Vimeo `video_url` — but `probe_queue_entry()` rejected both as `reject-dead`, reason `no probe recipe for this media shape`, because the URL carries a `?share=copy&fl=sv&fe=ci` query suffix the prober's shape-matcher doesn't recognize as "this is a Vimeo video." Same run also hit a related but distinct failure on Bristol city, CT (`us:place:0908420`): a real CivicClerk file (`cpmedia.azureedge.net/bristolct/...mp4`) that `ffprobe` itself couldn't read at all (`moov atom not found`) — looks like a genuinely corrupted/incomplete upload at the source, not a prober gap, but recorded here since it hit the same `reject-dead` path.
   - **Impact**: real, current, hand-confirmed meetings can't reach the tier-3 queue at all — not a content problem, a tooling one. Low volume seen so far (2 of 23 tier-3 candidates this run) but the query-string shape is a generic Vimeo sharing artifact (`share=copy`), plausibly present on other Vimeo candidates this repo hasn't hit yet.
@@ -2290,9 +2246,9 @@ of human step they need.
 - **[NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical, title-less, generic decorative header video (`hn_hdr26.mp4`) to at least 3 different CivicPlus governments' meeting-video links — a site-builder placeholder asset, not real meeting content, and likely present on more governments than these 3.**
   - **Issue**: found live 2026-09-13 (WO-349). Three unrelated Tennessee/New York governments' confirmed CivicPlus listings all resolved their newest "meeting video" candidate to the exact same URL, `https://www.hellonation.com/media/hn_hdr26.mp4`, with no title, date, or jurisdiction obtainable from the file itself: La Vergne city TN, Lawrenceburg city TN, Hamburg village NY. "HelloNation" appears to be a website-builder/CMS vendor (same shape as `site_builder` values like `wordpress`/`townweb` in `jurisdiction_coverage.csv`) whose default template embeds a stock header video at a fixed path — every government using it would resolve to the same asset.
   - **Impact**: all 3 were caught and rejected by this WO's hand-check (never queued), so no bad page or queue line resulted — but any future sweep that skips the hand-check step (or whose classifier doesn't flag a title-less resolve) would queue or ingest decorative content as if it were a real meeting, once per government using this site builder.
-  - **Next action**: add `hellonation.com/media/hn_hdr26.mp4` (and any sibling generic asset paths found on a second look) to a known-decorative-asset blocklist the hand-check/prober step can consult directly, the same shape as an existing generic-content filter if one exists; separately, check how many more CivicPlus governments' `hub_url` resolves through a HelloNation-templated site before assuming 3 is the full extent.
+  - **Next action**: add `hellonation.com/media/hn_hdr26.mp4` (and any sibling generic asset paths found on a second look) to a known-decorative-asset blocklist the hand-check/prober step can consult directly, the same shape as an existing generic-content filter if one exists; separately, check how many more CivicPlus governments' `hub_url` resolves through a HelloNation-templated site before assuming 3 is the full extent. (WO-356, 2026-09-13, resolved these exact 3 governments individually by walking each one's own real AgendaCenter listing instead of the elocallink.tv widget page — La Vergne TN and Lawrenceburg TN are real meeting-without-video; Hamburg village NY had a real video with real captions on its own Swagit tenant, ingested. The blocklist/broader-check ask below is still open — not done by that WO.)
   - **Constraint**: don't reject every `hellonation.com` URL outright without checking whether the vendor also hosts real government-specific video elsewhere on the same domain — this entry is about the one confirmed placeholder path, not the whole vendor.
-  - **History**: `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`.
+  - **History**: `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`; `BACKLOG_DONE.md`'s WO-356 entry.
 
 - **[EASY] Sec 23's reject-reason taxonomy has no bucket for a real site-side fetch failure that isn't plain-HTTP-blocked, a timeout, or DNS — SSL certificate errors, a connection reset, and a stray HTTP 404/522 all fall through unclassified.**
   - **Issue**: WO-355 (2026-09-13) hit 16 of these across 518 governments while re-verifying: 9 SSL certificate errors (expired cert, hostname mismatch, weak key), 2 connection resets/TLS handshake failures, 2 HTTP 404, 1 HTTP 522, 1 invalid URL (`https://` with nothing after it), 1 DNS answer with no data. None of `blocked-plain-http`/`blocked-browser-headers`/`blocked-headless`/`cloudflare-challenge-blocked`/`dns-unresolvable`/`timeout` honestly describes "the site's own TLS certificate is broken" or "the site returned 404/522."

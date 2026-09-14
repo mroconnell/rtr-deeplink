@@ -112,6 +112,144 @@ here, per the tightened rule): `research/wo355_population.csv`,
 `research/wo355_jc_youtube_lead.csv`,
 `research/wo355_methods_section.md`, `research/ENUMERATION_METHODS.md`
 (§358 appended).
+## WO-356: WO-349's six follow-ups under Ryan's decisions — alternate hubs, error retries, Seward city KS, two long videos queued, four rejects walked deeper, three old videos given pages [Done 2026-09-13]
+
+**Why this ran.** WO-349's full CivicPlus run left six loose ends that
+Ryan looked at and made a call on each: 91 governments where the walk
+found no meeting at all, 22 governments where the walk itself errored,
+one government (Seward city, KS) whose only known video actually belongs
+to the county next door, two real videos parked for being over 90
+minutes, four rejected candidates that deserved one more look before
+giving up, and three real, old videos that got rejected only for their
+age. This WO is those six decisions, carried out.
+
+**Item 1 — the 91 "no meeting found" governments.** Ryan's theory: the
+recorded page was probably just the wrong page, not proof the government
+has no meetings. Checked again from each government's own home page
+instead of the old page.
+
+| Result | Count of 91 | What it means |
+|---|---|---|
+| Real meeting listing found, no video | 85 | Ryan's theory confirmed — a meeting page existed, the old page just wasn't it |
+| Real video found | 1 | Greensboro town, MD — queued |
+| Still nothing found | 5 | left open |
+
+**Item 2 — the 22 errors.** Read the actual error for each first: most
+were the same "wrong page" problem as item 1 (a tax-map PDF, a promo
+video, a help-center article), not a dropped connection — so these were
+also checked from the home page, not repeated as-is.
+
+| Result | Count of 22 | What it means |
+|---|---|---|
+| Real meeting listing found, no video | 20 | same wrong-page problem as item 1 |
+| Still nothing found | 2 | left open |
+
+**Item 3 — Seward city, KS.** WO-349 found this government's video
+actually belongs to Seward County. Checked the county's own video
+listing directly for anything belonging to the city instead: it carries
+exactly two categories, both "County Commission" — no city content
+exists there at all. Confirmed negative; nothing changes.
+
+**Item 4 — two long videos, queued instead of parked.** Ryan's rule: a
+video over 90 minutes gets queued, not parked, unless the government
+already has a transcript some other way. Cudahy city, CA (1 hour 30
+minutes) and Port Orchard city, WA (2 hours 50 minutes) had been parked
+under the old rule. Both moved to the queue, and each got its own
+ownership record written first (a required safety step so the right
+video reaches the right government). Also updated the parked-file's own
+instructions so this doesn't happen again.
+
+**Item 5 — four rejected candidates, walked further.** Ryan's rule: a
+rejected video is not the end — keep looking at the government's own
+listing until a real meeting turns up or there's nothing left to check.
+
+| Government | What WO-349 rejected | What the further look found |
+|---|---|---|
+| La Vergne city, TN | A decorative welcome-page video | Checked all 15 recent listings — a real meeting page exists, genuinely no video on it |
+| Lawrenceburg city, TN | Same decorative video | Same — real meeting page, no video |
+| Hamburg village, NY | Same decorative video | A real meeting video with a real transcript — page live now |
+| Del Mar city, CA | An unrelated travel video | The government's own listing had a second entry: the real meeting video — queued |
+
+**Item 6 — three old but real videos, given pages.** Ryan's rule: age
+alone is never a reason to turn away a real meeting — "this is a
+historic archive after all."
+
+| Government | Video | Age | Result |
+|---|---|---|---|
+| Grinnell city, IA | Regular City Council Session | Dec 2024 | Queued |
+| Hastings-on-Hudson village, NY | Information session on a housing program | Oct 2024 | Checked first that this was really run by the village government (it is — same official video account as its town-board meetings) — queued |
+| Easton town, CT | Affordable Housing Committee | Apr 2022 | Queued |
+
+St. Joseph city, MO; Alamosa County, CO; and Larned city, KS were also
+checked for a usable title so they could join this list — none could be
+read (a generic placeholder title, a private file with no title
+metadata, and a bare video link with no title metadata) — left open, per
+Ryan's rule that these stay open until a title can be read.
+
+**Videos found across all six items.**
+
+| Result | Count | What it means |
+|---|---|---|
+| Captions available, page live now | 1 | Hamburg village, NY |
+| Video, no captions, queued | 9 | Greensboro MD, Cudahy CA, Port Orchard WA, Del Mar CA, Grinnell IA, Hastings-on-Hudson NY, Easton CT (7 governments; 2 more — Cudahy and Port Orchard — were already-found videos moved from parked to queued) |
+
+**Every video used was hand-read first** — its own title and the body
+that appears in it, checked against the government's name — before it
+went anywhere. One video (Hastings-on-Hudson's) needed an extra check
+because its title named a topic, not a meeting body; confirmed it was
+the village government's own official recording before queuing it.
+
+**A bug found in passing, filed separately, not fixed this WO.** Eight
+`vimeo.com` pins in the shared ownership file are written in a shape
+(`vimeo:<id>`) that can never actually match a real video — a typo-like
+mistake baked into eight already-committed rows. This WO's own new
+Vimeo pin (Easton, CT) uses the shape that actually works. See
+`BACKLOG.md`'s new entry for the fix.
+
+**Summary.**
+
+| Item | Result |
+|---|---|
+| 1. Alternate hubs (91) | 86 real findings (85 no-video, 1 video); 5 still nothing |
+| 2. Error retries (22) | 20 real findings (all no-video); 2 still nothing |
+| 3. Seward city KS | Confirmed negative, no change |
+| 4. Two long videos | Both moved from parked to queued |
+| 5. Four rejects, walked deeper | 1 page live (Hamburg NY), 1 queued (Del Mar CA), 2 confirmed no-video (La Vergne, Lawrenceburg) |
+| 6. Three old videos | All 3 queued; 3 more stayed open for lack of a title |
+
+**Caution.** The 91-and-22 alternate-hub checks ran against
+`beaverdamwi.api.civicclerk.com` and hit the same connection timeout
+repeatedly (handled automatically each time, no bad data resulted) —
+worth a closer look if that tenant matters later, not investigated
+further here.
+
+**Deploy status.** Hamburg village, NY's page is live now (no deploy
+needed for a page). The 9 new queue lines and the ownership pins reach
+production only after the next resolver deploy.
+
+**Recommendation.** Ryan's theory in item 1 was right for 93% of the 91
+governments checked — the lesson generalizes: a "no meeting found"
+verdict from an old sweep is usually a wrong-page problem, not a real
+negative, and is worth a fresh home-page check before being treated as
+final anywhere else in the file.
+
+**Applied to `jurisdiction_coverage.csv`** via
+`scripts/wo356_apply_to_jc.py` (§158 protocol: lock, fresh re-read, 99%
+row-count floor, atomic replace, line-based in-place edit only): 103
+rows changed, 12 left alone because a stronger existing finding already
+covered them, 0 missing, 0 already-transcribed skips.
+`research/wo356_jc_applied_gov_ids.txt` lists every government this WO
+touched, for the conductor to commit alongside
+`research/jurisdiction_coverage.csv`,
+`research/wo356_population.csv`, `research/wo356_verify.csv`,
+`research/wo356_report.csv`, and `research/ENUMERATION_METHODS.md`
+(§359) — none of these were committed by this WO itself, per the
+standing no-self-commit rule for `rtr-business`.
+
+**Full detail:** `research/wo356_methods_section.md`
+(`ENUMERATION_METHODS.md` §359), `research/wo356_verify.csv`,
+`research/wo356_report.csv`, `research/wo349_handcheck.csv` (the four
+item-5 candidates' original WO-349 rejection detail).
 
 ## WO-352: chunk 1 of ~15 — re-verifying WO-338's "nothing confirmed" governments with `verify_hub()`'s bare-homepage fallback [Done 2026-09-14]
 
