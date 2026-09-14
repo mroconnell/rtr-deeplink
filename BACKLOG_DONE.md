@@ -1,5 +1,127 @@
 # Backlog — done
 
+## WO-352: chunk 1 of ~15 — re-verifying WO-338's "nothing confirmed" governments with `verify_hub()`'s bare-homepage fallback [Done 2026-09-14]
+
+**Why this ran.** WO-338 reran a 2,825-government population through
+the fixed `verify_hub()`, but only walked the roughly 623 where an
+earlier pass had already confirmed a real platform URL. The other
+governments — where no platform was confirmed, or the confirmed-platform
+walk came back empty or errored — kept their old finding. Ryan approved
+this WO (2026-09-13) as a low-priority, honest-map run through that
+leftover population, expecting most of it to land on "meeting found, no
+video" and very little real video.
+
+**Population, re-derived against the live files.** The brief's own count
+(2,202) named a narrower slice than this WO's real population turned out
+to be. The actual population — every blank-tier row in `wo338_final_
+classification.csv`, minus everything WO-345/347/348/348-group-2 already
+applied, minus rows already marked transcribed or queued — is **2,258
+governments**, built by `scripts/wo352_build_population.py`, sorted by
+population, largest first.
+
+**Method.** `verify_hub()` (WO-333) already does its own platform
+discovery when given a bare homepage and no confirmed platform, and
+WO-348's "look one hop deeper" fix lives inside `verify_hub()` itself —
+so this WO calls it directly for every government (the best confirmed
+URL on file, else the bare homepage), rather than re-running the
+recon/classify/targeted chain. `scripts/wo352_verify.py`.
+
+**Chunk 1: 150 governments processed (of 2,258 — largest population
+first, Forsyth County NC 398k down to Tukwila WA 22k).**
+
+| Tier | Count of 150 | What it means |
+|---|---|---|
+| 4 — meeting found, no video | 100 | a real meeting listing was reached, no video on it |
+| blank — nothing found | 42 | nothing found, or the check could not complete |
+| 3 — real video, no reachable captions | 7 | a video candidate — every one hand-read below |
+| 2 — video with YouTube captions | 1 | a lead, never fetched |
+| 1 — video with real captions | 0 | none this chunk |
+
+**Hand-read: 7 tier-3 candidates, 6 not applicable, 1 real but
+un-probeable.**
+
+| Government | What the candidate was | Verdict |
+|---|---|---|
+| Winchester city, IN | homepage `<video loop autoplay muted>` hero banner (`cityofwinchesterspeedway.mp4`) | wrong — decorative |
+| Tallassee city, AL | homepage hero banner (`homebanner.mp4`) | wrong — decorative |
+| Duncan town, SC | homepage hero banner (`Duncan3.mp4`) | wrong — decorative |
+| West Reading borough, PA | homepage hero banner (`WRB-Banner-Video.mp4`) | wrong — decorative |
+| Garza County, TX | Google Drive file titled `2023.10.23_Pavilion_Flythrough.MP4` | wrong — a drone flythrough video |
+| York County, ME | real Town Hall Streams video, but this domain is a non-canonical duplicate of York town, ME, which WO-345 already queued a different meeting for at the same `location_id` | already-covered-other-id |
+| Alamosa County, CO | real, dated Google Drive file linked from the county's own AgendaCenter "Board of County Commissioners Agenda 9-9" row — the agenda row's own `aria-label` names the governing body | real content, but `ffprobe` failed on the resolved download URL — not queued |
+
+The 1 tier-2 candidate (Cochise County, AZ) was already recorded twice
+(WO-345 and, concurrently, WO-349) in `youtube_channel_leads.csv` — not
+added a third time.
+
+**Video split.** Captions available, page live now: 0. Video, no
+captions, queued: 0.
+
+**A methodology bug caught and fixed before anything was applied.** The
+first pass mapped every "no platform detected" verdict to
+`no-platform-link-found`, including 19 governments whose prior finding
+was already `meeting-without-video` — a much earlier, more thorough
+sweep had confirmed a platform there that this chunk's bare-homepage
+fallback simply didn't rediscover. Downgrading those 19 would have made
+`jurisdiction_coverage.csv` less accurate. Fixed in `wo352_finish.py`
+before applying: a "no platform detected" verdict from the bare-homepage
+fallback is now treated as inconclusive whenever the prior finding
+implies a platform was already reached.
+
+**A real tooling bug, caught and fixed before anything was applied.**
+The first probe attempt on Alamosa County's Drive file passed the raw
+share-page URL as `video_url` directly, skipping the adapter's own
+URL-resolution step — produced a false "no probe recipe" verdict, which
+got cached into the shared `tier3_auto_transcription_queue_probe.csv`
+sidecar. Removed by hand; the real probe (which resolves the Drive link
+first) ran afterward and produced the genuine `ffprobe`-failure verdict
+above. Filed as its own `BACKLOG.md` entry (the Drive `confirm=t`
+bypass doesn't universally work) since the real verdict is itself a
+new, unexplained gap.
+
+**Applied to `jurisdiction_coverage.csv`: 20 rows, reject_reason only —
+no government was ingested or queued this chunk.**
+
+| Change | Count of 20 | What it means |
+|---|---|---|
+| No-meeting-nor-video to meeting-without-video | 9 | a real meeting listing found this time, where none was before |
+| Meeting-without-video(-unverified) to no-meeting-nor-video | 11 | 5 are this chunk's own hand-confirmed decorative/promo videos; 6 are a direct re-check of the same previously-confirmed platform, genuinely empty this time |
+
+**Caution.** 2,108 of the 2,258-government population are not yet
+processed — this is chunk 1 of roughly 15 at 150/chunk. 42 of this
+chunk's 150 came back with no completed verdict (an access hiccup or
+similar); their prior finding was left untouched, not guessed at.
+
+**Summary.**
+
+| Outcome | Count of 150 | What it means |
+|---|---|---|
+| Tier 4, jc.csv changed | 9 | real meeting found, applied |
+| Tier 4, already correct | 91 | already said meeting-without-video, nothing to change |
+| Tier 3, hand-read wrong/not applicable | 6 | decorative/promo/unrelated video, or duplicate government |
+| Tier 3, real but un-probeable | 1 | Alamosa County CO — not queued |
+| Tier 2, already-recorded lead | 1 | Cochise County AZ — not re-added |
+| No meeting found, jc.csv changed | 11 | applied to no-meeting-nor-video |
+| No meeting found, not applied | 31 | inconclusive (access hiccup, or a weaker check than the prior finding) |
+| Remaining population | 2,108 | not yet processed |
+
+**Recommendation.** Nothing here needs a deploy — research files and
+`jurisdiction_coverage.csv` are not deployed artifacts. Continue with
+`scripts/wo352_verify.py --limit 150` (resumable), then `wo352_finish.py`,
+`wo352_build_report.py`, `wo352_apply_to_jc.py`, in that order, for the
+remaining 2,108 governments.
+
+**What's still undone.** Chunks 2 through roughly 15 of this population
+(2,108 governments). The Drive `confirm=t` probe gap (see `BACKLOG.md`).
+
+**Files for the conductor to commit in rtr-business** (never committed
+here, per the tightened rule): `research/wo352_population.csv`,
+`research/wo352_verify.csv`, `research/wo352_final_classification.csv`,
+`research/wo352_report.csv`, `research/jurisdiction_coverage.csv`
+(20 rows changed), `research/wo352_jc_applied_gov_ids.txt`,
+`research/wo352_methods_section.md`, `research/ENUMERATION_METHODS.md`
+(§354 appended).
+
 ## WO-350: the known-video small-platform walk (CivicClerk, eScribe, iQM2, Town Hall Streams) at full scale [Done 2026-09-13]
 
 **Why this ran.** Ryan asked for the known-video platforms with open
