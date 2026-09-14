@@ -1,0 +1,15 @@
+# WO-367 — let the YouTube drip delegate BoardDocs pages (add "boarddocs" to YOUTUBE_DELEGATING_PLATFORMS)
+
+Read scratchpad/briefs/preamble.md first. Never fetch youtube.com/youtu.be from this machine. Never download media. No .env needed.
+
+## Why
+WO-365 shipped app/platforms/boarddocs.py (video-only; resolves the meeting's YouTube/Vimeo video id and delegates, same shape as primegov.py). The drip on Ol McClaude's Mac (scripts/youtube_drip.py) is the only YouTube caller. It consumes queue lines "url<TAB>source_url" and keeps a line only when detect_platform(url) is youtube or in YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov"). A BoardDocs goto page is therefore skipped today, and a bare YouTube line would lose identity (the WO-365 pins are BoardDocs path pins on go.boarddocs.com, not youtube:<id> pins). Breadth and the conductor chose: add "boarddocs" to YOUTUBE_DELEGATING_PLATFORMS so the BoardDocs adapter runs on the drip Mac, identity comes from origin_host plus the path pins, and it generalises to every future BoardDocs meeting. This is a script change picked up by git pull on Ol McClaude's checkout; no Render deploy.
+
+## Do
+1. Read scripts/youtube_drip.py end to end around YOUTUBE_DELEGATING_PLATFORMS and how a primegov line is resolved (which function extracts the YouTube video id from the delegating platform's ResolvedMeeting, and what it passes as source_url / origin_host). Confirm boarddocs.py's ResolvedMeeting exposes the same fields primegov's does (video_url, platform, source_url, origin_host). If anything about the BoardDocs result would make the drip's caption/ingest step differ (e.g. Vimeo-flagged tenants where the video is not YouTube — the drip must skip those cleanly, not error), handle it.
+2. Add "boarddocs" to the tuple, update the comment/docstring, and add or extend the test that covers the delegating-platform filter (grep tests/ for YOUTUBE_DELEGATING_PLATFORMS or youtube_drip) with a BoardDocs goto URL, e.g. https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044 (real, Tallahassee City Commission 2026-09-09). Monkeypatch any network call; no live YouTube.
+3. Do a dry run of the drip's line filter locally on a two-line file (the Tallahassee goto page and the Colorado City one https://go.boarddocs.com/az/ccschools/Board.nsf/goto?open&id=DGTU4S7A4526, each with itself in the tab field) using whatever --dry-run / filter-only path the script has; if it has none, add a tiny --check-lines mode that prints keep/skip per line without resolving. Show the output in the report.
+4. Docs: BACKLOG_DONE.md entry "WO-367 ..."; if docs/COVERAGE_HANDOVER.md or the WO-365 investigation doc names the drip's delegating platforms, update them. Five CI gates. PR on branch claude/wo367-drip-delegates-boarddocs; merge on green (rebase rule: main wins where main deleted/rewrote; union only your own added lines).
+
+## Report (Ryan's shape)
+Purpose paragraph. Table: the two queue lines and the filter's verdict (keep/skip) before and after. Bold takeaway. Deploy: none (Ol McClaude's Mac does git pull). Undone list.

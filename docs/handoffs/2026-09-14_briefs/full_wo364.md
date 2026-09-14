@@ -1,0 +1,21 @@
+# WO-364 (= WO-361b) — finish the remaining 269 homepage-only off-mission governments, same method as WO-361
+
+Read scratchpad/briefs/preamble.md first, then scratchpad/briefs/full_wo361.md (the original brief), then the WO-361 BACKLOG_DONE.md entry on main (grep -n "WO-361" BACKLOG_DONE.md). Your worktree has no .env; the shared checkout's is /Users/mroconnell/Documents/rtr-deeplink/.env — load by explicit path, never print a value. Never fetch youtube.com or youtu.be. Never download a media file. Foreground runs only, per-call timeout under 10 min, chunks of at most 40 governments per call (the script's --limit).
+
+## Why
+WO-361 built the hub-first method (find the real meeting hub with the passive pipeline + access ladder, THEN walk for video) and ran 213 of the 482 governments. Ryan's decision on the rest: "yeah, if a lead would add breadth, get it added to the drip lane" — run the remaining 269. A YouTube lead for a government that has no transcript yet goes to the drip list (research/youtube_channel_leads.csv). Same three standing rules as always: tier-3 video over 90 minutes is queued, not parked; walk until at least 3 videos are seen before calling a hub off-mission; old-but-real meetings still get pages.
+
+## The scripts (all on main, all resumable)
+- scripts/wo361_find_hub.py --limit 40 — appends to ~/Documents/rtr-business/research/wo361_verify.csv; a gov_id already there is skipped, so just keep calling it in chunks of 40 until it reports 0 remaining. Expect ~7 chunks.
+- scripts/wo361_handread.py — hand-read helper for every tier 1 / tier 3 candidate (decorative signature check, then a real Vimeo/other title lookup). Every candidate gets read; report each title.
+- research/wo361_apply_to_jc.py — writes verdicts to jurisdiction_coverage.csv under the §158 protocol (flock, re-read, 99% floor, temp + os.replace, line-based). Run it ONLY on the gov_ids you processed this run; write them to research/wo364_jc_applied_gov_ids.txt (NOT wo361_...). Append new leads to research/youtube_channel_leads.csv set-based on gov_id + video URL (skip any already present). Never commit anything in ~/Documents/rtr-business — Breadth commits; the conductor forwards your file list.
+- Keep the per-bucket output files under wo364_ names (copy the wo361_jc_* bucket layout) so Breadth can tell the two runs apart.
+
+## Hand-check and tiering
+Same as WO-361: tier 1 (video + captions) → ingest a page via the resolver/Archive ingest path the earlier WOs used (check the WO-361 BACKLOG_DONE entry and scripts/coverage_alternates.py for the exact call) after a hand-read confirms a governing-body meeting; tier 3 → owner pin first (tenant_overrides.csv, fallback strength, source wo364), then the queue line via app/platforms/queue_probe.py's finish_candidate() (probe sidecar row). Ryan's rule 2026-09-14: a probe failure is NOT a reject when the government has no transcript yet — queue it anyway. A rejected decorative/promo candidate is a verdict on the video, not the government: keep walking that hub to 3 videos. Tier 2 (YouTube embed) → lead row only, never fetched. Tier 4 → meeting-found-no-video verdict.
+
+## Finish
+Five CI gates locally (ruff check, ruff format --check, python -m pytest -q -x, alembic check in archive/ and app/, scripts/check_backlog_done_headings.py). BACKLOG_DONE.md entry "WO-364 (WO-361b) ...". If BACKLOG.md's WO-361 residual entry (run_access_ladder() stops at a decorative hit) gained new evidence, fold it in and rerun scripts/build_backlog_toc.py. PR on branch claude/wo364-offmission-remaining-269 (body file wo364_pr_body.md in your private scratch dir; re-read the body after create); merge yourself on green; if CONFLICTING, rebase on origin/main (main's version wins where main deleted/rewrote; union only your own added lines), push --force-with-lease.
+
+## Report (Ryan's shape)
+Purpose paragraph. Phase 1 hub-finding table (Count of N processed). Phase 2 tier table. Phase 3 hand-read table with real titles. Video split line: "captions available, page live now: N" / "video, no captions, queued: N". Summary table incl. leads recorded (new vs already on the list), jc rows updated, pages, queued. Bold takeaway. Deploy needed? (pins = resolver = yes; queue/research files = no). Exact rtr-business file list for the conductor to send to Breadth. Undone list.

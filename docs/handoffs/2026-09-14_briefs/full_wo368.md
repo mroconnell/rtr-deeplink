@@ -1,0 +1,24 @@
+# WO-368 — walk the 20 "video, not a meeting" hubs from WO-361/364 to 3 videos each; find a real meeting or tag the row off-mission
+
+Read scratchpad/briefs/preamble.md first (standing rules: walk to 3+ videos before an off-mission reject; a rejected video is a verdict on the video, not the government; tier-3 video over 90 min is queued not parked; old-but-real meetings still get pages; probe failure ≠ reject when the government has no transcript). Your worktree has no .env; load /Users/mroconnell/Documents/rtr-deeplink/.env by explicit path if a token is needed, never print a value. Never fetch youtube.com/youtu.be from this machine. Never download a media file — use scripts/wo364_handread.py's fetch (it checks Content-Type after headers and aborts video/audio/octet-stream; do NOT use wo355_handread.py or wo361_handread.py, which still lack that check). Foreground runs only, per-call timeout under 10 min.
+
+## Why (Ryan, 2026-09-14, their words)
+"For the 10 videos that were not a meeting in wo 364: can you check another video or two at each of those hubs to make sure we get at least one real meeting from the hub? If you get to multiple videos that are off mission or exhaust all the videos in the 'hub' tag that row as off mission in the research file." Breadth widened it to all 20 rows across both halves (WO-361's half never got a second look either), consistent with the 3-video standing rule.
+
+## Population
+~/Documents/rtr-business/research/wo364_handread.csv, the 20 rows with handread_verdict = video-without-meeting (columns: gov_id,name,state,tier,resolved_platform,meeting_url,decorative_url_signature,decorative_filename,context_snippet,meeting_context_found,fetch_error,oembed_title,oembed_author,handread_verdict). Their jurisdiction_coverage.csv rows currently sit at reject_reason video-without-meeting.
+
+## Per hub
+1. Re-open the hub recorded for that government (research/wo361_verify.csv has the hub URL and platform for each gov_id — read only). Use verify_hub() from app/platforms/passive_verify.py with max_listings=15, max_videos=3 (WO-355 options) so the walk moves PAST the already-rejected video: collect the next 2 distinct videos (3 seen in total counting the rejected one), or stop when the hub is exhausted. If the hub is a bare homepage with one promo clip and no listing, say so — that counts as exhausted after 1.
+2. Hand-read each new video the WO-364 way: decorative URL/filename signature, page context, then a real title lookup (Vimeo/other oEmbed; for a YouTube id use only the page's own context, never fetch YouTube). Record every title.
+3. Outcomes: a real governing-body meeting → normal tier handling: tier 1 (captions) → ingest a page (the recheck/ingest path earlier WOs used; hand-read title vs body first); tier 3 → owner pin (tenant_overrides.csv, fallback, source wo368) then finish_candidate() queue line + sidecar row (probe failure still queues); tier 2 YouTube → lead row in research/youtube_channel_leads.csv (set-based on gov_id + video URL). Two or more off-mission videos, or hub exhausted with none → reject_reason=off-mission on the row. Only one new video seen and it is off-mission but the hub is NOT exhausted → keep walking until the rule is met; never stop at 2 seen.
+4. Kind A (video belongs to another body, like Mount Joy twp PA / Lancaster County) → log to research/wo368_owner_bodies.csv, row verdict per the government itself.
+
+## Files (never commit in rtr-business)
+research/wo368_walk.csv (gov_id, hub_url, platform, videos_seen_total, new_video_urls, titles, verdicts, final_row_verdict), research/wo368_handread.csv, research/wo368_jc_applied_gov_ids.txt, research/wo368_apply_to_jc.py (copy wo364_apply_to_jc.py's §158 protocol: flock, re-read, 99% floor, temp + os.replace, line-based, only your gov_ids), research/wo368_methods_section.md (section number assigned by Breadth at append time — leave a placeholder heading, do not append to ENUMERATION_METHODS.md yourself), research/wo368_owner_bodies.csv if any.
+
+## Finish
+Five CI gates; BACKLOG_DONE.md entry "WO-368 ..."; if the run_access_ladder() decorative-hit BACKLOG entry gains evidence, fold it in and rerun scripts/build_backlog_toc.py. PR on branch claude/wo368-offmission-hubs-walk-to-3; merge on green; rebase rule (main wins where main deleted/rewrote; union only your own added lines).
+
+## Report (Ryan's shape)
+Purpose paragraph. Table per hub (20 rows): government, hub platform, videos seen total, new titles, final verdict (real meeting / off-mission / exhausted). Tally table: real meeting found; off-mission (2+ seen); exhausted with none; blocked/failed. Video split line: "captions available, page live now: N" / "video, no captions, queued: N". Summary table incl. pins, leads, jc rows. Bold takeaway. Deploy: pins = resolver = yes; otherwise no. File list for Breadth. Undone list.
