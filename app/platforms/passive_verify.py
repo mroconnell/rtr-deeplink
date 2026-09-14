@@ -269,7 +269,28 @@ def _youtube_resolve_guard():
     original_resolve_video_id = YouTubeAssetFinder.resolve_video_id
 
     async def _blocked(self, url: str):  # noqa: ANN001
-        raise _YouTubeResolveBlocked(url)
+        # WO-348: confirmed live, running this fix's own group-1 rerun --
+        # `_verify_hub_impl()`'s own `platform_hint` fallback (used when
+        # `detect_platform()` says "unknown" and no vendor link was
+        # found) can set `platform="youtube"` from a caller's hint while
+        # `candidate_url` stays the ORIGINAL, non-youtube hub page (the
+        # hint just means some earlier phase's OWN scan thought this
+        # government's site mentions YouTube somewhere -- CLAUDE.md's own
+        # documented Aurora, CO false-positive shape). Before this fix,
+        # `_blocked()` raised unconditionally for ANY url, so this always
+        # produced a `youtube_lead` whose own `meeting_url` was the
+        # original hub page, not a real YouTube URL -- 8 real governments
+        # in one 1,514-row rerun (Ravenna OH, Helotes TX, Groton CT,
+        # Sugar Grove IL, Austell GA, Broadview IL, Blythewood SC, and a
+        # PDF-linked case on Bellevue WI) got a fabricated "video found"
+        # verdict this way, caught only by this WO's own hand-read gate.
+        # Only block a call that is genuinely about to fetch a real
+        # youtube.com/youtu.be URL; anything else calls through to the
+        # real `resolve()`, which raises its own honest error for a URL
+        # that was never a valid YouTube one to begin with.
+        if _is_youtube_host(url):
+            raise _YouTubeResolveBlocked(url)
+        return await original_resolve(self, url)
 
     async def _blocked_video_id(cls, video_id: str, source_url: str):  # noqa: ANN001
         raise _YouTubeResolveBlocked(f"https://www.youtube.com/watch?v={video_id}")

@@ -14,6 +14,9 @@ County FL, Webb County TX -- the WO-333 residual misses this closes) and
 ranking-fix #4 (the Jefferson County WA `no_video_in_listing` shape).
 """
 
+import datetime as _dt
+from unittest.mock import patch
+
 import pytest
 
 from app.platforms.base import (
@@ -1362,7 +1365,25 @@ async def test_townhallstreams_walker_real_troynh_hub_filters_future_and_sorts()
 
     routes = {hub_url: FakeResponse(status=200, text=hub_html, url=hub_url)}
 
-    with mock_session(routes):
+    # WO-348 (resume): this test's "future" assertion is anchored to a
+    # real, fixed capture date (2026-09-13) baked into the fixture's own
+    # dated rows -- it's not relative to whenever the suite happens to
+    # run. Confirmed live 2026-09-13/14: real wall-clock time crossing
+    # midnight UTC past the fixture's own Sept 14 2026 row made this test
+    # fail on a plain `datetime.now()` call, on origin/main, with none of
+    # this WO's own changes applied -- a pre-existing, date-boundary bug,
+    # not something this WO introduced. Freezing `_townhallstreams_
+    # walker()`'s own "today" to the fixture's real capture date keeps
+    # the test deterministic regardless of when it's actually run.
+    class _FrozenDatetime(_dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 9, 13, 12, 0, 0, tzinfo=tz)
+
+    with (
+        mock_session(routes),
+        patch("app.platforms.passive_verify._dt.datetime", _FrozenDatetime),
+    ):
         candidates = await _townhallstreams_walker(hub_url)
 
     # The real fixture has 3 rows -- one (id 76219, Sept 14 2026) is
