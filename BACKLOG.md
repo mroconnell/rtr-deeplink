@@ -168,7 +168,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
   34 of WO-271's WordPress governments have a front-page…
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
   `civicclerk.py`'s `resolve()` can return a bare…
-  The CivicClerk/eScribe "confirmed tenant, stale label" buckets (148…
+  The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   54 real West Virginia towns/cities share one placeholder domain…
@@ -1885,34 +1885,35 @@ so that work reads together.
 - **History:** `BACKLOG_DONE.md`'s WO-350 entry; `rtr-business/research/
   ENUMERATION_METHODS.md` §352.
 
-### The CivicClerk/eScribe "confirmed tenant, stale label" buckets (148 governments) were sized but never walked `[JUST-DO-IT]`
+### The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's 48 unresolved rows need a full phase-1-3 discovery pass, not just a two-hop check `[JUST-DO-IT]`
 
-- **Issue:** WO-350 (2026-09-13) built the full open-government
-  population for CivicClerk/eScribe/iQM2/Town Hall Streams from
-  `research/coverage_registry/coverage_registry.csv`, split into a
-  "confirmed tenant URL on file" bucket (68 governments, fully walked
-  this WO) and a "registry names the platform but no tenant URL is on
-  file" bucket (97 CivicClerk + 32 eScribe + 14 iQM2 + 5 Town Hall
-  Streams = 148), which was sized but not run.
-- **Impact:** 148 more governments this repo already suspects use one
-  of these four platforms have never had `verify_hub()` run against
-  them at all — a real, sized, not-yet-collected yield.
-- **Next action:** run `verify_hub()` against each government's own
-  domain (not a platform tenant URL, since none is on file) with
-  `platform_hint=<platform>` — the module's own "unknown hub" fallback
-  already does a single hop looking for an embedded/linked vendor URL,
-  so this may resolve a real share of the bucket without a full
-  phase-1-3 discovery pass first. Population files:
-  `wo350_pop_{civicclerk,escribe,iqm2,townhallstreams}_stale.csv`
-  (WO-350's private scratch directory — regenerate from the registry
-  using `wo350_build_population.py`'s method if the files themselves
-  aren't available).
-- **Constraint:** hand-check every tier 1-3 candidate the same way
-  WO-350 did — this bucket is unverified registry data, likely to carry
+- **Issue:** WO-358 (2026-09-13) walked WO-350's "stale label" bucket
+  (registry names one of these four platforms, no confirmed tenant URL
+  on file) with `verify_hub()`'s existing "unknown hub" one-hop-deeper
+  fallback against two entry points per government (its registry
+  `hub_url` when on file, else the bare domain homepage). 88 of 136 live
+  governments got a real finding (9 tier-3 queued/probed, 6 tier-2
+  leads, 64 tier-4 meeting-without-video, 8 confirmed no-meeting-found,
+  1 skipped for no domain); 48 came back `resolve_error`/`fetch_failed`
+  — neither entry point this WO tried linked to a derivable tenant.
+- **Impact:** 48 governments this repo already suspects use CivicClerk,
+  eScribe, iQM2 or Town Hall Streams still have no confirmed tenant URL
+  and no real finding — the two-hop shortcut BACKLOG.md previously
+  proposed genuinely can't reach them.
+- **Next action:** run the real phase-1-3 discovery pipeline (robots.txt/
+  sitemap/Wayback, the pattern `scripts/wo283_recon.py` →
+  `wo283_classify.py` → `wo283_targeted.py` already use) against these
+  48, rather than the two-entry-point `verify_hub()` shortcut — a
+  government whose own site never links its meeting vendor from the
+  homepage or the registry's on-file agenda page needs a deeper crawl to
+  find the real tenant subdomain. List:
+  `research/wo358_verify.csv` rows with `verdict` in
+  (`resolve_error`, `fetch_failed`).
+- **Constraint:** hand-check every tier 1-3 candidate found this way —
   the same county-tenant and Canada/US-namesake traps WO-350 found in
-  the confirmed bucket.
-- **History:** `BACKLOG_DONE.md`'s WO-350 entry; `rtr-business/research/
-  ENUMERATION_METHODS.md` §352.
+  the confirmed bucket apply here too.
+- **History:** `BACKLOG_DONE.md`'s WO-358 entry; `rtr-business/research/
+  ENUMERATION_METHODS.md` §361 (also §352 for WO-350's original sizing).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
