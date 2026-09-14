@@ -16,6 +16,7 @@ invented) -- see wo273_recon.py's own module-level comments for their
 source.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -110,6 +111,82 @@ def test_rank_sub_sitemaps_prioritizes_pages_over_images():
         "https://example.gov/image-sitemap.xml",
         "https://example.gov/category-sitemap.xml",
     )
+
+
+def _meeting_path_regex_matches(url: str) -> bool:
+    return bool(re.match(wo273_recon.MEETING_PATH_REGEX, url))
+
+
+# WO-366 (2026-09-14): real URL examples for each of the six tokens Ryan
+# asked to add to MEETING_PATH_REGEX (civicmedia | vod | event | stream |
+# live | show). Every URL here is real, not invented -- see
+# scripts/wo273_recon.py's own MEETING_PATH_REGEX comment for where each
+# one is documented elsewhere in this repo. The "live" case uses a real,
+# confirmed URL SHAPE (app/platforms/municode_meetings.py's Fair Oaks
+# Ranch TX example, app/platforms/openmedia.py's Santa Barbara example)
+# with a placeholder video id, since neither file records a concrete real
+# id -- the regex under test only cares about the path token, not the id.
+def test_meeting_path_regex_matches_civicmedia_token():
+    # Hobart, IN's real CivicMedia page (app/platforms/civicmedia.py,
+    # confirmed live 2026-09-13). Mixed case on purpose -- this is also
+    # what motivated the regex's new (?i) prefix (see its own comment).
+    assert _meeting_path_regex_matches(
+        "https://www.cityofhobart.org/CivicMedia?VID=326"
+    )
+
+
+def test_meeting_path_regex_matches_vod_token():
+    # Castus's real vod URL shape (app/platforms/castus.py).
+    assert _meeting_path_regex_matches(
+        "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d"
+    )
+
+
+def test_meeting_path_regex_matches_event_token():
+    # ChampDS's real event URL shape (app/platforms/champds.py).
+    assert _meeting_path_regex_matches("https://play.champds.com/atlantaga/event/1227")
+
+
+def test_meeting_path_regex_matches_stream_token():
+    # Granicus's own real CDN host, seen live in an ingested Yountville,
+    # CA page's video_url (research/hub_sweep_wo126_export_pages.json).
+    assert _meeting_path_regex_matches(
+        "https://archive-stream.granicus.com/OnDemand/_definst_/"
+        "mp4:swagitVideo/yountvilleca/5294f2f1-6b21-4b25-bea8-085e571bf3c9.mp4"
+        "/playlist.m3u8"
+    )
+
+
+def test_meeting_path_regex_matches_live_token():
+    # Real URL SHAPE confirmed for Fair Oaks Ranch, TX and Santa Barbara,
+    # CA (see the module comment above) -- video id is a placeholder.
+    assert _meeting_path_regex_matches(
+        "https://www.youtube.com/live/dQw4w9WgXcQ?si=abc"
+    )
+
+
+def test_meeting_path_regex_matches_show_token_lincoln_internetchannel():
+    # Lincoln, NE's own self-hosted Cablecast-template page (real, from
+    # jurisdiction_coverage.csv's example_meeting_url for Lincoln city,
+    # Nebraska).
+    assert _meeting_path_regex_matches(
+        "http://lnktv.lincoln.ne.gov/internetchannel/show/4442?channel=1"
+    )
+
+
+def test_meeting_path_regex_matches_show_token_cablecast_bare_show():
+    # Cablecast's newer bare /show/{id} template, without the older
+    # /internetchannel prefix (real, see README.md's Cablecast row and
+    # BACKLOG.md's pgcps.cablecast.tv/show/3178 mention).
+    assert _meeting_path_regex_matches("https://pgcps.cablecast.tv/show/3178")
+
+
+def test_meeting_path_regex_still_matches_original_tokens():
+    # The original token set (agenda/minutes/meeting/council/commission/
+    # board/video/clip/player/watch) must still match after the widen --
+    # this isn't a narrowing change.
+    assert _meeting_path_regex_matches("https://example.gov/AgendaCenter")
+    assert _meeting_path_regex_matches("https://example.gov/MediaPlayer.php?view_id=5")
 
 
 def test_hub_score_scores_agendacenter_highest():

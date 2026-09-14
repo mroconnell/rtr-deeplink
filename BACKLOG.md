@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -169,6 +169,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
   `wo283_recon.py`'s (and every WO-3xx copy's) CDX health-check holds…
   `civicclerk.py`'s `resolve()` can return a bare…
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
+  `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
+  `jurisdiction_coverage.csv` has at least one mojibake `city_name`…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
@@ -1942,6 +1944,78 @@ so that work reads together.
   the confirmed bucket apply here too.
 - **History:** `BACKLOG_DONE.md`'s WO-358 entry; `rtr-business/research/
   ENUMERATION_METHODS.md` §361 (also §352 for WO-350's original sizing).
+
+### `wo273_recon.py`'s domain-wide Wayback query still can't reach a subdomain on a large site — CDX's urlkey sort puts every bare-domain URL first, so a 2,000-row cap never gets there `[JUST-DO-IT]`
+
+- **Issue:** WO-366 (2026-09-14) switched `fetch_wayback_domain_index()`
+  from `url=<domain>/*` (prefix match) to `url=<domain>&matchType=domain`
+  specifically so a government's real content on a subdomain (Sedgwick
+  County KS's `imaging.sedgwickcounty.org`, 115 OnBase meeting pages)
+  would count. Confirmed live that the switch is *necessary*: a direct
+  CDX query scoped to `imaging.sedgwickcounty.org` alone returns 200+
+  real captures, including real meeting agenda packets, so the content
+  is indexed and `matchType=domain` does make it structurally reachable
+  (the old prefix form could never match a different hostname at all,
+  regardless of row cap). But it is not *sufficient* on a large site:
+  CDX's `urlkey` sort places every bare-domain URL before any subdomain
+  URL, so on a domain whose own page count already fills the 2,000-row
+  cap (confirmed: Sedgwick's own pages alone hit exactly 2,000), the
+  primary query never reaches the subdomain rows at all. The fallback
+  meeting-path-regex query (meant to rescue exactly this case when the
+  primary query is truncated) was tried against Sedgwick specifically,
+  twice, and both times CDX became unreachable partway through (see the
+  "Wayback CDX now returns connection-refused" entry below) — not yet
+  confirmed either way whether the fallback would clear the crowding
+  once CDX is healthy again.
+- **Impact:** any government whose own site has more than ~2,000
+  archived pages (mostly larger cities/counties) and whose real meeting
+  content lives on a subdomain will still silently miss it, the same way
+  it did before this WO — this WO closed the *structural* gap, not the
+  *practical* one, for that specific shape of government.
+- **Next action:** either (a) query known/guessed subdomains separately
+  when the primary query truncates, using this repo's existing DNS
+  subdomain-guess list (`VENDOR_SUBDOMAIN_GUESSES` in `wo273_recon.py`)
+  plus whatever subdomain a government's own `alternate_domains` already
+  names, or (b) give the fallback query its own, larger row budget
+  specifically when truncation is detected, rather than sharing the same
+  2,000-row cap that caused the truncation in the first place. Re-test
+  against Sedgwick County KS once CDX is healthy — it's still the best
+  known real positive case.
+- **Constraint:** don't raise `WAYBACK_TOP_N` or the row `limit=` as a
+  blind fix — the crowding is an *ordering* problem (subdomain rows
+  never get fetched at all), not a *truncation-after-fetch* problem
+  (`WAYBACK_TOP_N` only trims what was already fetched).
+- **History:** `research/wo366_methods_section.md`; this WO's own
+  `fetch_wayback_domain_index()` docstring in `scripts/wo273_recon.py`.
+
+### `jurisdiction_coverage.csv` has at least one mojibake `city_name` (Doña Ana County, NM stored as "DoÃ±a Ana County") `[EASY]`
+
+- **Issue:** found while building WO-366's 50-government reverse-query
+  sample (2026-09-14): `us:county:35013`'s `city_name` is
+  `DoÃ±a Ana County` — a real UTF-8-decoded-as-Latin-1-then-re-encoded
+  corruption of "Doña Ana County". Even Unicode NFKD normalization
+  garbles it further (produces "doaaana", not "donaana") since the
+  mojibake bytes don't round-trip through normalization the way a
+  correctly-encoded accented character does. The row's `domain` column
+  (`donaana.gov`) is NOT corrupted, so this WO worked around it with a
+  one-row override rather than fixing the source.
+- **Impact:** small on its own (this is the only instance found so far,
+  in an unrelated 50-row sample, not a targeted search), but any report
+  or slug-derivation that reads `city_name` directly for this row will
+  produce a wrong value, and there may be other rows with the same
+  corruption that a targeted scan would find.
+- **Next action:** grep `jurisdiction_coverage.csv` for the mojibake
+  signature (`Ã` followed by a non-ASCII byte) to find every affected
+  row, then hand-correct each `city_name` from a real source (the
+  government's own site, already linked via `domain`) — not a blind
+  encoding round-trip, since mojibake isn't always reversible the same
+  way twice.
+- **Constraint:** follow this file's own commit protocol (flock, re-read,
+  99%-floor, explicit paths) even for a single-cell correction — it's
+  still a write to the shared research file.
+- **History:** `research/wo366_reverse_pilot.csv`'s selection script
+  (`SLUG_OVERRIDES` in the WO-366 agent's scratch
+  `wo366_select_50.py`, not committed to this repo).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
