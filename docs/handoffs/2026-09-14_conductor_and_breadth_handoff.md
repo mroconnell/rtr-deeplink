@@ -298,3 +298,10 @@ Python: `/Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python`.
   the token, not the route.
 - The research file's `city_name` had 23 double-encoded names (fixed
   5c9a647); a grep for `Ã` finds any recurrence.
+- A docs-only PR that touches `BACKLOG.md` can still break CI if it was
+  built on an older `main`: #1161 squash-merged with a stale table of
+  contents and left `main` red on `tests/test_backlog_toc.py` for 13
+  minutes (13:21-13:34 UTC, 2026-09-14) until #1171 regenerated it.
+  Rebase on `main` and rerun `python3 scripts/build_backlog_toc.py`
+  right before merging any PR that touches `BACKLOG.md`, even a
+  documentation-only one.
