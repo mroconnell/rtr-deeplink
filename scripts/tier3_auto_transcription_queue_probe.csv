@@ -6243,3 +6243,15 @@ https://cityofenumclaw.net/CivicMedia?VID=497,civicmedia,hls-master+variant,2113
 https://townhallstreams.com/stream.php?location_id=82&id=72457,townhallstreams,hls-master+variant,3200.31,,,1,accept,,3.24,2026-09-14T00:40:05+00:00,wo348,0
 https://bethelak.portal.civicclerk.com/event/1132/media,civicclerk,head+ffprobe,1798.53,2026-09-09,44466915,1,accept,,4.80,2026-09-14T01:34:31+00:00,wo350,0
 https://sidneymt.portal.civicclerk.com/event/2492/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://us06web.zoom.us/rec/share/cCPKD--XNvS9oXb-i4WLPxbJ6MHtI-YWWSgzTmAA6iYGu8rkr0yC2LHD2lMRZWXG.yQPPOwVrzrIT-DOj,6.42,2026-09-14T01:34:39+00:00,wo350,0
+https://bristolct.portal.civicclerk.com/event/4752/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.33,2026-09-14T01:57:50+00:00,wo349,0
+https://sangerca.portal.civicclerk.com/event/4/media,civicclerk,head+ffprobe,4108.72,2026-09-04,763295857,1,accept,,2.74,2026-09-14T01:58:02+00:00,wo349,0
+https://townhallstreams.com/stream.php?location_id=115&id=76435,townhallstreams,hls-master+variant,5432.71,,,1,accept,,1.93,2026-09-14T01:58:06+00:00,wo349,0
+https://columbusms.portal.civicclerk.com/event/266/media,civicclerk,head+ffprobe,1111.67,2026-09-01,839787526,1,accept,,2.27,2026-09-14T01:58:12+00:00,wo349,0
+https://portorchardwa.portal.civicclerk.com/event/2506/media,civicclerk,head+ffprobe,10225.58,2026-09-09,3723976106,1,accept,,2.73,2026-09-14T01:58:21+00:00,wo349,0
+https://woodinville.granicus.com/MediaPlayer.php?view_id=11&clip_id=2124,granicus,head+ffprobe,3440.26,2026-08-28,906117795,1,accept,,2.04,2026-09-14T01:58:28+00:00,wo349,0
+https://edgewoodwa.portal.civicclerk.com/event/1121/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://vimeo.com/1225282874?share=copy&fl=sv&fe=ci,0.00,2026-09-14T01:58:39+00:00,wo349,0
+https://burlingtonwi.new.swagit.com/videos/396670,swagit,hls-master+variant,1371.23,,,1,accept,,0.83,2026-09-14T01:58:42+00:00,wo349,0
+https://saintfrancismn.portal.civicclerk.com/event/1658/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/@saintfrancismn2028/streams,0.00,2026-09-14T01:58:46+00:00,wo349,0
+https://taosnm.new.swagit.com/videos/399879,swagit,hls-master+variant,1390.85,,,1,accept,,1.54,2026-09-14T01:58:50+00:00,wo349,0
+http://71.184.118.35/internetchannel/show/13219?channel=2&query=redevelopment+authority,cablecast,hls-master+variant,1773.46,,,1,accept,,0.64,2026-09-14T01:58:52+00:00,wo349,0
+https://aberdeentwpnj.portal.civicclerk.com/event/2024/media,civicclerk,head+ffprobe,3066.47,2026-09-03,1783675205,1,accept,,2.58,2026-09-14T01:58:58+00:00,wo349,0

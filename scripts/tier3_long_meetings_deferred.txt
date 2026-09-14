@@ -952,3 +952,5 @@ https://pub-chocolatetown.escribemeetings.com/Meeting.aspx?Id=d540b019-0bd2-407b
 https://townhallstreams.com/stream.php?location_id=144&id=76256	https://townofpittsboro.org/	us:place:1860192	Pittsboro, IN	2:11:06	Plan Commission
 https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	ca:csd:4812037	Lac la Biche County, AB	4:41:52	Regular Council Meeting
 https://www.townhallstreams.com/stream.php?location_id=107&id=73417	https://hamptonfalls.org/	us:cousub:3301533460	Hampton Falls, NH	1:48:34	Capital Improvement Committee
+https://townhallstreams.com/stream.php?location_id=115&id=76435	https://townhallstreams.com/stream.php?location_id=115&id=76435	us:place:0617498	Cudahy city, CA	1:30:33	City Council Meeeting
+https://portorchardwa.portal.civicclerk.com/event/2506/media	https://portorchardwa.portal.civicclerk.com/event/2506/media	us:place:5355785	Port Orchard city, WA	2:50:26	City Council Regular Meeting
