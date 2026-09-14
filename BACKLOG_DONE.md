@@ -1936,6 +1936,93 @@ Full per-government detail: `rtr-business/research/wo331_report.csv`,
 Methods: `rtr-business/research/ENUMERATION_METHODS.md` §337.
 BACKLOG: the "Confirmed, quantified, and generalized (WO-331)" entry
 under Open bugs.
+## Inbox-triage promotion review, 2026-09-13: seven days of `CLAUDE_INBOX_TRIAGE.md` findings (2026-09-06 through 2026-09-12) re-verified, closed, or promoted [Done 2026-09-13]
+
+Periodic review of the daily inbox-triage Routine's staged findings, per
+`CLAUDE_INBOX_TRIAGE.md`'s own promotion convention. Re-verified every
+finding in the 2026-09-06 through 2026-09-12 dated sections against
+live sources (GitHub Actions job logs and PR state via the GitHub API,
+real Gmail search) rather than trusting the triage file's own notes.
+Two findings promoted into `BACKLOG.md` proper (see there); the rest
+below were re-checked and found already resolved, so they're closed
+here instead rather than re-promoted.
+
+**PR #1029 ("Advance tier 3 auto-transcription queue") — already closed,
+verified.** The 2026-09-12 triage entry left an open question ("rebase
+onto main and re-push, or close and let tomorrow's run regenerate the
+same skips?"). Checked live via the GitHub API 2026-09-13: the PR was
+already closed (not merged) on 2026-09-12T14:10:18Z, with a comment from
+the repo owner explaining exactly the reasoning the triage entry itself
+laid out ("this branch's frozen pre-WO-269 heading check fails against
+main's moving tip and cannot pass; its 12 queue skips are idempotent and
+the next scheduled queue-advance run regenerates them"). Nothing left to
+do — a later conductor had already acted on the open question before
+this review reached it.
+
+**Adapter canary `townhallstreams`/`seattle_channel` flake (2026-09-09
+through 2026-09-11 entries) — confirmed resolved, loop closed.** The
+2026-09-10 run flagged both as new failures and called them "likely CI
+flakiness, worth checking recurrence." The 2026-09-11 run found
+`townhallstreams` recurred (already explained by WO-205's own
+same-day root-cause: the sample URL is one of 116 dead Town Hall Streams
+leads) while `seattle_channel` did not recur, calling that one a
+confirmed flake. Checked the real, current canary state 2026-09-13 (run
+`34709015653`, 2026-09-12 17:43 UTC, the latest scheduled run as of this
+review): **36/37 platforms OK, sole failure is the already-tracked
+Phoenix Legistar dead-meeting sample** (`[NEEDS-AUDIT][EXAMPLE]` entry,
+`BACKLOG.md`). Neither `townhallstreams` nor `seattle_channel` has failed
+since. No new entry needed — the loop these triage entries were tracking
+is closed.
+
+**GitHub Actions `test.yml` TOC-staleness failure, 2026-09-10 — confirmed
+still self-resolved.** The triage entry itself already noted this
+self-resolved within 5 minutes on 2026-09-10 (a stale `BACKLOG.md` TOC
+from WO-135/PR #820 not rerunning `build_backlog_toc.py`). Re-ran
+`python3 scripts/build_backlog_toc.py --check BACKLOG.md` against the
+current tree 2026-09-13: still exits 0. Confirmed moot, nothing to
+promote.
+
+**`rtr-deeplink` SIGABRT/status-134 crash-loop — the six daily "more
+data" updates (2026-09-06, 09-07, 09-08, 09-09, 09-10, 09-11 triage
+entries) are not separate findings; they're incremental occurrence
+counts against the same already-open `BACKLOG.md` `[NEEDS-AUDIT]` entry,
+and that entry's own count (34, through 2026-09-11) already exceeded
+what any single day's triage entry had on its own.** Rather than
+re-promoting six overlapping updates, re-verified the *current* state
+directly against Gmail 2026-09-13 (`label:rtr-claude "status 134"` /
+`UptimeRobot`) and rewrote the live `BACKLOG.md` entry in place
+(overwrite, not append, per that file's own convention) with the result:
+**zero new "Exited with status 134" alerts since 2026-09-10 20:54 UTC,
+zero new UptimeRobot outages since 2026-09-11 00:06 UTC — about 65 hours
+quiet as of this check, the longest gap since the loop began.** That
+lines up with WO-239's `--loop asyncio` change (deployed 2026-09-10) and
+is real evidence it may be the fix, not yet long enough to call it
+closed. The entry stays open in `BACKLOG.md` with a 2026-09-17 check-back
+date. The 2026-09-09 triage entry's aside about PR #795 (the
+`handle_head_requests` Content-Length fix) being a plausible partial
+explanation for the UptimeRobot-outage pattern needs no separate
+follow-up: that fix was itself already `[Done 2026-09-09]` (see this
+file's own entry), and the commit that deployed WO-239 (`0636ec93`,
+confirmed live 2026-09-10) is later than it, so it was already live
+before this review even started. The 2026-09-07 triage entry's aside
+about a new Search Console "Server error (5xx)" indexing-block reason
+(unconfirmed, GSC dashboard auth-walled) is folded into the `BACKLOG.md`
+entry's Impact field as a still-unconfirmed side note rather than a
+separate item — it's circumstantial evidence about the same instability,
+not a distinct problem.
+
+**Promoted into `BACKLOG.md` (not closed here)**: the Render bandwidth
+cap/overage-billing alert (escalated from "Approaching" 2026-09-09 to
+"Reached" 2026-09-12, re-confirmed live against Gmail 2026-09-13) as a
+new `[HUMAN]` entry under "Production actions only Ryan should take,"
+and the SIGABRT entry rewrite described above.
+
+**Every entry in the 2026-09-06 through 2026-09-12 dated sections of
+`CLAUDE_INBOX_TRIAGE.md`** — including the ones each day's own run
+already marked "out of scope" or "duplicate, no new write-up" — is
+accounted for by this entry, the SIGABRT/bandwidth `BACKLOG.md` edits, or
+was already closed independently (PR #1029) before this review started;
+removed from that file accordingly.
 
 ## WO-329: Sheboygan County, WI and Plainfield, VT queued for the YouTube drip [Done 2026-09-13]
 
