@@ -1198,15 +1198,27 @@ DEFERRED_FILE_HEADER = (
     "tier3_auto_transcription_queue_probe.csv.\n"
 )
 
-# WO-205/WO-212's rule: a tier-3 candidate whose duration is over 90
-# minutes never earns a queue line at all -- it goes straight to the
-# deferred file instead of being queued and swapped out again later (the
-# original WO-205 pass had to do exactly that swap-back-out after the
-# fact; this constant lets a finish step skip the round trip). Distinct
-# from `_FLAG_LONG_SECONDS` (6 hours) above, which is `probe_queue_entry`'s
+# WO-205/WO-212's rule, as `finish_candidate()` still applies it by
+# default: a tier-3 candidate whose duration is over 90 minutes goes
+# straight to the deferred file instead of being queued (the original
+# WO-205 pass had to do exactly that swap-back-out after the fact; this
+# constant lets a finish step skip the round trip). Distinct from
+# `_FLAG_LONG_SECONDS` (6 hours) above, which is `probe_queue_entry`'s
 # own "still accept, but flag it" ceiling -- a `flag-long` verdict is
-# always also over this lower, 90-minute threshold, so it always lands in
-# the deferred file, never the queue.
+# always also over this lower, 90-minute threshold.
+#
+# Ryan's standing rule since 2026-09-12 ("long-only videos") narrows
+# when a long candidate should actually STAY deferred: only when a
+# shorter, on-mission alternative exists on the same tenant and was
+# queued in its place, or for WO-266-style parking of a government that
+# already has a transcript elsewhere -- never for length alone once no
+# shorter alternative exists. `finish_candidate()` itself doesn't know
+# whether a shorter alternative was already checked, so a caller that
+# has already looked deeper and found none queues the long candidate
+# directly (`append_queue_line()` + `write_pin_row()`) rather than
+# calling `finish_candidate()` and accepting an automatic defer -- see
+# `scripts/wo356_item4_move_long.py` for the one-time cleanup this
+# caused (two lines parked here for length alone, moved to the queue).
 DEFER_OVER_SECONDS = 90 * 60
 
 _ACCEPT_VERDICTS = ("accept", "flag-long")
