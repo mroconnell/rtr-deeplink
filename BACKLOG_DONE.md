@@ -54800,3 +54800,51 @@ on `main` but need the resolver/worker deploy before they take effect.
 🎯 **Bottom line: of 892 open CivicPlus governments checked, 8 have a
 live transcript today and 7 more are queued — a real, if modest, yield
 from a platform this site had never fully swept before.**
+
+## WO-362: Englewood OH's CivicMedia page 500'd on every view because the render path waited on a live network call it should never have made [Done 2026-09-13]
+
+WO-357 ingested Englewood city, OH — a real CivicMedia (CivicPlus's
+TikiLive-hosted video widget) page, 583 real caption segments. The live
+page kept returning HTTP 500, even after a re-ingest. The conductor
+deleted the page so a broken one wasn't left live.
+
+**What was tested.** The same Englewood URL was resolved and ingested
+into a local, seeded SQLite Archive, then rendered, to reproduce the
+crash outside production. It rendered fine at first — the real bug only
+showed up once the card thumbnail's own extraction was seen to fail in
+the background log (ffmpeg couldn't seek the signed video to the stored
+highlight's timestamp). Hobart, IN — the only other live CivicMedia page
+— was compared next: its card thumbnail has been cached for days, so it
+never runs the code path Englewood was stuck in.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `/m/{slug}` (and `/m/{slug}/card.jpg`) return 500 for a CivicMedia page whose card thumbnail keeps failing to extract | WO-341 added CivicMedia's signed, expiring video URL to the platforms the render path re-fetches fresh at view time — but that re-fetch (up to two live HTTP calls, 30s timeout each) was awaited INLINE, before the response, every time the page's card hadn't warmed yet. A page whose card never successfully warms (Englewood's ffmpeg seek kept failing) reruns that blocking fetch on every single view, forever. | Moved the fresh-URL resolution into the background task itself, so `/m/{slug}` never waits on it — the response returns immediately regardless of what the refetch does. Added a timeout (10s) and a catch-all inside `fresh_video_url()` itself, so even a genuine bug or a hang in a refresher can't escape as an unhandled exception or an unbounded wait. |
+
+**Test added.** `tests/test_civicmedia_page_render.py` — a CivicMedia
+page whose refetch raises a real exception still renders `/m/{slug}` and
+`/m/{slug}/card.jpg` without a 500 (confirmed this test genuinely fails
+against the pre-fix code with the exact same exception surfacing through
+the route, then passes with the fix), plus a unit test that
+`fresh_video_url()` itself never propagates a refresher's exception, and
+a negative control that a successful refetch still works exactly as
+before.
+
+**Caution.** This was a render-path bug, not a data or platform-adapter
+bug — the stored record (583 segments, a valid signed playlist) was
+correct the whole time. The underlying ffmpeg extraction failure against
+Englewood's own video (seeking to a highlight timestamp the signed
+playlist apparently can't serve) is still unresolved and is why the page
+kept hitting this path at all; it's just no longer able to crash the
+page while unresolved. Worth a look if it recurs on another CivicMedia
+government.
+
+**Deploy status.** The fix is on `main`, in `archive/`, not deployed —
+Englewood was not re-ingested as part of this WO. Once Ryan deploys the
+Archive service, re-ingest `https://englewood.oh.us/CivicMedia?VID=106`
+(with its real `gov_id`) and confirm the page renders 200 with its 583
+segments.
+
+🎯 **Bottom line: the page render path was waiting on a live network
+call it never should have made — moved that call into the background,
+so a stuck thumbnail extraction can no longer take the whole page down.**
