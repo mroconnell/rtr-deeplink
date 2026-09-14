@@ -54000,3 +54000,69 @@ resolver/worker deploy before Libertyville's pin and Scandia's queue line
 take effect (the 2 ingested pages are already live on the Archive, deploy-
 independent). `jurisdiction_coverage.csv`'s changes are research-file
 only, no deploy dependency.
+
+## WO-348 (resume), group 2: reran WO-338's 201 "nothing walkable" governments — 1 queued, 1 mis-keyed to the wrong government, 87 real meetings-without-video found [Done 2026-09-13]
+
+**Why this WO ran.** The previous entry reran the first, largest group
+this work order covers. This is the second group named in the same
+brief: WO-338's "nothing walkable" governments (a real platform was
+confirmed, but the checker's walk of it came back empty). 143
+governments total — 93 the checker never got to try under the newer
+walkers, plus 50 that were tried under those walkers but were still
+empty before this WO's own hop-deeper fix existed.
+
+| Result | Count of 143 | What it means |
+|---|---|---|
+| Meeting found, no video | 87 | A real meetings/agendas page exists, found one hop deeper than before |
+| Video found | 6 | Every one hand-checked before anything was queued |
+| Still nothing found | 50 | Includes 7 that timed out even with a hard, un-skippable time limit |
+
+**A real bug found and worked around while running this group.** The
+first attempt at this rerun froze partway through — not a slow website,
+a genuine hang that a normal time limit could not interrupt (the same
+kind of problem `BACKLOG.md` already has an open entry about, for a
+different sweep script). Fixed by running each government's own check in
+its own separate small program, so a hang can be killed outright rather
+than waited out.
+
+**Every video find hand-checked — only 1 of 6 was a new, real, queueable
+meeting.**
+
+| Government | What the checker found | Hand-check result |
+|---|---|---|
+| Sanford city, ME | Town Hall Streams video | Real — queued |
+| Kingsley city, KY | A Granicus video | The recorded web address for "Kingsley" is actually Louisville Metro Government's own page — the video belongs to Louisville's city council, not a place called Kingsley. Not used. Logged so a later pass can look for Kingsley's own real page |
+| Bridgeport city, TX | A CivicClerk video | Real, but this government already has a different meeting queued — nothing more needed |
+| Upper Providence township, PA | A CivicClerk video | The exact same meeting an earlier WO already queued — no change needed |
+| Zeballos, BC | A YouTube video | Real lead, but per this project's rule, a YouTube video is never opened here directly — logged for the separate YouTube process |
+| East Allen township, PA | A YouTube video | Same as above — logged for the separate YouTube process |
+
+**What this means.** The "meeting found, no video" side of the fix
+clearly works here too (87 of 143). The "video found" side needed a
+person to check every single time, again — of 6 checked, only 1 was a
+genuinely new, correct find. This matches the previous entry's own
+finding and is the same reason a new `BACKLOG.md` entry exists for it,
+rather than a second one being added here.
+
+**What went live.** 1 government queued for automatic transcription:
+Sanford city, ME.
+
+**Research file.** 88 of 143 rows changed to something other than
+"still nothing" — `rtr-business/research/wo348_group2_report.csv`,
+applied via the same `wo348_apply_to_jc.py` script used for the first
+group (created on disk, not committed by this session). A mis-keyed
+government (Kingsley city, KY) and its real owner (Louisville Metro
+Government) are logged in `rtr-business/research/wo348_owner_bodies.csv`
+for a later pass to mint separately.
+
+**What is not done.** WO-338's largest group, 2,202 "nothing confirmed"
+rows, is still unrerun — left for last on purpose per the brief, only
+worth running if the smaller groups show the fix pays. Between this
+group and the first (group 1), the rate has been consistent: strong on
+meetings-without-video, weak on video-found without a person checking
+every one.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+and `scripts/tier3_auto_transcription_queue.txt` changed again — need
+the resolver/worker deploy before Sanford's pin and queue line take
+effect (same pending deploy as the previous entry).
