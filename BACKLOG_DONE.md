@@ -1,5 +1,143 @@
 # Backlog — done
 
+## WO-357: the 234 CivicPlus "label-only" governments — a full pipeline run, and one live Archive bug found [Done 2026-09-14]
+
+**Why this ran.** Ryan asked for this directly: "The 234 label-only
+CivicPlus rows: need a full pipeline run to become pages. Do this."
+WO-349 had already checked the 892 CivicPlus governments with a real,
+confirmed web address on file. It skipped these other 234 on purpose —
+their record only says "this government probably uses CivicPlus," with
+no address to check.
+
+**Population.** 234 governments, from `research/wo349_population.csv`'s
+own "Bucket B" column, sorted by population, largest first (`research/
+wo357_population.csv`).
+
+**Method.** The checking tool (`verify_hub()`) got smarter over the last
+two weeks — it can now start from a government's plain homepage address
+and find its own meeting page on its own, without a separate address-
+finding step first. So this WO called it once per government, starting
+from `https://` plus the government's own domain.
+
+**What the first pass found.**
+
+| Result | Count of 234 | What it means |
+|---|---|---|
+| A real video candidate (tiers 1–3) | 16 | needed a human read before anything else happened |
+| A real meeting listing, no video | 114 | recorded, no page |
+| The website loaded but had no meetings listed | 11 | recorded, no page |
+| The website would not load at all | 90 | needed a second look before giving up |
+| The checking tool itself errored | 3 | left alone — an error is not a finding |
+
+**The second look at the 28 hardest "would not load" cases.** 28 of the
+90 failed sites gave an error that looked fixable (a certificate
+mismatch, "this address doesn't exist," or a timeout) rather than a flat
+block. Retrying with `www.` in front of the address recovered 4 more
+real findings (all "meeting, no video"). The rest — including several
+that only revealed their real problem once the `www.` retry got past
+the certificate error — turned out to be the same block, described next.
+
+**The main finding: a Cloudflare wall, not 90 different dead ends.**
+Checked by hand on 9 of the 90 "would not load" sites, every single one
+showed the identical signal: a Cloudflare "prove you're human" wall
+(`cf-mitigated: challenge`). That one wall accounts for **79 of the 90**
+"would not load" governments — some showed it immediately, others only
+after the `www.` retry got past an unrelated certificate error and hit
+the same wall underneath. This is the same shape as the Akamai wall
+already on file in `CLAUDE.md`, just a different company's wall,
+guarding a lot of small-town CivicPlus websites. Per the standing rule,
+a wall like this is recorded and left alone — never solved, never
+retried in a loop.
+
+| "Would not load" reason | Count of 90 | What it means |
+|---|---|---|
+| Cloudflare "prove you're human" wall | 79 | recorded, left alone |
+| The address doesn't exist at all | 8 | recorded |
+| A real certificate/connection failure, not a wall | 2 | recorded |
+| Timed out both times | 1 | recorded |
+
+**Hand-read: all 16 real-video candidates, read one by one.**
+
+| Result | Count of 16 | What it means |
+|---|---|---|
+| Real, confirmed, and put on a live page | 1 | Rosetown, Saskatchewan |
+| Real and confirmed, but blocked by a bug (below) | 1 | Englewood city, Ohio |
+| Real video, but the platform hands it off to YouTube | 12 | never opened — logged as a lead for the separate YouTube review lane |
+| Found a video file, but couldn't confirm what it was | 2 | left alone, not queued |
+
+None of the 16 were wrong-government or decorative videos this time —
+the 2 left alone were genuine video files whose own file name gave no
+usable title, date, or government name (one was literally named
+`video1457093892.mp4`), not videos that were checked and rejected.
+
+Two smaller things worth flagging inside that hand-read: one lead
+(Ridgeway town, VA) resolved to a broken link with no actual video
+attached. And two different Nebraska villages (Raymond and Davey) both
+resolved to the exact same YouTube video — worth a human look at which
+one (if either) it actually belongs to before treating it as a lead for
+both. Both are noted in the leads file.
+
+**A real bug in the Archive site, found live.** Englewood city, Ohio's
+meeting saved into the database correctly (title, date, real captions,
+government link — all confirmed present), but visiting the page itself
+returns an error instead of the meeting. This was checked carefully
+before assuming anything: it is not old code sitting in production (the
+live site is running the exact same code this WO started from), not
+broken data (the saved record looks completely normal), and not a
+sitewide problem (the government's own hub page and four other pages
+from other teams' work today all load fine). The same exact save,
+tested on a private copy of the site, loaded without any problem. So
+something about this one real meeting trips a bug only the live site
+hits — reason not yet found. The page was not deleted: a safety check
+inside this environment blocked the delete command before it could run,
+so the broken page is currently still sitting in the database. Filed to
+`BACKLOG.md` as an open bug for someone with access to the live site's
+error logs. Englewood's coverage record was left untouched — not marked
+as covered — so a later pass revisits it once the bug is fixed.
+
+**Summary.**
+
+| Outcome | Count of 234 | What it means |
+|---|---|---|
+| Live page today | 1 | Rosetown, Saskatchewan |
+| Real, confirmed, blocked by a bug | 1 | Englewood city, Ohio — not counted as live |
+| YouTube leads (never opened) | 12 | sent to the separate review lane |
+| Found, not confirmed | 2 | left alone |
+| Meeting found, no video | 114 | recorded |
+| Cloudflare wall | 79 | recorded, left alone |
+| No meetings on the site at all | 11 | recorded |
+| Address doesn't exist | 8 | recorded |
+| Real connection failure | 2 | recorded |
+| Timed out | 1 | recorded |
+| Checking tool errored | 3 | left alone |
+
+**Deploy status.** The one live page (Rosetown) is live now — no deploy
+needed, pages go live the moment they're saved. Nothing here touched
+pins or the transcription queue, so there is nothing waiting on a
+deploy from this WO.
+
+**What's undone.** The Archive rendering bug on Englewood's page is
+unsolved — filed to `BACKLOG.md` with everything this WO ruled out, for
+someone with log access to finish. The two ambiguous video files
+(Rockport and Holliston, MA) and the two Nebraska villages sharing one
+video need a second human look. The `www.`-prefix retry that recovered
+4 governments is a manual step this WO did by hand, not a permanent fix
+inside `verify_hub()` — worth building in properly given a ~2% yield on
+this population alone.
+
+**For the conductor to commit (rtr-business, not committed by this WO):**
+`research/wo357_population.csv`, `research/wo357_verify.csv`, `research/
+wo357_handcheck.csv`, `research/wo357_report.csv`, `research/
+wo357_jc_applied_gov_ids.txt`, `research/wo357_methods_section.md`
+(new); `research/ENUMERATION_METHODS.md` (appended §360); `research/
+jurisdiction_coverage.csv` (152 rows changed, all within this WO's own
+234-row population — verified row by row against `git show HEAD`);
+`research/youtube_channel_leads.csv` (+12 rows).
+
+**One real government now has a page it didn't have this morning, one
+more is real and ready the moment the Archive bug is fixed, and 79 of
+the 90 governments this WO couldn't reach turned out to share the exact
+same cause — a Cloudflare wall, not 79 separate dead ends.**
 ## WO-355: the non-YouTube off-mission governments, re-verified with a deeper walk and a deeper hand-read — a decorative-video false-positive class found, not a coverage win [Done 2026-09-13]
 
 **Why this ran.** 785 governments were marked `off-mission` in the
