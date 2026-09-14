@@ -60,7 +60,7 @@ import datetime as _dt
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Awaitable, Callable, Dict, List, Optional
 from urllib.parse import quote, urljoin, urlparse
 
@@ -76,6 +76,7 @@ from .base import (
     get_finder,
 )
 from ..utils.url_guard import read_capped_text
+from ..utils.video_hand_check import classify_video_hand_check
 
 logger = logging.getLogger("rtr_deeplink.passive_verify")
 
@@ -109,6 +110,18 @@ _YOUTUBE_HOSTS = frozenset(
 # this repo already uses (civicplus.py's own `_RETRY_LIMIT`, IQM2's
 # MAX_CANDIDATES).
 WALK_LIMIT = 12
+
+# WO-355 (Ryan, 2026-09-13), "walk deeper": for a government whose newest
+# listed meeting turned out off-mission (wrong body, promo, ceremony --
+# see `select_on_mission_candidate()` below), a single-candidate walk
+# never gives a hand-reader a second real option from the SAME listing.
+# `verify_hub(..., deep_walk=True)` reads up to `DEEP_WALK_LISTING_LIMIT`
+# listed meetings (newest first, same order every walker already
+# produces) and collects up to `DEEP_WALK_VIDEO_COLLECT_LIMIT` that carry
+# video, instead of returning at the first one -- opt-in (default
+# `deep_walk=False`) so every existing caller/test is unaffected.
+DEEP_WALK_LISTING_LIMIT = 15
+DEEP_WALK_VIDEO_COLLECT_LIMIT = 3
 
 # Known "aggregator" platforms (WO-333, ranking fix): agenda/meeting-
 # management systems this repo already knows don't host video
@@ -158,6 +171,16 @@ class VerifyResult:
     `evidence`: one human-readable sentence.
     `candidates_checked`: how many real candidate rows were actually
     walked, when a walk happened (0 otherwise).
+    `video_candidates`: WO-355's "walk deeper" rule change -- populated
+    only when `verify_hub(..., deep_walk=True)` walked a listing and
+    found at least one real video candidate. Up to `video_collect_limit`
+    dicts, newest-first, each `{"title", "date", "url", "platform",
+    "captions_found", "duration"}` (`duration` is whatever the walker's
+    own candidate dict carried, often None -- no walker fetches a page
+    just to learn its runtime). Empty for every other caller/result,
+    including a `deep_walk=True` call that found no video at all --
+    existing callers that never pass `deep_walk` see no change in
+    behavior or shape.
     """
 
     meeting_found: bool
@@ -169,6 +192,7 @@ class VerifyResult:
     evidence: str
     candidates_checked: int = 0
     ranking_fix_applied: bool = False
+    video_candidates: List[dict] = field(default_factory=list)
 
     @property
     def tier(self) -> Optional[int]:
@@ -1858,6 +1882,9 @@ async def _try_listing_walker(
     *,
     name: Optional[str] = None,
     state: Optional[str] = None,
+    deep_walk: bool = False,
+    listing_limit: Optional[int] = None,
+    video_collect_limit: Optional[int] = None,
 ) -> Optional[VerifyResult]:
     _ensure_walkers_registered()
     walker = _LISTING_WALKERS.get(platform, _generic_link_scan_walker)
@@ -1882,8 +1909,33 @@ async def _try_listing_walker(
     if not candidates:
         return None
     return await _walk_candidates(
-        candidates, platform, base_verdict=walker_kind, name=name, state=state
+        candidates,
+        platform,
+        base_verdict=walker_kind,
+        name=name,
+        state=state,
+        deep_walk=deep_walk,
+        listing_limit=listing_limit,
+        video_collect_limit=video_collect_limit,
     )
+
+
+def _candidate_summary(
+    *, title, date, url, platform, captions_found, duration=None, lead=False
+) -> dict:
+    """One entry of `VerifyResult.video_candidates` -- see that field's
+    docstring for the shape. `duration` is whatever the listing candidate
+    dict already carried (most walkers don't have it); never fetched
+    just to learn it."""
+    return {
+        "title": title,
+        "date": date,
+        "url": url,
+        "platform": platform,
+        "captions_found": captions_found,
+        "duration": duration,
+        "lead": lead,
+    }
 
 
 async def _walk_candidates(
@@ -1893,21 +1945,75 @@ async def _walk_candidates(
     base_verdict: str,
     name: Optional[str] = None,
     state: Optional[str] = None,
+    deep_walk: bool = False,
+    listing_limit: Optional[int] = None,
+    video_collect_limit: Optional[int] = None,
 ) -> VerifyResult:
+    """Walks `candidates` newest-first, resolving each until it finds real
+    video. Default behavior (`deep_walk=False`) is unchanged from WO-333/
+    341: stop and return at the FIRST candidate with real video, checking
+    at most `WALK_LIMIT`.
+
+    WO-355 "walk deeper" (Ryan, 2026-09-13, opt-in via `deep_walk=True`):
+    instead of stopping at the first video, keep walking up to
+    `listing_limit` (default `DEEP_WALK_LISTING_LIMIT`) candidates and
+    COLLECT up to `video_collect_limit` (default
+    `DEEP_WALK_VIDEO_COLLECT_LIMIT`) that carry video -- a YouTube lead
+    (never fetched) counts as carrying video too, same as the
+    non-deep-walk path already treats it. The returned `VerifyResult`'s
+    top-level fields (`meeting_found`/`video_found`/`meeting_url`/...)
+    still describe the FIRST (newest) collected candidate, so a caller
+    that ignores `video_candidates` sees the same shape as today; a
+    caller doing WO-355's own hand-read gate reads `video_candidates`
+    for the full newest-first list and picks among them (see
+    `select_on_mission_candidate()`)."""
+    effective_limit = (
+        listing_limit
+        if listing_limit is not None
+        else (DEEP_WALK_LISTING_LIMIT if deep_walk else WALK_LIMIT)
+    )
+    collect_limit = (
+        (
+            video_collect_limit
+            if video_collect_limit is not None
+            else DEEP_WALK_VIDEO_COLLECT_LIMIT
+        )
+        if deep_walk
+        else 1
+    )
     checked = 0
-    for candidate in candidates[:WALK_LIMIT]:
+    collected: List[dict] = []
+    for candidate in candidates[:effective_limit]:
         url = candidate.get("url") if isinstance(candidate, dict) else None
         if not url:
             continue
         checked += 1
+        title = candidate.get("title") if isinstance(candidate, dict) else None
+        date = candidate.get("date") if isinstance(candidate, dict) else None
+        duration = candidate.get("duration") if isinstance(candidate, dict) else None
         if _is_youtube_host(url):
-            result = _youtube_lead(
-                url,
-                f"{base_verdict}: candidate {checked} of up to {len(candidates)} is a "
-                "YouTube embed -- not fetched, recorded as a lead",
+            collected.append(
+                _candidate_summary(
+                    title=title,
+                    date=date,
+                    url=url,
+                    platform="youtube",
+                    captions_found=False,
+                    duration=duration,
+                    lead=True,
+                )
             )
-            result.candidates_checked = checked
-            return result
+            if not deep_walk or len(collected) >= collect_limit:
+                result = _youtube_lead(
+                    url,
+                    f"{base_verdict}: candidate {checked} of up to {len(candidates)} is "
+                    "a YouTube embed -- not fetched, recorded as a lead",
+                )
+                result.candidates_checked = checked
+                if deep_walk:
+                    result.video_candidates = collected
+                return result
+            continue
         candidate_platform = detect_platform(url)
         if candidate_platform == "unknown":
             candidate_platform = platform
@@ -1918,13 +2024,28 @@ async def _walk_candidates(
             # This candidate wasn't itself a youtube.com URL, but
             # resolving it delegated internally to YouTube -- a real
             # video, just never fetched (see the class docstring).
-            result = _youtube_lead(
-                e.url,
-                f"{base_verdict}: candidate {checked} of up to {len(candidates)} "
-                "delegates internally to YouTube -- not fetched, recorded as a lead",
+            collected.append(
+                _candidate_summary(
+                    title=title,
+                    date=date,
+                    url=e.url,
+                    platform="youtube",
+                    captions_found=False,
+                    duration=duration,
+                    lead=True,
+                )
             )
-            result.candidates_checked = checked
-            return result
+            if not deep_walk or len(collected) >= collect_limit:
+                result = _youtube_lead(
+                    e.url,
+                    f"{base_verdict}: candidate {checked} of up to {len(candidates)} "
+                    "delegates internally to YouTube -- not fetched, recorded as a lead",
+                )
+                result.candidates_checked = checked
+                if deep_walk:
+                    result.video_candidates = collected
+                return result
+            continue
         except (CalendarPageError, NoVideoCandidateFound):
             # A candidate that is itself another listing, or a page that
             # honestly checked and found no video -- not a fetch error,
@@ -1945,19 +2066,57 @@ async def _walk_candidates(
             # Granicus link), and the platform that actually served the
             # video is the more useful/accurate thing for a caller to
             # record, not the aggregator that merely listed it.
-            return VerifyResult(
-                meeting_found=True,
-                video_found=True,
-                captions_found=bool(resolved.segments),
-                meeting_url=resolved.source_url or url,
-                platform=resolved.platform or candidate_platform,
-                verdict=f"{base_verdict}_found_video",
-                evidence=(
-                    f"{base_verdict}: walked {checked} of {len(candidates)} real "
-                    "candidates newest-first, found real video"
-                ),
-                candidates_checked=checked,
+            collected.append(
+                _candidate_summary(
+                    title=title,
+                    date=date,
+                    url=resolved.source_url or url,
+                    platform=resolved.platform or candidate_platform,
+                    captions_found=bool(resolved.segments),
+                    duration=duration,
+                )
             )
+            if not deep_walk or len(collected) >= collect_limit:
+                first = collected[0]
+                return VerifyResult(
+                    meeting_found=True,
+                    video_found=True,
+                    captions_found=first["captions_found"],
+                    meeting_url=first["url"],
+                    platform=first["platform"],
+                    verdict=f"{base_verdict}_found_video",
+                    evidence=(
+                        f"{base_verdict}: walked {checked} of {len(candidates)} real "
+                        "candidates newest-first, found real video"
+                        + (
+                            f" ({len(collected)} collected for deep-walk hand-read)"
+                            if deep_walk
+                            else ""
+                        )
+                    ),
+                    candidates_checked=checked,
+                    video_candidates=collected if deep_walk else [],
+                )
+            continue
+    if collected:
+        # deep_walk exhausted the listing before reaching collect_limit,
+        # but still found at least one video candidate along the way.
+        first = collected[0]
+        return VerifyResult(
+            meeting_found=True,
+            video_found=True,
+            captions_found=first["captions_found"],
+            meeting_url=first["url"],
+            platform=first["platform"],
+            verdict=f"{base_verdict}_found_video",
+            evidence=(
+                f"{base_verdict}: walked {checked} of {len(candidates)} real "
+                f"candidates newest-first, found {len(collected)} with video "
+                "(listing exhausted before reaching the collect limit)"
+            ),
+            candidates_checked=checked,
+            video_candidates=collected,
+        )
     return VerifyResult(
         meeting_found=checked > 0,
         video_found=False,
@@ -1981,6 +2140,9 @@ async def _resolve_and_walk(
     *,
     name: Optional[str] = None,
     state: Optional[str] = None,
+    deep_walk: bool = False,
+    listing_limit: Optional[int] = None,
+    video_collect_limit: Optional[int] = None,
 ) -> VerifyResult:
     """Call platform's resolve() on url and interpret the result. When
     resolve() comes back empty (no video, no title/agenda -- the WO-331
@@ -1991,7 +2153,10 @@ async def _resolve_and_walk(
     walk before any no-video verdict. WO-348 adds one more fallback,
     after the listing walker also comes up empty: `_deeper_hop_search()`
     on this same page, before finally giving up (see that function's own
-    docstring and this module's "look one hop deeper" section)."""
+    docstring and this module's "look one hop deeper" section). WO-355's
+    `deep_walk`/`listing_limit`/`video_collect_limit` pass straight
+    through to `_walk_candidates()`/`_try_listing_walker()` -- see
+    `_walk_candidates()`'s own docstring."""
     if _is_youtube_host(url):
         return _youtube_lead(url, "candidate URL is itself a youtube.com/youtu.be host")
 
@@ -2027,6 +2192,9 @@ async def _resolve_and_walk(
             base_verdict="calendar_page",
             name=name,
             state=state,
+            deep_walk=deep_walk,
+            listing_limit=listing_limit,
+            video_collect_limit=video_collect_limit,
         )
     except NoVideoCandidateFound as e:
         if e.candidates_checked > 0:
@@ -2047,7 +2215,15 @@ async def _resolve_and_walk(
         # listing walker before concluding there's no meeting at all;
         # this url may simply be the wrong page on this tenant (WO-331's
         # Monroe County FL / Webb County TX finding).
-        walked = await _try_listing_walker(url, platform, name=name, state=state)
+        walked = await _try_listing_walker(
+            url,
+            platform,
+            name=name,
+            state=state,
+            deep_walk=deep_walk,
+            listing_limit=listing_limit,
+            video_collect_limit=video_collect_limit,
+        )
         if walked is not None:
             return walked
         hopped = await _try_deeper_hop_on_url(url, name=name, state=state)
@@ -2064,7 +2240,15 @@ async def _resolve_and_walk(
             candidates_checked=0,
         )
     except Exception as e:  # noqa: BLE001
-        walked = await _try_listing_walker(url, platform, name=name, state=state)
+        walked = await _try_listing_walker(
+            url,
+            platform,
+            name=name,
+            state=state,
+            deep_walk=deep_walk,
+            listing_limit=listing_limit,
+            video_collect_limit=video_collect_limit,
+        )
         if walked is not None:
             return walked
         hopped = await _try_deeper_hop_on_url(url, name=name, state=state)
@@ -2115,7 +2299,15 @@ async def _resolve_and_walk(
     # yet (real title/agenda present), or -- the WO-331 finding -- a
     # listing/hub page whose resolve() quietly returned empty because it
     # was never given one specific meeting.
-    walked = await _try_listing_walker(url, platform, name=name, state=state)
+    walked = await _try_listing_walker(
+        url,
+        platform,
+        name=name,
+        state=state,
+        deep_walk=deep_walk,
+        listing_limit=listing_limit,
+        video_collect_limit=video_collect_limit,
+    )
     if walked is not None and walked.meeting_found:
         return walked
 
@@ -2150,6 +2342,9 @@ async def verify_hub(
     *,
     name: Optional[str] = None,
     state: Optional[str] = None,
+    deep_walk: bool = False,
+    listing_limit: Optional[int] = None,
+    video_collect_limit: Optional[int] = None,
 ) -> VerifyResult:
     """The shared step. `hub_url` is a confirmed hub/tenant URL for a
     government (whatever a sweep's phase 3 already confirmed);
@@ -2163,6 +2358,21 @@ async def verify_hub(
     (`_name_state_matches()`) the same way phase 3's own targeted scripts
     already check a candidate page's content before confirming it.
 
+    `deep_walk`/`listing_limit`/`video_collect_limit` (WO-355, Ryan,
+    2026-09-13, all optional and default off/None -- existing callers
+    are unaffected): "walk deeper" -- when a real listing is walked (a
+    CalendarPageError pick-list or a registered/generic listing walker),
+    collect up to `video_collect_limit` (default
+    `DEEP_WALK_VIDEO_COLLECT_LIMIT`, 3) real video candidates from the
+    newest `listing_limit` (default `DEEP_WALK_LISTING_LIMIT`, 15)
+    listed meetings, instead of stopping at the first one. The result's
+    `video_candidates` carries all of them, newest-first, for a caller's
+    own hand-read gate (see `select_on_mission_candidate()`) -- a
+    government whose newest meeting is off-mission (wrong body, a promo/
+    recap/ceremony/training clip) still gets a real second and third
+    option from the SAME listing, rather than a bare "off-mission"
+    verdict off the first video found.
+
     The entire walk runs under `_youtube_resolve_guard()` -- not just the
     top-level hub URL -- so a candidate reached partway through (a
     CalendarPageError pick-list entry, a listing-walker result, the
@@ -2170,7 +2380,15 @@ async def verify_hub(
     caught the same way, never actually fetched.
     """
     with _youtube_resolve_guard():
-        return await _verify_hub_impl(hub_url, platform_hint, name=name, state=state)
+        return await _verify_hub_impl(
+            hub_url,
+            platform_hint,
+            name=name,
+            state=state,
+            deep_walk=deep_walk,
+            listing_limit=listing_limit,
+            video_collect_limit=video_collect_limit,
+        )
 
 
 async def _verify_hub_impl(
@@ -2179,6 +2397,9 @@ async def _verify_hub_impl(
     *,
     name: Optional[str] = None,
     state: Optional[str] = None,
+    deep_walk: bool = False,
+    listing_limit: Optional[int] = None,
+    video_collect_limit: Optional[int] = None,
 ) -> VerifyResult:
     if _is_youtube_host(hub_url):
         return _youtube_lead(hub_url, "hub URL is itself a youtube.com/youtu.be host")
@@ -2245,7 +2466,15 @@ async def _verify_hub_impl(
             evidence="detect_platform() -> unknown and no platform hint given",
         )
 
-    result = await _resolve_and_walk(candidate_url, platform, name=name, state=state)
+    result = await _resolve_and_walk(
+        candidate_url,
+        platform,
+        name=name,
+        state=state,
+        deep_walk=deep_walk,
+        listing_limit=listing_limit,
+        video_collect_limit=video_collect_limit,
+    )
 
     # Ranking fix (conductor's fix #3): the platform reached is a known
     # aggregator and it found no video -- check the ORIGINAL hub page for
@@ -2259,7 +2488,13 @@ async def _verify_hub_impl(
             if vendor_match:
                 vendor_url, vendor_platform = vendor_match
                 vendor_result = await _resolve_and_walk(
-                    vendor_url, vendor_platform, name=name, state=state
+                    vendor_url,
+                    vendor_platform,
+                    name=name,
+                    state=state,
+                    deep_walk=deep_walk,
+                    listing_limit=listing_limit,
+                    video_collect_limit=video_collect_limit,
                 )
                 if vendor_result.video_found or (
                     not result.meeting_found and vendor_result.meeting_found
@@ -2290,7 +2525,15 @@ async def _verify_hub_impl(
         # from the hub page's own site navigation -- this is exactly what
         # `_civicplus_walker()` was built to find (step 1 tries OTHER
         # AgendaCenter categories first, for exactly this reason).
-        walked = await _try_listing_walker(hub_url, platform, name=name, state=state)
+        walked = await _try_listing_walker(
+            hub_url,
+            platform,
+            name=name,
+            state=state,
+            deep_walk=deep_walk,
+            listing_limit=listing_limit,
+            video_collect_limit=video_collect_limit,
+        )
         if walked is not None and (
             walked.video_found or (not result.meeting_found and walked.meeting_found)
         ):
@@ -2312,3 +2555,57 @@ async def _verify_hub_impl(
                 return hopped
 
     return result
+
+
+def select_on_mission_candidate(
+    video_candidates: List[dict],
+    *,
+    gov_name: Optional[str] = None,
+    gov_kind: Optional[str] = None,
+) -> "tuple[Optional[dict], List[dict]]":
+    """WO-355 "hand-read deeper" (Ryan, 2026-09-13) -- the automatic half
+    of the rule. Given `VerifyResult.video_candidates` (newest-first,
+    from a `verify_hub(..., deep_walk=True)` call), checks them IN ORDER
+    with `classify_video_hand_check()` (the WO-191 phrase list already
+    used as the automatic pre-filter everywhere else in this repo --
+    CLAUDE.md's "hand-check every found video" bullet) and returns
+    `(candidate, skipped)`:
+
+    - `candidate` is the first entry that does not trip the Kind A/B
+      phrase list -- None if every entry was flagged, or if
+      `video_candidates` is empty.
+    - `skipped` is every entry checked before `candidate` (or all of
+      them, when nothing passed), each with `hand_check_kind` ("A" or
+      "B") and `hand_check_reason` added -- for a caller's own report
+      line ("checked 2 of 3, passed on attempt 2; skipped 1: Kind B,
+      title suggests non-meeting content (matched 'ribbon cutting')").
+
+    THIS IS THE PRE-FILTER ONLY. `classify_video_hand_check()`'s phrase
+    list is deliberately conservative -- it only catches what names
+    itself in the title/channel text, not a genuine promo/recap/
+    ceremony clip from a proper-noun-only channel, and it cannot judge
+    CITISTAT-style mayoral working sessions (which count as on-mission)
+    apart from a chamber-of-commerce speech (which does not) -- both can
+    read as ordinary government content to a phrase list. A caller must
+    still actually read the title (and channel, when known) of whatever
+    this returns, and keep checking further down `video_candidates` by
+    hand if the returned candidate still doesn't look on-mission on that
+    read -- this function only narrows the field, per Ryan's rule 2
+    ("check the collected videos in order until one looks on-mission").
+    `channel_text` is intentionally not accepted here: WO-355's own
+    listing walkers don't resolve a channel identity for every
+    candidate (only the finally-chosen one gets a real `resolve()`), so
+    there is nothing reliable to pass -- the title-only phrase check is
+    still worth running before a human read, exactly as sparse as the
+    walkers' own candidate dicts are today."""
+    skipped: List[dict] = []
+    for candidate in video_candidates:
+        title = candidate.get("title") if isinstance(candidate, dict) else None
+        hand_check = classify_video_hand_check(title, None, gov_name, gov_kind)
+        if hand_check is None:
+            return candidate, skipped
+        kind, reason = hand_check
+        skipped.append(
+            {**candidate, "hand_check_kind": kind, "hand_check_reason": reason}
+        )
+    return None, skipped
