@@ -1,5 +1,74 @@
 # Backlog — done
 
+## WO-367: the YouTube drip now delegates BoardDocs pages too [Done 2026-09-14]
+
+**Why this ran.** WO-365 shipped `app/platforms/boarddocs.py` — it
+resolves a BoardDocs meeting's YouTube or Vimeo video and delegates to
+it, the same way `primegov.py` already does. But `scripts/youtube_drip.py`
+(the always-on process on Ol McClaude's Mac that is the only thing
+allowed to call YouTube) only ever fed a queue line through when its
+platform was `youtube` itself, `civicweb`, or `primegov`
+(`YOUTUBE_DELEGATING_PLATFORMS`). A BoardDocs goto page didn't match any
+of those, so it was silently skipped — and a bare `youtube:<id>` line
+would have lost identity anyway, since WO-365's pins are BoardDocs path
+pins on `go.boarddocs.com`, not `youtube:<id>` pins. Breadth and the
+conductor decided: add `"boarddocs"` to the tuple so the adapter runs on
+the drip Mac, identity comes from `source_url`/`origin_host` plus the
+path pins, and this generalises to every future BoardDocs meeting with
+video.
+
+**What changed.** One line in `scripts/youtube_drip.py`:
+`YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov", "boarddocs")`,
+plus an updated comment. Checked first that nothing else needed to
+change: BoardDocs can delegate to Vimeo as well as YouTube (a
+`bd.videoservice` flag), but the probe that runs before a line becomes a
+page already dispatches on the *resolved video's* host, not the queue
+line's platform (WO-205) — so a BoardDocs line whose video turns out to
+be Vimeo already ingests cleanly instead of erroring, the same as it
+already does for CivicWeb/PrimeGov. No other code needed to change.
+
+Also added a small `check-lines` command
+(`python scripts/youtube_drip.py check-lines --check-lines-file <path>`)
+that prints keep/skip per line in a queue-shaped file with no network
+call — a real dry run of the feed lane's own filter, not a parallel
+guess, since it calls the exact same classification function
+(`_classify_queue_url()`) the feed lane uses. There was no such dry-run
+mode before this WO.
+
+**Dry run.** Two real BoardDocs goto URLs (a Tallahassee City Commission
+meeting and a Colorado City Unified School District meeting, both from
+WO-365's own real tenants) run through `check-lines`, before and after
+the one-line change:
+
+| Queue line | Filter verdict before | Filter verdict after |
+|---|---|---|
+| `go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044` (Tallahassee) | skip (`platform=boarddocs, not a YouTube delegator`) | keep (`boarddocs`) |
+| `go.boarddocs.com/az/ccschools/Board.nsf/goto?open&id=DGTU4S7A4526` (Colorado City) | skip (`platform=boarddocs, not a YouTube delegator`) | keep (`boarddocs`) |
+
+**Tests.** `tests/test_youtube_drip.py`: extended the existing
+`test_youtube_queue_lines_keeps_only_youtube_videos` with a real
+BoardDocs URL, and added `test_check_lines_reports_keep_and_skip_with_a_
+reason` and `test_run_check_lines_cli_prints_one_line_per_row` for the
+new dry-run command. All monkeypatched/pure — no live YouTube or
+BoardDocs call. Full suite: 3,893 passed, 16 skipped.
+
+**Caution.** This makes the drip *able* to feed a BoardDocs line; it
+doesn't itself put any BoardDocs line into the tier-3 queue — that
+still needs a real government's meeting to be found, hand-checked, and
+queued by a separate sweep. No queue line was added by this WO.
+
+**Recommendation.** None needed beyond the merge — this is a one-line
+enablement, already dry-run verified above.
+
+**Deploy status.** None. This is a `scripts/` change picked up by
+`git pull` on Ol McClaude's Mac (the drip machine), not a Render
+service — no resolver/worker/Archive deploy is needed or possible for
+it.
+
+🎯 **The drip skipped every BoardDocs meeting until now; one line fixes
+that, and a real dry run on two live BoardDocs URLs confirms the fix
+actually flips skip to keep.**
+
 ## WO-365: BoardDocs video adapter — built, video-only, on-demand, never a scan [Done 2026-09-14]
 
 **Why this ran.** BoardDocs is mostly a school-board agenda tool with no

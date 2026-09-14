@@ -51,15 +51,62 @@ def test_youtube_queue_lines_keeps_only_youtube_videos():
         "https://www.youtube.com/@CityofEnnisTexas/streams",
         "https://www.youtube.com/embed/livestreaming?rel=0",
         "https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=582",
+        # WO-367: BoardDocs (WO-365) is a YOUTUBE_DELEGATING_PLATFORMS member
+        # too -- real Tallahassee City Commission goto URL, confirmed live
+        # 2026-09-09 (see full_wo367.md).
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044",
     ]
     out = yd.youtube_queue_lines(lines)
     assert [u for _, u, _ in out] == [
         "https://www.youtube.com/watch?v=ax-OzF0VRk4",
         "https://youtu.be/L3DcyYnvty0",
         "https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=582",
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044",
     ]
     assert out[0][2] == "https://www.youtube.com/channel/UCx"
     assert out[1][2] is None
+
+
+def test_check_lines_reports_keep_and_skip_with_a_reason():
+    # WO-367: real Tallahassee (fla) and Colorado City schools (az)
+    # BoardDocs goto URLs (full_wo367.md) -- both must KEEP now that
+    # "boarddocs" is a YOUTUBE_DELEGATING_PLATFORMS member, and both are
+    # confirmed to have SKIPPED before that (see this WO's report: run
+    # with YOUTUBE_DELEGATING_PLATFORMS reverted to ("civicweb", "primegov")
+    # reproduces two skips for these same two lines).
+    lines = [
+        "# comment",
+        "",
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044",
+        "https://go.boarddocs.com/az/ccschools/Board.nsf/goto?open&id=DGTU4S7A4526",
+        "https://cityoftacoma.granicus.com/player/clip/7460",
+    ]
+    out = yd.check_lines(lines)
+    assert [(line, verdict) for line, verdict, _ in out] == [
+        (lines[2], "keep"),
+        (lines[3], "keep"),
+        (lines[4], "skip"),
+    ]
+    assert out[0][2] == "boarddocs"
+    assert out[1][2] == "boarddocs"
+    assert out[2][2] == "platform=granicus, not a YouTube delegator"
+
+
+def test_run_check_lines_cli_prints_one_line_per_row(tmp_path, capsys):
+    queue_file = tmp_path / "queue.txt"
+    queue_file.write_text(
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044\n"
+        "https://cityoftacoma.granicus.com/player/clip/7460\n"
+    )
+    args = yd.build_parser().parse_args(
+        ["check-lines", "--check-lines-file", str(queue_file)]
+    )
+    yd._run_check_lines(args)
+    out = capsys.readouterr().out
+    assert "keep boarddocs" in out
+    assert "skip " in out
+    assert "go.boarddocs.com" in out
+    assert "granicus.com" in out
 
 
 def test_slug_from_page_url():
@@ -391,10 +438,12 @@ def test_lane_audio_respects_daily_cap(tmp_path):
     assert asyncio.run(drip.lane_audio(None)) == (False, None)
 
 
-@pytest.mark.parametrize("cmd", [["run", "--once", "--dry-run"], ["advance"]])
+@pytest.mark.parametrize(
+    "cmd", [["run", "--once", "--dry-run"], ["advance"], ["check-lines"]]
+)
 def test_parser_accepts_documented_commands(cmd):
     args = yd.build_parser().parse_args(cmd)
-    assert args.command in ("run", "advance")
+    assert args.command in ("run", "advance", "check-lines")
 
 
 def test_needs_identity_review_mirrors_evidence_tiers():
