@@ -1921,37 +1921,68 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-### 54 real West Virginia towns/cities share one placeholder domain (`local.wv.gov`) on file, so no automated sweep can tell them apart `[HUMAN]`
+### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
-- **Issue:** WO-337 (2026-09-13, passive discovery v2 group 7) found
-  `research/passive_neither_7-us-muni-twp-ladder-only.csv` carries 54
-  different real West Virginia towns/cities all recorded with the exact
-  same `domain`, `local.wv.gov` -- not a real per-government website,
-  apparently a statewide portal placeholder an earlier enumeration pass
-  filled in when no individual site was found. 5 more governments (in
-  smaller 2-3-way groups) share a domain for a real, legitimate reason
-  (a town and its co-located village, or a small multi-tenant community
-  portal) rather than a placeholder.
-- **Impact:** a single automated fetch of `local.wv.gov` cannot tell
-  which, if any, of the 54 towns its content is actually about, so all
-  54 (minus the one WO-337's own report happened to attribute the fetch
-  to, Wellsburg city) are left with no fresh finding at all -- a real,
-  honest gap in this WO's own coverage, recorded as
-  `shared-domain-not-verified` and deliberately not written to
-  `jurisdiction_coverage.csv`.
-- **Next action:** for each of the 54 West Virginia governments, find
-  its real individual government website by hand (a search engine query
-  or the WV Secretary of State's municipal directory is the fastest
-  route) and correct its `domain` in `jurisdiction_coverage.csv`
-  (moving `local.wv.gov` to `alternate_domains`, per this repo's
-  never-blank-a-domain rule) before any future sweep touches these rows
-  again -- otherwise the same 54-way collision recurs every time.
-- **Constraint:** don't try to automate this one — a search for each
-  town's real site needs a human to confirm the result actually belongs
-  to that specific town, not a same-named place in another state.
-- **History:** this WO's `BACKLOG_DONE.md` entry;
-  `research/wo337_report.csv` (`shared_domain_primary=False` rows) has
-  the full list of 54 gov_ids.
+- **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
+  identifiable, correctly-bodied videos that the listing walker reached
+  as the *newest* candidate at its search depth, but that are 21-52
+  months old: Grinnell city IA ("Regular City Council Session", Dec
+  2024), Hastings-on-Hudson village NY ("Information Session on the Plus
+  One ADU Program", Oct 2024 — also not clearly a legislative meeting),
+  Easton town CT ("Affordable Housing Committee", Apr 2022). This round's
+  only precedent (WO-341, Pierce County WA) rejected a similarly-shaped
+  find, but that video was over 4 years old *and* of uncertain body —
+  these three are less extreme and split on the second factor.
+  Left un-applied to `jurisdiction_coverage.csv` rather than guessed
+  either way (`research/wo349_handcheck.csv`).
+- **Impact:** 3 real governments' only known video sits unused pending a
+  policy call; the same ambiguity will recur every time a listing walker
+  finds only one, old candidate — not a one-off.
+- **Next action:** Ryan decides a freshness cutoff (or "no cutoff, queue
+  it regardless of age" per the existing "queue a long one rather than
+  defer" precedent for duration) — then whichever of the 3 above still
+  qualifies gets applied via a small follow-up to `wo349_apply_to_jc.py`'s
+  pattern.
+- **Constraint:** don't invent a cutoff and apply it silently — this is
+  exactly the kind of judgment call this section exists for.
+- **History:** `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`.
+
+### 101 West Virginia towns/cities still carry a placeholder (`local.wv.gov`) or blank domain after the county-directory walk found real sites for 2 of them `[HUMAN]`
+
+- **Issue:** WO-337 found 54 WV towns sharing the `local.wv.gov`
+  placeholder domain. The conductor's WV research pass (Sec 357) then
+  found the real count was larger once blanks were counted too: 103 WV
+  `us:place`/`us:cousub` rows with no real site (57 `local.wv.gov`, 46
+  blank). WO-360 (2026-09-13) tried the one automatable lead available
+  — walking each of the 55 WV counties' own site for a page listing its
+  municipalities and their websites (`scripts/wo360_county_muni_walk.py`
+  + `wo360_apply_to_jc.py`) — and it worked, but only found real,
+  independently-matchable links for 2 of the 103: Ansted town
+  (`anstedwv.com`) and Mount Hope city (`mthopewv.org`), both from
+  Fayette County's own page. 33 of the 55 counties had a directory page
+  or homepage with some outbound links, but the great majority point at
+  county departments/services, not municipalities, or (14 counties)
+  no such page exists at all.
+- **Impact:** 101 of the 103 rows are still unresolvable by any
+  automated method tried so far, so a fresh sweep against
+  `local.wv.gov`/a blank domain still cannot tell which, if any,
+  government its content is about.
+- **Next action:** for the remaining 101, a search-engine query per town
+  or the WV Municipal League's own member directory (not yet checked —
+  `wvml.org` or similar; unverified) is the likeliest remaining
+  automatable-ish lead. Same human-confirmation requirement as before:
+  confirm any candidate site actually belongs to that specific WV town,
+  not a same-named place in another state.
+- **Constraint:** don't try to automate the confirmation step — a
+  same-named-town collision across states is a real, confirmed risk
+  elsewhere in this project (see CLAUDE.md's county-tenant/namesake
+  bullet).
+- **History:** WO-337's `BACKLOG_DONE.md` entry (found the 54);
+  WO-360's `BACKLOG_DONE.md` entry (found the real 103, filled 2);
+  `rtr-business/research/wo360_report.csv` (the 2 matches, with county-
+  page evidence), `wo360_county_walk.csv` (all 55 counties' walk
+  status), `wo360_muni_links.csv` (297 raw links found, 264 after a
+  junk-host filter).
 
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 

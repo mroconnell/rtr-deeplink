@@ -1,5 +1,134 @@
 # Backlog — done
 
+## WO-360: West Virginia — filling municipal domains from county sites, re-verifying the 18 corrected counties, and standing up the state Board of Education [Done 2026-09-13]
+
+**Why this ran.** The conductor's own WV research pass (rtr-business
+`ENUMERATION_METHODS.md` Sec 357) found 103 West Virginia towns with no
+real website on file (57 carrying the `local.wv.gov` placeholder, 46
+blank), and re-keyed 18 WV counties to a real domain. It left two open
+work orders: walk the 55 county sites for a page listing their own
+municipalities, to fill some of the 103; and stand up
+`rtr:us:wv:west-virginia-board-of-education` (minted in the research
+file, but not yet resolvable in the app's own registry) with real pins.
+This WO did both.
+
+**Part A: the county-to-municipality walk.**
+`scripts/wo360_county_muni_walk.py` fetched each of the 55 WV counties'
+own site (homepage, then a scored nav link or a guessable path) looking
+for a page that names its municipalities and links their websites.
+
+| County walk outcome | Count of 55 | What it means |
+|---|---|---|
+| Found a page with at least one real outbound link | 33 | some signal extracted |
+| Found a page, but no usable links after filtering | 6 | e.g. town names only inside Google Maps links |
+| No municipalities page found at all | 14 | most small counties have none |
+| Homepage fetch failed | 2 | DNS/connection error |
+
+Matching those links to the 103 target rows required an exact name
+match (never a token match) to avoid a wrong-government fill.
+
+| Match outcome | Count of 103 | What it means |
+|---|---|---|
+| Matched and domain filled | 2 | Ansted town → `anstedwv.com`, Mount Hope city → `mthopewv.org` (both from Fayette County's own page) |
+| No matching link found | 101 | still unresolved; see the BACKLOG entry |
+| Ambiguous (skipped, never guessed) | 0 | none occurred |
+
+A first version of the link-extraction filter had a real bug: it
+excluded any link whose host merely contained the substring `wv.gov`,
+which also matches inside a legitimate town domain like
+`wheelingwv.gov`. Fixed before any matching ran (exact `wv.gov`/
+`.wv.gov` suffix match only), caught by checking why Ohio County's own
+page — which really does link `www.wheelingwv.gov` — came back with
+zero links.
+
+Then ran `verify_hub(deep_walk=True)` on the 2 filled rows plus the 18
+re-keyed counties (20 governments total; none had a known meeting URL
+yet, so each was checked from its bare homepage).
+
+| Outcome | Count of 20 | What it means |
+|---|---|---|
+| Meeting found, no video | 14 | real agenda/minutes content found |
+| Blocked by a human-verification gate | 4 | Ansted town, McDowell, Mount Hope city, Raleigh — all a Cloudflare or sgcaptcha challenge |
+| No meeting or video found | 1 | Roane County |
+| Video found, hand-read rejected | 1 | Pocahontas County — a homepage tourism promo clip (`..._FALLWEB.mp4`), not a meeting |
+
+No pages and no tier-3 queue lines came out of this population — a
+real, checked negative, not a shortfall.
+
+**A domain fix found along the way.** Jefferson County's re-keyed
+domain (`jeffersoncountywv.org`, no `www`) 404s for real;
+`www.jeffersoncountywv.org` is the working site. Fixed directly in
+`jurisdiction_coverage.csv` and re-verified (tier 4, same as the other
+counties).
+
+**Part B: the West Virginia Board of Education.** The minted
+`rtr:us:wv:west-virginia-board-of-education` had a `jurisdiction_
+coverage.csv` row but no row in the app's own registry
+(`app/utils/jurisdiction_data/curated_governments.csv`), so it would not
+actually resolve. Added one (`gov_type=other`, same shape as the
+existing `rtr:us:ut:state-board-of-education` precedent — no "state
+agency" value exists in the Census of Governments vocabulary).
+Re-fetched the board's own events archive
+(`https://wvde.us/events-archive?f[0]=event_type:17`) and all 12 linked
+event pages (the government's own site; youtube.com/youtu.be never
+fetched) to read each one's own embedded YouTube link.
+
+| Event page check | Count of 12 | What it means |
+|---|---|---|
+| Carries a real YouTube live link | 10 | August 2026 back through November 2025 |
+| No video link | 2 | May 2026 Board Meeting, WVBE Subcommittee Meeting |
+
+This corrects the conductor's own Sec 357 note, which said June had no
+link — re-checked live, it does (`kJlBmp6Hju8`).
+
+Pins written to `tenant_overrides.csv` (source `curated+wo360`): 1 host
+pin (`wvde.us` → the gov_id) and 10 per-video pins (August, already a
+lead, plus the 9 newly confirmed archive meetings). All 11 confirmed
+loading with zero rejections. The 9 archive meetings (excluding August)
+were appended to `research/youtube_channel_leads.csv` for the drip lane.
+`https://www.wv.gov/agencies` (158 state agencies, already captured by
+the conductor's own pass) is recorded again as a lead for the eventual
+state-level tier — not worked in this WO.
+
+**Video split.** Captions available, page live now: 0. Video, no
+captions, queued: 0. Every real find in this WO was either a
+meeting-without-video, a rejected decorative clip, or a YouTube lead for
+the drip lane — none reached the tier-3 queue directly, per the standing
+rule that a YouTube-sourced video goes to the drip, not straight to the
+queue.
+
+**Hand-read.** 1 video candidate hand-read (Pocahontas County); 1 wrong
+(confirmed decorative tourism promo, not a meeting — same false-positive
+class WO-355 already flagged).
+
+**Caution.** The county-directory-walk method only resolved 2 of the 103
+placeholder/blank WV municipal rows — most WV counties don't maintain a
+working page that names their towns' own websites. The other 101 need a
+different method (BACKLOG entry filed, updating WO-337's older, smaller
+count).
+
+**Recommendation.** Try the WV Municipal League's own member directory
+(unverified whether one exists) as the next automatable-ish lead for the
+101 remaining rows, with the same human name-and-state confirmation
+requirement as everywhere else in this project.
+
+**Deploy status.** `curated_governments.csv` and `tenant_overrides.csv`
+are resolver-service code changes — they reach production only after
+Ryan deploys the resolver. No Archive pages were created by this WO
+(nothing to deploy there). `jurisdiction_coverage.csv` and the leads/
+methods files are research data with no deploy step.
+
+**Files.** `rtr-business/research/`: `wo360_county_walk.csv`,
+`wo360_muni_links.csv`, `wo360_report.csv`, `wo360_ambiguous_matches.csv`
+(empty), `wo360_population.csv`, `wo360_verify.csv`,
+`wo360_jc_applied_gov_ids.txt` (20 gov_ids), `wo360_methods_section.md`
+(§362, for the conductor to append to `ENUMERATION_METHODS.md`).
+`rtr-deeplink`: `scripts/wo360_county_muni_walk.py`,
+`wo360_apply_to_jc.py`, `wo360_build_population.py`, `wo360_verify.py`,
+`wo360_wvde_events.py`, `wo360_recheck_jefferson.py`;
+`app/utils/jurisdiction_data/curated_governments.csv` (+1 row),
+`app/utils/jurisdiction_data/tenant_overrides.csv` (+11 rows).
+
 ## WO-358: the CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket — the 148 governments WO-350 sized but never walked [Done 2026-09-14]
 
 **Why this ran.** WO-350 (2026-09-13) walked the "confirmed tenant"
