@@ -178,6 +178,171 @@ scope).
 robots.txt crawl-delay rule end to end — two real governments (one of
 them a 205,000-person city) are ready to ingest as soon as someone
 hand-checks the meetings named above and the next deploy ships.**
+## WO-364 (WO-361b resume): finish the remaining 269 homepage-only off-mission governments, same hub-first method as WO-361 [Done 2026-09-14]
+
+**Why this ran.** WO-361 built the hub-first method for the WO-355
+homepage-only off-mission governments — find the real meeting hub with
+the passive pipeline plus the access ladder, THEN walk the hub for
+video, never a bare homepage — but only ran 213 of the 482 governments.
+Ryan's decision on the rest: "yeah, if a lead would add breadth, get it
+added to the drip lane" — run the remaining 269 with the same method,
+sending any YouTube find to the drip lane rather than fetching it.
+
+**Run.** All 269 remaining governments processed, in 7 foreground
+chunks of 40 (about 32 minutes of real wall time). 0 remain — the full
+482-government population is now finished.
+
+| Hub-finding outcome | Count of 269 | What it means |
+|---|---|---|
+| Hub found via the access ladder | 240 | a real vendor-platform link, or a homepage link that passed the decorative-video filter |
+| Hub found via first-party agenda probe | 21 | no vendor link, but real agenda/minutes content at a guessable path or one hop deeper |
+| No hub — no platform link found | 4 | a real page was reached; nothing recognizable on it |
+| No hub — timeout | 3 | the site did not answer in time |
+| No hub — Cloudflare human-verification gate | 1 | stopped at the gate, never attempted past it |
+
+| Tier reached | Count of 269 | What it means |
+|---|---|---|
+| 2 (video, YouTube captions — a lead, never fetched) | 221 | a YouTube embed found; recorded for the drip lane, not opened |
+| 4 (meeting, no video) | 21 | a real listing/page reached, no video on it |
+| 3 (video, no captions) | 13 | a video found — see the hand-read result below |
+| (blank — no hub) | 13 | no hub found (8 outright, 5 where a real hub was walked but its listing was empty) |
+| 1 (video + captions) | 1 | ditto |
+
+**A gap found in the committed hand-read tool, fixed for this run.**
+`scripts/wo361_handread.py`, as merged, has no oEmbed title lookup —
+even though the real `wo361_handread.csv` WO-361 produced clearly has
+titles ("City of Garfield 2024" by AlphaDog Solutions) that only a live
+oEmbed call could have produced. Re-derived rather than trusted, per
+CLAUDE.md's "a backlog entry is a lead, not a spec" rule (which applies
+to a committed script the same as a backlog entry): this run built
+`scripts/wo364_handread.py`, adding the same public, unauthenticated
+Vimeo oEmbed GET the adapter itself documents
+(`app/platforms/vimeo.py`). It reproduced WO-361's original 16 results
+exactly before being run against the 14 new candidates — a working sanity
+check that the added logic matches what actually ran before.
+
+**A real media-download safety bug found and fixed mid-run.** The
+first version of that new fetch had no Content-Type check. For a
+`direct_file`-platform candidate, `hub_url` IS the raw video URL itself
+(no wrapping HTML page) — and the fetch pulled the FULL response body
+into memory before truncating it for storage, because the 3 MB cap
+only applied after `resp.read()` had already finished. This hit live
+against three real videos before being caught: Chesterfield Inlet,
+Nunavut (165 MB), North township, Indiana (31 MB), and a Wisconsin.gov
+shared site-template asset (12 MB). Nothing was saved to disk, but this
+is exactly the shape of the standing "never download a media file" rule
+(the 2026-09-12 Ramsey MN 39 MB mp3 incident it was written for).
+Fixed before any further use: every fetch now checks the response's
+Content-Type first and refuses (headers only, no body read) anything
+video/audio-shaped, and skips the fetch outright when `hub_url` is
+already known to be the raw media file. `wo355_handread.py`/
+`wo361_handread.py` themselves still carry the unfixed gap — logged as
+its own `BACKLOG.md` entry rather than patched in this run, since they
+were not touched otherwise.
+
+| Hand-read result | Count of 14 | What it means |
+|---|---|---|
+| Confirmed decorative/promotional video, not a meeting (real oEmbed title or page content) | 8 | a town's own welcome reel, a tourism promo, an engineering consultant's own project video, a documentary, a local-interest video series episode |
+| Confirmed decorative by hand judgment (filename/hosting path — no title metadata available) | 2 | a pest-education video (Arrowsic ME) and a Wisconsin state shared template asset (Hull WI) |
+| Left ambiguous for a person | 3 | Marion TX (oEmbed 404), Chesterfield Inlet NU and North township IN (raw media file, no title signal available at all) |
+| Confirmed as a real meeting of THIS government | 0 | none this run |
+| Confirmed as a real meeting of a DIFFERENT government (Kind A) | 1 | Mount Joy township, PA |
+
+**Kind A: Mount Joy township, Pennsylvania.** The ladder's hub for this
+government was `co.lancaster.pa.us/agendacenter` — Lancaster COUNTY's
+own agenda center, not the township's. The video found there ("2026-
+05-22 Election Board," a real, oEmbed-confirmed title) is the county's
+own Election Board meeting, not Mount Joy township's governing body.
+Logged to `research/wo364_owner_bodies.csv` for a later mint pass; the
+township's own `jurisdiction_coverage.csv` row is marked
+`no-platform-link-found` (no video of the township's OWN body was
+found) rather than guessed as either a real ingest or a reject.
+
+**Video split.** Captions available, page live now: 0. Video, no
+captions, queued: 0. Same result as WO-361's own 213-government chunk —
+every tier 1/3 candidate across the full 482-government population
+failed hand-read as either decorative or a different government's
+video.
+
+**Research file.** `jurisdiction_coverage.csv` updated for 43 of the
+269 processed governments (row count unchanged before and after, 45,611
+data rows, verified against `git show HEAD`; checked that no gov_id
+outside this run's own 269 changed).
+
+| New label | Count of 43 | What it means |
+|---|---|---|
+| Meeting, no video | 21 | matches the tier-4 result above |
+| Video, not a meeting | 10 | the confirmed decorative videos |
+| No real link found | 4 | a real page reached, nothing recognizable on it |
+| No meeting or video found | 3 | a real hub was walked and its listing was empty |
+| Timed out | 3 | the site did not answer in time |
+| Site blocked (Cloudflare human-verification gate) | 1 | recorded, never attempted past it |
+| No real link found (Kind A — video belongs to another government) | 1 | Mount Joy township, PA |
+
+221 rows (tier 2, YouTube leads) were left untouched and appended to
+`research/youtube_channel_leads.csv` for the drip lane (166 new; 55
+already listed there from other concurrent runs). 3 rows (still
+ambiguous) are logged separately, untouched. 2 rows (a technical error
+with no matching Sec 23 bucket) are logged separately, untouched.
+
+**Summary**
+
+| Measure | Count | What it means |
+|---|---|---|
+| Governments processed | 269 of 269 | the full 482-government WO-355 population is now finished |
+| Real meetings confirmed | 0 | zero this run, matching WO-361's own 213-government result |
+| Pages made live | 0 | nothing to ingest |
+| Meetings queued for transcription | 0 | nothing to queue |
+| YouTube leads added to the drip lane (new) | 166 | of 221 tier-2 finds; 55 were already listed |
+| jurisdiction_coverage.csv rows updated | 43 | reject reasons recorded, see tables above |
+| Kind A (wrong owner body) found | 1 | Mount Joy township, PA — video belongs to Lancaster County |
+
+**Caution.** Zero real meetings came out of the 269 processed. Combined
+with WO-361, the full 482-government population produced zero real
+meetings and confirms the `run_access_ladder()` decorative-hit gap
+(`BACKLOG.md`) at the same rate on a bigger sample: 24 of 30 tier 1/3
+candidates across both runs (80%) were decorative, not a meeting. This
+population is disproportionately small towns and townships whose only
+real web video is a promotional or informational clip — that's a true
+finding about this population, not a shortfall of the method.
+
+**Recommendation.** Fix `run_access_ladder()`'s decorative-hit gap
+(`BACKLOG.md`) and the hand-read media-safety gap (`BACKLOG.md`, new
+entry this run) before reusing this method's raw scripts elsewhere —
+both are now confirmed on two independent runs.
+
+**Deploy.** Nothing here needs a deploy. This WO changed only
+`rtr-deeplink/scripts/` (one new script) and `BACKLOG.md`/
+`BACKLOG_DONE.md`, plus research files in `rtr-business` — none of
+these are deployed artifacts. No pins were written (zero confirmed
+real videos), so there is nothing in `app/` or `tenant_overrides.csv`
+this run to deploy either.
+
+**What's still undone.** The `run_access_ladder()` structural gap and
+the hand-read media-safety gap, both written up in `BACKLOG.md`, not
+fixed this run. Marion TX, Chesterfield Inlet NU, and North township IN
+left `still_ambiguous` for a person with real media access to resolve.
+Mount Joy township, PA still needs its own real video found (a second
+look was not attempted this run beyond recording the Kind A finding).
+
+**Files for the conductor to commit in rtr-business** (never committed
+here, per the tightened rule): `research/wo361_verify.csv` (482 rows,
+269 new this run), `research/wo364_handread.csv` (30 rows — the full
+tier 1/3 set across both runs, for consistency with WO-361's), `research/
+wo364_apply_to_jc.py`, `research/wo364_jc_applied_gov_ids.txt` (269
+gov_ids), `research/jurisdiction_coverage.csv` (43 rows changed),
+`research/youtube_channel_leads.csv` (166 rows appended), `research/
+wo364_owner_bodies.csv` (1 row), `research/wo364_jc_meeting_without_
+video.csv`, `research/wo364_jc_video_without_meeting.csv`, `research/
+wo364_jc_no_platform_link_found.csv`, `research/wo364_jc_no_meeting_
+nor_video.csv`, `research/wo364_jc_timeout.csv`, `research/
+wo364_jc_cloudflare_challenge_blocked.csv`, `research/
+wo364_jc_still_ambiguous.csv`, `research/wo364_jc_youtube_lead.csv`,
+`research/wo364_jc_already_set_skipped.csv`, `research/wo364_jc_no_
+match.csv`, `research/wo364_jc_kind_a_owner_body.csv`, `research/
+wo364_methods_section.md` (already appended to `ENUMERATION_METHODS.md`
+as §365 by this session — the conductor's commit should cover both
+files together).
 
 ## WO-363: queue Excelsior MN and Brookline MA back in — WO-358's duration-probe rejects reversed by Ryan [Done 2026-09-14]
 
