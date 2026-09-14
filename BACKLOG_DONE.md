@@ -414,6 +414,73 @@ jurisdiction_coverage.csv` (152 rows changed, all within this WO's own
 more is real and ready the moment the Archive bug is fixed, and 79 of
 the 90 governments this WO couldn't reach turned out to share the exact
 same cause — a Cloudflare wall, not 79 separate dead ends.**
+
+## WO-361: find the platform page first — passive pipeline + access ladder on the WO-355 homepage-only off-mission governments, then the deeper video walk [Done 2026-09-13]
+
+**Why this ran.** WO-355 re-verified 518 non-YouTube `off-mission` governments and found 62 of 64 "videos" were the government's own homepage welcome/promo clip. 476 of the 518 had only a bare homepage on file — `verify_hub()`'s own fallback (one plain fetch of that homepage) is not a meeting hub. Ryan: "we need to find their platform page by doing the passive pipe and ladder access and then we will have videos that might actually be on mission." This WO's job was to find the real hub first, then only walk a confirmed hub for video — never a bare homepage.
+
+**Population.** 482 governments (476 WO-355 rows whose starting point was a bare homepage, plus 6 more that had a URL on file but still turned up nothing), largest population first.
+
+**Method.** Per government: a govAccess/Akamai WAF check (skip and record, never retried), then `scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()` unmodified (plain HTTP → browser headers on a 403 → one ranked hop into agenda/calendar links → headless when a real page had no visible link → stop at a human-verification challenge). A real vendor-platform link found this way gets the video walk (`verify_hub(..., deep_walk=True)` — up to 15 listed meetings, up to 3 with video); no vendor link but real HTML gets `_probe_first_party_agenda_pages()` (the guessable `/agendacenter`-style paths, the home page's own body, one hop deeper) against the page the ladder actually reached, not the bare homepage a plain fetch alone would have seen.
+
+**Run.** 213 of 482 processed, in 5 foreground chunks (about 13 minutes of real wall time, sized to stay under a 10-minute Bash timeout per call). 269 remain, resumable with `.venv/bin/python scripts/wo361_find_hub.py --limit <N>` (reads/appends `research/wo361_verify.csv`).
+
+| Hub-finding outcome | Count of 213 | What it means |
+|---|---|---|
+| Hub found via the access ladder | 180 | a real vendor-platform link, or a homepage link that passed the decorative-video filter |
+| Hub found via first-party agenda probe | 16 | no vendor link, but real agenda/minutes content at a guessable path or one hop deeper |
+| No hub — blocked (govAccess/Akamai WAF) | 8 | skipped outright, never retried |
+| No hub — no platform link found | 5 | a real page was reached; nothing recognizable on it |
+| No hub — timeout | 2 | the site did not answer in time |
+| No hub — DNS unresolvable | 1 | the domain does not resolve |
+| No hub — no domain on file | 1 | the population row itself carried no domain |
+
+| Tier reached | Count of 213 | What it means |
+|---|---|---|
+| 2 (video, YouTube captions — a lead, never fetched) | 158 | a YouTube embed was found; recorded for the drip lane, not opened |
+| (blank) | 21 | 17 no-hub rows, plus 4 where a real hub was walked and its listing was empty |
+| 4 (meeting, no video) | 18 | a real listing/page was reached, no video on it |
+| 3 (video, no captions) | 13 | a video was found — see the hand-read result below |
+| 1 (video + captions) | 3 | ditto |
+
+**The real finding: fixing the hub-finding step did not, by itself, surface a different set of real meeting videos.** All 16 tier 1/3 candidates were hand-read (the same decorative-URL/filename heuristics `wo355_handread.py` used, plus a Vimeo oEmbed title lookup — a lightweight metadata call, never a media download — for the 6 that survived those heuristics on URL shape alone). 15 are confirmed decorative/promotional videos, real titles: "City of Garfield 2024" (a production company's own reel, not a meeting), "Laurel, Mississippi: A Story of Growth," "Opdenaker_TrashReceptacles_Scene1_ProofA" (a trash-receptacle vendor's own promo proof). 1 (Monessen city, PA) is the SAME still-ambiguous case WO-355 already found unresolved for the same government ("Monessen Mayoral Plans.MOV" next to real "Council Work Session" text) — left open again, not guessed.
+
+| Hand-read result | Count of 16 | What it means |
+|---|---|---|
+| Confirmed decorative/promotional video, not a meeting | 15 | 10 by URL/filename signature, 5 more by a real oEmbed title check |
+| Left ambiguous for a person | 1 | Monessen city, PA |
+| Confirmed as a real meeting | 0 | none this run |
+
+**Why fixing the hub-finding step didn't help this population.** `run_access_ladder()`'s own vendor-link scan stops climbing the instant it finds ANY vendor-shaped link on the homepage, decorative or not — it never tries a hop link, the first-party probe, or headless once one is found. WO-361 added a decorative-signature filter (`_is_decorative_hit()`) that catches the obvious cases (a `background=1`/`loop=1&muted=1` hero embed, a promo/tourism-shaped filename) and correctly falls through to the first-party probe when it fires — but a decorative video with no such signature in its URL (an unparameterized `player.vimeo.com/video/<id>` link) still wins the slot, and the real oEmbed title is the only thing that reveals it. This is a structural gap in shared code, written up as its own `BACKLOG.md` entry rather than fixed in this run.
+
+**Video split.** Captions available, page live now: 0. Video, no captions, queued: 0. Nothing was ingested and nothing was added to the transcription queue this run — every tier 1/3 candidate failed hand-read.
+
+**Kind A (wrong owner body).** None found this run.
+
+**Research file.** `jurisdiction_coverage.csv` updated for 52 of the 213 processed governments (row count unchanged, 45,612 before and after, verified against `git show HEAD`).
+
+| New label | Count of 52 | What it means |
+|---|---|---|
+| Meeting, no video | 18 | matches the tier-4 result above |
+| Video, not a meeting | 15 | the confirmed decorative videos |
+| No real link found | 5 | a real page reached, nothing recognizable on it |
+| No meeting or video found | 3 | a real hub was walked and its listing was empty |
+| Site blocked (govAccess/Akamai WAF) | 8 | recorded, never retried |
+| Timed out | 2 | the site did not answer in time |
+| Could not find the site | 1 | DNS failure |
+
+158 rows (tier 2, YouTube leads) were left untouched and appended to `research/youtube_channel_leads.csv` for the drip lane (106 new; 52 already listed there from other concurrent runs). 1 row (Monessen PA) is logged separately, untouched. 1 row (a technical error with no matching Sec 23 bucket) is logged separately, untouched.
+
+**Caution.** Zero real meetings came out of the 213 processed so far. That matches WO-355's own result and is a true finding, not a shortfall of this run's method — this population is disproportionately small towns whose only real web presence is a promotional homepage.
+
+**Recommendation.** Fix the `run_access_ladder()` gap described above before running the remaining 269 — right now, a real meeting hub reachable one hop past a homepage's own decorative video will keep losing to that video in every future sweep that reuses this ladder.
+
+**Deploy.** Nothing here needs a deploy — this WO changed only `rtr-deeplink/scripts/` (new scripts, no `app/`/`archive/`/`worker/` changes) and research files, neither of which is a deployed artifact.
+
+**What's still undone.** 269 of 482 governments not yet processed (resumable, exact command above). The `run_access_ladder()` structural gap, written up in `BACKLOG.md`, not fixed this run.
+
+**Files for the conductor to commit in rtr-business** (never committed here, per the tightened rule): `research/wo361_population.csv`, `research/wo361_verify.csv`, `research/wo361_handread.csv`, `research/wo361_apply_to_jc.py`, `research/jurisdiction_coverage.csv` (52 rows changed), `research/wo361_jc_applied_gov_ids.txt`, `research/youtube_channel_leads.csv` (106 rows appended), `research/wo361_jc_meeting_without_video.csv`, `research/wo361_jc_video_without_meeting.csv`, `research/wo361_jc_no_platform_link_found.csv`, `research/wo361_jc_no_meeting_nor_video.csv`, `research/wo361_jc_blocked_waf_akamai.csv`, `research/wo361_jc_timeout.csv`, `research/wo361_jc_dns_unresolvable.csv`, `research/wo361_jc_no_domain.csv`, `research/wo361_jc_unclassified_fetch_failure.csv`, `research/wo361_jc_still_ambiguous.csv`, `research/wo361_jc_youtube_lead.csv`, `research/wo361_jc_already_set_skipped.csv`, `research/wo361_jc_no_match.csv`, `research/wo361_methods_section.md` (to append to `ENUMERATION_METHODS.md`, section number assigned at append time).
+
 ## WO-355: the non-YouTube off-mission governments, re-verified with a deeper walk and a deeper hand-read — a decorative-video false-positive class found, not a coverage win [Done 2026-09-13]
 
 **Why this ran.** 785 governments were marked `off-mission` in the

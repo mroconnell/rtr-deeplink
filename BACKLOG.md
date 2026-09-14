@@ -191,9 +191,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (219)
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
+  [NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
   [NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical,…
   [EASY] Sec 23's reject-reason taxonomy has no bucket for a real…
@@ -2282,6 +2283,13 @@ of human step they need.
   - **Impact**: cosmetic on its own (no card/OG image for this one page) but load-bearing for WO-362's fix: any other CivicMedia government whose card extraction fails the same way still re-runs a live TikiLive refetch on every view (now safely backgrounded and time-boxed, but still real, avoidable upstream load).
   - **Next action**: check whether 1416s is past the signed playlist's actual runtime (a bad highlight timestamp picking a seek point beyond the video's real length) or whether ffmpeg genuinely can't seek this specific TikiLive stream shape at all; try a seek to 0s/a low fixed offset as a quick diagnostic before assuming either.
   - **History**: `BACKLOG_DONE.md`'s WO-362 entry.
+
+- **[NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()` stops climbing the moment it finds ANY vendor-shaped link on a homepage — including a decorative/promotional video embed, not just a real meeting-hub link.**
+  - **Issue**: found live 2026-09-13 (WO-361), fixing the hub-finding step for the WO-355 population reproduced WO-355's own decorative-video false positive through a different code path. `run_access_ladder()`'s plain-fetch step calls `find_platform_link()` on the homepage and returns immediately on any hit — it never tries a hop link, first-party agenda probe, or headless render once one vendor-shaped link is found, whether that link is a real meeting platform or a hero-background Vimeo embed (`background=1&loop=1&muted=1`) or an unparameterized single-video player URL. WO-361 added `_is_decorative_hit()` (the same URL-parameter/filename signature `wo355_handread.py` uses) to reject the obvious cases and fall through to a first-party probe, but a decorative video with no such signature — confirmed only by fetching its real oEmbed title (e.g. Garfield city NJ's "City of Garfield 2024," a production-company reel) — still wins the slot, since the URL-shape filter can't see the title.
+  - **Impact**: real, current — every one of WO-361's 16 tier 1/3 candidates in its first 213-government chunk traced back to this exact failure mode; zero came out as a real meeting. Any future sweep leaning on `run_access_ladder()`'s vendor-link scan against a small-town homepage risks the same false-positive class it was meant to fix.
+  - **Next action**: teach `run_access_ladder()` itself (not just a downstream caller) to treat a hand-confirmed-decorative hit as "keep climbing" — try the ranked hop links, the first-party agenda probe, and headless before giving up — rather than stopping at the first vendor-shaped link found on the homepage's own body.
+  - **Constraint**: this is shared code several other sweeps (WO-147's own candidates, WO-283/337/338's phase-3 fallback) depend on for their "found a hit, stop" behavior on a REAL platform link — any fix needs to keep that fast-path for a genuine hub link and only add the extra climbing when the hit looks decorative.
+  - **History**: `BACKLOG_DONE.md`'s WO-361 entry; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`.
 
 - **[NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no recipe for a `resolve()`-returned Vimeo URL carrying tracking query params (`?share=copy&fl=sv&fe=ci`), so a real, hand-confirmed tier-3 video can't be probed or queued at all.**
   - **Issue**: found live 2026-09-13 (WO-349), two CivicPlus governments in the same run: Western Springs village, IL (`us:place:1780242`, "Board of Trustees Meeting", 2026-08-10) and Edgewood city, WA (`us:place:5320645`, "1st - Regular Council Meeting", 2026-09-08). Both hand-checked real and current — `resolve()` itself succeeded and returned a real Vimeo `video_url` — but `probe_queue_entry()` rejected both as `reject-dead`, reason `no probe recipe for this media shape`, because the URL carries a `?share=copy&fl=sv&fe=ci` query suffix the prober's shape-matcher doesn't recognize as "this is a Vimeo video." Same run also hit a related but distinct failure on Bristol city, CT (`us:place:0908420`): a real CivicClerk file (`cpmedia.azureedge.net/bristolct/...mp4`) that `ffprobe` itself couldn't read at all (`moov atom not found`) — looks like a genuinely corrupted/incomplete upload at the source, not a prober gap, but recorded here since it hit the same `reject-dead` path.
