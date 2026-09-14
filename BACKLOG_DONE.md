@@ -53,6 +53,24 @@ is affected.
 | Kind A (owner-body mismatch) | 0 | none found |
 | YouTube blocks hit | 0 | neither meeting touches YouTube |
 
+**Correction (WO-363b, 2026-09-14): the Excelsior queue line as first
+written would have failed deterministically, not "let the transcriber
+decide."** `app/platforms/civicclerk.py` only delegates a YouTube or
+BoxCast external link — not Cablecast — so `resolve()` on the CivicClerk
+page hands back the `reflect-lmcc.cablecast.tv` show page itself as
+`video_url`, and `worker/main.py`'s `probe_duration()` fails on that
+HTML page the same way the sidecar already recorded. WO-363b replaced
+the queue line with the direct `reflect-lmcc.cablecast.tv/
+CablecastPublicSite/show/57831?site=1` URL — the same shape show 57519
+is already queued under on this host, and the one `cablecast.py`
+actually resolves — the same substitution WO-226's `_pick_probe_url()`
+made for this exact "CivicClerk wrapper, real video one hop deeper"
+shape (see `scripts/wo149_finish_tier3.py`'s docstring). The existing
+per-show pin already keyed the direct URL to `us:place:2720078`
+(confirmed via `has_owner()`), so no pin change was needed. Brookline
+was left as written — no equivalent direct-URL substitution exists for
+a Zoom Gov share link.
+
 **A pin worth a second look, not fixed here.** An existing
 `tenant_overrides.csv` row pins `www.youtube.com,youtube:MVAoEnsDp7g` to
 `us:cousub:5002509475` with evidence text reading only "Brookline town

@@ -1060,19 +1060,35 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   than this gap -- re-running either sweep's `--mode finish` against its
   existing decisions file will pick them up automatically once the
   probe gains these recipes, no new discovery needed. Excelsior city MN
-  itself is no longer unqueued -- WO-363 (2026-09-14) queued it directly
-  by hand (`append_queue_line()`/`write_pin_row()`, sidecar verdict
-  `queued`), per Ryan's standing rule that a probe failure is not a
-  reject when the government has no transcript yet. That is a one-off
-  workaround, not a fix: `probe_queue_entry()` still has no Cablecast-
-  delegation recipe, so every other government hitting this exact gap
-  (Belle Meade, Oak Hill, West Lake Hills, and any future one) still
-  needs either the same manual workaround or this recipe built.
-- **Next action:** add a dispatch rule to `probe_queue_entry()` (or
-  wherever `_probe_direct_file()`/its siblings live) for: (1) a
-  Cablecast show URL reached via CivicClerk delegation -- likely just
-  needs the existing Cablecast probe path, not currently reached because
-  `video_format`/`platform` isn't threaded through the delegation; (2) a
+  itself is no longer unqueued -- WO-363 (2026-09-14) first queued the
+  CivicClerk wrapper page directly by hand
+  (`append_queue_line()`/`write_pin_row()`, sidecar verdict `queued`),
+  per Ryan's standing rule that a probe failure is not a reject when the
+  government has no transcript yet, but that line would have failed
+  deterministically at transcription time (`civicclerk.py` hands the
+  wrapper page itself back as `video_url`, and `worker/main.py`'s
+  `probe_duration()` can't read an HTML page) -- WO-363b (2026-09-14,
+  same day) corrected it to the direct `reflect-lmcc.cablecast.tv/
+  CablecastPublicSite/show/57831?site=1` URL instead, the same
+  substitution WO-226's `_pick_probe_url()` already makes for this exact
+  shape (`scripts/wo149_finish_tier3.py`'s docstring). That is still a
+  one-off manual substitution, not a fix to the adapter or the probe:
+  every other government hitting this exact gap (Belle Meade, Oak Hill,
+  West Lake Hills, and any future one) still needs either the same
+  by-hand substitution or a real fix built.
+- **Next action:** the durable fix is in `app/platforms/civicclerk.py`,
+  not `queue_probe.py`: CivicClerk should delegate a Cablecast
+  `externalVideoUrl`/`externalMediaUrl` via `resolve_via_platform()`
+  (`app/platforms/base.py`) the way it already delegates YouTube and
+  BoxCast links (see this file's own module comments on both) -- once
+  `resolve()` hands back the real, playable video URL the Cablecast
+  adapter itself resolves, `probe_queue_entry()` needs no new Cablecast
+  dispatch rule at all, since it already has one (the direct-URL case).
+  Until that lands, queue the direct show URL by hand (WO-363b's
+  pattern) for each affected government. The ChampDS and CivicPlus
+  gaps below are unrelated and still need their own dispatch rule in
+  `probe_queue_entry()` (or wherever `_probe_direct_file()`/its siblings
+  live): (2) a
   ChampDS `.../DOWNLOAD-MEDIA/.../eventmainmedia/{id}` redirect --
   confirm what it redirects to (probably a direct MP4/HLS) and probe
   that; (3) a CivicPlus DocumentCenter link whose real filename is an
@@ -1080,8 +1096,8 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Constraint:** verify each recipe against the exact five real URLs
   above before shipping -- this repo's own rule against claiming a data
   path works without a positive, live example.
-- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289, WO-290, and
-  WO-363 entries; `~/Documents/rtr-business/research/
+- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289, WO-290, WO-363,
+  and WO-363b entries; `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §309/§310.
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
