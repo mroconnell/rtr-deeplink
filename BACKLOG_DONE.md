@@ -54192,3 +54192,100 @@ every one.
 and `scripts/tier3_auto_transcription_queue.txt` changed again — need
 the resolver/worker deploy before Sanford's pin and queue line take
 effect (same pending deploy as the previous entry).
+
+## WO-349: every open CivicPlus government run through the new listing walker — 8 pages live now, 7 more queued for transcription [Done 2026-09-13]
+
+**Why this ran.** WO-341 built a way to find a government's real meeting
+video even when its recorded web address wasn't quite right (a "listing
+walker" for the CivicPlus website platform), and proved it worked on 20
+governments. This WO ran that same check against every other open
+CivicPlus government — one whose government meetings might have video,
+but doesn't have a page on this site yet.
+
+**Step 1 — building the list to check.** Cross-checked the coverage
+spreadsheet against today's live site (not last night's snapshot) so
+this WO wouldn't repeat work five other sessions already did this week.
+
+| Result | Count | What it means |
+|---|---|---|
+| Open CivicPlus governments, total | 1,126 | no page, not already queued or parked, not already handled this week |
+| Have a real, confirmed web address on file | 892 | this WO's own target |
+| Only have a guessed platform label, no address | 234 | needs an earlier research step first — not run this time |
+
+**Step 2 — checking all 892.** Every one was checked against its own
+real website.
+
+| Result | Count of 892 | What it means |
+|---|---|---|
+| Real video with real captions | 9 | candidate for a live page |
+| Real video, only on YouTube | 44 | recorded as a lead, not looked at further (standing rule: this site never opens YouTube directly) |
+| Real video, no captions | 23 | candidate for the transcription queue |
+| A real meeting, but no video | 703 | recorded as checked, nothing to add |
+| Nothing found at all | 91 | recorded as checked, nothing to add |
+| The check itself failed | 22 | left alone — a failed check isn't a finding either way |
+
+**Step 3 — a person read every video candidate before anything went
+live.** This is required every time: an automatic check can find the
+right *website*, but only a person reading the actual title can confirm
+it's the right *meeting*.
+
+| Result | Count of 32 | What it means |
+|---|---|---|
+| Real, confirmed, used | 21 | 8 became live pages, 13 went toward the transcription queue |
+| Wrong | 11 | see below |
+
+The 11 wrong ones, by name:
+
+- **Seward city, Kansas** — the video was really Seward *County's*
+  meeting, not the city's. Two different real governments happen to
+  share the name "Seward" in Kansas.
+- **La Vergne, Lawrenceburg (both Tennessee), and Hamburg village (New
+  York)** — all three "found" the exact same generic video, a stock
+  header clip their website builder puts on every customer's site. Not
+  a real meeting at all.
+- **Del Mar, California** — the video was a travel clip about hiking to
+  Mount Everest base camp, not a city meeting.
+- **Bristol (Connecticut), Western Springs village and Edgewood (both
+  Illinois/Washington)** — real meetings, correctly identified, but a
+  tool this site uses to measure the video's length couldn't read the
+  file. Nothing wrong with the finding; a repair ticket is filed.
+- **St. Joseph (Missouri), Alamosa County (Colorado), Larned
+  (Kansas), Grinnell (Iowa), Hastings-on-Hudson village (New York), and
+  Easton (Connecticut)** — set aside rather than guessed at: three had
+  no usable title at all, and three found a real video that is quite
+  old (21 months to over 4 years) with no newer one available. Filed for
+  a person to decide, not acted on either way.
+
+**Result — governments with video found, split the way this always gets
+reported:**
+
+| Result | Count | What it means |
+|---|---|---|
+| Captions available, page live now | 8 | real transcript, live on the site already |
+| Video, no captions, queued | 7 | added to the transcription queue |
+| Video, no captions, set aside for now | 2 | found, correct, but over 90 minutes long — parked rather than queued, per standing policy |
+
+**Along the way, this WO also found 4 cases where a video belongs to a
+different real government than the one on file** — recorded so someone
+can look up or add that government properly rather than lose the video:
+Town of Hempstead NY, City of Melbourne FL, Seward County KS, and City
+of Bossier City LA. None of the 4 were keyed to the wrong government.
+
+**Caution.** The 234 governments with only a guessed platform label
+still need an earlier research step before they can be checked the same
+way — not done this WO. Two of the "video, no captions, set aside"
+governments should be looked at once more for a shorter meeting on the
+same channel before being left parked, per standing policy — not done
+this WO for time. Both are filed as follow-up items.
+
+**Recommendation.** File the follow-ups above (already done, see
+`BACKLOG.md`); when time allows, run the same check against the 234
+governments that still need the earlier research step first.
+
+**Deploy status.** 8 pages are live now (pages ingest immediately). The
+7 queue lines and their pins, plus the video-length tool's own code, are
+on `main` but need the resolver/worker deploy before they take effect.
+
+🎯 **Bottom line: of 892 open CivicPlus governments checked, 8 have a
+live transcript today and 7 more are queued — a real, if modest, yield
+from a platform this site had never fully swept before.**
