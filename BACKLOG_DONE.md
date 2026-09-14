@@ -1,5 +1,70 @@
 # Backlog — done
 
+## Sign-in via Google sent visitors to the bare homepage instead of back to upcoming.redtaperecordings.com [Done 2026-09-14]
+
+**Why this ran.** Ryan reported that signing in with Google on
+`upcoming.redtaperecordings.com` (a separate app sharing this repo's
+Clerk instance) always landed him on `https://redtaperecordings.com` —
+the bare main-site homepage — instead of back on the page he started
+from. Confirmed live: he was on `/coverage`, signed in with Google, and
+ended up on `/`.
+
+**What was checked.** Captured the real network request the
+`upcoming` app's own sign-in code sends when starting Google OAuth. It
+correctly asked to return to `upcoming.redtaperecordings.com`, but
+Google-OAuth sign-in has to bounce through this app's `/sign-in` page
+first (a Clerk requirement, not something either app controls) before
+continuing to its real destination. That bounce carries a `redirect_url`
+parameter naming the real destination, but this repo's `/sign-in`/
+`/sign-up` pages don't read it — they rely entirely on their own
+`sessionStorage` stash, which is empty on this page because it was set
+on the *other* app's origin (`sessionStorage` doesn't cross origins,
+even between subdomains that share cookies).
+
+Normally that would just mean falling back to this app's own default
+landing page (`/account/saved`) rather than back to `upcoming` — a
+narrower bug on its own. But `shared_static/clerk_nav.js`'s
+`mountSignIn()`/`mountSignUp()` calls only passed `forceRedirectUrl`, a
+Clerk **v5** option name. The real runtime is clerk-js **4.73.14** (the
+same shared Clerk instance `upcoming.redtaperecordings.com` had already
+found and fixed this exact thing for — see its `base.html`). Clerk v4
+ignores an option name it doesn't recognize rather than erroring, so
+`forceRedirectUrl` was a silent no-op, and every OAuth sign-in through
+these two pages fell all the way through to Clerk's own dashboard
+default (`after_sign_in_url` = the bare homepage) — which is why the
+landing page was `/` and not `/account/saved`.
+
+**Why the earlier WO-65 verification missed this.** That work (see this
+file's own WO-65 entry) tested `clerk_nav.js` against a *stubbed* Clerk,
+which confirmed the redirect-target logic (sessionStorage stash,
+fallback, loop-rejection) but could never have caught a real-runtime
+option-name mismatch — that only shows up against the actual clerk-js
+build Clerk serves.
+
+**What landed.** Added the v4 option names (`afterSignInUrl` /
+`afterSignUpUrl` / `redirectUrl`) alongside the existing v5
+`forceRedirectUrl` on all three mounts in `shared_static/clerk_nav.js`
+(the inline `/account/saved` form, and the standalone `/sign-in` and
+`/sign-up` pages), matching the pattern already proven live on
+`upcoming.redtaperecordings.com`.
+
+**Left open, not fixed here:** `/sign-in`'s and `/sign-up`'s
+destination is still computed from this app's own `sessionStorage`
+only, so a visitor arriving from a genuinely different subdomain (as
+`upcoming.redtaperecordings.com` visitors do) still lands on
+`/account/saved` rather than back where they started — better than the
+bare homepage, but not a full fix for that specific cross-app path. A
+real fix would have `/sign-in` also check the `redirect_url` query
+parameter Clerk itself appends to the OAuth callback URL, which is the
+one channel that survives the cross-origin bounce. Not done in this
+pass because it wasn't the reported symptom and needs its own
+verification against a real OAuth round trip.
+
+**Verification.** Full test suite (`.venv/bin/python -m pytest -q`):
+2926 passed, 16 skipped — no test exercises the real clerk-js runtime,
+so this still needs a live sign-in check after deploy, the same
+caveat WO-65's own entry names.
+
 ## WO-257: oEmbed channel lookup for the 1,758 archived YouTube pages with no channel on record [Done 2026-09-14]
 
 **Why this ran.** A channel-fill pass on 2026-09-11 gave 1,897 archived

@@ -322,6 +322,12 @@
           markSignInReturnUrl();
           mountOrIgnore(() =>
             window.Clerk.mountSignIn(inlineSignIn, {
+              // v4 names FIRST -- see the two mounts below for why:
+              // this instance serves clerk-js 4.73.14, and
+              // forceRedirectUrl alone (a v5-only name) is a silent
+              // no-op on it.
+              afterSignInUrl: window.location.href,
+              redirectUrl: window.location.href,
               forceRedirectUrl: window.location.href,
               // Explicit rather than relying on Clerk's default
               // resolution of this same path -- the default is what
@@ -351,14 +357,28 @@
           return;
         }
         const dest = standaloneAuthDestination();
+        // Real bug, 2026-09-14: this instance serves clerk-js 4.73.14 (same
+        // runtime as upcoming.redtaperecordings.com, which hit and fixed this
+        // exact thing -- see its base.html). `forceRedirectUrl` is a v5-only
+        // option name; v4 does not implement it and ignores it without
+        // complaint, so it was a no-op here and every OAuth sign-in fell
+        // through to the Clerk dashboard's `after_sign_in_url`
+        // (redtaperecordings.com's bare homepage) instead of `dest`. The v4
+        // names -- `afterSignInUrl`/`afterSignUpUrl` -- are what the runtime
+        // actually reads; the v5 names are kept alongside for when the
+        // instance moves up.
         mountOrIgnore(() => {
           if (signUpPage) {
             window.Clerk.mountSignUp(signUpPage, {
+              afterSignUpUrl: dest,
+              redirectUrl: dest,
               forceRedirectUrl: dest,
               signInUrl: "/sign-in",
             });
           } else {
             window.Clerk.mountSignIn(signInPage, {
+              afterSignInUrl: dest,
+              redirectUrl: dest,
               forceRedirectUrl: dest,
               signUpUrl: "/sign-up",
             });
