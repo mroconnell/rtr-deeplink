@@ -1,5 +1,118 @@
 # Backlog — done
 
+## WO-355: the non-YouTube off-mission governments, re-verified with a deeper walk and a deeper hand-read — a decorative-video false-positive class found, not a coverage win [Done 2026-09-13]
+
+**Why this ran.** 785 governments were marked `off-mission` in the
+research file. Ryan's rule: a turned-away video is a verdict on that
+video, not the government, so these deserve a second look, not a
+permanent skip. WO-353 already handled the 269 whose real video is on
+YouTube (a separate drip-lane list). This WO covers the other 518.
+
+**Two rule changes, built first as their own change.** Before running
+the population, `app/platforms/verify_hub()` got two new opt-in
+settings, requested by Ryan this round: read up to 15 listed meetings
+instead of just the newest one, and collect up to 3 that have video
+instead of stopping at the first. Both landed with tests, PR #1145,
+merged first and separately from the population run below.
+
+**Population.** 518 governments (785 off-mission, minus the 269 already
+on the YouTube list), largest population first.
+
+| Result | Count of 518 | What it means |
+|---|---|---|
+| Meeting found, no video | 345 | a real page was reached, nothing to watch on it |
+| No meeting found at all | 109 | the site could not be reached, or had no findable link |
+| Video found | 64 | see below — this is where the real finding is |
+| Video found, real YouTube lead | 1 | Norfolk County ON — recorded for the YouTube team, never opened |
+
+**The real finding.** Every one of the 64 "video found" results was
+checked by hand — not just trusted. 62 of the 64 turned out to be a
+promotional or welcome video sitting on the government's own home page,
+not a meeting recording. Some examples, read directly off the real page
+or the video's own title: Bowling Green, Kentucky's video is titled
+"Video Ad: Bowling Green - A Great Place to Live and Work." Tabor City,
+North Carolina's is titled "Tabor City Promo." Guntersville, Alabama's is
+"VisionGuntersville-2026." These are not meetings. They are the kind of
+short welcome video many town websites put on their home page.
+
+| Hand-check result | Count of 64 | What it means |
+|---|---|---|
+| Confirmed promotional video, not a meeting | 62 | the tool found a video, but it was not a real meeting |
+| Left for a person to judge | 1 | Monessen, Pennsylvania — see below |
+| Real YouTube lead, not opened | 1 | Norfolk County, Ontario |
+| Confirmed as a real meeting | 0 | none this run |
+
+**One case left for a person.** Monessen, Pennsylvania has real meeting
+text ("Council Work Session Sept 10, 2026, 6:30 PM at City Hall") right
+next to a video on its home page. But the video's own title is
+"Monessen Mayoral Plans.MOV," which does not clearly say "meeting." This
+report does not guess. It is left open for a person to watch and decide.
+
+**Why so many promotional videos.** Most of these 518 governments are
+small or rural. Only 42 of the 518 already had a page pointing at a
+listing of real meetings. The other 476 had only a home page address.
+When the tool checked a bare home page for a video, it found whatever
+video was there — usually a welcome or tourism video, not a meeting
+archive. This is a real gap in the tool, not a mistake in this run: it
+is written up in `BACKLOG.md` (updated, not duplicated — WO-348 and
+WO-352 had already hit smaller versions of the same problem) with a
+concrete next step.
+
+**Video split.** Captions available, page live now: 0. Video, no
+captions, queued: 0. No page was created and nothing was added to the
+transcription queue this run, because nothing passed the check.
+
+**Research file.** `jurisdiction_coverage.csv` updated for 500 of the
+518 governments (the rest are the 1 left for a person, the 1 YouTube
+lead, and 16 site-side errors — expired certificates, connection resets
+— that do not fit an existing label; also written up in `BACKLOG.md`).
+
+| New label | Count of 500 | What it means |
+|---|---|---|
+| Meeting, no video | 345 | matches the tier-4 result above |
+| Video, not a meeting | 62 | the confirmed promotional videos |
+| No real link found | 73 | includes 43 where the file said "YouTube" but no real link was found there |
+| Site blocked the request | 9 | the site returned "forbidden" |
+| Timed out | 3 | the site did not answer in time |
+| Could not find the site | 1 | a DNS lookup failure |
+| No meeting or video found | 7 | the page was real but empty |
+
+**Caution.** Zero real meetings came out of this run. That is a true
+result, not a shortfall — forcing one of the 62 promotional videos
+through as a meeting would have been wrong. The decorative-video problem
+is real and will affect any future run that leans on a bare home-page
+check.
+
+**Recommendation.** Build the decorative-video filter described in
+`BACKLOG.md` before running the next large population through the same
+bare-home-page path. Have a person watch Monessen, Pennsylvania's video
+and decide.
+
+**Deploy.** The two `verify_hub()` rule changes are on `main` now
+(PR #1145, merged) but need the resolver's normal deploy to take effect
+in production. Nothing else here needs a deploy — research files and
+`jurisdiction_coverage.csv` are not deployed artifacts.
+
+**What's still undone.** The decorative-video filter itself (written up
+in `BACKLOG.md`, not built this run — it needs testing against real
+confirmed meetings first, and this run's own population had none to test
+against). Monessen, PA's one open case. The 16 site-side errors with no
+matching label yet.
+
+**Files for the conductor to commit in rtr-business** (never committed
+here, per the tightened rule): `research/wo355_population.csv`,
+`research/wo355_verify.csv`, `research/wo355_handread.csv`,
+`research/wo355_apply_to_jc.py`, `research/jurisdiction_coverage.csv`
+(500 rows changed), `research/wo355_jc_applied_gov_ids.txt`,
+`research/wo355_youtube_leads.csv`, `research/wo355_jc_meeting_without_video.csv`,
+`research/wo355_jc_video_without_meeting.csv`, `research/wo355_jc_no_platform_link_found.csv`,
+`research/wo355_jc_blocked_plain_http.csv`, `research/wo355_jc_timeout.csv`,
+`research/wo355_jc_dns_unresolvable.csv`, `research/wo355_jc_no_meeting_nor_video.csv`,
+`research/wo355_jc_unclassified_fetch_failure.csv`, `research/wo355_jc_still_ambiguous.csv`,
+`research/wo355_jc_youtube_lead.csv`,
+`research/wo355_methods_section.md`, `research/ENUMERATION_METHODS.md`
+(§358 appended).
+
 ## WO-352: chunk 1 of ~15 — re-verifying WO-338's "nothing confirmed" governments with `verify_hub()`'s bare-homepage fallback [Done 2026-09-14]
 
 **Why this ran.** WO-338 reran a 2,825-government population through
