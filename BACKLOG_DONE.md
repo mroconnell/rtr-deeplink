@@ -1,5 +1,95 @@
 # Backlog — done
 
+## WO-363: queue Excelsior MN and Brookline MA back in — WO-358's duration-probe rejects reversed by Ryan [Done 2026-09-14]
+
+**Why this ran.** WO-358 (2026-09-14, the entry right below this one)
+ran a duration probe over 136 governments and rejected two real
+meetings — Excelsior city, MN and Brookline town, MA — as
+`reject-dead`, because `probe_queue_entry()` has no recipe for either
+one's media shape. Ryan's decision, relayed through the conductor: the
+duration probe should not remove a meeting if it would add to the
+Archive's breadth. Neither government has any Archive page today, so
+both add breadth. This is now a standing rule: **a probe failure is not
+a reject when the government has no transcript yet — queue the meeting
+and let the transcriber decide.**
+
+**What each meeting actually is.**
+
+| Government | CivicClerk page | Video shape | Why the probe failed |
+|---|---|---|---|
+| Excelsior city, MN | `.../event/3241/media` (Parks and Recreation Commission, 2026-08-11) | Delegates to a Cablecast "show" landing page on the shared `reflect-lmcc.cablecast.tv` host (show 57831) | `probe_queue_entry()` has no recipe for a Cablecast show-wrapper URL — confirmed real and playable directly via the Cablecast API: title "Excelsior Parks & Recreation Commission 081126 CH8", 1616 seconds (26.9 min), `hasCaptions: false` |
+| Brookline town, MA | `.../event/16635/media` (Community Preservation Act Committee Housing Subgroup Meeting, 2026-09-10) | Delegates to a Zoom Gov cloud-recording share link (`brooklinema.zoomgov.com/rec/share/...`) | No probe recipe exists for a Zoom link, and — checked this WO — no Zoom path exists anywhere in `app/platforms/media_probe.py` or `worker/main.py` at all. The transcriber will report a failure, not a transcript, on this meeting until a Zoom path is built |
+
+**Brookline: checked for a non-Zoom alternative before queuing the Zoom
+meeting.** Walked the brooklinema CivicClerk listing with
+`verify_hub(deep_walk=True, listing_limit=15, video_collect_limit=3)`
+and resolved all three newest real candidates by hand.
+
+| Candidate (newest 3 on the listing) | Video host |
+|---|---|
+| Community Preservation Act Committee Housing Subgroup Meeting, 2026-09-10 (event 16635) | `brooklinema.zoomgov.com` |
+| Transportation Board Meeting, 2026-09-09 (event 16769) | `brooklinema.zoomgov.com` |
+| School Finance & Capital Projects Subcommittee Meeting, 2026-09-09 (event 16546) | `brooklinema.zoomgov.com` |
+
+All three are Zoom. There is no non-Zoom meeting on this listing to
+substitute, so event 16635 — the one WO-358 already found and named —
+was queued, per Ryan's rule applied literally.
+
+**What was written.** One queue line each in
+`scripts/tier3_auto_transcription_queue.txt` (the CivicClerk page URL,
+same bare shape every other CivicClerk queue line already uses), one
+sidecar row each in `scripts/tier3_auto_transcription_queue_probe.csv`
+(verdict `queued`, reason naming the breadth rule and, for Brookline,
+the Zoom share link), and three `tenant_overrides.csv` pins: the two
+CivicClerk portal hosts (blank match, single-tenant) and one per-show
+pin on `reflect-lmcc.cablecast.tv` (a confirmed `MULTI_GOV_HOSTS`
+multi-government host — already listed, no code change needed) scoped
+to Excelsior's own show path so no other Lake Minnetonka city's video
+is affected.
+
+| Outcome | Count of 2 | What it means |
+|---|---|---|
+| Video, no captions, queued | 2 | Excelsior MN and Brookline MA both added to the tier-3 queue; captions available, page live now: 0 |
+| Kind A (owner-body mismatch) | 0 | none found |
+| YouTube blocks hit | 0 | neither meeting touches YouTube |
+
+**A pin worth a second look, not fixed here.** An existing
+`tenant_overrides.csv` row pins `www.youtube.com,youtube:MVAoEnsDp7g` to
+`us:cousub:5002509475` with evidence text reading only "Brookline town
+— WO-134 confirmed hit" — no state named. That gov_id is **Brookline
+town, VT**, not Brookline town, MA (the government this WO worked on).
+The gov_id itself is correct for VT; the evidence text is just
+uninformative enough to misread as MA's Brookline. Left alone per the
+brief's instruction — reporting it here, not fixing it.
+
+**Caution.** Both queue lines point at pages the transcriber cannot yet
+read end to end without extra work: Excelsior's video sits behind a
+Cablecast wrapper page `probe_queue_entry()` doesn't parse, and
+Brookline's sits behind a Zoom Gov share link nothing in this repo
+fetches. Queuing them is correct under Ryan's breadth rule, but neither
+will produce a transcript until one of those two gaps is closed —
+logged as an open item in `BACKLOG.md`.
+
+**Deploy.** `tenant_overrides.csv` is resolver code — needs a deploy
+before the pins take effect in production. The two queue lines take
+effect the next time the transcription worker reads the queue file — no
+deploy needed for those.
+
+**Undone.** No probe recipe was built for either the Cablecast
+show-wrapper shape or Zoom Gov share links — both remain real gaps for
+whoever picks up the two governments' actual transcription.
+
+**Recommendation:** if a Cablecast show-wrapper probe recipe gets built
+for Excelsior, the same recipe likely unblocks every other queued
+Cablecast `.../show/...` line that hit the same "no probe recipe"
+rejection; a Zoom path is a separate, bigger build with no other queued
+line waiting on it today.
+
+**This WO's own gates.** `ruff check`, `ruff format --check`, `pytest`
+(full suite), `alembic check` (`archive/`, `app/`, no model changes),
+and `scripts/check_backlog_done_headings.py` all ran clean; see the PR
+for the run.
+
 ## WO-360: West Virginia — filling municipal domains from county sites, re-verifying the 18 corrected counties, and standing up the state Board of Education [Done 2026-09-13]
 
 **Why this ran.** The conductor's own WV research pass (rtr-business

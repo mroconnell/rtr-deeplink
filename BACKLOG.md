@@ -1054,13 +1054,20 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   `DOWNLOAD-MEDIA` redirect (twice), and a CivicPlus `DocumentCenter`
   audio URL (WO-290) -- five real governments across the two runs, none
   a one-off.
-- **Impact:** Excelsior city MN, Belle Meade city TN, Oak Hill city TN,
-  and West Lake Hills city TX (WO-290) plus the two WO-289 governments
-  each have a confirmed real meeting with real video, sitting unqueued
-  for no reason other than this gap -- re-running either sweep's
-  `--mode finish` against its existing decisions file will pick them up
-  automatically once the probe gains these recipes, no new discovery
-  needed.
+- **Impact:** Belle Meade city TN, Oak Hill city TN, and West Lake Hills
+  city TX (WO-290) plus the two WO-289 governments each have a confirmed
+  real meeting with real video, sitting unqueued for no reason other
+  than this gap -- re-running either sweep's `--mode finish` against its
+  existing decisions file will pick them up automatically once the
+  probe gains these recipes, no new discovery needed. Excelsior city MN
+  itself is no longer unqueued -- WO-363 (2026-09-14) queued it directly
+  by hand (`append_queue_line()`/`write_pin_row()`, sidecar verdict
+  `queued`), per Ryan's standing rule that a probe failure is not a
+  reject when the government has no transcript yet. That is a one-off
+  workaround, not a fix: `probe_queue_entry()` still has no Cablecast-
+  delegation recipe, so every other government hitting this exact gap
+  (Belle Meade, Oak Hill, West Lake Hills, and any future one) still
+  needs either the same manual workaround or this recipe built.
 - **Next action:** add a dispatch rule to `probe_queue_entry()` (or
   wherever `_probe_direct_file()`/its siblings live) for: (1) a
   Cablecast show URL reached via CivicClerk delegation -- likely just
@@ -1073,9 +1080,9 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Constraint:** verify each recipe against the exact five real URLs
   above before shipping -- this repo's own rule against claiming a data
   path works without a positive, live example.
-- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289 and WO-290
-  entries; `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
-  §309/§310.
+- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289, WO-290, and
+  WO-363 entries; `~/Documents/rtr-business/research/
+  ENUMERATION_METHODS.md` §309/§310.
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
 
@@ -2518,10 +2525,10 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`'s WO-333 and WO-331 entries; `docs/investigations/wo333_verification_walk.md`; `docs/investigations/passive_discovery_v2.md`; `rtr-business/research/wo333_verify_controls.csv` for the full before/after per government; `rtr-business/research/ENUMERATION_METHODS.md` §337 (WO-331) and its WO-333 follow-up section.
 - **[NEEDS-AUDIT] CivicClerk's `videoUrl`/`externalVideoUrl` sometimes points at a live-meeting join link (WebEx, Zoom) or an unprobeable Google Drive share page, not a real recording -- `civicclerk.py` reports `video_found=True` on these anyway.**
   - **Issue**: found live 2026-09-13 (WO-342), running `scripts/probe_tier3_queue.py` against 9 real CivicClerk tier-3 candidates from a 20-government registry sample -- 3 came back `reject-dead: no probe recipe for this media shape`: Bemidji city, MN (event 1314, `externalVideoUrl` = a `*.my.webex.com/.../j.php?MTID=...` join link), Jo Daviess County, IL (event 2478, `externalVideoUrl` = a `us06web.zoom.us/j/...` join link), Mableton city, GA (event 733, `externalVideoUrl` = a `drive.google.com/file/d/.../view` share page). `app/platforms/civicclerk.py`'s `resolve()` only has dedicated delegation for YouTube and BoxCast `externalVideoUrl`/`externalMediaUrl` values (see its own module comments on both) -- a WebEx/Zoom/Drive link just gets returned as `video_url` unmodified, so `verify_hub()` and any other caller sees `video_found=True` for a URL nothing downstream can actually fetch or probe.
-  - **Impact**: 3 of 9 (33%) of this WO's own tier-3 "video found" CivicClerk sample turned out to be false positives once the probe step actually tried them -- caught here only because `probe_tier3_queue.py` runs before anything is queued; a caller that skips the probe step (or a future one that doesn't exist yet) would treat these as real tier-3 candidates and never surface a working page.
-  - **Next action**: teach `civicclerk.py`'s `resolve()` to recognize a WebEx/Zoom-join-link or Google-Drive-share-page shape in `externalVideoUrl`/`externalMediaUrl` and either skip it (falling through to "no playable video," an honest tier-4 verdict) or, if worth building, delegate to a real recording URL where one is fetchable (WebEx/Zoom recordings sometimes have a separate, real playback URL distinct from the live-join link; Drive share pages can sometimes be resolved to a real download URL) -- start from these three real, confirmed examples per this repo's own "test against a real URL first" rule.
-  - **Constraint**: don't guess at a WebEx/Zoom "real recording" URL shape from these three alone -- confirm the actual authenticated/public recording endpoint exists and is reachable without a login before building a parser for it; it may not be (many WebEx/Zoom recordings require sign-in).
-  - **History**: `BACKLOG_DONE.md`'s WO-342 entry; `rtr-business/research/ENUMERATION_METHODS.md` §343.
+  - **Impact**: 3 of 9 (33%) of this WO's own tier-3 "video found" CivicClerk sample turned out to be false positives once the probe step actually tried them -- caught here only because `probe_tier3_queue.py` runs before anything is queued; a caller that skips the probe step (or a future one that doesn't exist yet) would treat these as real tier-3 candidates and never surface a working page. A fourth real case confirmed 2026-09-14 (WO-363): Brookline town, MA's `brooklinema.portal.civicclerk.com` -- all 3 of its newest listing candidates (events 16635, 16769, 16546) delegate to `brooklinema.zoomgov.com/rec/share/...` (a Zoom **Gov** cloud-recording share link, the government-cloud variant, not plain `zoom.us`). WO-363 grepped `app/platforms/media_probe.py` and `worker/main.py` and confirmed no Zoom path of any kind exists anywhere in the transcriber today -- queued anyway per Ryan's 2026-09-14 breadth rule (a probe failure isn't a reject when the government has no transcript yet), so this queue line will fail at transcription time until this gap or a Zoom-specific one is closed.
+  - **Next action**: teach `civicclerk.py`'s `resolve()` to recognize a WebEx/Zoom-join-link or Google-Drive-share-page shape in `externalVideoUrl`/`externalMediaUrl` and either skip it (falling through to "no playable video," an honest tier-4 verdict) or, if worth building, delegate to a real recording URL where one is fetchable (WebEx/Zoom recordings sometimes have a separate, real playback URL distinct from the live-join link; Drive share pages can sometimes be resolved to a real download URL) -- start from these four real, confirmed examples per this repo's own "test against a real URL first" rule.
+  - **Constraint**: don't guess at a WebEx/Zoom "real recording" URL shape from these examples alone -- confirm the actual authenticated/public recording endpoint exists and is reachable without a login before building a parser for it; it may not be (many WebEx/Zoom recordings require sign-in), and Zoom Gov's own auth model may differ from plain Zoom's.
+  - **History**: `BACKLOG_DONE.md`'s WO-342 and WO-363 entries; `rtr-business/research/ENUMERATION_METHODS.md` §343.
 - **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
   - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
   - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.
