@@ -262,6 +262,7 @@ def detect_platform(url: str) -> str:
     from .wistia import parse_wistia_account_url
     from .boxcast import parse_boxcast_id
     from .direct_file import is_direct_file_url
+    from .boarddocs import is_boarddocs_tenant_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -465,6 +466,17 @@ def detect_platform(url: str) -> str:
         # module docstring for the landing-page/document-page shapes and
         # how video is found (a wrapper link straight to a YouTube embed).
         return "clerkbase"
+    if is_boarddocs_tenant_url(url):
+        # BoardDocs (Diligent) -- WO-365 (2026-09-14). One shared host
+        # (`go.boarddocs.com`) for every tenant, the government encoded as
+        # a `/{st}/{slug}/Board.nsf/...` path -- see boarddocs.py's own
+        # module docstring for the real mechanism (a tenant flag, a
+        # meetings list, a per-meeting POST) and the house rule that
+        # limits this adapter to on-demand reads, never a sweep
+        # (`go.boarddocs.com/robots.txt` disallows all agents). Checked
+        # before champds.com below since both are shared, path-tenanted
+        # hosts with no useful netloc-only signal.
+        return "boarddocs"
     if "champds.com" in netloc:
         # CHAMP/ChampDS -- confirmed live 2026-08-13 against 6 independent
         # real customers (Atlanta GA, Auburn NY, Gillette WY, Marlborough

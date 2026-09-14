@@ -1,6 +1,13 @@
 # BoardDocs video adapter — spec from a live mechanism and two real examples
 
-**Status: specced, not built (2026-09-14).** Ryan asked for an adapter
+**Status: built (WO-365, 2026-09-14)** — see "Built (WO-365)" at the
+bottom of this file for what changed since the spec below, what the spec
+got right, and the one real correction (the agenda outline DOES carry
+real per-item timestamps; the spec below was written before a real
+fixture was in hand). The spec itself is left otherwise unchanged as the
+mechanism record.
+
+**Status when this file was written: specced, not built (2026-09-14).** Ryan asked for an adapter
 after Tallahassee FL turned out to run its City Commission on BoardDocs
 with real per-meeting YouTube video (rtr-business
 `ENUMERATION_METHODS.md`, "Follow-up to §43", 2026-09-13). §43
@@ -110,3 +117,67 @@ school districts and 3 are municipal (Tallahassee, Seat Pleasant MD,
 Culpeper County VA). Two tenants with live ids out of ten probed. The case
 for building is Tallahassee's size (205,000) and that the mechanism is
 fixed and cheap, not volume.
+
+## Built (WO-365, 2026-09-14)
+
+`app/platforms/boarddocs.py` implements exactly the mechanism above, with
+one real correction and a few real additions found while building it —
+all confirmed against the same 2 real tenants + 4 negative controls named
+above, one request at a time, ≥1.5s apart, never more than that during
+development (see BACKLOG_DONE.md's WO-365 entry for the full request
+log).
+
+- **Correction: the agenda outline DOES carry real per-item timestamps.**
+  The spec above says "no times" — wrong, written before a real
+  `VIDEO-GetAgenda` fixture was in hand. Each real agenda item is a
+  following `<li class="item" data-videohours=".." data-videominutes=".."
+  data-videoseconds="..">`, a genuine offset into the video (confirmed on
+  both Tallahassee's 27-item and Colorado City's 10-item real fixture) —
+  used to build real, clickable `agenda_items`, same as Granicus's own
+  chapter markers. A video-less meeting still returns its category
+  headings (`<li class="category">`) with no timed item rows underneath —
+  confirmed on Colorado City's own real no-video fragment — so
+  `agenda_items` is correctly empty for that shape, not a parse failure.
+- **A second real jurisdiction-source gap, beyond the state-prefix table**:
+  `SiteTitle2` is a clean org name on Tallahassee ("City of Tallahassee")
+  but a mailing address on both Colorado City schools ("PO Box 309
+  Colorado City, AZ 86021") and Austin ISD ("4000 S IH 35 Frontage Rd.,
+  Austin, TX 78704 | 512 414-1700") — confirmed live on all three. The
+  `<title>` tag has the opposite problem on Tallahassee (an address) but
+  the real org name on the other two, once its "BoardDocs® {tier}" suffix
+  is stripped. The adapter tries `SiteTitle2` first and falls back to
+  `<title>` only when `SiteTitle2` looks address-shaped (digits + text, a
+  PO Box, or a state+ZIP tail) — see `BoardDocsAssetFinder._extract_org_name()`.
+- **The real `?open&{cachebuster}` query string on `VIDEO-GetAgenda` is
+  not needed** — confirmed live the server answers identically to a bare
+  `?open`, so the adapter never sends one.
+- **Identity**: two real pins in `app/utils/jurisdiction_data/
+  tenant_overrides.csv`, path-scoped to `/fla/talgov/` (Tallahassee city,
+  FL, `us:place:1270600`) and `/az/ccschools/` (Colorado City Unified
+  School District, AZ, `us:sd:0400021` — both gov_ids read from
+  `research/jurisdiction_coverage.csv`, not minted). `go.boarddocs.com`
+  was added to `MULTI_GOV_HOSTS` (`app/utils/gov_registry/registry.py`) —
+  it is one host shared by hundreds of unrelated tenants, the same shape
+  as ClerkBase/Castus, so a blank-match whole-host pin is refused at load
+  time.
+- **A residual data-quality note, not fixed by this WO**: `research/
+  jurisdiction_coverage.csv`'s existing Tallahassee row (`example_meeting_url
+  https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8W718046`)
+  carries an AGENDA-ITEM `Unique` (the "1. CALL TO ORDER" item inside the
+  2026-09-09 meeting), not the MEETING's own `Unique`
+  (`DU8S8U718044`) — confirmed by cross-checking against the live
+  `VIDEO-GetAgenda` fragment for that meeting. The adapter itself never
+  depends on this stored URL (it derives its own meeting URL from
+  `BD-GETMeetingsListForSEO`'s real `Unique` field), so this doesn't
+  affect resolves — flagged here in case a future script trusts that
+  stored `example_meeting_url` shape.
+- **House rule, unchanged and load-bearing**: the adapter's own module
+  docstring restates the on-demand-only rule from this file, and no sweep
+  script ships with this WO. `scripts/adapter_canary.py`'s new
+  `"boarddocs"` entry uses a meeting-level URL specifically (not the
+  tenant Public page) so its one daily check stays "one tenant, one
+  meeting," never the tenant-level newest-with-video walk.
+
+See `tests/test_boarddocs.py` for the fixture-backed coverage (25 tests,
+all against real HTML/JSON from the 2 tenants + Austin ISD) and
+`README.md`'s "Supported platforms" table for the user-facing summary.

@@ -78,6 +78,17 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
     ],
     "az_legislature": ["https://www.azleg.gov/videoplayer/?eventID=2025011041"],
+    # Tallahassee FL's City Commission, WO-365 (2026-09-14) -- a real
+    # meeting-level `goto?open&id=` URL, not the bare tenant Public page,
+    # so a canary run stays exactly "one tenant, one meeting" (1 tenant
+    # GET + 1 meetings-list GET + 1 per-meeting POST, then the normal
+    # YouTube delegation) -- never the tenant-level newest-with-video walk.
+    # See app/platforms/boarddocs.py's own module docstring for the house
+    # rule this respects (go.boarddocs.com/robots.txt disallows all
+    # agents; this adapter never enumerates tenants).
+    "boarddocs": [
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044"
+    ],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [
@@ -300,8 +311,8 @@ def has_real_content(result: ResolvedMeeting) -> bool:
     )
 
 
-# A canary run makes one request each to 29 live third-party sites it
-# does not control (28 platforms, one -- "legistar" -- carrying 2 URLs),
+# A canary run makes one request each to 30 live third-party sites it
+# does not control (29 platforms, one -- "legistar" -- carrying 2 URLs),
 # so a transient failure somewhere in that set is
 # expected rather than exceptional -- and reporting the first one as a
 # real failure emails an alert that costs a full triage investigation.
