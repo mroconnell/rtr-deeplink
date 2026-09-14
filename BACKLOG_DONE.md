@@ -1,5 +1,131 @@
 # Backlog — done
 
+## WO-350: the known-video small-platform walk (CivicClerk, eScribe, iQM2, Town Hall Streams) at full scale [Done 2026-09-13]
+
+**Why this ran.** Ryan asked for the known-video platforms with open
+governments to be run at full scale: CivicClerk, eScribe, iQM2, and Town
+Hall Streams are all platforms where this repo already knows real video
+lives, but where a government on file has no page yet. WO-341-344 each
+proved a walker on a 20-government sample per platform. This WO ran the
+rest.
+
+**Population.** Built from the registry, split into governments with a
+real confirmed tenant URL already on file (the certain-yield group this
+WO ran) and governments where the registry only names the platform with
+no tenant URL on file (sized, not run this pass — see "What's still
+undone").
+
+| Platform | Confirmed tenant, run this WO | Stale label, not run |
+|---|---|---|
+| eScribe | 31 | 32 |
+| CivicClerk | 29 | 97 |
+| iQM2 | 8 | 14 |
+| Town Hall Streams | 0 | 5 |
+| **Total** | **68** | **148** |
+
+**Result, by tier (Ryan's vocabulary: tier 1 = video with captions this
+app can fetch itself; tier 2 = video only reachable via YouTube, a lead,
+never fetched; tier 3 = video with no captions this app can fetch; tier
+4 = a real meeting found, no video; blank = the check itself failed).**
+
+| Outcome | Count of 68 | What it means |
+|---|---|---|
+| Tier 1 | 3 | Real video with real captions found |
+| Tier 2 | 2 | Real video found, only reachable via YouTube |
+| Tier 3 | 9 | Real video found, no captions this app can fetch |
+| Tier 4 | 52 | A real meeting was found; none of the recent ones had video |
+| Check failed | 2 | The walker crashed or came back empty, not a real finding |
+
+**Hand-check.** Every tier 1-3 candidate (14 governments) was read by
+hand before anything was ingested or queued — the meeting's own title,
+governing body, and (for CivicClerk) the meeting venue's own city/state,
+which the vendor's API reports independently of what this repo already
+believes the government to be.
+
+| Result | Count of 14 | What it means |
+|---|---|---|
+| Confirmed, correct government | 8 | Real title and venue match the registered government |
+| Wrong government — a real county's own tenant | 6 | Named West Chester borough PA, Crystal River city FL, Anahuac city TX, Bolivia town NC, Abbotsford city WI, Langford town SD, but the tenant and the meeting's own title/venue belong to a different real government |
+
+**A real, repeating mistake, not a one-off.** A CivicClerk tenant
+subdomain shaped like `<name><ST>` is often the COUNTY's own tenant, not
+a same-named city/town that happens to be the county seat. Four of the
+six wrong ones follow this exact shape: `chestercopa.portal.
+civicclerk.com` is Chester County, PA's, not West Chester borough's;
+`citrusclerk.portal.civicclerk.com` is Citrus County, FL's, not Crystal
+River's; `chamberscotx.portal.civicclerk.com` is Chambers County, TX's,
+not Anahuac's; `brunswickconc.portal.civicclerk.com` is Brunswick
+County, NC's, not Bolivia's. Each meeting's own title said so directly
+("Commissioners' Meeting," "Board of County Commissioner..."). A live
+check of the Archive found the real pages on all four tenants already
+correctly keyed to the county — an earlier WO had already fixed the
+Archive side, but this WO's own research-file row for the wrongly-named
+town had not been corrected until now (three of four; the fourth, West
+Chester, was already correct).
+
+The other two wrong ones are a different mistake: eScribe hosts both a
+much smaller US town and a much larger, same-named Canadian city, and
+the tenant belongs to the Canadian one. `pub-abbotsford.
+escribemeetings.com` is Abbotsford, BC's (population ~150,000), not
+Abbotsford city, WI's (population 2,423); `pub-langford.
+escribemeetings.com` is the City of Langford, BC's, not Langford town,
+SD's — confirmed by the page's own text, which calls itself "City of
+Langford" (Langford, BC's own official name; South Dakota's is a Town).
+Both real owner governments are already in this repo's own government
+registry — recorded in `research/wo350_owner_bodies.csv` for a later
+pin/mint pass; no new government needs minting.
+
+**Video split, for the 12 real (non-wrong) tier 1-3 finds.**
+
+| Result | Count of 12 | What it means |
+|---|---|---|
+| Captions available, page live now | 1 | Faribault city, MN |
+| Video, no captions, queued | 1 | Bethel city, AK (a real ~30-minute mp4) |
+| Video found, but this app can't queue that media shape | 3 | Mandan city, ND (a vendor "replay" landing page, not a direct file); Sidney city, MT and Hamden village, OH (both a real Zoom cloud-recording share link — a specific recording, not the "join a live meeting" link CLAUDE.md separately warns about — the probe simply has no recipe for either shape yet) |
+| Video only reachable via YouTube, recorded as a lead | 3 | Thorold ON (already on file from an earlier WO), Courtenay city ND (flagged with a caution — the tenant name collides with the much larger Courtenay, BC, unconfirmed either way since a lead is never fetched), South Kingstown town RI (see the code gap below) |
+| Wrong government (the 6 above) | 6 | Recorded as `wrong-domain-mapping`, not ingested/queued under the wrong government |
+
+**A real code gap, not just a data gap.** South Kingstown town, RI's
+CivicClerk tenant returned a bare YouTube channel link as its "video,"
+not a specific playable video — `civicclerk.py` hands a vendor API
+field straight through as the real video URL without checking whether
+that URL is itself a YouTube link. Filed as its own `BACKLOG.md` entry
+(`civicclerk.py`'s `resolve()` can return a bare `youtube.com/channel/...`
+URL as `video_url`) since the same shape could affect other adapters.
+
+**What's still undone.** The "stale label" bucket — 148 governments the
+registry says are on one of these four platforms but with no confirmed
+tenant URL on file — was sized but not walked this pass. Filed as its
+own `BACKLOG.md` entry with the population files and the suggested
+method (the walker's own single-hop fallback from the government's own
+site may resolve a real share of it without a full new discovery pass).
+
+**Caution.** Trust the hand-check, not the raw "video found" count — 6
+of the 14 tier 1-3 candidates this WO's automated walk proposed (43%)
+turned out to belong to a different real government. Both traps found
+here (a county's tenant reused for its county-seat city, a US/Canada
+namesake collision) are shapes worth checking for specifically on any
+future CivicClerk/eScribe sweep, not just this one's own governments.
+
+**Recommendation.** Deploy the resolver to pick up the tenant_overrides
+pin and the one new queue line. The stale-label bucket (148 governments)
+is a reasonable next WO — same method, no new code needed, and this
+WO's hand-check findings suggest budgeting real time for wrong-tenant
+verification, not just the walk itself.
+
+**Deploy status.** Faribault city, MN's page is live now (ingest doesn't
+need a deploy). Bethel city, AK's queue line and pin, and the
+`jurisdiction_coverage.csv` corrections, need the resolver deployed and
+the next `rtr-business` commit respectively to take effect.
+
+**For the conductor:** page created this WO — `us:place:2720546`
+(Faribault city, MN), slug `faribault-mn-2026-09-08-city-council-meeting`,
+`gov_id` sent in the ingest payload. No bad pages created; nothing to
+delete. No YouTube block hit.
+
+**Rerun `scripts/build_backlog_toc.py` after this entry landed** (already
+done as part of this WO).
+
 ## WO-346: audited the whole tier-3 queue for missing owners, pinned what evidence already proved, and added a guard so this can't recur silently [Done 2026-09-13]
 
 **Why this ran.** WO-345 found 13 real videos already sitting in the
