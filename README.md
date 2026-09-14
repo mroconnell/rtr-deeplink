@@ -2486,8 +2486,11 @@ the flag, not `platform`, is the signal to check anywhere this matters:
 a fallback resolve that delegates to `YouTubeAssetFinder` reports
 `platform = "youtube"`, and that's the most common real case.
 
-**Not implemented**: BoardDocs (deliberately excluded — it's a
-document/agenda platform with no reliable video, not worth an adapter).
+**Not implemented yet**: BoardDocs — mostly a school-board agenda
+platform, but where a tenant turns its video service on, a fixed
+unauthenticated mechanism exposes a per-meeting YouTube/Vimeo id (City
+of Tallahassee, FL is live proof). Specced 2026-09-14 in
+`docs/investigations/boarddocs_video_adapter.md`; see `BACKLOG.md`.
 
 **Caption format handling** is centralized in
 `app/utils/vtt_parser.py`'s `parse_captions_by_extension()`, used by
