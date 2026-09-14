@@ -352,7 +352,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (64)
+  Adapter & platform gaps  (65)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -365,6 +365,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
     [NEEDS-AUDIT] `HIGH_RISK_TITLE_PLATFORMS` (`{"youtube", "vimeo"}`,…
     [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
     [NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
+    [JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
@@ -5433,6 +5434,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     named here, and corrected that shape's own government from "Floyd
     County, GA" (WO-258's mistaken attribution) to the real Floyd
     County, IN this entry already names.
+
+- **[JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title ("08/25/26 Heritage Commission") come back with `meeting_date` null.**
+  - **Issue**: Manchester, NH (`cloud.castus.tv/vod/manchestertv`, confirmed live 2026-09-14 by a hand spot-check, real playable HLS) resolves cleanly through `app/platforms/castus.py`, but every video title is shaped `MM/DD/YY {body name}` and the adapter does not parse a date out of the title, so `meeting_date` is null on a page whose date is in plain sight.
+  - **Impact**: undated pages sort and dedupe badly and hide from the "newest meeting" logic the sweeps rely on; the same title shape is likely on other Castus tenants run by the same cable-access operators.
+  - **Next action**: in `castus.py`, when the API/date field is empty, try a leading `MM/DD/YY` or `MM/DD/YYYY` on the title (two-digit year -> 2000s) before giving up; add Manchester's real title as a fixture case and one title without a date as the negative.
+  - **Constraint**: title-derived dates are a fallback only; never override a real date field with one parsed from text.
+  - **History**: found by the jx coverage triage session 2026-09-14; write-up in rtr-business `ENUMERATION_METHODS.md`, "Follow-up spot-check: Manchester, NH".
 
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
   missing the real `/private/{id}` path variant — confirmed live with
