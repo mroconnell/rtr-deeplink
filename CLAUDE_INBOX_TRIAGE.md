@@ -107,12 +107,87 @@ it up again as long as it's still inside the search window.
 
 ---
 
-*No open dated sections as of the 2026-09-13 promotion review — every
-finding from 2026-09-06 through 2026-09-12 was either promoted into
-`BACKLOG.md` or closed as already-resolved; see `BACKLOG_DONE.md`'s
-"Inbox-triage promotion review, 2026-09-13" entry for the full
-accounting. The next scheduled Routine run adds a fresh dated section
-here as usual.*
+## 2026-09-14
+
+258 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(the full 30-day content of the label, paged through in 4 batches), 9
+new after the ledger filter — everything older than 2026-09-13 22:00 UTC
+was already covered by prior runs.
+
+**Out of scope / informational, no write-up**: 1 GitHub Actions "PR run
+failed: Test" for a non-`main` branch (WO-360). 1 transcription worker
+daily report. 1 "RTR feed drop 2026-09-13" report — a success report,
+not a failure.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): GitHub Actions "Adapter health canary" failed on `main`
+(run `34773188184`, 2026-09-13 17:58-17:59 UTC) — pulled the real job
+log: 38/39 platforms OK, the one failure is `ClientResponseError: 410`
+against `phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact
+same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
+sample is a genuinely dead meeting" entry. Render `test-redtaperecordings`
+"Exited with status 3" (1 alert, 2026-09-13 16:58 UTC) — same
+already-confirmed-closed noise per `BACKLOG_DONE.md`'s 2026-08-30 entry
+(unrelated Render instance on the same account). Transcription job 2913
+failed (East Lansing MI, Granicus `player/clip/1211`, ffmpeg exit 234 /
+"Failed to configure output pad on auto_aresample_0" at chunk 1/27,
+2026-09-14 09:54-09:55 UTC) and its user-facing "We hit a snag on your
+transcript" companion email — same error text, same source, as the
+already-open `[NEEDS-AUDIT]` "East Lansing MI (Granicus): a new,
+deterministic ffmpeg filter-graph failure has no known fix" entry (2nd
+and 3rd occurrences were jobs 1238/1294, 2026-08-30/08-31; this is the
+first occurrence in two weeks — still unresolved, no fix attempted per
+that entry's own text). Transcription job 2840 failed (Passaic County
+NJ, Granicus `MediaPlayer.php`, "ffmpeg reported success but the output
+file isn't decodable (likely truncated/corrupt)" at chunk 96/97,
+2026-09-13 20:22-22:00 UTC) — same exact error signature as the
+already-open `[JUST-DO-IT]` "`slice_cached_audio()` skips the
+corrupt-chunk decodability guard" entry (that entry's example job list —
+1157, 1226, 1259, 1377, 1766 — doesn't yet include 2840, but the fix
+already proposed there, adding `_mean_volume_db()` to
+`slice_cached_audio()`, covers this case too; no new entry needed).
+
+- **Unconfirmed** — `rtr-deeplink-archive`'s "HTTP health check failed"
+  alert reappeared once (2026-09-13 17:59 UTC: "Reason: HTTP health
+  check failed (timed out after 5 seconds)"), for the first time since
+  WO-80 (2026-08-30) fixed this exact failure mode — confirmed by
+  reading `archive/main.py:302-334` directly: `/api/health` was changed
+  from an O(n) `SELECT count(*)` to an O(1) `SELECT id ... LIMIT 1`, and
+  `render.yaml` now runs the Archive with `--workers 2` (both still live
+  in the code today), specifically so one slow request can't stall the
+  health probe. No other "HTTP health check failed" alert for
+  `rtr-deeplink-archive` appears anywhere in the last 30 days of this
+  label until this one — the fix held for exactly two weeks.
+  - Timing note, not a confirmed cause: this alert landed about 30 hours
+    after the Render account hit its 25 GB/month bandwidth cap
+    (2026-09-12 12:09 UTC, already tracked as a `[HUMAN]` item in
+    `BACKLOG.md`, "Render account bandwidth hit its 25 GB/month Pro-plan
+    cap"). A bandwidth cap doesn't obviously explain a health-check
+    timeout on its own, and Render's usage dashboard (the only place to
+    see per-service throttling/overage detail) is auth-walled, so this
+    is a plausible timing correlation, not a confirmed cause.
+  - No confirmed user-facing outage alongside it: neither UptimeRobot
+    monitor in this label (`redtaperecordings.com`,
+    `rtr-deeplink.onrender.com/api/health/resolve-check`) shows a DOWN
+    alert at or after 2026-09-13 17:59 UTC — those monitor the resolver,
+    not the Archive directly, so this doesn't rule out a brief
+    Archive-only blip, but there's no independent confirmation of one
+    either.
+  - **Impact**: one instance restart on the Archive service, self-
+    resolving per Render's own alert text; no confirmed reader-facing
+    downtime found. If this repeats, it would mean the WO-80 fix didn't
+    fully close the health-check-timeout failure mode (the same way the
+    `rtr-deeplink` SIGABRT loop needed a second fix, `--loop asyncio`,
+    after its first one). Fix effort if it recurs: same kind of triage
+    WO-80 already did, or asking Ryan to pull Render's dashboard log for
+    the exact 5-second window.
+  - **Open question for Ryan (or whoever next reviews this file)**: is
+    this worth a new `BACKLOG.md` entry now, or is one occurrence after
+    a clean two-week stretch not yet worth tracking? Recommend treating
+    it as "watch, don't promote" unless a second alert arrives.
+
+Ledger: 258 message IDs reviewed and recorded this run (9 new, 249
+already seen), 0 pruned.
 
 ---
 
