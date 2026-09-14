@@ -137,12 +137,38 @@ def next_block_sleep(level: int) -> int:
 
 
 # Platforms whose meeting pages embed a YouTube video (CivicWeb and
-# PrimeGov delegate to the YouTube adapter -- see each adapter's own
-# docstring). Their queue lines belong to this lane too: the resolve is a
-# YouTube metadata call from this machine's address, and the probe then
-# dispatches on the resolved video's host (WO-205), so a line whose video
-# turns out not to be YouTube still ingests normally.
-YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov")
+# PrimeGov delegate to the YouTube adapter; BoardDocs -- WO-365 -- delegates
+# to YouTube OR Vimeo, see each adapter's own docstring). Their queue lines
+# belong to this lane too: the resolve is a YouTube metadata call from this
+# machine's address, and the probe then dispatches on the resolved video's
+# host (WO-205), so a line whose video turns out not to be YouTube (a
+# BoardDocs tenant whose `bd.videoservice` is Vimeo, say) still ingests
+# normally rather than erroring -- nothing here is YouTube-specific past
+# this filter. Identity for a delegating platform's page comes from
+# `source_url`/`origin_host` (the delegating platform's own tenant host,
+# never overwritten by the direct-call delegation these three adapters use
+# -- see boarddocs.py's/primegov.py's own docstrings) plus its
+# `tenant_overrides.csv` pin, not from a bare `youtube:<id>` pin (WO-367).
+YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov", "boarddocs")
+
+
+def _classify_queue_url(url: str) -> Tuple[bool, str]:
+    """(keep?, reason) for one already-parsed queue URL -- "reason" is the
+    detected platform when kept, or a short skip reason otherwise. The one
+    place `youtube_queue_lines()` and `check_lines()` (WO-367's
+    --check-lines) both dispatch on, so the filter a line actually gets fed
+    through and the filter a dry run reports on can never drift apart."""
+    try:
+        platform = detect_platform(url)
+    except UnsupportedPlatformError:
+        return False, "unsupported platform"
+    if platform in YOUTUBE_DELEGATING_PLATFORMS:
+        return True, platform
+    if platform != "youtube":
+        return False, f"platform={platform}, not a YouTube delegator"
+    if not _YT_ID_RE.search(url):
+        return False, "youtube platform but no 11-char video id in the URL"
+    return True, platform
 
 
 def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]]:
@@ -158,16 +184,28 @@ def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]
         if not line or line.startswith("#"):
             continue
         url, src = _parse_queue_line(line)
-        try:
-            platform = detect_platform(url)
-        except UnsupportedPlatformError:
-            continue
-        if platform in YOUTUBE_DELEGATING_PLATFORMS:
+        keep, _ = _classify_queue_url(url)
+        if keep:
             out.append((line, url, src))
+    return out
+
+
+def check_lines(lines: List[str]) -> List[Tuple[str, str, str]]:
+    """(raw line, verdict, detail) for every non-comment, non-blank queue
+    line -- "keep"/"skip" plus the platform (kept) or reason (skipped).
+    Filters through the exact same `_classify_queue_url()` the feed lane
+    uses, so this is a real dry run of `youtube_queue_lines()`, not a
+    parallel guess -- the --check-lines CLI command below prints this."""
+    from scripts.feed_tier3_auto_transcription import _parse_queue_line
+
+    out = []
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
             continue
-        if platform != "youtube" or not _YT_ID_RE.search(url):
-            continue
-        out.append((line, url, src))
+        url, _src = _parse_queue_line(line)
+        keep, detail = _classify_queue_url(url)
+        out.append((line, "keep" if keep else "skip", detail))
     return out
 
 
@@ -923,7 +961,26 @@ async def advance(state: State) -> None:
             print(f"[WARN] could not report queue depth: {e}")
 
 
+def _run_check_lines(args) -> None:
+    """--check-lines / `check-lines <file>`: print keep/skip for every real
+    line in a queue-shaped file with no network call and no lock -- a dry
+    run of the feed lane's own filter (`youtube_queue_lines()`), for
+    confirming a platform change (e.g. WO-367 adding "boarddocs" to
+    YOUTUBE_DELEGATING_PLATFORMS) actually moves a real line from skip to
+    keep before it ever reaches the drip Mac."""
+    from app.platforms import register_all_finders
+
+    register_all_finders()
+    path = Path(args.check_lines_file or QUEUE_FILE)
+    lines = path.read_text().splitlines()
+    for line, verdict, detail in check_lines(lines):
+        print(f"{verdict:4s} {detail:40s} {line}")
+
+
 async def run(args) -> None:
+    if args.command == "check-lines":
+        _run_check_lines(args)
+        return
     state_dir = Path(args.state_dir)
     state_dir.mkdir(parents=True, exist_ok=True)
     lock = open(state_dir / "lock", "w")
@@ -993,8 +1050,18 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="run",
-        choices=["run", "advance"],
-        help="run (default) = the drip; advance = drop fed lines from the queue file for a PR",
+        choices=["run", "advance", "check-lines"],
+        help=(
+            "run (default) = the drip; advance = drop fed lines from the queue "
+            "file for a PR; check-lines = print keep/skip per line in "
+            "--check-lines-file (default: the tier-3 queue file) with no "
+            "network call, no lock -- a dry run of the feed lane's own filter"
+        ),
+    )
+    p.add_argument(
+        "--check-lines-file",
+        default=None,
+        help="check-lines only: path to a queue-shaped file (default: the tier-3 queue file)",
     )
     p.add_argument("--state-dir", default=str(DEFAULT_STATE_DIR))
     p.add_argument(
