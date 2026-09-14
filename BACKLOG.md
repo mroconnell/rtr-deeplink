@@ -441,7 +441,8 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (24)
+Trust, safety & data quality  (25)
+  7 of 108 already-pinned YouTube channels disagree with what the…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
   `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
   Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a…
@@ -6563,6 +6564,35 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### 7 of 108 already-pinned YouTube channels disagree with what the Archive's own pages say `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-14 (WO-257), while running an oEmbed
+  channel lookup for pages with no channel on file. As a side effect,
+  the same run checked every YouTube channel that already has a pin
+  against what the Archive's live pages for that channel actually say,
+  and 7 of 108 disagree: `@CityofNorthMiami` is pinned to
+  `us:place:4847988` but the Archive's own pages under it say
+  `us:place:1249450`; `@TV25BCOCC` pinned `us:place:2404000` vs.
+  `us:county:24510`; `@cityofrichmondheightsohio6020` pinned
+  `us:place:3966824` vs. `us:place:3966894`; `@doversherborncabletv`
+  pinned `us:cousub:2502117405` vs. `us:cousub:2501761380`;
+  `@osagecounty1099` pinned `us:county:20139` vs. `us:county:29151`;
+  `@townmeetingtv` pinned `us:place:5010675` vs. `us:place:5066175`;
+  `@ulctTube` pinned `us:county:49049` vs. `us:place:4937924`. No
+  attempt was made here to judge which side is right.
+- **Impact**: unknown until each is checked by hand — could be a stale
+  pin nobody has revisited since it was set, could be a channel that
+  genuinely covers more than one government and got pinned to the wrong
+  one, could be the Archive's own pages that are wrong. Until then,
+  pages fed through these 7 channels risk being tagged with the wrong
+  government.
+- **Next action**: for each of the 7, open the channel and check which
+  government_id the videos actually belong to, then either fix the pin
+  in `app/utils/jurisdiction_data/tenant_overrides.csv` or correct the
+  Archive pages, whichever is wrong.
+- **History**: `BACKLOG_DONE.md`'s WO-257 entry;
+  `reports/wo257_study/already_pinned.csv` (all 108, including these 7).
 
 ### 27 real Quebec municipalities are marked `reject_reason=off-mission`, including Terrebonne (population 119,944) and Rivière-du-Loup (20,118) `[NEEDS-AUDIT]`
 

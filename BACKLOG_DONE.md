@@ -1,5 +1,69 @@
 # Backlog — done
 
+## WO-257: oEmbed channel lookup for the 1,758 archived YouTube pages with no channel on record [Done 2026-09-14]
+
+**Why this ran.** A channel-fill pass on 2026-09-11 gave 1,897 archived
+YouTube pages a channel using data already on hand. That left 1,756
+pages with no channel that could only be found by asking YouTube
+directly. The conductor asked for a real check of those, using oEmbed —
+a small, free lookup that asks YouTube for a video's public details,
+including which channel posted it, without loading the full video page.
+
+**What was checked.** A fresh export of the Archive found 1,756 YouTube
+pages with no channel on file. 1,662 of those needed a lookup that had
+never been tried before; the rest were already answered from an earlier
+partial run. This ran on the office's one Mac that's allowed to call
+YouTube, sharing that budget with the YouTube drip (see
+[[project_youtube_drip]]), so each lookup waited about 2-3 minutes
+before the next one — and, added partway through at Ryan's request, the
+wait doubled to 3 minutes right after any miss, since a miss looks the
+same whether it's one dead video or the start of a block. 1,512
+lookups actually ran before the job finished; the other 150 had already
+resolved by the time it reached them, since the drip was filling in
+some of the same channels in the background the whole time.
+
+| Result | Count of 1,512 lookups made this run |
+|---|---|
+| Channel found | 1,418 |
+| Video private or restricted | 88 |
+| Video removed, or never existed at that address | 4 |
+| Lookup itself failed (network error, not the video's fault) | 2 |
+
+| Result | Count of 1,756 pages in scope |
+|---|---|
+| Channel now on file | 1,560 |
+| Still no channel | 196 |
+
+**Result.** 1,560 of the 1,756 pages now have a channel on file in
+`reports/shared_host_lookups.csv`. The other 196 have a video that
+YouTube itself won't answer for — private, restricted, or gone — so no
+channel is knowable for them from this data source at all.
+
+**Caution.** This only wrote to a report file, never to the Archive.
+Ryan still needs to run `scripts/backfill_video_channel.py --apply` on
+the Render shell using the refreshed report. Separately, while checking
+governments that already have a channel pinned, 7 of 108 turned out to
+disagree with what's actually on the Archive today (e.g. a YouTube
+channel pinned to one place-level government that the Archive's own
+pages say belongs to a different one). That's a data-quality question
+Ryan should look at directly, not something this WO changed — filed as
+its own item in `BACKLOG.md` with the 7 governments named.
+
+**Recommendation.** Run the backfill with the refreshed report. The
+study also turned up 1,395 candidate channel-to-government rules that
+aren't pinned yet (`reports/wo257_study/candidate_rules.csv`) — a
+separate, larger opportunity than this WO's ask, left for a later
+session to review rather than acted on here.
+
+**Deploy status.** Report and backlog files only — nothing here touches
+resolver or Archive code, so nothing needs a deploy.
+
+Files: `reports/shared_host_lookups.csv` (refreshed cache),
+`reports/wo257_study/` (the full discriminator-study output: `SUMMARY.md`,
+`already_pinned.csv`, `candidate_rules.csv`, and others),
+`scripts/wo257_fetch_and_filter.py` (one-off: took the fresh Archive
+export and filtered to the 1,756 no-channel YouTube pages).
+
 ## WO-368: walked all 20 "video, not a meeting" hubs from WO-361/WO-364 one hub deeper — every one had only the one video already found; all 20 moved to off-mission [Done 2026-09-14]
 
 **Why this ran.** Ryan asked, after seeing WO-364's results: "For the 10
