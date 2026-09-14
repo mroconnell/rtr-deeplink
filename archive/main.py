@@ -1841,6 +1841,8 @@ def _schedule_card_warm(
     video_format: Optional[str],
     source_url: Optional[str],
     timestamp: Optional[int] = None,
+    refresh_platform: Optional[str] = None,
+    refresh_slug: Optional[str] = None,
 ) -> None:
     """Queue one best-effort card-frame extraction, or do nothing.
 
@@ -1850,6 +1852,28 @@ def _schedule_card_warm(
     template render path's version of this is provably a queue-and-return,
     never a subprocess.
 
+    `refresh_platform`/`refresh_slug` (WO-362): pass these instead of
+    resolving `video_thumbnail.fresh_video_url()` yourself before calling
+    this function. Set only for a page whose platform is in
+    `video_refresh.NEEDS_REFRESH` (e.g. CivicMedia, BoxCast) -- the
+    background task resolves the fresh signed URL itself, falling back to
+    `video_url` (the already-stored one, always required regardless) on
+    any failure. Before this WO, the /m/{slug} and /m/{slug}/card.jpg
+    routes each awaited that resolution INLINE, on the request path,
+    before ever reaching this function -- up to two sequential live HTTP
+    fetches (30s timeout each) blocking the actual page render, every
+    single time the card hadn't warmed yet. For a page whose extraction
+    keeps failing (Englewood OH, WO-357/WO-362 -- CivicMedia, ffmpeg
+    couldn't seek the signed playlist to the stored highlight timestamp)
+    that never stops: every view re-ran the same blocking fetch. That
+    contradicts this function's whole reason for existing -- "provably a
+    queue-and-return, never a subprocess" -- and is the real cause behind
+    the Englewood 500. Moving the resolution into the background task
+    itself (`_extract_card_with_refresh` below) means the request that
+    scheduled it has already returned by the time any network call for
+    this purpose happens, so a slow, hanging, or failing refresh can
+    never again affect what a visitor sees.
+
     extract_and_store()'s FrameOutcome (WO-42) is discarded here by
     construction: a BackgroundTask has no caller left to return it to,
     and the failure reason is already logged Archive-side. It is the
@@ -1858,11 +1882,56 @@ def _schedule_card_warm(
     """
     if not page_id or not video_thumbnail.is_extractable(video_url, video_format):
         return
+    if refresh_platform:
+        background_tasks.add_task(
+            _extract_card_with_refresh,
+            page_id=page_id,
+            refresh_platform=refresh_platform,
+            refresh_source_url=source_url,
+            refresh_slug=refresh_slug or "",
+            stored_video_url=video_url,
+            source_page_url=source_url or video_url,
+            timestamp=timestamp,
+        )
+        return
     background_tasks.add_task(
         video_thumbnail.extract_and_store,
         page_id=page_id,
         video_url=video_url,
         source_page_url=source_url or video_url,
+        timestamp=timestamp,
+    )
+
+
+async def _extract_card_with_refresh(
+    *,
+    page_id: int,
+    refresh_platform: str,
+    refresh_source_url: Optional[str],
+    refresh_slug: str,
+    stored_video_url: Optional[str],
+    source_page_url: Optional[str],
+    timestamp: Optional[int],
+) -> None:
+    """Background-task-only counterpart to a plain `extract_and_store()`
+    call (WO-362) -- resolves a fresh signed URL for a `NEEDS_REFRESH`
+    platform first, falling back to the last-known stored URL on any
+    failure (`fresh_video_url()` itself never raises -- see
+    `video_refresh.py`'s own docstring -- but this function's whole point
+    is to make sure that guarantee costs nothing on the request path
+    either way). Only ever invoked via `background_tasks.add_task()`
+    (`_schedule_card_warm()` above), so this runs after the response that
+    queued it has already been sent -- see that function's docstring for
+    why that matters.
+    """
+    video_url = (
+        await fresh_video_url(refresh_platform, refresh_source_url, refresh_slug)
+        or stored_video_url
+    )
+    await video_thumbnail.extract_and_store(
+        page_id=page_id,
+        video_url=video_url,
+        source_page_url=source_page_url,
         timestamp=timestamp,
     )
 
@@ -2587,22 +2656,26 @@ async def meeting_page(
     # keeps the generic sentence.
     highlight_text = await crud.get_highlight_text(page["id"])
     if not card_available:
-        # WO-229: ffmpeg needs a real, absolute, directly-fetchable URL
-        # (never player_video_url, which is a relative /m/{slug}/video
-        # path for a NEEDS_REFRESH platform) -- resolve a fresh signed
-        # URL here too when this page's stored one may have expired,
-        # falling back to the stored value on any refresh failure, same
-        # as every other use of fresh_video_url().
-        card_warm_video_url = (
-            await fresh_video_url(page["platform"], page["source_url"], slug)
-            or page["video_url"]
-        )
+        # WO-229/WO-362: ffmpeg needs a real, absolute, directly-fetchable
+        # URL (never player_video_url, which is a relative /m/{slug}/video
+        # path for a NEEDS_REFRESH platform), so a page whose stored one
+        # may have expired needs a fresh signed URL resolved first. That
+        # resolution used to happen HERE, awaited inline before the
+        # background task was even scheduled -- a live network fetch on
+        # the render path itself, the real cause of WO-362's Englewood OH
+        # 500 (see _schedule_card_warm()'s docstring for the full story).
+        # `refresh_platform` now pushes that resolution into the
+        # background task instead, so this route never awaits it.
         _schedule_card_warm(
             background_tasks,
             page_id=page["id"],
-            video_url=card_warm_video_url,
+            video_url=page["video_url"],
             video_format=page["video_format"],
             source_url=page["source_url"],
+            refresh_platform=(
+                page["platform"] if page["platform"] in NEEDS_REFRESH else None
+            ),
+            refresh_slug=slug,
         )
 
     return templates.TemplateResponse(
@@ -2741,20 +2814,25 @@ async def meeting_card_image(
         if meta is None:
             # Queue the precise frame, serve the default one meanwhile --
             # a slightly-wrong real frame now beats a correct one that
-            # doesn't exist until after the scraper gave up. WO-229: same
-            # fresh_video_url() fallback as /m/{slug}'s own card warm --
-            # ffmpeg needs a real, currently-valid URL, not whatever
-            # signed playlist ingest happened to store.
+            # doesn't exist until after the scraper gave up. WO-229/
+            # WO-362: `refresh_platform` pushes the fresh_video_url()
+            # resolution into the background task itself (see
+            # _schedule_card_warm()'s docstring) -- this route's own
+            # "Nothing here waits on ffmpeg" promise applied to the
+            # extraction, but not, before this WO, to the live refetch
+            # feeding it; a slow/failing refetch blocked this request the
+            # same way it blocked /m/{slug}'s.
             _schedule_card_warm(
                 background_tasks,
                 page_id=page["id"],
-                video_url=(
-                    await fresh_video_url(page["platform"], page["source_url"], slug)
-                    or page["video_url"]
-                ),
+                video_url=page["video_url"],
                 video_format=page["video_format"],
                 source_url=page["source_url"],
                 timestamp=timestamp,
+                refresh_platform=(
+                    page["platform"] if page["platform"] in NEEDS_REFRESH else None
+                ),
+                refresh_slug=slug,
             )
     if meta is None:
         meta = await crud.get_thumbnail_meta(page["id"])
@@ -2762,12 +2840,13 @@ async def meeting_card_image(
         _schedule_card_warm(
             background_tasks,
             page_id=page["id"],
-            video_url=(
-                await fresh_video_url(page["platform"], page["source_url"], slug)
-                or page["video_url"]
-            ),
+            video_url=page["video_url"],
             video_format=page["video_format"],
             source_url=page["source_url"],
+            refresh_platform=(
+                page["platform"] if page["platform"] in NEEDS_REFRESH else None
+            ),
+            refresh_slug=slug,
         )
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
