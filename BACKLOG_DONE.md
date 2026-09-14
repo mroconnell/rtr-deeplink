@@ -191,7 +191,7 @@ Ryan's rule that these stay open until a title can be read.
 | Result | Count | What it means |
 |---|---|---|
 | Captions available, page live now | 1 | Hamburg village, NY |
-| Video, no captions, queued | 9 | Greensboro MD, Cudahy CA, Port Orchard WA, Del Mar CA, Grinnell IA, Hastings-on-Hudson NY, Easton CT (7 governments; 2 more — Cudahy and Port Orchard — were already-found videos moved from parked to queued) |
+| Video, no captions, queued | 7 | Greensboro MD, Del Mar CA, Grinnell IA, Hastings-on-Hudson NY, Easton CT (5 new queue lines), plus Cudahy CA and Port Orchard WA (2 already-found videos moved from parked to queued) |
 
 **Every video used was hand-read first** — its own title and the body
 that appears in it, checked against the government's name — before it
