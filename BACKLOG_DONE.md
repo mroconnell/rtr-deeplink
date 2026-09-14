@@ -1,5 +1,48 @@
 # Backlog — done
 
+## `jurisdiction_coverage.csv` mojibake `city_name` rows — 23 repaired at source (Doña Ana County NM and 22 more) [Done 2026-09-14]
+
+Found by WO-366 (2026-09-14) on `us:county:35013`: `city_name` stored as
+"DoÃ±a Ana County", a double-encoded UTF-8 corruption of "Doña Ana County".
+The Breadth session scanned the whole file for the same signature and
+repaired every affected row line-based, names only, under the research-file
+write protocol (rtr-business commit 5c9a647; HEAD stayed at 45,612 lines):
+Doña Ana County NM, La Cañada Flintridge CA, Cañon City CO, Española NM,
+and 19 Puerto Rico municipios (blank gov_ids). No script in this repo keyed
+on the broken spelling — WO-366's one-row override in its reverse-pilot
+selection was the only workaround and can be dropped whenever that pilot is
+rerun. The original open entry follows, verbatim, for the record.
+
+#### `jurisdiction_coverage.csv` has at least one mojibake `city_name` (Doña Ana County, NM stored as "DoÃ±a Ana County") `[EASY]`
+
+- **Issue:** found while building WO-366's 50-government reverse-query
+  sample (2026-09-14): `us:county:35013`'s `city_name` is
+  `DoÃ±a Ana County` — a real UTF-8-decoded-as-Latin-1-then-re-encoded
+  corruption of "Doña Ana County". Even Unicode NFKD normalization
+  garbles it further (produces "doaaana", not "donaana") since the
+  mojibake bytes don't round-trip through normalization the way a
+  correctly-encoded accented character does. The row's `domain` column
+  (`donaana.gov`) is NOT corrupted, so this WO worked around it with a
+  one-row override rather than fixing the source.
+- **Impact:** small on its own (this is the only instance found so far,
+  in an unrelated 50-row sample, not a targeted search), but any report
+  or slug-derivation that reads `city_name` directly for this row will
+  produce a wrong value, and there may be other rows with the same
+  corruption that a targeted scan would find.
+- **Next action:** grep `jurisdiction_coverage.csv` for the mojibake
+  signature (`Ã` followed by a non-ASCII byte) to find every affected
+  row, then hand-correct each `city_name` from a real source (the
+  government's own site, already linked via `domain`) — not a blind
+  encoding round-trip, since mojibake isn't always reversible the same
+  way twice.
+- **Constraint:** follow this file's own commit protocol (flock, re-read,
+  99%-floor, explicit paths) even for a single-cell correction — it's
+  still a write to the shared research file.
+- **History:** `research/wo366_reverse_pilot.csv`'s selection script
+  (`SLUG_OVERRIDES` in the WO-366 agent's scratch
+  `wo366_select_50.py`, not committed to this repo).
+
+
 ## WO-367: the YouTube drip now delegates BoardDocs pages too [Done 2026-09-14]
 
 **Why this ran.** WO-365 shipped `app/platforms/boarddocs.py` — it
