@@ -901,3 +901,14 @@ def test_canonicalize_domain_never_blanks_a_nonblank_value():
     ]:
         host, _ = canonicalize_domain(v)
         assert host != ""
+
+
+def test_unverified_meeting_without_video_is_the_same_finding():
+    # WO-351 (2026-09-13): the 1,888 rows renamed meeting-without-video-unverified
+    # (a pre-WO-333 verdict) must still count as "meeting found, no video" for
+    # the alternate-domain hop, classify as a content reason, and never retry
+    # under the no-meeting trigger, exactly like the plain label.
+    assert "meeting-without-video-unverified" in MEETING_FOUND_NO_VIDEO_REASONS
+    assert "meeting-without-video-unverified" in CONTENT_REASONS
+    assert "meeting-without-video-unverified" in NEVER_RETRY_REASONS
+    assert not is_retry_worthy("meeting-without-video-unverified", trigger="no-meeting")

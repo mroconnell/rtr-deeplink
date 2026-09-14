@@ -83,6 +83,7 @@ CONTENT_REASONS = frozenset(
     {
         "no-platform-link-found",
         "meeting-without-video",
+        "meeting-without-video-unverified",  # WO-351: same finding, pre-fix method
         "no-meeting-nor-video",
         "video-without-meeting",
         "off-mission",
@@ -120,7 +121,13 @@ NO_MEETING_CONTENT_REASONS = frozenset(
 # a different hostname for the same government doesn't change that, so
 # `trigger="no-meeting"` never retries an alternate for these. This is
 # the population `one_hop_alternate()` handles instead (no promotion).
-MEETING_FOUND_NO_VIDEO_REASONS = frozenset({"meeting-without-video", "no-video-found"})
+# WO-351 (2026-09-13): "meeting-without-video-unverified" is the same
+# finding written by a pre-WO-333 method (the ladder or the first passive
+# runs), renamed so it can be seen and rerun; it means the same thing to
+# every consumer here until a rerun writes the plain label back.
+MEETING_FOUND_NO_VIDEO_REASONS = frozenset(
+    {"meeting-without-video", "meeting-without-video-unverified", "no-video-found"}
+)
 
 # WO-184: the full explicit "never retry, under either trigger" list from
 # Ryan's instructions -- MEETING_FOUND_NO_VIDEO_REASONS plus off-mission
