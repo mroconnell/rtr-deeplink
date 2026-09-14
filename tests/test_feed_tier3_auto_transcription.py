@@ -104,7 +104,9 @@ async def test_push_if_has_video_overrides_source_url_when_given(monkeypatch):
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         captured["payload"] = payload
         return {"url": "/m/example-page"}
 
@@ -135,7 +137,9 @@ async def test_push_if_has_video_leaves_source_url_alone_without_an_override(
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         captured["payload"] = payload
         return {"url": "/m/example-page-2"}
 
@@ -182,7 +186,9 @@ async def test_push_if_has_video_skips_a_probe_rejected_dead_link(monkeypatch):
 
     ingest_called = False
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         nonlocal ingest_called
         ingest_called = True
         return {"url": "/m/should-not-happen"}
@@ -221,7 +227,9 @@ async def test_push_if_has_video_refuses_to_ingest_a_line_with_no_owner(monkeypa
 
     ingest_called = False
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         nonlocal ingest_called
         ingest_called = True
         return {"url": "/m/should-not-happen"}
@@ -253,8 +261,10 @@ async def test_push_if_has_video_ingests_normally_when_owned(monkeypatch):
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
-        captured["gov_id"] = kwargs.get("gov_id")
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
         return {"url": "/m/example-page-3"}
 
     monkeypatch.setattr(mod, "_ingest", _fake_ingest)
@@ -262,7 +272,7 @@ async def test_push_if_has_video_ingests_normally_when_owned(monkeypatch):
     outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
 
     assert "[OK]" in outcome
-    assert captured["gov_id"] is None
+    assert "gov_id" not in captured["payload"]
 
 
 async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypatch):
@@ -287,8 +297,10 @@ async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypa
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
-        captured["gov_id"] = kwargs.get("gov_id")
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
         return {"url": "/m/example-page-4"}
 
     monkeypatch.setattr(mod, "_ingest", _fake_ingest)
@@ -296,4 +308,4 @@ async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypa
     outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
 
     assert "[OK]" in outcome
-    assert captured["gov_id"] == "us:place:0000009"
+    assert captured["payload"]["gov_id"] == "us:place:0000009"

@@ -236,13 +236,18 @@ async def _push_if_has_video(
         # picked up this WO's new pins yet. None for a single-tenant host
         # (has_owner() doesn't run the full ladder to derive one) -- the
         # Archive's own server-side resolve still handles that case fine.
+        # _ingest() itself has no gov_id parameter (see bulk_ingest.py's
+        # process_one(), the pattern this follows) -- it rides in the
+        # payload dict instead.
+        payload = result.model_dump()
+        if owner_gov_id:
+            payload["gov_id"] = owner_gov_id
         response = await _ingest(
             session,
-            result.model_dump(),
+            payload,
             normalized,
             already_probed=True,
             caller="feed_tier3_auto_transcription",
-            gov_id=owner_gov_id,
         )
     except Exception as e:
         return f"[FAIL] ingest failed: {url} ({e})"
