@@ -3312,6 +3312,89 @@ def test_videoplayer_telvue_com_is_a_multi_gov_host():
     assert match.tier == resolver.TIER_BLANK
 
 
+def test_lmc_swagit_shared_tenant_pins_town_and_village_separately():
+    assert registry.is_multi_gov_host("lmctvny.new.swagit.com")
+    cases = {
+        "/videos/399987": "us:cousub:3611944842",
+        "/videos/396842": "us:cousub:3611944842",
+        "/videos/400555": "us:place:3644831",
+        "/videos/376682": "us:place:3644831",
+    }
+    for path, expected in cases.items():
+        match = resolver.resolve_government(
+            None, tenant_host="lmctvny.new.swagit.com", path=path
+        )
+        assert match.gov_id == expected
+        assert match.tier == resolver.TIER_PINNED
+    other = resolver.resolve_government(
+        "Village of Mamaroneck, NY",
+        tenant_host="lmctvny.new.swagit.com",
+        path="/videos/999999",
+    )
+    assert other.tier == resolver.TIER_BLANK
+
+
+def test_sycamore_vimeo_pin_does_not_claim_esp_account():
+    selected = resolver.resolve_government(
+        None, tenant_host="vimeo.com", path="/1202127455"
+    )
+    assert selected.gov_id == "us:cousub:3906175973"
+    assert selected.tier == resolver.TIER_PINNED
+    other = resolver.resolve_government(
+        "Sycamore Township, OH", tenant_host="vimeo.com", path="/1202127456"
+    )
+    assert other.tier == resolver.TIER_BLANK
+
+
+def test_halfmoon_telvue_playlist_pin_preserves_bellefonte():
+    host = "videoplayer.telvue.com"
+    prefix = "/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/"
+    halfmoon = resolver.resolve_government(
+        None, tenant_host=host, path=prefix + "playlists/4815/media/1006347"
+    )
+    assert halfmoon.gov_id == "us:cousub:4202731992"
+    assert halfmoon.tier == resolver.TIER_PINNED
+    bellefonte = resolver.resolve_government(
+        None, tenant_host=host, path=prefix + "playlists/4806/media/1006347"
+    )
+    assert bellefonte.gov_id == "us:place:4205256"
+    other = resolver.resolve_government(
+        "Halfmoon Township, PA",
+        tenant_host=host,
+        path=prefix + "playlists/4999/media/1006347",
+    )
+    assert other.tier == resolver.TIER_BLANK
+
+
+def test_merrimack_cablecast_town_show_does_not_claim_vault():
+    host = "reflect-townofmerrimack.cablecast.tv"
+    assert registry.is_multi_gov_host(host)
+    town = resolver.resolve_government(
+        None, tenant_host=host, path="/internetchannel/show/8909?site=5"
+    )
+    assert town.gov_id == "us:cousub:3301147540"
+    assert town.tier == resolver.TIER_PINNED
+    existing = resolver.resolve_government(
+        None,
+        tenant_host=host,
+        path="/internetchannel/show/8878?query=conservation+commission&site=5",
+    )
+    assert existing.gov_id == "us:cousub:3301147540"
+    assert existing.tier == resolver.TIER_PINNED
+    old_video_pin = resolver.resolve_government(
+        None,
+        tenant_host=host,
+        path="/store-3/8878-ConservationCommission-Aug10-2026-v2/vod.m3u8",
+    )
+    assert old_video_pin.gov_id != "us:county:33013"
+    other = resolver.resolve_government(
+        "Merrimack town, NH",
+        tenant_host=host,
+        path="/internetchannel/show/9999?site=5",
+    )
+    assert other.tier == resolver.TIER_BLANK
+
+
 def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
     """WO-336: reflect-tst-mn.cablecast.tv is Town Square Television's
     shared Cablecast station, confirmed live to serve at least South St.
