@@ -1434,12 +1434,15 @@ async function init() {
   currentMeetingTitle = data.title || 'meeting';
   document.getElementById('reportProblemToggleWrap').hidden = false;
   document.getElementById('transcribeToggleWrap').hidden = false;
-  // Viebit is confirmed (2026-08-08) to only be reached via NYC Council's
-  // Legistar instance so far -- see ViebitAssetFinder's docstring. A cheap,
-  // accurate-enough signal for "this is an NYC Council meeting" without
-  // needing a real per-meeting cross-link to citymeetings.nyc (whose own
-  // coverage isn't guaranteed to include this specific meeting).
-  document.getElementById('nycCrosslink').hidden = data.platform !== 'viebit';
+  // Viebit serves many jurisdictions. Only its confirmed Council tenant
+  // should show the New York City Council project link.
+  let isNycCouncilVideo = false;
+  try {
+    isNycCouncilVideo = new URL(data.video_url).hostname === 'councilnyc.viebit.com';
+  } catch (_) {
+    // A missing or invalid video URL cannot identify a Council meeting.
+  }
+  document.getElementById('nycCrosslink').hidden = !isNycCouncilVideo;
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
 
   // Not data.platform === 'unknown' -- a best-effort result that delegated

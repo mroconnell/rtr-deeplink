@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Set
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, Query, Request
@@ -2692,6 +2692,9 @@ async def meeting_page(
             # platform, /m/{slug}/video for one in NEEDS_REFRESH. See
             # this route's own comment above for why.
             "player_video_url": player_video_url,
+            "show_nyc_crosslink": (
+                urlsplit(page["video_url"] or "").hostname == "councilnyc.viebit.com"
+            ),
             # "upcoming" / "recent" / None -- drives the notice under the
             # title explaining why a page may not have video/captions yet.
             "date_status": meeting_date_status(
