@@ -103,7 +103,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (9)
+Standing decisions — do NOT re-raise  (10)
+  No Viebit meeting can get a real transcript today -- confirmed at…
   Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -516,6 +517,39 @@ Parked deliberately — allowed back `[PARK]`  (4)
 <!-- TOC-END -->
 
 ## Standing decisions — do NOT re-raise
+
+### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
+
+- **Issue**: `app/platforms/queue_probe.py`'s `_probe_viebit()` already
+  documented (WO-306, 2026-09-12) that Viebit's raw video file
+  (`master.m3u8`) refuses the request (HTTP 403) even with the right
+  Referer/Origin/browser-like headers -- so the step that decides
+  whether to *queue* a Viebit meeting never actually fetches the real
+  video; it accepts on a different, weaker signal instead. Confirmed
+  live 2026-09-15, running a real end-to-end transcription attempt
+  against 4 independent real Viebit meetings: the exact same 403 also
+  blocks the *transcription* step itself. `transcribe_backlog_locally.
+  py --url` against a real Viebit meeting skips in about 6 seconds with
+  "ffprobe couldn't read the media" -- not a dead video, a CDN gate
+  only a real browser gets through.
+- **Impact**: every Viebit meeting ever queued -- past or future --
+  will sit forever as a video-only page with no transcript. This
+  includes 16 meetings in the 2026-09-15 breadth-355 local Whisper
+  batch; they'll add a real page (a real improvement on their own,
+  since the government previously had no page at all), but none of
+  them will get a transcript from this attempt or any future retry,
+  by either the local script or the cloud worker (both share the same
+  `app/platforms/media_probe.py` extraction code).
+- **What this means**: nothing to build here without a much bigger
+  piece of work (real browser automation specifically for Viebit,
+  since a plain HTTP client can never satisfy whatever gate their CDN
+  checks). Not worth doing for one small platform today. Revisit only
+  if Viebit meetings become a large enough share of remaining coverage
+  gaps to justify it, or if a real sample is ever found where the gate
+  doesn't apply.
+- **History**: `CLAUDE.md`'s ffmpeg-trust-store gotcha (2026-09-15, the
+  same investigation that confirmed this); `app/platforms/queue_probe.
+  py`'s own WO-306 comment (the original, narrower probe-level finding).
 
 ### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
 

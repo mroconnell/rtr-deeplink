@@ -465,29 +465,52 @@ under everything else. This repo extracts and fixes just that part.
   new script; seven existing scripts already needed the same fix applied
   — see BACKLOG_DONE.md's 2026-08-21 entry for the full list and recovery
   writeup.
-- **On this Mac, Homebrew's `ffmpeg`/`ffprobe` has its own, separate,
-  broken TLS trust store from `curl`/Python's — a real cert-verify
-  failure against `ffmpeg` alone is a local machine problem, not
-  evidence the remote server's certificate is wrong.** Confirmed live
-  2026-09-15: every `*.viebit.com` meeting failed `ffprobe` with
-  `error:0A000086:SSL routines::certificate verify failed`, which first
-  looked exactly like a broken server certificate — but `curl -v` and a
-  plain `aiohttp` request to the *identical* URL both succeeded and
-  showed a completely valid `CN=*.viebit.com` Let's Encrypt certificate.
-  The real cause: this Mac's `ffmpeg` is linked against Homebrew's
+- **On this Mac, Homebrew's `ffmpeg`/`ffprobe` had its own, separate,
+  broken TLS trust store from `curl`/Python's — fixed by setting
+  `SSL_CERT_FILE=/usr/local/etc/ca-certificates/cert.pem` before
+  running `ffmpeg`/`ffprobe`.** Confirmed live 2026-09-15: every
+  `*.viebit.com` meeting failed `ffprobe` with `error:0A000086:SSL
+  routines::certificate verify failed`, which first looked exactly
+  like a broken server certificate — but `curl -v` and a plain
+  `aiohttp` request to the *identical* URL both succeeded and showed a
+  completely valid `CN=*.viebit.com` Let's Encrypt certificate. The
+  real cause: this Mac's `ffmpeg` is linked against Homebrew's
   `openssl@3` (`otool -L $(which ffmpeg)`), whose own `OPENSSLDIR`
   (`/usr/local/etc/openssl@3`) has no `cert.pem` at all — confirmed via
-  `openssl version -d`. Pointing `SSL_CERT_FILE` at Homebrew's
-  `ca-certificates` bundle (`/usr/local/etc/ca-certificates/cert.pem`)
-  did *not* fix it either, so the real fix is still open. **Before
-  concluding a remote host's certificate is broken, verify with `curl
-  -v` (or Python) against the exact failing URL first** — if those
-  succeed and only `ffmpeg`/`ffprobe` fails, it's this Mac's `ffmpeg`
-  trust store, not the remote server, and the fix (if any) belongs in
-  this machine's `ffmpeg`/OpenSSL setup, not a BACKLOG entry about the
-  platform. A wrong first guess here (blaming Viebit's server) got
-  written into `BACKLOG.md` and then retracted the same day once this
-  was checked properly.
+  `openssl version -d`. **Before concluding a remote host's certificate
+  is broken, verify with `curl -v` (or Python) against the exact
+  failing URL first** — if those succeed and only `ffmpeg`/`ffprobe`
+  fails, it's this Mac's `ffmpeg` trust store, not the remote server. A
+  wrong first guess here (blaming Viebit's server) got written into
+  `BACKLOG.md` and then retracted the same day once this was checked
+  properly. A second false negative followed the retraction: an
+  earlier attempt at the exact same `SSL_CERT_FILE` fix was logged as
+  "did not fix it," but that was reading the same generic "Input/output
+  error" text two different failures share — set the variable and add
+  `-loglevel debug` (or read the specific OpenSSL error string, not
+  just "Input/output error") before concluding a fix didn't work; the
+  SSL layer really was fixed, a second, unrelated problem (below) was
+  just producing an identically-worded symptom.
+- **Fixing that SSL layer does not make Viebit meetings transcribable —
+  a second, separate, real wall (already known at the probe level,
+  confirmed at the transcription level 2026-09-15) blocks every one.**
+  `app/platforms/queue_probe.py`'s `_probe_viebit()` already documents
+  (WO-306, 2026-09-12) that Viebit's raw HLS `master.m3u8` 403s even
+  with a correct Referer/Origin/User-Agent, so the *queue-acceptance*
+  probe works around it by accepting with `duration_seconds=None`
+  rather than ever fetching the real media. Confirmed 2026-09-15 across
+  4 independent real Viebit URLs that the same 403 also blocks the
+  *transcription* step itself (`app/platforms/media_probe.py`'s
+  extraction, used by both `scripts/transcribe_backlog_locally.py` and
+  the cloud worker, since they share this code) — with the SSL fix
+  above applied, `transcribe_backlog_locally.py --url` against a real
+  Viebit meeting still skips in ~6s with "ffprobe couldn't read the
+  media," because the actual video file is CDN-gated behind something
+  only a real browser satisfies. Net effect: no Viebit meeting can get
+  a real transcript today, by either transcription path, regardless of
+  this Mac's SSL fix — a materially bigger gap than a trust-store
+  problem, and out of scope to work around here (would need real
+  browser automation against Viebit specifically).
 - **`archive/db/crud.py` has a `transcript_warnings`-marker convention
   that gates real functionality, not just reporting — a new quality
   marker there needs updating in (at least) three places, not one.** A
