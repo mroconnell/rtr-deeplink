@@ -465,6 +465,29 @@ under everything else. This repo extracts and fixes just that part.
   new script; seven existing scripts already needed the same fix applied
   — see BACKLOG_DONE.md's 2026-08-21 entry for the full list and recovery
   writeup.
+- **On this Mac, Homebrew's `ffmpeg`/`ffprobe` has its own, separate,
+  broken TLS trust store from `curl`/Python's — a real cert-verify
+  failure against `ffmpeg` alone is a local machine problem, not
+  evidence the remote server's certificate is wrong.** Confirmed live
+  2026-09-15: every `*.viebit.com` meeting failed `ffprobe` with
+  `error:0A000086:SSL routines::certificate verify failed`, which first
+  looked exactly like a broken server certificate — but `curl -v` and a
+  plain `aiohttp` request to the *identical* URL both succeeded and
+  showed a completely valid `CN=*.viebit.com` Let's Encrypt certificate.
+  The real cause: this Mac's `ffmpeg` is linked against Homebrew's
+  `openssl@3` (`otool -L $(which ffmpeg)`), whose own `OPENSSLDIR`
+  (`/usr/local/etc/openssl@3`) has no `cert.pem` at all — confirmed via
+  `openssl version -d`. Pointing `SSL_CERT_FILE` at Homebrew's
+  `ca-certificates` bundle (`/usr/local/etc/ca-certificates/cert.pem`)
+  did *not* fix it either, so the real fix is still open. **Before
+  concluding a remote host's certificate is broken, verify with `curl
+  -v` (or Python) against the exact failing URL first** — if those
+  succeed and only `ffmpeg`/`ffprobe` fails, it's this Mac's `ffmpeg`
+  trust store, not the remote server, and the fix (if any) belongs in
+  this machine's `ffmpeg`/OpenSSL setup, not a BACKLOG entry about the
+  platform. A wrong first guess here (blaming Viebit's server) got
+  written into `BACKLOG.md` and then retracted the same day once this
+  was checked properly.
 - **`archive/db/crud.py` has a `transcript_warnings`-marker convention
   that gates real functionality, not just reporting — a new quality
   marker there needs updating in (at least) three places, not one.** A
