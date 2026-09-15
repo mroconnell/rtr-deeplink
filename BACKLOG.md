@@ -103,8 +103,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (10)
-  Viebit.com's own TLS certificate doesn't cover its tenant subdomains…
+Standing decisions — do NOT re-raise  (9)
   Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -517,34 +516,6 @@ Parked deliberately — allowed back `[PARK]`  (4)
 <!-- TOC-END -->
 
 ## Standing decisions — do NOT re-raise
-
-### Viebit.com's own TLS certificate doesn't cover its tenant subdomains -- no viebit.com meeting can be fetched until Viebit fixes it `[STANDING]`
-
-- **Issue**: found live 2026-09-15, running the local Whisper batch
-  against two real viebit.com meetings (`monticello.viebit.com`,
-  `delano.viebit.com`) -- both failed `ffprobe` with "Input/output
-  error" on every attempt. `curl -v` against the bare `viebit.com`
-  confirms why: the server presents a certificate for `CN=
-  leightronix.com` (Viebit's real corporate parent, see `app/platforms/
-  base.py`'s existing redirect-chain comment) with no `viebit.com`
-  entry in its subject-alternative names at all -- `SSL: no alternative
-  certificate subject name matches target host name 'viebit.com'`. This
-  is a real, current misconfiguration on Viebit's own server, not a
-  network blip or anything in this repo's control. It affects every
-  `*.viebit.com` tenant, not just these two -- 16 of the 355 lines in
-  the 2026-09-15 breadth batch are viebit.com.
-- **What this means**: any strict-TLS client (yt-dlp, ffprobe, aiohttp)
-  will always fail to connect to a viebit.com meeting until Viebit
-  reissues their certificate with the right SAN. `transcribe_backlog_
-  locally.py` already degrades correctly today -- two failed `ffprobe`
-  attempts, then a clean `SKIPPED`, never a crash -- so no code change
-  is needed on this end. **Do not work around it by disabling TLS
-  verification** (`verify=False`/`--no-check-certificate`) -- that's a
-  real security downgrade for a handful of meetings, not a fix for
-  Viebit's cert. Revisit only if a live viebit.com URL is ever seen
-  resolving cleanly again (i.e. Viebit fixed it), or if Viebit is
-  confirmed dead/replaced by another product the way Legistar/PrimeGov/
-  Swagit/IQM2 already redirect into Granicus.
 
 ### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
 
