@@ -107,6 +107,109 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-15
+
+119 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 3 batches, back to 2026-09-02), 14 new after the ledger
+filter — everything older than 2026-09-14 23:40 UTC was already covered
+by prior runs.
+
+**Out of scope / informational, no write-up**: 1 transcription worker
+daily report. 1 GitHub "Sudo email verification code" for mroconnell —
+an account-security notice, not an alert about this repo's own code;
+nothing to investigate from it. 4 GitHub Actions "PR run failed: Test"
+for non-`main` branches (Handoff doc, Dashboard checklist, and 2x
+Advance tier 3 auto-transcription queue).
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Adapter health canary failed on `main` (run `34888765537`,
+2026-09-14 19:44-19:46 UTC) — pulled the real job log: 38/40 platforms
+OK, one failure is `ClientResponseError: 410` against
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is
+a genuinely dead meeting" entry (see below for the canary's *other*
+failure, which is new). Render `test-redtaperecordings` "Exited with
+status 3" (2026-09-14 18:19 UTC) — same already-confirmed-closed noise
+per `BACKLOG_DONE.md`'s 2026-08-30 entry. Transcription job 2973 failed
+(Cibolo TX, Granicus `MediaPlayer.php`, "ffmpeg timed out after 120s
+(source likely slow or rate-limited)" on chunk 0, three retries,
+2026-09-14 23:36-23:40 UTC) and its "We hit a snag" companion email —
+same failure shape as the already-open `[NEEDS-AUDIT]` "Some
+old/archived Granicus clips' `chunklist.m3u8` genuinely times out at
+Granicus's own origin" entry (`media_probe.py`'s 120s timeout firing
+before Granicus's own slower 504 ever arrives). "Run failed: Test -
+main (b0eb65b)" (2026-09-14 13:21 UTC, commit #1161) and the downstream
+"Run failed: Feed tier 3 auto-transcription queue - main (6eb2c67)"
+(2026-09-14 13:21-13:25 UTC, its `feed` job just polls the same commit's
+`test` check) are the same already-documented, already-fixed incident:
+commit `0331d6a` ("Handoff doc: add #1161 stale-TOC trap to section
+12") explains #1161 squash-merged on an older `main` and left `main`
+red on `tests/test_backlog_toc.py` for 13 minutes until #1171 fixed it
+at 13:34-13:37 UTC — 9-13 minutes after these two alerts fired. No
+action needed; already resolved same-day, before this alert was even
+read.
+
+- **Confirmed** — a new Search Console "Events structured data" flag,
+  "Missing field 'location'" (2026-09-15 12:01 UTC alert), root-caused
+  directly in code: `archive/templates/meeting_page.html`'s `Event`
+  JSON-LD block only emits `location` inside `{% if page.jurisdiction
+  -%}` (lines 240-244) — a page with no jurisdiction set produces a
+  valid-but-incomplete Event with no location at all, which Google now
+  flags as a critical issue.
+  - **Impact**: this is a new, SEO-visible symptom of the
+    already-tracked, already-sized no-jurisdiction-pages gap, not a new
+    root cause — `BACKLOG.md`'s "Search Console, structured data & SEO
+    plumbing" section already tracks a sibling Event-JSON-LD gap
+    (`description`/`image`/`url` fixed 2026-08-21, per
+    `BACKLOG_DONE.md`'s "Event JSON-LD was missing description and
+    image" entry) but doesn't mention this `location` consequence.
+    Separately, `BACKLOG.md`'s open `[IMPROVEMENT-ROUND]` "Cablecast,
+    TelVue, Swagit, and YouTube still account for most no-jurisdiction
+    pages" entry sizes the underlying gap at **245** total
+    no-jurisdiction pages as of `GET /internal/jurisdiction/missing`'s
+    2026-08-31 run (Cablecast 101, TelVue 50, Swagit 42, YouTube 17,
+    eScribe 12, Vimeo 10, CivicClerk 7, unknown 4, TownHallStreams 1,
+    Castus 1) — that entry's own text says the true count is likely
+    lower now (two fixes landed after the count was taken) but was never
+    re-run. Every one of those pages currently ships an Event with no
+    location, which is what Search Console is now flagging.
+  - **Next action**: cross-link this alert into the existing
+    `[IMPROVEMENT-ROUND]` entry rather than opening a new one — it's the
+    same underlying gap with a new, concrete external consequence
+    (a Google-visible critical flag) that entry doesn't currently
+    mention. Re-running `GET /internal/jurisdiction/missing` would give
+    a current count for both purposes at once.
+  - **Open question**: whether this SEO consequence should raise that
+    entry's priority — it was filed as an `[IMPROVEMENT-ROUND]`, not
+    flagged as urgent, before there was a live Search Console critical
+    flag attached to it.
+
+- **Unconfirmed** — the same 2026-09-14 19:44 UTC adapter health canary
+  run's *other* failure: `FAIL civicclerk: TimeoutError` against
+  `https://emporiaks.portal.civicclerk.com/event/585/media` — this
+  repo's own known-good CivicClerk canary sample (Emporia, KS; the real
+  populated-captions example from `BACKLOG_DONE.md`'s 2026-08-08 entry,
+  still pinned as the sole `civicclerk` canary URL in
+  `scripts/adapter_canary.py:108`). First occurrence of this specific
+  failure signature — no prior "FAIL civicclerk" found anywhere in
+  `BACKLOG.md`/`BACKLOG_DONE.md`.
+  - **Impact**: affects only the canary's own health signal so far — no
+    confirmed production impact, since this is a known-good page the
+    live site already serves correctly. Root cause not determined: could
+    be a one-off slowdown at CivicClerk's origin (the same general
+    failure mode already documented for Granicus above) or a genuine new
+    regression in the CivicClerk adapter or the canary's own headless
+    probe. One occurrence isn't enough to tell which.
+  - **Open question for Ryan (or whoever next reviews this file)**: watch
+    for recurrence before treating this as more than noise — same
+    "watch, don't promote yet" posture as 2026-09-14's Archive
+    health-check entry above it in this file.
+
+Ledger: 119 message IDs reviewed and recorded this run (14 new, 105
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-14
 
 258 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
