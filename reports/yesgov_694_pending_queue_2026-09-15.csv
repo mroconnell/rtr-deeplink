@@ -1,3 +1,3 @@
-meeting_url,source_url,gov_id,platform,duration_seconds,probe_verdict,status
-https://lmctvny.new.swagit.com/videos/399987,https://lmcmedia.org/show/town-of-mamaroneck-town-council-meeting-9-3-26/,us:cousub:3611944842,swagit,2027.706,accept,pending-pin-deploy
-https://lmctvny.new.swagit.com/videos/376682,https://lmcmedia.org/show/village-of-mamaroneck-board-of-trustees-legislative-meeting-2-23-26/,us:place:3644831,swagit,3356.584,accept,pending-pin-deploy
+meeting_url,queue_line,first_party_evidence_url,gov_id,platform,duration_seconds,probe_verdict,status
+https://lmctvny.new.swagit.com/videos/399987,https://lmctvny.new.swagit.com/videos/399987,https://lmcmedia.org/show/town-of-mamaroneck-town-council-meeting-9-3-26/,us:cousub:3611944842,swagit,2027.706,accept,pending-pin-deploy
+https://lmctvny.new.swagit.com/videos/376682,https://lmctvny.new.swagit.com/videos/376682,https://lmcmedia.org/show/village-of-mamaroneck-board-of-trustees-legislative-meeting-2-23-26/,us:place:3644831,swagit,3356.584,accept,pending-pin-deploy

@@ -3333,6 +3333,25 @@ def test_lmc_swagit_shared_tenant_pins_town_and_village_separately():
     )
     assert other.tier == resolver.TIER_BLANK
 
+    # The tier-3 feeder checks owner on the recorded source_url; an LMC
+    # page in the queue line's second tab-field would bypass these pins.
+    from app.platforms.queue_probe import has_owner
+
+    assert has_owner("https://lmctvny.new.swagit.com/videos/399987")[:2] == (
+        True,
+        "us:cousub:3611944842",
+    )
+    assert has_owner("https://lmctvny.new.swagit.com/videos/376682")[:2] == (
+        True,
+        "us:place:3644831",
+    )
+    assert (
+        has_owner(
+            "https://lmcmedia.org/show/town-of-mamaroneck-town-council-meeting-9-3-26/"
+        )[1]
+        is None
+    )
+
 
 def test_sycamore_vimeo_pin_does_not_claim_esp_account():
     selected = resolver.resolve_government(

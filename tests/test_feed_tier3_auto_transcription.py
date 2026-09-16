@@ -13,6 +13,9 @@ yt-dlp/network for a fake URL that was never resolved against anything
 real. tests/test_queue_probe.py covers the probe itself.
 """
 
+import csv
+from pathlib import Path
+
 from app.platforms.queue_probe import ProbeResult
 from scripts.feed_tier3_auto_transcription import (
     _parse_queue_line,
@@ -309,3 +312,51 @@ async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypa
 
     assert "[OK]" in outcome
     assert captured["payload"]["gov_id"] == "us:place:0000009"
+
+
+async def test_lmc_pending_lines_keep_exact_owner_through_feeder(monkeypatch):
+    """The LMC producer page is evidence, not a source-url override:
+    the feeder must check each Swagit video's own pin before ingest."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    pending = (
+        Path(__file__).parent.parent
+        / "reports"
+        / "yesgov_694_pending_queue_2026-09-15.csv"
+    )
+    with pending.open(newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    assert len(rows) == 2
+
+    monkeypatch.setattr(mod, "detect_platform", lambda url: "swagit")
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    for row in rows:
+        url, override = _parse_queue_line(row["queue_line"])
+        assert url == row["meeting_url"]
+        assert override is None
+        assert row["first_party_evidence_url"].startswith("https://lmcmedia.org/")
+
+        result = _FakeResolvedMeeting(
+            video_url="https://archive-stream.granicus.com/test.m3u8",
+            source_url=url,
+        )
+        monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+        captured = {}
+
+        async def _fake_ingest(
+            session, payload, input_url_normalized, *, already_probed=False, caller=""
+        ):
+            captured["payload"] = payload
+            return {"url": "/m/exact-lmc-owner"}
+
+        monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+        outcome = await _push_if_has_video(
+            session=None, url=url, source_url_override=override
+        )
+        assert outcome.startswith("[OK]")
+        assert captured["payload"]["source_url"] == url
+        assert captured["payload"]["gov_id"] == row["gov_id"]
+
+    assert mod.has_owner("https://lmctvny.new.swagit.com/videos/999999")[0] is False
