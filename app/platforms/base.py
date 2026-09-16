@@ -178,6 +178,14 @@ CORPORATE_HOSTS_BY_PLATFORM: dict[str, FrozenSet[str]] = {
             "diligentoneplatform.com",
             "www.diligentoneplatform.com",
             "oidc.diligentoneplatform.com",
+            # WO-348 (2026-09-13): a THIRD real, live CivicWeb/Diligent
+            # domain shape, confirmed on Eatwp township, PA
+            # (eatwp.diligent.community, real "Meeting Portal" link from
+            # the township's own homepage, MeetingTypeList.aspx page with
+            # real meeting ids) -- distinct from both civicweb.net and
+            # the community.diligentoneplatform.com shape already
+            # handled below.
+            "diligent.community",
         }
     ),
     "iqm2": frozenset({"iqm2.com", "www.iqm2.com"}),
@@ -247,11 +255,14 @@ def detect_platform(url: str) -> str:
     # (see its case below for why), and that parsing belongs with the
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
+    from .civicmedia import is_civicmedia_page_url
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
     from .invintus import is_invintus_meeting_url
     from .az_legislature import is_az_legislature_video_url
     from .wistia import parse_wistia_account_url
     from .boxcast import parse_boxcast_id
+    from .direct_file import is_direct_file_url
+    from .boarddocs import is_boarddocs_tenant_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -315,7 +326,14 @@ def detect_platform(url: str) -> str:
         # AgendaCenter, self-hosted on roswell-nm.gov rather than
         # *.civicplus.com, links straight to a destinyhosted.com URL.
         return "destinyhosted"
-    if "civicweb.net" in netloc or "diligentoneplatform.com" in netloc:
+    if (
+        "civicweb.net" in netloc
+        or "diligentoneplatform.com" in netloc
+        # WO-348 (2026-09-13): a third real domain shape, confirmed on
+        # eatwp.diligent.community (Eatwp township, PA) -- see
+        # CORPORATE_HOSTS_BY_PLATFORM's "civicweb" entry above for detail.
+        or "diligent.community" in netloc
+    ):
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
         # -- see civicweb.py's own module docstring. The
@@ -378,10 +396,10 @@ def detect_platform(url: str) -> str:
     _cablecast_bare_show_id = (
         path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
     )
-    if "cablecast.tv" in netloc and (
-        "/internetchannel/show/" in path
-        or _cablecast_bare_show_id.isdigit()
-        or "/cablecastpublicsite/show/" in path
+    if (
+        "/cablecastpublicsite/show/" in path
+        or "/internetchannel/show/" in path
+        or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
@@ -411,6 +429,36 @@ def detect_platform(url: str) -> str:
         # `_PUBLICSITE_SHOW_ID_RE` for the real API shape) -- so it's in
         # scope now, just resolved differently (two JSON calls, no HTML
         # scraping) from the other two.
+        #
+        # WO-306 (2026-09-12): the CablecastPublicSite path check above no
+        # longer requires "cablecast.tv" in netloc -- confirmed live on a
+        # real customer hosted entirely on its own government domain,
+        # Maplewood, MN (`vod.maplewoodmn.gov/CablecastPublicSite/show/
+        # {id}?site=1`), whose `/cablecastapi/v1/shows/{id}` API answers
+        # identically to the vendor-subdomain tenants this adapter was
+        # built against. Before this fix, `resolve_via_platform()`'s real
+        # call path (detect_platform() -> get_finder()) never reached
+        # cablecast.py for this URL at all -- it fell through to
+        # generic_fallback and produced a wrong title/date split (it read
+        # "Heritage Preservation Commission" as the title and "September
+        # 10, 2026" as the jurisdiction) plus a false "not officially
+        # supported" warning, even though the real adapter handles this
+        # exact API correctly once reached. The bare "/show/{id}" form
+        # stays scoped to `cablecast.tv` netlocs -- too weak a signal on
+        # its own to trust against an arbitrary government domain.
+        #
+        # WO-309 (2026-09-12): "/internetchannel/show/" no longer requires
+        # "cablecast.tv" in netloc either, for the same reason as WO-306's
+        # fix above -- confirmed live on Edison, NJ's own custom-domain
+        # tenant (`cablecast.edisonnj.org/internetchannel/show/{id}?
+        # site=1`), which is not on a cablecast.tv subdomain at all but
+        # resolves through cablecast.py's Remix path exactly like every
+        # cablecast.tv-hosted tenant -- real jurisdiction ("Township of
+        # Edison"), real captions (a positive, hand-checked example, not
+        # a schema guess). Before this fix the same generic_fallback
+        # gap WO-306 documented for CablecastPublicSite applied here too:
+        # a real Cablecast Remix page on a government's own domain never
+        # reached cablecast.py at all.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
@@ -418,6 +466,17 @@ def detect_platform(url: str) -> str:
         # module docstring for the landing-page/document-page shapes and
         # how video is found (a wrapper link straight to a YouTube embed).
         return "clerkbase"
+    if is_boarddocs_tenant_url(url):
+        # BoardDocs (Diligent) -- WO-365 (2026-09-14). One shared host
+        # (`go.boarddocs.com`) for every tenant, the government encoded as
+        # a `/{st}/{slug}/Board.nsf/...` path -- see boarddocs.py's own
+        # module docstring for the real mechanism (a tenant flag, a
+        # meetings list, a per-meeting POST) and the house rule that
+        # limits this adapter to on-demand reads, never a sweep
+        # (`go.boarddocs.com/robots.txt` disallows all agents). Checked
+        # before champds.com below since both are shared, path-tenanted
+        # hosts with no useful netloc-only signal.
+        return "boarddocs"
     if "champds.com" in netloc:
         # CHAMP/ChampDS -- confirmed live 2026-08-13 against 6 independent
         # real customers (Atlanta GA, Auburn NY, Gillette WY, Marlborough
@@ -465,6 +524,53 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if netloc == "civplus.tikiliveapi.com" or is_civicmedia_page_url(url):
+        # CivicPlus's own "CivicMedia" video widget (TikiLive-hosted) --
+        # confirmed live 2026-09-13 (WO-341) against Hobart, IN
+        # (`cityofhobart.org/CivicMedia?VID=326`), a real meeting video
+        # with real captions -- see civicmedia.py's own module docstring
+        # for the full investigation. Two real shapes claimed: the
+        # government's own `/CivicMedia`/`/CivicMedia.aspx?VID=` page
+        # (self-hosted, same white-labeling as every other CivicPlus
+        # product -- see civicplus.py's own module docstring for why this
+        # can't be a netloc check) and the TikiLive embed host itself.
+        # Checked BEFORE the `/agendacenter` path check just below, on
+        # purpose: both are path-only checks with no netloc signal, and a
+        # `/CivicMedia` URL should never fall through to CivicPlus's own
+        # AgendaCenter row-parsing (which expects `tr.catAgendaRow`
+        # markup this page doesn't have).
+        return "civicmedia"
+    if path.startswith("/agendacenter"):
+        # CivicPlus "AgendaCenter" -- identical shape to Hyland's path
+        # check just above: most real CivicPlus tenants are white-labeled
+        # onto the government's OWN domain (confirmed live, see
+        # civicplus.py's module docstring for the enumeration), not a
+        # *.civicplus.com subdomain, so the netloc-based "civicplus"
+        # branch above never fires for them. Placed AFTER every netloc
+        # check in this function (this is the last path-only check, right
+        # after Hyland's) so an explicit vendor-host match always wins --
+        # this only fires once nothing above has already claimed the URL.
+        # WO-272 (2026-09-12) mined the real scale of this gap with zero
+        # fetches, from URLs already on file: 1,209 jurisdiction_
+        # coverage.csv rows across 1,205 distinct self-hosted hosts, plus
+        # 250 already-archived Archive pages across 245 distinct
+        # governments, whose source_url is a bare, self-hosted
+        # `/AgendaCenter` URL -- every one of those pages exists only
+        # because a dedicated sweep script called civicplus.py directly,
+        # bypassing this function entirely. Confirmed real self-hosted
+        # examples: welcometoatmore.com/AgendaCenter, www.voluntown.gov/
+        # AgendaCenter (bare listings), www.waynecountyny.gov/
+        # AgendaCenter/ViewFile/Minutes/_09022026-1555 (a single document
+        # link, same host prefix) -- see BACKLOG_DONE.md's WO-275 entry
+        # and docs/investigations/url_shape_mining.md for the rest of the
+        # investigation. This is a routing fix only: CivicPlus AgendaCenter
+        # sites are already measured at ~80% agenda-only/no video, so this
+        # doesn't create new video pages on its own -- it just makes a
+        # self-hosted AgendaCenter URL reached through any OTHER path
+        # (a hop-link scorer, passive discovery, a reader's own paste)
+        # get civicplus.py's dedicated category-listing walk instead of
+        # generic_fallback.py.
+        return "civicplus"
     if "castus.tv" in netloc and "/vod/" in path:
         # Castus -- a real PEG/government-access video platform, confirmed
         # live 2026-08-21 (WO-19) against one real customer, Billings, MT's
@@ -663,6 +769,17 @@ def detect_platform(url: str) -> str:
         # itself is never trusted to say whether it's a broadcast or a
         # channel (the real API is asked instead).
         return "boxcast"
+    if is_direct_file_url(url):
+        # WO-303, 2026-09-12: a bare video file on a first-party/file-
+        # sharing host with no vendor platform in front of it -- see
+        # direct_file.py's own module docstring for the real fixtures
+        # (Palisade CO/Dundee OR/Cayuga Heights NY's own domains,
+        # Enterprise OR's Dropbox link, Kemmerer WY's Google Drive
+        # files) and BACKLOG.md's WO-264/WO-284 entries this closes.
+        # Checked LAST, after every known vendor platform above, so a
+        # video URL actually served by a recognized platform never
+        # reaches here.
+        return "direct_file"
     return "unknown"
 
 

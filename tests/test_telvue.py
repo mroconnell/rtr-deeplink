@@ -1193,3 +1193,80 @@ def test_guess_jurisdiction_rejects_acronym_dash_prefix():
         TelvueAssetFinder._guess_jurisdiction("Winston-Salem Board Meeting")
         == "Winston-Salem"
     )
+
+
+# WO-306 (2026-09-12): the minimal "list what's on this playlist" step
+# the brief asked for -- `resolve()` only ever handles a single
+# `/media/{id}` URL, and a `/playlists/{id}` URL (a real recorded
+# example, Bellefonte, PA) embeds none of the JSON `resolve()` looks for,
+# so it silently resolved to "no video found" before this. The listing
+# endpoint itself (`/player/{org}/playlists/{id}/playlist_items
+# ?offset=N`) was found by watching the real page's own network requests
+# in a browser, then confirmed with a plain unauthenticated GET -- no JS
+# execution needed to fetch it. Fixture is the real first 3 of 50 `<li>`
+# items from that fetch (2026-09-12), trimmed the same way the
+# ashland_planning captions fixture above is trimmed to its first 30 real
+# cues.
+from app.platforms.telvue import list_playlist_items  # noqa: E402
+
+BELLEFONTE_ORG_TOKEN = "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"
+BELLEFONTE_PLAYLIST_ID = "4806"
+BELLEFONTE_PLAYLIST_ITEMS_URL = (
+    f"https://videoplayer.telvue.com/player/{BELLEFONTE_ORG_TOKEN}/playlists/"
+    f"{BELLEFONTE_PLAYLIST_ID}/playlist_items?offset=0"
+)
+
+
+async def test_list_playlist_items_real_bellefonte_fragment():
+    fragment = load_fixture(
+        "telvue", "bellefonte_council_4806_playlist_items_offset0.html"
+    )
+    routes = {
+        BELLEFONTE_PLAYLIST_ITEMS_URL: FakeResponse(
+            status=200, text=fragment, url=BELLEFONTE_PLAYLIST_ITEMS_URL
+        ),
+    }
+
+    with mock_session(routes):
+        items = await list_playlist_items(
+            BELLEFONTE_ORG_TOKEN, BELLEFONTE_PLAYLIST_ID, offset=0
+        )
+
+    assert len(items) == 3  # the trimmed real fixture's item count
+    assert items[0]["media_id"] == "1044782"
+    assert items[0]["title"] == (
+        "9/8/26 Bellefonte Borough Council Work Session & Regular Meeting"
+    )
+    # The fixture's title carries a real HTML entity ("&amp;") -- confirm
+    # it's unescaped, not left as literal "&amp;" text.
+    assert "&amp;" not in items[0]["title"]
+    assert items[0]["duration"] == "02:57:41"
+    assert items[0]["media_url"] == (
+        f"https://videoplayer.telvue.com/player/{BELLEFONTE_ORG_TOKEN}/media/1044782"
+    )
+    # Real, confirmed-live oddity worth a regression check: this tenant's
+    # real catalog has a same-day duplicate pair, one titled "- DELETE" --
+    # list_playlist_items() doesn't filter it (that judgment belongs to
+    # the caller doing the hand-read, not this listing step), but it
+    # must still come through with a distinct media_id, not get merged
+    # or dropped.
+    assert items[2]["media_id"] == "1038621"
+    assert items[2]["title"] == "8/3/26 Bellefone Borough Council - DELETE"
+
+
+async def test_list_playlist_items_empty_page_returns_empty_list():
+    """Confirmed live: paging past the end of a playlist returns a 200
+    with no `<li>` items at all, not a 404 -- list_playlist_items() must
+    return `[]`, the caller's own "stop paging" signal, not raise."""
+    empty_url = (
+        f"https://videoplayer.telvue.com/player/{BELLEFONTE_ORG_TOKEN}/playlists/"
+        f"{BELLEFONTE_PLAYLIST_ID}/playlist_items?offset=200"
+    )
+    routes = {
+        empty_url: FakeResponse(status=200, text="", url=empty_url),
+    }
+    with mock_session(routes):
+        items = await list_playlist_items(
+            BELLEFONTE_ORG_TOKEN, BELLEFONTE_PLAYLIST_ID, offset=200
+        )
+    assert items == []

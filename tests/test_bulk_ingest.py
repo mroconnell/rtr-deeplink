@@ -86,7 +86,14 @@ def _fake_archive(monkeypatch):
 
 
 def _probe_stub(verdict, reason=None, duration=1200.0):
-    async def _stub(url, *, video_url=None, source_page_url=None, platform=None):
+    async def _stub(
+        url,
+        *,
+        video_url=None,
+        source_page_url=None,
+        platform=None,
+        video_format=None,
+    ):
         return ProbeResult(
             url=url,
             platform=platform,

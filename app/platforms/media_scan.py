@@ -152,7 +152,11 @@ def media_type(url: str) -> str:
     # as is_hls_url()'s docstring describes).
     if path.endswith(".m3u8"):
         return "video"
-    if path.endswith((".mp4", ".mov", ".m4v")):
+    if path.endswith((".mp4", ".mov", ".m4v", ".webm")):
+        # WO-303, 2026-09-12: ".webm" added for the new direct_file.py
+        # adapter -- BACKLOG.md's own "no adapter for a direct video
+        # file" entry names it as a real extension to cover, alongside
+        # the already-confirmed real .mp4 fixtures.
         return "video"
     if path.endswith((".mp3", ".wav", ".m4a")):
         return "audio"

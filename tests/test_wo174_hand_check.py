@@ -155,3 +155,35 @@ def test_kind_a_checked_before_kind_b():
     )
     assert result is not None
     assert result[0] == "A"
+
+
+def test_state_court_jury_video_is_kind_a():
+    """WO-230, 2026-09-11: a REAL catch, not reconstructed -- Woodford
+    County, IL's own `/27/Government` page linked
+    `youtube.com/watch?v=uOZhGc1emjQ&ab_channel=IllinoisCourts`, titled
+    "Illinois Jury Orientation." The state judicial branch's own public
+    jury-service video is a real, separate public body from the county
+    government whose page happened to link it -- missed by the original
+    phrase list (no court/judicial phrase existed), confirmed live, and
+    closed here."""
+    result = classify_video_hand_check(
+        title="Illinois Jury Orientation",
+        channel_text="IllinoisCourts",
+        gov_name="Woodford County",
+        gov_kind="county",
+    )
+    assert result is not None
+    kind, reason = result
+    assert kind == "A"
+    assert "jury" in reason.lower() or "court" in reason.lower()
+
+
+def test_circuit_court_clerk_is_kind_a():
+    result = classify_video_hand_check(
+        title="Clerk of the Circuit Court Annual Report",
+        channel_text="County Courts",
+        gov_name="Anywhere County",
+        gov_kind="county",
+    )
+    assert result is not None
+    assert result[0] == "A"

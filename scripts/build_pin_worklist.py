@@ -1146,10 +1146,11 @@ def main() -> None:
     print("")
     print('Next: fill `ryan_gov_name` with a plain-English name, or "ok" to')
     print('accept `proposed_name`, or "skip".')
-    print("A channel pin only when the channel's own name says this government")
-    print("AND its type (city vs county vs township vs village); a community-TV,")
-    print("county or school channel that carries a town's meetings gets per-video")
-    print("pins only (WO-237). Then:")
+    print('On a YouTube row, add "own channel" to ryan_note when the channel\'s')
+    print("own name says this government AND its type (city vs county vs township")
+    print("vs village): that writes a channel= pin that keys every future upload.")
+    print("A community-TV, county or school channel that carries a town's meetings")
+    print("gets per-video pins only -- leave the token off (WO-237/WO-244). Then:")
     print("  python scripts/apply_pin_worklist.py")
 
 

@@ -1,7 +1,9 @@
 # CMS families field guide (WO-154, 2026-09-10; WordPress family and
 own-domain path pilot added by WO-176, 2026-09-10; GovOffice, Municipal
 Impact and two state-hosted portal families added by WO-179,
-2026-09-10)
+2026-09-10; WordPress's near-universal `/feed/` rate and a small-sample
+CivicPlus video-rate signal added by WO-197, 2026-09-11; WordPress
+surface pilot and recipe added by WO-270, 2026-09-12)
 
 Read this before touching `scripts/cms_fingerprint.py` or
 `app/utils/jurisdiction_data/cms_families.csv`. It explains what a
@@ -184,6 +186,73 @@ rely on them. ProudCity (below) is itself a WordPress build and keeps
 its own more specific family name/rule, checked first — this WordPress
 rule is the fallback for every OTHER WordPress-built government site.
 
+**WO-197 (2026-09-11) found a second, separate reason WordPress is worth
+special treatment: its `/feed/` answers almost every time.** Checking
+2,471 real "a listing page was found, but no video-platform link" sites
+left over from WO-179 for direct video/audio and a working RSS/Atom/ICS
+feed, WordPress sites answered a feed 82.3% of the time (1,354 of 1,645)
+— by far the highest feed-hit rate of any family measured, and higher
+than WordPress's own direct-hit rate for video (7.9%, 130 of 1,645).
+This is exactly what WordPress's own architecture predicts (`/feed/` is
+a built-in, always-on route on a stock install, not a per-tenant
+choice), so treat a WordPress site's `/feed/` as close to a default
+"yes" going into any future feed-based work, the same way `/AgendaCenter`
+is treated as a default "yes" for CivicPlus. See
+`scripts/wo197_media_scan.py`'s feed-detection step and
+`~/Documents/rtr-business/research/wo197_report.csv` for the full,
+per-government data this rate is drawn from.
+
+**The same pass found a small-sample but striking video rate for
+CivicPlus: 66.7% (12 of 18).** These are CivicPlus sites WO-174/179 had
+already checked `/AgendaCenter` for and recorded as carrying no
+recognised platform link — WO-197's direct media/one-hop scan found real
+video or audio on two-thirds of the handful left over anyway, well above
+every other family measured in this same pass (unknown 11.6%, OpenCities
+23.1%, Town Web 6.0%, Revize 6.0%, GovOffice/Municipal Impact 0%). n=18
+is too small to call this a confirmed rate — unlike the families above,
+this one hasn't been checked against a second, independent sample yet —
+but it's a real, live-measured signal that a CivicPlus page can carry
+video (an embed, a direct file link, or a link one hop into a meeting
+detail page) that isn't on `/AgendaCenter` itself, worth a larger,
+CivicPlus-specific follow-up before treating it as settled either way.
+
+**WO-270 (2026-09-12) piloted every other cheap WordPress surface
+(`/wp-json/` REST API, custom post types, the posts-search REST
+endpoint, the media library, an events REST endpoint, sitemaps, and the
+front page) against 127 WordPress governments with a known Archive video
+and 150 confirmed no-video, to find what reveals a real meeting video
+beyond `/feed/` and `/?s=agenda`. None individually cleared the 90%
+hit / 5% false-positive bar `platform_signatures.csv` uses (full numbers:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §295,
+`docs/investigations/platform_fingerprints.md`'s WO-270 addendum) — the
+9-word meeting vocabulary (agenda/minutes/meeting/council/board/
+commission/hearing/workshop/session) is just as common on no-video sites
+as video sites, reproducing WO-197's own finding, and no plugin, theme,
+or `/wp-json/` namespace name discriminates cleanly either. The closest
+lead: a literal `youtube.com`/`youtu.be` link on the government's own
+front page (65% hit, 7% false-positive on this sample) — not confirmed
+enough to auto-adopt, but the cheapest real filter available, since the
+front page is already fetched for CMS fingerprinting.**
+
+**Recipe for a WordPress-confirmed site with no known video (in order of
+cost — WO-271 and the drip should run these in this order and stop at
+the first real hit):**
+1. Check the already-fetched front page for a `youtube.com`/`youtu.be`/
+   `vimeo.com` link or an embedded player.
+2. Fetch `/feed/` (92.8% availability in this pilot) and check it for
+   the same video-host markers, then for the meeting-word list (useful
+   for finding a real meeting/agenda page even with no video on it).
+3. If nothing, try the REST posts search
+   (`/wp-json/wp/v2/posts?search=youtube`, then `agenda`, then
+   `meeting`) — the single most productive surface in this pilot for
+   reaching a specific real video post (11 of the 14 "known video
+   found" cases in WO-270 came from posts search or the feed).
+4. Site search (`/?s=youtube`) as a REST-free fallback when `/wp-json/`
+   is blocked or disabled (88.8% availability, works via plain HTML,
+   needs no REST API at all).
+5. Sitemaps and an events REST endpoint (when one exists) last — lowest
+   yield of every surface tested in this pilot.
+
 ### GovOffice
 
 Added WO-179 (2026-09-10). Unlike every family above, the government's
@@ -299,3 +368,9 @@ family-scale sweep's write-up: WordPress's `/?s=agenda` method run at
 scale over the full `wo174_candidates.csv` population, and how the
 GovOffice/Municipal Impact/state-hosted families above were learned
 (10 real tenants each) and then applied to the rest of that population.
+
+`~/Documents/rtr-business/research/wo197_report.csv` has the per-
+government data behind WO-197's own feed-rate and CivicPlus video-rate
+numbers above: the 2,471 WO-179 "listing found, no platform link"
+governments, checked for direct video/audio and a working feed, one row
+each, with the CMS family carried over from `wo179_report.csv`.

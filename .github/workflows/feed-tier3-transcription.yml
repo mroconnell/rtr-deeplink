@@ -112,15 +112,27 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # WO-254: this step used to `git add` only the queue file, so
+          # every row feed_tier3_auto_transcription.py's
+          # _push_if_has_video() wrote to the tracked probe sidecar CSV
+          # (scripts/tier3_auto_transcription_queue_probe.csv, via
+          # app/platforms/queue_probe.py's append_probe_row()) sat only in
+          # this ephemeral runner's working tree and was discarded when the
+          # job ended -- every run, since the workflow started. Stage both
+          # paths and check both diffs before deciding there's nothing to
+          # commit. append_probe_row() only ever appends, so this commits
+          # the tracked file's existing rows plus this run's new ones, the
+          # same append-only union the file has always been built for.
           git add scripts/tier3_auto_transcription_queue.txt
+          git add scripts/tier3_auto_transcription_queue_probe.csv
           if git diff --cached --quiet; then
-            echo "No queue change to commit."
+            echo "No queue or probe-sidecar change to commit."
             exit 0
           fi
 
           BRANCH="queue-advance/tier3-${{ github.run_id }}"
           git checkout -b "$BRANCH"
-          git commit -m "Advance tier 3 auto-transcription queue"
+          git commit -m "Advance tier 3 auto-transcription queue and probe sidecar"
           git push -u origin "$BRANCH"
 
           PR_URL=$(gh pr create \

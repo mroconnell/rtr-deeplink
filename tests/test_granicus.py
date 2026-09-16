@@ -8,6 +8,7 @@ from app.platforms.granicus import (
     GranicusAssetFinder,
     _is_broken_s3_underscore_host,
     _s3_path_style,
+    list_recent_video_meetings,
 )
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -1236,3 +1237,145 @@ async def test_resolve_rejects_a_domain_shaped_rss_channel_title():
         result = await GranicusAssetFinder().resolve(url)
 
     assert result.jurisdiction == "Unknown Jurisdiction"
+
+
+# --- WO-285: Granicus's newer /player/clip/ UI redirect shape -----------
+#
+# BACKLOG.md (WO-260) claimed the adapter couldn't extract a playable
+# video from lccountymt.granicus.com's newer player UI
+# (`MediaPlayer.php?view_id=1&clip_id=N` 302-redirecting to
+# `/player/clip/{id}?view_id=1&redirect=true`), reproduced on 3 real,
+# recent clip ids. Re-verified live 2026-09-12 against the SAME tenant:
+# the entry's claim doesn't hold up as an adapter bug. `_extract_clip_id`
+# already parses `{id}` correctly out of this exact URL shape
+# (`.split("/player/clip/")[1].split("?")[0]` -- the trailing
+# `?view_id=1&redirect=true` is dropped by the first `.split("?")`, same
+# as any other query string), and a real, older clip on this identical
+# page template (clip 3500) resolves its video correctly through this
+# same shape. The three specific real clips the original report checked
+# (4198/4199/4202, confirmed via this tenant's own real RSS feed to be
+# genuinely the most recent "Board of County Commissioners" meetings as
+# of 2026-09-12) do fail -- but a byte-for-byte diff of the two real
+# fetched pages shows why: Granicus's OWN page embeds a literal
+# `video_url=""` for the failing ones (and `maxValInSec=0`, its own
+# clip-length field), the identical empty-source shape a genuinely
+# not-yet-encoded/video-less clip already produces on every other
+# Granicus tenant -- not a URL-shape parsing gap. Spot-checking clips in
+# between (4050, 4100, 3700) found real, populated video_url values
+# interspersed among the empty ones, ruling out a clean "everything after
+# some date" cutoff too. No code change: these two tests lock in the
+# already-correct behavior on both real fixtures fetched 2026-09-12,
+# instead.
+
+
+async def test_resolve_new_player_ui_redirect_shape_resolves_real_video():
+    # Real page, lccountymt.granicus.com clip 3500 -- confirmed live to
+    # already carry a real, populated `video_url` under this exact
+    # `/player/clip/{id}?view_id=1&redirect=true` shape.
+    url = "https://lccountymt.granicus.com/player/clip/3500?view_id=1&redirect=true"
+    html = load_fixture("granicus", "lccountymt_mediaplayer_3500.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://lccountymt.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video": (
+            FakeResponse(status=404)
+        ),
+        "https://lccountymt.granicus.com/videos/3500/captions.vtt": FakeResponse(
+            status=200, text="WEBVTT\n\n"
+        ),
+        "https://lccountymt.granicus.com/videos/3500/player": FakeResponse(status=404),
+        "https://lccountymt.granicus.com/AgendaViewer.php?clip_id=3500&embedded=1": (
+            FakeResponse(status=404)
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.platform == "granicus"
+    assert result.external_id == "granicus:lccountymt.granicus.com:3500"
+    assert result.video_url == (
+        "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/"
+        "lccountymt/lccountymt_9fb9eb83-bf70-4b61-be66-ce8b7e90c54d.mp4/playlist.m3u8"
+    )
+    assert result.video_format == "m3u8"
+    assert result.video_warnings == []
+
+
+async def test_resolve_new_player_ui_genuinely_empty_video_url_is_honest_no_video():
+    # Real page, lccountymt.granicus.com clip 4202 (one of the 3 clips
+    # BACKLOG.md's WO-260 entry checked) -- SAME page template and SAME
+    # `/player/clip/{id}?view_id=1&redirect=true` shape as the real-video
+    # case above, but Granicus's own page embeds a literal `video_url=""`
+    # for this clip (confirmed by a byte-for-byte diff against the
+    # fixture above). This must resolve to an honest "no video" result,
+    # not a crash -- and confirms this is upstream data, not something
+    # any URL-shape parsing change here could fix.
+    url = "https://lccountymt.granicus.com/player/clip/4202?view_id=1&redirect=true"
+    html = load_fixture("granicus", "lccountymt_mediaplayer_4202.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://lccountymt.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video": (
+            FakeResponse(status=404)
+        ),
+        "https://lccountymt.granicus.com/videos/4202/captions.vtt": FakeResponse(
+            status=200, text="WEBVTT\n\n"
+        ),
+        "https://lccountymt.granicus.com/videos/4202/player": FakeResponse(status=404),
+        "https://lccountymt.granicus.com/AgendaViewer.php?clip_id=4202&embedded=1": (
+            FakeResponse(status=404)
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No playable video found on this page."]
+
+
+async def test_list_recent_video_meetings_real_pwcva_feed():
+    # WO-333: real, raw-saved Granicus "Videos Feed" for Prince William
+    # County, VA (view_id=23), fetched live 2026-09-13. This is the
+    # WO-331 control case where the passive-discovery pipeline confirmed
+    # a plain "AgendaViewer.php" link from `find_platform_link()` (the
+    # AGENDA-mode feed the government's own page happened to link to)
+    # and found no video, even though a real video exists two meetings
+    # back -- confirmed live that Granicus's separate VIDEO-mode feed for
+    # the same view_id lists it directly. The newest item in this real
+    # feed (Board of County Supervisors Work Session, Sep 15) has no
+    # clip_id in its <link> yet (an agenda posted with no video attached
+    # -- Granicus's normal "not recorded yet" shape) and must be skipped;
+    # the second item (Joint Interjurisdictional Ad Hoc Committee, Sep
+    # 09, clip_id=3903) is the newest one with real video.
+    url = "https://pwcgov.granicus.com/AgendaViewer.php?view_id=23&clip_id=3903"
+    rss_xml = load_fixture("granicus", "pwcva_view23_rss_video.xml")
+
+    routes = {
+        "https://pwcgov.granicus.com/ViewPublisherRSS.php?view_id=23&mode=video": (
+            FakeResponse(status=200, text=rss_xml)
+        ),
+    }
+
+    with mock_session(routes):
+        items = await list_recent_video_meetings(url)
+
+    assert len(items) >= 2
+    assert items[0]["url"] == (
+        "https://pwcgov.granicus.com/MediaPlayer.php?view_id=23&clip_id=3903"
+    )
+    assert items[0]["date"] == "2026-09-09"
+    assert (
+        items[0]["title"] == "Joint Interjurisdictional Ad Hoc Committee - Sep 09, 2026"
+    )
+
+
+async def test_list_recent_video_meetings_no_view_id_returns_empty():
+    # A Granicus URL with no view_id at all (e.g. a bare /player/clip/{id}
+    # short-link) has nothing to build a feed URL from -- returns [],
+    # never raises, same best-effort posture as _fetch_channel_info().
+    items = await list_recent_video_meetings(
+        "https://napacity.granicus.com/player/clip/3450"
+    )
+    assert items == []

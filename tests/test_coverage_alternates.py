@@ -901,3 +901,25 @@ def test_canonicalize_domain_never_blanks_a_nonblank_value():
     ]:
         host, _ = canonicalize_domain(v)
         assert host != ""
+
+
+def test_unverified_meeting_without_video_is_the_same_finding():
+    # WO-351 (2026-09-13): the 1,888 rows renamed meeting-without-video-unverified
+    # (a pre-WO-333 verdict) must still count as "meeting found, no video" for
+    # the alternate-domain hop, classify as a content reason, and never retry
+    # under the no-meeting trigger, exactly like the plain label.
+    assert "meeting-without-video-unverified" in MEETING_FOUND_NO_VIDEO_REASONS
+    assert "meeting-without-video-unverified" in CONTENT_REASONS
+    assert "meeting-without-video-unverified" in NEVER_RETRY_REASONS
+    assert not is_retry_worthy("meeting-without-video-unverified", trigger="no-meeting")
+
+
+def test_cablecast_no_vod_is_meeting_found_no_video():
+    # 2026-09-14 (Topeka KS spot-check): a real Cablecast tenant whose API
+    # returns an empty `vods` field on every show for a month is a
+    # "meeting found, no video" finding -- content class, alternate hop
+    # fires, never retried under the no-meeting trigger.
+    assert "cablecast-no-vod" in MEETING_FOUND_NO_VIDEO_REASONS
+    assert "cablecast-no-vod" in CONTENT_REASONS
+    assert "cablecast-no-vod" in NEVER_RETRY_REASONS
+    assert not is_retry_worthy("cablecast-no-vod", trigger="no-meeting")

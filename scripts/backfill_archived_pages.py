@@ -30,6 +30,27 @@ Usage (from the repo root, with the venv active):
     python scripts/backfill_archived_pages.py --dry-run --url-contains longbeachca
     python scripts/backfill_archived_pages.py --delay 3
 
+`--missing-channel-only` restricts the sweep to pages whose
+`video_channel` is still NULL or blank (WO-295). Why this exists: until
+PR #999 (2026-09-11) the YouTube adapter dropped the video's channel, so
+~3,464 archived YouTube pages ended up with `video_channel` NULL.
+`scripts/backfill_video_channel.py` (WO-246) fills ~1,903 of those for
+free from per-video records already in this repo -- no YouTube call at
+all. The remaining ~1,676 have no channel on record anywhere and need a
+real re-resolve, which is this script -- but without this flag it would
+re-touch all 3,464 pages, most of which need no re-resolve at all. Run
+`backfill_video_channel.py --apply` first so this flag's candidate set is
+already down to the genuinely-unfilled remainder. Every page this flag
+selects is (as of WO-295) a YouTube page, so combine it with
+`--platform youtube`:
+    python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --dry-run --limit 20
+    python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --delay 3
+
+This script's YouTube calls must be paced and run only from the drip
+Mac (see CLAUDE.md's "YouTube drip ownership" note) -- never against
+production from a laptop, and always with a real `--delay` (3s is the
+convention used elsewhere in this repo for YouTube-calling scripts).
+
 `--dry-run` re-resolves every page for real (so you can see exactly what
 would change) but never pushes anything to the Archive -- the only way to
 safely preview a real run against real production data before ever
@@ -52,6 +73,35 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+
+def filter_pages(
+    pages: list[dict],
+    *,
+    platform: str | None = None,
+    url_contains: str | None = None,
+    missing_channel_only: bool = False,
+    limit: int | None = None,
+) -> list[dict]:
+    """Applies this script's four candidate-selection flags, in the same
+    order `main()` always has, to a raw `list_all_page_urls()`-shaped list.
+    Pulled out as its own function (WO-295) so --missing-channel-only's
+    filtering logic -- and its combination with the pre-existing flags --
+    is unit-testable against plain dicts, without a live Archive or a real
+    resolve. `missing_channel_only` treats both a NULL `video_channel`
+    (the key absent or None) and a blank string the same way; a stray
+    empty string shouldn't count as "has a channel" any more than NULL
+    does.
+    """
+    if platform:
+        pages = [p for p in pages if p["platform"] == platform]
+    if url_contains:
+        pages = [p for p in pages if url_contains in p["source_url_normalized"]]
+    if missing_channel_only:
+        pages = [p for p in pages if not (p.get("video_channel") or "").strip()]
+    if limit:
+        pages = pages[:limit]
+    return pages
 
 
 async def main() -> None:
@@ -82,6 +132,16 @@ async def main() -> None:
         help="Only process pages whose source URL contains this substring (e.g. longbeachca)",
     )
     parser.add_argument(
+        "--missing-channel-only",
+        action="store_true",
+        help=(
+            "Only process pages whose video_channel is still NULL or blank "
+            "(WO-295) -- combine with --platform youtube to restrict the "
+            "post-PR-999/WO-246 re-resolve sweep to the pages that "
+            "actually still need one, instead of every archived YouTube page"
+        ),
+    )
+    parser.add_argument(
         "--delay",
         type=float,
         default=2.0,
@@ -106,12 +166,13 @@ async def main() -> None:
         )
         sys.exit(1)
 
-    if args.platform:
-        pages = [p for p in pages if p["platform"] == args.platform]
-    if args.url_contains:
-        pages = [p for p in pages if args.url_contains in p["source_url_normalized"]]
-    if args.limit:
-        pages = pages[: args.limit]
+    pages = filter_pages(
+        pages,
+        platform=args.platform,
+        url_contains=args.url_contains,
+        missing_channel_only=args.missing_channel_only,
+        limit=args.limit,
+    )
 
     if not pages:
         print("No matching pages to process.")

@@ -1,6 +1,8 @@
 # Hub architecture audit: how `/j/*` and `/state/*` include and exclude meetings and governments
 
-**Status: closed, one-time audit (WO-232, 2026-09-11).** Ryan asked,
+**Status: audit closed (WO-232, 2026-09-11); the build Ryan decided on
+shipped as WO-256, 2026-09-12 — see §8 at the bottom for what exists
+now.** Ryan asked,
 verbatim: "we are constantly messing with hubs and redirects after pin
 work. The hubs were designed before any of the gov id work or pinning.
 Should we audit the architecture of the hubs and permanently improve how
@@ -385,3 +387,90 @@ freeze at all — once a slug is frozen, "fixing" a hub's naming
 convention later always costs one alias row instead of being free, which
 is a real, permanent trade for a churn source that mostly goes away. See
 `BACKLOG.md`'s `[HUMAN]` entry for the decision framed on its own.
+
+---
+
+## 8. What Ryan decided, and what was built (WO-256, 2026-09-12)
+
+**Ryan decided: do all three, with one addition.** The slug freeze is
+*gated* — a slug becomes permanent only once the hub has existed for 7
+days AND has more than one meeting, so a brand-new government's pin and
+identity churn settles on its own before anything is frozen. Before that
+the slug may still recompute. `hub_slug_frozen_at` is recorded.
+
+**§4, the freeze — built.** `hub_slugs(gov_id, hub_slug, first_seen_at,
+frozen_at)` is a new Archive table (Alembic `e2a1c7b45d93`), read and
+written through `archive/db/hub_slugs.py`, and consulted first by
+`crud._hub_identity()`. The government registry is a CSV, so this is the
+table the §4 "Migration size" note said to check for and build.
+`scripts/freeze_hub_slugs.py` is the one-time backfill: it mints one row
+per government from exactly today's computed slug (so day one moves zero
+URLs) with `first_seen_at` backdated to that government's oldest page,
+then applies the gate. `scripts/backfill_gov_id.py`'s "hub slugs retired"
+line now counts only slugs **no government owns** — a page changing
+government no longer retires a slug, which is the whole point.
+
+**§5, the inclusion rule — built.** `crud._unkeyed_membership()` decides
+which un-keyed pages belong to a hub, from shared tenant host rather than
+raw jurisdiction text, and `_hub_page_condition()`'s second arm is now
+that page-id list. `MULTI_GOV_HOSTS` stays the source of truth for which
+hosts can never be keyed by host alone. Two smaller things fell out of the
+same change and are worth recording: the contamination mechanism was not
+only the text arm — `_hub_groups()` was also putting the shared
+`rtr:unknown:<host>` placeholder id into a real hub's `gov_ids`, which
+then matched *every* page carrying that placeholder, not only the
+text-matching one — and an un-keyed page nothing adopts still keeps its
+own raw-text hub, so no live URL disappears.
+
+**§6, the unknown-bucket internal view — built**, as option A restricted
+to internal use, exactly as this file's own recommendation says: `GET
+/internal/unidentified-pages`, token-gated like every other `/internal/*`
+route, grouped by host and sorted biggest first, with no schema change and
+no new public page. Each host row also names the government whose hub
+already adopts its pages under §5, so the "is this a pin or is it already
+handled?" question is answered in the same view.
+
+Everything the §4 "What remains" list says this does not fix still does
+not: a genuine slug rename still costs one alias row, and a merge of two
+`gov_id`s still needs a human decision. The 5 real mixed-identity hubs
+measured in §2 are now all resolved -- see §10.
+
+**§9, a gap in the freeze found live and fixed -- WO-293, 2026-09-12.**
+The freeze stops a page CHANGING GOVERNMENT from moving a hub's URL, but
+it never protected the retired-alias file itself from a SECOND
+retirement: a minted government's `hub_slug_aliases.csv` row can point at
+a slug that a LATER `backfill_gov_id.py --apply` run retires again (the
+government keeps its `gov_id`; a resolver fix just moves it onto a
+different, correct one), and nothing wrote the second hop. Found by a
+post-freeze check that hit 42 of ~970 alias targets 404ing this way --
+`lake-havasu-az -> city-of-lake-havasu-az -> 404`, the real hub at
+`lake-havasu-city-az`. Fixed: the 42 (4 needed a genuine new redirect, 18
+were pre-existing two-hop chains collapsed to one, the rest are minted
+governments that never gained a page and correctly 404 on their own
+address), plus `scripts/backfill_gov_id.py --apply` now writes (and
+collapses) the alias the moment it retires a slug, via
+`archive/utils/hub_aliases.write_retirements()`. **Known remaining
+gap**, filed in `BACKLOG.md`: the retirement DETECTION this hooks onto
+only fires for a blank/`rtr:unknown:`-origin page gaining identity for
+the first time, not for a KEYED minted government re-keyed onto a
+DIFFERENT keyed government -- the exact shape that produced the Lake
+Havasu chain in the first place. See `BACKLOG_DONE.md`'s WO-293 entry for
+the full repair and measurements.
+
+**§10, the 5 real mixed-identity hubs from §2 -- all resolved
+(WO-310/WO-316, 2026-09-12).** WO-310 re-measured the original 5 live
+against the production `hub_slugs` table (not the year-old export §2
+was built from) and found a different shape: 2 were genuine duplicate
+mints of one real government each (`deerfield-township-oh`,
+`paso-robles-ca`), fixed by re-keying the one page under each duplicate
+id via `POST /internal/jurisdiction/override`. The other 3 were real
+2-government splits -- and Yarmouth NS turned out to be a real
+THREE-government split (county + 2 subdivisions), not the 2 the
+original §2 measurement counted. No tool existed to give a second (or
+third) government its own frozen slug once WO-256's freeze was in
+place; WO-316 built `scripts/split_hub_slug.py` for exactly this and
+ran it for all 4 remaining splits (Middletown Township, Bucks County PA;
+the Municipal District of Yarmouth, NS; the Town of Yarmouth, NS; the
+Town of Lunenburg, NS), verified live -- each hub now renders only its
+own government's pages. See `BACKLOG_DONE.md`'s WO-310 and WO-316
+entries for the full measurement and fix detail.

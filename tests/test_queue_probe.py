@@ -31,6 +31,7 @@ from app.platforms.queue_probe import (
     _sum_extinf,
     probe_queue_entry,
 )
+from conftest import load_fixture
 from tests.aiohttp_mock import FakeResponse, mock_session
 
 # --- pure logic: verdict boundaries -----------------------------------
@@ -264,6 +265,72 @@ async def test_probe_telvue_no_playlist_found_is_reject_dead():
         )
     assert result.verdict == "reject-dead"
     assert "no Player.setupData" in result.reason
+
+
+# --- Viebit ----------------------------------------------------------------
+# WO-306 (2026-09-12): every Viebit candidate died here as "no probe recipe"
+# before this -- resolve() rebuilds video_url as the safe-to-iframe
+# /embed/vod?v={id} page (see viebit.py's own docstring), never the raw HLS
+# master.m3u8, so this dispatch never saw anything HLS-shaped. The synthetic
+# pageConfig shape below is real and confirmed (a live Delano, MN fetch,
+# 2026-09-12) -- only the id/title/hash values here are made up.
+
+_SYNTHETIC_VIEBIT_PAGE_CONFIG = (
+    '<script>var pageConfig = {{"video":{{"id":"abc123","title":"City '
+    'Council Meeting","dateCreated":1787102320,"src":[{{"storage":'
+    '"https://vbfast-vod.viebit.com/example/abc123/","url":'
+    '"master.m3u8","type":"application/x-mpegurl"}}],"textTracks":[]}},'
+    '"hasAccess":{has_access}}};</script>'
+)
+
+
+async def test_probe_viebit_accepts_with_unknown_duration():
+    page_url = "https://example.viebit.com/watch?hash=abc123"
+    html = _SYNTHETIC_VIEBIT_PAGE_CONFIG.format(has_access="true")
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "accept"
+    assert result.duration_seconds is None
+    assert "CDN-gated" in result.reason
+
+
+async def test_probe_viebit_no_access_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=gated"
+    html = _SYNTHETIC_VIEBIT_PAGE_CONFIG.format(has_access="false")
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "hasAccess=false" in result.reason
+
+
+async def test_probe_viebit_no_page_config_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=missing"
+    with mock_session(
+        {page_url: FakeResponse(status=200, text="<html>nothing here</html>")}
+    ):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "no Viebit pageConfig" in result.reason
+
+
+async def test_probe_viebit_no_video_src_is_reject_dead():
+    page_url = "https://example.viebit.com/watch?hash=novideo"
+    html = (
+        '<script>var pageConfig = {"video":{"id":"abc123","src":[]},'
+        '"hasAccess":true};</script>'
+    )
+    with mock_session({page_url: FakeResponse(status=200, text=html)}):
+        result = await probe_queue_entry(
+            page_url, video_url=page_url, platform="viebit"
+        )
+    assert result.verdict == "reject-dead"
+    assert "no video.src" in result.reason
 
 
 # --- Vimeo oEmbed ---------------------------------------------------------
@@ -664,6 +731,78 @@ async def test_probe_queue_entry_dispatches_direct_file_for_utah_pmn_m4a(monkeyp
     assert result.duration_seconds == 1830.0
 
 
+async def test_probe_queue_entry_accepts_audio_only_laserfiche_docid_shape(
+    monkeypatch,
+):
+    # WO-317, 2026-09-12: BACKLOG.md's Laserfiche entry asked for a new
+    # probe recipe for an audio-only Laserfiche source. Measured, not
+    # assumed: direct_file.py's adapter fix alone (classifying real MP3
+    # bytes and setting `video_format="mp3"`) is enough -- this dispatch
+    # already accepts a bare `.mp3` via `video_format` (WO-166), and
+    # `.mp3` is already in `_DIRECT_FILE_EXTENSIONS`, so NO change was
+    # needed here. This test documents that finding against the real
+    # Deschutes County, OR URL shape rather than a generic placeholder.
+    media_url = (
+        "https://weblink.deschutes.org/WebLink/ElectronicFile.aspx"
+        "?docid=94746&dbid=0&repo=LFPUB"
+    )
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp3"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "direct_file")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 1899.488  # the real ffprobe duration, confirmed live
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "22637874"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 1899.488
+
+
+async def test_probe_queue_entry_accepts_audio_only_laserfiche_edoc_shape(monkeypatch):
+    # WO-317: the OTHER real confirmed shape (Ramsey city, MN's older
+    # WebLink 9 `/edoc/<docid>/<filename>.mp3` path) -- this one DOES
+    # carry a real `.mp3` extension in the URL itself, so `media_path.
+    # endswith(_DIRECT_FILE_EXTENSIONS)` accepts it directly, without
+    # even needing the `video_format` fallback the docid shape above
+    # relies on.
+    media_url = (
+        "https://weblink.cityoframsey.com/WebLink/0/edoc/813049/"
+        "Meeting%20AudioVideo%20-%20Council%20Work%20Session%20-%2009082026.mp3"
+    )
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp3"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "direct_file")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 4920.947  # the real ffprobe duration, confirmed live
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "39368600"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 4920.947
+
+
 # --- Resolve-first path (video_url not given) ---------------------------
 
 
@@ -803,6 +942,92 @@ async def test_probe_queue_entry_dispatches_youtube_for_a_civicweb_page(monkeypa
     result = await probe_queue_entry(page)
     assert seen["video_url"] == embed
     assert result.verdict == "accept" and result.duration_seconds == 1500.0
+
+
+# --- WO-285: SuiteOne (CivicClerk delegation) ---------------------------
+
+
+async def test_probe_queue_entry_dispatches_suiteone_for_a_civicclerk_delegation():
+    # Real shape, WO-213/BACKLOG.md: CivicClerk resolves Vineyard, UT's
+    # event/1453 to a SuiteOne player page
+    # (`vineyardut.suiteonemedia.com/web/Player.aspx?id=1612&...`) --
+    # `queue_probe.py` had no SuiteOne branch at all, so all 16 of
+    # Vineyard's real CivicClerk lines were "no probe recipe for this
+    # media shape" even though the video is real. `platform="civicclerk"`
+    # here matches the real sidecar row's own platform column exactly --
+    # dispatch must go by the SuiteOne HOST in `video_url`, not
+    # `resolved_platform`, the same "what the video IS" reasoning WO-205
+    # used for CivicWeb->YouTube above.
+    meeting_url = "https://vineyardut.portal.civicclerk.com/event/1453/media"
+    player_url = (
+        "http://vineyardut.suiteonemedia.com/web/Player.aspx"
+        "?id=1612&key=-1&mod=-1&mk=-1&nov=0"
+    )
+    player_html = load_fixture("suiteone", "vineyardut_player.html")
+    media_url = "https://s3.amazonaws.com/suiteone.vineyardut.videofiles/cb54ea20.mp4"
+    home_url = "http://vineyardut.suiteonemedia.com/"
+    captions_url = "http://vineyardut.suiteonemedia.com/Event/GetCaptions/?eventId=1612"
+
+    routes = {
+        player_url: FakeResponse(status=200, text=player_html, url=player_url),
+        home_url: FakeResponse(status=404, text=""),
+        captions_url: FakeResponse(status=404, text=""),
+    }
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 3912.0
+
+    with mock.patch.object(media_probe, "probe_duration", _fake_probe_duration):
+        with mock_session(routes):
+            with _mock_head(
+                {
+                    media_url: FakeResponse(
+                        status=200, headers={"Content-Length": "600000000"}
+                    )
+                }
+            ):
+                result = await probe_queue_entry(
+                    meeting_url, video_url=player_url, platform="civicclerk"
+                )
+
+    assert result.verdict == "accept"
+    assert result.platform == "suiteone"
+    assert result.duration_seconds == 3912.0
+
+
+async def test_probe_suiteone_resolve_error_is_reject_dead_not_a_crash():
+    # The Constraint this WO's own BACKLOG.md entry names: suiteone.py's
+    # resolve() can still raise a raw ValueError for a URL shape it
+    # can't parse at all (the separate, narrower bare-tenant-management-
+    # root gap WO-149 already filed) -- must not abort the whole probe
+    # run.
+    result = await queue_probe._probe_suiteone(
+        "https://example.gov/meeting",
+        "https://lunaconm.suiteonemedia.com/",
+        None,
+        0.0,
+    )
+    assert result.verdict == "reject-dead"
+    assert "SuiteOne resolve raised" in result.reason
+
+
+async def test_probe_suiteone_no_video_yet_is_reject_dead():
+    # Real shape: a not-yet-recorded SuiteOne event serves `var src =
+    # '';` (St Marys, GA event 1000 -- see tests/test_suiteone.py) --
+    # this must be a clean reject, not an exception.
+    live_html = load_fixture("suiteone", "floydcoin_live.html")
+    live_url = "https://floydcoin.suiteonemedia.com/web/live/"
+
+    with mock_session(
+        {live_url: FakeResponse(status=200, text=live_html, url=live_url)}
+    ):
+        result = await queue_probe._probe_suiteone(
+            "https://example.gov/meeting", live_url, None, 0.0
+        )
+
+    assert result.verdict == "reject-dead"
+    assert "no playable video" in result.reason
 
 
 # --- WO-224: the shared finish step ----------------------------------------
@@ -1104,6 +1329,25 @@ def test_parse_pin_row_malformed_returns_none():
     assert queue_probe.parse_pin_row(None) is None
 
 
+def test_parse_pin_row_blank_match_single_tenant_host():
+    """WO-321, 2026-09-12: a blank match is a legitimate single-tenant
+    pin_row shape (one government per tenant host, no discriminator
+    needed) and must not be dropped here -- write_pin_row() already
+    accepts a blank match for anything that isn't a MULTI_GOV_HOSTS host
+    (WO-307), but parse_pin_row() used to refuse it one step earlier."""
+    parsed = queue_probe.parse_pin_row(
+        "bedfordoh.primegov.com||us:county:39035|fallback|wo321|evidence text"
+    )
+    assert parsed == {
+        "host": "bedfordoh.primegov.com",
+        "match": "",
+        "gov_id": "us:county:39035",
+        "strength": "fallback",
+        "source": "wo321",
+        "evidence": "evidence text",
+    }
+
+
 def test_write_pin_row_dedupe_checked(tmp_path):
     pins_path = tmp_path / "pins.csv"
     kwargs = dict(
@@ -1115,3 +1359,41 @@ def test_write_pin_row_dedupe_checked(tmp_path):
     assert queue_probe.write_pin_row(**kwargs) is True
     assert queue_probe.write_pin_row(**kwargs) is False
     assert pins_path.read_text().count("www.youtube.com") == 1
+
+
+def test_write_pin_row_blank_match_allowed_on_single_tenant_host(tmp_path):
+    """WO-307 (2026-09-12): a blank `match` is exactly what the
+    committed tenant_overrides.csv already uses for a single-tenant
+    Viebit/Cablecast/TelVue subdomain (one government per tenant) --
+    this function used to refuse it unconditionally, silently blocking a
+    real already-queued government (buffalo.viebit.com) from ever being
+    pinned via the shared finish path."""
+    pins_path = tmp_path / "pins.csv"
+    assert (
+        queue_probe.write_pin_row(
+            host="buffalo.viebit.com",
+            match="",
+            gov_id="us:place:2708452",
+            pins_path=pins_path,
+        )
+        is True
+    )
+    assert "buffalo.viebit.com" in pins_path.read_text()
+
+
+def test_write_pin_row_blank_match_still_refused_on_multi_gov_host(tmp_path):
+    """The WO-210 safeguard this function was built to honour: a blank
+    match on a real multi-government host (youtube.com, vimeo.com, ...)
+    must still be refused outright -- it would key every unidentified
+    video on the whole host to one government."""
+    pins_path = tmp_path / "pins.csv"
+    assert (
+        queue_probe.write_pin_row(
+            host="www.youtube.com",
+            match="",
+            gov_id="us:place:0000006",
+            pins_path=pins_path,
+        )
+        is False
+    )
+    assert not pins_path.exists()

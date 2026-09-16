@@ -1,0 +1,153 @@
+# WO-290 youtube-only leads (under 5,000, not school district, no page) -- for the drip lane.
+# gov_id	city_name	state_or_province	domain	reject_reason
+us:place:0177880	Union Springs city	Alabama	unionspringsal.gov	meeting-without-video
+us:county:02013	Aleutians East Borough	Alaska	aleutianseast.org	meeting-without-video
+us:county:02060	Bristol Bay Borough	Alaska	bristolbayboroughak.us	no-platform-link-found
+ca:csd:4805048	Three Hills	Alberta	threehills.ca	rejected-by-probe
+us:place:0433280	Holbrook city	Arizona	holbrookaz.gov	video-no-captions-queued
+us:place:0518550	Des Arc city	Arkansas	desarcpd.com	no-platform-link-found
+us:place:0820440	Dillon town	Colorado	dillonco.gov	video-no-captions-queued
+us:place:0851635	Monte Vista city	Colorado	montevista.gov	
+us:place:0862880	Rangely town	Colorado	townofrangely.colorado.gov	
+us:place:0884770	Wiggins town	Colorado	wigginsco.gov	no-platform-link-found
+us:place:1041310	Laurel town	Delaware	townoflaurel.net	
+us:place:1302564	Arabi town	Georgia	cityofarabi.com	no-platform-link-found
+us:place:1312120	Butler city	Georgia	cityofbutlerga.com	no-platform-link-found
+us:place:1332528	Georgetown-Quitman County unified government	Georgia	gqc-ga.org	no-platform-link-found
+us:place:1345936	Lenox town	Georgia	municipalimpact.com	no-platform-link-found
+us:place:1371282	Sky Valley city	Georgia	skyvalleyga.com	signature-found-not-verified
+us:place:1703610	Bannockburn village	Illinois	bannockburn.org	no-platform-link-found
+us:place:1724764	Fairbury city	Illinois	fairburyil.gov	meeting-without-video
+us:place:1735398	Hoffman village	Illinois	villageofhoffman.us	no-platform-link-found
+us:place:1750530	Morrison city	Illinois	morrisonil.org	meeting-without-video
+us:place:1751128	Mount Pulaski city	Illinois	cityofmtpulaski.com	no-platform-link-found
+us:place:1779397	Wayne village	Illinois	villageofwayne.org	no-platform-link-found
+us:place:1809910	Camden town	Indiana	townofcamden.org	cloudflare-challenge-blocked
+us:place:1834420	Homecroft town	Indiana	townofhomecroftin.gov	no-meeting-nor-video
+us:place:1843434	Liberty town	Indiana	libertyin.gov	signature-found-not-verified
+us:place:1856286	Oldenburg town	Indiana	oldenburgindiana.org	no-platform-link-found
+us:place:1864980	Roachdale town	Indiana	townofroachdale.org	no-platform-link-found
+us:place:1876310	Trafalgar town	Indiana	townoftrafalgar.org	
+us:place:1937470	Hudson city	Iowa	cityofhudsonia.com	meeting-without-video
+us:place:1964740	Princeton city	Iowa	princetoniowa.us	rejected_by_probe
+us:place:2036550	Kensington city	Kansas	kensingtonks.net	no-platform-link-found
+us:place:2057700	Pretty Prairie city	Kansas	cityofprettyprairie.org	no-platform-link-found
+us:place:2156910	Nortonville city	Kentucky	um-palembang.ac.id	video-without-meeting
+us:place:2466275	Rising Sun town	Maryland	risingsunmd.org	meeting-without-video
+us:place:2479875	Upper Marlboro town	Maryland	uppermarlboromd.gov	
+us:place:2603740	Ashley village	Michigan	ashleyvillage.org	no-platform-link-found
+us:place:2611000	Brooklyn village	Michigan	villageofbrooklyn.com	no-platform-link-found
+us:place:2613880	Cass City village	Michigan	casscity.org	meeting-without-video
+us:place:2632980	Goodrich village	Michigan	village.of.goodrich.com	dns-unresolvable
+us:place:2636560	Harbor Springs city	Michigan	cityofharborsprings.com	signature-found-not-verified
+us:place:2644715	Lake Isabella village	Michigan	lakeisabellami.org	signature-found-not-verified
+us:place:2659220	Norway city	Michigan	norwaymi.gov	video-no-captions-queued
+us:place:2661220	Ortonville village	Michigan	ortonvillevillage.com	no-platform-link-found
+us:place:2663540	Pentwater village	Michigan	pentwatervillage.org	rejected-by-probe
+us:place:2707516	Breezy Point city	Minnesota	breezypointmn.gov	cloudflare-challenge-blocked
+us:place:2720222	Fairfax city	Minnesota	fairfax-mn.gov	no-platform-link-found
+us:place:2724992	Grand Marais city	Minnesota	ci.grand-marais.mn.us	signature-found-not-verified
+us:place:2725334	Grant city	Minnesota	cityofgrant.com	no-platform-link-found
+us:place:2726576	Hallock city	Minnesota	hallockmn.org	no-platform-link-found
+us:place:2732840	Kenyon city	Minnesota	cityofkenyon.gov	no-platform-link-found
+us:place:2741138	Mayer city	Minnesota	mayermn.gov	meeting-without-video
+us:place:2743144	Minnesota City city	Minnesota	minnesotacitymn.gov	no-platform-link-found
+us:place:2765272	Tower city	Minnesota	cityoftower.gov	no-platform-link-found
+us:place:2912898	Centralia city	Missouri	centraliamo.gov	cloudflare-challenge-blocked
+us:place:2917668	Cuba city	Missouri	cubamomurals.com	video-no-captions-queued
+us:place:2938612	Kimberling City city	Missouri	kimberlingcity.net	video-no-captions-queued
+us:place:2953650	Oak Grove Village village	Missouri	cityofoakgrove.com	
+us:place:2966800	Seymour city	Missouri	seymourmo.gov	dns-unresolvable
+us:place:2974284	Twin Oaks village	Missouri	cityoftwinoaks.gov	
+us:place:3071200	Stevensville town	Montana	townofstevensville.com	rejected_by_probe
+us:place:3100415	Ainsworth city	Nebraska	cityofainsworth.com	no-platform-link-found
+us:place:3100730	Alexandria village	Nebraska	alexandriane.com	video-no-captions-queued
+us:place:3106295	Bridgeport city	Nebraska	bridgeportne.gov	no-platform-link-found
+us:place:3111440	Crofton city	Nebraska	crofton-nebraska.com	no-platform-link-found
+us:place:3471010	Stone Harbor borough	New Jersey	youtu.be	already-covered
+us:place:3603331	Avoca village	New York	villageofavocany.com	no-platform-link-found
+us:place:3616419	Clinton village	New York	www.clintondcny.gov	
+us:place:3682678	Wolcott village	New York	villageofwolcottny.gov	no-meeting-nor-video
+us:place:3700500	Ahoskie town	North Carolina	www.youtube.com	no-platform-link-found
+us:place:3706800	Boiling Springs town	North Carolina	boilingspringsnc.gov	video-no-captions-queued
+us:place:3709530	Cajah's Mountain town	North Carolina	cajahsmtn.com	meeting-without-video
+us:place:3722820	Farmville town	North Carolina	farmvillenc.gov	cloudflare-challenge-blocked
+us:place:3736500	Lake Lure town	North Carolina	townoflakelure.com	blocked-plain-http
+us:place:3760180	Sedalia town	North Carolina	sedalianc.org	no-platform-link-found
+us:place:3760505	Seven Devils town	North Carolina	www.sevendevilsnc.gov	cloudflare-challenge-blocked
+us:place:3769520	Valdese town	North Carolina	valdesenc.gov	video-no-captions-queued
+us:place:3901630	Amanda village	Ohio	villageofamanda.com	no-platform-link-found
+us:place:3906194	Bettsville village	Ohio	villageofbettsville.com	cloudflare-challenge-blocked
+us:place:3919694	Cumberland village	Ohio	cumberlandvillageaiken.com	no-platform-link-found
+us:place:3935098	Hicksville village	Ohio	hicksvilleohio.gov	meeting-without-video
+us:place:3938220	Jackson Center village	Ohio	jacksoncenter.com	no-platform-link-found
+us:place:3950904	Mingo Junction village	Ohio	mingojct.us	video-no-captions-queued
+us:place:3950918	Minster village	Ohio	minsteroh.com	meeting-without-video
+us:place:3958604	Orange village	Ohio	orangevillageoh.gov	dns-unresolvable
+us:place:3982390	Waynesfield village	Ohio	waynesfield.gov	no-platform-link-found
+us:county:40007	Beaver County	Oklahoma	beaver.okcounties.org	no-platform-link-found
+us:place:4016500	Commerce city	Oklahoma	commerceokla.com	meeting-without-video
+us:county:40053	Grant County	Oklahoma	www.youtube.com	dns-unresolvable
+ca:csd:3522001	East Garafraxa	Ontario	www.eastgarafraxa.ca	rejected-by-probe
+ca:csd:3557066	Prince	Ontario	www.princetownship.ca	
+us:place:4140700	Lakeview town	Oregon	townoflakeviewor.gov	
+us:place:4150950	Myrtle Creek city	Oregon	cityofmyrtlecreek.com	signature-found-not-verified
+us:place:4226280	Fleetwood borough	Pennsylvania	fleetwoodboro.com	meeting-without-video
+us:place:4235408	Homer City borough	Pennsylvania	homercity.com	no-platform-link-found
+us:place:4267304	St. Lawrence borough	Pennsylvania	stlawboro.us	rejected_by_probe
+us:place:4277912	Turtle Creek borough	Pennsylvania	turtlecreekborough.us	
+us:place:4282160	Wellsboro borough	Pennsylvania	wellsboroborough.com	meeting-without-video
+us:place:4284552	White Haven borough	Pennsylvania	whitehavenborough.org	signature-found-not-verified
+ca:csd:2478060	Arundel	Quebec	www.arundel.ca	no-platform-link-found
+ca:csd:2438070	Deschaillons-sur-Saint-Laurent	Quebec	www.deschaillons.ca	no-platform-link-found
+ca:csd:2469055	Huntingdon	Quebec	www.villehuntingdon.com	meeting-without-video
+ca:csd:2417078	L'Islet	Quebec	www.lislet.com	
+ca:csd:2416048	Les Éboulements	Quebec	www.leseboulements.com	no-platform-link-found
+ca:csd:2472032	Oka	Quebec	www.municipalite.oka.qc.ca	
+ca:csd:2469070	Saint-Anicet	Quebec	www.stanicet.com	
+ca:csd:2454125	Saint-Marcel-de-Richelieu	Quebec	www.saintmarcelderichelieu.ca	no-platform-link-found
+ca:csd:2412035	Saint-Paul-de-la-Croix	Quebec	www.municipalite.saint-paul-de-la-croix.qc.ca	no-platform-link-found
+ca:csd:2446058	Sutton	Quebec	www.sutton.ca	
+ca:csd:4705031	Broadview	Saskatchewan	broadview.ca	no-platform-link-found
+ca:csd:4714069	Carrot River	Saskatchewan	live.carrotriver.ca	no-platform-link-found
+ca:csd:4713008	Kindersley	Saskatchewan	kindersley.ca	
+us:place:4538095	Kershaw town	South Carolina	townofkershawsc.gov	meeting-without-video
+us:place:4538162	Kiawah Island town	South Carolina	kiawahisland.gov	wrong-domain-mapping
+us:place:4603380	Baltic city	South Dakota	baltic.govoffice.com	wrong-domain-mapping
+us:place:4604980	Beresford city	South Dakota	beresfordsd.com	meeting-without-video
+us:place:4618700	Elkton city	South Dakota	elkton.govoffice.com	no-platform-link-found
+us:place:4627540	Hartford city	South Dakota	hartfordsd.us	video-no-captions-queued
+us:place:4630220	Hot Springs city	South Dakota	hotspringssd.gov	meeting-without-video
+us:place:4636380	Lennox city	South Dakota	lennoxsd.gov	dns-unresolvable
+us:place:4670220	Wessington Springs city	South Dakota	wessingtonsprings.com	no-platform-link-found
+us:place:4700640	Algood city	Tennessee	algoodtn.gov	resolve-failed
+us:place:4769900	South Fulton city	Tennessee	cityofsouthfulton.org	no-platform-link-found
+us:place:4770060	South Pittsburg city	Tennessee	southpittsburgtn.org	meeting-without-video
+us:place:4805456	Ballinger city	Texas	ballinger-tx.com	no-platform-link-found
+us:place:4809868	Brackettville city	Texas	brackettvilletx.gov	no-platform-link-found
+us:place:4840336	Laguna Vista town	Texas	lvtexas.us	signature-found-not-verified
+us:place:4873724	Troup city	Texas	trouptexas.org	timeout
+us:place:4874240	Uncertain city	Texas	cityofuncertain.com	no-platform-link-found
+us:place:4922370	Elk Ridge city	Utah	elkridgeutah.gov	video-no-captions-queued
+us:place:4924080	Eureka city	Utah	eurekautah.org	resolve-failed
+us:place:4944100	Leeds town	Utah	leedstown.org	resolve-failed
+us:place:5048850	Newport city	Vermont	newportvermont.org	no-platform-link-found
+us:place:5112808	Cape Charles town	Virginia	capecharles.org	video-no-captions-queued
+us:place:5327365	Gold Bar city	Washington	cityofgoldbar.us	meeting-without-video
+us:place:5404276	Barboursville village	West Virginia	barboursville.org	video-no-captions-queued
+us:place:5404876	Bath (Berkeley Springs) town	West Virginia	townofbath.org	no-platform-link-found
+us:place:5501725	Amery city	Wisconsin	amerywi.gov	video-no-captions-queued
+us:place:5511525	Butternut village	Wisconsin	butternutwi.com	no-platform-link-found
+us:place:5586400	Weyauwega city	Wisconsin	cityofweyauwega-wi.gov	no-platform-link-found
+ca:csd:2442055	Valcourt	Quebec	www.valcourt.ca	
+us:place:0636490	Industry city	California	cityofindustry.org	no-video-found
+us:place:0662602	Rolling Hills city	California	palosverdes.com	video-no-captions-queued
+us:place:0818530	Cripple Creek city	Colorado	cityofcripplecreek.com	video-no-captions-queued
+us:place:1254150	Palm Beach Shores town	Florida	palmbeachshoresfl.us	no-platform-link-found
+us:place:2020000	Edwardsville city	Kansas	edwardsvilleks.org	video-no-captions-queued
+us:place:2646320	Lathrup Village city	Michigan	lathrupvillage.org	video-no-captions-queued
+us:place:2730284	Howard Lake city	Minnesota	howard-lake.mn.us	video-no-captions-queued
+us:place:2749966	Paynesville city	Minnesota	www.youtube.com	already-covered
+us:place:2975922	Versailles city	Missouri	cityofversailles.org	meeting-without-video
+us:place:3704510	Beech Mountain town	North Carolina	townofbeechmountain.com	video-no-captions-queued
+us:place:5177792	Tazewell town	Virginia	townoftazewell.org	video-no-captions-queued

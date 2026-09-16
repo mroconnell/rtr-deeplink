@@ -291,3 +291,162 @@ async def test_the_reader_facing_warning_stays_generic(caplog):
     ]
     assert "429" in caplog.text
     assert ATLANTA_API_URL in caplog.text
+
+
+# WO-308 (2026-09-12): the missing "list what's on this customer" step.
+# See app/platforms/champds.py's module comment above `list_archive_events`
+# for the full investigation. Fixtures are the real first 5 events of a
+# real 169/500-result response from Atlanta GA (`archive_id=1`, the same
+# real customer the fetch-diagnostics tests above already use), trimmed
+# the same way telvue's playlist-item fixture is trimmed to its first 3
+# of 50 real items -- every value is real, only the row count is cut.
+from app.platforms.champds import list_archive_events  # noqa: E402
+
+CHAMPDS_FIXTURES_DIR = "champds"
+
+
+def _load_champds_fixture(name: str) -> str:
+    import pathlib
+
+    return (
+        pathlib.Path(__file__).parent / "fixtures" / CHAMPDS_FIXTURES_DIR / name
+    ).read_text(encoding="utf-8")
+
+
+ATLANTA_COUNCIL_SEARCH_URL = (
+    "https://playapi.champds.com/atlantaga/archive/1/search/council"
+)
+ATLANTA_MEETING_SEARCH_URL = (
+    "https://playapi.champds.com/atlantaga/archive/1/search/meeting"
+)
+ATLANTA_BOARD_SEARCH_URL = (
+    "https://playapi.champds.com/atlantaga/archive/1/search/board"
+)
+
+
+async def test_list_archive_events_real_atlanta_fixture():
+    """A single real search term returns real events, newest first, with
+    `event_url` ready to feed into `ChampDSAssetFinder.resolve()`."""
+    fixture = _load_champds_fixture("atlantaga_archive1_search_council.json")
+    routes = {
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events("atlantaga", search_terms=("council",))
+
+    assert len(items) == 5  # the trimmed real fixture's event count
+    assert items[0]["event_id"] == 1261
+    assert items[0]["title"] == "Atlanta City Council Meeting"
+    assert items[0]["date"] == "2026-09-08"
+    assert items[0]["event_url"] == "https://play.champds.com/atlantaga/event/1261"
+
+
+async def test_list_archive_events_sorts_by_date_not_api_order():
+    """Real, confirmed-live quirk: Atlanta's own "meeting" search does not
+    come back in date order -- event 1249 (2026-08-17) sits ahead of 1259
+    (2026-09-03) and 1257 (2026-09-01) in the raw fixture. This function
+    must always re-sort by EventDateTimeLocal, never trust API order."""
+    fixture = _load_champds_fixture("atlantaga_archive1_search_meeting.json")
+    raw = json.loads(fixture)
+    raw_ids_in_api_order = [e["CustomerEventID"] for e in raw["SearchResult"]["Events"]]
+    assert raw_ids_in_api_order == [1261, 1260, 1249, 1259, 1257]  # confirms the quirk
+
+    routes = {
+        ATLANTA_MEETING_SEARCH_URL: FakeResponse(status=200, text=fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events("atlantaga", search_terms=("meeting",))
+
+    dates = [item["event_datetime_local"] for item in items]
+    assert dates == sorted(dates, reverse=True)
+    assert [item["event_id"] for item in items] == [1261, 1260, 1259, 1257, 1249]
+
+
+async def test_list_archive_events_dedupes_across_search_terms():
+    """Events 1261/1260 appear in both the real "council" and "meeting"
+    fixtures (both are real city-council meetings) -- a customer's
+    events must come back once each, not once per matching term."""
+    council_fixture = _load_champds_fixture("atlantaga_archive1_search_council.json")
+    meeting_fixture = _load_champds_fixture("atlantaga_archive1_search_meeting.json")
+    routes = {
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=council_fixture),
+        ATLANTA_MEETING_SEARCH_URL: FakeResponse(status=200, text=meeting_fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events(
+            "atlantaga", search_terms=("council", "meeting")
+        )
+
+    event_ids = [item["event_id"] for item in items]
+    assert len(event_ids) == len(set(event_ids))  # no duplicates
+    assert 1261 in event_ids and event_ids.count(1261) == 1
+
+
+async def test_list_archive_events_skips_a_too_short_search_term():
+    """Confirmed live: a search term under 4 characters (or blank) comes
+    back as HTTP 200 with `{"Error": "SEARCH_TOO_SHORT"}`, not a 4xx --
+    this must be skipped, not raise or get treated as zero real events
+    from an otherwise-working term."""
+    error_fixture = _load_champds_fixture(
+        "atlantaga_archive1_search_too_short_error.json"
+    )
+    council_fixture = _load_champds_fixture("atlantaga_archive1_search_council.json")
+    routes = {
+        ATLANTA_BOARD_SEARCH_URL: FakeResponse(status=200, text=error_fixture),
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=council_fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events(
+            "atlantaga", search_terms=("board", "council")
+        )
+
+    assert len(items) == 5  # only the council fixture's real events came through
+
+
+async def test_list_archive_events_a_failed_term_does_not_lose_the_others():
+    """A term whose request 500s (or times out, or connection-errors)
+    must not take down the whole listing -- the other terms still run."""
+    council_fixture = _load_champds_fixture("atlantaga_archive1_search_council.json")
+    routes = {
+        ATLANTA_BOARD_SEARCH_URL: FakeResponse(status=500, text="server error"),
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=council_fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events(
+            "atlantaga", search_terms=("board", "council")
+        )
+
+    assert len(items) == 5
+
+
+async def test_list_archive_events_no_matches_returns_empty_list():
+    fixture = _load_champds_fixture("atlantaga_archive1_search_no_matches.json")
+    routes = {
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events("atlantaga", search_terms=("council",))
+
+    assert items == []
+
+
+async def test_list_archive_events_respects_limit():
+    fixture = _load_champds_fixture("atlantaga_archive1_search_council.json")
+    routes = {
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(status=200, text=fixture),
+    }
+
+    with mock_session(routes):
+        items = await list_archive_events(
+            "atlantaga", search_terms=("council",), limit=2
+        )
+
+    assert len(items) == 2
+    assert items[0]["event_id"] == 1261
+    assert items[1]["event_id"] == 1260

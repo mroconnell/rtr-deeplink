@@ -27,18 +27,59 @@ logger = logging.getLogger("rtr_deeplink.townhallstreams")
 # all (confirmed: `<title>` is the generic "Stream Video - Town Hall
 # Streams" on every sample, no h1/breadcrumb/meeting name anywhere in the
 # HTML) -- every real fact this adapter extracts comes from one place: the
-# real HLS video URL embedded in a `jwplayer("myElement").setup({file:
-# "..."})` call, e.g.:
+# real HLS video URL embedded in the page's own JS, e.g.:
 #   https://cdn.townhallstreams.com/vod/_definst_/mp4:lisbon_me/
 #     2026-07-28_330055_Town_Council_Special_Meeting.mp4/playlist.m3u8
 # That URL's own path is a rich, structured metadata source: a
 # `{town_slug}` segment, then `{date}_{internal_numeric_id}_{Meeting_
 # Title}.mp4` -- confirmed to hold real, human-readable data across all 7
-# samples (dates from 2019 through 2026, titles like "Town Council Special
-# Meeting", "Planning and Zoning Commission Meeting", "Board of
+# original samples (dates from 2019 through 2026, titles like "Town Council
+# Special Meeting", "Planning and Zoning Commission Meeting", "Board of
 # Selectmen"; one real edge case, `id 21880`'s title is the single word
 # "B" -- left as-is rather than treated as a parse failure, since it's
 # genuinely what the source contains).
+#
+# **The embed shape changed site-wide since the adapter was first built
+# (WO-294, 2026-09-12).** The original `jwplayer("myElement").setup({file:
+# "https://cdn...m3u8"})` direct-literal shape is gone from every one of
+# 18 real pages fetched live this session (10 from the tier-3 queue's
+# "no video_url" bucket, chosen at random, plus the 8 the queue probe had
+# marked "accept"). The real video URL now lives in a JS variable one line
+# above the `.setup()` call instead:
+#   var originalFile = "https://cdn.townhallstreams.com/vod/...m3u8";
+#   var resolveFile = (typeof thsPlayableHlsUrl === "function")
+#       ? thsPlayableHlsUrl(originalFile) : Promise.resolve(originalFile);
+#   resolveFile.then(function(file) { jwplayer("myElement").setup({file: file, ...}); });
+# `thsPlayableHlsUrl` (assets/js/hls-start-keyframe.js) is a browser-side
+# MSE workaround that rewrites the *playlist* to start on the first H.264
+# keyframe for in-browser playback -- it doesn't change the video's
+# identity, and `originalFile`'s own plain URL fetches fine directly (see
+# the CDN section below), so this adapter reads `originalFile` as plain
+# text and never needs to run that script.
+#
+# **A second, more serious bug rode along with the same regex, confirmed
+# live on all 8 of the 8 real pages the tier-3 probe had marked "accept"
+# before this fix**: every one of them also embeds a small secondary
+# "audience view" picture-in-picture camera feed, still wired up with the
+# *old* literal shape --
+#   file: "https://cdn.townhallstreams.com/vod/_definst_/mp4:{town}/
+#     {Town}_Audience_..._pip_{yyyymmdd}_{hhmmss}.mp4/playlist.m3u8"
+# The pre-fix regex searched the whole page for that literal shape and
+# had no way to prefer the real meeting video over this PIP camera, so
+# **all 8 "accepted" resolves were silently returning the wrong video** --
+# a few minutes of the audience's own camera, not the meeting -- with
+# `title`/`date`/`jurisdiction` all `None` besides, since the PIP
+# filename doesn't carry the `{date}_{numeric_id}_{title}.mp4` shape.
+# `_find_video_url()` below fixes both bugs together: it reads
+# `originalFile` first (the real video, confirmed present on all 18
+# real pages checked), and only falls back to the old literal-`file:`
+# scan if that's absent -- skipping any candidate whose filename marks it
+# as the PIP feed (`_pip` appears in every real PIP filename checked; no
+# real main-video filename contains it). That fallback branch has no
+# confirmed positive example of its own yet (every real page checked
+# already has `originalFile`) -- kept only as defensive backward
+# compatibility, per this repo's "don't claim a data path works without a
+# positive example" convention.
 #
 # Confirmed live 2026-08-20: the CDN's `playlist.m3u8` itself has no
 # Referer/Origin gating at all (`Access-Control-Allow-Origin: *`, 200 OK
@@ -92,7 +133,17 @@ logger = logging.getLogger("rtr_deeplink.townhallstreams")
 # only trace of it.
 TARGET_LANGUAGE = "en"
 
+# Primary source -- the real meeting video, confirmed present on all 18
+# real pages checked (see the module docstring's 2026-09-12 update).
+_ORIGINAL_FILE_RE = re.compile(
+    r'var\s+originalFile\s*=\s*"(https://cdn\.townhallstreams\.com/vod/[^"]+)"'
+)
+# Defensive fallback for a page that lacks the `originalFile` wrapper --
+# unconfirmed by any real positive example (see module docstring). Never
+# match a secondary audience/picture-in-picture camera feed, which uses
+# this exact literal shape on every real page checked.
 _VIDEO_FILE_RE = re.compile(r'file:\s*"(https://cdn\.townhallstreams\.com/vod/[^"]+)"')
+_PIP_FILENAME_MARKER = "pip"
 _FILE_PATH_RE = re.compile(
     r"mp4:(?P<slug>[^/]+)/(?P<date>\d{4}-\d{2}-\d{2})_(?P<num_id>\d+)_(?P<title>[^/]+?)\.mp4"
 )
@@ -182,8 +233,8 @@ class TownHallStreamsAssetFinder(AssetFinder):
                 response.raise_for_status()
                 html = await response.text()
 
-            match = _VIDEO_FILE_RE.search(html)
-            if not match:
+            video_url = self._find_video_url(html)
+            if not video_url:
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
@@ -191,7 +242,6 @@ class TownHallStreamsAssetFinder(AssetFinder):
                         "Could not find Town Hall Streams' video configuration on this page."
                     ],
                 )
-            video_url = match.group(1)
 
             path_match = _FILE_PATH_RE.search(video_url)
             town_slug = path_match.group("slug") if path_match else None
@@ -228,6 +278,24 @@ class TownHallStreamsAssetFinder(AssetFinder):
             segments=[],
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _find_video_url(html: str) -> Optional[str]:
+        """Real meeting video URL, if present -- see the module docstring's
+        2026-09-12 update for the two real bugs this fixes together."""
+        match = _ORIGINAL_FILE_RE.search(html)
+        if match:
+            return match.group(1)
+
+        # Fallback path -- no real page checked has needed it yet (see
+        # module docstring). Never return the secondary audience/PIP
+        # camera feed, which uses this same literal shape on every real
+        # page checked.
+        for candidate in _VIDEO_FILE_RE.finditer(html):
+            video_url = candidate.group(1)
+            if _PIP_FILENAME_MARKER not in video_url.lower():
+                return video_url
+        return None
 
     @staticmethod
     def _extract_ids(url: str) -> Tuple[Optional[str], Optional[str]]:

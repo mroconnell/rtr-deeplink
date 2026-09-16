@@ -24,6 +24,82 @@ TARGET_LANGUAGE = "en"
 _PAGE_CONFIG_RE = re.compile(r"var\s+pageConfig\s*=\s*(\{.*?\});", re.S)
 
 
+def _parse_hms(value: Optional[str]) -> Optional[float]:
+    """`"01:11:52"` -> 4312.0 seconds. Viebit's own listing API format,
+    confirmed live across every tenant checked (2026-09-12) -- always
+    `H:MM:SS`, never a bare seconds count."""
+    if not value:
+        return None
+    parts = value.split(":")
+    try:
+        parts = [int(p) for p in parts]
+    except ValueError:
+        return None
+    seconds = 0
+    for p in parts:
+        seconds = seconds * 60 + p
+    return float(seconds)
+
+
+async def list_recent_videos(tenant_netloc: str, *, limit: int = 6) -> List[dict]:
+    """WO-306 (2026-09-12): the minimal "list what's on this tenant" step
+    the brief asked for -- `ViebitAssetFinder.resolve()` only ever handles
+    one already-known video URL. Found live via a real tenant's own page
+    (Chelsea, MI) while watching its network requests in a browser: the
+    page itself calls a plain, unauthenticated `GET /vb/public/vod?f=0&
+    ft=&fc=&s=3&d=DESC&p=1&l={limit}&sh=` on its own tenant host, and this
+    same endpoint answers identically on every other tenant checked
+    (Delano, Monticello, Great Falls, Briarcliff Manor, Dayton, North
+    Mankato, MN/MT/NY -- 6 independent real tenants, both the older
+    pageConfig-only page template and the newer `/vb/public/vod`-backed
+    one). Returns `{"id", "title", "created_date" (a real datetime, from
+    the API's Unix timestamp), "duration_seconds", "watch_url"}` per
+    item, newest first (`d=DESC`) -- `watch_url` is ready to feed straight
+    into `ViebitAssetFinder.resolve()`.
+
+    Real bonus this endpoint gives for free that `resolve()` alone can't:
+    a `length` field (`"H:MM:SS"`), so a caller can apply a duration rule
+    (e.g. Ryan's "prefer 9-40 minutes, look one meeting deeper before
+    taking a long one" rule) WITHOUT probing each candidate individually
+    -- unlike `resolve()`'s own pageConfig, which carries no duration at
+    all (confirmed against a real sample, Delano, MN), and unlike the raw
+    HLS stream, which 403s even with realistic headers (see
+    `app/platforms/queue_probe.py`'s `_probe_viebit()` for the full
+    investigation of that dead end)."""
+    url = (
+        f"https://{tenant_netloc}/vb/public/vod"
+        f"?f=0&ft=&fc=&s=3&d=DESC&p=1&l={limit}&sh="
+    )
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            url, timeout=aiohttp.ClientTimeout(total=20)
+        ) as response:
+            if response.status != 200:
+                return []
+            payload = await response.json(content_type=None)
+
+    items = []
+    for row in (payload or {}).get("result") or []:
+        video_id = row.get("id")
+        if not video_id:
+            continue
+        created = row.get("created_date")
+        items.append(
+            {
+                "id": video_id,
+                "title": row.get("title") or row.get("filename") or "",
+                "created_date": (
+                    datetime.fromtimestamp(created, tz=timezone.utc)
+                    if created
+                    else None
+                ),
+                "duration_seconds": _parse_hms(row.get("length")),
+                "watch_url": f"https://{tenant_netloc}/watch?hash={video_id}",
+            }
+        )
+    return items
+
+
 class ViebitAssetFinder(AssetFinder):
     """Resolves a Viebit-hosted meeting video + transcript.
 

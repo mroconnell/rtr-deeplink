@@ -194,6 +194,10 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # being listed (it would only forbid a whole-host pin nobody
         # would ever write against a real single-tenant host anyway).
         "amsva.wistia.com",
+        # LMC Media publishes both Town and Village of Mamaroneck meetings
+        # on this one Swagit tenant. Video IDs, not the tenant host, identify
+        # the government; unpinned LMC videos must stay unattributed.
+        "lmctvny.new.swagit.com",
         # ClerkBase/ClerkHQ tenants live on the bare domain, keyed by a
         # path segment (`clerkshq.com/YellowSprings-OH`), never a
         # subdomain -- see `CORPORATE_HOSTS_BY_PLATFORM`'s own comment.
@@ -210,6 +214,77 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         "drive.google.com",
         "dropbox.com",
         "sharepoint.com",
+        # Lake Minnetonka Communications Commission's shared Cablecast
+        # PublicSite tenant -- confirmed live 2026-09-12 (WO-306): one
+        # subdomain serves at least Shorewood, Minnetonka, Greenwood,
+        # Spring Park, Loretto, Excelsior and Deephaven, MN, each real
+        # meeting distinguished only by its own show title (e.g.
+        # "Shorewood City Council & Work Session 082426 CH8") -- the
+        # same shared-regional-commission shape as `amsva.wistia.com`
+        # above, just on Cablecast instead of Wistia. Most
+        # `*.cablecast.tv` subdomains ARE single-tenant (the adapter's own
+        # module docstring), which is exactly why this one confirmed
+        # exception needs to be listed explicitly rather than guessed
+        # from the domain suffix.
+        "reflect-lmcc.cablecast.tv",
+        # Town Square Television's shared Cablecast station -- confirmed
+        # live 2026-09-13 (WO-336): one subdomain serves at least South
+        # St. Paul, Mendota Heights, West St. Paul and Inver Grove
+        # Heights, MN, each real government distinguished by its own
+        # `site=` query parameter (confirmed via the page's own
+        # `window.__remixContext` data: `site=6` -> "Inver Grove
+        # Heights", `site=8` -> "Mendota Heights", `site=13` -> "South
+        # St. Paul", `site=15` -> "West St. Paul"; `site=18` is the
+        # station's own umbrella "Town Square Television" identity, not
+        # a government). Same shared-regional-station shape as
+        # `reflect-lmcc.cablecast.tv` above, just a different real
+        # customer -- the per-video `match=` pins below are scoped to
+        # `site=` rather than a per-show id specifically because `site=`
+        # identifies the GOVERNMENT (every show that government ever
+        # publishes), where a per-show id only ever covers the one show
+        # it names.
+        "reflect-tst-mn.cablecast.tv",
+        # Merrimack TV's town-operated vault also publishes School Board
+        # programs; only a specific show can identify the town's council.
+        "reflect-townofmerrimack.cablecast.tv",
+        # Castus's own SaaS platform domain -- EVERY Castus customer's
+        # video lives under this one host (`/vod/{tenantSlug}/video/
+        # {id}`), unlike Cablecast/TelVue, where each tenant usually gets
+        # its own subdomain. Confirmed live 2026-09-12 (WO-306): this
+        # host was carrying a BLANK-match pin to Andover, MA -- meaning
+        # any Castus video from any OTHER real customer (Decatur AL,
+        # Lakewood CA, Billings MT, and Kentucky's own "tbnk" tenant,
+        # itself a shared regional commission for a dozen-plus cities --
+        # see that tenant's own real per-city playlist names) would have
+        # resolved to Andover the moment it lacked a more specific pin.
+        # The real identity signal here is the URL's own tenant-slug path
+        # segment (`/vod/{tenantSlug}/`), never the host alone.
+        "cloud.castus.tv",
+        # TelVue's own shared default hosting domain -- a customer
+        # without its own subdomain gets a `videoplayer.telvue.com/
+        # player/{hash}/media/{id}` URL instead, and the per-video hash
+        # is the ONLY identity signal (no shared tenant-slug path segment
+        # the way Castus has). Confirmed live 2026-09-12 (WO-316, same
+        # audit shape as WO-306's Castus fix): this host was carrying a
+        # BLANK-match pin to Pittsford (village), NY, based on an example
+        # URL that turned out to belong to a DIFFERENT government (East
+        # Rochester, NY) once checked against this file's own per-player
+        # pins -- and the blank match had mis-keyed 42 live pages spanning
+        # at least a dozen unrelated real governments across MA/NH/NJ/NY
+        # (Winchester MA, West Bridgewater MA, Piscataway NJ, Town of
+        # Saugerties NY, ...). Removed rather than narrowed: unlike
+        # Castus, there is no shared prefix to narrow it TO -- a genuine
+        # Pittsford video needs its own per-player pin, same as every
+        # other real government already listed for this host.
+        "videoplayer.telvue.com",
+        # BoardDocs (Diligent) -- every tenant lives on this one shared
+        # host, the government encoded as a `/{st}/{slug}/Board.nsf/...`
+        # path segment (WO-365, 2026-09-14; see app/platforms/boarddocs.py
+        # for the full mechanism). Same shape as ClerkBase/Castus above:
+        # a whole-host pin would key every other tenant's meetings to
+        # whichever government got pinned first, so a row here must
+        # `match=` a specific `/{st}/{slug}/` path.
+        "go.boarddocs.com",
     }
 )
 
@@ -398,13 +473,32 @@ def curated_aliases() -> Dict[Tuple[str, str], str]:
     government only in KY, and there are real Louisvilles in CO and OH.
     A row with no state contributes its aliases under the empty state,
     which only a stateless query can match.
+
+    A curated row's own `gov_name` is indexed the same way as a declared
+    alias (WO-243), not only what the `aliases` column happens to spell
+    out. The Phase 1b rows above (Boise/Louisville/Nashville/Bainbridge)
+    always duplicated their own name into `aliases` by hand, so this was
+    a no-op for them -- but WO-220's later curated rows (`Department of
+    Commerce, UT`, `Southwest Utah Public Health Department, UT`, `Early
+    Light Academy at Daybreak, UT`) shipped with an empty `aliases`
+    column, so the exact name a human typed into `gov_name` was never
+    itself a lookup key -- confirmed live: resolving "Department of
+    Commerce, UT" found no curated match at all and minted a fresh
+    `rtr:us:ut:commerce` instead, even with the row already in this file.
+    A curated row IS the human assertion this function's own docstring
+    above describes; requiring the same string to also be copied into
+    `aliases` bought nothing.
     """
     out: Dict[Tuple[str, str], str] = {}
     for gov in governments().values():
         if not gov.source.startswith(CURATED_SOURCE_PREFIX):
             continue
-        for alias in gov.aliases:
-            out[(gov.state.upper(), alias.strip().lower())] = gov.gov_id
+        keys = set(gov.aliases)
+        keys.add(gov.gov_name)
+        for alias in keys:
+            key = alias.strip().lower()
+            if key:
+                out[(gov.state.upper(), key)] = gov.gov_id
     return out
 
 

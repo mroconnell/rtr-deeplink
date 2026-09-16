@@ -59,6 +59,61 @@ _TINY_JPEG = bytes.fromhex(
 )
 
 
+# --- WO-303, 2026-09-12: `youtube_thumbnail_url()`/`youtube_watch_url()`
+# switched from their own duplicate 11-char id regex to importing
+# `app.platforms.youtube_ids.extract_video_id` (BACKLOG.md's "Archive's
+# two own copies" entry), which carries WO-296's end-boundary fix --
+# confirm the "videoseries"/"live_stream" fakes that used to slip through
+# as truncated fake ids are correctly rejected now. -----------------------
+
+
+def test_youtube_thumbnail_url_rejects_the_videoseries_and_live_stream_fakes():
+    assert (
+        video_thumbnail.youtube_thumbnail_url(
+            "https://www.youtube.com/embed/videoseries?list=PL123"
+        )
+        is None
+    )
+    assert (
+        video_thumbnail.youtube_thumbnail_url(
+            "https://www.youtube.com/embed/live_stream?channel=UC123"
+        )
+        is None
+    )
+
+
+def test_youtube_watch_url_rejects_the_videoseries_and_live_stream_fakes():
+    assert (
+        video_thumbnail.youtube_watch_url(
+            "https://www.youtube.com/embed/videoseries?list=PL123"
+        )
+        is None
+    )
+    assert (
+        video_thumbnail.youtube_watch_url(
+            "https://www.youtube.com/embed/live_stream?channel=UC123"
+        )
+        is None
+    )
+
+
+def test_youtube_thumbnail_url_still_resolves_a_real_id_and_nocookie_embed():
+    assert (
+        video_thumbnail.youtube_thumbnail_url(
+            "https://www.youtube.com/embed/uNDJRR3ywVo"
+        )
+        == "https://i.ytimg.com/vi/uNDJRR3ywVo/hqdefault.jpg"
+    )
+    # youtube-nocookie.com coverage must survive the switch to the shared
+    # helper -- both Archive regexes matched it before this change.
+    assert (
+        video_thumbnail.youtube_thumbnail_url(
+            "https://www.youtube-nocookie.com/embed/uNDJRR3ywVo"
+        )
+        == "https://i.ytimg.com/vi/uNDJRR3ywVo/hqdefault.jpg"
+    )
+
+
 # --- targeting tiers -----------------------------------------------------
 
 

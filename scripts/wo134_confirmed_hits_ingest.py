@@ -189,7 +189,13 @@ UNSUPPORTED_PLATFORMS = {
 # Shared, general-purpose video hosts -- per Ryan's rule, a page here
 # must be keyed to its government explicitly (jurisdiction hint +
 # tenant_overrides.csv pin), never left to resolve generically.
-SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast"}
+# "boxcast" added WO-285 (2026-09-12): found live by WO-258 queuing
+# Habersham County, GA's BoxCast broadcast for tier-3 transcription with
+# no pin at all (confirmed by grep: this file had zero mentions of
+# "boxcast" before this change) -- see maybe_write_tenant_override()'s
+# boxcast branch below for why it needs its own host/match handling
+# rather than the generic per-platform logic the other three use.
+SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast", "boxcast"}
 
 MEETING_ALLOWLIST = (
     "council",
@@ -1640,10 +1646,31 @@ def _tenant_override_match(platform: str, result, final_seed: str) -> Optional[s
     if platform in ("telvue", "cablecast"):
         path = urlparse(url).path.strip("/")
         return path or None
+    if platform == "boxcast":
+        # WO-285, 2026-09-12: `video_channel` (not `external_id`, per
+        # WO-245's own note -- boxcast.py doesn't set external_id from a
+        # channel scan) already carries the exact "boxcast:<channel_id>"
+        # shape every hand-written WO-227/WO-227b/WO-258 pin in
+        # tenant_overrides.csv uses as its `match` value (prefixed with
+        # "channel="). A blank/None video_channel (e.g. a direct /view/
+        # link boxcast.py couldn't attribute to a distinct channel --
+        # see BACKLOG.md's WO-245 South Bay entry) means no safe pin can
+        # be written here; CLAUDE.md's own rule is a pin must key on the
+        # CHANNEL, never a blank/account-wide match.
+        if not getattr(result, "video_channel", None):
+            return None
+        return f"channel={result.video_channel}"
     return None
 
 
 def _tenant_override_host(platform: str, result, final_seed: str) -> Optional[str]:
+    if platform == "boxcast":
+        # boxcast.py's own `video_url` is a signed HLS playlist on a CDN
+        # host, not boxcast.tv -- every real boxcast pin in
+        # tenant_overrides.csv keys on the stable "boxcast.tv" tenant
+        # host itself (WO-227's shape), not whatever CDN happens to be
+        # serving today's signed URL.
+        return "boxcast.tv"
     url = result.video_url or final_seed or ""
     host = urlparse(url).netloc.lower()
     return host or None

@@ -35,7 +35,12 @@ JURISDICTION = "City of Atlantic City, NJ"
 TITLE = "City Council Meeting 08/19/26"
 PIN = {
     "host": "boxcast.tv",
-    "match": "external_id=boxcast:lqsszohc5p0q4yemoddl",
+    # WO-245 (2026-09-12): was `external_id=boxcast:...` -- that field is
+    # now the per-broadcast id (globally unique, never a pin key); the
+    # government-level channel hint lives in `channel=` instead. This
+    # script's own `write_pin_row()` dedup is a no-op today since the
+    # row already lives in tenant_overrides.csv in its converted form.
+    "match": "channel=boxcast:lqsszohc5p0q4yemoddl",
     "gov_id": GOV_ID,
     "strength": "fallback",
     "source": "wo227",

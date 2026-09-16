@@ -78,6 +78,17 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
     ],
     "az_legislature": ["https://www.azleg.gov/videoplayer/?eventID=2025011041"],
+    # Tallahassee FL's City Commission, WO-365 (2026-09-14) -- a real
+    # meeting-level `goto?open&id=` URL, not the bare tenant Public page,
+    # so a canary run stays exactly "one tenant, one meeting" (1 tenant
+    # GET + 1 meetings-list GET + 1 per-meeting POST, then the normal
+    # YouTube delegation) -- never the tenant-level newest-with-video walk.
+    # See app/platforms/boarddocs.py's own module docstring for the house
+    # rule this respects (go.boarddocs.com/robots.txt disallows all
+    # agents; this adapter never enumerates tenants).
+    "boarddocs": [
+        "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044"
+    ],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [
@@ -105,6 +116,11 @@ CANARY_URLS: dict[str, list[str]] = {
     # long as real per-meeting candidates come back (31 rows, 22 with a
     # real video link, confirmed at canary-build time).
     "civicplus": ["https://nc-durham.civicplus.com/AgendaCenter/City-Council-4"],
+    # Hobart, IN's CivicMedia (TikiLive-hosted) video -- confirmed live
+    # 2026-09-13 (WO-341), a real resolve with real video AND real
+    # captions (708 caption segments) -- see civicmedia.py's own module
+    # docstring.
+    "civicmedia": ["https://www.cityofhobart.org/CivicMedia?VID=326"],
     "civicweb": [
         "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
     ],
@@ -121,6 +137,16 @@ CANARY_URLS: dict[str, list[str]] = {
     "destinyhosted": [
         "https://public.destinyhosted.com/agenda_publish.cfm"
         "?id=96635&mt=ALL&get_month=8&get_year=2026&dsp=ag&seq=4147"
+    ],
+    # Palisade town, CO's own real Board of Trustees recording, direct on
+    # its domain -- confirmed live 2026-09-12 (WO-303), the plainest of
+    # the three real own-domain fixtures (no Drive/Dropbox rewrite in the
+    # path, so a failure here points squarely at the content-type check
+    # or the government's file itself, not at a third-party rewrite
+    # mechanism). See direct_file.py's own module docstring.
+    "direct_file": [
+        "https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/"
+        "Zoom-Video_Board-of-Trustees_08.25.2026.mp4"
     ],
     "escribe": [
         "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?"
@@ -285,8 +311,8 @@ def has_real_content(result: ResolvedMeeting) -> bool:
     )
 
 
-# A canary run makes one request each to 29 live third-party sites it
-# does not control (28 platforms, one -- "legistar" -- carrying 2 URLs),
+# A canary run makes one request each to 30 live third-party sites it
+# does not control (29 platforms, one -- "legistar" -- carrying 2 URLs),
 # so a transient failure somewhere in that set is
 # expected rather than exceptional -- and reporting the first one as a
 # real failure emails an alert that costs a full triage investigation.

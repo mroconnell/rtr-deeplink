@@ -10,6 +10,11 @@ node_modules/
 .claude/launch.json
 local_transcription_backups/
 scripts/meeting_card_backfill_state.json
+# scripts/youtube_drip.py's feed-lane probe buffer (WO-248): local to
+# whichever Mac is running the drip, folded into the tracked
+# scripts/tier3_auto_transcription_queue_probe.csv once a day by
+# `youtube_drip.py advance`, then cleared -- never committed itself.
+scripts/tier3_auto_transcription_queue_probe.local.csv
 # scripts/dedupe_rollup_transcripts.py's run artifacts: the dry run's
 # findings (large -- it carries a before/after excerpt per affected page)
 # and the resume state. Both are point-in-time records of one operator's

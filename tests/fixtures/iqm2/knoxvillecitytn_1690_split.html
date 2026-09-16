@@ -1,0 +1,817 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml"  xml:lang="en" lang="en">
+<head><title>
+	Video Outline - City of Knoxville, Tennessee
+</title><meta http-equiv="CACHE-CONTROL" content="NO-CACHE" /><meta http-equiv="EXPIRES" content="0" />
+    
+    <script type="text/javascript" src="/lib/jquery.js"></script>
+    <script type="text/javascript" src="/lib/jquery-ui.js"></script>
+    <!-- Agency specific meta tags -->
+    <meta name='google-site-verification' content='v8iNp5ToI5384_S9_Exw0F10KJ__b35Fs7jqvTvb0TY' />
+<meta name='msvalidate.01' content='8C654B10898A718CB62BCB19E52589CD' />
+
+    
+    <!--<link type="text/css" href="/Lib/GetCustomCSS.ashx" rel="Stylesheet" />-->
+    <link type='text/css' href='/Lib/GetCustomCSS.ashx?timestamp=639233437150000000' rel='Stylesheet' /><link type='text/css' href='/Citizens/GetImage.aspx?ID=1018' rel='Stylesheet' /><link type="text/css" href="/App_Themes/Main.css" rel="Stylesheet" /><link type="text/css" rel="stylesheet" href="/lib/touchscroll.css" /><link href="https://unpkg.com/video.js@7.21.1/dist/video-js.css" rel="stylesheet" /><link href="/Scripts/videojs-live-dvr/videojs-dvrseekbar.css" rel="stylesheet" />
+    <script src="https://unpkg.com/video.js@7.21.1/dist/video.js"></script>
+    <script src='https://unpkg.com/videojs-flash@2.1.0/dist/videojs-flash.min.js'></script>
+    
+    <script src="/Scripts/videojs-live-dvr/videojs-dvrseekbar.min.js"></script>
+    <script type='text/javascript' src='/Scripts/player.js'></script>
+    <!--[if IE 7]>
+	   <style type="text/css">
+        .Section H2 { display:inline;}
+        .RowTop div { display:inline;}
+	    #SplitViewLayout #ToolStrip .Button { display:inline;}	    
+	    #SplitViewLayout #SearchHolder {display:inline; top:-20px; }
+   </style>
+	<![endif]-->
+
+    
+    
+
+    <script type='text/javascript' src='/Lib/MinuteTraq.AgendaOutline.js'></script>
+    <script type="text/javascript" src="/lib/MinuteTraq.PopupWindow.js"></script>
+    <script type="text/javascript" src="/Lib/MinuteTraq.Search.js?v=8_10_66"></script>
+    <script type="text/javascript" language="javascript" src="/App_Themes/Global.js?v=8_8_31"></script>
+    <style>
+        .hidden{
+            display:none;
+        }
+    </style>
+     <script>
+          !function () { var a, b, c, d = window, e = document, f = arguments, g = "script", h = ["config", "track", "trackForm", "trackClick", "identify", "visit", "push", "call"], i = function () { var a, b = this, c = function (a) { b[a] = function () { return b._e.push([a].concat(Array.prototype.slice.call(arguments, 0))), b } }; for (b._e = [], a = 0; a < h.length; a++) c(h[a]) }; for (d.__woo = d.__woo || {}, a = 0; a < f.length; a++) d.__woo[f[a]] = d[f[a]] = d[f[a]] || new i; b = e.createElement(g), b.async = 1, b.src = "//static.woopra.com/js/w.js", c = e.getElementsByTagName(g)[0], c.parentNode.insertBefore(b, c) }("woopra");
+
+          woopra.config({
+              domain: "iqm2.com",
+              cookie_name:"accelaTracker"
+          });
+
+          woopra.track("mp_pv", {
+              domain: window.location.hostname,
+              title: document.title,
+              url: window.location.href,
+              uri: window.location.pathname,
+              hash: window.location.hash,
+              error: null
+          });
+     </script>
+    <script type="text/javascript">
+        $(function () {
+            $("#OutlinePanelInner").each(function () { FrameInsert($(this), InitializeOutline); });
+            $("#RightContent").each(function () {
+                FrameInsert($(this), function () { moRightPanelScroller = EnableRightPanelScrolling(); firstRun = false; });
+            });
+            $("body").css("overflow", "auto");
+
+            $(window).resize(function () {
+                FixProportions();
+                EnableLeftPanelScrolling();
+                EnableRightPanelScrolling();
+            });
+
+            //when showing video, hide the "Normal View" button, as the video shows in a new window
+            if ($("#VideoPanelInner").length > 0) {
+                $("#btnNormalView").css("display", "none");
+            }
+
+            $("#Splitter").mousedown(BeginResize);
+            $("#VSplitter").mousedown(BeginVResize);
+
+            StickyNotesFixHeight($("#SplitViewLayout #LeftTopPanel").height());
+
+            miLeftPercent = $("#SplitViewLayout #LeftPanel").width() / $(window).width();
+
+            // size top left for sticky notes, hd or sd video
+            miTopPercent = 0.20;
+            $("#VideoPanelInner").each(function () {
+                if ($(this).attr("quality") == "hd")
+                    miTopPercent = 0.345;
+                else
+                    miTopPercent = 0.45;
+            });
+
+
+        });
+        var lastUrl, firstRun = true;
+        var miLeftPercent;
+        var miTopPercent;
+
+        var miDragBeginX;
+        var miDragBeginY;
+        var miDragBeginSize;
+
+        function FixProportions() {
+            RememberPlayerPosition();
+            if (miLeftPercent == 0 || miTopPercent == 0)
+                return;
+            ChangeVideoPannelVisibility(false);
+
+            var iLeftWidth = $(window).width() * miLeftPercent;
+            $("#SplitViewLayout #LeftPanel").width(iLeftWidth);
+
+            var iTopHeight = $(window).height() * miTopPercent;
+            $("#SplitViewLayout #LeftTopPanel").height(iTopHeight);
+
+            StickyNotesFixHeight(iTopHeight);
+            FixVideoSize(0, 0);
+
+            RestorePlayerPosition();
+        }
+
+        function BeginResize(e) {
+            RememberPlayerPosition();
+            miDragBeginX = e.pageX;
+            miDragBeginSize = $("#SplitViewLayout #LeftPanel").width();
+
+            $("*").bind("mousedown", NullFunction);
+            $("#SplitViewLayout").bind("mousemove", DragResize);
+            $("#SplitViewLayout").bind("mouseup", EndResize);
+        }
+
+        function NullFunction() { return false; } //used to prevent selection while resizing
+
+        function EndResize(e) {
+            miDragBeginX = 0;
+            $("#SplitViewLayout").unbind('mousemove', DragResize);
+            $("#SplitViewLayout").unbind('mouseup', EndResize);
+            $("*").unbind("mousedown", NullFunction);
+
+            FixVideoSize(0, 0);
+            SetVideoVisibleForResize(true);
+
+            EnableLeftPanelScrolling();
+            EnableRightPanelScrolling();
+        }
+
+        function DragResize(e)
+        {
+            if (miDragBeginX == 0)
+                return;
+
+            var iDeltaX = e.pageX - miDragBeginX;
+
+            var iNewSize = miDragBeginSize + iDeltaX;
+
+            if (iNewSize < 100)
+                iNewSize = 100;
+
+            // video will block the panel from resizing, so hide it during the resize
+            // first, "freeze" the height of the video panel, otherwise hiding the video will make the panel collapse
+            $("#LeftTopPanel").height($("#LeftTopPanel").height());
+            SetVideoVisibleForResize(false);
+
+            $("#SplitViewLayout #LeftPanel").width(iNewSize);
+            miLeftPercent = iNewSize / $(window).width();
+        }
+
+        function BeginVResize(e) {
+            RememberPlayerPosition();
+            miDragBeginY = e.pageY;
+            miDragBeginSize = $("#SplitViewLayout #LeftTopPanel").height();
+
+            $("*").bind("mousedown", NullFunction);
+            $("#SplitViewLayout").bind('mousemove', DragVResize);
+            $("#SplitViewLayout").bind('mouseup', EndVResize);
+        }
+
+        function EndVResize(e) {
+            miDragBeginY = 0;
+            $("#SplitViewLayout").unbind('mousemove', DragVResize);
+            $("#SplitViewLayout").unbind('mouseup', EndVResize);
+            $("*").unbind("mousedown", NullFunction);
+
+            FixVideoSize(0, 0);
+            SetVideoVisibleForResize(true);
+
+            EnableLeftPanelScrolling();
+            EnableRightPanelScrolling();
+        }
+
+        function DragVResize(e) {
+            if (miDragBeginY == 0)
+                return;
+
+            var iDeltaY = e.pageY - miDragBeginY;
+
+            var iNewSize = miDragBeginSize + iDeltaY;
+
+            if (iNewSize < 100)
+                iNewSize = 100;
+
+            // video will block the panel from resizing, so hide it during the resize
+            SetVideoVisibleForResize(false);
+
+            $("#SplitViewLayout #LeftTopPanel").height(iNewSize);
+            miTopPercent = iNewSize / $(window).height();
+            StickyNotesFixHeight(iNewSize);
+        }
+
+        /*
+            Identical to ChangeVideoPannelVisibility, except that it is only called during
+            resize code. The JWPlayer doesn't like to be made invisible when it is starting up,
+            so to minimize the chance of regression I made a new function.
+        */
+        function SetVideoVisibleForResize(isVisible) {
+            $("#VideoPanelInner").css("display", isVisible ? "" : "none");
+        }
+
+        function StickyNotesFixHeight(iContainerHeight) {
+            //text area won't resize vertically with css for some reason
+            var oTextArea = $("#txtStickyNotes");
+            oTextArea.css('resize', 'none');
+            if (oTextArea.length > 0)
+                oTextArea.height(iContainerHeight - 22);
+        }
+
+        function InitializeVideo(frame) {
+            FixProportions();
+        }
+
+        function FixVideoSize(iContainerWidth, iContainerHeight) {
+            if (iContainerWidth == 0)
+                iContainerWidth = $("#VideoPanel").width();
+            if (iContainerHeight == 0)
+                iContainerHeight = $("#VideoPanel").height();
+
+            var oVideo = $("#MediaPlayer1");
+            if (oVideo.length == 0)
+                return;
+
+            $("#VideoPanelInner").width(iContainerWidth);
+            $("#VideoPanelInner").height(iContainerHeight);
+
+            oVideo.width(iContainerWidth - 0);
+            oVideo.height(iContainerHeight - 0);
+        }
+
+        function FrameInsert(frame, func) {
+            var sSrc = frame.attr("src");
+            if (sSrc == undefined || sSrc.length == 0)
+                return;
+
+            //hack for media event, must insert frame height into the url
+            sSrc = sSrc.replace("&Height=HHH", "&Height=" + ($(window).height() - 40));
+            //if url begins with "url=", then insert a frame rather than try to parse the html
+            if (sSrc.indexOf("url=") == 0) {
+                frame.html("");
+                frame.append("<iframe height='" + ($(window).height() - 40) + "' width='100%' frameborder='0' src='" + sSrc.substring(4) + "' allowfullscreen></iframe>");
+                func(frame);
+                return;
+            }
+
+            //grab the page
+            AjaxGet(sSrc, function (data) {
+
+                //if response is a url, open in new window
+                if (data.substr(0, 4) == "http") {
+                    frame.html("<a style='padding:16px;' href='" + data + "' target='_blank'>Download attachment</a>");
+                    try {
+                        window.top.open(data, "_blank");
+                        // alert(window.top.location);
+                    }
+                    catch (exc) {
+                        // alert(exc);
+                    }
+                    return;
+                }
+
+                var sHead = ExtractHtmlBlock(data, "head", 0)["Text"];
+
+                ExtractStyleSheets(frame, sHead);
+                ExtractScripts(frame, sHead);
+
+                var sBody = ExtractHtmlBlock(data, "form", 0)["Text"];
+                if (sBody == undefined || sBody.length == 0)
+                    sBody = ExtractHtmlBlock(data, "body", 0)["Text"];
+
+                if (sBody == undefined || sBody.length == 0)
+                    sBody = data;
+       
+                frame.html("");
+                frame.append($(sBody));
+
+                RemoveViewStateControls(frame);
+
+                func(frame);
+            });
+        }
+
+        //Removes the viewstate input controls from the given html string
+        function RemoveViewStateControls(frame)
+        {
+            var viewStateInput = frame.find("#__VIEWSTATE");
+            if (viewStateInput.length > 0)
+                viewStateInput.remove();
+        }
+
+        function ExtractStyleSheets(frame, sHead) {
+
+            if (sHead == undefined || sHead.length == 0)
+                return;
+
+            var sStyleSheet;
+            var iStartIndex = 0;
+
+            while (true) {
+                var nextTag = ExtractHtmlTag(sHead, "link", iStartIndex);
+
+                sStyleSheet = nextTag["Text"];
+                iStartIndex = nextTag["Start"];
+
+                if (sStyleSheet == undefined)
+                    return;
+
+                var oStyle = $(sStyleSheet);
+                var sStylesheetRef = oStyle.attr("href");
+                if ($("link[type='text/css'][href='" + sStylesheetRef + "']").length == 0) {
+                    //$("head").append($(sStyleSheet));
+                    var oHead = document.getElementsByTagName("head")[0];
+                    var oCssNode = document.createElement('link');
+                    oCssNode.type = 'text/css';
+                    oCssNode.rel = 'stylesheet';
+                    oCssNode.href = sStylesheetRef;
+                    oHead.appendChild(oCssNode);
+                }
+            }
+        }
+
+        function ExtractScripts(frame, sHead) {
+
+            if (sHead == undefined || sHead.length == 0)
+                return;
+
+            var sScript;
+            var iStartIndex = 0;
+
+            while (true) {
+                var nextScript = ExtractHtmlTag(sHead, "script", iStartIndex);
+
+                sScript = nextScript["Text"];
+                iStartIndex = nextScript["Start"];
+
+                if (sScript == undefined)
+                    return;
+
+                var src = $(sScript).attr("src");
+                if (src != undefined && $("script[src='" + src + "']").length == 0)
+                    frame.append(sScript);
+            }
+        }
+
+        function ExtractHtmlBlock(sHtml, sTag, iStartIndex) {
+            var iNewStartIndex = sHtml.indexOf("<" + sTag, iStartIndex);
+            if (iNewStartIndex <= iStartIndex)
+                return new Object();
+
+            iStartIndex = iNewStartIndex;
+
+            while (sHtml.substr(iStartIndex, 1) != ">")
+                iStartIndex++;
+
+            iStartIndex++;
+
+            var iEndIndex = sHtml.indexOf("</" + sTag, iStartIndex);
+
+            var ret = new Object();
+            ret["Start"] = iEndIndex;
+            ret["Text"] = sHtml.substring(iStartIndex, iEndIndex);
+            return ret;
+        }
+
+        function ExtractHtmlTag(sHtml, sTag, iStartIndex) {
+            var iNewStartIndex = sHtml.indexOf("<" + sTag, iStartIndex);
+            if (iNewStartIndex <= iStartIndex)
+                return new Object();
+
+            iStartIndex = iNewStartIndex;
+            var iEndIndex = iStartIndex;
+            while (sHtml.substr(iEndIndex, 1) != ">")
+                iEndIndex++;
+            iEndIndex++;
+
+            var ret = new Object();
+            ret["Start"] = iEndIndex;
+            ret["Text"] = sHtml.substring(iStartIndex, iEndIndex);
+            return ret;
+        }
+
+        function InitializeOutline(frame) {
+            ReplaceLinks(frame);
+            ReplaceLinks($("#divDownloadsMenu"));
+
+            EnableLeftPanelScrolling();
+            StickyNotesInitialize();
+
+            // copied javascript
+            $(".ShowMoreSpeakersButton").click(function () {
+                var link = $(this);
+                link.css("display", "none");
+                var hidden = link.parent().find(".HiddenSpeakers");
+                hidden.slideDown();
+                return false;
+            });
+
+            $(".ShowFewerSpeakersButton").click(function () {
+                var link = $(this);
+                var hidden = link.parent().parent().find(".HiddenSpeakers");
+                hidden.slideUp();
+
+                var showMoreLink = link.parent().parent().find(".ShowMoreSpeakersButton");
+                showMoreLink.css("display", "");
+                return false;
+            });
+        }
+
+        function ReplaceLinks(oContainer) {
+
+            // replace any links that have the target "Detail" so that they display in the right panel
+            oContainer.find("a[target='Detail']").each(function () {
+                ReplaceLink($(this));
+            });
+
+            //replace any fileopen or fileview regardless of its target
+            oContainer.find("a[href*='FileOpen']").each(function () {
+                ReplaceLink($(this));
+            });
+
+            oContainer.find("a[href*='FileView']").each(function () {
+                ReplaceLink($(this));
+            });
+
+            oContainer.find("a[href*='Detail']").each(function () {
+                ReplaceLink($(this));
+            });
+
+            oContainer.find("a[href*='UserComment']").each(function () {
+                ReplaceLink($(this));
+            });
+
+        }
+
+        function ReplaceLink(oLink) {
+
+            var url = oLink.attr("href");
+
+            if (url.toLowerCase().indexOf("javascript:") >= 0)
+                return;
+
+            var detailFrame = $("#RightContent");
+
+            oLink.attr("href", "#");
+
+            oLink.attr("oldhref", url);
+
+            StickyNotesAttachClickEvent(oLink);
+
+            if (url.indexOf("UserComment.aspx") > -1)
+                return;
+
+            oLink.click(function () {
+
+                detailFrame.html("Loading . . . ");
+                $("#RightContent").css("padding-top", "");
+                $("#RightContent").css("padding-left", "");
+                $("#RightContent").css("padding-right", "");
+                $("#RightContent").css("padding-bottom", "");
+
+                var newUrl = url;
+
+                // change fileopen to fileview
+                if (newUrl.indexOf("FileOpen") != -1)
+                    newUrl = newUrl.replace("FileOpen.aspx", "FileView.aspx") + "&Frame=SplitView&Height=" + ($("#divDetailScroller").height() + 20); //-75
+
+                //ensure inline parameter is present
+                if (newUrl.indexOf("FileView") != -1 && newUrl.indexOf("Inline") == -1 && newUrl.indexOf("inline") == -1) {
+                    newUrl = Global_SetQueryParameter(newUrl, "Inline", "True");
+                }
+
+                // remove any Frame parameters that are not SplitView
+                var sFrame = GetQueryParameters(newUrl)["Frame"];
+                if (sFrame != null) {
+                    if (sFrame.length > 0 && sFrame != "SplitView") {
+                        newUrl = newUrl.replace("Frame=" + sFrame + "&", "");
+                        newUrl = newUrl.replace("Frame=" + sFrame, "");
+                    }
+                }
+
+                // ensure that Frame=Splitview is in the url
+                if (newUrl.indexOf("Frame=SplitView") == -1)
+                    newUrl += "&Frame=SplitView";
+
+                //ignore javascript:void(0);
+                
+                lastUrl = detailFrame.attr("src");
+                $('#btnGoBack').show();
+
+                detailFrame.attr("src", newUrl);
+
+                FrameInsert(detailFrame, function (e) {
+
+                    ReplaceLinks(detailFrame);
+                    if (moRightPanelScroller != undefined) {
+                        moRightPanelScroller.scrollTo(0, 0);
+                    }
+
+                    //file view page has some special styling and logic
+                    if (newUrl.indexOf("FileView") > -1) {
+                        $("#RightContent").css("padding-top", "0");
+                        $("#RightContent").css("padding-left", "0");
+                        $("#RightContent").css("padding-right", "0");
+                        $("#RightContent").css("padding-bottom", "0");
+                        $("#btnDownloadDocument").css("display", "");
+                    }
+                    else {
+                        $("#RightContent").css("padding-top", "");
+                        $("#RightContent").css("padding-left", "");
+                        $("#RightContent").css("padding-right", "");
+                        $("#RightContent").css("padding-bottom", "");
+                        $("#btnDownloadDocument").css("display", "none");
+                    }
+
+                });
+                return false;
+            });
+        }
+
+        function EnableLeftPanelScrolling() {
+            var fResult = EnableScrolling("divOutlineScroller");
+            InitializeVideo();
+            return fResult;
+        }
+
+        function EnableRightPanelScrolling() {
+            return EnableScrolling("divDetailScroller");
+        }
+
+        function EnableScrolling(panelId) {
+            var scrollerDetails;
+            var fUseTouchScroll = false;
+            try {
+                ResizeFrame(panelId);
+                //only the ipad needs to use the TouchScroll
+                if (navigator.userAgent.indexOf("iPad") > -1 || (navigator.userAgent.indexOf("Android") > -1)) {
+
+                    var scrollNodeDetails = document.querySelector("#" + panelId);
+                    scrollerDetails = new TouchScroll(scrollNodeDetails, { elastic: true });
+                    fUseTouchScroll = true;
+                }
+            }
+            catch (e) {
+                fUseTouchScroll = false;
+            }
+
+            if (!fUseTouchScroll) {
+
+                $("#" + panelId).css("overflow-y", "auto");
+                scrollerDetails = undefined;
+            }
+
+            return scrollerDetails;
+
+        }
+
+        function ResizeFrame(panelId) {
+            var iHeight = $(window).height() - $("#" + panelId).offset().top;
+            $("#" + panelId).height(iHeight);
+        }
+
+        // special handler for refreshing the right panel when a comment is added
+        function HandleSplitViewAddComment(sLink) {
+            var detailFrame = $("#RightContent");
+            detailFrame.html("");
+            detailFrame.attr("src", sLink);
+
+            FrameInsert(detailFrame, function (e) { if (moRightPanelScroller != undefined) { moRightPanelScroller.scrollTo(0, 0); } });
+        }
+
+        function lnkDownloads_Click() {
+            var pos = $("#lnkDownloads").offset();
+
+            $("#divDownloadsMenu").css("left", pos.left + "px");
+            $("#divDownloadsMenu").css("top", $("#topBar").height() + 3);
+            $("#divDownloadsMenu").slideToggle();
+        }
+
+        function lnkUpdateRequest_Click(iMeetingId) {
+            // try to determine item based on the detail page
+            var sDetailPageUrl = $("#RightContent").attr("src");
+            var sParam = "";
+
+            if (sDetailPageUrl.indexOf("Detail_LegiFile.aspx") >= 0)
+                sParam = ExtractParameterForUpdateRequest(sDetailPageUrl, "ID", "ResolutionID");
+
+            if (sDetailPageUrl.indexOf("Detail_Communication.aspx") >= 0)
+                sParam = ExtractParameterForUpdateRequest(sDetailPageUrl, "ID", "CommunicationID");
+
+            if (sDetailPageUrl.indexOf("Detail_Motion.aspx") >= 0)
+                sParam = ExtractParameterForUpdateRequest(sDetailPageUrl, "ID", "MinutesItemID");
+
+            if (sDetailPageUrl.indexOf("FileView.aspx?Type=4") >= 0)
+                sParam = ExtractParameterForUpdateRequest(sDetailPageUrl, "ID", "AttachmentID");
+
+            var sUrl = "/Agency/AgendaUpdateRequest.aspx?Frame=SplitView&MeetingID=" + iMeetingId + sParam;
+            ShowInDetailPane(sUrl);
+
+            return false;
+        }
+
+        function ExtractParameterForUpdateRequest(sUrl, sFind, sReplace) {
+            var iStart = sUrl.indexOf("&" + sFind + "=");
+            if (iStart < 0)
+                iStart = sUrl.indexOf("?" + sFind + "=");
+
+            if (iStart < 0)
+                return "";
+
+            var iEnd = sUrl.indexOf("&", iStart + 1);
+            if (iEnd < 0)
+                iEnd = sUrl.length;
+
+            iStart += sFind.length + 1;
+
+            return "&" + sReplace + sUrl.substring(iStart, iEnd);
+        }
+
+        function lnkMyNotes_Click(iMeetingId) {
+            var sUrl = "/Citizens/Detail_Meeting.aspx?CssClass=AgendaOutline&Frame=SplitView&ID=" + iMeetingId + "&View=MyNotes";
+            ShowInDetailPane(sUrl);
+            return false;
+        }
+
+        function lnkDownloads_Click(iMeetingId) {
+            var sUrl = "/Citizens/Detail_Meeting.aspx?CssClass=AgendaOutline&Frame=SplitView&ID=" + iMeetingId + "&View=Downloads";
+            ShowInDetailPane(sUrl);
+            return false;
+        }
+
+        function lnkResizeOutline_Click() {
+            var sText = $("#lnkResizeOutline").html();
+            var iLeftPct;
+            var iRightPct;
+
+            // toggles between Hide Outline > Show Outline
+            if (sText.indexOf("Hide Outline") != -1) {
+                sText = "Show Outline";
+                iLeftPct = 1;
+                iRightPct = 99;
+                $("#LeftPanel").css("display", "none");
+            }
+            else {
+                sText = "Hide Outline";
+                iLeftPct = 35;
+                iRightPct = 65;
+                $("#LeftPanel").css("display", "");
+            }
+
+            $("#lnkResizeOutline").html(sText);
+        }
+
+        function DoSearch_Hook(sText) {
+            ShowInDetailPane("/Citizens/Search.aspx?Frame=SplitView&SearchText=" + sText);
+        }
+        function GoBack() {
+            var detailFrame = $("#RightContent");
+            detailFrame.html("Loading . . . ");
+            
+            detailFrame.attr("src", lastUrl);
+            if (lastUrl != '') {
+                lastUrl = '';
+                $('#btnGoBack').hide();
+            }
+
+            FrameInsert(detailFrame, function (e) {
+                ReplaceLinks(detailFrame);
+                if (moRightPanelScroller != undefined) {
+                    moRightPanelScroller.scrollTo(0, 0);
+                }
+            });
+        }
+        function ShowInDetailPane(sUrl) {
+            var detailFrame = $("#RightContent");
+            detailFrame.html("Loading . . . ");
+           
+            lastUrl = detailFrame.attr("src");
+            $('#btnGoBack').show();
+            detailFrame.attr("src", sUrl);
+            
+            FrameInsert(detailFrame, function (e) {
+                ReplaceLinks(detailFrame);
+                if (moRightPanelScroller != undefined) {
+                    moRightPanelScroller.scrollTo(0, 0);
+                }
+            });
+        }
+
+        /*function ShowVideo_Hook(sUrl) {
+            $("#VideoPanelInner").attr("src", sUrl);
+            FrameInsert($("#VideoPanelInner"));
+        }*/
+
+        function lnkDownloadDocument_Click() {
+            var sLink = $("#RightContent a").attr("oldhref");
+            window.open("/Citizens/" + sLink, "Download");
+        }
+
+    </script>
+</head>
+<body id="SplitViewLayout">
+
+<!-- this code must be here, not in the head, or else asp.net will throw an error -->
+    
+<!-- ---------------------------------------------------------------------------- -->
+    
+<form method="post" action="./SplitView.aspx?Mode=Video&amp;MeetingID=1690&amp;Format=Minutes" id="aspnetForm">
+<div class="aspNetHidden">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="LGC1yNFCrBxC3qE0pqV/5JHoK+0U4FwNSLAqsehPR3YCNcOOF9pFsShjQBHYKaU+IMnmmxIWD5R8CgCepoF46LBLCPy3h11etSQ52TL10LQ9diktNu9BkYj2OPXOUca90sUq/nQMTPHYEGmmnu3pTjjnL1PXsSNeOoHlqeMIF6OWm/Qj1KIvrQsbo7lZXabVmGUHSg+hpLKSVO/TqXo9qLcnHL05cLDu1kpACWCP0WjOLTFuI8VbntrR5b4Z3mMW9x2uVNMtDdao+RbSFP/3M0dgs0H8xc5irmRftZuEZjWE1LEMEZJskYuTRGxUerhbq7ha1fu9hVWnE1Cz1I2GNxttA8RNFVtMNH+43A0Ylt6LNCZKvwF6puNHdAl9t4/v01YW+0/4lGHWpnuIJe0igpGc6sVzbIRnH3h+S4QztauFEvOVel+hJLLWySzM4U46Zp90n/Sd4lkd3vuJeaq+ywVSGoiqkkB2F7kmZgM9V/7BNUCnzmqyWvhJxScmKxaRhyadrDtV8hG3RlOrm8pQFWMrWKGRbHFin6cFzDiA/2tu/+tlnXYLU4ez/xnLyFTTjJ/szx52t1B0iMzbs2LOx+3dp6todyyRNoeUD9WVDT0AJy+hxTilJTj4jx6T9yJCnn2JUifdPm5USTPKJtAy+qrb8QEIpFLZliQIVhOOQyWf7NS50qg0yEpljolNJPhn/YZmYWJNv+GEP3GbfibX5l4wy3KmE7AZS+HbrHq1JlrGmAYPvoGpk9RW3hjTy4dTr0z0JUO+0DZgyGSQzFbDpjen6H0kWJss9K+R4ceKuLT6sZCITS96ma2KPKfx7wsBvFpMVlsLX6OMoogwyow4tZXOFu0CyEJKUagmY4qZNDrVvDRmwrRTVy/DjZAFIlZYnGgDfUNFXiIIbOZ99RTfwEjP/maOshyMTBloF3A/lF+un077fFSzPx0lcLJBREK2L/csi5l5WLZjrHVZ/ageG7Qhz6t7XBNABfvx0ZefbuAMNaAHaj5h5yBGi5BlW7FCDcj7spKhiSMRV0dq6hevCJ+drCheoWIdH2gzv3PgL+xU/24c8NqVDiR4WEPt9+vGFo+7gUfCLnG17CEng4cygHUz+MQlBWfvnsfRTAN4Z0fgLREOsD7lYo1lr9js1DcHgJM3L2tO+7Cabw1efYxAI7jmPkTOYYk0e2+2J4ZPOqERTlRAfo0koOEWRn8E+fjmTuN5WvDpFJtZgO+sjnrxPRoTpYuZKxC1AEDKegDY6E2dE85Z654uT5W83fk5+q2ka/IKFJJdTKm0AvNqWsYmT30r6lIshR1Wcfs+EWtlTZx2uaermA61AT/dkTsCz08MdynEuqb136UwMFte5Tvl2GHLOvFFTilj1x/fBwGgob30YXxmv2RtbLuMQRmIlRmv8LkbRFgcfgbQ8RAP1p5sQm1li4dptn8yiir/241Mdqa6tnRo3McVOC+Y2AkqgjlegnRWbq9QF8lrukaNYZXVndtq1IrxzSqfYg+zFQzQ1BMPZuTpRQ3eYGhAhCg22169ELYlzT+jFXs1Yw4PcxN2blRagPL11GMWWRd7BrmNgFMTxdieYjWozgzPiZKI6kPrukbNx25gGxTl17//UU3qnM/3B/UOdIZ4nHw8AMQlMwBXqGKPBaCjP7UA0hxmhb7gEN/KR11IXlNwUBecKObDUW14rleQjF7RC+9nMHRzjQbxXAkF41FAchjQVTgJbQPWiFmTD7L57BrLjGoPz8coniHyZGgpersgVepscyNGcUgd7afOEcb0cNGsa2vJBWNhyvs6MbWOgx9k08pmWxeqfSr3yxNhu3YpX9nLuFnLNACHecg0APvSlC0iZDxOfjNvYIUiSg1jp6GrqyBuwuz3mA==" />
+</div>
+
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="674B0100" />
+</div>
+    <!-- NO ROUTING INFO -->
+    <table class="LayoutTable" id="PageLayoutTable" style="width:100%;height:100%;" role="presentation">
+        <tr style="width:100%">
+            <td id="LeftPanel">
+                <div style="width:100%;height:100%;position:relative">
+                    <div id="Banner" role="banner">
+                        <img src="/Citizens/images/Film.gif" id="imgBannerLeft" alt="IQM2 Meeting Portal" class="SplitViewBannerDefaultIcon" />
+                        <span id="BannerNoImage" style="font-size:14pt;color:White;font-weight:bold;">MediaTraq Webcast</span>
+                    </div>
+                    
+                    <div id="LeftTopPanel">
+                        <div id="VideoPanel" class="LeftTopContent">
+                             <div id="VideoPanelInner" style="overflow:hidden">
+                                 <!-- MEDIA URL: -->
+<!-- DETECTED USER ADDRESS: 10.3.3.5-->
+<div class='videoscreen-container'>
+<video id='MediaPlayer1' class='video-js vjs-default-skin' controls preload='auto'>
+</video>
+</div>
+<script type='text/javascript'> SetupJWPlayer(eval('[{"file":"","default":true}]'),'True','False'); </script>
+
+                             </div>
+                        </div>
+                        
+                        
+                    </div>
+                    <div id="VSplitter"></div>
+                    <!--<div class="AgendaOutlineDivider">Outline</div>-->
+                    <div id="OutlinePanel">
+                        <div id="OutlinePanelInner" class="AgendaOutline" src="/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing&ID=1690"></div>
+                    </div>
+                      
+                    <div id="Splitter"></div>
+                </div>
+            </td>
+            <td id="RightPanel">
+                <div id="ToolStrip" role="navigation" aria-label="site" style="overflow-y:auto">
+                    <div class="Button" id="btnNormalView" >
+                        <a href="/Citizens/Detail_Meeting.aspx?ID=1690">Normal View</a>
+                    </div>
+                    <div class="Button">
+                        <a href="#" id="lnkResizeOutline" onclick="javascript: return lnkResizeOutline_Click();">Hide Outline</a>
+                    </div>
+                    <div class="Button">
+                        <a href="#" onclick="javascript: return lnkDownloads_Click(1690);">Files</a>
+                    </div>
+                    
+                    <div id="btnGoBack" class="Button" style="display:none">
+                        <a href="#" onclick="javascript: return GoBack();">Go Back</a>
+                    </div>
+                                        
+                    <div class="Button" id="btnDownloadDocument" style="display:none">
+                        <a href="#" onclick="javascript: return lnkDownloadDocument_Click();">Save File</a>
+                    </div>
+                    <div id="SearchHolder">
+                        <input id="txtQuickSearch" type="text" value="Search" title="Search" />
+                        <input id="btnQuickSearch" type="image" src="/Lib/images/search.png" /> 
+                    </div>
+                </div>
+                
+                <div id="divDetailScroller" style="display: -webkit-box-flex:1; height: 300px; overflow: hidden; width: 100%;">     
+                    <div id="RightContentHolder">                    
+                        <div id="RightContent" src="/Citizens/VideoStart.aspx?CssClass=VideoMeeting&ID=1690"></div>                                
+                    </div>
+                </div>
+                
+            </td>
+        </tr>
+    </table>
+
+</form>
+
+<!-- Analytics Stuff (Start) *********************************** -->
+<script async src='https://www.googletagmanager.com/gtag/js?id=UA-70364301-2'></script>
+  <script>
+   window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+  gtag('config', 'UA-70364301-2');</script>
+<!-- Analytics Stuff (End)   *********************************** -->
+</body>
+</html>

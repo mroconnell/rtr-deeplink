@@ -88,11 +88,33 @@ four tenants (Atlantic City: account `uihhbexsazftbrytfhlb` ->
 on `acnj.gov/pages/meeting-recordings`; Wilmington: account
 `gutfku8y1lmddbijjyam` -> `channel_id "x1jps4n28nlgtaozsv5y"`, matching
 `proudcity.py`'s own known Wilmington channel). This is what `resolve()`
-uses for `external_id` (`boxcast:{account.channel_id}`) and `jurisdiction`
-(`account.name`) when the account is single-tenant -- the SAME two
-values regardless of whether the original URL was a `/channel/`,
-`/view/` or `/view-embed/` link, since every broadcast (however reached)
-carries its own real `account_id`. `GET /channels/{channel_id}` alone (a
+uses for `video_channel` (`boxcast:{account.channel_id}`) and
+`jurisdiction` (`account.name`) when the account is single-tenant -- the
+SAME two values regardless of whether the original URL was a
+`/channel/`, `/view/` or `/view-embed/` link, since every broadcast
+(however reached) carries its own real `account_id`.
+
+**`video_channel`, not `external_id` (WO-245, 2026-09-12).** Before this
+WO, the government-level channel computed here WAS `external_id` --
+which collided two different real Atlantic City broadcasts onto one
+Archive page the first time a second one was ingested (`archive/db/
+crud.py`'s `_find_existing_page()` matches an incoming ingest to an
+existing page by `(platform, external_id)` BEFORE `source_url_normalized`,
+and its own comment already says `external_id` must be globally unique
+per MEETING -- the 2026-08-18 CivicClerk/Granicus per-customer-id
+incident is the same shape of bug). `external_id` is now always
+`boxcast:{broadcast_id}` (the broadcast's own real, 20-char, confirmed
+globally-unique id -- two real broadcasts from two different accounts,
+Atlantic City's `wuv2iiwzlyzhny1zietp` and South Bay, FL's
+`cxm9kgwlyf8qj7c4tnbv`, each fetched with no account qualifier via the
+existing `GET /broadcasts/{id}` call, confirming the API already treats
+this id as a global key, not one scoped per account). The stable
+government-channel id computed in this section instead rides into
+`ResolvedMeeting.video_channel` -- consulted only as a `tenant_overrides.
+csv` `channel=` pin hint (`app/utils/gov_registry/resolver.py`'s
+`page_hints_for()`), never as Archive page identity, so two broadcasts
+from the same channel/account can both get their own distinct `external_
+id` while still sharing the same pin. `GET /channels/{channel_id}` alone (a
 plain channel object, no `account_id`) is NOT used for jurisdiction: its
 own `name` field reads `"All broadcasts for {name}"`, a description, not
 the clean name -- confirmed on all four tenants, including one genuinely
@@ -118,18 +140,40 @@ youtube.com/vimeo.com, one layer deeper (inside a single BoxCast
 account rather than a whole domain). Atlantic Beach's account
 ("Media Mike") reads the same way structurally, though no second real
 government has been confirmed on it yet. Using `account.channel_id`
-unconditionally here (as the module did before this WO) would silently
-compute the SAME `external_id` for every government sharing that
-account -- exactly the collision WO-210 fixed at the domain level, just
-unreachable by that fix since BoxCast accounts aren't in
-`MULTI_GOV_HOSTS`. `_resolve_broadcast()`'s `channel_hint` parameter is
+unconditionally here (as the module did before WO-227b) would silently
+compute the SAME `video_channel` pin hint for every government sharing
+that account -- exactly the collision WO-210 fixed at the domain level,
+just unreachable by that fix since BoxCast accounts aren't in
+`MULTI_GOV_HOSTS` (the HOST, `boxcast.tv`, is -- see WO-245's own section
+above; a shared ACCOUNT inside it is not, and can't be, since accounts
+aren't hostnames). `_resolve_broadcast()`'s `channel_hint` parameter is
 the fix: when the scan reached a real, DISTINCT channel (different from
 the picked broadcast's own one-off per-broadcast pseudo-channel), that
-channel -- not the account -- is trusted for `external_id`, and the
+channel -- not the account -- is trusted for `video_channel`, and the
 account's `name` is trusted for `jurisdiction` only when it agrees with
 that same distinct channel (i.e. the account looks single-tenant for
 this specific channel). See `tests/test_boxcast.py`'s Livermore Falls
 and Atlantic Beach cases.
+
+This same gap bit South Bay, FL for a different reason (WO-245): its
+real channel (`kddihfjxfiskfydfkwgy`, carrying only South Bay's own
+meetings) sits on a BoxCast account ("Primestar Digital Network - PALM
+SPRINGS, fl") confirmed live to ALSO carry at least seven other real
+Florida governments' own meetings (Boynton Beach, Boynton Beach CRA,
+Belle Glade, Clewiston, Pahokee, Mangonia Park, Delray Beach). South
+Bay's own pin was found by visiting the city's site directly (not by
+resolving its meeting URL), so it already pins the correct distinct
+channel -- but `channel_hint` is only ever populated when the ORIGINAL
+URL itself was a `/channel/{id}` scan (see `resolve()` above); a direct
+`/view/{broadcast}` link (the shape South Bay's own real pages are
+ingested from) never scans a channel at all, so there is nothing to
+compare `own_slug` against and no way for THIS module to discover the
+distinct channel on its own. `video_channel` for such a page falls back
+to the shared account's own channel -- exactly the value that must NOT
+be pinned, since seven other real governments would match it too. See
+`BACKLOG.md`'s WO-245 entry: the existing South Bay pin is kept exactly
+as-is (correct, safe, just not reachable from a direct `/view/` link),
+not widened to the shared account channel.
 
 ## A channel URL auto-picks its newest meeting-like PAST broadcast
 
@@ -783,6 +827,23 @@ class BoxcastAssetFinder(AssetFinder):
         channel_hint: Optional[str] = None,
     ) -> ResolvedMeeting:
         broadcast_id = broadcast.get("id")
+        # WO-245: the Archive matches an incoming ingest to an existing
+        # page by `(platform, external_id)` -- see `archive/db/crud.py`'s
+        # `_find_existing_page()` -- so `external_id` must identify this
+        # one MEETING, never a government-level channel shared by many
+        # meetings (the bug this WO fixed: a second real Atlantic City
+        # broadcast silently overwrote the first one's page). `broadcast_
+        # id` is the real, 20-char, confirmed globally-unique id BoxCast's
+        # own API already treats as a global key -- `_fetch_broadcast()`
+        # above fetches `/broadcasts/{id}` with no account qualifier at
+        # all, and two real ids from two different real accounts
+        # (Atlantic City's `wuv2iiwzlyzhny1zietp`, South Bay FL's
+        # `cxm9kgwlyf8qj7c4tnbv`) both resolve correctly that way. The
+        # stable GOVERNMENT-level channel id (module docstring's "A
+        # different thing again" / "shared regional media operator"
+        # sections) is computed below into `video_channel` instead -- a
+        # `tenant_overrides.csv` pin hint, never Archive page identity.
+        external_id = f"boxcast:{broadcast_id}" if broadcast_id else None
         title = broadcast.get("name") or None
         date = _broadcast_local_date(broadcast)
         # The broadcast's own dedicated one-broadcast pseudo-channel
@@ -805,9 +866,9 @@ class BoxcastAssetFinder(AssetFinder):
         # Select Board, Jay Select Board, RSU 9 school board and high-school
         # sports broadcasts) and "Media Mike" respectively, not a
         # government-owned account. Blindly trusting `account.channel_id`
-        # (the ONLY id the module used before this WO) would silently
+        # (the ONLY id the module used before WO-245) would silently
         # collapse every government on that shared account onto ONE
-        # external_id -- the exact multi-gov-host hazard
+        # `video_channel` pin hint -- the exact multi-gov-host hazard
         # `docs/COVERAGE_HANDOVER.md` section 3 already documents for
         # youtube.com/vimeo.com, just one layer deeper (a shared account
         # inside a single-tenant-looking host). `channel_hint` is only
@@ -824,7 +885,7 @@ class BoxcastAssetFinder(AssetFinder):
             channel_hint if channel_hint and channel_hint != own_slug else None
         )
 
-        external_id: Optional[str] = None
+        video_channel: Optional[str] = None
         jurisdiction: Optional[str] = None
         account_id = broadcast.get("account_id")
         if account_id:
@@ -833,7 +894,7 @@ class BoxcastAssetFinder(AssetFinder):
                 account_channel_id = account.get("channel_id")
                 channel_id = distinct_channel or account_channel_id
                 if channel_id:
-                    external_id = f"boxcast:{channel_id}"
+                    video_channel = f"boxcast:{channel_id}"
                 # The account's own `name` is only trustworthy as THIS
                 # meeting's jurisdiction when the account is (as far as
                 # this resolve can tell) single-tenant -- i.e. its own
@@ -852,7 +913,7 @@ class BoxcastAssetFinder(AssetFinder):
                     if name and isinstance(name, str):
                         jurisdiction = name
         elif distinct_channel:
-            external_id = f"boxcast:{distinct_channel}"
+            video_channel = f"boxcast:{distinct_channel}"
 
         if not broadcast_id:
             return ResolvedMeeting(
@@ -862,6 +923,7 @@ class BoxcastAssetFinder(AssetFinder):
                 date=date,
                 jurisdiction=jurisdiction,
                 external_id=external_id,
+                video_channel=video_channel,
                 video_warnings=[
                     "This BoxCast broadcast has no id to fetch video from."
                 ],
@@ -876,6 +938,7 @@ class BoxcastAssetFinder(AssetFinder):
                 date=date,
                 jurisdiction=jurisdiction,
                 external_id=external_id,
+                video_channel=video_channel,
                 video_warnings=[
                     "This BoxCast broadcast's recording isn't available yet."
                 ],
@@ -889,6 +952,7 @@ class BoxcastAssetFinder(AssetFinder):
                 date=date,
                 jurisdiction=jurisdiction,
                 external_id=external_id,
+                video_channel=video_channel,
                 video_warnings=["This BoxCast broadcast has no playable recording."],
             )
 
@@ -899,6 +963,7 @@ class BoxcastAssetFinder(AssetFinder):
             date=date,
             jurisdiction=jurisdiction,
             external_id=external_id,
+            video_channel=video_channel,
             video_url=video_url,
             video_format="m3u8",
             transcript_warnings=[_NO_CAPTIONS_WARNING],

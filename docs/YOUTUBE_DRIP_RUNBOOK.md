@@ -80,11 +80,56 @@ git pull
 .venv/bin/python scripts/youtube_drip.py advance
 ```
 
-`advance` removes the queue lines the feed lane has already handled and
-tells the Archive the new remaining count. Commit the queue file on a
-branch and open a PR titled "Advance tier 3 auto-transcription queue
-(YouTube drip)" — the same thing the GitHub feed does for the other
-platforms. If the PR conflicts, take the union of both sides' lines.
+`advance` removes the queue lines the feed lane has already handled,
+tells the Archive the new remaining count, and folds the feed lane's
+probe rows (piled up locally all day — see below) into the tracked
+`scripts/tier3_auto_transcription_queue_probe.csv`. Commit **both**
+files (`git add scripts/tier3_auto_transcription_queue.txt
+scripts/tier3_auto_transcription_queue_probe.csv`) on a branch and open
+a PR titled "Advance tier 3 auto-transcription queue (YouTube drip)" —
+the same thing the GitHub feed does for the other platforms. If the PR
+conflicts, take the union of both sides' lines (see
+`docs/COVERAGE_HANDOVER.md` §5.6 for the one exception — a deliberately
+*deleted* line stays deleted).
+
+**WO-248 (2026-09-12):** the feed lane's probe rows used to go straight
+to the tracked CSV above, live, all day — every one of those writes made
+the working tree dirty hours before this once-a-day commit, and `main`
+kept growing the same file through merged sweeps in the meantime, so
+`git pull` conflicted on it every single day (append-only, nothing was
+ever lost, but it took a hand-resolved union each time). They now go to
+a local, gitignored buffer instead
+(`scripts/tier3_auto_transcription_queue_probe.local.csv`), and `advance`
+folds that buffer into the tracked file once, right here, then empties
+it. **After this lands, `git pull` on this Mac once more; every pull
+after that is clean.**
+
+## Backfill sweeps (occasional, not part of the drip loop)
+
+`scripts/backfill_archived_pages.py --platform youtube --missing-channel-only`
+(WO-295) also needs to run on this Mac, but it is a separate, one-off
+script, not part of the three lanes above. It re-resolves archived
+YouTube pages whose `video_channel` is still NULL (~1,676 as of
+2026-09-12, after `scripts/backfill_video_channel.py` — see below —
+filled the rest for free), one real YouTube call per page, paced by its
+own `--delay`. It shares this Mac's one YouTube budget with the drip
+(Rule 1 above), so stop the drip (Ctrl-C) or drop to
+`--lanes captions,feed` first — the same accommodation Rule 4 describes
+for a manual Whisper run.
+
+Run `scripts/backfill_video_channel.py --apply` first, from the
+Archive's Render shell (not this Mac — it makes no YouTube call and is a
+plain DB write, so it belongs where every other DB-only backfill runs,
+per CLAUDE.md). That fills most of the NULL rows from per-video records
+already in the repo, so the drip-Mac sweep below only touches the
+genuine remainder instead of all ~3,464 affected pages.
+
+```bash
+# dry run first, on a small slice
+.venv/bin/python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --dry-run --limit 20
+# the real run
+.venv/bin/python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --delay 3
+```
 
 ## Identity: what the drip does not do
 

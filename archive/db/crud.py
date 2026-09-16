@@ -47,6 +47,7 @@ from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
 from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
+from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
 from ..utils.date_status import (
     iso_meeting_date,
@@ -92,6 +93,7 @@ from ..topics import (
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
+from . import hub_slugs
 from .engine import async_session
 from .models import (
     MeetingHighlight,
@@ -1275,6 +1277,17 @@ async def _find_or_create_page(
 
     await _ensure_alias(session, input_url_normalized, page.id)
     await _ensure_alias(session, source_url_normalized, page.id)
+    # WO-256: this government's hub slug, stored rather than left to be
+    # recomputed from whatever its name is on the day a reader arrives.
+    # `page.gov_id`, not `gov.gov_id`: the guards above can decline to
+    # write a resolved id (a manual override, WO-215's blank_downgrade),
+    # and the slug must follow the identity the page actually CARRIES.
+    # Flushed first so a brand-new page is counted by the gate's own
+    # page-count query in this same transaction.
+    await session.flush()
+    await hub_slugs.record_government(
+        session, page.gov_id, live_hub_slug(page.gov_id, page.jurisdiction)
+    )
     return page, created
 
 
@@ -1753,6 +1766,14 @@ async def list_all_page_urls() -> list[dict]:
                 # purely additive for the existing consumer, which reads
                 # slug/platform/source_url_normalized only.
                 "created_at": page.created_at.isoformat() if page.created_at else None,
+                # Added WO-295 for scripts/backfill_archived_pages.py's
+                # --missing-channel-only: lets that sweep restrict to pages
+                # whose video_channel is still NULL (the ~1,676 YouTube
+                # pages WO-246's map-file backfill couldn't fill), instead
+                # of re-resolving all ~3,464 affected pages -- each an
+                # actual YouTube call that has to be paced from the drip
+                # Mac. Free here, same reasoning as created_at above.
+                "video_channel": page.video_channel,
             }
             for page in pages
         ]
@@ -3571,20 +3592,24 @@ _TENANT_OVERRIDE_RULES_HEADER = [
 
 # Regex-based per-video match derivation for the WO-210 endpoint fix
 # below -- deliberately duplicated from, not imported from,
-# `app/platforms/youtube.py`/`vimeo.py`/`wistia.py`'s own (more complete)
-# parsers, per this repo's existing app/archive service-boundary
-# convention (see `archive/utils/video_thumbnail.py`'s own header note,
-# and `app/platforms/base.py`'s `MULTI_GOV_HOSTS` comment for why: those
+# `app/platforms/vimeo.py`/`wistia.py`'s own (more complete) parsers, per
+# this repo's existing app/archive service-boundary convention (see
+# `app/platforms/base.py`'s `MULTI_GOV_HOSTS` comment for why: those
 # modules pull in `yt-dlp`/`bs4`, neither of which is in
 # `archive/requirements.txt`, and a module-level import failure there
 # would crash the whole Archive service, not just this one endpoint). A
 # narrower regex than the real adapters' is fine here -- a miss just
 # means no rule is drafted for that page (see the `notes` fallback in
 # `override_jurisdiction()` below) rather than a wrong one.
-_YOUTUBE_VIDEO_ID_RE = re.compile(
-    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/)|youtu\.be/)"
-    r"([A-Za-z0-9_-]{11})"
-)
+#
+# WO-303, 2026-09-12 (BACKLOG.md's "Archive's two own copies" entry): the
+# YouTube case is different -- `app/platforms/youtube_ids.py` was built
+# (WO-250) specifically to hold pure id-extraction with NO `yt_dlp`
+# import, exactly so Archive-side code could use it safely; the "why
+# duplicated" reasoning above never applied to it. This used to be its
+# own copy of the same unbounded `([A-Za-z0-9_-]{11})` pattern, missing
+# the end-boundary fix WO-296 landed in the shared module -- imported
+# from there now instead of drifting out of sync again.
 _VIMEO_VIDEO_ID_RE = re.compile(r"vimeo\.com/(?:video/)?(\d+)")
 _WISTIA_MEDIA_ID_RE = re.compile(r"\.wistia\.com/medias/([A-Za-z0-9]+)")
 
@@ -3605,8 +3630,7 @@ def _multi_gov_match_for_video_url(
     if not video_url or not host:
         return None
     if host in ("www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"):
-        match = _YOUTUBE_VIDEO_ID_RE.search(video_url)
-        return match.group(1) if match else None
+        return _extract_youtube_video_id(video_url)
     if host in ("vimeo.com", "player.vimeo.com", "www.vimeo.com"):
         match = _VIMEO_VIDEO_ID_RE.search(video_url)
         return f"vimeo:{match.group(1)}" if match else None
@@ -3893,6 +3917,15 @@ async def override_jurisdiction(
                 update(MeetingPage)
                 .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
                 .values(**values)
+            )
+            # WO-256: an override is one of the operations that used to
+            # move a reader's URL -- it writes the registry display name,
+            # and the slug was derived from that on the next render. Record
+            # the government's hub slug here too, so the id this human
+            # just decided on owns a hub of its own rather than borrowing
+            # one from whatever its name currently slugifies to.
+            await hub_slugs.record_government(
+                session, gov_id, live_hub_slug(gov_id, display)
             )
             await session.commit()
 
@@ -4389,6 +4422,11 @@ async def clear_future_meeting_dates(
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
+        # WO-256: this page's own "More {Jurisdiction} meetings" link is
+        # built by hub_slug_for_page() from the same cache /j/ groups by,
+        # so it has to be loaded here too or a /m/ page could link to a
+        # live-computed slug while /j/ is grouping by the frozen one.
+        await hub_slugs.refresh(session)
         page = (
             (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
             .scalars()
@@ -5369,6 +5407,13 @@ async def find_new_matches_for_saved_search(
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
+    # CivicPlus's own "CivicMedia" video widget (TikiLive-hosted) --
+    # WO-341, 2026-09-13. A real, direct video host in its own right (not
+    # a calendar/agenda router like "civicplus" itself, excluded below):
+    # civicmedia.py keeps `resolved.platform = "civicmedia"` on every
+    # pushable result, so a real row lands labeled this way. See
+    # civicmedia.py's own module docstring.
+    "civicmedia": "CivicMedia (CivicPlus/TikiLive)",
     "swagit": "Swagit",
     "viebit": "Viebit",
     "escribe": "eScribe",
@@ -5490,6 +5535,19 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # (a broadcast, view-embed, or channel URL alike), so a real pushed
     # row keeps its own "boxcast" label, same as vimeo/wistia/invintus.
     "boxcast": "BoxCast",
+    # A bare video file on a government's own domain, Dropbox, or Google
+    # Drive -- WO-303, 2026-09-12. Not a vendor civic-meeting platform at
+    # all (there's no per-tenant page structure, just a file), but it's
+    # the same "one adapter, many independent governments" shape as
+    # vimeo/wistia/boxcast above -- Palisade town CO, Dundee city OR,
+    # Cayuga Heights village NY (own domain), Enterprise city OR
+    # (Dropbox), Kemmerer city WY (Google Drive) are five real, unrelated
+    # governments already confirmed live. direct_file.py's resolve() sets
+    # `resolved.platform = self.platform_name` on every return path
+    # (including its graceful-degradation "not actually a video"
+    # outcome), so a real pushed row keeps its own "direct_file" label,
+    # same as vimeo/wistia/invintus/boxcast.
+    "direct_file": "Direct video file (own domain / Dropbox / Google Drive)",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
@@ -5588,6 +5646,19 @@ COVERAGE_EXCLUSIONS: dict[str, str] = {
         "Same as primegov -- a YouTube-delegating calendar tool, named "
         "in 'What about Platform XYZ?' prose and recoverable in the "
         "'Detail page' column via _wrapper_detail_label()."
+    ),
+    "boarddocs": (
+        "Same shape as primegov, WO-365 (2026-09-14): boarddocs.py calls "
+        "YouTubeAssetFinder.resolve_video_id()/VimeoAssetFinder."
+        "resolve_video_id() directly (not resolve_via_platform()), so a "
+        "pushable row's MeetingPage.platform ends up 'youtube'/'vimeo', "
+        "never 'boarddocs' -- its own label only ever appears on a "
+        "no-video/unmapped-service return, which is never pushed (no "
+        "segments/agenda_items/video_url). source_url IS preserved as "
+        "the original go.boarddocs.com meeting page, so "
+        "_wrapper_detail_label() still names it in the 'Detail page' "
+        "column. Named in coverage.html's 'What about Platform XYZ?' "
+        "prose."
     ),
     "municode_meetings": (
         "Same calendar/agenda-router shape as legistar/civicplus above -- "
@@ -5945,6 +6016,11 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
         return "PrimeGov"
     if netloc.endswith("civicweb.net"):
         return "CivicWeb"
+    if netloc == "go.boarddocs.com":
+        # WO-365, 2026-09-14 -- same primegov.com shape just above:
+        # boarddocs.py preserves the original go.boarddocs.com meeting
+        # URL as source_url on every delegated (YouTube/Vimeo) result.
+        return "BoardDocs"
     return None
 
 
@@ -7949,12 +8025,42 @@ def _hub_base_conditions():
     )
 
 
+def live_hub_slug(gov_id: Optional[str], jurisdiction: Optional[str]) -> Optional[str]:
+    """The slug this government's hub would be COMPUTED as right now --
+    the registry's current display name for a `gov_id` it knows, else the
+    page's own cleaned jurisdiction text.
+
+    This is what `_hub_identity()` used to return unconditionally, and it
+    is still the answer for a government with no stored row. Split out as
+    its own function (WO-256) because it is now also what every *writer*
+    stores: `hub_slugs.record_government()` takes this value, so the
+    frozen slug is by definition "whatever the live computation said at
+    freeze time" -- which is what makes the cutover change zero URLs.
+    """
+    gov = registry_governments().get(gov_id) if hub_slugs._usable(gov_id) else None
+    if gov:
+        return gov_hub_slug(gov)
+    return jurisdiction_hub_slug(jurisdiction)
+
+
 def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     """(key, slug, display, gov_type) for one page's hub.
 
-    Three cases, and the fallbacks matter as much as the happy path
-    because a hub has to keep working for every page in the archive, not
-    only the resolved ones:
+    **The slug is the government's STORED one whenever it has been frozen**
+    (WO-256, `docs/investigations/hub_architecture_audit.md` §4): a
+    `gov_id` lookup against `hub_slugs`, never a recomputation from the
+    page's text or the government's current name. A rename, a Census
+    correction, an override or a backfill can still change *which*
+    government a page belongs to; it can no longer move the URL of the hub
+    that government already has. `archive/db/hub_slugs.py` holds the read
+    path (a process-level cache, because this function is sync) and the
+    7-day/2-page gate that decides when a slug stops being provisional.
+
+    Everything below is what happens for a government with no frozen row
+    -- every government before `scripts/freeze_hub_slugs.py` has run, and
+    every brand-new one since. Three cases, and the fallbacks matter as
+    much as the happy path because a hub has to keep working for every
+    page in the archive, not only the resolved ones:
 
     1. **A `gov_id` with a registry row** -- the normal case after the
        backfill. The key is the id, and the slug and display name are
@@ -7984,10 +8090,20 @@ def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     # now falls through to case 3: no government shown, no hub link,
     # exactly like a page with no id at all.
     known = bool(gov_id) and not gov_id.startswith("rtr:unknown:")
+    # The frozen slug wins over both cases below, and over nothing else:
+    # the DISPLAY name still comes from the registry (so a rename still
+    # shows up in the page's text, which is the whole point of separating
+    # the name from the URL).
+    frozen = hub_slugs.frozen_hub_slug(gov_id) if known else None
     gov = registry_governments().get(gov_id) if known else None
     if gov:
-        return gov.gov_id, gov_hub_slug(gov), gov_display_name(gov), gov.gov_type
-    slug = jurisdiction_hub_slug(jurisdiction)
+        return (
+            gov.gov_id,
+            frozen or gov_hub_slug(gov),
+            gov_display_name(gov),
+            gov.gov_type,
+        )
+    slug = frozen or jurisdiction_hub_slug(jurisdiction)
     display = format_jurisdiction_display(jurisdiction)
     return (gov_id or slug or ""), slug, display, None
 
@@ -8075,6 +8191,11 @@ async def _hub_groups(session) -> dict[str, dict]:
     governments on one hub, which `splits.csv` in the scoring report is
     exactly the thing that would show it.
     """
+    # WO-256: load the frozen slugs before `_hub_identity()` is called for
+    # the first time in this request. This is the main entry point for the
+    # whole cache -- `/j/`, `/state/*`, the home page and `sitemap.xml`
+    # all come through here.
+    await hub_slugs.refresh(session)
     stmt = (
         select(
             MeetingPage.gov_id,
@@ -8088,10 +8209,8 @@ async def _hub_groups(session) -> dict[str, dict]:
     )
     rows = (await session.execute(stmt)).all()
     groups: dict[str, dict] = {}
-    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
-        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
-        if not slug:
-            continue
+
+    def _group(slug, key, display, jurisdiction, registry_type, gov_type, last_updated):
         g = groups.setdefault(
             slug,
             {
@@ -8099,42 +8218,200 @@ async def _hub_groups(session) -> dict[str, dict]:
                 "key": key,
                 "display": display,
                 "gov_ids": [],
+                # Display only, for the /meetings?jurisdiction= "search
+                # all" link -- NOT a membership test any more (WO-256).
                 "jurisdictions": [],
+                # Ids of the un-keyed pages that belong here, worked out in
+                # Python by `_unkeyed_membership()` below.
+                "page_ids": [],
                 "page_count": 0,
                 "last_updated": last_updated,
                 "state_abbr": state_abbr_from_jurisdiction(display or jurisdiction),
                 "gov_type": registry_type or gov_type,
             },
         )
-        if gov_id and gov_id not in g["gov_ids"]:
-            g["gov_ids"].append(gov_id)
         g["jurisdictions"].append(jurisdiction)
-        g["page_count"] += count
         if last_updated and (
             g["last_updated"] is None or last_updated > g["last_updated"]
         ):
             g["last_updated"] = last_updated
+        return g
+
+    # Pass 1: the real governments. An `rtr:unknown:<host>` id is NOT one
+    # -- it means "we do not know whose meeting this is" -- and letting it
+    # into `gov_ids` is exactly how 47 unrelated pages ended up on four
+    # real hubs (Orem UT, Tooele UT, Box Elder County UT, Caledonia
+    # Township MI, measured 2026-09-11): one such page whose raw text
+    # happened to slugify onto a real hub put the shared placeholder id
+    # into that hub's id list, which then matched EVERY page carrying the
+    # same placeholder.
+    unkeyed_seen = False
+    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
+        if not hub_slugs._usable(gov_id):
+            unkeyed_seen = True
+            continue
+        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
+        if not slug:
+            continue
+        g = _group(
+            slug, key, display, jurisdiction, registry_type, gov_type, last_updated
+        )
+        if gov_id not in g["gov_ids"]:
+            g["gov_ids"].append(gov_id)
+        g["page_count"] += count
+
+    if not unkeyed_seen:
+        return groups
+
+    # Pass 2: the un-keyed pages, by HOST rather than by raw text
+    # (WO-256, the audit's §5). Both queries behind this are small: the
+    # first returns only un-keyed pages (418 of 8,222 in the 2026-09-11
+    # export), the second only pages sharing one of their hosts.
+    adoption, unkeyed = await _unkeyed_membership(session)
+    gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
+    for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
+        owner = adoption.get(host)
+        g = gov_group.get(owner) if owner else None
+        if g is None:
+            # Not adopted, so it keeps the hub its own raw text has always
+            # given it -- UNLESS that slug already belongs to a real
+            # government, in which case this is one of the contamination
+            # cases above and the page belongs nowhere until it is keyed.
+            _key, slug, display, _registry_type = _hub_identity(gov_id, jurisdiction)
+            if not slug or (slug in groups and groups[slug]["gov_ids"]):
+                continue
+            g = _group(
+                slug,
+                gov_id or slug,
+                display,
+                jurisdiction,
+                None,
+                gov_type,
+                last_updated,
+            )
+        elif last_updated and (
+            g["last_updated"] is None or last_updated > g["last_updated"]
+        ):
+            g["last_updated"] = last_updated
+        g["page_ids"].append(page_id)
+        g["page_count"] += 1
     return groups
+
+
+async def _unkeyed_membership(session):
+    """(host -> the one government that owns it, [un-keyed page rows]).
+
+    WO-256, the audit's §5. An un-keyed page -- no `gov_id` at all, or the
+    `rtr:unknown:<host>` placeholder -- joins a real government's hub only
+    when it shares a tenant HOST with a page already keyed to that
+    government, and only when that host is not a `MULTI_GOV_HOSTS` host.
+    Never by raw text.
+
+    Why a host and not the text: the text is a coincidence ("Orem, UT" on
+    a YouTube video says nothing about whose video it is), while a host is
+    the same evidence WO-210/214/215/221 already established as the
+    trustworthy signal for shared-tenant identity. Measured against the
+    2026-09-11 export: 31 un-keyed pages gain a real hub under this rule
+    (20 with a blank id, 11 with the placeholder), and the 4 contamination
+    hubs stop carrying pages of unrelated YouTube video.
+
+    A host with TWO keyed governments on it adopts nothing -- that is a
+    shared tenant this code cannot split, and guessing is the thing the
+    rule exists to stop.
+    """
+    unkeyed = []
+    hosts: set = set()
+    rows = (
+        await session.execute(
+            select(
+                MeetingPage.id,
+                MeetingPage.gov_id,
+                MeetingPage.jurisdiction,
+                MeetingPage.source_url_normalized,
+                MeetingPage.gov_type,
+                MeetingPage.updated_at,
+            ).where(
+                *_hub_base_conditions(),
+                or_(
+                    MeetingPage.gov_id.is_(None),
+                    MeetingPage.gov_id.like("rtr:unknown:%"),
+                ),
+            )
+        )
+    ).all()
+    for page_id, gov_id, jurisdiction, url, gov_type, updated_at in rows:
+        host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+        unkeyed.append((page_id, gov_id, jurisdiction, host, gov_type, updated_at))
+        if host and not is_multi_gov_host(host):
+            hosts.add(host)
+    if not hosts:
+        return {}, unkeyed
+
+    owners: dict = {}
+    keyed = (
+        await session.execute(
+            select(MeetingPage.gov_id, MeetingPage.source_url_normalized).where(
+                MeetingPage.gov_id.is_not(None),
+                ~MeetingPage.gov_id.like("rtr:unknown:%"),
+                _host_url_condition(hosts),
+            )
+        )
+    ).all()
+    for gov_id, url in keyed:
+        host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+        if host in hosts:
+            owners.setdefault(host, set()).add(gov_id)
+    return (
+        {host: next(iter(ids)) for host, ids in owners.items() if len(ids) == 1},
+        unkeyed,
+    )
+
+
+def _host_url_condition(hosts):
+    """SQL for "this page's URL is on one of these hosts".
+
+    `source_url_normalized` is canonicalised to `https://` with the host
+    lowercased (`archive/utils/url_normalize.py`), so this is a prefix
+    match -- written as three explicit shapes rather than one
+    `https://{host}%`, because that one would also match
+    `https://example.com.somewhere-else.test/...`.
+    """
+    arms = []
+    for host in sorted(hosts):
+        base = f"https://{host}"
+        arms += [
+            MeetingPage.source_url_normalized == base,
+            MeetingPage.source_url_normalized.like(f"{base}/%"),
+            MeetingPage.source_url_normalized.like(f"{base}?%"),
+        ]
+    return or_(*arms) if arms else false()
 
 
 def _hub_page_condition(group: dict):
     """Every page belonging to one hub group.
 
-    Two arms, because a hub can hold both kinds of page at once during a
-    partial backfill: rows keyed by `gov_id`, and rows with no id at all
-    whose display string still slugs to this hub. The second arm is
-    restricted to un-keyed rows so a page that resolved to a DIFFERENT
-    government cannot be dragged back in by its old spelling."""
+    Two arms, because a hub can hold both kinds of page at once: rows
+    keyed to one of this government's `gov_id`s, and un-keyed rows that
+    `_unkeyed_membership()` has already decided belong here -- by shared
+    tenant HOST, never by raw text (WO-256, the audit's §5).
+
+    **What the second arm used to be, and why it changed.** It was
+    `gov_id IS NULL AND jurisdiction IN (this hub's raw strings)` -- a
+    text match, added so an un-keyed page could still join its hub during
+    a partial backfill. Measured on 2026-09-11 it was also letting
+    unrelated video ride onto four real governments' hubs by pure
+    spelling coincidence, and (through `_hub_groups()` putting the shared
+    `rtr:unknown:<host>` placeholder into a hub's id list) dragging in
+    every other page that carried the same placeholder. A page id list
+    computed from host evidence answers the original question -- "is this
+    un-keyed page this government's?" -- with the same signal WO-210
+    already trusts for shared hosts, and none of the coincidence.
+    """
     arms = []
     if group["gov_ids"]:
         arms.append(MeetingPage.gov_id.in_(group["gov_ids"]))
-    if group["jurisdictions"]:
-        arms.append(
-            and_(
-                MeetingPage.gov_id.is_(None),
-                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
-            )
-        )
+    if group["page_ids"]:
+        arms.append(MeetingPage.id.in_(group["page_ids"]))
     return or_(*arms) if arms else false()
 
 
@@ -10994,3 +11271,151 @@ async def get_meeting_inventory_summary() -> dict:
     async with async_session() as session:
         row = (await session.execute(stmt)).one()
     return dict(row._mapping)
+
+
+# How many example pages one host's row carries. Enough to recognise the
+# government by eye (a title and a URL are usually all it takes) without
+# turning a 126-host answer into a 418-row dump.
+UNIDENTIFIED_EXAMPLES_PER_HOST = 5
+
+
+async def list_unidentified_pages(host: Optional[str] = None, limit: int = 200) -> dict:
+    """Every archived page with no government yet, grouped by the host
+    it came from -- WO-256, the audit's §6, recommendation A restricted to
+    internal use.
+
+    **Why by host.** This is the exact shape of the job it exists for.
+    Every identity work order so far (WO-209, 210, 214, 215, 221, and the
+    audit itself) started by pulling `GET /internal/export/pages` and
+    grepping it, then worked host by host, because a host is what a pin is
+    written against. 418 of 8,222 pages had no government on 2026-09-11,
+    across 126 hosts; 27% of them were on the four confirmed
+    multi-government hosts and need a per-video or per-channel pin, and
+    the rest were mostly single-government Cablecast/Swagit/Castus hosts
+    with 1-3 pages each -- a same-day pin away from being fully keyed.
+    Sorting by page count puts the biggest wins first.
+
+    **Deliberately internal and not a `/j/` page.** A public per-host page
+    would be 126 thin, near-duplicate pages all saying "we don't know
+    whose meeting this is" -- exactly the thin-content pattern
+    `STATE_HUB_PAGES.md` §1 diagnosed Google penalising these hubs for.
+    The reader-facing answer stays what it is today: no public page for a
+    video until a real `gov_id` exists.
+
+    Every field is stored, never inferred. `already_keyed_governments` is
+    the set of real `gov_id`s that already have pages on this host, and
+    `adopted_by` is the one the §5 inclusion rule actually applies --
+    populated only for a host with exactly one such government that is not
+    a `MULTI_GOV_HOSTS` host, which is the same answer `/j/` renders from.
+    """
+    limit = max(1, min(limit, 500))
+    wanted_host = (host or "").strip().lower() or None
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.date,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.gov_id,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.video_url,
+                )
+                .where(
+                    or_(
+                        MeetingPage.gov_id.is_(None),
+                        MeetingPage.gov_id == "",
+                        MeetingPage.gov_id.like("rtr:unknown:%"),
+                    )
+                )
+                .order_by(MeetingPage.id.asc())
+            )
+        ).all()
+
+        buckets: dict[str, dict] = {}
+        for (
+            page_id,
+            slug,
+            title,
+            date,
+            jurisdiction,
+            gov_id,
+            platform,
+            url,
+            video_url,
+        ) in rows:
+            page_host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+            if wanted_host and page_host != wanted_host:
+                continue
+            b = buckets.setdefault(
+                page_host,
+                {
+                    "host": page_host,
+                    "pages": 0,
+                    "blank_gov_id": 0,
+                    "placeholder_gov_id": 0,
+                    "multi_government_host": is_multi_gov_host(page_host),
+                    "already_keyed_governments": [],
+                    "adopted_by": None,
+                    "examples": [],
+                },
+            )
+            b["pages"] += 1
+            if gov_id:
+                b["placeholder_gov_id"] += 1
+            else:
+                b["blank_gov_id"] += 1
+            if len(b["examples"]) < UNIDENTIFIED_EXAMPLES_PER_HOST:
+                b["examples"].append(
+                    {
+                        "id": page_id,
+                        "slug": slug,
+                        "title": title,
+                        "date": date,
+                        "jurisdiction": jurisdiction,
+                        "gov_id": gov_id,
+                        "platform": platform,
+                        "source_url": url,
+                        "video_url": video_url,
+                    }
+                )
+
+        hosts = {h for h in buckets if h}
+        if hosts:
+            keyed = (
+                await session.execute(
+                    select(MeetingPage.gov_id, MeetingPage.source_url_normalized).where(
+                        MeetingPage.gov_id.is_not(None),
+                        MeetingPage.gov_id != "",
+                        ~MeetingPage.gov_id.like("rtr:unknown:%"),
+                        _host_url_condition(hosts),
+                    )
+                )
+            ).all()
+            for gov_id, url in keyed:
+                page_host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+                b = buckets.get(page_host)
+                if b is not None and gov_id not in b["already_keyed_governments"]:
+                    b["already_keyed_governments"].append(gov_id)
+
+    for b in buckets.values():
+        b["already_keyed_governments"].sort()
+        if len(b["already_keyed_governments"]) == 1 and not b["multi_government_host"]:
+            b["adopted_by"] = b["already_keyed_governments"][0]
+
+    ordered = sorted(
+        buckets.values(), key=lambda b: (-b["pages"], b["host"] or "\uffff")
+    )
+    return {
+        "total_pages": sum(b["pages"] for b in ordered),
+        "total_hosts": len(ordered),
+        "on_multi_government_hosts": sum(
+            b["pages"] for b in ordered if b["multi_government_host"]
+        ),
+        "already_adopted_by_a_hub": sum(b["pages"] for b in ordered if b["adopted_by"]),
+        "limit": limit,
+        "hosts": ordered[:limit],
+    }

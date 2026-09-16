@@ -30,6 +30,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from app.utils.url_normalize import normalize_url
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUEUE_FILES = [
     REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt",
@@ -225,6 +227,27 @@ def test_civicclerk_rows_use_the_event_media_shape(queue_file: Path) -> None:
 # 103 of them straight back, next to their substitutes. A line in the
 # deferred file is a deliberate deletion; this test makes a union that
 # resurrects one fail the build instead of doubling the Whisper hours.
+#
+# Ryan's rule changed 2026-09-12: length alone no longer defers a line --
+# a long-only video now gets queued to tier 3 anyway rather than parked
+# here (see CLAUDE.md's preamble "Long-only videos" bullet). This file's
+# job has narrowed to WO-266-style parked lines (a government that
+# already has a transcript elsewhere) and whatever WO-205/WO-212 already
+# parked; it is no longer where a merely-long meeting goes.
+#
+# WO-280 (2026-09-12): the comparison below used to be a bare string
+# match between a queue row's URL and a deferred row's URL. That only
+# catches a re-added line when the two files spell the SAME meeting's
+# URL identically byte-for-byte. WO-259 part 2's rebase re-added a real
+# 2h55m Lake Havasu City, AZ line this way and the guard did not fire --
+# the agent's own hand check caught it before it was ever committed, so
+# nothing bad landed, but the guard's job is to make that check
+# unnecessary. Comparing `normalize_url()`-normalized URLs instead (the
+# same identity key `scripts/feed_tier3_auto_transcription.py` already
+# uses before every real ingest -- see its own `normalized = normalize_
+# url(url)` call) closes the gap: a queue row that differs from a
+# deferred row only by scheme (http/https), a trailing slash, or query-
+# parameter order is still caught as the same meeting.
 DEFERRED_FILE = REPO_ROOT / "scripts" / "tier3_long_meetings_deferred.txt"
 TIER3_QUEUE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 
@@ -247,11 +270,17 @@ def test_deferred_file_is_well_formed() -> None:
 
 
 def test_no_tier3_queue_row_is_a_deferred_long_meeting() -> None:
-    deferred = _deferred_urls()
+    """A queue row whose URL NORMALIZES the same as a deferred row is the
+    same meeting re-added by a union-style rebase, even when the two URL
+    strings aren't byte-identical (scheme, trailing slash, query-param
+    order). See the module comment above this test for why the match is
+    normalized rather than a bare string compare -- WO-280, 2026-09-12.
+    """
+    deferred_normalized = {normalize_url(u) for u in _deferred_urls()}
     bad = [
         f"{TIER3_QUEUE.name}:{i}: {url}"
         for i, url in _rows(TIER3_QUEUE)
-        if url in deferred
+        if normalize_url(url) in deferred_normalized
     ]
     assert not bad, (
         "queue rows that WO-205 deliberately removed (see "
@@ -259,3 +288,41 @@ def test_no_tier3_queue_row_is_a_deferred_long_meeting() -> None:
         "took the union of both sides. Drop them again; on a rebase, a "
         "line deleted on main stays deleted:\n" + "\n".join(bad)
     )
+
+
+def test_deferred_match_is_robust_to_url_form_not_just_exact_string() -> None:
+    """Reproduces the real WO-259 part 2 near-miss directly: the real
+    deferred Lake Havasu City, AZ line (2h55m, scripts/tier3_long_
+    meetings_deferred.txt) re-added to the queue in a differently-SPELLED
+    but identical-MEANING form (http instead of https, a trailing
+    slash, query params reordered) must still be caught. A bare string
+    compare would miss every one of these; normalize_url() must not.
+    """
+    real_deferred_line = next(
+        ln
+        for ln in DEFERRED_FILE.read_text(encoding="utf-8").split("\n")
+        if "lakehavasucity.granicus.com" in ln and "clip_id=1838" in ln
+    )
+    real_url = real_deferred_line.split("\t", 1)[0].strip()
+    assert real_url == (
+        "https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838"
+    )
+
+    variants = [
+        # scheme-only difference
+        "http://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838",
+        # trailing slash on the path
+        "https://lakehavasucity.granicus.com/MediaPlayer.php/?view_id=2&clip_id=1838",
+        # query params in a different order
+        "https://lakehavasucity.granicus.com/MediaPlayer.php?clip_id=1838&view_id=2",
+        # host uppercased
+        "https://LAKEHAVASUCITY.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838",
+    ]
+    deferred_normalized = {normalize_url(real_url)}
+    for variant in variants:
+        assert normalize_url(variant) in deferred_normalized, (
+            f"variant form not recognized as the same meeting: {variant}"
+        )
+        # the bare string compare the old guard used would have missed
+        # every one of these -- that is the bug this WO fixes.
+        assert variant != real_url

@@ -29,24 +29,30 @@ is frequently a literal blank slate.
 import asyncio
 import hashlib
 import logging
-import re
 import tempfile
 from pathlib import Path
 from typing import NamedTuple, Optional, Union
+
+from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
 from .video_formats import is_audio_only_format, is_iframe_embed_format
 
 logger = logging.getLogger("rtr_archive.video_thumbnail")
 
-# Same 11-char video-id shape app/platforms/youtube.py matches, plus the
-# /embed/ URL youtube.py itself builds as MeetingPage.video_url.
-# Duplicated rather than imported across the app/archive service
-# boundary, per this repo's existing convention (see
-# archive/utils/clerk_auth.py's own header note).
-_YOUTUBE_ID_RE = re.compile(
-    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/)|youtu\.be/)"
-    r"([A-Za-z0-9_-]{11})"
-)
+# WO-303, 2026-09-12 (BACKLOG.md's "Archive's two own copies" entry):
+# this used to be its own duplicate of the same unbounded
+# `([A-Za-z0-9_-]{11})` id regex, missing the end-boundary fix WO-296
+# landed in `app/platforms/youtube_ids.py` -- imported from there now
+# instead. That module was built (WO-250) specifically to hold pure
+# id-extraction with no `yt_dlp` import, so it's safe to import from
+# Archive-side code without pulling that dependency in; the "duplicated
+# across the service boundary" convention this file used to cite was
+# about the full adapters (`app/platforms/youtube.py` etc.), never about
+# this module.
+
+
+def _youtube_id_search(video_url: Optional[str]) -> Optional[str]:
+    return _extract_youtube_video_id(video_url) if video_url else None
 
 
 def youtube_thumbnail_url(video_url: Optional[str]) -> Optional[str]:
@@ -55,12 +61,10 @@ def youtube_thumbnail_url(video_url: Optional[str]) -> Optional[str]:
     today). hqdefault.jpg (480x360) exists for every video, unlike
     maxresdefault.jpg, which 404s on many older/lower-res uploads.
     """
-    if not video_url:
+    video_id = _youtube_id_search(video_url)
+    if not video_id:
         return None
-    match = _YOUTUBE_ID_RE.search(video_url)
-    if not match:
-        return None
-    return f"https://i.ytimg.com/vi/{match.group(1)}/hqdefault.jpg"
+    return f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
 
 def youtube_watch_url(
@@ -81,12 +85,10 @@ def youtube_watch_url(
     a slightly-wrong query param on an already-broken embed shouldn't be
     what breaks the one link that still works.
     """
-    if not video_url:
+    video_id = _youtube_id_search(video_url)
+    if not video_id:
         return None
-    match = _YOUTUBE_ID_RE.search(video_url)
-    if not match:
-        return None
-    url = f"https://www.youtube.com/watch?v={match.group(1)}"
+    url = f"https://www.youtube.com/watch?v={video_id}"
     if t is not None:
         try:
             seconds = max(0, int(float(t)))
@@ -240,7 +242,7 @@ def is_extractable(
         return False
     if not video_url:
         return False
-    if is_iframe_embed_format(video_format) or _YOUTUBE_ID_RE.search(video_url):
+    if is_iframe_embed_format(video_format) or _youtube_id_search(video_url):
         return False
     if is_audio_only_format(video_format):
         return False

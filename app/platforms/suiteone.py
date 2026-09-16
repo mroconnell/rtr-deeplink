@@ -214,7 +214,19 @@ class SuiteOneAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         tenant, event_id = self._extract_ids(url)
-        if not tenant or not event_id:
+        if not tenant:
+            raise ValueError(f"Could not find a SuiteOne tenant/event id in URL: {url}")
+        if not event_id and not self._is_live_stub_url(url):
+            # WO-285, 2026-09-12: a bare tenant management-listing root
+            # (e.g. `lunaconm.suiteonemedia.com/`, `rushcoin.
+            # suiteonemedia.com/?embed=1` -- confirmed live, both real
+            # ~200-680KB listing pages, no event id anywhere in the URL)
+            # still has no known event-id lookup here -- that's WO-149's
+            # own separate, still-open BACKLOG.md entry ("give
+            # SuiteOneAssetFinder a real event-listing lookup"), not
+            # fixed by this change. Only the confirmed `/web/live` shape
+            # right below degrades cleanly; everything else still fails
+            # loudly rather than silently guessing at a listing page.
             raise ValueError(f"Could not find a SuiteOne tenant/event id in URL: {url}")
 
         video_warnings: List[str] = []
@@ -291,14 +303,20 @@ class SuiteOneAssetFinder(AssetFinder):
             else:
                 transcript_warnings.append("No captions found for this video.")
 
-            date = await self._fetch_date(session, tenant, event_id)
+            # A live-stub URL (see _is_live_stub_url()) carries no event
+            # id at all -- nothing to look up on the tenant's own
+            # home/calendar page, and _fetch_date()'s href match would
+            # only ever compare against a literal "id=None" string.
+            date = (
+                await self._fetch_date(session, tenant, event_id) if event_id else None
+            )
 
         jurisdiction = self._extract_jurisdiction(tenant)
 
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
-            external_id=f"suiteone:{tenant}:{event_id}",
+            external_id=f"suiteone:{tenant}:{event_id or 'live'}",
             title=title,
             date=date,
             jurisdiction=jurisdiction,
@@ -318,6 +336,22 @@ class SuiteOneAssetFinder(AssetFinder):
         tenant = parsed.netloc.split(".")[0] if parsed.netloc else None
         event_id = (parse_qs(parsed.query).get("id") or [None])[0]
         return tenant, event_id
+
+    @staticmethod
+    def _is_live_stub_url(url: str) -> bool:
+        """True for SuiteOne's generic tenant-wide `/web/live` livestream
+        pass-through page (confirmed live 2026-09-12, WO-285/WO-258:
+        `floydcoin.suiteonemedia.com/web/live/` 200s and redirects to
+        `/Live`, same static jQuery-ready JW Player embed shape as a real
+        `/event/?id=...` page, but with a hardcoded `var src = '';` --
+        the identical empty-source "stream is offline" shape this
+        adapter already treats as a real per-meeting negative rather
+        than a parse failure, just with no specific event id at all).
+        Only this one confirmed path shape -- NOT a bare tenant
+        management-listing root (see the comment at this function's only
+        call site)."""
+        segments = [s for s in urlparse(url).path.split("/") if s]
+        return bool(segments) and segments[-1].lower() == "live"
 
     @staticmethod
     def _extract_title(html: str) -> Optional[str]:

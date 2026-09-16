@@ -570,6 +570,76 @@ def _org_token_from_url(url: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+# WO-306 (2026-09-12): a `/player/{org_token}/playlists/{playlist_id}`
+# URL (a real recorded sample, Bellefonte, PA:
+# videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/
+# playlists/4806) is a genuinely different page from the single-video
+# `/player/{org_token}/media/{media_id}` shape `resolve()` handles above
+# -- it embeds no `Player.setupData['playlist']` JSON at all (confirmed
+# live: that page's raw HTML has none), so `resolve()` on a playlist URL
+# always returns "No video found", a silent wrong answer, not a crash.
+# Found the real listing data source the way the SPA itself gets it, by
+# watching the page's own network requests in a real browser (the same
+# method castus.py's investigation used, reading a webpack bundle,
+# except here the request itself was visible directly): the page lazily
+# calls `GET /player/{org_token}/playlists/{playlist_id}/playlist_items
+# ?offset=N`, a plain, unauthenticated, non-JS HTML fragment -- one
+# `<li class="list-group-item video-item-container ...">` per video,
+# paginated 50 per page, `offset=0` being the newest. Each item's title,
+# duration and its own `/player/{org_token}/media/{media_id}` link
+# (usable directly with `resolve()` above) are all in that fragment;
+# `resolve()` itself is untouched -- this is purely the missing
+# "list what's on this playlist" step the brief asked for.
+_PLAYLIST_ITEM_RE = re.compile(
+    r'<li class="list-group-item video-item-container.*?</li>', re.DOTALL
+)
+_PLAYLIST_MEDIA_ID_RE = re.compile(r"/media/(\d+)\"")
+_PLAYLIST_TITLE_RE = re.compile(r'<span class="h4 title block">([^<]*)</span>')
+_PLAYLIST_DURATION_RE = re.compile(r'<span class="duration">([^<]*)</span>')
+
+
+async def list_playlist_items(
+    org_token: str, playlist_id: str, *, offset: int = 0
+) -> List[dict]:
+    """One page (up to 50) of a TelVue playlist's items, newest first at
+    `offset=0` -- `{"media_id", "title", "duration", "media_url"}` per
+    item, ready to feed straight into `TelvueAssetFinder.resolve()` via
+    `media_url`. Returns `[]` once `offset` runs past the end (confirmed
+    live: the fragment is simply empty, not an error) -- a caller pages
+    by incrementing `offset` by 50 until it gets `[]` back."""
+    url = (
+        f"https://videoplayer.telvue.com/player/{org_token}/playlists/"
+        f"{playlist_id}/playlist_items?offset={offset}"
+    )
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            url, timeout=aiohttp.ClientTimeout(total=20)
+        ) as response:
+            if response.status != 200:
+                return []
+            html_text = await response.text()
+
+    import html as _html_module
+
+    items = []
+    for li in _PLAYLIST_ITEM_RE.findall(html_text):
+        media_match = _PLAYLIST_MEDIA_ID_RE.search(li)
+        title_match = _PLAYLIST_TITLE_RE.search(li)
+        if not media_match or not title_match:
+            continue
+        duration_match = _PLAYLIST_DURATION_RE.search(li)
+        media_id = media_match.group(1)
+        items.append(
+            {
+                "media_id": media_id,
+                "title": _html_module.unescape(title_match.group(1)).strip(),
+                "duration": duration_match.group(1) if duration_match else None,
+                "media_url": f"https://videoplayer.telvue.com/player/{org_token}/media/{media_id}",
+            }
+        )
+    return items
+
+
 class TelvueAssetFinder(AssetFinder):
     """Resolves video + transcript for a TelVue-hosted meeting page."""
 

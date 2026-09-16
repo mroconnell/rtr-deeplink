@@ -107,452 +107,189 @@ it up again as long as it's still inside the search window.
 
 ---
 
-## 2026-09-11
+## 2026-09-15
 
-211 candidate message IDs from `label:rtr-claude newer_than:30d` (166
-threads — the label's entire current content), 15 new after the ledger
-filter.
+119 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 3 batches, back to 2026-09-02), 14 new after the ledger
+filter — everything older than 2026-09-14 23:40 UTC was already covered
+by prior runs.
 
 **Out of scope / informational, no write-up**: 1 transcription worker
-daily report. 1 GitHub Actions "PR run failed: Test" for a non-`main`
-branch (`claude/lloydminster-province-pages`) — feature-branch CI has its
-own merge gate.
+daily report. 1 GitHub "Sudo email verification code" for mroconnell —
+an account-security notice, not an alert about this repo's own code;
+nothing to investigate from it. 4 GitHub Actions "PR run failed: Test"
+for non-`main` branches (Handoff doc, Dashboard checklist, and 2x
+Advance tier 3 auto-transcription queue).
 
 **Duplicates, no new write-up** (verified against real code/logs, not
-just assumed): Render `test-redtaperecordings` "Exited with status 3"
-(1 alert, 2026-09-11 03:29 UTC) — same already-confirmed-closed noise per
-`BACKLOG_DONE.md`'s 2026-08-30 entry. Transcription job 2399 failed
-(Passaic County, NJ, Granicus `MediaPlayer.php` source, 2026-09-10 16:58-
-17:05 UTC) — `ffmpeg timed out after 120s (source likely slow or rate-
-limited)` on chunk 0; this exact message is the well-established Granicus
-slow/rate-limited-origin failure family (`BACKLOG.md:4509` and dozens of
-prior `BACKLOG_DONE.md` write-ups), not a new failure mode. 1 YouTube
-transcript-fetch `IpBlocked` failure (2026-09-10 16:05 UTC) — same
-already-tracked `docs/investigations/youtube_429_block.md` issue; the
-email's own text now cites that file directly.
+just assumed): Adapter health canary failed on `main` (run `34888765537`,
+2026-09-14 19:44-19:46 UTC) — pulled the real job log: 38/40 platforms
+OK, one failure is `ClientResponseError: 410` against
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is
+a genuinely dead meeting" entry (see below for the canary's *other*
+failure, which is new). Render `test-redtaperecordings` "Exited with
+status 3" (2026-09-14 18:19 UTC) — same already-confirmed-closed noise
+per `BACKLOG_DONE.md`'s 2026-08-30 entry. Transcription job 2973 failed
+(Cibolo TX, Granicus `MediaPlayer.php`, "ffmpeg timed out after 120s
+(source likely slow or rate-limited)" on chunk 0, three retries,
+2026-09-14 23:36-23:40 UTC) and its "We hit a snag" companion email —
+same failure shape as the already-open `[NEEDS-AUDIT]` "Some
+old/archived Granicus clips' `chunklist.m3u8` genuinely times out at
+Granicus's own origin" entry (`media_probe.py`'s 120s timeout firing
+before Granicus's own slower 504 ever arrives). "Run failed: Test -
+main (b0eb65b)" (2026-09-14 13:21 UTC, commit #1161) and the downstream
+"Run failed: Feed tier 3 auto-transcription queue - main (6eb2c67)"
+(2026-09-14 13:21-13:25 UTC, its `feed` job just polls the same commit's
+`test` check) are the same already-documented, already-fixed incident:
+commit `0331d6a` ("Handoff doc: add #1161 stale-TOC trap to section
+12") explains #1161 squash-merged on an older `main` and left `main`
+red on `tests/test_backlog_toc.py` for 13 minutes until #1171 fixed it
+at 13:34-13:37 UTC — 9-13 minutes after these two alerts fired. No
+action needed; already resolved same-day, before this alert was even
+read.
 
-- **Confirmed, resolves an open question from 2026-09-09's entry** —
-  GitHub Actions "Adapter health canary" failed on `main` (commit
-  `7af341d`, run `34512832863`, 2026-09-10 18:11-18:12 UTC): **33/35
-  platforms OK, 2 failures**. One is the same already-open
-  `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is a genuinely
-  dead meeting" entry (`ClientResponseError: 410`, unchanged). The other,
-  `townhallstreams` (`resolve returned no real content` on
-  `https://townhallstreams.com/stream.php?location_id=94&id=75799`), is
-  the **same URL and same message** flagged in 2026-09-09's entry as
-  "likely CI flakiness, worth checking whether it recurs" — it has now
-  recurred with an identical message two runs running, which that entry
-  said would "upgrade this from likely flake to a real regression worth
-  root-causing." It already has: `BACKLOG.md`'s "Adapter & platform gaps"
-  section carries a `[NEEDS-AUDIT][EXAMPLE]` entry filed the same day
-  (WO-205, 2026-09-11) that ran every Town Hall Streams queue line
-  through `townhallstreams.py`'s `resolve()` and found 116 of 125 return
-  no video — `location_id=94&id=75799` is named there explicitly as one
-  of the 116. So this isn't a flake and isn't a new finding either — it's
-  the canary catching a gap someone had already found and written up the
-  same day via a different route. No action needed here beyond noting the
-  loop is closed; `seattle_channel` (yesterday's other new failure) did
-  not recur, consistent with that one being the flake it looked like.
-  - **Impact**: none beyond what WO-205's entry already sizes (118 queued
-    Town Hall Streams meetings can't pass the ingest gate).
+- **Confirmed** — a new Search Console "Events structured data" flag,
+  "Missing field 'location'" (2026-09-15 12:01 UTC alert), root-caused
+  directly in code: `archive/templates/meeting_page.html`'s `Event`
+  JSON-LD block only emits `location` inside `{% if page.jurisdiction
+  -%}` (lines 240-244) — a page with no jurisdiction set produces a
+  valid-but-incomplete Event with no location at all, which Google now
+  flags as a critical issue.
+  - **Impact**: this is a new, SEO-visible symptom of the
+    already-tracked, already-sized no-jurisdiction-pages gap, not a new
+    root cause — `BACKLOG.md`'s "Search Console, structured data & SEO
+    plumbing" section already tracks a sibling Event-JSON-LD gap
+    (`description`/`image`/`url` fixed 2026-08-21, per
+    `BACKLOG_DONE.md`'s "Event JSON-LD was missing description and
+    image" entry) but doesn't mention this `location` consequence.
+    Separately, `BACKLOG.md`'s open `[IMPROVEMENT-ROUND]` "Cablecast,
+    TelVue, Swagit, and YouTube still account for most no-jurisdiction
+    pages" entry sizes the underlying gap at **245** total
+    no-jurisdiction pages as of `GET /internal/jurisdiction/missing`'s
+    2026-08-31 run (Cablecast 101, TelVue 50, Swagit 42, YouTube 17,
+    eScribe 12, Vimeo 10, CivicClerk 7, unknown 4, TownHallStreams 1,
+    Castus 1) — that entry's own text says the true count is likely
+    lower now (two fixes landed after the count was taken) but was never
+    re-run. Every one of those pages currently ships an Event with no
+    location, which is what Search Console is now flagging.
+  - **Next action**: cross-link this alert into the existing
+    `[IMPROVEMENT-ROUND]` entry rather than opening a new one — it's the
+    same underlying gap with a new, concrete external consequence
+    (a Google-visible critical flag) that entry doesn't currently
+    mention. Re-running `GET /internal/jurisdiction/missing` would give
+    a current count for both purposes at once.
+  - **Open question**: whether this SEO consequence should raise that
+    entry's priority — it was filed as an `[IMPROVEMENT-ROUND]`, not
+    flagged as urgent, before there was a live Search Console critical
+    flag attached to it.
 
-- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
-  status-134 crash-loop entry: **2 more Render "Exited with status 134"
-  alerts** (2026-09-10 15:44 UTC, 2026-09-10 20:54 UTC), bringing the
-  running total to **26** since 2026-08-30 (was 24 as of 2026-09-10's
-  entry). **3 more UptimeRobot DOWN/UP outages with no matching Render
-  alert**: a dual-endpoint outage 2026-09-10 19:19:57-19:25:09 UTC
-  (`redtaperecordings.com` and `/api/health/resolve-check` both down
-  ~5-6 min, nearest Render alert 1.5h away at 20:54) and a single-endpoint
-  outage 2026-09-11 00:00:59-00:06:03 UTC (`/api/health/resolve-check`
-  only, ~5 min, nearest Render alert 3h away). Running "no matching
-  alert" count is now **19** (was 16 as of 2026-09-10).
-  - **Impact**: unchanged from prior entries — same production-resolver-
-    instability issue, same "needs Render's own crash logs" constraint.
-    Worth noting for whoever next reviews this: PR #795 (the
-    `handle_head_requests` Content-Length fix, flagged in 2026-09-09's
-    entry as a plausible partial explanation for the no-matching-alert
-    pattern) was still not confirmed deployed as of this run — per
-    `CLAUDE.md`'s manual-deploy convention, merging to `main` doesn't
-    ship it, and the mismatch pattern has kept growing (16→19) since that
-    PR merged, which is at least consistent with it still not being live.
+- **Unconfirmed** — the same 2026-09-14 19:44 UTC adapter health canary
+  run's *other* failure: `FAIL civicclerk: TimeoutError` against
+  `https://emporiaks.portal.civicclerk.com/event/585/media` — this
+  repo's own known-good CivicClerk canary sample (Emporia, KS; the real
+  populated-captions example from `BACKLOG_DONE.md`'s 2026-08-08 entry,
+  still pinned as the sole `civicclerk` canary URL in
+  `scripts/adapter_canary.py:108`). First occurrence of this specific
+  failure signature — no prior "FAIL civicclerk" found anywhere in
+  `BACKLOG.md`/`BACKLOG_DONE.md`.
+  - **Impact**: affects only the canary's own health signal so far — no
+    confirmed production impact, since this is a known-good page the
+    live site already serves correctly. Root cause not determined: could
+    be a one-off slowdown at CivicClerk's origin (the same general
+    failure mode already documented for Granicus above) or a genuine new
+    regression in the CivicClerk adapter or the canary's own headless
+    probe. One occurrence isn't enough to tell which.
+  - **Open question for Ryan (or whoever next reviews this file)**: watch
+    for recurrence before treating this as more than noise — same
+    "watch, don't promote yet" posture as 2026-09-14's Archive
+    health-check entry above it in this file.
 
-Ledger: 211 message IDs reviewed and recorded this run (15 new, 196
+Ledger: 119 message IDs reviewed and recorded this run (14 new, 105
 already seen), 0 pruned.
 
 ---
 
-## 2026-09-10
+## 2026-09-14
 
-196 candidate message IDs from `label:rtr-claude newer_than:30d` (155
-threads — the label's entire current content), 11 new after the ledger
-filter.
+258 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(the full 30-day content of the label, paged through in 4 batches), 9
+new after the ledger filter — everything older than 2026-09-13 22:00 UTC
+was already covered by prior runs.
 
-**Out of scope / informational, no write-up**: 1 Search Console "Congrats
-on reaching 20 clicks in 28 days" — achievement notice, nothing to
-evaluate. 1 transcription worker daily report.
-
-**Duplicates, no new write-up**: Render `test-redtaperecordings` "Exited
-with status 3" (2026-09-10 05:39 UTC) — same already-confirmed-closed
-noise per `BACKLOG_DONE.md`'s 2026-08-30 entry. Render "[ACTION REQUIRED]
-Your free Render database has expired: rtr-deeplink-staging-db"
-(2026-09-09 23:22 UTC) — checked `render.yaml` (line 587-590): this is
-explicitly documented as expected, not a bug — "Deliberately does NOT
-declare rtr-deeplink-staging-db here -- it's free-tier and intentionally
-disposable (expires 9/9/2026)... A future reader: that's not an oversight
-to 'fix,' don't add it." The expiry date in that comment matches this
-alert exactly. 2 YouTube transcript-fetch `IpBlocked` failures
-(2026-09-09 16:08 UTC, 2026-09-10 03:38 UTC) — same already-tracked
-`[BLOCKED]` YouTube IP-block entry (`docs/investigations/
-youtube_429_block.md`); also worth noting WO-135 (PR #820, merged
-2026-09-10 05:02 UTC, commit `e77065c`) landed permanent-failure markers
-specifically to stop re-querying pages like these forever, so this
-category should shrink going forward.
-
-- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
-  status-134 crash-loop entry: **3 more Render "Exited with status 134"
-  alerts** (2026-09-09 13:26 UTC, 2026-09-09 19:22 UTC, 2026-09-10 09:47
-  UTC), bringing the running total to **24** since 2026-08-30 (was 21 as
-  of 2026-09-09). No new UptimeRobot outages with no matching Render
-  alert this run (the "no matching alert" count stays at 16) — worth
-  noting PR #795 (the `handle_head_requests` Content-Length fix flagged
-  as a possible explanation for that pattern in yesterday's entry) is on
-  `main` but per `CLAUDE.md`'s manual-deploy convention, not yet
-  confirmed deployed.
-  - **Impact**: unchanged from yesterday's entry — same production-
-    resolver-instability issue, same "needs Render's own crash logs"
-    constraint.
-
-- **Confirmed** — GitHub Actions "Test" workflow failed on `main`
-  (commit `e77065c`, run `34439475136`, 2026-09-10 05:02-05:04 UTC).
-  Pulled the real job log: `tests/test_backlog_toc.py::test_toc_is_current`
-  and `::test_check_mode_passes_on_the_real_file` both failed —
-  `BACKLOG.md`'s TOC was stale (a `[NEEDS-AUDIT]` count off by one, "95"
-  vs the real "96") because PR #820 (WO-135) edited `BACKLOG.md` without
-  rerunning `python3 scripts/build_backlog_toc.py`, exactly the mistake
-  this repo's own CLAUDE.md warns about. **Self-resolved**: the very next
-  push to `main` (`34439802191`, run #1718, 5 minutes later) already
-  passed, and `python3 scripts/build_backlog_toc.py --check BACKLOG.md`
-  against the current tree exits 0 today — no action needed.
-  - **Impact**: none remaining; ~5 minutes of red `main` with no
-    production effect (this test suite doesn't gate a deploy on its own).
-
-- **Confirmed, real regression in the canary's own denominator, but
-  investigated further and likely CI flakiness rather than a genuine
-  adapter break** — GitHub Actions "Adapter health canary" failed on
-  `main` (commit `f4ae2ee`, run `34388564131`, 2026-09-09 18:22-18:23
-  UTC): **32/35 platforms OK, 3 failures** (yesterday's run, same script,
-  same sample URLs, was 31/32 with only 1 failure). One failure is the
-  same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
-  sample is a genuinely dead meeting" entry (`ClientResponseError: 410`,
-  unchanged). **Two are new since yesterday**: `seattle_channel`
-  (`TimeoutError` on `https://www.seattlechannel.org/videos?
-  videoid=x184865`) and `townhallstreams` (`resolve returned no real
-  content` on `https://townhallstreams.com/stream.php?location_id=94&
-  id=75799`). Checked both URLs directly with a plain `curl`: both
-  return HTTP 200, and the townhallstreams page still has real
-  `jwplayer`/`m3u8` video-config content in its HTML (33 `jwplayer`
-  references, 5 `m3u8`). `scripts/adapter_canary.py`'s own git history
-  shows no edit to either sample URL since before yesterday's run, so
-  this isn't a stale-sample problem like the Legistar case.
-  - **Unconfirmed**: since the underlying page content is present via a
-    plain HTTP fetch, the most likely explanation is CI-environment
-    flakiness in the canary's headless-browser step (the run log shows a
-    Playwright Chromium download happening fresh, and the same run also
-    hit an unrelated `RuntimeError: Event loop is closed` on subprocess
-    teardown — cleanup noise, not a cause, but consistent with some
-    resource contention that run) rather than a real `seattlechannel.py`/
-    `townhallstreams.py` regression — not independently confirmed via a
-    real headless-browser repro.
-  - **Impact**: low if this doesn't recur — two individual sample checks
-    in an already-known-flaky-looking run. Worth checking tomorrow's
-    canary run for whether these two clear on their own; if either fails
-    again with the same message, that would upgrade this from "likely
-    flake" to a real regression worth root-causing.
-
-Ledger: 196 message IDs reviewed and recorded this run (11 new, 185
-already seen), 0 pruned.
-
----
-
-## 2026-09-09
-
-185 candidate message IDs from `label:rtr-claude newer_than:30d` (147
-threads — the label's entire current content), 25 new after the ledger
-filter. Most add more data to already-open entries; one alert type is
-genuinely new.
-
-**Out of scope, no write-up**: 2 GitHub Actions "PR run failed: Test" for
-non-`main` branches (`9adb890`, `cfc03d7`) — feature-branch CI has its own
-merge gate. 1 Search Console "Your August performance for
-how-to-adu.com" — different property (how-to-adu.com is Ryan's own
-separate site/domain, not this repo's product). 1 transcription worker
-daily report — purely informational.
+**Out of scope / informational, no write-up**: 1 GitHub Actions "PR run
+failed: Test" for a non-`main` branch (WO-360). 1 transcription worker
+daily report. 1 "RTR feed drop 2026-09-13" report — a success report,
+not a failure.
 
 **Duplicates, no new write-up** (verified against real code/logs, not
-just assumed): Render `test-redtaperecordings` "Exited with status 3"
-(1 alert, 2026-09-09 04:56 UTC) — same already-confirmed-closed noise per
-`BACKLOG_DONE.md`'s 2026-08-30 entry. GitHub Actions "Adapter health
-canary" failure on `main` (`a4c9187`, 2026-09-08 18:24 UTC) — pulled the
-real job log (run `34262709027`): 31/32 platforms OK, sole failure is the
+just assumed): GitHub Actions "Adapter health canary" failed on `main`
+(run `34773188184`, 2026-09-13 17:58-17:59 UTC) — pulled the real job
+log: 38/39 platforms OK, the one failure is `ClientResponseError: 410`
+against `phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact
 same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
-sample is a genuinely dead meeting" entry (`ClientResponseError: 410` on
-`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`); the run's "3
-annotations" is that one failure plus two pieces of unrelated cleanup
-noise (pre-existing YouTube bot-check warnings, an ignored `Event loop is
-closed` exception during subprocess teardown), not 3 real failures.
-Transcription job 2215 failed (Lake County, CA, Granicus source,
-2026-09-09 04:38-05:51 UTC) — `ffmpeg exited 8: HTTP error 404 Not Found`
-on the underlying `archive-stream.granicus.com` HLS stream, plus repeated
-120s timeouts on other chunks; this is the same already-documented "old/
-archived Granicus clips genuinely disappear or time out at Granicus's own
-origin" family (`BACKLOG.md`'s `[NEEDS-AUDIT]` "Some old/archived
-Granicus clips' `chunklist.m3u8` genuinely times out" entry, plus many
-prior `BACKLOG_DONE.md` write-ups of the same host) — a 404 here instead
-of that entry's 504 is a variant of "the source clip is gone," not a new
-failure mode.
+sample is a genuinely dead meeting" entry. Render `test-redtaperecordings`
+"Exited with status 3" (1 alert, 2026-09-13 16:58 UTC) — same
+already-confirmed-closed noise per `BACKLOG_DONE.md`'s 2026-08-30 entry
+(unrelated Render instance on the same account). Transcription job 2913
+failed (East Lansing MI, Granicus `player/clip/1211`, ffmpeg exit 234 /
+"Failed to configure output pad on auto_aresample_0" at chunk 1/27,
+2026-09-14 09:54-09:55 UTC) and its user-facing "We hit a snag on your
+transcript" companion email — same error text, same source, as the
+already-open `[NEEDS-AUDIT]` "East Lansing MI (Granicus): a new,
+deterministic ffmpeg filter-graph failure has no known fix" entry (2nd
+and 3rd occurrences were jobs 1238/1294, 2026-08-30/08-31; this is the
+first occurrence in two weeks — still unresolved, no fix attempted per
+that entry's own text). Transcription job 2840 failed (Passaic County
+NJ, Granicus `MediaPlayer.php`, "ffmpeg reported success but the output
+file isn't decodable (likely truncated/corrupt)" at chunk 96/97,
+2026-09-13 20:22-22:00 UTC) — same exact error signature as the
+already-open `[JUST-DO-IT]` "`slice_cached_audio()` skips the
+corrupt-chunk decodability guard" entry (that entry's example job list —
+1157, 1226, 1259, 1377, 1766 — doesn't yet include 2840, but the fix
+already proposed there, adding `_mean_volume_db()` to
+`slice_cached_audio()`, covers this case too; no new entry needed).
 
-- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
-  status-134 crash-loop entry, **plus a real escalation in the
-  UptimeRobot outage pattern that's new today**: **1 more Render "Exited
-  with status 134" alert** (2026-09-09 06:34:33 UTC), bringing the
-  running total to **21** since 2026-08-30 (was 20 as of 2026-09-08).
-  Far more significant: **8 more UptimeRobot DOWN/UP outages with no
-  matching Render alert** — a tight cluster of 4 on 2026-09-08 between
-  14:38-15:01 UTC (a 23-minute window, both `redtaperecordings.com` and
-  `/api/health/resolve-check` affected, 5-10 min each) that the
-  2026-09-08 run's own cutoff missed entirely (that run only captured
-  through the 06:32 UTC alert and the 05:29-05:53 outage), plus 4 more
-  this morning, 2026-09-09 09:46-12:35 UTC (3× `redtaperecordings.com`,
-  1× `resolve-check`, ~5 min each). None of these 8 lines up with a
-  nearby Render alert (nearest is hours away in both directions).
-  Running "no matching alert" count is now **16** (was 8 as of
-  2026-09-08) — it has **doubled in a single day**.
-  - **New context worth flagging to whoever next works this**: while
-    pulling GitHub Actions data for the canary check above, I found PR
-    #795, whose commit message says it fixes exactly the `RuntimeError:
-    Response content shorter than Content-Length` bug already tracked in
-    this file's separate `[NEEDS-AUDIT]` entry (filed 2026-09-05, on `/`
-    and `/api/health/resolve-check` — the exact two routes hit by today's
-    outage burst) — **it merged to `main` at 93d6365 while this triage
-    run was in progress (not yet deployed; this repo's deploys are
-    manual, per `CLAUDE.md`)**. Per the PR's own commit message:
-    `handle_head_requests` rewrote `request.scope["method"]` to `"GET"`
-    to run the real handler but never restored it, so uvicorn enforced a
-    real Content-Length check against the empty HEAD body and raised.
-    That NEEDS-AUDIT entry's own Impact line already says this was
-    "unconfirmed how often this fires... not measured against UptimeRobot
-    yet" — today's burst (both affected routes, no matching Render
-    restart alert, consistent with a per-request exception rather than a
-    full container crash) is a plausible real-world manifestation, though
-    I haven't independently confirmed it and the existing SIGABRT entry's
-    own Constraint explicitly says not to assume the two bugs are
-    related. This is a *separate* hypothesis about the UptimeRobot
-    flapping specifically, not a claim about the SIGABRT crashes — worth
-    watching whether outage frequency drops once this fix is actually
-    deployed, and worth someone striking through/closing that
-    NEEDS-AUDIT entry now that a real fix has merged for it.
-  - **Impact**: same underlying production-resolver-instability issue as
-    the existing entry, now measurably worse — the "no matching alert"
-    undercount has doubled in one day (8→16), and today's cluster shape
-    (4 outages in 23 minutes, both monitored endpoints, no
-    container-restart alert) looks structurally different from the prior
-    single-isolated-outage pattern, consistent with a request-level bug
-    (like the one PR #795 targets) rather than only the process-level
-    SIGABRT abort.
+- **Unconfirmed** — `rtr-deeplink-archive`'s "HTTP health check failed"
+  alert reappeared once (2026-09-13 17:59 UTC: "Reason: HTTP health
+  check failed (timed out after 5 seconds)"), for the first time since
+  WO-80 (2026-08-30) fixed this exact failure mode — confirmed by
+  reading `archive/main.py:302-334` directly: `/api/health` was changed
+  from an O(n) `SELECT count(*)` to an O(1) `SELECT id ... LIMIT 1`, and
+  `render.yaml` now runs the Archive with `--workers 2` (both still live
+  in the code today), specifically so one slow request can't stall the
+  health probe. No other "HTTP health check failed" alert for
+  `rtr-deeplink-archive` appears anywhere in the last 30 days of this
+  label until this one — the fix held for exactly two weeks.
+  - Timing note, not a confirmed cause: this alert landed about 30 hours
+    after the Render account hit its 25 GB/month bandwidth cap
+    (2026-09-12 12:09 UTC, already tracked as a `[HUMAN]` item in
+    `BACKLOG.md`, "Render account bandwidth hit its 25 GB/month Pro-plan
+    cap"). A bandwidth cap doesn't obviously explain a health-check
+    timeout on its own, and Render's usage dashboard (the only place to
+    see per-service throttling/overage detail) is auth-walled, so this
+    is a plausible timing correlation, not a confirmed cause.
+  - No confirmed user-facing outage alongside it: neither UptimeRobot
+    monitor in this label (`redtaperecordings.com`,
+    `rtr-deeplink.onrender.com/api/health/resolve-check`) shows a DOWN
+    alert at or after 2026-09-13 17:59 UTC — those monitor the resolver,
+    not the Archive directly, so this doesn't rule out a brief
+    Archive-only blip, but there's no independent confirmation of one
+    either.
+  - **Impact**: one instance restart on the Archive service, self-
+    resolving per Render's own alert text; no confirmed reader-facing
+    downtime found. If this repeats, it would mean the WO-80 fix didn't
+    fully close the health-check-timeout failure mode (the same way the
+    `rtr-deeplink` SIGABRT loop needed a second fix, `--loop asyncio`,
+    after its first one). Fix effort if it recurs: same kind of triage
+    WO-80 already did, or asking Ryan to pull Render's dashboard log for
+    the exact 5-second window.
+  - **Open question for Ryan (or whoever next reviews this file)**: is
+    this worth a new `BACKLOG.md` entry now, or is one occurrence after
+    a clean two-week stretch not yet worth tracking? Recommend treating
+    it as "watch, don't promote" unless a second alert arrives.
 
-- **Confirmed, genuinely new** — first-ever Render "Approaching Bandwidth
-  Limit" alert (2026-09-09 12:09 UTC): the workspace has used **>70% of
-  the 25 GB/month bandwidth included in the Pro plan**, on day 9 of the
-  billing cycle (resets at the start of next calendar month, per the
-  alert's own text). No prior mention in `BACKLOG.md`, `BACKLOG_DONE.md`,
-  or this file — this is a different metric from the already-tracked
-  `[JUST-DO-IT]` Render *pipeline-minutes* entry (build minutes, not data
-  transfer).
-  - **Unconfirmed**: no access to the Render usage dashboard for a real
-    day-by-day trend or to see what's driving the transfer (video/
-    transcript proxying is the obvious suspect given this app's core
-    feature, but that's a guess, not a check of the dashboard or code).
-  - **Impact**: at face value, >70% of a monthly allowance by day 9 of
-    ~30 implies overshooting before the cycle resets if the rate holds;
-    Render's alert says overage bills at $15/100GB — a real, if not yet
-    large, cost exposure. Properly sizing this (bytes/day trend, which
-    service/route drives it) needs the dashboard link in the alert
-    (`https://dashboard.render.com/w/tea-d21a0h24d50c739htil0/billing`),
-    which only Ryan can open.
-  - **Open question for Ryan**: is this expected (e.g. a recent traffic
-    increase) or worth investigating as a regression?
-
-Ledger: 185 message IDs reviewed and recorded this run (25 new, 160
-already seen), 0 pruned.
-
----
-
-## 2026-09-08
-
-160 candidate message IDs from `label:rtr-claude newer_than:30d`, 13 new
-after the ledger filter. All 13 are either out of scope or duplicates of
-already-tracked issues with no new information, except more data for the
-already-open `[HUMAN]` SIGABRT/status-134 entry.
-
-**Out of scope, no write-up**: 1 GitHub Actions "PR run failed: Test" for
-a non-`main` branch (`42b7336`, Archive-proxy aiohttp session fix) — per
-this file's own scope rule, feature-branch CI has its own merge gate and
-doesn't need a second look here. 2 purely informational messages
-(transcription worker daily report; Search Console "Video indexing
-issues successfully fixed").
-
-**Duplicates, no new write-up** (verified against real code/logs, not
-just assumed): Render `test-redtaperecordings` "Exited with status 3"
-(1 alert, 2026-09-08 04:37 UTC) — same already-confirmed-closed noise
-per `BACKLOG_DONE.md`'s 2026-08-30 entry. GitHub Actions "Adapter health
-canary" failure on `main` (`27cc96f`, 2026-09-07 19:02 UTC) — pulled the
-real job log (run `34153996885`): 31/32 platforms OK, sole failure is
-`ClientResponseError: 410, message='Gone'` on
-`https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact
-same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
-sample is a genuinely dead meeting" entry cited in the 2026-09-07 run.
-YouTube transcript-fetch `IpBlocked` failure (Ryan's local launchd job,
-2026-09-07 16:05 UTC) — matches the already-confirmed
-expected/self-clearing behavior documented in `BACKLOG_DONE.md`'s
-2026-08-20 "YouTube transcript fetch `IpBlocked` alert" entry, not a new
-signal. Transcription job 2055 failed (Spartanburg, SC, CivicClerk
-source, 2026-09-07 17:15 UTC) — pulled the real error detail: `[Errno
-1094995529] Invalid data found when processing input` on chunks 6 and 7,
-retried a few times each before the job gave up. This is the exact
-signature of the `_mean_volume_db()` corruption-detection fix shipped
-2026-08-21 (`BACKLOG_DONE.md`) correctly catching an undecodable chunk
-from the source media and surfacing it — working as designed on a
-single job, not a new bug, and consistent with that fix's own documented
-"honest limit" (catches fully-undecodable chunks, not tail-truncated
-ones).
-
-- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
-  status-134 crash-loop entry (`BACKLOG.md` currently reads "13 times,"
-  still not caught up to this file's running count — promotion hasn't
-  fired yet, see below): **2 more Render "Exited with status 134"
-  alerts** — 2026-09-07 16:39:36 UTC and 2026-09-08 06:32:31 UTC —
-  bringing the running total to **20** since 2026-08-30 (was 18 as of
-  2026-09-07). **2 more UptimeRobot DOWN/UP outages with no matching
-  Render alert**: `redtaperecordings.com` down 2026-09-08 05:29:17 UTC,
-  up 05:34:23 UTC (~5 min); `rtr-deeplink.onrender.com/api/health/
-  resolve-check` down 05:43:15 UTC, up 05:53:27 UTC (~10 min) — both
-  close together, plausibly one underlying incident, but neither lines
-  up with a nearby Render alert (nearest is the 06:32:31 UTC alert,
-  39-58 minutes after these outages resolved — too far to plausibly be
-  the same event, matching the entry's existing finding that the alert
-  count undercounts the true crash rate). Running "no matching alert"
-  count is now **8** (was 6 as of 2026-09-07). No new root-cause data
-  this round — just more frequency/undercount evidence for an
-  already-open, already-`[HUMAN]` investigation that needs Render's own
-  crash logs, which only Ryan can pull.
-  - **Impact**: same underlying issue as the existing entry — production
-    resolver instability, now ~2.5 alerts/day sustained over 9 days
-    (2026-08-30 through 2026-09-08), with real outages continuing to
-    occur without a matching alert roughly as often as with one.
-
-Ledger: 160 message IDs reviewed and recorded this run (13 new, 147
-already seen), 0 pruned.
-
----
-
-## 2026-09-07
-
-147 candidate message IDs from `label:rtr-claude newer_than:30d`, 16 new
-after the ledger filter. Most are duplicates of already-tracked issues
-with no new information; one adds real new data (including a new
-external-impact signal) to the already-open `[HUMAN]` SIGABRT/status-134
-entry.
-
-**Duplicates, no new write-up** (verified against real code/logs, not
-just assumed): Render `test-redtaperecordings` "Exited with status 3"
-(1 alert) — confirmed closed/expected noise per `BACKLOG_DONE.md`'s
-2026-08-30 "confirmed by Ryan" entry, an unrelated old Render instance.
-GitHub Actions "Adapter health canary" failure on `main` (c8dbdab,
-2026-09-06 17:31 UTC) — pulled the real job log (run `34048885371`):
-31/32 platforms OK, the sole failure is `ClientResponseError: 410,
-message='Gone'` on `https://phoenix.legistar.com/MeetingDetail.aspx?
-ID=1425831`, exactly the already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix
-Legistar canary sample is a genuinely dead meeting" entry (`BACKLOG.md`
-~line 2665). Search Console "Some fixes failed for Page indexing
-issues... Crawled - currently not indexed" (3 messages, 2026-09-06
-21:41-21:47 UTC) — matches the already-open `[HUMAN]` "Click Validate
-Fix in Search Console for the reslug fix" entry, which already predicts
-"don't expect it to clear 100%." One-off YouTube transcript-fetch SSL
-error (`ClientOSError: SSLV3_ALERT_BAD_RECORD_MAC`, Ryan's local
-launchd job, 2026-09-06 16:07 UTC) — single occurrence in the 30-day
-window, the script's own design already aborts rather than guessing at
-a backoff; nothing to act on without recurrence.
-
-- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
-  status-134 crash-loop entry (`BACKLOG.md` currently reads "13 times,"
-  not yet caught up to this file's 2026-09-06 update to 16 — promotion
-  hasn't run since the entry aged past 7 days yet): **2 more Render
-  "Exited with status 134" alerts** — 2026-09-06 13:58:00 UTC and
-  2026-09-07 01:08:11 UTC — bringing the running total to **18** since
-  2026-08-30. **2 more UptimeRobot DOWN/UP outages with no matching
-  Render alert**: `redtaperecordings.com` down 2026-09-06 19:54:35 UTC,
-  up 20:09:51 UTC (~15 min); down 2026-09-07 04:19:15 UTC, up 04:24:20
-  UTC (~5 min) — neither lines up with a nearby crash alert (nearest to
-  the first is 13:58:00 UTC, ~5h56m earlier; nearest to the second is
-  01:08:11 UTC, ~3h11m earlier), consistent with the entry's existing
-  finding that the alert count undercounts the true crash rate. Running
-  "no matching alert" count is now **6** (was 4 as of 2026-09-06).
-  **New this run**: Google Search Console flagged, for the first time,
-  a new reason blocking page indexing — "Server error (5xx)" — across 2
-  separate reports (page-level and sitemap-level, both 2026-09-06
-  21:41-21:46 UTC; the email itself calls this "a new reason," i.e.
-  never flagged before). **Unconfirmed** (Search Console's own dashboard
-  is auth-walled — can't pull which pages or how many), but the timing
-  is suggestive: the notification lands ~1h52m after the 19:54-20:09 UTC
-  outage above, versus ~7h50m after the nearest 134 crash alert —
-  plausibly Google's crawler hitting the resolver mid-outage. This is
-  the first evidence the crash-loop has an external SEO consequence
-  (pages failing to index) on top of the internal-alerting/outage impact
-  already tracked — worth flagging to whoever next works this entry,
-  since it raises the real-world stakes beyond "brief outages."
-  - **Impact**: same underlying issue as the existing entry — production
-    resolver instability, now with a plausible (if unconfirmed) SEO-
-    indexing consequence layered on top. No new root-cause data on the
-    crash itself; still needs Render's own crash logs, which only Ryan
-    can pull.
-
-Ledger: 147 message IDs reviewed and recorded this run (16 new, 131
-already seen), 0 pruned.
-
----
-
-## 2026-09-06
-
-131 candidate message IDs from `label:rtr-claude newer_than:30d` (the
-label's entire current contents), 11 new after the ledger filter. Of
-those 11, 10 were duplicates of already-tracked issues (Phoenix Legistar
-canary 410, East Lansing Granicus `aresample` ffmpeg failure, St Louis
-Park Granicus 120s ffmpeg timeout, YouTube IP-block) with no new
-information beyond "still recurring" — not written up again per this
-file's dedupe rule. One genuinely adds new data to an already-open
-`[HUMAN]` entry:
-
-- **Confirmed** — `rtr-deeplink` SIGABRT (status 134) crash-loop, already
-  tracked in `BACKLOG.md` under "Needs a human" (`[HUMAN]` entry counting
-  13 occurrences through 2026-09-05 08:45 UTC): **3 more Render
-  "Exited with status 134" alerts** since that count — 2026-09-05
-  15:05:46 UTC, 2026-09-06 06:37:19 UTC, 2026-09-06 09:29:48 UTC —
-  bringing the confirmed total to **16** since 2026-08-30. Also **one
-  more UptimeRobot DOWN/UP outage with no matching Render alert**:
-  `redtaperecordings.com` down 2026-09-06 03:58:07 UTC, up 04:03:12 UTC
-  (~5 min) — the nearest Render "server failure" alert is 2h34m later
-  (06:37:19 UTC), too far to plausibly be the same event, matching the
-  entry's existing finding that at least 2 of 3 prior confirmed outages
-  had no matching alert (this would make a 4th). No new root-cause data
-  this round (unlike 2026-09-05's redeploy correlation) — just more
-  frequency/undercount evidence for an already-open, already-`[HUMAN]`
-  investigation that needs Render's own crash logs, which only Ryan can
-  pull. **Impact**: same as the existing entry — production resolver
-  instability, ~2 crash alerts/day over the last 8 days, at least 4
-  confirmed real outages of 5-11 minutes each.
-
-Ledger: 131 message IDs reviewed and recorded this run (11 new, 120
+Ledger: 258 message IDs reviewed and recorded this run (9 new, 249
 already seen), 0 pruned.
 
 ---

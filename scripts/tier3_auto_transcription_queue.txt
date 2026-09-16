@@ -1,445 +1,448 @@
-https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656
-https://cfrs-ca.civicweb.net/Portal/MeetingInformation.aspx?Id=4478
-https://cialbionmius.civicweb.net/Portal/MeetingInformation.aspx?Id=375
-https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2268
-https://clearwatercounty.civicweb.net/Portal/MeetingInformation.aspx?Id=490
-https://codb.civicweb.net/Portal/MeetingInformation.aspx?Id=3550
-https://coforsythnc.civicweb.net/Portal/MeetingInformation.aspx?Id=511
-https://demo.civicweb.net/Portal/MeetingInformation.aspx?Id=778
-https://diligentny.civicweb.net/Portal/MeetingInformation.aspx?Id=778
-https://eastgwillimbury.civicweb.net/Portal/MeetingInformation.aspx?Id=2010
-https://georgianbay.civicweb.net/Portal/MeetingInformation.aspx?Id=1887
-https://greyhighlands.civicweb.net/Portal/MeetingInformation.aspx?Id=3178
-https://hubbardcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=6037
-https://ingersoll.civicweb.net/Portal/MeetingInformation.aspx?Id=847
-https://kindersley.civicweb.net/Portal/MeetingInformation.aspx?Id=983
-https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1234
-https://montesereno.civicweb.net/Portal/MeetingInformation.aspx?Id=7472
-https://nederlandco.civicweb.net/Portal/MeetingInformation.aspx?Id=1935
-https://nelson.civicweb.net/Portal/MeetingInformation.aspx?Id=2083
-https://orillia.civicweb.net/Portal/MeetingInformation.aspx?Id=4587
-https://pilottestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
-https://rctestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
-https://riverside.civicweb.net/Portal/MeetingInformation.aspx?Id=171
-https://solonohio.civicweb.net/Portal/MeetingInformation.aspx?Id=2711
-https://sylvaniatownship.civicweb.net/Portal/MeetingInformation.aspx?Id=3879
-https://townofbeechmountain.civicweb.net/Portal/MeetingInformation.aspx?Id=3707
-https://townofchenango.civicweb.net/Portal/MeetingInformation.aspx?Id=2287
-https://townofpembrokepark.civicweb.net/Portal/MeetingInformation.aspx?Id=8161
-https://townshipofhornepayne.civicweb.net/Portal/MeetingInformation.aspx?Id=477
-https://tppfl.civicweb.net/Portal/MeetingInformation.aspx?Id=8161
-https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Id=2339
-http://sancarlosca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1050&Format=Agenda
-http://santapaulaca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1351&Format=Agenda
-http://sfwmd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1598&Format=None&MediaFileFormat=wmv
-http://stluciefl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2070&MediaPosition=&ID=2780&CssClass=
-http://traviscountytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2025&MediaPosition=&ID=24610&CssClass=
-http://victoriacountytx.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1314&MinutesID=1329&FileFormat=pdf&Format=Minutes&MediaFileFormat=mpeg4
-http://wacocitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3347&MediaPosition=2761.611&ID=8728&CssClass=
-http://wappingertownny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1563&MediaPosition=&ID=5704&CssClass=
-http://washingtoncountyva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2231&MediaPosition=&ID=2391&CssClass=
-http://wentzvillemo.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2112&MediaPosition=&ID=7899&CssClass=
-http://westwendovernv.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2378&MediaPosition=7273.254&ID=2368&CssClass=
-http://winchesterva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1774&MediaPosition=&ID=2024&CssClass=
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1881&MediaPosition=10535.215&ID=10968&CssClass=
-https://stcroixcountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3661&MediaPosition=8924.113&ID=10801&CssClass=
-https://texarkanacitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1079&MediaPosition=1944.848&ID=1545&CssClass=
-https://tompkinscountyny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4213&MediaPosition=&ID=13804&CssClass=
-https://yuccavalleyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1335&MediaPosition=2805.288&ID=2233&CssClass=
-https://townhallstreams.com/stream.php?location_id=94&id=75799
-https://townhallstreams.com/stream.php?location_id=47&id=21880
-https://townhallstreams.com/stream.php?location_id=69&id=26034
-https://townhallstreams.com/stream.php?location_id=108&id=35970
-https://townhallstreams.com/stream.php?location_id=116&id=36006
-https://townhallstreams.com/stream.php?location_id=124&id=44331
-https://townhallstreams.com/stream.php?location_id=169&id=67490
-https://townhallstreams.com/stream.php?location_id=23&id=76181
-https://townhallstreams.com/stream.php?location_id=28&id=20324
-https://townhallstreams.com/stream.php?location_id=30&id=76187
-https://townhallstreams.com/stream.php?location_id=31&id=75859
-https://townhallstreams.com/stream.php?location_id=32&id=76212
-https://townhallstreams.com/stream.php?location_id=33&id=76059
-https://townhallstreams.com/stream.php?location_id=34&id=76092
-https://townhallstreams.com/stream.php?location_id=35&id=76114
-https://townhallstreams.com/stream.php?location_id=36&id=76137
-https://townhallstreams.com/stream.php?location_id=37&id=76119
-https://townhallstreams.com/stream.php?location_id=38&id=54156
-https://townhallstreams.com/stream.php?location_id=40&id=53966
-https://townhallstreams.com/stream.php?location_id=41&id=12206
-https://townhallstreams.com/stream.php?location_id=42&id=43305
-https://townhallstreams.com/stream.php?location_id=43&id=53616
-https://townhallstreams.com/stream.php?location_id=44&id=75536
-https://townhallstreams.com/stream.php?location_id=45&id=46031
-https://townhallstreams.com/stream.php?location_id=46&id=16240
-https://townhallstreams.com/stream.php?location_id=47&id=76243
-https://townhallstreams.com/stream.php?location_id=48&id=75409
-https://townhallstreams.com/stream.php?location_id=49&id=62383
-https://townhallstreams.com/stream.php?location_id=50&id=71267
-https://townhallstreams.com/stream.php?location_id=51&id=76131
-https://townhallstreams.com/stream.php?location_id=52&id=76246
-https://townhallstreams.com/stream.php?location_id=53&id=76143
-https://townhallstreams.com/stream.php?location_id=54&id=76177
-https://townhallstreams.com/stream.php?location_id=55&id=76010
-https://townhallstreams.com/stream.php?location_id=56&id=76286
-https://townhallstreams.com/stream.php?location_id=57&id=76259
-https://townhallstreams.com/stream.php?location_id=58&id=60881
-https://townhallstreams.com/stream.php?location_id=61&id=44512
-https://townhallstreams.com/stream.php?location_id=62&id=75447
-https://townhallstreams.com/stream.php?location_id=63&id=75325
-https://townhallstreams.com/stream.php?location_id=64&id=76171
-https://townhallstreams.com/stream.php?location_id=65&id=71382
-https://townhallstreams.com/stream.php?location_id=66&id=76288
-https://townhallstreams.com/stream.php?location_id=68&id=75868
-https://townhallstreams.com/stream.php?location_id=69&id=35034
-https://townhallstreams.com/stream.php?location_id=70&id=34502
-https://townhallstreams.com/stream.php?location_id=71&id=42640
-https://townhallstreams.com/stream.php?location_id=72&id=75323
-https://townhallstreams.com/stream.php?location_id=73&id=43847
-https://townhallstreams.com/stream.php?location_id=76&id=76205
-https://townhallstreams.com/stream.php?location_id=77&id=75043
-https://townhallstreams.com/stream.php?location_id=78&id=76122
-https://townhallstreams.com/stream.php?location_id=80&id=62200
-https://townhallstreams.com/stream.php?location_id=81&id=62237
-https://townhallstreams.com/stream.php?location_id=82&id=75236
-https://townhallstreams.com/stream.php?location_id=83&id=75869
-https://townhallstreams.com/stream.php?location_id=85&id=47620
-https://townhallstreams.com/stream.php?location_id=87&id=75893
-https://townhallstreams.com/stream.php?location_id=88&id=75491
-https://townhallstreams.com/stream.php?location_id=89&id=75988
-https://townhallstreams.com/stream.php?location_id=90&id=76295
-https://townhallstreams.com/stream.php?location_id=91&id=18731
-https://townhallstreams.com/stream.php?location_id=94&id=76283
-https://townhallstreams.com/stream.php?location_id=96&id=67218
-https://townhallstreams.com/stream.php?location_id=97&id=75659
-https://townhallstreams.com/stream.php?location_id=98&id=76161
-https://townhallstreams.com/stream.php?location_id=100&id=74869
-https://townhallstreams.com/stream.php?location_id=101&id=76027
-https://townhallstreams.com/stream.php?location_id=103&id=57839
-https://townhallstreams.com/stream.php?location_id=104&id=75974
-https://townhallstreams.com/stream.php?location_id=107&id=76067
-https://townhallstreams.com/stream.php?location_id=108&id=76123
-https://townhallstreams.com/stream.php?location_id=109&id=60897
-https://townhallstreams.com/stream.php?location_id=110&id=76127
-https://townhallstreams.com/stream.php?location_id=112&id=68061
-https://townhallstreams.com/stream.php?location_id=114&id=76179
-https://townhallstreams.com/stream.php?location_id=115&id=76169
-https://townhallstreams.com/stream.php?location_id=116&id=76047
-https://townhallstreams.com/stream.php?location_id=118&id=76252
-https://townhallstreams.com/stream.php?location_id=119&id=76140
-https://townhallstreams.com/stream.php?location_id=121&id=75716
-https://townhallstreams.com/stream.php?location_id=122&id=40784
-https://townhallstreams.com/stream.php?location_id=123&id=41513
-https://townhallstreams.com/stream.php?location_id=124&id=76053
-https://townhallstreams.com/stream.php?location_id=125&id=76196
-https://townhallstreams.com/stream.php?location_id=126&id=76198
-https://townhallstreams.com/stream.php?location_id=127&id=76107
-https://townhallstreams.com/stream.php?location_id=129&id=39509
-https://townhallstreams.com/stream.php?location_id=136&id=76240
-https://townhallstreams.com/stream.php?location_id=138&id=76117
-https://townhallstreams.com/stream.php?location_id=140&id=75839
-https://townhallstreams.com/stream.php?location_id=141&id=76028
-https://townhallstreams.com/stream.php?location_id=142&id=49821
-https://townhallstreams.com/stream.php?location_id=143&id=66294
-https://townhallstreams.com/stream.php?location_id=144&id=76255
-https://townhallstreams.com/stream.php?location_id=145&id=76049
-https://townhallstreams.com/stream.php?location_id=146&id=75023
-https://townhallstreams.com/stream.php?location_id=148&id=75896
-https://townhallstreams.com/stream.php?location_id=149&id=76146
-https://townhallstreams.com/stream.php?location_id=150&id=73956
-https://townhallstreams.com/stream.php?location_id=151&id=75888
-https://townhallstreams.com/stream.php?location_id=152&id=75784
-https://townhallstreams.com/stream.php?location_id=153&id=75989
-https://townhallstreams.com/stream.php?location_id=154&id=76250
-https://townhallstreams.com/stream.php?location_id=155&id=76076
-https://townhallstreams.com/stream.php?location_id=156&id=76130
-https://townhallstreams.com/stream.php?location_id=157&id=60590
-https://townhallstreams.com/stream.php?location_id=158&id=76011
-https://townhallstreams.com/stream.php?location_id=159&id=76221
-https://townhallstreams.com/stream.php?location_id=160&id=76091
-https://townhallstreams.com/stream.php?location_id=161&id=75754
-https://townhallstreams.com/stream.php?location_id=162&id=75661
-https://townhallstreams.com/stream.php?location_id=166&id=74574
-https://townhallstreams.com/stream.php?location_id=168&id=75979
-https://townhallstreams.com/stream.php?location_id=169&id=75941
-https://townhallstreams.com/stream.php?location_id=170&id=76170
-https://townhallstreams.com/stream.php?location_id=171&id=76094
-https://townhallstreams.com/stream.php?location_id=172&id=76087
-https://townhallstreams.com/stream.php?location_id=173&id=76257
-https://townhallstreams.com/stream.php?location_id=174&id=76216
-https://townhallstreams.com/stream.php?location_id=175&id=76135
-https://townhallstreams.com/stream.php?location_id=176&id=76043
-https://townhallstreams.com/stream.php?location_id=177&id=75919
-https://townhallstreams.com/stream.php?location_id=178&id=74225
-https://wrightcountymn.portal.civicclerk.com/event/1667/media
-https://wrightcountymn.portal.civicclerk.com/event/2682/media
-https://walworthcowi.portal.civicclerk.com/event/2599/media
-https://wrightcountymn.portal.civicclerk.com/event/30/media
-https://wrightcountymn.portal.civicclerk.com/event/31/media
-https://sanfordnc.portal.civicclerk.com/event/2049/media
-https://cosumnescommunityservices.portal.civicclerk.com/event/562/media
-https://claytonca.portal.civicclerk.com/event/22/media
-https://cocoafl.portal.civicclerk.com/event/1351/media
-https://waycrossga.portal.civicclerk.com/event/441/media
-https://indianolaia.portal.civicclerk.com/event/2134/media
-https://ottawaks.portal.civicclerk.com/event/1085/media
-https://prairievillageks.portal.civicclerk.com/event/109/media
-https://frasermi.portal.civicclerk.com/event/1034/media
-https://excelsiormn.portal.civicclerk.com/event/3241/media
-https://shorewoodmn.portal.civicclerk.com/event/409/media
-https://thiefriverfallsmn.portal.civicclerk.com/event/446/media
-https://neoshomo.portal.civicclerk.com/event/1340/media
-https://highpointnc.portal.civicclerk.com/event/1073/media
-https://cantonoh.portal.civicclerk.com/event/2105/media
-https://goodlettsvilletn.portal.civicclerk.com/event/3490/media
-https://godleytx.portal.civicclerk.com/event/6069/media
-https://inglesidetx.portal.civicclerk.com/event/591/media
-https://kermittx.portal.civicclerk.com/event/172/media
-https://rockporttx.portal.civicclerk.com/event/1101/media
-https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431
-https://eauclairecountywi.granicus.com/MediaPlayer.php?view_id=1&clip_id=221
-https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954
-https://pueblocounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=9
-https://winchendon.cablecast.tv/CablecastPublicSite/gallery/5?site=1
-https://aledoisdtx.swagit.com/play/08082019-1085
-https://play.champds.com/atlantaga/event/1000
-https://play.champds.com/bellemeadetn/event/200
-https://play.champds.com/chathamma/event/2500
-https://play.champds.com/collegedaletn/event/50
-https://play.champds.com/mentoroh/event/200
-https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5669
-https://agourahills.granicus.com/MediaPlayer.php?view_id=2&clip_id=2084
-https://buffalony.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3434
-https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932
-https://bchd.granicus.com/MediaPlayer.php?view_id=2&clip_id=766
-https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2656
-https://washingtoncountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3494
-https://chanhassen.granicus.com/MediaPlayer.php?view_id=1&clip_id=2065
-https://pub-guelph.escribemeetings.com/Meeting.aspx?Id=77aa8796-b281-43d5-a540-833c5c73e18a
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4241
-https://metro.granicus.com/MediaPlayer.php?view_id=2&clip_id=4243
-https://payson.granicus.com/MediaPlayer.php?view_id=2&clip_id=1271
-https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1532
-https://shelby.granicus.com/MediaPlayer.php?view_id=2&clip_id=2965
+https://www.youtube.com/watch?v=4PMuDd6UI2A
+https://www.youtube.com/watch?v=EFpLo9iKLhQ
+https://www.youtube.com/watch?v=dxwPQiFjoKc
+https://www.youtube.com/watch?v=knm0oTbUpyw
+https://www.youtube.com/watch?v=VBdWKoJ88Bk
+https://www.youtube.com/watch?v=0gh2jzrsUlI
+https://www.youtube.com/watch?v=eleNSHw6IqE
+https://www.youtube.com/watch?v=zybekWOLU7A
+https://www.youtube.com/watch?v=eyGXJ-H_lBc
+https://www.youtube.com/watch?v=oI6Kgt5uW84
+https://www.youtube.com/watch?v=5CRt52LA9i0
+https://www.youtube.com/watch?v=vdZAPGRzZWY
+https://www.youtube.com/watch?v=pnhuoY4inys
+https://www.youtube.com/watch?v=oVxN7iFmymI
+https://www.youtube.com/watch?v=jhfQF_ZZEDQ
+https://www.youtube.com/watch?v=vcvdh7siw6Y
+https://www.youtube.com/watch?v=KOYShsR0o6E
+https://www.youtube.com/watch?v=q9wGFbL3RC8
+https://www.youtube.com/watch?v=TjM_QDqulYE
+https://www.youtube.com/watch?v=mJD9Ech573A
+https://www.youtube.com/watch?v=EllLun1cjE4
+https://www.youtube.com/watch?v=8jA46n-rD3I
+https://www.youtube.com/watch?v=ycAtSoDme9U
+https://www.youtube.com/watch?v=tSuY87n7F_E
+https://www.youtube.com/watch?v=X3R8pkttaXE
+https://www.youtube.com/watch?v=JqZWS6H3o3Q
+https://www.youtube.com/watch?v=RZYB4iM80eI
+https://www.youtube.com/watch?v=ZUhlhSTmW2E
+https://www.youtube.com/watch?v=yqTMnRba7Hs
+https://www.youtube.com/watch?v=Wm-izg7LKdE
+https://www.youtube.com/watch?v=NoyQ4Qd7eFM
+https://www.youtube.com/watch?v=-d23PiXsJAo
+https://www.youtube.com/watch?v=4IkWDdeGZgc
+https://www.youtube.com/watch?v=Vy407PP6Vvs
+https://www.youtube.com/watch?v=SEySYn7U6jA
+https://www.youtube.com/watch?v=GdUaeXlOjgY
+https://www.youtube.com/watch?v=Unj-Qz0pV9o
+https://www.youtube.com/watch?v=UilWJxpi5f0
+https://www.youtube.com/watch?v=7QqadvErArQ
+https://www.youtube.com/watch?v=S-y4I__Mk14
+https://www.youtube.com/watch?v=wtdbR1wQZXA
+https://www.youtube.com/watch?v=oxyvt9YvIXU
+https://www.youtube.com/watch?v=7r7u_SFFQWs
+https://www.youtube.com/watch?v=0zMFSRwycag
+https://www.youtube.com/watch?v=Kpl8Nug8MdE
+https://www.youtube.com/watch?v=l6mlXPyJWjE
+https://www.youtube.com/watch?v=SipIKFqiXN8
+https://www.youtube.com/watch?v=sVcavCm7ygY
+https://www.youtube.com/watch?v=sRyP13CU0J8
+https://www.youtube.com/watch?v=S6himGxEItQ
+https://www.youtube.com/watch?v=IxqwrkOO3qI
+https://www.youtube.com/watch?v=fMIz5qP-QHU
+https://www.youtube.com/watch?v=04erlG0zYN4
+https://www.youtube.com/watch?v=DNvrN67nF_Y
+https://www.youtube.com/watch?v=96W2uBRx9OA
+https://www.youtube.com/watch?v=dXoAHwawdec
+https://www.youtube.com/watch?v=yHhViY8F5Gw
+https://www.youtube.com/watch?v=evKrUyzEa0Y
+https://www.youtube.com/watch?v=VNFMkq-8lNE
+https://www.youtube.com/watch?v=rqcnq8DiT04
+https://www.youtube.com/watch?v=stZqL7EGfhk
+https://www.youtube.com/watch?v=tOeAbFPstpQ
+https://www.youtube.com/watch?v=hQkqRTuAKuI
+https://www.youtube.com/watch?v=sumJ3xrpnAE
+https://www.youtube.com/watch?v=R4A6bfK6QB4
+https://www.youtube.com/watch?v=cX1JOh6W6NA
+https://www.youtube.com/watch?v=0TV0rinmD3w
+https://www.youtube.com/watch?v=xSpWnjUr5fc
+https://www.youtube.com/watch?v=vsVPwF22qLk
+https://www.youtube.com/watch?v=tNTGVIZrpjw
+https://www.youtube.com/watch?v=dNbEVsFO_So
+https://www.youtube.com/watch?v=u7JLarenhps
+https://www.youtube.com/watch?v=FEdS9Md-tLQ
+https://www.youtube.com/watch?v=iZxbImYeK08
+https://www.youtube.com/watch?v=qvo8U5zjpn4
+https://www.youtube.com/watch?v=fIVnQJgQb0s
+https://www.youtube.com/watch?v=NiupHCOMRaw
+https://www.youtube.com/watch?v=XsBsmO0sS4Y
+https://www.youtube.com/watch?v=hlQBbP5vrwg
+https://www.youtube.com/watch?v=v6SgCZWsqD8
+https://www.youtube.com/watch?v=0uu1oeqDME8
+https://www.youtube.com/watch?v=5kOeJzaeg80
+https://www.youtube.com/watch?v=hWJjslXklOE
+https://www.youtube.com/watch?v=KoH_tuJSf1U
+https://www.youtube.com/watch?v=wta-sJ6TbFk
+https://www.youtube.com/watch?v=9RRg164A3gY
+https://www.youtube.com/watch?v=74Q6OUvIoCU
+https://www.youtube.com/watch?v=d9_pHW-__1k
+https://www.youtube.com/watch?v=X0-P4eJvMTw
+https://www.youtube.com/watch?v=DdPXsEY8A5Q
+https://www.youtube.com/watch?v=d1M2DEwq94E
+https://www.youtube.com/watch?v=Xkb8LENWv8c
+https://www.youtube.com/watch?v=a6gHL0dJ_gQ
+https://www.youtube.com/watch?v=af1b2bxF9ks
+https://www.youtube.com/watch?v=0G0NOn5KiOY
+https://www.youtube.com/watch?v=Hydk2Gt1Js4
+https://www.youtube.com/watch?v=rsmWvJ-kK30
+https://www.youtube.com/watch?v=JEKWMDbwbs8
+https://www.youtube.com/watch?v=ieeL6yr6f_A
+https://www.youtube.com/watch?v=GgF29zlFVfU
+https://www.youtube.com/watch?v=2Wmh9mtIEgI
+https://www.youtube.com/watch?v=XugL_YU7PkE
+https://www.youtube.com/watch?v=oLD84fYSaP4
+https://www.youtube.com/watch?v=CDN6SAKzk_U
+https://www.youtube.com/watch?v=j7yZmc3eI0c
+https://www.youtube.com/watch?v=LOIFJg3ikZ4
+https://www.youtube.com/watch?v=gPR6ooVpV6M
+https://www.youtube.com/watch?v=oNmPFaG3Nks
+https://www.youtube.com/watch?v=E5PraJcHlCE
+https://www.youtube.com/watch?v=Z-Ka-pz3JW4
+https://www.youtube.com/watch?v=eAiwNZqXeJY
+https://www.youtube.com/watch?v=yVAfmCazWXs
+https://www.youtube.com/watch?v=X5PDzii881A
+https://www.youtube.com/watch?v=9hB-df4mYsg
+https://www.youtube.com/watch?v=ZT0htYNWiyY
+https://www.youtube.com/watch?v=6l3iyNO4DoE
+https://www.youtube.com/watch?v=YYAUaZBQwog
+https://www.youtube.com/watch?v=y7QV3wuZ8Js
+https://www.youtube.com/watch?v=n68uGArQdKU
+https://www.youtube.com/watch?v=UK6d0obaTrw
+https://www.youtube.com/watch?v=N0dRrcN91kY
+https://www.youtube.com/watch?v=T8w775cupjA
+https://www.youtube.com/watch?v=VndqAox0JVU
+https://www.youtube.com/watch?v=-FmJeSyVA5Y
+https://www.youtube.com/watch?v=UY5AUEkSmy0
+https://www.youtube.com/watch?v=SS6vRxyc7cI
+https://www.youtube.com/watch?v=RQ327cdZNFk
+https://www.youtube.com/watch?v=wVu1p0LpEJc
+https://www.youtube.com/watch?v=rjqm6h9Z3mI
+https://www.youtube.com/watch?v=8C5jL0dDHQg
+https://www.youtube.com/watch?v=eSxD3SEEbHY
+https://www.youtube.com/watch?v=GUurM6NbW3o
+https://www.youtube.com/watch?v=iU6w6RjDjVQ
+https://www.youtube.com/watch?v=qMQwVOAajY4
+https://www.youtube.com/watch?v=Zpt5IBGtLZA
+https://www.youtube.com/watch?v=n5OEcV-2kOc
+https://www.youtube.com/watch?v=jzwAgnbiMDc
+https://www.youtube.com/watch?v=R3tG_4dQBA4
+https://www.youtube.com/watch?v=XG7ZOuKoCkk
+https://www.youtube.com/watch?v=duqMlOU-j0o
+https://www.youtube.com/watch?v=GlMJ_s8Ed4o
+https://www.youtube.com/watch?v=MLOJS1Tyb9c
+https://www.youtube.com/watch?v=0dLEuRmLJt0
+https://www.youtube.com/watch?v=Fm7sK2Jy8uo
+https://www.youtube.com/watch?v=UFU20VhLXp8
+https://www.youtube.com/watch?v=mF6S-URS2Dc
+https://www.youtube.com/watch?v=SjpdEktx-Oo
+https://www.youtube.com/watch?v=zczgfMHEzio
+https://www.youtube.com/watch?v=GRfcfsAb2FU
+https://www.youtube.com/watch?v=m8c4DadvL-o
+https://www.youtube.com/watch?v=8HCjNeSBuOQ
+https://www.youtube.com/watch?v=ySLhxgdhJ0I
+https://www.youtube.com/watch?v=66qwApJ2cGY
+https://www.youtube.com/watch?v=SfEj1TSS3us
+https://www.youtube.com/watch?v=LeHeLuJBqck
+https://www.youtube.com/watch?v=SYV1-PexHfs
+https://www.youtube.com/watch?v=Qcf9LOaeQJI
+https://www.youtube.com/watch?v=9KE0wpBbLGs
+https://www.youtube.com/watch?v=Te_kWu6n_IQ
+https://www.youtube.com/watch?v=gbxtjvWKJA0
+https://www.youtube.com/watch?v=5GIPeOIFQO4
+https://www.youtube.com/watch?v=-a7h85v9EmQ
+https://www.youtube.com/watch?v=ntegACSiIb0
+https://www.youtube.com/watch?v=3Kdd22Y5D6k
+https://www.youtube.com/watch?v=eONA-K_-9kk
+https://www.youtube.com/watch?v=tJKfvGbtA0M
+https://www.youtube.com/watch?v=kwwJ7EclLxc
+https://www.youtube.com/watch?v=-ZN364Xq1PE
+https://www.youtube.com/watch?v=WrpdDTwbS1s
+https://www.youtube.com/watch?v=yowDRZvhaWo
+https://www.youtube.com/watch?v=PYAcJ6A_3S0
+https://www.youtube.com/watch?v=HKj_uzp8VXw
+https://www.youtube.com/watch?v=BNa8LR746fY
+https://www.youtube.com/watch?v=bEik8RFSB-8
+https://www.youtube.com/watch?v=iYezHDYxAJ0
+https://www.youtube.com/watch?v=hb40524RGkw
+https://www.youtube.com/watch?v=2oSrHASQRjw
+https://www.youtube.com/watch?v=LjXWT27IGXQ
+https://www.youtube.com/watch?v=KIS3dD0PhXE
+https://www.youtube.com/watch?v=6kvSTyFUsSE
+https://www.youtube.com/watch?v=WPewSGc1FfI
+https://www.youtube.com/watch?v=F1BERpQd8ts
+https://www.youtube.com/watch?v=XKZdMRXKGTg
+https://www.youtube.com/watch?v=mkCkYbVvds0
+https://www.youtube.com/watch?v=jKpaDwIiTXI
+https://www.youtube.com/watch?v=anGbDn5R80A
+https://www.youtube.com/watch?v=hctGdTngAck
+https://www.youtube.com/watch?v=qHONj-djjVw
+https://www.youtube.com/watch?v=UnQx0VO6Rs4
+https://www.youtube.com/watch?v=zxAEpYVwb18
+https://www.youtube.com/watch?v=emdCU5lVsTU
+https://www.youtube.com/watch?v=njyYi2V_mkE
+https://www.youtube.com/watch?v=GAZ5C8rWJhE
+https://www.youtube.com/watch?v=KgKSkPOVuPk
+https://www.youtube.com/watch?v=fpZdZo4cNcc
+https://www.youtube.com/watch?v=Sux_9F1GXjw
+https://www.youtube.com/watch?v=AJW6v0rUSOs
+https://www.youtube.com/watch?v=yhL8JgAqcFw
+https://www.youtube.com/watch?v=SKRiv8VxWPY
+https://www.youtube.com/watch?v=R5ushGQh3pc
+https://www.youtube.com/watch?v=gjn47EKDehE
+https://www.youtube.com/watch?v=2Nk_GxlsdlQ
+https://www.youtube.com/watch?v=UMGfhk9W6ZA
+https://www.youtube.com/watch?v=9BEFRPhHS_E
+https://www.youtube.com/watch?v=eatydM3N4bE
+https://www.youtube.com/watch?v=YC3x7Ez3ENQ
+https://www.youtube.com/watch?v=lwoJVOct9mQ
+https://www.youtube.com/watch?v=AWrWMMLeeOg
+https://www.youtube.com/watch?v=1ijFL71nUGA
+https://www.youtube.com/watch?v=kKKQ_Mxmmp4
+https://www.youtube.com/watch?v=_z0toJB-coo
+https://www.youtube.com/watch?v=GjgI4bIlchY
+https://www.youtube.com/watch?v=-rGcIGc7xpk
+https://www.youtube.com/watch?v=2tcmO4MkI_U
+https://www.youtube.com/watch?v=JbwU4TWGTgE
+https://www.youtube.com/watch?v=ZNzcrPuRT4c
+https://www.youtube.com/watch?v=AydJqtIXzaA
+https://www.youtube.com/watch?v=kFyb-zLdhI8
+https://www.youtube.com/watch?v=pv6DO-KQt30
+https://www.youtube.com/watch?v=C6dUt1IBl14
+https://www.youtube.com/watch?v=GjPStMmMoEM
+https://www.youtube.com/watch?v=PG2sNAgk4pQ
+https://www.youtube.com/watch?v=02WYDRgScdI
+https://www.youtube.com/watch?v=qeFK-5_lQTo
+https://www.youtube.com/watch?v=wa9K_eWNt3Y
+https://www.youtube.com/watch?v=M0h7PwOgC6w
+https://www.youtube.com/watch?v=e7NRf_Bw-pQ
+https://www.youtube.com/watch?v=XnCdRK93A3I
+https://www.youtube.com/watch?v=eXP-Hw2M11E
+https://www.youtube.com/watch?v=4SA2CaoKAbY
+https://www.youtube.com/watch?v=5q11EiH6HEQ
+https://www.youtube.com/watch?v=A2-zym9aEuE
+https://www.youtube.com/watch?v=n9GAArIOJXY
+https://www.youtube.com/watch?v=XcWGvHxoMp4
+https://www.youtube.com/watch?v=tUL3WDqDiPk
+https://www.youtube.com/watch?v=zm75uL-vmfw
+https://www.youtube.com/watch?v=8tvMYfc_o6E
+https://www.youtube.com/watch?v=cHWqpHCmPQ4
+https://www.youtube.com/watch?v=ZdUNMfbRvv0
+https://www.youtube.com/watch?v=wSpKsmw_pEk
+https://www.youtube.com/watch?v=8-4LR3oHoTc
+https://www.youtube.com/watch?v=34I49igNMyA
+https://www.youtube.com/watch?v=jawX3O_0nKE
+https://www.youtube.com/watch?v=1BtD51zGUd4
+https://www.youtube.com/watch?v=ag0sXUKVXFA
+https://www.youtube.com/watch?v=6wSczT26P68
+https://www.youtube.com/watch?v=9HQgbxKOPm4
+https://www.youtube.com/watch?v=Q366_JjbJdg
+https://www.youtube.com/watch?v=uoUpmqnJW9A
+https://www.youtube.com/watch?v=CTZRYrsi4sk
+https://www.youtube.com/watch?v=KXERDl_9ST8
+https://www.youtube.com/watch?v=DjTDUSPl7hk
+https://www.youtube.com/watch?v=mjryQPNsKnU
+https://www.youtube.com/watch?v=WxIm05ZC5iA
+https://www.youtube.com/watch?v=rW-9w3z4cbk
+https://www.youtube.com/watch?v=R7s8B-7Sl8o
+https://www.youtube.com/watch?v=xtQI1m42tek
+https://www.youtube.com/watch?v=HNVoYorL7XQ
+https://www.youtube.com/watch?v=6SRncpDS2bM
+https://www.youtube.com/watch?v=B_gH6WN1kgg
+https://www.youtube.com/watch?v=iHG4tB1onDY
+https://www.youtube.com/watch?v=XmHpa5hgWyQ
+https://www.youtube.com/watch?v=lOzPOBmOrds
+https://www.youtube.com/watch?v=5A64xAcwr34
+https://www.youtube.com/watch?v=mAD5aI88-Yk
+https://www.youtube.com/watch?v=XuxTqaOHdZo
+https://www.youtube.com/watch?v=GpcngrMCV-0
+https://www.youtube.com/watch?v=XYdKJjWRVQM
+https://www.youtube.com/watch?v=JlLqQfcJJ5Q
+https://www.youtube.com/watch?v=hCxsLZA5KLM
+https://www.youtube.com/watch?v=q7GnOP7L3Oo
+https://www.youtube.com/watch?v=Z-8TGjxLwWM
+https://www.youtube.com/watch?v=Ng1jyHsafN4
+https://www.youtube.com/watch?v=MbxKzz6iPSQ
+https://www.youtube.com/watch?v=khe9L58N5eQ
+https://www.youtube.com/watch?v=IDetgr0Il6g
+https://www.youtube.com/watch?v=98v4UlV4fNw
+https://www.youtube.com/watch?v=v_c76ek4E8g
+https://www.youtube.com/watch?v=eNQhnvO7pZc
+https://www.youtube.com/watch?v=rA0lzBSBTYw
+https://www.youtube.com/watch?v=gQb4nCcnQFY
+https://www.youtube.com/watch?v=a9tGDFag22k
+https://www.youtube.com/watch?v=q2-hGNlC3w8
+https://www.youtube.com/watch?v=A8Y4z6fXYH8
+https://www.youtube.com/watch?v=sA03iGQLVyo
+https://www.youtube.com/watch?v=St3G8TrfwdI
+https://www.youtube.com/watch?v=5eimLTgaSKI
+https://www.youtube.com/watch?v=0zcgIZ9Vpig
+https://www.youtube.com/watch?v=U6bzYGCikD8
+https://www.youtube.com/watch?v=Q9e9lu5qAUE
+https://www.youtube.com/watch?v=Ibmh8w8L9gQ
+https://www.youtube.com/watch?v=CVVCrfy-W-8
+https://www.youtube.com/watch?v=Kr5f5_Rt90Q
+https://www.youtube.com/watch?v=7xTgbPkpeRA
+https://www.youtube.com/watch?v=tVBbWJC2cSU
+https://www.youtube.com/watch?v=4fR0SNdQu-0
+https://www.youtube.com/watch?v=v6qCXNv1xzw
+https://www.youtube.com/watch?v=yN210mZ-8qw
+https://www.youtube.com/watch?v=_HnAM7xNcq0
+https://www.youtube.com/watch?v=T683sH3WiOc
+https://www.youtube.com/watch?v=pJyH6TQFcBs
+https://www.youtube.com/watch?v=MozFtAzB8o4
+https://www.youtube.com/watch?v=odh2gdynoJ8
+https://www.youtube.com/watch?v=IWRTjlxUZYk
+https://www.youtube.com/watch?v=ZPsb2DpQ9hc
+https://www.youtube.com/watch?v=22GFhEzlsKg
+https://www.youtube.com/watch?v=cuFA7qfFfhg
+https://www.youtube.com/watch?v=mJfqY9A-PsU
+https://www.youtube.com/watch?v=j6wab7lOUJ4
+https://www.youtube.com/watch?v=CMRmPwdRymc
+https://www.youtube.com/watch?v=tGu7MTl49u0
+https://www.youtube.com/watch?v=sYpzfF7oAAA
+https://www.youtube.com/watch?v=qXoI05fzTLA
+https://www.youtube.com/watch?v=5DMgPV1Jo-Q
+https://www.youtube.com/watch?v=SXyePqYfcU8
+https://www.youtube.com/watch?v=AfGQEDpVeWs
+https://www.youtube.com/watch?v=bUql8pe4gXc
+https://www.youtube.com/watch?v=a2skwKhH5CI
+https://www.youtube.com/watch?v=CJ-FW8537sg
+https://www.youtube.com/watch?v=QNnP4P5HPSY
+https://www.youtube.com/watch?v=GimP77-5Opc
+https://www.youtube.com/watch?v=wZ7xv-u_56w
+https://www.youtube.com/watch?v=W5X48VwyTbw
+https://www.youtube.com/watch?v=-2cJJ1aP4FA
+https://www.youtube.com/watch?v=irtYu6lNKb8
+https://www.youtube.com/watch?v=CBavolHFT3s
+https://www.youtube.com/watch?v=Fam4oTO-93o
+https://www.youtube.com/watch?v=CX9RPwLofR4
+https://www.youtube.com/watch?v=yJUQ9UHusRM
+https://www.youtube.com/watch?v=eDjGSXxDQnA
+https://www.youtube.com/watch?v=HLW75rwxaTw
+https://www.youtube.com/watch?v=cxFmNo18VlY
+https://www.youtube.com/watch?v=OmXc40LpQoc
+https://www.youtube.com/watch?v=ik_QbMnx5M4
+https://www.youtube.com/watch?v=jRmglzwxTuM
+https://www.youtube.com/watch?v=W9WilVDzY3g
+https://www.youtube.com/watch?v=f3OifwFKeTc
+https://www.youtube.com/watch?v=HxICqQ4lES4
+https://www.youtube.com/watch?v=9VTUbsh-m58
+https://www.youtube.com/watch?v=KMc5NpgZQeY
+https://www.youtube.com/watch?v=8j6xv2Umtlo
+https://www.youtube.com/watch?v=V4ZCeOPSPyY
+https://www.youtube.com/watch?v=pWUK_iByKCE
+https://www.youtube.com/watch?v=ET_YjBkvMT4
+https://www.youtube.com/watch?v=879bMxnRkac
+https://www.youtube.com/watch?v=rLUxvcdf31s
+https://www.youtube.com/watch?v=VSXoq2pGAI8
+https://www.youtube.com/watch?v=COVPD1qKUxs
+https://www.youtube.com/watch?v=Wv0JnHvRDjs
+https://www.youtube.com/watch?v=lMHRcqOWFrE
+https://www.youtube.com/watch?v=70s4QKrHUA0
+https://www.youtube.com/watch?v=Bcrp8yy9yrc
+https://www.youtube.com/watch?v=EMXDqqD0HXo
+https://www.youtube.com/watch?v=QgWBsGI5vkQ
+https://www.youtube.com/watch?v=7G2HYa4A3Fo
+https://www.youtube.com/watch?v=JF635dls6Ho
+https://www.youtube.com/watch?v=7k9U4Din3gs
+https://www.youtube.com/watch?v=3yhVRcNjrz8
+https://www.youtube.com/watch?v=_GoMofC_o2c
+https://www.youtube.com/watch?v=cJmMnAnTd7o
+https://www.youtube.com/watch?v=m0cs1uWI20I
+https://www.youtube.com/watch?v=cSvO5NiDnio
+https://www.youtube.com/watch?v=qFZXEsPjZqo
+https://www.youtube.com/watch?v=bQiWnDnR_ew
+https://www.youtube.com/watch?v=RnwVAU4iBZ4
+https://www.youtube.com/watch?v=A8SqipRH24g
+https://www.youtube.com/watch?v=n6_AWET9sa4
+https://www.youtube.com/watch?v=dtfT24wFQEI
+https://www.youtube.com/watch?v=iqMBykB5aZU
+https://www.youtube.com/watch?v=Yd3KRlnHi3s
+https://www.youtube.com/watch?v=508A5hlwyz0
+https://www.youtube.com/watch?v=JZTTEcJBock
+https://www.youtube.com/watch?v=NygSdcgCg2s
+https://www.youtube.com/watch?v=Mf3519T_XTg
+https://www.youtube.com/watch?v=k9dZdq5uyQA
+https://www.youtube.com/watch?v=kgYIFPMDdQs
+https://www.youtube.com/watch?v=VWYFzVzf3qU
+https://www.youtube.com/watch?v=WiKikPXqlHk
+https://www.youtube.com/watch?v=2DMzPm1T2BA
+https://www.youtube.com/watch?v=DFuS_msA2xQ
+https://www.youtube.com/watch?v=9vDQ0HlJJ_Y
+https://www.youtube.com/watch?v=ci9jnPULx5M
+https://www.youtube.com/watch?v=Haof9PDe1cE
+https://www.youtube.com/watch?v=7IpMzT7BGzk
+https://www.youtube.com/watch?v=70HDgp16cWM
+https://www.youtube.com/watch?v=m6RQtOeRCcc
+https://www.youtube.com/watch?v=u11tPsNd_qY
+https://www.youtube.com/watch?v=ulYr4lUeBJY
+https://www.youtube.com/watch?v=vxKXZPDfdHQ
+https://www.youtube.com/watch?v=9fLEycRO5mg
+https://www.youtube.com/watch?v=Nv_h37z0OSM
+https://www.youtube.com/watch?v=9-5XOFw0ttk
+https://youtu.be/BuEvo93FHI8
+https://www.youtube.com/watch?v=T8IhUhljAlc
+https://youtu.be/33ubRBb5q0g
+https://youtu.be/tGIY22V-HNI?si=fc2-uWXm8KyUkDap
+https://www.youtube.com/watch?v=9FigxVpUzT0
+https://vimeo.com/421632159
+https://www.youtube.com/watch?v=1V2nJ2HRvvw
+https://www.youtube.com/watch?v=Z0mrrc9__4w
+https://www.youtube.com/watch?v=z4MTeQaT85A
+https://www.youtube.com/watch?v=XDoV94W6oIk
+https://www.youtube.com/watch?v=WKAI8XsIuvM
+https://www.youtube.com/watch?v=LmS19W3FfGA
+https://www.youtube.com/watch?v=jiFGkNUTqLg
+https://www.youtube.com/watch?v=aQVhbuiV2Ik
+https://videoplayer.telvue.com/player/bXdwUSrnr6QUGN4_JWYERXfbtl3o_jt2/media/1041358
 https://www.youtube.com/embed/JVYzmjogFKM?autoplay=0&start=0&rel=0
-https://youtu.be/IhGE9TwsrDs?si=ZKa7yDYUOm1CtT4t
-https://washougalwa.portal.civicclerk.com/event/485/media
-https://www.youtube.com/live/N76-_Dh4rzM?si=DSqY2KBdGU9_hKys
-https://collegeplacewa.portal.civicclerk.com/event/125/media
-https://stanwoodwa.portal.civicclerk.com/event/706/media
-https://www.youtube.com/live/W3oX4zNjqqI?si=TMlyXOF8trMyhz8M
-https://www.youtube.com/watch?v=tQZ5faoP8Ks
-https://bethelak.portal.civicclerk.com/event/1143/media
-https://crestviewfl.portal.civicclerk.com/event/1381/media
-https://longwoodfl.portal.civicclerk.com/event/869/media
-https://lynnhavenfl.portal.civicclerk.com/event/2112/media
-https://villagenpb.new.swagit.com/videos/399555
-https://www.youtube.com/live/_RZBcYEbQr4?si=ZWq-eD1hKQwGjiiZ
-https://youtube.com/live/3OOngsiBb0A?feature=share
-https://winterparkfl.portal.civicclerk.com/event/2729/media
-https://youtu.be/LXaYHmU9YqY
-https://harrisoncountyin.portal.civicclerk.com/event/1066/media
-https://www.youtube.com/watch?v=lKH5HrGfbss&t=275s
-https://www.youtube.com/watch?v=ewmeXCEHRD4
-https://www.youtube.com/watch?v=VJfIRx7jS9g
-https://youtu.be/ghfiK43URc8
-https://www.youtube.com/watch?v=gVy1l0klymg
-https://www.youtube.com/watch?v=X8byP_KTNkE
-https://youtube.com/live/dMDTgIVM9_c?feature=share
-https://www.youtube.com/live/7YbqdtcDVd4?si=BKpLSF8E7UM6ULJM
-https://youtube.com/live/LujQlJ1LnC4
-http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1
-https://youtu.be/1VtOGgQY0sw
-https://youtu.be/9KVFYpXYR80
-https://www.youtube.com/embed/treoXyXfv6g?enablejsapi=1&autoplay=0&cc_load_policy=0&cc_lang_pref=&iv_load_policy=1&loop=0&rel=0&fs=1&playsinline=0&autohide=2&theme=dark&color=red&controls=1&disablekb=0
-https://www.youtube.com/embed/IRtJIU3Hsb0?si=2x-ZtpHQOQg--eGE
-https://www.youtube.com/watch?v=hVRUS5uxAvg
-https://youtu.be/VyYwySY5OaY
-https://burkeconc.portal.civicclerk.com/event/983/media
-https://www.youtube.com/watch?v=H2CzbGvQ_l4
-https://youtube.com/embed/w2fhi7R6WLk
-https://mandannd.portal.civicclerk.com/event/344/media
-https://westfargond.portal.civicclerk.com/event/1044/media
-https://www.youtube.com/watch?v=_adivav_vag
-https://www.youtube.com/live/FMMpEcupCXw?si=P-3Nxm6Y8sUxbrJJ
-https://scottsbluffne.portal.civicclerk.com/event/951/media
-https://www.youtube.com/watch?v=6xBTQYtTi4c
-http://www.youtube.com/embed/hhU7j0za5So?si=BWxYlXbVe8kxZ5yB
-https://www.youtube.com/live/uIVCu3gqNUM?si=b1qLX9tQVkFThWYx
-https://www.youtube.com/watch?v=QpksKuumxoo&t=1s
-https://centervilleut.portal.civicclerk.com/event/1700/media
-https://youtu.be/M6cMFza8BCg
-https://www.youtube.com/live/tET2EUqdYTM?si=WQCUkurtDxJw73-s
-https://youtube.com/live/d7_TJJkxQio?feature=share
-https://www.youtube.com/live/olnrusm-Q3g?si=-MngltZSpPsUP3N5
-https://www.youtube.com/live/FB_eEUP_5Nw
-https://youtu.be/UqqNmhobTbw
-https://www.youtube.com/live/f_yT6cJocwc?si=WXAR6B1vOCCf04-g
-https://youtu.be/C4-OYe22uTQ?si=RW--uMsSiLt7TUPN
-https://www.youtube.com/live/7G_qeoETRe8?si=6BWKwHILOfLs-UFd
-https://youtu.be/ue4-y-brYgM
-https://www.youtube.com/watch?v=pE0GGrxIYHE&t=3002s
-https://youtu.be/svk7OsRpw8E
-https://aac.cablecast.tv/cablecastapi/live?channel_id=1&use_cdn=true
 https://youtube.com/live/KLaCh93rKGo?feature=share	https://www.charlevoixcounty.org/
 https://www.youtube.com/embed/ESfzST-yOSM?si=4EKaKTtJZK4jTT-q	https://www.middletown.delaware.gov/events/97568/
-https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas
-https://southelmonteca.portal.civicclerk.com/event/582/media	https://www.cityofsouthelmonte.org/129/Meeting-Agendas-Minutes
-https://carmelbytheseaca.portal.civicclerk.com/event/912/media	https://ci.carmel.ca.us/
 https://www.youtube.com/embed/PvV--2X7Qco?modestbranding=1&hd=1&vq=hd720&rel=0&playsinline=1	https://publicinput.com/cityofindustry
-https://caleraal.portal.civicclerk.com/event/803/media	https://www.cityofcalera.org/429/Agendas-and-Minutes
-https://eagle-id.granicus.com/ViewPublisher.php?view_id=1	https://www.cityofeagle.org/
 https://www.youtube.com/live/O0rA3d4CF84?si=hjSFoQPXVBb3-vnu	https://www.belairmd.org/
-https://townhallstreams.com/stream.php?location_id=87&id=72598	https://www.choosecambridge.com/
 https://www.youtube.com/live/uQ3rK9rI1g8	https://www.townofcentreville.org/
-https://salisburymd.granicus.com/ViewPublisher.php?view_id=1	https://salisbury.md/citizen-services/city-council
 https://youtu.be/33WZKCGJNmg	https://www.boonton.org/
-https://videoplayer.telvue.com/player/xAkU_1Eb4e9C1-YCioqZmvaGx4GumMyB/playlists/3943/stream/393	https://www.cliftonnj.org/
-https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/1298/stream/67?autostart=false&showtabssearch=true&fullscreen=false	https://www.oradell.org/oradell-public-television/pages/live-stream
-https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php
 https://youtu.be/zSh2DIrld8E	https://stoneharbornj.org/agendameetings/watch-mayor-and-council-meetings-online/borough-council-agendas-minutes/
-https://byramms.portal.civicclerk.com/event/2238/media	https://www.byram-ms.us
-https://youtube.com/live/NiWgzVNU8ik
-https://youtu.be/gd7DWmsqFVc
-https://kaysvilleut.portal.civicclerk.com/event/1264/media
-https://www.youtube.com/watch?v=hb9uFmMTfBs
-https://www.youtube.com/watch?v=7GJ57vgKy2M
 https://www.youtube.com/watch?v=YavJncgqinc&list=PLicvhyhiZ7gzoNt4olVP-3LGGOM0oWC9E&index=1
-https://www.youtube.com/watch?v=ZXbJFGux8A0
-https://www.youtube.com/watch?v=Wukj7jH8c68
-https://www.youtube.com/watch?v=_gMFVyiTuBc
-https://vineyardut.portal.civicclerk.com/event/1453/media
-https://youtu.be/GpgVPG7sOUY
-https://www.youtube.com/watch?v=rI5SuKY3N5c
-https://youtu.be/LVxxYfXP4a8?si=rszahy063WumBQCC
-https://youtu.be/nMWY-9gRR28?si=pjmQ-LwQDimef_gj
-https://youtu.be/frOh1rmoEhU?si=aBLPmhMaa-kudfAk
-https://youtu.be/f3O4Fgw07Mk?si=0U7-pwmnB5zsaXmv
-http://youtube.com/watch?v=jX5Z82N_X3o
-https://youtube.com/live/T-vtfoTP1xc
-https://youtu.be/XXc0JfG02Bs
-https://youtube.com/live/C_5INZB_pjM
-https://youtu.be/x5mNdymgG8w
-https://summitcounty.granicus.com/player/clip/1286
-https://youtu.be/aQuY4e7wu18
-https://youtube.com/live/1Bs5za9GfUo
-https://hebercityut.portal.civicclerk.com/event/527/media
-https://youtu.be/TPfxCUb632w
-https://youtu.be/HSeZ-fmWnmM
-https://parkcityut.portal.civicclerk.com/event/3931/media
-https://www.youtube.com/live/YEgksexqfpA
-https://www.youtube.com/watch?v=sWP2LG-RLqs
 https://www.youtube.com/watch?v=tD-DTUDaWXU&list=PLicvhyhiZ7gyjMzt7NxqLeGECYABoqWNe&index=1
-https://www.youtube.com/watch?v=jrkIIUfzUy8
-https://www.youtube.com/watch?v=jk1YoRffhFI
-https://www.youtube.com/watch?v=SxyFXH5YwnY
-https://www.youtube.com/watch?v=Pff2be9KsUc
-https://www.youtube.com/watch?v=mQZiMYr-zho
-https://youtu.be/4D1rlcI5EHU
-https://wasatchcout.portal.civicclerk.com/event/1618/media
-https://wasatchcout.portal.civicclerk.com/event/1619/media
-https://wasatchcout.portal.civicclerk.com/event/1620/media
-https://wasatchcout.portal.civicclerk.com/event/1812/media
-https://wasatchcout.portal.civicclerk.com/event/1621/media
 https://youtu.be/MvBKkL0vxaA
-https://www.youtube.com/watch?v=PiunVGKidIk&list=PLnGV6r4WDnpY2MjIzqfPNe37UHs60U5Vb&index=4
-https://www.youtube.com/watch?v=u-Td937EG8I&list=PLnGV6r4WDnpY2MjIzqfPNe37UHs60U5Vb&index=2
-https://churchillconv.portal.civicclerk.com/event/4000/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3990/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3900/media	https://churchillcountynv.gov
-https://churchillconv.portal.civicclerk.com/event/3850/media	https://churchillcountynv.gov
-https://cityofstamford.granicus.com/MediaPlayer.php?view_id=2&clip_id=9691
-https://bocaraton.granicus.com/MediaPlayer.php?view_id=3&clip_id=546
-https://coralgables.granicus.com/MediaPlayer.php?view_id=2&clip_id=4044
-https://cityofdoral.granicus.com/MediaPlayer.php?view_id=2&clip_id=848
-https://dunnellon.granicus.com/MediaPlayer.php?view_id=1&clip_id=561
-https://citynmb.granicus.com/MediaPlayer.php?view_id=1&clip_id=2042
-https://pinecrest.granicus.com/MediaPlayer.php?view_id=2&clip_id=834
-https://pompano.granicus.com/MediaPlayer.php?view_id=2&clip_id=2651
-https://puntagorda.granicus.com/MediaPlayer.php?view_id=1&clip_id=1371
-https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2696
-https://townofsurfsidefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=542
-https://brevardfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=638
-https://hernandoschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=472
-https://manateeschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=346
-https://nassaufl.granicus.com/MediaPlayer.php?view_id=2&clip_id=2416
-https://mauicounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4246
-https://cityofmalden.granicus.com/MediaPlayer.php?view_id=2&clip_id=275
-https://ravalli-mt.granicus.com/MediaPlayer.php?view_id=1&clip_id=2559
-https://cityofstillwater.granicus.com/MediaPlayer.php?view_id=3&clip_id=1895
-https://ashecounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=678
-https://chathamnc.granicus.com/MediaPlayer.php?view_id=2&clip_id=576
-https://mecklenburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=3281
-https://chemungny.granicus.com/MediaPlayer.php?view_id=1&clip_id=878
-https://sullivancountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2239
-https://allegheny.granicus.com/MediaPlayer.php?view_id=2&clip_id=1052
-https://lackawanna.granicus.com/MediaPlayer.php?view_id=2&clip_id=503
-https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790
-https://fallschurch-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=3513
-https://leesburgva.granicus.com/MediaPlayer.php?view_id=2&clip_id=2981
-https://richmondva.granicus.com/MediaPlayer.php?view_id=1&clip_id=5000
-https://vienna-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1994
-https://clallam.granicus.com/MediaPlayer.php?view_id=2&clip_id=2181
-https://whatcom.granicus.com/MediaPlayer.php?view_id=1&clip_id=1569
-https://longview-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=207
-https://marysville.granicus.com/MediaPlayer.php?view_id=2&clip_id=664
-https://mukilteo-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=2022
-https://olympia.granicus.com/MediaPlayer.php?view_id=2&clip_id=3013
-https://cityofpt.granicus.com/MediaPlayer.php?view_id=2&clip_id=3908
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405
-https://sequim-wa.granicus.com/MediaPlayer.php?view_id=1&clip_id=723
-https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292
-https://cityoftacoma.granicus.com/MediaPlayer.php?view_id=2&clip_id=7795
-https://sauk.granicus.com/MediaPlayer.php?view_id=2&clip_id=2950
-https://lincolnri.portal.civicclerk.com/event/5463/media	https://www.lincolnri.gov
 https://www.utah.gov/pmn/sitemap/notice/1103253.html
 https://www.utah.gov/pmn/sitemap/notice/1103725.html
-https://www.utah.gov/pmn/sitemap/notice/1073417.html
 https://www.utah.gov/pmn/sitemap/notice/1104203.html
-https://www.utah.gov/pmn/sitemap/notice/1035147.html
-https://www.utah.gov/pmn/sitemap/notice/1085157.html
 https://www.utah.gov/pmn/sitemap/notice/1086431.html
 https://www.utah.gov/pmn/sitemap/notice/1098993.html
-https://www.utah.gov/pmn/sitemap/notice/1102583.html
-https://www.utah.gov/pmn/sitemap/notice/1081495.html
 https://www.utah.gov/pmn/sitemap/notice/1104319.html
-https://www.utah.gov/pmn/sitemap/notice/1107363.html
-https://www.utah.gov/pmn/sitemap/notice/1032973.html
-https://www.utah.gov/pmn/sitemap/notice/1055725.html
 https://www.utah.gov/pmn/sitemap/notice/1100236.html
 https://www.utah.gov/pmn/sitemap/notice/1092201.html
-https://www.utah.gov/pmn/sitemap/notice/1095705.html
 https://www.utah.gov/pmn/sitemap/notice/1104439.html
 https://www.utah.gov/pmn/sitemap/notice/1104835.html
 https://www.utah.gov/pmn/sitemap/notice/983371.html
 https://www.utah.gov/pmn/sitemap/notice/1100163.html
-https://www.utah.gov/pmn/sitemap/notice/1102315.html
-https://www.utah.gov/pmn/sitemap/notice/1098005.html
-https://www.utah.gov/pmn/sitemap/notice/1010733.html
 https://www.utah.gov/pmn/sitemap/notice/1093765.html
-https://www.utah.gov/pmn/sitemap/notice/1061689.html
 https://www.utah.gov/pmn/sitemap/notice/1105465.html
 https://www.utah.gov/pmn/sitemap/notice/1098709.html
 https://www.utah.gov/pmn/sitemap/notice/1100372.html
-https://www.utah.gov/pmn/sitemap/notice/1097079.html
-https://www.utah.gov/pmn/sitemap/notice/1094395.html
 https://www.utah.gov/pmn/sitemap/notice/1103825.html
 https://www.utah.gov/pmn/sitemap/notice/1100679.html
-https://www.utah.gov/pmn/sitemap/notice/1041417.html
 https://www.utah.gov/pmn/sitemap/notice/1050307.html
 https://www.utah.gov/pmn/sitemap/notice/1093417.html
 https://www.utah.gov/pmn/sitemap/notice/1100328.html
 https://www.utah.gov/pmn/sitemap/notice/1098879.html
-https://www.utah.gov/pmn/sitemap/notice/1099107.html
-https://www.utah.gov/pmn/sitemap/notice/1100915.html
-https://www.utah.gov/pmn/sitemap/notice/1102545.html
 https://www.utah.gov/pmn/sitemap/notice/1101473.html
 https://www.utah.gov/pmn/sitemap/notice/1100290.html
 https://www.utah.gov/pmn/sitemap/notice/1101451.html
-https://www.utah.gov/pmn/sitemap/notice/1097711.html
 https://www.utah.gov/pmn/sitemap/notice/1103815.html
 https://www.utah.gov/pmn/sitemap/notice/1105573.html
-https://www.utah.gov/pmn/sitemap/notice/1102185.html
 https://www.utah.gov/pmn/sitemap/notice/1105473.html
 https://www.utah.gov/pmn/sitemap/notice/1101551.html
 https://www.utah.gov/pmn/sitemap/notice/1102777.html
@@ -457,10 +460,8 @@ https://www.utah.gov/pmn/sitemap/notice/1070463.html
 https://www.utah.gov/pmn/sitemap/notice/1102091.html
 https://www.utah.gov/pmn/sitemap/notice/1101091.html
 https://www.utah.gov/pmn/sitemap/notice/1100993.html
-https://www.utah.gov/pmn/sitemap/notice/1097333.html
 https://www.utah.gov/pmn/sitemap/notice/1097435.html
 https://www.utah.gov/pmn/sitemap/notice/1100153.html
-https://www.utah.gov/pmn/sitemap/notice/1098501.html
 https://www.utah.gov/pmn/sitemap/notice/1101013.html
 https://www.utah.gov/pmn/sitemap/notice/1101649.html
 https://www.utah.gov/pmn/sitemap/notice/1100061.html
@@ -484,40 +485,26 @@ https://www.utah.gov/pmn/sitemap/notice/1102277.html
 https://www.utah.gov/pmn/sitemap/notice/1105605.html
 https://www.utah.gov/pmn/sitemap/notice/1095429.html
 https://www.utah.gov/pmn/sitemap/notice/1101685.html
-https://www.utah.gov/pmn/sitemap/notice/1092293.html
 https://www.utah.gov/pmn/sitemap/notice/1101329.html
 https://www.utah.gov/pmn/sitemap/notice/1100322.html
-https://www.utah.gov/pmn/sitemap/notice/1105389.html
-https://www.utah.gov/pmn/sitemap/notice/1076929.html
 https://www.utah.gov/pmn/sitemap/notice/1102609.html
 https://www.utah.gov/pmn/sitemap/notice/1100991.html
 https://www.utah.gov/pmn/sitemap/notice/1101923.html
 https://www.utah.gov/pmn/sitemap/notice/1065291.html
-https://www.utah.gov/pmn/sitemap/notice/1101851.html
 https://www.utah.gov/pmn/sitemap/notice/1101049.html
-https://www.utah.gov/pmn/sitemap/notice/1103991.html
-https://www.utah.gov/pmn/sitemap/notice/1100861.html
 https://www.utah.gov/pmn/sitemap/notice/1100601.html
 https://www.utah.gov/pmn/sitemap/notice/1099711.html
-https://www.utah.gov/pmn/sitemap/notice/1077183.html
 https://www.utah.gov/pmn/sitemap/notice/1099921.html
-https://www.utah.gov/pmn/sitemap/notice/1097203.html
 https://www.utah.gov/pmn/sitemap/notice/1100829.html
 https://www.utah.gov/pmn/sitemap/notice/1099853.html
 https://www.utah.gov/pmn/sitemap/notice/1105113.html
 https://www.utah.gov/pmn/sitemap/notice/1096089.html
-https://www.utah.gov/pmn/sitemap/notice/1103087.html
-https://www.utah.gov/pmn/sitemap/notice/1098077.html
 https://www.utah.gov/pmn/sitemap/notice/1101037.html
 https://www.utah.gov/pmn/sitemap/notice/1098611.html
-https://www.utah.gov/pmn/sitemap/notice/1100230.html
 https://www.utah.gov/pmn/sitemap/notice/1038693.html
-https://www.utah.gov/pmn/sitemap/notice/1100234.html
-https://www.utah.gov/pmn/sitemap/notice/1102267.html
 https://www.utah.gov/pmn/sitemap/notice/1102455.html
 https://www.utah.gov/pmn/sitemap/notice/1101977.html
 https://www.utah.gov/pmn/sitemap/notice/1094253.html
-https://www.utah.gov/pmn/sitemap/notice/1096651.html
 https://www.utah.gov/pmn/sitemap/notice/1083781.html
 https://www.utah.gov/pmn/sitemap/notice/1103325.html
 https://www.utah.gov/pmn/sitemap/notice/1098291.html
@@ -528,13 +515,9 @@ https://www.utah.gov/pmn/sitemap/notice/1083825.html
 https://www.utah.gov/pmn/sitemap/notice/1104475.html
 https://www.utah.gov/pmn/sitemap/notice/1102683.html
 https://www.utah.gov/pmn/sitemap/notice/1100923.html
-https://www.utah.gov/pmn/sitemap/notice/1100865.html
 https://www.utah.gov/pmn/sitemap/notice/1096075.html
 https://www.utah.gov/pmn/sitemap/notice/1099139.html
-https://www.utah.gov/pmn/sitemap/notice/1084361.html
 https://www.utah.gov/pmn/sitemap/notice/1100767.html
-https://www.utah.gov/pmn/sitemap/notice/1078251.html
-https://www.utah.gov/pmn/sitemap/notice/1072839.html
 https://www.utah.gov/pmn/sitemap/notice/1105111.html
 https://www.utah.gov/pmn/sitemap/notice/1092092.html
 https://www.utah.gov/pmn/sitemap/notice/1091049.html
@@ -551,20 +534,13 @@ https://www.utah.gov/pmn/sitemap/notice/1100364.html
 https://www.utah.gov/pmn/sitemap/notice/1099967.html
 https://www.utah.gov/pmn/sitemap/notice/1100133.html
 https://www.utah.gov/pmn/sitemap/notice/1103123.html
-https://www.utah.gov/pmn/sitemap/notice/1082177.html
-https://www.utah.gov/pmn/sitemap/notice/1017379.html
-https://www.utah.gov/pmn/sitemap/notice/1045061.html
-https://www.utah.gov/pmn/sitemap/notice/1045057.html
 https://www.utah.gov/pmn/sitemap/notice/1040287.html
 https://www.utah.gov/pmn/sitemap/notice/1105545.html
 https://www.utah.gov/pmn/sitemap/notice/1101221.html
 https://www.utah.gov/pmn/sitemap/notice/1104443.html
-https://www.utah.gov/pmn/sitemap/notice/1063321.html
 https://www.utah.gov/pmn/sitemap/notice/1101241.html
-https://www.utah.gov/pmn/sitemap/notice/1083909.html
 https://www.utah.gov/pmn/sitemap/notice/1104447.html
 https://www.utah.gov/pmn/sitemap/notice/1099673.html
-https://www.utah.gov/pmn/sitemap/notice/1068355.html
 https://www.utah.gov/pmn/sitemap/notice/1101979.html
 https://www.utah.gov/pmn/sitemap/notice/1102921.html
 https://www.utah.gov/pmn/sitemap/notice/1101423.html
@@ -576,15 +552,11 @@ https://www.utah.gov/pmn/sitemap/notice/1102981.html
 https://www.utah.gov/pmn/sitemap/notice/1099875.html
 https://www.utah.gov/pmn/sitemap/notice/1101543.html
 https://www.utah.gov/pmn/sitemap/notice/1101493.html
-https://www.utah.gov/pmn/sitemap/notice/1064529.html
 https://www.utah.gov/pmn/sitemap/notice/1103965.html
 https://www.utah.gov/pmn/sitemap/notice/1100599.html
 https://www.utah.gov/pmn/sitemap/notice/1100951.html
-https://www.utah.gov/pmn/sitemap/notice/1045063.html
-https://www.utah.gov/pmn/sitemap/notice/1081080.html
 https://www.utah.gov/pmn/sitemap/notice/1067141.html
 https://www.utah.gov/pmn/sitemap/notice/1100881.html
-https://www.utah.gov/pmn/sitemap/notice/1083249.html
 https://www.utah.gov/pmn/sitemap/notice/1079359.html
 https://www.utah.gov/pmn/sitemap/notice/1105417.html
 https://www.utah.gov/pmn/sitemap/notice/1101821.html
@@ -600,11 +572,8 @@ https://www.utah.gov/pmn/sitemap/notice/1100589.html
 https://www.utah.gov/pmn/sitemap/notice/1102535.html
 https://www.utah.gov/pmn/sitemap/notice/1102715.html
 https://www.utah.gov/pmn/sitemap/notice/1105151.html
-https://www.utah.gov/pmn/sitemap/notice/1085845.html
 https://www.utah.gov/pmn/sitemap/notice/1101661.html
-https://www.utah.gov/pmn/sitemap/notice/1045059.html
 https://www.utah.gov/pmn/sitemap/notice/1032941.html
-https://www.utah.gov/pmn/sitemap/notice/1066457.html
 https://www.utah.gov/pmn/sitemap/notice/1102643.html
 https://www.utah.gov/pmn/sitemap/notice/1100905.html
 https://www.utah.gov/pmn/sitemap/notice/1100547.html
@@ -641,21 +610,14 @@ https://www.utah.gov/pmn/sitemap/notice/1099865.html
 https://www.utah.gov/pmn/sitemap/notice/1102503.html
 https://www.utah.gov/pmn/sitemap/notice/1104125.html
 https://www.utah.gov/pmn/sitemap/notice/1100404.html
-https://www.utah.gov/pmn/sitemap/notice/1097961.html
-https://www.utah.gov/pmn/sitemap/notice/1076967.html
 https://www.utah.gov/pmn/sitemap/notice/1100472.html
 https://www.utah.gov/pmn/sitemap/notice/1102143.html
 https://www.utah.gov/pmn/sitemap/notice/1095477.html
 https://www.utah.gov/pmn/sitemap/notice/1102769.html
-https://www.utah.gov/pmn/sitemap/notice/1105375.html
 https://www.utah.gov/pmn/sitemap/notice/1102887.html
-https://www.utah.gov/pmn/sitemap/notice/1083997.html
-https://www.utah.gov/pmn/sitemap/notice/1091163.html
 https://www.utah.gov/pmn/sitemap/notice/1100565.html
 https://www.utah.gov/pmn/sitemap/notice/1100595.html
-https://www.utah.gov/pmn/sitemap/notice/1060411.html
 https://www.utah.gov/pmn/sitemap/notice/1091203.html
-https://www.utah.gov/pmn/sitemap/notice/1091327.html
 https://www.utah.gov/pmn/sitemap/notice/1104193.html
 https://www.utah.gov/pmn/sitemap/notice/1103999.html
 https://www.utah.gov/pmn/sitemap/notice/1100957.html
@@ -663,10 +625,8 @@ https://www.utah.gov/pmn/sitemap/notice/1104113.html
 https://www.utah.gov/pmn/sitemap/notice/1104829.html
 https://www.utah.gov/pmn/sitemap/notice/1100561.html
 https://www.utah.gov/pmn/sitemap/notice/1102515.html
-https://www.utah.gov/pmn/sitemap/notice/1091487.html
 https://www.utah.gov/pmn/sitemap/notice/1101281.html
 https://www.utah.gov/pmn/sitemap/notice/1103051.html
-https://www.utah.gov/pmn/sitemap/notice/1073347.html
 https://www.utah.gov/pmn/sitemap/notice/1102663.html
 https://www.utah.gov/pmn/sitemap/notice/1103395.html
 https://www.utah.gov/pmn/sitemap/notice/1097095.html
@@ -677,17 +637,13 @@ https://www.utah.gov/pmn/sitemap/notice/1102323.html
 https://www.utah.gov/pmn/sitemap/notice/1101905.html
 https://www.utah.gov/pmn/sitemap/notice/1101373.html
 https://www.utah.gov/pmn/sitemap/notice/1102259.html
-https://www.utah.gov/pmn/sitemap/notice/1053129.html
 https://www.utah.gov/pmn/sitemap/notice/1100514.html
 https://www.utah.gov/pmn/sitemap/notice/1101147.html
 https://www.utah.gov/pmn/sitemap/notice/1102261.html
 https://www.utah.gov/pmn/sitemap/notice/1104069.html
-https://www.utah.gov/pmn/sitemap/notice/1072971.html
-https://www.utah.gov/pmn/sitemap/notice/1093599.html
 https://www.utah.gov/pmn/sitemap/notice/1080241.html
 https://www.utah.gov/pmn/sitemap/notice/1104527.html
 https://www.utah.gov/pmn/sitemap/notice/1099089.html
-https://www.utah.gov/pmn/sitemap/notice/1029753.html
 https://www.utah.gov/pmn/sitemap/notice/1103135.html
 https://www.utah.gov/pmn/sitemap/notice/1087999.html
 https://www.utah.gov/pmn/sitemap/notice/1102133.html
@@ -697,8 +653,6 @@ https://www.utah.gov/pmn/sitemap/notice/1104071.html
 https://www.utah.gov/pmn/sitemap/notice/1104025.html
 https://www.utah.gov/pmn/sitemap/notice/1099391.html
 https://www.utah.gov/pmn/sitemap/notice/1104027.html
-https://www.utah.gov/pmn/sitemap/notice/1042009.html
-https://www.utah.gov/pmn/sitemap/notice/1089477.html
 https://www.utah.gov/pmn/sitemap/notice/1105449.html
 https://www.utah.gov/pmn/sitemap/notice/1104307.html
 https://www.utah.gov/pmn/sitemap/notice/1105419.html
@@ -706,7 +660,6 @@ https://www.utah.gov/pmn/sitemap/notice/1100695.html
 https://www.utah.gov/pmn/sitemap/notice/1100703.html
 https://www.utah.gov/pmn/sitemap/notice/1105809.html
 https://www.utah.gov/pmn/sitemap/notice/1103003.html
-https://www.utah.gov/pmn/sitemap/notice/1046197.html
 https://www.utah.gov/pmn/sitemap/notice/1098657.html
 https://www.utah.gov/pmn/sitemap/notice/1102135.html
 https://www.utah.gov/pmn/sitemap/notice/1101349.html
@@ -715,41 +668,26 @@ https://www.utah.gov/pmn/sitemap/notice/1091879.html
 https://www.utah.gov/pmn/sitemap/notice/1094281.html
 https://www.utah.gov/pmn/sitemap/notice/1102767.html
 https://www.utah.gov/pmn/sitemap/notice/1100623.html
-https://www.utah.gov/pmn/sitemap/notice/1098205.html
 https://www.utah.gov/pmn/sitemap/notice/1080031.html
-https://www.utah.gov/pmn/sitemap/notice/1103677.html
-https://www.utah.gov/pmn/sitemap/notice/1091035.html
 https://www.utah.gov/pmn/sitemap/notice/1099115.html
 https://www.utah.gov/pmn/sitemap/notice/1100857.html
-https://www.utah.gov/pmn/sitemap/notice/1060513.html
 https://www.utah.gov/pmn/sitemap/notice/1094019.html
 https://www.utah.gov/pmn/sitemap/notice/1104837.html
 https://www.utah.gov/pmn/sitemap/notice/1107025.html
 https://www.utah.gov/pmn/sitemap/notice/1052565.html
-https://www.utah.gov/pmn/sitemap/notice/1086583.html
-https://www.utah.gov/pmn/sitemap/notice/1044959.html
 https://www.utah.gov/pmn/sitemap/notice/1100819.html
 https://www.utah.gov/pmn/sitemap/notice/1099949.html
 https://www.utah.gov/pmn/sitemap/notice/1077939.html
-https://www.utah.gov/pmn/sitemap/notice/1008613.html
 https://www.utah.gov/pmn/sitemap/notice/1085359.html
 https://www.utah.gov/pmn/sitemap/notice/1071205.html
-https://www.utah.gov/pmn/sitemap/notice/1099519.html
 https://www.utah.gov/pmn/sitemap/notice/1065363.html
 https://www.utah.gov/pmn/sitemap/notice/1025621.html
 https://www.utah.gov/pmn/sitemap/notice/1064461.html
-https://www.utah.gov/pmn/sitemap/notice/1042983.html
 https://www.utah.gov/pmn/sitemap/notice/1069763.html
 https://www.utah.gov/pmn/sitemap/notice/1075071.html
 https://www.utah.gov/pmn/sitemap/notice/1066108.html
-https://www.utah.gov/pmn/sitemap/notice/1094777.html
 https://www.utah.gov/pmn/sitemap/notice/1073707.html
-https://www.utah.gov/pmn/sitemap/notice/1091125.html
 https://www.utah.gov/pmn/sitemap/notice/1085325.html
-https://www.utah.gov/pmn/sitemap/notice/1066341.html
-https://www.utah.gov/pmn/sitemap/notice/1073435.html
-https://www.utah.gov/pmn/sitemap/notice/1004884.html
-https://www.utah.gov/pmn/sitemap/notice/1065787.html
 https://www.utah.gov/pmn/sitemap/notice/1065731.html
 https://www.utah.gov/pmn/sitemap/notice/1078997.html
 https://www.utah.gov/pmn/sitemap/notice/1092271.html
@@ -757,36 +695,23 @@ https://www.utah.gov/pmn/sitemap/notice/1054853.html
 https://www.utah.gov/pmn/sitemap/notice/1073529.html
 https://www.utah.gov/pmn/sitemap/notice/1067625.html
 https://www.utah.gov/pmn/sitemap/notice/1064867.html
-https://www.utah.gov/pmn/sitemap/notice/1090913.html
 https://www.utah.gov/pmn/sitemap/notice/1082545.html
 https://www.utah.gov/pmn/sitemap/notice/1082041.html
 https://www.utah.gov/pmn/sitemap/notice/1066373.html
 https://www.utah.gov/pmn/sitemap/notice/1086577.html
 https://www.utah.gov/pmn/sitemap/notice/1096137.html
-https://www.utah.gov/pmn/sitemap/notice/1070155.html
 https://www.utah.gov/pmn/sitemap/notice/1069761.html
 https://www.utah.gov/pmn/sitemap/notice/1065417.html
 https://www.utah.gov/pmn/sitemap/notice/1065601.html
-https://www.utah.gov/pmn/sitemap/notice/1069021.html
 https://www.utah.gov/pmn/sitemap/notice/1091831.html
-https://www.utah.gov/pmn/sitemap/notice/1071327.html
-https://www.utah.gov/pmn/sitemap/notice/1092383.html
 https://www.utah.gov/pmn/sitemap/notice/1064401.html
-https://www.utah.gov/pmn/sitemap/notice/1080145.html
-https://www.utah.gov/pmn/sitemap/notice/1098397.html
-https://www.utah.gov/pmn/sitemap/notice/1074021.html
-https://www.utah.gov/pmn/sitemap/notice/1098733.html
 https://www.utah.gov/pmn/sitemap/notice/1078131.html
 https://www.utah.gov/pmn/sitemap/notice/1075397.html
-https://www.utah.gov/pmn/sitemap/notice/1087919.html
 https://www.utah.gov/pmn/sitemap/notice/1074923.html
 https://www.utah.gov/pmn/sitemap/notice/1091521.html
 https://www.utah.gov/pmn/sitemap/notice/1065203.html
 https://www.utah.gov/pmn/sitemap/notice/1071705.html
-https://www.utah.gov/pmn/sitemap/notice/1096823.html
-https://www.utah.gov/pmn/sitemap/notice/1081913.html
 https://www.utah.gov/pmn/sitemap/notice/1083815.html
-https://www.utah.gov/pmn/sitemap/notice/1076159.html
 https://www.utah.gov/pmn/sitemap/notice/1092851.html
 https://www.utah.gov/pmn/sitemap/notice/1090687.html
 https://www.utah.gov/pmn/sitemap/notice/1082503.html
@@ -795,33 +720,25 @@ https://www.utah.gov/pmn/sitemap/notice/1083785.html
 https://www.utah.gov/pmn/sitemap/notice/1089745.html
 https://www.utah.gov/pmn/sitemap/notice/1067221.html
 https://www.utah.gov/pmn/sitemap/notice/1095685.html
-https://www.utah.gov/pmn/sitemap/notice/1085089.html
 https://www.utah.gov/pmn/sitemap/notice/1080159.html
 https://www.utah.gov/pmn/sitemap/notice/1071677.html
 https://www.utah.gov/pmn/sitemap/notice/1080747.html
-https://www.utah.gov/pmn/sitemap/notice/1088779.html
 https://www.utah.gov/pmn/sitemap/notice/1068201.html
-https://www.utah.gov/pmn/sitemap/notice/1038749.html
 https://www.utah.gov/pmn/sitemap/notice/1083393.html
 https://www.utah.gov/pmn/sitemap/notice/1070965.html
 https://www.utah.gov/pmn/sitemap/notice/1066016.html
 https://www.utah.gov/pmn/sitemap/notice/1080457.html
-https://www.utah.gov/pmn/sitemap/notice/1066571.html
 https://www.utah.gov/pmn/sitemap/notice/1068555.html
 https://www.utah.gov/pmn/sitemap/notice/1065645.html
 https://www.utah.gov/pmn/sitemap/notice/1066082.html
 https://www.utah.gov/pmn/sitemap/notice/1074183.html
-https://www.utah.gov/pmn/sitemap/notice/1088755.html
 https://www.utah.gov/pmn/sitemap/notice/1069657.html
-https://www.utah.gov/pmn/sitemap/notice/1097471.html
 https://www.utah.gov/pmn/sitemap/notice/1069767.html
-https://www.utah.gov/pmn/sitemap/notice/1005281.html
 https://www.utah.gov/pmn/sitemap/notice/1074181.html
 https://www.utah.gov/pmn/sitemap/notice/1067107.html
 https://www.utah.gov/pmn/sitemap/notice/1078267.html
 https://www.utah.gov/pmn/sitemap/notice/1084911.html
 https://www.utah.gov/pmn/sitemap/notice/1065561.html
-https://www.utah.gov/pmn/sitemap/notice/1087665.html
 https://www.utah.gov/pmn/sitemap/notice/1071305.html
 https://www.utah.gov/pmn/sitemap/notice/1045721.html
 https://www.utah.gov/pmn/sitemap/notice/1087883.html
@@ -836,7 +753,6 @@ https://www.utah.gov/pmn/sitemap/notice/1042821.html
 https://www.utah.gov/pmn/sitemap/notice/1080411.html
 https://www.utah.gov/pmn/sitemap/notice/1065331.html
 https://www.utah.gov/pmn/sitemap/notice/1075755.html
-https://www.utah.gov/pmn/sitemap/notice/988053.html
 https://www.utah.gov/pmn/sitemap/notice/1064379.html
 https://www.utah.gov/pmn/sitemap/notice/1067247.html
 https://www.utah.gov/pmn/sitemap/notice/1069813.html
@@ -857,7 +773,6 @@ https://www.utah.gov/pmn/sitemap/notice/1076897.html
 https://www.utah.gov/pmn/sitemap/notice/1076099.html
 https://www.utah.gov/pmn/sitemap/notice/1076067.html
 https://www.utah.gov/pmn/sitemap/notice/1076071.html
-https://www.utah.gov/pmn/sitemap/notice/1056495.html
 https://www.utah.gov/pmn/sitemap/notice/1083849.html
 https://www.utah.gov/pmn/sitemap/notice/1101511.html
 https://www.utah.gov/pmn/sitemap/notice/1064771.html
@@ -930,8 +845,6 @@ https://www.utah.gov/pmn/sitemap/notice/1068513.html
 https://www.utah.gov/pmn/sitemap/notice/1086741.html
 https://www.utah.gov/pmn/sitemap/notice/1065287.html
 https://www.utah.gov/pmn/sitemap/notice/1065779.html
-https://www.utah.gov/pmn/sitemap/notice/1053921.html
-https://www.utah.gov/pmn/sitemap/notice/1060697.html
 https://www.utah.gov/pmn/sitemap/notice/1065917.html
 https://www.utah.gov/pmn/sitemap/notice/1075083.html
 https://www.utah.gov/pmn/sitemap/notice/1064885.html
@@ -939,7 +852,6 @@ https://www.utah.gov/pmn/sitemap/notice/1064537.html
 https://www.utah.gov/pmn/sitemap/notice/1063733.html
 https://www.utah.gov/pmn/sitemap/notice/1066022.html
 https://www.utah.gov/pmn/sitemap/notice/1068183.html
-https://www.utah.gov/pmn/sitemap/notice/1038289.html
 https://www.utah.gov/pmn/sitemap/notice/1070813.html
 https://www.utah.gov/pmn/sitemap/notice/1067021.html
 https://www.utah.gov/pmn/sitemap/notice/1072731.html
@@ -950,76 +862,16 @@ https://www.utah.gov/pmn/sitemap/notice/1074375.html
 https://www.utah.gov/pmn/sitemap/notice/1065137.html
 https://www.utah.gov/pmn/sitemap/notice/1077591.html
 https://www.utah.gov/pmn/sitemap/notice/1064685.html
-https://www.utah.gov/pmn/sitemap/notice/1079101.html
 https://www.utah.gov/pmn/sitemap/notice/1064943.html
 https://www.utah.gov/pmn/sitemap/notice/1062505.html
 https://www.utah.gov/pmn/sitemap/notice/1072841.html
 https://www.utah.gov/pmn/sitemap/notice/1024907.html
 https://www.utah.gov/pmn/sitemap/notice/1065901.html
 https://www.utah.gov/pmn/sitemap/notice/1066951.html
-https://www.utah.gov/pmn/sitemap/notice/1083087.html
 https://www.utah.gov/pmn/sitemap/notice/1069249.html
 https://www.utah.gov/pmn/sitemap/notice/1071907.html
 https://www.utah.gov/pmn/sitemap/notice/1076865.html
 https://www.utah.gov/pmn/sitemap/notice/1076885.html
-https://ryeny.new.swagit.com/videos/80201
-https://sachsetx.new.swagit.com/videos/01192022-801
-https://salem.cablecast.tv/internetchannel/show/19115
-https://sanbenitotx.new.swagit.com/videos/135693
-https://sanbernardino.cablecast.tv/internetchannel/show/3557?site=1
-https://sandovalcountynm.new.swagit.com/videos/07112019-1080/4/
-https://sanjoseca.new.swagit.com/videos/304643
-https://sanpatriciocountytx.new.swagit.com/videos/353476
-https://santacruzcountyca.new.swagit.com/videos/337126
-https://sapatv.cablecast.tv/internetchannel/show/35396?site=2
-https://scarsdaleny.new.swagit.com/videos/249667
-https://sccoe.new.swagit.com/videos/247894/transcript
-https://sccwi.portal.civicclerk.com/event/923/media
-https://scgtv.new.swagit.com/videos/27666
-https://schertztx.new.swagit.com/videos/381442
-https://sdmf.new.swagit.com/videos/334434
-https://seasideheightsnj.new.swagit.com/videos/267408/download_section
-https://sedonaaz.new.swagit.com/videos/06302022-516
-https://sedrowoolleywa.portal.civicclerk.com/event/184/media
-https://severanceco.portal.civicclerk.com/event/1379/media
-https://sewardcountyks.new.swagit.com/videos/364518
-https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731
-https://arvin.granicus.com/MediaPlayer.php?view_id=2&clip_id=346
-https://atherton.primegov.com/Portal/Meeting?meetingTemplateId=2464
-https://auburn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1687
-https://bcnv.primegov.com/Portal/Meeting?meetingTemplateId=3504
-https://belleplaine.granicus.com/MediaPlayer.php?view_id=2&clip_id=954
-https://berkeley.granicus.com/MediaPlayer.php?view_id=2&clip_id=5700
-https://brokenarrow.granicus.com/MediaPlayer.php?view_id=2&clip_id=2614
-https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=650
-https://buttecoca.portal.civicclerk.com/event/1078/media
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=603
-https://calumetcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=3281
-https://camarillo.primegov.com/Portal/Meeting?meetingTemplateId=7030
-https://carpinteria.granicus.com/MediaPlayer.php?view_id=2&clip_id=1783
-https://casselberryfl.portal.civicclerk.com/event/524/media
-https://cathedralcity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2898
-https://chaffeecoco.portal.civicclerk.com/event/1671/media
-https://charlestonwv.portal.civicclerk.com/event/3736/media
-https://chinohills.granicus.com/MediaPlayer.php?view_id=2&clip_id=702
-https://churchillconv.portal.civicclerk.com/event/4243/media
-https://citwentynine-palmsca.civicweb.net/Portal/MeetingInformation.aspx?Id=10712
-https://cityofdhs.civicweb.net/Portal/MeetingInformation.aspx?Id=4455
-https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=769
-https://cityoflawton.granicus.com/MediaPlayer.php?view_id=1&clip_id=2104
-https://cityofmerced.granicus.com/MediaPlayer.php?view_id=1&clip_id=1153
-https://cityoforange.granicus.com/MediaPlayer.php?view_id=2&clip_id=1037
-https://cityofoviedo.primegov.com/Portal/Meeting?meetingTemplateId=10905
-https://cityofrehoboth.civicweb.net/Portal/MeetingInformation.aspx?Id=14580
-https://cityofrsm.granicus.com/MediaPlayer.php?view_id=2&clip_id=979
-https://cityofventura.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917
-https://claremontca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1912
-https://cobergennj.granicus.com/MediaPlayer.php?view_id=1&clip_id=428
-https://costamesa.granicus.com/MediaPlayer.php?view_id=4&clip_id=4427
-https://crestviewfl.portal.civicclerk.com/event/1370/media
-https://danvilleva.portal.civicclerk.com/event/2582/media
-https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294
-https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707
 https://youtu.be/MW7uV8fohm0	https://www.macomb-mi.gov/
 https://www.youtube.com/embed/fMfmeh2OtQY?feature=oembed	https://bramptonbot.com/
 https://youtu.be/V_Yb9586WDU	https://sccmo.org
@@ -1314,7 +1166,6 @@ https://www.youtube.com/embed/SUTgjBgTU_A?si=KiI7spq2jNgDWZbC	https://www.lynden
 https://youtu.be/PnjzsFGT7Co	https://www.jerichovt.org
 https://www.youtube.com/watch?v=Yb4-U8Ne-rY	https://loudonnh.org
 https://youtu.be/us2Aj0JNFfM	https://mtdesert.org
-https://www.youtube.com/live/a6tJWMRZgoE?feature=share
 https://youtu.be/j7IU5HyEetU?si=4QI4U9vEU-rgmyEX	https://www.bedfordchartertwpmi.gov/government/township_board/agendas___minutes.php
 https://www.youtube.com/watch?v=3AZLoUiAqts&t=15s	https://www.meridian.mi.us/news/posts/haslett-road-public-meeting-video-now-available/
 https://youtu.be/i3jgHflUFHs	https://www.boisblanctownship.org/boards-and-commissions/meeting-documents/
@@ -1327,74 +1178,8 @@ https://youtu.be/Wz2gPdrRYWA?si=FugWkKXrRvp5OmK3	http://www.lenox-mi.gov/AgendaC
 https://www.youtube.com/watch?v=NKPwfgOK77w	https://5-rivers.ca/index.asp?SEC=A9C02084-2D42-4724-A651-802C87BFCF42
 https://www.youtube.com/live/Je4pi72iBBM?feature=share
 https://youtu.be/em6xC15jPms	https://vilsv.ca/village-office/council/council-meeting-minutes
-https://www.youtube.com/embed/JqON_-LqX4Y
-https://huntingtonpark.granicus.com/player/clip/566?view_id=2
-https://www.youtube.com/watch?v=hdPayV4oLd4
-https://www.youtube.com/watch?v=kZJQsApBQw4
-https://www.youtube.com/watch?v=rzpT6rIoRlI
-https://fremont.primegov.com/Portal/Meeting?meetingTemplateId=557
-https://buttecoca.portal.civicclerk.com/event/140/media
-https://norwalk.primegov.com/Portal/Meeting?meetingTemplateId=7634
-https://www.youtube.com/watch?v=5zc-w-kaRfE
-https://www.youtube.com/watch?v=OZannXzgsXo
-https://www.youtube.com/watch?v=w5zkWsb_BHo
-https://www.youtube.com/watch?v=L0S5TklwxIY
-https://www.youtube.com/watch?v=q3U6ZVJZswU
-https://www.youtube.com/watch?v=xkZjMGFrWUg
-https://blackfordcoin.portal.civicclerk.com/event/2157/media
-https://www.youtube.com/watch?v=2H2SozMslPk
-https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=586
 https://www.youtube.com/watch?v=G8myJ6ZmN70
-https://www.youtube.com/watch?v=Q1b4LUA8CVo
-https://www.youtube.com/watch?v=M6Rf_W5cdyY
-https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=910
 https://www.youtube.com/watch?v=ovoSOginpBs
-https://www.youtube.com/watch?v=rkdMLMNIgKE
-http://agawamvod.cablecast.tv/internetchannel/show/2912?site=1	http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1
-https://www.youtube.com/watch?v=GSTZcOcMgJs
-https://www.youtube.com/watch?v=kS6fNXK9-4o
-https://buffalo.viebit.com/watch?hash=11TLAPa5nJChjObE	https://ci.buffalo.mn.us/AgendaCenter
-https://longbeach.primegov.com/Portal/Meeting?meetingTemplateId=36784
-https://pub-lincoln.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=08e3d8fe-c855-4b61-9c1c-4a1bcec8fcab&lang=English
-https://www.youtube.com/watch?v=T3VwKCAj64o
-https://www.youtube.com/watch?v=fnnKLtVdaFo
-https://www.youtube.com/watch?v=7Rc-p4JjrhU
-http://colonieny.iqm2.com/Citizens/SplitView.aspx?Format=Minutes&MeetingID=1083&Mode=Video
-https://www.youtube.com/watch?v=q5Gvlzvztpo
-https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=1998&Org=Cal
-https://www.youtube.com/watch?v=uGjiNOTkOoM
-https://www.youtube.com/watch?v=CtT4GtYujpg
-https://www.youtube.com/watch?v=HzjMQP1ToH0
-https://www.youtube.com/watch?v=fnZup1KBfr4
-https://whitehouse.civicweb.net/Portal/MeetingInformation.aspx?Id=5493
-https://douglas-mi.municodemeetings.com/bc-citycouncil/page/regular-meeting-city-council-91
-https://www.youtube.com/watch?v=0xRPRA4MI-0
-https://www.youtube.com/watch?v=cn8cmR4Gkk8
-https://www.youtube.com/watch?v=G3OmQMWslVE
-https://www.youtube.com/watch?v=WNXXw04jxvg
-https://www.youtube.com/watch?v=LQalYL8BdGQ
-https://www.youtube.com/watch?v=71Sx5WhXULs
-https://www.youtube.com/watch?v=HnMjtCFKC4c
-https://www.youtube.com/embed/tET2EUqdYTM
-https://www.youtube.com/watch?v=tJg0xjN8VDI
-https://harrisonburg-va.granicus.com/player/clip/1234?view_id=4
-https://snohomish.granicus.com/player/clip/9589?view_id=18
-https://hartford.civicweb.net/Portal/MeetingInformation.aspx?Id=3385
-https://watertown.civicweb.net/Portal/MeetingInformation.aspx?Id=117
-https://laramiecounty.granicus.com/player/clip/841?view_id=1
-https://www.youtube.com/watch?v=L2vPFXq-e2U
-https://www.youtube.com/watch?v=zXY8UlA7kYI
-https://pub-elgincounty.escribemeetings.com/Meeting.aspx?Id=401f3f40-356d-4776-bb76-b6061d58f2a5
-https://youtu.be/C7xyE4XVMPw
-https://www.youtube.com/watch?v=UY7iMN0YIiM
-https://delano.viebit.com/watch?hash=cpi9yaPTzJ8UPaHa
-https://monticello.viebit.com/watch?hash=bLaPBn2Wp5FY27Z1
-https://www.youtube.com/watch?v=OzamGwPq88Q&list=PLikf2jIgeM28O-uYLBfzCSaVbDcvutOn_&index=1
-https://vimeo.com/1219072948
-https://youtu.be/2FvcBKFbrm4?si=kRydsKfxTJF8BBPN
-https://www.youtube.com/watch?v=wQaL-QSoAu0
-https://youtu.be/Zh5fxIRXQRA
-https://youtu.be/2BEGEZeHzS0
 https://youtu.be/a9Hvm9l_-Xk?si=87I36qwnus7tTl6-	https://www.newtoncountyga.gov
 https://www.youtube.com/live/qbSbfqh1MQ0?si=mBLw1s2yJJk6vXG8	https://hancockin.gov
 https://www.youtube.com/watch?v=bHdf8AKUo7A&list=PLNI9VsCb9IXSwh1WCuYZKwwXrC-Bhoroc	https://www.madison-in.gov
@@ -1409,9 +1194,7 @@ https://youtube.com/live/KIiYQN_5h1s	https://jacksoncountytn.gov/government/comm
 https://www.youtube.com/watch?v=Jj4PDHMgOKc&t=10s	https://www.albanycountywy.gov
 https://www.youtube.com/embed/pFCzw5Kofi8?si=sspKev8Khe8dAcHH	https://sboe.dc.gov/
 https://www.youtube.com/watch?v=2GxoGgByB3I	https://tazewell-il.gov/agendas-and-minutes/
-https://kentcountymd.portal.civicclerk.com/event/860/media	https://kentcounty.com
 https://www.youtube.com/watch?v=qUOg21KJ2h4&list=PLpdhAa-KzwkbYfqvSg2DOXcG1o38-06JY	https://www.dkcoks.gov/Commission-Meeting-Viewing
-https://monroecomi.portal.civicclerk.com/event/599/media	https://www.co.monroe.mi.us
 https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1&autoplay=0&cc_load_policy=0&cc_lang_pref=&iv_load_policy=1&loop=0&rel=0&fs=1&playsinline=0&autohide=2&theme=dark&color=red&controls=1&disablekb=0	https://www.lakecountyohio.gov/
 https://youtu.be/Rp7tUN-qGLs	https://casscounty.com
 https://youtu.be/eM-WJSIDiEg	https://worthcountyiowa.gov/board_of_supervisors/meetings/
@@ -1442,15 +1225,10 @@ https://www.youtube.com/watch?v=qFuwr-662-U	https://ucnj.org
 https://www.youtube.com/watch?v=r12NUvcC0Uw	https://www.baltimorecity.gov
 https://www.youtube.com/watch?v=3dam1orK_DM	https://www.edgecombecountync.gov/
 https://youtu.be/EUl6I0yUj78	https://www.currycountyor.gov/government/board_of_commissioners/agendas_and_minutes.php
-https://montgomeryconc.portal.civicclerk.com/event/5/media	https://www.montgomerycountync.gov/board-of-commissioners
 https://www.youtube.com/watch?v=_6BmRBMtkK8	https://www.pikepa.org/
 https://www.youtube.com/watch?v=VHX5Aeh70zY	https://www.sumtercountysc.gov/
 https://www.youtube.com/watch?v=KE1hRa780GI	https://senecacountyohio.gov
-https://brewstercotx.portal.civicclerk.com/event/95/media	https://www.brewstercounty.gov/page/comm.court.home
-https://polkcotx.portal.civicclerk.com/event/1892/media	https://www.polktx.gov
-https://pueblococo.portal.civicclerk.com/event/6424/media	https://pueblocounty.gov
 https://www.youtube.com/watch?v=Xjun9K7WEak	https://jeffersoncountywi.gov
-https://sheboygan-wi.municodemeetings.com/	https://www.sheboyganwi.gov
 https://youtu.be/XKOPxGb8VwI	https://randolphcountyil.gov/recorded-meetings/
 https://www.youtube.com/embed/_Ij_eflJJT8?rel=0	https://northumberlandcountypa.gov/public-meetings-and-agends/
 https://www.youtube.com/watch?v=qzdE6voYIVg	https://www.dgcoks.gov/
@@ -1477,17 +1255,14 @@ https://youtu.be/-a-RpEuUt3Y	https://lakecountyco.gov
 https://www.youtube.com/watch?v=4vl9l6MWEuw	https://www.jeffersoncountypa.gov/
 https://youtu.be/Aeb42Gdp6Nw	https://www.pikecountyil.org/archived-board-meetings-live-stream/
 https://youtu.be/a0lGf-8xa40	https://www.sheridancountywy.gov/county_government/elected_offices/county_commissioners/agenda_minutes.php
-https://levycofl.portal.civicclerk.com/event/2039/media	https://meetings.municode.com/PublishPage?cid=LEVYFL&ppid=30f40d5f-0bf1-4d60-8413-75276d9d7712&p=1
 https://www.youtube.com/live/zRMTdcNOpx4?si=31rFRo8XchKaasP0	https://mcleancountyil.gov
 https://youtu.be/MQKY7v54ixg?t=1454	https://camdencountyga.gov
-https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://www.jodaviesscountyil.gov
 https://youtu.be/Wq5iIHC0F3U	https://www.covingtoncountyal.gov
 https://www.youtube.com/watch?v=3eGhsGQ8U0E	https://kankakeecountyil.gov
 https://www.youtube.com/watch?v=Fm6d2szosYc	https://hocomn.gov/government/board_of_adjustment.php
 https://youtu.be/qVZY4GfKXbk	https://plaqueminesparish.gov
 https://www.youtube.com/watch?v=r4soy9scbFc	https://www.augustaga.gov/1393/Government-Meetings-Live
 https://www.youtube.com/watch?v=F7YGekOj36U	https://meetings.municode.com/PublishPage/index?cid=PAULDINGGA&ppid=a023d971-d971-44ac-a411-85d5afa307e1&p=1
-https://rileycoks.portal.civicclerk.com/event/725/media	https://www.rileycountyks.gov/
 https://www.youtube.com/watch?v=veEqVGRMFRM	https://harrisoncountyms.gov
 https://youtu.be/gGFvlfXMkzk	https://hampdenma.gov
 https://www.youtube.com/watch?v=GGErk0S1ZOg	https://franklinma.gov
@@ -1497,23 +1272,14 @@ https://www.youtube.com/watch?v=7mSaxSWWCz4	https://midlandcountymi.gov
 https://www.youtube.com/watch?v=hvt6RilOxOQ	https://lincolncountync.gov
 https://www.youtube.com/embed/ck76bzlEgIU?si=hJuBcYQ3IYkrdUZa	https://polkcountymn.gov
 https://www.youtube.com/live/IEZoIxA87S8	https://www.sussex.nj.us
-https://rowancountync.portal.civicclerk.com/event/419/media	https://www.rowancountync.gov/1209/Agendas-Minutes-Meetings-Notices
-https://vimeo.com/844049346?share=copy	https://beaufortcountync.gov
-https://crookcoor.portal.civicclerk.com/event/3479/media	https://crookcountyor.gov
-https://lincolncosd.portal.civicclerk.com/event/940/media	https://lincolncountysd.gov/311/Agendas-Minutes
-https://campbellcowy.portal.civicclerk.com/event/6808/media	https://campbellcountywy.gov/2276/Agendas-and-Minutes
 https://www.youtube.com/live/3zw9XsBgKhs?si=ZMzDm_rC8dsGWXpC	https://cumberlandcounty.virginia.gov
 https://www.youtube.com/watch?v=PLHelQFD49yC0pEwIoNeti336MKWKm46Wk	https://fayettecountyga.gov/government/boards_commissions/board_of_elections/index.php
-https://vimeo.com/707985726	https://www.piercecountywa.gov
-https://madisoncoil.portal.civicclerk.com/event/429/media	https://www.madisoncountyil.gov/departments/county_clerk/county_board_records/board_agendas_and_minutes.php
 https://www.youtube.com/watch?v=opShAXxbREg	https://www.botetourtva.gov/765/Live-Stream
 https://www.youtube.com/watch?v=LcqnaTUQ4FY	https://franklincountyva.gov
-https://calhouncomi.portal.civicclerk.com/event/2021/media	https://calhouncountymi.gov/departments/board_of_commissioners/agendas.php
 https://www.youtube.com/watch?v=ekoJyObfmH4	https://leelanau.gov/leelanau_county/board_of_commissioners/agendas_and_minutes_2025.php
 https://youtu.be/C5Rztq-zC34	https://algercounty.gov/government/board-of-commissioners/meeting-minutes/
 https://www.youtube.com/watch?v=ArNwqw2C-jU	https://www.baycountymi.gov/departments/board_of_commissioners/board_meeting_videos.php
 https://www.youtube.com/watch?v=7ydU4OOqTyU	https://kinggeorgecountyva.gov
-https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/stream/498?fullscreen=true&showtabssearch=true&autostart=true	https://jacksoncountyor.gov/government/recorded_meetings/index.php
 https://www.youtube.com/watch?v=h6wvp1r77tY	https://www.bedfordcountytn.gov/government/boards_and_members/county_board_meetings/board_of_commissioners_meetings.php
 https://www.youtube.com/watch?v=8VQxdfu3ftE	https://marlborocounty.sc.gov/government_/agendas___minutes.php
 https://www.youtube.com/watch?v=HB3VhGv40m0	https://gatescountync.gov/index.asp?SEC=555830EA-E0AC-4CCB-AE16-861E5F709830
@@ -1527,11 +1293,8 @@ https://www.youtube.com/embed/pH4QOP-vqr0?feature=oembed	https://lewiscountywa.g
 https://www.youtube.com/watch?v=urHz3VISUvM	https://www.fairfaxcounty.gov/boardofsupervisors/
 https://youtu.be/coDPUTYFtl8	https://countyofelkpa.gov/elk-county-offices/board-of-commissioners/meeting-minutes-and-agendas/
 https://www.youtube.com/watch?v=vEYcAon81TU	https://www.bridgeportct.gov/
-https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/
 https://youtube.com/live/qobK8hBVjXQ?feature=share	https://www.steinbach.ca/city-hall/city-council/
-https://www.mywinterhaven.com
 https://www.youtube.com/embed/gMWk4Rf40Ys?si=GXd0OxdLmAUuaNhr	https://www.thompson.ca/p/meeting-videos
-https://carljunctionmo.portal.civicclerk.com/event/1038/media	https://www.carljunction.org/vnews/display.v/SEC/Government%7CCouncil%20Meetings
 https://www.youtube.com/watch?v=KjNkNnMEXtY	https://huntley.il.us/government/agendas_and_minutes.php
 https://www.youtube.com/watch?v=KzJyglNOVv0	http://www.portclinton.com/
 https://youtube.com/live/Wj8GWdBp2NE	https://www.sacomaine.org/mayor_and_city_council/council_agendas.php
@@ -1541,12 +1304,10 @@ https://www.youtube.com/watch?v=H5W6n0MwcuA&t=23s	https://milfordohio.org/depart
 https://youtube.com/live/7wliAwEm8BE?feature=share	https://www.oakcreekwi.gov
 https://www.youtube.com/embed/OvpTC-0PEhc	https://www.labroquerie.com/p/council-meeting-recordings
 https://youtu.be/DDUTDYlMo9w	https://geneva.il.us
-https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	https://savannahga.gov
 https://www.youtube.com/watch?v=FwTIMnX7SOk	https://www.ritchot.com/p/2026-council-meeting-recordings
 https://www.youtube.com/live/IflUy7x1yLE?si=M6ru9ZXWOPnYZTEA	https://lowellma.gov
 https://www.youtube.com/watch?v=FeTK-WFkghs	https://www.bogotanj.gov/
 https://www.youtube.com/watch?v=Luf0ypMSKJs&list=PLJ924N_iFIQnbv0NKN44S0VRnFm2R93CD	https://www.lakejackson-tx.gov/770/LJTV
-https://vimeo.com/537299140	https://hardeevillesc.gov
 https://youtu.be/omPR7tWvQNQ	https://saintpetermn.gov
 https://youtu.be/aHDYJOZLfVc	https://www.cityofwarrenpa.gov/council-video
 https://www.youtube.com/watch?v=oE1zOO3DLUo	https://cityofwildwood.com
@@ -1556,26 +1317,13 @@ https://www.youtube.com/watch?v=sBs6yVwh7v0	https://www.bristoltwppa.gov
 https://www.youtube.com/watch?v=xLLndcvtV0c	https://www.algonaiowa.gov/55057/videos-of-council-meetings
 https://www.youtube.com/embed/7RTdyUTcXFk	https://www.princerupert.ca/city-hall/council-meetings/council-meeting-videos
 https://www.youtube.com/watch?v=zv-KSIC9w5s&pp=0gcJCSgKAYcqIYzv	https://www.wainfleet.ca/town-hall/council/council-meeting-calendar/regular-meeting-council-67
-https://www.youtube.com/live/a9LyOiXAwQQ?si=agqKnadkxhv5Hx_z
 https://www.youtube.com/watch?v=J4T__zUH7m4	https://manhattanks.gov
 https://www.youtube.com/watch?v=IZ-e_Vi8a-A	https://islamorada.fl.us/AlertCenter.aspx?AID=A-restored-uninterrupted-copy-of-last-ni-11
-https://springfieldma.portal.civicclerk.com/event/12108/media	https://www.springfield-ma.gov/cos/;iqm2=https://www.springfield-ma.gov/cos/
 https://www.youtube.com/watch?v=jQN6jrz8kXI	https://munargyle.com/minutes-agendas-and-recordings.html
-https://southfultonga.portal.civicclerk.com/event/1775/media	https://www.cityofsouthfultonga.gov/m/newsflash/home/detail/994
-https://watchungnj.portal.civicclerk.com/event/365/media	https://watchungnj.gov
 https://www.youtube.com/watch?v=ME-g4YWUuHU	https://www.rosellepark.gov
 https://www.youtube.com/watch?v=_QHJvvBO9NI	https://ofallonmo.gov
 https://www.youtube.com/watch?v=iJn9InK2GQw	https://www.reedsburgwi.gov/index.asp?SEC=93000E88-F045-4841-8659-34D750D80645
-https://fountainhillsaz.portal.civicclerk.com/event/502/media
-https://northwoodoh.portal.civicclerk.com/event/309/media
-https://northbendwa.portal.civicclerk.com/event/168/media
-https://newberlinwi.portal.civicclerk.com/event/2025/media
 https://www.youtube.com/watch?v=0FU_UvxUH4A	https://www.portland.gov/council/agenda
-https://carlsbadnm.portal.civicclerk.com/event/1449/media	https://www.cityofcarlsbadnm.com/Home
-https://glencoveny.portal.civicclerk.com/event/68/media	https://glencoveny.gov/city-council-meeting-livestream
-https://pelhamal.portal.civicclerk.com/event/3492/media	https://pelhamalabama.gov/CivicAlerts.aspx?AID=1745
-https://munsterin.portal.civicclerk.com/event/14/media	https://www.munster.org/
-https://northlibertyiowa.portal.civicclerk.com/event/18/media	https://northlibertyiowa.gov/
 https://www.youtube.com/watch?v=WQU12I63rV8	https://milwaukieoregon.gov/
 https://www.youtube.com/watch?v=Idnn5YYfooo	https://stmarysga.gov/
 https://www.youtube.com/watch?v=ntGUO3_EkJY	https://www.onalaskawi.gov/
@@ -1586,10 +1334,8 @@ https://www.youtube.com/watch?v=O0hsozGhPqE	https://gardnerkansas.gov/
 https://www.youtube.com/watch?v=37ucDsYZ0fw	https://suamicowi.gov/
 https://www.youtube.com/live/C3leSOGa4yw?si=6IKnUyIF3OCHFBSy	https://nassaubay.com/AgendaCenter
 https://youtube.com/live/Dp5zkf8BL_A?feature=share	https://boylecountyky.gov/AgendaCenter
-https://taylortx.portal.civicclerk.com/event/2023/media
 https://www.youtube.com/watch?v=3jBmAbkdVUc	https://shenandoahcountyva.gov/AgendaCenter
 https://www.youtube.com/watch?v=xXFy4OxmttE	https://superiorwi.gov/agendacenter
-https://eloyaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=286
 https://www.youtube.com/live/hBBbD6r3_Po?si=-Fhvwu9KryncRBbw	https://russellvillear.gov/AgendaCenter
 https://www.youtube.com/live/cbpJlSLDgOw?si=HuOq4vRYmv19mzuL	https://cityofavalon.gov/AgendaCenter
 https://www.youtube.com/live/jnh1-uUp6mU?si=I-y45AvXWnQt7TsD	https://www.sierramadreca.gov/leadership-transparency/agendas-and-minutes/
@@ -1597,23 +1343,15 @@ https://www.youtube.com/live/53RKpieHIy0?si=DsTFDw0I9o-Y27tO	https://berthoud.or
 https://youtu.be/N2Tt8Tle1sE	https://daconoco.gov/AgendaCenter
 https://youtube.com/live/uE7yLYVsXKA	https://panamacity.gov/agendacenter
 https://www.youtube.com/embed/ChJUP0bOdCo	https://columbiail.gov/AgendaCenter
-https://elmwoodpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=555
-https://molineil.granicus.com/MediaPlayer.php?view_id=1&clip_id=363
 https://www.youtube.com/watch?v=x1Y2_Sue_tI	https://palosheights.org/AgendaCenter
-https://shorewood-il.granicus.com/MediaPlayer.php?view_id=1&clip_id=236
-https://winfieldil.portal.civicclerk.com/event/151/media
 https://www.youtube.com/watch?v=LJc2STduGZE	https://www.martinsville.in.gov/AgendaCenter
 https://www.youtube.com/embed/MXls04C2mNA	https://cityofcarterlake.com/videos/
 https://www.youtube.com/watch?v=FMgjD0nu66c	https://fairmountheightsmd.gov/agendacenter
-https://sjcity.granicus.com/MediaPlayer.php?view_id=3&clip_id=946
 https://www.youtube.com/watch?v=Xi1R7BTS_hs	https://www.sturgismi.gov/AgendaCenter
-https://watertown.viebit.com/watch?hash=2FdjXAPYydoOCsLn
 https://www.youtube.com/live/C_1NKoJ0DCs?si=2XDsl9_lD2qjqOZ5	https://www.bluespringsgov.com/AgendaCenter
 https://www.youtube.com/watch?v=XeWevpU5Kpc	https://pacificmo.gov/AgendaCenter
-https://briarclifftv.viebit.com/watch?hash=vzaKW9ZlK0oNLp3U
 https://youtu.be/f-Ix5e3ZzrY	https://townofhorseheads.gov/AgendaCenter
 https://www.youtube.com/watch?v=x_iwanMA0DE	https://mountvernonny.gov/agendacenter
-https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true
 https://youtube.com/live/Qy9iLHkt6bo?feature=share	https://townofvictorny.gov/agendacenter
 https://youtube.com/live/1zscyx8f124?feature=share	https://websterny.gov/agendacenter
 https://www.youtube.com/watch?v=joi_wva5WW8&t=4021s	https://boilingspringsnc.gov/AgendaCenter
@@ -1623,37 +1361,15 @@ https://www.youtube.com/watch?v=TBr78xMZxpg	https://www.newphiladelphiaoh.gov/Ag
 https://www.youtube.com/watch?v=QVaJ4dxTLFE	https://www.lancastercitysc.com/AgendaCenter
 https://www.youtube.com/watch?v=6RhNBl6-k-s	https://tompsc.com/AgendaCenter
 https://youtu.be/9uy2D6Kdd7Y	https://littlefieldtexas.net/AgendaCenter
-https://seadrifttx.portal.civicclerk.com/event/5/media
-https://shadyshorestx.portal.civicclerk.com/event/723/media
 https://www.youtube.com/watch?v=JHW3Blu3-ZE&list=PLljLFn4BZd2NhM59Ok6XPPTGC8lTj9w32&index=3	https://southburlingtonvt.gov/AgendaCenter
 https://youtu.be/IvsSBC4gNq4	https://cityofweirton.com/AgendaCenter
 https://www.youtube.com/watch?v=ktgYPhnicvU&list=PLuOvQjp9VUNM2wKjIu3hPaXEkCvVy7hde	https://mymonona.com/AgendaCenter
-https://pleasantprairiewi.granicus.com/MediaPlayer.php?view_id=1&clip_id=899
-https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254
 https://www.youtube.com/watch?v=Yc7Lap20wwQ	https://www.torringtonwy.gov/AgendaCenter
-https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2
-https://grantconm.portal.civicclerk.com/event/704/media
-https://ozaukeecowi.portal.civicclerk.com/event/5776/media
-https://bighorncomt.portal.civicclerk.com/event/1058/media
-https://lumbertonnc.portal.civicclerk.com/event/267/media
-https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2
-https://www.youtube.com/live/a_XGQ23FJX4?si=1iQuWHwgyRdXNfnw
-https://youtu.be/vQ1refIODXc
-https://youtu.be/pC7ij0xMs64?si=Q_m5x9H_0NWylQPp
-https://vimeo.com/1199438213?share=copy&fl=sv&fe=ci
-https://cloud.castus.tv/vod/andover/video/626b2f024f42bd0009432b0e?page=RECENT
-https://vimeo.com/686379028?turnstile=0.BQW_Zq17hkF0z_z3zMPD-pqsqiG2bfJhp7fTRnnp_VV2_e_bpn0q55ThTrdJ11k78n20yJTuvliOKXde0n_aGdglVXRQBvx2X5tMZXbwqRDniqO8nucIoerBG8BSqYYkT6fk3zgVHjhBcUrdTTXYYxBNjIN24VJkXoSeAAetkbq8e1QGMFp2c9dhb6OdXtTO0dxX97W1Pv1gMTDipAeg0bl
 https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false
-https://cloud.castus.tv/vod/littleton/video/6a9053da9d467600023d010f?page=HOME
-https://www.youtube.com/watch?v=_G4fAZ93OS0
-https://cloud.castus.tv/vod/hampsteadcabletv/video/6a99d8d999edc50002606997?page=ALL
 https://www.youtube.com/watch?v=1eeyITPL75I	https://www.youtube.com/embed/videoseries?list=PL7X-j0EwreAd_6kV3IjxO-_XNwDNn0esS
 https://www.youtube.com/watch?v=MqHP5haO8kc	https://www.youtube.com/playlist?list=PLhieFRhse8Qj1pHItgFmWWGo0qJ4EDxSI
 https://youtu.be/LBHd4IE_M1k	https://youtu.be/YIKchHq_0oM
 https://youtu.be/Cbo0XwMd12U
-https://www.youtube.com/embed/tMRNPU5m5y4?autoplay=1
-https://howardcotx.portal.civicclerk.com/event/206/media
-https://kenmorewa.portal.civicclerk.com/event/812/media
 https://www.youtube.com/watch?v=fCrNiL-BMH8	https://youtu.be/yCSnEANgJDY
 https://www.youtube.com/watch?v=gJ8xgqDs-gM	https://www.youtube.com/user/CityofHillsboroOR
 https://www.youtube.com/watch?v=PLamAmOKp9k	https://www.youtube.com/channel/UCeKi5Rwk6gS_3mfIUPa3F_A
@@ -1671,28 +1387,13 @@ https://www.youtube.com/watch?v=3ike8lKixCI	https://www.youtube.com/CityofSanGab
 https://www.youtube.com/watch?v=steJb4YdIQg	https://www.youtube.com/channel/UCmTjX_m6uT8qIiXxnbbfUVw
 https://www.youtube.com/watch?v=R6df4R7eYJc	https://www.youtube.com/channel/UCWtusnZhfIw0prlR89zEXBw
 https://www.youtube.com/watch?v=FpEQDdaoNKE	https://www.youtube.com/@OAKBROOKTV
-https://wycokck.portal.civicclerk.com/event/3554/media
-https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1
-https://shawneeok.portal.civicclerk.com/event/2124/media
-https://saratogaspringsny.new.swagit.com/videos/306992
-https://www.youtube.com/watch?v=ADl2lGtXofs
-https://pueblococo.portal.civicclerk.com/event/10402/media
-https://columbiasc.portal.civicclerk.com/event/1840/media
-https://whiteville.granicus.com/MediaPlayer.php?view_id=1&clip_id=388
-https://www.youtube.com/watch?v=rvl6aumK-X8
-https://www.youtube.com/watch?v=ZSmQi9C4BFs
-https://www.youtube.com/watch?v=3oNW8ai-LYI
-https://www.youtube.com/watch?v=wPwtSAKPYW4
-https://www.youtube.com/watch?v=xxIkBEGAEI8
 https://www.youtube.com/watch?v=BkUSE5bDM4s	https://www.youtube.com/@pbctvchannel20
 https://www.youtube.com/watch?v=ckVksbvGpDI	https://www.youtube.com/user/NorfolkCable
 https://www.youtube.com/watch?v=PyswiwEtQGA	https://www.youtube.com/user/hudcotv
 https://www.youtube.com/watch?v=8wc3mm9L6-k	https://www.youtube.com/user/jocovideos
 https://www.youtube.com/watch?v=mKgZQ3Ym3n8	https://www.youtube.com/user/AACTVWIR
-https://www.youtube.com/watch?v=x1Fdjp9tIlI
 https://www.youtube.com/watch?v=RDTqZQhHdKg	https://www.youtube.com/user/richlandonline
 https://www.youtube.com/watch?v=6x4mvHQWAJ4	https://www.youtube.com/@HamiltonCountyTN
-https://www.youtube.com/watch?v=fmsOmtd0uXA&list=PLj2aos0upaD3X9vvcMNmz4g-Eu9izHXfj
 https://www.youtube.com/watch?v=a8lyQeoQoqE	https://www.youtube.com/user/WeldCountyCO
 https://www.youtube.com/watch?v=05doUGew0cA	https://www.youtube.com/@rockinghamcounty
 https://www.youtube.com/watch?v=0Svntq6k51c	https://www.youtube.com/user/dauphincounty
@@ -1706,11 +1407,9 @@ https://www.youtube.com/watch?v=POtR6vwEN5E	https://www.youtube.com/user/mohavec
 https://www.youtube.com/watch?v=-CaR4Z7oRFg	https://www.youtube.com/jacksoncountyoregon
 https://www.youtube.com/watch?v=JPSzfrRPEHE	https://www.youtube.com/user/clermontcounty
 https://www.youtube.com/watch?v=JNh6OzHFTnU	https://www.youtube.com/user/StLouisCountyMN
-https://www.youtube.com/watch?v=zFXOv2z3fIE
 https://www.youtube.com/watch?v=gw4N-YkXUEY	https://www.youtube.com/DavidsonCountyNC/
 https://www.youtube.com/watch?v=lZkch9T-ZfQ	https://www.youtube.com/channel/UCpBRcD4gxDnyejPd0ufR5dQ
 https://www.youtube.com/watch?v=bBonOjC49Uk	https://www.youtube.com/@sullivancountycommission255/streams
-https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8878?seekto=21&site=5&query=conservation+commission
 https://www.youtube.com/watch?v=DgvPOFTI3c0	https://www.youtube.com/channel/UCYoes-UXdq_mCDY4-fmSduQ
 https://www.youtube.com/watch?v=dt_eMQAkHTc	https://www.youtube.com/channel/UCk7OM8Pm_tfLfXW7wrVL6kA
 https://www.youtube.com/watch?v=UxevVljp1nU	https://www.youtube.com/channel/UC6CuqfASFGDNUC1n-S7CHLw
@@ -1754,504 +1453,17 @@ https://www.youtube.com/watch?v=O_kUcv2NrfQ	https://www.youtube.com/@sampsoncoun
 https://www.youtube.com/watch?v=i1_IofTGFX4	https://m.youtube.com/@MarshallCountyIN/streams
 https://www.youtube.com/watch?v=hVShsVktHZs	https://www.youtube.com/@millercountyar
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://harrisoncountyin.portal.civicclerk.com/event/1051/media
-https://calhouncotx.portal.civicclerk.com/event/5480/media
-https://kentcountymd.portal.civicclerk.com/event/859/media
 https://www.youtube.com/watch?v=7RW7VRUDn3I	https://www.youtube.com/channel/UCb1CXWu_V08NI--XRa3FzAA
 https://www.youtube.com/watch?v=g0ZCC-GROnk	https://www.youtube.com/@countyofgreensville1146
 https://www.youtube.com/watch?v=jxOpy7Gp1Nc	https://www.youtube.com/@WallowaCountyGov
-https://www.youtube.com/watch?v=aCxx9A1fOzc
-https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1
 https://www.youtube.com/watch?v=jnHV1mqRQFc	https://www.cityofgraham.com/agendas-minutes/
 https://www.youtube.com/watch?v=TopVL6GwVZQ	https://www.beechgrove.com/watch-city-meetings
-https://spenceria.portal.civicclerk.com/event/65/media	https://spenceriowacity.com/departments/administration/meeting-agendas-minutes/
-https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings
-https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov
-https://www.youtube.com/watch?v=hqmonbdLaYA
-https://www.youtube.com/watch?v=0IKo-nP2O0I
-https://www.youtube.com/watch?v=QQjG_GjDJ1M
-https://www.youtube.com/watch?v=fFY1GZ96rFQ
-https://www.youtube.com/watch?v=JpEhHoLj9Mc
-https://www.youtube.com/watch?v=vkLLOwbXZuo
-https://www.youtube.com/watch?v=4ngI2zxNDPU
-https://www.youtube.com/watch?v=nFOm1v2Vt7s
-https://www.youtube.com/watch?v=tlJc4pJlNwY
-https://www.youtube.com/watch?v=QJPlsU9CXuY
-https://www.youtube.com/watch?v=qbfbUpxqhVM
-https://www.youtube.com/watch?v=uvlZvirdfuU
-https://www.youtube.com/watch?v=hKQFXeCmXzo
-https://www.youtube.com/watch?v=t_SWoiicb7M
-https://www.youtube.com/watch?v=3-G2XkaamDI
-https://www.youtube.com/watch?v=StxgMFMTxQw
-https://www.youtube.com/watch?v=4PMuDd6UI2A
-https://www.youtube.com/watch?v=EFpLo9iKLhQ
-https://www.youtube.com/watch?v=dxwPQiFjoKc
-https://www.youtube.com/watch?v=TLkDEoTodMs
-https://www.youtube.com/watch?v=knm0oTbUpyw
-https://www.youtube.com/watch?v=VBdWKoJ88Bk
-https://www.youtube.com/watch?v=0gh2jzrsUlI
-https://www.youtube.com/watch?v=eleNSHw6IqE
-https://www.youtube.com/watch?v=zybekWOLU7A
-https://www.youtube.com/watch?v=eyGXJ-H_lBc
-https://www.youtube.com/watch?v=74kLn7B1P5k
-https://www.youtube.com/watch?v=oI6Kgt5uW84
-https://www.youtube.com/watch?v=5CRt52LA9i0
-https://www.youtube.com/watch?v=vdZAPGRzZWY
-https://www.youtube.com/watch?v=v0TOpJIeAPc
-https://www.youtube.com/watch?v=pnhuoY4inys
-https://www.youtube.com/watch?v=oVxN7iFmymI
-https://www.youtube.com/watch?v=jhfQF_ZZEDQ
-https://www.youtube.com/watch?v=vcvdh7siw6Y
-https://www.youtube.com/watch?v=KOYShsR0o6E
-https://www.youtube.com/watch?v=q9wGFbL3RC8
-https://www.youtube.com/watch?v=TjM_QDqulYE
-https://www.youtube.com/watch?v=mJD9Ech573A
-https://www.youtube.com/watch?v=EllLun1cjE4
-https://www.youtube.com/watch?v=8jA46n-rD3I
-https://www.youtube.com/watch?v=ycAtSoDme9U
-https://www.youtube.com/watch?v=tSuY87n7F_E
-https://www.youtube.com/watch?v=X3R8pkttaXE
-https://www.youtube.com/watch?v=JqZWS6H3o3Q
-https://www.youtube.com/watch?v=RZYB4iM80eI
-https://www.youtube.com/watch?v=ZUhlhSTmW2E
-https://www.youtube.com/watch?v=yqTMnRba7Hs
-https://www.youtube.com/watch?v=Wm-izg7LKdE
-https://www.youtube.com/watch?v=NoyQ4Qd7eFM
-https://www.youtube.com/watch?v=-d23PiXsJAo
-https://www.youtube.com/watch?v=4IkWDdeGZgc
-https://www.youtube.com/watch?v=Vy407PP6Vvs
-https://www.youtube.com/watch?v=SEySYn7U6jA
-https://www.youtube.com/watch?v=GdUaeXlOjgY
-https://www.youtube.com/watch?v=cGA0CKMbJwI
-https://www.youtube.com/watch?v=Unj-Qz0pV9o
-https://www.youtube.com/watch?v=UilWJxpi5f0
-https://www.youtube.com/watch?v=7QqadvErArQ
-https://www.youtube.com/watch?v=S-y4I__Mk14
-https://www.youtube.com/watch?v=wtdbR1wQZXA
-https://www.youtube.com/watch?v=oxyvt9YvIXU
-https://www.youtube.com/watch?v=7r7u_SFFQWs
-https://www.youtube.com/watch?v=0zMFSRwycag
-https://www.youtube.com/watch?v=jLwez0zk4K4
-https://www.youtube.com/watch?v=MHc5UmbXtCM
-https://www.youtube.com/watch?v=Kpl8Nug8MdE
-https://www.youtube.com/watch?v=l6mlXPyJWjE
-https://www.youtube.com/watch?v=SipIKFqiXN8
-https://www.youtube.com/watch?v=sVcavCm7ygY
-https://www.youtube.com/watch?v=sRyP13CU0J8
-https://www.youtube.com/watch?v=S6himGxEItQ
-https://www.youtube.com/watch?v=IxqwrkOO3qI
-https://www.youtube.com/watch?v=fMIz5qP-QHU
-https://www.youtube.com/watch?v=04erlG0zYN4
-https://www.youtube.com/watch?v=DNvrN67nF_Y
-https://www.youtube.com/watch?v=96W2uBRx9OA
-https://www.youtube.com/watch?v=dXoAHwawdec
-https://www.youtube.com/watch?v=SZv2Hfzb4xs
-https://www.youtube.com/watch?v=yHhViY8F5Gw
-https://www.youtube.com/watch?v=evKrUyzEa0Y
-https://www.youtube.com/watch?v=VNFMkq-8lNE
-https://www.youtube.com/watch?v=rqcnq8DiT04
-https://www.youtube.com/watch?v=stZqL7EGfhk
-https://www.youtube.com/watch?v=tOeAbFPstpQ
-https://www.youtube.com/watch?v=hQkqRTuAKuI
-https://www.youtube.com/watch?v=sumJ3xrpnAE
-https://www.youtube.com/watch?v=R4A6bfK6QB4
-https://www.youtube.com/watch?v=cX1JOh6W6NA
-https://www.youtube.com/watch?v=0TV0rinmD3w
-https://www.youtube.com/watch?v=PxoH1N6Dm04
-https://www.youtube.com/watch?v=xSpWnjUr5fc
-https://www.youtube.com/watch?v=vsVPwF22qLk
-https://www.youtube.com/watch?v=tNTGVIZrpjw
-https://www.youtube.com/watch?v=dNbEVsFO_So
-https://www.youtube.com/watch?v=u7JLarenhps
-https://www.youtube.com/watch?v=FEdS9Md-tLQ
-https://www.youtube.com/watch?v=iZxbImYeK08
-https://www.youtube.com/watch?v=qvo8U5zjpn4
-https://www.youtube.com/watch?v=kyvAdEL42KA
-https://www.youtube.com/watch?v=fIVnQJgQb0s
-https://www.youtube.com/watch?v=NiupHCOMRaw
-https://www.youtube.com/watch?v=SNIptxpKeEY
-https://www.youtube.com/watch?v=XsBsmO0sS4Y
-https://www.youtube.com/watch?v=hlQBbP5vrwg
-https://www.youtube.com/watch?v=v6SgCZWsqD8
-https://www.youtube.com/watch?v=0uu1oeqDME8
-https://www.youtube.com/watch?v=5kOeJzaeg80
-https://www.youtube.com/watch?v=hWJjslXklOE
-https://www.youtube.com/watch?v=KoH_tuJSf1U
-https://www.youtube.com/watch?v=wta-sJ6TbFk
-https://www.youtube.com/watch?v=9RRg164A3gY
-https://www.youtube.com/watch?v=BW9_nCmRnSk
-https://www.youtube.com/watch?v=74Q6OUvIoCU
-https://www.youtube.com/watch?v=d9_pHW-__1k
-https://www.youtube.com/watch?v=X0-P4eJvMTw
-https://www.youtube.com/watch?v=DdPXsEY8A5Q
-https://www.youtube.com/watch?v=d1M2DEwq94E
-https://www.youtube.com/watch?v=Xkb8LENWv8c
-https://www.youtube.com/watch?v=a6gHL0dJ_gQ
-https://www.youtube.com/watch?v=af1b2bxF9ks
-https://www.youtube.com/watch?v=0G0NOn5KiOY
-https://www.youtube.com/watch?v=Hydk2Gt1Js4
-https://www.youtube.com/watch?v=rsmWvJ-kK30
-https://www.youtube.com/watch?v=JEKWMDbwbs8
-https://www.youtube.com/watch?v=ieeL6yr6f_A
-https://www.youtube.com/watch?v=GgF29zlFVfU
-https://www.youtube.com/watch?v=2Wmh9mtIEgI
-https://www.youtube.com/watch?v=XugL_YU7PkE
-https://www.youtube.com/watch?v=oLD84fYSaP4
-https://www.youtube.com/watch?v=TS5NQsz9EE0
-https://www.youtube.com/watch?v=CDN6SAKzk_U
-https://www.youtube.com/watch?v=j7yZmc3eI0c
-https://www.youtube.com/watch?v=LOIFJg3ikZ4
-https://www.youtube.com/watch?v=CSYBCOHYNV0
-https://www.youtube.com/watch?v=gPR6ooVpV6M
-https://www.youtube.com/watch?v=zMXmOC43iWo
-https://www.youtube.com/watch?v=oNmPFaG3Nks
-https://www.youtube.com/watch?v=E5PraJcHlCE
-https://www.youtube.com/watch?v=Z-Ka-pz3JW4
-https://www.youtube.com/watch?v=eAiwNZqXeJY
-https://www.youtube.com/watch?v=yVAfmCazWXs
-https://www.youtube.com/watch?v=X5PDzii881A
-https://www.youtube.com/watch?v=9hB-df4mYsg
-https://www.youtube.com/watch?v=ZT0htYNWiyY
-https://www.youtube.com/watch?v=6l3iyNO4DoE
-https://www.youtube.com/watch?v=YYAUaZBQwog
-https://www.youtube.com/watch?v=JHWOIGvbppo
-https://www.youtube.com/watch?v=y7QV3wuZ8Js
-https://www.youtube.com/watch?v=n68uGArQdKU
-https://www.youtube.com/watch?v=UK6d0obaTrw
-https://www.youtube.com/watch?v=4r3RsGgDtbg
-https://www.youtube.com/watch?v=N0dRrcN91kY
-https://www.youtube.com/watch?v=T8w775cupjA
-https://www.youtube.com/watch?v=VndqAox0JVU
-https://www.youtube.com/watch?v=-FmJeSyVA5Y
-https://www.youtube.com/watch?v=UY5AUEkSmy0
-https://www.youtube.com/watch?v=3U2CWsTfkpM
-https://www.youtube.com/watch?v=SS6vRxyc7cI
-https://www.youtube.com/watch?v=RQ327cdZNFk
-https://www.youtube.com/watch?v=wVu1p0LpEJc
-https://www.youtube.com/watch?v=rjqm6h9Z3mI
-https://www.youtube.com/watch?v=8C5jL0dDHQg
-https://www.youtube.com/watch?v=eSxD3SEEbHY
-https://www.youtube.com/watch?v=GUurM6NbW3o
-https://www.youtube.com/watch?v=iU6w6RjDjVQ
-https://www.youtube.com/watch?v=qMQwVOAajY4
-https://www.youtube.com/watch?v=Zpt5IBGtLZA
-https://www.youtube.com/watch?v=n5OEcV-2kOc
-https://www.youtube.com/watch?v=jzwAgnbiMDc
-https://www.youtube.com/watch?v=0E62mjw6hZM
-https://www.youtube.com/watch?v=V1bCRp8b-3Q
-https://www.youtube.com/watch?v=R3tG_4dQBA4
-https://www.youtube.com/watch?v=XG7ZOuKoCkk
-https://www.youtube.com/watch?v=duqMlOU-j0o
-https://www.youtube.com/watch?v=GlMJ_s8Ed4o
-https://www.youtube.com/watch?v=MLOJS1Tyb9c
-https://www.youtube.com/watch?v=0dLEuRmLJt0
-https://www.youtube.com/watch?v=MWswEpzzwIc
-https://www.youtube.com/watch?v=Fm7sK2Jy8uo
-https://www.youtube.com/watch?v=UFU20VhLXp8
-https://www.youtube.com/watch?v=mF6S-URS2Dc
-https://www.youtube.com/watch?v=SjpdEktx-Oo
-https://www.youtube.com/watch?v=zczgfMHEzio
-https://www.youtube.com/watch?v=GRfcfsAb2FU
-https://www.youtube.com/watch?v=m8c4DadvL-o
-https://www.youtube.com/watch?v=8HCjNeSBuOQ
-https://www.youtube.com/watch?v=ySLhxgdhJ0I
-https://www.youtube.com/watch?v=66qwApJ2cGY
-https://www.youtube.com/watch?v=SfEj1TSS3us
-https://www.youtube.com/watch?v=LeHeLuJBqck
-https://www.youtube.com/watch?v=SYV1-PexHfs
-https://www.youtube.com/watch?v=Qcf9LOaeQJI
-https://www.youtube.com/watch?v=wcEZMEjlfuQ
-https://www.youtube.com/watch?v=9KE0wpBbLGs
-https://www.youtube.com/watch?v=Te_kWu6n_IQ
-https://www.youtube.com/watch?v=gbxtjvWKJA0
-https://www.youtube.com/watch?v=5GIPeOIFQO4
-https://www.youtube.com/watch?v=-a7h85v9EmQ
-https://www.youtube.com/watch?v=ntegACSiIb0
-https://www.youtube.com/watch?v=3Kdd22Y5D6k
-https://www.youtube.com/watch?v=eONA-K_-9kk
-https://www.youtube.com/watch?v=tJKfvGbtA0M
-https://www.youtube.com/watch?v=kwwJ7EclLxc
-https://www.youtube.com/watch?v=-ZN364Xq1PE
-https://www.youtube.com/watch?v=WrpdDTwbS1s
-https://www.youtube.com/watch?v=yowDRZvhaWo
-https://www.youtube.com/watch?v=pVj_j7jdwAM
-https://www.youtube.com/watch?v=PYAcJ6A_3S0
-https://www.youtube.com/watch?v=HKj_uzp8VXw
-https://www.youtube.com/watch?v=BNa8LR746fY
-https://www.youtube.com/watch?v=bEik8RFSB-8
-https://www.youtube.com/watch?v=iYezHDYxAJ0
-https://www.youtube.com/watch?v=hb40524RGkw
-https://www.youtube.com/watch?v=2oSrHASQRjw
-https://www.youtube.com/watch?v=LjXWT27IGXQ
-https://www.youtube.com/watch?v=KIS3dD0PhXE
-https://www.youtube.com/watch?v=6kvSTyFUsSE
-https://www.youtube.com/watch?v=WPewSGc1FfI
-https://www.youtube.com/watch?v=z2YfUgKB2w4
-https://www.youtube.com/watch?v=F1BERpQd8ts
-https://www.youtube.com/watch?v=XKZdMRXKGTg
-https://www.youtube.com/watch?v=5HExSPqlXII
-https://www.youtube.com/watch?v=mkCkYbVvds0
-https://www.youtube.com/watch?v=jKpaDwIiTXI
-https://www.youtube.com/watch?v=qcckJKkzO_I
-https://www.youtube.com/watch?v=anGbDn5R80A
-https://www.youtube.com/watch?v=hctGdTngAck
-https://www.youtube.com/watch?v=qHONj-djjVw
-https://www.youtube.com/watch?v=UnQx0VO6Rs4
-https://www.youtube.com/watch?v=zxAEpYVwb18
-https://www.youtube.com/watch?v=emdCU5lVsTU
-https://www.youtube.com/watch?v=njyYi2V_mkE
-https://www.youtube.com/watch?v=GAZ5C8rWJhE
-https://www.youtube.com/watch?v=KgKSkPOVuPk
-https://www.youtube.com/watch?v=fpZdZo4cNcc
-https://www.youtube.com/watch?v=YLG2Ksqvgz8
-https://www.youtube.com/watch?v=Sux_9F1GXjw
-https://www.youtube.com/watch?v=AJW6v0rUSOs
-https://www.youtube.com/watch?v=yhL8JgAqcFw
-https://www.youtube.com/watch?v=SKRiv8VxWPY
-https://www.youtube.com/watch?v=R5ushGQh3pc
-https://www.youtube.com/watch?v=gjn47EKDehE
-https://www.youtube.com/watch?v=2Nk_GxlsdlQ
-https://www.youtube.com/watch?v=UMGfhk9W6ZA
 https://www.youtube.com/watch?v=HSVqzZUqeL4
-https://www.youtube.com/watch?v=9BEFRPhHS_E
-https://www.youtube.com/watch?v=eatydM3N4bE
-https://www.youtube.com/watch?v=YC3x7Ez3ENQ
-https://www.youtube.com/watch?v=lwoJVOct9mQ
-https://www.youtube.com/watch?v=CPk4eMnNogY
-https://www.youtube.com/watch?v=AWrWMMLeeOg
-https://www.youtube.com/watch?v=1ijFL71nUGA
-https://www.youtube.com/watch?v=kKKQ_Mxmmp4
-https://www.youtube.com/watch?v=_z0toJB-coo
-https://www.youtube.com/watch?v=P8JZQNaAmXs
-https://www.youtube.com/watch?v=GjgI4bIlchY
-https://www.youtube.com/watch?v=-rGcIGc7xpk
-https://www.youtube.com/watch?v=2tcmO4MkI_U
-https://www.youtube.com/watch?v=JbwU4TWGTgE
-https://www.youtube.com/watch?v=ZNzcrPuRT4c
-https://www.youtube.com/watch?v=AydJqtIXzaA
-https://www.youtube.com/watch?v=kFyb-zLdhI8
-https://www.youtube.com/watch?v=pv6DO-KQt30
-https://www.youtube.com/watch?v=C6dUt1IBl14
-https://www.youtube.com/watch?v=GjPStMmMoEM
-https://www.youtube.com/watch?v=PG2sNAgk4pQ
-https://www.youtube.com/watch?v=02WYDRgScdI
-https://www.youtube.com/watch?v=qeFK-5_lQTo
-https://www.youtube.com/watch?v=wa9K_eWNt3Y
-https://www.youtube.com/watch?v=M0h7PwOgC6w
-https://www.youtube.com/watch?v=e7NRf_Bw-pQ
-https://www.youtube.com/watch?v=XnCdRK93A3I
-https://www.youtube.com/watch?v=eXP-Hw2M11E
-https://www.youtube.com/watch?v=4SA2CaoKAbY
-https://www.youtube.com/watch?v=5q11EiH6HEQ
-https://www.youtube.com/watch?v=2BnGhRTWi2Q
-https://www.youtube.com/watch?v=A2-zym9aEuE
-https://www.youtube.com/watch?v=n9GAArIOJXY
-https://www.youtube.com/watch?v=XcWGvHxoMp4
-https://www.youtube.com/watch?v=tUL3WDqDiPk
-https://www.youtube.com/watch?v=zm75uL-vmfw
-https://www.youtube.com/watch?v=8tvMYfc_o6E
-https://www.youtube.com/watch?v=cHWqpHCmPQ4
-https://www.youtube.com/watch?v=ZdUNMfbRvv0
-https://www.youtube.com/watch?v=wSpKsmw_pEk
-https://www.youtube.com/watch?v=8-4LR3oHoTc
-https://www.youtube.com/watch?v=34I49igNMyA
-https://www.youtube.com/watch?v=jawX3O_0nKE
-https://www.youtube.com/watch?v=1BtD51zGUd4
-https://www.youtube.com/watch?v=ag0sXUKVXFA
-https://www.youtube.com/watch?v=6wSczT26P68
-https://www.youtube.com/watch?v=9HQgbxKOPm4
-https://www.youtube.com/watch?v=Q366_JjbJdg
-https://www.youtube.com/watch?v=uoUpmqnJW9A
-https://www.youtube.com/watch?v=ivXBSrZPKHI
-https://www.youtube.com/watch?v=CTZRYrsi4sk
-https://www.youtube.com/watch?v=Bw_uKS-YZ28
-https://www.youtube.com/watch?v=KXERDl_9ST8
-https://www.youtube.com/watch?v=DjTDUSPl7hk
-https://www.youtube.com/watch?v=mjryQPNsKnU
-https://www.youtube.com/watch?v=WxIm05ZC5iA
-https://www.youtube.com/watch?v=rW-9w3z4cbk
-https://www.youtube.com/watch?v=R7s8B-7Sl8o
-https://www.youtube.com/watch?v=xtQI1m42tek
-https://www.youtube.com/watch?v=HNVoYorL7XQ
-https://www.youtube.com/watch?v=hh1-WRZvlxg
-https://www.youtube.com/watch?v=6SRncpDS2bM
-https://www.youtube.com/watch?v=B_gH6WN1kgg
-https://www.youtube.com/watch?v=iHG4tB1onDY
-https://www.youtube.com/watch?v=XmHpa5hgWyQ
-https://www.youtube.com/watch?v=HZ-0srvTyKc
-https://www.youtube.com/watch?v=0grlViaUnOI
-https://www.youtube.com/watch?v=lOzPOBmOrds
-https://www.youtube.com/watch?v=5A64xAcwr34
-https://www.youtube.com/watch?v=mAD5aI88-Yk
-https://www.youtube.com/watch?v=XuxTqaOHdZo
-https://www.youtube.com/watch?v=GpcngrMCV-0
-https://www.youtube.com/watch?v=XYdKJjWRVQM
-https://www.youtube.com/watch?v=JlLqQfcJJ5Q
-https://www.youtube.com/watch?v=hCxsLZA5KLM
-https://www.youtube.com/watch?v=q7GnOP7L3Oo
-https://www.youtube.com/watch?v=Z-8TGjxLwWM
-https://www.youtube.com/watch?v=Ng1jyHsafN4
-https://www.youtube.com/watch?v=MbxKzz6iPSQ
-https://www.youtube.com/watch?v=khe9L58N5eQ
-https://www.youtube.com/watch?v=IDetgr0Il6g
-https://www.youtube.com/watch?v=98v4UlV4fNw
-https://www.youtube.com/watch?v=EtFeN6Jit20
-https://www.youtube.com/watch?v=v_c76ek4E8g
-https://www.youtube.com/watch?v=eNQhnvO7pZc
-https://www.youtube.com/watch?v=JC5Sp9wHLAE
-https://www.youtube.com/watch?v=rA0lzBSBTYw
 https://www.youtube.com/watch?v=qbb_Xn858DE
-https://www.youtube.com/watch?v=gQb4nCcnQFY
-https://www.youtube.com/watch?v=a9tGDFag22k
-https://www.youtube.com/watch?v=q2-hGNlC3w8
-https://www.youtube.com/watch?v=A8Y4z6fXYH8
-https://www.youtube.com/watch?v=sA03iGQLVyo
-https://www.youtube.com/watch?v=Hjw1JHVEhfE
-https://www.youtube.com/watch?v=St3G8TrfwdI
-https://www.youtube.com/watch?v=5eimLTgaSKI
-https://www.youtube.com/watch?v=C6KkB7oDpIw
-https://www.youtube.com/watch?v=0zcgIZ9Vpig
-https://www.youtube.com/watch?v=U6bzYGCikD8
-https://www.youtube.com/watch?v=Q9e9lu5qAUE
-https://www.youtube.com/watch?v=Ibmh8w8L9gQ
-https://www.youtube.com/watch?v=CVVCrfy-W-8
-https://www.youtube.com/watch?v=Kr5f5_Rt90Q
-https://www.youtube.com/watch?v=7xTgbPkpeRA
-https://www.youtube.com/watch?v=tVBbWJC2cSU
-https://www.youtube.com/watch?v=4fR0SNdQu-0
-https://www.youtube.com/watch?v=v6qCXNv1xzw
-https://www.youtube.com/watch?v=yN210mZ-8qw
-https://www.youtube.com/watch?v=_HnAM7xNcq0
-https://www.youtube.com/watch?v=T683sH3WiOc
-https://www.youtube.com/watch?v=pJyH6TQFcBs
-https://www.youtube.com/watch?v=MozFtAzB8o4
-https://www.youtube.com/watch?v=odh2gdynoJ8
-https://www.youtube.com/watch?v=IWRTjlxUZYk
-https://www.youtube.com/watch?v=ZPsb2DpQ9hc
-https://www.youtube.com/watch?v=HN4lOEaQ13M
-https://www.youtube.com/watch?v=22GFhEzlsKg
-https://www.youtube.com/watch?v=cuFA7qfFfhg
-https://www.youtube.com/watch?v=mJfqY9A-PsU
-https://www.youtube.com/watch?v=j6wab7lOUJ4
-https://www.youtube.com/watch?v=CMRmPwdRymc
-https://www.youtube.com/watch?v=ovqcAkMA5-s
-https://www.youtube.com/watch?v=tGu7MTl49u0
-https://www.youtube.com/watch?v=sYpzfF7oAAA
-https://www.youtube.com/watch?v=qXoI05fzTLA
-https://www.youtube.com/watch?v=uJIB2uqhgRY
-https://www.youtube.com/watch?v=5DMgPV1Jo-Q
-https://www.youtube.com/watch?v=mZKEYXGhArA
-https://www.youtube.com/watch?v=MZ2yRsvyY8g
-https://www.youtube.com/watch?v=SXyePqYfcU8
-https://www.youtube.com/watch?v=AfGQEDpVeWs
-https://www.youtube.com/watch?v=WfaE3oiV2xs
-https://www.youtube.com/watch?v=bUql8pe4gXc
-https://www.youtube.com/watch?v=a2skwKhH5CI
-https://www.youtube.com/watch?v=CJ-FW8537sg
-https://www.youtube.com/watch?v=QNnP4P5HPSY
-https://www.youtube.com/watch?v=GimP77-5Opc
-https://www.youtube.com/watch?v=wZ7xv-u_56w
-https://www.youtube.com/watch?v=W5X48VwyTbw
-https://www.youtube.com/watch?v=-2cJJ1aP4FA
-https://www.youtube.com/watch?v=irtYu6lNKb8
-https://www.youtube.com/watch?v=CBavolHFT3s
-https://www.youtube.com/watch?v=Fam4oTO-93o
-https://www.youtube.com/watch?v=CX9RPwLofR4
-https://www.youtube.com/watch?v=yJUQ9UHusRM
-https://www.youtube.com/watch?v=eDjGSXxDQnA
-https://www.youtube.com/watch?v=HLW75rwxaTw
-https://www.youtube.com/watch?v=cxFmNo18VlY
-https://www.youtube.com/watch?v=OmXc40LpQoc
-https://www.youtube.com/watch?v=ik_QbMnx5M4
-https://www.youtube.com/watch?v=jRmglzwxTuM
-https://www.youtube.com/watch?v=W9WilVDzY3g
-https://www.youtube.com/watch?v=f3OifwFKeTc
-https://www.youtube.com/watch?v=HxICqQ4lES4
-https://www.youtube.com/watch?v=9VTUbsh-m58
-https://www.youtube.com/watch?v=KMc5NpgZQeY
-https://www.youtube.com/watch?v=8j6xv2Umtlo
-https://www.youtube.com/watch?v=V4ZCeOPSPyY
-https://www.youtube.com/watch?v=pWUK_iByKCE
-https://www.youtube.com/watch?v=ET_YjBkvMT4
-https://www.youtube.com/watch?v=879bMxnRkac
-https://www.youtube.com/watch?v=rLUxvcdf31s
-https://www.youtube.com/watch?v=VSXoq2pGAI8
-https://www.youtube.com/watch?v=COVPD1qKUxs
-https://www.youtube.com/watch?v=Wv0JnHvRDjs
-https://www.youtube.com/watch?v=jLLDQzorqeQ
-https://www.youtube.com/watch?v=lMHRcqOWFrE
-https://www.youtube.com/watch?v=70s4QKrHUA0
-https://www.youtube.com/watch?v=Bcrp8yy9yrc
-https://www.youtube.com/watch?v=EMXDqqD0HXo
-https://www.youtube.com/watch?v=QgWBsGI5vkQ
-https://www.youtube.com/watch?v=7G2HYa4A3Fo
-https://www.youtube.com/watch?v=JF635dls6Ho
-https://www.youtube.com/watch?v=7k9U4Din3gs
-https://www.youtube.com/watch?v=3yhVRcNjrz8
-https://www.youtube.com/watch?v=_GoMofC_o2c
-https://www.youtube.com/watch?v=cJmMnAnTd7o
-https://www.youtube.com/watch?v=m0cs1uWI20I
-https://www.youtube.com/watch?v=cSvO5NiDnio
-https://www.youtube.com/watch?v=qFZXEsPjZqo
-https://www.youtube.com/watch?v=0KpIahUFr1A
-https://www.youtube.com/watch?v=bQiWnDnR_ew
-https://www.youtube.com/watch?v=RnwVAU4iBZ4
-https://www.youtube.com/watch?v=AGemXoT7RLc
-https://www.youtube.com/watch?v=A8SqipRH24g
-https://www.youtube.com/watch?v=n6_AWET9sa4
-https://www.youtube.com/watch?v=dtfT24wFQEI
-https://www.youtube.com/watch?v=iqMBykB5aZU
-https://www.youtube.com/watch?v=Yd3KRlnHi3s
-https://www.youtube.com/watch?v=508A5hlwyz0
-https://www.youtube.com/watch?v=JZTTEcJBock
-https://www.youtube.com/watch?v=NygSdcgCg2s
-https://www.youtube.com/watch?v=IiXRnVNWB_U
-https://tonawandatownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3023
-https://delnortecoca.portal.civicclerk.com/event/190/media	https://delnortecoca.portal.civicclerk.com
-https://greencastlein.portal.civicclerk.com/event/1585/media	https://greencastlein.portal.civicclerk.com
-https://lebanonmo.portal.civicclerk.com/event/460/media	https://lebanonmo.portal.civicclerk.com
-https://davidsonnc.portal.civicclerk.com/event/314/media	https://davidsonnc.portal.civicclerk.com
-https://bridgeporttx.portal.civicclerk.com/event/935/media	https://bridgeporttx.portal.civicclerk.com
-https://springvalleytx.portal.civicclerk.com/event/398/media	https://springvalleytx.portal.civicclerk.com
-https://venustx.portal.civicclerk.com/event/295/media	https://venustx.portal.civicclerk.com
-https://hudsonco.gov/DocumentCenter/View/6698/PC-Recording-09092026
-https://morrisonco.us/DocumentCenter/View/3046/9-1-26-Recording-1
-https://burleyidaho.org/DocumentCenter/View/1151/2026-09-01-Council-Meeting-Video
-https://northriverside-il.org/Archive.aspx?ADID=427
-https://russellcity.org/DocumentCenter/View/770/City-Council-Meeting-06022020
-https://springvalleytx.com/DocumentCenter/View/2503/08-14-2024-August-BOA-Meeting-
-https://www.cityofcheney.org/DocumentCenter/View/4867/9-8-26-Recording
-https://www.youtube.com/watch?v=Mf3519T_XTg
-https://www.youtube.com/watch?v=k9dZdq5uyQA
-https://www.youtube.com/watch?v=kgYIFPMDdQs
-https://www.youtube.com/watch?v=VWYFzVzf3qU
-https://www.youtube.com/watch?v=WiKikPXqlHk
-https://www.youtube.com/watch?v=2DMzPm1T2BA
-https://www.youtube.com/watch?v=DFuS_msA2xQ
-https://www.youtube.com/watch?v=9vDQ0HlJJ_Y
-https://www.youtube.com/watch?v=ci9jnPULx5M
-https://www.youtube.com/watch?v=Haof9PDe1cE
-https://www.youtube.com/watch?v=7IpMzT7BGzk
-https://www.youtube.com/watch?v=un1QQ7xI4dY
-https://www.youtube.com/watch?v=dKSIrbDom3M
-https://www.youtube.com/watch?v=4IE3MWqjGno
-https://www.youtube.com/watch?v=70HDgp16cWM
-https://www.youtube.com/watch?v=m6RQtOeRCcc
-https://www.youtube.com/watch?v=u11tPsNd_qY
-https://www.youtube.com/watch?v=ulYr4lUeBJY
-https://www.youtube.com/watch?v=vxKXZPDfdHQ
-https://www.youtube.com/watch?v=9fLEycRO5mg
-https://www.youtube.com/watch?v=Nv_h37z0OSM
-https://www.youtube.com/watch?v=9-5XOFw0ttk
-https://seadrifttx.portal.civicclerk.com/event/20/media
 https://www.youtube.com/watch?v=QIBgfake-Hc	https://www.youtube.com/channel/UCT7F_3aum6nsHKVjvZINd0Q
 https://www.youtube.com/watch?v=lNJoncQNJbM	https://www.youtube.com/channel/UCZQ_75rIN8F5d0uDSUJUORg/videos
 https://www.youtube.com/watch?v=_cov1l0fDDI	https://www.youtube.com/channel/UCknLzh_H3jXUCHNN2r-H37w
 https://www.youtube.com/watch?v=JNMcIYg0KYo	https://www.youtube.com/user/GCTVGuilford/videos
-https://youtu.be/BuEvo93FHI8
-https://columbiacowa.portal.civicclerk.com/event/669/media
-https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10633?site=1
-https://rockawaybeachor.portal.civicclerk.com/event/61/media
 https://www.youtube.com/watch?v=-YVuGYC3JL8	https://www.danielscountymt.gov/commissioners
 https://www.youtube.com/watch?v=0zVwyjeXPJQ	https://www.youtube.com/embed/0zVwyjeXPJQ?controls=1&rel=0&playsinline=0&cc_load_policy=0&autoplay=0&enablejsapi=1&origin=https%3A%2F%2Fvillageoflowellvilleoh.gov&widgetid=1&forigin=https%3A%2F%2Fvillageoflowellvilleoh.gov%2F&aoriginsup=1&vf=1
 https://www.youtube.com/watch?v=5ZgnQdjResc	https://monitortwp.gov/meeting-recordings/
@@ -2261,12 +1473,9 @@ https://www.youtube.com/watch?v=8NvsBdaeP8A	https://tannersvilleny.gov/meeting-m
 https://www.youtube.com/watch?v=8z_sNsUrWWY	https://cityofmountainlakemn.gov/city-mountain-lake/lake-commission/
 https://www.youtube.com/watch?v=A0UxAk0XNgQ	https://www.townofargos.com/
 https://www.youtube.com/watch?v=C1E0MQ3rvvY	https://www.mesillanm.gov/government/minutes-agendas/
-https://www.youtube.com/watch?v=CMJxuqmf7gw	https://www.townofellicottvilleny.gov/
-https://www.youtube.com/watch?v=EKHuKHk3-ro	https://www.samsung.com/id/watches/galaxy-watch/galaxy-watch-ultra-titanium-gray-bluetooth-sm-l700ndaaxse/
 https://www.youtube.com/watch?v=EUQWQavrsIU	https://waltonhillsohio.gov/community/videos.php
 https://www.youtube.com/watch?v=FzVh16sVlHE	https://urbannava.gov/pages/public-notice-archive.php
 https://www.youtube.com/watch?v=Jq_wljOepIM	https://villageofspeculator.gov
-https://www.youtube.com/watch?v=K2UsRB0z214	https://townofsharptown.org/?page_id=32
 https://www.youtube.com/watch?v=NS4xH5B2xIo	https://www.eureka-mt.gov/minutes/
 https://www.youtube.com/watch?v=OCHAsm-JIi4	https://www.townofaurorany.gov/meetings-and-minutes/
 https://www.youtube.com/watch?v=Qvru1EkXBws	https://www.youtube.com/embed/Qvru1EkXBws?autohide=1&autoplay=0&controls=0&enablejsapi=1&iv_load_policy=3&loop=0&modestbranding=1&playsinline=1&rel=0&showinfo=0&wmode=opaque&origin=https%3A%2F%2Fwww.lexingtonil.gov&widgetid=1&forigin=https%3A%2F%2Fwww.lexingtonil.gov%2F&aoriginsup=1&vf=1
@@ -2287,7 +1496,6 @@ https://www.youtube.com/watch?v=k_wf7OfLOVc	https://www.townofchamplain.gov/
 https://www.youtube.com/watch?v=lfNPN_FIA6g	https://utica-il.gov
 https://www.youtube.com/watch?v=m7CPofOhjG4	https://northchevychase.gov
 https://www.youtube.com/watch?v=mFFW66EIvNM	https://glenwillow-oh.gov
-https://www.youtube.com/watch?v=nkYLHT9DZxs	https://www.galvail.gov/
 https://www.youtube.com/watch?v=o8bkqiPJ8Y4	https://www.soaplakewa.gov/soaplakewacivilservice
 https://www.youtube.com/watch?v=oQ3YVXM2rzE	https://www.dunescity.gov/city-council-meetings
 https://www.youtube.com/watch?v=rjTMIuXnzNI	https://kinderhook-ny.gov/eventdetail/9471/-/town-board-meeting.html
@@ -2295,147 +1503,21 @@ https://www.youtube.com/watch?v=x2rRqLhkQPU	https://www.waterfordct.gov/AgendaCe
 https://www.youtube.com/watch?v=xh4DlMrr5ME	https://rousespointny.gov/government_departments/administration_village_board/youtube_council_meetings.php
 https://youtu.be/e8Jr18zynxs
 https://vimeo.com/646562708
-https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654
-https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036
-https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252
-https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655
-https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303
-https://shelbytownmi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1549
-https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3027
-https://losaltoshillsca.portal.civicclerk.com/event/4638/media
-https://neoshomo.portal.civicclerk.com/event/1339/media
-https://mabletonga.portal.civicclerk.com/event/672/media
-https://hobbsnm.portal.civicclerk.com/event/212/media
-https://manliusny.portal.civicclerk.com/event/1095/media
-https://spearfishsd.portal.civicclerk.com/event/3353/media
-https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2260
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=600
-https://chccs.granicus.com/MediaPlayer.php?view_id=2&clip_id=787
-https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3500
-https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301
-https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=285
-https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=f2ac295e-a967-4c2b-a06d-e176120a9db8&Agenda=Agenda&lang=English
-https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1007
-https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2872
-https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4714
-https://jupiterislandfl.portal.civicclerk.com/event/341/media
-https://bucoks.granicus.com/MediaPlayer.php?view_id=1&clip_id=649
-https://mcphersoncoks.portal.civicclerk.com/event/547/media
-https://portagecowi.portal.civicclerk.com/event/9367/media
-https://portervilleca.portal.civicclerk.com/event/554/media	https://www.ci.porterville.ca.us/government/city_council/meeting_agendas___minutes.php
-https://rollinghillsca.portal.civicclerk.com/event/808/media	https://www.rolling-hills.org/
-https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2424
-https://fernleynv.portal.civicclerk.com/event/520/media	http://www.cityoffernley.org
-https://cityofmaricopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=643
-https://danbury.granicus.com/MediaPlayer.php?view_id=2&clip_id=3779
-https://bethanybeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1223
-https://deltona.granicus.com/MediaPlayer.php?view_id=1&clip_id=1714
-https://dunedin.granicus.com/MediaPlayer.php?view_id=2&clip_id=1007
-https://city-lighthousepoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=812
-https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1092
-https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1085
-https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1414
-https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1228
-https://martin.granicus.com/MediaPlayer.php?view_id=2&clip_id=5762
-https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=584
-https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1116
-https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8468
-https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=865
-https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1529
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1359
-https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=248
-https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=794
-https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6854
-https://rowletttx.new.swagit.com/videos/35358
-https://saltlakecounty.portal.civicclerk.com/event/4172/media
-https://sandyspringsga.portal.civicclerk.com/event/2144/media
-https://sanjuancowa.portal.civicclerk.com/event/4366/media
-https://santarosacofl.portal.civicclerk.com/event/1689/media
-https://saratogaspringsny.new.swagit.com/videos/133742
-https://anacorteswa.portal.civicclerk.com/event/1447/media
-https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3663
-https://annapolismd.granicus.com/MediaPlayer.php?view_id=1&clip_id=1596
-https://antiochca.portal.civicclerk.com/event/1088/media
-https://bainbridgeislandwa.portal.civicclerk.com/event/1109/media
-https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171
-https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=893
-https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4991
-https://cityfortbragg.granicus.com/MediaPlayer.php?view_id=1&clip_id=1556
-https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=826
-https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2235
-https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024
-https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3649
-https://college-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1717
-https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=759
-https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1784
-https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1525
-https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1833
-https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6006
-https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2947
-https://jacksoncomi.portal.civicclerk.com/event/1088/media
-https://leacountynm.portal.civicclerk.com/event/593/media
-https://albemarle.granicus.com/MediaPlayer.php?view_id=1&clip_id=1530
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3406
-https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395
-https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=c3c39254-53cc-4461-9b85-041288171803&Agenda=Agenda&lang=English
-https://harrisoncountyin.portal.civicclerk.com/event/1067/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/
-https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1168	https://www.guadalupetx.gov/page/commcourt.agendas
-https://lynnhavenfl.portal.civicclerk.com/event/2115/media	https://cityoflynnhaven.gov
-https://stjosephmo.portal.civicclerk.com/event/1309/media
-https://grantconm.portal.civicclerk.com/event/716/media
-https://lantanafl.granicus.com/MediaPlayer.php?view_id=1&clip_id=255
-https://ottawaks.portal.civicclerk.com/event/1101/media
-https://richfieldmn.portal.civicclerk.com/event/2605/media
-https://hcnv.granicus.com/MediaPlayer.php?view_id=2&clip_id=36
-https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1903
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917
-https://levycofl.portal.civicclerk.com/event/2033/media
-https://minnesotapuc.granicus.com/MediaPlayer.php?view_id=2&clip_id=2729
-https://brecksvilleoh.portal.civicclerk.com/event/1425/media	https://brecksville.oh.us
-https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1371
 https://www.youtube.com/watch?v=IPLLmvDDvjE	https://www.youtube.com/@rockspringswy
 https://www.youtube.com/watch?v=NF13srAY9i4	https://www.youtube.com/@JeffCityCouncil
 https://www.youtube.com/watch?v=zEUEhkWn1v8	https://www.youtube.com/@misdirector5910
 https://www.youtube.com/watch?v=qbQqZZgGRaE	https://www.youtube.com/@AbingtonTownship
-https://www.youtube.com/watch?v=T8IhUhljAlc
 https://www.youtube.com/watch?v=lE5-ntOUEo4	https://www.youtube.com/user/StLouisCountyMN
 https://www.youtube.com/watch?v=CoVf_pZt1to	https://www.youtube.com/user/CityofBrandonMB
-https://kentcountymd.portal.civicclerk.com/event/1037/media	https://kentcountymd.portal.civicclerk.com/
 https://www.youtube.com/watch?v=JVXqo2VOr_A	https://www.youtube.com/c/VillageofSalemLakesWI
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/ViewPublisher.php?view_id=1
-https://rockawaybeachor.portal.civicclerk.com/event/2070/media	https://rockawaybeachor.portal.civicclerk.com/
 https://www.youtube.com/watch?v=CRjz_MamYYA	https://www.youtube.com/@TownofandrewsIN
 https://www.youtube.com/watch?v=cD4bPov9BQQ	https://www.youtube.com/channel/UCAgMZD_gMuhgTdpQmZn2ACg
-https://edmundsgovtech.wistia.com/medias/cmc7wzifwc
-https://parkland.legistar.com/Video.aspx?Mode=Granicus&ID1=1327&Mode2=Video	https://www.parklandcounty.com/
-https://reflect-vsctv.cablecast.tv/internetchannel/show/7442?site=1
-https://madisoncoil.portal.civicclerk.com/event/560/media
-https://guadalupe.granicus.com/player/clip/1160?view_id=1&redirect=true
-https://wisecountytx.new.swagit.com/videos/398832
-https://winterhaven-fl.granicus.com/player/clip/616?view_id=1&redirect=true
-https://manortx.new.swagit.com/videos/400366
-https://hcnv.granicus.com/player/clip/44?view_id=2&redirect=true
-https://reidsville.granicus.com/MediaPlayer.php?clip_id=51&view_id=1
-https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=859
 https://www.youtube.com/watch?v=C5Rztq-zC34	https://youtu.be/C5Rztq-zC34
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57519?site=1
-https://pembrokeparkfl.portal.civicclerk.com/event/4284/media
-https://whiteville.granicus.com/player/clip/388?view_id=1&redirect=true
-https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=93708097-20f9-4e71-8dcd-221550f099f5&Agenda=Agenda&lang=English
-https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true
-https://glendale.granicus.com/MediaPlayer.php?clip_id=8524&view_id=2
 https://www.youtube.com/watch?v=sWUkyx7R7XA	https://youtube.com/live/sWUkyx7R7XA?feature=share
 https://www.youtube.com/watch?v=I0PSbsgUEMg	https://youtu.be/I0PSbsgUEMg?list=PL1FNTHBBwsYsZDEGIw0wQo2wEYCgu_qG5
 https://www.youtube.com/watch?v=RQ3pxTLZdZo	https://youtu.be/RQ3pxTLZdZo?si=F5vj7kM9cOrddCZ1
 https://www.youtube.com/watch?v=2PvriDwha-g	https://www.youtube.com/channel/UCaRFz_LxSS_zcUgEIGfIdUg/videos
-https://townhallstreams.com/stream.php?location_id=152&id=72646
 https://www.youtube.com/watch?v=z0nnVqiAhz4	https://www.youtube.com/channel/UCv9E_465QV3gi88DGIXmz2Q
-https://videoplayer.telvue.com/player/GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn/playlists/11625/media/1041521	https://warrennj.org/agendacenter
-https://pewaukeewi.portal.civicclerk.com/event/1245/media	https://pewaukeewi.portal.civicclerk.com/
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238	https://yazoo.granicus.com/ViewPublisher.php?view_id=1
-https://www.utah.gov/pmn/sitemap/notice/1051133.html	https://magna.utah.gov/AgendaCenter
-https://cloud.castus.tv/vod/weston/video/6a9884618f04390002ee839d?page=HOME	https://westonma.gov/agendacenter
-https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3674
 https://www.youtube.com/watch?v=ax-OzF0VRk4	https://www.youtube.com/channel/channel UCfNNyG4keplIyA11WcOXbqw (HPA-TV)
 https://www.youtube.com/watch?v=VKdaVfiMi1Y	https://www.youtube.com/channel/UCo3PRSgZA4B4Y20Ji1f1Glw
 https://www.youtube.com/watch?v=wG3LI2-IwLo	https://www.youtube.com/channel/UC6moug2QGKRi1E7FMPTWe1A
@@ -2454,62 +1536,97 @@ https://www.youtube.com/watch?v=NX2NmQp44i8	https://www.youtube.com/channel/UCUR
 https://www.youtube.com/watch?v=joLLAVzkNJs	https://www.youtube.com/user/CityFSJ
 https://www.youtube.com/watch?v=4pdLtlcWSf0	https://www.youtube.com/channel/UCzhcoASavyb3nVr4jxzx8vA
 https://vimeo.com/1029046024?share=copy#t=0
-https://youtu.be/33ubRBb5q0g
 https://www.youtube.com/watch?v=EZy79sQFuT0	https://www.youtube.com/playlist?list=PLo5hIXUzoJM6nr4RYvBtczMinNhM0u2HN
 https://www.youtube.com/watch?v=QfOV2qPwxyc	https://www.youtube.com/channel/UCtX_R-r3j6eGzlTw081lE6g
 https://www.youtube.com/watch?v=XaoAbEJMtmM	https://www.youtube.com/%40LafayetteConsolidatedGovt
 https://www.youtube.com/watch?v=SU6ky6OL4es	https://www.youtube.com/CityofStanton
 https://www.youtube.com/watch?v=332B9eGOZCE	https://www.youtube.com/channel/UCc-5pQrwMYdWNJiST7NXvXg
-https://prosserwa.portal.civicclerk.com/event/203/media	https://prosserwa.portal.civicclerk.com/
-https://foxpointwi.portal.civicclerk.com/event/1006/media	https://foxpointwi.portal.civicclerk.com/
 https://www.youtube.com/watch?v=6I7NBXq1rnM	https://www.youtube.com/channel/UCGF1XYOeXabkJA4XZCv4MTw
 https://www.youtube.com/watch?v=eeqdewlwnmM	https://www.youtube.com/watch?v=eeqdewlwnmM
-https://prosserwa.portal.civicclerk.com/event/215/media	https://prosserwa.portal.civicclerk.com/
 https://www.youtube.com/watch?v=ZQDYJBGJy9k	https://www.youtube.com/channel/UCbknkQEi2HZQqAZcedkfP5Q
 https://www.youtube.com/watch?v=cPaFUjYlNY0	https://www.youtube.com/@trafalgarpublicmeetings
-https://yachatsor.portal.civicclerk.com/event/1157/media	https://yachatsor.portal.civicclerk.com/
 https://vimeo.com/868329507	https://vimeo.com/channels/282976
 https://www.youtube.com/watch?v=djHoAR-kPJE	https://www.youtube.com/@monrovia_indiana/streams
-https://youtu.be/I_CWisOvcFs
 https://www.youtube.com/watch?v=mFLgkhTDK4k	https://www.youtube.com/@TwinOaksMissouri
 https://www.youtube.com/watch?v=s2TTtUcnzag	https://www.youtube.com/@townofmillinocket6054
 https://www.youtube.com/watch?v=tmfvXiRUPfE	https://www.youtube.com/@townofgranville4545
 https://www.youtube.com/watch?v=V_lFTibeVyQ	https://www.youtube.com/@townofstoningtonct.9270
 https://www.youtube.com/watch?v=4O873q7Q-1U	https://www.youtube.com/@TexasWorkforceCommission
-https://madisoncoil.portal.civicclerk.com/event/417/media	https://madisoncoil.portal.civicclerk.com/?category_id=26
-https://cantonoh.portal.civicclerk.com/event/2106/media	https://cantonohio.gov
-https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=617	https://winterhaven-fl.granicus.com/ViewPublisher.php?view_id=1
-https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669	https://huntingtonpark.granicus.com/account/forgotpassword
-https://hobbsnm.portal.civicclerk.com/event/119/media	https://hobbsnm.portal.civicclerk.com/
 https://www.youtube.com/watch?v=QUoRTvjmRQ4	https://www.youtube.com/@CityofRichfield
-https://howardcotx.portal.civicclerk.com/event/179/media	https://howardcotx.portal.civicclerk.com/
-https://kenmorewa.portal.civicclerk.com/event/1802/media	https://kenmorewa.portal.civicclerk.com/
-https://prairievillageks.portal.civicclerk.com/event/684/media	https://prairievillageks.portal.civicclerk.com/
-https://lumbertonnc.portal.civicclerk.com/event/263/media
-https://frasermi.portal.civicclerk.com/event/1035/media	https://frasermi.portal.civicclerk.com/.
-https://waycrossga.portal.civicclerk.com/event/308/media	https://waycrossga.portal.civicclerk.com/
-https://rockporttx.portal.civicclerk.com/event/1102/media	https://rockporttx.portal.civicclerk.com/
-https://northwoodoh.portal.civicclerk.com/event/297/media	https://northwoodoh.portal.civicclerk.com/
-https://godleytx.portal.civicclerk.com/event/6070/media	https://godleytx.gov
-https://seadrifttx.portal.civicclerk.com/event/21/media	https://www.seadrifttx.org/agendacenter
 https://www.youtube.com/watch?v=1s9vw8DXQzk	https://www.youtube.com/embed/1s9vw8DXQzk?si=L0IAcx8CawjYzUgj
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hooksett.granicus.com/ViewPublisher.php?view_id=2
-https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1170	https://guadalupe.granicus.com/ViewPublisher.php?view_id=1
 https://www.youtube.com/watch?v=PqH6BABYbGg	https://www.youtube.com/user/CityofBrandonMB
-https://sccity.granicus.com/MediaPlayer.php?view_id=1&clip_id=257	https://sccity.granicus.com/account/forgotpassword
-https://youtu.be/tGIY22V-HNI?si=fc2-uWXm8KyUkDap
-https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9
-https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council
-https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1
-https://www.youtube.com/watch?v=9FigxVpUzT0
-https://cloud.castus.tv/vod/andover/video/6254e320aa3c200009aac94e?page=HOME
-https://cloud.castus.tv/vod/littleton/video/6a57b6bfb0f73f000288066b?page=HOME
-https://cloud.castus.tv/vod/hampsteadcabletv/video/6a8cd54966e46e000252e997?page=ALL
-https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1978?channel=1
 https://www.youtube.com/watch?v=cmGDbndqqj4	https://www.youtube.com/channel/UCY0VfS8DMdsY4arnVCZ_Eww
 https://www.youtube.com/watch?v=Up_r22VTQBg	https://www.youtube.com/@CityofBathMaineBCTV
-https://gasos.wistia.com/medias/mgldoxzyjk
-https://vimeo.com/421632159
 https://www.youtube.com/watch?v=H9bkC7YRGUo	https://www.youtube.com/channel/UC0INBWQnm9MeTzIc9E8Y8Tg/streams
 https://www.youtube.com/watch?v=WASs5KsmAGs	https://www.youtube.com/live/c7kIXhHrM1Y?si=m4Jsu1iz9UKt1tRX
 https://www.youtube.com/watch?v=WzqIpTCYPOU	https://rileycoks.portal.civicclerk.com/event/720/media
+https://www.youtube.com/watch?v=5OFSWnNQ6qA	https://www.youtube.com/@ButteSilverBow/playlists
+https://www.youtube.com/watch?v=hNTApwbDndM	https://clinton-county.org/agendacenter
+https://www.youtube.com/watch?v=YfCQuZlKm7o	https://www.youtube.com/@FranklinVotes/videos
+https://www.youtube.com/watch?v=hd6VzRitAM8	https://www.youtube.com/user/cityofkamloops
+https://www.youtube.com/watch?v=gD0j8h3psZA	https://youtube.com/channel/UCdDeXn3nyRcDuK4qB9bwl1A
+https://www.youtube.com/watch?v=nflZ-goEZIE	https://www.youtube.com/@CityofDanvilleKentucky/streams
+https://www.youtube.com/watch?v=fOoLPVTh1CM	https://www.youtube.com/@CityofPurcellOk/streams
+https://www.utah.gov/pmn/sitemap/notice/872229.html
+https://www.youtube.com/watch?v=5QV8GitLo1Q	https://sheboygan-wi.municodemeetings.com/bc-commoncouncil/page/tenth-regular-common-council-meeting-2
+https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right	https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right
+https://www.youtube.com/watch?v=xwdX3VDCVHs	https://www.youtube.com/@MillerCountyAR
+https://boxcast.tv/channel/aetaajdf64jalxx20o9a	https://boxcast.tv/channel/aetaajdf64jalxx20o9a
+https://www.youtube.com/watch?v=P9fjphPtFjw	https://www.youtube.com/user/cityofnewtonnc
+https://videoplayer.telvue.com/player/5sDJy4puFHzGcdLZ5XfXaWK8ROY8_W2m/media/989568
+https://www.youtube.com/watch?v=wmqe8C6b8DE
+https://www.youtube.com/watch?v=5v2GccMk9ho
+https://youtu.be/2BEGEZeHzS0
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true
+https://www.youtube.com/watch?v=TLkDEoTodMs
+https://www.youtube.com/watch?v=74kLn7B1P5k
+https://www.youtube.com/watch?v=v0TOpJIeAPc
+https://www.youtube.com/watch?v=cGA0CKMbJwI
+https://www.youtube.com/watch?v=jLwez0zk4K4
+https://www.youtube.com/watch?v=MHc5UmbXtCM
+https://www.youtube.com/watch?v=SZv2Hfzb4xs
+https://www.youtube.com/watch?v=PxoH1N6Dm04
+https://www.youtube.com/watch?v=kyvAdEL42KA
+https://www.youtube.com/watch?v=SNIptxpKeEY
+https://www.youtube.com/watch?v=BW9_nCmRnSk
+https://www.youtube.com/watch?v=TS5NQsz9EE0
+https://www.youtube.com/watch?v=CSYBCOHYNV0
+https://www.youtube.com/watch?v=zMXmOC43iWo
+https://www.youtube.com/watch?v=JHWOIGvbppo
+https://www.youtube.com/watch?v=4r3RsGgDtbg
+https://www.youtube.com/watch?v=3U2CWsTfkpM
+https://www.youtube.com/watch?v=V1bCRp8b-3Q
+https://www.youtube.com/watch?v=MWswEpzzwIc
+https://www.youtube.com/watch?v=wcEZMEjlfuQ
+https://www.youtube.com/watch?v=pVj_j7jdwAM
+https://www.youtube.com/watch?v=z2YfUgKB2w4
+https://www.youtube.com/watch?v=5HExSPqlXII
+https://www.youtube.com/watch?v=qcckJKkzO_I
+https://www.youtube.com/watch?v=YLG2Ksqvgz8
+https://www.youtube.com/watch?v=CPk4eMnNogY
+https://www.youtube.com/watch?v=P8JZQNaAmXs
+https://www.youtube.com/watch?v=2BnGhRTWi2Q
+https://www.youtube.com/watch?v=ivXBSrZPKHI
+https://www.youtube.com/watch?v=Bw_uKS-YZ28
+https://www.youtube.com/watch?v=hh1-WRZvlxg
+https://www.youtube.com/watch?v=HZ-0srvTyKc
+https://www.youtube.com/watch?v=0grlViaUnOI
+https://www.youtube.com/watch?v=EtFeN6Jit20
+https://www.youtube.com/watch?v=JC5Sp9wHLAE
+https://www.youtube.com/watch?v=Hjw1JHVEhfE
+https://www.youtube.com/watch?v=C6KkB7oDpIw
+https://www.youtube.com/watch?v=HN4lOEaQ13M
+https://www.youtube.com/watch?v=ovqcAkMA5-s
+https://www.youtube.com/watch?v=uJIB2uqhgRY
+https://www.youtube.com/watch?v=mZKEYXGhArA
+https://www.youtube.com/watch?v=MZ2yRsvyY8g
+https://www.youtube.com/watch?v=WfaE3oiV2xs
+https://www.youtube.com/watch?v=jLLDQzorqeQ
+https://www.youtube.com/watch?v=0KpIahUFr1A
+https://www.youtube.com/watch?v=AGemXoT7RLc
+https://www.youtube.com/watch?v=IiXRnVNWB_U
+https://www.youtube.com/watch?v=un1QQ7xI4dY
+https://www.youtube.com/watch?v=dKSIrbDom3M
+https://www.youtube.com/watch?v=4IE3MWqjGno
+https://youtu.be/I_CWisOvcFs
+https://vimeo.com/697711522/afbcc0c15d

@@ -238,6 +238,14 @@ async def _ingest(
             video_url=video_url,
             source_page_url=payload.get("source_url"),
             platform=payload.get("platform"),
+            # WO-304: without this, a direct-media URL with no extension
+            # of its own (Laserfiche WebLink's `ElectronicFile.aspx?
+            # docid=...`, confirmed live against Jefferson County, WA)
+            # misprobes as "no probe recipe for this media shape" even
+            # though resolve() already found and confirmed a real video
+            # -- exactly the WO-166 fallback probe_queue_entry()'s own
+            # `video_format` parameter exists for (see its docstring).
+            video_format=payload.get("video_format"),
         )
         append_probe_row(DEFAULT_SIDECAR_PATH, probe, caller=caller)
         if probe.verdict.startswith("reject-"):

@@ -79,6 +79,16 @@ For every government in the candidate list:
      a CivicPlus signature; the calendar feed is a cheap meeting list
      (body, date, time) for sites without an AgendaCenter. Feeds carry no
      video.
+   WO-333 (2026-09-13) built the equivalent of this step for the
+   resolver's own `app/platforms/` pipeline (a separate codebase from
+   rtr-discovery, used by the `wo3NN_resolve_diagnostic.py` sweep family,
+   not by Breadth) -- `app/platforms/passive_verify.py`'s `verify_hub()`,
+   with the same Granicus video-feed-before-agenda-table rule, plus new
+   listing walkers for Legistar and CivicWeb ported from `meeting_url_
+   finder.py`'s already-validated Step 2/Step 3 lookups (see that WO's
+   `docs/investigations/wo333_verification_walk.md` for the full
+   writeup) -- worth checking before building a fourth independent
+   implementation of any of these three platforms' listing behavior.
 2. **Plain HTTP with honest headers** for governments with a domain but
    no signature: fetch the home page and one hop of meeting links, look
    for a platform link. "Works" means the listing or a platform link was
@@ -148,7 +158,10 @@ Content reasons mean we looked and it was not there:
 meeting found at all, so no video either), `video-without-meeting` (a
 real video exists but no meeting to attach it to — a channel or feed
 with recordings but no listing, date, or body; use only when that is
-what actually happened), `off-mission`, `unsupported-platform-no-adapter`.
+what actually happened), `cablecast-no-vod` (a real Cablecast tenant lists
+the meetings but its API returns an empty `vods` field on every show for a
+month; the alternate hop fires, the tenant is never retried), `off-mission`,
+`unsupported-platform-no-adapter`.
 Do not re-run these. Re-run a content reason only when a platform gains a
 new video signal we did not check.
 

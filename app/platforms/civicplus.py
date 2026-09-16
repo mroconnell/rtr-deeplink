@@ -16,6 +16,7 @@ from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_text
 
 
 class CivicPlusAssetFinder(AssetFinder):
@@ -101,7 +102,20 @@ class CivicPlusAssetFinder(AssetFinder):
     # since -- unlike IQM2 -- every row here already came from the one
     # page fetch already in hand, so this bounds *how far back* a stale
     # video is worth surfacing, not network cost.
-    _RETRY_LIMIT = 5
+    #
+    # WO-333, 2026-09-13: raised from 5 to 15 after a real, confirmed
+    # miss -- Franklin, NH's real AgendaCenter page (see WO-331's
+    # positive-control run, `tests/fixtures/civicplus/
+    # franklinnh_agendacenter.html`) posts audio-only SoundCloud links on
+    # several of its most recent rows before the next real Vimeo video,
+    # which landed at row 6 -- one past the old limit of 5. The old limit
+    # reported "Checked 5 ... found no real video link" on a page that,
+    # walked two rows further, has 26 real video candidates. 15 is not a
+    # proof against every possible gap (a government could still post
+    # more than 15 non-video rows between videos), just a limit wide
+    # enough to clear this real, measured case without scanning
+    # unboundedly far back on every page.
+    _RETRY_LIMIT = 15
 
     def __init__(self):
         self.headers = {
@@ -118,7 +132,24 @@ class CivicPlusAssetFinder(AssetFinder):
             ) as response:
                 response.raise_for_status()
                 final_url = str(response.url)
-                html = await response.text()
+                # WO-285, 2026-09-12: two independent real CivicPlus
+                # tenants confirm a non-UTF8 response is real and not a
+                # one-off -- Richmond Hill GA's DocumentCenter PDF-view
+                # page (byte 0xe2, found 2026-09-01) and El Mirage AZ's
+                # AgendaCenter page (byte 0xdd, found 2026-09-12 by
+                # WO-258) both raised a raw `UnicodeDecodeError` out of
+                # the plain `response.text()` call this used to make,
+                # instead of resolving or skipping cleanly. Reuses
+                # `url_guard.read_capped_text()` rather than a new,
+                # adapter-local decode fallback -- it already does
+                # exactly this (decode with the response's own declared
+                # encoding, fall back to `"utf-8"` + `errors="replace"`
+                # on a `UnicodeDecodeError`/`LookupError`) for the
+                # identical real failure shape on a different real page
+                # (Corte Madera, CA's own AgendaCenter "Minutes" link --
+                # see that function's own docstring), plus a free size
+                # cap this adapter had none of before.
+                html = await read_capped_text(response)
 
         # Real, confirmed-live signal-loss fix, 2026-08-27: a delegated
         # video's own jurisdiction guess (`resolve_via_platform()`'s own

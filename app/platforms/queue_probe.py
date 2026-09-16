@@ -70,14 +70,18 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yt_dlp
 
+from ..utils.gov_registry.resolver import _matched_multi_gov_pin, _tenant_host
 from . import media_probe
 from .base import (
     CalendarPageError,
     UnsupportedPlatformError,
     detect_platform,
     get_finder,
+    is_multi_gov_host,
 )
+from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
+from .viebit import ViebitAssetFinder
 from .vimeo import VimeoAssetFinder, parse_vimeo_video
 from .wistia import (
     WistiaAssetFinder,
@@ -496,6 +500,48 @@ async def _probe_telvue(
     return _finish(url, "telvue", method, float(duration), None, None, start)
 
 
+# --- SuiteOne Media ----------------------------------------------------
+
+
+async def _probe_suiteone(
+    url: str, page_url: str, source_page_url: Optional[str], start: float
+) -> ProbeResult:
+    """WO-285, 2026-09-12: `queue_probe.py` had no SuiteOne recipe at
+    all, so every CivicClerk-delegated SuiteOne line (`.../web/
+    Player.aspx?id=...`) was `no probe recipe for this media shape` --
+    confirmed live, all 16 of Vineyard, UT's real CivicClerk lines
+    (BACKLOG.md's matching entry). `SuiteOneAssetFinder` already knows
+    how to turn this page into the real direct-file S3 mp4 URL (and
+    duration is unknown from the page itself); reuse its `resolve()` for
+    that, then hand the result to the same direct-file/ffprobe recipe
+    the CivicClerk `.mp4` case already uses.
+
+    `suiteone.py`'s `resolve()` can still raise a raw `ValueError` for a
+    URL shape it can't parse at all (a separate, narrower BACKLOG.md
+    entry than the one this function closes) -- caught here as
+    `reject-dead` with the reason, exactly per that entry's own
+    constraint, rather than letting it abort the whole probe run."""
+    method = "suiteone-resolve"
+    try:
+        result = await SuiteOneAssetFinder().resolve(page_url)
+    except Exception as e:
+        return _dead(url, "suiteone", method, start, f"SuiteOne resolve raised: {e}")
+
+    if not result.video_url:
+        return _dead(
+            url,
+            "suiteone",
+            method,
+            start,
+            "SuiteOne resolve found no playable video (likely a "
+            "not-yet-recorded event -- var src='' on the page)",
+        )
+
+    return await _probe_direct_file(
+        url, "suiteone", result.video_url, source_page_url or page_url, start
+    )
+
+
 # --- Wistia ----------------------------------------------------------
 
 
@@ -560,6 +606,100 @@ async def _probe_wistia(
             size_bytes = max(size_bytes or 0, int(asset["size"]))
 
     return _finish(url, "wistia", method, float(duration), date, size_bytes, start)
+
+
+# --- Viebit --------------------------------------------------------------
+
+
+async def _probe_viebit(
+    url: str, source_page_url: Optional[str], start: float
+) -> ProbeResult:
+    """WO-306 (2026-09-12): the one real, confirmed gap this platform has
+    had since it was built (2026-08-08) -- `viebit.py`'s own `resolve()`
+    always rebuilds `video_url` as the safe-to-iframe `/embed/vod?v={id}`
+    page (see that module's docstring), never the raw HLS
+    `master.m3u8` its pageConfig JSON also carries, so this function's
+    dispatch never sees anything HLS-shaped to hand to `_probe_hls()`
+    above -- every Viebit candidate died here as "no probe recipe" even
+    when the video is real and playable.
+
+    **No duration recipe exists, and none is being added.** Confirmed
+    live: the raw `master.m3u8` URL 403s even with a matching Referer/
+    Origin/realistic User-Agent (the same CDN gate `viebit.py`'s own
+    docstring already documents for playback) -- not merely unbuilt, a
+    real wall this probe can't get past without a browser. Viebit's own
+    `pageConfig` JSON carries no duration field of its own either
+    (confirmed against a real sample, Delano, MN). So this probe accepts
+    with `duration_seconds=None` (unknown) rather than reject-dead --
+    `finish_candidate()`'s `duration = result.duration_seconds or 0.0`
+    already treats an unknown duration as "never defer", which is the
+    honest answer here: we genuinely don't know, not that it's short.
+    The real, available signal instead is `pageConfig.hasAccess` --
+    Viebit's own gate for whether this viewer can actually play the
+    video -- and a JSON parse failure or an empty `video.src` catches a
+    genuinely dead/removed video the same way `_probe_telvue()`'s
+    "no playlist found" does.
+    """
+    method = "viebit-page-config"
+    page_url = source_page_url or url
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": _POLITE_UA}) as session:
+            async with session.get(
+                page_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status >= 400:
+                    return _dead(
+                        url,
+                        "viebit",
+                        method,
+                        start,
+                        f"Viebit page returned HTTP {response.status}",
+                    )
+                html = await response.text(errors="replace")
+    except asyncio.TimeoutError:
+        return _dead(url, "viebit", method, start, "Viebit page fetch timed out")
+    except aiohttp.ClientError as e:
+        return _dead(url, "viebit", method, start, f"Viebit page fetch failed: {e}")
+
+    config = ViebitAssetFinder._extract_page_config(html)
+    if not config:
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "no Viebit pageConfig found on this page",
+        )
+    if config.get("hasAccess") is False:
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "Viebit pageConfig reports hasAccess=false -- not publicly playable",
+        )
+    video = config.get("video") or {}
+    if not video.get("src"):
+        return _dead(
+            url,
+            "viebit",
+            method,
+            start,
+            "Viebit pageConfig has no video.src -- nothing to play",
+        )
+
+    return ProbeResult(
+        url=url,
+        platform="viebit",
+        probe_method=method,
+        duration_seconds=None,
+        date=None,
+        size_bytes=None,
+        verdict="accept",
+        reason="duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",
+        probe_seconds=time.monotonic() - start,
+        over_nine_minutes=False,
+    )
 
 
 # --- HLS (Granicus, Swagit, Cablecast) --------------------------------
@@ -889,6 +1029,18 @@ async def probe_queue_entry(
         return await _probe_telvue(url, video_url, source_page_url, start)
     if resolved_platform == "wistia":
         return await _probe_wistia(url, external_id, start)
+    if resolved_platform == "viebit" or video_format == "viebit":
+        return await _probe_viebit(url, source_page_url, start)
+    # WO-205's own "dispatch on what the video IS" reasoning above
+    # applies here too -- a CivicClerk event delegates to a SuiteOne
+    # player page (`.../web/Player.aspx?id=...`), so `video_url` carries
+    # a suiteonemedia.com host even though `resolved_platform` is
+    # "civicclerk", not "suiteone".
+    if (
+        resolved_platform == "suiteone"
+        or "suiteonemedia.com" in urlparse(video_url or "").netloc.lower()
+    ):
+        return await _probe_suiteone(url, video_url, source_page_url, start)
 
     media_path = urlparse(video_url).path.lower()
     if media_probe.is_hls(video_url):
@@ -1046,15 +1198,27 @@ DEFERRED_FILE_HEADER = (
     "tier3_auto_transcription_queue_probe.csv.\n"
 )
 
-# WO-205/WO-212's rule: a tier-3 candidate whose duration is over 90
-# minutes never earns a queue line at all -- it goes straight to the
-# deferred file instead of being queued and swapped out again later (the
-# original WO-205 pass had to do exactly that swap-back-out after the
-# fact; this constant lets a finish step skip the round trip). Distinct
-# from `_FLAG_LONG_SECONDS` (6 hours) above, which is `probe_queue_entry`'s
+# WO-205/WO-212's rule, as `finish_candidate()` still applies it by
+# default: a tier-3 candidate whose duration is over 90 minutes goes
+# straight to the deferred file instead of being queued (the original
+# WO-205 pass had to do exactly that swap-back-out after the fact; this
+# constant lets a finish step skip the round trip). Distinct from
+# `_FLAG_LONG_SECONDS` (6 hours) above, which is `probe_queue_entry`'s
 # own "still accept, but flag it" ceiling -- a `flag-long` verdict is
-# always also over this lower, 90-minute threshold, so it always lands in
-# the deferred file, never the queue.
+# always also over this lower, 90-minute threshold.
+#
+# Ryan's standing rule since 2026-09-12 ("long-only videos") narrows
+# when a long candidate should actually STAY deferred: only when a
+# shorter, on-mission alternative exists on the same tenant and was
+# queued in its place, or for WO-266-style parking of a government that
+# already has a transcript elsewhere -- never for length alone once no
+# shorter alternative exists. `finish_candidate()` itself doesn't know
+# whether a shorter alternative was already checked, so a caller that
+# has already looked deeper and found none queues the long candidate
+# directly (`append_queue_line()` + `write_pin_row()`) rather than
+# calling `finish_candidate()` and accepting an automatic defer -- see
+# `scripts/wo356_item4_move_long.py` for the one-time cleanup this
+# caused (two lines parked here for length alone, moved to the queue).
 DEFER_OVER_SECONDS = 90 * 60
 
 _ACCEPT_VERDICTS = ("accept", "flag-long")
@@ -1087,6 +1251,56 @@ def _first_field_urls(path: Path) -> set[str]:
             if line and not line.startswith("#"):
                 urls.add(line.split("\t", 1)[0])
     return urls
+
+
+def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
+    """WO-346: the same owner check `archive/db/crud.py`'s
+    `_resolve_page_government()` makes at ingest time (rung 1b of
+    `app/utils/gov_registry/resolver.py`'s `_resolve_government_ladder()`)
+    -- reused here, not reimplemented, so a queue-advance guard can never
+    silently drift from what ingest itself will actually do.
+
+    `source_url` is the URL identity will key off: the meeting's own
+    `ResolvedMeeting.source_url` (a queue line's second tab-field, when
+    present, overrides what gets recorded there -- see
+    `scripts/feed_tier3_auto_transcription.py::_parse_queue_line()`'s own
+    docstring), never the raw queue URL when the two differ.
+
+    Returns `(owned, gov_id, reason)`:
+
+    * `(True, None, "")` -- this host resolves to exactly one government
+      on its own (not a `MULTI_GOV_HOSTS` host, e.g. a Granicus/
+      CivicClerk/eScribe tenant subdomain -- ownership comes from the
+      tenant structure itself, no pin needed, and no cheap gov_id to hand
+      back without running the full ladder server-side has ingest does).
+    * `(True, gov_id, "")` -- a `tenant_overrides.csv` per-video/channel/
+      external-id pin matches, and its gov_id is handed back so the
+      caller can put it straight into the ingest payload (CLAUDE.md's
+      "send the government's id in every ingest payload" rule) instead
+      of depending on the Archive service's OWN deployed copy of
+      `tenant_overrides.csv` being up to date.
+    * `(False, None, reason)` -- the host is a `MULTI_GOV_HOSTS` host
+      with no matching pin -- ingest would land this page on
+      `rtr:unknown:{host}` (TIER_BLANK), exactly the gap WO-345/WO-346
+      found sitting unrecorded in the tier-3 queue and the deferred file.
+    """
+    parsed = urlparse(source_url)
+    host = _tenant_host(parsed.netloc)
+    if not host:
+        return False, None, f"unparseable host in {source_url!r}"
+    if not is_multi_gov_host(host):
+        return True, None, ""
+    path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    matched = _matched_multi_gov_pin(host, path, {})
+    if matched:
+        gov, _evidence = matched
+        return True, gov.gov_id, ""
+    return (
+        False,
+        None,
+        f"{host} is a shared, multi-government host with no tenant_overrides.csv "
+        f"pin matching {source_url!r} -- would ingest as rtr:unknown:{host}",
+    )
 
 
 def is_queued(meeting_url: str, *, queue_path: Path = TIER3_QUEUE_FILE) -> bool:
@@ -1189,9 +1403,20 @@ def write_pin_row(
     current (tenant_host, match) pairs -- the same key every existing
     finish script's own `_apply_pin_row()`/`_write_pin()` already checks.
     Returns True only when a new row was actually written. A blank
-    `host`/`match`/`gov_id` is refused outright, same as the loader that
-    reads this file back rejects a blank match on a shared host."""
-    if not host or not match or not gov_id:
+    `host`/`gov_id` is refused outright. A blank `match` is refused only
+    on a `MULTI_GOV_HOSTS` host (WO-210's rule -- a blank match there
+    keys every unidentified video on the whole host to one government);
+    on an ordinary single-tenant host (a Viebit/Cablecast/TelVue
+    subdomain, one government per tenant) a blank match is exactly what
+    the loader (`registry._load_tenant_overrides()`) already accepts and
+    every existing single-tenant pin in the committed file already uses
+    (`delano.viebit.com,,us:place:2715454,...`) -- found live 2026-09-12
+    (WO-307) when this function silently refused to pin a real
+    already-queued single-tenant Viebit government (buffalo.viebit.com)
+    for exactly this reason."""
+    if not host or not gov_id:
+        return False
+    if not match and is_multi_gov_host(host):
         return False
     existing = _read_pin_keys(pins_path)
     if (host, match) in existing:
@@ -1220,9 +1445,22 @@ def parse_pin_row(pin_row: Optional[str]) -> Optional[dict]:
     evidence` shape the newer access-ladder sweeps write (WO-183/WO-191/
     WO-216's own `pin_row` CSV column) into the field names
     `write_pin_row()` takes. Returns None for a blank/malformed row (fewer
-    than 6 fields, or a blank host/match/gov_id) rather than raising --
-    same tolerance every existing `_apply_pin_row()`/`_write_pin()` copy
+    than 6 fields, or a blank host/gov_id) rather than raising -- same
+    tolerance every existing `_apply_pin_row()`/`_write_pin()` copy
     already has for a malformed row.
+
+    A blank `match` is NOT rejected here (WO-321, 2026-09-12): it is
+    exactly the shape a single-tenant host's pin_row legitimately has
+    (`bedfordoh.primegov.com||us:county:39035|...` -- one government per
+    tenant, no discriminator needed), and `write_pin_row()` already
+    accepts a blank match for anything that isn't a `MULTI_GOV_HOSTS`
+    host (fixed WO-307 after `buffalo.viebit.com` hit the same gap this
+    function still had). Before this fix, a caller going through
+    `parse_pin_row()` (unlike one calling `write_pin_row()` directly)
+    silently dropped every single-tenant pin with a blank match instead
+    of writing it -- `write_pin_row()`'s own multi-gov-host check still
+    applies downstream, so a blank match on an actual shared host is
+    still refused, just one level down from here.
 
     WO-150's own pending rows use a different, older
     `key=value;key=value` shape -- not handled here; a caller still
@@ -1234,7 +1472,7 @@ def parse_pin_row(pin_row: Optional[str]) -> Optional[dict]:
     if len(parts) < 6:
         return None
     host, match, gov_id, strength, source, evidence = parts
-    if not host or not match or not gov_id:
+    if not host or not gov_id:
         return None
     return {
         "host": host,

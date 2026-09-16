@@ -560,6 +560,25 @@ async def test_viebit_page_changes_only_the_url_key(monkeypatch):
     assert "thumbnailUrl" not in data
 
 
+async def test_citymeetings_link_only_on_nyc_council_viebit_pages():
+    # The Council host is confirmed by the real NYC fixture. Other Viebit
+    # tenants exist, so platform and jurisdiction alone cannot identify it.
+    cases = (
+        ("nyc", "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw", True),
+        ("ringwood", "https://ringwood.viebit.com/embed/vod?v=abc123", False),
+    )
+    for external_id, video_url, expected in cases:
+        slug = await _make_page(
+            f"citymeetings-{external_id}",
+            platform="viebit",
+            jurisdiction="New York City, NY",
+            video_url=video_url,
+            video_format="viebit",
+        )
+        html = archive_client.get(f"/m/{slug}").text
+        assert ("Looking for deeper coverage of this meeting?" in html) is expected
+
+
 async def test_direct_media_formats_still_use_contenturl():
     # The negative control: the fix must not touch the app's normal case.
     # mp4/m3u8 video_urls really are fetchable media files, so `contentUrl`

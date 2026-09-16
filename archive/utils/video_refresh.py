@@ -11,6 +11,11 @@ ingested 2026-09-11 (Livermore Falls ME, Bartow FL), whose stored
 playlist expires 2026-09-13. See `app/platforms/boxcast.py`'s module
 docstring for the full investigation.
 
+CivicMedia (CivicPlus's own TikiLive-hosted video widget) is the second
+confirmed exception, WO-341 (2026-09-13): its own signed HLS playlist
+carries `stime=`/`etime=` query values roughly 24h apart at generation
+time -- see `app/platforms/civicmedia.py`'s module docstring.
+
 Rather than re-ingesting a page every few days to refresh its stored
 `video_url` (a standing sweep with no natural trigger and no way to know
 ahead of time which pages need it), the meeting page route
@@ -42,8 +47,12 @@ entry in `_REFRESHERS`. Neither `archive/main.py`'s route nor
 `meeting_page.html` needs to change.
 """
 
+import asyncio
+import logging
 import time
 from typing import Awaitable, Callable, Dict, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Platforms whose stored `MeetingPage.video_url` can go stale after
 # ingest -- checked by `archive/main.py` to decide whether the player
@@ -51,7 +60,7 @@ from typing import Awaitable, Callable, Dict, Optional, Tuple
 # the raw stored URL. Every other platform's stored `video_url` is
 # either an iframe-embed page or a plain, non-expiring media URL, so
 # this set is deliberately small and additive.
-NEEDS_REFRESH: frozenset = frozenset({"boxcast"})
+NEEDS_REFRESH: frozenset = frozenset({"boxcast", "civicmedia"})
 
 # Keyed by the page's slug (stable across a refresh, unlike the signed
 # URL itself) -- a few minutes is enough to collapse a burst of views on
@@ -59,6 +68,24 @@ NEEDS_REFRESH: frozenset = frozenset({"boxcast"})
 # genuinely broken/rotated broadcast doesn't stay wrong for long.
 _CACHE_TTL_SECONDS = 180.0
 _cache: Dict[str, Tuple[float, str]] = {}
+
+# WO-362: a hard ceiling on how long ONE refresh() call may run, enforced
+# here rather than trusted to each refresher's own per-fetch aiohttp
+# timeout. CivicMedia's refresh_playlist_url() can make two sequential
+# fetches (the CivicMedia page, then the TikiLive embed), each with its
+# own 30s aiohttp timeout -- up to 60s total in the worst case. Every
+# refresher here already documents "never raises", but this module is
+# used from a real page render (the /m/{slug} route computes
+# player_video_url from NEEDS_REFRESH membership before this ever runs,
+# so it isn't itself gated on this call -- see archive/main.py's own
+# WO-362 comments for the two call sites that WERE), so this wraps the
+# call in both a timeout and a catch-all: belt and braces against a
+# refresher that's slow, hangs, or turns out not to uphold its own
+# "never raises" contract (a bug, or a future refresher that doesn't).
+# Either way this function's own contract -- return None, never raise,
+# never hang past this ceiling -- holds regardless of what's on the
+# other side of the network call.
+_REFRESH_TIMEOUT_SECONDS = 10.0
 
 
 async def _refresh_boxcast(source_url: str) -> Optional[str]:
@@ -73,8 +100,20 @@ async def _refresh_boxcast(source_url: str) -> Optional[str]:
     return await refresh_playlist_url(source_url)
 
 
+async def _refresh_civicmedia(source_url: str) -> Optional[str]:
+    # Same lazy-import convention as `_refresh_boxcast()` above. CivicPlus's
+    # CivicMedia widget (TikiLive-hosted) is the second confirmed signed-
+    # and-expiring platform -- WO-341, 2026-09-13, see
+    # app/platforms/civicmedia.py's own module docstring ("signed and
+    # time-limited", `stime`/`etime` ~24h apart at generation time).
+    from app.platforms.civicmedia import refresh_playlist_url
+
+    return await refresh_playlist_url(source_url)
+
+
 _REFRESHERS: Dict[str, Callable[[str], Awaitable[Optional[str]]]] = {
     "boxcast": _refresh_boxcast,
+    "civicmedia": _refresh_civicmedia,
 }
 
 
@@ -83,12 +122,13 @@ async def fresh_video_url(
 ) -> Optional[str]:
     """A freshly-resolved video URL for `platform`/`source_url`, or None
     immediately when `platform` isn't in `NEEDS_REFRESH` (nothing to
-    refresh) or `source_url` is missing. Never raises -- a refresh
-    failure (unknown broadcast, BoxCast API down, etc.) is just another
-    None, and every caller here already treats None as "fall back to the
-    page's last stored `video_url`", the same graceful-degradation
-    posture the rest of this codebase uses for a source that's
-    temporarily unreachable.
+    refresh) or `source_url` is missing. Never raises and never runs
+    longer than `_REFRESH_TIMEOUT_SECONDS` -- a refresh failure (unknown
+    broadcast, BoxCast API down, a slow or hanging upstream, a bug in the
+    refresher itself) is just another None, and every caller here already
+    treats None as "fall back to the page's last stored `video_url`", the
+    same graceful-degradation posture the rest of this codebase uses for
+    a source that's temporarily unreachable.
     """
     if platform not in NEEDS_REFRESH or not source_url:
         return None
@@ -101,7 +141,22 @@ async def fresh_video_url(
     if hit and (now - hit[0]) < _CACHE_TTL_SECONDS:
         return hit[1]
 
-    fresh = await refresher(source_url)
+    try:
+        fresh = await asyncio.wait_for(
+            refresher(source_url), timeout=_REFRESH_TIMEOUT_SECONDS
+        )
+    except Exception as e:  # noqa: BLE001 -- see _REFRESH_TIMEOUT_SECONDS's
+        # own comment: this is the belt to every refresher's own claimed
+        # "never raises" braces. A plain warning, not an error -- a
+        # refresh failure is an expected, routine outcome (the source
+        # being temporarily unreachable), not an incident.
+        logger.warning(
+            "fresh_video_url(%s) failed, falling back to the stored URL: %s: %s",
+            platform,
+            type(e).__name__,
+            e,
+        )
+        return None
     if fresh:
         _cache[cache_key] = (now, fresh)
     return fresh

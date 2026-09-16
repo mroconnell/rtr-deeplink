@@ -13,6 +13,9 @@ yt-dlp/network for a fake URL that was never resolved against anything
 real. tests/test_queue_probe.py covers the probe itself.
 """
 
+import csv
+from pathlib import Path
+
 from app.platforms.queue_probe import ProbeResult
 from scripts.feed_tier3_auto_transcription import (
     _parse_queue_line,
@@ -104,7 +107,9 @@ async def test_push_if_has_video_overrides_source_url_when_given(monkeypatch):
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         captured["payload"] = payload
         return {"url": "/m/example-page"}
 
@@ -135,7 +140,9 @@ async def test_push_if_has_video_leaves_source_url_alone_without_an_override(
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         captured["payload"] = payload
         return {"url": "/m/example-page-2"}
 
@@ -182,7 +189,9 @@ async def test_push_if_has_video_skips_a_probe_rejected_dead_link(monkeypatch):
 
     ingest_called = False
 
-    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
         nonlocal ingest_called
         ingest_called = True
         return {"url": "/m/should-not-happen"}
@@ -195,3 +204,159 @@ async def test_push_if_has_video_skips_a_probe_rejected_dead_link(monkeypatch):
     assert "[SKIP]" in outcome
     assert "reject-dead" in outcome
     assert "zero segments" in outcome
+
+
+async def test_push_if_has_video_refuses_to_ingest_a_line_with_no_owner(monkeypatch):
+    """WO-346: a MULTI_GOV_HOSTS host with no tenant_overrides.csv pin
+    matching this page must never reach ingest -- it would land on
+    `rtr:unknown:{host}`, the exact gap the tier-3 queue ownership audit
+    found sitting unrecorded across 478 of 3,012 queue+deferred lines."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://www.youtube.com/watch?v=zzzzzzzzzzz"
+    result = _FakeResolvedMeeting(
+        video_url="https://www.youtube.com/embed/zzzzzzzzzzz", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "youtube")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(
+        mod,
+        "has_owner",
+        lambda source_url: (False, None, f"{source_url} has no owner"),
+    )
+
+    ingest_called = False
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        nonlocal ingest_called
+        ingest_called = True
+        return {"url": "/m/should-not-happen"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert not ingest_called
+    assert outcome.startswith("[NO-OWNER]")
+    assert "has no owner" in outcome
+
+
+async def test_push_if_has_video_ingests_normally_when_owned(monkeypatch):
+    """The guard is a refusal, not a new requirement -- an owned line
+    (has_owner() True) still ingests exactly as before."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://example.granicus.com/player/clip/42"
+    result = _FakeResolvedMeeting(
+        video_url="https://example.com/v.m3u8", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "granicus")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(mod, "has_owner", lambda source_url: (True, None, ""))
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/example-page-3"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert "[OK]" in outcome
+    assert "gov_id" not in captured["payload"]
+
+
+async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypatch):
+    """WO-346: when has_owner() found the gov_id from a tenant_overrides.csv
+    pin, it rides straight into the ingest payload (CLAUDE.md's "send the
+    government's id in every ingest payload" rule) rather than depending
+    on the Archive service's own deployed pins being up to date."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://www.youtube.com/watch?v=pinnedvideo1"
+    result = _FakeResolvedMeeting(
+        video_url="https://www.youtube.com/embed/pinnedvideo1", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "youtube")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(
+        mod, "has_owner", lambda source_url: (True, "us:place:0000009", "")
+    )
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/example-page-4"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert "[OK]" in outcome
+    assert captured["payload"]["gov_id"] == "us:place:0000009"
+
+
+async def test_lmc_pending_lines_keep_exact_owner_through_feeder(monkeypatch):
+    """The LMC producer page is evidence, not a source-url override:
+    the feeder must check each Swagit video's own pin before ingest."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    pending = (
+        Path(__file__).parent.parent
+        / "reports"
+        / "yesgov_694_pending_queue_2026-09-15.csv"
+    )
+    with pending.open(newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    assert len(rows) == 2
+
+    monkeypatch.setattr(mod, "detect_platform", lambda url: "swagit")
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    for row in rows:
+        url, override = _parse_queue_line(row["queue_line"])
+        assert url == row["meeting_url"]
+        assert override is None
+        assert row["first_party_evidence_url"].startswith("https://lmcmedia.org/")
+
+        result = _FakeResolvedMeeting(
+            video_url="https://archive-stream.granicus.com/test.m3u8",
+            source_url=url,
+        )
+        monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+        captured = {}
+
+        async def _fake_ingest(
+            session, payload, input_url_normalized, *, already_probed=False, caller=""
+        ):
+            captured["payload"] = payload
+            return {"url": "/m/exact-lmc-owner"}
+
+        monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+        outcome = await _push_if_has_video(
+            session=None, url=url, source_url_override=override
+        )
+        assert outcome.startswith("[OK]")
+        assert captured["payload"]["source_url"] == url
+        assert captured["payload"]["gov_id"] == row["gov_id"]
+
+    assert mod.has_owner("https://lmctvny.new.swagit.com/videos/999999")[0] is False

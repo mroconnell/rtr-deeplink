@@ -11,6 +11,7 @@ def register_all_finders() -> None:
     from .aurora import AuroraTvAssetFinder
     from .az_legislature import ArizonaLegislatureAssetFinder
     from .base import register
+    from .boarddocs import BoardDocsAssetFinder
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
     from .castus import CastusAssetFinder
@@ -20,6 +21,7 @@ def register_all_finders() -> None:
     from .destinyhosted import DestinyHostedAssetFinder
     from .civicweb import CivicWebAssetFinder
     from .civiclive import CivicLiveAssetFinder
+    from .civicmedia import CivicMediaAssetFinder
     from .civicplus import CivicPlusAssetFinder
     from .escribe import EscribeAssetFinder
     from .generic_fallback import GenericFallbackAssetFinder
@@ -46,6 +48,7 @@ def register_all_finders() -> None:
     from .vimeo import VimeoAssetFinder
     from .wistia import WistiaAssetFinder
     from .boxcast import BoxcastAssetFinder
+    from .direct_file import DirectFileAssetFinder
     from .youtube import YouTubeAssetFinder
 
     register(GranicusAssetFinder())
@@ -56,6 +59,7 @@ def register_all_finders() -> None:
     register(CaliforniaLegislatureAssetFinder())
     register(LegistarAssetFinder())
     register(CivicPlusAssetFinder())
+    register(CivicMediaAssetFinder())
     register(CivicLiveAssetFinder())
     register(YouTubeAssetFinder())
     register(PrimeGovAssetFinder())
@@ -85,6 +89,8 @@ def register_all_finders() -> None:
     register(ArizonaLegislatureAssetFinder())
     register(WistiaAssetFinder())
     register(BoxcastAssetFinder())
+    register(DirectFileAssetFinder())
+    register(BoardDocsAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

@@ -540,9 +540,13 @@ async def test_resolve_clears_jurisdiction_when_page_has_no_header(monkeypatch):
     # at all: this used to silently leave YouTube's own `uploader` value
     # in place ("SLC Live Meetings" in that real case) -- a channel name,
     # not a jurisdiction. Now cleared to None instead, an honest "we
-    # don't know" rather than a wrong-looking answer. `date` is unaffected
-    # -- that field's own fallback-preservation behavior wasn't part of
-    # this bug and isn't changed.
+    # don't know" rather than a wrong-looking answer. `date` falls
+    # through to the delegated YouTubeAssetFinder result since this page
+    # has no header for PrimeGov's own _extract_date() to use -- WO-285
+    # (2026-09-12) changed what that delegated value is: _fake_extract_
+    # info()'s title ("...August 4, 2026") is now preferred over its
+    # upload_date ("20260805", one day late), so the expected date here
+    # is the real meeting date, not the old upload_date fallback.
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
     routes = {
         PAGE_URL: FakeResponse(status=200, text=PAGE_HTML_WITH_VIDEO, url=PAGE_URL)
@@ -551,7 +555,7 @@ async def test_resolve_clears_jurisdiction_when_page_has_no_header(monkeypatch):
     with mock_session(routes):
         result = await PrimeGovAssetFinder().resolve(PAGE_URL)
 
-    assert result.date == "2026-08-05"
+    assert result.date == "2026-08-04"
     assert result.jurisdiction is None
 
 

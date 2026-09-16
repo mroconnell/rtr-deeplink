@@ -37,14 +37,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      # fetch-depth: 2 (not the default 1) so a `push` event's own
-      # HEAD~1 resolves locally -- the BACKLOG_DONE.md heading-integrity
-      # step below needs it as its comparison base for a direct push to
-      # main, since `origin/main` at that point in the run *is* the
-      # commit just pushed and would always diff empty against itself.
+      # fetch-depth: 0 (full history, not a shallow clone) so the
+      # BACKLOG_DONE.md heading-integrity step below can compute a real
+      # `git merge-base` between this branch and `origin/main` (WO-269,
+      # 2026-09-12). A shallow clone's history isn't connected far enough
+      # back for `merge-base` to find a common ancestor except by
+      # accident, which is what made that step fall back to comparing
+      # against `origin/main`'s raw tip instead -- correct for a direct
+      # push to main (where the comparison base is HEAD~1, always present
+      # even at fetch-depth 2) but wrong for a PR, whose branch point can
+      # sit behind however many headings landed on main afterward. Full
+      # history is cheap here (low thousands of commits as of this
+      # change); deepen this further (or switch to a bounded
+      # `--depth N` plus `--unshallow` fallback) if that stops being
+      # true.
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -148,16 +157,21 @@ jobs:
       # recorded headings in one evening before this existed; see
       # BACKLOG_DONE.md's own WO-236 entry and the script's docstring for
       # the full story. `origin/main` isn't fetched by the checkout step
-      # above (it only fetches the ref actually being built), so it's
-      # fetched explicitly here; a direct push to main instead compares
-      # against the immediately preceding commit, since `origin/main` at
-      # that point in the run already *is* the commit just pushed and
-      # would otherwise always diff empty against itself. Blocking for a
+      # above by ref name (fetch-depth: 0 fetches the full history of
+      # every branch, but not the `origin/main` remote-tracking ref
+      # itself under that exact name on every runner), so it's fetched
+      # explicitly here -- no depth limit, since the script needs real
+      # shared history with this branch to compute a `git merge-base`
+      # (WO-269, 2026-09-12; see the script's own docstring), not just
+      # main's tip commit. A direct push to main instead compares against
+      # the immediately preceding commit, since `origin/main` at that
+      # point in the run already *is* the commit just pushed and would
+      # otherwise always diff empty against itself. Blocking for a
       # BACKLOG_DONE.md loss; a companion BACKLOG.md check is
       # warning-only (see the script's own docstring for why).
       - name: BACKLOG_DONE.md heading integrity
         run: |
-          git fetch origin main --depth=1
+          git fetch origin main
           if [ "${{ github.event_name }}" = "push" ]; then
             BASE_REF=HEAD~1
           else

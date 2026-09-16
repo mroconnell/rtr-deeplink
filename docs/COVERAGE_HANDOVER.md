@@ -18,10 +18,29 @@ several governments. An Archive **page** is one meeting, keyed to a
 government by `gov_id`, with the adapter's raw jurisdiction string kept in
 `jurisdiction_raw` and the registry's display name in `jurisdiction`. The
 **research file** (`rtr-business/research/jurisdiction_coverage.csv`,
-~34k rows) records what we know about every government we have ever
-looked at: domain, suspected platform, an example calendar URL, and an
-honest test outcome (`reject_reason`). Everything downstream, the
-dashboards included, joins these on `gov_id`. A trailing `website_status`
+45,610 rows as of WO-291/WO-301, 2026-09-12) records what we know about
+every government we have ever looked at: domain, an example calendar
+URL, and an honest test outcome (`reject_reason`). Three columns hold
+a *meeting/video platform* guess (`suspected_meeting_link_provider`,
+`suspected_video_provider`, `suspected_calendar_provider` — real
+platforms only, e.g. `granicus`, `civicclerk`, `youtube`) — kept
+separate, since WO-291 (2026-09-12), from a fourth column,
+`site_builder`, which holds the CMS a government's own website happens
+to run on (`wordpress`, `townweb`, `govoffice`, `revize`, `civiclive`,
+`proudcity`, `opencities`, `govaccess`, `duda`, `streamline`,
+`municipalimpact` — a website vendor, never a meeting/video signal; see
+`ENUMERATION_METHODS.md` §291's `wo291_apply_to_jc.py`). Every sweep
+that filters on "no platform on file" means those three provider
+columns are blank; a `site_builder` value alone no longer counts as
+"already checked" the way it used to when builders and platforms shared
+a column. Two more trailing columns, `queued` and `parked` (added
+WO-301, 2026-09-12; see `ENUMERATION_METHODS.md` §311), flag a
+government already sitting in `scripts/tier3_auto_transcription_queue.txt`
+or `scripts/tier3_long_meetings_deferred.txt`, respectively — a safe
+floor, not a full accounting, since ~92% of queue lines sit on a shared
+multi-government host this join refuses to guess at. Everything
+downstream, the dashboards included, joins these on `gov_id`. A trailing
+`website_status`
 column (added WO-186, 2026-09-10) carries `none-known-2022` on rows
 where UScityURL's 2022 dataset also found no website and ours is still
 blank -- a cheap way for a sweep to deprioritize a row with no lead,
@@ -103,7 +122,13 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
 - A scheduled task ("Daily coverage registry refresh", 7:09 local, runs
   while the desktop app is open) refreshes it, republishes the hosted
   page, and commits the outputs. Re-running by hand is the one script
-  above.
+  above. **`jurisdiction_coverage.csv`'s own `transcribed` column drifts
+  from the Archive** (pages get deleted or re-keyed, and nothing else
+  writes it back) — `research/refresh_transcribed_flag.py` (WO-301,
+  2026-09-12) corrects it against a fresh archive-inventory export and
+  should run before this refresh; see that script's own docstring and
+  `ENUMERATION_METHODS.md` §311 for the join rules and the caution on
+  its `queued`/`parked` columns undercounting shared-host queue lines.
 
 ### Reading them together
 
@@ -138,7 +163,30 @@ reasons. That is how every sweep below was scoped.
   research file says a government is "ingested" but the registry shows no
   page, the page usually exists on that government's own host under a
   minted or `rtr:unknown` id. Pin the host, backfill, done. 55 hosts and
-  76 pages moved this way in one pass.
+  76 pages moved this way in one pass. **A `transcribed=true` research
+  row with no matching Archive page is the other direction of the same
+  signal** — usually a deleted page, sometimes a page re-keyed to a
+  different `gov_id` for the same government (WO-301, 2026-09-12, found
+  6 of 51 such rows cross-checking cleanly to another `gov_id` on the
+  same host — e.g. a consolidated city-county's page sitting under the
+  place-level id while the county-level research row still says
+  `transcribed=true`). `research/refresh_transcribed_flag.py` never
+  blanks these on its own; it lists them for a human backfill decision.
+- **A consolidated city-county (or a borough of a bigger city) is not a
+  "wrong government" finding — check `consolidated_governments.csv`
+  first.** `app/utils/jurisdiction_data/consolidated_governments.csv`
+  (`gov_id, canonical_gov_id, evidence`, 37 rows as of 2026-09-12) is the
+  canonical list of governments the Census keeps two ids for (San
+  Francisco, Denver, Philadelphia, the five NYC boroughs, Carson City,
+  and so on) — `resolver._as_government()` already keys a hit on either
+  id to the canonical one. The research file mirrors this per
+  `ENUMERATION_METHODS.md` §317: the non-canonical row gets
+  `reject_reason=shared-gov-exception` and a blank `transcribed`, never
+  a new column (Ryan, 2026-09-12: the status value plus the canonical
+  list are enough). Before filing a `jurisdiction_coverage.csv` row or a
+  page's identity as wrong because a county-level and place-level id
+  disagree, check this list — it is the difference between a real
+  mis-key and the exact same government recorded twice on purpose.
 - Deploys are manual and pins only reach *new* ingests after one. The
   transcription worker re-resolves a video when it transcribes it, so a
   shared-host pin must be deployed before the worker reaches that queue
@@ -274,6 +322,15 @@ place, `app/platforms/queue_probe.py`'s `finish_candidate()`
 verdict into a queue line, a pin, or a deferred-file line, so a new
 finish script should call it rather than reimplementing the decision.
 
+**Ryan's re-queue policy for parked/deferred lines (WO-299, 2026-09-12):**
+a line moved out of `scripts/tier3_auto_transcription_queue.txt` into
+`scripts/tier3_long_meetings_deferred.txt` — whether it was parked
+because its government already has a live page with a real transcript,
+set aside for breadth (a single-tenant host keeping one governing-body
+meeting instead of several), or genuinely too long — is re-queued only
+once the tier-3 queue is completely depleted. A parked line is not
+rejected; it waits.
+
 **Alternate domains (WO-181, 2026-09-10; widened by WO-184,
 2026-09-10/11).** The research file carries two more columns,
 `alternate_domains` and `alternate_urls` (added in WO-165's duplicate-row
@@ -359,6 +416,22 @@ METHODS.md` §270; code in `scripts/wo147_access_ladder_sweep.py`. The
 161-row re-run of already-recorded calendar-shaped hubs against the
 fixed ranker is a separate WO, not yet run.
 
+**WO-228's own twelve-word candidate gate was itself replaced with
+measured weights (WO-274, 2026-09-12)** -- the same "calendar wins as
+often as the real link" pattern held for the WORDS themselves, not just
+the ranking: plurals/role words (agendas, meetings, commissioners,
+boards, supervisors) and named platform paths (AgendaCenter, Hyland's
+ViewMeeting/AgendaOnline) measured far stronger than "calendar"/singular
+"agenda"/"video"/"stream", none of which the old list weighted
+correctly. `find_hop_links()`'s default is now driven by
+`app/utils/jurisdiction_data/hop_link_weights.csv`
+(`scripts/derive_hop_weights.py` re-derives it); `legacy=True` gets the
+WO-228 scorer back verbatim. On 180 real homepages, the new scorer finds
+a vendor-host/named-path link in its top 8 on strictly more governments
+than the old one (123 vs 95, zero regressions) -- full tables, the two
+real regressions found and fixed building it, and what the sample can't
+show: `docs/investigations/hop_scorer_measurement.md`.
+
 **Two guards Ryan approved 2026-09-11 (WO-226), now in code and unit-
 tested in every apply script that writes `reject_reason`** (see
 `~/Documents/rtr-business/research/wo226_apply_to_jc.py`'s
@@ -379,6 +452,29 @@ What the 2026-09-09 sweeps established about *where video is*:
 | "Known platform, no page" | Three quarters had already been rejected once; the re-check still found real pages (two governments with 500–1,000 caption segments were blocked by a platform-name spelling mismatch). | Re-checks of rejected rows are worth it when the reject was made by an earlier, cruder pass. |
 | Counties | Limited by stale data, not code: hundreds of NACo domains no longer resolve; several large counties sit behind web firewalls. | Fix the domain list before spending more resolver time. |
 | Two-hop and headless candidates | Once a platform is found, roughly half convert to a video page or a queue entry. | Discovery is the bottleneck, not resolution. |
+
+**Scanning a listing page itself for media, once no platform link was
+found (WO-197, 2026-09-11).** For the 2,471 governments left over from a
+listing-page sweep with no recognised platform, a cheap follow-up works:
+scan the page for a direct video/audio link or a link to YouTube/Vimeo/
+Google Drive/Dropbox/CivicWeb, follow one hop to a same-domain
+meeting-shaped link if the page itself has nothing, then check for a
+working RSS/Atom/ICS feed as a last resort. This found 29 real videos (18
+ingested, 11 queued) out of 2,471 — a small direct yield, but each one is
+a government no other method had reached. **The feed check is a lead,
+not a result**: it only confirms a feed URL exists and answers over
+HTTP — it never checks whether the feed lists meetings or links to
+video. 1,443 of the 2,471 (58%) had a feed answer, and 93% of those are
+plain WordPress `/feed` URLs (the site's generic content feed, not
+necessarily a meetings calendar). Worth a dedicated feed-parsing method
+later; not worth counting as coverage today. Every real video hit still
+needs the same hand-check as any other new source — this pass found 2
+wrong-government pages (a video for a completely different, unrelated
+government sitting on the right government's own listing page) and 1
+off-mission page (a real video, but a regional webinar, not a meeting of
+the government it was filed under), all fixed after the fact. Full
+write-up: `ENUMERATION_METHODS.md` §286; `BACKLOG_DONE.md`'s WO-197
+finish entry.
 
 ## 5. The breakthroughs worth carrying forward
 
@@ -442,6 +538,33 @@ What the 2026-09-09 sweeps established about *where video is*:
    conflict there is exactly as likely to silently drop a finished-work
    entry as it is a queue or pin line, and as of WO-236 (2026-09-11) CI
    fails a PR that does.
+7. **A hub's URL is now frozen to the government, not to its name**
+   (WO-256, 2026-09-12, built from `docs/investigations/
+   hub_architecture_audit.md`). Identity work used to move reader URLs:
+   every rename, override, mint-scoring pass and `backfill_gov_id.py
+   --apply` run recomputed a government's `/j/` slug from its *current*
+   display name, and nothing wrote the alias that keeps the old URL
+   alive — 829 alias rows for 784 governments by 2026-09-11, and on that
+   evening one backfill run retired 35 hubs of which 12 were retired
+   wrongly by a resolver regression (WO-243/WO-251). The slug now lives
+   in an Archive table (`hub_slugs`, one row per `gov_id`), minted from
+   exactly today's computed slug and frozen once the government has been
+   known 7 days and has more than one page. **What this changes for pin
+   work**: a page changing government no longer changes any URL, so the
+   "does this re-key need an alias row?" review step after a pin round is
+   gone. `scripts/freeze_hub_slugs.py --apply` (Render shell) is the
+   one-time backfill and the catch-up sweep. **The same work order also
+   replaced how a hub decides which un-keyed pages are its own**: shared
+   tenant host, never raw jurisdiction text, with `MULTI_GOV_HOSTS` still
+   the list of hosts that can never be keyed by host alone. Measured on
+   the same export: 31 un-keyed pages gain a real hub, and four real hubs
+   (Orem UT, Tooele UT, Box Elder County UT, Caledonia Township MI) stop
+   showing unrelated YouTube video that matched on text alone. See
+   `STATE_HUB_PAGES.md` §6 for both designs. **And the export-and-grep
+   step is gone**: `GET /internal/unidentified-pages` groups every page
+   with no government by the host it came from, biggest first, saying for
+   each whether the host is multi-government, which real governments are
+   already on it, and whether a hub already adopts those pages.
 
 ## 6. What is honest but unfinished
 
@@ -490,6 +613,22 @@ What the 2026-09-09 sweeps established about *where video is*:
   instead of trusting the one stored at ingest (WO-229, 2026-09-11), but
   whether BoxCast actually re-signs with a later expiry once the current
   one passes is unconfirmed — see `BACKLOG.md`'s matching `[WAIT]` entry.
+- **WO-264's overnight sweep of the 10,016 governments under 5,000
+  people (2026-09-11/12) covers 1,894 of them; the remaining ~8,100 go
+  to the Platforms conductor's own passive-discovery pipeline (WO-282/
+  283), a different method, not a resume of this one.** The close-out's
+  hand-read gate found two real, generalizable gaps worth knowing about
+  before the next channel-scanning sweep: a French-language meeting
+  vocabulary ("séance"/"conseil") that an English-only keyword check
+  silently treats as off-mission (six real Quebec municipalities'
+  channels were initially miscounted this way; the *production*
+  `app/platforms/youtube_channel.py` already checks a channel's
+  `/streams` tab, not just `/videos` — a gap that only existed in this
+  close-out's own one-off checker script, already fixed by hand) — and
+  a real confirmed gap in the codebase itself: no adapter can pull a
+  playable video from a Google Drive share link, even when the file's
+  own title says "City Council Meeting" (Kemmerer city, WY; see
+  `BACKLOG.md`'s `[NEEDS-AUDIT]` entry).
 
 ## 7. Where to look first next time
 
@@ -497,6 +636,19 @@ What the 2026-09-09 sweeps established about *where video is*:
   arrive keyed only as well as the deployed pins allow; the review
   procedure, the per-page file, and the video-vs-channel pin shapes are
   in `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` (2026-09-11).
+- **The drip's feed lane no longer writes its probe rows straight to the
+  tracked `scripts/tier3_auto_transcription_queue_probe.csv` (WO-248,
+  2026-09-12).** It used to, live, all day, while `main` grew the same
+  file through merged sweeps — a merge conflict on every `git pull` on
+  the drip Mac (append-only, nothing lost, but hand-resolved daily). Rows
+  now go to a local, gitignored buffer
+  (`scripts/tier3_auto_transcription_queue_probe.local.csv`), and the
+  drip's daily `advance` step (`fold_probe_sidecar()` in
+  `scripts/youtube_drip.py`) folds that buffer into the tracked file once
+  — keyed on `url`, skipping anything the tracked file already has a row
+  for — right before the one daily commit, then empties the buffer.
+  `docs/YOUTUBE_DRIP_RUNBOOK.md`'s "Once a day" section has the updated
+  commit command.
 - `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
   government's video channel, playlist or feed to its own calendar by body
   and date (pilot WO-158, about 5% yield). Read it before touching

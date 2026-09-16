@@ -574,7 +574,9 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
 
     places = tables.us_places().lookup_all(name, state)
     if type_preference:
-        places = [p for p in places if _census_type_word(p.name) == type_preference]
+        places = [
+            p for p in places if _census_type_word(p.name, p.state) == type_preference
+        ]
     elif len(places) > 1:
         places = []
     place = places[0] if len(places) == 1 else None
@@ -587,14 +589,16 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
         # started becoming `us:cousub:3603365178` -- "Santa Clara TOWN,
         # NY" -- swapping one wrong government for another. A leading
         # "City of" may only ever match a city.
-        cousubs = [c for c in cousubs if _census_type_word(c.name) == type_preference]
+        cousubs = [
+            c for c in cousubs if _census_type_word(c.name, c.state) == type_preference
+        ]
     elif len(cousubs) > 1:
         cousubs = []
     cousub = cousubs[0] if len(cousubs) == 1 else None
 
     if type_preference and place and cousub:
-        place_word = _census_type_word(place.name)
-        cousub_word = _census_type_word(cousub.name)
+        place_word = _census_type_word(place.name, place.state)
+        cousub_word = _census_type_word(cousub.name, cousub.state)
         if cousub_word == type_preference and place_word != type_preference:
             return None, cousub
         if place_word == type_preference and cousub_word != type_preference:
@@ -665,11 +669,39 @@ def _consolidated_lookup(name: str, state: str):
     return None
 
 
-def _census_type_word(census_name: str) -> str:
+def _census_type_word(census_name: str, state: str = "") -> str:
     """The generic type word Census appends to a general-purpose
-    government's name: "Cottage Grove village" -> "village"."""
+    government's name: "Cottage Grove village" -> "village".
+
+    Massachusetts-specific exception (WO-251, `state` param added for
+    it): 13 real `places.csv` rows -- "West Springfield Town city, MA",
+    "Amherst Town city, MA", "Braintree Town city, MA" and 10 more, all
+    and only MA (confirmed: no CT/RI row shares the shape) -- spell a
+    literal "Town" as part of the name AND still carry Census's ordinary
+    generic "city" LSAD word after it. The "Town" is the real legal type
+    here (every one of these is a Massachusetts town, not a city); "city"
+    is just the Gazetteer's own generic statistical-area suffix, present
+    on every MA place regardless of its real type. Real, confirmed-live
+    case this was missed on: "Town of West Springfield, MA" (a real
+    Granicus tenant's own raw jurisdiction text) correctly matched the
+    place table's `lookup_all()` but then failed this function's
+    type-word filter ("city" != the raw text's own "town") and minted a
+    fresh `rtr:` id instead of matching `us:place:2577890`.
+
+    Deliberately scoped to MA (not a general "second-to-last word is also
+    a type word" rule): `places.csv` has exactly three OTHER rows shaped
+    "<Name> Town city" outside Massachusetts -- "Charles Town city, WV",
+    "New Town city, ND", "Old Town city, ME" -- and in all three "Town" is
+    genuinely part of the proper name, not a generic annotation; the real
+    government in each case really is organized as a city. Treating
+    "Town" as the type word there would be wrong in the other direction,
+    so this only fires for state == "MA".
+    """
     parts = census_name.rsplit(" ", 1)
-    return parts[1].lower() if len(parts) == 2 else ""
+    word = parts[1].lower() if len(parts) == 2 else ""
+    if word == "city" and state.upper() == "MA" and parts[0].endswith(" Town"):
+        return "town"
+    return word
 
 
 def _stateless_states(name: str, type_preference: str = "") -> set:
@@ -715,7 +747,10 @@ def _stateless_states(name: str, type_preference: str = "") -> set:
     out = set()
     for table in (tables.us_places, tables.us_cousubs):
         for row in table().lookup_all(name, None):
-            if type_preference and _census_type_word(row.name) != type_preference:
+            if (
+                type_preference
+                and _census_type_word(row.name, row.state) != type_preference
+            ):
                 continue
             out.add(row.state.upper())
     if not type_preference:
@@ -1351,6 +1386,38 @@ def _curated_alias(name: str, state: str) -> Optional[Government]:
     return None
 
 
+def _curated_exact_match(name: str, state: str) -> Optional[Government]:
+    """A curated government named EXACTLY `name` (its own `gov_name`, or
+    a declared alias) -- state-scoped first, then stateless. No other
+    normalization at all, unlike `_curated_alias()` above.
+
+    Built for rung 1c (WO-243), which runs before rung 2's name repair
+    and therefore before rung 4's national-table lookup -- so it must
+    not reach for `_curated_alias()`'s `tables.lookup_keys()`
+    normalization, built for matching a *place* name against the
+    national tables' own conventions (it strips a trailing type word
+    among other things). That normalization is exactly what turns
+    "Boise County" into the candidate key "boise" and would hand the
+    COUNTY's own page to the curated Boise CITY alias before rung 4 ever
+    gets a chance to match "Boise County" to the real county it is --
+    caught by `test_the_county_itself_is_not_shadowed_by_the_citys_alias`
+    the first time this rung was tried with `_curated_alias()` directly.
+    A plain, un-normalized string is exactly what a curated row is an
+    assertion ABOUT, so equality is the right (and only safe) test here.
+    """
+    key = name.strip().lower()
+    if not key:
+        return None
+    aliases = registry.curated_aliases()
+    for scope in ((state or "").upper(), ""):
+        gov_id = aliases.get((scope, key))
+        if gov_id:
+            gov = registry.governments().get(gov_id)
+            if gov:
+                return gov
+    return None
+
+
 _NAME_TOKEN_RE = re.compile(r"[A-Za-z']+")
 # A US broadcast callsign: K or W plus 2-3 letters, optionally -TV/-FM/-AM
 # /-DT. A municipal access channel's callsign is not the government that
@@ -1694,7 +1761,7 @@ def _squashed_national_hit(
         if (
             namespace == "us:place"
             and type_preference
-            and _census_type_word(hit.name) != type_preference
+            and _census_type_word(hit.name, hit.state) != type_preference
         ):
             # A name that says "township"/"village"/etc. may not be
             # satisfied by a same-named place of a DIFFERENT type just
@@ -2027,6 +2094,54 @@ def _resolve_government_ladder(
             evidence=reason,
         )
         return _match(gov, TIER_BLANK, reason, finalized.meeting_body)
+
+    # 1c. Curated government match, by exact name or alias, BEFORE rung
+    #     2's name repair ever runs (WO-243). Rung 2's `finalize_
+    #     jurisdiction()` truncates a "<Entity> of <Place>"-shaped (or
+    #     otherwise bled) name down to whatever shorter tail happens to
+    #     validate against the place/county tables
+    #     (`_split_entity_prefix()`/`_trim_repair()` -- see their own
+    #     docstrings) -- correct for "City of Fresno" (no government
+    #     named bare "Fresno" would ever be confused for a different one),
+    #     but it runs on every name, curated or not, with no way to know a
+    #     curated row is waiting for the untruncated string. There is no
+    #     place called "Commerce" in Utah, so "Department of Commerce,
+    #     UT" truncated to "Commerce, UT" and minted `rtr:us:ut:commerce`
+    #     instead of matching WO-220's own curated
+    #     `rtr:us:ut:department-of-commerce` row -- confirmed live, and
+    #     the same shape truncated "Southwest Utah Public Health
+    #     Department" to "Southwest" and "Early Light Academy at
+    #     Daybreak" to "Early" (both curated by WO-220 too, both minted
+    #     wrong before this rung existed).
+    #
+    #     A curated row is a human's specific assertion about a name, so
+    #     it is tried against the name as the page actually wrote it --
+    #     only the state suffix, a trailing county qualifier and a
+    #     trailing paren-type come off (none of them shorten the name
+    #     itself the way rung 2's repair does), and the match itself is
+    #     exact (`_curated_exact_match()`, not `_curated_alias()` -- see
+    #     its own docstring for why the ordinary place-oriented
+    #     normalization can't be reused here without reintroducing the
+    #     exact "Boise County" collision it exists to avoid). This is a
+    #     pure no-op for every name with no curated row of its own --
+    #     "City of Fresno" included -- so rung 2 still runs exactly as
+    #     before for everything that isn't curated.
+    raw_stripped = (raw_name or "").strip()
+    if raw_stripped:
+        early_name, early_state = _split_state(raw_stripped)
+        early_name, _early_county = _strip_county_qualifier(early_name)
+        early_name, _early_paren_type = _strip_trailing_paren_type(early_name)
+        early_alias_hit = (
+            _curated_exact_match(early_name, early_state) if early_name else None
+        )
+        if early_alias_hit:
+            return _match(
+                early_alias_hit,
+                TIER_REGISTRY,
+                f"governments.csv curated alias {early_name!r} "
+                "(matched before name repair, WO-243)",
+                None,
+            )
 
     # 2. Repair the string. Called, not copied -- and the netloc goes with
     #    it so the subdomain cross-check runs exactly as it does at ingest.

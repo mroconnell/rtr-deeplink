@@ -22,6 +22,7 @@ from scripts.check_backlog_done_headings import (  # noqa: E402
     git_show,
     main,
     missing_items,
+    resolve_merge_base,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "backlog_done_headings"
@@ -226,3 +227,180 @@ def test_git_show_returns_none_for_unresolvable_ref(tmp_path):
     _git(repo, "commit", "-q", "-m", "base")
 
     assert git_show("not-a-real-ref", "BACKLOG_DONE.md", repo) is None
+
+
+# --- WO-269: compare against the merge-base, not base-ref's own tip -------
+#
+# origin/main gains a BACKLOG_DONE.md heading every few minutes under a
+# parallel wave while PRs sit open. Comparing against its raw tip failed
+# any PR whose branch point predated one of those new headings, even
+# though the PR never touched the file. The fix is to compare against
+# the merge-base of base-ref and the branch being checked -- the state
+# base-ref was in at the actual fork point -- which these tests exercise
+# directly against a real (temporary) git repo with two diverged branches.
+
+
+def test_resolve_merge_base_falls_back_to_base_ref_when_no_common_history(tmp_path):
+    repo = _init_repo(tmp_path)
+    (repo / "f.txt").write_text("x", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+
+    # An orphan branch shares no history at all with "main" -- merge-base
+    # has nothing to find, so this must fall back to base_ref itself
+    # rather than raising or returning a nonsense value.
+    _git(repo, "checkout", "-q", "--orphan", "orphan")
+    (repo / "f.txt").write_text("y", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "orphan commit")
+
+    assert resolve_merge_base("main", "HEAD", repo) == "main"
+
+
+def test_resolve_merge_base_returns_the_common_ancestor_of_diverged_branches(tmp_path):
+    repo = _init_repo(tmp_path)
+    (repo / "f.txt").write_text("base", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    fork_point = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    _git(repo, "checkout", "-q", "-b", "feature")
+    (repo / "f.txt").write_text("feature", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "feature commit")
+
+    _git(repo, "checkout", "-q", "main")
+    (repo / "f.txt").write_text("main advances", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "main advances")
+
+    _git(repo, "checkout", "-q", "feature")
+    assert resolve_merge_base("main", "HEAD", repo) == fork_point
+
+
+def _build_diverged_repo(tmp_path: Path) -> Path:
+    """A repo with `main` and `feature` branches sharing one base commit,
+    where `feature` never touches BACKLOG_DONE.md/BACKLOG.md after the
+    fork and `main` is free to keep moving on its own."""
+    repo = _init_repo(tmp_path)
+    (repo / "BACKLOG_DONE.md").write_text(_read("base_done.md"), encoding="utf-8")
+    (repo / "BACKLOG.md").write_text(_read("base_backlog.md"), encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    _git(repo, "checkout", "-q", "-b", "feature")
+    _git(repo, "checkout", "-q", "main")
+    return repo
+
+
+def test_main_passes_when_main_gains_a_heading_after_the_branch_point(tmp_path, capsys):
+    """A PR branch that never touched BACKLOG_DONE.md must not fail just
+    because `main` added a new entry after the branch forked -- the real
+    failure this replaced (#1027, WO-241, WO-251, 2026-09-12)."""
+    repo = _build_diverged_repo(tmp_path)
+
+    # main gains a brand-new heading after the fork point.
+    new_done = _read("base_done.md") + (
+        "\n## WO-999: a heading added after the branch point "
+        "[Done 2026-09-12]\n\nNot visible to feature.\n"
+    )
+    (repo / "BACKLOG_DONE.md").write_text(new_done, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "main gains a heading")
+
+    _git(repo, "checkout", "-q", "feature")
+
+    old_argv = sys.argv
+    try:
+        sys.argv = [
+            "check_backlog_done_headings.py",
+            "--base-ref",
+            "main",
+            "--repo-root",
+            str(repo),
+        ]
+        exit_code = main()
+    finally:
+        sys.argv = old_argv
+
+    out = capsys.readouterr()
+    assert exit_code == 0
+    assert "WO-999" not in out.err
+
+
+def test_main_still_fails_when_branch_drops_an_inherited_heading(tmp_path, capsys):
+    """The case the gate exists for must keep failing even while `main`
+    has moved on: a branch that drops a heading it actually inherited."""
+    repo = _build_diverged_repo(tmp_path)
+
+    _git(repo, "checkout", "-q", "feature")
+    (repo / "BACKLOG_DONE.md").write_text(
+        _read("working_done_missing.md"), encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "feature drops a heading")
+
+    _git(repo, "checkout", "-q", "main")
+    new_done = _read("base_done.md") + (
+        "\n## WO-999: a heading added after the branch point "
+        "[Done 2026-09-12]\n\nNot visible to feature.\n"
+    )
+    (repo / "BACKLOG_DONE.md").write_text(new_done, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "main gains a heading")
+
+    _git(repo, "checkout", "-q", "feature")
+
+    old_argv = sys.argv
+    try:
+        sys.argv = [
+            "check_backlog_done_headings.py",
+            "--base-ref",
+            "main",
+            "--repo-root",
+            str(repo),
+        ]
+        exit_code = main()
+    finally:
+        sys.argv = old_argv
+
+    out = capsys.readouterr()
+    assert exit_code == 1
+    assert "WO-900: fixed the gadget" in out.err
+    # WO-999 was never the branch's to lose -- it didn't exist yet at the
+    # branch's fork point -- so it must not be reported missing.
+    assert "WO-999" not in out.err
+
+
+def test_main_passes_when_branch_only_adds_headings(tmp_path):
+    """A branch that adds new BACKLOG_DONE.md entries of its own (and
+    drops nothing it inherited) must pass, even against a diverged main."""
+    repo = _build_diverged_repo(tmp_path)
+
+    _git(repo, "checkout", "-q", "feature")
+    new_done = _read("base_done.md") + (
+        "\n## WO-777: a brand new entry on the branch [Done 2026-09-12]\n"
+    )
+    (repo / "BACKLOG_DONE.md").write_text(new_done, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "feature adds a heading")
+
+    old_argv = sys.argv
+    try:
+        sys.argv = [
+            "check_backlog_done_headings.py",
+            "--base-ref",
+            "main",
+            "--repo-root",
+            str(repo),
+        ]
+        exit_code = main()
+    finally:
+        sys.argv = old_argv
+
+    assert exit_code == 0

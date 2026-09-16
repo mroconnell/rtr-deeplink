@@ -11,7 +11,10 @@ the daily launchd burst was blocked within 9-38 pages every morning):
   feed      the YouTube lines of scripts/tier3_auto_transcription_queue.txt
             -> scripts/feed_tier3_auto_transcription._push_if_has_video(),
             so the WO-144 probe and WO-156 ingest gate are unchanged. A page
-            fed here is caption-fetched next by the captions lane.
+            fed here is caption-fetched next by the captions lane. Its
+            WO-144 probe rows go to a LOCAL, gitignored buffer
+            (tier3_auto_transcription_queue_probe.local.csv), not the
+            tracked sidecar CSV -- see `advance` below.
   audio     pages the captions lane marked "captions are disabled" ->
             audio download + local Whisper via
             scripts/transcribe_backlog_locally.process_one(), capped per day
@@ -30,8 +33,14 @@ so a restart resumes. A lock file stops a second instance on the same
 machine -- two pingers on one address is what this replaces. No alert
 emails: the three reused functions never send any, and a block is
 routine here, not an incident. Read docs/YOUTUBE_DRIP_RUNBOOK.md before
-running this. Never rewrites the queue file on its own: `advance` drops
-the fed lines for a daily PR, the same shape as the GitHub feed's.
+running this. Never rewrites a tracked file while the drip is running:
+`advance` drops the fed queue lines and folds the feed lane's local probe
+buffer into the tracked sidecar CSV (fold_probe_sidecar(), WO-248) --
+both for the one daily PR, the same shape as the GitHub feed's. Before
+WO-248, the feed lane appended straight to the tracked sidecar CSV live,
+hours ahead of that one daily commit, while `main` kept growing the same
+file through merged sweeps -- a merge conflict on every `git pull` on the
+drip Mac, append-only so nothing was lost, but hand-resolved every day.
 """
 
 import argparse
@@ -66,11 +75,25 @@ load_dotenv(REPO_ROOT / ".env")
 load_dotenv()
 
 from app.platforms.base import UnsupportedPlatformError, detect_platform  # noqa: E402
+from app.platforms.queue_probe import DEFAULT_SIDECAR_PATH  # noqa: E402
 from app.platforms.youtube import YOUTUBE_CAPTIONS_DISABLED_MARKER  # noqa: E402
 
 logger = logging.getLogger("youtube_drip")
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+# WO-248: the feed lane used to append every probe straight to the
+# tracked DEFAULT_SIDECAR_PATH (app/platforms/queue_probe.py), live,
+# while the drip ran for hours between the one daily `git pull` +
+# `advance` + PR. Meanwhile `main` kept growing the same tracked file
+# through merged sweeps elsewhere, so every pull on the drip Mac
+# conflicted on it -- confirmed, append-only so nothing was ever lost,
+# but the operator had to hand-resolve a union every single day. Rows
+# now land here instead (gitignored, local to this Mac) and `advance`
+# folds them into the tracked file once, right before the commit --
+# see fold_probe_sidecar() below.
+LOCAL_PROBE_SIDECAR_PATH = (
+    REPO_ROOT / "scripts" / "tier3_auto_transcription_queue_probe.local.csv"
+)
 DEFAULT_STATE_DIR = Path.home() / ".rtr" / "youtube_drip"
 
 SPACING_SECONDS = 180.0
@@ -114,12 +137,38 @@ def next_block_sleep(level: int) -> int:
 
 
 # Platforms whose meeting pages embed a YouTube video (CivicWeb and
-# PrimeGov delegate to the YouTube adapter -- see each adapter's own
-# docstring). Their queue lines belong to this lane too: the resolve is a
-# YouTube metadata call from this machine's address, and the probe then
-# dispatches on the resolved video's host (WO-205), so a line whose video
-# turns out not to be YouTube still ingests normally.
-YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov")
+# PrimeGov delegate to the YouTube adapter; BoardDocs -- WO-365 -- delegates
+# to YouTube OR Vimeo, see each adapter's own docstring). Their queue lines
+# belong to this lane too: the resolve is a YouTube metadata call from this
+# machine's address, and the probe then dispatches on the resolved video's
+# host (WO-205), so a line whose video turns out not to be YouTube (a
+# BoardDocs tenant whose `bd.videoservice` is Vimeo, say) still ingests
+# normally rather than erroring -- nothing here is YouTube-specific past
+# this filter. Identity for a delegating platform's page comes from
+# `source_url`/`origin_host` (the delegating platform's own tenant host,
+# never overwritten by the direct-call delegation these three adapters use
+# -- see boarddocs.py's/primegov.py's own docstrings) plus its
+# `tenant_overrides.csv` pin, not from a bare `youtube:<id>` pin (WO-367).
+YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov", "boarddocs")
+
+
+def _classify_queue_url(url: str) -> Tuple[bool, str]:
+    """(keep?, reason) for one already-parsed queue URL -- "reason" is the
+    detected platform when kept, or a short skip reason otherwise. The one
+    place `youtube_queue_lines()` and `check_lines()` (WO-367's
+    --check-lines) both dispatch on, so the filter a line actually gets fed
+    through and the filter a dry run reports on can never drift apart."""
+    try:
+        platform = detect_platform(url)
+    except UnsupportedPlatformError:
+        return False, "unsupported platform"
+    if platform in YOUTUBE_DELEGATING_PLATFORMS:
+        return True, platform
+    if platform != "youtube":
+        return False, f"platform={platform}, not a YouTube delegator"
+    if not _YT_ID_RE.search(url):
+        return False, "youtube platform but no 11-char video id in the URL"
+    return True, platform
 
 
 def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]]:
@@ -135,16 +184,28 @@ def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]
         if not line or line.startswith("#"):
             continue
         url, src = _parse_queue_line(line)
-        try:
-            platform = detect_platform(url)
-        except UnsupportedPlatformError:
-            continue
-        if platform in YOUTUBE_DELEGATING_PLATFORMS:
+        keep, _ = _classify_queue_url(url)
+        if keep:
             out.append((line, url, src))
+    return out
+
+
+def check_lines(lines: List[str]) -> List[Tuple[str, str, str]]:
+    """(raw line, verdict, detail) for every non-comment, non-blank queue
+    line -- "keep"/"skip" plus the platform (kept) or reason (skipped).
+    Filters through the exact same `_classify_queue_url()` the feed lane
+    uses, so this is a real dry run of `youtube_queue_lines()`, not a
+    parallel guess -- the --check-lines CLI command below prints this."""
+    from scripts.feed_tier3_auto_transcription import _parse_queue_line
+
+    out = []
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
             continue
-        if platform != "youtube" or not _YT_ID_RE.search(url):
-            continue
-        out.append((line, url, src))
+        url, _src = _parse_queue_line(line)
+        keep, detail = _classify_queue_url(url)
+        out.append((line, "keep" if keep else "skip", detail))
     return out
 
 
@@ -185,6 +246,57 @@ def advance_queue_lines(lines: List[str], fed_urls: set) -> Tuple[List[str], int
                 continue
         kept.append(raw)
     return kept, dropped
+
+
+def fold_probe_sidecar(local_path: Path, tracked_path: Path) -> int:
+    """Append every row in the drip's local probe buffer (`local_path`) to
+    the tracked sidecar CSV (`tracked_path`) that isn't already there,
+    keyed on the `url` column -- the same "already probed" dedup every
+    other reader of this file already applies (e.g.
+    wo150_finish_tier3.py's `_load_probed_urls()`), so a URL the tracked
+    file already carries a row for is skipped rather than duplicated.
+    Returns how many rows were actually appended. Does not touch
+    `local_path` -- call `clear_local_probe_sidecar()` once this has run
+    to empty the buffer for the next day."""
+    if not local_path.exists():
+        return 0
+    with local_path.open(newline="") as f:
+        rows = list(csv.reader(f))
+    if len(rows) <= 1:
+        return 0
+    header, data_rows = rows[0], [r for r in rows[1:] if r]
+    if not data_rows:
+        return 0
+
+    existing_urls = set()
+    tracked_is_new = not tracked_path.exists()
+    if not tracked_is_new:
+        with tracked_path.open(newline="") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # header
+            existing_urls = {row[0] for row in reader if row}
+
+    tracked_path.parent.mkdir(parents=True, exist_ok=True)
+    appended = 0
+    with tracked_path.open("a", newline="") as f:
+        writer = csv.writer(f)
+        if tracked_is_new:
+            writer.writerow(header)
+        for row in data_rows:
+            if row[0] in existing_urls:
+                continue
+            writer.writerow(row)
+            existing_urls.add(row[0])
+            appended += 1
+    return appended
+
+
+def clear_local_probe_sidecar(local_path: Path) -> None:
+    """Empty the drip's local probe buffer after fold_probe_sidecar() has
+    copied its rows into the tracked file -- append_probe_row() recreates
+    the header on the next write, same as a brand-new file, so removing
+    it outright is enough."""
+    local_path.unlink(missing_ok=True)
 
 
 def audio_page_from_export_row(row: dict) -> Optional[dict]:
@@ -583,7 +695,9 @@ class Drip:
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
         else:
-            result = await feed._push_if_has_video(session, url, src)
+            result = await feed._push_if_has_video(
+                session, url, src, probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH
+            )
         if is_block_text(result):
             return True, self._block("blocked_until", "block_level", result)
         fed[url] = result[:200]
@@ -826,6 +940,14 @@ async def advance(state: State) -> None:
         1 for line in kept if line.strip() and not line.strip().startswith("#")
     )
     print(f"dropped {dropped} fed line(s); {remaining} remaining")
+
+    folded = fold_probe_sidecar(LOCAL_PROBE_SIDECAR_PATH, DEFAULT_SIDECAR_PATH)
+    clear_local_probe_sidecar(LOCAL_PROBE_SIDECAR_PATH)
+    print(
+        f"folded {folded} new probe row(s) from the local buffer into "
+        f"{DEFAULT_SIDECAR_PATH.name}; local buffer cleared"
+    )
+
     async with aiohttp.ClientSession() as session:
         try:
             async with session.post(
@@ -839,7 +961,26 @@ async def advance(state: State) -> None:
             print(f"[WARN] could not report queue depth: {e}")
 
 
+def _run_check_lines(args) -> None:
+    """--check-lines / `check-lines <file>`: print keep/skip for every real
+    line in a queue-shaped file with no network call and no lock -- a dry
+    run of the feed lane's own filter (`youtube_queue_lines()`), for
+    confirming a platform change (e.g. WO-367 adding "boarddocs" to
+    YOUTUBE_DELEGATING_PLATFORMS) actually moves a real line from skip to
+    keep before it ever reaches the drip Mac."""
+    from app.platforms import register_all_finders
+
+    register_all_finders()
+    path = Path(args.check_lines_file or QUEUE_FILE)
+    lines = path.read_text().splitlines()
+    for line, verdict, detail in check_lines(lines):
+        print(f"{verdict:4s} {detail:40s} {line}")
+
+
 async def run(args) -> None:
+    if args.command == "check-lines":
+        _run_check_lines(args)
+        return
     state_dir = Path(args.state_dir)
     state_dir.mkdir(parents=True, exist_ok=True)
     lock = open(state_dir / "lock", "w")
@@ -909,8 +1050,18 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="run",
-        choices=["run", "advance"],
-        help="run (default) = the drip; advance = drop fed lines from the queue file for a PR",
+        choices=["run", "advance", "check-lines"],
+        help=(
+            "run (default) = the drip; advance = drop fed lines from the queue "
+            "file for a PR; check-lines = print keep/skip per line in "
+            "--check-lines-file (default: the tier-3 queue file) with no "
+            "network call, no lock -- a dry run of the feed lane's own filter"
+        ),
+    )
+    p.add_argument(
+        "--check-lines-file",
+        default=None,
+        help="check-lines only: path to a queue-shaped file (default: the tier-3 queue file)",
     )
     p.add_argument("--state-dir", default=str(DEFAULT_STATE_DIR))
     p.add_argument(

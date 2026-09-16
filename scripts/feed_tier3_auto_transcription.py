@@ -120,6 +120,7 @@ from app.platforms.base import (
 from app.platforms.queue_probe import (  # noqa: E402
     DEFAULT_SIDECAR_PATH,
     append_probe_row,
+    has_owner,
     probe_queue_entry,
 )
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -151,7 +152,17 @@ async def _push_if_has_video(
     session: aiohttp.ClientSession,
     url: str,
     source_url_override: Optional[str] = None,
+    *,
+    probe_sidecar_path: Path = DEFAULT_SIDECAR_PATH,
 ) -> str:
+    """`probe_sidecar_path` defaults to the tracked CSV (this script's own
+    GitHub Actions run and every other caller). WO-248: the always-on
+    YouTube drip (scripts/youtube_drip.py) passes its own LOCAL, gitignored
+    buffer here instead -- appending to the tracked file hundreds of times
+    a day, hours apart from the one daily commit, is what produced a merge
+    conflict on every `git pull` on the drip Mac. The drip's daily
+    `advance` step folds that local buffer into the tracked file once,
+    right before the commit, the same shape as the queue file itself."""
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
@@ -181,12 +192,27 @@ async def _push_if_has_video(
         source_page_url=result.source_url,
         platform=platform,
     )
-    append_probe_row(DEFAULT_SIDECAR_PATH, probe)
+    append_probe_row(probe_sidecar_path, probe)
     if probe.verdict.startswith("reject-"):
         return f"[SKIP] {probe.verdict}: {probe.reason} ({url})"
 
     if source_url_override:
         result.source_url = source_url_override
+
+    # WO-346: refuse to advance a line whose source_url has no owner --
+    # a MULTI_GOV_HOSTS host (youtube.com, vimeo.com, ...) with no
+    # tenant_overrides.csv pin matching THIS page ingests as
+    # rtr:unknown:{host} (no hub link, no identity), exactly the gap the
+    # tier-3 queue ownership audit found sitting unrecorded across 478 of
+    # 3,012 queue+deferred lines. Checked on the FINAL source_url (after
+    # source_url_override above), since that's what
+    # archive/db/crud.py::_resolve_page_government() actually parses the
+    # tenant host from. This line is put BACK into the queue (not
+    # dropped) so it can still ingest once a pin exists -- see main()'s
+    # own handling of a [NO-OWNER] result below.
+    owned, owner_gov_id, reason = has_owner(result.source_url)
+    if not owned:
+        return f"[NO-OWNER] {reason} ({url})"
 
     normalized = normalize_url(url)
     try:
@@ -201,9 +227,24 @@ async def _push_if_has_video(
         # alone. Passed anyway so the call site is honest about what
         # already happened, and so nothing changes here if segments ever
         # do show up on a future tier-3 payload.
+        #
+        # gov_id (WO-346): when has_owner() found the gov_id from a
+        # tenant_overrides.csv pin, send it straight through -- CLAUDE.md's
+        # "send the government's id in every ingest payload" rule, so this
+        # page keys correctly the moment it ingests even if the Archive
+        # service's own deployed copy of tenant_overrides.csv hasn't
+        # picked up this WO's new pins yet. None for a single-tenant host
+        # (has_owner() doesn't run the full ladder to derive one) -- the
+        # Archive's own server-side resolve still handles that case fine.
+        # _ingest() itself has no gov_id parameter (see bulk_ingest.py's
+        # process_one(), the pattern this follows) -- it rides in the
+        # payload dict instead.
+        payload = result.model_dump()
+        if owner_gov_id:
+            payload["gov_id"] = owner_gov_id
         response = await _ingest(
             session,
-            result.model_dump(),
+            payload,
             normalized,
             already_probed=True,
             caller="feed_tier3_auto_transcription",
@@ -232,16 +273,36 @@ async def main() -> None:
 
     register_all_finders()
 
+    # WO-346: a [NO-OWNER] line is put back at the end of the queue
+    # rather than dropped -- it's a real, fixable gap (a missing
+    # tenant_overrides.csv pin), not a dead link, so the same "advance
+    # the queue regardless of individual outcomes" rule below would
+    # otherwise permanently lose it the moment its batch slot comes up.
+    no_owner_lines: list[str] = []
     async with aiohttp.ClientSession() as session:
         for i, line in enumerate(batch):
             url, source_url_override = _parse_queue_line(line)
-            print(await _push_if_has_video(session, url, source_url_override))
+            result = await _push_if_has_video(session, url, source_url_override)
+            print(result)
+            if result.startswith("[NO-OWNER]"):
+                no_owner_lines.append(line)
             if i < len(batch) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 
+    if no_owner_lines:
+        print(
+            f"[NO-OWNER] {len(no_owner_lines)} line(s) refused and left in the "
+            "queue -- needs a tenant_overrides.csv pin (see BACKLOG.md's "
+            "queue-ownership entry / WO-346)."
+        )
+        remainder = remainder + no_owner_lines
+
     # Advance the queue regardless of individual outcomes -- same "don't
     # retry failing commands in a loop" reasoning as
-    # feed_granicus_auto_transcription.py.
+    # feed_granicus_auto_transcription.py. The one exception is a
+    # [NO-OWNER] line (folded back into `remainder` above): that's a
+    # fixable gap, not a dead link, so it stays in the queue instead of
+    # being lost the way a genuine failure is.
     QUEUE_FILE.write_text("\n".join(remainder) + ("\n" if remainder else ""))
 
     # Report the new depth to the Archive so its own

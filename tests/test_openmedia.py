@@ -254,3 +254,88 @@ def test_find_agenda_link_returns_none_when_no_document_iframe():
         OpenMediaAssetFinder._find_agenda_link(html, "https://x.open.media/sessions/1")
         is None
     )
+
+
+# --- WO-285: /embed/sessions/{id}/... form -------------------------------
+
+LITTLETON_EMBED_URL = "https://littleton.ompnetwork.org/embed/sessions/346131/"
+LITTLETON_PLAIN_URL = "https://littleton.ompnetwork.org/sessions/346131/"
+LITTLETON_VIDEO_ID = "paa5oHg7BU0"
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (
+            "https://littleton.ompnetwork.org/embed/sessions/346131/",
+            "https://littleton.ompnetwork.org/sessions/346131/",
+        ),
+        (
+            "https://littleton.ompnetwork.org/embed/sessions/346131",
+            "https://littleton.ompnetwork.org/sessions/346131",
+        ),
+        (
+            "https://littleton.ompnetwork.org/sessions/346131/",
+            "https://littleton.ompnetwork.org/sessions/346131/",
+        ),
+        ("https://littleton.ompnetwork.org/embed", "https://littleton.ompnetwork.org/"),
+        (
+            "https://littleton.ompnetwork.org/embed/",
+            "https://littleton.ompnetwork.org/",
+        ),
+    ],
+)
+def test_strip_embed_segment(url, expected):
+    assert OpenMediaAssetFinder._strip_embed_segment(url) == expected
+
+
+async def test_resolve_embed_sessions_url_fetches_the_plain_page_instead(monkeypatch):
+    # Real bug, WO-285 (2026-09-12): Littleton, CO's own site links the
+    # `/embed/sessions/{id}/...` form; that form 200s but used to resolve
+    # with no video at all, because `extract_video_id()` scans raw HTML
+    # for a URL-shaped mention and the embed page carries none -- both
+    # real pages hold the identical `"om_youtube":{"youtube_id":"..."}`
+    # JS blob, but only the plain page also has the `<meta
+    # property="og:video">` tag that's actually URL-shaped. Fixed by
+    # fetching the plain (non-embed) page instead, which is byte-for-byte
+    # the real `littleton_session_346131.html` fixture
+    # test_resolve_real_goodyear_meeting's sibling tests already trust.
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    plain_html = load_fixture("openmedia", "littleton_session_346131.html")
+
+    # The embed URL must never actually be fetched -- only the
+    # normalized plain URL is mocked, so fetching the embed URL directly
+    # would raise (mock_session's own unmocked-route guard).
+    routes = {
+        LITTLETON_PLAIN_URL: FakeResponse(
+            status=200, text=plain_html, url=LITTLETON_PLAIN_URL
+        )
+    }
+    with mock_session(routes):
+        result = await OpenMediaAssetFinder().resolve(LITTLETON_EMBED_URL)
+
+    assert result.platform == "youtube"
+    # source_url/external_id stay keyed to the ORIGINAL embed URL the
+    # caller passed -- only the page fetch itself is normalized.
+    assert result.source_url == LITTLETON_EMBED_URL
+    assert result.external_id == "open_media:littleton.ompnetwork.org:346131"
+    assert result.video_url == f"https://www.youtube.com/embed/{LITTLETON_VIDEO_ID}"
+
+
+async def test_resolve_plain_sessions_url_unaffected_by_the_normalization(monkeypatch):
+    # Same real fixture, reached the ordinary way (no `/embed`) -- proves
+    # the normalization is a no-op for every tenant that never links the
+    # embed form, i.e. every previously-passing case in this file.
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    plain_html = load_fixture("openmedia", "littleton_session_346131.html")
+
+    routes = {
+        LITTLETON_PLAIN_URL: FakeResponse(
+            status=200, text=plain_html, url=LITTLETON_PLAIN_URL
+        )
+    }
+    with mock_session(routes):
+        result = await OpenMediaAssetFinder().resolve(LITTLETON_PLAIN_URL)
+
+    assert result.video_url == f"https://www.youtube.com/embed/{LITTLETON_VIDEO_ID}"
+    assert result.source_url == LITTLETON_PLAIN_URL

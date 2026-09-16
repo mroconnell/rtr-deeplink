@@ -4,6 +4,12 @@ tests/test_transcript_wanted.py) and the token-gated
 GET /internal/pages/all-urls route on top of it. Consumed by
 scripts/backfill_archived_pages.py -- see that script's own docstring and
 BACKLOG.md's "archived pages don't self-heal" entry for why this exists.
+
+The `video_channel` field (WO-295) is what
+scripts/backfill_archived_pages.py's --missing-channel-only flag filters
+on -- see tests/test_backfill_missing_channel_only.py for the flag's own
+filtering-logic tests against plain dicts; the tests below cover the
+real data source those dicts are shaped after.
 """
 
 from fastapi.testclient import TestClient
@@ -14,8 +20,10 @@ from archive.db import crud
 client = TestClient(archive.main.app)
 
 
-def _payload(external_id: str, source_url: str, *, platform="granicus") -> dict:
-    return {
+def _payload(
+    external_id: str, source_url: str, *, platform="granicus", video_channel=None
+) -> dict:
+    payload = {
         "platform": platform,
         "source_url": source_url,
         "external_id": external_id,
@@ -29,6 +37,9 @@ def _payload(external_id: str, source_url: str, *, platform="granicus") -> dict:
         "transcript_language": None,
         "transcript_warnings": [],
     }
+    if video_channel is not None:
+        payload["video_channel"] = video_channel
+    return payload
 
 
 async def test_list_all_page_urls_includes_a_real_page():
@@ -76,6 +87,35 @@ async def test_list_all_page_urls_includes_every_platform_not_just_youtube():
         for p in pages
         if p["source_url_normalized"] == url and p["platform"] == "swagit"
     ]
+
+
+async def test_list_all_page_urls_carries_video_channel_when_set():
+    url = "https://www.youtube.com/watch?v=backfillchannel1"
+    payload = _payload(
+        "backfill:channel-1",
+        url,
+        platform="youtube",
+        video_channel="@TestTownCouncil",
+    )
+    await crud.ingest_resolution(payload, url)
+
+    pages = await crud.list_all_page_urls()
+    match = [p for p in pages if p["source_url_normalized"] == url][0]
+    assert match["video_channel"] == "@TestTownCouncil"
+
+
+async def test_list_all_page_urls_carries_video_channel_as_none_when_unset():
+    # This is the shape --missing-channel-only filters on -- a page
+    # ingested before PR #999 has no video_channel at all, not a blank
+    # string, so the key must still come back (as None), not be omitted.
+    url = "https://www.youtube.com/watch?v=backfillchannel2"
+    payload = _payload("backfill:channel-2", url, platform="youtube")
+
+    await crud.ingest_resolution(payload, url)
+
+    pages = await crud.list_all_page_urls()
+    match = [p for p in pages if p["source_url_normalized"] == url][0]
+    assert match["video_channel"] is None
 
 
 def test_all_page_urls_route_rejects_missing_token():
