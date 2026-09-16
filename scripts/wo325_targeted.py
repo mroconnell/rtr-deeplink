@@ -341,8 +341,14 @@ def catchall_signature(domain: str) -> dict:
     catch-all template answering every path the same way."""
     url = f"https://{domain}{nonsense_path()}"
     try:
-        resp = w273t.polite_fetch(url, method="GET")
-        body = resp.content or b""
+        resp, skip = w273t.polite_page_fetch(url)
+        if skip or resp is None:
+            return {"status": None, "body_len": 0, "body_hash": "", "error": skip}
+        try:
+            body, _ = w273t.bounded_page_body(resp)
+        finally:
+            resp.close()
+        body = body or b""
         return {
             "status": resp.status_code,
             "body_len": len(body),
@@ -475,6 +481,10 @@ def fetch_and_score_v2(
         "error": "",
         "timing_ms": 0,
     }
+    if w273t.non_page_url(url):
+        out["error"] = "skipped-media-url"
+        out["timing_ms"] = int((time.monotonic() - t0) * 1000)
+        return out
     body, used_archive = w273t.try_wayback_archived_body(url)
     html = ""
     if body is not None:
@@ -488,9 +498,25 @@ def fetch_and_score_v2(
     else:
         head_status = None
         try:
-            head_resp = w273t.polite_fetch(url, method="HEAD")
-            head_status = head_resp.status_code
-            alive = head_status < 400
+            head_resp, skip = w273t.polite_page_fetch(url, method="HEAD")
+            if skip:
+                out["fetch_method"] = "live-head"
+                out["error"] = skip
+                out["timing_ms"] = int((time.monotonic() - t0) * 1000)
+                return out
+            try:
+                head_status = head_resp.status_code
+                alive = head_status < 400
+                if alive:
+                    _, skip = w273t.bounded_page_body(head_resp)
+                    if skip:
+                        out["fetch_method"] = "live-head"
+                        out["http_status"] = head_status
+                        out["error"] = skip
+                        out["timing_ms"] = int((time.monotonic() - t0) * 1000)
+                        return out
+            finally:
+                head_resp.close()
         except Exception:  # noqa: BLE001
             alive = True  # some servers reject HEAD; try GET anyway
         if not alive:
@@ -501,15 +527,28 @@ def fetch_and_score_v2(
             return out
         out["fetch_method"] = "live"
         try:
-            resp = w273t.polite_fetch(url, method="GET")
-            out["http_status"] = resp.status_code
-            body = resp.content or b""
+            resp, skip = w273t.polite_page_fetch(url)
+            if skip:
+                out["error"] = skip
+                out["timing_ms"] = int((time.monotonic() - t0) * 1000)
+                return out
+            try:
+                out["http_status"] = resp.status_code
+                body, skip = w273t.bounded_page_body(resp)
+            finally:
+                resp.close()
+            if skip:
+                out["error"] = skip
+                out["timing_ms"] = int((time.monotonic() - t0) * 1000)
+                return out
+            body = body or b""
             out["body_len"] = len(body)
-            if resp.status_code == 200 and resp.text:
-                if w273.is_challenge(resp.text):
+            if out["http_status"] == 200 and body:
+                page_text = body.decode("utf-8", errors="replace")
+                if w273.is_challenge(page_text):
                     out["error"] = "challenge-gate"
                 else:
-                    html = resp.text
+                    html = page_text
         except Exception as e:  # noqa: BLE001
             out["error"] = str(e)[:200]
             body = b""
