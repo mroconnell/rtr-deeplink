@@ -106,7 +106,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -219,6 +219,8 @@ def try_wayback_archived_body(url: str) -> tuple:
     docstring on why this is deliberately not retried the way phase 1's
     per-government calls are). Returns (body_bytes_or_None, used_archive:
     bool)."""
+    if non_page_url(url):
+        return None, False
     cdx_url = (
         "https://web.archive.org/cdx/search/cdx"
         f"?url={url}&filter=statuscode:200&collapse=urlkey"
@@ -226,15 +228,33 @@ def try_wayback_archived_body(url: str) -> tuple:
     )
     with _ARCHIVE_SEMA:
         try:
-            resp = requests.get(cdx_url, headers=HEADERS, timeout=CDX_EXACT_TIMEOUT)
+            resp, skip = bounded_redirect_fetch(
+                cdx_url,
+                lambda next_url: requests.get(
+                    next_url,
+                    headers=HEADERS,
+                    timeout=CDX_EXACT_TIMEOUT,
+                    stream=True,
+                    allow_redirects=False,
+                ),
+            )
         except Exception:  # noqa: BLE001
             return None, False
-    if resp.status_code != 200:
-        return None, False
-    try:
-        rows = json.loads(resp.text)[1:]
-    except Exception:  # noqa: BLE001
-        return None, False
+        if skip or resp is None:
+            return None, False
+        try:
+            if resp.status_code != 200:
+                return None, False
+            cdx_body = bytearray()
+            for chunk in resp.iter_content(chunk_size=16384):
+                if len(cdx_body) + len(chunk) > 65536:
+                    return None, False
+                cdx_body.extend(chunk)
+            rows = json.loads(cdx_body)[1:]
+        except Exception:  # noqa: BLE001
+            return None, False
+        finally:
+            resp.close()
     if not rows:
         return None, False
     orig, ts = max(rows, key=lambda r: r[1] if len(r) > 1 else "")
@@ -243,16 +263,35 @@ def try_wayback_archived_body(url: str) -> tuple:
     id_url = f"https://web.archive.org/web/{ts}id_/{orig}"
     with _ARCHIVE_SEMA:
         try:
-            resp = requests.get(id_url, headers=HEADERS, timeout=CDX_EXACT_TIMEOUT)
+            resp, skip = bounded_redirect_fetch(
+                id_url,
+                lambda next_url: requests.get(
+                    next_url,
+                    headers=HEADERS,
+                    timeout=CDX_EXACT_TIMEOUT,
+                    stream=True,
+                    allow_redirects=False,
+                ),
+            )
         except Exception:  # noqa: BLE001
             return None, False
-    if resp.status_code == 200:
-        return resp.content, True
+        if skip or resp is None:
+            return None, False
+        try:
+            if resp.status_code == 200:
+                body, reason = bounded_page_body(resp)
+                if not reason:
+                    return body, True
+        except Exception:  # noqa: BLE001
+            return None, False
+        finally:
+            resp.close()
     return None, False
 
 
-def polite_fetch(url: str, method: str = "GET"):
+def polite_fetch(url: str, method: str = "GET", **kwargs):
     key = vendor_family_for_url(url)
+    allow_redirects = kwargs.pop("allow_redirects", True)
     return RATE_LIMITER.wait_and_request(
         key,
         requests.request,
@@ -260,8 +299,119 @@ def polite_fetch(url: str, method: str = "GET"):
         url,
         headers=HEADERS,
         timeout=GOV_TIMEOUT,
-        allow_redirects=True,
+        allow_redirects=allow_redirects,
+        **kwargs,
     )
+
+
+PAGE_BODY_LIMIT = 2 * 1024 * 1024
+_NON_PAGE_SUFFIXES = (
+    ".mp4",
+    ".mov",
+    ".m4v",
+    ".webm",
+    ".avi",
+    ".mp3",
+    ".wav",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".zip",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+)
+
+
+def non_page_url(url: str) -> bool:
+    return urlparse(url).path.lower().endswith(_NON_PAGE_SUFFIXES)
+
+
+def page_url_skip(url: str, redirected: bool = False) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return "skipped-non-http-redirect"
+    host = parsed.netloc.lower().split(":", 1)[0]
+    if host in ("youtube.com", "youtu.be", "www.youtube.com") or host.endswith(
+        ".youtube.com"
+    ):
+        return "skipped-youtube-redirect" if redirected else "skipped-youtube-url"
+    return "skipped-media-url" if non_page_url(url) else ""
+
+
+def bounded_redirect_fetch(url: str, request_fn) -> tuple[object | None, str]:
+    """Follow page redirects without consuming redirect response bodies."""
+    for hop in range(6):
+        skip = page_url_skip(url, redirected=hop > 0)
+        if skip:
+            return None, skip
+        resp = request_fn(url)
+        if resp.status_code not in (301, 302, 303, 307, 308):
+            return resp, ""
+        location = resp.headers.get("Location", "")
+        next_url = urljoin(resp.url or url, location) if location else ""
+        resp.close()
+        if not next_url:
+            return None, "skipped-broken-redirect"
+        url = next_url
+    return None, "skipped-redirect-loop"
+
+
+def polite_page_fetch(url: str, method: str = "GET"):
+    return bounded_redirect_fetch(
+        url,
+        lambda next_url: polite_fetch(
+            next_url, method=method, stream=True, allow_redirects=False
+        ),
+    )
+
+
+def bounded_page_body(resp) -> tuple[bytes | None, str]:
+    """Read at most one small HTML page from a streamed response."""
+    skip = page_url_skip(resp.url or "", redirected=True)
+    if skip:
+        return None, skip
+    content_type = resp.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+    if content_type and content_type not in (
+        "text/html",
+        "application/xhtml+xml",
+        "text/plain",
+    ):
+        return None, "skipped-non-html"
+    try:
+        declared = int(resp.headers.get("Content-Length", "0"))
+    except ValueError:
+        declared = 0
+    if declared > PAGE_BODY_LIMIT:
+        return None, "skipped-oversize"
+    body = bytearray()
+    for chunk in resp.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        if len(body) + len(chunk) > PAGE_BODY_LIMIT:
+            return None, "skipped-oversize"
+        body.extend(chunk)
+        if len(body) <= len(chunk):
+            sample = chunk[:512]
+            if (
+                b"\x00" in sample
+                or sample.startswith((b"%PDF", b"\x89PNG", b"PK\x03\x04"))
+                or sample[4:8] == b"ftyp"
+                or (
+                    not content_type
+                    and sample
+                    and sum(c in b"\t\n\r" or 32 <= c <= 126 for c in sample)
+                    < len(sample) * 0.8
+                )
+            ):
+                return None, "skipped-non-html"
+    return bytes(body), ""
 
 
 def _body_fingerprint(body: bytes) -> tuple:
