@@ -194,6 +194,10 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # being listed (it would only forbid a whole-host pin nobody
         # would ever write against a real single-tenant host anyway).
         "amsva.wistia.com",
+        # LMC Media publishes both Town and Village of Mamaroneck meetings
+        # on this one Swagit tenant. Video IDs, not the tenant host, identify
+        # the government; unpinned LMC videos must stay unattributed.
+        "lmctvny.new.swagit.com",
         # ClerkBase/ClerkHQ tenants live on the bare domain, keyed by a
         # path segment (`clerkshq.com/YellowSprings-OH`), never a
         # subdomain -- see `CORPORATE_HOSTS_BY_PLATFORM`'s own comment.
@@ -240,6 +244,9 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # publishes), where a per-show id only ever covers the one show
         # it names.
         "reflect-tst-mn.cablecast.tv",
+        # Merrimack TV's town-operated vault also publishes School Board
+        # programs; only a specific show can identify the town's council.
+        "reflect-townofmerrimack.cablecast.tv",
         # Castus's own SaaS platform domain -- EVERY Castus customer's
         # video lives under this one host (`/vod/{tenantSlug}/video/
         # {id}`), unlike Cablecast/TelVue, where each tenant usually gets
