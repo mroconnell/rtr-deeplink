@@ -1,5 +1,59 @@
 # Backlog — done
 
+## WO-903: CivicClerk now delegates a Cablecast `externalVideoUrl`/`externalMediaUrl` to CablecastAssetFinder — live-verified on Excelsior, MN; corrects a wrong government list in the WO-290 tier-3-probe entry [Done 2026-09-17]
+
+**Why this ran.** `BACKLOG.md`'s "tier-3 probe has no recipe for three
+real delegated media shapes" entry (WO-290, 2026-09-12) said
+`app/platforms/civicclerk.py` needed a Cablecast delegation branch — the
+same shape PR #206 already fixed for `primegov.py`'s own Swagit/Granicus
+delegation. The entry named Belle Meade city TN, Oak Hill city TN, and
+West Lake Hills city TX as the affected governments.
+
+**What was built.** `civicclerk.py`'s `resolve()` now checks
+`detect_platform(video_url) == "cablecast"` alongside its existing
+YouTube/BoxCast checks and delegates to `CablecastAssetFinder` via
+`resolve_via_platform()` — same source_url-preserving pattern as the
+YouTube/BoxCast branches (the CivicClerk event page stays `source_url`,
+not the Cablecast URL discovered behind the scenes), and the same
+caption-fallback order (CivicClerk's own captions win when present).
+Added a regression test to `tests/test_civicclerk.py` covering the
+CablecastPublicSite delegation path.
+
+**Live verification.** Fetched Excelsior, MN's real CivicClerk event
+(`excelsiormn.portal.civicclerk.com/event/3241/media` — the one
+confirmed-real CivicClerk-to-Cablecast example in this repo's history,
+see WO-363b below) and ran the fixed adapter against it live. It
+correctly resolved the real Cablecast video,
+`reflect-lmcc.cablecast.tv/store-5/57831-Excelsior-Parks-Recrea-v1/
+vod.mp4`, confirmed directly playable (HTTP 200, `video/mp4`, 963 MB),
+with `source_url` still the CivicClerk page and title/date/jurisdiction
+all correct ("Parks and Recreation Commission" / 2026-08-11 /
+Excelsior, MN).
+
+**Correction to the WO-290 entry.** Belle Meade city TN and Oak Hill
+city TN turned out to be real ChampDS events, not CivicClerk at all —
+confirmed live, and already recorded correctly as
+`known_platform,champds,probe_gap` in
+`~/Documents/rtr-business/research/wo290_report.csv`. West Lake Hills
+city TX is a real CivicClerk event, but its `externalVideoUrl` is a
+CivicPlus DocumentCenter audio link
+(`westlakehills.gov/DocumentCenter/View/4765/07152026-ZAPCO-Audio`,
+confirmed live), not Cablecast. None of the three governments the
+WO-290 entry named for this specific gap actually needed this fix —
+that entry conflated three different delegated-media shapes (CivicClerk
+→ Cablecast, ChampDS redirect, CivicPlus DocumentCenter audio) into one
+government list. Excelsior, MN — already queued by hand (WO-363b) — is
+the one real, confirmed CivicClerk→Cablecast government, used above
+instead.
+
+**Caution.** This fix does not queue Belle Meade, Oak Hill, or West Lake
+Hills — their real gaps (a ChampDS `DOWNLOAD-MEDIA` redirect and a
+CivicPlus DocumentCenter audio link) are unrelated to Cablecast and
+still open. See `BACKLOG.md`'s rewritten entry for those two.
+
+**This WO's own gates.** `ruff check`, `ruff format --check`, and the
+full `pytest` suite (3,932 passed, 16 skipped) all green.
+
 ## Sign-in via Google sent visitors to the bare homepage instead of back to upcoming.redtaperecordings.com [Done 2026-09-14]
 
 **Why this ran.** Ryan reported that signing in with Google on
