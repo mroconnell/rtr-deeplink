@@ -6407,3 +6407,30 @@ https://www.youtube.com/watch?v=Kpl8Nug8MdE,youtube,yt-dlp-metadata,,,,0,reject-
 https://www.youtube.com/watch?v=l6mlXPyJWjE,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] l6mlXPyJWjE: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.06,2026-09-17T12:06:45+00:00,,0
 https://www.youtube.com/watch?v=SipIKFqiXN8,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] SipIKFqiXN8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.27,2026-09-17T12:06:49+00:00,,0
 https://www.youtube.com/watch?v=sVcavCm7ygY,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] sVcavCm7ygY: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.16,2026-09-17T12:06:53+00:00,,0
+https://player.vimeo.com/video/1020368987?h=c671a0fbe6&background=1&loop=1&autoplay=1&controls=0&dnt=true,vimeo,vimeo-oembed,30.00,2024-10-16,,0,reject-short,duration 30.0s is below the 60s meeting-plausibility floor,0.21,2026-09-13T14:53:45+00:00,,0
+https://player.vimeo.com/video/1225035251?background=1&loop=1,vimeo,vimeo-oembed,5.00,2026-09-08,,0,reject-short,duration 5.0s is below the 60s meeting-plausibility floor,0.17,2026-09-13T14:53:55+00:00,,0
+https://player.vimeo.com/video/357918733?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1,vimeo,vimeo-oembed,24.00,2019-09-04,,0,reject-short,duration 24.0s is below the 60s meeting-plausibility floor,0.13,2026-09-13T14:54:02+00:00,,0
+https://player.vimeo.com/video/266936040,vimeo,vimeo-oembed,264.00,2018-04-27,,0,accept,,0.14,2026-09-13T14:54:08+00:00,,1
+https://player.vimeo.com/video/1019147386?autoplay=1&loop=1&muted=1&controls=0#t=0?autoplay=0&title=0&portrait=0&byline=0&badge=0,vimeo,vimeo-oembed,84.00,2024-10-13,,0,accept,,0.13,2026-09-13T14:54:15+00:00,,1
+https://player.vimeo.com/video/642864497?h=3fef346d86&dnt=1&app_id=122963,vimeo,vimeo-oembed,157.00,2021-11-05,,0,accept,,0.13,2026-09-13T14:54:56+00:00,,1
+https://player.vimeo.com/video/237446670,vimeo,vimeo-oembed,406.00,2017-10-09,,0,accept,,0.20,2026-09-13T14:55:09+00:00,,1
+https://player.vimeo.com/video/716931850?h=66832451d6&autoplay=1&loop=1&title=0&byline=0&portrait=0,vimeo,vimeo-oembed,25.00,2022-06-03,,0,reject-short,duration 25.0s is below the 60s meeting-plausibility floor,0.31,2026-09-13T14:55:23+00:00,,0
+https://player.vimeo.com/video/787723167?h=57c8a041db&autoplay=0&title=0&portrait=0&byline=0&badge=0&loop=0&muted=0&controls=1,vimeo,vimeo-oembed,165.00,2023-01-09,,0,accept,,0.17,2026-09-13T14:56:42+00:00,,1
+https://player.vimeo.com/video/704566009?title=0&playsinline=true,vimeo,vimeo-oembed,60.00,2022-04-29,,0,accept,,0.23,2026-09-13T14:56:49+00:00,,1
+https://player.vimeo.com/video/1179320255?h=b5502a9c8f&badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1,vimeo,vimeo-oembed,10.00,2026-04-01,,0,reject-short,duration 10.0s is below the 60s meeting-plausibility floor,0.13,2026-09-13T14:56:55+00:00,,0
+https://player.vimeo.com/video/1024343388?h=f0db51dd57&autoplay=1&loop=1&autopause=0&muted=1&title=0&byline=0&portrait=0&controls=0,vimeo,vimeo-oembed,81.00,2024-10-29,,0,accept,,0.32,2026-09-13T14:57:01+00:00,,1
+https://player.vimeo.com/video/248043393,vimeo,vimeo-oembed,301.00,2017-12-19,,0,accept,,0.13,2026-09-13T14:57:07+00:00,,1
+https://player.vimeo.com/video/174359121,vimeo,vimeo-oembed,71.00,2016-07-12,,0,accept,,0.13,2026-09-13T14:57:28+00:00,,1
+https://player.vimeo.com/video/200384043,vimeo,vimeo-oembed,158.00,2017-01-20,,0,accept,,0.21,2026-09-13T14:57:34+00:00,,1
+https://player.vimeo.com/video/688553598?title=0&byline=0&portrait=0&autoplay=1&muted=1,vimeo,vimeo-oembed,76.00,2022-03-15,,0,accept,,0.14,2026-09-13T14:57:40+00:00,,1
+https://vimeo.com/1086552021,vimeo,vimeo-oembed,306.00,2025-05-21,,0,accept,,0.15,2026-09-13T14:57:48+00:00,,1
+https://player.vimeo.com/video/172229271,vimeo,vimeo-oembed,70.00,2016-06-25,,0,accept,,0.14,2026-09-13T14:57:54+00:00,,1
+https://player.vimeo.com/video/809763569?h=ef1f8af28b&autoplay=1&loop=1&autopause=0&muted=1&title=0&byline=0&portrait=0&controls=0,vimeo,vimeo-oembed,35.00,2023-03-20,,0,reject-short,duration 35.0s is below the 60s meeting-plausibility floor,0.18,2026-09-13T14:58:00+00:00,,0
+https://player.vimeo.com/video/356977730?autoplay=1&loop=1&autopause=0&muted=1&background=1,vimeo,vimeo-oembed,,,,0,reject-dead,Vimeo oEmbed carried no duration,0.14,2026-09-13T14:58:51+00:00,,0
+https://vimeo.com/168934833,vimeo,vimeo-oembed,434.00,2016-06-01,,0,accept,,0.22,2026-09-13T14:58:58+00:00,,1
+https://player.vimeo.com/video/744168137?h=ab72035fe4,vimeo,vimeo-oembed,207.00,2022-08-29,,0,accept,,0.15,2026-09-13T14:59:05+00:00,,1
+https://player.vimeo.com/video/508403387?h=5a76f4203b&dnt=1&app_id=122963,vimeo,vimeo-oembed,2920.00,2021-02-04,,1,accept,,0.18,2026-09-13T14:59:11+00:00,,1
+https://vimeo.com/168934833,vimeo,vimeo-oembed,434.00,2016-06-01,,0,accept,,0.22,2026-09-13T14:59:17+00:00,,1
+https://vimeo.com/193233661/34b2379fec,vimeo,vimeo-oembed,104.00,2016-11-27,,0,accept,,0.13,2026-09-13T14:59:26+00:00,,1
+https://player.vimeo.com/video/825244394?autoplay=1&loop=1&autopause=0&muted=1&title=0&byline=0&portrait=0&controls=0,vimeo,vimeo-oembed,46.00,2023-05-09,,0,reject-short,duration 46.0s is below the 60s meeting-plausibility floor,0.13,2026-09-13T14:59:31+00:00,,0
+https://vimeo.com/675999750,vimeo,vimeo-oembed,214.00,2022-02-10,,0,accept,,0.21,2026-09-13T14:59:37+00:00,,1
