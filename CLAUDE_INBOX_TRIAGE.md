@@ -107,6 +107,157 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-17
+
+285 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 5 batches, back to 2026-08-28), 13 new after the ledger
+filter — everything older than 2026-09-16 18:04 UTC was already covered
+by prior runs.
+
+**Out of scope / informational, no write-up**: 1 transcription worker
+daily report (2026-09-17 01:41 UTC). 1 "RTR feed drop 2026-09-16" report
+(111 meetings written — a success report, not a failure). 3 "We hit a
+snag on your transcript" user-facing emails — same three job failures
+covered below, just the reader-facing copy of the same admin alert.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): 3 individual transcription job failures — job 3247
+(Bowie MD, `cityofbowie.granicus.com/MediaPlayer.php`, "ffmpeg timed out
+after 120s" at chunk 0, 2026-09-17 03:11-03:17 UTC), job 3212 (Hernando
+County FL school district, `hernandoschools.granicus.com/MediaPlayer.php`,
+same error, 2026-09-16 21:32-21:39 UTC), and job 3207 (North Kingstown
+RI, `northkingstown.granicus.com/MediaPlayer.php`, same error,
+2026-09-16 20:41-20:48 UTC) — all three are the exact same failure
+signature as the already-open `[NEEDS-AUDIT]` "Some old/archived Granicus
+clips' `chunklist.m3u8` genuinely times out at Granicus's own origin"
+entry (`BACKLOG.md` line 6233): `media_probe.py`'s 120s timeout firing
+before Granicus's own slower 504 ever arrives. Render
+`test-redtaperecordings` "Exited with status 3" (2026-09-16 20:52 UTC) —
+same already-confirmed-closed noise per `BACKLOG_DONE.md`'s 2026-08-30
+entry, as in every prior run's section. GitHub Actions "Adapter health
+canary" failed on `main` (run `35136251373`, 2026-09-16 18:44-18:45
+UTC) — pulled the real job log: 39/40 platforms OK, the one failure is
+`ClientResponseError: 410, message='Gone'` against
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is
+a genuinely dead meeting" entry, unchanged since the 2026-09-14/09-15
+runs.
+
+- **Confirmed** — the daily "Send search alerts" GitHub Actions cron
+  (`.github/workflows/send-search-alerts.yml`, `35 23 * * *` schedule)
+  failed for the first time in its 35-run history (run `35171305878`,
+  2026-09-17 01:38 UTC) — every prior run (31-34) succeeded. The real job
+  log shows `curl` got a real `502` from
+  `{RESOLVER_BASE_URL}/admin/send-search-alerts?dry_run=false`, body
+  `{"error":"send_search_alerts_failed"}`. Traced the 502 to its source
+  in code: `app/main.py`'s `/admin/send-search-alerts` route calls
+  `archive_client.send_search_alerts()` (`app/archive_client.py:541`),
+  which POSTs to the Archive service's
+  `/internal/account/send-search-alerts` and returns `None` on any
+  non-200 response or connection failure — the resolver then turns that
+  `None` into the 502 the cron saw. This lines up exactly with a Render
+  "server failure for rtr-deeplink-archive: HTTP health check failed
+  (timed out after 5 seconds)" alert that fired one minute earlier
+  (2026-09-17 01:37:13 UTC, same run this section already lists below) —
+  the Archive was unhealthy at the exact moment the cron's single `curl`
+  call hit it.
+  - **Impact**: neither the cron (a single `curl --fail-with-body` call,
+    no retry) nor the resolver's proxy (`archive_client.send_search_alerts`,
+    one POST attempt, no retry) retries on failure, and the cron only
+    runs once a day. So a saved-search alert sweep that lands on a
+    ~5-second Archive blip is silently skipped for the whole day, not
+    just delayed — nobody with a saved search got their alert email for
+    2026-09-17. Scope is currently unknown: this repo doesn't expose a
+    count of active saved searches from here, and the accounts/saved-item
+    feature is relatively new (shipped 2026-08-11), so this may be the
+    first time this exact interaction has ever mattered.
+  - **Next action**: add at least one retry (even a single immediate
+    retry, or a short backoff-and-retry inside `archive_client.send_search_alerts`)
+    before giving up — the failure window this needs to survive is only
+    ~5 seconds per the health-check alert's own text.
+  - **Open question**: is a single missed day's saved-search alert
+    tolerable as-is (each saved search's own next scheduled sweep still
+    catches new results, just a day later), or does silently dropping a
+    day's alert need a real fix now? Recommend treating as worth fixing
+    given it costs almost nothing (one retry) but leave the priority call
+    to whoever promotes this.
+
+- **Confirmed** — the `rtr-deeplink-archive` "HTTP health check failed
+  (timed out after 5 seconds)" alert (2026-09-17 01:37 UTC entry above)
+  is not an isolated recurrence the way the 2026-09-14 section's
+  entry framed it. **Correction to that entry**: it said "no other
+  [alert] appears anywhere in the last 30 days of this label until this
+  one [2026-09-13] — the fix held for exactly two weeks" (referring to
+  WO-80, merged 2026-08-30). That's not accurate — this run's own 30-day
+  message search (`label:rtr-claude newer_than:30d`, paged in full) turns
+  up the identical alert on 2026-08-29 (`1a04f2e82f08b840`, before WO-80)
+  and twice on 2026-08-31 (`1a0563ec3581c823` thread, 05:15 and 12:48
+  UTC — the day *after* WO-80 merged), in addition to the already-noted
+  2026-09-13 and this run's 2026-09-17 occurrence. That's 5 occurrences
+  across 30 days, not a single break in an otherwise-clean two-week
+  stretch.
+  - **Impact**: each occurrence self-resolves per Render's own alert text
+    (automatic instance restart/replace), and this run found no
+    UptimeRobot DOWN alert correlated with any of the 5 — so still no
+    confirmed reader-facing outage from the health-check failures
+    themselves. What's new this run is a *first confirmed downstream
+    consequence* (the Send-search-alerts cron failure above), which
+    changes this from "cosmetic instance-restart noise" to "occasionally
+    breaks a specific unattended job with no visible symptom for the
+    person it affects until they notice a missing email."
+  - **Next action**: correct the 2026-09-14 entry's framing (this section
+    does that) and treat the pattern as a live, ~weekly-ish recurrence
+    rather than a settled one-off. If `/admin/send-search-alerts` gets a
+    retry per the finding above, that specifically closes the one
+    consequence found so far without needing to chase the Archive
+    health-check timeout's own root cause.
+
+- **Unconfirmed** — Google Search Console: "New reasons prevent pages in
+  a sitemap from being indexed on site redtaperecordings.com", flagging a
+  reason not seen before: "Page with redirect" (alert dated 2026-09-16
+  20:04 UTC). Search Console's own indexing report is auth-walled, so
+  which exact URL(s) triggered this can't be confirmed directly — but
+  reasoning from the alert text plus this repo's actual code turned up a
+  concrete, real mechanism that would produce exactly this symptom:
+  `archive/db/crud.py`'s `list_all_page_slugs()` (used by
+  `archive/main.py`'s `/sitemap.xml` route) selects every `MeetingPage`
+  row with `platform != "unknown"` and not empty — it does not exclude
+  rows whose slug is a key in `archive/main.py`'s `_SLUG_REDIRECTS` dict
+  (line ~2489), and `/m/{slug}` 301-redirects any slug in that dict
+  before ever loading the row. The dict's one live entry today,
+  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` →
+  `kitchener-2026-05-05-heritage-kitchener-committee`, is a real
+  never-cleaned-up duplicate row (per that code's own comment and
+  `BACKLOG_DONE.md`'s Kitchener entries) — if that row isn't empty by
+  `_is_empty_page_condition()`'s definition, its old slug stays in
+  `sitemap.xml` and 301s the instant Google (or anyone) requests it. This
+  is a real, live, previously-known-about issue (this exact "Page with
+  redirect" GSC category was already checked once on 2026-09-10 for a
+  *different* set of 3 pages, all unrelated homepage variants, and closed
+  — see `BACKLOG_DONE.md`'s "Dashboard checklist for 2026-09-10" entry),
+  so this new alert is either that same category catching the Kitchener
+  page for the first time, or something else in a sitemap that also
+  redirects — not confirmed which.
+  - **Impact**: narrow if it is the Kitchener row — `_SLUG_REDIRECTS`
+    has exactly one entry, so at most 1 URL. Low severity (a 301 doesn't
+    lose the content, just wastes crawl budget and produces a
+    Search-Console-visible flag), but a one-line fix either way: exclude
+    `_SLUG_REDIRECTS` keys from `list_all_page_slugs()`'s query, or
+    finally delete the duplicate row now that the 500 blocking
+    `/internal/admin/delete-pages` was root-caused and fixed 2026-09-06
+    (per that dict entry's own comment).
+  - **Open question**: whether it's worth confirming the exact URL via
+    Search Console's dashboard (Ryan has login access, this Routine
+    doesn't) before spending the one-line fix, or just shipping the fix
+    speculatively since it's correct either way (excluding
+    `_SLUG_REDIRECTS` keys from the sitemap query is right regardless of
+    which URL triggered this specific alert).
+
+Ledger: 285 message IDs reviewed and recorded this run (13 new, 272
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-15
 
 119 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
