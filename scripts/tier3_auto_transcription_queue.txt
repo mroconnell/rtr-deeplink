@@ -1524,10 +1524,10 @@ https://claytoncountyga.primegov.com/Portal/Meeting?meetingTemplateId=4414
 https://edmondswa.primegov.com/Portal/Meeting?meetingTemplateId=420
 https://limaoh.primegov.com/Portal/Meeting?meetingTemplateId=1372
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764
-https://nwfdaz.primegov.com/Portal/Meeting?meetingTemplateId=2533
-https://saanichca.primegov.com/Portal/Meeting?meetingTemplateId=1631
+https://northwestfiredistrictaz.new.swagit.com/videos/379230
+https://saanich.ca.granicus.com/MediaPlayer.php?clip_id=1312
 https://techsupport.primegov.com/Portal/Meeting?meetingTemplateId=4400
-https://unioncity.primegov.com/Portal/Meeting?meetingTemplateId=4283
+https://unioncityca.granicus.com/MediaPlayer.php?clip_id=455
 https://vcera.primegov.com/Portal/Meeting?meetingTemplateId=1627
 https://vimeo.com/421632159
 https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false
