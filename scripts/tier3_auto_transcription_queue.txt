@@ -299,7 +299,6 @@ https://www.youtube.com/watch?v=T8IhUhljAlc
 https://youtu.be/33ubRBb5q0g
 https://youtu.be/tGIY22V-HNI?si=fc2-uWXm8KyUkDap
 https://www.youtube.com/watch?v=9FigxVpUzT0
-https://vimeo.com/421632159
 https://www.youtube.com/watch?v=1V2nJ2HRvvw
 https://www.youtube.com/watch?v=Z0mrrc9__4w
 https://www.youtube.com/watch?v=z4MTeQaT85A
@@ -1269,7 +1268,6 @@ https://www.youtube.com/watch?v=JHW3Blu3-ZE&list=PLljLFn4BZd2NhM59Ok6XPPTGC8lTj9
 https://youtu.be/IvsSBC4gNq4	https://cityofweirton.com/AgendaCenter
 https://www.youtube.com/watch?v=ktgYPhnicvU&list=PLuOvQjp9VUNM2wKjIu3hPaXEkCvVy7hde	https://mymonona.com/AgendaCenter
 https://www.youtube.com/watch?v=Yc7Lap20wwQ	https://www.torringtonwy.gov/AgendaCenter
-https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false
 https://www.youtube.com/watch?v=1eeyITPL75I	https://www.youtube.com/embed/videoseries?list=PL7X-j0EwreAd_6kV3IjxO-_XNwDNn0esS
 https://www.youtube.com/watch?v=MqHP5haO8kc	https://www.youtube.com/playlist?list=PLhieFRhse8Qj1pHItgFmWWGo0qJ4EDxSI
 https://youtu.be/LBHd4IE_M1k	https://youtu.be/YIKchHq_0oM
@@ -1356,7 +1354,6 @@ https://www.youtube.com/watch?v=R9_vXqPHnpM	https://www.youtube.com/OtterTailCou
 https://www.youtube.com/watch?v=O_kUcv2NrfQ	https://www.youtube.com/@sampsoncountygovernment
 https://www.youtube.com/watch?v=i1_IofTGFX4	https://m.youtube.com/@MarshallCountyIN/streams
 https://www.youtube.com/watch?v=hVShsVktHZs	https://www.youtube.com/@millercountyar
-https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://www.youtube.com/watch?v=7RW7VRUDn3I	https://www.youtube.com/channel/UCb1CXWu_V08NI--XRa3FzAA
 https://www.youtube.com/watch?v=g0ZCC-GROnk	https://www.youtube.com/@countyofgreensville1146
 https://www.youtube.com/watch?v=jxOpy7Gp1Nc	https://www.youtube.com/@WallowaCountyGov
@@ -1475,7 +1472,6 @@ https://www.utah.gov/pmn/sitemap/notice/872229.html
 https://www.youtube.com/watch?v=5QV8GitLo1Q	https://sheboygan-wi.municodemeetings.com/bc-commoncouncil/page/tenth-regular-common-council-meeting-2
 https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right	https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right
 https://www.youtube.com/watch?v=xwdX3VDCVHs	https://www.youtube.com/@MillerCountyAR
-https://boxcast.tv/channel/aetaajdf64jalxx20o9a	https://boxcast.tv/channel/aetaajdf64jalxx20o9a
 https://www.youtube.com/watch?v=P9fjphPtFjw	https://www.youtube.com/user/cityofnewtonnc
 https://videoplayer.telvue.com/player/5sDJy4puFHzGcdLZ5XfXaWK8ROY8_W2m/media/989568
 https://www.youtube.com/watch?v=wmqe8C6b8DE
@@ -1533,31 +1529,35 @@ https://www.youtube.com/watch?v=un1QQ7xI4dY
 https://www.youtube.com/watch?v=dKSIrbDom3M
 https://www.youtube.com/watch?v=4IE3MWqjGno
 https://youtu.be/I_CWisOvcFs
-https://vimeo.com/697711522/afbcc0c15d
 https://brookhavenga.primegov.com/Portal/Meeting?meetingTemplateId=593
 https://centralsan.primegov.com/Portal/Meeting?meetingTemplateId=900
 https://cityofmenifee.primegov.com/Portal/Meeting?meetingTemplateId=12800
+https://claytoncountyga.primegov.com/Portal/Meeting?meetingTemplateId=4414
+https://edmondswa.primegov.com/Portal/Meeting?meetingTemplateId=420
+https://limaoh.primegov.com/Portal/Meeting?meetingTemplateId=1372
+https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764
+https://nwfdaz.primegov.com/Portal/Meeting?meetingTemplateId=2533
+https://saanichca.primegov.com/Portal/Meeting?meetingTemplateId=1631
+https://techsupport.primegov.com/Portal/Meeting?meetingTemplateId=4400
+https://unioncity.primegov.com/Portal/Meeting?meetingTemplateId=4283
+https://vcera.primegov.com/Portal/Meeting?meetingTemplateId=1627
+https://vimeo.com/421632159
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false
+https://vimeo.com/560189851	https://vimeo.com/channels/1570654
+https://boxcast.tv/channel/aetaajdf64jalxx20o9a	https://boxcast.tv/channel/aetaajdf64jalxx20o9a
+https://vimeo.com/697711522/afbcc0c15d
 https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155
 https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543
-https://claytoncountyga.primegov.com/Portal/Meeting?meetingTemplateId=4414
 https://clearfieldcity.primegov.com/Portal/Meeting?meetingTemplateId=2297
-https://edmondswa.primegov.com/Portal/Meeting?meetingTemplateId=420
 https://epcounty.primegov.com/Portal/Meeting?meetingTemplateId=5377
 https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=7368
 https://gilroy.primegov.com/Portal/Meeting?meetingTemplateId=5173
 https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022
 https://lakeelsinore.primegov.com/Portal/Meeting?meetingTemplateId=3866
 https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=24676
-https://limaoh.primegov.com/Portal/Meeting?meetingTemplateId=1372
-https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764
 https://lomitacity.primegov.com/Portal/Meeting?meetingTemplateId=3793
-https://nwfdaz.primegov.com/Portal/Meeting?meetingTemplateId=2533
 https://palmsprings.primegov.com/Portal/Meeting?meetingTemplateId=452
 https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201
 https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947
-https://saanichca.primegov.com/Portal/Meeting?meetingTemplateId=1631
 https://sanjoseca.primegov.com/Portal/Meeting?meetingTemplateId=14139
-https://techsupport.primegov.com/Portal/Meeting?meetingTemplateId=4400
 https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239
-https://unioncity.primegov.com/Portal/Meeting?meetingTemplateId=4283
-https://vcera.primegov.com/Portal/Meeting?meetingTemplateId=1627
