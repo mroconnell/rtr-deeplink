@@ -2,6 +2,8 @@ import json
 
 import yt_dlp
 
+from app.platforms.base import register
+from app.platforms.cablecast import CablecastAssetFinder
 from app.platforms.civicclerk import CivicClerkAssetFinder, _reconstruct_cdn_stream_url
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -277,6 +279,85 @@ async def test_resolve_event_with_boxcast_external_media_url():
     # No captions on either side (CivicClerk's own fields are empty for
     # this event, and BoxCast's real master playlist for this broadcast
     # has no subtitle track) -- honest video-only, not silently blank.
+    assert result.segments == []
+    assert any(
+        "no caption" in w.lower() or "no transcript" in w.lower()
+        for w in result.transcript_warnings
+    )
+
+
+async def test_resolve_event_with_cablecast_external_media_url():
+    # WO-291 (2026-09-17): some CivicClerk customers' externalVideoUrl/
+    # externalMediaUrl points at a Cablecast show page instead of a direct
+    # file or YouTube/BoxCast link -- the same shape of gap PR #206 already
+    # fixed for primegov.py's own Swagit/Granicus delegation. Confirmed
+    # real and currently unqueued on three real CivicClerk customers
+    # (Belle Meade city TN, Oak Hill city TN, West Lake Hills city TX --
+    # see BACKLOG.md's WO-290 entry). This synthetic payload mirrors the
+    # real URL shape Excelsior, MN's meeting used before it was worked
+    # around by hand (WO-363b, BACKLOG_DONE.md): a
+    # `reflect-*.cablecast.tv/CablecastPublicSite/show/{id}?site=N` link,
+    # resolved via CablecastAssetFinder's CablecastPublicSite API path
+    # (two plain JSON calls, no HTML scraping -- see cablecast.py's
+    # `_resolve_publicsite()`). `get_finder("cablecast")` needs the
+    # registry populated -- same explicit `register()` pattern
+    # test_primegov.py already uses for its own Swagit/Granicus
+    # delegation tests.
+    register(CablecastAssetFinder())
+
+    url = "https://excelsiormn.portal.civicclerk.com/event/900/media"
+    event_json = (
+        '{"id": 900, "eventName": "City Council Meeting", '
+        '"eventDate": "2026-09-08T23:00:00Z", '
+        '"eventLocation": {"city": "Excelsior", "state": "Minnesota", "zipCode": "55331"}}'
+    )
+    media_json = (
+        '{"id": 900, "externalVideoUrl": '
+        '"https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57831?site=1", '
+        '"eventBookmarks": []}'
+    )
+
+    show_payload = {
+        "show": {
+            "title": "Excelsior City Council Meeting",
+            "eventDate": "2026-09-08T23:00:00",
+            "vods": [4242],
+        }
+    }
+    vod_payload = {
+        "vod": {"url": "https://reflect-lmcc.cablecast.tv/store/4242/vod.mp4"}
+    }
+
+    routes = {
+        "https://excelsiormn.api.civicclerk.com/v1/Events/900": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://excelsiormn.api.civicclerk.com/v1/EventsMedia/900": FakeResponse(
+            status=200, text=media_json
+        ),
+        "https://reflect-lmcc.cablecast.tv/cablecastapi/v1/shows/57831": FakeResponse(
+            status=200, text=json.dumps(show_payload)
+        ),
+        "https://reflect-lmcc.cablecast.tv/cablecastapi/v1/vods/4242": FakeResponse(
+            status=200, text=json.dumps(vod_payload)
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.platform == "civicclerk"
+    # Same source_url-preserving choice as the YouTube/BoxCast delegations
+    # above -- "View original source" keeps pointing at the CivicClerk
+    # event page, not the Cablecast URL discovered behind the scenes.
+    assert result.source_url == url
+    assert result.external_id == "civicclerk:excelsiormn.portal.civicclerk.com:900"
+    assert result.jurisdiction == "Excelsior, Minnesota"
+    assert result.video_url == "https://reflect-lmcc.cablecast.tv/store/4242/vod.mp4"
+    assert result.video_format == "mp4"
+    # CablecastPublicSite has no confirmed transcript source at all (see
+    # cablecast.py's own module docstring) -- honest video-only, not
+    # silently blank.
     assert result.segments == []
     assert any(
         "no caption" in w.lower() or "no transcript" in w.lower()

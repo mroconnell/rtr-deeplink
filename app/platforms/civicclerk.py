@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 
-from .base import AssetFinder
+from .base import AssetFinder, detect_platform, resolve_via_platform
 from .boxcast import BoxcastAssetFinder, parse_boxcast_id
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
@@ -128,6 +128,14 @@ class CivicClerkAssetFinder(AssetFinder):
         customers now confirm two different real fields on this API, both
         already handled by the fallback chain below with no code change
         needed.
+      - `externalVideoUrl`/`externalMediaUrl` can also point at a Cablecast
+        show page rather than a direct file or YouTube/BoxCast link (WO-291,
+        2026-09-17) — confirmed real and previously unqueued on Belle Meade
+        city TN, Oak Hill city TN, and West Lake Hills city TX (WO-290, see
+        BACKLOG.md). Delegates to CablecastAssetFinder via
+        `resolve_via_platform()` (`base.py`'s own `detect_platform()`+
+        `get_finder()` wrapper) rather than a new URL check -- the same
+        lookup PrimeGov's own Swagit/Granicus delegation uses.
     """
 
     platform_name = "civicclerk"
@@ -252,8 +260,29 @@ class CivicClerkAssetFinder(AssetFinder):
             # for this purpose. CivicClerk's own caption fields (fetched
             # below) are still preferred when present, the same fallback
             # order as the YouTube case.
+            # WO-291 (2026-09-17): some customers' externalVideoUrl/
+            # externalMediaUrl points at a Cablecast show page (e.g.
+            # `reflect-*.cablecast.tv/CablecastPublicSite/show/{id}`)
+            # instead of a direct file or YouTube/BoxCast link -- the
+            # exact same shape of gap PR #206 already fixed for
+            # primegov.py's own Swagit/Granicus delegation. Confirmed real
+            # and currently unqueued on three CivicClerk customers (Belle
+            # Meade city TN, Oak Hill city TN, West Lake Hills city TX --
+            # see BACKLOG.md's WO-290 entry) and worked around by hand once
+            # already (Excelsior city MN, WO-363b, queuing the direct
+            # Cablecast URL instead of the CivicClerk wrapper page).
+            # `detect_platform()` already recognizes every real Cablecast
+            # URL shape (bare `reflect-*.cablecast.tv`, the
+            # `/CablecastPublicSite/show/` template, and non-cablecast.tv-
+            # domain tenants via `/cablecastapi/v1/shows/`), so this reuses
+            # that rather than writing a new URL check. Same
+            # source_url-preserving pattern as the YouTube/BoxCast branches
+            # above: the CivicClerk event page stays `source_url`, since
+            # its own Events API is a better source for title/date/
+            # jurisdiction than a bare Cablecast show page.
             youtube_delegated = None
             boxcast_delegated = None
+            cablecast_delegated = None
             if video_url:
                 yt_video_id = YouTubeAssetFinder.extract_video_id(video_url)
                 if yt_video_id:
@@ -274,6 +303,12 @@ class CivicClerkAssetFinder(AssetFinder):
                     video_url = boxcast_delegated.video_url
                     video_format = boxcast_delegated.video_format
                     video_warnings.extend(boxcast_delegated.video_warnings)
+                elif detect_platform(video_url) == "cablecast":
+                    cablecast_delegated = await resolve_via_platform(video_url)
+                    cablecast_delegated.source_url = url
+                    video_url = cablecast_delegated.video_url
+                    video_format = cablecast_delegated.video_format
+                    video_warnings.extend(cablecast_delegated.video_warnings)
 
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the
@@ -386,6 +421,10 @@ class CivicClerkAssetFinder(AssetFinder):
                 segments = boxcast_delegated.segments
                 transcript_language = boxcast_delegated.transcript_language
                 transcript_warnings = list(boxcast_delegated.transcript_warnings)
+            elif not segments and cablecast_delegated and cablecast_delegated.segments:
+                segments = cablecast_delegated.segments
+                transcript_language = cablecast_delegated.transcript_language
+                transcript_warnings = list(cablecast_delegated.transcript_warnings)
 
         # Real gap found 2026-08-31: this adapter already fetches `event`
         # (which carries publishedFiles) but never set agenda_link at

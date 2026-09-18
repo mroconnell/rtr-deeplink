@@ -126,7 +126,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
   `_probe_direct_file()`'s HEAD fallback misfires on a host that…
-  The tier-3 probe has no recipe for three real delegated media shapes…
+  The tier-3 probe has no recipe for two real delegated media shapes --…
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
@@ -1079,63 +1079,43 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-166 and WO-304
   entries.
 
-### The tier-3 probe has no recipe for three real delegated media shapes -- a CivicClerk event that delegates to Cablecast, a ChampDS `DOWNLOAD-MEDIA` redirect, and a CivicPlus DocumentCenter audio URL `[JUST-DO-IT]`
+### The tier-3 probe has no recipe for two real delegated media shapes -- a ChampDS `DOWNLOAD-MEDIA` redirect and a CivicPlus DocumentCenter audio URL `[JUST-DO-IT]`
 
 - **Issue:** `app/platforms/queue_probe.py`'s `probe_queue_entry()`
   returns `reject-dead` ("no probe recipe for this media shape") for a
   video URL it has no dispatch rule for, even when the underlying
   adapter already resolved real, playable video. WO-289 and WO-290
   (2026-09-12, running the same night on non-overlapping population
-  bands) independently hit the identical gap on `new.swagit.com` /
-  `play.champds.com` (WO-289) and, separately, a CivicClerk event
-  delegating to a `reflect-*.cablecast.tv` show URL, a ChampDS
-  `DOWNLOAD-MEDIA` redirect (twice), and a CivicPlus `DocumentCenter`
-  audio URL (WO-290) -- five real governments across the two runs, none
-  a one-off.
-- **Impact:** Belle Meade city TN, Oak Hill city TN, and West Lake Hills
-  city TX (WO-290) plus the two WO-289 governments each have a confirmed
-  real meeting with real video, sitting unqueued for no reason other
-  than this gap -- re-running either sweep's `--mode finish` against its
-  existing decisions file will pick them up automatically once the
-  probe gains these recipes, no new discovery needed. Excelsior city MN
-  itself is no longer unqueued -- WO-363 (2026-09-14) first queued the
-  CivicClerk wrapper page directly by hand
-  (`append_queue_line()`/`write_pin_row()`, sidecar verdict `queued`),
-  per Ryan's standing rule that a probe failure is not a reject when the
-  government has no transcript yet, but that line would have failed
-  deterministically at transcription time (`civicclerk.py` hands the
-  wrapper page itself back as `video_url`, and `worker/main.py`'s
-  `probe_duration()` can't read an HTML page) -- WO-363b (2026-09-14,
-  same day) corrected it to the direct `reflect-lmcc.cablecast.tv/
-  CablecastPublicSite/show/57831?site=1` URL instead, the same
-  substitution WO-226's `_pick_probe_url()` already makes for this exact
-  shape (`scripts/wo149_finish_tier3.py`'s docstring). That is still a
-  one-off manual substitution, not a fix to the adapter or the probe:
-  every other government hitting this exact gap (Belle Meade, Oak Hill,
-  West Lake Hills, and any future one) still needs either the same
-  by-hand substitution or a real fix built.
-- **Next action:** the durable fix is in `app/platforms/civicclerk.py`,
-  not `queue_probe.py`: CivicClerk should delegate a Cablecast
-  `externalVideoUrl`/`externalMediaUrl` via `resolve_via_platform()`
-  (`app/platforms/base.py`) the way it already delegates YouTube and
-  BoxCast links (see this file's own module comments on both) -- once
-  `resolve()` hands back the real, playable video URL the Cablecast
-  adapter itself resolves, `probe_queue_entry()` needs no new Cablecast
-  dispatch rule at all, since it already has one (the direct-URL case).
-  Until that lands, queue the direct show URL by hand (WO-363b's
-  pattern) for each affected government. The ChampDS and CivicPlus
-  gaps below are unrelated and still need their own dispatch rule in
-  `probe_queue_entry()` (or wherever `_probe_direct_file()`/its siblings
-  live): (2) a
-  ChampDS `.../DOWNLOAD-MEDIA/.../eventmainmedia/{id}` redirect --
-  confirm what it redirects to (probably a direct MP4/HLS) and probe
-  that; (3) a CivicPlus DocumentCenter link whose real filename is an
-  audio file, not the PDF this shape usually carries.
-- **Constraint:** verify each recipe against the exact five real URLs
-  above before shipping -- this repo's own rule against claiming a data
-  path works without a positive, live example.
+  bands) independently hit this on `new.swagit.com`/`play.champds.com`
+  (WO-289) and a ChampDS `DOWNLOAD-MEDIA` redirect (twice) plus a
+  CivicPlus `DocumentCenter` audio URL (WO-290). (This entry used to
+  also describe a third shape -- a CivicClerk event delegating to
+  Cablecast -- that's now fixed; see History.)
+- **Impact:** Belle Meade city TN and Oak Hill city TN (real ChampDS
+  events) and West Lake Hills city TX (a real CivicClerk event whose
+  `externalVideoUrl` is a CivicPlus DocumentCenter audio file, confirmed
+  live at `westlakehills.gov/DocumentCenter/View/4765/
+  07152026-ZAPCO-Audio`) each have a confirmed real meeting sitting
+  unqueued for no reason other than this gap -- re-running WO-290's
+  `--mode finish` against its existing decisions file will pick them up
+  automatically once the probe gains these two recipes, no new
+  discovery needed. **Correction (2026-09-17, WO-903):** an earlier
+  version of this entry wrongly filed all three of these governments
+  under the Cablecast shape -- verified live, none of them touches
+  Cablecast at all; see WO-903 in `BACKLOG_DONE.md` for the real
+  breakdown and the government (Excelsior, MN) the Cablecast fix was
+  actually verified against.
+- **Next action:** build a dispatch rule for each remaining shape in
+  `queue_probe.py` (or wherever `_probe_direct_file()`/its siblings
+  live): (1) a ChampDS `.../DOWNLOAD-MEDIA/.../eventmainmedia/{id}`
+  redirect -- confirm what it redirects to (probably a direct MP4/HLS)
+  and probe that; (2) a CivicPlus DocumentCenter link whose real
+  filename is an audio file, not the PDF this shape usually carries.
+- **Constraint:** verify each recipe against a real live URL before
+  shipping -- this repo's own rule against claiming a data path works
+  without a positive, live example.
 - **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289, WO-290, WO-363,
-  and WO-363b entries; `~/Documents/rtr-business/research/
+  WO-363b, and WO-903 entries; `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §309/§310.
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
