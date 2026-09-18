@@ -1682,3 +1682,17 @@ https://yorktownny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2154
 https://ofallon.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1142
 https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=126
 https://cityofclintoniowa.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=41661
+http://a2gov.legistar.com/MeetingDetail.aspx?ID=750169&GUID=A02363A4-7CBE-40AF-9763-78F1AB70D308&Options=info%7C&Search=
+https://ramseycountymn.legistar.com/MeetingDetail.aspx?ID=926449&GUID=3494924B-0AB0-4021-B8D2-670FF3198AB1&Options=info%7C&Search=
+https://beaverton.granicus.com/GeneratedAgendaViewer.php?view_id=2&clip_id=2927
+https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108
+https://lockport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1036
+https://louisville.legistar.com/MeetingDetail.aspx?ID=499970&GUID=2498DADD-4A4B-45FF-A685-73869365379A&Options=&Search=
+http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=
+https://sfha.granicus.com/MinutesViewer.php?clip_id=56&doc_id=2be9cef3-d0b5-11ec-bbb4-0050569183fa
+https://oregonpuc.granicus.com/player/clip/1562?view_id=2&redirect=true
+https://anoka-k12.granicus.com/player/clip/512?view_id=2&meta_id=48218&redirect=true&h=f7fa69dd8a6b153eb578074fa6359927
+http://tnga.granicus.com/MediaPlayer.php?view_id=397&clip_id=15903
+http://tlcsenate.granicus.com/MediaPlayer.php?view_id=44&clip_id=13571
+http://tlchouse.granicus.com/MediaPlayer.php?view_id=40&clip_id=13270
+https://mojavewater.granicus.com/GeneratedAgendaViewer.php?view_id=2&clip_id=1134
