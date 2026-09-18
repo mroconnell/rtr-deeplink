@@ -1614,7 +1614,6 @@ https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
 https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
 https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
 https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
-https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292
 https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
 https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
 https://abingtonpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=752
@@ -1657,7 +1656,6 @@ https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
 https://townofmerrimac.granicus.com/MediaPlayer.php?view_id=1&clip_id=33
 https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
 https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1086
-https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2886
 https://townofpendleton.granicus.com/MediaPlayer.php?view_id=1&clip_id=176
 https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780
 https://portorchard.granicus.com/MediaPlayer.php?view_id=1&clip_id=242
