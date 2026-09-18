@@ -1549,15 +1549,9 @@ https://vimeo.com/697711522/afbcc0c15d
 https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155
 https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543
 https://clearfieldcity.primegov.com/Portal/Meeting?meetingTemplateId=2297
-https://epcounty.primegov.com/Portal/Meeting?meetingTemplateId=5377
 https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=7368
 https://gilroy.primegov.com/Portal/Meeting?meetingTemplateId=5173
 https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022
-https://lakeelsinore.primegov.com/Portal/Meeting?meetingTemplateId=3866
-https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=24676
-https://lomitacity.primegov.com/Portal/Meeting?meetingTemplateId=3793
-https://palmsprings.primegov.com/Portal/Meeting?meetingTemplateId=452
 https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201
 https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947
-https://sanjoseca.primegov.com/Portal/Meeting?meetingTemplateId=14139
 https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239
