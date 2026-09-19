@@ -1,5 +1,85 @@
 # Backlog — done
 
+## WO-904: `run_access_ladder()` now keeps climbing past a confirmed-decorative homepage video hit instead of stopping there [Done 2026-09-19]
+
+**Why this ran.** `BACKLOG.md` had an open bug. The access ladder is the
+code that finds a government's real meeting-video page starting from its
+homepage. It used to stop the moment it found ANY video-shaped link on
+the homepage — even a decorative one, like a "Welcome to our town" intro
+reel or a hero background clip, not a real meeting. Two real sweeps
+(WO-361, WO-364) checked 30 of these "video found" results by hand. 24
+of the 30 were decorative. None were a real meeting.
+
+**What was built.** The ladder now checks whether a homepage hit looks
+decorative before accepting it, using `_is_decorative_hit()` — a check
+WO-361 already built, now moved into the shared ladder file
+(`scripts/wo147_access_ladder_sweep.py`) instead of living only in one
+downstream script. A decorative hit looks like a Vimeo "hero" video
+(its web address contains `background=1`, or `loop=1` and `muted=1`
+together) or a file whose name says what it is (`welcome.mp4`,
+`tourism-video.mp4`, `hero-banner.mp4`). When the ladder finds one of
+these, it no longer stops and reports it as the answer. It keeps trying
+the same steps it already knows how to try when it finds nothing at
+all: a link on the page that looks like "Agendas & Minutes," and, if
+that fails too, a browser-rendering step for pages that hide their real
+links behind JavaScript. Only if none of that finds anything does the
+ladder report "no video found" — and the decorative video is never
+reported as if it were real. The check is applied everywhere the ladder
+reads the homepage itself (a plain fetch, a browser-headers retry after
+a 403 or a dropped connection, and the browser-rendered version) — not
+to a link found one hop away (an agenda page, a calendar entry), since
+those are already a different, more trustworthy kind of page and were
+never the bug.
+
+Because this fix lives in the one shared file, every other sweep script
+that calls `run_access_ladder()` gets the same protection automatically
+— before this fix, only one script (`wo361_find_hub.py`) checked for a
+decorative hit at all, and even that script could only react AFTER the
+ladder had already stopped and returned the wrong answer; it had no way
+to make the ladder try anything else.
+
+**What this fix does not do.** Some decorative videos give no tell in
+their web address at all. The real example is Garfield city, NJ: its
+decorative video is titled "City of Garfield 2024," but its web address
+is a plain, ordinary-looking Vimeo link with no query string and no
+telling filename. The only way anyone has caught this one is by fetching
+the video's real title from Vimeo (an "oEmbed" lookup) and reading it.
+That lookup exists today only inside a one-off script
+(`scripts/wo364_handread.py`) built for one specific hand-read run — not
+in `run_access_ladder()`, `verify_hub()`, or anywhere else a sweep
+actually runs. This fix does not build that. It correctly leaves a hit
+like this alone rather than guessing, the same "don't guess" rule WO-364
+already used for it, but the underlying gap (no reusable way to catch
+it) is still open — see the new, narrower `BACKLOG.md` entry split out
+for it.
+
+**Verification.** No live website was fetched for this fix — it changes
+control flow in already-tested code, not a new adapter, so this repo's
+own "test against a real URL first" rule doesn't call for a fresh live
+sample. Verification is fixture-based: 9 new tests in
+`tests/test_wo904_access_ladder_decorative_climb.py`, covering a
+decorative hit with a web-address signature (falls through to a real
+hop-link hit, and separately, falls through and correctly reports
+nothing found when nothing else exists), the same case under the
+403-then-browser-headers retry path, a decorative hit with NO signature
+(Garfield NJ's own case, correctly left alone), and two real,
+already-captured pages already checked into
+`tests/fixtures/wo228_hub_ranking/` used as a genuine regression check.
+One of those real pages (McLeansboro, IL) turned up a real,
+previously-unnoticed example of this exact bug already sitting in this
+repo's own test fixtures: its homepage's video hit is a file literally
+named `mcl-header-bkg.m4v` ("header background"), which has no oEmbed of
+its own (a raw file has none) and no web-address signature the fast
+check can catch — exactly BACKLOG.md's WO-364 "no title signal
+available" bucket. The fix correctly leaves it alone rather than
+guessing, same as Garfield NJ.
+
+**This WO's own gates.** `ruff check`, `ruff format --check`, the full
+`pytest` suite (3,939 passed, 18 skipped — includes the 9 new tests),
+and both `alembic check` runs (`archive` and `app`, each run as
+`alembic upgrade head` then `alembic check` against a fresh SQLite file,
+matching CI exactly) all green. No schema changed.
+
 ## WO-903: CivicClerk now delegates a Cablecast `externalVideoUrl`/`externalMediaUrl` to CablecastAssetFinder — live-verified on Excelsior, MN; corrects a wrong government list in the WO-290 tier-3-probe entry [Done 2026-09-17]
 
 **Why this ran.** `BACKLOG.md`'s "tier-3 probe has no recipe for three

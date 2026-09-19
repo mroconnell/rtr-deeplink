@@ -50,6 +50,24 @@ Method, per docs/BREADTH_SWEEP_BRIEF.md and CLAUDE.md's "politely" rule:
    trusting the ranking alone, and `find_calendar_entry_links()` takes
    one more hop into a calendar page's first two dated entries
    (`?EID=123`-shaped) when the calendar page itself has none.
+   **A vendor-shaped homepage link is not accepted at face value if it
+   looks decorative (WO-904, 2026-09-19).** `run_access_ladder()` used to
+   return the moment `find_platform_link()` found ANY vendor-shaped link
+   on the homepage, including a hero-background/promotional video embed
+   -- confirmed live (WO-361/WO-364) to be the wrong hub in 24 of 30 real
+   cases. `_is_decorative_hit()` (a URL-parameter/filename signature
+   check) now gates every homepage-body hit -- plain fetch, the
+   browser-headers retry, and headless -- and a confirmed-decorative hit
+   is treated as "keep climbing" (hop links, then headless) rather than
+   accepted. A decorative hit found via a hop link or a calendar entry
+   is NOT re-checked -- those are already a different, agenda/minutes-
+   hinted page, not the homepage's own body, and re-litigating a
+   confirmed real hub link there was never the bug this fixes. A
+   decorative video whose URL carries no recognizable signature (only
+   its real oEmbed title reveals it -- see BACKLOG_DONE.md's WO-364
+   entry) still passes through uncaught here on purpose: this module has
+   no oEmbed-fetching capability and does not guess where it has no
+   signal, per CLAUDE.md's "reports report, they never guess" rule.
 3. **Resolve/ingest** -- every found (platform, url) pair is handed to
    wo134_confirmed_hits_ingest.py's own `process_row()` UNCHANGED (its
    locate_platform_url -> resolve_seed -> ingest/queue/pin pipeline is
@@ -429,6 +447,51 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
             ):
                 return platform, candidate
     return None
+
+
+# --- WO-361 (2026-09-13), relocated here WO-904 (2026-09-19) ---
+# A vendor link find_platform_link() scans up off a bare homepage is not
+# necessarily a real meeting hub -- it can be the SAME decorative/
+# promotional embed the homepage carries as a hero background video (a
+# production-company reel, a tourism-board clip, an engineering firm's
+# own project video, a documentary, a local-interest video series
+# episode -- see BACKLOG_DONE.md's WO-361/WO-364/WO-368 entries for the
+# real, live-confirmed examples this signature was built from: Bowling
+# Green KY's "Video Ad", Garfield NJ's sidebar hero embed, and Vimeo's
+# own homepage-hero-embed URL-parameter shape confirmed on 20 real
+# tenants). This used to live only in scripts/wo361_find_hub.py, checked
+# AFTER run_access_ladder() had already returned and stopped -- WO-904
+# moved it here so run_access_ladder() ITSELF can treat a confirmed-
+# decorative hit as "keep climbing" (try a hop link, then headless)
+# rather than every caller needing its own copy of this check to avoid
+# the false positive. wo361_find_hub.py now imports it from here rather
+# than keeping a second copy. See BACKLOG_DONE.md's WO-904 entry.
+#
+# This is a URL-SHAPE check only -- it catches the obvious cases (a
+# hero-background query-string signature, a decorative filename token)
+# but NOT a decorative video whose URL carries no such signature and can
+# only be told apart by its real oEmbed title (WO-364's confirmed
+# example: Garfield NJ's own "City of Garfield 2024" by AlphaDog
+# Solutions -- a real Vimeo oEmbed title, not guessable from the URL
+# alone). Nothing here fetches a title -- when this returns False,
+# run_access_ladder() correctly still can't tell, so it accepts the hit
+# the way it always has, rather than forcing a guess it has no evidence
+# for. That harder disambiguation stays a downstream, heavier step
+# (verify_hub()/the hand-read tooling's own oEmbed lookup), not this
+# module's job.
+_DECORATIVE_FILENAME_RE = re.compile(
+    r"(promo|promotion|accueil|welcome|tourism|flyover|drone|dji_|"
+    r"site.?asset|homepage|hero|banner|discover|explore)",
+    re.IGNORECASE,
+)
+
+
+def _is_decorative_hit(url: str) -> bool:
+    u = (url or "").lower()
+    if "background=1" in u or ("loop=1" in u and "muted=1" in u):
+        return True
+    path = urlparse(url).path
+    return bool(_DECORATIVE_FILENAME_RE.search(path))
 
 
 # --- WO-228 (2026-09-11): scored, ranked replacement for the old
@@ -1247,6 +1310,16 @@ async def run_access_ladder(
         rb = await fetch_one(session, home_url_used, BROWSER_HEADERS)
         if rb.html and not is_challenge(rb.html):
             hit = find_platform_link(rb.html, rb.final_url)
+            if hit and _is_decorative_hit(hit[1]):
+                # WO-904: a decorative homepage embed is not a real hub.
+                # This branch never climbed further even for a genuine
+                # no-hit here (a timeout is treated as "worth one retry
+                # under browser headers, then stop either way") -- so a
+                # decorative hit gets the SAME "no link found" outcome a
+                # genuine no-hit already gets, rather than inventing new
+                # climbing behavior this branch has never had.
+                notes.append(f"skipped decorative hit ({hit[1]})")
+                hit = None
             if hit:
                 return LadderResult(
                     "browser-headers",
@@ -1305,6 +1378,20 @@ async def run_access_ladder(
         )
 
     hit = find_platform_link(r.html, r.final_url)
+    decorative_note = ""
+    if hit and _is_decorative_hit(hit[1]):
+        # WO-904: run_access_ladder() used to accept ANY vendor-shaped
+        # homepage link, including a decorative/promotional video embed
+        # (a hero-background clip, a "Welcome to our town" reel) -- see
+        # this module's own _is_decorative_hit() comment and
+        # BACKLOG_DONE.md's WO-904 entry (originally BACKLOG.md's
+        # "run_access_ladder() stops climbing" entry, WO-361/WO-364/
+        # WO-368). A confirmed-decorative hit is not the real meeting
+        # hub -- keep climbing (hop links, then headless) instead of
+        # stopping here, the same rungs the ladder already climbs when
+        # no link is found on the homepage at all.
+        decorative_note = f"skipped decorative homepage hit ({hit[1]}); "
+        hit = None
     if hit:
         return LadderResult(
             "plain",
@@ -1345,6 +1432,15 @@ async def run_access_ladder(
                 "403 under both plain and browser headers",
             )
         hit = find_platform_link(rb.html, rb.final_url)
+        if hit and _is_decorative_hit(hit[1]):
+            # WO-904: same decorative check, homepage refetched under
+            # browser headers instead of honest headers -- still "the
+            # homepage's own body," so the same "keep climbing" rule
+            # applies.
+            decorative_note += (
+                f"skipped decorative homepage hit under browser headers ({hit[1]}); "
+            )
+            hit = None
         if hit:
             return LadderResult(
                 "browser-headers",
@@ -1379,6 +1475,14 @@ async def run_access_ladder(
             hit = find_platform_link(rh.html, rh.final_url)
             if hit:
                 mode = "browser-headers" if headers is BROWSER_HEADERS else "plain"
+                # A hop-link/calendar-entry hit is NOT decorative-checked
+                # (see this module's own comment above _is_decorative_hit
+                # and the docstring note on WO-904) -- accepted at face
+                # value, same fast path as always. decorative_note is
+                # only ever non-empty here when an EARLIER homepage-body
+                # hit was skipped as decorative before reaching this hop
+                # -- carried through as a prefix purely so that history
+                # is visible in the result, not to gate this hit.
                 return LadderResult(
                     mode,
                     mode,
@@ -1386,7 +1490,7 @@ async def run_access_ladder(
                     rh.html,
                     rh.final_url,
                     rh.waf_family,
-                    "",
+                    decorative_note,
                     hit[0],
                     hit[1],
                 )
@@ -1434,7 +1538,8 @@ async def run_access_ladder(
                                 re_.html,
                                 re_.final_url,
                                 re_.waf_family,
-                                "found via a calendar entry, not the calendar index",
+                                decorative_note + "found via a calendar entry, not the "
+                                "calendar index",
                                 entry_hit[0],
                                 entry_hit[1],
                             )
@@ -1452,6 +1557,14 @@ async def run_access_ladder(
             )
         if rh_html:
             hit = find_platform_link(rh_html, rh_url)
+            if hit and _is_decorative_hit(hit[1]):
+                # WO-904: headless renders the SAME homepage (JS-executed)
+                # -- still "the homepage's own body," so a decorative hit
+                # here is rejected the same way. Headless is the last
+                # rung, so there is nowhere further to climb; fall
+                # through to the "no platform link found" outcome below.
+                decorative_note += f"skipped decorative headless hit ({hit[1]}); "
+                hit = None
             if hit:
                 return LadderResult(
                     "headless",
@@ -1460,7 +1573,7 @@ async def run_access_ladder(
                     rh_html,
                     rh_url,
                     "none",
-                    "",
+                    decorative_note,
                     hit[0],
                     hit[1],
                 )
@@ -1471,7 +1584,7 @@ async def run_access_ladder(
                 rh_html,
                 rh_url,
                 "none",
-                "headless reached the page, no platform link found",
+                decorative_note + "headless reached the page, no platform link found",
             )
         return LadderResult(
             "plain",
@@ -1480,7 +1593,7 @@ async def run_access_ladder(
             r.html,
             r.final_url,
             r.waf_family,
-            f"headless failed: {rh_err}",
+            decorative_note + f"headless failed: {rh_err}",
         )
 
     mode = "browser-headers" if r.status == 403 else "plain"
@@ -1491,7 +1604,7 @@ async def run_access_ladder(
         r.html,
         r.final_url,
         r.waf_family,
-        "reached, hop links checked, no platform link found",
+        decorative_note + "reached, hop links checked, no platform link found",
     )
 
 
