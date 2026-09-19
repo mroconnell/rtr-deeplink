@@ -37,6 +37,22 @@ _PAGE_TITLE_RE = re.compile(
 )
 _RAW_FILENAME_RE = re.compile(r"\.(mp4|mov|wmv|avi|mkv|m4v)$", re.IGNORECASE)
 
+# WO-906: Legistar's own public webapi (confirmed live 2026-09-19,
+# reconfirmed against a2gov -- same tenant passive_verify.py already
+# uses) supports a direct by-id lookup, webapi.legistar.com/v1/{client}
+# /events/{id}, returning a real EventBodyName ("City Council" for
+# a2gov event 14159 -- the same numeric id its own EventInSiteURL points
+# back to via `LEGID=14159`, confirming the id in a MeetingDetail.aspx
+# URL and the webapi's EventId are the same value regardless of which
+# query param name a given tenant's URL happens to use). Real and more
+# reliable than _extract_page_meeting_info()'s title regex, which
+# returns no body at all whenever the page's own <title> doesn't match
+# the expected "{jurisdiction} - Meeting of {body} on {date} at {time}"
+# shape (e.g. NYC's real title, "City Council of Yonkers Stated
+# Meeting", has no "Meeting of ... on ... at ..." in it at all).
+_LEGISTAR_TENANT_RE = re.compile(r"^([^.]+)\.legistar\.com$")
+_LEGISTAR_EVENT_ID_RE = re.compile(r"(?:^|[?&])(?:ID|LEGID)=(\d+)", re.IGNORECASE)
+
 # Address-shape heuristic for MeetingDetail.aspx's "Meeting location" field
 # -- see _looks_like_street_address()'s own docstring for the real, live
 # evidence (four real customers, four different shapes) behind why this
@@ -144,25 +160,38 @@ class LegistarAssetFinder(AssetFinder):
 
             soup = BeautifulSoup(html, "html.parser")
             video_links = self._find_video_links(soup, final_url)
+            # WO-906: fetched once here, applied to whichever return path
+            # below actually fires -- overrides the OUTPUT field only,
+            # never the internal page_info["body"] each helper still uses
+            # as its own matching key (_try_granicus_view_publisher_video
+            # in particular matches against it), so this can't perturb
+            # any of those already-tuned matches.
+            real_body = await self._fetch_real_event_body(session, final_url)
 
             if not video_links:
                 fallback = await self._try_fallback_video_link(html, final_url, soup)
                 if fallback:
                     fallback.source_url = url
+                    fallback.meeting_body = real_body or fallback.meeting_body
                     return fallback
                 channel_match = await self._try_known_channel_video(
                     soup, final_url, url
                 )
                 if channel_match:
+                    channel_match.meeting_body = real_body or channel_match.meeting_body
                     return channel_match
                 view_publisher_match = await self._try_granicus_view_publisher_video(
                     soup, final_url, url
                 )
                 if view_publisher_match:
+                    view_publisher_match.meeting_body = (
+                        real_body or view_publisher_match.meeting_body
+                    )
                     return view_publisher_match
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
+                    meeting_body=real_body,
                     video_warnings=["No video link found on this Legistar page."],
                 )
 
@@ -201,8 +230,8 @@ class LegistarAssetFinder(AssetFinder):
                     resolved.agenda_link = resolved.agenda_link or page_info.get(
                         "agenda_link"
                     )
-                    resolved.meeting_body = resolved.meeting_body or page_info.get(
-                        "body"
+                    resolved.meeting_body = (
+                        real_body or resolved.meeting_body or page_info.get("body")
                     )
                     resolved.meeting_location = (
                         resolved.meeting_location or page_info.get("location")
@@ -478,6 +507,47 @@ class LegistarAssetFinder(AssetFinder):
         # (base.py)'s own hardcoded domain list, rather than drifting.
         netloc = urlparse(url).netloc.lower()
         return "legistar.com" in netloc or "legistar.council.nyc.gov" in netloc
+
+    @staticmethod
+    async def _fetch_real_event_body(
+        session: aiohttp.ClientSession, final_url: str
+    ) -> Optional[str]:
+        """The real EventBodyName from Legistar's own public webapi, or
+        None on anything that isn't a clean match -- never raises, since
+        an extra live dependency degrading gracefully to the existing
+        title-regex fallback (`_extract_page_meeting_info()`'s `body`) is
+        the honest behavior here, not a resolve() failure.
+
+        Only derives a client slug from the standard `{client}.legistar
+        .com` host shape -- NYC's custom `legistar.council.nyc.gov`
+        domain (see `_is_legistar_domain()`) has no such slug to extract,
+        so it falls straight through to the title-regex fallback, same
+        as any other lookup miss.
+        """
+        tenant_match = _LEGISTAR_TENANT_RE.match(urlparse(final_url).netloc.lower())
+        id_match = _LEGISTAR_EVENT_ID_RE.search(urlparse(final_url).query)
+        if not tenant_match or not id_match:
+            return None
+        client, event_id = tenant_match.group(1), id_match.group(1)
+        api_url = f"https://webapi.legistar.com/v1/{client}/events/{event_id}"
+        try:
+            async with session.get(
+                api_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    return None
+                data = await response.json(content_type=None)
+        except Exception:
+            logger.warning(
+                "Legistar webapi event-body fetch failed for %s",
+                api_url,
+                exc_info=True,
+            )
+            return None
+        body = (
+            (data.get("EventBodyName") or "").strip() if isinstance(data, dict) else ""
+        )
+        return body or None
 
     @staticmethod
     async def _fetch(session: aiohttp.ClientSession, url: str):

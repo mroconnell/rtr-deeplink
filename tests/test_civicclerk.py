@@ -273,6 +273,10 @@ async def test_resolve_event_with_boxcast_external_media_url():
     assert result.source_url == url
     assert result.external_id == "civicclerk:inglesidetx.portal.civicclerk.com:597"
     assert result.title == "City Council Meeting"
+    # Ingleside's real categoryName is "General" -- the one confirmed
+    # non-informative value found live (WO-904), filtered to None rather
+    # than shipped as a fake body.
+    assert result.meeting_body is None
     assert result.date == "2026-09-08"
     assert result.video_url == view["playlist"]
     assert result.video_format == "m3u8"
@@ -393,6 +397,9 @@ async def test_resolve_real_event_with_populated_srt_captions():
 
     assert result.external_id == "civicclerk:emporiaks.portal.civicclerk.com:585"
     assert result.title == "Commission Meeting"
+    # Real categoryName (WO-904) -- an independent grouping, not a repeat
+    # of eventName.
+    assert result.meeting_body == "City Commission Meetings"
     assert result.date == "2026-07-22"
     assert result.jurisdiction == "Emporia, KS"
     assert result.video_url == "https://cpmedia.azureedge.net/emporiaks/ab8f5fbb5f.mp4"
@@ -439,6 +446,10 @@ async def test_resolve_reconstructs_video_url_from_relative_media_stream_path():
         result.video_url
         == "https://cpmedia.azureedge.net/kaysvilleut/87a33df6-4669-4c97-a6fe-3e5c25fadd0f.mp3"
     )
+    # Real categoryName "City Council" (WO-904) -- a work session's own
+    # eventName ("City Council Work Session") still differs from it,
+    # confirming the category is a real grouping, not an eventName echo.
+    assert result.meeting_body == "City Council"
     assert result.video_format == "mp3"
     assert result.video_warnings == []
     # Same real fixture's publishedFiles has "Agenda" and "Minutes" but no

@@ -179,6 +179,92 @@ async def test_single_meeting_delegation_populates_meeting_body():
     assert result.meeting_body == "City Council"
 
 
+async def test_real_webapi_event_body_wins_over_the_page_title_parse():
+    # WO-906: the real webapi's EventBodyName takes priority over the
+    # title-regex fallback -- confirmed live against a2gov's real event
+    # 14159 (EventBodyName "City Council", EventInSiteURL carrying
+    # `LEGID=14159`, the same numeric value webapi/v1/{client}/events/
+    # {id} accepts). Deliberately makes the page's own title say a
+    # DIFFERENT, less specific body ("Council") than the real API
+    # ("City Council") to prove precedence, not just consistency.
+    meeting_url = "https://a2gov.legistar.com/MeetingDetail.aspx?ID=14159"
+    video_aspx = (
+        "https://a2gov.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+    webapi_url = "https://webapi.legistar.com/v1/a2gov/events/14159"
+
+    meeting_html = (
+        "<html><head><title>Ann Arbor, MI - Meeting of Council "
+        "on 9/22/2026 at 7:00 PM</title></head><body>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
+        webapi_url: FakeResponse(
+            status=200, text='{"EventId": 14159, "EventBodyName": "City Council"}'
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "granicus"
+    # The real webapi value, not the page title's "Council".
+    assert result.meeting_body == "City Council"
+
+
+async def test_webapi_event_body_fetch_failure_falls_back_to_page_title():
+    # Same shape as the primary test above, but the webapi 404s (a real,
+    # plausible failure -- a deleted/renumbered event, or the API briefly
+    # down) -- must degrade to the existing title-regex value, not raise
+    # or leave meeting_body empty.
+    meeting_url = "https://maricopa.legistar.com/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://maricopa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+    webapi_url = "https://webapi.legistar.com/v1/maricopa/events/1"
+
+    meeting_html = (
+        "<html><head><title>The City of Maricopa - Meeting of City Council "
+        "on 4/8/2026 at 6:00 PM</title></head><body>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
+        webapi_url: FakeResponse(status=404, text=""),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "granicus"
+    assert result.meeting_body == "City Council"
+
+
 async def test_single_meeting_delegation_populates_meeting_location_when_address_shaped():
     # Same wiring shape as the meeting_body test above, for the new
     # "Meeting location" field (2026-08-30) -- uses the real location

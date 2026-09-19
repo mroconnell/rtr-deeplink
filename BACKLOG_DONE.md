@@ -1,5 +1,190 @@
 # Backlog — done
 
+## WO-904: `run_access_ladder()` now keeps climbing past a confirmed-decorative homepage video hit instead of stopping there [Done 2026-09-19]
+
+**Why this ran.** `BACKLOG.md` had an open bug. The access ladder is the
+code that finds a government's real meeting-video page starting from its
+homepage. It used to stop the moment it found ANY video-shaped link on
+the homepage — even a decorative one, like a "Welcome to our town" intro
+reel or a hero background clip, not a real meeting. Two real sweeps
+(WO-361, WO-364) checked 30 of these "video found" results by hand. 24
+of the 30 were decorative. None were a real meeting.
+
+**What was built.** The ladder now checks whether a homepage hit looks
+decorative before accepting it, using `_is_decorative_hit()` — a check
+WO-361 already built, now moved into the shared ladder file
+(`scripts/wo147_access_ladder_sweep.py`) instead of living only in one
+downstream script. A decorative hit looks like a Vimeo "hero" video
+(its web address contains `background=1`, or `loop=1` and `muted=1`
+together) or a file whose name says what it is (`welcome.mp4`,
+`tourism-video.mp4`, `hero-banner.mp4`). When the ladder finds one of
+these, it no longer stops and reports it as the answer. It keeps trying
+the same steps it already knows how to try when it finds nothing at
+all: a link on the page that looks like "Agendas & Minutes," and, if
+that fails too, a browser-rendering step for pages that hide their real
+links behind JavaScript. Only if none of that finds anything does the
+ladder report "no video found" — and the decorative video is never
+reported as if it were real. The check is applied everywhere the ladder
+reads the homepage itself (a plain fetch, a browser-headers retry after
+a 403 or a dropped connection, and the browser-rendered version) — not
+to a link found one hop away (an agenda page, a calendar entry), since
+those are already a different, more trustworthy kind of page and were
+never the bug.
+
+Because this fix lives in the one shared file, every other sweep script
+that calls `run_access_ladder()` gets the same protection automatically
+— before this fix, only one script (`wo361_find_hub.py`) checked for a
+decorative hit at all, and even that script could only react AFTER the
+ladder had already stopped and returned the wrong answer; it had no way
+to make the ladder try anything else.
+
+**What this fix does not do.** Some decorative videos give no tell in
+their web address at all. The real example is Garfield city, NJ: its
+decorative video is titled "City of Garfield 2024," but its web address
+is a plain, ordinary-looking Vimeo link with no query string and no
+telling filename. The only way anyone has caught this one is by fetching
+the video's real title from Vimeo (an "oEmbed" lookup) and reading it.
+That lookup exists today only inside a one-off script
+(`scripts/wo364_handread.py`) built for one specific hand-read run — not
+in `run_access_ladder()`, `verify_hub()`, or anywhere else a sweep
+actually runs. This fix does not build that. It correctly leaves a hit
+like this alone rather than guessing, the same "don't guess" rule WO-364
+already used for it, but the underlying gap (no reusable way to catch
+it) is still open — see the new, narrower `BACKLOG.md` entry split out
+for it.
+
+**Verification.** No live website was fetched for this fix — it changes
+control flow in already-tested code, not a new adapter, so this repo's
+own "test against a real URL first" rule doesn't call for a fresh live
+sample. Verification is fixture-based: 9 new tests in
+`tests/test_wo904_access_ladder_decorative_climb.py`, covering a
+decorative hit with a web-address signature (falls through to a real
+hop-link hit, and separately, falls through and correctly reports
+nothing found when nothing else exists), the same case under the
+403-then-browser-headers retry path, a decorative hit with NO signature
+(Garfield NJ's own case, correctly left alone), and two real,
+already-captured pages already checked into
+`tests/fixtures/wo228_hub_ranking/` used as a genuine regression check.
+One of those real pages (McLeansboro, IL) turned up a real,
+previously-unnoticed example of this exact bug already sitting in this
+repo's own test fixtures: its homepage's video hit is a file literally
+named `mcl-header-bkg.m4v` ("header background"), which has no oEmbed of
+its own (a raw file has none) and no web-address signature the fast
+check can catch — exactly BACKLOG.md's WO-364 "no title signal
+available" bucket. The fix correctly leaves it alone rather than
+guessing, same as Garfield NJ.
+
+**This WO's own gates.** `ruff check`, `ruff format --check`, the full
+`pytest` suite (3,939 passed, 18 skipped — includes the 9 new tests),
+and both `alembic check` runs (`archive` and `app`, each run as
+`alembic upgrade head` then `alembic check` against a fresh SQLite file,
+matching CI exactly) all green. No schema changed.
+
+## WO-904/905/906: extract a real meeting_body from CivicClerk, CivicPlus, and Legistar — three platforms checked and shipped, three checked and written off, two left open [Done 2026-09-19]
+
+**Why this ran.** Ryan asked how to fill in the meeting-body field
+(which committee or board a meeting belongs to) for the discovery
+corpus, since some source platforms expose it as a real API field. Nine
+video platforms were checked one at a time against real, live data
+before any code was written, per this repo's standing rule to never
+build an adapter (or an adapter field) from assumption.
+
+**What was found, platform by platform.**
+
+| Platform | Result | Real evidence |
+|---|---|---|
+| CivicClerk | Real field, shipped | `categoryName` on the event API — confirmed on Emporia KS ("City Commission Meetings") and Kaysville UT ("City Council"); a generic "General" value is filtered out (confirmed on Ingleside TX) since it names no real body |
+| CivicPlus | Real field, shipped | AgendaCenter's own category panel heading, tied to each meeting row by its `aria-controls`/panel id — confirmed on a real fixture with three distinct real bodies: "City Council," "Planning Commission," "Board of Zoning Appeals (BZA)" |
+| Legistar | Real field, shipped | `webapi.legistar.com`'s public `events/{id}` endpoint returns a real `EventBodyName` field, confirmed live and independently more reliable than the existing title-regex parse |
+| Cablecast | Real field checked for, not found | categories are bare integers with no name field anywhere in the API |
+| Granicus | Real field checked for, not found | the RSS channel title is a channel-level label ("TGOV - Tulsa Government Access Television"), not a meeting-level one, and requires a `view_id` to even reach |
+| eScribe | Real field checked for, not found | `MeetingType` is byte-identical to `MeetingName` on every real captured row |
+| IQM2 | Real field exists, not reachable | the calendar listing page prints a real `Board:` label, but `resolve()` never fetches that page — only the per-meeting detail page, which has no such field |
+| Swagit | Undetermined | no real fixture in the repo exposes a structured body field either way |
+| PrimeGov | Undetermined | same — no real fixture to check |
+
+**What was built.** Three PRs, each live-verified before merge:
+
+- **PR #1233 (WO-904, CivicClerk)**: `app/platforms/civicclerk.py`'s
+  `resolve()` reads `categoryName` off the event payload, filters out a
+  fixed set of non-informative values (currently just `"general"`,
+  case-insensitively), and sets `meeting_body` on the result.
+- **PR #1235 (WO-905, CivicPlus)**: `app/platforms/civicplus.py`'s
+  `_find_candidate_rows()` maps each AgendaCenter category panel's own
+  `<h2 aria-controls="category-panel-...">` heading text to that panel's
+  id, then looks up each row's own enclosing panel to attach the right
+  heading as `meeting_body` — so a page listing several boards' meetings
+  in one AgendaCenter gets the right body per row, not one value for the
+  whole page.
+- **PR #1236 (WO-906, Legistar)**: `app/platforms/legistar.py` adds a
+  `_fetch_real_event_body()` call against Legistar's public webapi
+  (tenant slug parsed from the resolved page's own hostname, event id
+  parsed from its `ID=`/`LEGID=` query parameter — both shapes seen live
+  across different tenants), and prefers that real value over the
+  existing title-regex-parsed `page_info["body"]` wherever a
+  `ResolvedMeeting` is built. **Caution preserved on purpose**: the
+  title-regex-parsed body is still used internally as a matching key
+  inside `_try_granicus_view_publisher_video()`'s call to
+  `find_view_publisher_match()` — that internal use was left completely
+  untouched, since it's already-tuned matching logic unrelated to the
+  field this WO was adding; only the *output* `meeting_body` on the
+  final result was changed to prefer the real webapi value.
+
+**Live verification.** Each platform's fix was checked against real,
+current production data before merging, not just against its own new
+unit tests: CivicClerk against Emporia KS/Kaysville UT/Ingleside TX's
+real live event payloads, CivicPlus against a real AgendaCenter fixture
+with three distinct real category panels, Legistar against a real
+`webapi.legistar.com` response for a live tenant/event id pair, compared
+against that same meeting's title-parsed body to confirm the real value
+differs and wins.
+
+**Tests added.** `tests/test_civicclerk.py` (3 new assertions:
+Emporia's real body populates, Kaysville's real body populates,
+Ingleside's generic "General" value is filtered to `None`),
+`tests/test_civicplus.py` (`test_category_panel_heading_becomes_
+meeting_body`, exercising `_find_candidate_rows()` directly against a
+real fixture), `tests/test_legistar.py` (2 new tests: the real webapi
+body wins over the page-title parse when both are present, and a webapi
+fetch failure falls back gracefully to the title-parsed body rather than
+failing the whole resolve).
+
+**Caution.** `meeting_body` is populated on a minority of shipped
+meetings even with all three platforms live — CivicClerk, CivicPlus, and
+Legistar together aren't the majority of the corpus, Granicus (the
+single largest platform by tenant count) has no real field to extract at
+all, and IQM2/Swagit/PrimeGov remain open questions. This was a targeted
+enrichment of the platforms known to have a real field, not a corpus-wide
+fix.
+
+**Standing decision recorded.** `BACKLOG.md`'s "Standing decisions"
+section now carries a dedicated entry for Cablecast/Granicus/eScribe
+("checked, not assumed") so a future session doesn't re-investigate the
+same three platforms from scratch.
+
+**Still open, filed in `BACKLOG.md`.** IQM2 (`[NEEDS-AUDIT]`, Open
+bugs — real field, wrong page, fix needs a new network call whose
+feasibility isn't verified yet) and Swagit/PrimeGov (`[LATER]`, Dormant —
+no real fixture exists yet to check either way).
+
+**This WO's own gates.** All three PRs passed the full five-gate CI
+(`ruff check`, `ruff format --check`, `pytest`, both `alembic check`
+runs, `check_backlog_done_headings.py`) before merge; none touched a
+schema, so no migration was needed. Built in an isolated worktree
+(`/tmp/rtr-deeplink-meeting-body`) to avoid disturbing any other
+concurrent session's work in the shared checkout.
+
+**Deploy status.** All three PRs are on `main`, under `app/`, not yet
+deployed.
+
+🎯 **Bottom line: of 9 video platforms checked with real, live data,
+3 (CivicClerk, CivicPlus, Legistar) now extract a real meeting body and
+are live-verified and merged; 3 (Cablecast, Granicus, eScribe) were
+checked and confirmed to have no real field to extract; 2 (Swagit,
+PrimeGov) still need a real fixture before anything can be said; and
+IQM2's real field is confirmed to exist but isn't reachable from the
+pages resolve() fetches today.**
+
 ## WO-903: CivicClerk now delegates a Cablecast `externalVideoUrl`/`externalMediaUrl` to CablecastAssetFinder — live-verified on Excelsior, MN; corrects a wrong government list in the WO-290 tier-3-probe entry [Done 2026-09-17]
 
 **Why this ran.** `BACKLOG.md`'s "tier-3 probe has no recipe for three

@@ -103,8 +103,9 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (10)
+Standing decisions — do NOT re-raise  (11)
   No Viebit meeting can get a real transcript today -- confirmed at…
+  Cablecast, Granicus, and eScribe have no real `meeting_body` field to…
   Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -197,8 +198,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
-  [NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s…
-  [NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped…
+  [NEEDS-AUDIT] A decorative video with no web-address signature at all…
   [NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
   [NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical,…
@@ -355,7 +355,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (66)
+  Adapter & platform gaps  (67)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -422,6 +422,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
     [NEEDS-AUDIT] A real tier 1/3 "video found" verdict off…
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
+    [NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -507,7 +508,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
-Dormant — needs a real example first `[LATER]`
+Dormant — needs a real example first `[LATER]`  (1)
+  Swagit and PrimeGov: unknown whether either exposes a real…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -553,6 +555,42 @@ Parked deliberately — allowed back `[PARK]`  (4)
 - **History**: `CLAUDE.md`'s ffmpeg-trust-store gotcha (2026-09-15, the
   same investigation that confirmed this); `app/platforms/queue_probe.
   py`'s own WO-306 comment (the original, narrower probe-level finding).
+
+### Cablecast, Granicus, and eScribe have no real `meeting_body` field to extract -- checked, not assumed `[STANDING]`
+
+- **Issue**: WO-904/905/906 (`BACKLOG_DONE.md`) extracted a real,
+  structured `meeting_body` for CivicClerk/CivicPlus/Legistar after
+  confirming each platform's own API/HTML genuinely carries a
+  committee/body name distinct from the meeting title. The same check
+  against Cablecast, Granicus, and eScribe -- the platform this repo's
+  own biggest tenant pool (Granicus, ~240 real tenants) runs on --
+  found nothing real to extract.
+- **Impact**: none of these three will ever get a non-title
+  `meeting_body` without a materially different data source than what
+  each adapter already fetches -- most of the corpus by tenant count
+  stays at today's ~10% `meeting_body` coverage regardless of any
+  further per-adapter work here.
+- **What this means**: do not "fix" `meeting_body` on any of these
+  three from a title guess -- that's exactly the thing this repo's own
+  convention (never guess a body from a title) exists to prevent.
+  Cablecast: the only category field in any real captured response
+  (`PublicSite`, Remix `__remixContext`) is a bare integer id with no
+  name anywhere in the payload -- a name lookup would need a second,
+  never-yet-captured `/categories/{id}` call. Granicus: the RSS
+  `<channel><title>` some tenants expose is a real, structured field
+  (already used, `channel_body` in `granicus.py`), but it names the
+  *channel*, not the meeting's committee (real fixtures: Tulsa's is
+  "TGOV - Tulsa Government Access Television", Prince William County's
+  is "Streaming Media Archive2") -- and it requires `view_id` in the
+  URL, so a bare `/player/clip/NNNN` link gets nothing regardless.
+  eScribe: the calendar JSON's `MeetingType` field is real and
+  independent of `MeetingName`, but in every real captured row (Peel
+  Region, Hazelton) its value is byte-identical to `MeetingName` --
+  no actual signal -- and it's only on the listing endpoint, which the
+  resolve path never calls.
+- **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry has the full
+  per-platform evidence (real field names, real captured values) this
+  finding is based on.
 
 ### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
 
@@ -2414,12 +2452,12 @@ of human step they need.
   - **Next action**: check whether 1416s is past the signed playlist's actual runtime (a bad highlight timestamp picking a seek point beyond the video's real length) or whether ffmpeg genuinely can't seek this specific TikiLive stream shape at all; try a seek to 0s/a low fixed offset as a quick diagnostic before assuming either.
   - **History**: `BACKLOG_DONE.md`'s WO-362 entry.
 
-- **[NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()` stops climbing the moment it finds ANY vendor-shaped link on a homepage — including a decorative/promotional video embed, not just a real meeting-hub link.**
-  - **Issue**: found live 2026-09-13 (WO-361), fixing the hub-finding step for the WO-355 population reproduced WO-355's own decorative-video false positive through a different code path. `run_access_ladder()`'s plain-fetch step calls `find_platform_link()` on the homepage and returns immediately on any hit — it never tries a hop link, first-party agenda probe, or headless render once one vendor-shaped link is found, whether that link is a real meeting platform or a hero-background Vimeo embed (`background=1&loop=1&muted=1`) or an unparameterized single-video player URL. WO-361 added `_is_decorative_hit()` (the same URL-parameter/filename signature `wo355_handread.py` uses) to reject the obvious cases and fall through to a first-party probe, but a decorative video with no such signature — confirmed only by fetching its real oEmbed title (e.g. Garfield city NJ's "City of Garfield 2024," a production-company reel) — still wins the slot, since the URL-shape filter can't see the title.
-  - **Impact**: real, current — every one of WO-361's 16 tier 1/3 candidates in its first 213-government chunk traced back to this exact failure mode; zero came out as a real meeting. **WO-364 (2026-09-14, the WO-361b resume run covering the remaining 269 governments) confirms the same failure mode at the same rate on a much bigger sample**: 14 tier 1/3 candidates, and 10 of them were confirmed decorative/promotional videos by their real oEmbed title or page content alone — a town's own "Town of Warrenton"/"Welcome To Liberty" intro reel, a tourism board's "Inverness County – Canada's Musical Coast," an engineering consultant's own project video ("Stantec | Port Wing Restoration Site | FINAL"), a documentary ("Clean Water: A Long Journey from the Source to Our Tap"), a local-interest video series episode ("Around MIAMI Township with Eric Ferry"). 3 more had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were left `still_ambiguous` rather than guessed. Across both runs: 24 of 30 tier 1/3 candidates (80%) from the full 482-government population were decorative, and zero were a real meeting. **WO-368 (2026-09-14) then walked all 20 of WO-361/WO-364's `video-without-meeting`-confirmed rows past the decorative hit itself**, via `verify_hub(..., deep_walk=True, listing_limit=15, video_collect_limit=3)` on the exact same `hub_url` the ladder had already returned — asking for up to 2 more distinct video candidates on the same hub. All 20 came back exhausted after 1: the decorative embed is the ONLY video link `find_platform_link()` (or `verify_hub()`'s own deep-walk) can find anywhere on that specific hit, confirmed live, not assumed. This narrows the fix this entry needs: **re-asking the same decorative URL for more candidates is a dead end** — the only path left for these 20 (and future ones like them) is the fix already proposed below, trying a DIFFERENT path off the homepage (a hop link, a first-party agenda probe, headless) rather than walking deeper from the decorative hit itself. Any future sweep leaning on `run_access_ladder()`'s vendor-link scan against a small-town homepage risks the same false-positive class it was meant to fix. **WO-906 (2026-09-19) confirms the same stop-on-first-hit behavior on a completely different population — 200 real small governments (townships, small municipalities, small counties), not WO-355/361/364's tier 1/3 candidates.** Of 14 raw `direct_file`/`vimeo` hits `find_platform_link()` accepted straight off a small government's own homepage, 6 were this same decorative-homepage-video shape on a plain look at the filename/URL: a `Banniere` (French for "banner") folder, a literal `video-placeholder.mp4`, a literal `Homepage-Video.mp4`, a `videoaccueil` ("welcome video") file, a "Farm Video" with nothing to do with government, and a Vimeo embed with `autoplay=1&loop=1` — same failure, a fresh set of real examples, none overlapping the ones above. WO-906 also found a related but distinct failure from the same stop-on-first-hit behavior — `find_platform_link()` accepting a link to something real but belonging to a completely different organization, not a decorative video at all — filed separately below since the fix is different (checking WHO a link belongs to, not WHETHER it's decorative).
-  - **Next action**: teach `run_access_ladder()` itself (not just a downstream caller) to treat a hand-confirmed-decorative hit as "keep climbing" — try the ranked hop links, the first-party agenda probe, and headless before giving up — rather than stopping at the first vendor-shaped link found on the homepage's own body. WO-368 confirms this has to be a genuinely different path off the homepage, not a deeper walk of the decorative hit's own URL (that returns nothing new, per above).
-  - **Constraint**: this is shared code several other sweeps (WO-147's own candidates, WO-283/337/338's phase-3 fallback) depend on for their "found a hit, stop" behavior on a REAL platform link — any fix needs to keep that fast-path for a genuine hub link and only add the extra climbing when the hit looks decorative.
-  - **History**: `BACKLOG_DONE.md`'s WO-361, WO-364 and WO-368 entries; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`, `wo364_handread.csv`, `wo368_walk.csv`.
+- **[NEEDS-AUDIT] A decorative video with no web-address signature at all still can't be told apart from a real one anywhere in production code — only a one-off hand-read script does the check that would catch it.**
+  - **Issue**: `_is_decorative_hit()` (`scripts/wo147_access_ladder_sweep.py`, used by `run_access_ladder()` and `wo361_find_hub.py` — see `BACKLOG_DONE.md`'s WO-904 entry, which fixed the ladder's own "stops climbing on any hit" bug this entry was split from) is a URL-shape check only: a query-string signature (`background=1`, or `loop=1`+`muted=1`) or a decorative filename token. A real minority of decorative hits carry neither — the only way WO-364 told these apart from a real meeting was fetching the video's own oEmbed title (Garfield city NJ's "City of Garfield 2024" is the confirmed example; `scripts/wo364_handread.py`'s own docstring names it directly, crediting "AlphaDog Solutions" as the real oEmbed author). That oEmbed lookup exists only in `wo364_handread.py`, a one-off hand-read script built for that specific sweep — not in `run_access_ladder()`, `verify_hub()`, or any other reusable, production code path.
+  - **Impact**: real and current. WO-364's own sample found 10 of 14 tier 1/3 candidates were exactly this shape (a title-only tell, no URL signature); a further 3 had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were correctly left `still_ambiguous` rather than guessed. Every future sweep leaning on `run_access_ladder()`'s or `verify_hub()`'s vendor-link scan hits the same gap unless it, too, hand-builds its own oEmbed check the way WO-364 did. **WO-906 (2026-09-19), run against a different population (200 real small governments, not WO-355/361/364's tier 1/3 candidates) and against the ladder as it stood just BEFORE this WO-904 fix landed, found a cheaper, adjacent gap: several real hits carry a textual signature, just not one `_DECORATIVE_FILENAME_RE`'s current token list recognizes** — a `Banniere` (French for "banner," not matched by the English `banner` token), a literal `video-placeholder.mp4` ("placeholder" isn't a listed token), a "Rosemary-Farm-Video" (no government-decorative word at all, just a subject mismatch no keyword list can catch), and a Vimeo embed with `loop=1` alone (no `muted=1`, so the paired check misses it). Whether today's fixed ladder now climbs past these 4 (2 of WO-906's own 6 decorative examples, "Homepage-Video" and "videoaccueil," already match the current token list and should already be fixed) has not been re-checked.
+  - **Next action**: give a production code path (most naturally `verify_hub()`/`_walk_candidates()` in `app/platforms/passive_verify.py`, which already resolves a confirmed hit's real metadata) a reusable oEmbed-title-based decorative check, reusing `wo364_handread.py`'s already-working, unauthenticated Vimeo oEmbed GET (`vimeo.com/api/oembed.json?url=...`) rather than rewriting it. This is closely related to — and probably worth building alongside — the separate, already-open "`verify_hub()`'s bare-homepage fallback is wrong on hand-read almost every time" entry below, which proposes the URL-shape/page-context half of the same filter; an oEmbed-title check is the piece that catches what that filter's own URL-shape checks structurally cannot (a title isn't visible in a URL). Cheaper interim step, per WO-906 above: add `banniere`/`placeholder` to `_DECORATIVE_FILENAME_RE` and stop requiring `muted=1` alongside `loop=1` — a real, if partial, fix that needs no oEmbed call at all.
+  - **Constraint**: don't guess when the title lookup itself comes back empty (a raw media file with no oEmbed, a 404) — WO-364's `still_ambiguous` verdict for exactly that case is the correct behavior to keep, not a gap to force a guess into.
+  - **History**: `BACKLOG_DONE.md`'s WO-361, WO-364, WO-368 and WO-904 entries; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`, `wo364_handread.csv`, `wo368_walk.csv`; `scripts/wo364_handread.py`; WO-906's own PR (2026-09-19, `wo906-headless-pilot-small-govs`) for the 4 new token-gap examples.
 
 - **[NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped link on a homepage even when it belongs to a completely different organization — not just a decorative video (see the entry above).**
   - **Issue**: `find_platform_link()` (`scripts/wo147_access_ladder_sweep.py`, backed by `app/platforms/base.py`'s shared `detect_platform()`) accepts the FIRST anchor/iframe on a page whose link matches a known platform, in document order — it never checks whether the link is actually about the government being checked. Found live in WO-906 (2026-09-19)'s 200-small-government pilot: of 35 raw YouTube "hits," 11 were confirmed on sight to be someone else's channel entirely — a state agency (Iowa's DNR, Arkansas's tourism board, the Minnesota Judicial Branch, a Quebec provincial safety agency), a state governor's own channel, a hosting company's or CMS vendor's own badge link (Network Solutions, WordPress.com), an unrelated personal channel, and a YouTube Shorts clip (too short to be a real meeting). Two more raw hits on other platforms were the same shape: a CivicPlus link that landed on a neighboring county's own agenda page instead of the town's, and a CivicPlus staging site's business-directory page.
@@ -6201,6 +6239,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't touch `_find_youtube_video_id()`'s existing single-meeting-page behavior — it's correct and tested for the case it was built for (one meeting per page); this is additive, a new tier that runs first when a page looks like a multi-row listing (multiple date-shaped headings/rows), not a replacement.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
+- **[NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on the calendar listing page — `iqm2.py`'s `resolve()` never fetches that page, so it has no real field to extract from.**
+  - **Issue**: found live 2026-09-19, during the same meeting_body investigation that shipped CivicClerk/CivicPlus/Legistar (WO-904/905/906). iQM2's calendar view (`Calendar.aspx`/`Citizens/Calendar.aspx`) genuinely does print a real `Board:` label next to each listed meeting — confirmed live against real iQM2 tenants. But `app/platforms/iqm2.py`'s `resolve()` only ever fetches a single meeting's own detail page (`Detail_Meeting.aspx`/`SplitView.aspx`, reached via `legistar.py`'s shared Cousin-adapter delegation), and neither of those pages carries the board name anywhere in their own markup — it's a calendar-page-only field.
+  - **Impact**: small (iQM2 is ~2 tenants in the corpus today), and nothing is broken — this is a missed enrichment, not a wrong value. Consistent with the platform-coverage rule that a field only counts once it's been checked, not assumed: iQM2 is neither "no real field exists" (Cablecast/Granicus/eScribe's case) nor "already shipped" (CivicClerk/CivicPlus/Legistar's case) — it's "a real field exists but isn't reachable from the pages resolve() already fetches."
+  - **Next action**: to actually extract it, `resolve()` would need a NEW network call — looking up the specific meeting by id/date on its tenant's calendar page — whose feasibility (can a single meeting be looked up directly, or only by paging/filtering a date range?) hasn't been live-verified yet. Worth revisiting if iQM2's tenant count grows, or as a small standalone follow-up; not pursued in this pass given the low tenant count relative to the added fetch.
+  - **Constraint**: don't add the extra fetch speculatively — verify the calendar page's lookup-by-id feasibility against a real tenant first (CLAUDE.md's "test against a real URL first" rule), same as any other adapter change.
+  - **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry (meeting_body investigation).
+
 ## Reliability, ops & cost
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
@@ -7393,11 +7438,45 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   rows; 358 total counting the related 161 calendar-hub rows) is likely
   mis-recorded as video-less when the real hub is simply one link deeper
   than the sweep that tested it looked.
-- **Next action**: sweep this population after WO-228's finder lands,
-  ahead of the 161 calendar-hub rows (a related but distinct shape).
-- **Constraint**: don't hand-check the full 1,125 without a finder --
-  this WO's 6-row sample is a strong signal, not full coverage.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+- **Next action**: the sweep script is now built and live-validated
+  (WO-905, 2026-09-19): `scripts/wo905_agendacenter_hop_sweep.py`. Give
+  it a CSV of governments (gov_id, name, state, domain, hub_url) and it
+  reads the empty `/AgendaCenter` page, reads the government's own home
+  page too, and follows the best links one step deeper using WO-228/274's
+  ranked finder (plus a same-domain shortcut-link check this WO added,
+  for a site's own icon-only `/youtube` link, which the ranked finder
+  alone missed on 2 of the 6 test governments). It writes one report row
+  per government and never touches the research file or calls ingest.
+  Tested live against all 6 governments from WO-226's sample and matched
+  the hand-check outcome on all 6:
+
+  | Government | WO-226's hand check | This script's live result |
+  |---|---|---|
+  | Hagerstown, MD | Converts to video | Found a real YouTube channel |
+  | Harvey, IL | Converts to video | Found a real YouTube channel |
+  | Flagler Beach, FL | Converts to video | Found a real, specific CivicClerk meeting |
+  | Greenwood Village, CO | Converts to video | Found a real YouTube channel |
+  | Hoffman Estates, IL | Stays no-video | Found a CivicClerk link, then checked that government's account directly and confirmed no real meeting has video |
+  | Melrose, MA | Stays no-video | Found nothing |
+
+  Still needed: running it against the real 1,125-row list. That list
+  only exists on Ryan's Mac
+  (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`), so
+  this is Ryan's own next step, or a future session's with access to
+  that file. Run it ahead of the 161 calendar-hub rows (a related but
+  distinct shape).
+- **Constraint**: don't hand-check the full 1,125 by hand -- the script
+  above replaces that. Its own "bare tenant root" outcome (a real
+  platform link found, but not yet a specific meeting -- e.g. a bare
+  CivicClerk/Swagit/Granicus/PrimeGov/eScribe/IQM2 tenant page) still
+  needs a human or a future WO's judgment call for every platform except
+  CivicClerk, which the script already checks itself via that vendor's
+  own public Events API.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11. WO-905's
+  full validation detail (the mechanism, the false positives it found
+  and fixed building it, and the sibling passive-discovery-v2 finding it
+  credits) is in `scripts/wo905_agendacenter_hop_sweep.py`'s own module
+  docstring and its PR description.
 
 ### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
 
@@ -7984,7 +8063,24 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-Nothing open here right now.
+### Swagit and PrimeGov: unknown whether either exposes a real meeting-body field `[LATER]`
+
+- **Issue:** During the 2026-09-19 meeting_body investigation (WO-904/905/906,
+  which shipped CivicClerk/CivicPlus/Legistar and wrote off Cablecast/
+  Granicus/eScribe as having no real field), Swagit and PrimeGov were left
+  undetermined. Neither has a real fixture in the repo's test suite that
+  exposes a structured, independent meeting-body/committee field one way
+  or the other — unlike the platforms that got a real yes or no this pass,
+  there's no live sample in hand to check.
+- **Next action:** the next time a real Swagit or PrimeGov sample is
+  fetched for any other reason (a new tenant, a bug repro), check its raw
+  page/API response for a genuine structured body/committee field before
+  building anything — same rule as any other adapter work (CLAUDE.md's
+  "test against a real URL first").
+- **Constraint:** don't guess a field name and wire it up without a real,
+  live-confirmed sample — that's exactly the mistake this whole pass was
+  built to avoid.
+- **History:** `BACKLOG_DONE.md`'s WO-904/905/906 entry.
 
 ## Parked deliberately — allowed back `[PARK]`
 

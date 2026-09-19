@@ -61,11 +61,9 @@ import asyncio
 import csv
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urlparse
 
 import aiohttp
 import certifi
@@ -151,19 +149,20 @@ def _blank_out() -> dict:
 # homepage carries as a hero background video. A raw single-video player
 # URL with these markers is never treated as a confirmed hub; the ladder
 # falls through to the first-party agenda probe / no-hub path instead.
-_DECORATIVE_FILENAME_RE = re.compile(
-    r"(promo|promotion|accueil|welcome|tourism|flyover|drone|dji_|"
-    r"site.?asset|homepage|hero|banner|discover|explore)",
-    re.IGNORECASE,
-)
-
-
-def _is_decorative_hit(url: str) -> bool:
-    u = (url or "").lower()
-    if "background=1" in u or ("loop=1" in u and "muted=1" in u):
-        return True
-    path = urlparse(url).path
-    return bool(_DECORATIVE_FILENAME_RE.search(path))
+#
+# WO-904 (2026-09-19): relocated into scripts/wo147_access_ladder_sweep.py
+# (as `_is_decorative_hit`) so `run_access_ladder()` ITSELF can also use
+# it -- before this, only THIS caller checked, so `run_access_ladder()`
+# would already have returned (and stopped) on a decorative hit before
+# this check ever ran; every other sweep calling `run_access_ladder()`
+# directly had no protection at all. Imported here, not reimplemented,
+# per CLAUDE.md's "reuse, don't reinvent" rule -- this module's own
+# `decorative_hit` check below now mostly catches a decorative hit
+# surfacing from a hop link or calendar entry (the two rungs
+# `run_access_ladder()` deliberately does NOT decorative-filter, since a
+# hop/calendar-entry page is a different, agenda/minutes-hinted page,
+# not the homepage's own body -- see that module's own comment).
+_is_decorative_hit = ladder._is_decorative_hit
 
 
 def _no_hub_reason_for_ladder(result: "ladder.LadderResult") -> str:
