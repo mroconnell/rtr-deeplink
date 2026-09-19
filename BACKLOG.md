@@ -7388,11 +7388,45 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   rows; 358 total counting the related 161 calendar-hub rows) is likely
   mis-recorded as video-less when the real hub is simply one link deeper
   than the sweep that tested it looked.
-- **Next action**: sweep this population after WO-228's finder lands,
-  ahead of the 161 calendar-hub rows (a related but distinct shape).
-- **Constraint**: don't hand-check the full 1,125 without a finder --
-  this WO's 6-row sample is a strong signal, not full coverage.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+- **Next action**: the sweep script is now built and live-validated
+  (WO-905, 2026-09-19): `scripts/wo905_agendacenter_hop_sweep.py`. Give
+  it a CSV of governments (gov_id, name, state, domain, hub_url) and it
+  reads the empty `/AgendaCenter` page, reads the government's own home
+  page too, and follows the best links one step deeper using WO-228/274's
+  ranked finder (plus a same-domain shortcut-link check this WO added,
+  for a site's own icon-only `/youtube` link, which the ranked finder
+  alone missed on 2 of the 6 test governments). It writes one report row
+  per government and never touches the research file or calls ingest.
+  Tested live against all 6 governments from WO-226's sample and matched
+  the hand-check outcome on all 6:
+
+  | Government | WO-226's hand check | This script's live result |
+  |---|---|---|
+  | Hagerstown, MD | Converts to video | Found a real YouTube channel |
+  | Harvey, IL | Converts to video | Found a real YouTube channel |
+  | Flagler Beach, FL | Converts to video | Found a real, specific CivicClerk meeting |
+  | Greenwood Village, CO | Converts to video | Found a real YouTube channel |
+  | Hoffman Estates, IL | Stays no-video | Found a CivicClerk link, then checked that government's account directly and confirmed no real meeting has video |
+  | Melrose, MA | Stays no-video | Found nothing |
+
+  Still needed: running it against the real 1,125-row list. That list
+  only exists on Ryan's Mac
+  (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`), so
+  this is Ryan's own next step, or a future session's with access to
+  that file. Run it ahead of the 161 calendar-hub rows (a related but
+  distinct shape).
+- **Constraint**: don't hand-check the full 1,125 by hand -- the script
+  above replaces that. Its own "bare tenant root" outcome (a real
+  platform link found, but not yet a specific meeting -- e.g. a bare
+  CivicClerk/Swagit/Granicus/PrimeGov/eScribe/IQM2 tenant page) still
+  needs a human or a future WO's judgment call for every platform except
+  CivicClerk, which the script already checks itself via that vendor's
+  own public Events API.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11. WO-905's
+  full validation detail (the mechanism, the false positives it found
+  and fixed building it, and the sibling passive-discovery-v2 finding it
+  credits) is in `scripts/wo905_agendacenter_hop_sweep.py`'s own module
+  docstring and its PR description.
 
 ### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
 
