@@ -80,6 +80,111 @@ and both `alembic check` runs (`archive` and `app`, each run as
 `alembic upgrade head` then `alembic check` against a fresh SQLite file,
 matching CI exactly) all green. No schema changed.
 
+## WO-904/905/906: extract a real meeting_body from CivicClerk, CivicPlus, and Legistar — three platforms checked and shipped, three checked and written off, two left open [Done 2026-09-19]
+
+**Why this ran.** Ryan asked how to fill in the meeting-body field
+(which committee or board a meeting belongs to) for the discovery
+corpus, since some source platforms expose it as a real API field. Nine
+video platforms were checked one at a time against real, live data
+before any code was written, per this repo's standing rule to never
+build an adapter (or an adapter field) from assumption.
+
+**What was found, platform by platform.**
+
+| Platform | Result | Real evidence |
+|---|---|---|
+| CivicClerk | Real field, shipped | `categoryName` on the event API — confirmed on Emporia KS ("City Commission Meetings") and Kaysville UT ("City Council"); a generic "General" value is filtered out (confirmed on Ingleside TX) since it names no real body |
+| CivicPlus | Real field, shipped | AgendaCenter's own category panel heading, tied to each meeting row by its `aria-controls`/panel id — confirmed on a real fixture with three distinct real bodies: "City Council," "Planning Commission," "Board of Zoning Appeals (BZA)" |
+| Legistar | Real field, shipped | `webapi.legistar.com`'s public `events/{id}` endpoint returns a real `EventBodyName` field, confirmed live and independently more reliable than the existing title-regex parse |
+| Cablecast | Real field checked for, not found | categories are bare integers with no name field anywhere in the API |
+| Granicus | Real field checked for, not found | the RSS channel title is a channel-level label ("TGOV - Tulsa Government Access Television"), not a meeting-level one, and requires a `view_id` to even reach |
+| eScribe | Real field checked for, not found | `MeetingType` is byte-identical to `MeetingName` on every real captured row |
+| IQM2 | Real field exists, not reachable | the calendar listing page prints a real `Board:` label, but `resolve()` never fetches that page — only the per-meeting detail page, which has no such field |
+| Swagit | Undetermined | no real fixture in the repo exposes a structured body field either way |
+| PrimeGov | Undetermined | same — no real fixture to check |
+
+**What was built.** Three PRs, each live-verified before merge:
+
+- **PR #1233 (WO-904, CivicClerk)**: `app/platforms/civicclerk.py`'s
+  `resolve()` reads `categoryName` off the event payload, filters out a
+  fixed set of non-informative values (currently just `"general"`,
+  case-insensitively), and sets `meeting_body` on the result.
+- **PR #1235 (WO-905, CivicPlus)**: `app/platforms/civicplus.py`'s
+  `_find_candidate_rows()` maps each AgendaCenter category panel's own
+  `<h2 aria-controls="category-panel-...">` heading text to that panel's
+  id, then looks up each row's own enclosing panel to attach the right
+  heading as `meeting_body` — so a page listing several boards' meetings
+  in one AgendaCenter gets the right body per row, not one value for the
+  whole page.
+- **PR #1236 (WO-906, Legistar)**: `app/platforms/legistar.py` adds a
+  `_fetch_real_event_body()` call against Legistar's public webapi
+  (tenant slug parsed from the resolved page's own hostname, event id
+  parsed from its `ID=`/`LEGID=` query parameter — both shapes seen live
+  across different tenants), and prefers that real value over the
+  existing title-regex-parsed `page_info["body"]` wherever a
+  `ResolvedMeeting` is built. **Caution preserved on purpose**: the
+  title-regex-parsed body is still used internally as a matching key
+  inside `_try_granicus_view_publisher_video()`'s call to
+  `find_view_publisher_match()` — that internal use was left completely
+  untouched, since it's already-tuned matching logic unrelated to the
+  field this WO was adding; only the *output* `meeting_body` on the
+  final result was changed to prefer the real webapi value.
+
+**Live verification.** Each platform's fix was checked against real,
+current production data before merging, not just against its own new
+unit tests: CivicClerk against Emporia KS/Kaysville UT/Ingleside TX's
+real live event payloads, CivicPlus against a real AgendaCenter fixture
+with three distinct real category panels, Legistar against a real
+`webapi.legistar.com` response for a live tenant/event id pair, compared
+against that same meeting's title-parsed body to confirm the real value
+differs and wins.
+
+**Tests added.** `tests/test_civicclerk.py` (3 new assertions:
+Emporia's real body populates, Kaysville's real body populates,
+Ingleside's generic "General" value is filtered to `None`),
+`tests/test_civicplus.py` (`test_category_panel_heading_becomes_
+meeting_body`, exercising `_find_candidate_rows()` directly against a
+real fixture), `tests/test_legistar.py` (2 new tests: the real webapi
+body wins over the page-title parse when both are present, and a webapi
+fetch failure falls back gracefully to the title-parsed body rather than
+failing the whole resolve).
+
+**Caution.** `meeting_body` is populated on a minority of shipped
+meetings even with all three platforms live — CivicClerk, CivicPlus, and
+Legistar together aren't the majority of the corpus, Granicus (the
+single largest platform by tenant count) has no real field to extract at
+all, and IQM2/Swagit/PrimeGov remain open questions. This was a targeted
+enrichment of the platforms known to have a real field, not a corpus-wide
+fix.
+
+**Standing decision recorded.** `BACKLOG.md`'s "Standing decisions"
+section now carries a dedicated entry for Cablecast/Granicus/eScribe
+("checked, not assumed") so a future session doesn't re-investigate the
+same three platforms from scratch.
+
+**Still open, filed in `BACKLOG.md`.** IQM2 (`[NEEDS-AUDIT]`, Open
+bugs — real field, wrong page, fix needs a new network call whose
+feasibility isn't verified yet) and Swagit/PrimeGov (`[LATER]`, Dormant —
+no real fixture exists yet to check either way).
+
+**This WO's own gates.** All three PRs passed the full five-gate CI
+(`ruff check`, `ruff format --check`, `pytest`, both `alembic check`
+runs, `check_backlog_done_headings.py`) before merge; none touched a
+schema, so no migration was needed. Built in an isolated worktree
+(`/tmp/rtr-deeplink-meeting-body`) to avoid disturbing any other
+concurrent session's work in the shared checkout.
+
+**Deploy status.** All three PRs are on `main`, under `app/`, not yet
+deployed.
+
+🎯 **Bottom line: of 9 video platforms checked with real, live data,
+3 (CivicClerk, CivicPlus, Legistar) now extract a real meeting body and
+are live-verified and merged; 3 (Cablecast, Granicus, eScribe) were
+checked and confirmed to have no real field to extract; 2 (Swagit,
+PrimeGov) still need a real fixture before anything can be said; and
+IQM2's real field is confirmed to exist but isn't reachable from the
+pages resolve() fetches today.**
+
 ## WO-903: CivicClerk now delegates a Cablecast `externalVideoUrl`/`externalMediaUrl` to CablecastAssetFinder — live-verified on Excelsior, MN; corrects a wrong government list in the WO-290 tier-3-probe entry [Done 2026-09-17]
 
 **Why this ran.** `BACKLOG.md`'s "tier-3 probe has no recipe for three

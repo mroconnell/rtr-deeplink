@@ -103,8 +103,9 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (10)
+Standing decisions — do NOT re-raise  (11)
   No Viebit meeting can get a real transcript today -- confirmed at…
+  Cablecast, Granicus, and eScribe have no real `meeting_body` field to…
   Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -193,7 +194,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] A decorative video with no web-address signature at all…
@@ -353,7 +354,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (66)
+  Adapter & platform gaps  (67)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -420,6 +421,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
     [NEEDS-AUDIT] A real tier 1/3 "video found" verdict off…
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
+    [NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -505,7 +507,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
-Dormant — needs a real example first `[LATER]`
+Dormant — needs a real example first `[LATER]`  (1)
+  Swagit and PrimeGov: unknown whether either exposes a real…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -551,6 +554,42 @@ Parked deliberately — allowed back `[PARK]`  (4)
 - **History**: `CLAUDE.md`'s ffmpeg-trust-store gotcha (2026-09-15, the
   same investigation that confirmed this); `app/platforms/queue_probe.
   py`'s own WO-306 comment (the original, narrower probe-level finding).
+
+### Cablecast, Granicus, and eScribe have no real `meeting_body` field to extract -- checked, not assumed `[STANDING]`
+
+- **Issue**: WO-904/905/906 (`BACKLOG_DONE.md`) extracted a real,
+  structured `meeting_body` for CivicClerk/CivicPlus/Legistar after
+  confirming each platform's own API/HTML genuinely carries a
+  committee/body name distinct from the meeting title. The same check
+  against Cablecast, Granicus, and eScribe -- the platform this repo's
+  own biggest tenant pool (Granicus, ~240 real tenants) runs on --
+  found nothing real to extract.
+- **Impact**: none of these three will ever get a non-title
+  `meeting_body` without a materially different data source than what
+  each adapter already fetches -- most of the corpus by tenant count
+  stays at today's ~10% `meeting_body` coverage regardless of any
+  further per-adapter work here.
+- **What this means**: do not "fix" `meeting_body` on any of these
+  three from a title guess -- that's exactly the thing this repo's own
+  convention (never guess a body from a title) exists to prevent.
+  Cablecast: the only category field in any real captured response
+  (`PublicSite`, Remix `__remixContext`) is a bare integer id with no
+  name anywhere in the payload -- a name lookup would need a second,
+  never-yet-captured `/categories/{id}` call. Granicus: the RSS
+  `<channel><title>` some tenants expose is a real, structured field
+  (already used, `channel_body` in `granicus.py`), but it names the
+  *channel*, not the meeting's committee (real fixtures: Tulsa's is
+  "TGOV - Tulsa Government Access Television", Prince William County's
+  is "Streaming Media Archive2") -- and it requires `view_id` in the
+  URL, so a bare `/player/clip/NNNN` link gets nothing regardless.
+  eScribe: the calendar JSON's `MeetingType` field is real and
+  independent of `MeetingName`, but in every real captured row (Peel
+  Region, Hazelton) its value is byte-identical to `MeetingName` --
+  no actual signal -- and it's only on the listing endpoint, which the
+  resolve path never calls.
+- **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry has the full
+  per-platform evidence (real field names, real captured values) this
+  finding is based on.
 
 ### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
 
@@ -6150,6 +6189,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't touch `_find_youtube_video_id()`'s existing single-meeting-page behavior — it's correct and tested for the case it was built for (one meeting per page); this is additive, a new tier that runs first when a page looks like a multi-row listing (multiple date-shaped headings/rows), not a replacement.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
+- **[NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on the calendar listing page — `iqm2.py`'s `resolve()` never fetches that page, so it has no real field to extract from.**
+  - **Issue**: found live 2026-09-19, during the same meeting_body investigation that shipped CivicClerk/CivicPlus/Legistar (WO-904/905/906). iQM2's calendar view (`Calendar.aspx`/`Citizens/Calendar.aspx`) genuinely does print a real `Board:` label next to each listed meeting — confirmed live against real iQM2 tenants. But `app/platforms/iqm2.py`'s `resolve()` only ever fetches a single meeting's own detail page (`Detail_Meeting.aspx`/`SplitView.aspx`, reached via `legistar.py`'s shared Cousin-adapter delegation), and neither of those pages carries the board name anywhere in their own markup — it's a calendar-page-only field.
+  - **Impact**: small (iQM2 is ~2 tenants in the corpus today), and nothing is broken — this is a missed enrichment, not a wrong value. Consistent with the platform-coverage rule that a field only counts once it's been checked, not assumed: iQM2 is neither "no real field exists" (Cablecast/Granicus/eScribe's case) nor "already shipped" (CivicClerk/CivicPlus/Legistar's case) — it's "a real field exists but isn't reachable from the pages resolve() already fetches."
+  - **Next action**: to actually extract it, `resolve()` would need a NEW network call — looking up the specific meeting by id/date on its tenant's calendar page — whose feasibility (can a single meeting be looked up directly, or only by paging/filtering a date range?) hasn't been live-verified yet. Worth revisiting if iQM2's tenant count grows, or as a small standalone follow-up; not pursued in this pass given the low tenant count relative to the added fetch.
+  - **Constraint**: don't add the extra fetch speculatively — verify the calendar page's lookup-by-id feasibility against a real tenant first (CLAUDE.md's "test against a real URL first" rule), same as any other adapter change.
+  - **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry (meeting_body investigation).
+
 ## Reliability, ops & cost
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
@@ -7933,7 +7979,24 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-Nothing open here right now.
+### Swagit and PrimeGov: unknown whether either exposes a real meeting-body field `[LATER]`
+
+- **Issue:** During the 2026-09-19 meeting_body investigation (WO-904/905/906,
+  which shipped CivicClerk/CivicPlus/Legistar and wrote off Cablecast/
+  Granicus/eScribe as having no real field), Swagit and PrimeGov were left
+  undetermined. Neither has a real fixture in the repo's test suite that
+  exposes a structured, independent meeting-body/committee field one way
+  or the other — unlike the platforms that got a real yes or no this pass,
+  there's no live sample in hand to check.
+- **Next action:** the next time a real Swagit or PrimeGov sample is
+  fetched for any other reason (a new tenant, a bug repro), check its raw
+  page/API response for a genuine structured body/committee field before
+  building anything — same rule as any other adapter work (CLAUDE.md's
+  "test against a real URL first").
+- **Constraint:** don't guess a field name and wire it up without a real,
+  live-confirmed sample — that's exactly the mistake this whole pass was
+  built to avoid.
+- **History:** `BACKLOG_DONE.md`'s WO-904/905/906 entry.
 
 ## Parked deliberately — allowed back `[PARK]`
 
