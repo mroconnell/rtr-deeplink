@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (10)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -171,6 +171,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   `civicclerk.py`'s `resolve()` can return a bare…
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
+  WO-906's 200-small-government headless pilot ran clean, but headless…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
@@ -193,10 +194,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s…
+  [NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped…
   [NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
   [NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical,…
@@ -2004,6 +2006,48 @@ so that work reads together.
 - **History:** `research/wo366_methods_section.md`; this WO's own
   `fetch_wayback_domain_index()` docstring in `scripts/wo273_recon.py`.
 
+### WO-906's 200-small-government headless pilot ran clean, but headless itself never actually worked in that sandbox — the real small-government hit rate is still unknown `[JUST-DO-IT]`
+
+- **Issue:** `docs/COVERAGE_HANDOVER.md` §5.1 measured a 41% headless
+  hit rate on the LARGEST governments already rejected "no platform
+  link found," and flagged ~1,180 smaller governments as never having
+  had the same check. WO-906 (2026-09-19) ran the existing ladder
+  (`scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()`,
+  unchanged) against a real, random sample of 200 of them — 22
+  counties, 139 municipalities, 39 townships, across the US and
+  Canada. It ran clean end to end (200 of 200, no crashes, no forced
+  solve of a Cloudflare check), but every one of the 35 governments
+  (17.5%) whose homepage had no clickable meeting-shaped link at all —
+  exactly the case headless exists for — hit the identical error: this
+  sandbox's `playwright` package (pinned `1.62.0`) expects Chromium
+  build 1234; only build 1194 is pre-installed. 35 attempts, 35
+  failures, 0 successes.
+- **Impact:** the question this pilot exists to answer — does headless
+  find a real meeting-platform link on small governments the way it
+  does on big ones — is still open. What the run DID measure honestly:
+  a plain HTTP fetch alone found something platform-shaped on 53 of
+  the 200 (**26.5%**); a "prove you're human" page blocked 4; the
+  other 143 got a clean, real "nothing here." A hand check of all 53
+  found only 11 (**21% of the 53, 5.5% of the 200**) are confirmed-real
+  on sight — 20 of the 53 are confirmed WRONG (see the two entries
+  above), and the remaining 22 can't be judged from the link alone (a
+  bare video or channel id with no name shown).
+- **Next action:** re-run `scripts/wo906_headless_pilot.py` against the
+  same `--out-csv` (it resumes automatically — only the 35 failed rows
+  need redoing) from an environment where Playwright's own pinned
+  Chromium build is actually installed: Ryan's own Mac, or any machine
+  that has run a real `playwright install` for `1.62.0`. Do this
+  before drawing any conclusion about whether headless is worth
+  running on the rest of the ~1,180.
+- **Constraint:** 0% via headless means "never tried," not "doesn't
+  help" — don't read it either way until it's re-run somewhere
+  headless actually works. Don't treat the 53-of-200 (26.5%) plain-HTTP
+  number as a validated hit rate either, for the same reason the two
+  entries above exist.
+- **History:** this WO's own PR (branch
+  `wo906-headless-pilot-small-govs`) has the full 200-row report and
+  the manual review behind the 11/20/22 split above.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -2372,10 +2416,17 @@ of human step they need.
 
 - **[NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()` stops climbing the moment it finds ANY vendor-shaped link on a homepage — including a decorative/promotional video embed, not just a real meeting-hub link.**
   - **Issue**: found live 2026-09-13 (WO-361), fixing the hub-finding step for the WO-355 population reproduced WO-355's own decorative-video false positive through a different code path. `run_access_ladder()`'s plain-fetch step calls `find_platform_link()` on the homepage and returns immediately on any hit — it never tries a hop link, first-party agenda probe, or headless render once one vendor-shaped link is found, whether that link is a real meeting platform or a hero-background Vimeo embed (`background=1&loop=1&muted=1`) or an unparameterized single-video player URL. WO-361 added `_is_decorative_hit()` (the same URL-parameter/filename signature `wo355_handread.py` uses) to reject the obvious cases and fall through to a first-party probe, but a decorative video with no such signature — confirmed only by fetching its real oEmbed title (e.g. Garfield city NJ's "City of Garfield 2024," a production-company reel) — still wins the slot, since the URL-shape filter can't see the title.
-  - **Impact**: real, current — every one of WO-361's 16 tier 1/3 candidates in its first 213-government chunk traced back to this exact failure mode; zero came out as a real meeting. **WO-364 (2026-09-14, the WO-361b resume run covering the remaining 269 governments) confirms the same failure mode at the same rate on a much bigger sample**: 14 tier 1/3 candidates, and 10 of them were confirmed decorative/promotional videos by their real oEmbed title or page content alone — a town's own "Town of Warrenton"/"Welcome To Liberty" intro reel, a tourism board's "Inverness County – Canada's Musical Coast," an engineering consultant's own project video ("Stantec | Port Wing Restoration Site | FINAL"), a documentary ("Clean Water: A Long Journey from the Source to Our Tap"), a local-interest video series episode ("Around MIAMI Township with Eric Ferry"). 3 more had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were left `still_ambiguous` rather than guessed. Across both runs: 24 of 30 tier 1/3 candidates (80%) from the full 482-government population were decorative, and zero were a real meeting. **WO-368 (2026-09-14) then walked all 20 of WO-361/WO-364's `video-without-meeting`-confirmed rows past the decorative hit itself**, via `verify_hub(..., deep_walk=True, listing_limit=15, video_collect_limit=3)` on the exact same `hub_url` the ladder had already returned — asking for up to 2 more distinct video candidates on the same hub. All 20 came back exhausted after 1: the decorative embed is the ONLY video link `find_platform_link()` (or `verify_hub()`'s own deep-walk) can find anywhere on that specific hit, confirmed live, not assumed. This narrows the fix this entry needs: **re-asking the same decorative URL for more candidates is a dead end** — the only path left for these 20 (and future ones like them) is the fix already proposed below, trying a DIFFERENT path off the homepage (a hop link, a first-party agenda probe, headless) rather than walking deeper from the decorative hit itself. Any future sweep leaning on `run_access_ladder()`'s vendor-link scan against a small-town homepage risks the same false-positive class it was meant to fix.
+  - **Impact**: real, current — every one of WO-361's 16 tier 1/3 candidates in its first 213-government chunk traced back to this exact failure mode; zero came out as a real meeting. **WO-364 (2026-09-14, the WO-361b resume run covering the remaining 269 governments) confirms the same failure mode at the same rate on a much bigger sample**: 14 tier 1/3 candidates, and 10 of them were confirmed decorative/promotional videos by their real oEmbed title or page content alone — a town's own "Town of Warrenton"/"Welcome To Liberty" intro reel, a tourism board's "Inverness County – Canada's Musical Coast," an engineering consultant's own project video ("Stantec | Port Wing Restoration Site | FINAL"), a documentary ("Clean Water: A Long Journey from the Source to Our Tap"), a local-interest video series episode ("Around MIAMI Township with Eric Ferry"). 3 more had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were left `still_ambiguous` rather than guessed. Across both runs: 24 of 30 tier 1/3 candidates (80%) from the full 482-government population were decorative, and zero were a real meeting. **WO-368 (2026-09-14) then walked all 20 of WO-361/WO-364's `video-without-meeting`-confirmed rows past the decorative hit itself**, via `verify_hub(..., deep_walk=True, listing_limit=15, video_collect_limit=3)` on the exact same `hub_url` the ladder had already returned — asking for up to 2 more distinct video candidates on the same hub. All 20 came back exhausted after 1: the decorative embed is the ONLY video link `find_platform_link()` (or `verify_hub()`'s own deep-walk) can find anywhere on that specific hit, confirmed live, not assumed. This narrows the fix this entry needs: **re-asking the same decorative URL for more candidates is a dead end** — the only path left for these 20 (and future ones like them) is the fix already proposed below, trying a DIFFERENT path off the homepage (a hop link, a first-party agenda probe, headless) rather than walking deeper from the decorative hit itself. Any future sweep leaning on `run_access_ladder()`'s vendor-link scan against a small-town homepage risks the same false-positive class it was meant to fix. **WO-906 (2026-09-19) confirms the same stop-on-first-hit behavior on a completely different population — 200 real small governments (townships, small municipalities, small counties), not WO-355/361/364's tier 1/3 candidates.** Of 14 raw `direct_file`/`vimeo` hits `find_platform_link()` accepted straight off a small government's own homepage, 6 were this same decorative-homepage-video shape on a plain look at the filename/URL: a `Banniere` (French for "banner") folder, a literal `video-placeholder.mp4`, a literal `Homepage-Video.mp4`, a `videoaccueil` ("welcome video") file, a "Farm Video" with nothing to do with government, and a Vimeo embed with `autoplay=1&loop=1` — same failure, a fresh set of real examples, none overlapping the ones above. WO-906 also found a related but distinct failure from the same stop-on-first-hit behavior — `find_platform_link()` accepting a link to something real but belonging to a completely different organization, not a decorative video at all — filed separately below since the fix is different (checking WHO a link belongs to, not WHETHER it's decorative).
   - **Next action**: teach `run_access_ladder()` itself (not just a downstream caller) to treat a hand-confirmed-decorative hit as "keep climbing" — try the ranked hop links, the first-party agenda probe, and headless before giving up — rather than stopping at the first vendor-shaped link found on the homepage's own body. WO-368 confirms this has to be a genuinely different path off the homepage, not a deeper walk of the decorative hit's own URL (that returns nothing new, per above).
   - **Constraint**: this is shared code several other sweeps (WO-147's own candidates, WO-283/337/338's phase-3 fallback) depend on for their "found a hit, stop" behavior on a REAL platform link — any fix needs to keep that fast-path for a genuine hub link and only add the extra climbing when the hit looks decorative.
   - **History**: `BACKLOG_DONE.md`'s WO-361, WO-364 and WO-368 entries; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`, `wo364_handread.csv`, `wo368_walk.csv`.
+
+- **[NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped link on a homepage even when it belongs to a completely different organization — not just a decorative video (see the entry above).**
+  - **Issue**: `find_platform_link()` (`scripts/wo147_access_ladder_sweep.py`, backed by `app/platforms/base.py`'s shared `detect_platform()`) accepts the FIRST anchor/iframe on a page whose link matches a known platform, in document order — it never checks whether the link is actually about the government being checked. Found live in WO-906 (2026-09-19)'s 200-small-government pilot: of 35 raw YouTube "hits," 11 were confirmed on sight to be someone else's channel entirely — a state agency (Iowa's DNR, Arkansas's tourism board, the Minnesota Judicial Branch, a Quebec provincial safety agency), a state governor's own channel, a hosting company's or CMS vendor's own badge link (Network Solutions, WordPress.com), an unrelated personal channel, and a YouTube Shorts clip (too short to be a real meeting). Two more raw hits on other platforms were the same shape: a CivicPlus link that landed on a neighboring county's own agenda page instead of the town's, and a CivicPlus staging site's business-directory page.
+  - **Impact**: this is the same `run_access_ladder()`/`find_platform_link()` code the entry above flags for decorative video, so a decorative-video fix will not catch this one — these are real, legitimate links, just to the wrong organization. Combined, the two failure modes accounted for roughly a third of every "found a platform" result in WO-906's own 200-government sample — see that WO's own BACKLOG entry and PR for the full count.
+  - **Next action**: give `find_platform_link()` a name-plausibility check before accepting a hit — the same idea `channel_name_plausible()` (`scripts/wo230_agendacenter_followup.py`) already applies for channel-enumeration sweeps: does the linked channel handle/page title share a real word with the government's own name? A state agency, a vendor's badge, or a different government's own page will almost never pass; a government's own real channel almost always will.
+  - **Constraint**: don't reject a real regional/shared cable-access channel this way — several confirmed-real hits share a channel with no name overlap at all (e.g. Shorewood city, MN's real Cablecast clip on `reflect-lmcc.cablecast.tv`, already noted elsewhere in this file) — flag a no-overlap hit for a human look rather than auto-rejecting it outright.
+  - **History**: found live during WO-906 (2026-09-19)'s 200-government pilot; see that WO's own PR for the full per-row manual review.
 
 - **[NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s hand-read page fetch has no Content-Type guard, so a `hub_url` that is itself a raw media file gets its full body pulled into memory before being truncated.**
   - **Issue**: found live 2026-09-14 (WO-364), while re-running the same hand-read method WO-361 used against 3 new `direct_file`-platform candidates whose `hub_url` was literally the video's own URL (no wrapping HTML page): Chesterfield Inlet, Nunavut (165 MB `.mp4`), North township, Indiana (31 MB `.webm`), a Wisconsin.gov shared site-template asset (12 MB `.mp4`, served from `/_catalogs/masterpage/WIGovSite/images/`, not town-specific content). `wo361_handread.py`'s `fetch()` does `raw = await resp.read()` with no Range header and no Content-Type check — the *entire* response body is pulled into memory first, and only truncated to 3 MB afterward for storage. That is a real, if accidental, violation of the standing "never download a media file" rule (preamble.md; the rule exists because of the 2026-09-12 Ramsey MN 39 MB mp3 incident) — nothing was saved to disk, but up to 165 MB traversed the network and sat in process memory per candidate.
