@@ -489,6 +489,14 @@ finish entry.
    government at a time, never past a human-verification gate) is the
    right second opinion. ~1,180 smaller governments have not had it yet.
    Script: `rtr-business/research/wo133_headless_recheck_scan.py`.
+   **A first 200-government pilot on that smaller population (WO-908,
+   2026-09-19) could not actually answer the question** — the sandbox
+   it ran in had a broken headless browser (a Playwright/Chromium
+   version mismatch), so headless itself never once ran. See
+   `BACKLOG.md`'s matching entry for the real numbers this pilot DID
+   get (a plain-HTTP-only hit rate, and a real, confirmed high
+   false-positive rate on that signal) and what re-running it properly
+   needs.
 2. **The identity join** (section 3): coverage that already exists but
    is invisible because of a minted id. Cheap, high-yield, repeatable
    whenever the research file and the Archive disagree.
