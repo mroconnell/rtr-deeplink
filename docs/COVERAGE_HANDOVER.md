@@ -489,7 +489,7 @@ finish entry.
    government at a time, never past a human-verification gate) is the
    right second opinion. ~1,180 smaller governments have not had it yet.
    Script: `rtr-business/research/wo133_headless_recheck_scan.py`.
-   **A first 200-government pilot on that smaller population (WO-906,
+   **A first 200-government pilot on that smaller population (WO-908,
    2026-09-19) could not actually answer the question** — the sandbox
    it ran in had a broken headless browser (a Playwright/Chromium
    version mismatch), so headless itself never once ran. See

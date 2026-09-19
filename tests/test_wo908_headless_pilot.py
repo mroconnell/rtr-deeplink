@@ -1,4 +1,4 @@
-"""WO-906 (2026-09-19): unit coverage for wo906_headless_pilot.py's own
+"""WO-908 (2026-09-19): unit coverage for wo908_headless_pilot.py's own
 logic -- CSV loading, outcome bucketing, aggregation, and the
 `direct_file` plausibility check. It deliberately does NOT mock
 `run_access_ladder()` itself or the network layer: this script's whole
@@ -8,7 +8,7 @@ code around it, per this repo's own convention that a synthetic test
 exercises one already-real-confirmed logic branch rather than standing
 in for "test against a real URL first."
 
-Two real-fact fixtures used below, both pulled verbatim from WO-906's own
+Two real-fact fixtures used below, both pulled verbatim from WO-908's own
 200-row candidate export (a real, random sample from the live Gov
 Coverage dashboard, 2026-09-19) rather than invented:
 
@@ -27,7 +27,7 @@ Coverage dashboard, 2026-09-19) rather than invented:
 
 import pytest
 
-from scripts.wo906_headless_pilot import (
+from scripts.wo908_headless_pilot import (
     BucketCounts,
     classify_bucket,
     direct_file_hit_is_plausible,
@@ -43,7 +43,7 @@ from scripts.wo906_headless_pilot import (
 _REAL_CANDIDATE_CSV_HEADER = (
     "gov_id,name,state,country,gov_kind,population,domain,reject_reason\n"
 )
-# Real rows, verbatim from WO-906's own 200-row candidate export.
+# Real rows, verbatim from WO-908's own 200-row candidate export.
 _REAL_CANDIDATE_ROWS = (
     "38:5621415,Dubois town,WY,us,municipality,989,duboiswyoming.org,"
     "no-platform-link-found\n"
@@ -159,7 +159,7 @@ def test_summarize_by_gov_kind_breaks_down_by_kind_present_only():
     assert summary["municipality"].headless == 1
     # A gov_kind that never appears in the rows (e.g. "township" here)
     # must not show up at all -- "don't force a breakdown" on a bucket
-    # with no data (WO-906's own brief).
+    # with no data (WO-908's own brief).
     assert "township" not in summary
 
 

@@ -1,6 +1,19 @@
-"""WO-906 (2026-09-19): headless-ladder pilot on 200 SMALL governments
+"""WO-908 (2026-09-19): headless-ladder pilot on 200 SMALL governments
 (county/municipality/township -- no school districts) rejected
 `no-platform-link-found`/`no-platform-signature`, to get a real hit rate
+
+Renumbered from WO-906 to WO-908 after landing: a separate, unrelated
+conductor session independently computed the same "next free WO number"
+snapshot around the same time and used 904/905/906 (then 907 for its own
+wrap-up) for a three-part meeting_body extraction effort -- see
+`BACKLOG_DONE.md`'s "WO-904/905/906" and "WO-907" entries. This session's
+own WO-904 and WO-905 had already merged to `main` before the collision
+was caught, so those two numbers now legitimately collide in history
+(both real, both documented, distinguishable by title). This WO -- not
+yet merged when the collision was found -- was renumbered to the true
+next-free number (908) instead of compounding a three-way collision. The
+git branch name (`wo906-headless-pilot-small-govs`) was left as-is; only
+the WO label and this script's/its test's own filenames changed.
 for a question `docs/COVERAGE_HANDOVER.md` section 5's breakthrough #1
 leaves open: a headless recheck found a real platform link on 41% of the
 LARGEST governments previously rejected "no platform link found," and
@@ -15,7 +28,7 @@ ladder, same politeness constants (`HOST_DELAY_SECONDS`/`GOV_DELAY_SECONDS`,
 This script only adds a thin CSV-in, CSV-out, aggregate-and-report driver
 around it -- `classify_bucket()`/`tally_buckets()`/`summarize_by_gov_kind()`
 below are the only new logic, and are the only things
-`tests/test_wo906_headless_pilot.py` exercises (see that file's own
+`tests/test_wo908_headless_pilot.py` exercises (see that file's own
 docstring for why the live network call itself isn't unit-tested).
 
 This is a MEASUREMENT, not a sweep: it never calls a resolve/ingest
@@ -37,9 +50,9 @@ and it is the only accommodation this script makes for that function.
 
 Usage (from the repo root, with a venv that has requirements.txt
 installed):
-    python scripts/wo906_headless_pilot.py --candidates-csv <path> --out-csv /tmp/wo906_report.csv
-    python scripts/wo906_headless_pilot.py --candidates-csv <path> --out-csv /tmp/wo906_report.csv --limit 5   # smoke test
-    python scripts/wo906_headless_pilot.py --report-only /tmp/wo906_report.csv   # re-print the summary only
+    python scripts/wo908_headless_pilot.py --candidates-csv <path> --out-csv /tmp/wo908_report.csv
+    python scripts/wo908_headless_pilot.py --candidates-csv <path> --out-csv /tmp/wo908_report.csv --limit 5   # smoke test
+    python scripts/wo908_headless_pilot.py --report-only /tmp/wo908_report.csv   # re-print the summary only
 """
 
 from __future__ import annotations
@@ -144,7 +157,7 @@ class PilotRow:
 
 
 def load_candidates(csv_path: Path) -> List[PilotRow]:
-    """Reads WO-906's candidate CSV: one real, random small-government
+    """Reads WO-908's candidate CSV: one real, random small-government
     row per line (gov_id, name, state, country, gov_kind, population,
     domain, reject_reason), pulled from the live Gov Coverage dashboard
     on 2026-09-19 -- county/municipality/township only, no school
@@ -277,7 +290,7 @@ def summarize_by_gov_kind(rows: List[dict]) -> Dict[str, BucketCounts]:
 
 def print_summary(rows: List[dict]) -> None:
     by_kind = summarize_by_gov_kind(rows)
-    print("\n--- WO-906 headless pilot summary ---")
+    print("\n--- WO-908 headless pilot summary ---")
     print(
         f"{'group':14} {'n':>4} {'plain':>6} {'browser-hdrs':>13} "
         f"{'headless':>9} {'challenge':>10} {'dead':>5} {'found':>6}"
@@ -434,7 +447,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidates-csv", type=Path, default=None)
     parser.add_argument(
-        "--out-csv", type=Path, default=Path("/tmp/wo906_headless_pilot_report.csv")
+        "--out-csv", type=Path, default=Path("/tmp/wo908_headless_pilot_report.csv")
     )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument(
