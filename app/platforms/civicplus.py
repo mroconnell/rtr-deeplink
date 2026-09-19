@@ -280,6 +280,13 @@ class CivicPlusAssetFinder(AssetFinder):
         result.packet_link = result.packet_link or video_candidates[0].get(
             "packet_link"
         )
+        # This row's own category panel heading (WO-904) -- the delegated
+        # platform (Granicus/YouTube/Vimeo) knows nothing about CivicPlus's
+        # own AgendaCenter categories, same reasoning as agenda_link/
+        # packet_link just above.
+        result.meeting_body = result.meeting_body or video_candidates[0].get(
+            "meeting_body"
+        )
         # Same fallback legistar.py's own `page_info["title"]` already
         # provides for the identical class of gap (see that module's
         # `resolve()`): a delegated platform's own title/date extraction
@@ -342,6 +349,23 @@ class CivicPlusAssetFinder(AssetFinder):
         either way (nothing to show a human or a report), so it's still
         excluded here regardless of video.
         """
+        # Category panel headings, precomputed once: `<h2 aria-controls=
+        # "category-panel-N">{name}</h2>` is a preceding sibling of
+        # `<div id="category-panel-N">`, which holds that category's own
+        # `tr.catAgendaRow`s. Real names confirmed live (WO-904) across
+        # multiple tenants -- DeSoto KS: "City Council", "Board of Zoning
+        # Appeals (BZA)", "Park Board", "Planning Commission"; Franklin
+        # NH: 8 distinct committees including "Ad Hoc Committees" and
+        # "Conservation Commission" -- each row's own title (e.g.
+        # DeSoto's "September 2nd, Special City Council Meeting") stays
+        # distinct from its panel's heading, confirming this is a real
+        # grouping, not an echo of the row title.
+        panel_headings = {
+            h2["aria-controls"]: h2.get_text(strip=True)
+            for h2 in soup.find_all("h2", attrs={"aria-controls": True})
+            if h2.get_text(strip=True)
+        }
+
         candidates = []
         for row in soup.find_all("tr", class_="catAgendaRow"):
             first_td = row.find("td")
@@ -376,6 +400,10 @@ class CivicPlusAssetFinder(AssetFinder):
             agenda_link, packet_link = self._extract_agenda_and_packet_links(
                 row, page_url
             )
+            panel = row.find_parent(
+                "div", id=lambda v: bool(v) and v.startswith("category-panel-")
+            )
+            meeting_body = panel_headings.get(panel["id"]) if panel else None
             candidates.append(
                 {
                     "title": title,
@@ -383,6 +411,7 @@ class CivicPlusAssetFinder(AssetFinder):
                     "url": video_url,
                     "agenda_link": agenda_link,
                     "packet_link": packet_link,
+                    "meeting_body": meeting_body,
                 }
             )
         return candidates
