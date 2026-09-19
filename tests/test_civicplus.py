@@ -1,4 +1,5 @@
 import pytest
+from bs4 import BeautifulSoup
 
 from app.platforms.base import CalendarPageError, NoVideoCandidateFound, register
 from app.platforms.civicplus import CivicPlusAssetFinder
@@ -141,6 +142,29 @@ async def test_real_desoto_listing_page_raises_no_video_candidate_found():
 
     assert exc_info.value.candidates_checked == 15
     assert exc_info.value.jurisdiction_hint == "Desoto, KS"
+
+
+def test_category_panel_heading_becomes_meeting_body():
+    # Real page (same fixture as the no-video test above), read directly
+    # via _find_candidate_rows() rather than a full resolve() -- WO-904.
+    # DeSoto's real category panels: "City Council" (category-panel-3),
+    # "Board of Zoning Appeals (BZA)", "Park Board", "Planning
+    # Commission" -- each row keeps its own distinct title (e.g. "Sep 2,
+    # 2026" under "City Council" is titled "September 2nd, Special City
+    # Council Meeting" internally), confirming the panel heading is a
+    # real independent grouping, not an echo of the row's own title.
+    html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+    soup = BeautifulSoup(html, "html.parser")
+    candidates = CivicPlusAssetFinder()._find_candidate_rows(
+        soup, "https://ks-desoto.civicplus.com/AgendaCenter"
+    )
+    bodies_seen = {c["meeting_body"] for c in candidates}
+    assert "City Council" in bodies_seen
+    assert "Planning Commission" in bodies_seen
+    assert "Board of Zoning Appeals (BZA)" in bodies_seen
+    # every real candidate has SOME body -- this page has no rows outside
+    # a category panel
+    assert all(c["meeting_body"] for c in candidates)
 
 
 async def test_youtube_channel_link_excluded_from_video_row_candidates():
