@@ -22,6 +22,18 @@ logger = logging.getLogger("rtr_deeplink.civicclerk")
 
 TARGET_LANGUAGE = "en"
 
+# Events/{id}'s own categoryName is a real, independent grouping of the
+# committee/body -- confirmed live across multiple customers (WO-904):
+# South Fulton, GA has 5 events under one categoryName "City Council"
+# with 3 different eventNames ("City Council Regular Meeting",
+# "Alcohol License and Zoning Public Hearings", ...), and Edinburg, TX's
+# "Planning and Zoning Commission Meeting" category covers two
+# differently-worded eventNames for the same recurring body -- so this
+# is not just a repeat of the meeting's own title. The one confirmed
+# non-informative value is "General" (Ingleside, TX, event 597) --
+# add to this set only from another real, confirmed example, not a guess.
+_NON_INFORMATIVE_CATEGORY_NAMES = frozenset({"general"})
+
 # A county tenant's subdomain, when it encodes one at all, reads
 # "{countyname}(co|county){state-code}" -- all four real production
 # instances confirmed live 2026-08-23: churchillconv (Churchill County,
@@ -165,6 +177,13 @@ class CivicClerkAssetFinder(AssetFinder):
             )
 
             title = event.get("eventName") or None
+            category_name = (event.get("categoryName") or "").strip()
+            meeting_body = (
+                category_name
+                if category_name
+                and category_name.lower() not in _NON_INFORMATIVE_CATEGORY_NAMES
+                else None
+            )
             date = (event.get("eventDate") or "")[:10] or None
             location = event.get("eventLocation") or {}
             city = location.get("city")
@@ -470,6 +489,7 @@ class CivicClerkAssetFinder(AssetFinder):
             # title/date/jurisdiction on one shared row. See BACKLOG.md.
             external_id=f"civicclerk:{parsed.netloc}:{event_id}",
             title=title,
+            meeting_body=meeting_body,
             date=date,
             jurisdiction=jurisdiction,
             video_url=video_url,
