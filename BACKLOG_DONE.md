@@ -1,5 +1,67 @@
 # Backlog — done
 
+## WO-919: checked all 99 state-legislature chamber rows — 7 pages live, 5 YouTube leads, and one video vendor (Sliq Harmony) shared by seven states [Done 2026-09-20]
+
+**Why this ran.** The 2026-09-17 recon listed one row per chamber for all 50 states, but almost all rows were only hub links. Nobody had run the passive check or the access ladder on it. This WO sorted the rows and ingested what already had video. The recon has 99 chamber rows, not 119 (119 counts every row across all its tables; its chamber table has 50 distinct hubs).
+
+**Rule kept.** One government per state (`us:state:NN`); the chamber is `meeting_body`. No chamber-level ids were minted. Every page carries the state's own `gov_id` in the ingest payload. Only each state's own `jurisdiction_coverage.csv` row was touched, and only for the five states that got a page.
+
+**Phase 1: the four suspect rows.** The recon plan said four rows looked like copy/paste artifacts. All four were.
+
+| Outcome | Count of 4 | What it means |
+|---|---|---|
+| Row pointed at the other chamber's site | 4 | Idaho Senate (House URL), Missouri Senate (House URL), Ohio House (`ohiosenate.gov`), Texas House (`senate.texas.gov`). |
+| Chamber's own page found | 4 | `idahoptv.org/.../senate/`, `senate.mo.gov/Media/AudioArchive`, `ohiohouse.gov/session/video`, `house.texas.gov/videos`. |
+| Video the pipeline can read | 0 | Missouri Senate is audio (.mp3) only; the other three have their own players and no adapter. |
+
+Five more rows had the same problem and were not on the plan's list: Arkansas Senate, California Assembly, Louisiana House, Michigan Senate, Oklahoma Senate.
+
+**Phase 2 and 3: passive check, then access ladder.** The passive check ran once per distinct hub (60 hubs after corrections). The ladder ran on the 26 hubs it left with no meeting. Headless was held until WO-913 (the browser-level YouTube block) reached `main`, then rerun on the 5 hubs that needed it. Results, one row per chamber:
+
+| Outcome | Count of 99 | What it means |
+|---|---|---|
+| Tier 1: page live now (new) | 7 | Captions available, hand-read, ingested. |
+| Tier 1: page already live (not new) | 1 | California Senate already had 2 pages. |
+| Tier 2: YouTube channel lead | 5 | Arkansas House, Montana (2), Wyoming (2). Channel linked from the legislature's own page; never fetched. |
+| Tier 3: video found, no captions, cannot be queued yet | 2 | South Carolina: real direct .mp4 per meeting, but the host answers `application/octet-stream` and `direct_file` refuses it. |
+| No online video archive | 3 | North Carolina House (livestream only), North Carolina Senate and Missouri Senate (audio only). |
+| Video vendor identified, no adapter or hub walker yet | 17 | Sliq Harmony (AR, CO, DE, KS, NM, OK House, WV), Invintus (OR, WI), TVW (WA). |
+| Blocked (access) | 15 | TLS certificate failure (IL, MI, MS), timeout (CT, NH), challenge stopped (NY Senate), Granicus 403 to plain HTTP (TN, NV). |
+| Nothing found by the automatic check | 49 | Own players with no adapter. Not the same as "no video". |
+
+Access modes seen: plain HTTP for most; browser headers worked where plain got 403 (`tnga.granicus.com`); headless reached the page for Georgia, Indiana, Maryland and South Dakota and found no platform link; a human-verification challenge at `nysenate.gov` was stopped at, not passed. Three TLS certificate failures were not bypassed.
+
+**Phase 4: pages created.** Each was hand-read (title and body against the chamber or committee, source host). Hand-check count 7, wrong 0. No tier-3 queue line was created: no candidate was both video-only and readable by the queue.
+
+| Chamber | Meeting | Caption segments | Page id |
+|---|---|---|---|
+| Arizona House | House Education, 2026-03-17 (14 min) | 186 | 10842 |
+| Arizona Senate | Senate Education, 2026-05-20 (18 min) | 288 | 10843 |
+| New York Assembly | Session, 2026-06-05 (8.5 hours) | 6,116 | 10844 |
+| Minnesota Senate | Committee on Rules and Administration, 2026-06-01 (21 min) | 650 | 10845 |
+| Rhode Island House | House of Representatives, 2026-06-09 (2.2 hours) | 708 | 10846 |
+| Rhode Island Senate | Senate, 2026-06-10 | 716 | 10847 |
+| California Assembly | Business and Professions Committee, 2026-08-30 (30 min) | 379 | 10848 |
+
+All seven carry `gov_id` in the payload and were confirmed keyed after ingest (ids 10842 to 10848 checked through `/internal/export/pages`).
+
+**Summary.**
+
+| Item | Count | What it means |
+|---|---|---|
+| Pages live now | 7 | All seven checked by id (10842 to 10848). |
+| Tier-3 queue lines | 0 | Nothing queueable yet. |
+| Pins added | 4 | `azleg.gov`, `senate.ca.gov`, `assembly.ca.gov`, `capitoltvri.cablecast.tv` (fallback). `mnsenate` and `nystateassembly` were already pinned. |
+| YouTube leads | 3 rows (5 chambers) | `wo919_leads_to_add.csv` in rtr-business. |
+| Owner bodies (Kind A) | 1 | KET's channel (Kentucky), not the legislature's; not keyed. |
+| Research-file rows written | 5 | The states' own rows only (04, 06, 27, 36, 44). |
+
+**Caution.** The Rhode Island Senate page's captions end at about 67 minutes but the video probes at about 149 minutes, so the transcript may cover only part of the meeting. It was left in place and should be looked at. The California Assembly meeting date (2026-08-30) is the site's own; it falls on a Sunday. "Nothing found" is a finding about the automatic check, not proof of no video. The generic `first_party_agenda_page` and `hop_deeper_found` verdicts only mean agenda-shaped words appeared, and were not counted as "meeting found".
+
+**Recommendation.** Build a Sliq Harmony adapter first: seven states share it. Then an Invintus hub walker (Oregon, Wisconsin) and a TVW adapter (Washington). Two small fixes (South Carolina direct mp4, Granicus browser-headers retry) are filed in `BACKLOG.md`.
+
+**Deploy.** The 7 pages are live now. The 4 pins reach production after the next resolver deploy. There are no queue lines.
+
 ## WO-918: Midland MI, Transylvania County NC and West Springfield MA after the WO-917 hand-check [Done 2026-09-20]
 
 **Why this ran.** WO-917 checked 133 queued videos and found three loose ends. A Midland MI city-council video looked filed under the school district. Transylvania County NC had a page that was really a software training video, which Ryan had deleted, so the county needed a real meeting. West Springfield MA sat under a made-up id. Ryan said "fix the Midland pin" and "find another Transylvania meeting."
