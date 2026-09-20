@@ -1,5 +1,26 @@
 # Backlog — done
 
+## WO-918: Midland MI, Transylvania County NC and West Springfield MA after the WO-917 hand-check [Done 2026-09-20]
+
+**Why this ran.** WO-917 checked 133 queued videos and found three loose ends. A Midland MI city-council video looked filed under the school district. Transylvania County NC had a page that was really a software training video, which Ryan had deleted, so the county needed a real meeting. West Springfield MA sat under a made-up id. Ryan said "fix the Midland pin" and "find another Transylvania meeting."
+
+**What was done, and the result.** The agent that investigated could not run git in this repo, so the conductor landed its findings.
+
+| Question | Result | What it means |
+|---|---|---|
+| Midland: is the existing pin wrong? | No | The pin covers only show 12186, the school board, and is correct. |
+| Midland: pages filed under the wrong government | 1 | Page 5244, a 2021 zoning board page, had no government. It now belongs to City of Midland (`us:place:2653780`). |
+| Midland: a pin for the City Council show 12263 | Added | Stops new city videos from landing unkeyed. |
+| Transylvania: real meeting on the county's Granicus site | 0 | Every view is a training feed, agendas only, or closed. |
+| Transylvania: real meeting on the county's own site | 1 | A public Vimeo showcase holds Board of Commissioners videos. The 53-minute 04/13/26 meeting is queued. |
+| West Springfield: pages under the wrong owner | 2 | Both are School Committee meetings. They now belong to the school district (`us:sd:2512510`). |
+
+The Transylvania video has no reachable captions, so it is a queue line, not a page. The county's own site also links one YouTube video, which was recorded as a lead and never fetched.
+
+**Caution.** The `vimeo:<id>` pin shape in the agent's draft never matches, so the pin uses the bare id (see the open BACKLOG entry on dead `vimeo:` pins). The override calls draft blank-match "authoritative" tenant rules for both tenants. They were not applied, because both tenants serve more than one government. The West Springfield resolver still mints a fresh id for bare "West Springfield, MA".
+
+**Deploy.** Two pins and one queue line reach production after the next resolver deploy. The three page fixes are already live.
+
 ## WO-914: fixed the Diligent Community sweep's meeting-link parser and reran the 94 tenants it under-read — 5 more YouTube finds, far fewer than the 19 guessed [Done 2026-09-20]
 
 **Why this ran.** WO-911 found that the Diligent Community sweep
