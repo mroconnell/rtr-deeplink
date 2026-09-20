@@ -1330,6 +1330,53 @@ def _is_real_improvement(
     return not current_default.language and bool(new_language)
 
 
+# WO-925: two caption sets count as "the same source recording" when their
+# last cues end within this many seconds of each other.
+_SAME_SOURCE_END_TOLERANCE_SECONDS = 120
+
+
+def _last_cue_end(segments) -> Optional[float]:
+    ends = [
+        seg.get("end")
+        for seg in (segments or [])
+        if isinstance(seg, dict) and isinstance(seg.get("end"), (int, float))
+    ]
+    return max(ends) if ends else None
+
+
+def _copy_early_marker_to_default(
+    current_default: TranscriptVersion,
+    new_segments: list,
+    new_warnings,
+    new_language: Optional[str],
+    new_source: str,
+) -> bool:
+    """Attach the partial-coverage warning from a freshly pushed, not
+    promoted version to the page's default version, when both hold the
+    same language and source and their last cues end within
+    `_SAME_SOURCE_END_TOLERANCE_SECONDS`. Returns True when it changed
+    the default. Touches only the one marker, like the identical re-push
+    path in ingest_resolution()."""
+    early = next(
+        (w for w in (new_warnings or []) if _EARLY_TRUNCATION_MARKER in w), None
+    )
+    if early is None:
+        return False
+    if current_default.language != new_language or current_default.source != new_source:
+        return False
+    already = current_default.transcript_warnings or []
+    if any(_EARLY_TRUNCATION_MARKER in w for w in already):
+        return False
+    old_end = _last_cue_end(current_default.segments)
+    new_end = _last_cue_end(new_segments)
+    if old_end is None or new_end is None:
+        return False
+    if abs(old_end - new_end) > _SAME_SOURCE_END_TOLERANCE_SECONDS:
+        return False
+    current_default.transcript_warnings = [*already, early]
+    return True
+
+
 def _default_looks_like_copied_agenda(
     current_default: TranscriptVersion, agenda_items: list
 ) -> bool:
@@ -1669,6 +1716,21 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default, payload.get("transcript_language")
             ):
                 await promote_transcript_version(session, page.id, new_version_id)
+            elif new_version_id is not None:
+                # WO-925: the new version was not promoted, so the page keeps
+                # rendering the old default. A partial-coverage warning
+                # describes the SOURCE captions, not one text variant, so
+                # if the old default ends where the new cues end, it gets
+                # the warning too. Without this the Edina MN page (same
+                # cues, changed text, so a different content hash) kept the
+                # warning on a hidden version only.
+                _copy_early_marker_to_default(
+                    current_default,
+                    segments,
+                    payload.get("transcript_warnings"),
+                    payload.get("transcript_language"),
+                    source,
+                )
             elif new_version_id is None and _default_looks_like_copied_agenda(
                 current_default, agenda_items
             ):

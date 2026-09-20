@@ -221,6 +221,80 @@ async def test_re_pushing_identical_cues_attaches_the_new_warning():
     assert await _default_warnings(slug) == [warning]
 
 
+async def test_warning_reaches_the_shown_version_when_the_cue_text_changed():
+    """WO-925, the Edina MN case (page 3645). The stored captions were
+    ingested before a later adapter change; a fresh resolve of the same
+    source returns the same cues with different text, so the content hash
+    differs, no duplicate is found, and a NEW non-default version carried
+    the warning while the page kept rendering the old default without it.
+    The warning describes the source captions, not a text variant, so it
+    must land on the default version too when both end at the same time."""
+    url = "https://wo925a.cablecast.tv/show/3562"
+    payload = {
+        "platform": "cablecast",
+        "source_url": url,
+        "external_id": "cablecast:wo925a.cablecast.tv:3562",
+        "title": "School Board",
+        "date": "2026-03-11",
+        "jurisdiction": "State of Rhode Island",
+        "video_url": "https://wo925a.cablecast.tv/vod/1/vod.m3u8",
+        "video_format": "m3u8",
+        "segments": [
+            {"start": 0, "end": 2000, "text": "S1:"},
+            {"start": 2000, "end": 4105, "text": "Motion carries"},
+        ],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(payload, url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    warning = partial_transcript_warning(4105.0, 4775.0 * 2)
+    changed = {
+        **payload,
+        "segments": [
+            {"start": 0, "end": 2000, "text": "Order of business is agenda approval."},
+            {"start": 2000, "end": 4105, "text": "Motion carries"},
+        ],
+        "transcript_warnings": [warning],
+    }
+    await crud.ingest_resolution(changed, url)
+    assert await _default_warnings(slug) == [warning]
+
+
+async def test_warning_is_not_copied_onto_a_default_that_ends_elsewhere():
+    """Guard for the fix above: a default whose captions end at a clearly
+    different time is a different recording, so it is not marked."""
+    url = "https://wo925b.cablecast.tv/show/1"
+    payload = {
+        "platform": "cablecast",
+        "source_url": url,
+        "external_id": "cablecast:wo925b.cablecast.tv:1",
+        "title": "Board",
+        "date": "2026-03-11",
+        "jurisdiction": "State of Rhode Island",
+        "video_url": "https://wo925b.cablecast.tv/vod/1/vod.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 9000, "text": "long stored text"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(payload, url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    warning = partial_transcript_warning(4105.0, 20000.0)
+    await crud.ingest_resolution(
+        {
+            **payload,
+            "segments": [{"start": 0, "end": 4105, "text": "short fresh text"}],
+            "transcript_warnings": [warning],
+        },
+        url,
+    )
+    assert await _default_warnings(slug) == []
+
+
 async def _default_warnings(slug):
     from archive.db.engine import async_session
     from archive.db.models import MeetingPage, TranscriptVersion
