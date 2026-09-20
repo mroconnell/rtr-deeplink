@@ -1,0 +1,228 @@
+{
+ "errors": {
+  "hasError": false,
+  "message": null
+ },
+ "data": [
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/792f90b1d97acd3c31511bb5b66943326a8fcbb3_audio.mp3",
+   "categories": [
+    "Governor",
+    "Public Hearings",
+    "Meetings"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026091011",
+   "id": "2026091011",
+   "runtimeMinutes": 81,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/792f90b1d97acd3c31511bb5b66943326a8fcbb3.jpg?1789759787542",
+   "title": "Governors Commutation Advisory Board - Part 2",
+   "videoDownload": "https://m-download.invintus.com/2789595964/792f90b1d97acd3c31511bb5b66943326a8fcbb3.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-18 13:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/4a5b69139d5fcd2a00ef525ce904f77aab88ea8e_audio.mp3",
+   "categories": [
+    "Circuit Court"
+   ],
+   "clientID": "2789595964",
+   "description": "If you rely on the access to state public policy information and debate WisconsinEye provides, please consider a <a href",
+   "eventID": "2026091034",
+   "id": "2026091034",
+   "runtimeMinutes": 41,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/4a5b69139d5fcd2a00ef525ce904f77aab88ea8e.jpg",
+   "title": "Dane County Circuit Court: Josh Kaul et al vs. Wisconsin State Legislature Joint Committee on Finance",
+   "videoDownload": "https://m-download.invintus.com/2789595964/4a5b69139d5fcd2a00ef525ce904f77aab88ea8e.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-10 10:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/eb275fe472aee9fdff4c2abf2ffe7d5341d05fd7_audio.mp3",
+   "categories": [
+    "Study Committee",
+    "Meetings",
+    "Presentations"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note: </strong>If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026091025",
+   "id": "2026091025",
+   "runtimeMinutes": 337,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/eb275fe472aee9fdff4c2abf2ffe7d5341d05fd7.jpg?1789075296750",
+   "title": "2026 Legislative Council Study Committee on the Use of Artificial Intelligence in Health Care",
+   "videoDownload": "https://m-download.invintus.com/2789595964/eb275fe472aee9fdff4c2abf2ffe7d5341d05fd7.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-10 09:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/db7bdf60a501342dbe13981632dca060f4de81a1_audio.mp3",
+   "categories": [
+    "Campaign",
+    "News Conferences",
+    "Governor"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026091041",
+   "id": "2026091041",
+   "runtimeMinutes": 14,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/db7bdf60a501342dbe13981632dca060f4de81a1.jpg",
+   "title": "Campaign 2026 News Conference: Crowley to Announce Anti-Corruption Policy in Madison",
+   "videoDownload": "https://m-download.invintus.com/2789595964/db7bdf60a501342dbe13981632dca060f4de81a1.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-14 12:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/f1f86425a87a95684be577c1203bb67bf74bc751_audio.mp3",
+   "categories": [
+    "Campaign",
+    "News Conferences",
+    "State Senate"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026091038",
+   "id": "2026091038",
+   "runtimeMinutes": 16,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/f1f86425a87a95684be577c1203bb67bf74bc751.jpg",
+   "title": "Campaign 2026 News Conference: Democrats Highlight Tax Burden",
+   "videoDownload": "https://m-download.invintus.com/2789595964/f1f86425a87a95684be577c1203bb67bf74bc751.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-14 10:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/435a02c41746e9cd65030b48dbf5bb9a11d2923e_audio.mp3",
+   "categories": [
+    "Committees",
+    "Meetings",
+    "State Assembly",
+    "State Senate"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026091021",
+   "id": "2026091021",
+   "runtimeMinutes": 20,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/435a02c41746e9cd65030b48dbf5bb9a11d2923e.jpg?1788287297677",
+   "title": "Joint Committee on Finance",
+   "videoDownload": "https://m-download.invintus.com/2789595964/435a02c41746e9cd65030b48dbf5bb9a11d2923e.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-01 13:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/8065914edd942f464535dea5e0494faae3c9e3d2_audio.mp3",
+   "categories": [
+    "Committees",
+    "State Senate",
+    "Informational Hearings"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> If you rely on the access to state public policy information and debate WisconsinEye p",
+   "eventID": "2026081021",
+   "id": "2026081021",
+   "runtimeMinutes": 136,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/8065914edd942f464535dea5e0494faae3c9e3d2.jpg?1787076997575",
+   "title": "Senate Committee on Health",
+   "videoDownload": "https://m-download.invintus.com/2789595964/8065914edd942f464535dea5e0494faae3c9e3d2.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-08-18 11:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/ca7fcd9db1b0fcb4ad47bf7803558970d9fac57f_audio.mp3",
+   "categories": [
+    "Senate Floor Session",
+    "State Senate"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> Without additional financial support, WisconsinEye will close its doors by early summe",
+   "eventID": "2026051026",
+   "id": "2026051026",
+   "runtimeMinutes": 37,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/ca7fcd9db1b0fcb4ad47bf7803558970d9fac57f.jpg?1778727822853",
+   "title": "Wisconsin State Senate Floor Session",
+   "videoDownload": "https://m-download.invintus.com/2789595964/ca7fcd9db1b0fcb4ad47bf7803558970d9fac57f.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-05-13 15:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/5f4d427eef56ba0f408d658a5bda0b30c4b7b39a_audio.mp3",
+   "categories": [
+    "Assembly Floor Session",
+    "State Assembly"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> Without additional financial support, WisconsinEye will close its doors by early summe",
+   "eventID": "2026051025",
+   "id": "2026051025",
+   "runtimeMinutes": 133,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/5f4d427eef56ba0f408d658a5bda0b30c4b7b39a.jpg",
+   "title": "Wisconsin State Assembly Floor Session",
+   "videoDownload": "https://m-download.invintus.com/2789595964/5f4d427eef56ba0f408d658a5bda0b30c4b7b39a.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-05-13 10:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/3386d60ffc4d4cd50c91085ff9e3b1cca14b0f84_audio.mp3",
+   "categories": [
+    "Committees",
+    "State Assembly",
+    "Executive Sessions"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> Without additional financial support, WisconsinEye will close its doors by early summe",
+   "eventID": "2026051017",
+   "id": "2026051017",
+   "runtimeMinutes": 20,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/3386d60ffc4d4cd50c91085ff9e3b1cca14b0f84.jpg",
+   "title": "Assembly Committee on Environment",
+   "videoDownload": "https://m-download.invintus.com/2789595964/3386d60ffc4d4cd50c91085ff9e3b1cca14b0f84.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-05-12 13:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/2789595964/62ca555c8ce08564c2f04c2f1588f42e4becd3a2_audio.mp3",
+   "categories": [
+    "WisPolitics"
+   ],
+   "clientID": "2789595964",
+   "description": "<strong>Production Note:</strong> Without additional financial support, WisconsinEye will close its doors by early summe",
+   "eventID": "2026061004",
+   "id": "2026061004",
+   "runtimeMinutes": 47,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/2789595964/62ca555c8ce08564c2f04c2f1588f42e4becd3a2.jpg?1782402050188",
+   "title": "WisPolitics-State Affairs Luncheon with Senate Democratic Leader Dianne Hesselbein",
+   "videoDownload": "https://m-download.invintus.com/2789595964/62ca555c8ce08564c2f04c2f1588f42e4becd3a2.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-06-16 12:00:00",
+   "highlights": []
+  }
+ ],
+ "meta": {
+  "count": 216,
+  "totalPages": 5,
+  "currentPage": 1
+ }
+}

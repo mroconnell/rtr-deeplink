@@ -1,0 +1,143 @@
+{
+ "errors": {
+  "hasError": false,
+  "message": null
+ },
+ "data": [
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/5fb283eb4fcead9ee6472172cea62d844636c742_audio.mp3",
+   "categories": [
+    "2025-2026 Interim",
+    "2025I1 - Joint Interim Committee On Interstate 5 Bridge"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091050",
+   "id": "2026091050",
+   "runtimeMinutes": 151,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/5fb283eb4fcead9ee6472172cea62d844636c742.jpg",
+   "title": "Joint Interim Committee On Interstate 5 Bridge 09/17/2026 1:00 PM",
+   "videoDownload": "https://m-download.invintus.com/4879615486/5fb283eb4fcead9ee6472172cea62d844636c742.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-17 13:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/5604426f01002370f18129c1b0bdd0ebd3840c49_audio.mp3",
+   "categories": [
+    "LPRO Workgroups"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091051",
+   "id": "2026091051",
+   "runtimeMinutes": 88,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/5604426f01002370f18129c1b0bdd0ebd3840c49.jpg",
+   "title": "Public Meetings Law Workgroup - September 17, 2026",
+   "videoDownload": "https://m-download.invintus.com/4879615486/5604426f01002370f18129c1b0bdd0ebd3840c49.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-17 10:30:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/31f71fede0cb3207003276da31a1f58afbeb17f0_audio.mp3",
+   "categories": [
+    "News Conferences & Non-Legislative Videos"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091049",
+   "id": "2026091049",
+   "runtimeMinutes": 28,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/31f71fede0cb3207003276da31a1f58afbeb17f0.jpg",
+   "title": "Vote-by-Mail Press Conference with Secretary of State Tobias Read, U.S. Senators Ron Wyden and Jeff Merkley",
+   "videoDownload": "https://m-download.invintus.com/4879615486/31f71fede0cb3207003276da31a1f58afbeb17f0.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-08 10:15:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/94faf56535bdcd678381e1f638ca6cb130dbc175_audio.mp3",
+   "categories": [
+    "2025-2026 Interim",
+    "2025I1 - House Interim Committee On Higher Education"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091002",
+   "id": "2026091002",
+   "runtimeMinutes": 130,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/94faf56535bdcd678381e1f638ca6cb130dbc175.jpg",
+   "title": "House Interim Committee On Higher Education 09/10/2026 12:30 PM",
+   "videoDownload": "https://m-download.invintus.com/4879615486/94faf56535bdcd678381e1f638ca6cb130dbc175.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-10 12:30:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/9831aa3487fb0c3cb4ee056f809ed94aac01a548_audio.mp3",
+   "categories": [
+    "2025-2026 Interim",
+    "2025I1 - Senate Chamber"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091000",
+   "id": "2026091000",
+   "runtimeMinutes": 76,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/9831aa3487fb0c3cb4ee056f809ed94aac01a548.jpg",
+   "title": "Senate Chamber Convenes 09/10/2026 11:00 AM",
+   "videoDownload": "https://m-download.invintus.com/4879615486/9831aa3487fb0c3cb4ee056f809ed94aac01a548.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-10 11:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/2d426af899544026fd682e8e274f4504d34d17da_audio.mp3",
+   "categories": [
+    "IS Testing / Training"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026091006",
+   "id": "2026091006",
+   "runtimeMinutes": 12,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/2d426af899544026fd682e8e274f4504d34d17da.jpg",
+   "title": "Testing Electronic Reading New Voices",
+   "videoDownload": "https://m-download.invintus.com/4879615486/2d426af899544026fd682e8e274f4504d34d17da.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-09-02 14:00:00",
+   "highlights": []
+  },
+  {
+   "audioDownload": "https://m-download.invintus.com/4879615486/461c8d9923deeab477081be5d513b9c3868c81b3_audio.mp3",
+   "categories": [
+    "2025-2026 Interim",
+    "2025I1 - Joint Committee On Conduct"
+   ],
+   "clientID": "4879615486",
+   "description": "",
+   "eventID": "2026061048",
+   "id": "2026061048",
+   "runtimeMinutes": 26,
+   "status": "published",
+   "thumb": "https://invintus-client-images.s3.amazonaws.com/4879615486/461c8d9923deeab477081be5d513b9c3868c81b3.jpg",
+   "title": "Joint Committee On Conduct 06/15/2026 2:30 PM",
+   "videoDownload": "https://m-download.invintus.com/4879615486/461c8d9923deeab477081be5d513b9c3868c81b3.mp4",
+   "rank": 130816,
+   "startDateTime": "2026-06-15 14:30:00",
+   "highlights": []
+  }
+ ],
+ "meta": {
+  "count": 129,
+  "totalPages": 3,
+  "currentPage": 1
+ }
+}
