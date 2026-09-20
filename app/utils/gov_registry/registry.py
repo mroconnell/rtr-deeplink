@@ -285,6 +285,18 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # whichever government got pinned first, so a row here must
         # `match=` a specific `/{st}/{slug}/` path.
         "go.boarddocs.com",
+        # Sliq Harmony -- one shared host for seven (so far) state
+        # legislature video archives, the government a five-digit tenant
+        # path segment (`/00287/Harmony/...`, WO-921, 2026-09-20; see
+        # app/platforms/sliq_harmony.py). A whole-host pin would key every
+        # other state's meetings to whichever state got pinned first, so a
+        # row here must `match=` a specific `/{tenant}/` path.
+        "sg001-harmony.sliq.net",
+        # Sibling Harmony servers answered HTTP 200 on 2026-09-20 (sg002 and
+        # sg004; sg003 did not resolve). Their tenants were not read, but
+        # they are the same shared-host shape, so the same rule applies.
+        "sg002-harmony.sliq.net",
+        "sg004-harmony.sliq.net",
     }
 )
 

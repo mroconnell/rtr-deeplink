@@ -1,5 +1,29 @@
 # Backlog — done
 
+## WO-921: built the Sliq Harmony adapter for seven state legislatures — 82 recent meetings read live, 54 with captions, 7 candidates ready to ingest after a deploy [Done 2026-09-20]
+
+**Why this ran.** WO-919 found that seven state legislature sites (Arkansas, Colorado, Delaware, Kansas, New Mexico, the Oklahoma House, West Virginia) keep their video archives on one vendor, Sliq Harmony, and that the repo had no adapter for it. One adapter unlocks all seven, about 13 chamber rows. Ryan asked for it on 2026-09-20.
+
+**What was built.** `app/platforms/sliq_harmony.py`, hooked into `detect_platform()`, the adapter registry, the Archive's platform-label map, the adapter canary, the README supported-platforms table and the shared-host list. Seven per-tenant pins were added to `tenant_overrides.csv` (`sg001-harmony.sliq.net`, `match=/00284/` and so on, `us:state:NN`, `strength=fallback`, `source=wo921`). The host is shared by every state, so it is never pinned by host alone. Tests: `tests/test_sliq_harmony.py`, 25 tests on 11 real saved pages (10 events, 1 listing) with negative controls (a recording never published, a future meeting).
+
+**What was learned first, from real pages.** The event page only looks JavaScript-driven. The server writes a `dataModel` block into the HTML, so one plain GET returns the HLS video URL, the closed captions, a timed agenda and the meeting times. The video URL is open to browsers and plays in the existing player. Caption times are wall-clock times, turned into offsets from the recording's start. No headless browser and no access ladder step beyond plain HTTP was needed. The full structure is in the adapter's docstring.
+
+**Result.** The finished adapter was run live over the newest ~14 ended meetings of each tenant (all of them for Delaware, which lists 4). Zero errors.
+
+| Outcome | Count of 82 | What it means |
+|---|---|---|
+| Video and captions | 54 | A page with a real transcript can be made after the deploy. |
+| Video, no captions | 21 | Would go to the tier-3 transcription queue. All 12 Kansas meetings are here. |
+| No video | 7 | New Mexico only: three "Test Meeting" entries and four recordings never published. Never ingested. |
+
+**Candidates.** One hand-read meeting per state, in `rtr-business/research/wo921_candidates.csv` (reads in `wo921_handread.csv`). Six have captions, so they become pages. Kansas has none, so its candidate is a tier-3 queue line; the duration probe accepted it (29.6 minutes). All 7 passed the automatic hand-check pre-filter and my own read; 0 wrong. The pre-filter flagged one non-candidate (Arkansas "ALC - Game - Fish-State Police", a real legislative subcommittee), a false positive. Nothing was ingested: the adapter is not deployed. `scripts/wo921_ingest.py` does the ingest, with `--dry-run` first; it sends each state's `gov_id` in the payload.
+
+**Caution.** Kansas publishes no captions at all, so every Kansas page depends on transcription. The Oklahoma tenant is the House only and the West Virginia tenant is the Senate only; whether the other chamber has its own tenant is not checked. Two sibling servers (`sg002-harmony`, `sg004-harmony`) answer HTTP 200 and were not read. Five Kansas meetings (State Finance Council twice, Governor's Uniform Task Force, Build Kansas, Kansas Fights Addiction) sit on the legislature's archive but are not plainly legislative committees; none was picked. The captions are the vendor's own live captions: lowercase, unpunctuated fragments, treated as approximate.
+
+**Recommendation.** Deploy the resolver, run `scripts/wo921_ingest.py --dry-run` then for real, add the Kansas queue line, confirm each page is keyed with a backfill dry run, then decide whether to sweep more meetings per state.
+
+**Deploy status.** Nothing is live. The adapter, the pins and the Kansas queue line reach production only after the next resolver deploy (Ryan's). No pages, no queue lines, no research-file rows were written.
+
 ## WO-922: Invintus hub walker — Oregon and Wisconsin legislature meetings can now be listed and checked (4 chamber rows, all video, none with captions) [Done 2026-09-20]
 
 **Why this ran.** WO-919 found that the Oregon and Wisconsin legislatures publish their video on Invintus, but nothing could list a legislature's meetings. `invintus.py` only read one meeting when handed its exact player URL. This WO built the listing walker so a sweep can find meetings by itself.

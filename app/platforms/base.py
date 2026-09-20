@@ -263,6 +263,7 @@ def detect_platform(url: str) -> str:
     from .boxcast import parse_boxcast_id
     from .direct_file import is_direct_file_url
     from .boarddocs import is_boarddocs_tenant_url
+    from .sliq_harmony import is_sliq_harmony_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -466,6 +467,13 @@ def detect_platform(url: str) -> str:
         # module docstring for the landing-page/document-page shapes and
         # how video is found (a wrapper link straight to a YouTube embed).
         return "clerkbase"
+    if is_sliq_harmony_url(url):
+        # Sliq Harmony (`sg001-harmony.sliq.net/{tenant}/Harmony/...`) --
+        # WO-921 (2026-09-20). The video archive behind seven state
+        # legislature sites, one shared host with the government encoded
+        # as a five-digit tenant path segment -- see sliq_harmony.py's own
+        # module docstring for the live-confirmed page structure.
+        return "sliq_harmony"
     if is_boarddocs_tenant_url(url):
         # BoardDocs (Diligent) -- WO-365 (2026-09-14). One shared host
         # (`go.boarddocs.com`) for every tenant, the government encoded as

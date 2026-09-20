@@ -36,6 +36,7 @@ def register_all_finders() -> None:
     from .primegov import PrimeGovAssetFinder
     from .proudcity import ProudCityAssetFinder
     from .seattlechannel import SeattleChannelAssetFinder
+    from .sliq_harmony import SliqHarmonyAssetFinder
     from .slc import SlcAssetFinder
     from .suiteone import SuiteOneAssetFinder
     from .swagit import SwagitAssetFinder
@@ -91,6 +92,7 @@ def register_all_finders() -> None:
     register(BoxcastAssetFinder())
     register(DirectFileAssetFinder())
     register(BoardDocsAssetFinder())
+    register(SliqHarmonyAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

@@ -5598,6 +5598,11 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # own label rather than reading "invintus". See az_legislature.py's
     # own module docstring for the full investigation.
     "az_legislature": "Arizona State Legislature (azleg.gov)",
+    # Sliq Harmony -- WO-921, 2026-09-20. Native adapter (its own HLS
+    # video and captions, no delegation), so a real pushed row keeps
+    # "sliq_harmony" as its platform. Seven state legislature sites share
+    # it, one tenant path each; see sliq_harmony.py's module docstring.
+    "sliq_harmony": "Sliq Harmony (state legislature video archives)",
 }
 
 # Registered platforms (app/platforms/__init__.py's
