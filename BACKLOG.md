@@ -105,7 +105,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 Standing decisions — do NOT re-raise  (11)
   No Viebit meeting can get a real transcript today -- confirmed at…
-  Cablecast, Granicus, and eScribe have no real `meeting_body` field to…
+  Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -116,7 +116,7 @@ Standing decisions — do NOT re-raise  (11)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
   The Diligent Community sweep only reads meetings titled "Name - Mon D…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
@@ -174,6 +174,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
   Headless's sandbox launch crash is fixed (WO-909) — a second,…
+  iQM2's real meeting-body field lives only on the calendar listing…
+  PrimeGov has a real, structured `committeeId` field — but no…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
@@ -196,7 +198,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] A decorative video with no web-address signature at all…
@@ -357,7 +359,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (67)
+  Adapter & platform gaps  (66)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
@@ -424,7 +426,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
     [NEEDS-AUDIT] A real tier 1/3 "video found" verdict off…
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
-    [NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -511,8 +512,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
-Dormant — needs a real example first `[LATER]`  (1)
-  Swagit and PrimeGov: unknown whether either exposes a real…
+Dormant — needs a real example first `[LATER]`
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -559,22 +559,22 @@ Parked deliberately — allowed back `[PARK]`  (4)
   same investigation that confirmed this); `app/platforms/queue_probe.
   py`'s own WO-306 comment (the original, narrower probe-level finding).
 
-### Cablecast, Granicus, and eScribe have no real `meeting_body` field to extract -- checked, not assumed `[STANDING]`
+### Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body` field to extract -- checked, not assumed `[STANDING]`
 
 - **Issue**: WO-904/905/906 (`BACKLOG_DONE.md`) extracted a real,
   structured `meeting_body` for CivicClerk/CivicPlus/Legistar after
   confirming each platform's own API/HTML genuinely carries a
   committee/body name distinct from the meeting title. The same check
-  against Cablecast, Granicus, and eScribe -- the platform this repo's
-  own biggest tenant pool (Granicus, ~240 real tenants) runs on --
-  found nothing real to extract.
-- **Impact**: none of these three will ever get a non-title
+  against Cablecast, Granicus, eScribe, and Swagit -- the platform this
+  repo's own biggest tenant pool (Granicus, ~240 real tenants) runs on
+  -- found nothing real to extract.
+- **Impact**: none of these four will ever get a non-title
   `meeting_body` without a materially different data source than what
   each adapter already fetches -- most of the corpus by tenant count
   stays at today's ~10% `meeting_body` coverage regardless of any
   further per-adapter work here.
 - **What this means**: do not "fix" `meeting_body` on any of these
-  three from a title guess -- that's exactly the thing this repo's own
+  four from a title guess -- that's exactly the thing this repo's own
   convention (never guess a body from a title) exists to prevent.
   Cablecast: the only category field in any real captured response
   (`PublicSite`, Remix `__remixContext`) is a bare integer id with no
@@ -590,10 +590,26 @@ Parked deliberately — allowed back `[PARK]`  (4)
   independent of `MeetingName`, but in every real captured row (Peel
   Region, Hazelton) its value is byte-identical to `MeetingName` --
   no actual signal -- and it's only on the listing endpoint, which the
-  resolve path never calls.
+  resolve path never calls. Swagit: checked live 2026-09-20 against
+  three real, currently-archived pages (Dublin CA, Yountville CA, San
+  Antonio TX) -- the only category-shaped labels anywhere on the page
+  ("COMMITTEES"/"CATEGORY"/"DEPARTMENT"/"BOARD" aria-labels) are chapter
+  markers for skipping within *that one video's own agenda*, the same
+  role `agenda_items` already fills, not a meeting-level committee
+  field. The `<title>` itself is the same blended shape as every other
+  write-off here -- Dublin's cleanly reads "Jan 13, 2026 City Council -
+  Dublin, CA" but Yountville's and San Antonio's run the body and
+  meeting type together with no separator ("Town Council Regular
+  Meeting", "City Council Zoning and Land Use Session") -- so it can't
+  be split reliably across tenants either.
 - **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry has the full
   per-platform evidence (real field names, real captured values) this
-  finding is based on.
+  finding is based on. Swagit's own check (2026-09-20, live against
+  Dublin CA `dublinca.new.swagit.com/videos/372020`, Yountville CA
+  `yountvilleca.new.swagit.com/videos/394093`, San Antonio TX
+  `sanantoniotx.new.swagit.com/videos/395469` -- all three sourced from
+  the real Archive's already-ingested pages) isn't its own
+  `BACKLOG_DONE.md` entry, just this one.
 
 ### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
 
@@ -2163,6 +2179,23 @@ so that work reads together.
   11/20/22 split. `BACKLOG_DONE.md`'s WO-909 entry has the crash fix,
   the new 200-row report, and the manual review behind the 8/12/1/15
   split above.
+
+### iQM2's real meeting-body field lives only on the calendar listing page — confirmed feasible to fetch, not yet wired up `[JUST-DO-IT]`
+
+- **Issue**: found live 2026-09-19, during the same meeting_body investigation that shipped CivicClerk/CivicPlus/Legistar (WO-904/905/906). `app/platforms/iqm2.py`'s `resolve()` only fetches a meeting's own detail page (`Detail_Meeting.aspx`'s outline variant, `SplitView.aspx`), and neither carries a separate body/committee field — only a blended `<title>` (e.g. "2026/08/12 01:30 PM Finance/Executive Committee Regular Committee Meeting - Web Outline - City of Atlanta, Georgia", where "Finance/Executive Committee" and "Regular Committee Meeting" run together with no separator, so it can't be reliably split by text parsing alone — same ambiguity this repo already declined to guess through elsewhere).
+- **Feasibility confirmed live 2026-09-20** (both real customers, Atlanta GA and Santa Clara County CA): the calendar page (`Citizens/calendar.aspx?View=List&From={date}&To={date}`) accepts a plain, unauthenticated GET with a single-day range and returns only that day's meetings — Atlanta's Aug 12, 2026 query returned 3 rows in a 39KB response (vs. 400KB+ for a whole-year query). Each row is a `<div class="MeetingRow">` containing both the `Detail_Meeting.aspx?ID={id}` link `resolve()` already knows and a `<div class="RowDetails">` whose text cleanly splits on `" - "` into body and meeting type — e.g. `"Finance/Executive Committee - Regular Committee Meeting"`, `"Ukraine Citizen Diplomacy Commission - Regular Meeting"`. The date param accepts the same `YYYY-MM-DD` string `resolve()` already extracts from the outline page's title (`_extract_title_date_jurisdiction`) with no reformatting needed. So the shape is: fetch the outline page as today (gets the real date), then one more GET to the calendar for that single day, find the row whose link matches the meeting id, split its `RowDetails` text on `" - "`, take the first part.
+- **Impact**: small (iQM2 is ~2 tenants in the corpus today) but now a cheap, well-scoped win rather than an open question — one extra lightweight GET per resolve, reusing the same session.
+- **Next action**: implement the fetch + `RowDetails` parse in `iqm2.py`, live-verify against both confirmed tenants (Atlanta, Santa Clara County) before merging, per this repo's own "test against a real URL first" rule — the two real values above (`_extract_meeting_id`'s `MeetingID`/`ID`) are ready-made assertions for a fixture-backed test.
+- **Constraint**: match the calendar row by its `Detail_Meeting.aspx?ID={id}` link, not by day-position — a busy tenant's day can return several rows, and only the id match is reliable.
+- **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry (meeting_body investigation).
+
+### PrimeGov has a real, structured `committeeId` field — but no confirmed way to turn it into a name `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-20, following up on the meeting_body investigation. PrimeGov's own `api/v2/PublicPortal/ListArchivedMeetings?year={YYYY}` endpoint (already used by `primegov.py` for Swagit/Granicus video delegation, see that file's module docstring) returns a real `committeeId` integer on every meeting (confirmed live on cambridgema, baycountyfl, and slc — distinct ids per tenant, e.g. `1`/`3`/`5`), separate from the meeting's own `title`. This is a genuinely different shape from Cablecast's write-off (a bare id with truly nothing else to check) — but no committee-name lookup has been found yet either: `ListCommittees`/`Committees`/`ListMeetingTypes`/`MeetingTypes` all 404 on the tenant's own API host, and the public `Portal`/`Portal/Meeting?meetingTemplateId=...` pages (confirmed real, server-rendered, hundreds of KB) carry no embedded id-to-name mapping anywhere in their markup or inline scripts.
+- **Impact**: unclear whether real — could be a genuinely missing lookup (in which case this joins the Standing Decision write-off list), or a real endpoint this session's plain-HTTP guessing just didn't find (PrimeGov's `Portal` page is a real app, not an empty shell — the name mapping most plausibly loads via an XHR call from its own JS after page load, which a plain `aiohttp` fetch can't see).
+- **Next action**: the fastest real answer is a human (or a headless browser) watching the Network tab while `Portal/Meeting?meetingTemplateId=...` loads in an actual browser, looking for the request that supplies a committee name — rtr-discovery's FINDING-14 already flags this machine's own playwright/headless setup as blocked by a CPU-architecture mismatch, so this may need a different machine or a human to check. Confirm on at least 2 tenants before trusting whatever's found (this repo's own "one platform's file is not enough" rule).
+- **Constraint**: don't guess a REST path further without narrowing it from real traffic first — four guesses already 404'd, and PrimeGov's actual route naming isn't a fully predictable pattern from what's confirmed so far.
+- **History**: this repo's own `primegov.py` module docstring (the existing `ListArchivedMeetings`/`GetArchivedMeetingYears` API usage this finding builds on); `tests/test_primegov.py`'s real sample URLs (cambridgema, baycountyfl, slc, okc, toaks, lacity) used to check this live.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -6317,13 +6350,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't touch `_find_youtube_video_id()`'s existing single-meeting-page behavior — it's correct and tested for the case it was built for (one meeting per page); this is additive, a new tier that runs first when a page looks like a multi-row listing (multiple date-shaped headings/rows), not a replacement.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
-- **[NEEDS-AUDIT] iQM2's real `Board:` meeting-body label lives only on the calendar listing page — `iqm2.py`'s `resolve()` never fetches that page, so it has no real field to extract from.**
-  - **Issue**: found live 2026-09-19, during the same meeting_body investigation that shipped CivicClerk/CivicPlus/Legistar (WO-904/905/906). iQM2's calendar view (`Calendar.aspx`/`Citizens/Calendar.aspx`) genuinely does print a real `Board:` label next to each listed meeting — confirmed live against real iQM2 tenants. But `app/platforms/iqm2.py`'s `resolve()` only ever fetches a single meeting's own detail page (`Detail_Meeting.aspx`/`SplitView.aspx`, reached via `legistar.py`'s shared Cousin-adapter delegation), and neither of those pages carries the board name anywhere in their own markup — it's a calendar-page-only field.
-  - **Impact**: small (iQM2 is ~2 tenants in the corpus today), and nothing is broken — this is a missed enrichment, not a wrong value. Consistent with the platform-coverage rule that a field only counts once it's been checked, not assumed: iQM2 is neither "no real field exists" (Cablecast/Granicus/eScribe's case) nor "already shipped" (CivicClerk/CivicPlus/Legistar's case) — it's "a real field exists but isn't reachable from the pages resolve() already fetches."
-  - **Next action**: to actually extract it, `resolve()` would need a NEW network call — looking up the specific meeting by id/date on its tenant's calendar page — whose feasibility (can a single meeting be looked up directly, or only by paging/filtering a date range?) hasn't been live-verified yet. Worth revisiting if iQM2's tenant count grows, or as a small standalone follow-up; not pursued in this pass given the low tenant count relative to the added fetch.
-  - **Constraint**: don't add the extra fetch speculatively — verify the calendar page's lookup-by-id feasibility against a real tenant first (CLAUDE.md's "test against a real URL first" rule), same as any other adapter change.
-  - **History**: `BACKLOG_DONE.md`'s WO-904/905/906 entry (meeting_body investigation).
-
 ## Reliability, ops & cost
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
@@ -8231,24 +8257,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-### Swagit and PrimeGov: unknown whether either exposes a real meeting-body field `[LATER]`
-
-- **Issue:** During the 2026-09-19 meeting_body investigation (WO-904/905/906,
-  which shipped CivicClerk/CivicPlus/Legistar and wrote off Cablecast/
-  Granicus/eScribe as having no real field), Swagit and PrimeGov were left
-  undetermined. Neither has a real fixture in the repo's test suite that
-  exposes a structured, independent meeting-body/committee field one way
-  or the other — unlike the platforms that got a real yes or no this pass,
-  there's no live sample in hand to check.
-- **Next action:** the next time a real Swagit or PrimeGov sample is
-  fetched for any other reason (a new tenant, a bug repro), check its raw
-  page/API response for a genuine structured body/committee field before
-  building anything — same rule as any other adapter work (CLAUDE.md's
-  "test against a real URL first").
-- **Constraint:** don't guess a field name and wire it up without a real,
-  live-confirmed sample — that's exactly the mistake this whole pass was
-  built to avoid.
-- **History:** `BACKLOG_DONE.md`'s WO-904/905/906 entry.
+Nothing open here right now.
 
 ## Parked deliberately — allowed back `[PARK]`
 
