@@ -116,7 +116,8 @@ Standing decisions — do NOT re-raise  (11)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
+  The Diligent Community sweep only reads meetings titled "Name - Mon D…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -174,7 +175,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
   Headless's sandbox launch crash is fixed (WO-909) — a second,…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+  Ten Diligent Community tenants belong to public bodies the registry…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -847,6 +849,32 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### The Diligent Community sweep only reads meetings titled "Name - Mon D YYYY" — 94 of its 257 "no video" tenants have unread meetings, and 3 of a 40-tenant sample had YouTube video `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/diligent_community_full_sweep.py` finds a tenant's
+  meetings with one regex (`MEETING_RE`) that needs the link text to end
+  in "Mon D YYYY". Many tenants title meetings another way ("Regular
+  Meeting: September 15, 2026", "Board Meeting - 09/08/26", or no date at
+  all). Those links are silently dropped. WO-911 (2026-09-20) re-read the
+  list page of all 257 `no_video` tenants: 94 carry links the regex did
+  not parse (421 links in total), and 5 tenants had meetings listed with
+  none parsed (the other 3 of the 8 zero-meeting tenants are truly empty).
+  In a 40-tenant sample, 3 tenants had a real YouTube video on a dropped
+  meeting: `jeffpud` (`AkacIQZJnJ0`), `d11` (`z-1SqxGWCoU`, more than 7
+  meetings) and `palmbeachschools-org` (a "TAC Meeting Videos" YouTube
+  playlist). Sample miss rate 3 of 40 (7.5%), under the 10% stop line.
+- **Impact:** the 2026-09-18 tally (257 tenants with no video) overstates
+  "no video". Roughly 7% of those tenants (about 19 of 257) likely hold a
+  real video the sweep never saw.
+- **Next action:** fix `parse_past_meetings()` to accept any meeting link
+  and take the date from the tenant's own `meetingData`/`videolink`
+  response instead of the link text; rerun only the 94 tenants with
+  unparsed links (list-page ids are in the WO-911 scratch count) and route
+  finds through the same tier 1/2/3 rules.
+- **Constraint:** read the tenant's own JSON API for the video id; never
+  fetch youtube.com to test a find.
+- **History:** `BACKLOG_DONE.md` WO-911 entry.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
@@ -2142,6 +2170,27 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### Ten Diligent Community tenants belong to public bodies the registry does not have — decide which to mint `[HUMAN]`
+
+- **Issue:** WO-911 (2026-09-20) could not tie 10 of the 100 actionable
+  Diligent tenants to a `gov_id`: Winnetka Park District IL (a tier-1
+  find, 3,124 caption segments, `winpark`), Arizona Schools for the Deaf
+  and the Blind (`asdb`), University of Colorado Board of Regents (`cu`),
+  Desert Healthcare District CA (`dhcd`), Kitsap Regional Library WA
+  (`krl`), St. Mary's County Metropolitan Commission MD (`metcom`), St
+  Charles City-County Library District MO (`stchlibrary`), and three
+  Canadian school boards (`sd46`, `sd70`, `ucdsb-on`). None is in the
+  national tables or the minted registry.
+- **Impact:** each has a real YouTube meeting video (listed in
+  `research/wo911_leads_to_add.csv` with a blank `gov_id`), but no page
+  or pin can be keyed to it until it has an id.
+- **Next action:** Ryan says "ok mint" per body in a pin worklist; then
+  add the pin rows (tenant host, `strength=fallback`) and set the
+  `gov_id` on the matching leads rows. Winnetka Park District first: it
+  is the only one with captions already seen.
+- **History:** `BACKLOG_DONE.md` WO-911 entry; identities in
+  `research/wo911_identity.csv`.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
