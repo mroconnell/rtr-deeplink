@@ -38,6 +38,11 @@ os.environ.setdefault("ADMIN_STATS_TOKEN", "test-admin-token")
 # run, 2026-08-14) despite passing locally -- exactly the order/env
 # dependent flake shape described above, just for a different var.
 os.environ.setdefault("CLERK_PUBLISHABLE_KEY", "pk_test_fake_for_tests")
+# WO-923: the partial-transcript check (app/platforms/coverage_check.py)
+# would otherwise run a real ffprobe against every fixture video URL that
+# passes through a registered finder. Tests of the check itself switch it
+# on with monkeypatch and inject a fake probe.
+os.environ.setdefault("RTR_PARTIAL_TRANSCRIPT_CHECK", "0")
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

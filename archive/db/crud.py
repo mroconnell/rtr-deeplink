@@ -159,6 +159,14 @@ _PARTIAL_TRANSCRIPTION_MARKER = "the transcription was interrupted"
 # ingest path, so this is opportunistic, not a full-corpus scan: most
 # pages never request a transcription job at all, so most never get this
 # check.
+#
+# WO-923 (2026-09-20): the same marker is now also added at RESOLVE time,
+# for every platform, by app/platforms/coverage_check.py, whenever the
+# video's duration is known and the last cue stops well short of it (under
+# 90% of the video AND a gap of 10+ minutes). The two writers share this
+# one substring on purpose -- it is already wired into every place a
+# quality marker needs to be -- and tests/test_partial_transcript_marker.py
+# fails if the resolver's copy and this one ever differ.
 _EARLY_TRUNCATION_MARKER = "may end before the meeting did"
 # Deliberately tight (Ryan's explicit call, 2026-08-29) rather than the
 # "tens of minutes" a longer measurement-first rollout would have used --
@@ -258,11 +266,21 @@ def _good_default_transcript_exists():
         TranscriptVersion.content_hash != _EMPTY_CONTENT_HASH,
         or_(
             TranscriptVersion.transcript_warnings.is_(None),
+            # Built from the same tuple the Python twin
+            # (_has_real_warning_free_transcript) reads, so the two can
+            # no longer drift. WO-923 found they already had: this list
+            # was hand-written and lacked _PARTIAL_TRANSCRIPTION_MARKER,
+            # so a page marked "the transcription was interrupted" was
+            # correctly "not good" in Python and wrongly "good" here.
             and_(
-                ~warnings_text.like(f"%{_GARBLED_MARKER}%"),
-                ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
-                ~warnings_text.like(f"%{_GRANICUS_TRUNCATION_MARKER}%"),
-                ~warnings_text.like(f"%{_EARLY_TRUNCATION_MARKER}%"),
+                *(
+                    ~warnings_text.like(f"%{marker}%")
+                    for marker in (
+                        _GARBLED_MARKER,
+                        _HALLUCINATION_MARKER,
+                        *_TRUNCATION_MARKERS,
+                    )
+                )
             ),
         ),
     )
@@ -1628,6 +1646,23 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 matched_version_id = version.id
             else:
                 matched_version_id = duplicate.id
+                # WO-923: an identical re-push used to change nothing, so
+                # a page whose captions were already archived could never
+                # pick up the partial-transcript warning from a fresh
+                # resolve (the Rhode Island Senate page: same cues, new
+                # finding). Attach that one marker to the existing
+                # version; every other warning stays as first stored.
+                early = next(
+                    (
+                        w
+                        for w in (payload.get("transcript_warnings") or [])
+                        if _EARLY_TRUNCATION_MARKER in w
+                    ),
+                    None,
+                )
+                already = duplicate.transcript_warnings or []
+                if early and not any(_EARLY_TRUNCATION_MARKER in w for w in already):
+                    duplicate.transcript_warnings = [*already, early]
 
         if current_default is not None:
             if new_version_id is not None and _is_real_improvement(

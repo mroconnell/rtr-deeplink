@@ -1,5 +1,74 @@
 # Backlog — done
 
+## WO-923: warn the reader when a transcript covers only part of the video — 17 of 527 measured pages are partial, and the check now runs on every adapter [Done 2026-09-20]
+
+**Why this ran.** The Rhode Island Senate page (page 10847, Capitol TV on Cablecast) shows captions for the first 81 minutes of a 149-minute video, and nothing on the page says so. Ryan asked (2026-09-20) for partial transcripts to be marked. Nothing in the repo compared the last caption time to the video's length, except a Granicus-only cue-count check and an Archive check that runs only when someone requests a transcription job.
+
+**What was built.** `app/platforms/coverage_check.py`. Every registered adapter's `resolve()` now ends with it (a small wrapper in `app/platforms/base.py`'s `register()`). If the video's duration is known and the last caption ends under 90% of it with at least 10 minutes uncovered, it adds one plain warning: "This transcript may end before the meeting did — it covers about 1 hour 21 minutes of what looks like a 2 hour 29 minute recording. The captions stop early at the source." Duration comes from `ResolvedMeeting.video_duration_seconds` (new field, set by an adapter) or a header-only ffprobe of an HLS, mp4, mp3, m4a or wav file. It is never guessed, and YouTube, Vimeo and Viebit pages are never probed. No duration means no warning. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches it off (the test suite does).
+
+**No second marker.** The warning reuses the Archive's existing `_EARLY_TRUNCATION_MARKER` ("may end before the meeting did"). That marker was already wired into the Python "good transcript" check, the raw-SQL twin and the `truncated_transcript` reporting bucket. So a page carrying the warning is not counted as having a good transcript and stays eligible for re-transcription (cloud worker and local script), and reports as `truncated_transcript`. The Granicus marker was not generalised because this one was already the general one.
+
+**Two Archive fixes found on the way.**
+
+1. The raw-SQL predicate `_good_default_transcript_exists()` was a hand-written list that lacked `_PARTIAL_TRANSCRIPTION_MARKER` ("the transcription was interrupted"), while the Python twin had it. The two disagreed. It is now built from the same tuple as the Python check, and `tests/test_transcription_jobs.py` has a new paired test. Effect: pages whose Whisper job was interrupted now count as "not good" in the worker's candidate search too. The cooldown on failed jobs still applies.
+2. Re-pushing identical captions did nothing, so an already-archived page could never pick up the new warning from a fresh resolve. `ingest_resolution()` now attaches that one marker to the matching existing version. Every other warning is left as first stored.
+
+**Phase 1: measurement.** Read-only. 574 page reads (the cap was 600): 224 chosen across platforms with a fixed random seed (including the 13 pages WO-919 and WO-921 made; the brief said 14, but ids 10842-10848 and 10861-10866 are 13), then every remaining Cablecast and Town Hall Streams page, the two platforms where the first pass found partials. Cues came from `/internal/export/pages?include_segments=true` (the same data the page's `data-start` markup holds). Duration came from the video's own HLS playlist (sum of segment lengths, text only), an ffprobe header read for mp4/mp3, or Vimeo's public oEmbed. No media was downloaded. No YouTube request was made.
+
+| Outcome | Count of 574 | What it means |
+|---|---|---|
+| Measured | 527 | Last caption time and video length both known. |
+| Cannot measure | 47 | 12 YouTube-sourced (not fetched here), 14 playlist errors or empty, 9 ffprobe failed, 6 open live playlists (IQM2), 3 Viebit (no recipe), 2 ffprobe timeouts, 1 no cues returned. Counted, never filled. |
+
+| Platform | Pages read | Measured | Below 90% | Below 60% | Below 30% | Cannot measure |
+|---|---|---|---|---|---|---|
+| Cablecast | 283 | 277 | 16 | 5 | 2 | 6 |
+| Town Hall Streams | 100 | 100 | 11 | 9 | 7 | 0 |
+| Granicus (includes Legistar-delegated) | 35 | 26 | 0 | 0 | 0 | 9 |
+| CivicClerk | 23 | 19 | 1 | 1 | 0 | 4 |
+| Swagit | 20 | 20 | 0 | 0 | 0 | 0 |
+| eScribe | 19 | 15 | 0 | 0 | 0 | 4 |
+| IQM2 | 12 | 6 | 0 | 0 | 0 | 6 |
+| Utah PMN | 12 | 12 | 0 | 0 | 0 | 0 |
+| Vimeo | 10 | 10 | 1 | 0 | 0 | 0 |
+| Telvue | 8 | 8 | 0 | 0 | 0 | 0 |
+| Sliq Harmony | 6 | 6 | 0 | 0 | 0 | 0 |
+| Boxcast, Hyland, YouTube, Viebit | 15 | 0 | 0 | 0 | 0 | 15 |
+| Other (Arizona/California legislatures, Castus, ChampDS, Civicmedia, direct file, Invintus, Suiteone, Wistia, unknown) | 31 | 28 | 0 | 0 | 0 | 3 |
+
+The stratified 224 alone read 0.545, 0.447 and 0.118 for the three genuine partials. The rest of the below-90% count is short clips (about a minute, a few seconds short) that the threshold below correctly ignores.
+
+**Phase 2: the threshold.** Real meetings end a little before the video does. In the 527 measured pages the gap is 0 to 5 minutes on 30-minute to 4-hour videos (Swagit 0.9598 and 0.962 are the lowest ordinary ones; gaps 3.1 and 4.9 minutes). Real partials sit far lower: 0.0248 to 0.8598, nothing between 0.86 and 0.91 above the gap floor. Rule chosen: **under 90% of the video AND at least 10 minutes uncovered.** The ratio protects long meetings (a 7-hour meeting 6 minutes short is fine). The gap protects short clips (a 66-second clip 12 seconds short is not partial).
+
+| Page | Coverage | Gap (minutes) | Flagged | Why |
+|---|---|---|---|---|
+| Cablecast 3645 (Edina MN) | 0.8598 | 11.2 | Yes | Just below the line, over the floor. |
+| Cablecast 1275 | 0.8945 | 5.5 | No | Under 90% but under the 10-minute floor. |
+| Town Hall Streams 9481 | 0.8963 | 9.3 | No | Under 90%, 42 seconds short of the floor. |
+| Cablecast 9449 | 0.9105 | 8.5 | No | Above 90%. |
+| Swagit 3715 | 0.9598 | 3.1 | No | Ordinary. |
+
+The 10-minute floor is the same number the Archive's own check already uses (`_EARLY_TRUNCATION_SHORTFALL_SECONDS`, 600). That older check has no ratio; it was left alone (Ryan chose it tight on 2026-08-29).
+
+**Phase 3 and 4: detection, tests, live check.** New tests in `tests/test_partial_transcript_marker.py` (26): last cue at 45% gets the warning; 97% does not; unknown duration does not (and the duration field stays empty); short clip and long meeting cases; iframe formats are never probed; a failing probe never breaks a resolve; the marker text equals the Archive's; a warning makes the Archive treat the page as truncated; a re-push of identical captions attaches the warning once. Live check (no writes): resolving `capitoltvri.cablecast.tv/show/12336` returns 716 captions, duration 8967.5 s and the warning; the Rhode Island House page (12317, ratio 0.99) returns no warning. Note: the brief said the Senate cues end at 4014.8 s; the export shows the last cue ending at 4887.9 s. Either way it is under 55%.
+
+| Outcome | Count of 527 | What it means |
+|---|---|---|
+| Flagged by the rule | 17 | 9 Town Hall Streams, 7 Cablecast (3 are the same Leon Valley show under different URLs), 1 CivicClerk (DeLand FL). Includes the Rhode Island Senate. |
+| Not flagged | 510 | Coverage at or above the line, or a short gap. |
+| Of the 13 legislature pages | 1 flagged | Only the Rhode Island Senate. The other 12 read 0.986 to 1.000. |
+
+**Caution.**
+
+- The check hits the network once per resolve for a plain HLS or file video (a playlist or header read, capped at 25 seconds). It never fails a resolve.
+- A flag means "the captions stop early", not proof the meeting ran the full length. Nine Town Hall Streams pages read 3% to 50% against round durations (120, 180, 240 minutes). That looks like a fixed recording window with a short real meeting, and the warning says "may". Re-transcription settles it either way.
+- 47 pages could not be measured and ~5,200 non-YouTube pages plus all YouTube-sourced pages were never read. The 17 is a floor for the measured sample, not a corpus count.
+- The Archive does not store durations, so an already-archived page is only checked when it is re-resolved.
+
+**Recommendation.** Deploy the resolver and the Archive together. Recheck the 17 pages listed in `research/wo923_recheck_list.csv`, worst first, then run the corpus backfill from the resolver's Render shell and read the `truncated_transcript` count. Open gaps are in `BACKLOG.md` (Trust, safety & data quality).
+
+**Deploy status.** Resolver (`app/`), Archive (`archive/`) and worker code: all need the next manual deploy. Nothing is live yet. No production Archive write was made by this WO. Files for the conductor to commit in rtr-business: `research/wo923_coverage_report.csv`, `research/wo923_platform_summary.csv`, `research/wo923_recheck_list.csv`, `research/wo923_methods_section.md`.
+
 ## WO-924: a Vimeo pin must be a per-video id or a channel, or it never populates: loader now refuses the dead `vimeo:<id>` shape, writers fixed, 17 rows rewritten [Done 2026-09-20]
 
 **Why this ran.** Ryan asked for a permanent fix to the Vimeo pin, on the same rule as YouTube: on a shared host a pin is a per-video id or a channel match, or it never fills in a government. WO-356 had found that `vimeo:<id>` pins never match a real Vimeo URL.
