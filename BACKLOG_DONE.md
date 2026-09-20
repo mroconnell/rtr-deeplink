@@ -254,7 +254,7 @@ Of the 7,359 not run, 3,843 were never in an earlier report and 3,516 were.
 1. **Do not run headless at scale to find meeting links.** 875 loads found 12 links and 2 new, usable ones. The plain fetch found 213 of the 216 raw finds.
 2. **If the other 7,359 are worth running, use the plain ladder only,** the 3,843 never covered first (about twice the yield). About 490 right-government links, about 150 of them new leads, for about 25 hours of unattended run time and about 1,300 links to read.
 3. **Build the same-organization check first** (see the wrong-organization entry in `BACKLOG.md`). It cuts the hand-check by about a fifth, at the cost of 5% of good finds.
-4. **Ryan decided on 2026-09-20 to park it.** Run the access ladder on all 7,359 later this week with a cheaper agent, if usage allows, then optionally a headless pass on the never-covered governments the ladder does not identify. On this run's sample that pass found 4 links in 356 loads and none was usable, so expect little from it. It is a `[PARK]` entry in `BACKLOG.md`.
+4. **Ryan decided on 2026-09-20 to park it, and to drop the reading step and the headless pass.** Later this week, with a cheaper agent if usage allows, run the access ladder on all 7,359 and keep the raw report. Nothing is handed on from it: no lead, ingest or research-file change, because a quarter of the raw finds are another organization's and nobody reads them. It is a `[PARK]` entry in `BACKLOG.md`.
 
 **Docs updated.** `docs/COVERAGE_HANDOVER.md` (§3 ladder wording, the identity bullet, and §5.1's stale headless numbers), `BACKLOG.md` (the headless entry closed, the wrong-organization and wrong-recorded-domain entries rewritten with measured numbers, the rerun of the other 7,359 parked), this file.
 
