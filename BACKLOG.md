@@ -103,9 +103,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (13)
+Standing decisions — do NOT re-raise  (12)
   97 of the 257 Diligent Community "no video" tenants link their own…
-  Mint Jefferson County Public Utility District No. 1 (WA), the one…
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -550,22 +549,6 @@ Parked deliberately — allowed back `[PARK]`  (4)
   `research/youtube_channel_leads.csv`, and append `kind=channel` rows.
 - **Constraint:** no YouTube fetch; a tenant with no registry row goes to
   needs-human, not a guessed id.
-- **History:** `BACKLOG_DONE.md` WO-914 entry.
-
-### Mint Jefferson County Public Utility District No. 1 (WA), the one Diligent Community tenant WO-916 did not cover `[HUMAN]`
-
-- **Issue:** WO-914 (2026-09-20) found a real YouTube meeting video on
-  the Diligent tenant `jeffpud.community.diligentoneplatform.com` (video
-  `AkacIQZJnJ0`, "Regular Meeting: September 15, 2026", plus two earlier
-  regular meetings). The tenant belongs to a Washington utility special
-  district that has no research row and no registry id. WO-916 minted ten
-  other Diligent bodies; this one was found after its list was fixed.
-- **Impact:** its lead row in `research/wo914_leads_to_add.csv` has a
-  blank `gov_id`, so nothing can be keyed to it.
-- **Next action:** Ryan says "ok mint"; then mint it the way WO-916 did,
-  add the `jeffpud` tenant pin (`strength=fallback`) and set the lead's
-  `gov_id`.
-- **Constraint:** no guessed id.
 - **History:** `BACKLOG_DONE.md` WO-914 entry.
 
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
