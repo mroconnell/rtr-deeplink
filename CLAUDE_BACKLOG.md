@@ -760,3 +760,32 @@ Granicus, TelVue, and ProudCity with zero signup. Running the same check
 against these four names first — before any manual crawl — would answer
 "is this platform even fingerprintable, and roughly how big is it" for
 free, the same way it did for the platforms already checked.
+
+## State public-notice portals: three follow-ups never run (2026-09-20)
+
+Source: rtr-business `research/state_public_notice_portal_survey.md` (all 50
+states checked 2026-09-08; its findings are already summarised in
+`ENUMERATION_METHODS.md`). The survey's own leaderboard named next steps
+that nobody has picked up. Suggestions for Ryan to triage, not a roadmap.
+
+- **Oklahoma's `openmeetings.ok.gov` has a real "VM URL" field** (the
+  equivalent of Utah PMN's "Audio File Location") and copy promising
+  "video, if included by agency". The two meetings sampled had it blank.
+  The survey calls finding one Oklahoma jurisdiction with it populated the
+  best next step in the whole survey. Cheap to test: sample 50-100
+  meetings across cities and counties and count populated fields. If any
+  are populated, Oklahoma becomes a Utah-shaped source.
+- **Alabama (`openmeetings.alabama.gov`) and West Virginia
+  (`apps.sos.wv.gov/adlaw/meetingnotices`)** host real notice content for
+  real municipalities and counties with no media field. They are entity and
+  meeting-URL sources only: diff their entity lists against
+  `jurisdiction_coverage.csv` the way Nevada was done
+  (`harvest_nv_notice_entities.py`, `nevada_supported_platform_matches.csv`).
+- **Tennessee, South Carolina and Maine legal-notice aggregators**
+  (`tnpublicnotice.com`, `scpublicnotices.com`, `mainenotices.com`) list
+  thousands of named local governments. Not deep-checked for the names
+  alone. Not government-run, so treat as leads.
+
+Already done from the same survey: Nevada (harvest script and platform
+matches). State-agency-only portals (14 states) are deliberately parked for
+a future state-agency phase.
