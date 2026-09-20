@@ -1,5 +1,42 @@
 # Backlog — done
 
+## WO-926: the partial-transcript warning did not reach the shown Edina MN page, because the fix only ran on a push that made a new version [Done 2026-09-20]
+
+**Why this ran.** WO-925 added a rule that copies the "may end before the meeting did" warning onto the version a page shows. After the Archive deploy the Edina MN page (3645) still showed no warning, even though a re-check answered "pushed" with the warning attached. This WO finds out why and fixes it. Nothing was written to the production Archive. All numbers below come from our own public pages and a local run of the Cablecast adapter.
+
+**What was tested.** The page's two versions were read from `/m/<slug>?version=<id>` and `transcript.srt?version=<id>`. The Cablecast adapter was run locally on show 3562. The push path in `archive/db/crud.py` was read.
+
+The first guess was wrong. The page HTML repeats each cue three times (the row, the timestamp link, the copy button), so 741 markers are 247 cues, not three times as many.
+
+| Measure | Shown version 3883 | Hidden version 11566 | Local fresh resolve |
+|---|---|---|---|
+| Cues | 247 | 247 | 247 |
+| Last cue ends (seconds) | 4105.47 | 4105.47 | 4105.47 |
+| Language | en | en | en |
+| Text | speaker labels only | real words | real words |
+| Warning on the page | no | yes | not on this run |
+
+**Result.** Every condition of the WO-925 rule passes on these two versions. The rule was never asked. It ran only on a push that creates a NEW version. Version 11566 was created by an earlier push, before the WO-925 code was live. Every re-check since pushes the same text, which matches 11566 by content hash. That path only offered the warning to 11566, which already had it.
+
+**Fix.** In `archive/db/crud.py`, the identical-duplicate path now also runs the WO-925 copy rule when the matched version is a hidden one. The conditions are the same (same language, same source, last cues within 120 seconds). The threshold, the marker text and the re-transcription rule are unchanged. Two tests use trimmed real cues (`tests/fixtures/cablecast/wo926_edina_3562_stored_vs_fresh.json`): the Edina case (failed before the fix, passes after), and a guard that a shown version that really ends at 9,500 seconds is NOT marked by a shorter fresh resolve on a repeat push.
+
+**The other flagged pages.** All 17 pages in `wo923_recheck_list.csv` were read (17 plain GETs, then every version of the multi-version ones).
+
+| Outcome | Count of 17 | What it means |
+|---|---|---|
+| Warning visible on the public page | 1 | 10847 Rhode Island Senate. Working. |
+| Shown version is a full Whisper re-transcription; the warning sits on the older source version | 4 | 2939, 3973, 9440, 7076. Correct as is. The conductor's note that the warning "stuck" on these was true of the hidden version only. |
+| Edina, fixed by this WO after deploy | 1 | 3645. |
+| Twin page with no external_id | 1 | 1595. Still open in `BACKLOG.md` (Leon Valley twin). |
+| Re-transcribed page, no source captions to warn from | 1 | 1676. Still open in `BACKLOG.md`. |
+| Single version, no warning visible, not known to have been re-checked | 9 | 9485, 9429, 10428, 10218, 10420, 9480, 10234, 10224, 2228. Need a re-check on the deployed code. |
+
+**Caution.** The 9 single-version pages are "not known to have been re-checked", not "known to fail". Public HTML cannot show whether a re-check ran. The shown Edina text is still speaker labels only ("S1:"). The warning now tells the reader it stops early, but the text itself is poor. Promoting version 11566 would fix that and was not done here (a larger decision).
+
+**Recommendation.** Deploy the Archive, then re-check 3645 and the 9 pages above (steps in the final report). Decide separately whether to promote version 11566 on page 3645.
+
+**Deploy status.** Archive (`archive/db/crud.py`): needs the next manual deploy. Resolver: no change.
+
 ## WO-925: wrong-town web addresses on 5 pages, the Oak Bluffs page title, and a partial-transcript warning that did not show on two Cablecast pages [Done 2026-09-20]
 
 **Why this ran.** Three loose ends from WO-923's deploy. Five Vimeo pages show "oak-bluffs-ma" in their web address but are other governments' meetings. One Oak Bluffs page has a camera file name for a title. Two Cablecast pages were re-checked, said "pushed", and still showed no partial-transcript warning. Nothing was written to the production Archive by this WO. Every production step is for the conductor, after the deploy.
