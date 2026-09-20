@@ -1,5 +1,69 @@
 # Backlog — done
 
+## WO-916: minted 10 Diligent Community bodies the registry did not have, and pinned their tenants [Done 2026-09-20]
+
+**Why this ran.** WO-911 found ten Diligent Community tenants whose
+governing body had no row in the registry. Their YouTube finds had no
+`gov_id`, so nothing could be keyed to them. Ryan said "ok mint"
+(2026-09-20). This WO gave each body an id.
+
+**How.** Each tenant's own Portal page was read first. It links the
+body's own website, which is the identity evidence. Then each body was
+searched for in the curated registry, the national tables,
+`coverage_registry.csv` and `jurisdiction_coverage.csv`, by name and by
+domain. Then a real national id was looked for. The resolver has no
+`us:cog:` namespace (decision D3), so a Census of Governments number
+cannot be the `gov_id`. A mint is `rtr:<country>:<state>:<slug>`, and the
+Census number goes in the `cog_id` column. Nothing was fetched from
+YouTube.
+
+**Result.** The 10 bodies ended like this:
+
+| Outcome | Count of 10 | What it means |
+|---|---|---|
+| Already existed | 0 | none was in any table or file, by name or domain |
+| Real id found | 0 | no federal or national id can be a `gov_id` here |
+| Minted | 10 | 7 US (4 of them carry a Census of Governments number in `cog_id`), 3 Canadian school boards (Canada has no national school-board id) |
+| Could not confirm | 0 | every Portal page links the body's own site |
+
+The ten ids:
+
+| Body | Minted id | Census number in `cog_id` |
+|---|---|---|
+| Winnetka Park District, IL | `rtr:us:il:winnetka-park-district` | 145661 |
+| Arizona Schools for the Deaf and the Blind | `rtr:us:az:arizona-schools-for-the-deaf-and-the-blind` | none |
+| University of Colorado Board of Regents | `rtr:us:co:university-of-colorado-board-of-regents` | none |
+| Desert Healthcare District, CA | `rtr:us:ca:desert-healthcare-district` | 205989 |
+| Kitsap Regional Library, WA | `rtr:us:wa:kitsap-regional-library` | 159017 |
+| St. Mary's County Metropolitan Commission, MD | `rtr:us:md:st-marys-county-metropolitan-commission` | none |
+| St. Charles City-County Library District, MO | `rtr:us:mo:st-charles-city-county-library-district` | 150924 |
+| School District 46 (Sunshine Coast), BC | `rtr:ca:bc:school-district-46-sunshine-coast` | none |
+| School District 70 (Pacific Rim), BC | `rtr:ca:bc:school-district-70-pacific-rim` | none |
+| Upper Canada District School Board, ON | `rtr:ca:on:upper-canada-district-school-board` | none |
+
+Each got one row in `curated_governments.csv`, two pins in
+`tenant_overrides.csv` (its Diligent tenant host and its own website,
+both `strength=fallback`, source `curated+wo916`), and one row in the
+research file. In the research file the ten rows are appended, each with
+the tenant meeting page as the example URL and `reject_reason` blank.
+
+**Caution.** A pin to an `rtr:` id is silently dropped by the loader
+unless its `source` carries a human token. The first draft used source
+`wo916` and loaded zero pins. `curated+wo916` loads. After adding any
+`rtr:` pin, check it with `tenant_overrides()`.
+
+The ten YouTube videos are not pinned. None was verified, because YouTube
+was not fetched. Winnetka's 3,124-segment meeting is still a lead: its
+captions came from YouTube, so the drip Mac ingests it. The ten lead rows
+in `youtube_channel_leads.csv` still have a blank `gov_id`. The fill list
+is `research/wo916_leads_gov_id_fill.csv`.
+
+**Recommendation.** Have the conductor fill the ten lead rows, then let
+the drip Mac take Winnetka Park District first.
+
+**Deploy status.** Curated rows and pins reach production only after the
+next resolver deploy. No page was created, so nothing is live now.
+
 ## WO-911: acted on the Diligent Community sweep — 4 pages live, 2 queue lines, 76 YouTube leads; the sweep's "no video" count is too high [Done 2026-09-20]
 
 **Why this ran.** On 2026-09-18 a sweep read all 359 Diligent Community

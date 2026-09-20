@@ -175,8 +175,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
   Headless's sandbox launch crash is fixed (WO-909) — a second,…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
-  Ten Diligent Community tenants belong to public bodies the registry…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -2170,27 +2169,6 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-### Ten Diligent Community tenants belong to public bodies the registry does not have — decide which to mint `[HUMAN]`
-
-- **Issue:** WO-911 (2026-09-20) could not tie 10 of the 100 actionable
-  Diligent tenants to a `gov_id`: Winnetka Park District IL (a tier-1
-  find, 3,124 caption segments, `winpark`), Arizona Schools for the Deaf
-  and the Blind (`asdb`), University of Colorado Board of Regents (`cu`),
-  Desert Healthcare District CA (`dhcd`), Kitsap Regional Library WA
-  (`krl`), St. Mary's County Metropolitan Commission MD (`metcom`), St
-  Charles City-County Library District MO (`stchlibrary`), and three
-  Canadian school boards (`sd46`, `sd70`, `ucdsb-on`). None is in the
-  national tables or the minted registry.
-- **Impact:** each has a real YouTube meeting video (listed in
-  `research/wo911_leads_to_add.csv` with a blank `gov_id`), but no page
-  or pin can be keyed to it until it has an id.
-- **Next action:** Ryan says "ok mint" per body in a pin worklist; then
-  add the pin rows (tenant host, `strength=fallback`) and set the
-  `gov_id` on the matching leads rows. Winnetka Park District first: it
-  is the only one with captions already seen.
-- **History:** `BACKLOG_DONE.md` WO-911 entry; identities in
-  `research/wo911_identity.csv`.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
