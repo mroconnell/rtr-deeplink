@@ -46,6 +46,23 @@ later. It does not exit. This is also routine.
    only fills the audio queue in the state file for later. Running all
    three lanes alongside a batch breaks nothing; both Whisper jobs just
    run slower.
+5. **A script run on any other Mac must make zero YouTube requests,
+   including the indirect ones.** Rule 1 says "any YouTube script"; the
+   easy ones to miss are a CivicClerk, Legistar, CivicPlus, Granicus or
+   PrimeGov event whose media is a YouTube embed (the adapter fetches
+   captions), WO-144's queue probe (it calls yt-dlp for metadata), and
+   WO-134's title check (YouTube's oEmbed). None of them look like a
+   YouTube fetch in the calling script. WO-913 (2026-09-20) made about two
+   such requests from the wrong Mac through a normal ingest of a
+   CivicClerk find (Toledo OR). Any wrapper that resolves, probes or
+   ingests off the drip Mac calls `scripts/youtube_fetch_guard.install()`
+   before anything else: after that, any lookup of a YouTube hostname
+   raises instead of connecting, and `youtube_fetch_guard.REFUSED` lists
+   which hosts were refused so the caller can hand that row to the drip
+   lane as a lead (`research/youtube_channel_leads.csv`) instead of losing
+   it. `scripts/wo912_wo913_ingest_confirmed.py` is the worked example.
+   A separate browser process (Playwright) is not covered by the guard;
+   a script that drives one must refuse YouTube URLs itself.
 
 ## Start it
 

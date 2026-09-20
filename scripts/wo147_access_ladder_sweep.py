@@ -1655,6 +1655,30 @@ def _headless_chromium_executable_path() -> Optional[str]:
     return None
 
 
+def _block_youtube_requests(page) -> None:
+    """Abort every request this browser makes to a YouTube host.
+
+    YouTube is fetched only by the drip Mac (docs/YOUTUBE_DRIP_RUNBOOK.md,
+    rules 1 and 5). A headless page load is a real browser load: a government
+    page with an embedded YouTube video makes the BROWSER request
+    youtube.com/embed/... and its player, thumbnails and analytics, and a
+    Google sign-in page loads accounts.youtube.com -- none of which the
+    ladder's own logic ever asks for, and none of which
+    `scripts/youtube_fetch_guard.py` can see (it guards this Python process;
+    Chromium is a separate one). WO-912 (2026-09-20) found ~4 such page loads
+    in ~450 headless loads run from a Mac that must make none. Routing at the
+    browser CONTEXT (so a popup is covered too) aborts the request before it
+    leaves the machine. The `<iframe src=...>` is still in the page's DOM, so
+    `find_platform_link()` sees exactly what it saw before: only the inner
+    YouTube request is refused, never the government's own page."""
+    from scripts.youtube_fetch_guard import is_youtube_host
+
+    def is_youtube(url: str) -> bool:
+        return is_youtube_host(urlparse(url).hostname or "")
+
+    page.context.route(is_youtube, lambda route: route.abort())
+
+
 def fetch_headless_sync(url: str) -> Tuple[Optional[str], str, Optional[str]]:
     try:
         from playwright.sync_api import sync_playwright
@@ -1672,6 +1696,7 @@ def fetch_headless_sync(url: str) -> Tuple[Optional[str], str, Optional[str]]:
                     user_agent=BROWSER_HEADERS["user-agent"],
                     viewport={"width": 1280, "height": 800},
                 )
+                _block_youtube_requests(page)
                 page.goto(url, timeout=15000, wait_until="load")
                 page.wait_for_timeout(3000)
                 content = page.content()

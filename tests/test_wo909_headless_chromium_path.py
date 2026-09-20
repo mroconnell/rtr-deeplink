@@ -72,8 +72,24 @@ def test_uses_a_different_directory_when_env_var_points_elsewhere(monkeypatch):
 # no real browser) -----------------------------------------------------
 
 
+class _FakeContext:
+    """The browser context `page.context`: records `route()` registrations so
+    a test can inspect the YouTube block (WO-912, 2026-09-20)."""
+
+    def __init__(self):
+        self.routes = []
+
+    def route(self, url_matcher, handler):
+        self.routes.append((url_matcher, handler))
+
+
 class _FakePage:
     url = "https://example.com/"
+    created: list = []  # every page made, so a test can reach its context
+
+    def __init__(self):
+        self.context = _FakeContext()
+        _FakePage.created.append(self)
 
     def goto(self, url, timeout=None, wait_until=None):
         pass
@@ -171,3 +187,58 @@ def test_fetch_headless_sync_calls_default_launch_when_binary_absent(monkeypatch
 
     assert err is None
     assert launch_calls == [{}]
+
+
+# --- WO-912 (2026-09-20): the headless browser never requests YouTube ---------
+# docs/YOUTUBE_DRIP_RUNBOOK.md rule 5. A real browser load of a government page
+# that embeds a YouTube video makes the BROWSER fetch youtube.com/embed/...; a
+# Google sign-in page loads accounts.youtube.com. `youtube_fetch_guard` guards
+# the Python process, not Chromium, so fetch_headless_sync() aborts those
+# requests at the browser context. URLs below are the real shapes seen in
+# WO-912's run (Murtaugh ID and Elgin both landed on the accounts.youtube.com
+# one via a Google Sites sign-in page).
+
+
+class _FakeRoute:
+    def __init__(self):
+        self.aborted = False
+
+    def abort(self):
+        self.aborted = True
+
+
+def test_fetch_headless_sync_aborts_every_browser_request_to_a_youtube_host(
+    monkeypatch,
+):
+    launch_calls: list = []
+    _FakePage.created = []
+    monkeypatch.setattr(
+        "playwright.sync_api.sync_playwright",
+        lambda: _FakeSyncPlaywrightCM(launch_calls),
+    )
+    monkeypatch.delenv("PLAYWRIGHT_BROWSERS_PATH", raising=False)
+
+    fetch_headless_sync("https://example.com")
+
+    (page,) = _FakePage.created
+    ((matches_youtube, handler),) = page.context.routes
+    for url in (
+        "https://www.youtube.com/embed/jNQXAC9IVRw?rel=0",
+        "https://www.youtube-nocookie.com/embed/jNQXAC9IVRw",
+        "https://youtu.be/5LZqoNDRMYk",
+        "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg",
+        "https://rr1---sn-abc123.googlevideo.com/videoplayback?id=1",
+        "https://accounts.youtube.com/accounts/CheckConnection?pmpo=https://accounts.google.com",
+    ):
+        assert matches_youtube(url), url
+    for url in (
+        "https://cityoftoledo.org/",
+        "https://toledoor.portal.civicclerk.com/event/104/media",
+        "https://player.vimeo.com/video/871516928",
+        "https://www.google.com/recaptcha/api.js",
+        "https://sites.google.com/view/example",
+    ):
+        assert not matches_youtube(url), url
+    route = _FakeRoute()
+    handler(route)
+    assert route.aborted
