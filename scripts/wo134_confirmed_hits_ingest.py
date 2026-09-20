@@ -1639,10 +1639,15 @@ def _tenant_override_match(platform: str, result, final_seed: str) -> Optional[s
         m = _YT_ID_RE.search(url)
         return m.group(1) if m else None
     if platform == "vimeo":
-        if result.external_id:
-            return result.external_id
+        # WO-924: the BARE numeric id. `result.external_id` is
+        # `vimeo:<id>` (vimeo.py), and a pin written that way never matches
+        # a real Vimeo URL path (`/<id>/<hash>`), so it was silently dead
+        # (24 committed rows) and the loader now refuses it.
         m = _VIMEO_ID_RE.search(urlparse(url).path)
-        return m.group(1) if m else None
+        if m:
+            return m.group(1)
+        ext = (result.external_id or "").removeprefix("vimeo:")
+        return ext if ext.isdigit() else None
     if platform in ("telvue", "cablecast"):
         path = urlparse(url).path.strip("/")
         return path or None

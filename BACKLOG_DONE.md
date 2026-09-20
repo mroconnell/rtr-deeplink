@@ -1,5 +1,44 @@
 # Backlog — done
 
+## WO-924: a Vimeo pin must be a per-video id or a channel, or it never populates: loader now refuses the dead `vimeo:<id>` shape, writers fixed, 17 rows rewritten [Done 2026-09-20]
+
+**Why this ran.** Ryan asked for a permanent fix to the Vimeo pin, on the same rule as YouTube: on a shared host a pin is a per-video id or a channel match, or it never fills in a government. WO-356 had found that `vimeo:<id>` pins never match a real Vimeo URL.
+
+**What was wrong.** The matcher checks whether a pin's text appears in the URL path, or equals a page hint like `channel=<slug>`. A Vimeo path is `/<id>/<hash>`, so `vimeo:<id>` is never in it. The loader refused a blank match on a shared host but never looked at the shape of a non-blank one.
+
+A detail worth knowing: these rows were not dead everywhere. At Archive ingest the Vimeo adapter's `external_id` is `vimeo:<id>`, and that is passed as a hint, so the row matched there. It failed for callers that pass no hints, such as the queue's owner check (`queue_probe.has_owner()`). The host worry in the old entry did not hold up: the resolver treats `vimeo.com`, `player.vimeo.com` and `www.vimeo.com` as one family, and all 17 rewritten rows resolve from either host's URL.
+
+**The population, re-counted from the file.**
+
+| Shape of the pin | Count of 61 Vimeo rows | What it means |
+|---|---|---|
+| `vimeo:<id>` | 24 | Dead for path-only callers. The old entry said 8, then 24. 24 is right. |
+| `channel=@riversidemo` | 1 | Dead: Vimeo slugs have no `@`, that is YouTube's shape |
+| Bare id | 20 | Works |
+| `channel=<slug>` | 16 | Works |
+
+**What changed.**
+
+- `registry.match_shape_problem()`: on a Vimeo host only a bare id (optionally `id/hash`) or `channel=<lowercase slug>` loads. Anything else is a `RejectedOverride` ("dead shape ..."), so the existing committed-file test fails CI on any future dead row. `queue_probe.write_pin_row()` uses it too. YouTube is not changed; a test documents its two shapes.
+- The writers: WO-134's `_tenant_override_match()` (it took `external_id`, which is `vimeo:<id>`) and WO-230's follow-up now write the bare id. WO-356's script and the 2026-09-14 handoff preamble were corrected. `scripts/study_shared_host_discriminators.py` keeps `vimeo:<id>` as a lookup key only, now commented.
+- The rows:
+
+| Outcome | Count of 25 not-working rows | What it means |
+|---|---|---|
+| Rewritten to the bare id | 17 | Same gov_id, strength and source; WO-924 tag added to the evidence text |
+| Dropped: same id and same government already pinned bare (WO-346) | 7 | Nothing lost |
+| `channel=@riversidemo` to `channel=riversidemo` | 1 | Same WO-264 hand-verified claim; slug could not be re-checked (page renders in script) |
+
+All 17 rewritten rows resolve through `_match_override()` and `has_owner()` on both Vimeo hosts (`rtr-business/research/wo924_rewrite_check.csv`).
+
+**Channel pins.** None added. Each of the 24 dead rows came from a different Vimeo account, so no shared account earned one. 13 of the 22 accounts I could read carry the government's own name; they are listed for Ryan in `wo924_channel_pin_candidates.csv`. The rest are people, vendors or community TV stations (for example Video Specialties, Saugus TV) and must never be channel-pinned to the town. Two videos (`1193400264`, `1103129533`) no longer answer on oEmbed; their rows were rewritten anyway.
+
+**Caution.** One row looks wrong on its face and was left alone: Oak Bluffs (`1199438213`) is a 474-second video called "video1516165031" from a person's account. Its pin predates this WO and is a working row now (it was already pinned bare by WO-346). It deserves a hand-check.
+
+**Recommendation.** Deploy the resolver (loader plus pins). Then work the new open entry: 1,410 YouTube `youtube:<id>` rows have the same path-only weakness, and `crud.py` still drafts `vimeo:<id>` (WO-923 owned that file).
+
+**Deploy status.** Loader and pins: resolver deploy needed. Nothing changes for readers until then.
+
 ## WO-912: headless browser check on 1,200 small governments — 875 headless page loads found 12 links and only 2 were new, usable finds; the plain fetch found 213 of the ladder's 216 [Done 2026-09-20]
 
 **Why this ran.** `BACKLOG.md` had an open question. A headless browser (a real Chromium with no window that runs the page's scripts) found a platform link on 41% of the largest governments the plain fetch had already given up on. Would it find links on small governments too? Two earlier pilots (WO-908, WO-909) could not answer it: the browser crashed, then hit a certificate block, in the cloud sandbox. This run used Ryan's Mac, where neither problem exists.

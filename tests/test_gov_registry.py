@@ -3654,3 +3654,103 @@ def test_origin_host_itself_a_multi_gov_host_is_not_trusted():
     )
     assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
     assert match.tier == resolver.TIER_BLANK
+
+
+# --- WO-924, 2026-09-20: a shared host's pin SHAPE must be able to match ---
+#
+# `_match_override()` only tests a substring of the URL path or a `key=value`
+# page hint. A Vimeo pin written `vimeo:<id>` never matches `/<id>/<hash>`, so
+# 24 committed rows were silently dead. Ryan's rule (same as YouTube): a pin on
+# a shared host is a per-video id or a channel (owner-account) match, or it
+# never populates. The loader refuses anything else.
+
+
+def test_no_dead_shape_pin_on_a_shared_vimeo_host():
+    """Committed-file invariant: the loader refused nothing, so every Vimeo
+    row is a bare id (optionally id/hash) or `channel=<slug>`."""
+    assert registry.rejected_multi_gov_overrides() == ()
+
+
+@pytest.mark.parametrize(
+    "host,match,ok",
+    [
+        ("vimeo.com", "1199438213", True),
+        ("player.vimeo.com", "1199438213/3449ea3918", True),
+        ("vimeo.com", "channel=citysalisburync", True),
+        ("vimeo.com", "vimeo:1199438213", False),
+        ("player.vimeo.com", "vimeo:1199438213", False),
+        ("vimeo.com", "channel=@riversidemo", False),
+        ("vimeo.com", "channel=CitySalisburyNC", False),
+        ("vimeo.com", "salisbury", False),
+        ("vimeo.com", "", False),
+        # YouTube is documented, not enforced: bare 11-char id and
+        # channel=@handle are the rule and must never be refused.
+        ("www.youtube.com", "BtuDT6fQLCc", True),
+        ("www.youtube.com", "channel=@severnontario", True),
+        # Any non-shared host is untouched.
+        ("pub-sechelt.escribemeetings.com", "", True),
+    ],
+)
+def test_match_shape_problem(host, match, ok):
+    assert (registry.match_shape_problem(host, match) is None) is ok
+
+
+def test_loader_rejects_dead_vimeo_shape_and_keeps_working_ones(monkeypatch, tmp_path):
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "vimeo.com,vimeo:1199438213,us:cousub:2500750390,fallback,t,dead\n"
+        "vimeo.com,1219072948,us:place:3657023,fallback,t,bare id\n"
+        "vimeo.com,channel=citysalisburync,us:place:3757050,fallback,t,channel\n"
+        "vimeo.com,,us:cousub:2500750390,fallback,t,blank\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        assert [r.match for r in registry.tenant_overrides()["vimeo.com"]] == [
+            "1219072948",
+            "channel=citysalisburync",
+        ]
+        rejected = registry.rejected_multi_gov_overrides()
+        assert len(rejected) == 2
+        assert all("dead shape" in r.reason or "blank" in r.reason for r in rejected)
+    finally:
+        registry.clear_caches()
+
+
+def test_bare_vimeo_id_and_channel_pins_match_through_match_override(
+    monkeypatch, tmp_path
+):
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "vimeo.com,1219072948,us:place:3657023,fallback,t,bare id\n"
+        "player.vimeo.com,channel=citysalisburync,us:place:3757050,fallback,t,ch\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        # a real vimeo.com URL path, and the player host of the same video
+        assert [
+            r.gov_id
+            for r in resolver._match_override("vimeo.com", "/1219072948/abc123", {})
+        ] == ["us:place:3657023"]
+        assert [
+            r.gov_id
+            for r in resolver._match_override(
+                "player.vimeo.com", "/video/1219072948?h=abc123", {}
+            )
+        ] == ["us:place:3657023"]
+        # a different video matches nothing
+        assert resolver._match_override("vimeo.com", "/999999999", {}) == []
+        # the channel row matches through page hints (oEmbed author slug)
+        hints = resolver.page_hints_for("vimeo", "vimeo:1", channel="citysalisburync")
+        assert [
+            r.gov_id for r in resolver._match_override("vimeo.com", "/1", hints)
+        ] == ["us:place:3757050"]
+        other = resolver.page_hints_for("vimeo", "vimeo:1", channel="someoneelse")
+        assert resolver._match_override("vimeo.com", "/1", other) == []
+    finally:
+        registry.clear_caches()

@@ -366,3 +366,29 @@ async def test_payload_gov_id_conflicting_with_existing_page_raises_instead_of_o
     page_after = await crud.get_page_by_slug(first["slug"])
     assert page_after["gov_id"] == ALAMEDA_CA
     assert page_after["jurisdiction_confidence"] == "manual_override"
+
+
+# ---------------------------------------------------------------------------
+# WO-924: the writer emits the BARE Vimeo id, never the dead `vimeo:<id>`
+# ---------------------------------------------------------------------------
+
+
+def test_wo134_vimeo_pin_match_is_the_bare_id_not_vimeo_colon_id():
+    result = ResolvedMeeting(
+        source_url="https://vimeo.com/1219072948/abc123",
+        platform="vimeo",
+        external_id="vimeo:1219072948",
+        video_url="https://player.vimeo.com/video/1219072948?h=abc123",
+    )
+    match = wo134._tenant_override_match("vimeo", result, "")
+    assert match == "1219072948"
+    from app.utils.gov_registry import registry
+
+    assert registry.match_shape_problem("player.vimeo.com", match) is None
+    # no video_url and no seed: falls back to external_id, prefix stripped
+    bare = ResolvedMeeting(
+        source_url="https://vimeo.com/1219072948",
+        platform="vimeo",
+        external_id="vimeo:1219072948",
+    )
+    assert wo134._tenant_override_match("vimeo", bare, "") == "1219072948"
