@@ -103,7 +103,9 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (11)
+Standing decisions — do NOT re-raise  (13)
+  97 of the 257 Diligent Community "no video" tenants link their own…
+  Mint Jefferson County Public Utility District No. 1 (WA), the one…
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -116,8 +118,7 @@ Standing decisions — do NOT re-raise  (11)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
-  The Diligent Community sweep only reads meetings titled "Name - Mon D…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (57)
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -526,6 +527,45 @@ Parked deliberately — allowed back `[PARK]`  (4)
 
 ## Standing decisions — do NOT re-raise
 
+
+
+### 97 of the 257 Diligent Community "no video" tenants link their own YouTube channel from the portal page — none is in the leads file yet `[JUST-DO-IT]`
+
+- **Issue:** WO-914 (2026-09-20) re-read the `MeetingTypeList.aspx` page
+  of all 257 `no_video` tenants and found 97 that carry a
+  `youtube.com/@handle`, `/channel/` or `/user/` link on the page
+  itself (footer or header social links, for example
+  `fusd1` -> `@flagstaffunifiedschooldistrict`). The government put that
+  link on its own meeting portal, so it is a strong channel identity
+  with no YouTube fetch. None was recorded as a channel lead by WO-911
+  or WO-914 (they only recorded video ids found inside meetings).
+- **Impact:** up to 97 governments have a channel lead that costs one
+  page read each. Some channels will be a school's general channel, not a
+  meeting channel; the drip's hand-read decides.
+- **Next action:** extract the channel URL per tenant from the saved
+  page, tie each tenant to its `gov_id` through the portal's own website
+  link (the method in `research/wo914_identity.csv`), dedupe against
+  `research/youtube_channel_leads.csv`, and append `kind=channel` rows.
+- **Constraint:** no YouTube fetch; a tenant with no registry row goes to
+  needs-human, not a guessed id.
+- **History:** `BACKLOG_DONE.md` WO-914 entry.
+
+### Mint Jefferson County Public Utility District No. 1 (WA), the one Diligent Community tenant WO-916 did not cover `[HUMAN]`
+
+- **Issue:** WO-914 (2026-09-20) found a real YouTube meeting video on
+  the Diligent tenant `jeffpud.community.diligentoneplatform.com` (video
+  `AkacIQZJnJ0`, "Regular Meeting: September 15, 2026", plus two earlier
+  regular meetings). The tenant belongs to a Washington utility special
+  district that has no research row and no registry id. WO-916 minted ten
+  other Diligent bodies; this one was found after its list was fixed.
+- **Impact:** its lead row in `research/wo914_leads_to_add.csv` has a
+  blank `gov_id`, so nothing can be keyed to it.
+- **Next action:** Ryan says "ok mint"; then mint it the way WO-916 did,
+  add the `jeffpud` tenant pin (`strength=fallback`) and set the lead's
+  `gov_id`.
+- **Constraint:** no guessed id.
+- **History:** `BACKLOG_DONE.md` WO-914 entry.
+
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
 
 - **Issue**: `app/platforms/queue_probe.py`'s `_probe_viebit()` already
@@ -864,32 +904,6 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### The Diligent Community sweep only reads meetings titled "Name - Mon D YYYY" — 94 of its 257 "no video" tenants have unread meetings, and 3 of a 40-tenant sample had YouTube video `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `scripts/diligent_community_full_sweep.py` finds a tenant's
-  meetings with one regex (`MEETING_RE`) that needs the link text to end
-  in "Mon D YYYY". Many tenants title meetings another way ("Regular
-  Meeting: September 15, 2026", "Board Meeting - 09/08/26", or no date at
-  all). Those links are silently dropped. WO-911 (2026-09-20) re-read the
-  list page of all 257 `no_video` tenants: 94 carry links the regex did
-  not parse (421 links in total), and 5 tenants had meetings listed with
-  none parsed (the other 3 of the 8 zero-meeting tenants are truly empty).
-  In a 40-tenant sample, 3 tenants had a real YouTube video on a dropped
-  meeting: `jeffpud` (`AkacIQZJnJ0`), `d11` (`z-1SqxGWCoU`, more than 7
-  meetings) and `palmbeachschools-org` (a "TAC Meeting Videos" YouTube
-  playlist). Sample miss rate 3 of 40 (7.5%), under the 10% stop line.
-- **Impact:** the 2026-09-18 tally (257 tenants with no video) overstates
-  "no video". Roughly 7% of those tenants (about 19 of 257) likely hold a
-  real video the sweep never saw.
-- **Next action:** fix `parse_past_meetings()` to accept any meeting link
-  and take the date from the tenant's own `meetingData`/`videolink`
-  response instead of the link text; rerun only the 94 tenants with
-  unparsed links (list-page ids are in the WO-911 scratch count) and route
-  finds through the same tier 1/2/3 rules.
-- **Constraint:** read the tenant's own JSON API for the video id; never
-  fetch youtube.com to test a find.
-- **History:** `BACKLOG_DONE.md` WO-911 entry.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
