@@ -56,14 +56,16 @@ for the full explanation and the passive-discovery-v2 credit). This is
 also what keeps this script honest about "found a platform LINK" not
 meaning "confirmed real video": `needs_listing_discovery` on a report row
 means exactly that gap -- a CivicClerk/Swagit/Granicus/PrimeGov/eScribe/
-IQM2 bare root needs that platform's own listing-discovery step before
-anyone should treat it as confirmed video. For CivicClerk specifically,
+IQM2/CivicWeb bare root needs that platform's own listing-discovery step
+before anyone should treat it as confirmed video ("CivicWeb" added
+WO-910, 2026-09-20, the first real-scale run: see `_LISTING_REQUIRED_
+PLATFORMS`'s own comment). For CivicClerk specifically,
 `sweep_one()` takes that step itself rather than leaving it as a flagged
 gap: it calls `scripts/adhoc_civicplus_pipeline.py`'s already-built,
 already-tested `civicclerk_latest_event_url()` (a plain read of the
 tenant's own public Events API, WO-137, 2026-09-09) to look for a real
 past event before settling for "bare root, needs a check." The other
-four vendors have no equivalent helper in this repo yet, so a bare root
+vendors have no equivalent helper in this repo yet, so a bare root
 on one of those stays a flagged, unresolved `needs_listing_discovery`
 row -- a real residual gap for a future WO, not silently papered over.
 
@@ -152,9 +154,19 @@ _NOTE_MAX_LEN = 500
 # landing page (confirmed live: it links only `granicus.com`'s own
 # marketing/support address and a further `/Citizens/calendar.aspx` hop
 # -- no meeting content of its own), the exact same "root, not a
-# listing" shape under a different vendor.
+# listing" shape under a different vendor. "civicweb" added WO-910
+# (2026-09-20), the first real-scale run of this script: 3 of the
+# broader (non-AgendaCenter) population's 5 civicweb hits were a bare
+# `<tenant>.civicweb.net/Portal` tenant root with no event/meeting path
+# at all (Invermere BC, Gulf Breeze FL, Shawano WI) -- the identical
+# "root, not a listing" shape the other six vendors already needed this
+# flag for, just never seen against a real CivicWeb tenant before this
+# run (none of the 6 original validation governments used CivicWeb, and
+# neither did anything in the AgendaCenter-shaped primary population --
+# 0 of its 656 rows hit civicweb at all). See `_GENERIC_LANDING_PATHS`'s
+# own comment for the matching "portal" path addition this needed.
 _LISTING_REQUIRED_PLATFORMS = frozenset(
-    {"civicclerk", "swagit", "granicus", "primegov", "escribe", "iqm2"}
+    {"civicclerk", "swagit", "granicus", "primegov", "escribe", "iqm2", "civicweb"}
 )
 
 # A same-domain, ICON-ONLY shortcut link (no anchor text -- an <img>/
@@ -194,7 +206,21 @@ _ICON_SHORTCUT_LABEL_WORDS = ("youtube", "vimeo", "video", "webcam", "stream", "
 # agenda host, not a video host" to begin with. All 6 real governments'
 # hub AND home pages re-triggered this before this constant existed,
 # masking every real hop result behind a false "already answered".
-_TRIVIAL_PLATFORMS = frozenset({"civicplus"})
+#
+# "civiclive" added WO-910 (2026-09-20), for a different reason than
+# civicplus's tautology: CivicLive (Intrafinity) is a real municipal
+# CMS with 1000+ customers and NO video product of its own at all --
+# already established elsewhere in this codebase, not a new finding
+# here (see `app/platforms/base.py`'s own `detect_platform()` comment
+# on its civiclive recognizer, confirmed live WO-92, 2026-09-01). A
+# `civiclive`-shaped link can never be real meeting video by
+# construction, so it is just as non-actionable as a tautological
+# civicplus hit even though the underlying reason is different. Found
+# live in the broader population: Camden village, NY's own home page
+# hop landed on `camdenny.hosted2.civiclive.com/living_here/about_us/
+# our_history` -- a real page on the town's real CivicLive-hosted site,
+# just its "About Us" history page, not a meeting or a video.
+_TRIVIAL_PLATFORMS = frozenset({"civicplus", "civiclive"})
 
 
 def log(msg: str) -> None:
@@ -335,9 +361,21 @@ def _same_site(netloc_a: str, netloc_b: str) -> bool:
 # (`melrosecityma.iqm2.com/citizens/default.aspx`, see
 # `_LISTING_REQUIRED_PLATFORMS`'s own comment for what it showed). Kept
 # as an explicit, small, real-confirmed set rather than a guessed
-# pattern, per this repo's "never build from assumption" rule.
+# pattern, per this repo's "never build from assumption" rule. "portal"
+# added WO-910 (2026-09-20): CivicWeb's own generic tenant landing page
+# is `<tenant>.civicweb.net/Portal` -- confirmed live on 3 real broader-
+# population tenants (Invermere BC, Gulf Breeze FL, Shawano WI), all
+# bare with no event/meeting path at all.
 _GENERIC_LANDING_PATHS = frozenset(
-    {"", "citizens/default.aspx", "default.aspx", "index.html", "index.php", "home"}
+    {
+        "",
+        "citizens/default.aspx",
+        "default.aspx",
+        "index.html",
+        "index.php",
+        "home",
+        "portal",
+    }
 )
 
 
