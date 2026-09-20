@@ -127,9 +127,7 @@ def load_done(phase: str) -> set:
     done = set()
     if HUB_CSV.exists():
         with open(HUB_CSV, newline="", encoding="utf-8") as f:
-            done = {
-                r["hub_url"] for r in csv.DictReader(f) if r.get("phase") == phase
-            }
+            done = {r["hub_url"] for r in csv.DictReader(f) if r.get("phase") == phase}
     return done
 
 

@@ -118,7 +118,9 @@ Standing decisions — do NOT re-raise  (13)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (57)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+  State legislatures: 91 of 99 chamber rows still have no page — build…
+  `direct_file` refuses South Carolina's legislature video…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -904,6 +906,22 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### State legislatures: 91 of 99 chamber rows still have no page — build one Sliq Harmony adapter first (7 states), then an Invintus hub walker and a TVW adapter `[JUST-DO-IT]` `[BIG]`
+
+- **Issue:** WO-919 (2026-09-20) ran the passive check and access ladder on all 99 chamber rows of the 2026-09-17 recon (`rtr-business/research/50_state_legislative_media_recon.md`; 49 two-chamber states plus unicameral Nebraska). 7 pages went live and 1 chamber already had pages. The other 91 rows have no page yet: 17 sit on a known video vendor with no adapter or hub walker — Sliq Harmony (`sg001-harmony.sliq.net`, seven state sites: AR 00284, CO 00327, DE 00329, KS 00287, NM 00293, OK House 00283, WV 00289), Invintus (Oregon, Wisconsin; `invintus.py` exists for a known player URL but nothing walks the listing) and TVW (Washington). 49 found nothing by the automatic check; 5 are YouTube channel leads (AR House, MT, WY); 3 have no online video archive (NC, MO Senate); 2 are South Carolina direct-mp4 finds that cannot be queued yet; 15 are blocked (3 TLS certificate failures: IL, MI, MS; 2 timeouts: CT, NH; NY Senate challenge, stopped; TN and NV Granicus tenants 403 plain HTTP and 200 with browser headers).
+- **Impact:** Sliq alone is 7 states and about 13 chamber rows; no other single vendor covers that many. Architecture is settled (D1, `resolver.py` near line 1179): one government per state (`us:state:NN`), the chamber is `meeting_body`; never mint chamber-level ids and never route this through `jurisdiction_coverage.csv` chamber rows.
+- **Next action:** (1) Sliq Harmony adapter: the Harmony pages are JavaScript-driven (`/Harmony/en/PowerBrowser/PowerBrowserV3/{date}/-1/{id}`), so first read one real event page from a live tenant (Kansas 00287 is the easiest) and confirm where the media URL and captions come from before writing a parser. (2) Invintus hub walker for Oregon and Wisconsin, reusing `invintus.py`. (3) TVW adapter for Washington. (4) Then the 49 "nothing found" rows by hand, one vendor at a time; use `research/wo919_report.csv` and `wo919_hub_vendors.csv` (rtr-business) as the worklist.
+- **Constraint:** hand-check every meeting title against the chamber or committee; at most 2 chambers' worth per state; the recon has more copy/paste rows than the four the plan named (also Arkansas Senate, California Assembly, Louisiana House, Michigan Senate, Oklahoma Senate — the row shows the other chamber's site). "Nothing found" means the automatic check found nothing, not that the chamber has no video.
+- **History:** [BACKLOG_DONE.md](BACKLOG_DONE.md) WO-919.
+
+### `direct_file` refuses South Carolina's legislature video (`Content-Type: application/octet-stream`), and the Granicus adapter has no browser-headers retry for TN/NV `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4` is one real direct mp4 per meeting, listed with durations on `scstatehouse.gov/meetings.php?...op=vid` (for example an 11-minute Senate Judiciary full committee on 2026-08-11, a 14-minute House oversight subcommittee the same day), but the host answers `application/octet-stream`, so `direct_file.py`'s `video/` check rejects it and nothing can be queued. Separately `tnga.granicus.com` and `nvleg.granicus.com` return 403 to the adapter's plain fetch and 200 to browser headers.
+- **Impact:** South Carolina House and Senate (2 chambers) and Tennessee and Nevada (4 chambers) stay unreachable. South Carolina would be a tier-3 queue candidate (no captions).
+- **Next action:** allow an extension-based (`.mp4`) accept for hosts that serve octet-stream in `direct_file.py`, then probe and queue one House and one Senate meeting; add the browser-headers retry after a 403 (never after a 404) to the Granicus listing fetch.
+- **Constraint:** ranged reads only for any sample; a South Carolina file is about 250 MB for 11 minutes; never download one.
+- **History:** [BACKLOG_DONE.md](BACKLOG_DONE.md) WO-919.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 

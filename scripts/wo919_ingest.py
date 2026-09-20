@@ -51,29 +51,70 @@ OUT_CSV = RESEARCH_DIR / "wo919_ingested.csv"
 
 # (gov_id, state, chamber, meeting_body override or None, url)
 PICKS = [
-    ("us:state:04", "Arizona", "Arizona House of Representatives", None,
-     "https://www.azleg.gov/videoplayer/?eventID=2026031068"),
-    ("us:state:04", "Arizona", "Arizona Senate", None,
-     "https://www.azleg.gov/videoplayer/?eventID=2026051023"),
-    ("us:state:36", "New York", "New York State Assembly",
-     "New York State Assembly",
-     "https://nystateassembly.granicus.com/MediaPlayer.php?view_id=9&clip_id=9656"),
-    ("us:state:27", "Minnesota", "Minnesota Senate",
-     "Minnesota Senate Committee on Rules and Administration",
-     "https://mnsenate.granicus.com/MediaPlayer.php?view_id=1&clip_id=13872"),
-    ("us:state:44", "Rhode Island", "Rhode Island House of Representatives",
-     "Rhode Island House of Representatives",
-     "https://capitoltvri.cablecast.tv/show/12317"),
-    ("us:state:44", "Rhode Island", "Rhode Island Senate",
-     "Rhode Island Senate",
-     "https://capitoltvri.cablecast.tv/show/12336"),
-    ("us:state:06", "California", "California State Assembly",
-     "Assembly Business and Professions Committee",
-     "https://www.assembly.ca.gov/media/assembly-business-and-professions-committee-20260830"),
+    (
+        "us:state:04",
+        "Arizona",
+        "Arizona House of Representatives",
+        None,
+        "https://www.azleg.gov/videoplayer/?eventID=2026031068",
+    ),
+    (
+        "us:state:04",
+        "Arizona",
+        "Arizona Senate",
+        None,
+        "https://www.azleg.gov/videoplayer/?eventID=2026051023",
+    ),
+    (
+        "us:state:36",
+        "New York",
+        "New York State Assembly",
+        "New York State Assembly",
+        "https://nystateassembly.granicus.com/MediaPlayer.php?view_id=9&clip_id=9656",
+    ),
+    (
+        "us:state:27",
+        "Minnesota",
+        "Minnesota Senate",
+        "Minnesota Senate Committee on Rules and Administration",
+        "https://mnsenate.granicus.com/MediaPlayer.php?view_id=1&clip_id=13872",
+    ),
+    (
+        "us:state:44",
+        "Rhode Island",
+        "Rhode Island House of Representatives",
+        "Rhode Island House of Representatives",
+        "https://capitoltvri.cablecast.tv/show/12317",
+    ),
+    (
+        "us:state:44",
+        "Rhode Island",
+        "Rhode Island Senate",
+        "Rhode Island Senate",
+        "https://capitoltvri.cablecast.tv/show/12336",
+    ),
+    (
+        "us:state:06",
+        "California",
+        "California State Assembly",
+        "Assembly Business and Professions Committee",
+        "https://www.assembly.ca.gov/media/assembly-business-and-professions-committee-20260830",
+    ),
 ]
 
-FIELDS = ["gov_id", "state", "chamber", "url", "title", "date", "segments",
-          "meeting_body", "hand_check", "result", "page_url"]
+FIELDS = [
+    "gov_id",
+    "state",
+    "chamber",
+    "url",
+    "title",
+    "date",
+    "segments",
+    "meeting_body",
+    "hand_check",
+    "result",
+    "page_url",
+]
 
 
 async def main(dry: bool, only: str) -> None:
@@ -85,7 +126,9 @@ async def main(dry: bool, only: str) -> None:
             platform = detect_platform(url)
             with _youtube_resolve_guard():
                 res = await get_finder(platform).resolve(url)
-            hc = classify_video_hand_check(res.title, res.jurisdiction or "", state, "state")
+            hc = classify_video_hand_check(
+                res.title, res.jurisdiction or "", state, "state"
+            )
             if body and not res.meeting_body:
                 res.meeting_body = body
             if not res.jurisdiction:
@@ -95,11 +138,17 @@ async def main(dry: bool, only: str) -> None:
             payload = res.model_dump()
             payload["gov_id"] = gov_id
             row = {
-                "gov_id": gov_id, "state": state, "chamber": chamber, "url": url,
-                "title": res.title, "date": res.date,
+                "gov_id": gov_id,
+                "state": state,
+                "chamber": chamber,
+                "url": url,
+                "title": res.title,
+                "date": res.date,
                 "segments": len(res.segments or []),
-                "meeting_body": res.meeting_body, "hand_check": hc or "",
-                "result": "dry-run", "page_url": "",
+                "meeting_body": res.meeting_body,
+                "hand_check": hc or "",
+                "result": "dry-run",
+                "page_url": "",
             }
             print(row, flush=True)
             if hc:

@@ -39,9 +39,13 @@ async def peek(url: str) -> None:
     segs = res.segments or []
     dur = segs[-1].end if segs else None
     print(f"   title={res.title!r} date={res.date!r}")
-    print(f"   jurisdiction={res.jurisdiction!r} meeting_body={getattr(res, 'meeting_body', None)!r}")
+    print(
+        f"   jurisdiction={res.jurisdiction!r} meeting_body={getattr(res, 'meeting_body', None)!r}"
+    )
     print(f"   video_url={res.video_url!r}")
-    print(f"   segments={len(segs)} last_end_s={dur} agenda_items={len(res.agenda_items or [])}")
+    print(
+        f"   segments={len(segs)} last_end_s={dur} agenda_items={len(res.agenda_items or [])}"
+    )
     for w in (res.transcript_warnings or [])[:3]:
         print(f"   warning: {w[:160]}")
     if segs:
