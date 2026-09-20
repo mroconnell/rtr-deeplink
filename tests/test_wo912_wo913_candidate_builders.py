@@ -785,8 +785,8 @@ def test_a_manual_playlist_lead_is_kept_as_a_playlist_and_deduped_on_its_list_id
 
 def test_the_two_vimeo_pins_this_wo_committed_match_their_real_urls():
     """WO-134's pin writer emits `vimeo:<id>`, which a real Vimeo path never
-    contains, so such a pin silently never applies (`BACKLOG.md`, "A vimeo.com
-    pin shaped vimeo:<id> ... never actually matches"). The two rows this WO
+    contains, so such a pin silently never applies (`BACKLOG_DONE.md`, WO-924,
+    which later made the loader refuse that shape). The two rows this WO
     committed were rewritten by hand to the bare-id shape, and each is on the
     host its own page's source URL uses. Without a matching pin the queue's
     owner check refuses a Vimeo line (it would ingest as

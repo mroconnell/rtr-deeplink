@@ -179,8 +179,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   iQM2's real meeting-body field lives only on the calendar listing…
   PrimeGov has a real, structured `committeeId` field — but no…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
-  Run the plain ladder on the other 7,359 never-headless governments?…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -519,7 +518,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
 
 Dormant — needs a real example first `[LATER]`
 
-Parked deliberately — allowed back `[PARK]`  (4)
+Parked deliberately — allowed back `[PARK]`  (5)
+  Run the access ladder on the other 7,359 small governments, then an…
   Video-to-calendar join: match a government's video source to its own…
   Friday-night queue (2026-09-12): the token-heavy coverage passes…  (3)
     [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
@@ -2137,14 +2137,6 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-### Run the plain ladder on the other 7,359 never-headless governments? `[HUMAN]`
-
-- **Issue**: WO-912 ran the access ladder (plain fetch, browser headers, headless) on a random 1,200 of 8,559 small governments and hand-read all 225 links it found. Headless added 12 finds in 875 loads, 2 of them new and usable; the plain steps found the rest. 7,359 governments were not run: 3,843 never in an earlier ladder report, 3,516 in one.
-- **Impact**: projected for the 7,359 with the plain ladder only: about 1,325 raw links (1,170 to 1,490), about 490 right-government links to a channel or platform (400 to 600), about 150 new YouTube leads (100 to 220), about 25 hours of unattended run time (12.4 seconds per government, measured) and about 1,300 links for a person to read. The 3,843 never covered yield about twice as much (8.7% right-government against 4.1%).
-- **Next action**: Ryan decides. Recommendation: run the 3,843 never covered first, plain ladder only, and build the same-organization check first (see the `find_platform_link()` entry) so about a fifth of the reading is skipped. Do not run headless.
-- **Constraint**: the run writes a report only. Every find needs a person's read before it becomes a lead, a pin or a research-file change.
-- **History**: `BACKLOG_DONE.md`'s WO-912 entry.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
@@ -6831,7 +6823,7 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   | A municipal-website directory and blog (Byng town OK) | 1 |
   | A lapsed domain that now redirects to a betting site (Grove Hill town AL) | 1 |
 
-  Examples: De Kalb city TX carries De Kalb, IL's site; Laverne town OK carries La Verne, CA's video archive; Honaker, Madison and Troutdale VA carry their county's; Mill Creek borough PA carries Millcreek Township's. Two related shapes are in the same file and not counted: Tuxedo town and village NY share one website (one site, two registry rows), and Kings County NY's recorded site is the Brooklyn Borough President's office. Earlier finds of the same class: Mohnton and Kenhorst boroughs PA carry Berks County's domain, and Costilla, Phillips and Washington counties CO carry `colorado.gov` (WO-282); 78 `domain` values are shared by 2+ rows (WO-283), the largest a generic platform homepage used as a placeholder (`www.facebook.com` 44 rows, `sites.google.com` 11).
+  Examples: De Kalb city TX carries De Kalb, IL's site; Laverne town OK carries La Verne, CA's video archive; Honaker, Madison and Troutdale VA carry their county's; Mill Creek borough PA carries Millcreek Township's. Six more are visible from the address alone (their sites sit behind a human-verification page, so nobody read them; `rtr-business/research/walled_governments_browser_agent_brief.md`): Melfa and Bloxom towns VA carry Accomack County's site (`accomack.gov`), and four Quebec municipalities (Saint-Patrice-de-Sherrington, Notre-Dame-des-Bois, Saint-Adrien-d'Irlande, Latulipe-et-Gaboury) carry a shared municipal-software page (`pdi.pgmunicipal.com`) instead of a site of their own. Two related shapes are in the same file and not counted: Tuxedo town and village NY share one website (one site, two registry rows), and Kings County NY's recorded site is the Brooklyn Borough President's office. Earlier finds of the same class: Mohnton and Kenhorst boroughs PA carry Berks County's domain, and Costilla, Phillips and Washington counties CO carry `colorado.gov` (WO-282); 78 `domain` values are shared by 2+ rows (WO-283), the largest a generic platform homepage used as a placeholder (`www.facebook.com` 44 rows, `sites.google.com` 11).
 - **Impact**: any method that trusts `domain` reads the wrong government's page, and an ingest files what it finds under the row's `gov_id` (see the entry on the Archive trusting a caller-supplied id). 21 of the 1,791 governments WO-912/913 ran (1.2%) is a floor: a wrong site with no meeting link was never read by hand.
 - **Next action**: for each of the 21 (and WO-282's 5), find the government's real own site (a targeted lookup, not a guess) and move the wrong value to `alternate_domains` per this file's domain-promotion convention; never blank `domain`. Then add an automatic check: does the recorded site's page title or address name this government?
 - **Constraint**: don't blank or guess a replacement `domain` without confirming the real one; an unconfirmed guess is worse than a visibly wrong value. A namesake in another state (De Kalb TX and IL, Laverne OK and La Verne CA) passes a name check, so the state has to be checked too.
@@ -8090,6 +8082,22 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 Nothing open here right now.
 
 ## Parked deliberately — allowed back `[PARK]`
+
+### Run the access ladder on the other 7,359 small governments, then an optional headless pass on the never-covered ones it does not identify `[PARK]`
+
+- **Issue:** WO-912 ran the access ladder (`run_access_ladder()`: a plain fetch, then browser headers, then a headless browser only when a page loads but shows no meeting link) on a random 1,200 of 8,559 small governments and hand-read all 225 links it found. 7,359 were not run: 3,843 that no earlier ladder report ever covered ("never covered") and 3,516 that one did. Ryan (2026-09-20): not now. Do it later this week with a cheaper agent, if there is usage room.
+- **Impact:** projected from the 1,200, ladder as designed: about 1,325 raw links (1,170 to 1,490), about 490 right-government links to a channel or platform (400 to 600), about 150 new YouTube leads (100 to 220), about 25 hours unattended (12.4 seconds per government) and about 1,300 links for a person to read. The 3,843 never covered yield about twice as much (8.7% right-government against 4.1%). About 4% land behind a human-verification wall (about 320 governments). The optional headless pass is low value: about 2,190 of the never covered qualify (page loaded, no platform found, ladder skipped headless), it takes about 3 hours, and on the sample it found 4 links in 356 loads and none was usable (both usable headless finds in WO-912 were in the other group).
+- **Next action:** in order. Run everything with the main checkout's venv (`/Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python`); from a worktree, set `DATABASE_URL` and `ARCHIVE_BASE_URL` explicitly first. Optional first step: build the same-organization check (see the `find_platform_link()` entry), which lets a person skip about a fifth of the reading.
+  1. Run the ladder on all 7,359. It resumes and skips the 1,200 already in the report:
+     ```
+     caffeinate -i /Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python scripts/wo908_headless_pilot.py --candidates-csv ~/Documents/rtr-business/research/wo912_candidates.csv --out-csv ~/Documents/rtr-business/research/wo912_report.csv --limit 8559
+     ```
+     Check on it every hour or two by counting rows with Python's `csv` module (`wc -l` over-counts: some notes span lines).
+  2. Read every link found, on the government's own page, and give a verdict, as WO-912 did (the verdicts and method are in `BACKLOG_DONE.md`'s WO-912 entry). The helper scripts used then were scratch and were not saved. The flag rule in the `find_platform_link()` entry sorts out about 82% of the wrong finds first.
+  3. Optional: the headless second opinion for the never-covered governments the ladder did not identify. `rtr-business/research/wo912_rerun_groups.csv` says which governments are never covered. Copy the report keeping only those rows and pass the copy: `scripts/wo912_headless_second_opinion.py --report-csv <that copy> --out-csv ~/Documents/rtr-business/research/wo912b_second_opinion.csv`.
+  4. Hand off confirmed finds as in WO-912/913: YouTube finds through `scripts/wo912_wo913_make_leads.py`, single-tenant platform finds through `scripts/wo912_wo913_ingest_confirmed.py`, research-file rows under the shared-file write protocol (`rtr-business/research/wo912_wo913_apply_to_jc.py` is the model), and wrong recorded websites in the shape of `wo913_wrong_recorded_domains.csv`.
+- **Constraint:** the ladder never solves a human-verification wall; walled governments go to `rtr-business/research/walled_governments_browser_agent_brief.md` (add the new ones to it). YouTube is fetched only by the drip Mac: the ladder's headless fetch blocks it at the browser (PR #1254), and any wrapper that resolves or ingests must call `scripts/youtube_fetch_guard.install()`. Never a bulk write to production Postgres; ingest goes through the wrapper's HTTP path. Don't rebuild `wo912_candidates.csv`: its order comes from a seeded shuffle of the whole list, so rebuilding it after any research-file change reshuffles the order. A few of the 7,359 may have been covered since 2026-09-20; accept the small waste. A cheaper agent is enough for the run. Keep the "right government" judgment strict: a quarter of the raw finds were another organization's.
+- **History:** `BACKLOG_DONE.md`'s WO-912 entry (the run, the method, the projection); `rtr-business/research/wo912_rerun_groups.csv`.
 
 ### Video-to-calendar join: match a government's video source to its own calendar by body and date `[PARK]` `[BIG]`
 
