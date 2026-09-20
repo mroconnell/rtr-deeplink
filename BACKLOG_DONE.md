@@ -1,5 +1,78 @@
 # Backlog — done
 
+## WO-911: acted on the Diligent Community sweep — 4 pages live, 2 queue lines, 76 YouTube leads; the sweep's "no video" count is too high [Done 2026-09-20]
+
+**Why this ran.** On 2026-09-18 a sweep read all 359 Diligent Community
+tenants (`*.community.diligentoneplatform.com`, the CivicWeb-family
+meeting portal) and stalled before acting on any result. It found 100
+tenants with something to act on. This WO turned those finds into
+coverage, and checked whether the 257 "no video" tenants were really empty.
+
+**How.** Each of the 100 tenants was tied to one government first (its
+own website link on the portal, matched to the research file's domain; or
+its name against the school-district and place tables). Every meeting
+title was then read against that government. Video ids came from each
+tenant's own JSON API, never from YouTube: this WO fetched nothing from
+youtube.com. Pages went in through `scripts/bulk_ingest.py` with the
+government's id in the payload. Queue candidates went through
+`scripts/probe_tier3_queue.py`.
+
+**Result.** The 100 tenants ended like this:
+
+| Outcome | Count of 100 | What it means |
+|---|---|---|
+| Captions available, page live now | 4 | Berkeley County SD SC, Clark County SD NV, Grossmont Union HSD CA, Plano ISD TX; each 200 OK, city and state in the title |
+| Video, no captions, queued | 2 | Nassau County SD FL (probe accepted, 26 minutes); North Kitsap SD WA (probe could not read the Google Drive file, queued anyway per the 2026-09-14 rule) |
+| Government already has an Archive page | 15 | nothing to add (3 tier-1, 3 tier-3, 9 tier-2 finds) |
+| YouTube video, held as a lead for the drip Mac | 76 | in `research/wo911_leads_to_add.csv`; 5 of them had real captions on 2026-09-18 |
+| YouTube video, government already in the leads file | 3 | Byron MN, Penetanguishene ON, Winthrop MN |
+
+Of the 13 tier-1 finds: 4 page live, 3 already covered, 5 held as leads
+because their captions come from YouTube (the no-YouTube rule stops an
+ingest), 1 already listed. All 5 tier-3 finds: 2 queued, 3 already covered.
+Of the 82 tier-2 finds: 71 leads, 9 already covered, 2 already listed.
+
+**Hand-check.** All 100 titles were read against the government. 0 were
+wrong. The automatic check flagged 24 as "Kind A" only because a school
+tenant's own meeting is called a board of education; those are the
+government's own board and were set aside. Two automatic identity matches
+were wrong and were corrected: St Charles City-County Library (the domain
+match pointed to the county and the city) and Williamsburg-James City
+County (the domain match pointed to Williamsburg City). No Kind A owner
+bodies, so no owner-bodies file.
+
+**The finding that matters.** The 257 "no video" tenants are not all
+empty. The sweep reads a meeting only if its link text ends "Mon D YYYY".
+Other tenants title meetings differently and those meetings were never
+read. Sample of 40:
+
+| Result | Count of 40 | What it means |
+|---|---|---|
+| Real YouTube video on a meeting the sweep never read | 3 | jeffpud, d11, palmbeachschools-org |
+| No video on any meeting read (12 newest each, tenant's own API) | 34 | the sweep was right |
+| No meetings listed at all | 3 | truly empty |
+
+Across all 257: 94 tenants have unread meeting links (421 links). Sample
+miss rate 3 of 40, 7.5%, under the 10% stop line, so nothing was rerun.
+
+**Caution.** The 4 pages carry uneven captions: Plano's page has only 27
+segments for a work session (source note: uncorrected closed captions),
+and Grossmont's page date reads 2026-09-16 while the title says Sep 10.
+Clark County's page is a Bond Oversight Committee (a district committee,
+not the board). The 76 leads are unverified: the 2026-09-18 tier-2 label
+("YouTube video, no transcript") came during the YouTube bot-check outage
+and does not prove there are no captions. 10 tenants are not in the
+registry and have no `gov_id` (see BACKLOG "Ten Diligent Community
+tenants...").
+
+**Recommendation.** Fix the sweep's meeting-link parser and rerun the 94
+tenants (BACKLOG, Ship next). Decide the 10 mints, Winnetka Park District
+first.
+
+**Deploy status.** The 4 pages are live now. The 6 tenant pins in
+`tenant_overrides.csv` and the 2 queue lines reach production only after
+the next resolver deploy. Nothing else needs a deploy.
+
 ## WO-909: fixed headless's sandbox launch crash and two decorative-video token gaps; a 200-government rerun found a second, sandbox-only block that still leaves the real headless hit rate unknown [Done 2026-09-20]
 
 **Why this ran.** WO-908 (2026-09-19) tried to answer a real question:
