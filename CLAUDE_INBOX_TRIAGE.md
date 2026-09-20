@@ -107,6 +107,88 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-20
+
+176 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 3 batches, back to 2026-09-06), 6 new after the ledger
+filter — everything older than 2026-09-19 17:51 UTC was already covered
+by prior runs.
+
+**Out of scope / informational, no write-up**: 1 transcription worker
+daily report (2026-09-19 01:37 UTC). 1 "RTR feed drop 2026-09-19" report
+(44 meetings written — a success report, not a failure). 1 GitHub
+Actions "Run failed: Nightly sweep and alerts - master" for
+`mroconnell/rtr-upcoming` (2026-09-20 08:38 UTC) — a different repository
+from this one; this Routine's GitHub API access is scoped to
+`mroconnell/rtr-deeplink` only, so its real run logs can't be opened from
+here, and it isn't this repo's own code. Flagging rather than
+investigating further: this workflow has now shown up repeatedly in past
+runs' raw search results under the same "master, all jobs failed"
+shape, so if it's meant to be triaged too, either this Routine's GitHub
+access needs widening to include `rtr-upcoming`, or a parallel triage
+Routine scoped to that repo would need to exist — a question for Ryan,
+not something to guess at.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Transcription job 3727 failed (Moulton Borough NH,
+`townhallstreams.com/stream.php?id=76131`, "ffmpeg reported success but
+the output file isn't decodable (likely truncated/corrupt)" at chunk
+9/10, 2026-09-20 07:53-07:57 UTC) — same exact error signature as the
+already-open `[JUST-DO-IT]` "`slice_cached_audio()` skips the
+corrupt-chunk decodability guard" entry (`BACKLOG.md` line 1837; still
+missing this job from that entry's own example list, but the fix already
+proposed there covers it). GitHub Actions "Adapter health canary" failed
+on `main` (run `35459294828`, 2026-09-19 17:50-17:51 UTC), one of its two
+failures — `legistar[1]`: `ClientResponseError: 410` against
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831` — is the exact same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is
+a genuinely dead meeting" entry (see below for the canary's *other*
+failure, which is new). Render `test-redtaperecordings` "Exited with
+status 3" (2026-09-19 17:16 UTC) — same already-confirmed-closed noise
+per `BACKLOG_DONE.md`'s 2026-08-30 entry ("an old, unrelated Render
+instance — not connected to this app"), as in every prior run's section.
+
+- **Confirmed (page itself is fine; root cause of the canary failure
+  itself still unconfirmed)** — the same 2026-09-19 17:50 UTC adapter
+  health canary run's *other* failure: `FAIL aurora_tv: resolve returned
+  no real content` against
+  `https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026`.
+  This is not a new failure signature — the identical error against the
+  identical URL happened once before, on 2026-08-18 (run `32155218602`),
+  and was investigated and closed as a one-off transient blip, not a code
+  regression (`BACKLOG_DONE.md`, "Aurora, CO `aurora_tv` canary failure
+  (2026-08-18) confirmed a one-off transient blip"). Re-investigated the
+  same way this run: fetched the live page directly (`curl`, 2026-09-20),
+  got a clean `HTTP 200`, and the page's `drupal-settings-json` blob still
+  contains a real, well-formed `mp4_url`
+  (`reflect-aurora.cablecast.tv/store-4/13040-EDITED-Regular-Meeting-of-v2/vod.mp4`)
+  — the exact same content the closed entry already confirmed. So the
+  page and `app/platforms/aurora.py`'s parsing target are both still
+  fine; whatever caused the canary's own fetch to fail isn't reproducible
+  from here.
+  - **Impact**: only the canary's own health signal, same as the first
+    occurrence — no confirmed production impact, since this is a
+    known-good page the live site already serves correctly (per the
+    2026-08-18 investigation). What's different this time: it's now
+    happened **twice**, roughly a month apart, with the exact same
+    signature both times, which is enough of a pattern that "one-off
+    transient blip" may not be the whole story — a genuine intermittent
+    issue (e.g. Render/GitHub Actions runner IP occasionally blocked by
+    `auroratv.org` or its CloudFront-fronted Cablecast storage, a
+    possibility this adapter's own code comment already flags as
+    "genuinely unconfirmed") would look exactly like this from the
+    outside: passes on manual re-check, fails intermittently in CI.
+  - **Open question**: whether this is worth promoting to a
+    `[NEEDS-AUDIT]` watch entry now that it's recurred once, or whether
+    two data points a month apart is still too little to act on — no
+    third-party visibility into either host's own error logs exists from
+    here to settle it either way.
+
+Ledger: 176 message IDs reviewed and recorded this run (6 new, 170
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-17
 
 285 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
