@@ -6,7 +6,7 @@ aiosignal==1.4.0
     # via aiohttp
 aiosqlite==0.22.1
     # via -r requirements.in
-alembic==1.19.1
+alembic==1.19.2
     # via -r requirements.in
 annotated-doc==0.0.5
     # via fastapi
@@ -97,12 +97,12 @@ propcache==0.5.2
     #   yarl
 pycparser==3.0
     # via cffi
-pydantic==2.13.4
+pydantic==2.13.5
     # via
     #   clerk-backend-api
     #   fastapi
     #   svix
-pydantic-core==2.46.4
+pydantic-core==2.46.5
     # via pydantic
 pyee==13.0.1
     # via playwright
@@ -116,7 +116,7 @@ python-dotenv==1.2.3
     #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
-sentry-sdk==2.68.1
+sentry-sdk==2.69.1
     # via -r requirements.in
 six==1.17.0
     # via
@@ -134,7 +134,7 @@ standardwebhooks==1.1.0
     # via svix
 starlette==1.6.0
     # via fastapi
-svix==2.1.0
+svix==2.4.0
     # via -r requirements.in
 typing-extensions==4.16.0
     # via

@@ -11,7 +11,7 @@ aiosqlite>=0.20
 python-dotenv>=1.0
 slowapi>=0.1.9
 playwright>=1.62
-alembic>=1.13
+alembic>=1.19.2
 # Auth (2026-08-10): Clerk, chosen specifically so this app never has to
 # hand-roll session/cookie/password security -- see BACKLOG.md's
 # "Accounts + token billing" section. clerk-backend-api verifies the
@@ -19,10 +19,10 @@ alembic>=1.13
 # verifies the webhook signature Clerk uses to notify us of account
 # create/delete events.
 clerk-backend-api>=6.0
-svix>=2.1.0
+svix>=2.4.0
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern as Clerk above -- see app/main.py's _init_sentry().
-sentry-sdk>=2.68.1
+sentry-sdk>=2.69.1
 
 # yt-dlp is deliberately NOT compiled/pinned here (WO-11, 2026-08-16) --
 # YouTube actively breaks scrapers and yt-dlp only works because it
