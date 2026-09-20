@@ -134,6 +134,74 @@ real pilot run above, not by a unit test — a mocked test can prove the
 branching logic is correct but can never prove a real browser actually
 launches, or that a real certificate gets rejected.
 
+## WO-910: The AgendaCenter hop sweep now recognizes CivicWeb's own empty tenant page, and stops accepting CivicLive's plain website pages as if they were a real hit [Done 2026-09-20]
+
+**Why this ran.** WO-905 built a tool (`scripts/wo905_agendacenter_hop_
+sweep.py`) that checks a government's mostly-empty meeting-hub page,
+then follows the best links one step deeper looking for a real video.
+It had only ever been tested by hand against 6 governments. This work
+order ran it for real, at scale, for the first time -- 656 governments
+in one population, then 129 more in a second, different population, to
+see whether the same method holds up outside what it was built for. See
+`BACKLOG.md`'s "AgendaCenter-empty-shell population" entry for the full
+run's real counts and hand-check; this entry is just the two tool fixes
+that run's own data found along the way.
+
+**What the scale run found.** Two small, real gaps showed up only
+because there were enough governments to hit them.
+
+CivicWeb is a real meeting-hub vendor, like six others this tool
+already knew to treat carefully (CivicClerk, Swagit, Granicus, PrimeGov,
+eScribe, IQM2). Those six share one thing: reaching the vendor's front
+door only proves the vendor is real, not that there is an actual meeting
+there -- so the tool marks that case "found, but check further" instead
+of a plain "found." CivicWeb was missing from that list, so its own
+front door (`<tenant>.civicweb.net/Portal`) was being reported as a
+plain, confident "found," even though nothing about it was actually
+confirmed. Real example: Gulf Breeze, FL and Shawano, WI both landed on
+exactly that bare page. Fixed by adding `"civicweb"` to
+`_LISTING_REQUIRED_PLATFORMS` and `"portal"` to `_GENERIC_LANDING_
+PATHS` -- two one-line additions, reusing the tool's own existing check
+rather than writing a new one.
+
+CivicLive is not a meeting-video vendor at all -- it is a website
+builder many small towns use for their whole site, already documented
+elsewhere in this codebase (`app/platforms/base.py`'s own
+`detect_platform()`, WO-92: "a real, distinct municipal CMS with 1000+
+customers and no video product of its own"). A hop landed on a real
+CivicLive-hosted page for Camden village, NY, and the tool accepted it
+as "found" -- except the page was the town's own "About Us" history
+page, nothing to do with a meeting. Fixed the same way CivicPlus's own
+tautological hits were already excluded: added `"civiclive"` to
+`_TRIVIAL_PLATFORMS`.
+
+Both fixes are one or two lines each, in the same file, reusing logic
+the tool already had -- no new code path. Re-running the 4 affected
+governments with the fix in place gave the expected result: Gulf Breeze
+and Shawano now correctly show "found the vendor, not confirmed yet"
+instead of a false "found"; Camden now correctly shows "nothing found";
+and Invermere, BC -- which had two real candidate pages, one bare and
+one specific -- now correctly picks the specific one instead of the
+bare one. 5 new/changed tests cover both fixes
+(`tests/test_wo905_agendacenter_hop_sweep.py`).
+
+**What this doesn't fix.** A separate, real problem was found and left
+alone on purpose: four unrelated small towns' "found" results
+(Burlington, CT; Farmington, NH; Markham, IL; Omak, WA) are the exact
+same video, hosted by a bill-payment company (InvoiceCloud), not a real
+meeting. Excluding it correctly needs a judgment call (exclude that one
+vendor's video specifically, not all of Wistia, which a government could
+legitimately host real content on directly) beyond what this pass
+wanted to decide unilaterally -- left as a documented finding in
+`BACKLOG.md`'s live entry instead. Also left alone, because it is
+already a separate, tracked, bigger piece of work: this tool inherits
+the file's own already-open `find_platform_link()`
+"wrong organization" bug (a state agency, a neighboring jurisdiction, a
+vendor's own badge link) -- confirmed here too (Holgate village OH's
+result was the U.S. Postal Service's own channel; Cedar County NE's was
+Nebraska's state health department), not new, not something this pass
+tried to fix.
+
 ## WO-904: `run_access_ladder()` now keeps climbing past a confirmed-decorative homepage video hit instead of stopping there [Done 2026-09-19]
 
 **Why this ran.** `BACKLOG.md` had an open bug. The access ladder is the

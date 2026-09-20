@@ -475,8 +475,9 @@ Trust, safety & data quality  (25)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
   `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
+  `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -7488,45 +7489,135 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   rows; 358 total counting the related 161 calendar-hub rows) is likely
   mis-recorded as video-less when the real hub is simply one link deeper
   than the sweep that tested it looked.
-- **Next action**: the sweep script is now built and live-validated
-  (WO-905, 2026-09-19): `scripts/wo905_agendacenter_hop_sweep.py`. Give
-  it a CSV of governments (gov_id, name, state, domain, hub_url) and it
-  reads the empty `/AgendaCenter` page, reads the government's own home
-  page too, and follows the best links one step deeper using WO-228/274's
-  ranked finder (plus a same-domain shortcut-link check this WO added,
-  for a site's own icon-only `/youtube` link, which the ranked finder
-  alone missed on 2 of the 6 test governments). It writes one report row
-  per government and never touches the research file or calls ingest.
-  Tested live against all 6 governments from WO-226's sample and matched
-  the hand-check outcome on all 6:
+- **Next action**: the sweep script was built and live-validated against
+  6 governments (WO-905, 2026-09-19), then run for real at scale for the
+  first time (WO-910, 2026-09-20) — but against two populations built
+  fresh from the live Gov Coverage dashboard's own data, **not** the
+  1,125-row list this entry is named for. That list still only exists in
+  `jurisdiction_coverage.csv` on Ryan's Mac, still unreached by any
+  session here. Read the counts below as "a similar, smaller,
+  independently-built population," not as "the 1,125 are done."
 
-  | Government | WO-226's hand check | This script's live result |
-  |---|---|---|
-  | Hagerstown, MD | Converts to video | Found a real YouTube channel |
-  | Harvey, IL | Converts to video | Found a real YouTube channel |
-  | Flagler Beach, FL | Converts to video | Found a real, specific CivicClerk meeting |
-  | Greenwood Village, CO | Converts to video | Found a real YouTube channel |
-  | Hoffman Estates, IL | Stays no-video | Found a CivicClerk link, then checked that government's account directly and confirmed no real meeting has video |
-  | Melrose, MA | Stays no-video | Found nothing |
+  Population 1, 656 governments whose recorded hub matches this entry's
+  own bare-`/AgendaCenter` shape:
 
-  Still needed: running it against the real 1,125-row list. That list
-  only exists on Ryan's Mac
-  (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`), so
-  this is Ryan's own next step, or a future session's with access to
-  that file. Run it ahead of the 161 calendar-hub rows (a related but
-  distinct shape).
-- **Constraint**: don't hand-check the full 1,125 by hand -- the script
-  above replaces that. Its own "bare tenant root" outcome (a real
-  platform link found, but not yet a specific meeting -- e.g. a bare
-  CivicClerk/Swagit/Granicus/PrimeGov/eScribe/IQM2 tenant page) still
-  needs a human or a future WO's judgment call for every platform except
-  CivicClerk, which the script already checks itself via that vendor's
-  own public Events API.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11. WO-905's
-  full validation detail (the mechanism, the false positives it found
-  and fixed building it, and the sibling passive-discovery-v2 finding it
-  credits) is in `scripts/wo905_agendacenter_hop_sweep.py`'s own module
-  docstring and its PR description.
+  | Result | Count of 656 |
+  |---|---|
+  | No platform link found at all | 381 |
+  | Hub and home page both unreachable | 163 |
+  | Found a platform link | 111 |
+  | Found a platform, but only its bare front door, not yet a confirmed meeting | 1 |
+
+  Population 2, 129 governments recorded with some OTHER kind of bare or
+  generic hub (CivicWeb portal roots, eScribe generic pages, filepro
+  document listings) — a deliberate test of whether the same method
+  works outside what it was built for, kept separate from population 1
+  on purpose, never blended into one combined number:
+
+  | Result | Count of 129 |
+  |---|---|
+  | No platform link found at all | 84 |
+  | Hub and home page both unreachable | 4 |
+  | Found a platform link | 38 |
+  | Found a platform, but only its bare front door, not yet a confirmed meeting | 3 |
+
+  Both runs finished clean — zero errors, zero timeouts, across all 785
+  governments checked.
+
+  Hand-checked by eye (channel name, filename, domain — no live fetches)
+  whether the "found" result is plausibly the right government:
+
+  | Population | Sample checked | Confirmed right | Confirmed wrong | Can't tell from the URL alone |
+  |---|---|---|---|---|
+  | 1 (AgendaCenter), of 112 found | 45, random | 20 | 5 | 20 |
+  | 2 (broader test), of 41 found | 41, all of them | 24 | 3 | 14 |
+
+  Two real gaps in the tool itself turned up in this run and were fixed
+  in the same PR, small, reusing the tool's own existing pattern (full
+  detail: `BACKLOG_DONE.md`'s WO-910 entry): CivicWeb's own bare front
+  door wasn't yet recognized as "found the vendor, not a confirmed
+  meeting" the way six other vendors already were. CivicLive (a website
+  builder with no video product of its own) was being accepted as a real
+  hit at all — one real example, Camden village NY, turned out to be the
+  town's own "About Us" history page.
+
+  Two real problems turned up and were **not** fixed here, on purpose:
+  four "found" results (Burlington CT, Farmington NH, Markham IL, Omak
+  WA) are the exact same video, from a bill-payment vendor, not a real
+  meeting — documented rather than patched, since the right fix needs a
+  judgment call (exclude that one vendor's video specifically, not all
+  of Wistia) this pass didn't want to make unilaterally. And the tool
+  inherits this file's own already-open `find_platform_link()`
+  wrong-organization bug (see that entry): Holgate village OH's result
+  was the U.S. Postal Service's own YouTube channel; Cedar County NE's
+  was Nebraska's state health department. Neither is new, neither is
+  fixed here.
+
+  Also found, and this is a data problem upstream of this tool, not a
+  bug in it: at least 3 tiny places in population 1 (Seward city KS,
+  Honaker town VA, Troutdale town VA) are recorded with their COUNTY's
+  own domain instead of their own, so the "video" found for them is
+  really the county's, not theirs.
+
+  Still needed: the real ~1,125-row population, from a session with
+  `rtr-business` access. Nobody has run this tool against that exact
+  list yet. A second, related population (the "129" above generalized to
+  its full size) is its own separate entry below.
+- **Constraint**: don't hand-check a full population by hand -- the
+  script above replaces that, but DO hand-check a real sample of its
+  "found" results before trusting them -- WO-910's own sample found a
+  real, non-trivial wrong-government rate (see the table above). Its own
+  "bare tenant root" outcome (a real platform link found, but not yet a
+  specific meeting -- e.g. a bare CivicClerk/Swagit/Granicus/PrimeGov/
+  eScribe/IQM2/CivicWeb tenant page) still needs a human or a future
+  WO's judgment call for every platform except CivicClerk, which the
+  script already checks itself via that vendor's own public Events API.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11, and its
+  WO-910 entry, 2026-09-20 (the two tool fixes this run found and
+  shipped). WO-905's full validation detail (the mechanism, the false
+  positives it found and fixed building it, and the sibling
+  passive-discovery-v2 finding it credits) is in
+  `scripts/wo905_agendacenter_hop_sweep.py`'s own module docstring.
+  WO-910's own PR has the full row-by-row hand-check detail for both
+  populations.
+
+### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
+
+- **Issue**: `scripts/wo905_agendacenter_hop_sweep.py` (see the
+  AgendaCenter entry above) was built and tested only against bare
+  `/AgendaCenter` hubs. WO-910 (2026-09-20) ran it, completely unchanged
+  in its matching logic, against a second, deliberately different
+  129-government population -- governments recorded with some OTHER kind
+  of bare or generic meeting hub (CivicWeb portal roots, eScribe generic
+  pages, filepro document listings, and similar) -- to see whether the
+  method holds up outside what it was built for.
+- **Impact**: it does, and better than expected. This second population
+  found a platform link on 41 of 129 governments (32%) -- a higher rate
+  than the AgendaCenter population's own 112 of 656 (17%). A hand-check
+  of all 41 found results (not a sample -- every one) confirmed 24 as
+  plausibly the right government, 3 as confirmed wrong, and 14 not
+  verifiable from the URL alone (see the AgendaCenter entry's own table
+  for the full breakdown, and its Next action for two small real tool
+  gaps this population's data found and got fixed in the same pass).
+  That is a real, if small, population of governments with a lead worth
+  chasing, found by a method built for something else entirely.
+- **Next action**: this was a 129-government pilot, not a full run --
+  there is no larger, ready-built list of "bare or generic hub, not
+  AgendaCenter-shaped" governments to point this tool at yet, the way
+  the 1,125-row AgendaCenter list above already exists. Building that
+  list (the same shape of query against the Gov Coverage dashboard/
+  research file: a recorded hub URL that is a bare portal root, a
+  generic listing page, or similar, on any platform) is the next step
+  before running this tool at the same scale as the AgendaCenter
+  population.
+- **Constraint**: keep this population's numbers separate from the
+  AgendaCenter population's own -- they are different populations
+  testing different things, and blending them into one combined rate
+  would hide that the method's yield genuinely varies by hub shape,
+  which is itself worth knowing.
+- **History**: `BACKLOG.md`'s "AgendaCenter-empty-shell population"
+  entry above (this pilot's full counts and hand-check); `BACKLOG_DONE.md`'s
+  WO-910 entry (the two tool fixes this pilot's own data found).
 
 ### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
 

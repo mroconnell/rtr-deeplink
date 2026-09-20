@@ -58,6 +58,20 @@ class TestIsBareRoot:
             "https://example.iqm2.com/citizens/detail_meeting.aspx?id=42"
         )
 
+    def test_bare_civicweb_portal_root_is_bare(self):
+        # Real, confirmed live 2026-09-20 (WO-910's first at-scale run,
+        # the broader/non-AgendaCenter population): Gulf Breeze FL and
+        # Shawano WI's own recorded hub pages both hop to exactly this
+        # bare CivicWeb tenant root, with no event/meeting path at all.
+        assert wo905._is_bare_root("https://cityofgulfbreeze.civicweb.net/Portal")
+
+    def test_specific_civicweb_path_is_not_bare(self):
+        # Real, confirmed live 2026-09-20: Pendleton OR's real CivicWeb
+        # conversion is a specific filepro document, not the tenant root.
+        assert not wo905._is_bare_root(
+            "https://cityofpendletonor.civicweb.net/filepro/documents/11319/"
+        )
+
 
 class TestNeedsListingDiscovery:
     def test_bare_civicclerk_root_needs_listing(self):
@@ -89,6 +103,20 @@ class TestNeedsListingDiscovery:
         # accidentally covers for the other.
         assert not wo905._needs_listing_discovery(
             "civicplus", "https://example.gov/AgendaCenter"
+        )
+
+    def test_bare_civicweb_root_needs_listing(self):
+        # Real, confirmed live 2026-09-20 (WO-910): added after the
+        # broader population's first at-scale run found 3 bare CivicWeb
+        # tenant roots reported as a flat "found" with no caveat.
+        assert wo905._needs_listing_discovery(
+            "civicweb", "https://shawanowi.civicweb.net/Portal"
+        )
+
+    def test_specific_civicweb_event_does_not_need_listing(self):
+        assert not wo905._needs_listing_discovery(
+            "civicweb",
+            "https://cityofpendletonor.civicweb.net/filepro/documents/11319/",
         )
 
 
@@ -228,6 +256,23 @@ class TestIsActionableHit:
     def test_civicplus_is_never_actionable(self):
         hit = wo905.CandidateHit(
             "civicplus", "https://example.gov/AgendaCenter", "hub_page_anchor", False
+        )
+        assert not wo905._is_actionable_hit(hit)
+
+    def test_civiclive_is_never_actionable(self):
+        # Real, confirmed live 2026-09-20 (WO-910): Camden village, NY's
+        # own home page hop landed on this exact real CivicLive-hosted
+        # page -- a real page on the town's real site, just an "About
+        # Us" history page, not a meeting or a video. CivicLive has no
+        # video product of its own at all (see `_TRIVIAL_PLATFORMS`'s own
+        # comment, and `app/platforms/base.py`'s civiclive recognizer,
+        # WO-92), so no civiclive-shaped hit can ever be real meeting
+        # video regardless of which specific page it points to.
+        hit = wo905.CandidateHit(
+            "civiclive",
+            "https://camdenny.hosted2.civiclive.com/living_here/about_us/our_history",
+            "home_page_anchor",
+            False,
         )
         assert not wo905._is_actionable_hit(hit)
 
