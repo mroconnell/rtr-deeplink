@@ -1,5 +1,139 @@
 # Backlog — done
 
+## WO-909: fixed headless's sandbox launch crash and two decorative-video token gaps; a 200-government rerun found a second, sandbox-only block that still leaves the real headless hit rate unknown [Done 2026-09-20]
+
+**Why this ran.** WO-908 (2026-09-19) tried to answer a real question:
+does a full, JavaScript-rendering browser check ("headless") find more
+government meeting-video links on small governments, the way it already
+does on big ones? It ran a 200-government pilot, but every single time
+the pilot tried to open a headless browser, it crashed before loading
+any page at all. The pilot's real question was still unanswered. Two
+smaller bugs turned up in the same pilot: two real homepage videos that
+are not meetings (the kind of "welcome to our town" clip a homepage
+often has) slipped past the check meant to catch them, because their web
+addresses used words that check did not know to look for.
+
+**What was built.**
+1. A fix for the crash. This sandbox has a different, already-installed
+   copy of the Chromium browser than the one this repo's testing tool
+   (Playwright) expects. The fix (`_headless_chromium_executable_path()`
+   in `scripts/wo147_access_ladder_sweep.py`) uses that already-installed
+   copy, but only when this specific sandbox's own setup says to use it.
+   Every other place this code runs — Ryan's Mac, this repo's automated
+   tests, the Render server — is untouched and behaves exactly as it did
+   before.
+2. Two decorative-video fixes. A French word for "banner" (`banniere`)
+   and the word "placeholder" are now on the list of words that mark a
+   video as decorative, not a meeting. A video address with `loop=1` by
+   itself (not just `loop=1` and `muted=1` together) now also counts.
+   Both came from two real videos WO-908's pilot found and flagged.
+
+**What this rerun found.** With the crash fixed, this WO reran the same
+pilot script on 200 DIFFERENT small governments — a new random sample,
+excluding WO-908's own 200, so this is genuinely new information, not a
+repeat. The run finished cleanly: 200 of 200 processed, zero crashes,
+and — checked directly on every single row — not one request to
+youtube.com or youtu.be, matching this repo's standing rule.
+
+| Rung that answered | Count of 200 (this rerun) | Count of 200 (WO-908's original run) |
+|---|---|---|
+| A plain, no-tricks fetch | 36 (18%) | 53 (26.5%) |
+| A retry with browser-shaped headers | 0 | 0 |
+| A full rendered browser (headless) | 0 | 0 |
+| Blocked by a "prove you're human" page | 5 (2.5%) | 4 (2%) |
+| Nothing found | 159 (79.5%) | 143 (71.5%) |
+
+These are two different random samples of 200 governments each, not the
+same 200 measured twice, so some difference between the two rows above
+is expected on its own and is not, by itself, a sign anything got worse.
+
+Headless was actually tried 36 times — once for every government whose
+page loaded fine but showed no video link at all, which is exactly the
+case headless exists for. All 36 failed, and all 36 failed with the
+exact same message: `net::ERR_CERT_AUTHORITY_INVALID`. That is a
+certificate error, not a "the browser wouldn't start" error — a real,
+different, and later failure point than WO-908 hit, which is itself
+evidence the crash fix works. Confirmed two more ways: a direct test of
+the fixed code against a plain web page returned real page content, and
+a side-by-side test of one real page — its plain (`http://`) address
+against its secure (`https://`) address — showed headless loading the
+first one fine and failing the second one the same way, every time.
+
+The reason: this kind of sandbox routes every secure (`https://`) web
+request through a local checkpoint that re-signs it with its own
+certificate, so it can inspect the traffic. This repo's own normal
+web-fetching code already trusts that certificate — confirmed live,
+since 36 of the 200 real government websites in this same run were
+reached over `https://` with no problem. The Chromium browser Playwright
+drives does not trust it, even though the exact same certificate is
+correctly installed in this machine's own general list of trusted
+certificates (checked directly, byte for byte, by its fingerprint). So
+headless can open a browser and load a plain page now, but it cannot
+load any secure page from inside this kind of sandbox — and nearly every
+real government website is secure.
+
+This is a property of this kind of sandbox, not of the fix or the code.
+Ryan's own Mac, this repo's automated tests, and the Render server do
+not sit behind a setup like this one, so this specific problem would not
+happen there. **The real question WO-908 and this rerun both set out to
+answer — does headless find more government meeting links on small
+governments — is still not answered.** It needs one more thing this WO
+could not provide: running it from a machine that is not behind this
+kind of checkpoint.
+
+**A hand-check of the "found" results, the same way WO-908 did.** 36
+governments got a result via a plain fetch. All 36 were checked by eye —
+every one that exists in this sample, since 36 is fewer than 40.
+
+| Result | Count of 36 |
+|---|---|
+| Confirmed right (the real government's own content) | 8 (22%) |
+| Confirmed wrong (a different organization's content, or decorative) | 12 (33%) |
+| Right government, but not a meeting (a mayor's ceremonial address) | 1 (3%) |
+| Can't tell from the link alone | 15 (42%) |
+
+"Confirmed wrong" here means: a state agency, a federal agency (the
+CDC), a website-building company's own channel (WordPress.com twice,
+Wix once), a bill-payment company's own explainer video, a YouTube
+search-results page standing in for an actual video, and a YouTube
+"Shorts" clip (too short to be a real meeting). "Can't tell" means a bare
+video or channel ID with no name shown anywhere — and this repo's own
+rule against fetching youtube.com/youtu.be directly means that name
+cannot be looked up to settle it either way.
+
+These numbers land close to WO-908's own hand-check of its own,
+different sample (21% right / 38% wrong / 42% can't tell). Two
+independent samples now agree: about a third of "found" results are
+simply wrong, and this problem is real, not a fluke of one sample.
+
+**What this fix does not do.**
+- It does not answer whether headless helps on small governments — see
+  above; that is still open.
+- It does not fix the "wrong organization" bug (`find_platform_link()`
+  accepting the first vendor-shaped link on a page without checking
+  whose it is) — already a separate, open `BACKLOG.md` entry, and this
+  rerun's hand-check found more real examples of it, added there.
+- It does not fix the one remaining decorative-video shape with no
+  keyword a list could ever catch (a subject that simply doesn't match
+  anything on a list, or a title only visible by fetching the video's
+  own page) — also already a separate, open `BACKLOG.md` entry, and this
+  rerun's hand-check found two more real examples of that too.
+
+**Verification.** `ruff check`, `ruff format --check`, the full `pytest`
+suite (4,033 passed, 18 skipped — includes the tests below), and both
+`alembic check` runs (`archive` and `app`, each run as `alembic upgrade
+head` then `alembic check` against a fresh SQLite file, matching CI
+exactly) all green. No schema changed. 17 tests across
+`tests/test_wo909_headless_chromium_path.py` (new) and
+`tests/test_wo904_access_ladder_decorative_climb.py` (updated) cover the
+crash fix's branching logic and the two token fixes, with a fake
+Playwright standing in for a real browser launch — this repo's existing
+convention for this kind of test (`tests/test_headless_browser.py`).
+The "does headless actually work now" question itself is answered by the
+real pilot run above, not by a unit test — a mocked test can prove the
+branching logic is correct but can never prove a real browser actually
+launches, or that a real certificate gets rejected.
+
 ## WO-904: `run_access_ladder()` now keeps climbing past a confirmed-decorative homepage video hit instead of stopping there [Done 2026-09-19]
 
 **Why this ran.** `BACKLOG.md` had an open bug. The access ladder is the

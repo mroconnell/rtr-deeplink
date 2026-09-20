@@ -133,8 +133,13 @@ def test_is_decorative_hit_matches_the_real_confirmed_vimeo_hero_embed_shape():
     # confirmed on 20 tenants per BACKLOG.md's WO-355 entry.
     assert _is_decorative_hit("https://vimeo.com/12345?background=1") is True
     assert _is_decorative_hit("https://vimeo.com/12345?loop=1&muted=1") is True
-    # loop alone, or muted alone, is not the confirmed signature.
-    assert _is_decorative_hit("https://vimeo.com/12345?loop=1") is False
+    # WO-909 (2026-09-20): a bare loop=1 with no muted=1 is now ALSO
+    # sufficient on its own -- WO-908's pilot found a real Vimeo hero
+    # embed shaped exactly this way, which the old "both together" check
+    # missed. muted alone (no loop=1) is still not, by itself, a confirmed
+    # signature -- no real example of that shape has been found yet.
+    assert _is_decorative_hit("https://vimeo.com/12345?loop=1") is True
+    assert _is_decorative_hit("https://vimeo.com/12345?muted=1") is False
     assert _is_decorative_hit("https://vimeo.com/12345") is False
 
 
@@ -146,6 +151,22 @@ def test_is_decorative_hit_matches_decorative_filename_tokens():
     assert (
         _is_decorative_hit("https://cdn.example.gov/videos/council-2026-09-01.mp4")
         is False
+    )
+
+
+def test_is_decorative_hit_matches_the_two_wo909_token_gaps():
+    # Both real, found live in WO-908's 200-small-government pilot
+    # (BACKLOG.md/BACKLOG_DONE.md's WO-909 entry): a French "Banniere"
+    # (banner) filename the English-only "banner" token didn't match, and
+    # a literal video-placeholder.mp4 that "placeholder" wasn't a token
+    # for at all.
+    assert (
+        _is_decorative_hit("https://cdn.example.gov/videos/Banniere-accueil.mp4")
+        is True
+    )
+    assert (
+        _is_decorative_hit("https://cdn.example.gov/videos/video-placeholder.mp4")
+        is True
     )
 
 
