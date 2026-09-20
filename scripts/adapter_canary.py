@@ -89,6 +89,14 @@ CANARY_URLS: dict[str, list[str]] = {
     "boarddocs": [
         "https://go.boarddocs.com/fla/talgov/Board.nsf/goto?open&id=DU8S8U718044"
     ],
+    # Arkansas Legislative Council subcommittee, 2026-09-17 -- a real
+    # recorded event with HLS video, captions and a timed agenda (WO-921).
+    # If it ages off the tenant, swap in any recent ended event from
+    # `.../00284/Harmony/en/View/RecentEnded/`.
+    "sliq_harmony": [
+        "https://sg001-harmony.sliq.net/00284/Harmony/en/PowerBrowser/"
+        "PowerBrowserV3/20260918/-1/34484"
+    ],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [
