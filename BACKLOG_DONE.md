@@ -1,5 +1,28 @@
 # Backlog — done
 
+## WO-920: minted Jefferson County Public Utility District No. 1 (WA), the last Diligent Community body without an id [Done 2026-09-20]
+
+**Why this ran.** WO-914 found a YouTube meeting video on the Diligent Community tenant `jeffpud` for a body that had no row in the registry, so its lead row had no `gov_id`. WO-916 had minted ten other Diligent bodies. Ryan said "yes to the mint" (2026-09-20). This WO gave the eleventh body an id.
+
+**How.** The tenant's own Portal page was read first. It links the body's own site, www.jeffpud.org. That link is the identity evidence. Then the body was searched for in the curated registry, the national tables, `coverage_registry.csv` and `jurisdiction_coverage.csv`, by name and by both domains. Then a real national id was looked for. Census of Governments 2022 lists it as unit 158940. The resolver has no `us:cog:` namespace (decision D3), so that number cannot be the `gov_id`. It goes in the `cog_id` column. Nothing was fetched from YouTube and no page was ingested.
+
+**Result.** One body was checked:
+
+| Outcome | Count of 1 | What it means |
+|---|---|---|
+| Already existed | 0 | not in any table or file, by name or domain |
+| Real id found | 0 | no national id can be a `gov_id` here |
+| Minted | 1 | `rtr:us:wa:jefferson-county-public-utility-district-1`, Census number 158940 in `cog_id` |
+| Could not confirm | 0 | the Portal page links the body's own site |
+
+**What was written.** One row in `curated_governments.csv`. Two pins in `tenant_overrides.csv`: the tenant host `jeffpud.community.diligentoneplatform.com` and the body's own domain `jeffpud.org` (`strength=fallback`, source `curated+wo920`). Both load through `tenant_overrides()`. One row in the research file (rtr-business, not committed here). The lead row's `gov_id` fill is in `research/wo920_leads_gov_id_fill.csv`.
+
+**Caution.** No per-video pin was written: the video `AkacIQZJnJ0` has not been hand-checked (YouTube was not fetched). The drip Mac reads the channel and pins what it confirms.
+
+**Recommendation.** After the next resolver deploy, fill the lead row's blank `gov_id` from the fill file, and let the drip Mac verify the three Diligent-listed meetings (Aug 18, Sep 1, Sep 15 2026).
+
+**Deploy status.** The curated row and both pins reach production only after the next resolver deploy. Nothing here is live yet.
+
 ## WO-919: checked all 99 state-legislature chamber rows — 7 pages live, 5 YouTube leads, and one video vendor (Sliq Harmony) shared by seven states [Done 2026-09-20]
 
 **Why this ran.** The 2026-09-17 recon listed one row per chamber for all 50 states, but almost all rows were only hub links. Nobody had run the passive check or the access ladder on it. This WO sorted the rows and ingested what already had video. The recon has 99 chamber rows, not 119 (119 counts every row across all its tables; its chamber table has 50 distinct hubs).

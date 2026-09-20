@@ -6266,3 +6266,5 @@ azleg.gov,,us:state:04,fallback,wo919,"Arizona State Legislature -- the state le
 senate.ca.gov,,us:state:06,fallback,wo919,"California State Senate -- the state legislature's own site (chamber = meeting_body, D1). WO-919, 2026-09-20."
 assembly.ca.gov,,us:state:06,fallback,wo919,"California State Assembly -- the state legislature's own site (chamber = meeting_body, D1). WO-919, 2026-09-20."
 capitoltvri.cablecast.tv,,us:state:44,fallback,wo919,"Rhode Island Capitol TV -- the General Assembly's own media department (House, Senate and commission meetings); one government per state (D1). WO-919, 2026-09-20."
+jeffpud.community.diligentoneplatform.com,,rtr:us:wa:jefferson-county-public-utility-district-1,fallback,curated+wo920,"Jefferson County Public Utility District No. 1 -- Diligent Community tenant (single-tenant host); its Portal page links www.jeffpud.org. WO-920, 2026-09-20, after the mint."
+jeffpud.org,,rtr:us:wa:jefferson-county-public-utility-district-1,fallback,curated+wo920,"Jefferson County Public Utility District No. 1 -- the body's own domain; the tenant's Portal page links to it. WO-920, 2026-09-20."
