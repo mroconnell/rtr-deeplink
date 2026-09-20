@@ -140,10 +140,14 @@ reasons. That is how every sweep below was scoped.
 
 ## 3. How identity is assigned and repaired
 
-- `app/utils/gov_registry/resolve_government()` runs a ladder: pinned →
-  name repair → classify the type before any place lookup → national
-  table → registry fallback → mint → blank. It refuses to guess: a bare
-  "Kansas City" with no state stays unresolved on purpose.
+- `app/utils/gov_registry/resolve_government()` runs a ladder (the module
+  is `app/utils/gov_registry/resolver.py`, called by the ARCHIVE at ingest;
+  where this document says "the resolver" or "rung 1b" it means that
+  module, not the Resolver service): authoritative pin → repair the name →
+  classify the type before any place lookup → national table (exactly one
+  match) → fallback pin → mint (`rtr:<country>:<st>:<slug>`) → blank
+  (`rtr:unknown:<host>`). It refuses to guess: a bare "Kansas City" with no
+  state stays unresolved on purpose.
 - **Pins** (`app/utils/jurisdiction_data/tenant_overrides.csv`) are the
   human override: host → gov_id, optionally with a `match` discriminator
   for shared hosts (a YouTube handle or video id, a TelVue playlist).
@@ -278,6 +282,39 @@ reasons. That is how every sweep below was scoped.
   already honored as `caller_gov_id` — pins still matter for the
   transcription worker's later re-resolve and for the drip, just not for
   this first write.
+- **Read the code, not this summary, for who decides a page's government
+  — and a caller-supplied `gov_id` is trusted, not checked (verified in
+  code 2026-09-20, WO-913).** The Resolver service (`app/main.py`
+  `/api/resolve`) decides nothing about identity: it pushes the adapter's
+  raw `ResolvedMeeting` to the Archive, and its own comment says "the
+  Archive is the only place a repaired/split jurisdiction actually gets
+  written." The Archive (`archive/db/crud.py` `_find_or_create_page()` →
+  `_resolve_page_government()`) decides. With no `gov_id` in the payload
+  it runs the ladder above (host pins, then the adapter's name string
+  through the national tables), and if that only mints or leaves it
+  unresolved it looks up the host's dominant government from earlier pages
+  and runs it again (`_tenant_dominant_gov_id()`). The displayed name is
+  always the registry's name for the chosen id; the adapter's string stays
+  in `jurisdiction_raw`. **With a `gov_id` in the payload the ladder is
+  skipped**: `_caller_pinned_match()` requires only that the id exist in
+  the registry (`UnknownGovernmentId`), and a page already keyed to a
+  different real id raises `GovernmentMismatch` (HTTP 409). Nothing checks
+  that the source really is that government
+  (`archive/utils/suspicious_source.py` only flags vendor demo/staging
+  tenants). So for a sweep that sends its row's id, **the research-file
+  row IS the identity**, and a row whose recorded domain belongs to
+  another government (a county's, a tribe's, a namesake in another state:
+  De Kalb TX's row carries De Kalb IL's site) files that government's
+  meetings under it. The only mechanical check is WO-134's opt-in
+  `JURISDICTION_CHECK_HOOK` / `IDENTITY_CHECK_HOOK` (default `None`; most
+  sweeps install one. WO-149's `jurisdiction_check_hook()` rejects an
+  adapter guess that names a different STATE and does not catch a
+  same-state mismatch such as a town whose row carries its county's
+  domain). A tier-3 queue line for a single-tenant host sends no id
+  (`queue_probe.has_owner()` returns `(True, None, "")`), so the Archive's
+  own ladder decides; for a shared host the feed sends a per-video pin's
+  id or the line is refused. Counts from the hand-check that surfaced
+  this: `BACKLOG_DONE.md`'s WO-913 entry.
 - **A matched per-video pin on a shared host wins over the registry
   unconditionally (WO-221), and that cuts both ways.** It fixed the case
   it was built for, but it also made every OLDER fallback pin
