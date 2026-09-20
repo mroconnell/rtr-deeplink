@@ -2556,6 +2556,16 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # row was never gone back and cleaned up since the redirect alone
     # already solves the user-facing problem. See BACKLOG_DONE.md.
     "city-of-kitchener-on-2026-05-05-heritage-kitchener-committee": "kitchener-2026-05-05-heritage-kitchener-committee",
+    # 2026-09-20 (WO-925): five Vimeo pages first filed under "Oak Bluffs,
+    # MA" by the blank-match vimeo.com pin (WO-145; removed WO-206b), then
+    # re-keyed to their real governments by manual override (WO-206/WO-183);
+    # the permanent slug stayed frozen. The redirects ship BEFORE the
+    # reslug-page calls are applied (see BACKLOG_DONE.md's WO-925 entry).
+    "oak-bluffs-ma-2026-09-02-planning-board-september-2-2026": "amherst-nh-2026-09-02-planning-board-september-2-2026",
+    "oak-bluffs-ma-2026-04-10-board-of-supervisors-4-14-26": "hanover-township-pa-2026-04-10-board-of-supervisors-4-14-26",
+    "oak-bluffs-ma-2026-08-27-8-26-26-florence-urban-renewal-agency": "florence-or-2026-08-27-8-26-26-florence-urban-renewal-agency",
+    "oak-bluffs-ma-2026-09-08-sc-board-meeting-2026-09-08": "steele-county-mn-2026-09-08-sc-board-meeting-2026-09-08",
+    "oak-bluffs-ma-2026-09-02-september-2-2026-council-meeting": "middletown-township-pa-2026-09-02-september-2-2026-council-meeting",
 }
 
 

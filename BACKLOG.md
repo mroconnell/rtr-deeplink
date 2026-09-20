@@ -179,7 +179,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   iQM2's real meeting-body field lives only on the calendar listing…
   PrimeGov has a real, structured `committeeId` field — but no…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+  [HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973,…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -200,7 +201,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (225)
+  [NEEDS-AUDIT] `[EASY]` A Vimeo video whose own title is a camera file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
@@ -452,7 +454,8 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (28)
+Trust, safety & data quality  (29)
+  A partial transcript made by our own transcription cannot get the…
   The Archive files a page under whatever `gov_id` a sweep sends…
   Nothing records that a page was deliberately deleted, so a later…
   Partial-transcript check has only measured 574 of ~5,800 non-YouTube…
@@ -2139,6 +2142,13 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
+- **[HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973, Cablecast show 185), and no re-check can ever reach 1595.**
+  - **Issue**: page 1595 (`leon-2026-07-21-city-council-regular-meeting-7-21-2026`, made 2026-08-19) has no `external_id`. Page 3973 (`leon-valley-tx-2026-07-21-...`, made 2026-09-01) has `cablecast:leonvalleytx.cablecast.tv:185`. Both URL forms (`/show/185` and `/show/185?site=1`) look up to 3973 now, so a re-check of 1595's own URL writes to 3973. That is why the partial-transcript warning reached 3973 and never 1595. Page 1676 (show 179) is the same legacy shape but has no twin.
+  - **Impact**: 1595 shows a transcript that stops at 55% of a 6-hour video with no warning. Its twin shows the warning.
+  - **Next action**: delete 1595 (dry run first, read the title) after adding a `_SLUG_REDIRECTS` entry from its slug to 3973's, or give 1595 the external_id and delete 3973 instead. Then check for other Cablecast pages with a NULL `external_id` and a `?site=1` URL (count them from `/internal/export/pages`).
+  - **Constraint**: Ryan's call which one survives; 3973 already carries the warning and the newer id scheme.
+  - **History**: `BACKLOG_DONE.md` WO-925.
+
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
 - **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
@@ -2486,6 +2496,13 @@ of human step they need.
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `[EASY]` A Vimeo video whose own title is a camera file name ("video1516165031") becomes the page title as-is.**
+  - **Issue**: `app/platforms/vimeo.py` takes the title straight from Vimeo's oEmbed, and nothing treats a placeholder as one. Page 10200 (Oak Bluffs, MA; source vimeo.com/1199438213) is titled `video1516165031`, so its address is `oak-bluffs-ma-2026-06-08-video1516165031`. The date also came from the upload day (2026-06-08), not the meeting on the agenda (2026-06-04).
+  - **Impact**: a page with a meaningless title and slug. Count not measured: `^video\d+$`, `^IMG_\d+` and `^\d+$` titles across all Vimeo pages have not been counted.
+  - **Next action**: count the pages whose title matches those patterns (read-only export). Then decide the fallback: a title built from the channel name and date, or the government name plus "meeting video". Add it in the adapter with a test. A hand fix for page 10200 alone is in `BACKLOG_DONE.md`'s WO-925 entry.
+  - **Constraint**: never invent a meeting name from the government's agenda page; the fallback must come from data on the video itself.
+  - **History**: `BACKLOG_DONE.md` WO-925.
+
 - **[NEEDS-AUDIT] Thirteen hand-confirmed government platform links could not be turned into a meeting: three broken or empty, nine tenant front doors, one tenant with no video.**
   - **Issue**: WO-912/913's hand-check confirmed each government's own platform link, and WO-134's ingest got no meeting from any of them. Broken or empty (3): Georgetown town CO's "Meetings - Live Stream and Archived" links to `townofgeorgetown.ompnetwork.org/embed/full`, and the OpenMedia adapter (`app/platforms/openmedia.py`) is built for `{tenant}.open.media/sessions/{id}`, so it strips `/embed/`, requests `/full` and gets HTTP 404 (OMP's video is a YouTube embed, so ingest belongs to the drip lane either way); Marina city CA's TelVue player link (`media/545969`, a 2020 Design Review Board meeting) now returns 404; Broadview Heights city OH's ChampDS event 315 resolves but holds no video or agenda. Tenant front doors (9): four Massachusetts towns on Castus (Lincoln, Tyngsborough, Blackstone, Millbury), two New Hampshire towns on Town Hall Streams (Moultonborough, Hollis), and one each on IQM2 (Macoupin County IL), Swagit (Barnegat NJ) and PrimeGov (Dodge County MN). No video (1): Hutchinson County TX's CivicClerk tenant shows no past event with real media.
   - **Impact**: 13 governments with a real platform of their own, confirmed by hand, and still no meeting page. The platform is recorded on each research row.
@@ -2631,7 +2648,7 @@ of human step they need.
 - **[JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County PA) is keyed correctly but its permalink slug still carries the government it was first keyed to (`oak-bluffs-ma-…`) — a misleading URL, not a mis-key.**
   - **Issue**: WO-316 (2026-09-12) filed this page as "really an Oak Bluffs, MA meeting" from its slug and title alone. Checked the same day against the video itself, independently, by both this session and Breadth (2026-09-12): Vimeo `1224013872`'s own oEmbed author is "Middletown Township" (`vimeo.com/middletowndelco`), the title is "September 2, 2026 Council Meeting", the live page displays "Middletown (township), PA", the row is `gov_id=us:cousub:4204549136` with `manual_override`, and Oak Bluffs, MA (`us:cousub:2500750390`) has no page in today's inventory and its own Vimeo pin is a different video (`1199438213`). This session's own hand-check went one step further and read the video's real transcript segments directly: a speaker gives her home address as "51 Oriole Avenue in Lima" (a real village inside Middletown Township) and references "the Delco Cruisers" ("Delco" is the common short name for Delaware County, PA) — direct spoken confirmation, not just channel/oEmbed metadata. WO-310's "already correct" call stands; WO-316's "new bug" paragraph in `ENUMERATION_METHODS.md` §324 is wrong on the key. The only Oak Bluffs trace is the frozen page slug, left over from the page's first (wrong) key — itself residue of the already-fixed WO-183 blank-`vimeo.com`-match bug, which `tenant_overrides.csv`'s own WO-183 row documents as having mis-attributed "Middletown township PA" to Oak Bluffs, MA.
   - **Impact**: none on the hub or the displayed government. The permalink reads as another town's, which misleads a reader who looks at the address bar and any inbound link that quotes it.
-  - **Next action**: nothing to re-key — do NOT override this page. If the URL is worth fixing, it needs a page-slug alias mechanism first: `MeetingPageUrlAlias` maps *source meeting URLs* to pages, not old page slugs to new ones, so a rename today would 404 the current link. Either build a small slug-alias table (one row per rename, checked before the 404) and then rename, or leave the slug alone; Ryan's call.
+  - **Next action**: nothing to re-key — do NOT override this page. WO-925 (2026-09-20) found the alias mechanism already exists (`_SLUG_REDIRECTS` in `archive/main.py`; this entry wrongly said it did not) and added the redirects for this page and four others filed the same way (7863, 8192, 8309, 8483). After the Archive deploy that carries them, run the five `reslug-page` calls in `BACKLOG_DONE.md`'s WO-925 entry (dry run first). Then move this entry to `BACKLOG_DONE.md`.
   - **Constraint**: never re-key a page from its slug or title — the slug is the artefact of an earlier key, not evidence about the video.
   - **History**: `BACKLOG_DONE.md`'s WO-310, WO-316 and WO-318 entries; corrected here 2026-09-12 independently by both the conductor (from Breadth's live check) and WO-318 (from the video's own transcript).
 
@@ -6727,6 +6744,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### A partial transcript made by our own transcription cannot get the reader warning through a re-check, and 35 page addresses name a different place than their page `[NEEDS-AUDIT]`
+
+- **Issue**: (1) The WO-923 warning is added at resolve time from the source's captions. Page 1676 (Leon Valley TX, show 179) holds a Whisper transcript (`source=transcribed`, 4,541 cues, last cue at 86% of a 6.5-hour video). The source has no captions, so a re-check answers "No transcript found" and carries no warning. Nothing marks that partial transcript. (2) A scan of all 10,236 pages (`rtr-business/research/wo925_slug_mismatch_scan.csv`) found 160 whose address prefix names a different place than the page's current government. 120 read as harmless (agency short names, county-seat towns on county pages, vendor hosts). 35 need a look (for example page 173 `detroit-mi-...` under Charlotte, NC; page 2822 `new-york-ny-...` under Ringwood, NJ; page 897 `toronto-...` under Wasaga Beach, ON). 5 are the Oak Bluffs pages WO-925 fixed.
+- **Impact**: (1) a reader sees a transcript that stops early with no notice, on any page we transcribed ourselves. (2) each of the 35 is either a stale address or a mis-keyed page, not yet told apart.
+- **Next action**: (1) let the transcription path (worker and local script) add the same marker when the last cue is under 90% of the audio it extracted, since it already knows the duration. (2) hand-check the 35 rows marked `review:` in the scan file against each page's own video; re-key or reslug (with a `_SLUG_REDIRECTS` entry first) as needed.
+- **Constraint**: do not touch the 90% / 10-minute threshold or the marker text. Never re-key from an address alone.
+- **History**: `BACKLOG_DONE.md` WO-925.
 
 ### The Archive files a page under whatever `gov_id` a sweep sends without checking the source is that government, and WO-134's own check is opt-in `[NEEDS-AUDIT]`
 

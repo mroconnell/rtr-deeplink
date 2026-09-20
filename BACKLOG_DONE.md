@@ -1,5 +1,59 @@
 # Backlog — done
 
+## WO-925: wrong-town web addresses on 5 pages, the Oak Bluffs page title, and a partial-transcript warning that did not show on two Cablecast pages [Done 2026-09-20]
+
+**Why this ran.** Three loose ends from WO-923's deploy. Five Vimeo pages show "oak-bluffs-ma" in their web address but are other governments' meetings. One Oak Bluffs page has a camera file name for a title. Two Cablecast pages were re-checked, said "pushed", and still showed no partial-transcript warning. Nothing was written to the production Archive by this WO. Every production step is for the conductor, after the deploy.
+
+**Part A: why the five pages were filed under Oak Bluffs.** The cause is already in the record and it holds up. In WO-145 (PR #859) a `tenant_overrides.csv` row for one Oak Bluffs video (`1199438213`) was added with a blank `match`. A blank match means "the whole vimeo.com host". Any Vimeo video with no pin of its own was then keyed to Oak Bluffs at first ingest, and the page's permanent address was frozen from that name. The row was scoped down in WO-183, came back through a merge conflict in PR #943, and was removed for good in WO-206b (PR #953). WO-210 then made the loader refuse a blank match on a shared host, and WO-924 refuses the dead `vimeo:<id>` shape. The pages were re-keyed by manual override in WO-206 (their `jurisdiction_confidence` reads `manual_override` today). The address was never rewritten. So it cannot recur through that route, since the loader now fails CI on it.
+
+| Outcome | Count of 5 | What it means |
+|---|---|---|
+| Address fixed in code | 5 | Old address now redirects (301) to the new one. Ships with the Archive deploy. |
+| Address renamed in production | 0 | Not done here. Run after the deploy (commands below). |
+
+| Page id | Government now | New address (preview from a production dry run) |
+|---|---|---|
+| 7863 | Amherst, NH | `amherst-nh-2026-09-02-planning-board-september-2-2026` |
+| 8192 | Hanover (township), PA | `hanover-township-pa-2026-04-10-board-of-supervisors-4-14-26` |
+| 8309 | Florence, OR | `florence-or-2026-08-27-8-26-26-florence-urban-renewal-agency` |
+| 8483 | Steele County, MN | `steele-county-mn-2026-09-08-sc-board-meeting-2026-09-08` |
+| 8494 | Middletown (township), PA | `middletown-township-pa-2026-09-02-september-2-2026-council-meeting` |
+
+The Florence page's old address was found from the export by id: `oak-bluffs-ma-2026-08-27-8-26-26-florence-urban-renewal-agency`. None of the five new addresses exists yet, so no collision suffix is expected.
+
+**The scan.** All 10,236 pages were read (21 export calls, read-only, 1 per second). A page is flagged when the place named at the front of its address shares no name word with its current government.
+
+| Outcome | Count of 10,236 | What it means |
+|---|---|---|
+| Address and government agree | 8,804 | Same place, or only the wording differs ("leon" and "Leon Valley, TX"). |
+| Flagged: the five Oak Bluffs pages | 5 | Fixed in this WO. |
+| Flagged: read as harmless | 120 | Agency short names (`mlgw`, `sandag-ca`), vendor hosts, or the county-seat town on a county page. Skimmed by hand, not verified. |
+| Flagged: needs a look | 35 | Address names a different place. Could be a stale address or a real mis-key. Not touched. |
+| No jurisdiction stored | 294 | Nothing to compare. |
+| No date in the address | 978 | Not compared. |
+
+The 35 are marked `review:` in `rtr-business/research/wo925_slug_mismatch_scan.csv` with the other 125. Nothing outside the five was changed. Filed in `BACKLOG.md` (Trust, safety & data quality).
+
+**Part B: the Oak Bluffs title.** Page 10200 is `oak-bluffs-ma-2026-06-08-video1516165031`, Vimeo 1199438213, keyed to Oak Bluffs by the bare-id pin. There is no title-override endpoint and none was built. A supported way exists anyway: a partial re-ingest. `crud._find_or_create_page()` refreshes `title` and `date` from any ingest that carries them, and leaves the government, the address and the video alone when the payload has no jurisdiction or gov_id (the same route the transcript-only scripts use). A new test (`test_wo925_partial_ingest_corrects_title_and_date_only`) pins that. It has no dry run, and the address does not change with the title. What is true today for placeholder titles: the Vimeo adapter takes oEmbed's title as-is, and takes the date from the title or else the upload day. Nothing treats `^video\d+$`, `^IMG_\d+` or `^\d+$` as a placeholder. A safe fix is not one line (the fallback wording is a product choice), so it is filed in `BACKLOG.md` (Open bugs), not built.
+
+The date differs. The page date is 2026-06-08, the day the video was uploaded. The agenda row says the meeting was 2026-06-04. Not decided here.
+
+**Part C: why the warning did not show.** Three different causes, one for each page.
+
+| Page | What happened | Kind |
+|---|---|---|
+| 3645 Edina MN | The stored captions were ingested 2026-08-31. The adapter has changed since, so a fresh resolve returns the same 247 cues with different text (246 of 247 differ; the stored cues include bare "S1:" cues). The text differs, so the content hash differs, so the push made a NEW version that was not the default. The warning sat on a hidden version (11566); the page shows the old default (3883). | Code bug. Fixed. |
+| 1595 Leon Valley (show 185, `?site=1`) | The push never reached this page. 1595 has no `external_id`. A twin page, 3973, has one. Both URL forms look up to 3973, so the re-check wrote to 3973 (its updated time is the re-check time; 1595's is 09-03). | Data: duplicate page. |
+| 1676 Leon Valley (show 179, `?site=1`) | The re-check is correct. Cablecast has no captions for this show. The page holds a Whisper transcript of our own (4,541 cues, last cue at 86% of 6.5 hours). A re-check reads source captions only, so it can never add the warning. | Not a bug; a gap. |
+
+The fix, for 3645 only. When an ingest creates a new version that is not promoted, and it carries the "may end before the meeting did" marker, the marker is now also added to the page's default version. It is added only when the default has the same language and source, has no such marker yet, and its last cue ends within 120 seconds of the new cues. The threshold, the marker text and the promotion rule are unchanged. Tests: `test_warning_reaches_the_shown_version_when_the_cue_text_changed` failed before the change and passes after; `test_warning_is_not_copied_onto_a_default_that_ends_elsewhere` guards the other side. Both are in `tests/test_partial_transcript_marker.py`. The four pages that already worked (10847, 3973, 9440, 7076) worked because their content hash matched. The two data findings are in `BACKLOG.md`: the Leon Valley twin pages (Needs a human) and the Whisper-transcript gap (Trust, safety & data quality).
+
+**Caution.** The 120 "harmless" flags were skimmed, not proven. The Edina fix does not repair 1595 or 1676. After the Archive deploy, re-running the re-check on 3645 will work only if the fresh resolve still ends within 120 seconds of the stored cues.
+
+**Recommendation.** Deploy the Archive. Then run the commands in `research/wo925_post_deploy_commands.md`: apply the five renames, re-check page 3645, and decide the Oak Bluffs date and the Leon Valley twin.
+
+**Deploy status.** Archive (`archive/main.py` redirects, `archive/db/crud.py` warning fix): needs the next manual deploy. Resolver: no change. The redirects must be live before any rename is applied.
+
 ## WO-923: warn the reader when a transcript covers only part of the video — 17 of 527 measured pages are partial, and the check now runs on every adapter [Done 2026-09-20]
 
 **Why this ran.** The Rhode Island Senate page (page 10847, Capitol TV on Cablecast) shows captions for the first 81 minutes of a 149-minute video, and nothing on the page says so. Ryan asked (2026-09-20) for partial transcripts to be marked. Nothing in the repo compared the last caption time to the video's length, except a Granicus-only cue-count check and an Archive check that runs only when someone requests a transcription job.
