@@ -172,7 +172,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
   `civicclerk.py`'s `resolve()` can return a bare…
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
-  WO-908's 200-small-government headless pilot ran clean, but headless…
+  Headless's sandbox launch crash is fixed (WO-909) — a second,…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
@@ -2045,7 +2045,7 @@ so that work reads together.
 - **History:** `research/wo366_methods_section.md`; this WO's own
   `fetch_wayback_domain_index()` docstring in `scripts/wo273_recon.py`.
 
-### WO-908's 200-small-government headless pilot ran clean, but headless itself never actually worked in that sandbox — the real small-government hit rate is still unknown `[JUST-DO-IT]`
+### Headless's sandbox launch crash is fixed (WO-909) — a second, sandbox-only certificate block still leaves the real small-government hit rate unknown `[JUST-DO-IT]`
 
 - **Note on the number**: this ran as WO-906, then was renumbered to
   WO-908 before merging — a separate, unrelated conductor session
@@ -2069,32 +2069,72 @@ so that work reads together.
   exactly the case headless exists for — hit the identical error: this
   sandbox's `playwright` package (pinned `1.62.0`) expects Chromium
   build 1234; only build 1194 is pre-installed. 35 attempts, 35
-  failures, 0 successes.
-- **Impact:** the question this pilot exists to answer — does headless
-  find a real meeting-platform link on small governments the way it
-  does on big ones — is still open. What the run DID measure honestly:
-  a plain HTTP fetch alone found something platform-shaped on 53 of
-  the 200 (**26.5%**); a "prove you're human" page blocked 4; the
-  other 143 got a clean, real "nothing here." A hand check of all 53
-  found only 11 (**21% of the 53, 5.5% of the 200**) are confirmed-real
-  on sight — 20 of the 53 are confirmed WRONG (see the two entries
-  above), and the remaining 22 can't be judged from the link alone (a
-  bare video or channel id with no name shown).
-- **Next action:** re-run `scripts/wo908_headless_pilot.py` against the
-  same `--out-csv` (it resumes automatically — only the 35 failed rows
-  need redoing) from an environment where Playwright's own pinned
-  Chromium build is actually installed: Ryan's own Mac, or any machine
-  that has run a real `playwright install` for `1.62.0`. Do this
-  before drawing any conclusion about whether headless is worth
-  running on the rest of the ~1,180.
-- **Constraint:** 0% via headless means "never tried," not "doesn't
-  help" — don't read it either way until it's re-run somewhere
-  headless actually works. Don't treat the 53-of-200 (26.5%) plain-HTTP
-  number as a validated hit rate either, for the same reason the two
-  entries above exist.
-- **History:** this WO's own PR (branch
-  `wo906-headless-pilot-small-govs`) has the full 200-row report and
-  the manual review behind the 11/20/22 split above.
+  failures, 0 successes. **WO-909 (2026-09-20) fixed that specific
+  crash** — `_headless_chromium_executable_path()`, added to the same
+  file, hands Playwright the sandbox's own pre-installed Chromium, but
+  only when that sandbox's own setup says to; every other environment
+  (Ryan's Mac, this repo's GitHub Actions runner, Render) calls
+  Playwright exactly as before. Confirmed fixed two ways: a direct
+  test against a plain web page returned real page content, and the
+  rerun below shows headless reaching the page-load step (a
+  certificate error, see Impact) instead of crashing before it ever
+  tried.
+- **Impact:** WO-909 reran the pilot on 200 DIFFERENT small
+  governments — a new random sample, WO-908's own 200 excluded, so
+  this is genuinely new information. 200 of 200 processed, zero
+  exceptions, zero forced challenge-solves, and (checked on every row
+  via the report's own `final_url_is_youtube` column) zero direct
+  fetches to youtube.com/youtu.be. Rung breakdown: 36 found via a
+  plain fetch (**18%**), 0 via browser-headers, 0 via headless, 5
+  challenge-blocked (2.5%), 159 nothing found (79.5%) — WO-908's own
+  different 200 found 53 (26.5%), 4 challenge (2%), 143 nothing
+  (71.5%); both are real numbers from two different random samples, so
+  some difference between them is expected on its own, not a
+  regression. Headless was actually tried 36 times (once per
+  government whose page loaded fine but showed no link at all — the
+  exact case headless exists for) and failed all 36 times with the
+  identical `net::ERR_CERT_AUTHORITY_INVALID` — a certificate error,
+  not a launch crash. This sandbox routes secure (`https://`) requests
+  through a local checkpoint that re-signs them with its own
+  certificate; this repo's own aiohttp-based fetches already trust
+  that certificate (confirmed: 36 real government sites were reached
+  over `https://` with no problem in this same run), but the Chromium
+  browser Playwright drives does not — confirmed directly even though
+  the exact same certificate is correctly installed in this machine's
+  general trusted-certificate list (verified byte-for-byte by SHA-256
+  fingerprint). A side-by-side control test on one real page confirmed
+  it precisely: headless loaded the identical page fine over plain
+  `http://` and failed it over `https://`, every time. **The question
+  this pilot exists to answer — does headless find a real
+  meeting-platform link on small governments the way it does on big
+  ones — is still open**, now for a different, better-understood
+  reason than WO-908 hit. A hand check of all 36 found results (fewer
+  than 40 exist in this sample, so all of them were checked) found 8
+  (22%) confirmed-real on sight, 12 (33%) confirmed WRONG (see the two
+  entries above) plus 1 more (3%) that is the right government but a
+  mayor's ceremonial "State of the City" address, not a meeting — and
+  the remaining 15 (42%) can't be judged from the link alone (a bare
+  video or channel id with no name shown). Close to WO-908's own
+  21%/38%/42% split on its own, different sample.
+- **Next action:** the Chromium-launch crash is fixed; what is left is
+  the certificate problem above, which needs a machine that does not
+  sit behind a checkpoint like this sandbox's: Ryan's own Mac, this
+  repo's GitHub Actions runner, or a Render shell. Re-run
+  `scripts/wo908_headless_pilot.py` from one of those (it already
+  resumes automatically) before drawing any conclusion about whether
+  headless is worth running on the rest of the ~1,180.
+- **Constraint:** 0% via headless on two separate 200-government
+  pilots in a row still means "blocked before it could try," not
+  "doesn't help" — don't read it either way until it runs somewhere
+  without a certificate checkpoint like this sandbox's in the way.
+  Don't treat either pilot's plain-HTTP-found rate (18% or 26.5%) as a
+  validated hit rate either, for the same reason the two entries above
+  exist.
+- **History:** WO-908's own PR (branch `wo906-headless-pilot-small-
+  govs`) has its full 200-row report and the manual review behind its
+  11/20/22 split. `BACKLOG_DONE.md`'s WO-909 entry has the crash fix,
+  the new 200-row report, and the manual review behind the 8/12/1/15
+  split above.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -2464,17 +2504,17 @@ of human step they need.
 
 - **[NEEDS-AUDIT] A decorative video with no web-address signature at all still can't be told apart from a real one anywhere in production code — only a one-off hand-read script does the check that would catch it.**
   - **Issue**: `_is_decorative_hit()` (`scripts/wo147_access_ladder_sweep.py`, used by `run_access_ladder()` and `wo361_find_hub.py` — see `BACKLOG_DONE.md`'s WO-904 entry, which fixed the ladder's own "stops climbing on any hit" bug this entry was split from) is a URL-shape check only: a query-string signature (`background=1`, or `loop=1`+`muted=1`) or a decorative filename token. A real minority of decorative hits carry neither — the only way WO-364 told these apart from a real meeting was fetching the video's own oEmbed title (Garfield city NJ's "City of Garfield 2024" is the confirmed example; `scripts/wo364_handread.py`'s own docstring names it directly, crediting "AlphaDog Solutions" as the real oEmbed author). That oEmbed lookup exists only in `wo364_handread.py`, a one-off hand-read script built for that specific sweep — not in `run_access_ladder()`, `verify_hub()`, or any other reusable, production code path.
-  - **Impact**: real and current. WO-364's own sample found 10 of 14 tier 1/3 candidates were exactly this shape (a title-only tell, no URL signature); a further 3 had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were correctly left `still_ambiguous` rather than guessed. Every future sweep leaning on `run_access_ladder()`'s or `verify_hub()`'s vendor-link scan hits the same gap unless it, too, hand-builds its own oEmbed check the way WO-364 did. **WO-908 (2026-09-19), run against a different population (200 real small governments, not WO-355/361/364's tier 1/3 candidates) and against the ladder as it stood just BEFORE this WO-904 fix landed, found a cheaper, adjacent gap: several real hits carry a textual signature, just not one `_DECORATIVE_FILENAME_RE`'s current token list recognizes** — a `Banniere` (French for "banner," not matched by the English `banner` token), a literal `video-placeholder.mp4` ("placeholder" isn't a listed token), a "Rosemary-Farm-Video" (no government-decorative word at all, just a subject mismatch no keyword list can catch), and a Vimeo embed with `loop=1` alone (no `muted=1`, so the paired check misses it). Whether today's fixed ladder now climbs past these 4 (2 of WO-908's own 6 decorative examples, "Homepage-Video" and "videoaccueil," already match the current token list and should already be fixed) has not been re-checked.
-  - **Next action**: give a production code path (most naturally `verify_hub()`/`_walk_candidates()` in `app/platforms/passive_verify.py`, which already resolves a confirmed hit's real metadata) a reusable oEmbed-title-based decorative check, reusing `wo364_handread.py`'s already-working, unauthenticated Vimeo oEmbed GET (`vimeo.com/api/oembed.json?url=...`) rather than rewriting it. This is closely related to — and probably worth building alongside — the separate, already-open "`verify_hub()`'s bare-homepage fallback is wrong on hand-read almost every time" entry below, which proposes the URL-shape/page-context half of the same filter; an oEmbed-title check is the piece that catches what that filter's own URL-shape checks structurally cannot (a title isn't visible in a URL). Cheaper interim step, per WO-908 above: add `banniere`/`placeholder` to `_DECORATIVE_FILENAME_RE` and stop requiring `muted=1` alongside `loop=1` — a real, if partial, fix that needs no oEmbed call at all.
+  - **Impact**: real and current. WO-364's own sample found 10 of 14 tier 1/3 candidates were exactly this shape (a title-only tell, no URL signature); a further 3 had no title signal available at all (a direct media file with no oEmbed, one oEmbed 404) and were correctly left `still_ambiguous` rather than guessed. Every future sweep leaning on `run_access_ladder()`'s or `verify_hub()`'s vendor-link scan hits the same gap unless it, too, hand-builds its own oEmbed check the way WO-364 did. **WO-908 (2026-09-19), run against a different population (200 real small governments, not WO-355/361/364's tier 1/3 candidates) and against the ladder as it stood just BEFORE this WO-904 fix landed, found a cheaper, adjacent gap: several real hits carry a textual signature, just not one `_DECORATIVE_FILENAME_RE`'s current token list recognizes** — a `Banniere` (French for "banner," not matched by the English `banner` token), a literal `video-placeholder.mp4` ("placeholder" isn't a listed token), a "Rosemary-Farm-Video" (no government-decorative word at all, just a subject mismatch no keyword list can catch), and a Vimeo embed with `loop=1` alone (no `muted=1`, so the paired check misses it). Whether today's fixed ladder now climbs past these 4 (2 of WO-908's own 6 decorative examples, "Homepage-Video" and "videoaccueil," already match the current token list and should already be fixed) has not been re-checked. **WO-909 (2026-09-20) closed 3 of these 4**: `banniere`/`placeholder` are now recognized tokens, and a bare `loop=1` is now sufficient on its own (`tests/test_wo904_access_ladder_decorative_climb.py` covers both). The 4th (`Rosemary-Farm-Video`, a plain subject mismatch with no decorative word at all) is still open — as this entry already says, it isn't something a keyword list can ever catch. The same WO's own 200-government hand-check (a different sample from WO-908's) found two more real examples of exactly the "no textual signature a keyword list could ever catch" case this entry opens with: a Google Drive video whose own share-page title (not its web address) reads "Vidéo promotionnel" — French for "promotional video" — and a homepage file named `Site_Web_Ete2_1.mp4` ("summer website," a seasonal/tourism theme no token list currently includes). Neither was added as a new token — both are exactly the shape this entry's own next action (an oEmbed/title-based check) is meant to solve, not a token-list gap.
+  - **Next action**: give a production code path (most naturally `verify_hub()`/`_walk_candidates()` in `app/platforms/passive_verify.py`, which already resolves a confirmed hit's real metadata) a reusable oEmbed-title-based decorative check, reusing `wo364_handread.py`'s already-working, unauthenticated Vimeo oEmbed GET (`vimeo.com/api/oembed.json?url=...`) rather than rewriting it. This is closely related to — and probably worth building alongside — the separate, already-open "`verify_hub()`'s bare-homepage fallback is wrong on hand-read almost every time" entry below, which proposes the URL-shape/page-context half of the same filter; an oEmbed-title check is the piece that catches what that filter's own URL-shape checks structurally cannot (a title isn't visible in a URL). The cheaper interim step named here before (add `banniere`/`placeholder`, stop requiring `muted=1` alongside `loop=1`) is done (WO-909, 2026-09-20) — the two new no-signature examples above are more evidence for building the oEmbed-based fix itself, not a substitute for it.
   - **Constraint**: don't guess when the title lookup itself comes back empty (a raw media file with no oEmbed, a 404) — WO-364's `still_ambiguous` verdict for exactly that case is the correct behavior to keep, not a gap to force a guess into.
-  - **History**: `BACKLOG_DONE.md`'s WO-361, WO-364, WO-368 and WO-904 entries; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`, `wo364_handread.csv`, `wo368_walk.csv`; `scripts/wo364_handread.py`; WO-908's own PR (2026-09-19, `wo906-headless-pilot-small-govs`) for the 4 new token-gap examples.
+  - **History**: `BACKLOG_DONE.md`'s WO-361, WO-364, WO-368, WO-904 and WO-909 entries; `rtr-business/research/wo361_verify.csv`, `wo361_handread.csv`, `wo364_handread.csv`, `wo368_walk.csv`; `scripts/wo364_handread.py`; WO-908's own PR (2026-09-19, `wo906-headless-pilot-small-govs`) for the original 4 token-gap examples, WO-909's for the token fixes and the two new no-signature ones.
 
 - **[NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped link on a homepage even when it belongs to a completely different organization — not just a decorative video (see the entry above).**
   - **Issue**: `find_platform_link()` (`scripts/wo147_access_ladder_sweep.py`, backed by `app/platforms/base.py`'s shared `detect_platform()`) accepts the FIRST anchor/iframe on a page whose link matches a known platform, in document order — it never checks whether the link is actually about the government being checked. Found live in WO-908 (2026-09-19)'s 200-small-government pilot: of 35 raw YouTube "hits," 11 were confirmed on sight to be someone else's channel entirely — a state agency (Iowa's DNR, Arkansas's tourism board, the Minnesota Judicial Branch, a Quebec provincial safety agency), a state governor's own channel, a hosting company's or CMS vendor's own badge link (Network Solutions, WordPress.com), an unrelated personal channel, and a YouTube Shorts clip (too short to be a real meeting). Two more raw hits on other platforms were the same shape: a CivicPlus link that landed on a neighboring county's own agenda page instead of the town's, and a CivicPlus staging site's business-directory page.
-  - **Impact**: this is the same `run_access_ladder()`/`find_platform_link()` code the entry above flags for decorative video, so a decorative-video fix will not catch this one — these are real, legitimate links, just to the wrong organization. Combined, the two failure modes accounted for roughly a third of every "found a platform" result in WO-908's own 200-government sample — see that WO's own BACKLOG entry and PR for the full count.
+  - **Impact**: this is the same `run_access_ladder()`/`find_platform_link()` code the entry above flags for decorative video, so a decorative-video fix will not catch this one — these are real, legitimate links, just to the wrong organization. Combined, the two failure modes accounted for roughly a third of every "found a platform" result in WO-908's own 200-government sample — see that WO's own BACKLOG entry and PR for the full count. **WO-909 (2026-09-20)'s hand-check of a second, different 200-government sample found the same pattern again**: of 36 raw hits, 12 were confirmed wrong this way — a state agency, a federal one (the CDC), two separate WordPress.com badge links, a Wix badge link, a bill-payment vendor's own explainer video sitting on a shared Wistia host, a YouTube Shorts clip, and a YouTube search-results page standing in for an actual video. That last shape already has a precedent elsewhere in this file: `wo130_county_ingest.py`'s own YouTube fallback hit an identical `youtube.com/results?search_query=...` link on Dubois County, IN (see the entry on porting that script's fixes forward). The bare-search-page and a bare `youtube.com` homepage (also seen this run, no channel or video at all) are a related but distinct problem from "wrong organization" — the link isn't pointing at someone else's content, it isn't pointing at any specific piece of content at all — worth keeping separate if this gets fixed.
   - **Next action**: give `find_platform_link()` a name-plausibility check before accepting a hit — the same idea `channel_name_plausible()` (`scripts/wo230_agendacenter_followup.py`) already applies for channel-enumeration sweeps: does the linked channel handle/page title share a real word with the government's own name? A state agency, a vendor's badge, or a different government's own page will almost never pass; a government's own real channel almost always will.
   - **Constraint**: don't reject a real regional/shared cable-access channel this way — several confirmed-real hits share a channel with no name overlap at all (e.g. Shorewood city, MN's real Cablecast clip on `reflect-lmcc.cablecast.tv`, already noted elsewhere in this file) — flag a no-overlap hit for a human look rather than auto-rejecting it outright.
-  - **History**: found live during WO-908 (2026-09-19)'s 200-government pilot; see that WO's own PR for the full per-row manual review.
+  - **History**: found live during WO-908 (2026-09-19)'s 200-government pilot; see that WO's own PR for the full per-row manual review. `BACKLOG_DONE.md`'s WO-909 entry has the second sample's full hand-check.
 
 - **[NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s hand-read page fetch has no Content-Type guard, so a `hub_url` that is itself a raw media file gets its full body pulled into memory before being truncated.**
   - **Issue**: found live 2026-09-14 (WO-364), while re-running the same hand-read method WO-361 used against 3 new `direct_file`-platform candidates whose `hub_url` was literally the video's own URL (no wrapping HTML page): Chesterfield Inlet, Nunavut (165 MB `.mp4`), North township, Indiana (31 MB `.webm`), a Wisconsin.gov shared site-template asset (12 MB `.mp4`, served from `/_catalogs/masterpage/WIGovSite/images/`, not town-specific content). `wo361_handread.py`'s `fetch()` does `raw = await resp.read()` with no Range header and no Content-Type check — the *entire* response body is pulled into memory first, and only truncated to 3 MB afterward for storage. That is a real, if accidental, violation of the standing "never download a media file" rule (preamble.md; the rule exists because of the 2026-09-12 Ramsey MN 39 MB mp3 incident) — nothing was saved to disk, but up to 165 MB traversed the network and sat in process memory per candidate.

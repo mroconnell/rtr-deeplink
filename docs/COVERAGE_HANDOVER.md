@@ -492,11 +492,20 @@ finish entry.
    **A first 200-government pilot on that smaller population (WO-908,
    2026-09-19) could not actually answer the question** — the sandbox
    it ran in had a broken headless browser (a Playwright/Chromium
-   version mismatch), so headless itself never once ran. See
-   `BACKLOG.md`'s matching entry for the real numbers this pilot DID
-   get (a plain-HTTP-only hit rate, and a real, confirmed high
-   false-positive rate on that signal) and what re-running it properly
-   needs.
+   version mismatch), so headless itself never once ran. **WO-909
+   (2026-09-20) fixed that specific crash and reran the pilot on a
+   second, different 200-government sample.** Headless now genuinely
+   launches and loads a real page — confirmed directly, including on a
+   plain (non-HTTPS) page fetched during the real rerun — but a second,
+   separate sandbox limitation showed up in its place: this kind of
+   agent sandbox routes web traffic through an inspecting proxy whose
+   certificate the Chromium browser itself does not trust, so every
+   real attempt against an HTTPS site (nearly all government sites)
+   still fails, just later and for a different reason than before. See
+   `BACKLOG.md`'s matching entry for the real numbers both pilots got
+   and what answering this properly still needs: running it from a
+   machine that is not behind that kind of proxy — Ryan's own Mac, this
+   repo's GitHub Actions runner, or a Render shell.
 2. **The identity join** (section 3): coverage that already exists but
    is invisible because of a minted id. Cheap, high-yield, repeatable
    whenever the research file and the Archive disagree.

@@ -479,16 +479,30 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
 # for. That harder disambiguation stays a downstream, heavier step
 # (verify_hub()/the hand-read tooling's own oEmbed lookup), not this
 # module's job.
+#
+# WO-909 (2026-09-20) added two cheap, real fixes found live during
+# WO-908's 200-small-government pilot (see BACKLOG.md/BACKLOG_DONE.md for
+# the full writeup), neither needing an oEmbed call: (1) `banniere`
+# (French for "banner," not matched by the English `banner` token -- a
+# real hit's filename was `Banniere...`) and `placeholder` (a real
+# `video-placeholder.mp4` hit) added to the token list; (2) a bare
+# `loop=1` with no `muted=1` is now sufficient on its own -- a real Vimeo
+# hero embed had only `loop=1`, and the old check required both params
+# together to fire. Two of the pilot's six examples ("Homepage-Video",
+# "videoaccueil") already matched the pre-WO-909 token list and needed no
+# change; a "Rosemary-Farm-Video" subject-mismatch case has no
+# government-decorative word at all and is out of scope for a keyword
+# list (it's part of the separate, still-open wrong-organization entry).
 _DECORATIVE_FILENAME_RE = re.compile(
     r"(promo|promotion|accueil|welcome|tourism|flyover|drone|dji_|"
-    r"site.?asset|homepage|hero|banner|discover|explore)",
+    r"site.?asset|homepage|hero|banner|banniere|placeholder|discover|explore)",
     re.IGNORECASE,
 )
 
 
 def _is_decorative_hit(url: str) -> bool:
     u = (url or "").lower()
-    if "background=1" in u or ("loop=1" in u and "muted=1" in u):
+    if "background=1" in u or "loop=1" in u:
         return True
     path = urlparse(url).path
     return bool(_DECORATIVE_FILENAME_RE.search(path))
@@ -1608,6 +1622,39 @@ async def run_access_ladder(
     )
 
 
+def _headless_chromium_executable_path() -> Optional[str]:
+    """Returns a pre-installed Chromium binary to hand Playwright as
+    `executable_path`, or None to let `p.chromium.launch()` fall back to
+    its own normal lookup (its pinned revision under wherever
+    `playwright install` put it).
+
+    WO-909 (2026-09-20): confirmed live that every headless attempt in
+    WO-908's 200-small-government pilot silently crashed in this sandbox
+    -- `p.chromium.launch()` with no argument makes Playwright look for
+    the exact revision this repo's pinned `playwright==1.62.0` expects
+    (build 1234), but this sandbox only has a DIFFERENT, pre-installed
+    revision (build 1194) at `/opt/pw-browsers/chromium`, reachable only
+    via the `PLAYWRIGHT_BROWSERS_PATH` env var this sandbox sets. Ryan's
+    own Mac and this repo's GitHub Actions CI runner both install
+    Playwright's browser the normal way (`playwright install`) at a
+    different location and never set `PLAYWRIGHT_BROWSERS_PATH` at all --
+    hardcoding `/opt/pw-browsers/chromium` unconditionally would fix this
+    one sandbox and silently break both of those real environments. So
+    this only ever returns a non-None path when BOTH (1) the env var is
+    set and (2) a `chromium` file/symlink actually exists directly inside
+    that directory -- any other environment (the var unset, or set but
+    without that exact binary) gets None, and `fetch_headless_sync()`
+    calls `p.chromium.launch()` exactly as it always did, with no
+    argument, completely unaffected by this function's existence."""
+    browsers_path = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if not browsers_path:
+        return None
+    candidate = os.path.join(browsers_path, "chromium")
+    if os.path.exists(candidate):
+        return candidate
+    return None
+
+
 def fetch_headless_sync(url: str) -> Tuple[Optional[str], str, Optional[str]]:
     try:
         from playwright.sync_api import sync_playwright
@@ -1615,7 +1662,11 @@ def fetch_headless_sync(url: str) -> Tuple[Optional[str], str, Optional[str]]:
         return None, url, "playwright not installed"
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            executable_path = _headless_chromium_executable_path()
+            if executable_path:
+                browser = p.chromium.launch(executable_path=executable_path)
+            else:
+                browser = p.chromium.launch()
             try:
                 page = browser.new_page(
                     user_agent=BROWSER_HEADERS["user-agent"],
