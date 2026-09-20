@@ -9,7 +9,7 @@ aiohttp>=3.9
 beautifulsoup4>=4.12
 langdetect>=1.0.9
 wordninja>=2.0.0
-pydantic>=2.0
+pydantic>=2.13.5
 sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29
 aiosqlite>=0.20
@@ -28,7 +28,7 @@ markupsafe>=2.1
 
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern used across this repo -- see worker/main.py's _init_sentry().
-sentry-sdk>=2.68.1
+sentry-sdk>=2.69.1
 
 # yt-dlp and faster-whisper are deliberately NOT compiled/pinned here
 # (WO-11, per AUDIT_EXECUTION_BRIEF.md's explicit instruction, 2026-08-16)
