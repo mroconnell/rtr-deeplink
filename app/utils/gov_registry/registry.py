@@ -14,6 +14,7 @@ the identity, never inside it (D2).
 
 import csv
 import logging
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -129,8 +130,9 @@ class RejectedOverride:
     """One `tenant_overrides.csv` row the loader refused to apply, and
     why (WO-210).
 
-    Today the only reason is a blank `match` on a `MULTI_GOV_HOSTS` host
-    -- see that constant's own comment. Kept as a real, typed record
+    Reasons: a blank `match` on a `MULTI_GOV_HOSTS` host (WO-210, see that
+    constant's own comment), or a dead-shape Vimeo match (WO-924, see
+    `match_shape_problem()`). Kept as a real, typed record
     (not just a log line) so both `test_gov_registry.py`'s committed-file
     invariant and a human audit can read `rejected_multi_gov_overrides()`
     without re-parsing the CSV or scraping logs.
@@ -380,6 +382,45 @@ def _has_human_source(source: str) -> bool:
     )
 
 
+_VIMEO_HOSTS: FrozenSet[str] = frozenset(
+    {"vimeo.com", "player.vimeo.com", "www.vimeo.com"}
+)
+# A Vimeo video id is 6+ digits today; an optional `/<hash>` is the private-link
+# hash of an unlisted video. `channel=` is the owner account's URL slug, exactly
+# what `vimeo.py::_owner_slug()` puts in `page_hints["channel"]` (lowercased,
+# never with an `@` -- that is YouTube's handle shape).
+_VIMEO_MATCH_RE = re.compile(r"^(\d{6,}(/[0-9a-f]+)?|channel=[a-z0-9_.-]+)$")
+
+
+def match_shape_problem(host: str, match: Optional[str]) -> Optional[str]:
+    """Why `match` is not a working discriminator on a shared host, or
+    None when it is fine (WO-924).
+
+    The loader already refused a BLANK match on a `MULTI_GOV_HOSTS` host
+    (WO-210). This is the same rule for a non-blank match whose SHAPE can
+    never match a real page: `_match_override()` only ever tests a
+    substring of the URL path or a `key=value` page hint, so a pin written
+    `vimeo:1199438213` (the id is in the path as `/1199438213`, never with
+    that prefix) is silently dead. Ryan, 2026-09-20: on a shared host a
+    pin is a per-video id or a channel (owner-account) match, or it never
+    populates.
+
+    Only Vimeo is shape-checked here: the bare id (optionally `id/hash`)
+    or `channel=<lowercase slug>`. YouTube's rule (bare 11-char id, or
+    `channel=@handle`) is documented in a test, not enforced, because
+    older committed rows use other working shapes.
+    """
+    host = (host or "").strip().lower().split(":")[0]
+    if host in _VIMEO_HOSTS:
+        m = (match or "").strip()
+        if not _VIMEO_MATCH_RE.match(m):
+            return (
+                f"dead shape {m!r} on {host!r}: use the bare numeric video id "
+                "(or id/hash) or channel=<lowercase owner slug>"
+            )
+    return None
+
+
 @lru_cache(maxsize=1)
 def _load_tenant_overrides() -> Tuple[
     Dict[str, List[TenantOverride]], Tuple[RejectedOverride, ...]
@@ -433,6 +474,14 @@ def _load_tenant_overrides() -> Tuple[
             logger.warning("tenant_overrides.csv: rejecting row -- %s: %s", reason, r)
             rejected.append(RejectedOverride(host, gov_id, reason, dict(r)))
             continue
+        if match is not None:
+            problem = match_shape_problem(host, match)
+            if problem:
+                logger.warning(
+                    "tenant_overrides.csv: rejecting row -- %s: %s", problem, r
+                )
+                rejected.append(RejectedOverride(host, gov_id, problem, dict(r)))
+                continue
         out.setdefault(host, []).append(
             TenantOverride(
                 tenant_host=host,

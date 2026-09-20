@@ -70,6 +70,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yt_dlp
 
+from ..utils.gov_registry.registry import match_shape_problem
 from ..utils.gov_registry.resolver import _matched_multi_gov_pin, _tenant_host
 from . import media_probe
 from .base import (
@@ -1417,6 +1418,9 @@ def write_pin_row(
     if not host or not gov_id:
         return False
     if not match and is_multi_gov_host(host):
+        return False
+    if match and match_shape_problem(host, match):
+        # WO-924: a dead-shape pin (`vimeo:<id>`) can never match a real URL.
         return False
     existing = _read_pin_keys(pins_path)
     if (host, match) in existing:

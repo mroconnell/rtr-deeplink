@@ -51,6 +51,7 @@ from .display import display_name, hub_slug, slugify
 from .tables import state_gov_id
 from .registry import (
     MULTI_GOV_HOSTS,
+    match_shape_problem,
     Government,
     RejectedOverride,
     TenantOverride,
@@ -79,6 +80,7 @@ __all__ = [
     "Government",
     "GovernmentMatch",
     "MULTI_GOV_HOSTS",
+    "match_shape_problem",
     "RejectedOverride",
     "TIER_BLANK",
     "TIER_INFERRED",

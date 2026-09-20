@@ -687,7 +687,7 @@ def derive_pin(
             return None
         return {
             "host": "vimeo.com",
-            "match": f"vimeo:{parsed[0]}",
+            "match": str(parsed[0]),  # WO-924: bare id; `vimeo:<id>` never matches
             "gov_id": gov_id,
             "strength": "fallback",
             "source": "wo230",

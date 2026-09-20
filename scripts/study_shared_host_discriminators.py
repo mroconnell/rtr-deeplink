@@ -228,6 +228,8 @@ def classify(page: dict) -> List[Tuple[str, Optional[str], Optional[str]]]:
         if host_of(url) in VIMEO_HOSTS:
             m = _VIMEO_ID_RE.search(url)
             if m:
+                # WO-924: `vimeo:<id>` is a LOOKUP key here (shared_host_lookups.csv
+                # video_key), never a pin `match` -- the loader refuses it as one.
                 out.append(("vimeo", f"vimeo:{m.group(1)}", None))
                 break
     return out
