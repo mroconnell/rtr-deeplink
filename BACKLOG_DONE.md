@@ -1,5 +1,82 @@
 # Backlog — done
 
+## WO-914: fixed the Diligent Community sweep's meeting-link parser and reran the 94 tenants it under-read — 5 more YouTube finds, far fewer than the 19 guessed [Done 2026-09-20]
+
+**Why this ran.** WO-911 found that the Diligent Community sweep
+(`scripts/diligent_community_full_sweep.py`) only read a meeting when its
+link text ended "Mon D YYYY". A 40-tenant sample showed 3 tenants with a
+real video on a meeting the sweep never read, so about 19 hidden finds
+were expected among 94 tenants. This WO fixed the parser and reran those
+tenants to get the real number.
+
+**Phase 1: the parser.** The list page of all 257 "no video" tenants was
+re-fetched (plain HTTP, 2 seconds apart). The result:
+
+| Result | Count of 257 | What it means |
+|---|---|---|
+| Tenants with meeting links the old parser never read | 94 | same number WO-911 gave |
+| Tenants where the old parser read every link | 163 | nothing to rerun |
+
+The 94 tenants carried 415 unread links today (WO-911 counted 421; the
+portals had changed by a few meetings). The link text takes many shapes:
+"Regular Meeting: September 15, 2026", "Sep 15 2026 - Cancelled",
+"09/08/26", "Tuesday, October 21, 2025", "July, 15 2026", a date in the
+middle of the text, and no date at all. The parser now reads every meeting
+link (the type heading's own link too), uses a date in the text only to
+order and to skip future meetings, and checks an undated link anyway.
+Tests use `<li>` rows copied verbatim from 8 real tenants
+(`tests/fixtures/diligent_community/`). Still unconfirmed: whether an
+undated link ever holds a video the dated ones lack.
+
+**Phase 2: the rerun.** Only the unread links of the 94 tenants were read
+(390 meetings; future-dated ones skipped), through each tenant's own
+`/api/videolink/` and `meetingData` JSON. Nothing was fetched from
+youtube.com. (`CivicWebAssetFinder.resolve()` would have, so a new script,
+`scripts/wo914_diligent_rerun.py`, reads the tenant's JSON directly.)
+
+| Outcome | Count of 94 | What it means |
+|---|---|---|
+| No video on any unread meeting | 88 | the first sweep was right for these |
+| YouTube video on an unread meeting | 5 | d11, jeffpud, lancasterisd, lw210, palmbeachschools-org |
+| A link that is not a recording | 1 | South Portland ME: the "VIDEO" link is a live Google Meet room |
+
+Sanity check: the list page marks meetings that have video. All 19 marked
+meetings among the unread links were found as YouTube video. The 3 WO-911
+samples were all confirmed (jeffpud, d11, palmbeachschools-org).
+
+**Phase 3 and 4: identity, hand-check, action.**
+
+| Outcome | Count of 5 | What it means |
+|---|---|---|
+| YouTube lead tied to a `gov_id` | 4 | Colorado Springs SD 11, Lancaster ISD TX, Lincoln Way CHSD 210 IL, Palm Beach County SD FL; each portal links its own website, which is that government's research-file domain |
+| YouTube lead with no `gov_id` | 1 | Jefferson County PUD No. 1 WA: not in the registry (needs-human, added to the mint entry) |
+
+None of the 4 governments had an Archive page or a lead before. The 5
+leads are in `research/wo914_leads_to_add.csv` (dedupe against HEAD and
+`wo911_leads_to_add.csv`: no overlap). No page was ingested, nothing was
+queued, no pin was added: the finds are YouTube, and the no-YouTube rule
+means captions cannot be checked here. d11 also holds 3 Vimeo-embedded
+June 2025 meetings (captions cannot be read server-side; no action).
+Hand-check: 6 titles read, 0 wrong; the automatic check flagged none. Palm
+Beach's find is a "TAC Meeting Videos" playlist for a district advisory
+committee, not the board; the drip must confirm it holds real meetings.
+
+**Result.** The first sweep's "no video" count was too high by 5 tenants
+of 257 (1.9%), not the 19 (7.5%) the sample suggested. The 3-of-40 sample
+overstated it; all 3 sample finds were real, but they were 3 of only 5.
+
+**Caution.** Whether these 5 videos have captions is unknown (the
+2026-09-18 tier label came during the YouTube bot-check outage). The 4
+research rows were updated only in blank provider/URL fields.
+
+**Recommendation.** No more Diligent parser work. Two follow-ups: mint
+Jefferson County PUD No. 1 (WO-916 minted the other ten), and add
+the 97 tenants' own YouTube channel links as channel leads (BACKLOG).
+
+**Deploy status.** Nothing here needs a deploy. The parser fix is a
+script; the leads and research rows live in rtr-business (not committed
+by this WO; the conductor commits them).
+
 ## WO-916: minted 10 Diligent Community bodies the registry did not have, and pinned their tenants [Done 2026-09-20]
 
 **Why this ran.** WO-911 found ten Diligent Community tenants whose

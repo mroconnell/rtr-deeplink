@@ -65,7 +65,7 @@ from app.platforms.base import get_finder  # noqa: E402
 
 register_all_finders()
 
-TODAY = date(2026, 9, 18)
+TODAY = date.today()
 MONTHS = {
     m: i
     for i, m in enumerate(
@@ -86,10 +86,44 @@ MONTHS = {
         start=1,
     )
 }
-MEETING_RE = re.compile(
-    r'<a class="list-link" href="(/Portal/MeetingInformation\.aspx\?Id=\d+)">'
-    r"([^<]*?)\s*-\s*([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})</a>"
+# WO-914 (2026-09-20): the original regex only read a link whose text ended
+# "Mon D YYYY", which silently dropped every other title shape (94 of 257
+# "no video" tenants carried such links). Now every meeting link on the list
+# page is a candidate; the date in its text is only used to order them and
+# to skip meetings still in the future. A link whose text has no readable
+# date is still checked (it sorts after the dated ones, highest Id first).
+LIST_LINK_RE = re.compile(
+    r'<a class="list-link" href="(/Portal/MeetingInformation\.aspx\?Id=(\d+))">'
+    r"([^<]*)</a>"
 )
+# The meeting-type heading is itself a link to that type's latest meeting; on
+# a type with no separate list row it is the only link to that meeting.
+TYPE_LINK_RE = re.compile(
+    r'<a href="(/Portal/MeetingInformation\.aspx\?Id=(\d+))"[^>]*'
+    r'class="meeting-type-item-title"[^>]*>([^<]*)</a>'
+)
+MONTH_NAMES = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+# Real shapes seen on the 94 tenants: "September 14, 2026", "Sep 15 2026",
+# "SEPTEMBER 10 2026", "Mar 27, 2026", "Tuesday, October 21, 2025",
+# "9/8/2026", "09/08/26", "8/10/2026".
+_NAMED_DATE_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{1,2}),?\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+_NUMERIC_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\b")
 MAX_CHECKED = 40  # bound worst-case cost for a tenant with an unusually long history
 
 
@@ -119,21 +153,51 @@ def fetch_meeting_type_list(host):
     return body, code, size
 
 
-def parse_past_meetings(html):
-    found = []
-    for m in MEETING_RE.finditer(html):
-        path, title, mon, day, year = m.groups()
-        mon_num = MONTHS.get(mon)
-        if not mon_num:
-            continue
+def extract_link_date(text):
+    """Best-effort date from a meeting link's text (last date in the text),
+    or None. Never raises."""
+    found = None
+    for m in _NAMED_DATE_RE.finditer(text):
         try:
-            d = date(int(year), mon_num, int(day))
+            found = date(
+                int(m.group(3)), MONTH_NAMES[m.group(1).lower()], int(m.group(2))
+            )
         except ValueError:
             continue
-        if d <= TODAY:
-            found.append((path, title.strip(), d))
-    found.sort(key=lambda t: t[2], reverse=True)
+    for m in _NUMERIC_DATE_RE.finditer(text):
+        yr = int(m.group(3))
+        if yr < 100:
+            yr += 2000
+        try:
+            found = date(yr, int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            continue
     return found
+
+
+def parse_past_meetings(html, today=None):
+    """Every meeting link on a MeetingTypeList page, newest first.
+
+    Returns (path, title, date_or_None). A dated link in the future is
+    skipped; an undated link is kept and sorts after the dated ones, highest
+    meeting Id first (Ids rise with time on the real tenants checked)."""
+    today = today or TODAY
+    seen = set()
+    dated, undated = [], []
+    for m in list(LIST_LINK_RE.finditer(html)) + list(TYPE_LINK_RE.finditer(html)):
+        path, meeting_id, title = m.group(1), int(m.group(2)), m.group(3)
+        if path in seen:
+            continue
+        seen.add(path)
+        title = title.strip()
+        d = extract_link_date(title)
+        if d is None:
+            undated.append((meeting_id, path, title))
+        elif d <= today:
+            dated.append((d, path, title))
+    dated.sort(key=lambda t: t[0], reverse=True)
+    undated.sort(key=lambda t: t[0], reverse=True)
+    return [(p, t, d) for d, p, t in dated] + [(p, t, None) for _, p, t in undated]
 
 
 def classify(result):
@@ -198,7 +262,7 @@ async def probe_tenant(host, finder):
                 tier=1,
                 url=url,
                 title=title,
-                date=d.isoformat(),
+                date=d.isoformat() if d else None,
                 segments=len(result.segments),
                 jurisdiction=result.jurisdiction,
                 reason=reason,
@@ -210,7 +274,7 @@ async def probe_tenant(host, finder):
                 tier=2,
                 url=url,
                 title=title,
-                date=d.isoformat(),
+                date=d.isoformat() if d else None,
                 segments=0,
                 jurisdiction=result.jurisdiction,
                 reason=reason,
@@ -226,7 +290,7 @@ async def probe_tenant(host, finder):
             tier=3,
             url=f"https://{host}{path}",
             title=title,
-            date=d.isoformat(),
+            date=d.isoformat() if d else None,
             segments=segments,
             jurisdiction=jurisdiction,
             reason=reason,
