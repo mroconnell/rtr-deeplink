@@ -1239,6 +1239,38 @@ async def _cablecast_walker(hub_url: str) -> List[dict]:
     return out
 
 
+async def _invintus_walker(hub_url: str) -> List[dict]:
+    """WO-922: a listing walker for an Invintus tenant. The hub is either
+    a `player.invintus.com/?clientID=N` URL (no eventID), or a government
+    page that embeds Invintus (the Oregon Legislature's video page and
+    wiseye.org both carry the tenant's `clientID` in their own markup).
+    Lists the tenant's recent published events newest-first through
+    `Search/general` (see `invintus.py`'s hub-listing comment), and hands
+    back each event's player URL, which `InvintusAssetFinder.resolve()`
+    then confirms. For a known state-legislature tenant only legislative
+    meetings are returned (WisconsinEye also carries courts, campaigns
+    and news conferences). A tenant with no events, or a page that names
+    no Invintus client, returns []."""
+    from .invintus import (
+        extract_invintus_client_id,
+        is_invintus_hub_url,
+        list_recent_events,
+        parse_invintus_ids,
+    )
+
+    client_id: Optional[str] = None
+    if is_invintus_hub_url(hub_url):
+        client_id = parse_invintus_ids(hub_url)[0]
+    else:
+        html, _final_url, err = await _fetch(hub_url)
+        if err or html is None:
+            return []
+        client_id = extract_invintus_client_id(html)
+    if not client_id:
+        return []
+    return await list_recent_events(client_id)
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -1254,6 +1286,7 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("iqm2", _iqm2_walker)
     register_listing_walker("townhallstreams", _townhallstreams_walker)
     register_listing_walker("cablecast", _cablecast_walker)
+    register_listing_walker("invintus", _invintus_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks
@@ -2407,8 +2440,18 @@ async def _verify_hub_impl(
     detected = detect_platform(hub_url)
     candidate_url = hub_url
     platform = detected if detected != "unknown" else platform_hint
-
+    invintus_hub = False
     if detected == "unknown":
+        from .invintus import is_invintus_hub_url
+
+        if is_invintus_hub_url(hub_url):
+            # WO-922: player.invintus.com/?clientID=N with no eventID.
+            # `detect_platform()` deliberately claims only a full meeting
+            # URL, so the tenant hub is recognized here instead.
+            platform = "invintus"
+            invintus_hub = True
+
+    if detected == "unknown" and not invintus_hub:
         # The hub isn't itself shaped like any known platform's own page
         # -- fetch it once and look for the real embedded/linked vendor
         # (WO-331 finding #1: this is exactly how a government page that
@@ -2428,7 +2471,19 @@ async def _verify_hub_impl(
                 evidence=err or "empty response",
             )
         match = find_platform_link(html, final_url, exclude=frozenset({"youtube"}))
-        if match:
+        invintus_client = None
+        if match is None or platform_hint == "invintus":
+            # WO-922: a government page that embeds an Invintus event
+            # listing (Oregon Legislature) or player (wiseye.org) names
+            # its tenant in its own markup, not as a link
+            # `find_platform_link()` can see.
+            from .invintus import extract_invintus_client_id
+
+            invintus_client = extract_invintus_client_id(html)
+        if invintus_client and (match is None or platform_hint == "invintus"):
+            candidate_url = f"https://player.invintus.com/?clientID={invintus_client}"
+            platform = "invintus"
+        elif match:
             candidate_url, platform = match
         elif platform_hint:
             # No recognizable platform link found by the generic scan,

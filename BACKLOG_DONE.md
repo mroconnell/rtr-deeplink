@@ -1,5 +1,46 @@
 # Backlog — done
 
+## WO-922: Invintus hub walker — Oregon and Wisconsin legislature meetings can now be listed and checked (4 chamber rows, all video, none with captions) [Done 2026-09-20]
+
+**Why this ran.** WO-919 found that the Oregon and Wisconsin legislatures publish their video on Invintus, but nothing could list a legislature's meetings. `invintus.py` only read one meeting when handed its exact player URL. This WO built the listing walker so a sweep can find meetings by itself.
+
+**How the listing works.** Oregon's own video page embeds an Invintus "event listing" script. Reading that script showed a public search call (`Search/general`) that lists a tenant's events. It only answers when it is given a start and an end date; without them it returns an empty list that looks like a tenant with no events. Each Invintus customer is told apart only by a `clientID` number, because `player.invintus.com` is shared by many governments.
+
+| Tenant | `clientID` | Government (one per state) | What it carries |
+|---|---|---|---|
+| Oregon Legislature | 4879615486 | `us:state:41` | House, Senate and joint committees and floor sessions; a few press events |
+| WisconsinEye (wiseye.org) | 2789595964 | `us:state:55` | Legislature, but also courts, the governor, campaigns, news conferences |
+
+**What was built.**
+
+- `app/platforms/invintus.py`: `list_recent_events()` (newest first, with player URL, date, length, chamber), `legislative_chamber()`, `extract_invintus_client_id()`, `is_invintus_hub_url()`. For a legislative event on these two tenants, `resolve()` now files the page under "Oregon Legislative Assembly" or "Wisconsin State Legislature" with the committee as the meeting body. Before, the categories ("2025-2026 Interim", "Committees") would have been used as the government name.
+- `app/platforms/passive_verify.py`: an `invintus` listing walker, plus two recognitions in `verify_hub()`: a `player.invintus.com/?clientID=N` hub URL, and a government page whose own markup names the client (Oregon's page, wiseye.org).
+- WisconsinEye's non-legislative rows are dropped by the walker, so a sweep never picks the governor's clemency board as a legislature meeting.
+- Pins in `tenant_overrides.csv` (source `wo922`): Oregon by `clientID`, Wisconsin per event (two rows). Wisconsin is not pinned by client on purpose: that client also carries courts and the governor, and a client-wide pin would key those to the Legislature.
+- 23 tests in `tests/test_invintus_hub.py` from real captured responses in `tests/fixtures/invintus_hub/`, including an Invintus client with no events and a page that is not Invintus.
+
+**Result.** One meeting per chamber, hand-read against the chamber's own committee name. The listing is the tenant the legislature's own site embeds, so the video source matches the body. The automatic hand-check filter found nothing to flag. Each video answered a ranged read with a real MP4 header, and `probe_queue_entry` accepted all four.
+
+| Outcome | Count of 4 chamber rows | What it means |
+|---|---|---|
+| Video found and hand-read | 4 | OR House, OR Senate, WI Assembly, WI Senate each have a recent short committee meeting. |
+| Captions available, page live now | 0 | None. Not one of 75 legislative events sampled on either tenant has a caption file. |
+| Video, no captions, queue after deploy | 4 | Candidates below. 17 to 25 minutes each. |
+| Hand-check wrong | 0 | No wrong-body or wrong-video finds. |
+
+| Chamber | Event | Date | Minutes | Meeting |
+|---|---|---|---|---|
+| OR House | 4879615486 / 2026021271 | 2026-02-26 | 17.6 | House Committee On Health Care |
+| OR Senate | 4879615486 / 2026031022 | 2026-03-02 | 19.5 | Senate Committee On Finance and Revenue |
+| WI Assembly | 2789595964 / 2026051017 | 2026-05-12 | 20.3 | Assembly Committee on Environment |
+| WI Senate | 2789595964 / 2026031061 | 2026-03-31 | 24.9 | Senate Special Committee on Oversight of the Department of Justice |
+
+**Caution.** Nothing was ingested. A walker change only reaches production with a resolver deploy, so the four candidates are lists, not pages. Oregon is in its interim (about 130 meetings of 90 to 190 minutes since September); Wisconsin's legislature has met little since May, so its newest short committee meeting is from spring. WisconsinEye is a nonprofit, not a government; its video is read as the Legislature's because the title names the committee. Arizona's Invintus tenant (`6361162879`) already has its own adapter and was not touched.
+
+**Recommendation.** After the resolver deploy: queue the four candidates through `scripts/probe_tier3_queue.py` (they need transcription, since none has captions), then run the walker (`verify_hub` with `platform_hint="invintus"`) on the Oregon and Wisconsin hubs to find more meetings.
+
+**Deploy.** Resolver deploy needed for the walker and pins. No pages are live from this WO.
+
 ## WO-920: minted Jefferson County Public Utility District No. 1 (WA), the last Diligent Community body without an id [Done 2026-09-20]
 
 **Why this ran.** WO-914 found a YouTube meeting video on the Diligent Community tenant `jeffpud` for a body that had no row in the registry, so its lead row had no `gov_id`. WO-916 had minted ten other Diligent bodies. Ryan said "yes to the mint" (2026-09-20). This WO gave the eleventh body an id.
