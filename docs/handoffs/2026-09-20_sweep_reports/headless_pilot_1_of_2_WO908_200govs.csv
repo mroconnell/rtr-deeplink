@@ -1,0 +1,481 @@
+gov_id,name,state,country,gov_kind,population,domain,reject_reason,access_mode,rung_answered,bucket,platform,hit_url,final_url,waf_family,note,elapsed_seconds,exception,final_url_is_youtube,direct_file_plausible
+38:5621415,Dubois town,WY,us,municipality,989,duboiswyoming.org,no-platform-link-found,plain,plain,dead,direct_file,https://www.nps.gov/nps-audiovideo/legacy/yell/A35E7E79-CDF6-74D8-26332556B9F2D5E2/yell-Orientationnocaptions2_1280x720.mp4,https://www.nps.gov/yell/index.htm,none,direct_file hit rejected as implausible (different domain than duboiswyoming.org): https://www.nps.gov/nps-audiovideo/legacy/yell/A35E7E79-CDF6-74D8-26332556B9F2D5E2/yell-Orientationnocaptions2_1280x720.mp4,22.1,,False,False
+36:12013,Calhoun County,FL,us,county,13278,calhouncountyfl.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/bMoK8f6vd4o?feature=oembed&rel=0&controls=0&showinfo=0&enablejsapi=1&autoplay=1,https://www.calhouncountyfl.gov/,cloudflare,,1.5,,False,
+38:1756887,Oswego village,IL,us,municipality,38778,oswegoil.gov,no-platform-link-found,plain,plain,dead,,,https://oswegoil.gov,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.6,,False,
+36:35029,Luna County,NM,us,county,25878,lunacountynm.us,no-platform-link-found,plain,plain,plain,suiteone,https://lunaconm.suiteonemedia.com/,https://www.lunacounty.gov/government/meeting_minutes.php,cloudflare,,3.1,,False,
+38:1708303,Brimfield village,IL,us,municipality,770,brimfieldil.org,no-platform-link-found,plain,plain,dead,,,https://www.brimfieldil.org/,none,"reached, hop links checked, no platform link found",5.3,,False,
+38:2156550,Norbourne Estates city,KY,us,municipality,442,norbourneestates.org,no-platform-link-found,plain,plain,dead,,,https://www.norbourneestates.org/home/,none,"reached, hop links checked, no platform link found",14.7,,False,
+38:4281328,Washington city,PA,us,municipality,13334,washingtonpa.us,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UC3HURrn0PQsCmm02JcRiJuA,https://washingtonpa.us,cloudflare,,0.3,,False,
+37:5508579700,Three Lakes town,WI,us,township,,townofthreelakeswi.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/Upz5QDB26uA,https://townofthreelakeswi.gov/town-hall-police-department-project/,cloudflare,,17.8,,False,
+1:3544042,Huntsville,ON,ca,municipality,21147,www.huntsville.ca,no-platform-link-found,plain,plain,dead,direct_file,https://media-002-ca.cdn.govstack.com/muskokaheritageplace-012-ca/media/ssklnluo/town-of-huntsville-homepage-video-banner.mp4,https://www.huntsville.ca,none,direct_file hit rejected as implausible (different domain than www.huntsville.ca): https://media-002-ca.cdn.govstack.com/muskokaheritageplace-012-ca/media/ssklnluo/town-of-huntsville-homepage-video-banner.mp4,0.6,,False,False
+1:4618068,Fisher,MB,ca,municipality,1845,www.rmoffisher.com,no-platform-link-found,plain,plain,dead,,,https://rmoffisher.com/,none,"reached, hop links checked, no platform link found",18.7,,False,
+38:2718746,Ellendale city,MN,us,municipality,658,ellendalemn.com,no-platform-link-found,plain,plain,dead,,,https://www.ellendalemn.com/,cloudflare,"reached, hop links checked, no platform link found",7.1,,False,
+36:01121,Talladega County,AL,us,county,81375,talladegacountyal.org,no-platform-link-found,plain,plain,dead,,,https://talladegacountyal.org,none,"reached, hop links checked, no platform link found",17.2,,False,
+38:4079350,Waynoka city,OK,us,municipality,703,cityofwaynoka.com,no-platform-link-found,plain,plain,dead,,,https://cityofwaynoka.com,cloudflare,"reached, hop links checked, no platform link found",3.1,,False,
+1:2433030,Saint-Narcisse-de-Beaurivage,QC,ca,municipality,1152,www.saintnarcissedebeaurivage.ca,no-platform-link-found,plain,plain,dead,,,https://www.saintnarcissedebeaurivage.ca,cloudflare,"reached, hop links checked, no platform link found",5.5,,False,
+38:1232775,Howey-in-the-Hills town,FL,us,municipality,1693,howey.org,no-platform-link-found,plain,plain,dead,,,https://www.howey.org,cloudflare,"reached, hop links checked, no platform link found",46.2,,False,
+38:4843684,Lone Star city,TX,us,municipality,1407,lonestartx.net,no-platform-link-found,plain,plain,plain,direct_file,https://www.lonestartx.net/s/May-25-2021-Special-Meeting-217-West-Germany-Variance.mp4,https://www.lonestartx.net/city-council-agendas-minutes,none,,2.9,,False,True
+1:2434085,Saint-Thuribe,QC,ca,municipality,298,www.st-thuribe.net,no-platform-link-found,plain,plain,dead,,,https://municipalites-du-quebec.ca/st-thuribe/index.php,none,"reached, hop links checked, no platform link found",5.0,,False,
+38:1980400,Van Horne city,IA,us,municipality,768,vanhorneia.govoffice3.com,no-platform-link-found,plain,plain,dead,,,https://www.vanhorne-ia.com/,none,"reached, hop links checked, no platform link found",17.9,,False,
+1:1102022,Kingston,PE,ca,municipality,1111,kingstonpei.ca,no-platform-link-found,plain,plain,dead,,,https://kingstonpei.ca,none,"reached, hop links checked, no platform link found",15.6,,False,
+1:2461035,Saint-Charles-Borromée,QC,ca,municipality,15285,vivrescb.com,no-platform-link-found,plain,plain,plain,direct_file,https://www.vivrescb.com/storage/app/media/Banniere/scb_ete.mp4,https://www.vivrescb.com/,none,,1.2,,False,True
+38:3720980,Elm City town,NC,us,municipality,1223,elmcity.govoffice.com,no-platform-link-found,plain,plain,dead,,,https://elmcity.govoffice.com/404.htm?aspxerrorpath=/index.asp,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.8,,False,
+38:5480020,Thomas city,WV,us,municipality,593,local.wv.gov,no-platform-link-found,plain,plain,dead,,,https://local.wv.gov/Pages/default.aspx,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+37:3404124960,Franklin township,NJ,us,township,,franklintwpwarren.org,no-platform-link-found,plain,plain,dead,,,https://www.franklintwpwarren.org/,cloudflare,"reached, hop links checked, no platform link found",17.5,,False,
+38:4044500,Luther town,OK,us,municipality,1671,townoflutherok.com,no-platform-link-found,plain,plain,dead,,,https://townoflutherok.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.6,,False,
+1:2434097,Saint-Alban,QC,ca,municipality,1196,www.st-alban.qc.ca,no-platform-link-found,plain,plain,dead,,,https://st-alban.qc.ca/,none,"reached, hop links checked, no platform link found",4.6,,False,
+37:5500156525,New Chester town,WI,us,township,,newchester.gov,no-platform-link-found,plain,plain,plain,direct_file,https://drive.google.com/file/d/1kkYIPrUGd-ykkc4EgfVNPQIDvGrb1XoC/view,https://newchester.gov/town-contacts/,cloudflare,,9.8,,False,True
+38:4242352,Leesport borough,PA,us,municipality,1972,leesport.org,no-platform-link-found,plain,plain,dead,,,https://leesport.org,none,"reached, hop links checked, no platform link found",17.8,,False,
+38:4072250,Talihina town,OK,us,municipality,932,talihinacc.com,no-platform-link-found,plain,plain,dead,,,https://talihinacc.com,cloudflare,"reached, hop links checked, no platform link found",2.5,,False,
+36:53045,Mason County,WA,us,county,69632,masoncountywa.gov,no-platform-link-found,plain,plain,plain,direct_file,https://dms.masoncountywa.gov/WebLink/ElectronicFile.aspx?docid=646513&dbid=0&repo=mason,https://masoncountywa.gov/government/advisory_boards/workforce_development_council.php,cloudflare,,9.4,,False,True
+36:27113,Pennington County,MN,us,county,13652,co.pennington.mn.us,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/MNJudicialBranch,https://mncourts.gov/pay-a-fine,cloudflare,,15.8,,False,
+38:1332860,Gillsville city,GA,us,municipality,406,gillsvillega.com,no-platform-link-found,plain,plain,dead,,,https://gillsvillega.com,cloudflare,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+38:3146520,Springfield city,NE,us,municipality,1531,springfieldnebraska.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/dJAnzXX04Fs?si=8GoSjGsx6u_4n06E,https://springfieldnebraska.com,none,,0.5,,False,
+36:12101,Pasco County,FL,us,county,659114,pascocountyfl.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCvlOC1VxmqM8_CiIYqe8iyA?view_as=subscriber,https://pascocountyfl.gov,none,,0.6,,False,
+36:13183,Long County,GA,us,county,20439,longcountyga.gov,no-platform-link-found,plain,plain,dead,,,https://www.longcountyga.gov/,none,"reached, hop links checked, no platform link found",19.7,,False,
+1:4810028,Vegreville,AB,ca,municipality,5689,vegreville.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@VegrevilleAB,https://vegreville.com,none,,0.6,,False,
+1:1102045,"Stanley Bridge, Hope River, Bayview, Cavendish and North Rustico",PE,ca,municipality,359,resortmunicipalitypei.com,no-platform-link-found,plain,plain,dead,,,https://resortmunicipalitypei.com,none,"reached, hop links checked, no platform link found",19.4,,False,
+1:2414030,Saint-Joseph-de-Kamouraska,QC,ca,municipality,398,www.stjosephkam.ca,no-platform-link-found,plain,plain,dead,,,https://stjosephkam.ca/,none,"reached, hop links checked, no platform link found",13.3,,False,
+37:2611368280,Richland township,MI,us,township,,www.richlandtownshipmissaukee.org,no-platform-link-found,plain,plain,dead,,,https://richlandtownshipmissaukee.org/,cloudflare,"reached, hop links checked, no platform link found",7.4,,False,
+37:4206954136,Newton township,PA,us,township,,newton-township.com,no-platform-link-found,plain,plain,dead,,,https://newton-township.com,none,"reached, hop links checked, no platform link found",25.9,,False,
+36:47093,Knox County,TN,us,county,506748,knoxcounty.org,no-platform-link-found,plain,plain,plain,destinyhosted,https://public.destinyhosted.com/agenda_publish.cfm?id=56691,https://knoxcounty.org,none,,0.7,,False,
+1:4806022,Irricana,AB,ca,municipality,1179,townofirricana.ca,no-platform-link-found,plain,plain,dead,,,https://townofirricana.ca,none,"reached, hop links checked, no platform link found",35.9,,False,
+38:3660422,Quogue village,NY,us,municipality,1697,quoguefiredeptny.gov,no-platform-link-found,plain,plain,plain,youtube,https://youtu.be/4EsL9BAFseY,https://www.quoguefiredeptny.gov/,cloudflare,,0.7,,False,
+38:1865520,Rockville town,IN,us,municipality,2589,rockvilleindiana.org,no-platform-link-found,plain,plain,dead,,,https://rockvilleindiana.org,cloudflare,"reached, hop links checked, no platform link found",3.0,,False,
+37:4201178752,Upper Bern township,PA,us,township,,upperberntownship.org,no-platform-link-found,plain,plain,dead,,,https://upperberntownship.org,none,"reached, hop links checked, no platform link found",25.0,,False,
+1:2411030,Sainte-Françoise,QC,ca,municipality,426,www.ste-francoise.qc.ca,no-platform-link-found,plain,plain,dead,,,https://www.ste-francoise.qc.ca,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+38:2682450,Village of Clarkston city,MI,us,municipality,922,villageofclarkston.org,no-platform-link-found,plain,plain,dead,,,https://villageofclarkston.org,none,"reached, hop links checked, no platform link found",17.7,,False,
+38:5549450,Markesan city,WI,us,municipality,1385,markesanwi.gov,no-platform-link-found,plain,plain,dead,,,https://www.markesanwi.gov/,none,"reached, hop links checked, no platform link found",19.1,,False,
+38:2705680,Big Falls city,MN,us,municipality,171,bigfalls.govoffice.com,no-platform-link-found,plain,plain,dead,,,https://bigfalls.govoffice.com,none,"reached, hop links checked, no platform link found",17.6,,False,
+38:4602180,Arlington city,SD,us,municipality,926,arlingtonsd.com,no-platform-link-found,plain,plain,dead,,,https://arlingtonsd.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+38:3846540,Lignite city,ND,us,municipality,134,lignitend.com,no-platform-link-found,plain,plain,dead,,,https://lignitend.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.8,,False,
+37:3300358740,Ossipee town,NH,us,township,,ossipee.org,no-platform-link-found,plain,plain,dead,,,https://www.ossipee.org/,cloudflare,"reached, hop links checked, no platform link found",21.3,,False,
+36:13207,Monroe County,GA,us,county,31437,monroecountygeorgia.com,no-platform-link-found,plain,plain,plain,youtube,https://youtube.com/live/KfvZvHpw5v8?feature=share,https://www.monroecoga.org/,none,,2.0,,False,
+1:4706021,Pense No. 160,SK,ca,municipality,441,www.pense160.ca,no-platform-link-found,challenge,challenge,challenge,,,https://payment.optionpay.ca/rm-of-pense-no-160/index.php,cloudflare,,13.7,,False,
+38:5462356,Pax town,WV,us,municipality,120,local.wv.gov,no-platform-link-found,plain,plain,dead,,,https://local.wv.gov/Pages/default.aspx,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.8,,False,
+1:4808042,Parkland Beach,AB,ca,municipality,168,parklandbeachsv.ca,no-platform-link-found,plain,plain,dead,,,https://parklandbeachsv.ca,cloudflare,"reached, hop links checked, no platform link found",7.0,,False,
+37:2702151172,Pine Lake township,MN,us,township,,pinelaketownshipotcmn.gov,no-platform-link-found,plain,plain,dead,,,https://www.pinelaketownshipotcmn.gov/,cloudflare,"reached, hop links checked, no platform link found",2.9,,False,
+37:2502350145,Norwell town,MA,us,township,,www.townofnorwell.net,no-platform-link-found,plain,plain,plain,cablecast,https://reflect-nstv.cablecast.tv/CablecastPublicSite/show/3933?site=2,https://townofnorwell.net/government/agendas___minutes/board_of_appeals.php,none,,13.7,,False,
+1:2480145,Bowman,QC,ca,municipality,667,www.bowman.ca,no-platform-link-found,plain,plain,dead,,,https://www.bowman.ca,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.7,,False,
+38:2824940,Flora town,MS,us,municipality,1648,florams.com,no-platform-link-found,plain,plain,dead,,,https://www.florams.com/,none,"reached, hop links checked, no platform link found",28.2,,False,
+37:2616377360,Sumpter township,MI,us,township,,www.sumptertwp.com,no-platform-link-found,plain,plain,plain,youtube,https://youtu.be/9ixZD5zVQJ4,https://www.sumptertwp.org/government/agendas_minutes.php,none,,3.3,,False,
+37:2600515200,Cheshire township,MI,us,township,,cheshiretownshipmi.gov,no-platform-link-found,plain,plain,plain,youtube,https://youtu.be/qb-MmByiU9U?si=HPdbjE1_tfIHuu41,https://cheshiretownshipmi.gov/permits.html,none,,13.2,,False,
+38:4269416,Sewickley Hills borough,PA,us,municipality,687,sewickleyhills.com,no-platform-link-found,plain,plain,dead,,,https://sewickleyhills.com,none,"reached, hop links checked, no platform link found",18.6,,False,
+38:4659940,South Shore town,SD,us,municipality,190,southshore-sd.com,no-platform-link-found,plain,plain,dead,,,https://www.southshore-sd.com/,none,"reached, hop links checked, no platform link found",7.3,,False,
+38:3422890,Far Hills borough,NJ,us,municipality,935,farhillsnj.org,no-platform-link-found,plain,plain,dead,,,https://farhillsnj.org,none,"reached, hop links checked, no platform link found",17.6,,False,
+38:2631000,Fruitport village,MI,us,municipality,1165,villageoffruitport.com,no-platform-link-found,plain,plain,dead,,,https://villageoffruitport.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.8,,False,
+37:2500316180,Dalton town,MA,us,township,,www.dalton-ma.gov,no-platform-link-found,plain,plain,plain,youtube,http://youtube.com/shorts/EOhEN5HJcR0?si=tW8Suxx_7et64Nc_,https://dalton-ma.gov/watch-the-earth-week-video-created-by-wahconah-green-umbrella/,none,,13.6,,False,
+38:4243944,Littlestown borough,PA,us,municipality,4917,littlestownboro.org,no-platform-link-found,plain,plain,dead,,,https://littlestownboro.org,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+1:2488075,Trécesson,QC,ca,municipality,1232,www.municipalitedetrecesson.com,no-platform-link-found,plain,plain,dead,,,https://www.municipalitedetrecesson.com,none,"reached, hop links checked, no platform link found",2.6,,False,
+38:4103200,Athena city,OR,us,municipality,1184,cityofathena.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofathena.com/,cloudflare,"reached, hop links checked, no platform link found",16.0,,False,
+38:4739140,Kenton town,TN,us,municipality,1250,cityofkentontn.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCJJZY2Z5ZefXk5a3Ib4CZJA,https://obioncounty.org/discover-obion-county/major-towns/kenton,none,,12.0,,False,
+38:0834960,Haxtun town,CO,us,municipality,967,townofhaxtun.colorado.gov,no-platform-link-found,plain,plain,dead,,,https://townofhaxtun.colorado.gov,none,"reached, hop links checked, no platform link found",6.6,,False,
+37:2302573845,Starks town,ME,us,township,,starksme.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@networksolutions,https://www.networksolutions.com/typepad?siteID=100&channelID=P99C100S653N0B5A1D0E0000V111,cloudflare,,7.3,,False,
+37:2600516720,Clyde township,MI,us,township,,www.clydetwp.com,no-platform-link-found,plain,plain,dead,,,https://www.clydetwp.com,none,"reached, hop links checked, no platform link found",17.0,,False,
+38:2766424,Utica city,MN,us,municipality,266,cityofuticamn.gov,no-platform-link-found,plain,plain,dead,,,https://www.cityofuticamn.gov/,cloudflare,"reached, hop links checked, no platform link found",18.0,,False,
+1:2452090,Saint-Didace,QC,ca,municipality,688,www.saint-didace.com,no-platform-link-found,plain,plain,dead,,,https://saint-didace.com/,none,"reached, hop links checked, no platform link found",10.5,,False,
+38:4903950,Bear River City city,UT,us,municipality,901,bearrivercityutah.gov,no-platform-link-found,plain,plain,dead,,,https://www.bearrivercityutah.gov/,cloudflare,"reached, hop links checked, no platform link found",18.5,,False,
+37:2606171840,Schoolcraft township,MI,us,township,,www.schoolcrafttownship.net,no-platform-link-found,plain,plain,dead,,,https://www.schoolcrafttownship.net,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+36:21235,Whitley County,KY,us,county,37233,whitleycountyfiscalcourt.com,no-platform-link-found,plain,plain,dead,,,https://whitleycountyfiscalcourt.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+1:4808004,Delburne,AB,ca,municipality,919,delburne.ca,no-platform-link-found,plain,plain,dead,,,https://www.delburne.ca/,none,"reached, hop links checked, no platform link found",31.2,,False,
+38:4635100,Lake Andes city,SD,us,municipality,692,lakeandes.com,no-platform-link-found,plain,plain,dead,,,https://lakeandes.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.8,,False,
+38:5161336,Pembroke town,VA,us,municipality,1135,pembrokeva.org,no-platform-link-found,plain,plain,dead,,,https://pembrokeva.org,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.9,,False,
+38:1865808,Rome City town,IN,us,municipality,1315,townofromecity.org,no-platform-link-found,plain,plain,dead,,,https://townofromecity.org,none,"reached, hop links checked, no platform link found",5.1,,False,
+38:4011050,Calumet town,OK,us,municipality,506,townofcalumetok.com,no-platform-link-found,plain,plain,dead,,,https://townofcalumetok.com,none,"reached, hop links checked, no platform link found",44.3,,False,
+38:4065400,Sapulpa city,OK,us,municipality,23297,sapulpaok.gov,no-platform-link-found,plain,plain,dead,,,https://www.sapulpaok.gov/,none,"reached, hop links checked, no platform link found",19.4,,False,
+1:4803008,Hill Spring,AB,ca,municipality,168,hillspring.ca,no-platform-link-found,plain,plain,dead,,,https://hillspring.ca,none,"reached, hop links checked, no platform link found",15.5,,False,
+38:1905365,Bedford city,IA,us,municipality,1474,bedfordia.org,no-platform-link-found,plain,plain,dead,,,https://www.bedfordia.org/,cloudflare,"reached, hop links checked, no platform link found",41.1,,False,
+1:4701031,Browning No. 34,SK,ca,municipality,355,www.rmofbrowning.ca,no-platform-link-found,plain,plain,dead,,,https://www.rmofbrowning.ca,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",5.0,,False,
+37:2501179110,Whately town,MA,us,township,,www.whately.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@fcatgovernment,https://www.whately.org,none,,0.4,,False,
+38:2245040,Logansport town,LA,us,municipality,1333,townoflogansport.com,no-platform-link-found,plain,plain,dead,,,https://townoflogansport.com,none,"reached, hop links checked, no platform link found",18.3,,False,
+36:47047,Fayette County,TN,us,county,44476,fayettecountytn.gov,no-platform-link-found,plain,plain,dead,,,https://fayettecountytn.gov,cloudflare,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.7,,False,
+38:0501060,Alpena town,AR,us,municipality,390,townofalpena.gov,no-platform-link-found,plain,plain,dead,,,https://www.townofalpena.gov/,none,"reached, hop links checked, no platform link found",6.7,,False,
+38:4276560,Thornburg borough,PA,us,municipality,449,thornburgborough.org,no-platform-link-found,plain,plain,dead,,,https://thornburgborough.org,none,"reached, hop links checked, no platform link found",31.0,,False,
+38:2129080,Fredonia city,KY,us,municipality,373,fredoniaky.com,no-platform-link-found,plain,plain,dead,,,https://fredoniaky.com,cloudflare,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.6,,False,
+38:3710980,Catawba town,NC,us,municipality,729,www.townofcatawbanc.org,no-platform-link-found,plain,plain,dead,,,https://www.townofcatawbanc.org,none,"reached, hop links checked, no platform link found",17.5,,False,
+37:2607762960,Pavilion township,MI,us,township,,paviliontwpmi.gov,no-platform-link-found,plain,plain,dead,,,https://www.paviliontwpmi.gov/,cloudflare,"reached, hop links checked, no platform link found",3.1,,False,
+37:2603949520,Lovells township,MI,us,township,,www.lovellstownship.com,no-platform-link-found,plain,plain,dead,,,https://www.lovellstownship.com,cloudflare,"reached, hop links checked, no platform link found",16.8,,False,
+1:4804001,Acadia No. 34,AB,ca,municipality,494,mdacadia.ab.ca,no-platform-link-found,plain,plain,dead,,,https://mdacadia.ab.ca,none,"reached, hop links checked, no platform link found",17.1,,False,
+38:4237192,Irvona borough,PA,us,municipality,531,irvonaborough.com,no-platform-link-found,plain,plain,plain,youtube,https://youtube.com/@dewi11Channel,https://folderland.com,cloudflare,,1.3,,False,
+38:1714715,Clay City village,IL,us,municipality,819,claycityillinois.com,no-platform-link-found,plain,plain,dead,,,https://claycityillinois.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.6,,False,
+36:05073,Lafayette County,AR,us,county,6015,lafayettecounty.arkansas.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/ArkansasTourism,https://www.arkansas.com/experiences/discover/event-calendar,none,,3.7,,False,
+37:2606911740,Burleigh township,MI,us,township,,www.burleightownship.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/WordPressdotcom,https://wordpress.com/?ref=footer_custom_powered,none,,10.3,,False,
+38:0609710,Calexico city,CA,us,municipality,38744,calexico.ca.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@CalexicoCityHall/videos,https://www.calexico.ca.gov/,none,,0.7,,False,
+38:3916532,Coldwater village,OH,us,municipality,4729,coldwaterohio.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://coldwaterohio.gov; dns-fail on https://www.coldwaterohio.gov; dns-fail on http://coldwaterohio.gov,4.1,,False,
+38:0619612,Dos Palos city,CA,us,municipality,5759,dospalos.gov,no-platform-link-found,plain,plain,dead,,,https://dospalos.gov,cloudflare,"reached, hop links checked, no platform link found",38.0,,False,
+37:3300961060,Piermont town,NH,us,township,,townofpiermontnh.org,no-platform-link-found,blocked-browser-headers,none,dead,,,,none,403 under both plain and browser headers,2.4,,False,
+37:2603708400,Bingham township,MI,us,township,,www.binghamtownship.org,no-platform-link-found,plain,plain,dead,,,https://binghamtownship.org,cloudflare,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.4,,False,
+37:5513139325,Kewaskum town,WI,us,township,,townofkewaskumwi.gov,no-platform-link-found,plain,plain,dead,,,https://townofkewaskumwi.gov,cloudflare,"reached, hop links checked, no platform link found",19.8,,False,
+38:1968070,Rockford city,IA,us,municipality,722,rockfordiowa.org,no-platform-link-found,plain,plain,dead,,,https://rockfordiowa.org,cloudflare,"reached, hop links checked, no platform link found",14.7,,False,
+38:2058100,Quenemo city,KS,us,municipality,287,cityofquenemo.com,no-platform-link-found,plain,plain,dead,,,https://cityofquenemo.com,none,"reached, hop links checked, no platform link found",16.9,,False,
+38:2956144,Paris city,MO,us,municipality,1177,parismo.gov,no-platform-link-found,plain,plain,dead,,,https://parismo.gov,none,"reached, hop links checked, no platform link found",11.1,,False,
+37:4212572176,South Franklin township,PA,us,township,,southfranklintwp.org,no-platform-link-found,plain,plain,dead,,,https://southfranklintwp.org,cloudflare,"reached, hop links checked, no platform link found",17.3,,False,
+1:4802038,Rosemary,AB,ca,municipality,370,rosemary.ca,no-platform-link-found,plain,plain,plain,direct_file,https://www.rosemary.ca/wp-content/uploads/Rosemary-Farm-Video-2021.mov,https://www.rosemary.ca/index.php/residential/,none,,15.8,,False,True
+38:1948585,Mallard city,IA,us,municipality,255,mallardiowa.com,no-platform-link-found,timeout,dead,dead,,,,none,,19.8,,False,
+38:4247544,Marklesburg borough,PA,us,municipality,181,marklesburgborough.com,no-platform-link-found,plain,plain,dead,,,https://marklesburgborough.com,none,"reached, hop links checked, no platform link found",32.5,,False,
+1:2422005,Sainte-Catherine-de-la-Jacques-Cartier,QC,ca,municipality,8442,www.villescjc.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UC76RUNpYiT6LWXGk7esuE8w,https://www.villescjc.com,none,,1.0,,False,
+38:5117504,Clinchco town,VA,us,municipality,230,clinchcova.net,no-platform-link-found,plain,plain,dead,,,https://clinchcova.net,none,"reached, hop links checked, no platform link found",24.0,,False,
+38:2871320,Sturgis town,MS,us,municipality,204,townofsturgisms.com,no-platform-link-found,plain,plain,dead,,,https://www.townofsturgisms.com/,none,"reached, hop links checked, no platform link found",6.3,,False,
+1:2416013,Baie-Saint-Paul,QC,ca,municipality,7371,www.baiesaintpaul.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@VilledeBaieSaintPaul,https://www.baiesaintpaul.com,none,,0.9,,False,
+1:2418070,Saint-Antoine-de-l'Isle-aux-Grues,QC,ca,municipality,122,www.isle-aux-grues.com,no-platform-link-found,plain,plain,dead,,,https://www.isle-aux-grues.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+38:5553325,Mishicot village,WI,us,municipality,1423,mishicot.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/bNdCf9Hwh3g?si=d04hgEqevpyGuKgu,https://www.mishicot.org/best-small-towns-to-live-in-california/,cloudflare,,3.0,,False,
+38:4159650,Prairie City city,OR,us,municipality,817,prairiecityor.gov,no-platform-link-found,plain,plain,dead,,,https://prairiecityor.gov,none,"reached, hop links checked, no platform link found",12.1,,False,
+38:2606460,Bear Lake village,MI,us,municipality,327,villageofbearlakemi.gov,no-platform-link-found,timeout,dead,dead,,,,none,,10.9,,False,
+38:1711527,Carthage city,IL,us,municipality,2431,carthage-il.com,no-platform-link-found,plain,plain,dead,,,https://carthage-il.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.6,,False,
+38:0853120,Naturita town,CO,us,municipality,481,townofnaturita.org,no-platform-link-found,plain,plain,dead,,,https://townofnaturita.org,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+1:2484055,Otter Lake,QC,ca,municipality,1041,www.otterlakequebec.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@securiteinterieure_qc,https://www.quebec.ca/gouvernement/ministeres-organismes/securite-interieure,none,,20.1,,False,
+1:4623047,Lynn Lake,MB,ca,municipality,579,www.lynnlake.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/j6j1UXUSCZo?ecver=2,https://www.lynnlake.ca/p/town-history,none,,14.0,,False,
+38:1885598,Worthington town,IN,us,municipality,1406,townofworthington.in.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@GovBraun,https://www.in.gov/gov/,none,,2.8,,False,
+38:1954705,Mount Pleasant city,IA,us,municipality,8509,cityofmountpleasantiowa.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/iowadnr,https://www.iowadnr.gov/places-go/state-parks?ParkID=610109,cloudflare,,12.3,,False,
+37:3603381215,Westville town,NY,us,township,,townofwestvilleny.gov,no-platform-link-found,plain,plain,dead,,,https://www.townofwestvilleny.gov/,none,"reached, hop links checked, no platform link found",2.9,,False,
+37:3403300880,Alloway township,NJ,us,township,,allowaytownship.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/R7N5a476DKQ?feature=oembed,https://allowaytownship.com/convenience-center-trash-recycling,none,,16.6,,False,
+1:2491025,Roberval,QC,ca,municipality,9840,www.roberval.ca,no-platform-link-found,plain,plain,dead,direct_file,https://cdn.prod.website-files.com/6080273d177cf16167a969fc/614cb05d05a9cb1b5126c8de_Ville de Roberval - Basse qualité pour site web-transcode.mp4,https://www.roberval.ca,cloudflare,direct_file hit rejected as implausible (different domain than www.roberval.ca): https://cdn.prod.website-files.com/6080273d177cf16167a969fc/614cb05d05a9cb1b5126c8de_Ville de Roberval - Basse qualité pour site web-transcode.mp4,0.5,,False,False
+38:1956550,New Vienna city,IA,us,municipality,384,newviennaiowa.com,no-platform-link-found,plain,plain,dead,,,https://newviennaiowa.com,none,"reached, hop links checked, no platform link found",11.4,,False,
+37:2501576380,Westhampton town,MA,us,township,,www.westhampton-ma.com,no-platform-link-found,challenge,challenge,challenge,,,https://www.westhamptonma.gov,cloudflare,,0.9,,False,
+38:2003250,Auburn city,KS,us,municipality,1272,auburnks.com,no-platform-link-found,plain,plain,dead,,,https://www.auburnks.com/,none,"reached, hop links checked, no platform link found",14.6,,False,
+37:3601965211,Saranac town,NY,us,township,,townofsaranac.gov,no-platform-link-found,plain,plain,dead,,,https://townofsaranac.gov,none,"reached, hop links checked, no platform link found",15.2,,False,
+38:4157650,Pilot Rock city,OR,us,municipality,1313,cityofpilotrock.org,no-platform-link-found,plain,plain,dead,,,https://www.cityofpilotrock.org/,cloudflare,"reached, hop links checked, no platform link found",16.2,,False,
+36:47085,Humphreys County,TN,us,county,19554,humphreyscountytn.gov,no-platform-signature,plain,plain,dead,,,https://www.humphreyscountytn.gov/,none,"reached, hop links checked, no platform link found",17.4,,False,
+37:4207779160,Upper Milford township,PA,us,township,,uppermilford.net,no-platform-link-found,plain,plain,plain,direct_file,https://drive.google.com/file/d/1gpFDhbBkHlhS1tXOcrd7sBbH-y7G68Ad/view?usp=drive_link,https://uppermilford.net,none,,0.5,,False,True
+1:2438028,Manseau,QC,ca,municipality,807,www.manseau.ca,no-platform-link-found,plain,plain,dead,,,https://www.manseau.ca,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.5,,False,
+38:1201750,Arcadia city,FL,us,municipality,7974,arcadia-fl.gov,no-platform-link-found,plain,plain,dead,,,https://arcadia-fl.gov,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.8,,False,
+38:4222888,Eldred borough,PA,us,municipality,727,eldredborough.jimdofree.com,no-platform-link-found,plain,plain,dead,,,https://eldredborough.jimdofree.com,cloudflare,"reached, hop links checked, no platform link found",11.5,,False,
+38:2029875,Hanover city,KS,us,municipality,696,cityofhanoverks.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofhanoverks.com/,none,"reached, hop links checked, no platform link found",16.9,,False,
+36:27029,Clearwater County,MN,us,county,8630,co.clearwater.mn.us,no-platform-link-found,plain,plain,dead,,,https://co.clearwater.mn.us,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+36:48149,Fayette County,TX,us,county,25488,co.fayette.tx.us,no-platform-link-found,plain,plain,dead,,,https://co.fayette.tx.us,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.6,,False,
+37:2615785280,Wells township,MI,us,township,,www.wellstwp.org,no-platform-link-found,challenge,challenge,challenge,,,https://www.wellstwp.org,cloudflare,,0.3,,False,
+38:0218510,Deering city,AK,us,municipality,162,nana.com,no-platform-link-found,plain,plain,dead,,,https://www.nana.com/,cloudflare,"reached, hop links checked, no platform link found",2.9,,False,
+38:3944310,Lockbourne village,OH,us,municipality,232,lockbourneohio.us,no-platform-link-found,plain,plain,dead,,,https://www.lockbourneohio.us/,none,"reached, hop links checked, no platform link found",21.4,,False,
+37:2607536400,Hanover township,MI,us,township,,www.hanover-twp.org,no-platform-link-found,plain,plain,dead,,,https://www.hanover-twp.org,none,"reached, hop links checked, no platform link found",12.1,,False,
+38:0409690,Camp Verde town,AZ,us,municipality,12608,campverde.az.gov,no-platform-link-found,plain,plain,plain,direct_file,https://campverde.az.gov/government/town_council/Documents/Government/Town Council/Agendas and Minutes/2026/More/02-11-2026 Special Session Meeting Recording Part 2.m4a?t=202606030306150,https://campverde.az.gov/government/town_council/agendas_minutes.php,none,,2.9,,False,True
+37:1701946149,Mahomet township,IL,us,township,,mahomettownship.org,no-platform-link-found,plain,plain,dead,,,https://mahomettwp.gov/,none,"reached, hop links checked, no platform link found",15.4,,False,
+37:1711164096,Riley township,IL,us,township,,rileytwp.com,no-platform-link-found,plain,plain,dead,,,https://rileytwp.com,none,"reached, hop links checked, no platform link found",9.2,,False,
+38:3664749,Salamanca city,NY,us,municipality,5757,salamancany.gov,no-platform-link-found,plain,plain,dead,,,https://www.salamancany.gov/,cloudflare,"reached, hop links checked, no platform link found",19.0,,False,
+1:4705073,Cana No. 214,SK,ca,municipality,904,rmofcana.ca,no-platform-link-found,plain,plain,dead,,,https://rmofcana.ca,none,"reached, hop links checked, no platform link found",2.7,,False,
+37:3601906761,Black Brook town,NY,us,township,,blackbrookny.gov,no-platform-link-found,plain,plain,dead,direct_file,https://cdn.prod.website-files.com/5f21db5c75a245c233530afa/5f21eaadccfa4ef9a8491a5a_bb reel_1-transcode.mp4,https://www.blackbrookny.gov/,cloudflare,direct_file hit rejected as implausible (different domain than blackbrookny.gov): https://cdn.prod.website-files.com/5f21db5c75a245c233530afa/5f21eaadccfa4ef9a8491a5a_bb reel_1-transcode.mp4,0.8,,False,False
+36:18133,Putnam County,IN,us,county,37804,co.putnam.in.us,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCNI80fceQ-8gUHQV-MrtEUw,https://co.putnam.in.us,none,,0.4,,False,
+38:4714980,Church Hill city,TN,us,municipality,7310,churchhilltn.gov,no-platform-link-found,plain,plain,dead,,,https://churchhilltn.gov,none,"reached, hop links checked, no platform link found",17.1,,False,
+38:5501150,Allouez village,WI,us,municipality,13923,villageofallouezwi.gov,no-platform-link-found,plain,plain,dead,,,https://www.villageofallouezwi.gov/,none,"reached, hop links checked, no platform link found",30.9,,False,
+38:2042800,Lorraine city,KS,us,municipality,130,ellsworthcounty.net,no-platform-link-found,plain,plain,dead,,,https://ellsworthcounty.net,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.3,,False,
+37:3601731148,Guilford town,NY,us,township,,guilfordny.gov,no-platform-link-found,plain,plain,dead,,,https://guilfordny.gov,cloudflare,"reached, hop links checked, no platform link found",31.9,,False,
+36:17129,Menard County,IL,us,county,11963,menardcountyil.gov,no-platform-link-found,plain,plain,dead,,,https://menardcountyil.gov,none,"reached, hop links checked, no platform link found",19.4,,False,
+36:13119,Franklin County,GA,us,county,25208,franklincountyga.com,no-platform-link-found,plain,plain,plain,civicplus,https://www.franklincountyga.gov/agendacenter,https://www.franklincountyga.gov/,cloudflare,,1.4,,False,
+38:4267648,Saltsburg borough,PA,us,municipality,768,visitsaltsburg.com,no-platform-link-found,plain,plain,dead,,,https://visitsaltsburg.com,cloudflare,"reached, hop links checked, no platform link found",20.3,,False,
+38:1744160,Livingston village,IL,us,municipality,749,villageoflivingston.us,no-platform-link-found,plain,plain,dead,,,https://villageoflivingston.us,cloudflare,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.6,,False,
+1:2480140,Val-des-Bois,QC,ca,municipality,920,www.val-des-bois.ca,no-platform-link-found,plain,plain,plain,direct_file,https://val-des-bois.ca/wp-content/uploads/2021/04/video-placeholder.mp4,https://val-des-bois.ca/,none,,1.0,,False,True
+38:4830632,Grapeland city,TX,us,municipality,1491,grapeland.com,no-platform-link-found,plain,plain,dead,,,https://grapeland.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+1:2475017,Saint-Jérôme,QC,ca,municipality,80213,www.vsj.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UC0H4RMULelDIF0vXSGvNZCw,https://www.vsj.ca,cloudflare,,0.6,,False,
+36:48287,Lee County,TX,us,county,18451,leecountytx.gov,no-platform-link-found,plain,plain,plain,youtube,https://youtu.be/aI1sBglyCO8,https://leecountytx.gov/meeting-agendas/,none,,11.0,,False,
+37:2601901640,Almira township,MI,us,township,,almiratownshipmi.gov,no-platform-link-found,plain,plain,dead,,,https://almiratownshipmi.gov,none,"reached, hop links checked, no platform link found",22.6,,False,
+1:2462037,Rawdon,QC,ca,municipality,11719,www.rawdon.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCn0bZ_vwjj2sNZH6nx4SNjg,https://rawdon.ca/,none,,1.1,,False,
+37:3400512670,Chesterfield township,NJ,us,township,,www.chesterfieldtwpnj.gov,no-platform-link-found,plain,plain,plain,civicplus,https://chesterfieldtownshipnj2-staging.civicpluswebopen.com/community/page/local-business-directory,https://www.chesterfieldtwpnj.gov,cloudflare,,1.5,,False,
+1:6104009,Fort Liard,NT,ca,municipality,468,fortliard.com,no-platform-link-found,plain,plain,dead,,,https://fortliard.com,none,"reached, hop links checked, no platform link found",7.3,,False,
+36:18121,Parke County,IN,us,county,16508,parkecounty-in.gov,no-platform-link-found,plain,plain,dead,,,https://parkecounty-in.gov,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",3.0,,False,
+1:4715071,Kinistino No. 459,SK,ca,municipality,604,www.rmkinistino.ca,no-platform-link-found,plain,plain,dead,,,https://www.rmkinistino.ca/home,none,"reached, hop links checked, no platform link found",11.5,,False,
+38:4827804,Fruitvale city,TX,us,municipality,521,cityoffruitvaletx.org,no-platform-link-found,plain,plain,dead,,,https://www.cityoffruitvaletx.org/,none,"reached, hop links checked, no platform link found",7.7,,False,
+38:3956182,North Bend village,OH,us,municipality,834,northbendohio.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UC2ARv2z6HHD1JrB3tdaWrlA/videos,https://www.northbendohio.org/meetings-minutes,none,,3.4,,False,
+1:4708012,Tompkins,SK,ca,municipality,153,www.tompkins.ca,no-platform-link-found,plain,plain,dead,,,https://www.tompkins.ca,none,"reached, hop links checked, no platform link found",7.5,,False,
+1:2407025,Albertville,QC,ca,municipality,239,www.municipalite-albertville.ca,no-platform-link-found,plain,plain,dead,,,https://www.municipalite-albertville.ca,none,"reached, hop links checked, no platform link found",18.4,,False,
+38:2467400,Rock Hall town,MD,us,municipality,1200,rockhallmd.gov,no-platform-link-found,plain,plain,plain,townhallstreams,https://www.townhallstreams.com/index.php,https://www.townhallstreams.com/towns/rock_hall_md,none,,22.5,,False,
+38:3650705,New Square village,NY,us,municipality,9973,newsquare-ny.gov,no-platform-link-found,plain,plain,dead,,,https://newsquare-ny.gov,cloudflare,"reached, hop links checked, no platform link found",17.2,,False,
+38:2075950,Waterville city,KS,us,municipality,650,cityofwatervilleks.org,no-platform-link-found,plain,plain,dead,,,https://cityofwatervilleks.org,none,"reached, hop links checked, no platform link found",18.7,,False,
+37:2600136880,Harrisville township,MI,us,township,,www.harrisvilletownship.com,no-platform-link-found,plain,plain,dead,,,https://harrisvilletownship.com/,none,"reached, hop links checked, no platform link found",10.3,,False,
+1:4806024,Beiseker,AB,ca,municipality,754,beiseker.com,no-platform-link-found,plain,plain,plain,direct_file,https://beiseker.com/wp-content/uploads/2022/05/Beiseker-Homepage-Video.mp4,https://beiseker.com,cloudflare,,0.4,,False,True
+38:1354656,Newborn town,GA,us,municipality,752,newbornga.com,no-platform-link-found,plain,plain,dead,,,https://www.newbornga.com/,none,"reached, hop links checked, no platform link found",9.7,,False,
+38:0810105,Buena Vista town,CO,us,municipality,3127,chaffeecoco.portal.civicclerk.com,no-platform-link-found,plain,plain,dead,,,https://chaffeecoco.portal.civicclerk.com,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.7,,False,
+37:1711534527,Hickory Point township,IL,us,township,,hickorypointwp.com,no-platform-link-found,plain,plain,dead,,,https://www.hickorypointwp.com/,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",4.8,,False,
+38:4832840,Hawley city,TX,us,municipality,581,cityofhawley.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofhawley.com/,cloudflare,"reached, hop links checked, no platform link found",19.5,,False,
+38:3465160,Runnemede borough,NJ,us,municipality,8425,runnemedenj.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@BoroughofRunnemede,https://runnemedenj.org,none,,1.7,,False,
+38:3626704,Fort Ann village,NY,us,municipality,472,townoffortannny.gov,no-platform-link-found,plain,plain,plain,civicplus,http://www.washingtoncountyny.gov/AgendaCenter/Planning-Board-7,https://www.townoffortannny.gov/planning-board.html,cloudflare,,11.8,,False,
+38:3619356,Cuba village,NY,us,municipality,1504,cubany.gov,no-platform-link-found,challenge,challenge,challenge,,,https://beacon.schneidercorp.com/Application.aspx?App=AlleganyCountyNY&PageType=Search,cloudflare,,15.0,,False,
+38:4833968,Hill Country Village city,TX,us,municipality,949,hcv.org,no-platform-link-found,plain,plain,dead,,,https://hcv.org,sucuri,"reached, hop links checked, no platform link found",24.3,,False,
+38:4721400,Dover city,TN,us,municipality,1893,dovertn.com,no-platform-link-found,plain,plain,plain,vimeo,https://player.vimeo.com/video/176518146?autoplay=1&loop=1,https://www.dovertn.com/,none,,0.6,,False,
+36:28003,Alcorn County,MS,us,county,34228,alcorncountyms.gov,no-platform-signature,plain,plain,dead,,,https://alcorncountyms.gov,none,"headless failed: Error: BrowserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝",2.9,,False,
+38:4060350,Poteau city,OK,us,municipality,9111,poteau-ok.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/travelok,https://www.travelok.com/listings/search/5?city=poteau,none,,15.1,,False,
+38:3946998,Malvern village,OH,us,municipality,1096,villageofmalvern.net,no-platform-link-found,timeout,dead,dead,,,,none,,19.9,,False,
+37:4209561088,Plainfield township,PA,us,township,,plainfieldtownship.org,no-platform-link-found,plain,plain,dead,,,https://plainfieldtownship.org,none,"reached, hop links checked, no platform link found",17.4,,False,
+1:2483090,Aumond,QC,ca,municipality,754,www.aumond.ca,no-platform-link-found,plain,plain,plain,direct_file,https://www.aumond.ca/images/videoaccueil3.mp4,https://www.aumond.ca,none,,0.9,,False,True
+1:2433123,Leclercville,QC,ca,municipality,491,www.munleclercville.qc.ca,no-platform-link-found,plain,plain,dead,,,https://www.munleclercville.qc.ca,cloudflare,"reached, hop links checked, no platform link found",6.0,,False,
+38:2143668,Lakeview Heights city,KY,us,municipality,274,lakeviewheightsky.us,no-platform-link-found,plain,plain,plain,youtube,https://youtube.com/@KARTUBET88,https://lakeviewheightsky.us,cloudflare,,1.5,,False,
+1:2450057,Sainte-Monique,QC,ca,municipality,524,www.sainte-monique.ca,no-platform-link-found,plain,plain,dead,,,https://www.sainte-monique.ca,none,"reached, hop links checked, no platform link found",3.6,,False,
+36:21191,Pendleton County,KY,us,county,14844,pendletoncounty.ky.gov,no-platform-link-found,plain,plain,dead,,,https://pendletoncounty.ky.gov/Pages/index.aspx,none,"reached, hop links checked, no platform link found",24.6,,False,

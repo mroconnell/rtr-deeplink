@@ -1,0 +1,309 @@
+gov_id,name,state,country,gov_kind,population,domain,reject_reason,access_mode,rung_answered,bucket,platform,hit_url,final_url,waf_family,note,elapsed_seconds,exception,final_url_is_youtube,direct_file_plausible
+38:4902740,Aurora city,UT,us,municipality,1053,facebook.com,no-platform-link-found,plain,plain,dead,,,https://www.facebook.com/,none,"reached, hop links checked, no platform link found",18.2,,False,
+37:5512776175,Spring Prairie town,WI,us,township,,townofspringprairiewi.gov,no-platform-link-found,plain,plain,dead,,,https://townofspringprairiewi.gov,cloudflare,"reached, hop links checked, no platform link found",17.5,,False,
+36:29107,Lafayette County,MO,us,county,33511,lafayettecountymo.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com,https://lafayettecountymo.gov,none,,0.3,,False,
+38:3067600,Sheridan town,MT,us,municipality,765,townofsheridanmt.net,no-platform-link-found,plain,plain,dead,,,https://townofsheridanmt.net,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://townofsheridanmt.net/
+Call log:
+  - navigating to ""https://townofsheridanmt.net/"", waiting until ""load""
+",4.4,,False,
+38:2651660,Marion village,MI,us,municipality,798,mariontwpcvxmi.gov,no-platform-link-found,plain,plain,dead,,,https://mariontwpcvxmi.gov,none,"reached, hop links checked, no platform link found",16.9,,False,
+38:1771448,Sparta city,IL,us,municipality,4040,spartaillinois.us,no-platform-link-found,plain,plain,dead,,,https://www.spartaillinois.us/,none,"reached, hop links checked, no platform link found",3.4,,False,
+37:3611378300,Warrensburg town,NY,us,township,,warrensburgny.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCmPz14cOT54xh87DJX_oPxg,https://warrensburgny.gov,none,,0.6,,False,
+38:2906346,Blodgett city,MO,us,municipality,207,cityofblodgett.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofblodgett.com/,none,"reached, hop links checked, no platform link found",11.2,,False,
+38:1772468,Steeleville village,IL,us,municipality,1895,steeleville.org,no-platform-link-found,plain,plain,dead,,,https://www.steeleville.org/,none,"reached, hop links checked, no platform link found",7.4,,False,
+1:2431100,Saint-Jean-de-Brébeuf,QC,ca,municipality,351,st-jean-de-brebeuf.ca,no-platform-link-found,plain,plain,plain,direct_file,https://drive.google.com/file/d/1rla47Oo-mSxKje_J7WoOxBdBqRe4MmI-/view?usp=sharing,https://st-jean-de-brebeuf.ca,none,,0.4,,False,True
+36:29043,Christian County,MO,us,county,96045,christiancountymo.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/l5htgDwHsQo?si=Q7Aldd7Lyas-J5PU,https://www.christiancountymo.gov/,none,,1.2,,False,
+38:0241830,Kotzebue city,AK,us,municipality,2889,cityofkotzebue.gov,no-platform-link-found,challenge,challenge,challenge,,,https://www.cityofkotzebue.gov/meetings,cloudflare,,4.4,,False,
+38:3942476,Leesburg village,OH,us,municipality,1283,leesburgtownshipoh.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/WordPressdotcom,https://wordpress.com/?ref=footer_blog,none,,7.5,,False,
+38:3472480,Teterboro borough,NJ,us,municipality,71,teterboronj.org,no-platform-link-found,plain,plain,dead,,,https://teterboronj.org,none,"reached, hop links checked, no platform link found",53.6,,False,
+38:2153616,Mortons Gap city,KY,us,municipality,724,mortonsgap.ky.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/kygov,https://www.kentucky.gov/policies/Pages/default.aspx,none,,3.9,,False,
+36:28113,Pike County,MS,us,county,38980,pikecountyms.gov,no-platform-signature,plain,plain,dead,,,https://pikecountyms.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://pikecountyms.gov/
+Call log:
+  - navigating to ""https://pikecountyms.gov/"", waiting until ""load""
+",3.6,,False,
+1:4708071,Newcombe No. 260,SK,ca,municipality,356,rmnewcombe.ca,no-platform-link-found,plain,plain,dead,,,https://rmnewcombe.ca,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://rmnewcombe.ca/
+Call log:
+  - navigating to ""https://rmnewcombe.ca/"", waiting until ""load""
+",3.5,,False,
+37:2603377020,Sugar Island township,MI,us,township,,www.sugarislandtownship.org,no-platform-link-found,plain,plain,dead,,,https://www.sugarislandtownship.org,none,"reached, hop links checked, no platform link found",12.4,,False,
+37:4204144984,Lower Mifflin township,PA,us,township,,lowermifflintownship.com,no-platform-link-found,plain,plain,dead,,,https://www.lowermifflintownship.com/,cloudflare,"reached, hop links checked, no platform link found",17.9,,False,
+38:2762788,Stewart city,MN,us,municipality,470,cityofstewart.com,no-platform-link-found,plain,plain,dead,,,https://cityofstewart.com,none,"reached, hop links checked, no platform link found",6.5,,False,
+37:2602352400,Matteson township,MI,us,township,,sites.google.com,no-platform-link-found,plain,plain,dead,,,https://accounts.google.com/v3/signin/identifier?continue=https://sites.google.com/&followup=https://sites.google.com/&osid=1&passive=1209600&service=wise&flowName=WebLiteSignIn&flowEntry=ServiceLogin&dsh=S-1425512934:1789879163785299,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://accounts.google.com/v3/signin/identifier?continue=https://sites.google.com/&followup=https://sites.google.com/&osid=1&passive=1209600&service=wise&flowName=WebLiteSignIn&flowEntry=ServiceLogin&dsh=S-1425512934:1789879163785299
+Call log:
+  - navigating to ""https://accounts.google.com/v3/signin/identifier?continue=https://sites.google.com/&followup=https://sites.google.com/&osid=1&passive=1209600&service=wise&flowName=WebLiteSignIn&flowEntry=ServiceLogin&dsh=S-1425512934:1789879163785299"", waiting until ""load""
+",3.1,,False,
+38:2008475,Bronson city,KS,us,municipality,307,cityofbronson.org,no-platform-link-found,plain,plain,dead,,,https://cityofbronson.org,none,"reached, hop links checked, no platform link found",23.0,,False,
+38:3746060,Navassa town,NC,us,municipality,1776,townofnavassa.org,no-platform-link-found,plain,plain,dead,,,https://townofnavassa.org,none,"reached, hop links checked, no platform link found",17.5,,False,
+38:3627815,Fulton city,NY,us,municipality,11234,fultontown-ny.gov,no-platform-link-found,plain,plain,dead,,,https://fultontown-ny.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://fultontown-ny.gov/
+Call log:
+  - navigating to ""https://fultontown-ny.gov/"", waiting until ""load""
+",3.5,,False,
+38:4649500,Piedmont city,SD,us,municipality,1002,piedmontsd.com,no-platform-link-found,plain,plain,dead,,,https://www.piedmontsd.com/,cloudflare,"reached, hop links checked, no platform link found",18.1,,False,
+37:3300905060,Benton town,NH,us,township,,tobentonnh.org,no-platform-link-found,plain,plain,dead,,,https://www.tobentonnh.org/,cloudflare,"reached, hop links checked, no platform link found",14.1,,False,
+38:1377764,Turin town,GA,us,municipality,590,townofturin.com,no-platform-link-found,plain,plain,dead,,,https://townofturin.com/index.php,none,"reached, hop links checked, no platform link found",8.8,,False,
+38:4026850,Forest Park town,OK,us,municipality,1043,forestparkok.gov,no-platform-link-found,plain,plain,dead,,,https://forestparkok.gov,none,"reached, hop links checked, no platform link found",17.6,,False,
+38:3846460,Lidgerwood city,ND,us,municipality,586,lidgerwoodnd.com,no-platform-link-found,timeout,dead,dead,,,,none,,19.0,,False,
+38:1848402,Mentone town,IN,us,municipality,925,mentonein.gov,no-platform-link-found,plain,plain,dead,,,https://mentonein.gov,none,"reached, hop links checked, no platform link found",7.5,,False,
+38:3424990,Franklin Lakes borough,NJ,us,municipality,11251,franklinlakesnj.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://franklinlakesnj.gov; dns-fail on https://www.franklinlakesnj.gov; dns-fail on http://franklinlakesnj.gov,4.1,,False,
+37:3601126231,Fleming town,NY,us,township,,flemingny.gov,no-platform-link-found,plain,plain,dead,,,https://flemingny.gov,none,"reached, hop links checked, no platform link found",17.1,,False,
+38:4272376,South New Castle borough,PA,us,municipality,636,southnewcastle.com,no-platform-link-found,plain,plain,dead,,,https://www.southnewcastle.com/,cloudflare,"reached, hop links checked, no platform link found",18.0,,False,
+38:2715886,Dexter city,MN,us,municipality,325,dextermn.com,no-platform-link-found,plain,plain,dead,,,https://dextermn.com,none,"reached, hop links checked, no platform link found",13.2,,False,
+38:5584525,Wausaukee village,WI,us,municipality,593,townofwausaukeewi.gov,no-platform-link-found,plain,plain,dead,,,https://townofwausaukee.com/,none,"reached, hop links checked, no platform link found",17.6,,False,
+37:2706144332,Morse township,MN,us,township,,morsemnslc.gov,no-platform-link-found,plain,plain,dead,,,https://www.morsemnslc.gov/,none,"reached, hop links checked, no platform link found",2.6,,False,
+1:2457030,Otterburn Park,QC,ca,municipality,8479,www.opark.ca,no-platform-link-found,plain,plain,dead,,,https://www.opark.ca,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.opark.ca/
+Call log:
+  - navigating to ""https://www.opark.ca/"", waiting until ""load""
+",3.4,,False,
+36:46019,Butte County,SD,us,county,10891,buttesd.gov,no-platform-signature,plain,plain,dead,,,https://www.buttesd.gov/,none,"reached, hop links checked, no platform link found",7.3,,False,
+38:1854954,North Manchester town,IN,us,municipality,5237,nmanchester.org,no-platform-link-found,plain,plain,dead,,,https://nmanchester.org,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://nmanchester.org/
+Call log:
+  - navigating to ""https://nmanchester.org/"", waiting until ""load""
+",4.3,,False,
+38:2941132,Leawood village,MO,us,municipality,634,leawoodvillage.com,no-platform-link-found,plain,plain,dead,,,https://leawoodvillage.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://leawoodvillage.com/
+Call log:
+  - navigating to ""https://leawoodvillage.com/"", waiting until ""load""
+",3.2,,False,
+38:4730120,Gordonsville town,TN,us,municipality,1387,townofgordonsville.com,no-platform-link-found,plain,plain,dead,,,https://townofgordonsville.com,none,"reached, hop links checked, no platform link found",9.0,,False,
+38:4183400,Winston city,OR,us,municipality,5691,cityofwinston.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://cityofwinston.gov; dns-fail on https://www.cityofwinston.gov; dns-fail on http://cityofwinston.gov,4.1,,False,
+38:5474380,Sistersville city,WV,us,municipality,1309,local.wv.gov,no-platform-link-found,plain,plain,dead,,,https://local.wv.gov/Pages/default.aspx,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://local.wv.gov/Pages/default.aspx
+Call log:
+  - navigating to ""https://local.wv.gov/Pages/default.aspx"", waiting until ""load""
+",3.3,,False,
+1:4801009,Foremost,AB,ca,municipality,630,foremostalberta.com,no-platform-link-found,plain,plain,dead,,,https://www.foremostalberta.com/,cloudflare,"reached, hop links checked, no platform link found",17.4,,False,
+38:1047030,Middletown town,DE,us,municipality,25686,middletownde.org,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://middletownde.org; dns-fail on https://www.middletownde.org; dns-fail on http://middletownde.org,4.5,,False,
+37:5503520800,Drammen town,WI,us,township,,townofdrammen-wi.gov,no-platform-link-found,plain,plain,dead,,,https://townofdrammen-wi.gov,cloudflare,"reached, hop links checked, no platform link found",9.0,,False,
+37:2502701885,Ashburnham town,MA,us,township,,www.ashburnham-ma.gov,no-platform-link-found,plain,plain,plain,cablecast,http://cablecast.awcm.org/internetchannel/show/3445?site=10,http://cablecast.awcm.org/internetchannel/?site=10,none,,13.5,,False,
+37:2607388040,Wise township,MI,us,township,,wisetownship.org,no-platform-link-found,plain,plain,dead,,,https://wisetownship.org,none,"reached, hop links checked, no platform link found",3.0,,False,
+37:3300768980,Shelburne town,NH,us,township,,townofshelburnenh.gov,no-platform-link-found,plain,plain,dead,,,https://www.townofshelburnenh.gov/,none,"reached, hop links checked, no platform link found",5.2,,False,
+38:0501210,Altus city,AR,us,municipality,674,altus.ar.totalwebgov.com,no-platform-link-found,plain,plain,dead,,,https://altus.ar.totalwebgov.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://altus.ar.totalwebgov.com/
+Call log:
+  - navigating to ""https://altus.ar.totalwebgov.com/"", waiting until ""load""
+",3.7,,False,
+37:2604513380,Carmel township,MI,us,township,,carmeltownship-mi.gov,no-platform-link-found,plain,plain,dead,,,https://carmeltownship-mi.gov,none,"reached, hop links checked, no platform link found",8.0,,False,
+37:4200327608,Frazer township,PA,us,township,,frazertownship.net,no-platform-link-found,plain,plain,dead,,,https://frazertownship.net,none,"reached, hop links checked, no platform link found",5.2,,False,
+1:4817095,Mackenzie County,AB,ca,municipality,,mackenziecounty.com,no-platform-link-found,plain,plain,dead,,,https://www.mackenziecounty.com/,none,"reached, hop links checked, no platform link found",10.4,,False,
+37:3300545460,Marlborough town,NH,us,township,,marlboroughnh.gov,no-platform-link-found,plain,plain,dead,,,https://www.marlboroughnh.gov/,none,"reached, hop links checked, no platform link found",17.9,,False,
+38:4014200,Choctaw city,OK,us,municipality,12358,mychoctaw.org,no-platform-link-found,plain,plain,dead,,,https://www.mychoctaw.org/,none,"reached, hop links checked, no platform link found",4.0,,False,
+37:5504183025,Wabeno town,WI,us,township,,wabeno.org,no-platform-link-found,plain,plain,dead,,,https://wabeno.org,cloudflare,"reached, hop links checked, no platform link found",17.5,,False,
+1:2462060,Saint-Donat,QC,ca,municipality,5099,www.saint-donat.ca,no-platform-link-found,plain,plain,plain,direct_file,https://www.saint-donat.ca/wp-content/uploads/2023/04/Site_Web_Ete2_1.mp4,https://www.saint-donat.ca,none,,0.6,,False,True
+1:4715038,Alvena,SK,ca,municipality,75,www.facebook.com,no-platform-link-found,plain,plain,dead,,,https://www.facebook.com,none,"reached, hop links checked, no platform link found",16.7,,False,
+38:3843580,Kulm city,ND,us,municipality,363,kulmnd.com,no-platform-link-found,plain,plain,plain,youtube,https://youtu.be/Ze5nSG-wVg0,https://www.kulmnd.com/local-resources.html,cloudflare,,13.7,,False,
+1:2405077,Cascapédia--Saint-Jules,QC,ca,municipality,764,www.cascapediastjules.com,no-platform-link-found,plain,plain,dead,,,https://www.cascapediastjules.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.cascapediastjules.com/
+Call log:
+  - navigating to ""https://www.cascapediastjules.com/"", waiting until ""load""
+",3.7,,False,
+38:3646998,Middleport village,NY,us,municipality,1688,middleportny.gov,no-platform-link-found,plain,plain,dead,,,https://middleportny.gov,cloudflare,"reached, hop links checked, no platform link found",12.8,,False,
+37:5506373125,Shelby town,WI,us,township,,townofshelbywi.gov,no-platform-link-found,plain,plain,dead,,,https://townofshelbywi.gov,none,"reached, hop links checked, no platform link found",17.7,,False,
+38:2859480,Poplarville city,MS,us,municipality,2898,poplarvillems.gov,no-platform-link-found,challenge,challenge,challenge,,,https://www.poplarvillems.gov/,cloudflare,,0.9,,False,
+38:2972034,Sycamore Hills village,MO,us,municipality,548,villageofsycamorehills.com,no-platform-link-found,plain,plain,dead,,,https://villageofsycamorehills.com,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://villageofsycamorehills.com/
+Call log:
+  - navigating to ""https://villageofsycamorehills.com/"", waiting until ""load""
+",8.0,,False,
+1:4817031,Opportunity No. 17,AB,ca,municipality,3382,mdopportunity.ab.ca,no-platform-link-found,plain,plain,dead,,,https://www.mdopportunity.ab.ca/,cloudflare,"reached, hop links checked, no platform link found",19.7,,False,
+38:4811155,Buffalo Springs Lake village,TX,us,municipality,449,buffalospringslake.net,no-platform-link-found,plain,plain,dead,,,https://www.buffalospringslake.net/,none,"reached, hop links checked, no platform link found",8.9,,False,
+38:2940592,Lanagan town,MO,us,municipality,381,cityoflanagan.com,no-platform-link-found,plain,plain,dead,,,https://cityoflanagan.com,cloudflare,"reached, hop links checked, no platform link found",9.6,,False,
+38:4556140,Pickens city,SC,us,municipality,3188,cityofpickens.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://cityofpickens.gov; dns-fail on https://www.cityofpickens.gov; dns-fail on http://cityofpickens.gov,4.3,,False,
+38:2050525,Nickerson city,KS,us,municipality,1052,nickersonks.gov,no-platform-link-found,plain,plain,dead,,,https://nickersonks.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://nickersonks.gov/
+Call log:
+  - navigating to ""https://nickersonks.gov/"", waiting until ""load""
+",3.5,,False,
+38:0256320,Nuiqsut city,AK,us,municipality,486,cityofnuiqsut.org,no-platform-link-found,plain,plain,dead,,,https://cityofnuiqsut.org,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://cityofnuiqsut.org/
+Call log:
+  - navigating to ""https://cityofnuiqsut.org/"", waiting until ""load""
+",3.5,,False,
+38:4805288,Bailey's Prairie village,TX,us,municipality,799,baileysprairie.org,no-platform-link-found,plain,plain,dead,,,https://baileysprairie.org,none,"reached, hop links checked, no platform link found",12.0,,False,
+37:2611184020,Warren township,MI,us,township,,www.warrentownshipmi.com,no-platform-link-found,plain,plain,dead,,,https://www.warrentownshipmi.com,none,"reached, hop links checked, no platform link found",5.1,,False,
+38:3602583,Arkport village,NY,us,municipality,766,villageofarkport.com,no-platform-link-found,plain,plain,dead,,,https://www.villageofarkport.com/,none,"reached, hop links checked, no platform link found",7.1,,False,
+1:4703019,Mankota,SK,ca,municipality,198,www.facebook.com,no-platform-link-found,plain,plain,dead,,,https://www.facebook.com,none,"reached, hop links checked, no platform link found",17.0,,False,
+38:0802355,Antonito town,CO,us,municipality,621,townofantonito.org,no-platform-link-found,plain,plain,dead,,,https://townofantonito.org,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://townofantonito.org/
+Call log:
+  - navigating to ""https://townofantonito.org/"", waiting until ""load""
+",3.7,,False,
+1:2439015,Notre-Dame-de-Ham,QC,ca,municipality,414,www.notre-dame-de-ham.ca,no-platform-link-found,plain,plain,dead,,,https://www.notre-dame-de-ham.ca,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.notre-dame-de-ham.ca/
+Call log:
+  - navigating to ""https://www.notre-dame-de-ham.ca/"", waiting until ""load""
+",4.4,,False,
+37:1703107939,Bremen township,IL,us,township,,brementownship.org,no-platform-link-found,plain,plain,dead,,,https://brementownship.org,none,"reached, hop links checked, no platform link found",31.9,,False,
+38:3634264,Heuvelton village,NY,us,municipality,707,heuveltonny.com,no-platform-link-found,plain,plain,dead,,,https://www.heuveltonny.com/,cloudflare,"reached, hop links checked, no platform link found",17.9,,False,
+37:2601985160,Weldon township,MI,us,township,,www.weldontwp.org,no-platform-link-found,plain,plain,dead,,,https://www.weldontwp.org,none,"reached, hop links checked, no platform link found",15.3,,False,
+38:3775960,Yadkinville town,NC,us,municipality,3026,yadkinville.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/PM8YQb1-RwU?autoplay=0&start=0&rel=0&mute=0,https://www.yadkinville.org/,none,,1.4,,False,
+38:1064320,Seaford city,DE,us,municipality,8952,seafordde.com,no-platform-link-found,plain,plain,dead,,,https://www.seafordde.com/,cloudflare,"reached, hop links checked, no platform link found",95.0,,False,
+38:2928090,Grain Valley city,MO,us,municipality,16859,grainvalleymo.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/results?search_query=city+of+grain+valley,https://www.cityofgrainvalley.org/officials/meetings/,cloudflare,,3.9,,False,
+1:4805002,Carmangay,AB,ca,municipality,269,carmangay.ca,no-platform-link-found,plain,plain,plain,direct_file,https://carmangay.ca/wp-content/uploads/2025/11/November-17-2025-Regular-Meeting.mp3?_=1,https://carmangay.ca/village-council/council-meeting-recordings/,none,,7.1,,False,True
+38:5561025,Palmyra village,WI,us,municipality,1719,villageofpalmyra.com,no-platform-link-found,plain,plain,dead,,,https://villageofpalmyra.com,none,"reached, hop links checked, no platform link found",19.2,,False,
+38:0643140,Loomis town,CA,us,municipality,6939,loomis.ca.gov,no-platform-link-found,plain,plain,dead,,,https://loomis.ca.gov,none,"reached, hop links checked, no platform link found",21.2,,False,
+38:3671894,Suffern village,NY,us,municipality,11537,suffernny.gov,no-platform-link-found,plain,plain,plain,youtube,"https://youtube.com/shorts/tYQSnpxQIyo?feature=share"">",https://suffernny.gov,none,,1.0,,False,
+1:2487025,Palmarolle,QC,ca,municipality,1386,www.palmarolle.ao.ca,no-platform-link-found,plain,plain,dead,,,https://palmarolle.ao.ca/fr/,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://palmarolle.ao.ca/fr/
+Call log:
+  - navigating to ""https://palmarolle.ao.ca/fr/"", waiting until ""load""
+",4.1,,False,
+37:5509586350,West Sweden town,WI,us,township,,tn.westsweden.wi.gov,no-platform-link-found,plain,plain,dead,,,https://tn.westsweden.wi.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://tn.westsweden.wi.gov/
+Call log:
+  - navigating to ""https://tn.westsweden.wi.gov/"", waiting until ""load""
+",5.9,,False,
+36:47091,Johnson County,TN,us,county,18506,johnsoncountytn.org,no-platform-link-found,plain,plain,dead,,,https://johnsoncountytn.org,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://johnsoncountytn.org/
+Call log:
+  - navigating to ""https://johnsoncountytn.org/"", waiting until ""load""
+",3.7,,False,
+38:0652694,Oakdale city,CA,us,municipality,23209,oakdaleca.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://oakdaleca.gov; dns-fail on https://www.oakdaleca.gov; dns-fail on http://oakdaleca.gov,4.1,,False,
+1:4815027,Ghost Lake,AB,ca,municipality,82,ghostlake.ca,no-platform-link-found,plain,plain,dead,,,https://ghostlake.ca,none,"reached, hop links checked, no platform link found",32.5,,False,
+36:17153,Pulaski County,IL,us,county,4879,pulaskicountyil.net,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/SvwNnvcg3YU?wmode=opaque,https://pulaskicountyil.net/sheriffs-department.html,none,,13.2,,False,
+38:2800180,Aberdeen city,MS,us,municipality,4833,aberdeenons.us,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://aberdeenons.us; dns-fail on https://www.aberdeenons.us; dns-fail on http://aberdeenons.us,4.0,,False,
+38:1931350,Glenwood city,IA,us,municipality,5250,cityofglenwoodia.gov,no-platform-link-found,challenge,challenge,challenge,,,https://beacon.schneidercorp.com/?site=MillsCountyIA,cloudflare,,9.0,,False,
+38:1232650,Horseshoe Beach town,FL,us,municipality,173,townofhorseshoebeachfl.com,no-platform-link-found,plain,plain,dead,,,https://www.townofhorseshoebeachfl.com/,cloudflare,"reached, hop links checked, no platform link found",17.9,,False,
+38:2729618,Holland city,MN,us,municipality,173,pipestone-county.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/watch?v=npSVA_ltinY,https://pipestone-county.com/government/agendas___minutes/index.php,none,,2.8,,False,
+1:4813014,Onoway,AB,ca,municipality,966,onoway.ca,no-platform-link-found,plain,plain,dead,,,https://www.onoway.ca/,none,"reached, hop links checked, no platform link found",19.7,,False,
+38:3985512,Willoughby Hills city,OH,us,municipality,9986,willoughbyhills-oh.gov,no-platform-link-found,plain,plain,plain,direct_file,https://willoughbyhills-oh.gov/government/mayor/STATE OF CITY FEB 4 2021.MP3,https://willoughbyhills-oh.gov/government/mayor/index.php,cloudflare,,10.8,,False,True
+1:4815013,Kananaskis,AB,ca,municipality,156,kananaskisid.ca,no-platform-link-found,plain,plain,dead,,,https://www.kananaskisid.ca/,none,"reached, hop links checked, no platform link found",28.9,,False,
+37:2616103020,Ann Arbor charter township,MI,us,township,,www.aatwp.org,no-platform-link-found,plain,plain,dead,,,https://annarbortownship.gov,none,"reached, hop links checked, no platform link found",19.0,,False,
+38:4532965,Heath Springs town,SC,us,municipality,852,heathsprings.gov,no-platform-link-found,plain,plain,dead,,,https://heathsprings.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://heathsprings.gov/
+Call log:
+  - navigating to ""https://heathsprings.gov/"", waiting until ""load""
+",4.4,,False,
+37:5511929837,Goodrich town,WI,us,township,,goodrich-wi.proudcity.com,no-platform-link-found,plain,plain,dead,,,https://goodrich-wi.proudcity.com,none,"reached, hop links checked, no platform link found",27.4,,False,
+36:40019,Carter County,OK,us,county,49135,cartercountyok.us,no-platform-link-found,challenge,challenge,challenge,,,https://extension.okstate.edu/county/carter/index.html?Forwarded=oces/carter,cloudflare,,9.3,,False,
+38:3114450,Edgar city,NE,us,municipality,427,ci.edgar.ne.us,no-platform-link-found,plain,plain,dead,,,https://ci.edgar.ne.us,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://ci.edgar.ne.us/
+Call log:
+  - navigating to ""https://ci.edgar.ne.us/"", waiting until ""load""
+",3.3,,False,
+37:5001935575,Irasburg town,VT,us,township,,irasburgvt.com,no-platform-link-found,plain,plain,dead,,,https://pikatec.com/,cloudflare,"reached, hop links checked, no platform link found",7.6,,False,
+38:1938415,Inwood city,IA,us,municipality,962,inwoodiowa.com,no-platform-link-found,plain,plain,dead,,,https://inwoodiowa.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://inwoodiowa.com/
+Call log:
+  - navigating to ""https://inwoodiowa.com/"", waiting until ""load""
+",3.3,,False,
+37:2501582175,Worthington town,MA,us,township,,www.worthington-ma.us,no-platform-link-found,blocked-browser-headers,none,dead,,,,none,403 under both plain and browser headers,2.9,,False,
+1:2415058,Saint-Siméon,QC,ca,municipality,1126,www.saintsimeon.ca,no-platform-link-found,plain,plain,dead,,,https://www.saintsimeon.ca,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.saintsimeon.ca/
+Call log:
+  - navigating to ""https://www.saintsimeon.ca/"", waiting until ""load""
+",3.5,,False,
+37:3609528981,Gilboa town,NY,us,township,,gilboatown-ny.gov,no-platform-link-found,plain,plain,dead,,,https://gilboatown-ny.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://gilboatown-ny.gov/
+Call log:
+  - navigating to ""https://gilboatown-ny.gov/"", waiting until ""load""
+",3.5,,False,
+38:1687850,Winchester city,ID,us,municipality,366,winchesterid.gov,no-platform-link-found,plain,plain,dead,,,https://winchesterid.gov,cloudflare,"reached, hop links checked, no platform link found",18.4,,False,
+38:3648593,Morrisville village,NY,us,municipality,1734,morrisvilleny.com,no-platform-link-found,plain,plain,dead,,,https://www.morrisvilleny.com/,none,"reached, hop links checked, no platform link found",14.8,,False,
+1:4701022,Estevan No. 5,SK,ca,municipality,1279,www.rmestevan.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/user/Wix,https://www.rmestevan.ca,cloudflare,,0.4,,False,
+38:3678663,Waterville village,NY,us,municipality,1512,villageofwaterville.gov,no-platform-link-found,plain,plain,dead,,,https://villageofwaterville.gov,none,"reached, hop links checked, no platform link found",21.8,,False,
+38:1203250,Baldwin town,FL,us,municipality,1385,baldwinfl.govoffice2.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/watch?v=MiH4QyJWobo,https://baldwinfl.govoffice2.com,none,,0.4,,False,
+1:2414045,Saint-Germain,QC,ca,municipality,294,www.munsaintgermain.ca,no-platform-link-found,plain,plain,dead,,,https://www.munsaintgermain.ca,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.munsaintgermain.ca/
+Call log:
+  - navigating to ""https://www.munsaintgermain.ca/"", waiting until ""load""
+",3.3,,False,
+38:5533175,Hatley village,WI,us,municipality,655,villageofhatley.org,no-platform-link-found,plain,plain,dead,,,https://villageofhatley.org,none,"reached, hop links checked, no platform link found",19.5,,False,
+38:1368600,Santa Claus city,GA,us,municipality,206,cityofsantaclaus.org,no-platform-link-found,plain,plain,dead,,,https://cityofsantaclaus.org,none,"reached, hop links checked, no platform link found",14.0,,False,
+1:3559011,Alberton,ON,ca,municipality,954,www.alberton.ca,no-platform-link-found,plain,plain,dead,,,https://alberton.ca/,none,"reached, hop links checked, no platform link found",26.7,,False,
+1:4802029,Vauxhall,AB,ca,municipality,1286,town.vauxhall.ab.ca,no-platform-link-found,plain,plain,dead,,,https://town.vauxhall.ab.ca/wp/,none,"reached, hop links checked, no platform link found",18.5,,False,
+38:1963975,Pocahontas city,IA,us,municipality,1848,pocahontasiowa.com,no-platform-link-found,plain,plain,plain,youtube,https://youtube.com/live/YGFEXfXaEEE,https://pocahontasiowa.com/government/agendas/,none,,2.8,,False,
+1:4806008,Longview,AB,ca,municipality,297,village.longview.ab.ca,no-platform-link-found,plain,plain,plain,direct_file,http://village.longview.ab.ca/wordpress/wp-content/uploads/2025/02/01-21-2025-Regular-Council-meeting-part-1-of-2-audio-.mp3?_=1,https://village.longview.ab.ca/wordpress/council-meetings-audio/,none,,5.5,,False,True
+1:4812024,Vilna,AB,ca,municipality,268,vilna.ca,no-platform-link-found,plain,plain,dead,,,https://www.vilna.ca/,cloudflare,"reached, hop links checked, no platform link found",18.3,,False,
+1:2419090,La Durantaye,QC,ca,municipality,782,www.munladurantaye.qc.ca,no-platform-link-found,plain,plain,dead,,,https://www.munladurantaye.qc.ca,cloudflare,"reached, hop links checked, no platform link found",15.4,,False,
+38:4262224,Portersville borough,PA,us,municipality,225,portersvilleborough.com,no-platform-link-found,plain,plain,dead,,,https://www.portersvilleborough.com/,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.portersvilleborough.com/
+Call log:
+  - navigating to ""https://www.portersvilleborough.com/"", waiting until ""load""
+",4.6,,False,
+1:4817062,Clear Hills,AB,ca,municipality,3006,clearhillscounty.ab.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@ClearHillsCounty,https://www.clearhillscounty.ab.ca/,none,,1.1,,False,
+38:5522575,Edgerton city,WI,us,municipality,6138,cityofedgerton.com,no-platform-link-found,plain,plain,dead,,,https://www.edgerton.wi.gov/,none,"reached, hop links checked, no platform link found",10.0,,False,
+38:0129560,Georgiana town,AL,us,municipality,1267,cityofgeorgiana.com,no-platform-link-found,plain,plain,dead,,,https://cityofgeorgiana.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://cityofgeorgiana.com/
+Call log:
+  - navigating to ""https://cityofgeorgiana.com/"", waiting until ""load""
+",3.7,,False,
+37:3403729850,Hardyston township,NJ,us,township,,hardyston.com,no-platform-link-found,plain,plain,dead,,,https://hardyston.com,none,"reached, hop links checked, no platform link found",18.1,,False,
+38:1704000,Bartelso village,IL,us,municipality,639,clintonco.illinois.gov,no-platform-link-found,plain,plain,dead,,,https://clintonco.illinois.gov,sucuri,"reached, hop links checked, no platform link found",18.8,,False,
+38:1735268,Hinckley village,IL,us,municipality,1976,hinckleyil.gov,no-platform-link-found,plain,plain,dead,,,https://www.hinckleyil.gov/,none,"reached, hop links checked, no platform link found",7.3,,False,
+38:2116110,Coal Run Village city,KY,us,municipality,1596,coalrunky.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/cdc,https://www.cdc.gov/coronavirus/2019-nCoV/index.html,none,,22.7,,False,
+1:4813012,Alberta Beach,AB,ca,municipality,864,albertabeach.com,no-platform-link-found,plain,plain,dead,,,https://albertabeach.com,none,"reached, hop links checked, no platform link found",20.9,,False,
+37:2615975000,South Haven charter township,MI,us,township,,southhaventwpmi.gov,no-platform-link-found,plain,plain,dead,,,https://southhaventwp.com/,none,"reached, hop links checked, no platform link found",18.4,,False,
+37:4211527448,Franklin township,PA,us,township,,franklintwp.info,no-platform-link-found,plain,plain,dead,,,https://franklintwp.info,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://franklintwp.info/
+Call log:
+  - navigating to ""https://franklintwp.info/"", waiting until ""load""
+",3.4,,False,
+36:19045,Clinton County,IA,us,county,46015,clintoncounty-ia.gov,no-platform-link-found,plain,plain,dead,direct_file,https://cdn.neapolitanlabs.com/videos/clinton_county/admin_building.mp4,https://clintoncounty-ia.gov,none,direct_file hit rejected as implausible (different domain than clintoncounty-ia.gov): https://cdn.neapolitanlabs.com/videos/clinton_county/admin_building.mp4,1.0,,False,False
+38:5551875,Milladore village,WI,us,municipality,267,townofmilladore.com,no-platform-link-found,plain,plain,dead,,,https://townofmilladore.com,cloudflare,"reached, hop links checked, no platform link found",11.6,,False,
+38:2677700,Swartz Creek city,MI,us,municipality,5848,cityofswartzcreekmi.gov,no-platform-link-found,plain,plain,dead,,,https://cityofswartzcreekmi.gov,none,"reached, hop links checked, no platform link found",18.8,,False,
+38:2911350,Cardwell city,MO,us,municipality,534,cityofcardwellmo.wixsite.com,no-platform-link-found,plain,plain,dead,,,https://cityofcardwellmo.wixsite.com,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://cityofcardwellmo.wixsite.com/
+Call log:
+  - navigating to ""https://cityofcardwellmo.wixsite.com/"", waiting until ""load""
+",3.1,,False,
+38:5409844,Brandonville town,WV,us,municipality,128,local.wv.gov,no-platform-link-found,plain,plain,dead,,,https://local.wv.gov/Pages/default.aspx,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://local.wv.gov/Pages/default.aspx
+Call log:
+  - navigating to ""https://local.wv.gov/Pages/default.aspx"", waiting until ""load""
+",3.6,,False,
+1:2432023,Sainte-Sophie-d'Halifax,QC,ca,municipality,595,www.saintesophiedhalifax.com,no-platform-link-found,plain,plain,dead,,,https://www.saintesophiedhalifax.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://www.saintesophiedhalifax.com/
+Call log:
+  - navigating to ""https://www.saintesophiedhalifax.com/"", waiting until ""load""
+",3.4,,False,
+36:13305,Wayne County,GA,us,county,32132,waynecountyga.us,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCw3BGcpl8qPsry2ZzrT82mA,https://www.waynecountyga.us/,none,,5.1,,False,
+38:4045350,McLoud city,OK,us,municipality,4519,mcloudus.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://mcloudus.gov; dns-fail on https://www.mcloudus.gov; dns-fail on http://mcloudus.gov,4.1,,False,
+38:4220840,East Brady borough,PA,us,municipality,804,eastbradyborough.com,no-platform-link-found,plain,plain,dead,,,https://www.eastbradyborough.com/,none,"reached, hop links checked, no platform link found",20.5,,False,
+1:3523001,Puslinch,ON,ca,municipality,7944,puslinch.ca,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@townshipofpuslinch,https://puslinch.ca/government/media-relations-and-social-media/,cloudflare,,11.2,,False,
+38:4051150,Newcastle city,OK,us,municipality,14677,newcastleok.gov,no-platform-link-found,plain,plain,dead,,,https://newcastleok.gov,none,"reached, hop links checked, no platform link found",18.8,,False,
+38:0220970,Edna Bay city,AK,us,municipality,26,cityofednabay.org,no-platform-link-found,plain,plain,dead,,,https://cityofednabay.org,none,"reached, hop links checked, no platform link found",8.9,,False,
+38:0842330,Lake City town,CO,us,municipality,413,townoflakecityco.gov,no-platform-link-found,plain,plain,dead,,,https://www.townoflakecityco.gov/,none,"reached, hop links checked, no platform link found",31.3,,False,
+38:5517950,Cuba City city,WI,us,municipality,2088,cubacity.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCY9hffXNBb6DGeGDMhABfoQ,https://www.cubacity.org/,cloudflare,,1.2,,False,
+38:5528450,Gays Mills village,WI,us,municipality,512,gaysmills.gov,no-platform-link-found,plain,plain,dead,,,https://www.gaysmills.gov/,none,"reached, hop links checked, no platform link found",22.4,,False,
+37:2606761580,Otisco township,MI,us,township,,www.otiscotwp.org,no-platform-link-found,plain,plain,dead,,,https://www.otiscotwp.org,none,"reached, hop links checked, no platform link found",12.1,,False,
+38:3725940,Gibson town,NC,us,municipality,456,gibsonnc.com,no-platform-link-found,plain,plain,dead,,,https://gibsonnc.com,none,"reached, hop links checked, no platform link found",4.9,,False,
+37:2607119150,Crystal Falls township,MI,us,township,,www.crystalfallstownship.org,no-platform-link-found,plain,plain,dead,,,https://crystalfallstownship.org/,none,"reached, hop links checked, no platform link found",17.5,,False,
+37:2608916400,Cleveland township,MI,us,township,,www.leelanau.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/channel/UCNQTgIgcTedF2qB8floC1GQ,https://www.leelanau.gov,none,,0.3,,False,
+38:3762040,Simpson village,NC,us,municipality,403,villageofsimpsonnc.com,no-platform-link-found,plain,plain,dead,,,https://villageofsimpsonnc.com,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://villageofsimpsonnc.com/
+Call log:
+  - navigating to ""https://villageofsimpsonnc.com/"", waiting until ""load""
+",3.6,,False,
+38:5130208,Galax city,VA,us,municipality,6739,galaxva.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://galaxva.gov; dns-fail on https://www.galaxva.gov; dns-fail on http://galaxva.gov,4.1,,False,
+1:4705047,Langenburg No. 181,SK,ca,municipality,561,www.rmoflangenburg.ca,no-platform-link-found,plain,plain,dead,,,https://www.rmoflangenburg.ca,cloudflare,"reached, hop links checked, no platform link found",18.2,,False,
+38:1680470,Tetonia city,ID,us,municipality,281,tetoniaidaho.org,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/fCLqDMdsEJk,https://www.tetoniaidaho.org/,cloudflare,,2.1,,False,
+37:4205920296,Dunkard township,PA,us,township,,dunkardtownship.org,no-platform-link-found,plain,plain,dead,,,https://dunkardtownship.org,none,"reached, hop links checked, no platform link found",7.2,,False,
+38:4136750,Island City city,OR,us,municipality,1131,islandcityoregon.gov,no-platform-link-found,plain,plain,dead,,,https://islandcityoregon.gov,none,"reached, hop links checked, no platform link found",18.3,,False,
+36:13027,Brooks County,GA,us,county,16344,brookscountyga.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/azS5cyZiz58,https://brookscountyga.gov,none,,0.6,,False,
+1:2469075,Dundee,QC,ca,municipality,386,www.cantondundee.ca,no-platform-link-found,plain,plain,dead,,,https://www.cantondundee.ca,none,"reached, hop links checked, no platform link found",3.5,,False,
+37:2612585480,West Bloomfield charter township,MI,us,township,,www.wbtownship.org,no-platform-link-found,plain,plain,plain,civicclerk,https://wbtownshipmi.portal.civicclerk.com/,https://www.wbtownship.org,none,,0.6,,False,
+38:0259650,Pelican city,AK,us,municipality,91,pelicanak.govoffice2.com,no-platform-link-found,plain,plain,dead,,,https://pelicanak.govoffice2.com/404.htm?aspxerrorpath=/index.asp,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://pelicanak.govoffice2.com/404.htm?aspxerrorpath=/index.asp
+Call log:
+  - navigating to ""https://pelicanak.govoffice2.com/404.htm?aspxerrorpath=/index.asp"", waiting until ""load""
+",3.4,,False,
+38:5178192,The Plains town,VA,us,municipality,255,theplainsvirginia.org,no-platform-link-found,plain,plain,dead,,,https://theplainsvirginia.org,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://theplainsvirginia.org/
+Call log:
+  - navigating to ""https://theplainsvirginia.org/"", waiting until ""load""
+",3.8,,False,
+38:3929974,Gettysburg village,OH,us,municipality,462,villageofgettysburgohio.org,no-platform-link-found,plain,plain,dead,,,https://villageofgettysburgohio.org,none,"reached, hop links checked, no platform link found",2.6,,False,
+1:4701063,Tecumseh No. 65,SK,ca,municipality,255,rmoftecumseh.ca,no-platform-link-found,plain,plain,dead,,,https://rmoftecumseh.ca,none,"reached, hop links checked, no platform link found",12.3,,False,
+38:2913330,Charlack city,MO,us,municipality,1280,cityofcharlack.gov,no-platform-link-found,plain,plain,dead,,,https://cityofcharlack.gov,none,"reached, hop links checked, no platform link found",6.6,,False,
+38:1882052,Waynetown town,IN,us,municipality,974,waynetown.net,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@waynetownindiana,https://waynetown.net,none,,2.4,,False,
+38:1914925,Coggon city,IA,us,municipality,691,coggonia.org,no-platform-link-found,plain,plain,dead,,,https://www.coggonia.org/,none,"reached, hop links checked, no platform link found",20.8,,False,
+38:1802602,Atlanta town,IN,us,municipality,737,atlantaindiana.com,no-platform-link-found,plain,plain,dead,,,https://atlantaindiana.com,none,"reached, hop links checked, no platform link found",6.6,,False,
+37:3611743973,Lyons town,NY,us,township,,lyonsny.gov,no-platform-link-found,plain,plain,dead,,,https://www.lyonsny.gov/,none,"reached, hop links checked, no platform link found",16.0,,False,
+37:4204932520,Harborcreek township,PA,us,township,,harborcreek.org,no-platform-link-found,plain,plain,dead,,,https://www.harborcreek.org/,none,"reached, hop links checked, no platform link found",25.5,,False,
+1:2471033,Les Coteaux,QC,ca,municipality,5643,www.les-coteaux.qc.ca,no-platform-link-found,plain,plain,dead,,,https://les-coteaux.qc.ca/,none,"reached, hop links checked, no platform link found",13.7,,False,
+38:1224825,Freeport city,FL,us,municipality,7234,freeportflorida.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/@CityofFreeport-32439/streams,https://freeportflorida.gov,none,,0.3,,False,
+37:2611764200,Pine township,MI,us,township,,www.pinetownship.net,no-platform-link-found,plain,plain,dead,,,https://www.pinetownship.net,none,"reached, hop links checked, no platform link found",21.5,,False,
+38:3738860,Locust city,NC,us,municipality,5992,locustnc.gov,no-platform-link-found,dead,dead,dead,,,,none,dns-fail on https://locustnc.gov; dns-fail on https://www.locustnc.gov; dns-fail on http://locustnc.gov,4.1,,False,
+36:19185,Wayne County,IA,us,county,6622,waynecountyia.com,no-platform-link-found,plain,plain,dead,,,https://waynecounty.iowa.gov/,cloudflare,"reached, hop links checked, no platform link found",7.2,,False,
+38:3945794,McClure village,OH,us,municipality,690,mcclureoh.org,no-platform-link-found,plain,plain,dead,,,https://mcclureoh.org,none,"reached, hop links checked, no platform link found",9.1,,False,
+1:4706077,Silton,SK,ca,municipality,95,villageofsilton.ca,no-platform-link-found,plain,plain,dead,,,https://villageofsilton.ca,none,"reached, hop links checked, no platform link found",13.7,,False,
+38:5500275,Adams city,WI,us,municipality,1771,townofadamswi.gov,no-platform-link-found,plain,plain,dead,,,https://townofadamswi.gov,none,"reached, hop links checked, no platform link found",22.7,,False,
+37:3600382095,Willing town,NY,us,township,,willingny.gov,no-platform-link-found,challenge,challenge,challenge,,,https://beacon.schneidercorp.com/Application.aspx?App=AlleganyCountyNY&PageType=Search,cloudflare,,5.4,,False,
+38:2768656,Watson city,MN,us,municipality,173,cityofwatson.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofwatson.com/,none,"reached, hop links checked, no platform link found",9.6,,False,
+37:5506951275,Merrill town,WI,us,township,,townofmerrillwi.gov,no-platform-link-found,plain,plain,dead,,,https://townofmerrillwi.gov,cloudflare,"reached, hop links checked, no platform link found",17.4,,False,
+37:2300364780,St. Agatha town,ME,us,township,,stagatha.com,no-platform-link-found,plain,plain,dead,,,https://stagatha.com,cloudflare,"reached, hop links checked, no platform link found",18.0,,False,
+38:2644780,Lake Linden village,MI,us,municipality,1051,lakelinden.net,no-platform-link-found,plain,plain,dead,,,https://www.lakelinden.net/,cloudflare,"reached, hop links checked, no platform link found",17.9,,False,
+38:1029090,Georgetown town,DE,us,municipality,8098,georgetowndel.com,no-platform-link-found,plain,plain,plain,civicweb,https://georgetowndel.civicweb.net/Portal/,https://www.georgetowndel.com/,none,,0.5,,False,
+38:1806706,Boswell town,IN,us,municipality,811,townofboswell.com,no-platform-link-found,plain,plain,plain,wistia,https://invoicecloud.wistia.com/medias/uvomb2ep7x,https://www.invoicecloud.com/portal/(S(yjpz05bbjkkphpd1ifomox0d))/2/Site.aspx?G=26f21f6e-8f3c-40ab-8853-6fc0e4b6ca4f,cloudflare,,7.4,,False,
+38:1902260,Anita city,IA,us,municipality,953,anitaiowa.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/watch?v=dl98BenGve4&t=2s,https://www.anitaiowa.com/,none,,0.6,,False,
+38:1754703,Oak Grove village,IL,us,municipality,470,elkgrove.org,no-platform-link-found,plain,plain,dead,,,https://www.elkgrove.org/,akamai,"reached, hop links checked, no platform link found",19.4,,False,
+38:3482423,Woodland Park borough,NJ,us,municipality,13477,wpnj.us,no-platform-link-found,plain,plain,dead,,,https://wpnj.us,none,"reached, hop links checked, no platform link found",17.8,,False,
+38:3029500,Froid town,MT,us,municipality,185,froidmt.com,no-platform-link-found,plain,plain,dead,,,https://froidmt.com,cloudflare,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://froidmt.com/
+Call log:
+  - navigating to ""https://froidmt.com/"", waiting until ""load""
+",3.5,,False,
+36:48349,Navarro County,TX,us,county,56533,co.navarro.tx.us,no-platform-link-found,plain,plain,dead,,,https://www.co.navarro.tx.us,none,"reached, hop links checked, no platform link found",6.9,,False,
+38:1717471,Creston village,IL,us,municipality,618,villageofcreston.org,no-platform-link-found,plain,plain,dead,,,https://villageofcreston.org,cloudflare,"reached, hop links checked, no platform link found",13.4,,False,
+38:0614498,Colfax city,CA,us,municipality,2058,colfax-ca.gov,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/embed/_0AqkrVyDYo?enablejsapi=1&autoplay=0&cc_load_policy=0&cc_lang_pref=&iv_load_policy=1&loop=0&rel=0&fs=1&playsinline=0&autohide=2&theme=dark&color=red&controls=1&disablekb=0&,https://colfax-ca.gov/government/city-council/council-meeting-video/,cloudflare,,4.6,,False,
+38:1903835,Aurora city,IA,us,municipality,165,auroraiowa.org,no-platform-link-found,plain,plain,dead,,,https://www.auroraiowa.org/,none,"reached, hop links checked, no platform link found",5.4,,False,
+38:3946844,Magnolia village,OH,us,municipality,1014,villageofmagnolia.com,no-platform-link-found,plain,plain,plain,youtube,https://www.youtube.com/WordPressdotcom,https://wordpress.com/?ref=footer_blog,none,,16.3,,False,
+38:4770240,Spencer city,TN,us,municipality,1590,cityofspencertn.com,no-platform-link-found,plain,plain,dead,,,https://www.cityofspencertn.com/,none,"reached, hop links checked, no platform link found",18.7,,False,
+38:0166216,Rogersville town,AL,us,municipality,1414,rogersvillealabama.gov,no-platform-link-found,plain,plain,dead,,,https://rogersvillealabama.gov,none,"reached, hop links checked, no platform link found",9.6,,False,
+38:0528810,Greers Ferry city,AR,us,municipality,847,greersferry.gov,no-platform-link-found,plain,plain,dead,,,https://greersferry.gov,none,"headless failed: Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://greersferry.gov/
+Call log:
+  - navigating to ""https://greersferry.gov/"", waiting until ""load""
+",3.3,,False,
+37:3610176496,Urbana town,NY,us,township,,townofurbana.gov,no-platform-link-found,plain,plain,dead,,,https://townofurbana.gov,none,"reached, hop links checked, no platform link found",6.5,,False,
