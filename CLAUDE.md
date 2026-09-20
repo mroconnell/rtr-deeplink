@@ -525,7 +525,10 @@ under everything else. This repo extracts and fixes just that part.
   this is normally the only line that needs touching), `_good_default_
   transcript_exists()` (a *separate* raw-SQL reimplementation of the same
   check, used by the cloud worker's own candidate search — doesn't call
-  the Python helper, has to be updated by hand), and, if the new marker
+  the Python helper; since WO-923 (2026-09-20) it is built from the same
+  `_TRUNCATION_MARKERS` tuple, so a new *truncation* marker added there
+  reaches it automatically, while a garbled/hallucination-style marker
+  still needs a line in it), and, if the new marker
   deserves its own bucket rather than folding into an existing one,
   `_classify_page_outcome()` + `_OUTCOME_LABELS`/`_OUTCOME_RANK` (the
   `/internal/transcript-quality-audit` reporting — see the 2026-08-23
