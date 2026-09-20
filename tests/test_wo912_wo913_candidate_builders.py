@@ -663,6 +663,8 @@ async def test_configure_installs_the_identity_hook_and_records_youtube_refusals
     fake_w134 = SimpleNamespace(
         process_row=fake_process_row,
         JURISDICTION_CHECK_HOOK=None,
+        # what importing wo149_county_ladder_sweep leaves behind on the module
+        TIER3_HANDLER=lambda **kwargs: None,
         INPUT_CSVS=None,
         LOG_CSV=None,
     )
@@ -674,6 +676,8 @@ async def test_configure_installs_the_identity_hook_and_records_youtube_refusals
     ingest.configure(fake_w134, hook, refused)
 
     assert fake_w134.JURISDICTION_CHECK_HOOK is hook
+    # Not another sweep's shared pending file: WO-134's direct tier-3 path.
+    assert fake_w134.TIER3_HANDLER is None
     assert fake_w134.INPUT_CSVS == [ingest.INPUT_CSV]
     assert fake_w134.LOG_CSV == ingest.LOG_CSV
 

@@ -207,6 +207,13 @@ def configure(w134, jurisdiction_check_hook, refused: list[str]) -> None:
                 record_refused(row, hosts)
 
     w134.JURISDICTION_CHECK_HOOK = jurisdiction_check_hook
+    # Importing `wo149_county_ladder_sweep` (for the hook above) also installs
+    # its tier-3 hand-off, which appends a candidate to the shared
+    # `wo149_tier3_pending.csv` for that sweep's own finish script to probe --
+    # not this run's job. Its column layout also has no `pin_row` header, so
+    # a pin lands under `probe_verdict` (WO-912/913's Vienna twp MI row).
+    # `None` restores WO-134's own direct path: probe, then queue line and pin.
+    w134.TIER3_HANDLER = None
     w134.process_row = tracked_process_row
     w134.INPUT_CSVS = [INPUT_CSV]
     w134.LOG_CSV = LOG_CSV
@@ -231,7 +238,8 @@ def main() -> None:
 
     # Imported late: they load .env and pull in the resolver, which a plain
     # --build-only run does not need. Importing wo149 also installs its hook
-    # on w134; `configure()` sets it explicitly too.
+    # and its tier-3 hand-off on w134; `configure()` sets the hook explicitly
+    # and clears the hand-off.
     import scripts.wo134_confirmed_hits_ingest as w134
     import scripts.wo149_county_ladder_sweep as wo149
 

@@ -515,34 +515,35 @@ finish entry.
 
 ## 5. The breakthroughs worth carrying forward
 
-1. **Headless browsing recovers JavaScript-rendered navigation, not just
-   firewalls.** On the largest governments previously rejected as "no
-   platform link found", a headless pass found a platform on 41% of
-   sites, and 149 of 150 of those pages had loaded cleanly for a plain
-   client; the meeting links were simply drawn by JavaScript. An earlier
-   trial had attributed its wins to bypassing 403s. The lesson is that
-   the plain-HTTP two-hop scan's "no platform" verdict is unreliable on
-   modern municipal sites, and the headless pass (one browser, one
-   government at a time, never past a human-verification gate) is the
-   right second opinion. ~1,180 smaller governments have not had it yet.
-   Script: `rtr-business/research/wo133_headless_recheck_scan.py`.
-   **A first 200-government pilot on that smaller population (WO-908,
-   2026-09-19) could not actually answer the question** — the sandbox
-   it ran in had a broken headless browser (a Playwright/Chromium
-   version mismatch), so headless itself never once ran. **WO-909
-   (2026-09-20) fixed that specific crash and reran the pilot on a
-   second, different 200-government sample.** Headless now genuinely
-   launches and loads a real page — confirmed directly, including on a
-   plain (non-HTTPS) page fetched during the real rerun — but a second,
-   separate sandbox limitation showed up in its place: this kind of
-   agent sandbox routes web traffic through an inspecting proxy whose
-   certificate the Chromium browser itself does not trust, so every
-   real attempt against an HTTPS site (nearly all government sites)
-   still fails, just later and for a different reason than before. See
-   `BACKLOG.md`'s matching entry for the real numbers both pilots got
-   and what answering this properly still needs: running it from a
-   machine that is not behind that kind of proxy — Ryan's own Mac, this
-   repo's GitHub Actions runner, or a Render shell.
+1. **Headless browsing recovers JavaScript-rendered navigation on large
+   governments' sites; on small ones it adds almost nothing.** On the
+   largest governments previously rejected as "no platform link found",
+   a headless pass found a platform on 41% of sites, and 149 of 150 of
+   those pages had loaded cleanly for a plain client; the meeting links
+   were simply drawn by JavaScript. An earlier trial had attributed its
+   wins to bypassing 403s. So the plain-HTTP two-hop scan's "no platform"
+   verdict is unreliable on modern municipal sites, and the headless pass
+   (one browser, one government at a time, never past a human-verification
+   gate) is a right second opinion there. Script:
+   `rtr-business/research/wo133_headless_recheck_scan.py`.
+   **Earlier versions of this section said "~1,180 smaller governments have
+   not had it yet." That was wrong the day it was written:** WO-148
+   (2026-09-10) had already run a working headless step on 1,132 of them
+   (population 5,000 to 23,442; 850 reached it, 61 found a platform link,
+   7.2%). **WO-912 (2026-09-20, on Ryan's Mac) then measured the
+   small-government question for real.** On a random 1,200 of the 8,559
+   governments that never had a headless check (mostly under 2,500
+   people), 875 headless page loads found 12 platform links; after a
+   hand-check 2 were new, usable finds, and the plain fetch found 213 of
+   the ladder's 216. Full numbers: `BACKLOG_DONE.md`'s WO-912 entry. The two
+   earlier cloud-sandbox pilots (WO-908, WO-909) could not answer it: a
+   Chromium version mismatch, then a certificate block. Two cautions from
+   the run. A headless load fetches whatever the page embeds, **including
+   YouTube**; `fetch_headless_sync()` now blocks that at the browser
+   (PR #1254; `docs/YOUTUBE_DRIP_RUNBOOK.md` rule 5). And the ladder's
+   `find_platform_link()` accepts the first vendor-shaped link on whatever
+   page it lands on: 25% of the links WO-912 found were another
+   organization's.
 2. **The identity join** (section 3): coverage that already exists but
    is invisible because of a minted id. Cheap, high-yield, repeatable
    whenever the research file and the Archive disagree.
