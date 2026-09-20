@@ -135,6 +135,13 @@ class ResolvedMeeting(BaseModel):
         None
     )
     segments: List[TranscriptSegment] = []
+    # The video's real duration in seconds, ONLY when a source or a
+    # header-only probe reported it (WO-923) -- never guessed, never
+    # filled by hand. Used to warn when a transcript covers only part of
+    # the video (app/platforms/coverage_check.py). None means unknown.
+    # The Archive's ingest model drops fields it does not declare, so no
+    # Archive schema change is involved.
+    video_duration_seconds: Optional[float] = None
     # Agenda/chapter markers (Granicus's AgendaViewer.php, CivicClerk's
     # eventBookmarks, Swagit's .playerControl) -- kept separate from
     # `segments` so they're never mistaken for a real transcript.

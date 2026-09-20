@@ -624,6 +624,19 @@ whether this app can still generate one from the audio track — only the
 cloud worker is excluded, since it runs from a server IP YouTube blocks
 and could never fetch that audio anyway.
 
+**Partial-transcript warning (WO-923, 2026-09-20).** A caption feed can
+stop partway through a meeting with nothing on the page to say so (the
+Rhode Island Senate page: captions to 81 minutes of a 149-minute video).
+Every registered adapter's `resolve()` now ends with
+`app/platforms/coverage_check.py`: when the video's duration is known
+(`ResolvedMeeting.video_duration_seconds` from the adapter, or a
+header-only ffprobe of an HLS/mp4/mp3 file; never YouTube, never guessed)
+and the last caption ends under 90% of it with 10+ minutes uncovered, it
+adds a reader warning containing "may end before the meeting did". That is
+the Archive's existing `_EARLY_TRUNCATION_MARKER`, so the page reports as
+`truncated_transcript` and stays eligible for re-transcription with no new
+plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
+
 **Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
 one always-on process that fetches captions for waiting pages, feeds the
 YouTube lines of the tier-3 queue, and downloads audio for captions-disabled

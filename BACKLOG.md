@@ -452,9 +452,10 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (27)
+Trust, safety & data quality  (28)
   The Archive files a page under whatever `gov_id` a sweep sends…
   Nothing records that a page was deliberately deleted, so a later…
+  Partial-transcript check has only measured 574 of ~5,800 non-YouTube…
   7 of 108 already-pinned YouTube channels disagree with what the…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
   `jurisdiction_coverage.csv` rows whose recorded website belongs to…
@@ -6742,6 +6743,29 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Next action**: decide where a "do not ingest this source URL" list lives and who reads it. The `/internal/ingest` route in `archive/main.py` is the one place every path passes. Not built in WO-913.
 - **Constraint**: don't solve it with a blanket title block: "executive session" also names real meetings that carry a public portion.
 - **History**: `BACKLOG_DONE.md`'s WO-913 entry (the Toledo delete and the narrow probe-sidecar reject).
+
+### Partial-transcript check has only measured 574 of ~5,800 non-YouTube pages, and never checks YouTube-sourced ones `[NEEDS-AUDIT]`
+
+- **Issue**: WO-923 (2026-09-20) added a resolve-time warning when a
+  transcript stops early (under 90% of the video with 10+ minutes
+  uncovered), but the measurement behind it read only 574 pages. The other
+  ~5,200 non-YouTube pages and all ~4,500 YouTube-sourced pages were not
+  measured; YouTube is never fetched from the office machine, and 47
+  measured pages had no readable duration.
+- **Impact**: 17 of 527 measured pages (9 Town Hall Streams, 7 Cablecast,
+  1 CivicClerk) are partial by the rule; the unmeasured rest is unknown,
+  not clean.
+- **Next action**: after the resolver deploy, run
+  `scripts/backfill_archived_pages.py` from the resolver's Render shell
+  (it re-resolves every page and now carries the check), then read
+  `/internal/transcript-quality-audit`'s `truncated_transcript` count. For
+  YouTube pages, add the duration yt-dlp already returns to
+  `ResolvedMeeting.video_duration_seconds` in `youtube.py` (drip Mac only).
+  Also look at why 9 of 100 Town Hall Streams pages read 3% to 50%: the
+  durations are round (120, 180, 240 minutes), which suggests fixed
+  recording windows rather than captions that stopped.
+- **Constraint**: no bulk sweep of the production Archive from a laptop.
+- **History**: `BACKLOG_DONE.md`, WO-923.
 
 ### 7 of 108 already-pinned YouTube channels disagree with what the Archive's own pages say `[NEEDS-AUDIT]`
 

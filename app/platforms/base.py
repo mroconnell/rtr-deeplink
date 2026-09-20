@@ -1,4 +1,7 @@
+import functools
+import inspect
 import re
+import types
 from abc import ABC, abstractmethod
 from typing import FrozenSet, List, Optional, Tuple, TypedDict
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -795,6 +798,32 @@ _REGISTRY: dict[str, AssetFinder] = {}
 
 
 def register(finder: AssetFinder) -> None:
+    """Register a finder. WO-923: also ends its class's `resolve()` with
+    the partial-transcript check (app/platforms/coverage_check.py), so no
+    adapter has to remember it and every caller (the resolver, the
+    recheck path, the sweep scripts) gets it. Wrapped on the CLASS, once,
+    not on the instance: the finder object is stored unchanged (identity
+    and isinstance hold), and code that temporarily patches
+    `SomeFinder.resolve` on the class -- passive_verify's YouTube-fetch
+    guard does -- still takes effect instead of being shadowed by an
+    instance attribute."""
+    cls = type(finder)
+    static = inspect.getattr_static(cls, "resolve", None)
+    if (
+        isinstance(static, types.FunctionType)
+        and inspect.iscoroutinefunction(static)
+        and not getattr(static, "_wo923_wrapped", False)
+    ):
+        inner = static
+
+        @functools.wraps(inner)
+        async def resolve_with_coverage_check(self, url: str) -> ResolvedMeeting:
+            from .coverage_check import flag_partial_transcript
+
+            return await flag_partial_transcript(await inner(self, url))
+
+        resolve_with_coverage_check._wo923_wrapped = True  # type: ignore[attr-defined]
+        cls.resolve = resolve_with_coverage_check  # type: ignore[method-assign]
     _REGISTRY[finder.platform_name] = finder
 
 

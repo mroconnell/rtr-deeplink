@@ -1796,6 +1796,69 @@ async def test_has_good_transcript_treats_early_truncation_as_not_good():
             assert await crud._has_good_transcript(session, page_id) is expected, slug
 
 
+async def test_has_good_transcript_treats_interrupted_transcription_as_not_good():
+    # WO-923: the SQL predicate used to be hand-written and lacked
+    # _PARTIAL_TRANSCRIPTION_MARKER while the Python helper had it, so the
+    # two disagreed on a page marked "the transcription was interrupted".
+    # The SQL is now built from the same tuple; this pins the agreement,
+    # and adds the resolve-time partial-coverage warning (WO-923) beside it.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warning(eid: str, warning: str):
+        url = f"https://example.granicus.com/player/clip/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning] if warning else [],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    interrupted = await _page_with_warning(
+        "wo923-interrupted",
+        "This transcript is incomplete — the transcription was interrupted "
+        "partway through.",
+    )
+    partial = await _page_with_warning(
+        "wo923-partial-coverage",
+        "This transcript may end before the meeting did — it covers "
+        "about 1 hour 21 minutes of what looks like a 2 hour 29 minute "
+        "recording. The captions stop early at the source.",
+    )
+    clean = await _page_with_warning("wo923-clean", "")
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([interrupted, partial, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {interrupted: False, partial: False, clean: True}
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
 async def test_has_good_transcript_treats_youtube_captions_disabled_as_not_good():
     # WO-135, 2026-09-09. Unlike the garbled/hallucinated/truncation
     # markers above (which all sit on a version that has REAL content,
