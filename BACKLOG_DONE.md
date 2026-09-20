@@ -141,7 +141,7 @@ WO-148's governments were 5,000 to 23,442 people; this run's are mostly under 2,
 | YouTube channel, playlist or video | 49 governments | 25 were already on `youtube_channel_leads.csv`. 24 are new, in `wo912_leads_to_add.csv` (`verified=false` until the drip lane hand-reads them). |
 | Non-YouTube platform link, marked for ingest | 7 governments | 1 page created (Sealy TX, 1,397 transcript segments). 1 tier-3 queue line (Vienna township MI, a 2016 board meeting). 5 real tenants where the resolver got no meeting from the front door: Georgetown CO (OpenMedia `embed/full`, 404), Macoupin County IL (IQM2), Hutchinson County TX (CivicClerk, no event with media), Barnegat NJ (Swagit), Dodge County MN (PrimeGov). |
 | Research-file rows changed | 6 | Only for hand-confirmed finds, under the shared-file write protocol. |
-| Pins added to `tenant_overrides.csv` | 2 | Per video, never per host (Sealy and Vienna, both on Vimeo). WO-134's pin writer emitted `vimeo:<id>`, a shape that never matches a real URL (an open bug), so both rows were rewritten by hand to the bare id and a test now checks they match. Without that, Vienna's queue line would have stalled: the queue's owner check refuses a Vimeo line with no matching pin. |
+| Pins added to `tenant_overrides.csv` | 2 | Per video, never per host (Sealy and Vienna, both on Vimeo). WO-134's pin writer emitted `vimeo:<id>`, a shape that never matches a real URL (fixed for every writer the same day, in WO-924), so both rows were rewritten by hand to the bare id and a test now checks they match. Without that, Vienna's queue line would have stalled: the queue's owner check refuses a Vimeo line with no matching pin. |
 
 **Summary.**
 
@@ -185,9 +185,9 @@ Of the 7,359 not run, 3,843 were never in an earlier report and 3,516 were.
 1. **Do not run headless at scale to find meeting links.** 875 loads found 12 links and 2 new, usable ones. The plain fetch found 213 of the 216 raw finds.
 2. **If the other 7,359 are worth running, use the plain ladder only,** the 3,843 never covered first (about twice the yield). About 490 right-government links, about 150 of them new leads, for about 25 hours of unattended run time and about 1,300 links to read.
 3. **Build the same-organization check first** (see the wrong-organization entry in `BACKLOG.md`). It cuts the hand-check by about a fifth, at the cost of 5% of good finds.
-4. **That is Ryan's call.** It is filed as a `[HUMAN]` entry in `BACKLOG.md`.
+4. **Ryan decided on 2026-09-20 to park it.** Run the access ladder on all 7,359 later this week with a cheaper agent, if usage allows, then optionally a headless pass on the never-covered governments the ladder does not identify. On this run's sample that pass found 4 links in 356 loads and none was usable, so expect little from it. It is a `[PARK]` entry in `BACKLOG.md`.
 
-**Docs updated.** `docs/COVERAGE_HANDOVER.md` (§3 ladder wording, the identity bullet, and §5.1's stale headless numbers), `BACKLOG.md` (the headless entry closed, the wrong-organization and wrong-recorded-domain entries rewritten with measured numbers, one open decision filed), this file.
+**Docs updated.** `docs/COVERAGE_HANDOVER.md` (§3 ladder wording, the identity bullet, and §5.1's stale headless numbers), `BACKLOG.md` (the headless entry closed, the wrong-organization and wrong-recorded-domain entries rewritten with measured numbers, the rerun of the other 7,359 parked), this file.
 
 **Deploy status.** Scripts, tests, docs and two pins only. The two pins in `app/utils/jurisdiction_data/tenant_overrides.csv` reach production only with the next deploy (Ryan's); the Sealy page is already live because the Archive ingest route was called directly.
 
