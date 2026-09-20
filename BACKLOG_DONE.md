@@ -102,7 +102,7 @@ WO-148's governments were 5,000 to 23,442 people; this run's are mostly under 2,
 | YouTube channel, playlist or video | 49 governments | 25 were already on `youtube_channel_leads.csv`. 24 are new, in `wo912_leads_to_add.csv` (`verified=false` until the drip lane hand-reads them). |
 | Non-YouTube platform link, marked for ingest | 7 governments | 1 page created (Sealy TX, 1,397 transcript segments). 1 tier-3 queue line (Vienna township MI, a 2016 board meeting). 5 real tenants where the resolver got no meeting from the front door: Georgetown CO (OpenMedia `embed/full`, 404), Macoupin County IL (IQM2), Hutchinson County TX (CivicClerk, no event with media), Barnegat NJ (Swagit), Dodge County MN (PrimeGov). |
 | Research-file rows changed | 6 | Only for hand-confirmed finds, under the shared-file write protocol. |
-| Pins added to `tenant_overrides.csv` | 2 | Per video, never per host (Sealy and Vienna, both on Vimeo). |
+| Pins added to `tenant_overrides.csv` | 2 | Per video, never per host (Sealy and Vienna, both on Vimeo). WO-134's pin writer emitted `vimeo:<id>`, a shape that never matches a real URL (an open bug), so both rows were rewritten by hand to the bare id and a test now checks they match. Without that, Vienna's queue line would have stalled: the queue's owner check refuses a Vimeo line with no matching pin. |
 
 **Summary.**
 

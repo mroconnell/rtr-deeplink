@@ -781,3 +781,28 @@ def test_a_manual_playlist_lead_is_kept_as_a_playlist_and_deduped_on_its_list_id
 
     assert [(r["kind"], r["channel_url"]) for r in kept] == [("playlist", url)]
     assert tally["already listed"] == 1
+
+
+def test_the_two_vimeo_pins_this_wo_committed_match_their_real_urls():
+    """WO-134's pin writer emits `vimeo:<id>`, which a real Vimeo path never
+    contains, so such a pin silently never applies (`BACKLOG.md`, "A vimeo.com
+    pin shaped vimeo:<id> ... never actually matches"). The two rows this WO
+    committed were rewritten by hand to the bare-id shape, and each is on the
+    host its own page's source URL uses. Without a matching pin the queue's
+    owner check refuses a Vimeo line (it would ingest as
+    `rtr:unknown:vimeo.com`), so Vienna township's queue line would have
+    stalled. Reads the real committed pin file on purpose."""
+    from app.platforms.queue_probe import has_owner
+
+    # the queue line as appended to scripts/tier3_auto_transcription_queue.txt
+    assert has_owner("https://vimeo.com/195536478") == (
+        True,
+        "us:cousub:2604982380",
+        "",
+    )
+    # the source URL the Sealy TX page was ingested with
+    assert has_owner("https://player.vimeo.com/video/1227954162?h=2ed4198897") == (
+        True,
+        "us:place:4866464",
+        "",
+    )
