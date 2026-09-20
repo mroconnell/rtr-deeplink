@@ -118,6 +118,7 @@ Standing decisions — do NOT re-raise  (12)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+  Two rules the code and the WO briefs say are in `CLAUDE.md` are not…
   State legislatures: 91 of 99 chamber rows still have no page — Sliq…
   `direct_file` refuses South Carolina's legislature video…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -175,11 +176,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   `civicclerk.py`'s `resolve()` can return a bare…
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
-  Headless's sandbox launch crash is fixed (WO-909) — a second,…
   iQM2's real meeting-body field lives only on the calendar listing…
   PrimeGov has a real, structured `committeeId` field — but no…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+  Run the plain ladder on the other 7,359 never-headless governments?…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -200,7 +201,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+  [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] A decorative video with no web-address signature at all…
@@ -451,10 +453,12 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (25)
+Trust, safety & data quality  (27)
+  The Archive files a page under whatever `gov_id` a sweep sends…
+  Nothing records that a page was deliberately deleted, so a later…
   7 of 108 already-pinned YouTube channels disagree with what the…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
-  `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
+  `jurisdiction_coverage.csv` rows whose recorded website belongs to…
   Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a…
   8 rows carrying `prior_reject_reason=already-covered` checked live,…
   `jurisdiction_coverage.csv` has population rows sharing the bare,…
@@ -479,8 +483,7 @@ Trust, safety & data quality  (25)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
-  `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -889,6 +892,14 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Two rules the code and the WO briefs say are in `CLAUDE.md` are not in it: "YouTube is fetched only by the drip Mac" and "send the government's id in every ingest payload" `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `app/platforms/queue_probe.py`'s `has_owner()` docstring cites "`CLAUDE.md`'s 'send the government's id in every ingest payload' rule," and the WO-912/913 brief said a YouTube URL is never fetched directly ("drip-Mac-only, see CLAUDE.md"). A search of the checked-in `CLAUDE.md` finds neither one (no "drip", no "ingest payload"). Both rules are real and written down elsewhere: `docs/YOUTUBE_DRIP_RUNBOOK.md` rules 1 and 5, and `docs/COVERAGE_HANDOVER.md` §3 (WO-222, and the identity bullet WO-913 added).
+- **Impact**: `CLAUDE.md` is the first file every agent reads. The missing YouTube rule is how a normal WO-134 ingest made about two YouTube requests from the wrong Mac, and headless browser loads made a handful more (WO-913; both routes are now closed by `scripts/youtube_fetch_guard.py` and the browser block in `fetch_headless_sync()`, PR #1254).
+- **Next action**: add two short bullets to `CLAUDE.md` that point at those two docs and at `scripts/youtube_fetch_guard.py`.
+- **Constraint**: `AGENTS.md` is a copy of `CLAUDE.md` (PR #1210 refreshed it after it went three days stale); change both in the same commit.
+- **History**: `BACKLOG_DONE.md`'s WO-913 entry.
 
 ### State legislatures: 91 of 99 chamber rows still have no page — Sliq Harmony adapter is built (WO-921, needs a deploy, then ingest); TVW adapter still to build (the Invintus hub walker for Oregon and Wisconsin is done, WO-922) `[JUST-DO-IT]` `[BIG]`
 
@@ -2104,97 +2115,6 @@ so that work reads together.
 - **History:** `research/wo366_methods_section.md`; this WO's own
   `fetch_wayback_domain_index()` docstring in `scripts/wo273_recon.py`.
 
-### Headless's sandbox launch crash is fixed (WO-909) — a second, sandbox-only certificate block still leaves the real small-government hit rate unknown `[JUST-DO-IT]`
-
-- **Note on the number**: this ran as WO-906, then was renumbered to
-  WO-908 before merging — a separate, unrelated conductor session
-  independently used 904/905/906/907 for a three-part meeting_body
-  effort around the same time (`BACKLOG_DONE.md`'s "WO-904/905/906" and
-  "WO-907" entries). This session's own WO-904 and WO-905 had already
-  merged before the collision was caught, so those two numbers now
-  legitimately collide in history; this entry was renumbered to the
-  true next-free number instead of adding a third collision. The git
-  branch name (`wo906-headless-pilot-small-govs`) was left unchanged.
-- **Issue:** `docs/COVERAGE_HANDOVER.md` §5.1 measured a 41% headless
-  hit rate on the LARGEST governments already rejected "no platform
-  link found," and flagged ~1,180 smaller governments as never having
-  had the same check. WO-908 (2026-09-19) ran the existing ladder
-  (`scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()`,
-  unchanged) against a real, random sample of 200 of them — 22
-  counties, 139 municipalities, 39 townships, across the US and
-  Canada. It ran clean end to end (200 of 200, no crashes, no forced
-  solve of a Cloudflare check), but every one of the 35 governments
-  (17.5%) whose homepage had no clickable meeting-shaped link at all —
-  exactly the case headless exists for — hit the identical error: this
-  sandbox's `playwright` package (pinned `1.62.0`) expects Chromium
-  build 1234; only build 1194 is pre-installed. 35 attempts, 35
-  failures, 0 successes. **WO-909 (2026-09-20) fixed that specific
-  crash** — `_headless_chromium_executable_path()`, added to the same
-  file, hands Playwright the sandbox's own pre-installed Chromium, but
-  only when that sandbox's own setup says to; every other environment
-  (Ryan's Mac, this repo's GitHub Actions runner, Render) calls
-  Playwright exactly as before. Confirmed fixed two ways: a direct
-  test against a plain web page returned real page content, and the
-  rerun below shows headless reaching the page-load step (a
-  certificate error, see Impact) instead of crashing before it ever
-  tried.
-- **Impact:** WO-909 reran the pilot on 200 DIFFERENT small
-  governments — a new random sample, WO-908's own 200 excluded, so
-  this is genuinely new information. 200 of 200 processed, zero
-  exceptions, zero forced challenge-solves, and (checked on every row
-  via the report's own `final_url_is_youtube` column) zero direct
-  fetches to youtube.com/youtu.be. Rung breakdown: 36 found via a
-  plain fetch (**18%**), 0 via browser-headers, 0 via headless, 5
-  challenge-blocked (2.5%), 159 nothing found (79.5%) — WO-908's own
-  different 200 found 53 (26.5%), 4 challenge (2%), 143 nothing
-  (71.5%); both are real numbers from two different random samples, so
-  some difference between them is expected on its own, not a
-  regression. Headless was actually tried 36 times (once per
-  government whose page loaded fine but showed no link at all — the
-  exact case headless exists for) and failed all 36 times with the
-  identical `net::ERR_CERT_AUTHORITY_INVALID` — a certificate error,
-  not a launch crash. This sandbox routes secure (`https://`) requests
-  through a local checkpoint that re-signs them with its own
-  certificate; this repo's own aiohttp-based fetches already trust
-  that certificate (confirmed: 36 real government sites were reached
-  over `https://` with no problem in this same run), but the Chromium
-  browser Playwright drives does not — confirmed directly even though
-  the exact same certificate is correctly installed in this machine's
-  general trusted-certificate list (verified byte-for-byte by SHA-256
-  fingerprint). A side-by-side control test on one real page confirmed
-  it precisely: headless loaded the identical page fine over plain
-  `http://` and failed it over `https://`, every time. **The question
-  this pilot exists to answer — does headless find a real
-  meeting-platform link on small governments the way it does on big
-  ones — is still open**, now for a different, better-understood
-  reason than WO-908 hit. A hand check of all 36 found results (fewer
-  than 40 exist in this sample, so all of them were checked) found 8
-  (22%) confirmed-real on sight, 12 (33%) confirmed WRONG (see the two
-  entries above) plus 1 more (3%) that is the right government but a
-  mayor's ceremonial "State of the City" address, not a meeting — and
-  the remaining 15 (42%) can't be judged from the link alone (a bare
-  video or channel id with no name shown). Close to WO-908's own
-  21%/38%/42% split on its own, different sample.
-- **Next action:** the Chromium-launch crash is fixed; what is left is
-  the certificate problem above, which needs a machine that does not
-  sit behind a checkpoint like this sandbox's: Ryan's own Mac, this
-  repo's GitHub Actions runner, or a Render shell. Re-run
-  `scripts/wo908_headless_pilot.py` from one of those (it already
-  resumes automatically) before drawing any conclusion about whether
-  headless is worth running on the rest of the ~1,180.
-- **Constraint:** 0% via headless on two separate 200-government
-  pilots in a row still means "blocked before it could try," not
-  "doesn't help" — don't read it either way until it runs somewhere
-  without a certificate checkpoint like this sandbox's in the way.
-  Don't treat either pilot's plain-HTTP-found rate (18% or 26.5%) as a
-  validated hit rate either, for the same reason the two entries above
-  exist.
-- **History:** WO-908's own PR (branch `wo906-headless-pilot-small-
-  govs`) has its full 200-row report and the manual review behind its
-  11/20/22 split. `BACKLOG_DONE.md`'s WO-909 entry has the crash fix,
-  the new 200-row report, and the manual review behind the 8/12/1/15
-  split above.
-
 ### iQM2's real meeting-body field lives only on the calendar listing page — confirmed feasible to fetch, not yet wired up `[JUST-DO-IT]`
 
 - **Issue**: found live 2026-09-19, during the same meeting_body investigation that shipped CivicClerk/CivicPlus/Legistar (WO-904/905/906). `app/platforms/iqm2.py`'s `resolve()` only fetches a meeting's own detail page (`Detail_Meeting.aspx`'s outline variant, `SplitView.aspx`), and neither carries a separate body/committee field — only a blended `<title>` (e.g. "2026/08/12 01:30 PM Finance/Executive Committee Regular Committee Meeting - Web Outline - City of Atlanta, Georgia", where "Finance/Executive Committee" and "Regular Committee Meeting" run together with no separator, so it can't be reliably split by text parsing alone — same ambiguity this repo already declined to guess through elsewhere).
@@ -2217,6 +2137,14 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### Run the plain ladder on the other 7,359 never-headless governments? `[HUMAN]`
+
+- **Issue**: WO-912 ran the access ladder (plain fetch, browser headers, headless) on a random 1,200 of 8,559 small governments and hand-read all 225 links it found. Headless added 12 finds in 875 loads, 2 of them new and usable; the plain steps found the rest. 7,359 governments were not run: 3,843 never in an earlier ladder report, 3,516 in one.
+- **Impact**: projected for the 7,359 with the plain ladder only: about 1,325 raw links (1,170 to 1,490), about 490 right-government links to a channel or platform (400 to 600), about 150 new YouTube leads (100 to 220), about 25 hours of unattended run time (12.4 seconds per government, measured) and about 1,300 links for a person to read. The 3,843 never covered yield about twice as much (8.7% right-government against 4.1%).
+- **Next action**: Ryan decides. Recommendation: run the 3,843 never covered first, plain ladder only, and build the same-organization check first (see the `find_platform_link()` entry) so about a fifth of the reading is skipped. Do not run headless.
+- **Constraint**: the run writes a report only. Every find needs a person's read before it becomes a lead, a pin or a research-file change.
+- **History**: `BACKLOG_DONE.md`'s WO-912 entry.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
@@ -2565,12 +2493,18 @@ of human step they need.
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in `tenant_overrides.csv` never actually matches any real Vimeo URL — 8 committed rows are silently dead.**
-  - **Issue**: found live 2026-09-13 (WO-356), while pinning Easton town CT's real, queued Vimeo meeting. `app/utils/gov_registry/resolver.py`'s `_match_override()` treats a row's `match` value as a literal substring of the URL's path (`needle in haystack`); a real `vimeo.com/<id>/...` URL's path is just `/697711522/...`, which never contains the literal text `vimeo:`. So the `vimeo:<id>` shape some rows use (e.g. `vimeo.com,vimeo:1199438213,us:cousub:2500750390,...` for Oak Bluffs town, MA, WO-145) can never match — the pin silently never applies, and the government falls through to whatever the rest of the identity ladder finds instead. The other, working shape is a bare numeric id with no prefix (e.g. `vimeo.com,1219072948,us:place:3657023,...` for Pelham Manor village, NY). 8 of the file's Vimeo rows currently use the broken `vimeo:` prefix (`grep -c '^vimeo.com,vimeo:'`).
-  - **Impact**: up to 8 real governments' Vimeo pins are dead weight — the intended government never actually gets keyed by them, and nothing fails loudly to say so (CLAUDE.md's own "flag risky optional config" pattern: this is exactly a silent-on-bad-input case). CLAUDE.md itself documents the `vimeo:<id>` shape as the convention ("Wistia `external_id=`... Vimeo `vimeo:<id>`"), so a future pin is likely to be written the same broken way unless this is fixed.
-  - **Next action**: either (a) strip the `vimeo:` prefix at load time in `_load_tenant_overrides()` before the row is stored (cheapest, fixes all 8 existing rows with no data migration), or (b) rewrite the 8 rows to the bare-id shape and update CLAUDE.md's own stated convention to match. Re-verify each of the 8 governments' Vimeo video still resolves to the same id before changing anything (a video can be deleted/replaced).
-  - **Constraint**: don't silently change CLAUDE.md's documented convention without also fixing the 8 rows (or vice versa) — the two need to agree, and a test (`tests/test_gov_registry.py` already covers the blank-match safeguard) should assert the `vimeo:<id>` shape actually matches a real sample URL, so this can't regress silently again.
-  - **History**: `BACKLOG_DONE.md`'s WO-356 entry; `rtr-business/research/wo356_methods_section.md` (ENUMERATION_METHODS.md §359).
+- **[NEEDS-AUDIT] Thirteen hand-confirmed government platform links could not be turned into a meeting: three broken or empty, nine tenant front doors, one tenant with no video.**
+  - **Issue**: WO-912/913's hand-check confirmed each government's own platform link, and WO-134's ingest got no meeting from any of them. Broken or empty (3): Georgetown town CO's "Meetings - Live Stream and Archived" links to `townofgeorgetown.ompnetwork.org/embed/full`, and the OpenMedia adapter (`app/platforms/openmedia.py`) is built for `{tenant}.open.media/sessions/{id}`, so it strips `/embed/`, requests `/full` and gets HTTP 404 (OMP's video is a YouTube embed, so ingest belongs to the drip lane either way); Marina city CA's TelVue player link (`media/545969`, a 2020 Design Review Board meeting) now returns 404; Broadview Heights city OH's ChampDS event 315 resolves but holds no video or agenda. Tenant front doors (9): four Massachusetts towns on Castus (Lincoln, Tyngsborough, Blackstone, Millbury), two New Hampshire towns on Town Hall Streams (Moultonborough, Hollis), and one each on IQM2 (Macoupin County IL), Swagit (Barnegat NJ) and PrimeGov (Dodge County MN). No video (1): Hutchinson County TX's CivicClerk tenant shows no past event with real media.
+  - **Impact**: 13 governments with a real platform of their own, confirmed by hand, and still no meeting page. The platform is recorded on each research row.
+  - **Next action**: for each, list the tenant's own meeting pages and try the newest with video (a per-platform listing step); for Georgetown, find its `/sessions/{id}` URLs first.
+  - **History**: `BACKLOG_DONE.md`'s WO-912 and WO-913 entries; `rtr-business/research/wo912_wo913_ingest_log.csv`.
+
+- **[NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in `tenant_overrides.csv` never actually matches any real Vimeo URL — 24 committed rows are silently dead.**
+  - **Issue**: found live 2026-09-13 (WO-356), while pinning Easton town CT's real, queued Vimeo meeting. `app/utils/gov_registry/resolver.py`'s `_match_override()` treats a row's `match` value as a literal substring of the URL's path (`needle in haystack`); a real `vimeo.com/<id>/...` URL's path is just `/697711522/...`, which never contains the literal text `vimeo:`. So the `vimeo:<id>` shape some rows use (e.g. `vimeo.com,vimeo:1199438213,us:cousub:2500750390,...` for Oak Bluffs town, MA, WO-145) can never match — the pin silently never applies, and the government falls through to whatever the rest of the identity ladder finds instead. The other, working shape is a bare numeric id with no prefix (e.g. `vimeo.com,1219072948,us:place:3657023,...` for Pelham Manor village, NY). 24 of the file's Vimeo rows now use the broken `vimeo:` prefix (`grep -c ',vimeo:[0-9]'`), on both `vimeo.com` and `player.vimeo.com`. WO-134's own pin writer (`_tenant_override_match()`) still emits it, so every Vimeo ingest adds one (WO-912/913's two were the newest, rewritten by hand). A dead pin also stalls a queue line: `queue_probe.has_owner()` refuses a Vimeo line with no matching pin, and the pin has to be on the host of the page's own `source_url` (Vienna township MI's queue line was on `vimeo.com` while the writer put the pin on `player.vimeo.com`).
+  - **Impact**: up to 24 real governments' Vimeo pins are dead weight — the intended government never actually gets keyed by them, and nothing fails loudly to say so (CLAUDE.md's own "flag risky optional config" pattern: this is exactly a silent-on-bad-input case). CLAUDE.md itself documents the `vimeo:<id>` shape as the convention ("Wistia `external_id=`... Vimeo `vimeo:<id>`"), so a future pin is likely to be written the same broken way unless this is fixed.
+  - **Next action**: either (a) strip the `vimeo:` prefix at load time in `_load_tenant_overrides()` before the row is stored (cheapest, fixes all 24 existing rows with no data migration), or (b) rewrite the 24 rows to the bare-id shape, fix `_tenant_override_match()` so new rows are not written dead, and update CLAUDE.md's own stated convention to match. Re-verify each of the 24 governments' Vimeo video still resolves to the same id before changing anything (a video can be deleted/replaced).
+  - **Constraint**: don't silently change CLAUDE.md's documented convention without also fixing the 24 rows (or vice versa) — the two need to agree, and a test (`tests/test_gov_registry.py` already covers the blank-match safeguard) should assert the `vimeo:<id>` shape actually matches a real sample URL, so this can't regress silently again. Stripping the prefix alone does not fix a row whose host differs from its page's `source_url` host (`player.vimeo.com` against `vimeo.com`); check each row against its own page.
+  - **History**: `BACKLOG_DONE.md`'s WO-356 entry; `rtr-business/research/wo356_methods_section.md` (ENUMERATION_METHODS.md §359); `tests/test_wo912_wo913_candidate_builders.py` asserts the two rows WO-912/913 fixed by hand.
 
 - **[NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction fails against Englewood city, OH's own signed video (seek to 1416s), the reason its `/m/{slug}` page kept re-running the now-fixed blocking refetch on every view.**
   - **Issue**: found live 2026-09-13 (WO-362), reproduced locally: `ffmpeg frame extraction failed (234) ... @ 1416s: ... Output file does not contain any stream` against Englewood's real, current signed TikiLive playlist. The extraction never succeeds, so `crud.has_thumbnail()` stays permanently False for this page — which is what made WO-362's render-path bug (see `BACKLOG_DONE.md`'s WO-362 entry) bite this specific page on every single view instead of once.
@@ -2587,10 +2521,10 @@ of human step they need.
 
 - **[NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped link on a homepage even when it belongs to a completely different organization — not just a decorative video (see the entry above).**
   - **Issue**: `find_platform_link()` (`scripts/wo147_access_ladder_sweep.py`, backed by `app/platforms/base.py`'s shared `detect_platform()`) accepts the FIRST anchor/iframe on a page whose link matches a known platform, in document order — it never checks whether the link is actually about the government being checked. Found live in WO-908 (2026-09-19)'s 200-small-government pilot: of 35 raw YouTube "hits," 11 were confirmed on sight to be someone else's channel entirely — a state agency (Iowa's DNR, Arkansas's tourism board, the Minnesota Judicial Branch, a Quebec provincial safety agency), a state governor's own channel, a hosting company's or CMS vendor's own badge link (Network Solutions, WordPress.com), an unrelated personal channel, and a YouTube Shorts clip (too short to be a real meeting). Two more raw hits on other platforms were the same shape: a CivicPlus link that landed on a neighboring county's own agenda page instead of the town's, and a CivicPlus staging site's business-directory page.
-  - **Impact**: this is the same `run_access_ladder()`/`find_platform_link()` code the entry above flags for decorative video, so a decorative-video fix will not catch this one — these are real, legitimate links, just to the wrong organization. Combined, the two failure modes accounted for roughly a third of every "found a platform" result in WO-908's own 200-government sample — see that WO's own BACKLOG entry and PR for the full count. **WO-909 (2026-09-20)'s hand-check of a second, different 200-government sample found the same pattern again**: of 36 raw hits, 12 were confirmed wrong this way — a state agency, a federal one (the CDC), two separate WordPress.com badge links, a Wix badge link, a bill-payment vendor's own explainer video sitting on a shared Wistia host, a YouTube Shorts clip, and a YouTube search-results page standing in for an actual video. That last shape already has a precedent elsewhere in this file: `wo130_county_ingest.py`'s own YouTube fallback hit an identical `youtube.com/results?search_query=...` link on Dubois County, IN (see the entry on porting that script's fixes forward). The bare-search-page and a bare `youtube.com` homepage (also seen this run, no channel or video at all) are a related but distinct problem from "wrong organization" — the link isn't pointing at someone else's content, it isn't pointing at any specific piece of content at all — worth keeping separate if this gets fixed.
-  - **Next action**: give `find_platform_link()` a name-plausibility check before accepting a hit — the same idea `channel_name_plausible()` (`scripts/wo230_agendacenter_followup.py`) already applies for channel-enumeration sweeps: does the linked channel handle/page title share a real word with the government's own name? A state agency, a vendor's badge, or a different government's own page will almost never pass; a government's own real channel almost always will.
+  - **Impact**: this is the same `run_access_ladder()`/`find_platform_link()` code the decorative-video entry flags, so a decorative-video fix will not catch this: these are real links to the wrong organization. Measured in four hand-checks. WO-908 (200 governments): 11 of 35 raw YouTube hits wrong. WO-909 (200): 12 of 36 wrong (a state agency, the CDC, two WordPress.com badge links, a Wix badge link, a bill-payment vendor's video on a shared Wistia host, a Shorts clip, a YouTube search-results page). **WO-912 (1,200 governments, all 225 finds read): 57 wrong (25%)**: 36 followed an outbound link off the government's site or found a third party's embed, 11 came from a row whose recorded site is another organization's, 10 were not a real channel or video (a bare `youtube.com`, a malformed address, a Google sign-in check). **WO-913 (591 governments, 101 finds read): 14 wrong (14%)**: 9 from a wrong recorded site, 4 the same InvoiceCloud bill-payment video on four towns, 1 the U.S. Postal Service's channel. A link that points at no channel or video at all (a bare home page, a search page) is a related but separate problem; keep it separate if this gets fixed.
+  - **Next action**: give `find_platform_link()` a same-organization check before accepting a hit, the idea `channel_name_plausible()` (`scripts/wo230_agendacenter_followup.py`) already applies for channel-enumeration sweeps. **Measured on WO-912's 225 hand-read finds, not built:** flag a find when the page it came from is on another site AND that site's address holds no distinctive word of the government's name, or when the link is not a real channel or video (a bare `youtube.com`, a sign-in check, an embed with no id). That flags 47 of the 57 wrong finds (82%) and 4 of the 80 right ones (5%).
   - **Constraint**: don't reject a real regional/shared cable-access channel this way — several confirmed-real hits share a channel with no name overlap at all (e.g. Shorewood city, MN's real Cablecast clip on `reflect-lmcc.cablecast.tv`, already noted elsewhere in this file) — flag a no-overlap hit for a human look rather than auto-rejecting it outright.
-  - **History**: found live during WO-908 (2026-09-19)'s 200-government pilot; see that WO's own PR for the full per-row manual review. `BACKLOG_DONE.md`'s WO-909 entry has the second sample's full hand-check.
+  - **History**: found live during WO-908 (2026-09-19)'s 200-government pilot; see that WO's own PR for the full per-row manual review. `BACKLOG_DONE.md`'s WO-909, WO-912 and WO-913 entries have the later hand-checks.
 
 - **[NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s hand-read page fetch has no Content-Type guard, so a `hub_url` that is itself a raw media file gets its full body pulled into memory before being truncated.**
   - **Issue**: found live 2026-09-14 (WO-364), while re-running the same hand-read method WO-361 used against 3 new `direct_file`-platform candidates whose `hub_url` was literally the video's own URL (no wrapping HTML page): Chesterfield Inlet, Nunavut (165 MB `.mp4`), North township, Indiana (31 MB `.webm`), a Wisconsin.gov shared site-template asset (12 MB `.mp4`, served from `/_catalogs/masterpage/WIGovSite/images/`, not town-specific content). `wo361_handread.py`'s `fetch()` does `raw = await resp.read()` with no Range header and no Content-Type check — the *entire* response body is pulled into memory first, and only truncated to 3 MB afterward for storage. That is a real, if accidental, violation of the standing "never download a media file" rule (preamble.md; the rule exists because of the 2026-09-12 Ramsey MN 39 MB mp3 incident) — nothing was saved to disk, but up to 165 MB traversed the network and sat in process memory per candidate.
@@ -6802,6 +6736,22 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
+### The Archive files a page under whatever `gov_id` a sweep sends without checking the source is that government, and WO-134's own check is opt-in `[NEEDS-AUDIT]`
+
+- **Issue**: `archive/db/crud.py`'s `_caller_pinned_match()` treats a `gov_id` in the ingest payload as a pin. It only requires the id to exist in the registry, and refuses (409) only when that meeting's page already sits under a different real id. Nothing checks the source really is that government (`archive/utils/suspicious_source.py` only flags vendor demo tenants). `scripts/wo134_confirmed_hits_ingest.py`'s `JURISDICTION_CHECK_HOOK` and `IDENTITY_CHECK_HOOK` default to `None`, so a wrapper that installs neither files pages under the research row's id unchecked (WO-913's first ingest batch was one, found 2026-09-20). WO-149's `jurisdiction_check_hook()` rejects an adapter guess that names a different state.
+- **Impact**: any research row whose recorded website belongs to another government files that government's meetings under the row's id. The WO-912/913 hand-checks found 21 such rows in 326 links read (`rtr-business/research/wo913_wrong_recorded_domains.csv`): De Kalb city TX carries De Kalb, IL's site, Laverne town OK carries La Verne, CA's video archive, and towns and townships carry their county's site. The state check does not catch a same-state mismatch.
+- **Next action**: make WO-134 install `jurisdiction_check_hook()` by default. Separately decide whether the Archive should cross-check a payload's `jurisdiction` state against the registry state for a caller-supplied id and return 409 on a mismatch.
+- **Constraint**: don't add a blocking Archive-side check without a dry run of how many existing sweep payloads it would refuse; several sweeps force `result.jurisdiction = unit_name` and rely on the ladder being skipped.
+- **History**: `BACKLOG_DONE.md`'s WO-913 entry; `docs/COVERAGE_HANDOVER.md` §3.
+
+### Nothing records that a page was deliberately deleted, so a later sweep can put it straight back `[NEEDS-AUDIT]`
+
+- **Issue**: `POST /internal/admin/delete-pages` removes the row and nothing else. The repo has no list of deleted slugs or rejected source URLs (a search finds only title blocklists inside adapters and sweeps). `scripts/wo134_confirmed_hits_ingest.py` returns a candidate that already has caption segments before any probe runs, so a probe-sidecar `reject-*` row protects only the no-captions (tier-3) path.
+- **Impact**: real example. Toledo OR's 2-minute closed-session opening (`toledo-or-2026-09-16-city-council-executive-session`, CivicClerk event 104) was deleted on 2026-09-20 on Ryan's yes. The next resolve of that tenant from a machine that can fetch YouTube would take event 104 again, since it is the first event with video and captions, and recreate the page.
+- **Next action**: decide where a "do not ingest this source URL" list lives and who reads it. The `/internal/ingest` route in `archive/main.py` is the one place every path passes. Not built in WO-913.
+- **Constraint**: don't solve it with a blanket title block: "executive session" also names real meetings that carry a public portion.
+- **History**: `BACKLOG_DONE.md`'s WO-913 entry (the Toledo delete and the narrow probe-sidecar reject).
+
 ### 7 of 108 already-pinned YouTube channels disagree with what the Archive's own pages say `[NEEDS-AUDIT]`
 
 - **Issue**: found live 2026-09-14 (WO-257), while running an oEmbed
@@ -6871,48 +6821,22 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **History**: `BACKLOG_DONE.md`'s WO-327 entry;
   `ENUMERATION_METHODS.md` §336.
 
-### `jurisdiction_coverage.csv` has at least 5 rows where a smaller government's `domain` is really its county's or state's domain `[NEEDS-AUDIT]`
+### `jurisdiction_coverage.csv` rows whose recorded website belongs to another government or organization: 21 confirmed by hand in WO-912/913, 5 more from WO-282 `[NEEDS-AUDIT]`
 
-- **Issue**: found live 2026-09-12 (WO-282), building a population of
-  "own domain only" governments -- Mohnton borough PA
-  (`us:place:4250272`) and Kenhorst borough PA (`us:place:4239256`) both
-  carry `co.berks.pa.us` (Berks County's own domain, not either
-  borough's) as `domain`. Costilla County CO (`us:county:08023`),
-  Phillips County CO (`us:county:08095`), and Washington County CO
-  (`us:county:08121`) all carry `colorado.gov` (the state's own domain)
-  as `domain`. All 5 slipped through WO-282's "no vendor-host domain"
-  filter since a `.gov`/`.pa.us` government domain isn't a meeting-
-  platform vendor host -- the filter that would catch this is "is this
-  really THIS government's own domain," which nothing currently checks.
-  WO-283 (2026-09-12) found a related but distinct pattern building its
-  own 7,746-row population: 78 `domain` values are shared by 2+ rows,
-  and the largest ones are a generic hosting-platform homepage used as a
-  placeholder `domain` for many unrelated small governments at once --
-  `www.facebook.com` (44 rows), `sites.google.com` (11), `facebook.com`
-  (4), `tshaonline.org` (4), `municipalites-du-quebec.com` (3). None of
-  these is a real per-government website; fetching "the domain" for any
-  one of these rows fetches a shared platform's own generic homepage,
-  not that government's content.
-- **Impact**: unknown scope beyond these 5 -- found by coincidence while
-  building an unrelated population, not by a targeted search. Any
-  downstream method that trusts `domain` as this government's own site
-  will fetch and score the wrong entity's homepage/sitemap for these
-  rows (and any others like them). The Facebook/Google Sites placeholder
-  pattern is a second, likely larger-scope version of the same root
-  problem: "is this really THIS government's own domain" would catch
-  both.
-- **Next action**: find each of these 5 governments' real own domain (a
-  short, targeted lookup, not a guess) and move the wrong value into
-  `alternate_domains` per this file's own domain-promotion convention
-  (never blank `domain` outright); then run a wider sweep of the
-  ~1,700-row population-under-5,000 band for the same county/state-
-  domain-on-a-smaller-government pattern, since these 5 were found by
-  chance in a narrower population.
-- **Constraint**: don't blank or guess a replacement `domain` for these
-  5 without confirming the real one first -- an unconfirmed guess is
-  worse than the current wrong value, which at least is visibly wrong
-  once looked at directly.
-- **History**: `BACKLOG_DONE.md`'s WO-282 and WO-283 entries; `docs/investigations/passive_discovery_v2.md`; `rtr-business/research/ENUMERATION_METHODS.md` §325.
+- **Issue**: a row's `domain` (or recorded hub) is not that government's own site. WO-912 and WO-913 read 326 links on the governments' own pages and found 21 such rows, listed with evidence in `rtr-business/research/wo913_wrong_recorded_domains.csv`:
+
+  | Whose site the row carries | Count of 21 |
+  |---|---|
+  | A county, parish, tribe or another local government | 17 |
+  | A chamber of commerce | 2 |
+  | A municipal-website directory and blog (Byng town OK) | 1 |
+  | A lapsed domain that now redirects to a betting site (Grove Hill town AL) | 1 |
+
+  Examples: De Kalb city TX carries De Kalb, IL's site; Laverne town OK carries La Verne, CA's video archive; Honaker, Madison and Troutdale VA carry their county's; Mill Creek borough PA carries Millcreek Township's. Two related shapes are in the same file and not counted: Tuxedo town and village NY share one website (one site, two registry rows), and Kings County NY's recorded site is the Brooklyn Borough President's office. Earlier finds of the same class: Mohnton and Kenhorst boroughs PA carry Berks County's domain, and Costilla, Phillips and Washington counties CO carry `colorado.gov` (WO-282); 78 `domain` values are shared by 2+ rows (WO-283), the largest a generic platform homepage used as a placeholder (`www.facebook.com` 44 rows, `sites.google.com` 11).
+- **Impact**: any method that trusts `domain` reads the wrong government's page, and an ingest files what it finds under the row's `gov_id` (see the entry on the Archive trusting a caller-supplied id). 21 of the 1,791 governments WO-912/913 ran (1.2%) is a floor: a wrong site with no meeting link was never read by hand.
+- **Next action**: for each of the 21 (and WO-282's 5), find the government's real own site (a targeted lookup, not a guess) and move the wrong value to `alternate_domains` per this file's domain-promotion convention; never blank `domain`. Then add an automatic check: does the recorded site's page title or address name this government?
+- **Constraint**: don't blank or guess a replacement `domain` without confirming the real one; an unconfirmed guess is worse than a visibly wrong value. A namesake in another state (De Kalb TX and IL, Laverne OK and La Verne CA) passes a name check, so the state has to be checked too.
+- **History**: `BACKLOG_DONE.md`'s WO-912, WO-913, WO-282 and WO-283 entries; `docs/investigations/passive_discovery_v2.md`; `rtr-business/research/ENUMERATION_METHODS.md` §325. A domain that lapsed to an ad page is also the Lake City city, FL entry below.
 
 ### Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a third-party ad-lander, not the government's own site `[NEEDS-AUDIT]`
 
@@ -7541,118 +7465,10 @@ this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
-### `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125 tested-no-page rows carry a bare `/AgendaCenter` hub with real video one hop away (added 2026-09-11)
-
-- **Issue**: 1,125 rows tested and not in the Archive have a bare, empty
-  `/AgendaCenter` hub recorded as their example URL (607 of them at
-  5,000+ population), with reject reasons mostly `no-video-found`/
-  `meeting-without-video` assigned against that empty shell rather than
-  the government's real meetings hub. WO-226's spot-check hand-checked 6
-  such rows: all 6 were confirmed empty shells, and 4 of the 6 converted
-  to real ingested video once the real hub was found one hop away
-  (Hagerstown MD, Harvey IL, Flagler Beach FL, Greenwood Village CO);
-  the other 2 stayed correctly no-video after the same closer look
-  (Hoffman Estates IL, Melrose MA).
-- **Impact**: a meaningful share of an already-large population (1,125
-  rows; 358 total counting the related 161 calendar-hub rows) is likely
-  mis-recorded as video-less when the real hub is simply one link deeper
-  than the sweep that tested it looked.
-- **Next action**: the sweep script was built and live-validated against
-  6 governments (WO-905, 2026-09-19), then run for real at scale for the
-  first time (WO-910, 2026-09-20) — but against two populations built
-  fresh from the live Gov Coverage dashboard's own data, **not** the
-  1,125-row list this entry is named for. That list still only exists in
-  `jurisdiction_coverage.csv` on Ryan's Mac, still unreached by any
-  session here. Read the counts below as "a similar, smaller,
-  independently-built population," not as "the 1,125 are done."
-
-  Population 1, 656 governments whose recorded hub matches this entry's
-  own bare-`/AgendaCenter` shape:
-
-  | Result | Count of 656 |
-  |---|---|
-  | No platform link found at all | 381 |
-  | Hub and home page both unreachable | 163 |
-  | Found a platform link | 111 |
-  | Found a platform, but only its bare front door, not yet a confirmed meeting | 1 |
-
-  Population 2, 129 governments recorded with some OTHER kind of bare or
-  generic hub (CivicWeb portal roots, eScribe generic pages, filepro
-  document listings) — a deliberate test of whether the same method
-  works outside what it was built for, kept separate from population 1
-  on purpose, never blended into one combined number:
-
-  | Result | Count of 129 |
-  |---|---|
-  | No platform link found at all | 84 |
-  | Hub and home page both unreachable | 4 |
-  | Found a platform link | 38 |
-  | Found a platform, but only its bare front door, not yet a confirmed meeting | 3 |
-
-  Both runs finished clean — zero errors, zero timeouts, across all 785
-  governments checked.
-
-  Hand-checked by eye (channel name, filename, domain — no live fetches)
-  whether the "found" result is plausibly the right government:
-
-  | Population | Sample checked | Confirmed right | Confirmed wrong | Can't tell from the URL alone |
-  |---|---|---|---|---|
-  | 1 (AgendaCenter), of 112 found | 45, random | 20 | 5 | 20 |
-  | 2 (broader test), of 41 found | 41, all of them | 24 | 3 | 14 |
-
-  Two real gaps in the tool itself turned up in this run and were fixed
-  in the same PR, small, reusing the tool's own existing pattern (full
-  detail: `BACKLOG_DONE.md`'s WO-910 entry): CivicWeb's own bare front
-  door wasn't yet recognized as "found the vendor, not a confirmed
-  meeting" the way six other vendors already were. CivicLive (a website
-  builder with no video product of its own) was being accepted as a real
-  hit at all — one real example, Camden village NY, turned out to be the
-  town's own "About Us" history page.
-
-  Two real problems turned up and were **not** fixed here, on purpose:
-  four "found" results (Burlington CT, Farmington NH, Markham IL, Omak
-  WA) are the exact same video, from a bill-payment vendor, not a real
-  meeting — documented rather than patched, since the right fix needs a
-  judgment call (exclude that one vendor's video specifically, not all
-  of Wistia) this pass didn't want to make unilaterally. And the tool
-  inherits this file's own already-open `find_platform_link()`
-  wrong-organization bug (see that entry): Holgate village OH's result
-  was the U.S. Postal Service's own YouTube channel; Cedar County NE's
-  was Nebraska's state health department. Neither is new, neither is
-  fixed here.
-
-  Also found, and this is a data problem upstream of this tool, not a
-  bug in it: at least 3 tiny places in population 1 (Seward city KS,
-  Honaker town VA, Troutdale town VA) are recorded with their COUNTY's
-  own domain instead of their own, so the "video" found for them is
-  really the county's, not theirs.
-
-  Still needed: the real ~1,125-row population, from a session with
-  `rtr-business` access. Nobody has run this tool against that exact
-  list yet. A second, related population (the "129" above generalized to
-  its full size) is its own separate entry below.
-- **Constraint**: don't hand-check a full population by hand -- the
-  script above replaces that, but DO hand-check a real sample of its
-  "found" results before trusting them -- WO-910's own sample found a
-  real, non-trivial wrong-government rate (see the table above). Its own
-  "bare tenant root" outcome (a real platform link found, but not yet a
-  specific meeting -- e.g. a bare CivicClerk/Swagit/Granicus/PrimeGov/
-  eScribe/IQM2/CivicWeb tenant page) still needs a human or a future
-  WO's judgment call for every platform except CivicClerk, which the
-  script already checks itself via that vendor's own public Events API.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11, and its
-  WO-910 entry, 2026-09-20 (the two tool fixes this run found and
-  shipped). WO-905's full validation detail (the mechanism, the false
-  positives it found and fixed building it, and the sibling
-  passive-discovery-v2 finding it credits) is in
-  `scripts/wo905_agendacenter_hop_sweep.py`'s own module docstring.
-  WO-910's own PR has the full row-by-row hand-check detail for both
-  populations.
-
 ### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
 
-- **Issue**: `scripts/wo905_agendacenter_hop_sweep.py` (see the
-  AgendaCenter entry above) was built and tested only against bare
+- **Issue**: `scripts/wo905_agendacenter_hop_sweep.py` (see `BACKLOG_DONE.md`'s
+  WO-913 entry) was built and tested only against bare
   `/AgendaCenter` hubs. WO-910 (2026-09-20) ran it, completely unchanged
   in its matching logic, against a second, deliberately different
   129-government population -- governments recorded with some OTHER kind
@@ -7664,15 +7480,15 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   than the AgendaCenter population's own 112 of 656 (17%). A hand-check
   of all 41 found results (not a sample -- every one) confirmed 24 as
   plausibly the right government, 3 as confirmed wrong, and 14 not
-  verifiable from the URL alone (see the AgendaCenter entry's own table
-  for the full breakdown, and its Next action for two small real tool
-  gaps this population's data found and got fixed in the same pass).
+  verifiable from the URL alone (see `BACKLOG_DONE.md`'s WO-910 entry for the full breakdown and
+  two small real tool gaps this population's data found and got fixed in
+  the same pass).
   That is a real, if small, population of governments with a lead worth
   chasing, found by a method built for something else entirely.
 - **Next action**: this was a 129-government pilot, not a full run --
   there is no larger, ready-built list of "bare or generic hub, not
   AgendaCenter-shaped" governments to point this tool at yet, the way
-  the 1,125-row AgendaCenter list above already exists. Building that
+  the AgendaCenter list already did (WO-913 ran it: 591 governments). Building that
   list (the same shape of query against the Gov Coverage dashboard/
   research file: a recorded hub URL that is a bare portal root, a
   generic listing page, or similar, on any platform) is the next step
@@ -7683,9 +7499,9 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   testing different things, and blending them into one combined rate
   would hide that the method's yield genuinely varies by hub shape,
   which is itself worth knowing.
-- **History**: `BACKLOG.md`'s "AgendaCenter-empty-shell population"
-  entry above (this pilot's full counts and hand-check); `BACKLOG_DONE.md`'s
-  WO-910 entry (the two tool fixes this pilot's own data found).
+- **History**: `BACKLOG_DONE.md`'s WO-910 entry (this pilot's full counts
+  and hand-check, and the two tool fixes its data found) and WO-913 entry
+  (the AgendaCenter population's own run).
 
 ### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
 

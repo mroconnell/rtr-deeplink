@@ -140,10 +140,14 @@ reasons. That is how every sweep below was scoped.
 
 ## 3. How identity is assigned and repaired
 
-- `app/utils/gov_registry/resolve_government()` runs a ladder: pinned →
-  name repair → classify the type before any place lookup → national
-  table → registry fallback → mint → blank. It refuses to guess: a bare
-  "Kansas City" with no state stays unresolved on purpose.
+- `app/utils/gov_registry/resolve_government()` runs a ladder (the module
+  is `app/utils/gov_registry/resolver.py`, called by the ARCHIVE at ingest;
+  where this document says "the resolver" or "rung 1b" it means that
+  module, not the Resolver service): authoritative pin → repair the name →
+  classify the type before any place lookup → national table (exactly one
+  match) → fallback pin → mint (`rtr:<country>:<st>:<slug>`) → blank
+  (`rtr:unknown:<host>`). It refuses to guess: a bare "Kansas City" with no
+  state stays unresolved on purpose.
 - **Pins** (`app/utils/jurisdiction_data/tenant_overrides.csv`) are the
   human override: host → gov_id, optionally with a `match` discriminator
   for shared hosts (a YouTube handle or video id, a TelVue playlist).
@@ -278,6 +282,39 @@ reasons. That is how every sweep below was scoped.
   already honored as `caller_gov_id` — pins still matter for the
   transcription worker's later re-resolve and for the drip, just not for
   this first write.
+- **Read the code, not this summary, for who decides a page's government
+  — and a caller-supplied `gov_id` is trusted, not checked (verified in
+  code 2026-09-20, WO-913).** The Resolver service (`app/main.py`
+  `/api/resolve`) decides nothing about identity: it pushes the adapter's
+  raw `ResolvedMeeting` to the Archive, and its own comment says "the
+  Archive is the only place a repaired/split jurisdiction actually gets
+  written." The Archive (`archive/db/crud.py` `_find_or_create_page()` →
+  `_resolve_page_government()`) decides. With no `gov_id` in the payload
+  it runs the ladder above (host pins, then the adapter's name string
+  through the national tables), and if that only mints or leaves it
+  unresolved it looks up the host's dominant government from earlier pages
+  and runs it again (`_tenant_dominant_gov_id()`). The displayed name is
+  always the registry's name for the chosen id; the adapter's string stays
+  in `jurisdiction_raw`. **With a `gov_id` in the payload the ladder is
+  skipped**: `_caller_pinned_match()` requires only that the id exist in
+  the registry (`UnknownGovernmentId`), and a page already keyed to a
+  different real id raises `GovernmentMismatch` (HTTP 409). Nothing checks
+  that the source really is that government
+  (`archive/utils/suspicious_source.py` only flags vendor demo/staging
+  tenants). So for a sweep that sends its row's id, **the research-file
+  row IS the identity**, and a row whose recorded domain belongs to
+  another government (a county's, a tribe's, a namesake in another state:
+  De Kalb TX's row carries De Kalb IL's site) files that government's
+  meetings under it. The only mechanical check is WO-134's opt-in
+  `JURISDICTION_CHECK_HOOK` / `IDENTITY_CHECK_HOOK` (default `None`; most
+  sweeps install one. WO-149's `jurisdiction_check_hook()` rejects an
+  adapter guess that names a different STATE and does not catch a
+  same-state mismatch such as a town whose row carries its county's
+  domain). A tier-3 queue line for a single-tenant host sends no id
+  (`queue_probe.has_owner()` returns `(True, None, "")`), so the Archive's
+  own ladder decides; for a shared host the feed sends a per-video pin's
+  id or the line is refused. Counts from the hand-check that surfaced
+  this: `BACKLOG_DONE.md`'s WO-913 entry.
 - **A matched per-video pin on a shared host wins over the registry
   unconditionally (WO-221), and that cuts both ways.** It fixed the case
   it was built for, but it also made every OLDER fallback pin
@@ -478,34 +515,35 @@ finish entry.
 
 ## 5. The breakthroughs worth carrying forward
 
-1. **Headless browsing recovers JavaScript-rendered navigation, not just
-   firewalls.** On the largest governments previously rejected as "no
-   platform link found", a headless pass found a platform on 41% of
-   sites, and 149 of 150 of those pages had loaded cleanly for a plain
-   client; the meeting links were simply drawn by JavaScript. An earlier
-   trial had attributed its wins to bypassing 403s. The lesson is that
-   the plain-HTTP two-hop scan's "no platform" verdict is unreliable on
-   modern municipal sites, and the headless pass (one browser, one
-   government at a time, never past a human-verification gate) is the
-   right second opinion. ~1,180 smaller governments have not had it yet.
-   Script: `rtr-business/research/wo133_headless_recheck_scan.py`.
-   **A first 200-government pilot on that smaller population (WO-908,
-   2026-09-19) could not actually answer the question** — the sandbox
-   it ran in had a broken headless browser (a Playwright/Chromium
-   version mismatch), so headless itself never once ran. **WO-909
-   (2026-09-20) fixed that specific crash and reran the pilot on a
-   second, different 200-government sample.** Headless now genuinely
-   launches and loads a real page — confirmed directly, including on a
-   plain (non-HTTPS) page fetched during the real rerun — but a second,
-   separate sandbox limitation showed up in its place: this kind of
-   agent sandbox routes web traffic through an inspecting proxy whose
-   certificate the Chromium browser itself does not trust, so every
-   real attempt against an HTTPS site (nearly all government sites)
-   still fails, just later and for a different reason than before. See
-   `BACKLOG.md`'s matching entry for the real numbers both pilots got
-   and what answering this properly still needs: running it from a
-   machine that is not behind that kind of proxy — Ryan's own Mac, this
-   repo's GitHub Actions runner, or a Render shell.
+1. **Headless browsing recovers JavaScript-rendered navigation on large
+   governments' sites; on small ones it adds almost nothing.** On the
+   largest governments previously rejected as "no platform link found",
+   a headless pass found a platform on 41% of sites, and 149 of 150 of
+   those pages had loaded cleanly for a plain client; the meeting links
+   were simply drawn by JavaScript. An earlier trial had attributed its
+   wins to bypassing 403s. So the plain-HTTP two-hop scan's "no platform"
+   verdict is unreliable on modern municipal sites, and the headless pass
+   (one browser, one government at a time, never past a human-verification
+   gate) is a right second opinion there. Script:
+   `rtr-business/research/wo133_headless_recheck_scan.py`.
+   **Earlier versions of this section said "~1,180 smaller governments have
+   not had it yet." That was wrong the day it was written:** WO-148
+   (2026-09-10) had already run a working headless step on 1,132 of them
+   (population 5,000 to 23,442; 850 reached it, 61 found a platform link,
+   7.2%). **WO-912 (2026-09-20, on Ryan's Mac) then measured the
+   small-government question for real.** On a random 1,200 of the 8,559
+   governments that never had a headless check (mostly under 2,500
+   people), 875 headless page loads found 12 platform links; after a
+   hand-check 2 were new, usable finds, and the plain fetch found 213 of
+   the ladder's 216. Full numbers: `BACKLOG_DONE.md`'s WO-912 entry. The two
+   earlier cloud-sandbox pilots (WO-908, WO-909) could not answer it: a
+   Chromium version mismatch, then a certificate block. Two cautions from
+   the run. A headless load fetches whatever the page embeds, **including
+   YouTube**; `fetch_headless_sync()` now blocks that at the browser
+   (PR #1254; `docs/YOUTUBE_DRIP_RUNBOOK.md` rule 5). And the ladder's
+   `find_platform_link()` accepts the first vendor-shaped link on whatever
+   page it lands on: 25% of the links WO-912 found were another
+   organization's.
 2. **The identity join** (section 3): coverage that already exists but
    is invisible because of a minted id. Cheap, high-yield, repeatable
    whenever the research file and the Archive disagree.

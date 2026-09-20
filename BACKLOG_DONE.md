@@ -1,5 +1,491 @@
 # Backlog — done
 
+## WO-912: headless browser check on 1,200 small governments — 875 headless page loads found 12 links and only 2 were new, usable finds; the plain fetch found 213 of the ladder's 216 [Done 2026-09-20]
+
+**Why this ran.** `BACKLOG.md` had an open question. A headless browser (a real Chromium with no window that runs the page's scripts) found a platform link on 41% of the largest governments the plain fetch had already given up on. Would it find links on small governments too? Two earlier pilots (WO-908, WO-909) could not answer it: the browser crashed, then hit a certificate block, in the cloud sandbox. This run used Ryan's Mac, where neither problem exists.
+
+**The population was not the one the docs named.** `docs/COVERAGE_HANDOVER.md` said about 1,180 smaller governments had never had a headless check. That was stale the day it was written. WO-148 (2026-09-10) had already run headless on 1,132 of them (population 5,000 to 23,442). The real list was built fresh from the live research file.
+
+| Step | Count of governments |
+|---|---|
+| Pass the filter (has a domain, not a school district, rejected "no platform link"/"no platform signature", no Archive page, no YouTube address on the row) | 10,238 |
+| Less: already reached a headless step in an earlier ladder report | 1,677 |
+| **Never had a headless check (the candidate list)** | **8,559** |
+
+Most are tiny: 3,483 under 1,000 people, 1,616 at 1,000 to 2,499, and 1,887 with no population figure. The list was put in a seeded random order (seed 912), so the first 1,200 are a fair sample of all 8,559. **1,200 were run; 7,359 were not.**
+
+**How it ran.** `scripts/wo908_headless_pilot.py` called the access ladder (`run_access_ladder()`) unchanged. The ladder tries a plain fetch, then a fetch with browser headers, and goes headless only when a page loads but shows no meeting-shaped link. It is a measurement: it writes a report and touches nothing else. Two more things were added around it:
+
+- A companion pass gave **headless a second opinion** on the governments the ladder had skipped it for. That tests the ladder's trigger rule as well as headless itself.
+- A person read every link found (225), on the government's own page, and gave a verdict.
+
+**Phase 1: the ladder as designed** (report: `rtr-business/research/wo912_report.csv`).
+
+| Result | Count of 1,200 |
+|---|---|
+| Found a link: plain fetch | 211 |
+| Found a link: plain fetch with browser headers | 2 |
+| Found a link: headless, in the ladder's own step | 3 |
+| **Any link found (raw, before the hand-check)** | **216 (18.0%; range 15.9 to 20.3)** |
+| Nothing found: page loaded, hop links checked, headless not tried | 741 |
+| Nothing found: headless was tried by the ladder | 138 |
+| Unreachable (no such site, timed out, no page) | 53 |
+| Human-verification wall (stopped there, never solved) | 52 |
+
+**Phase 2: headless as a second opinion** (`wo912_second_opinion.csv`). 741 governments had a page that loaded, hop links checked, and no headless step. 734 got a headless load. The other 7 had a direct-file link the ladder had already rejected as implausible, and the companion rule skips those.
+
+| Result | Count of 734 |
+|---|---|
+| Found a platform link | 9 |
+| Page rendered, no link | 718 |
+| Human-verification wall | 0 |
+| Browser could not load the page | 7 |
+
+**All headless loads together.** 875 (141 in the ladder's own step, 734 in the second opinion). 12 found a link (1.4%): 3 in the ladder's step, 9 in the second opinion.
+
+**Phase 3: a person read every link found** (all 225, `wo912_handcheck.csv`). "Right government" means the link belongs to the government on that research-file row, judged by its own page.
+
+| Verdict | Plain fetch | Browser headers | Headless, ladder step | Headless, second opinion | All |
+|---|---|---|---|---|---|
+| Right government, labelled as meetings | 36 | 1 | 0 | 1 | 38 |
+| Right government (own channel or platform) | 40 | 1 | 0 | 1 | 42 |
+| Right government, but not a meeting | 73 | 0 | 0 | 6 | 79 |
+| Wrong organization | 54 | 0 | 3 | 0 | 57 |
+| Can't tell | 8 | 0 | 0 | 1 | 9 |
+| **Links checked** | **211** | **2** | **3** | **9** | **225** |
+
+So 80 of the 225 (36%) are the government's own link to meetings or to a channel or platform of its own. 57 (25%) are the wrong organization. 49 of the 80 good ones are YouTube.
+
+**The 57 wrong finds, by cause.**
+
+| Why the link was wrong | Count of 57 |
+|---|---|
+| The sweep followed an outbound link off the government's site to another organization's page (a state agency, a utility, a hosting badge) or found a third party's embed | 36 |
+| The row's recorded website belongs to another organization (a county, a chamber of commerce, a namesake town in another state, a directory site, a lapsed domain now redirecting to a betting site) | 11 |
+| The link is not a real channel or video (a bare youtube.com home page, a malformed address, a Google sign-in check) | 10 |
+
+That is the known `find_platform_link()` bug, measured: it takes the first vendor-shaped link on whatever page it lands on and never asks whether the page is the government's. It was not fixed here. **A rule that flags a find when the page it came from is on another site and that site's address holds no distinctive word of the government's name, or when the link is not a real channel or video, would have flagged 47 of the 57 wrong finds (82%) and 4 of the 80 good ones (5%).** Nothing was built from that rule.
+
+**The 12 headless finds, read by hand.**
+
+| Verdict | Count of 12 |
+|---|---|
+| Right government, and new to the leads list | 2 (Dewey Beach DE: a "Live Meetings" link to its YouTube channel that appears only once the page runs; Long Hill NJ: its own TV channel) |
+| Right government, but not a meeting (home-page promo videos) | 6 |
+| Wrong organization (two Google sign-in checks, one chamber of commerce site) | 3 |
+| Can't tell (a channel link with no label) | 1 |
+
+**Phase 4: by population band.** Headless yield is small in every band; the bands above 5,000 people have too few headless loads (92) to say anything.
+
+| Population band | Governments run | Links found by the ladder (raw) | Headless loads | Headless finds (raw) |
+|---|---|---|---|---|
+| under 1,000 | 459 | 59 (13%) | 379 | 7 |
+| 1,000-2,499 | 235 | 46 (20%) | 170 | 0 |
+| 2,500-4,999 | 49 | 14 (29%) | 14 | 0 |
+| 5,000-9,999 | 44 | 10 (23%) | 21 | 0 |
+| 10,000+ | 136 | 43 (32%) | 71 | 1 |
+| population blank | 277 | 44 (16%) | 220 | 4 |
+
+**Compared with WO-148.**
+
+| Run | Governments | Headless page loads | Found a link | Share of loads |
+|---|---|---|---|---|
+| WO-148 (2026-09-10; populations 5,000 to 23,442) | 1,132 | 850 | 61 | 7.2% |
+| WO-912 (this run; mostly under 2,500 or no figure) | 1,200 | 875 | 12 | 1.4% |
+
+WO-148's governments were 5,000 to 23,442 people; this run's are mostly under 2,500 or have no figure. The two rates are not like for like, and this run's 92 headless loads above 5,000 people are too few to say whether size explains the gap.
+
+**What the finds became.**
+
+| Find | Count | What happened |
+|---|---|---|
+| YouTube channel, playlist or video | 49 governments | 25 were already on `youtube_channel_leads.csv`. 24 are new, in `wo912_leads_to_add.csv` (`verified=false` until the drip lane hand-reads them). |
+| Non-YouTube platform link, marked for ingest | 7 governments | 1 page created (Sealy TX, 1,397 transcript segments). 1 tier-3 queue line (Vienna township MI, a 2016 board meeting). 5 real tenants where the resolver got no meeting from the front door: Georgetown CO (OpenMedia `embed/full`, 404), Macoupin County IL (IQM2), Hutchinson County TX (CivicClerk, no event with media), Barnegat NJ (Swagit), Dodge County MN (PrimeGov). |
+| Research-file rows changed | 6 | Only for hand-confirmed finds, under the shared-file write protocol. |
+| Pins added to `tenant_overrides.csv` | 2 | Per video, never per host (Sealy and Vienna, both on Vimeo). WO-134's pin writer emitted `vimeo:<id>`, a shape that never matches a real URL (an open bug), so both rows were rewritten by hand to the bare id and a test now checks they match. Without that, Vienna's queue line would have stalled: the queue's owner check refuses a Vimeo line with no matching pin. |
+
+**Summary.**
+
+| Question | Answer |
+|---|---|
+| Does headless find more meeting links on small governments than a plain fetch? | No. 12 links in 875 loads (1.4%), 2 of them new and usable. The ladder's plain steps found 213 of its 216. |
+| Is "go headless only when no hop link shows" losing finds? | Barely. The second opinion on the 734 skipped governments found 9 (1.2%); 2 were usable. |
+| How often was a found link the wrong organization? | 57 of 225 (25%). |
+| How many rows carry another organization's website? | 21 confirmed by hand across WO-912 and WO-913. |
+
+**Headless is not worth running to find meeting links on small governments. The productive work was reading what the plain ladder finds.**
+
+**What a rerun on the other 7,359 would give.** This assumes they behave like the 1,200, which the random order supports. The plain ladder only; headless is not part of it.
+
+| Question | Projection (range) |
+|---|---|
+| Raw links found | about 1,325 (1,170 to 1,490) |
+| Right-government links to a channel or platform, after a hand-check | about 490 (400 to 600) |
+| New YouTube leads | about 150 (100 to 220) |
+| Time, one government at a time (12.4 seconds each, measured) | about 25 hours |
+| Links a person would have to read | about 1,300 (this run: 225) |
+
+The governments no earlier ladder report ever covered do better than the ones it did:
+
+| Group | Governments run | Raw links found | Right government, channel or platform (hand-checked) |
+|---|---|---|---|
+| Never in an earlier ladder report | 633 | 140 (22.1%) | 55 (8.7%) |
+| In an earlier ladder report | 567 | 76 (13.4%) | 23 (4.1%) |
+
+Of the 7,359 not run, 3,843 were never in an earlier report and 3,516 were.
+
+**Caution.**
+
+- The sample is random, but "usable" is a person's judgment from the government's own page. 9 of 225 could not be judged.
+- Headless finds more on big-government sites (WO-148). This run has only 92 headless loads above 5,000 people.
+- **YouTube exposure.** YouTube is fetched only by the drip Mac. A headless page load fetches whatever a page embeds. 457 loads ran before the fix (82 in the ladder's step, 371 in the second-opinion pass, 4 by hand). About 4 pages could have made the browser contact YouTube; 2 of them (Google Sites sign-in pages) very probably did. Every load after the restart was blocked (PR #1254, browser-level block plus an in-process guard, `scripts/youtube_fetch_guard.py`). The proof of the fix uses a sink proxy that forwards nothing; it proves the fix, not the past.
+- The Toledo OR page WO-913 created and Ryan had deleted is a separate item, in WO-913's entry.
+
+**Recommendation.**
+
+1. **Do not run headless at scale to find meeting links.** 875 loads found 12 links and 2 new, usable ones. The plain fetch found 213 of the 216 raw finds.
+2. **If the other 7,359 are worth running, use the plain ladder only,** the 3,843 never covered first (about twice the yield). About 490 right-government links, about 150 of them new leads, for about 25 hours of unattended run time and about 1,300 links to read.
+3. **Build the same-organization check first** (see the wrong-organization entry in `BACKLOG.md`). It cuts the hand-check by about a fifth, at the cost of 5% of good finds.
+4. **That is Ryan's call.** It is filed as a `[HUMAN]` entry in `BACKLOG.md`.
+
+**Docs updated.** `docs/COVERAGE_HANDOVER.md` (§3 ladder wording, the identity bullet, and §5.1's stale headless numbers), `BACKLOG.md` (the headless entry closed, the wrong-organization and wrong-recorded-domain entries rewritten with measured numbers, one open decision filed), this file.
+
+**Deploy status.** Scripts, tests, docs and two pins only. The two pins in `app/utils/jurisdiction_data/tenant_overrides.csv` reach production only with the next deploy (Ryan's); the Sealy page is already live because the Archive ingest route was called directly.
+
+Files: `scripts/wo912_build_candidates.py`, `scripts/wo912_headless_second_opinion.py`, `scripts/wo912_wo913_ingest_confirmed.py`, `scripts/wo912_wo913_make_leads.py`, `scripts/youtube_fetch_guard.py` (PR #1254); in `rtr-business/research/`: `wo912_candidates.csv`, `wo912_report.csv`, `wo912_second_opinion.csv`, `wo912_handcheck.csv`, `wo912_leads_to_add.csv`, `wo912_manual_leads.csv`, `wo913_wrong_recorded_domains.csv`, `wo912_wo913_confirmed_hits.csv`, `wo912_wo913_ingest_log.csv`, `wo912_wo913_apply_to_jc.py`, `wo912_jc_applied_gov_ids.txt`.
+
+**The `BACKLOG.md` entry this work order closed, moved here unchanged (2026-09-20).** It left the question open on purpose: the certificate block belonged to the cloud sandbox. It does not exist on Ryan's Mac, and the question is answered above.
+
+### Headless's sandbox launch crash is fixed (WO-909) — a second, sandbox-only certificate block still leaves the real small-government hit rate unknown `[JUST-DO-IT]`
+
+- **Note on the number**: this ran as WO-906, then was renumbered to
+  WO-908 before merging — a separate, unrelated conductor session
+  independently used 904/905/906/907 for a three-part meeting_body
+  effort around the same time (`BACKLOG_DONE.md`'s "WO-904/905/906" and
+  "WO-907" entries). This session's own WO-904 and WO-905 had already
+  merged before the collision was caught, so those two numbers now
+  legitimately collide in history; this entry was renumbered to the
+  true next-free number instead of adding a third collision. The git
+  branch name (`wo906-headless-pilot-small-govs`) was left unchanged.
+- **Issue:** `docs/COVERAGE_HANDOVER.md` §5.1 measured a 41% headless
+  hit rate on the LARGEST governments already rejected "no platform
+  link found," and flagged ~1,180 smaller governments as never having
+  had the same check. WO-908 (2026-09-19) ran the existing ladder
+  (`scripts/wo147_access_ladder_sweep.py`'s `run_access_ladder()`,
+  unchanged) against a real, random sample of 200 of them — 22
+  counties, 139 municipalities, 39 townships, across the US and
+  Canada. It ran clean end to end (200 of 200, no crashes, no forced
+  solve of a Cloudflare check), but every one of the 35 governments
+  (17.5%) whose homepage had no clickable meeting-shaped link at all —
+  exactly the case headless exists for — hit the identical error: this
+  sandbox's `playwright` package (pinned `1.62.0`) expects Chromium
+  build 1234; only build 1194 is pre-installed. 35 attempts, 35
+  failures, 0 successes. **WO-909 (2026-09-20) fixed that specific
+  crash** — `_headless_chromium_executable_path()`, added to the same
+  file, hands Playwright the sandbox's own pre-installed Chromium, but
+  only when that sandbox's own setup says to; every other environment
+  (Ryan's Mac, this repo's GitHub Actions runner, Render) calls
+  Playwright exactly as before. Confirmed fixed two ways: a direct
+  test against a plain web page returned real page content, and the
+  rerun below shows headless reaching the page-load step (a
+  certificate error, see Impact) instead of crashing before it ever
+  tried.
+- **Impact:** WO-909 reran the pilot on 200 DIFFERENT small
+  governments — a new random sample, WO-908's own 200 excluded, so
+  this is genuinely new information. 200 of 200 processed, zero
+  exceptions, zero forced challenge-solves, and (checked on every row
+  via the report's own `final_url_is_youtube` column) zero direct
+  fetches to youtube.com/youtu.be. Rung breakdown: 36 found via a
+  plain fetch (**18%**), 0 via browser-headers, 0 via headless, 5
+  challenge-blocked (2.5%), 159 nothing found (79.5%) — WO-908's own
+  different 200 found 53 (26.5%), 4 challenge (2%), 143 nothing
+  (71.5%); both are real numbers from two different random samples, so
+  some difference between them is expected on its own, not a
+  regression. Headless was actually tried 36 times (once per
+  government whose page loaded fine but showed no link at all — the
+  exact case headless exists for) and failed all 36 times with the
+  identical `net::ERR_CERT_AUTHORITY_INVALID` — a certificate error,
+  not a launch crash. This sandbox routes secure (`https://`) requests
+  through a local checkpoint that re-signs them with its own
+  certificate; this repo's own aiohttp-based fetches already trust
+  that certificate (confirmed: 36 real government sites were reached
+  over `https://` with no problem in this same run), but the Chromium
+  browser Playwright drives does not — confirmed directly even though
+  the exact same certificate is correctly installed in this machine's
+  general trusted-certificate list (verified byte-for-byte by SHA-256
+  fingerprint). A side-by-side control test on one real page confirmed
+  it precisely: headless loaded the identical page fine over plain
+  `http://` and failed it over `https://`, every time. **The question
+  this pilot exists to answer — does headless find a real
+  meeting-platform link on small governments the way it does on big
+  ones — is still open**, now for a different, better-understood
+  reason than WO-908 hit. A hand check of all 36 found results (fewer
+  than 40 exist in this sample, so all of them were checked) found 8
+  (22%) confirmed-real on sight, 12 (33%) confirmed WRONG (see the two
+  entries above) plus 1 more (3%) that is the right government but a
+  mayor's ceremonial "State of the City" address, not a meeting — and
+  the remaining 15 (42%) can't be judged from the link alone (a bare
+  video or channel id with no name shown). Close to WO-908's own
+  21%/38%/42% split on its own, different sample.
+- **Next action:** the Chromium-launch crash is fixed; what is left is
+  the certificate problem above, which needs a machine that does not
+  sit behind a checkpoint like this sandbox's: Ryan's own Mac, this
+  repo's GitHub Actions runner, or a Render shell. Re-run
+  `scripts/wo908_headless_pilot.py` from one of those (it already
+  resumes automatically) before drawing any conclusion about whether
+  headless is worth running on the rest of the ~1,180.
+- **Constraint:** 0% via headless on two separate 200-government
+  pilots in a row still means "blocked before it could try," not
+  "doesn't help" — don't read it either way until it runs somewhere
+  without a certificate checkpoint like this sandbox's in the way.
+  Don't treat either pilot's plain-HTTP-found rate (18% or 26.5%) as a
+  validated hit rate either, for the same reason the two entries above
+  exist.
+- **History:** WO-908's own PR (branch `wo906-headless-pilot-small-
+  govs`) has its full 200-row report and the manual review behind its
+  11/20/22 split. `BACKLOG_DONE.md`'s WO-909 entry has the crash fix,
+  the new 200-row report, and the manual review behind the 8/12/1/15
+  split above.
+
+## WO-913: the AgendaCenter hop sweep run on the real, current population (591 governments): 101 links found, every one hand-checked; 82 are the right government and 14 are the wrong one, and 9 of those 14 trace to a wrong website on the research row [Done 2026-09-20]
+
+**Why this ran.** `BACKLOG.md`'s "AgendaCenter-empty-shell population"
+entry said about 1,125 governments were recorded with a bare, empty
+`/AgendaCenter` page as their hub, when the real meeting hub was usually
+one link deeper. WO-905 built a sweep to walk that one extra step, and
+WO-910 ran it for the first time on two lists built from the dashboard.
+But WO-910's row-by-row report was never saved anywhere, and nobody acted
+on what it found. This work order ran the sweep on the live research
+file, saved the full report, checked every link it found by hand, and
+handed the confirmed ones on.
+
+**The population was smaller than the entry said.** The entry's 1,125 was
+the count on 2026-09-11. Other sweeps have since converted or re-recorded
+about half of those governments. WO-910's 656 was already close to
+today's real list.
+
+| Step | Count of governments |
+|---|---|
+| Research-file rows whose recorded hub is a bare `/AgendaCenter` page | 1,091 |
+| Less: already ingested or never tested (no reject reason) | 436 |
+| Less: already have an Archive page | 64 |
+| **Governments swept** | **591** |
+
+**Phase 1: the sweep** (`scripts/wo905_agendacenter_hop_sweep.py`, unchanged;
+every row saved in `rtr-business/research/wo913_report.csv`).
+
+| Result | Count of 591 |
+|---|---|
+| Found a platform link | 100 |
+| Found only a platform's bare front door | 1 |
+| No platform link found | 338 |
+| Hub and home page both unreachable | 152 |
+
+That is 17.1% with a link, the same rate as WO-910's 16.9% on nearly the
+same population, so the two runs agree. The "unreachable" row is mostly not
+dead sites:
+
+| Why a government was unreachable | Count of 152 |
+|---|---|
+| A human-verification wall on the hub and the home page | 118 |
+| A wall on one, and the other dead or redirecting off the site | 19 |
+| Dead, timed out, or redirecting off the site, with no wall | 15 |
+
+So 137 governments (23% of all 591) sit behind a "prove you're human" page.
+The tool stops there by policy and never tries to get past one.
+
+**Phase 2: a person read every link** (all 101; `wo913_handcheck.csv`).
+"Right government" means the link belongs to the government on that
+research-file row, judged by reading its own page.
+
+| Verdict | Count of 101 |
+|---|---|
+| Right government, and its own page labels the link as meetings | 20 |
+| Right government (its own channel or platform; content not shown) | 62 |
+| Wrong organization | 14 |
+| Can't tell | 5 |
+
+81 of the 101 links were YouTube (59 + 8 right, 9 wrong, 5 can't tell).
+The 14 wrong ones:
+
+| Why the link was wrong | Count of 14 |
+|---|---|
+| The row's recorded website or hub is another government's (a county's, a tribe's, a parish's, a namesake in another state, another city's agenda center) | 9 |
+| The same InvoiceCloud bill-payment video on four different towns | 4 |
+| The U.S. Postal Service's channel, reached through a county's site | 1 |
+
+The nine wrong websites are the biggest finding here, because nothing
+about the sweep caused them: De Kalb city TX's row carries De Kalb,
+Illinois's site; Honaker VA, Madison VA and Troutdale VA carry their
+county's; Napoleonville LA carries its parish's; Quapaw OK carries the
+Quapaw Tribe's; Mill Creek borough PA carries Millcreek Township's; Seward
+city KS carries Seward County's; Bossier Parish LA's hub is Bossier City's
+agenda center. Row-by-row file:
+`rtr-business/research/wo913_wrong_recorded_domains.csv`.
+
+**Phase 3: what the finds became.**
+
+| Find | Count | What happened |
+|---|---|---|
+| YouTube channel, playlist or video | 69 leads | 20 were already on `youtube_channel_leads.csv`. 49 are new, in `wo913_leads_to_add.csv` (`verified=false` until the drip lane hand-reads them). |
+| Non-YouTube platform link, marked for ingest | 13 governments | Result in the next table. |
+| Research-file rows changed | 10 | Only for hand-confirmed finds, under the shared-file write protocol. |
+
+The 13 marked for ingest went through WO-134's resolve and ingest path unchanged, with the YouTube guard on and WO-149's identity check installed:
+
+| Result of the ingest run | Count of 13 |
+|---|---|
+| A page created, then deleted the same day (Toledo OR: a 2-minute closed-session opening) | 1 |
+| Queued for cloud transcription (Spring Valley TX, Mary Esther FL, Jupiter Island FL) | 3 |
+| The platform is the government's own, but its front door gave no meeting (Broadview Heights OH on ChampDS; four Massachusetts towns on Castus; two New Hampshire towns on Town Hall Streams) | 7 |
+| The linked video was removed (Marina CA, TelVue, HTTP 404) | 1 |
+| A real meeting with an agenda and no video, not ingested under Ryan's 2026-09-09 rule (North Strabane PA) | 1 |
+
+Jupiter Island's queue line is its Town Commission Meeting of 2026-09-14 (3.5 hours). The Events API's newest event with media was a 4-minute Beach Protection District hearing, so a person picked the flagship meeting instead.
+
+**Caution.**
+- A YouTube link is a lead, not coverage. YouTube is fetched only by the
+  drip Mac, so no YouTube link was resolved here; they went to the drip
+  lane's list as leads. 20 of the 69 leads (29%) were already on that list.
+- 5 of the 101 are "can't tell" and 1 is a live-stream link, not a meeting.
+- The Toledo OR page this work order created was deleted the same day
+  (Ryan, 2026-09-20): a 2-minute closed-session opening, not a meeting.
+  Its two YouTube videos are leads instead.
+- The narrow reject for the Toledo meeting (a `reject-short` row in the probe sidecar) protects only the no-captions queue path. WO-134 returns a candidate that already has captions before it probes anything, so a later resolve of that CivicClerk tenant from a machine that can fetch YouTube would take the same event and recreate the page. Nothing records a deleted page, so nothing stops it. Filed in `BACKLOG.md`.
+- **Two indirect YouTube routes turned up and are closed** (PR #1254). An
+  ingest of a CivicClerk find whose media was a YouTube embed made about two
+  YouTube requests from the wrong Mac, and a headless browser load fetches a
+  page's embedded YouTube itself. `scripts/youtube_fetch_guard.py` now
+  blocks any YouTube lookup in a wrapper's own process, and
+  `fetch_headless_sync()` blocks it in the browser. **A new wrapper that
+  resolves, probes or ingests off the drip Mac should call
+  `youtube_fetch_guard.install()` first**
+  (`scripts/wo912_wo913_ingest_confirmed.py` is the worked example).
+
+**Recommendation.**
+
+1. **The AgendaCenter list is done.** 591 swept, all 101 finds read. There is nothing left to run on this population.
+2. **The 137 governments behind a human-verification wall are a gap, not a result.** This method stops there by policy. A person on a normal browser could look at them.
+3. **Fix the recorded websites.** 10 research rows carry another government's site (`wo913_wrong_recorded_domains.csv`). They are filed in `BACKLOG.md`.
+4. **Seven governments now have a known platform of their own and no meeting yet.** They need a specific meeting URL found for each platform. Filed in `BACKLOG.md` as an open bug.
+
+Files: `scripts/wo913_build_candidates.py`,
+`scripts/wo912_wo913_ingest_confirmed.py`, `scripts/wo912_wo913_make_leads.py`,
+`scripts/youtube_fetch_guard.py`; in `rtr-business/research/`:
+`wo913_agendacenter_candidates.csv`, `wo913_report.csv`, `wo913_handcheck.csv`,
+`wo913_leads_to_add.csv`, `wo913_wrong_recorded_domains.csv`,
+`wo912_wo913_confirmed_hits.csv`, `wo912_wo913_ingest_log.csv`.
+
+**The `BACKLOG.md` entry this work order closed, moved here unchanged (2026-09-20).** Its 1,125-row list was stale (591 governments were left) and the run is finished; the residual gaps became their own entries.
+
+### `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125 tested-no-page rows carry a bare `/AgendaCenter` hub with real video one hop away (added 2026-09-11)
+
+- **Issue**: 1,125 rows tested and not in the Archive have a bare, empty
+  `/AgendaCenter` hub recorded as their example URL (607 of them at
+  5,000+ population), with reject reasons mostly `no-video-found`/
+  `meeting-without-video` assigned against that empty shell rather than
+  the government's real meetings hub. WO-226's spot-check hand-checked 6
+  such rows: all 6 were confirmed empty shells, and 4 of the 6 converted
+  to real ingested video once the real hub was found one hop away
+  (Hagerstown MD, Harvey IL, Flagler Beach FL, Greenwood Village CO);
+  the other 2 stayed correctly no-video after the same closer look
+  (Hoffman Estates IL, Melrose MA).
+- **Impact**: a meaningful share of an already-large population (1,125
+  rows; 358 total counting the related 161 calendar-hub rows) is likely
+  mis-recorded as video-less when the real hub is simply one link deeper
+  than the sweep that tested it looked.
+- **Next action**: the sweep script was built and live-validated against
+  6 governments (WO-905, 2026-09-19), then run for real at scale for the
+  first time (WO-910, 2026-09-20) — but against two populations built
+  fresh from the live Gov Coverage dashboard's own data, **not** the
+  1,125-row list this entry is named for. That list still only exists in
+  `jurisdiction_coverage.csv` on Ryan's Mac, still unreached by any
+  session here. Read the counts below as "a similar, smaller,
+  independently-built population," not as "the 1,125 are done."
+
+  Population 1, 656 governments whose recorded hub matches this entry's
+  own bare-`/AgendaCenter` shape:
+
+  | Result | Count of 656 |
+  |---|---|
+  | No platform link found at all | 381 |
+  | Hub and home page both unreachable | 163 |
+  | Found a platform link | 111 |
+  | Found a platform, but only its bare front door, not yet a confirmed meeting | 1 |
+
+  Population 2, 129 governments recorded with some OTHER kind of bare or
+  generic hub (CivicWeb portal roots, eScribe generic pages, filepro
+  document listings) — a deliberate test of whether the same method
+  works outside what it was built for, kept separate from population 1
+  on purpose, never blended into one combined number:
+
+  | Result | Count of 129 |
+  |---|---|
+  | No platform link found at all | 84 |
+  | Hub and home page both unreachable | 4 |
+  | Found a platform link | 38 |
+  | Found a platform, but only its bare front door, not yet a confirmed meeting | 3 |
+
+  Both runs finished clean — zero errors, zero timeouts, across all 785
+  governments checked.
+
+  Hand-checked by eye (channel name, filename, domain — no live fetches)
+  whether the "found" result is plausibly the right government:
+
+  | Population | Sample checked | Confirmed right | Confirmed wrong | Can't tell from the URL alone |
+  |---|---|---|---|---|
+  | 1 (AgendaCenter), of 112 found | 45, random | 20 | 5 | 20 |
+  | 2 (broader test), of 41 found | 41, all of them | 24 | 3 | 14 |
+
+  Two real gaps in the tool itself turned up in this run and were fixed
+  in the same PR, small, reusing the tool's own existing pattern (full
+  detail: `BACKLOG_DONE.md`'s WO-910 entry): CivicWeb's own bare front
+  door wasn't yet recognized as "found the vendor, not a confirmed
+  meeting" the way six other vendors already were. CivicLive (a website
+  builder with no video product of its own) was being accepted as a real
+  hit at all — one real example, Camden village NY, turned out to be the
+  town's own "About Us" history page.
+
+  Two real problems turned up and were **not** fixed here, on purpose:
+  four "found" results (Burlington CT, Farmington NH, Markham IL, Omak
+  WA) are the exact same video, from a bill-payment vendor, not a real
+  meeting — documented rather than patched, since the right fix needs a
+  judgment call (exclude that one vendor's video specifically, not all
+  of Wistia) this pass didn't want to make unilaterally. And the tool
+  inherits this file's own already-open `find_platform_link()`
+  wrong-organization bug (see that entry): Holgate village OH's result
+  was the U.S. Postal Service's own YouTube channel; Cedar County NE's
+  was Nebraska's state health department. Neither is new, neither is
+  fixed here.
+
+  Also found, and this is a data problem upstream of this tool, not a
+  bug in it: at least 3 tiny places in population 1 (Seward city KS,
+  Honaker town VA, Troutdale town VA) are recorded with their COUNTY's
+  own domain instead of their own, so the "video" found for them is
+  really the county's, not theirs.
+
+  Still needed: the real ~1,125-row population, from a session with
+  `rtr-business` access. Nobody has run this tool against that exact
+  list yet. A second, related population (the "129" above generalized to
+  its full size) is its own separate entry below.
+- **Constraint**: don't hand-check a full population by hand -- the
+  script above replaces that, but DO hand-check a real sample of its
+  "found" results before trusting them -- WO-910's own sample found a
+  real, non-trivial wrong-government rate (see the table above). Its own
+  "bare tenant root" outcome (a real platform link found, but not yet a
+  specific meeting -- e.g. a bare CivicClerk/Swagit/Granicus/PrimeGov/
+  eScribe/IQM2/CivicWeb tenant page) still needs a human or a future
+  WO's judgment call for every platform except CivicClerk, which the
+  script already checks itself via that vendor's own public Events API.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11, and its
+  WO-910 entry, 2026-09-20 (the two tool fixes this run found and
+  shipped). WO-905's full validation detail (the mechanism, the false
+  positives it found and fixed building it, and the sibling
+  passive-discovery-v2 finding it credits) is in
+  `scripts/wo905_agendacenter_hop_sweep.py`'s own module docstring.
+  WO-910's own PR has the full row-by-row hand-check detail for both
+  populations.
+
 ## WO-921: built the Sliq Harmony adapter for seven state legislatures — 82 recent meetings read live, 54 with captions, 7 candidates ready to ingest after a deploy [Done 2026-09-20]
 
 **Why this ran.** WO-919 found that seven state legislature sites (Arkansas, Colorado, Delaware, Kansas, New Mexico, the Oklahoma House, West Virginia) keep their video archives on one vendor, Sliq Harmony, and that the repo had no adapter for it. One adapter unlocks all seven, about 13 chamber rows. Ryan asked for it on 2026-09-20.
