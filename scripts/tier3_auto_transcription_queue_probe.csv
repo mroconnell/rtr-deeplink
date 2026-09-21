@@ -6680,3 +6680,10 @@ https://www.youtube.com/watch?v=ZNzcrPuRT4c,youtube,yt-dlp-metadata,,,,0,reject-
 https://www.youtube.com/watch?v=AydJqtIXzaA,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] AydJqtIXzaA: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.42,2026-09-20T21:04:35+00:00,,0
 https://www.youtube.com/watch?v=kFyb-zLdhI8,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] kFyb-zLdhI8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.56,2026-09-20T21:04:40+00:00,,0
 https://www.youtube.com/watch?v=pv6DO-KQt30,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] pv6DO-KQt30: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.59,2026-09-20T21:04:44+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/320,cablecast,hls-master+variant,17665.13,,,1,accept,,1.85,2026-09-21T04:22:02+00:00,,0
+https://meetings.christiancountymo.gov/videos/2026-09-17.mp4,direct_file,head+ffprobe,3985.53,2026-09-17,3074454492,1,accept,,2.32,2026-09-21T04:22:03+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/294,cablecast,hls-master+variant,4001.99,,,1,accept,,2.36,2026-09-21T04:22:38+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/289,cablecast,hls-master+variant,3222.40,,,1,accept,,1.58,2026-09-21T04:22:39+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/288,cablecast,hls-master+variant,3957.88,,,1,accept,,1.75,2026-09-21T04:22:41+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/299,cablecast,hls-master+variant,5598.95,,,1,accept,,10.17,2026-09-21T04:22:45+00:00,,0
+https://live.pomonaca.gov/internetchannel/show/318,cablecast,hls-master+variant,8154.89,,,1,accept,,7.63,2026-09-21T04:22:48+00:00,,0
