@@ -295,6 +295,98 @@ async def test_warning_is_not_copied_onto_a_default_that_ends_elsewhere():
     assert await _default_warnings(slug) == []
 
 
+def _edina_fixture():
+    import json
+    from pathlib import Path
+
+    path = (
+        Path(__file__).parent
+        / "fixtures"
+        / "cablecast"
+        / "wo926_edina_3562_stored_vs_fresh.json"
+    )
+    return json.loads(path.read_text())
+
+
+def _edina_payload(url, segments, warnings):
+    return {
+        "platform": "cablecast",
+        "source_url": url,
+        "external_id": "cablecast:" + url.split("//")[1].replace("/show/", ":"),
+        "title": "School Board",
+        "date": "2026-03-11",
+        "jurisdiction": "State of Rhode Island",
+        "video_url": url.split("/show/")[0] + "/vod/1/vod.m3u8",
+        "video_format": "m3u8",
+        "segments": segments,
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": warnings,
+    }
+
+
+async def _clear_default_warnings(slug):
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+    from sqlalchemy import select
+
+    async with async_session() as session:
+        version = (
+            await session.execute(
+                select(TranscriptVersion)
+                .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+                .where(MeetingPage.slug == slug, TranscriptVersion.is_default.is_(True))
+            )
+        ).scalar_one()
+        version.transcript_warnings = []
+        await session.commit()
+
+
+async def test_warning_reaches_the_shown_version_on_a_repeat_push_of_the_fresh_text():
+    """WO-926, the real Edina MN page (3645) after WO-925 shipped. The
+    fresh text had already been stored as a hidden second version (pushed
+    before the WO-925 fix was live), so every later re-check pushed that
+    same text again, matched the hidden version as an identical duplicate,
+    and never offered the warning to the shown version. Cues below are the
+    real ones (trimmed): the shown version holds speaker labels only, the
+    hidden one real text, identical timing, last cue ends at 4105.47 s."""
+    fx = _edina_fixture()
+    url = "https://wo926a.cablecast.tv/show/3562"
+    warning = partial_transcript_warning(4105.47, 4800.0 * 2)
+    await crud.ingest_resolution(_edina_payload(url, fx["stored"], []), url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    fresh = _edina_payload(url, fx["fresh"], [warning])
+    await crud.ingest_resolution(fresh, url)
+    # Reproduce the live state: the hidden version exists, the shown one
+    # never got the marker (the first push ran before the WO-925 code).
+    await _clear_default_warnings(slug)
+    assert await _default_warnings(slug) == []
+
+    await crud.ingest_resolution(fresh, url)  # identical to the hidden version
+    assert await _default_warnings(slug) == [warning]
+    # A third push adds nothing more.
+    await crud.ingest_resolution(fresh, url)
+    assert await _default_warnings(slug) == [warning]
+
+
+async def test_repeat_push_does_not_mark_a_shown_version_that_is_really_complete():
+    """Guard for the WO-926 fix: a shown version whose last cue is near the
+    real end of a long meeting must NOT be marked by a shorter fresh resolve
+    (a different, shorter caption set), even when that fresh text is
+    already stored as a hidden duplicate."""
+    fx = _edina_fixture()
+    url = "https://wo926b.cablecast.tv/show/1"
+    warning = partial_transcript_warning(4105.47, 4800.0 * 2)
+    full = [dict(c) for c in fx["stored"]]
+    full[-1] = {"start": 9000.0, "end": 9500.0, "text": "Adjourned."}
+    await crud.ingest_resolution(_edina_payload(url, full, []), url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    fresh = _edina_payload(url, fx["fresh"], [warning])
+    await crud.ingest_resolution(fresh, url)
+    await crud.ingest_resolution(fresh, url)  # identical to the hidden version
+    assert await _default_warnings(slug) == []
+
+
 async def _default_warnings(slug):
     from archive.db.engine import async_session
     from archive.db.models import MeetingPage, TranscriptVersion

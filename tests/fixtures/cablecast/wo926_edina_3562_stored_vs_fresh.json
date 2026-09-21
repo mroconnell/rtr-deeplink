@@ -1,0 +1,108 @@
+{
+ "comment": "Real cues from redtaperecordings.com page 3645 (Edina MN, cablecast show 3562), fetched 2026-09-20 via transcript.srt?version=. stored = shown default version 3883 (speaker labels only); fresh = hidden version 11566. 247 cues each, identical timing; trimmed to the first 6 and last 4. Real video is about 1h20m; last cue ends 4105.47s.",
+ "cue_count": 247,
+ "stored": [
+  {
+   "start": 132.77,
+   "end": 140.27,
+   "text": "S1:"
+  },
+  {
+   "start": 140.27,
+   "end": 141.43,
+   "text": "s2:"
+  },
+  {
+   "start": 141.43,
+   "end": 143.27,
+   "text": "s1:"
+  },
+  {
+   "start": 143.27,
+   "end": 144.87,
+   "text": "s2:"
+  },
+  {
+   "start": 144.87,
+   "end": 168.469,
+   "text": "s1:"
+  },
+  {
+   "start": 168.469,
+   "end": 217.43,
+   "text": "s3:"
+  },
+  {
+   "start": 4102.1,
+   "end": 4103.369,
+   "text": "s1:"
+  },
+  {
+   "start": 4103.369,
+   "end": 4104.47,
+   "text": "s16:"
+  },
+  {
+   "start": 4104.47,
+   "end": 4105.47,
+   "text": "s2:"
+  },
+  {
+   "start": 4105.47,
+   "end": 4105.47,
+   "text": "s1:"
+  }
+ ],
+ "fresh": [
+  {
+   "start": 132.77,
+   "end": 140.27,
+   "text": "Order of business is agenda approval. Do I have a motion to approve tonight's agenda?"
+  },
+  {
+   "start": 140.27,
+   "end": 141.43,
+   "text": "So moved."
+  },
+  {
+   "start": 141.43,
+   "end": 143.27,
+   "text": "Is there a second?"
+  },
+  {
+   "start": 143.27,
+   "end": 144.87,
+   "text": "Second."
+  },
+  {
+   "start": 144.87,
+   "end": 168.469,
+   "text": "All right. We will vote by roll call to approve tonight's agenda. And Director Ellenberg, we're going to have while they work on your sound. We're just going to have to have you give us a thumbs up."
+  },
+  {
+   "start": 168.469,
+   "end": 217.43,
+   "text": "Okay I I I I Hi."
+  },
+  {
+   "start": 4102.1,
+   "end": 4103.369,
+   "text": "Hi."
+  },
+  {
+   "start": 4103.369,
+   "end": 4104.47,
+   "text": "Hi."
+  },
+  {
+   "start": 4104.47,
+   "end": 4105.47,
+   "text": "Hi."
+  },
+  {
+   "start": 4105.47,
+   "end": 4105.47,
+   "text": "The motion has passed, and the March 9th, 2026 board meeting has adjourned."
+  }
+ ]
+}

@@ -1640,6 +1640,9 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         # so nothing "new" was created on this call, but there was still a
         # real, promotable version to point at.
         matched_version_id = None
+        # WO-926: True when this push matched an existing HIDDEN version
+        # by content hash (see the duplicate branch below).
+        duplicate_is_hidden = False
 
         if segments:
             language = payload.get("transcript_language")
@@ -1693,6 +1696,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 matched_version_id = version.id
             else:
                 matched_version_id = duplicate.id
+                duplicate_is_hidden = not duplicate.is_default
                 # WO-923: an identical re-push used to change nothing, so
                 # a page whose captions were already archived could never
                 # pick up the partial-transcript warning from a fresh
@@ -1716,7 +1720,16 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default, payload.get("transcript_language")
             ):
                 await promote_transcript_version(session, page.id, new_version_id)
-            elif new_version_id is not None:
+            elif new_version_id is not None or duplicate_is_hidden:
+                # WO-926: also when this push matched an existing hidden
+                # version. The Edina MN page (3645) was pushed once before
+                # WO-925 was live, which stored the fresh text as a hidden
+                # version; every re-check after the deploy then matched that
+                # hidden version as an identical duplicate and this rule
+                # never ran, so the shown version stayed unmarked. Same
+                # conservative conditions as below (same language and
+                # source, last cues within 120 seconds), so a shown version
+                # that really runs to the end of the meeting is untouched.
                 # WO-925: the new version was not promoted, so the page keeps
                 # rendering the old default. A partial-coverage warning
                 # describes the SOURCE captions, not one text variant, so
