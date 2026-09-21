@@ -39,7 +39,7 @@ phases, so the column adds to a little over the file's 392.
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
 | 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, 6 entries closed): its run waits for the deploy and for Ryan's rows |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan decided 24 of the 28 rows that needed him, and its run waits for the merge and the deploy |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
 | 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
@@ -215,7 +215,7 @@ filed what WO-932, WO-933 and WO-935 closed.
 | WO-932 | An identity gate at ingest. WO-134's checks become on by default. A dry run counts how many existing sweep payloads a blocking Archive check would refuse. | Nothing |
 | WO-933 | One shared gate that asks whether a video is really a meeting, in `app/utils/video_hand_check.py`. The rule lived in eleven scripts; it is now one module, and `HIGH_RISK_TITLE_PLATFORMS` has one definition (youtube, vimeo, cablecast, swagit). Sweeps and `verify_hub` use it. Merged 2026-09-21, not live. | Nothing |
 | WO-935 | Transcript honesty for our own transcription. Scope is now A, B and D: (A) a decodability guard on cached audio, (B) a short-chunk check, and (D) the video length from YouTube so the check can run on YouTube pages. Merged 2026-09-21, not live. The own-transcript "may end before the meeting did" warning (C) was built, measured and **held** by Ryan; see below. | Nothing |
-| WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. **Built 2026-09-21:** `scripts/repair_wrong_pages.py`, `reports/wrong_page_worklist.csv` (48 rows, 28 need Ryan), `scripts/wrong_page_screen.py`, and a drip-Mac video checker. The run itself is still to do. | The deploy checkpoint, and Ryan's page decisions |
+| WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. **Built 2026-09-21:** `scripts/repair_wrong_pages.py`, `reports/wrong_page_worklist.csv` (48 rows; Ryan decided 24 of the 28 that needed him on 2026-09-21), five minted governments, `scripts/wrong_page_screen.py`, and a drip-Mac video checker. The run itself is still to do. | The deploy checkpoint, and Ryan's page decisions |
 
 **What happened to each entry (filed by WO-931, 2026-09-21).** The lists
 below are the plan as written, with the outcome after each title. The full
@@ -261,18 +261,19 @@ Search each title in `BACKLOG.md` for what is left.
 **Entries WO-934 worked on (outcomes filed 2026-09-21)**
 
 - "Full-corpus screen (5,857 pages) found the same" (rewritten: 16 pages
-  gone, 35 sheet rows, the 305-title bucket never read)
+  gone, 35 sheet rows, the no-meeting-word bucket left to the A/B/C rules)
 - "Wrong-government-content pattern confirmed on 6 live" (rewritten: all nine
   pages gone; the picker fix is open)
 - "Three pages from the school-district audit resolved" (closed: Andover
   fixed, East Brunswick gone, Duval is a sheet row)
 - "6 `best_effort` YouTube pages archived a promotional/off-topic video"
-  (rewritten: 2 gone, 4 sheet rows for Ryan)
+  (rewritten: 2 gone, 4 sheet rows: two approved deletes and two kept)
 - "82 archived YouTube meetings have embedding switched off" (two sentences
   corrected; the drip-Mac checker can find the 82)
-- "Three live wrong-government cases wait for WO-934's worklist" (rewritten
-  to the two mint pages, 5945 and 10852; page 9073 and a second page, 9681,
-  are sheet rows and the `@washcoar` pins are fixed)
+- "Three live wrong-government cases wait for WO-934's worklist" (closed:
+  Ryan approved the mints for pages 5945 and 10852, which are minted in the
+  same PR; page 9073 and a second page, 9681, are sheet rows and the
+  `@washcoar` pins are fixed)
 - "WO-941's hand-check of the 35 mismatched page addresses is finished"
   (closed: the 30 renames and the BART page are live, checked on the public
   site)
@@ -410,12 +411,18 @@ compares a finished transcript with the video's length:
 **Done when**
 
 - A test payload from a different government is refused or flagged.
-- A re-run of the 5,857-page screen shows the wrong-government and
-  non-meeting lists at zero, or every remaining page is accepted by Ryan in
-  writing. (`scripts/wrong_page_screen.py` is that re-run. On the 2026-09-21
-  export it flags 639 of 10,280 pages, 39 of them sheet rows. 545 fire only
-  the "no meeting word" rule, which nobody has read, so a zero needs Ryan's
-  decision on how much of that bucket to read.)
+- The wrong-government list is worked through the worklist
+  (`reports/wrong_page_worklist.csv`), and the non-meeting bucket is handled
+  by the A, B and C video-kind rules (below), not by hand-reading hundreds of
+  pages. (`scripts/wrong_page_screen.py` is the read-only re-run of the
+  screen. On the 2026-09-21 export it flags 639 of 10,280 pages: 540 on the
+  "no meeting word" rule alone, 90 on the school-body rule (35 are sheet rows
+  and 55 are not, many of them fine), 7 on a talk-show or promo word and 2 on
+  a school district with a non-school title. A zero is no longer the test:
+  the "no meeting word" rule fires on many real meetings. A random 30 of the
+  540, read by the conductor and not verified: 13 real or likely real
+  meetings with opaque titles, 6 government videos that are not meetings, 5
+  not related or under the wrong government, 6 unclear.)
 - A bad audio chunk fails instead of being transcribed short (WO-935 A and
   B: merged, live after the deploy).
 - The own-transcript early-end warning is held by Ryan's decision (2026-09-21)
@@ -436,9 +443,17 @@ left out of search, hubs, `/meetings`, the feed and the sitemap. **C** is not
 related (personal videos, TV clips, school sports and performances, children
 or minors as the primary speakers, videos with little to no speech): no page
 is created, and a live one is taken down. "Cannot tell" is a B, never an A.
-It builds in three steps: a per-page listing flag and the hiding, then the
-rules inside WO-933's gate, then a pass over pages already live through
-WO-934's worklist. The rules, the evidence behind them and the cautions are in
+It builds in three steps: the hiding, then the rules inside WO-933's gate,
+then a pass over pages already live through WO-934's worklist. **Correction
+(2026-09-21): the hiding needs no new column.** `MeetingPage` already has
+`meeting_kind` (decision D2a, `String(20)`, NULL means an ordinary meeting;
+the values today are `press_conference`, `public_statement`, `town_hall`,
+`workshop` and `hearing`, kept in `MEETING_KINDS` in `archive/db/crud.py`).
+No list, sitemap, hub or feed query filters on it, so the B tier can reuse it
+with a new value, and only the hiding needs wiring (the same conditions as
+the empty-page rule, and the page's noindex). No migration is probably
+needed; recheck before building. Which values hide is Ryan's later call: a
+town hall, a workshop and a hearing are legitimate meetings and stay listed. The rules, the evidence behind them and the cautions are in
 the backlog entry "A bare YouTube channel-listing scan measurably ingests
 non-meeting". Ryan expects edge cases and is content to wait for a real
 exception on a larger user base.
@@ -595,7 +610,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | "One live page is keyed to the wrong government: a real" | Nothing: page 7328 already shows Chenango Town, NY | Nothing |
 | "13 archived YouTube pages point at a video that is gone (7" | Wait for the drip Mac's status check of 101 pages, then read each row the tool builds | WO-934's delete rows |
 | "A Pennsylvania Public Utility Commission hearing was briefly" | Decided 2026-09-21: no mint | Nothing |
-| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Write approve or reject on the 28 rows that need him (one question, whether a school board under a county or city moves to its district, settles 13 of the 14 proposed re-keys) | The Render-shell run |
+| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Decided 2026-09-21 for 24 of the 28 rows that needed him. Still his: pages 3367 (Derry) and 3453 (Hopkins on Vimeo), pages 6906 and 7086 (after the drip Mac's video check), and whether the `solanocoe.granicus.com` pin is authoritative | The merge, the deploy, then the Render-shell run |
 | "Render account bandwidth hit its 25 GB/month Pro-plan cap on" | Read the billing dashboard | Ops |
 | "Run `scripts/backfill_video_channel.py --apply` from the" | Two backfills from the Render shell | Makes 1,138 channel pins work across 1,903 pages |
 | "45 of the 51 `transcribed=true`-no-page research rows found no live" | Approve the hand-checked plan | Phase 3 |

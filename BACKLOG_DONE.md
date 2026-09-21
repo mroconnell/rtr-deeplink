@@ -1,24 +1,34 @@
 # Backlog — done
 
-## WO-934: one bulk tool and one reviewed sheet for wrong live pages, six stale or decided entries closed, five rewritten [Done 2026-09-21]
+## WO-934: one bulk tool and one reviewed sheet for wrong live pages, five governments minted, seven stale or decided entries closed, four rewritten [Done 2026-09-21]
 
-**Why this ran.** Phase 1 of `docs/BACKLOG_PHASES.md` is about wrong content readers can see. About 50 live pages sit under the wrong government or hold a video that is not a meeting. Fixing one meant a hand-typed call to the Archive. Ryan asked for one tool that repairs many pages in reviewed batches, one reviewed list of the pages, and a check of which backlog entries were still true. Three of five "Needs a human" entries were already stale when the work began. Ryan also gave four decisions during the work (below).
+**Why this ran.** Phase 1 of `docs/BACKLOG_PHASES.md` is about wrong content readers can see. About 50 live pages sit under the wrong government or hold a video that is not a meeting. Fixing one meant a hand-typed call to the Archive. Ryan asked for one tool that repairs many pages in reviewed batches, one reviewed list of the pages, and a check of which backlog entries were still true. Three of five "Needs a human" entries were already stale when the work began. Ryan then gave decisions on the sheet's rows, in two rounds (below), and this entry records both.
 
 **What was built.**
 - **`scripts/repair_wrong_pages.py`.** One tool, three commands. `check` finds faults in the sheet and reads no production data. `run` is a dry run by default; `--apply` re-keys pages and `--apply --allow-deletes` also deletes. `gone-videos` turns a checked video-status file into delete rows for a person to review. It uses the two existing Archive routes (`POST /internal/jurisdiction/override`, `POST /internal/admin/delete-pages`) and the read-only `GET /internal/export/pages?ids=`. It adds no new production route.
 - **The safety rules it enforces.** A stale row never acts: before any call it reads the live page and refuses the row if the slug or government id is not what the row expected. A row that needs Ryan does nothing until `ryan_decision` says `approve`. Deletes always need `approve` and `--allow-deletes`. `requires` conditions (`video-gone`, `replacement-page:<id>`) must hold. Every row is tried as a dry run first, and the page is read again after a write. It stops on the first unexpected answer and never retries. It writes at most `--batch-size` (default 5) rows per run. It writes a before and after log. It never reads a `.env` file, never prints the token, and `--apply` refuses an address that is not this machine.
 - **`reports/wrong_page_worklist.csv`.** 48 rows, each checked against the 2026-09-21 local export.
+- **Five governments minted** in `app/utils/jurisdiction_data/curated_governments.csv` (four rows, since two pages share one), with four host pins in `tenant_overrides.csv`. Details below.
 - **`scripts/check_youtube_video_status.py`.** For the drip Mac only. One YouTube request per video, at drip pace. It has not been run.
 - **`reports/wo934_youtube_no_transcript_pool.csv`.** The 101 YouTube pages with no transcript, from the conductor's export.
 - **`scripts/wrong_page_screen.py`.** The 2026-09-06 audit's screen, moved into the repo, read-only, so it can be run again.
-- **Two pin fixes** in `app/utils/jurisdiction_data/tenant_overrides.csv` (below).
-- **Tests.** `tests/test_repair_wrong_pages.py` (73), `tests/test_wrong_page_screen.py` and `tests/test_check_youtube_video_status.py` (31 between them). The main tests drive the real Archive app on a local SQLite file.
+- **Two `@washcoar` pin fixes** in `tenant_overrides.csv` (below).
+- **Tests.** `tests/test_repair_wrong_pages.py` (78), `tests/test_wrong_page_screen.py` and `tests/test_check_youtube_video_status.py` (31 between them), and 13 more in `tests/test_gov_registry.py` for the mints. The main tests drive the real Archive app on a local SQLite file.
 
-**Decisions Ryan gave during the work (2026-09-21).**
-- **Pennsylvania Public Utility Commission: no mint.** Mint a state commission only when a real page needs it. Two state commissions have appeared, Pennsylvania's and Minnesota's; the Minnesota one has a page filed under Beltrami County (page 2504, a sheet row).
-- **The 13 gone-video pages: nothing approved.** He asked to see the addresses first. None can be named yet (see the entry below), so no row is ready to delete. Every row in that group is `needs_ryan`.
-- **Page 6114 (Jefferson Davis County, MS): delete approved.** The county has meetings but no video, and this page is the county homepage's single intro video. It is the one approved row on the sheet. The research-file update is the conductor's.
+**Decisions Ryan gave (2026-09-21, relayed by the conductor).**
+
+Round one:
+- **Pennsylvania Public Utility Commission: no mint.** Mint a state commission only when a real page needs it. Two state commissions have appeared, Pennsylvania's and Minnesota's; the Minnesota one has a page filed under Beltrami County (page 2504).
+- **The 13 gone-video pages: nothing approved.** He asked to see the addresses first. None can be named yet (see below), so no row is ready to delete.
+- **Page 6114 (Jefferson Davis County, MS): delete approved.** The county has meetings but no video, and this page is the county homepage's single intro video.
 - **Malibu page 7086: order set.** Ingest the replacement meeting first, then delete 7086 only if a drip-Mac check says its video is gone. The sheet's `requires` column enforces both.
+
+Round two ("take all your recommendations"):
+- **School boards under a city or county: approve the re-key to the school district.** 13 rows approved. Left unapproved on purpose: page 3367 (Derry, NH; the national list has only an elementary Derry district) and page 3453 (Hopkins on Vimeo; the state is not proven, so it has no target).
+- **Mints: all five approved.** Pages 5945, 10852, 645, 2004 and 5301.
+- **Best-effort pages:** delete 6101 and 6830; keep 6119 and 6218 (government videos that are not meetings; kept, and hidden once hiding exists).
+- **Page 2504 (Minnesota PUC under Beltrami County): move to unresolved like page 5816; do not delete it.**
+- **The unread "no meeting word" bucket:** handled by the A, B and C video-kind rules, not by reading hundreds of pages by hand.
 
 **Result: the sheet, by action and confidence.**
 
@@ -28,20 +38,21 @@
 | Delete | 1 | 4 | 2 | 7 |
 | Total | 23 | 22 | 3 | 48 |
 
-"High" means the page's own title or host names the target. "Medium" means the target is inferred from the place, or a mint is needed first. "Low" means the state or the video is not settled.
+"High" means the page's own title or host names the target. "Medium" means the target is inferred from the place, or a mint was needed first. "Low" means the state or the video is not settled.
 
-**Result: what each row needs.**
+**Result: what a run would do.** If every live page still matches the sheet (as it did in the 2026-09-21 export), a run with `--apply --allow-deletes` would do this. The count comes from the tool's own decision code, not from a live run.
 
-| What the row needs | Count of 48 rows |
-|---|---|
-| Re-key with a target, no decision needed (can be applied after a dry run) | 20 |
-| Re-key with a proposed target, waiting for Ryan | 14 |
-| Re-key with no target yet (five need a mint, one needs a state chosen, one needs a choice between unresolved and delete) | 7 |
-| Delete, approved by Ryan (page 6114) | 1 |
-| Delete, not approved | 6 |
-| Rows that need Ryan (`needs_ryan=yes`) | 28 |
-
-The 7 with no target are pages 5945, 10852, 2504, 3453, 645, 2004 and 5301. A blank target is a finding: a government has to be minted, or a state chosen, first.
+| What happens to the row | Count of 48 rows | Pages |
+|---|---|---|
+| Re-key written: no decision needed | 20 | the 20 rows marked `needs_ryan=no` |
+| Re-key written: school boards Ryan approved | 13 | 1414, 2610, 2899, 3787, 3885, 1311, 1324, 1333, 5565, 1938, 2298, 2666, 5501 |
+| Re-key written: the five mints (only after the deploy) | 5 | 5945, 10852, 645, 2004, 5301 |
+| Delete written (needs `--allow-deletes`) | 3 | 6114, 6101, 6830 |
+| Skipped: approved, but no registry id to write | 1 | 2504 (see below) |
+| Skipped: no target, not approved | 1 | 3453 |
+| Skipped: waiting for Ryan | 1 | 3367 |
+| Skipped: delete waits for a checked status file, and 7086 also for its replacement page | 2 | 6906, 7086 |
+| Skipped: Ryan rejected the delete | 2 | 6119, 6218 |
 
 **Result: where the 48 rows came from.**
 
@@ -56,6 +67,37 @@ The 7 with no target are pages 5945, 10852, 2504, 3453, 645, 2004 and 5301. A bl
 
 The 35 are 22 of the audit's 23 wrong-type school-board pages, 2 same-shape siblings the re-screen found (pages 1882 and 1694), and 11 of the 13 county-tagged school boards. Left off on purpose: page 2257 (a joint city and school meeting), page 1143 (a joint meeting already under the school district), page 3407 (a joint county and school meeting) and page 535 (a school system whose minted id is typed "county"; that is registry work).
 
+**Result: the five mints.** The precedent is BART (WO-941) and the WO-201, WO-916 and WO-920 cases: a row in `curated_governments.csv` with source `curated+ryan_stated`, the id `rtr:us:<state>:<slug of the name>`, aliases, the Census of Governments unit in `cog_id` when one exists, and the evidence in words. Each id, name and hub address was checked against every existing government for a collision (none).
+
+| Page(s) | Minted id | Type | Basis |
+|---|---|---|---|
+| 5945 | `rtr:us:wa:south-snohomish-county-fire-and-rescue-regional-fire-authority` | special district | Census of Governments unit 248695; host southsnofire.granicus.com; the page's transcript |
+| 10852 | `rtr:us:ut:north-valley-public-safety-department` | special district | the stored name and the Utah notice; no Census match, so `cog_id` is blank |
+| 645, 2004 | `rtr:us:ca:santa-clara-county-office-of-education` | school district (a judgment) | not in the Census school-district list; the pages' titles |
+| 5301 | `rtr:us:ca:solano-county-office-of-education` | school district (a judgment) | not in the Census school-district list; the page's title |
+
+The four host pins are all `fallback`: `southsnofire.granicus.com`, `solanocoe.granicus.com`, the Utah notice for page 10852, and `sccoe.new.swagit.com`. The last already existed and pointed at Santa Clara County (a known-domains seed choice); it now points at the office. Tests in `tests/test_gov_registry.py` show that each name with a state resolves to its minted row, that the stateless fire-authority name is keyed by its host pin, and that the old fragments ("South, MB", "North, UT") no longer appear.
+
+**One limit, checked and not fixed.** The Solano office's Granicus adapter gives its name with no state ("Solano County Office of Education", checked 2026-09-21 with `repoint_page.py --dry-run`). A fallback pin ranks below a registry name match, so the resolver still says Solano County for it, pin or no pin. This is exactly what happened to BART's pin until Ryan made it authoritative. Existing pages are protected by their manual override once the re-key runs, but a NEW ingest from that host would key to the county. Making the pin authoritative is a one-word change and is Ryan's call; a test documents the current behaviour and must change with it. The fire authority does not have this problem (its stateless name resolves to nothing, so its pin applies), and the Santa Clara office's Swagit name carries a state.
+
+**Result: page 2504.** Ryan said to move it to unresolved like page 5816 and not to delete it. Page 5816's state: `gov_id` blank, jurisdiction "Minnesota Public Utilities Commission", confidence `unresolved`. It got there because it was ingested under that name with no state, so the resolver left it unresolved.
+
+| Path | Does it move page 2504? | Why |
+|---|---|---|
+| `POST /internal/jurisdiction/override` (the tool's re-key) | No | It needs a government id that exists in the registry, and it cannot set a blank one |
+| `backfill_gov_id.py --hosts minnesotapuc.granicus.com` | No | It recomputes from the page's stored name, "Beltrami County, MN", and the resolver gives Beltrami County again (checked) |
+| A re-push under the commission's own name | Yes | The push recomputes identity to unresolved and keeps the transcript |
+
+The Granicus adapter gives "Beltrami County, MN" for the `player/clip/2573` address but "Minnesota Public Utilities Commission" for the `MediaPlayer.php?view_id=2&clip_id=2573` address of the same clip (both checked 2026-09-21 with `repoint_page.py --dry-run`; nothing was pushed). So the path that applies is, on the resolver's Render shell, dry run first:
+
+`python scripts/repoint_page.py "https://minnesotapuc.granicus.com/player/clip/2573" "https://minnesotapuc.granicus.com/MediaPlayer.php?view_id=2&clip_id=2573" --dry-run`
+
+then the same command without `--dry-run`. `tests/test_repair_wrong_pages.py` runs that push through the real ingest route on a local Archive: the page ends with no id, the commission's name, confidence `unresolved`, the same address, and its transcript intact. Row 2504 on the sheet is approved and records this path; the tool reports it as "no registry id to write" and leaves it.
+
+**Result: the `@washcoar` pin.** WO-932 named page 9073. The same pin also keyed a second page, 9681. Both are on the channel `@washcoar`, whose handle reads Washington Co AR. Page 9073's transcript names Washington County, Arkansas, its Quorum Court, Prairie Grove, Fayetteville and Springdale (8 mentions of Arkansas). Page 9681 has one Arkansas address (West Fork, a Washington County town) and one Alabama address (a tower company's office in Birmingham). Two per-video pins for page 9073's video already said `us:county:05143`. The channel pin and the per-video pin for page 9681's video (`cGA0CKMbJwI`) both said Washington County, AL. Both now say `us:county:05143`. Both pages are re-key rows with high confidence.
+
+**Result: the 13 gone-video pages cannot be named.** The 2026-09-09 study kept counts per oEmbed status (7 deleted, 3 private, 3 malformed ids) but not the list. `reports/shared_host_lookups.csv` has no status column: a blank channel only means the video did not answer, which also covers a video whose owner switched off playback elsewhere. Of the 184 live pages with a blank-channel lookup, 181 have English transcripts, so their videos exist. Only 3 have none: pages 6114, 6906 and 7086. Today's export has 101 YouTube pages with no transcript (89 "Captions disabled / video unavailable", 12 blank), and the stored warnings are counts (1 or 0), so local data cannot separate a gone video from disabled captions. So no row is built from local data. The tool builds more rows only from a checked status file (`gone-videos`), and `run` refuses `video-gone` rows unless that file is passed and is under 14 days old.
+
 **Result: the backlog entries.**
 
 | Entry (first words) | Result | Proof |
@@ -65,69 +107,75 @@ The 35 are 22 of the audit's 23 wrong-type school-board pages, 2 same-shape sibl
 | "One live page is keyed to the wrong government: a real" | Closed. Page is right. | Page 7328 shows "Chenango Town, NY" (`us:cousub:3600715110`) in the export and in the live page's own title. Only its address still says `chenango-county-ny`. Left alone: cosmetic. |
 | "A Pennsylvania Public Utility Commission hearing was briefly" | Closed. Ryan decided no mint. | No page exists. See the decisions above. |
 | "WO-941's hand-check of the 35 mismatched" | Closed. Done. | All 30 renamed addresses answer HTTP 200 and all 30 old addresses answer 301 (60 checks, 0 failures). The BART page is live as "San Francisco Bay Area Rapid Transit District (BART), CA". Page 289 (the Culver City twin) cannot be checked from outside, because its redirect hides it. |
-| "Three pages from the school-district audit resolved" | Closed. | Andover's two pages (5306, 10410) now carry `us:cousub:2500901465`. No NovusAgenda page for East Brunswick is in the export (page 7310 is a YouTube page under `us:cousub:3402319000`). Duval County (page 5501) is still unresolved and is a sheet row. |
+| "Three pages from the school-district audit resolved" | Closed. | Andover's two pages (5306, 10410) now carry `us:cousub:2500901465`. No NovusAgenda page for East Brunswick is in the export (page 7310 is a YouTube page under `us:cousub:3402319000`). Duval County (page 5501) is still unresolved and is an approved sheet row. |
+| "Three live wrong-government cases wait for WO-934's" | Closed. | Ryan approved the mints for pages 5945 and 10852, which are minted here; the `@washcoar` pins are fixed and pages 9073 and 9681 are sheet rows. The rows wait for the deploy. |
 | "Wrong-government-content pattern confirmed on 6 live" | Rewritten. Cleanup done; the picker fix is open. | All nine deleted pages are absent from the export. |
-| "Full-corpus screen (5,857 pages) found the same" | Rewritten. | 16 pages gone; 35 sheet rows; the 305-title bucket was never read (284 still live). |
-| "6 `best_effort` YouTube pages archived a promotional" | Rewritten. | 2 gone, 4 live and on the sheet. `classify_video_hand_check()` returns no concern for any of the six titles. |
+| "Full-corpus screen (5,857 pages) found the same" | Rewritten. | 16 pages gone; 35 sheet rows; the unread bucket is now handled by the A, B and C rules. |
+| "6 `best_effort` YouTube pages archived a promotional" | Rewritten. | 2 gone, 4 live and on the sheet (2 approved deletes, 2 kept). `classify_video_hand_check()` returns no concern for any of the six titles. |
 | "82 archived YouTube meetings have embedding switched off" | Two sentences corrected. | They cited the 13 gone-video list, which cannot be rebuilt. |
-| "Three live wrong-government cases wait for WO-934's" | Rewritten to the two mint pages. | Pages 9073 and 9681 are sheet rows and both pins are fixed (below). |
-| "13 archived YouTube pages point at a video that is gone (7" | Rewritten. No delete approved on that finding. | Below. |
-| New: "Apply the reviewed wrong-page sheet" | Added. | It carries the exact commands. |
+| "13 archived YouTube pages point at a video that is gone (7" | Rewritten. No delete approved on that finding. | Above. |
+| "A bare YouTube channel-listing scan measurably ingests non-meeting" | One build step corrected. | It said a per-page listing flag needs a migration; see below. |
+| New: "Apply the reviewed wrong-page sheet" | Added. | It carries the exact commands and the order. |
 
-**Result: the `@washcoar` pin.** WO-932 named page 9073. The same pin also keyed a second page, 9681. Both are on the channel `@washcoar`, whose handle reads Washington Co AR. Page 9073's transcript names Washington County, Arkansas, its Quorum Court, Prairie Grove, Fayetteville and Springdale (8 mentions of Arkansas). Page 9681 has one Arkansas address (West Fork, a Washington County town) and one Alabama address (a tower company's office in Birmingham). Two per-video pins for page 9073's video already said `us:county:05143`. The channel pin and the per-video pin for page 9681's video (`cGA0CKMbJwI`) both said Washington County, AL. Both now say `us:county:05143`. Both pages are re-key rows with high confidence. The corrected pins reach the Archive with the next deploy.
+**Result: hiding does not need a new column.** The B tier ("a government video that is not a meeting", kept and hidden) was written up as needing a new per-page flag and a migration. `MeetingPage` already has `meeting_kind` (decision D2a, `String(20)`, NULL means an ordinary meeting; the allowed values are the set `MEETING_KINDS` in `archive/db/crud.py`: `meeting`, `press_conference`, `public_statement`, `town_hall`, `workshop`, `hearing`). I checked: the column is read into the export and the `/meetings` rows, but no query anywhere filters on it and no template uses it. So the B tier can reuse the column with a new value, and only the hiding needs wiring: the same conditions the empty-page rule uses, and the page's noindex. No migration is probably needed (recheck before building). A new value must fit in 20 characters and be added to `MEETING_KINDS`. Which values hide is a later call by Ryan: a town hall, a workshop and a hearing are legitimate meetings and stay listed. The entry, the Phase 1 note in `docs/BACKLOG_PHASES.md` and the wording of sheet rows 6119 and 6218 now say this.
 
-**Result: the 13 gone-video pages cannot be named.** The 2026-09-09 study kept counts per oEmbed status (7 deleted, 3 private, 3 malformed ids) but not the list. `reports/shared_host_lookups.csv` has no status column: a blank channel only means the video did not answer, which also covers a video whose owner switched off playback elsewhere. Of the 184 live pages with a blank-channel lookup, 181 have English transcripts, so their videos exist. Only 3 have none: pages 6114, 6906 and 7086. Today's export has 101 YouTube pages with no transcript (89 "Captions disabled / video unavailable", 12 blank), and the stored warnings are counts (1 or 0), so local data cannot separate a gone video from disabled captions. So no row is built from local data. The three pages are on the sheet as `needs_ryan`, with the reasons Ryan and the conductor gave. The tool builds more rows only from a checked status file (`gone-videos`), and `run` refuses `video-gone` rows unless that file is passed and is under 14 days old.
-
-**Result: what the re-screen shows today.** `scripts/wrong_page_screen.py` was run on the local 2026-09-21 export only (no production data), to test the port and to get a starting number.
+**Result: what the re-screen shows today.** `scripts/wrong_page_screen.py` was run on the local 2026-09-21 export only (no production data), to test the port and to get a starting number. The rule counts below are from the screen; Ryan's conductor recomputed the same numbers.
 
 | Question | Count |
 |---|---|
 | Pages scanned | 10,280 |
 | Pages flagged | 639 |
-| Flagged pages that are sheet rows | 39 |
-| Flagged pages not on the sheet | 600 |
-| Flagged by "no meeting-shaped word in the title" (the audit says this is not a verdict) | 545 |
-| Flagged: a school body in the title, government is not a school district | 90 |
-| Flagged: a talk-show or promo word in the title | 7 |
+| Flagged by the "no meeting-shaped word in the title" rule alone (the audit says this is not a verdict) | 540 |
+| Flagged by the school-body rule (89 alone, 1 also no meeting word) | 90 |
+| Flagged by a talk-show or promo word (4 also no meeting word) | 7 |
 | Flagged: a school district's page names a city or county body | 2 |
+| Flagged pages that are sheet rows | 41 |
+| Flagged pages not on the sheet | 598 |
 
-A page can fire more than one rule, so the four rule rows add to more than 639.
+Of the 90 school-body pages, 35 are sheet rows and 55 are not. Many of the 55 look fine: a Massachusetts town's own school committee, or district pages whose government type is "other".
 
-Of the 90 school-body pages, 33 are sheet rows. The other 57 are not on the sheet:
-
-| The other 57 school-body pages | Count of 57 |
+| The 55 school-body pages not on the sheet | Count of 55 |
 |---|---|
 | No government id at all (a different problem) | 22 |
 | Filed under a New England town or city, where a School Committee is town government | 14 |
-| The title says joint meeting | 6 |
-| Other: a person has to look (pages 535, 3385, 4097, 7035, 8354, 9685, 9752, 9777, 9831, 9868, 10148, 10675, 10703, 10795, 10881) | 15 |
+| The title says joint meeting | 5 |
+| Other: a person has to look (pages 535, 3385, 4097, 7035, 8354, 9685, 9752, 9777, 9831, 9868, 10148, 10675, 10703, 10881) | 14 |
 
-**The Phase 1 exit test is not met by this work.** The phase says a re-run should show the wrong-government and non-meeting lists at zero, or every remaining page accepted by Ryan in writing. 600 flagged pages are not on the sheet. Most are the "no meeting word" bucket that nobody has read. That bucket needs Ryan's decision on how much of it to read, not more tooling.
+**The unread bucket, sampled.** Ryan's conductor read a random 30 of the 540 pages flagged only by the "no meeting word" rule (local export, seed 2026), by title, government, channel and transcript cue count. It is a read, not a verified result, and n=30 gives a wide margin.
+
+| What the 30 looked like (the conductor's read) | Count of 30 |
+|---|---|
+| Real or likely real meetings with opaque titles | 13 |
+| Government videos that are not meetings | 6 |
+| Not related, or the wrong government (a Spanish news bulletin, a TV show, a VA video filed under Ceresco NE, a Navy video filed under Urbanna VA, a school video) | 5 |
+| Unclear (blank titles, few or no cues) | 6 |
+
+**Phase 1's "Done when", restated.** The wrong-government list is worked through the worklist. The non-meeting bucket is handled by the A, B and C video-kind rules (see `BACKLOG.md`'s "A bare YouTube channel-listing scan"), not by hand-reading hundreds of pages. `docs/BACKLOG_PHASES.md` says so. A zero on the screen is no longer the test, because the "no meeting word" rule fires on many real meetings.
 
 **Caution.**
-- **The sheet was built from the 2026-09-21 07:10 export.** Production has changed since (the 30 renames and the BART page were applied later). That is exactly why every row is checked against the live page before it acts, and why the tool reports a changed page as "refused: stale". The public checks above (30 addresses, BART, Chenango, Sequatchie) were single page requests to the public site, not a bulk read.
-- **Six re-key rows infer the school district from the place** (pages 1414, 2610, 2899, 3367, 3787, 3885). Page 3367 (Derry, NH) is the least sure: the national list has only an elementary district for Derry. They are marked medium and wait for Ryan.
-- **The override route writes draft `tenant_overrides.csv` lines** to a file on the Archive machine. For a shared host (a city's Granicus, Cablecast or CivicClerk site that also carries its school board) such a line would file the city's other meetings under the district. Commit none. The tool copies them into its log so nothing is guessed.
-- **The Render shell only sees files from the deployed commit.** The tool and the sheet reach it with the next Archive deploy. I could not open the Render shell, so two things are unverified: that `$PORT` is set there (if the tool says "No Archive address", run `echo $PORT` and pass `--base-url http://127.0.0.1:<that>`), and that `ARCHIVE_INGEST_TOKEN` is set there (the Archive itself reads it, so it should be).
-- **`scripts/check_youtube_video_status.py` has never been run.** It is tested with stand-ins only; its request shape copies the one the 2026-09-09 study used. No YouTube request was made by this work.
-- **Two rows (6119 and 6218) look like a government's own channel** (6218's handle is the city's; 6119's handle matches an agency site, which is an inference). Under Ryan's three-outcome rule such a video is kept but hidden. Hiding is not built, so the tool can only delete them. Ryan should write `reject` until hiding exists.
+- **The mints and pins must be DEPLOYED before the tool can apply the five mint rows.** The Archive refuses a government id it does not know (HTTP 400), and the tool stops on that. The order is: merge, deploy, then run. The tool and the sheet reach the Render shell only with the same deploy. The corrected `@washcoar` pins ride with it.
+- **The sheet was built from the 2026-09-21 07:10 export.** Production has changed since (the 30 renames and the BART page were applied later). That is why every row is checked against the live page before it acts, and why a changed page is "refused: stale". The public checks above were single page requests, not a bulk read.
+- **Six re-key rows infer the school district from the place** (pages 1414, 2610, 2899, 3787, 3885, and 5501). Ryan approved them; they are still the least certain rows, and a dry run shows what each would write.
+- **The override route writes draft `tenant_overrides.csv` lines** to a file on the Archive machine. For a shared host (a city's Granicus, Cablecast or CivicClerk site that also carries its school board) such a line would file the city's other meetings under the district. Commit none. The tool copies them into its log.
+- **I could not open the Render shell,** so two things are unverified: that `$PORT` is set there (if the tool says "No Archive address", run `echo $PORT` and pass `--base-url http://127.0.0.1:<that>`), and that `ARCHIVE_INGEST_TOKEN` is set there (the Archive itself reads it, so it should be).
+- **`scripts/check_youtube_video_status.py` has never been run.** It is tested with stand-ins only. No YouTube request was made by this work.
 
 **Recommendation.**
-1. **Ryan, one question that decides 13 of the 14 proposed re-keys:** should a school-board meeting that sits under a county or a city be re-filed under the school district? The audit left this open because some districts cover the same land as the county. If yes, approve those 13. The 14th, Duval County (page 5501), is a page with no government at all.
-2. **Ryan, the mint decisions:** page 5945 (South Snohomish County Fire and Rescue RFA, Census unit 248695), page 10852 (North Valley Public Safety Department, no Census unit), and two county offices of education (Santa Clara, pages 645 and 2004; Solano, page 5301). Or leave them unresolved.
-3. **Ryan, four best-effort rows and page 2504:** approve or reject each (see the sheet).
-4. **Deploy the Archive** (already due for WO-932, WO-933 and WO-935) so the tool and the sheet reach the Render shell. Then, on the Archive's Render shell:
+1. **Merge, then deploy the Archive and the resolver** (already due for WO-932, WO-933 and WO-935; the pins and mints are data files inside the image).
+2. **Then, on the Archive's Render shell:**
    - `python scripts/repair_wrong_pages.py check reports/wrong_page_worklist.csv`
    - `python scripts/repair_wrong_pages.py run reports/wrong_page_worklist.csv` (dry run; read it)
    - `python scripts/repair_wrong_pages.py run reports/wrong_page_worklist.csv --apply --batch-size 5` (repeat until it says nothing is left)
-   - `python scripts/repair_wrong_pages.py run reports/wrong_page_worklist.csv --apply --allow-deletes --only-ids 6114` (the one approved delete)
+   - `python scripts/repair_wrong_pages.py run reports/wrong_page_worklist.csv --apply --allow-deletes --only-ids 6114,6101,6830` (the three approved deletes)
    - `python scripts/wrong_page_screen.py --from-archive --worklist reports/wrong_page_worklist.csv --out /tmp/wrong_page_screen.csv` (read-only re-run of the screen)
    Copy the log out before any deploy.
-5. **Drip Mac owner:** stop the drip (Ctrl-C) or run only its `captions,feed` lanes, then run `.venv/bin/python scripts/check_youtube_video_status.py reports/wo934_youtube_no_transcript_pool.csv --out reports/wo934_youtube_video_status.csv --i-am-on-the-drip-mac` (101 videos, about 4 hours, resumable). Hand back the status file. Then `python scripts/repair_wrong_pages.py gone-videos reports/wo934_youtube_no_transcript_pool.csv reports/wo934_youtube_video_status.csv --exclude-worklist reports/wrong_page_worklist.csv --out reports/wo934_gone_video_rows.csv` writes the delete rows for Ryan to read.
+3. **On the resolver's Render shell:** the two `repoint_page.py` commands for page 2504 (above).
+4. **Drip Mac owner:** stop the drip (Ctrl-C) or run only its `captions,feed` lanes, then run `.venv/bin/python scripts/check_youtube_video_status.py reports/wo934_youtube_no_transcript_pool.csv --out reports/wo934_youtube_video_status.csv --i-am-on-the-drip-mac` (101 videos, about 4 hours, resumable). Hand back the status file. Then `python scripts/repair_wrong_pages.py gone-videos reports/wo934_youtube_no_transcript_pool.csv reports/wo934_youtube_video_status.csv --exclude-worklist reports/wrong_page_worklist.csv --out reports/wo934_gone_video_rows.csv` writes the delete rows for Ryan to read.
+5. **Still for Ryan:** page 3367 (Derry) and 3453 (Hopkins on Vimeo); pages 6906 and 7086 (after the drip check); and whether the `solanocoe.granicus.com` pin should be authoritative.
 
-**Deploy status.** Scripts, data and docs only, so merging needs no deploy of the running app. Two things do need the next deploy: the corrected `@washcoar` pins (data files inside the image) and the tool and sheet themselves reaching the Archive's Render shell. `alembic check` was not run because no model changed.
+**Deploy status.** No code in the running app changed. Merging needs no deploy for the docs and scripts, but the five mints and four pins are data files inside the image, so the Archive and the resolver need the next deploy before the mint rows can run. `alembic check` was not run because no model changed.
 
-**Docs updated.** `BACKLOG.md` (six entries closed, five rewritten, two sentences corrected, one added; TOC regenerated), `docs/BACKLOG_PHASES.md` (the WO-934 status, the entries list and Ryan's list), `README.md` and `docs/COVERAGE_HANDOVER.md` (one paragraph each naming the new tool).
+**Docs updated.** `BACKLOG.md` (seven entries closed, four rewritten, one corrected, two sentences fixed, one added; TOC regenerated), `docs/BACKLOG_PHASES.md` (the WO-934 status, the entries list, Ryan's list, the Phase 1 exit test, and the note on hiding), `README.md` and `docs/COVERAGE_HANDOVER.md` (one paragraph each naming the tool).
 
 #### Original text of the entries this work order closed or rewrote
 

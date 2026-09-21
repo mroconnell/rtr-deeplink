@@ -83,18 +83,40 @@ def test_every_target_is_a_government_the_archive_knows():
             assert government_for_id(row.target_gov_id) is not None, row.origin
 
 
-def test_only_page_6114_is_approved_to_delete():
-    """Ryan approved deleting page 6114 on 2026-09-21 and nothing else. A new
-    approval must be a deliberate edit of this test, so it is reviewed."""
-    approved = {r.page_id for r in _sheet_rows() if r.approved}
-    assert approved == {6114}
-    (row,) = [r for r in _sheet_rows() if r.page_id == 6114]
-    assert row.action == "delete"
+_APPROVED_DELETES = {
+    6114,  # a county homepage intro video, not a meeting
+    6101,  # Greenwood County, KS: an unrelated rocket-lab channel's video
+    6830,  # New Haven, IN: a private person's drone footage
+}
+_REJECTED = {6119, 6218}  # government videos that are not meetings: kept
+_APPROVED_SCHOOL_BOARD_REKEYS = {
+    1414, 2610, 2899, 3787, 3885, 1311, 1324, 1333, 5565, 1938, 2298, 2666, 5501,
+}  # fmt: skip
+_APPROVED_MINT_REKEYS = {5945, 10852, 645, 2004, 5301}
+_STILL_WAITING = {3367, 3453, 6906, 7086}
 
 
-def test_the_gone_video_group_is_never_ready_to_delete_except_6114():
+def test_the_approved_rows_are_exactly_the_ones_ryan_approved():
+    """Ryan's 2026-09-21 decisions, pinned. A new approval must be a
+    deliberate edit of this test, so it is reviewed. Apart from these, only
+    the rows the sheet marks `needs_ryan=no` can run at all."""
+    rows = _sheet_rows()
+    approved_deletes = {r.page_id for r in rows if r.approved and r.action == "delete"}
+    assert approved_deletes == _APPROVED_DELETES
+    approved_rekeys = {r.page_id for r in rows if r.approved and r.action == "rekey"}
+    assert approved_rekeys == (
+        _APPROVED_SCHOOL_BOARD_REKEYS | _APPROVED_MINT_REKEYS | {2504}
+    )
+    assert {r.page_id for r in rows if r.rejected} == _REJECTED
+    waiting = {
+        r.page_id for r in rows if r.needs_ryan and not r.approved and not r.rejected
+    }
+    assert waiting == _STILL_WAITING
+
+
+def test_the_gone_video_group_only_deletes_6114_and_the_rest_wait():
     """Pages 6906 and 7086 wait for a checked status file; 7086 also waits for
-    its replacement page. None is approved."""
+    its replacement page. Neither is approved."""
     by_id = {r.page_id: r for r in _sheet_rows()}
     for page_id in (6906, 7086):
         row = by_id[page_id]
@@ -102,6 +124,43 @@ def test_the_gone_video_group_is_never_ready_to_delete_except_6114():
         assert row.needs_ryan and not row.approved
         assert ("video-gone", "") in row.requires
     assert ("replacement-page", "") in by_id[7086].requires
+    assert by_id[6114].approved and by_id[6114].requires == []
+
+
+def test_the_minted_rows_carry_the_minted_ids_and_say_the_deploy_comes_first():
+    by_id = {r.page_id: r for r in _sheet_rows()}
+    expected = {
+        5945: "rtr:us:wa:south-snohomish-county-fire-and-rescue-regional-fire-authority",
+        10852: "rtr:us:ut:north-valley-public-safety-department",
+        645: "rtr:us:ca:santa-clara-county-office-of-education",
+        2004: "rtr:us:ca:santa-clara-county-office-of-education",
+        5301: "rtr:us:ca:solano-county-office-of-education",
+    }
+    for page_id, gov_id in expected.items():
+        row = by_id[page_id]
+        assert row.target_gov_id == gov_id and row.approved
+        assert "DEPLOYED" in row.reason
+        gov = government_for_id(gov_id)
+        assert gov is not None and gov.source.startswith("curated")
+
+
+def test_page_2504_is_approved_to_move_to_unresolved_and_is_not_a_delete():
+    """Ryan: move it to unresolved like page 5816, do not delete it. No registry
+    id exists to write, so the row cannot run through the tool; it records the
+    path that does apply."""
+    row = {r.page_id: r for r in _sheet_rows()}[2504]
+    assert (row.action, row.target_gov_id, row.approved) == ("rekey", "", True)
+    assert "does NOT apply" in row.evidence  # the backfill path
+    assert "repoint_page.py" in row.evidence and "--dry-run" in row.evidence
+    assert "MediaPlayer.php?view_id=2&clip_id=2573" in row.evidence
+
+
+def test_the_two_kept_government_videos_talk_about_meeting_kind_not_a_new_column():
+    """`meeting_kind` already exists, and nothing filters on it yet."""
+    by_id = {r.page_id: r for r in _sheet_rows()}
+    for page_id in _REJECTED:
+        text = by_id[page_id].reason
+        assert "meeting_kind" in text and "not a new column" in text
 
 
 def test_deletes_always_wait_for_ryan_and_no_rekey_runs_without_evidence():
@@ -113,12 +172,17 @@ def test_deletes_always_wait_for_ryan_and_no_rekey_runs_without_evidence():
             assert row.action == "rekey" and row.target_gov_id, row.origin
 
 
-def test_rows_needing_a_mint_have_no_target_and_wait_for_ryan():
-    """A blank target is a finding, not a gap to fill from a guess."""
-    by_id = {r.page_id: r for r in _sheet_rows()}
-    for page_id in (5945, 10852, 3453, 2504, 645, 2004, 5301):
-        assert by_id[page_id].target_gov_id == ""
-        assert by_id[page_id].needs_ryan
+def test_the_only_rows_with_no_target_are_the_two_with_no_id_to_write():
+    """A blank target is a finding, not a gap to fill from a guess: page 3453
+    (which Hopkins district is not proven) and page 2504 (Ryan will not mint a
+    state commission)."""
+    blank = {
+        r.page_id for r in _sheet_rows() if r.action == "rekey" and not r.target_gov_id
+    }
+    assert blank == {3453, 2504}
+    for row in _sheet_rows():
+        if row.action == "rekey" and not row.target_gov_id:
+            assert row.needs_ryan
 
 
 def test_wo932_pages_point_at_washington_county_arkansas():
@@ -1114,3 +1178,93 @@ async def test_command_line_end_to_end_writes_a_log_and_never_prints_the_token(
     assert _AUTH_TOKEN not in out
     (line,) = list(csv.DictReader(open(log_path, newline="", encoding="utf-8")))
     assert (line["outcome"], line["after_gov_id"]) == (tool.REKEYED, _GOV_ID)
+
+
+async def test_page_2504_path_a_repush_under_the_commission_name_moves_a_page_to_unresolved(
+    live_archive,
+):
+    """The path recorded on the sheet for page 2504 (a Minnesota Public
+    Utilities Commission meeting filed under Beltrami County, MN).
+
+    Ryan decided the page moves to unresolved, the same state as page 5816
+    (gov_id blank, jurisdiction "Minnesota Public Utilities Commission",
+    confidence unresolved). `POST /internal/jurisdiction/override` cannot do
+    that: it needs a registry id. And `backfill_gov_id.py` cannot: it
+    recomputes from the STORED name, which is "Beltrami County, MN", and the
+    resolver answers Beltrami County again (checked in the same file below).
+    What does work is a re-resolve push whose jurisdiction is the commission's
+    own name, which the Granicus adapter gives for the MediaPlayer.php?view_id=2
+    address of the clip (checked live 2026-09-21 with repoint_page.py
+    --dry-run) and NOT for the player/clip address.
+
+    This drives that push through the real ingest route on the local SQLite
+    Archive. The page first carries a synthetic government (a stand-in for
+    Beltrami, so no test row lands on a Minnesota page); the second push has
+    the commission's real name, no gov_id and no transcript, as a repoint of a
+    Granicus page with no captions would.
+    """
+    client, http = live_archive
+    headers = {"Authorization": f"Bearer {_AUTH_TOKEN}"}
+    source = "https://wo934-puc.granicus.com/player/clip/2573"
+    first = {
+        "platform": "granicus",
+        "source_url": source,
+        "input_url_normalized": source,
+        "title": "PUC Agenda Meeting on 2025-09-04 10:00 AM",
+        "date": "2025-09-04",
+        "jurisdiction": "Wo934 Default City, ZZ",
+        "gov_id": _GOV_ID,
+        "video_url": "https://example.com/video.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0.0, "end": 1.0, "text": "Call to order"}],
+        "transcript_language": "en",
+    }
+    reply = http.post("/internal/ingest", json=first, headers=headers)
+    assert reply.status_code == 200, reply.text
+    page_id = await _page_id(reply.json()["slug"])
+    before = client.read_pages([page_id])[page_id]
+    assert before["gov_id"] == _GOV_ID
+    assert before["versions"][0]["segment_count"] == 1
+
+    push = {
+        "platform": "granicus",
+        "source_url": source,
+        "input_url_normalized": source,
+        "title": "PUC Agenda Meeting on 2025-09-04 10:00 AM",
+        "date": "2025-09-04",
+        "jurisdiction": "Minnesota Public Utilities Commission",
+        "video_url": "https://example.com/video.m3u8",
+        "video_format": "m3u8",
+        "segments": [],
+    }
+    reply = http.post("/internal/ingest", json=push, headers=headers)
+    assert reply.status_code == 200, reply.text
+    assert reply.json()["created"] is False
+
+    after = client.read_pages([page_id])[page_id]
+    # Page 5816's own state.
+    assert not after["gov_id"]
+    assert after["jurisdiction"] == "Minnesota Public Utilities Commission"
+    assert after["jurisdiction_confidence"] == "unresolved"
+    assert after["slug"] == before["slug"]
+    # The transcript is untouched by a push that carries none.
+    assert after["versions"][0]["segment_count"] == 1
+
+
+def test_page_2504_the_backfill_path_would_leave_it_under_beltrami():
+    """The other half of the reasoning above, on the real stored name: the
+    resolver, given what `backfill_gov_id.py` feeds it for page 2504, answers
+    Beltrami County again; given page 5816's stored name it stays unresolved."""
+    from app.utils.gov_registry import resolve_government
+
+    host = "minnesotapuc.granicus.com"
+    page_2504 = resolve_government(
+        "Beltrami County, MN", tenant_host=host, path="/player/clip/2573"
+    )
+    assert (page_2504.gov_id, page_2504.tier) == ("us:county:27007", "registry")
+    page_5816 = resolve_government(
+        "Minnesota Public Utilities Commission",
+        tenant_host=host,
+        path="/MediaPlayer.php?clip_id=2731&view_id=2",
+    )
+    assert page_5816.gov_id == "" and page_5816.tier == "unresolved"

@@ -559,11 +559,10 @@ async def test_hub_sweep_says_nothing_about_a_matching_host():
     [
         # Real live page 5945 (2026-09-21 export), shown to readers as
         # "South, MB (Canada)": a Washington fire authority on Granicus.
-        (
-            "South Snohomish County Fire and Rescue RFA",
-            "southsnofire.granicus.com",
-            "rtr:ca:",
-        ),
+        # (Its own host, southsnofire.granicus.com, was a case here until
+        # WO-934 minted the authority on Ryan's ok mint and pinned that host
+        # to it; see tests/test_gov_registry.py's WO-934 block. The guard is
+        # still shown by this name on any other host.)
         (
             "South Snohomish County Fire and Rescue RFA",
             "example.com",

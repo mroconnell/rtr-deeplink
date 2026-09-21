@@ -616,7 +616,13 @@ def decide(row: Row, ctx: Context) -> Tuple[str, str]:
         return REFUSED_STALE, stale
 
     if row.action == "rekey" and not row.target_gov_id:
-        return SKIP_BLOCKED, "target_gov_id is blank"
+        # An approved row can still land here (a state commission Ryan will
+        # not mint, for one): the override route needs a registry id, so the
+        # row's evidence carries the path that does apply.
+        return SKIP_BLOCKED, (
+            "target_gov_id is blank: no registry id to write. "
+            "Read the row's evidence for the path that applies"
+        )
     if row.action == "delete" and not row.approved:
         return SKIP_AWAITING, "a delete needs ryan_decision=approve"
     if row.action == "rekey" and row.needs_ryan and not row.approved:
@@ -1115,6 +1121,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
     print("Needs Ryan | Count of rows")
     print(f"yes | {sum(1 for r in rows if r.needs_ryan)}")
     print(f"no | {sum(1 for r in rows if not r.needs_ryan)}")
+    print("Ryan's decision | Count of rows")
+    for label, wanted in (("approve", "approve"), ("reject", "reject"), ("blank", "")):
+        print(f"{label} | {sum(1 for r in rows if r.ryan_decision == wanted)}")
     if counts:
         print("Against the export | Count of rows")
         for name, n in sorted(counts.items()):

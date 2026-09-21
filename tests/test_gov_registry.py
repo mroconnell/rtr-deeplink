@@ -3754,3 +3754,137 @@ def test_bare_vimeo_id_and_channel_pins_match_through_match_override(
         assert resolver._match_override("vimeo.com", "/1", other) == []
     finally:
         registry.clear_caches()
+
+
+# --- WO-934: five governments minted on Ryan's "ok mint" (2026-09-21) --------
+#
+# Every raw string below is what a real adapter returned for a real live page
+# (checked 2026-09-21): page 5945's Granicus name has no state, page 10852's
+# Utah notice says "Utah", and the Solano County Office of Education's Granicus
+# name has no state either. See BACKLOG_DONE.md's WO-934 entry.
+
+_WO934_FIRE_AUTHORITY = (
+    "rtr:us:wa:south-snohomish-county-fire-and-rescue-regional-fire-authority"
+)
+_WO934_NORTH_VALLEY = "rtr:us:ut:north-valley-public-safety-department"
+_WO934_SANTA_CLARA_COE = "rtr:us:ca:santa-clara-county-office-of-education"
+_WO934_SOLANO_COE = "rtr:us:ca:solano-county-office-of-education"
+
+
+@pytest.mark.parametrize(
+    "gov_id,gov_type,state,cog_id",
+    [
+        (_WO934_FIRE_AUTHORITY, "special_district", "WA", "248695"),
+        (_WO934_NORTH_VALLEY, "special_district", "UT", ""),
+        (_WO934_SANTA_CLARA_COE, "school_district", "CA", ""),
+        (_WO934_SOLANO_COE, "school_district", "CA", ""),
+    ],
+)
+def test_wo934_mints_are_curated_rows_with_no_collision(
+    gov_id, gov_type, state, cog_id
+):
+    govs = registry.governments()
+    gov = govs[gov_id]
+    assert gov.source.startswith("curated")
+    assert (gov.country, gov.gov_type, gov.state, gov.cog_id) == (
+        "us",
+        gov_type,
+        state,
+        cog_id,
+    )
+    # No other government carries the same display name or the same hub
+    # address, so no hub can be merged into another by accident.
+    same_name = [
+        g.gov_id
+        for g in govs.values()
+        if (g.gov_name.lower(), g.state) == (gov.gov_name.lower(), gov.state)
+    ]
+    assert same_name == [gov_id]
+    slug = display.hub_slug(gov)
+    assert [g.gov_id for g in govs.values() if display.hub_slug(g) == slug] == [gov_id]
+
+
+def test_wo934_the_fire_authority_census_unit_is_the_one_named():
+    """cog_id 248695 is a real row of cog_units.csv, and only this row uses it."""
+    with open(DATA_DIR / "cog_units.csv", newline="", encoding="utf-8") as fh:
+        units = {row["cog_id"]: row for row in csv.DictReader(fh)}
+    unit = units["248695"]
+    assert unit["name"].startswith("SOUTH SNOHOMISH COUNTY FIRE AND RESCUE")
+    assert (unit["state"], unit["gov_type"]) == ("WA", "special_district")
+    users = [g.gov_id for g in registry.governments().values() if g.cog_id == "248695"]
+    assert users == [_WO934_FIRE_AUTHORITY]
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        # The Swagit known-domain string for sccoe.new.swagit.com: it used to
+        # trim to Santa Clara County (pages 645 and 2004).
+        ("Santa Clara County Office of Education, CA", _WO934_SANTA_CLARA_COE),
+        ("Solano County Office of Education, CA", _WO934_SOLANO_COE),
+        ("North Valley Public Safety Department, UT", _WO934_NORTH_VALLEY),
+        (
+            "South Snohomish County Fire and Rescue Regional Fire Authority, WA",
+            _WO934_FIRE_AUTHORITY,
+        ),
+    ],
+)
+def test_wo934_a_name_with_a_state_matches_the_minted_row(raw, gov_id):
+    match = resolve(raw)
+    assert match.gov_id == gov_id
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_wo934_the_utah_notice_name_reaches_the_minted_row_after_state_normalising():
+    """Page 10852's adapter name says "Utah"; the Archive normalises the state
+    to its two letters before the ladder runs (crud._find_or_create_page)."""
+    from archive.utils.jurisdiction_format import normalize_state_suffix
+
+    raw = normalize_state_suffix("North Valley Public Safety Department, Utah")
+    assert raw.endswith(", UT")
+    assert resolve(raw).gov_id == _WO934_NORTH_VALLEY
+
+
+def test_wo934_a_stateless_fire_authority_name_is_keyed_by_its_host_pin():
+    """Page 5945's Granicus name has no state. Without the host pin the
+    ladder stays unresolved (WO-932's guard stops the old 'South, MB' mint),
+    and a stateless name cannot match a state-scoped curated row."""
+    raw = "South Snohomish County Fire and Rescue RFA"
+    assert resolve(raw).gov_id == ""
+    match = resolve(
+        raw,
+        host="southsnofire.granicus.com",
+        path="/MediaPlayer.php?clip_id=1088&view_id=1",
+    )
+    assert match.gov_id == _WO934_FIRE_AUTHORITY
+    assert match.tier == resolver.TIER_PINNED
+
+
+def test_wo934_the_utah_notice_pin_and_the_swagit_pin_point_at_the_mints():
+    utah = resolve(
+        "North Valley Public Safety Department",
+        host="www.utah.gov",
+        path="/pmn/sitemap/notice/1067943.html",
+    )
+    assert (utah.gov_id, utah.tier) == (_WO934_NORTH_VALLEY, resolver.TIER_PINNED)
+    swagit = resolve(
+        "Santa Clara County Office of Education, CA", host="sccoe.new.swagit.com"
+    )
+    assert swagit.gov_id == _WO934_SANTA_CLARA_COE
+
+
+def test_wo934_a_stateless_county_office_name_still_trims_to_the_county():
+    """KNOWN LIMIT, documented on purpose. Page 5301's Granicus adapter name is
+    'Solano County Office of Education' with no state, and a fallback pin ranks
+    below a registry name match, so the ladder still says Solano County even
+    with the host pin in place (the BART lesson: bart.granicus.com's fallback
+    pin never took effect until Ryan made it authoritative). Existing pages are
+    protected by their manual override; a NEW ingest from this tenant would key
+    to the county until the pin is made authoritative, which is Ryan's call.
+    If that pin is upgraded, this test must change with it."""
+    match = resolve(
+        "Solano County Office of Education",
+        host="solanocoe.granicus.com",
+        path="/player/clip/432?view_id=1",
+    )
+    assert match.gov_id == "us:county:06095"
