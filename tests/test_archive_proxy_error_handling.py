@@ -274,6 +274,62 @@ def test_hub_slug_disables_redirect_following(monkeypatch):
     assert response.headers["location"] == "/j/mclean-county-il"
 
 
+def test_context_entry_ref_disables_redirect_following(monkeypatch):
+    """The WO-946 half of the same bug shape: Archive's context_entry_
+    page() route 301s a non-canonical /context/{id}[-{slug}] ref (a bare
+    id, a stale slug, a mistyped one) to the entry's real canonical
+    permalink -- app/main.py's archive_context_entry_page() must forward
+    that as a real 301 to the browser, not silently follow it and serve
+    the target entry as a 200 (which is exactly what the /m/ and /j/
+    incidents above already showed aiohttp's default allow_redirects=True
+    does)."""
+    captured_allow_redirects = {}
+
+    async def _fake_proxy_get(
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
+    ):
+        captured_allow_redirects[path] = allow_redirects
+
+        class _FakeResponse:
+            status = 301
+            headers = {"Location": "/context/42-the-real-slug"}
+            content = _EmptyChunkIter()
+
+        class _FakeSession:
+            async def close(self):
+                pass
+
+        return _FakeSession(), _FakeResponse()
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    response = app_client.get("/context/42?utm_source=x", follow_redirects=False)
+
+    assert captured_allow_redirects["context/42"] is False
+    assert response.status_code == 301
+    assert response.headers["location"] == "/context/42-the-real-slug"
+
+
+def test_context_entry_ref_junk_never_reaches_archive(monkeypatch):
+    """The resolver's own regex check (app/main.py's _CONTEXT_ENTRY_REF_RE)
+    must reject a ref that could never be real BEFORE calling proxy_get()
+    at all -- a junk /context/{ref} should never cost a round trip to
+    Archive."""
+    calls = []
+
+    async def _fake_proxy_get(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("proxy_get() must never be called for a junk ref")
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    for ref in ("abc", "12abc", "12-UPPER"):
+        response = app_client.get(f"/context/{ref}")
+        assert response.status_code == 404, ref
+        assert response.json() == {"detail": "Not Found"}
+    assert calls == []
+
+
 async def test_proxy_get_forwards_allow_redirects_to_aiohttp(monkeypatch):
     monkeypatch.setenv("ARCHIVE_BASE_URL", "https://archive.example.test")
     captured = {}

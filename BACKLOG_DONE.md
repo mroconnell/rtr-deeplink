@@ -1,5 +1,128 @@
 # Backlog — done
 
+## WO-946: Full Context entry pages get a slugged URL and real SEO substance — a transcript excerpt, structured data, a sitemap listing [Done 2026-09-21]
+
+**Why this ran.** Ryan reviewed the WO-945 permalink pages and asked two
+things: "Can the url be slugged based on the title for SEO?" and "should
+we make any other improvements to that /context/id page for SEO?" The
+second question mattered more than the first — `STATE_HUB_PAGES.md`
+already diagnosed Google declining this site's hub pages for being thin
+and templated, and a permalink page with 2-3 sentences of editor summary
+was exactly that shape.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `context_permalink()` (`archive/utils/context_links.py`, pure, unit-tested) | Builds `/context/{id}-{slug}` — the slug from the entry's own title, or (no title) the matched meeting's jurisdiction + title, capped ~70 characters cut on a hyphen boundary. Reuses `slugify_text()` (`archive/utils/slugify.py`), the one slug rule this app already had. Computed fresh at read time in `_context_entry_dict()`, never stored — no migration. |
+| `GET /context/{entry_ref}` (`archive/main.py`, replacing the WO-945 `{entry_id:int}` route) | Looks up by id alone (never trusts the slug); anything not already at the entry's current canonical permalink — bare id, stale slug after a title edit, wrong slug — gets a real `301`, query string preserved. A malformed ref (`^(\d+)(?:-([a-z0-9-]*))?$`, id capped at 12 digits) 404s before ever touching the DB. |
+| Resolver widening (`app/main.py`) | Same regex, same reject-before-proxying; `allow_redirects=False` so the Archive's `301` reaches the browser instead of being silently followed and served as a `200` — the same real bug (and fix) `/m/{slug}` and `/j/{hub_slug}` already needed. |
+| `get_context_transcript_excerpt()` (`archive/db/crud.py`) | The real words spoken at the clipped moment: starts at the segment containing `t_seconds`, grows to ~90s/~900 chars (floor 2 segments), None on no default version, no segments, or a quality-marker warning. |
+| `context_entry_page.html` | A transcript-excerpt section (skipped entirely when there's nothing to show); a `<title>`/description rule that names the government without ever shortening the headline; `BlogPosting` + `BreadcrumbList` JSON-LD; a visible `<time>` + `article:published_time`. |
+| `list_context_entries_for_sitemap()` + `sitemap.xml.jinja` | Every published entry's canonical permalink, capped at the 500 most recently updated, once the feed clears `CONTEXT_MIN_INDEXABLE` — wrapped in the same try/except as the existing `/context` sitemap line. |
+
+**No migration.** Everything above reads existing columns (`ContextEntry.
+title`, `MeetingPage.jurisdiction`/`title`, `TranscriptVersion.segments`/
+`transcript_warnings`) or computes at read time. The one new dict key,
+`entry["meeting_page_id"]` (the raw FK, added to `_context_entry_dict()`
+so the route could call the excerpt loader without a second page lookup),
+is derived, not stored.
+
+**The segment shape and quality check, reused not reinvented.** Segments
+are `{"start": float, "end": float, "text": str}` — confirmed by reading
+`app/utils/vtt_parser.py` (the producer) and `archive/templates/
+meeting_page.html` (`id="seg-{{ loop.index0 }}"`, the 0-based index a
+deep link's `line=seg-N` targets). The quality gate is `archive/db/
+crud.py`'s existing `_has_real_warning_free_transcript()` — the same
+`_GARBLED_MARKER`/`_HALLUCINATION_MARKER`/`_GRANICUS_TRUNCATION_MARKER`
+check every other "is this actually a good transcript" reader in that
+file already uses (CLAUDE.md has its own bullet on why a new quality
+marker must never be checked ad hoc). Each excerpt line's `deep_link`
+uses the segment's real index in the FULL segments array, not its
+position within the excerpt window, so a reader who clicks through
+highlights the same line `meeting_page.html` itself would highlight.
+
+**The 301 reaching the browser through the proxy.** Read `app/archive_
+client.py`'s `proxy_get()` docstring first — its `allow_redirects`
+parameter exists specifically because aiohttp's own default
+(`allow_redirects=True`) silently follows a redirect *inside* the proxy
+and serves the target as a `200`, defeating the point of a permanent
+redirect (the real 2026-08-31/2026-09-11 incidents that affected every
+`_SLUG_REDIRECTS`/hub-alias entry ever shipped). The resolver's new
+`/context/{entry_ref}` proxy passes `allow_redirects=False` unconditionally
+(no sub-path structure the way `/m/` has card.jpg/transcript.txt, so
+there's no case that needs the opposite), same shape as `/j/{hub_slug}`'s
+own route. A dedicated test (`tests/test_archive_proxy_error_handling.py`)
+proves it with a fake aiohttp response, mirroring the existing `/m/`/`/j/`
+tests in the same file.
+
+**Caution.** A jurisdiction string is not always what the editor typed —
+`effective_jurisdiction()` can enrich a real, recognized government's
+name (registry display form, disambiguators like "(city)") even with no
+`gov_id` explicitly set, confirmed live while writing the title-tag tests
+(a plain "Elgin, IL" input came back "Elgin (city), IL"). Tests that need
+a jurisdiction to survive unenriched use an obviously-synthetic one
+("Testville, ZZ"); tests that check the real enrichment read `entry[
+"jurisdiction_display"]` back rather than assuming the raw input string.
+
+**Docs.** README's "Full Context feed" section: the slugged-URL/redirect
+rule, the transcript excerpt (what, when skipped, why — the thin-page
+diagnosis), structured data, and the sitemap rule. `BACKLOG.md`'s WO-945
+sitemap/RSS residual updated: the sitemap half is done, the RSS `<link>`
+half stays open (deliberately untouched this WO — a real RSS semantics
+question, not a code change).
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4865 passed, 16 skipped, 4 xfailed, 0 failed**),
+`alembic check` for both services (no migration in this WO), and the
+`BACKLOG_DONE.md` heading check. Node tests: 81 passed.
+
+Both services were then run locally on scratch SQLite, with `.env`
+loading blocked, and driven through the resolver in a real browser. The
+meeting was real: Jacksonville FL, Granicus clip 7447, 2,177 caption
+segments from the government's own captions.
+
+| Check | Result |
+|---|---|
+| `/context/1` (bare id), seen by the browser | 301 to `/context/1-councilmember-presses-staff-…` |
+| A wrong slug with `?utm=x` | 301 to the right slug, query string kept |
+| The canonical slugged URL | 200 |
+| `/context/abc`, `/context/1abc`, a 24-digit id | 404 each |
+| `/context/new`, `/context/feed.xml` | Still reach their own routes |
+| Untitled entry | Slug built from the government and the meeting title |
+| Both JSON-LD blocks | Parse as `BlogPosting` and `BreadcrumbList` |
+| Excerpt for an entry at `t=754` (12:34) | Starts at the 12:31 line. 6 paragraphs. |
+| Clicking the excerpt's `[12:35]` timestamp | Meeting page opens with the video at 755 seconds, at transcript row 335, the line that paragraph opens with |
+
+**Four things the review and the browser caught, fixed in this WO.**
+
+1. *Unrelated speech shown as context.* "The last line starting at or
+   before `t`" can always be satisfied. A transcript that stops early
+   handed back its final line for a moment an hour later, and one that
+   starts late handed back its first line. The chosen line must now be
+   within 60 seconds of the linked moment, or there is no excerpt. Two
+   tests pin both directions.
+2. *34 fragments instead of speech.* Government captions arrive a few
+   words at a time. The first render was 34 lines such as "[12:34]
+   yourself.", one timestamp each. `crud._excerpt_paragraphs()` now
+   groups them, breaking at a speaker change (the `>>` captioners use,
+   including mid-line) or at a sentence end once a paragraph is long
+   enough. Each paragraph keeps its first line's timestamp link. The
+   test uses the real Jacksonville lines.
+3. *The page title lost the place name.* The first rule dropped the
+   government when the title ran past 65 characters. An ordinary
+   56-character headline came out with no place at all. The place is
+   what people search for, so now only the site suffix is dropped.
+4. *`program's` slugged to `program-s`.* Apostrophes are now removed
+   before slugging, here only. The shared `slugify_text()` is untouched,
+   because meeting-page slugs built from it are frozen.
+
+**Caution, not changed here.** An excerpt timestamp link rounds the time
+down, exactly as the meeting page's own share links do
+(`deep_link.js:69`). For a caption fragment shorter than a second, the
+meeting page then highlights the row just before it. That is the
+existing behaviour of every per-line share link on the site.
+
 ## WO-934 follow-up: Ryan's answers on Derry, Hopkins, Sebring and Malibu; Derry needs no mint; two new `requires` rules in the repair tool [Done 2026-09-21]
 
 **Why this ran.** WO-934 left four rows open for Ryan: page 3367 (Derry, NH), page 3453 (Hopkins on Vimeo), and the two deletes 6906 (Sebring) and 7086 (Malibu). He answered all four in chat on 2026-09-21. The answers needed two changes to the repair tool, because the old `requires` rules could not express them.

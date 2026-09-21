@@ -1966,16 +1966,46 @@ async def archive_context_new(request: Request):
     )
 
 
+# Same shape archive/main.py's own context_entry_page() route validates
+# (WO-946) -- kept identical on purpose so a ref this resolver rejects is
+# exactly a ref the Archive would also reject, never a mismatch where one
+# service is stricter than the other.
+_CONTEXT_ENTRY_REF_RE = re.compile(r"^(\d+)(?:-([a-z0-9-]*))?$")
+_CONTEXT_ENTRY_REF_MAX_DIGITS = 12
+
+
 # Registered AFTER /context/new and /context/feed.xml, same reasoning as
-# archive/main.py's own context_entry_page() route -- Starlette's `:int`
-# convertor already can't match either literal path, but the ordering
-# makes that obvious to a reader without having to reason about it.
-@app.get("/context/{entry_id:int}")
-async def archive_context_entry_page(request: Request, entry_id: int):
+# archive/main.py's own context_entry_page() route -- the regex above
+# already can't match either literal path, but the ordering makes that
+# obvious to a reader without having to reason about it.
+@app.get("/context/{entry_ref}")
+async def archive_context_entry_page(request: Request, entry_ref: str):
+    """Proxies /context/{id} and /context/{id}-{slug} alike -- the Archive
+    route is the one that actually decides canonical-vs-redirect (WO-946),
+    this just widens the resolver's own path matching to cover both
+    shapes and refuses anything that can't possibly be a real ref before
+    ever making a round trip to Archive.
+
+    allow_redirects=False: the Archive route 301s a non-canonical ref (a
+    bare id, a stale slug) to the entry's current canonical permalink,
+    and that redirect has to reach the BROWSER as a real 301 -- not be
+    silently followed here and served as a 200, which would defeat the
+    whole point of a permanent redirect. Same real bug, same fix shape as
+    archive_jurisdiction_page's own allow_redirects=False below (see that
+    route's comment) and archive_meeting_page's bare-slug case above.
+    """
+    match = _CONTEXT_ENTRY_REF_RE.match(entry_ref)
+    if not match or len(match.group(1)) > _CONTEXT_ENTRY_REF_MAX_DIGITS:
+        # Same "deliberate 404 is a plain JSONResponse, never the
+        # templated not_found.html" convention as every other in-route
+        # 404 in this file (see not_found_handler()'s own comment) --
+        # junk never even reaches Archive.
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
     return await _proxy_to_archive(
-        f"context/{entry_id}",
+        f"context/{entry_ref}",
         str(request.query_params),
         request.headers.get("cookie"),
+        allow_redirects=False,
     )
 
 

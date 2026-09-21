@@ -3,7 +3,16 @@
        the full per-entry shape. Always has_meeting=true, status=
        "published" here: get_public_context_entry() (archive/db/crud.py)
        already enforces that, so this template never needs to branch on
-       either.)
+       either. `entry.permalink` is the SLUGGED canonical URL as of
+       WO-946 (context_links.context_permalink()) -- archive/main.py's
+       context_entry_page() route already 301s anything that reaches this
+       template under a non-canonical ref, so by the time this renders,
+       the request's own path IS entry.permalink.)
+     excerpt (dict or None, WO-946 -- get_context_transcript_excerpt()'s
+       shape: version_id, language, source ("transcribed"|other),
+       lines (list of {index, start, timestamp_label, text, deep_link}),
+       continues (bool). None whenever there's nothing honest to excerpt
+       -- see that function's own docstring for every reason.)
      indexable (bool -- same CONTEXT_MIN_INDEXABLE threshold as the feed
        itself, archive/main.py's context_entry_page() re-checks it at
        call time, see that route's own comment for why a single entry's
@@ -14,18 +23,53 @@
      active_account (passed straight through -- base.html's nav reads it)
      globals: public_base_url, generic_card_image_url, generic_card_image_alt
 
-   The WO-945 permalink page for one Full Context entry (`/context/{id}`)
-   -- a stable URL for a headline (or, absent one, the feed's quiet
-   permalink affordance) to link to, since an entry's position on the
-   paginated feed moves over time. Renders the SAME _context_entry.html
-   partial the feed uses, with `permalink_view=true` (its own headline
-   becomes this page's one <h1>, not a link back to itself) and
-   `autoload=true` (a reader who opened one specific post wants to see
-   it, unlike the feed's page-1-only, capped autoload). -#}
+   The WO-945 permalink page for one Full Context entry, widened in
+   WO-946 to a slugged URL and real SEO substance -- a stable place for a
+   headline (or, absent one, the feed's quiet permalink affordance) to
+   link to, since an entry's position on the paginated feed moves over
+   time. Renders the SAME _context_entry.html partial the feed uses, with
+   `permalink_view=true` (its own headline becomes this page's one <h1>,
+   not a link back to itself, and its publish date shows right under it)
+   and `autoload=true` (a reader who opened one specific post wants to
+   see it, unlike the feed's page-1-only, capped autoload). Below the
+   entry: a real transcript excerpt at the clipped moment when one is
+   available (STATE_HUB_PAGES.md diagnosed thin, templated pages as
+   exactly what this site was being declined for -- 2-3 sentences of
+   editor summary was that same shape). -#}
 {% extends "base.html" %}
 {% set _entry_title = entry.headline or entry.title or "Full Context" %}
-{% set _description = entry.summary|truncate(160) %}
-{% block title %}{{ _entry_title }} — Red Tape Recordings{% endblock %}
+{% set _description = entry.summary|truncate(155) %}
+{#- entry.card_url is either already absolute (youtube_thumbnail_url()'s
+   i.ytimg.com URLs) or a site-relative /m/{slug}/card.jpg path (see
+   _context_entry_dict()'s own comment) -- prefix public_base_url only in
+   the relative case, same "absolute for every scraper" reasoning as
+   meeting_page.html's own thumbnail_url. Computed at the top level (not
+   inside a block) so both the meta block's og:image/twitter and the JSON-
+   LD below can reuse the same value -- a {% set %} made inside one
+   {% block %} isn't visible from a sibling block in Jinja. -#}
+{% set _image_url = (entry.card_url if entry.card_url.startswith('http') else (public_base_url ~ entry.card_url)) if (entry.card_url and public_base_url) else generic_card_image_url %}
+{% set _image_alt = ("Video still from " ~ _entry_title) if entry.card_url else generic_card_image_alt %}
+{#- <title> (WO-946): include the government when the headline doesn't
+   already name it, since "council votes on zoning change" alone tells a
+   search result nothing about WHERE. The place is what people search
+   for, so it is never the part that gets dropped: when the full line
+   would run past ~65 characters, the " | Red Tape Recordings" site
+   suffix goes, and the headline and the government both stay. (The
+   first draft dropped the government first; a 56-character headline --
+   an ordinary one -- came out with no place name at all, seen in the
+   browser.) A long title is only cut off in how a search result
+   DISPLAYS it; the whole thing is still read. The headline is never
+   shortened. Same em-dash-then-pipe separator convention
+   meeting_page.html's own <title> already uses. -#}
+{% set _gov_named_in_title = entry.jurisdiction_display and (entry.jurisdiction_display|lower in _entry_title|lower) %}
+{% set _title_with_gov = _entry_title ~ (" — " ~ entry.jurisdiction_display if (entry.jurisdiction_display and not _gov_named_in_title) else "") %}
+{% set _title_full = _title_with_gov ~ " | Red Tape Recordings" %}
+{% if _title_full|length <= 65 %}
+{% set _page_title = _title_full %}
+{% else %}
+{% set _page_title = _title_with_gov %}
+{% endif %}
+{% block title %}{{ _page_title }}{% endblock %}
 {% block meta %}
   <meta name="description" content="{{ _description }}">
   <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — Full Context" href="/context/feed.xml">
@@ -43,13 +87,9 @@
   <meta property="og:title" content="{{ _entry_title }}">
   <meta property="og:description" content="{{ _description }}">
   <meta property="og:type" content="article">
-  {#- entry.card_url is either already absolute (youtube_thumbnail_url()'s
-     i.ytimg.com URLs) or a site-relative /m/{slug}/card.jpg path (see
-     _context_entry_dict()'s own comment) -- prefix public_base_url only
-     in the relative case, same "absolute for every scraper" reasoning as
-     meeting_page.html's own thumbnail_url. -#}
-  {% set _image_url = (entry.card_url if entry.card_url.startswith('http') else (public_base_url ~ entry.card_url)) if (entry.card_url and public_base_url) else generic_card_image_url %}
-  {% set _image_alt = ("Video still from " ~ _entry_title) if entry.card_url else generic_card_image_alt %}
+  {% if entry.published_at %}
+  <meta property="article:published_time" content="{{ entry.published_at.isoformat() }}">
+  {% endif %}
   {% if _image_url %}
   <meta property="og:image" content="{{ _image_url }}">
   <meta property="og:image:alt" content="{{ _image_alt }}">
@@ -57,6 +97,77 @@
   <meta name="twitter:card" content="{{ 'summary_large_image' if _image_url else 'summary' }}">
   {% if _image_url %}
   <meta name="twitter:image:alt" content="{{ _image_alt }}">
+  {% endif %}
+  {% if public_base_url %}
+  {#- BlogPosting JSON-LD (WO-946) -- the second half of making this page
+     more than a thin wrapper (the transcript excerpt below is the
+     first). Every value goes through |tojson (Jinja's built-in filter,
+     htmlsafe by construction -- it escapes "<"/">"/"&" to \u escapes, so
+     an editor-written headline/summary containing "</script>" can never
+     break out of this block); nothing here is hand-concatenated into the
+     JSON string, same rule meeting_page.html's own JSON-LD already
+     follows. author/publisher match that template's own Organization
+     block verbatim -- one real publisher identity across the site, not a
+     second one invented here. -#}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": {{ _entry_title|tojson }},
+    "description": {{ _description|tojson }},
+    {% if entry.published_at -%}
+    "datePublished": {{ entry.published_at.isoformat()|tojson }},
+    {% endif -%}
+    {% if entry.updated_at -%}
+    "dateModified": {{ entry.updated_at.isoformat()|tojson }},
+    {% endif -%}
+    {% if _image_url -%}
+    "image": {{ _image_url|tojson }},
+    {% endif -%}
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": {{ (public_base_url ~ entry.permalink)|tojson }}
+    },
+    "url": {{ (public_base_url ~ entry.permalink)|tojson }},
+    {#- The MEETING page's own absolute URL -- what this post is based
+       on, distinct from `citation` below (the social post it cites). -#}
+    "isBasedOn": {{ (public_base_url ~ "/m/" ~ entry.slug)|tojson }},
+    "citation": {{ entry.social_url|tojson }},
+    "author": {
+      "@type": "Organization",
+      "name": "Red Tape Recordings"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Red Tape Recordings"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": {{ public_base_url|tojson }}
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Full Context",
+        "item": {{ (public_base_url ~ "/context")|tojson }}
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": {{ _entry_title|tojson }}
+      }
+    ]
+  }
+  </script>
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -67,6 +178,52 @@
       {% set autoload = true %}
       {% include "_context_entry.html" %}
     </div>
+    {% if excerpt %}
+    {#- The transcript excerpt (WO-946) -- real words actually spoken at
+       the clipped moment, not just the editor's own 2-3 sentence
+       summary. Heading wording matches how confidently the entry is
+       matched to this moment (entry.match_kind), same three-way split
+       _context_entry.html's own match badge already uses. -#}
+    <section class="context-excerpt" aria-labelledby="contextExcerptHeading">
+      <h2 id="contextExcerptHeading">
+        {%- if entry.match_kind == "approximate" -%}
+        Around this moment in the meeting
+        {%- elif entry.match_kind == "related" -%}
+        From the linked meeting
+        {%- else -%}
+        What was said at this moment
+        {%- endif -%}
+      </h2>
+      {#- Same honesty-about-the-source posture as meeting_page.html's own
+         AI TRANSCRIPT / SOURCE TRANSCRIPT disclaimers, condensed for a
+         short excerpt rather than repeated verbatim. "transcribed" is
+         this app's own Whisper-generated version (TranscriptVersion.source);
+         anything else is downloaded from the government's own captions. -#}
+      <p class="context-excerpt-disclaimer">
+        {%- if excerpt.source == "transcribed" -%}
+        Generated automatically from audio using AI and not reviewed by a person — it can contain mistakes.
+        {%- else -%}
+        Downloaded from the government's own captions and not reviewed by us for accuracy.
+        {%- endif -%}
+        {%- if excerpt.language and excerpt.language|lower not in ("en", "en-us", "english") %} This meeting was conducted in a language other than English; shown here as transcribed, not translated.{% endif -%}
+      </p>
+      <blockquote class="context-excerpt-lines" cite="{{ entry.deep_link }}">
+        {#- Paragraphs, not raw caption lines: broadcast captions arrive as
+           fragments of a few words, and one timestamp per fragment is
+           unreadable -- see crud._excerpt_paragraphs(). Each paragraph's
+           timestamp is its first line's, so the link still lands on the
+           exact transcript row it opens with. Text is untrusted: plain
+           autoescape, never |safe. -#}
+        {% for line in excerpt.paragraphs %}
+        <p class="context-excerpt-line">
+          <a href="{{ line.deep_link }}" class="context-excerpt-timestamp">[{{ line.timestamp_label }}]</a>
+          {{ line.text }}
+        </p>
+        {% endfor %}
+      </blockquote>
+      <a href="{{ entry.deep_link }}" class="context-excerpt-continue">Keep reading in the full transcript</a>
+    </section>
+    {% endif %}
   </main>
 {% endblock %}
 {% block scripts %}
