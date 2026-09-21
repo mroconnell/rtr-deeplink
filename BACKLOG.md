@@ -7458,7 +7458,7 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 - **Issue**: neither the resolver nor the Archive sets a
   Content-Security-Policy header today, so this isn't live-blocking
-  anything — but WO-942's Full Context feed (2026-09-21) added
+  anything — but WO-943's Full Context feed (2026-09-21) added
   click-to-load embeds from `www.youtube-nocookie.com`,
   `www.instagram.com`, and `www.tiktok.com` (see README's "Full Context
   feed" section). A CSP written without checking current features first
@@ -7469,7 +7469,7 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Next action**: none now — re-read this entry (and grep the codebase
   for every third-party origin actually loaded, not just these three)
   before adding a CSP.
-- **History**: `BACKLOG_DONE.md`'s WO-942 entry.
+- **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 
@@ -7730,7 +7730,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **History**: [FEED_CITIES.md](FEED_CITIES.md).
 
 - **`[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context feed, plus a moderation/review queue.**
-  - **Issue**: WO-942 (2026-09-21) shipped `/context` as editor-only —
+  - **Issue**: WO-943 (2026-09-21) shipped `/context` as editor-only —
     only Clerk user ids listed in `CONTEXT_EDITOR_CLERK_IDS` can post.
     Letting any signed-in user submit a clip would grow the feed much
     faster, but needs a review step before a submission goes public.
@@ -7746,7 +7746,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     free-text user-generated content is real new surface area this app
     has never had. Don't build the open submission form before that
     question has an answer.
-  - **History**: `BACKLOG_DONE.md`'s WO-942 entry; `ACCOUNTS_PLAN.md`'s
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; `ACCOUNTS_PLAN.md`'s
     2026-09-21 note.
 
 ### `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 — see [ACCOUNTS_PLAN.md](ACCOUNTS_PLAN.md)
@@ -7909,7 +7909,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     actually watched.
 
 - **`[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context entry to Bluesky.**
-  - **Issue**: WO-942 (2026-09-21) shipped the Full Context feed
+  - **Issue**: WO-943 (2026-09-21) shipped the Full Context feed
     (`/context`) but nothing announces a newly published entry the way a
     newly created Archive page already does.
   - **Impact**: a real, editor-curated moment (a social clip tied to its
@@ -7926,7 +7926,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     both needs a real design decision (a second `SocialPost` row keyed
     differently, or a separate ledger table) before this can reuse the
     existing dedupe mechanism as-is.
-  - **History**: `BACKLOG_DONE.md`'s WO-942 entry; README's "Social
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; README's "Social
     auto-posting" and "Full Context feed" sections.
 
 - **`[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings show the generic YouTube thumbnail, not the clipped moment.**
@@ -7944,7 +7944,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     far (YouTube serves its own thumbnail cheaply; a real frame would
     need downloading/seeking the video, unlike the ffmpeg extraction
     already used for non-YouTube pages).
-  - **History**: `BACKLOG_DONE.md`'s WO-942 entry (states the caveat);
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry (states the caveat);
     README's "Meeting card images" section (the existing YouTube-redirect
     behavior this inherits).
 
@@ -7958,7 +7958,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
     for that `meeting_page_id` and render a small "clipped on social
     media" section/badge linking to each.
-  - **History**: `BACKLOG_DONE.md`'s WO-942 entry.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### Search & metadata quality
 
@@ -8049,7 +8049,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     picker, shipped 2026-08-12) are both in `BACKLOG_DONE.md`.
 
 - **`[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from the pasted share link — only `t` is kept.**
-  - **Issue**: WO-942's editor form parses a pasted "Share video at M:SS"
+  - **Issue**: WO-943's editor form parses a pasted "Share video at M:SS"
     link's `slug` and `t`, but reads and discards any `line`/`version`
     params the link also carries.
   - **Impact**: arriving at a meeting from a Full Context entry never
@@ -8062,7 +8062,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **Constraint**: not started — `t_seconds` is the only timestamp field
     on `ContextEntry` today; adding `line`/`version` is a small schema
     change (nullable columns), not a redesign.
-  - **History**: `BACKLOG_DONE.md`'s WO-942 entry.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### Transcription quality & cost
 

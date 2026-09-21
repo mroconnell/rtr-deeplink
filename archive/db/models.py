@@ -727,7 +727,7 @@ class SavedItem(Base):
 
 class ContextEntry(Base):
     """One short, editor-written entry in the public `/context` feed
-    (WO-942) -- a social-media post (Instagram/TikTok/YouTube/etc.) that
+    (WO-943) -- a social-media post (Instagram/TikTok/YouTube/etc.) that
     shows a clip from a real public meeting, paired with a deep link into
     this Archive's own `/m/{slug}?t=` at the moment being referenced.
 

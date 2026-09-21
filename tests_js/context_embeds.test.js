@@ -1,11 +1,11 @@
 'use strict';
 
 // Regression coverage for the pure validation/URL helpers in
-// archive/static/context_embeds.js -- the ones WO-942's own spec calls
+// archive/static/context_embeds.js -- the ones WO-943's own spec calls
 // out to keep small and named specifically so they're unit-testable. The
 // DOM-building side (createElement calls, the 8s failure timer, the
 // third-party script injection) is exercised in-browser instead (see the
-// WO-942 report), same division of labor tests_js/deep_link.test.js and
+// WO-943 report), same division of labor tests_js/deep_link.test.js and
 // meeting_page_events.test.js already use for their own DOM-heavy files.
 
 const { test, describe } = require('node:test');

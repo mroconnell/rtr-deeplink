@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-942: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
+## WO-943: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
 
 **Why this ran.** Ryan finds many short clips of public meetings on
 Instagram, TikTok, and YouTube. A clip travels on its own, and some draw
@@ -75,6 +75,13 @@ real work order, but a literal test-fixture string in
 `tests/test_check_backlog_done_headings.py`. The real max on 2026-09-21,
 excluding that string, was WO-941. `CLAUDE.md` now says so, so the next
 session doesn't lose time on the same false read.
+
+**This WO was renumbered once.** It was built as the next number after
+WO-941. While it was being built, another session merged its own work
+under that same number (PR #1303, the Culver City and BART redirects).
+That is the parallel-session collision `CLAUDE.md` already warns about:
+the grep only sees merged work. This WO took WO-943 before its PR was
+rebased.
 
 **SEO.** `/context` is `noindex` and left out of the sitemap until it
 holds at least `CONTEXT_MIN_INDEXABLE` (5) published entries, the same

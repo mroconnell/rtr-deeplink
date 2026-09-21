@@ -4,7 +4,7 @@ Revision ID: ab513927d28d
 Revises: e2a1c7b45d93
 Create Date: 2026-09-21 09:00:00.000000
 
-WO-942: the public `/context` feed -- short, editor-written entries that
+WO-943: the public `/context` feed -- short, editor-written entries that
 cite a social-media post showing a clip from a public meeting and deep-link
 into this Archive's own `/m/{slug}?t=`. See
 `archive/db/models.py`'s `ContextEntry` docstring for the full design

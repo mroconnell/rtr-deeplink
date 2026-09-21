@@ -1,4 +1,4 @@
-"""Who is allowed to write a `/context` feed entry (WO-942).
+"""Who is allowed to write a `/context` feed entry (WO-943).
 
 This is the first place in this repo that gates a signed-in visitor's
 *capability* rather than just their own account's data -- everywhere else

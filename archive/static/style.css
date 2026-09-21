@@ -1975,7 +1975,7 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
   font-size: 0.85rem;
 }
 
-/* --- Full Context (/context, /context/new -- WO-942) ------------------ */
+/* --- Full Context (/context, /context/new -- WO-943) ------------------ */
 /* Appended at the end of this file on purpose -- another session may
    touch style.css elsewhere; this section only ever grows here. */
 

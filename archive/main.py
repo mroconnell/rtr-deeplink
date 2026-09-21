@@ -2447,7 +2447,7 @@ def _context_editor_forbidden() -> JSONResponse:
 
 def _context_result_response(result: dict):
     """Maps a save_context_entry()/set_context_entry_status() result dict
-    onto the WO-942 contract's HTTP shape. `ok` -> 200 wrapped as
+    onto the WO-943 contract's HTTP shape. `ok` -> 200 wrapped as
     {"entry": ...}; `duplicate` -> 409 with the whole error dict (carries
     existing_id/existing_status, which context_editor.js reads to link to
     the existing entry); `not_found` -> 404 (already just {"error",

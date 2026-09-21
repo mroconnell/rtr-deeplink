@@ -1,5 +1,5 @@
 {#- Context variables:
-     entry (dict, the WO-942 Full Context data contract -- exactly these
+     entry (dict, the WO-943 Full Context data contract -- exactly these
        keys: id, status, summary (UNTRUSTED, plain-escaped), social_url,
        network, network_label, source_label (UNTRUSTED, plain-escaped),
        embed (None or {"kind":"youtube","video_id":..} /
@@ -102,7 +102,7 @@
       <a href="/context/new?id={{ entry.id }}" class="cassette-btn-outline">Edit</a>
       {#- context_editor.js reads data-set-status off whichever of these
          is clicked and POSTs /api/context/set-status; which buttons show
-         depends on the entry's current status (see WO-942's contract). -#}
+         depends on the entry's current status (see WO-943's contract). -#}
       {% if entry.status == "draft" %}
       <button type="button" class="cassette-btn-outline" data-entry-id="{{ entry.id }}" data-set-status="published">Publish</button>
       {% elif entry.status == "published" %}

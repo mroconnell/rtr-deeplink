@@ -106,7 +106,7 @@ function buildTikTokEmbed(id, url) {
 // TikTok's embed.js only scans the page for new blockquotes at the moment
 // it *loads* -- unlike Instagram's, calling some already-loaded global
 // again does nothing for a blockquote added after the first load. So a
-// fresh <script> is appended on every click, exactly as the WO-942 spec
+// fresh <script> is appended on every click, exactly as the WO-943 spec
 // requires, even though this means re-fetching the same script file for a
 // second TikTok entry on the same page.
 function loadTikTokScript() {

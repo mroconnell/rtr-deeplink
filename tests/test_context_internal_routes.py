@@ -1,5 +1,5 @@
 """HTTP-level tests for the /internal/context/* routes (archive/main.py) --
-the WO-942 Full Context feed's write path. Bearer-token gating mirrors
+the WO-943 Full Context feed's write path. Bearer-token gating mirrors
 tests/test_account_internal_routes.py's pattern; is_context_editor()
 gating (CONTEXT_EDITOR_CLERK_IDS) is exercised directly here since this is
 the first Archive feature to use it. Each test uses its own unique social

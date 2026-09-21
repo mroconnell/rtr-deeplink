@@ -1,5 +1,5 @@
 """HTTP-level tests for the public `/context` feed and `/context/feed.xml`
-(archive/main.py) -- WO-942. Entries are seeded directly through
+(archive/main.py) -- WO-943. Entries are seeded directly through
 archive/db/crud.py's save_context_entry()/set_context_entry_status()
 (already covered on their own terms by tests/test_context_entries.py),
 the same way tests/test_sitemap.py seeds pages through crud.ingest_
@@ -8,7 +8,7 @@ route/template layer, not the crud layer underneath it. Each test uses
 its own unique social URL/external_id -- the fixture DB isn't reset
 per-test (see tests/test_context_entries.py's own docstring).
 
-/context/new (editor-only) and the sitemap/nav-link wiring are WO-942's
+/context/new (editor-only) and the sitemap/nav-link wiring are WO-943's
 write-side pieces and are covered in this same file's later additions,
 not here.
 """

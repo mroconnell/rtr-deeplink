@@ -10644,7 +10644,7 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
     have rolled back cleanly rather than partially deleting -- just never
     actually removed anything).
 
-    ContextEntry (WO-942) is handled differently from every row above: it
+    ContextEntry (WO-943) is handled differently from every row above: it
     is DETACHED, never deleted -- `meeting_page_id` is set NULL and a
     `published` entry is demoted to `draft` (see the loop below), the same
     "unmatched entries stay a private draft" rule save_context_entry()
@@ -10827,7 +10827,7 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
         }
 
 
-# --- Full Context feed (WO-942) -----------------------------------------
+# --- Full Context feed (WO-943) -----------------------------------------
 #
 # The public `/context` feed: short, editor-written entries that cite a
 # social-media post showing a clip from a public meeting, each linking

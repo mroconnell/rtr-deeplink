@@ -439,7 +439,7 @@ services:
         sync: false
       - key: CLERK_JWT_KEY
         sync: false
-      # Full Context feed (/context, WO-942, 2026-09-21) -- comma-
+      # Full Context feed (/context, WO-943, 2026-09-21) -- comma-
       # separated Clerk user ids allowed to post at /context/new (see
       # README's "Full Context feed" section). Archive-only: the
       # allowlist is checked here, not on the resolver. Leave unset to

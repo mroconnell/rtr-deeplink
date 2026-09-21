@@ -1,6 +1,6 @@
 // /context/new -- the editor form (save/publish a Full Context entry) and
 // the per-entry status actions (Publish/Hide/Move to drafts) in the entry
-// list below it. See CLAUDE.md's WO-942 contract for the two endpoints
+// list below it. See CLAUDE.md's WO-943 contract for the two endpoints
 // this talks to; both are JSON-only (Content-Type: application/json,
 // credentials: same-origin) -- the site's CSRF posture is a form with no
 // action/method that only ever submits through here, same reasoning as
@@ -30,7 +30,7 @@ function hideFormAlert() {
 }
 
 // Turns one /api/context/save or /api/context/set-status response into the
-// message (+ optional link) the WO-942 contract specifies for each status
+// message (+ optional link) the WO-943 contract specifies for each status
 // code. Shared by both callers below so the two forms of "something went
 // wrong" (the main form, a per-entry action) read identically.
 async function describeContextApiError(res) {

@@ -1,4 +1,4 @@
-"""Pure parsing for the `/context` feed's two link shapes (WO-942): the
+"""Pure parsing for the `/context` feed's two link shapes (WO-943): the
 social-media post an entry cites, and the redtaperecordings.com meeting
 link it points into. No network I/O and no DB access anywhere in this
 module -- an editor pastes both URLs by hand into a form, and everything
@@ -364,7 +364,7 @@ def parse_rtr_link(
     `line` and `version` query params (both real /m/{slug} params
     elsewhere in this app) are accepted and silently ignored -- carrying
     them through into what this entry stores is a logged follow-up, not
-    done here (see BACKLOG.md's WO-942 entry).
+    done here (see BACKLOG.md's WO-943 entry).
 
     Raises ContextLinkError on anything else: `not_rtr_link` for a foreign
     host, `invalid_link` for an unparseable path, `invalid_slug` for a

@@ -160,7 +160,7 @@ def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
     resolver_client.get(
         "/archive-static/style.css", headers={"Cookie": "__session=abc123"}
     )
-    # WO-942: /context is auth-aware (is_editor reads the visitor's own
+    # WO-943: /context is auth-aware (is_editor reads the visitor's own
     # session), but /context/feed.xml is a public RSS endpoint with no
     # per-visitor content, same split as /meetings vs. /feed.xml below.
     resolver_client.get("/context", headers={"Cookie": "__session=abc123"})

@@ -115,7 +115,7 @@ alongside or just after phase 2's profile pages. Distinct from
 shareable image/card; this is a personal notation, no image generation
 required). Not yet built or scoped further.
 
-**2026-09-21, WO-942 — a narrow, editor-only precursor to this idea
+**2026-09-21, WO-943 — a narrow, editor-only precursor to this idea
 shipped.** The Full Context feed (`/context`, see `README.md`'s "Full
 Context feed" section) links a social-media clip of a meeting to its
 exact moment — close in shape to a timestamp-level annotation above, but
@@ -127,7 +127,7 @@ note. Its `context_entries` table (`ContextEntry`,
 `created_by_clerk_user_id`, specifically so open submissions are a new
 status value and a review UI later, not a schema change. **The
 moderation question above is exactly why open submissions were left out
-of WO-942, and it's still open** — nothing about shipping the
-editor-only version answers it. See `BACKLOG_DONE.md`'s WO-942 entry for
+of WO-943, and it's still open** — nothing about shipping the
+editor-only version answers it. See `BACKLOG_DONE.md`'s WO-943 entry for
 the full build, and `BACKLOG.md` for the open "open submissions +
 moderation/review queue" follow-up.

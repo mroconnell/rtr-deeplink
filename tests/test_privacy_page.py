@@ -39,7 +39,7 @@ def test_privacy_page_carries_last_updated_date():
 
 
 def test_privacy_page_discloses_click_to_load_embeds():
-    """WO-942: /context can load Instagram/TikTok/YouTube players, but only
+    """WO-943: /context can load Instagram/TikTok/YouTube players, but only
     after a click. The policy has to say so, and that claim is only true
     while archive/static/context_embeds.js stays click-to-load -- if embeds
     ever load on scroll instead, this sentence must change with it.

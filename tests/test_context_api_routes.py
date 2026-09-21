@@ -1,5 +1,5 @@
 """HTTP-level tests for the resolver's /api/context/* routes (app/main.py)
--- WO-942's write-side API. get_clerk_user_id and the archive_client
+-- WO-943's write-side API. get_clerk_user_id and the archive_client
 wrappers are monkeypatched directly, mirroring
 tests/test_saved_items_routes.py's pattern -- these routes' own logic
 (auth gate, status-code mapping) is what's under test here, not
@@ -8,7 +8,7 @@ tests/test_context_internal_routes.py against the real Archive routes)
 or the Archive's own gating (covered there too).
 
 Also covers the resolver's nav link and the /context/new proxy's cookie
-forwarding, since both are part of this same WO-942 write-side wiring.
+forwarding, since both are part of this same WO-943 write-side wiring.
 """
 
 from fastapi.testclient import TestClient
