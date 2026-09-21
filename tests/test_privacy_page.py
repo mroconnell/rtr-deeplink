@@ -38,18 +38,21 @@ def test_privacy_page_carries_last_updated_date():
     assert "Last updated: September 21, 2026" in response.text
 
 
-def test_privacy_page_discloses_click_to_load_embeds():
-    """WO-943: /context can load Instagram/TikTok/YouTube players, but only
-    after a click. The policy has to say so, and that claim is only true
-    while archive/static/context_embeds.js stays click-to-load -- if embeds
-    ever load on scroll instead, this sentence must change with it.
+def test_privacy_page_discloses_third_party_content_in_general_terms():
+    """WO-943: pages here load players, preview images and social posts
+    from other services, and the policy says so.
 
-    The second assertion pins the one exception, found by watching the
-    real page's network requests: a YouTube-hosted meeting's card image is
-    served from i.ytimg.com on page load, before any click."""
+    Deliberately general (Ryan, 2026-09-21). An earlier draft promised
+    specifics -- embeds load only after a click, video is never re-hosted
+    -- and each one was a commitment the product will make exceptions to,
+    including hosting its own video. The last three assertions keep those
+    promises from creeping back in: a privacy page should describe what
+    happens, not pin how a feature is built."""
     response = resolver_client.get("/privacy")
-    assert "only after you click" in response.text
-    assert "its preview image comes from YouTube" in response.text
+    assert "Some pages show content from other services" in response.text
+    assert "only after you click" not in response.text
+    assert "never re-host" not in response.text
+    assert "streams from the government" not in response.text
 
 
 def test_privacy_page_keeps_the_sale_distinction():

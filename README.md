@@ -2011,10 +2011,12 @@ Instagram/TikTok, a `youtube-nocookie.com` iframe for YouTube — loads
 only after the reader clicks it. **No post is loaded from Instagram,
 TikTok, or YouTube before that click.** One exception, confirmed by
 watching the real page's requests: when the *meeting* is hosted on
-YouTube, its card image loads from `i.ytimg.com` as the page opens. The
-privacy page says both things, and `tests/test_privacy_page.py` pins
-them — if embeds ever stop being click-to-load, that sentence has to
-change in the same PR. This site has no cookie-consent banner,
+YouTube, its card image loads from `i.ytimg.com` as the page opens.
+Click-to-load is a product choice, not a promise: the privacy page
+deliberately describes third-party content in general terms (Ryan,
+2026-09-21), so changing how embeds load needs no policy edit, and
+`tests/test_privacy_page.py` keeps feature-level promises from creeping
+back in. This site has no cookie-consent banner,
 and a page of 20 entries should not silently load 20 third-party
 players. If the embed fails, the entry still stands on its own — the
 link-out and the deep link both still work. The "Couldn't load it here"

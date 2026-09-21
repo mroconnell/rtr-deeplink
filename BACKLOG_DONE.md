@@ -128,16 +128,27 @@ positively and pinned by a test. (2) The first draft of the privacy
 sentence said nothing is requested from those services before a click.
 Watching the real page's requests showed one exception: a
 YouTube-hosted meeting's card image loads from `i.ytimg.com` when the
-page opens. The sentence now says so, and a test pins both halves.
+page opens. That finding led to the privacy decision below.
 (3) TikTok's `embed.js` builds its player frame even for a video id
 that does not exist, and shows TikTok's own "unavailable" message
 inside it. So the "Couldn't load it here" fallback only fires when the
 script is blocked outright, not for a deleted post. The entry still
 stands on its own either way.
 
-**Found in passing, not fixed here.** The privacy page does not mention
-that meeting pages load YouTube's player and thumbnails for
-YouTube-hosted meetings. That gap predates this WO.
+**Privacy page: general on purpose (Ryan, 2026-09-21).** The first
+drafts promised specifics: embeds load only after a click, with one
+named exception. Ryan's call was to drop that kind of promise entirely.
+The product will make regular exceptions, and plans to host its own
+video soon. Three changes followed. The new paragraph became one
+general statement: some pages show content from other services, and
+when it loads, that service receives your request as it would on its
+own site. The older line "We never re-host video" was removed. The
+older sentence saying video "streams from the government's own source"
+was replaced with a plain statement that other services' own policies
+apply to them. A test now asserts the general sentence is present and
+the three specific promises are absent. This also closes a gap that
+predates this WO: the page never mentioned that meeting pages load
+YouTube's player and thumbnails.
 
 **Caution.** Open submissions are explicitly out of scope for this WO —
 see `ACCOUNTS_PLAN.md`'s note and `BACKLOG.md`'s "Open submissions to
