@@ -2437,7 +2437,16 @@ platform now, so tier 3 above delegates to its real adapter and produces
 an actually playable video instead (confirmed live on Sebastopol, CA).
 The curated tier survives for the Vimeo shapes `detect_platform()`
 deliberately doesn't claim, and as the pattern for whatever unsupported
-video host shows up next. Captions come from their own candidate chain
+video host shows up next. Since WO-933 (2026-09-21), tiers 3 and 4 skip a
+link the shared gate (`app/utils/video_hand_check.py`) can already tell is
+page furniture rather than a meeting: a widget's own animation file
+(`a0.muscache.com`), a hero-embed query string (`background=1`, `loop=1`),
+a link that is not a video at all, or a video in a looping `<video>` with no
+player controls (the homepage banner shape). A skipped link is treated as if
+it were never on the page, so the honest "no video found" or pointer outcome
+applies instead. Filename words like "welcome" are deliberately NOT used
+here, because this adapter serves a page the user chose. Captions come from
+their own candidate chain
 (`<track>` elements, plain caption-file `<a href>`s, JW `tracks:`
 entries, scan results); metadata from a breadth of confirmed-real
 shapes (title-tag separators, og:title, h1 assembly, `video_date`
@@ -2715,6 +2724,15 @@ app/
                            city-counties the Census keeps two rows for;
                            says which row IS the government, applied at
                            the resolver's single table-hit choke point)
+  utils/video_hand_check.py
+                           the ONE shared gate for "is this really a
+                           meeting video?" (WO-933): assess_video_candidate()
+                           returns pass / reject / cannot_tell. Holds the
+                           title allow/block lists, the risky-platform set
+                           (HIGH_RISK_TITLE_PLATFORMS), the decorative-video
+                           checks and the wrong-body phrase list; used by
+                           verify_hub(), generic_fallback.py and the sweep
+                           and ingest scripts. See its module docstring.
   utils/url_normalize.py   normalize_url() — the cache/log dedup key
   utils/clerk_auth.py      get_clerk_user_id()/clerk_frontend_api_url() --
                            see "Accounts (Clerk)" above; deliberately

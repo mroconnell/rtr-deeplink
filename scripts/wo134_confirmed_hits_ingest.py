@@ -143,6 +143,16 @@ from app.platforms import queue_probe  # noqa: E402
 from app.platforms.youtube_channel import is_publishable  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402, F401
+    HIGH_RISK_TITLE_PLATFORMS,
+    MEETING_ALLOWLIST,
+    PROMO_BLOCKLIST,
+    assess_video_candidate,
+)
+from app.utils.video_hand_check import contains_word as _contains_word  # noqa: E402, F401
+from app.utils.video_hand_check import (  # noqa: E402
+    looks_like_real_meeting as _looks_like_real_meeting,
+)
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 
 import yt_dlp  # noqa: E402
@@ -197,68 +207,13 @@ UNSUPPORTED_PLATFORMS = {
 # rather than the generic per-platform logic the other three use.
 SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast", "boxcast"}
 
-MEETING_ALLOWLIST = (
-    "council",
-    "commission",
-    "board",
-    "committee",
-    "meeting",
-    "session",
-    "hearing",
-    "authority",
-    "trustees",
-    "supervisors",
-    "assembly",
-    "selectboard",
-    "select board",
-    # "Board of County Commissioners" abbreviation -- real, confirmed-live
-    # false negative caught in WO-149's own 30-row county pilot
-    # (2026-09-10): Tulsa County OK's own YouTube channel titles its real
-    # commission meetings "BOCC Livestream - December 1, 2025", which
-    # contains neither "board" nor "commission" as a substring and was
-    # rejected as off-mission before this was added.
-    "bocc",
-)
-PROMO_BLOCKLIST = (
-    "promo",
-    "advertisement",
-    "commercial",
-    "psa",
-    "public service announcement",
-    "how to",
-    "tutorial",
-    "instructional",
-    "training video",
-    "orientation video",
-    "welcome",
-    "message from the mayor",
-    "highlight reel",
-    "sizzle reel",
-    "ribbon cutting",
-    "parade",
-    "test stream",
-    "test broadcast",
-    "sample video",
-    "demo video",
-    "career",
-    "job fair",
-    "recruitment",
-    "state of the city",
-    "year in review",
-    "commercial break",
-    "tour of",
-    # Real, confirmed-live false positive caught by WO-187 (2026-09-11):
-    # Capitol Heights, MD's YouTube channel titled a real clip "Council
-    # Member Victor James Sr interview for N'style back to school block
-    # party" -- "Council" alone satisfies MEETING_ALLOWLIST, and nothing
-    # here caught that the video is a promotional interview, not a
-    # meeting recording. Ingested live before being caught by hand;
-    # flagged for deletion (BACKLOG_DONE.md's WO-187 entry).
-    "interview",
-)
-
+# WO-933 (2026-09-21): MEETING_ALLOWLIST, PROMO_BLOCKLIST and
+# HIGH_RISK_TITLE_PLATFORMS now live ONCE in app/utils/video_hand_check.py
+# (imported above under the same names, so `wo134.MEETING_ALLOWLIST` etc.
+# still resolve for every sweep that reaches them through this module).
+# Their history -- the "bocc" false negative (WO-149), the "interview"
+# false positive (WO-187), the word-boundary fix -- is in that file.
 HOP2_FETCH_CAP = 4
-HIGH_RISK_TITLE_PLATFORMS = {"youtube", "vimeo"}
 
 # WO-147/WO-149 hook (2026-09-10, added independently by both same-day
 # sweeps for the identical reason): when set, process_row() hands a
@@ -584,27 +539,6 @@ async def youtube_oembed_title(
             return data.get("title")
     except Exception:
         return None
-
-
-def _contains_word(text: str, phrase: str) -> bool:
-    """Word-boundary match, not a bare substring test. Real, confirmed-
-    live false positive caught in WO-149's own county sweep (2026-09-10):
-    a plain `"board" in title` check passed "Larry J. Dix Boardroom" --
-    a YouTube channel's persistent room-name livestream title, not a
-    meeting -- straight through to a live 59-second Archive page. Every
-    other MEETING_ALLOWLIST/PROMO_BLOCKLIST entry is a real word or
-    phrase too, so this closes the same class of bug for all of them,
-    not just "board"."""
-    return re.search(r"\b" + re.escape(phrase) + r"\b", text) is not None
-
-
-def _looks_like_real_meeting(title: str, *, require_allowlist: bool = False) -> bool:
-    t = (title or "").lower()
-    if any(_contains_word(t, b) for b in PROMO_BLOCKLIST):
-        return False
-    if require_allowlist and not any(_contains_word(t, kw) for kw in MEETING_ALLOWLIST):
-        return False
-    return True
 
 
 def _parse_candidate_date(date_str: str) -> Optional[datetime]:
@@ -1894,15 +1828,22 @@ async def process_row(
             oembed_title = await youtube_oembed_title(session, result.video_url)
             if oembed_title:
                 effective_title = oembed_title
-        if not _looks_like_real_meeting(
-            effective_title, require_allowlist=high_risk_title
-        ):
-            why = (
-                "no governing-body keyword in title"
-                if high_risk_title
-                else "blocklisted term in title"
-            )
-            last_reason = f"{platform}: title looks like a non-meeting video ({why}), not ingested: {effective_title!r} ({final_seed})"
+        # WO-933: the shared "is this really a meeting video?" gate
+        # (app/utils/video_hand_check.py). It does what the title check
+        # here always did (blocklist; a governing-body word for a
+        # HIGH_RISK platform) and also refuses a decorative address, a
+        # test upload and a wrong-body or ceremony title. Anything but a
+        # PASS is skipped, and the reason says whether the gate rejected
+        # the video or could not tell.
+        gate = assess_video_candidate(
+            title=effective_title,
+            video_url=result.video_url,
+            platform=platform,
+            gov_name=unit_name,
+            require_evidence=high_risk_title,
+        )
+        if not gate.passed:
+            last_reason = f"{platform}: {gate.skip_note()}, not ingested: {effective_title!r} ({final_seed})"
             continue
 
         title = result.title or ""
