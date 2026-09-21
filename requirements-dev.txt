@@ -265,7 +265,7 @@ starlette==1.6.0
     # via
     #   -r requirements.txt
     #   fastapi
-svix==2.4.0
+svix==2.5.0
     # via -r requirements.txt
 tomli==2.4.1
     # via pip-audit
@@ -319,8 +319,6 @@ yarl==1.24.5
     # via
     #   -r requirements.txt
     #   aiohttp
-yt-dlp==2026.8.19
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
