@@ -3873,18 +3873,18 @@ def test_wo934_the_utah_notice_pin_and_the_swagit_pin_point_at_the_mints():
     assert swagit.gov_id == _WO934_SANTA_CLARA_COE
 
 
-def test_wo934_a_stateless_county_office_name_still_trims_to_the_county():
-    """KNOWN LIMIT, documented on purpose. Page 5301's Granicus adapter name is
-    'Solano County Office of Education' with no state, and a fallback pin ranks
-    below a registry name match, so the ladder still says Solano County even
-    with the host pin in place (the BART lesson: bart.granicus.com's fallback
-    pin never took effect until Ryan made it authoritative). Existing pages are
-    protected by their manual override; a NEW ingest from this tenant would key
-    to the county until the pin is made authoritative, which is Ryan's call.
-    If that pin is upgraded, this test must change with it."""
+def test_wo934_a_stateless_county_office_name_uses_the_authoritative_host_pin():
+    """Page 5301's Granicus adapter name is 'Solano County Office of Education'
+    with no state. A fallback pin ranks below a registry name match, so the
+    ladder used to say Solano County even with the host pin in place (the BART
+    lesson: bart.granicus.com's fallback pin never took effect until Ryan made
+    it authoritative). Ryan made this pin authoritative on 2026-09-21, because
+    solanocoe.granicus.com is the office's own single-tenant Granicus host, so
+    a NEW ingest from it now keys to the office and not to the county."""
     match = resolve(
         "Solano County Office of Education",
         host="solanocoe.granicus.com",
         path="/player/clip/432?view_id=1",
     )
-    assert match.gov_id == "us:county:06095"
+    assert match.gov_id == _WO934_SOLANO_COE
+    assert match.tier == resolver.TIER_PINNED
