@@ -220,9 +220,9 @@ Search each title in `BACKLOG.md` for what is left.
 
 **Entries WO-932 worked on**
 
-- "The Archive files a page under whatever `gov_id` a sweep sends" (half
-  closed: WO-134's check is on by default; the 409 question is open with
-  WO-932's count)
+- "The Archive files a page under whatever `gov_id` a sweep sends" (closed:
+  WO-134's check is on by default, and Ryan decided on 2026-09-21 not to
+  build the Archive 409 check; the entry is now a Standing decision)
 - "The wrong-government checks never look at the resolved video's own"
   (closed; a new entry says nothing collects the host-name flags)
 - "A minted `rtr:` id's state code can be a false positive" (closed; the
@@ -249,7 +249,8 @@ Search each title in `BACKLOG.md` for what is left.
   definition)
 - "A bare homepage link to a video file (`direct_file`" (closed)
 - "A video whose own title is a camera or file name" (open build: Ryan chose
-  the fallback title "<government name> archive video" on every platform)
+  the fallback title "<government name> archive video" on every platform,
+  with the month and year when a date is known)
 - "`find_video_candidates()`'s video-file-extension regex matches Airbnb's"
   (closed; not in the plan's list)
 
@@ -396,13 +397,10 @@ compares a finished transcript with the video's length:
   and does not gate Phase 1. It comes back as one piece with a tail-silence
   check.
 
-**The one design choice left for Ryan**
-
-Ryan decides: should the Archive return 409 when a page's state disagrees
-with the registry's? WO-932 counted it: 12 of 10,280 pages would be
-refused; 10 look like correct pages with a wrongly guessed state, 1 is a
-real error, 1 is unclear. WO-932 advises not building a blocking check yet.
-Ryan has not decided.
+**Decided by Ryan, 2026-09-21: no blocking Archive check (409).** WO-932
+counted it: 12 of 10,280 pages would be refused; 10 look like correct pages
+with a wrongly guessed state, 1 is a real error, 1 is unclear. Ryan took
+WO-932's recommendation. The entry is now a Standing decision.
 
 **Added 2026-09-21: keep videos that are not meetings out of view.** WO
 numbers come from the conductor when it starts, after the deploy. Ryan
@@ -563,7 +561,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | Item | What Ryan does | Unblocks |
 |---|---|---|
 | "Leon Valley TX has two pages for one meeting" | Decided and done 2026-09-21: page 3973 survives, 1595 was deleted (WO-941). The entry is now "Other Cablecast pages with no `external_id`". | Nothing |
-| "A video whose own title is a camera or file name" | Decided 2026-09-21: the fallback title is "<government name> archive video" on every platform. One detail is open: keep the date on a date-only title | A small build |
+| "A video whose own title is a camera or file name" | Decided 2026-09-21: the fallback title is "<government name> archive video" on every platform, with the month and year (not the exact day) when a date is known, because upload and filming dates can differ | A small build |
 | "A bare YouTube channel-listing scan measurably ingests non-meeting" | Look at 4 titles that still pass and pick a design | Phase 1 follow-up |
 | "The Archive files a page under whatever `gov_id`" | Yes or no on refusing a state mismatch (12 of 10,280 pages; WO-932 advises not yet) | Phase 1 |
 | "Own transcription: a warning for a transcript that stops early" | Held. Say when to build it with the tail-silence check | Later |

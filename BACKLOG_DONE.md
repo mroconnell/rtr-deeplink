@@ -84,7 +84,7 @@
 |---|---|---|
 | The fallback title for a camera or file name is "<government name> archive video", on every platform | The camera-file entry, now retitled so it is not Vimeo-only | Recorded as its Next action. Count from the 2026-09-21 export: 12 of 10,280 pages (Viebit 7, Granicus 3, YouTube 2, Vimeo 0). I reproduced it: the gate's placeholder test finds 5 (Granicus 3, YouTube 2) and the 7 Viebit `.mp4` file names are the rest. Keeping the date on a date-only title is proposed, not yet confirmed by Ryan. |
 | Channel-list scan | The channel-listing scan entry | Still open, waiting on Ryan's view of the 4 titles that still pass. One measured fact added: 381 of 3,974 YouTube page titles (10%) carry no date-shaped word. |
-| Archive 409 on a state mismatch | The "Archive files a page under whatever `gov_id`" entry | Not decided. Kept open with WO-932's count (12 of 10,280 would be refused; 10 look right, 1 real error, 1 unclear) and its advice not to build a blocking check yet. |
+| Archive 409 on a state mismatch | The "Archive files a page under whatever `gov_id`" entry | Decided by Ryan on 2026-09-21: no blocking check, taking WO-932's advice (12 of 10,280 would be refused; 10 look right, 1 real error, 1 unclear). Moved to Standing decisions. |
 | WO-935 changed shape: A, B and D shipped, C held | The own-transcription entry | WO-935's bundled block is the open entry. It says page 1676 is probably not partial (silence after the last cue), so the old entry no longer claims it is. |
 | Three live pages for WO-934's worklist | A new entry | Pages 5945 and 10852, and the `@washcoar` pin behind page 9073. |
 
@@ -603,7 +603,7 @@ Where it is used:
 
 | Entry (first words) | Result | What is left |
 |---|---|---|
-| The Archive files a page under whatever `gov_id` a sweep sends | Half closed. The default-on hook is built. | Whether the Archive should return 409 on a state mismatch. Ryan's call. |
+| The Archive files a page under whatever `gov_id` a sweep sends | Closed. The default-on hook is built, and Ryan decided on 2026-09-21 not to build the 409 check. | Nothing. It is now a Standing decision. |
 | The wrong-government checks never look at the resolved video's own | Closed, flag first as the entry asked | Nothing reads the flags yet. |
 | A minted `rtr:` id's state code can be a false positive | Closed. The entry's cause was wrong. | Two stale rows stay on purpose. |
 | A real US government's YouTube video got minted with a | Closed | Two more live pages of the same shape, below. |

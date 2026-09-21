@@ -106,7 +106,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (13)
+Standing decisions — do NOT re-raise  (14)
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -120,6 +120,7 @@ Standing decisions — do NOT re-raise  (13)
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
+  The Archive files a page under whatever `gov_id` a sweep sends: do…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
   State legislatures: chamber rows still without a page (91 of 99 on…
@@ -446,9 +447,8 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (27)
+Trust, safety & data quality  (26)
   Own transcription: a warning for a transcript that stops early needs…
-  The Archive files a page under whatever `gov_id` a sweep sends:…
   Nothing records that a page was deliberately deleted, so a later…
   The partial-transcript check reaches only some YouTube pages, and the…
   7 of 108 already-pinned YouTube channels disagree with what the…
@@ -864,6 +864,23 @@ instead of giving up on the first, and recovered 18 of the original 41
 what remained after that retry pass; a deeper retry (past the 6-candidate
 cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
+
+### The Archive files a page under whatever `gov_id` a sweep sends: do not add a blocking Archive check (409) on a state mismatch
+
+Decided by Ryan 2026-09-21, taking WO-932's recommendation. The count, on
+the local export of 2026-09-21: a blocking check would refuse 12 of 10,280
+pages. Ten are correct pages with a wrongly guessed state, one is a real
+error (page 9073) and one is unclear (page 7885), so it would refuse more
+right pages than wrong ones. The check that shipped is WO-134's
+jurisdiction hook, on by default (WO-932, `scripts/identity_gate.py`).
+`/internal/ingest` still treats a caller's `gov_id` as a pin and only
+checks that it exists. If a signal is wanted later, log a flag first, and
+re-run `scripts/wo932_state_check_dry_run.py` on a fresh inventory before
+building anything that refuses. Several sweeps force `result.jurisdiction =
+unit_name` and rely on the ladder being skipped. A same-state mismatch (a
+town filed under its county's site) is not caught either way; that gap is
+tracked under the registry-domain entries. History: `BACKLOG_DONE.md`
+WO-932 and WO-913.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -2470,8 +2487,8 @@ of human step they need.
 - **[NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file name ("video1516165031", "20251021", "CC20260908.mp4") becomes the page title as-is, on every platform: Ryan chose the fallback title "<government name> archive video".**
   - **Issue**: `vimeo.com/1199438213` still returns the title "video1516165031" (checked live 2026-09-21; its page 10200, Oak Bluffs MA, was fixed by hand in WO-925). The gate (`app/utils/video_hand_check.py`, WO-933) treats `^video\d+$`, `^IMG_\d+` and `^\d+$` as no title (`cannot_tell`), but the adapters still use the source's own title as-is. The count, from the local export of 2026-09-21 (10,280 pages): **12 pages (0.1%)**. Viebit 7 (raw file names: `NYCC-PV-CH-CHA_251218-163834.mp4`, `NYCC-250-8-2_251218-120823.mp4`, `8-18-26_Council-Meeting.mp4`, `CC20260908.mp4`, `DDA_Meeting_08_20_26.mp4`, `9_8_26_Council_Meeting.mp4`, `TBC_06_09_2026Mtg.mp4`), Granicus 3 (date-only titles `20251021`, `171205`, `20260901`, all Laramie County WY), YouTube 2 (`7959635610958757251`, `video1254656692`), Vimeo 0.
   - **Impact**: 12 pages show a meaningless title and address. Small, but the same shape recurs on every platform that passes a file name through. The gate's `is_placeholder_title()` recognizes 5 of the 12 (Granicus 3, YouTube 2); the 7 Viebit `.mp4` names it does not.
-  - **Next action**: Ryan decided on 2026-09-21 (chat): the fallback title is "<government name> archive video", on every platform, not only Vimeo. Build it once in a shared place with a test, and use one shared test for what counts as a camera or file name (today the gate has its own). Proposed detail, not yet confirmed by Ryan: for a date-only title keep the date, for example "Laramie County, WY archive video, Oct 21, 2025". Not decided: whether the 7 Viebit names that carry a date or meeting words (for example `8-18-26_Council-Meeting.mp4`) are replaced too, or only cleaned.
-  - **Constraint**: never invent a meeting name from the government's agenda page; the fallback must come from data on the video itself (the government name, and the date when the title is only a date).
+  - **Next action**: Ryan decided on 2026-09-21 (chat): the fallback title is "<government name> archive video", on every platform, not only Vimeo. Build it once in a shared place with a test, and use one shared test for what counts as a camera or file name (today the gate has its own). Ryan also decided (2026-09-21, chat): when the date is known, keep the month and year only, for example "Laramie County, WY archive video, October 2025", not the exact day, because an upload date and a filming date can differ (page 10200 was uploaded 2026-06-08 but its meeting was 2026-06-04). Not decided: whether the 7 Viebit names that carry a date or meeting words (for example `8-18-26_Council-Meeting.mp4`) are replaced too, or only cleaned.
+  - **Constraint**: never invent a meeting name from the government's agenda page; the fallback must come from data on the video itself (the government name, and the month and year when a date is known).
   - **History**: `BACKLOG_DONE.md` WO-925 (the hand fix), WO-933 (the gate) and WO-931 (Ryan's decision and the count).
 
 - **[NEEDS-AUDIT] Thirteen hand-confirmed government platform links could not be turned into a meeting: three broken or empty, nine tenant front doors, one tenant with no video.**
@@ -6474,14 +6491,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Next action**: Ryan decides when. Then build the warning and a tail-silence check as one piece. When the last cue is under 90% of the video with 10+ minutes uncovered, sample 30 seconds of audio halfway between the last cue and the video's end (volume only), and skip the warning if it is silent (mean volume under about -60 dB; speech read -22 to -41 dB and dead air -71 to -83 dB on the two pages). Put it in one shared function called by both paths. The first version, with a 24-case test file, is in the first commit (`2cf4f49`) of PR #1301. Also decide whether a locally made transcript should wait before the cloud finder picks it again, and give `scripts/retranscribe_first_chunk.py` the same call: it splices a new first chunk onto an existing transcript, pushes only hallucination warnings, and so would drop an early-end flag from the transcript it started with. Then count how many own transcripts the rule flags, from the Render shell.
 - **Constraint**: Ryan's decision, 2026-09-21: hold until the tail-silence check is built with it. Do not change the 90% / 10-minute threshold or the marker text. Sampling audio changes the plan's rule 3 ("compare only the last cue"), so that change needs Ryan's yes. No bulk sweep of the production Archive from a laptop.
 - **History**: `BACKLOG_DONE.md` WO-925 (the 86% reading) and WO-935 (the measurements above). Replaces the entry "A partial transcript made by our own transcription cannot get the reader warning through a re-check" (rewritten by WO-931 after WO-935).
-
-### The Archive files a page under whatever `gov_id` a sweep sends: WO-134's check is now on by default, and whether the Archive should refuse a state mismatch (409) is still Ryan's open call `[NEEDS-AUDIT]`
-
-- **Issue**: WO-134 now installs `jurisdiction_check_hook()` by default (WO-932, `scripts/identity_gate.py`). Still open: should `/internal/ingest` return 409 when a payload's state disagrees with the registry state for a caller-supplied `gov_id`? The Archive's `_caller_pinned_match()` still treats a caller's `gov_id` as a pin and only checks that it exists.
-- **Impact**: what a blocking check would refuse, on the local export of 2026-09-21: 12 of 10,280 pages. By WO-932's reading, 10 are correct pages with a wrongly guessed state, 1 is a real error (page 9073), 1 is unclear (page 7885). A same-state mismatch (a town under its county's site) is not caught either way.
-- **Next action**: Ryan's yes or no; not decided as of 2026-09-21. WO-932 recommends not building a blocking check yet, because it would refuse more right pages than wrong ones. If Ryan wants a signal, log a flag before refusing anything.
-- **Constraint**: several sweeps force `result.jurisdiction = unit_name` and rely on the ladder being skipped. Do not add a blocking Archive check without re-running `scripts/wo932_state_check_dry_run.py` on a fresh inventory.
-- **History**: `BACKLOG_DONE.md` WO-932 (the count and the 12 pages) and WO-913.
 
 ### Nothing records that a page was deliberately deleted, so a later sweep can put it straight back `[NEEDS-AUDIT]`
 
