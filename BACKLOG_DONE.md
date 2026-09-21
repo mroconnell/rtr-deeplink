@@ -1,5 +1,39 @@
 # Backlog — done
 
+## WO-929: a separate re-transcription queue for the 82 pages with defective older Whisper text [Done 2026-09-21]
+
+**Why this ran.** WO-928 found 82 pages whose only transcript is older Whisper text (made before the voice filter, or a repair copy of it) with a real defect in the text. Ryan asked for a separate queue so the local Whisper machine can transcribe them again with the voice-filter engine, apart from the tier-3 no-captions queue. This WO builds the queue, a review tool, a test and a runbook. It transcribed nothing and wrote nothing to the production Archive.
+
+**What was checked.** All 82 pages were re-read live: 5 requests to `/internal/export/pages` (with text) and 39 public SRT reads of hidden versions, paced at one per second (44 reads, limit 200). Each page's shown version and defect signals were recomputed with `scripts/wo928_version_quality.py`. Each page's video was resolved fresh through the site's own adapter and its length read from playlist and file headers with `app/platforms/queue_probe.py` (75 accepted, 7 flagged long, none dead). No media was downloaded. The YouTube guard was on and refused nothing, because none of the 82 is YouTube-hosted.
+
+| Outcome | Count of 82 | What it means |
+|---|---|---|
+| Kept in the queue | 82 | shown version unchanged, defect still present, video resolves |
+| Dropped: shown version changed | 0 | none promoted, re-transcribed or deleted since WO-928 |
+| Dropped: no defect signal now | 0 | |
+| Cannot re-transcribe (dead video) | 0 | every video resolved and probed |
+| YouTube-hosted (drip Mac only) | 0 | the DRIP-MAC-ONLY section exists and is empty |
+
+Of the 82, 37 have a hidden version too. Read all 39: 31 are older Whisper copies with the same defects; the 8 hidden captions versions (pages 160, 189, 260, 265, 266, 300, 436, 440) all carry the "garbled at the source" warning, which is why Whisper became the shown version. Six of those show no signal by text, but the warning is the reason they are hidden, so they stay in the queue.
+
+**The queue** (`scripts/retranscription_queue.txt`, sidecar `scripts/retranscription_queue_meta.csv`).
+
+| Section | Pages | Audio hours | What it is |
+|---|---|---|---|
+| PILOT | 5 | 9.1 | shortest pages with a dead-air run of 20 or more, three platforms (eScribe x3, IQM2, Granicus); run first, no `--promote` |
+| MAIN | 77 | 245.2 | silence signature (41 pages), then loops (35), then the one other; shorter first in each group |
+| DRIP-MAC-ONLY | 0 | 0 | none |
+
+By defect: 46 pages with the silence signature (170.0 h), 35 with loops (84.0 h), 1 other (0.3 h). Total 254.3 hours, matching WO-928's 254.
+
+**What else was built.** `scripts/retranscription_queue_slice.py` (writes a file of the next N URLs, because `transcribe_backlog_locally.py --urls-file` ignores `--limit`, and skips pages with a `# done` record); `scripts/retranscription_review.py` (old versus new signals side by side, text only, never cue or word counts; never promotes); `docs/RETRANSCRIPTION_QUEUE.md` (runbook); `tests/test_retranscription_queue.py` (15 tests: URLs unique and normalised, none in any tier-3 file, sidecar matches queue lines, sections well formed, YouTube only in the drip section, no script or workflow names the file, no broad file pattern could reach it, both feeders name only their own files, slice and review logic).
+
+**Caution.** Loops may come back: the 2026-08-22 decision says loops come from the audio and the voice filter does not stop them, so the 35 loop pages may reproduce. The pilot is all silence-signature pages on purpose; a loop page is the first thing to try after it. Run time is unknown: nothing was transcribed here, and the only recorded speed is the cloud worker's `tiny` model, so the runbook's step 1 measures the local machine. Two stale slugs were found and left alone: page 775 (`port-colborne-resolution-...`, really Brockton ON) and page 893 (`peterborough-attachments-...`, really Uxbridge ON).
+
+**Recommendation.** Run the pilot, read the review, and promote only pages judged good. Then decide whether to run the other 77 with `--promote`.
+
+**Deploy status.** None needed. Queue file, sidecar, docs, two manual scripts and a test are not under any path Render builds from. Docs updated: `BACKLOG.md` (the WO-928 pool entry now describes this queue), `docs/RETRANSCRIPTION_QUEUE.md`. Files for the conductor to commit in rtr-business: `research/wo929_population_recheck.csv`, `research/wo929_cannot_retranscribe.csv`, `research/wo929_methods_section.md`.
+
 ## WO-928: a source- and era-aware way to tell which transcript version is better [Done 2026-09-21]
 
 **Why this ran.** Ryan pointed out that many of our older Whisper transcripts hold made-up words over silence, and that the newer versions (made with a voice filter) have fewer words and no made-up text. WO-927 preferred the version with more cues and words, so it could have pushed the wrong version live. Page 1624 already had to be reverted for that. This WO builds a way to judge two versions without counting cues or words, and re-measures. Nothing was ingested, promoted, re-checked or deleted.
