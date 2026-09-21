@@ -630,12 +630,25 @@ Rhode Island Senate page: captions to 81 minutes of a 149-minute video).
 Every registered adapter's `resolve()` now ends with
 `app/platforms/coverage_check.py`: when the video's duration is known
 (`ResolvedMeeting.video_duration_seconds` from the adapter, or a
-header-only ffprobe of an HLS/mp4/mp3 file; never YouTube, never guessed)
-and the last caption ends under 90% of it with 10+ minutes uncovered, it
+header-only ffprobe of an HLS/mp4/mp3 file; never guessed, and never an
+ffprobe of a YouTube page — a YouTube resolve carries the length yt-dlp
+already returns, WO-935) and the last caption ends under 90% of it with
+10+ minutes uncovered, it
 adds a reader warning containing "may end before the meeting did". That is
 the Archive's existing `_EARLY_TRUNCATION_MARKER`, so the page reports as
 `truncated_transcript` and stays eligible for re-transcription with no new
 plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
+
+**The same warning on a transcript we made ourselves (WO-935,
+2026-09-21).** Both transcription paths — the cloud worker's finish step
+(`report_chunk_result()`) and `scripts/transcribe_backlog_locally.py` —
+call `coverage_check.own_transcript_early_end_warning()` on the finished
+transcript and the video's real probed length: same threshold, same
+marker, only the last cue compared, no length means no warning. Read its
+docstring before trusting a flag: on our own transcripts a short last cue
+is usually dead air after the meeting, not a cut transcript (BACKLOG_DONE's
+WO-935 entry has the two real pages measured). The same switch turns it
+off; set it in the Archive's and the worker's environment too.
 
 **Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
 one always-on process that fetches captions for waiting pages, feeds the
@@ -1425,7 +1438,11 @@ number of concurrent worker processes.
    a long-running job; a chunk whose fast input-side seek comes back
    undecodable gets one retry with a slower output-side seek, which is
    what makes Cablecast's fMP4 VOD work at all — see
-   `media_probe.py`'s `_extract_chunk_once()`), transcribe it with a
+   `media_probe.py`'s `_extract_chunk_once()`; since WO-935 a chunk that
+   decodes but is more than 15 seconds shorter than asked for is treated
+   the same way, and a slice of the cached whole-file audio gets the same
+   decode check — the last chunk of a file is exempt, since its asked-for
+   length is only what is left of the probed duration), transcribe it with a
    self-hosted `faster-whisper`
    model (loaded once at process startup, reused for every job), shift
    its timestamps from chunk-relative to full-meeting-relative seconds
@@ -1441,7 +1458,10 @@ number of concurrent worker processes.
    own real text the same way every scraped-caption adapter already does)
    and is promoted to the page's default (closing a real, previously-
    unaddressed gap: earlier, only a page's *very first* transcript version
-   ever became default — see `BACKLOG_DONE.md`). Nothing is deleted — the
+   ever became default — see `BACKLOG_DONE.md`). Since WO-935 its last cue
+   is also compared with the job's probed video length, and a transcript
+   that stops well short carries the "may end before the meeting did"
+   warning (see the partial-transcript paragraph above). Nothing is deleted — the
    original scraped version (if any) stays reachable through the existing
    version picker. An email goes out with an excerpt and a link to the
    permanent page.

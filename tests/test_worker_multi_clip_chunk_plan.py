@@ -71,7 +71,9 @@ async def test_process_next_chunk_extracts_the_right_clip_and_shifts_by_its_own_
 
     extract_calls = []
 
-    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         extract_calls.append(
             {"media_url": media_url, "start": start, "duration": duration}
         )
@@ -131,6 +133,65 @@ async def test_process_next_chunk_extracts_the_right_clip_and_shifts_by_its_own_
     assert report_calls["success"] is True
 
 
+@pytest.mark.parametrize(
+    "chunk_index, expect_final", [(0, False), (1, False), (2, True)]
+)
+async def test_process_next_chunk_tells_extraction_whether_it_is_the_final_chunk(
+    monkeypatch, chunk_index, expect_final
+):
+    """WO-935: extraction fails a valid-but-short chunk, except the last
+    chunk of the file (whose asked-for length may exceed what the audio
+    holds). A 3-chunk fixed-window job: only chunk index 2 is final."""
+
+    async def _claim():
+        return {
+            "job_id": 600 + chunk_index,
+            "chunk_index": chunk_index,
+            "source_url": "https://example.granicus.com/player/clip/1",
+            "platform": "granicus",
+            "media_url": "https://x/a.m3u8",
+            "total_chunks": 3,
+            "chunk_size_seconds": 450,
+            "probed_duration_seconds": 1200.0,
+            "chunk_plan": None,
+            "partial_segments": [],
+        }
+
+    monkeypatch.setattr(wm.crud, "claim_next_chunk", _claim)
+
+    def _no_finder(platform):
+        raise wm.UnsupportedPlatformError(platform)
+
+    monkeypatch.setattr(wm, "get_finder", _no_finder)
+
+    seen = []
+
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
+        seen.append((start, duration, is_final_chunk))
+        out_path.write_bytes(b"fake-audio")
+        return True, None
+
+    monkeypatch.setattr(wm, "extract_chunk_audio", _extract)
+
+    async def _report(job_id, **kwargs):
+        return {"status": "in_progress"}
+
+    monkeypatch.setattr(wm.crud, "report_chunk_result", _report)
+
+    async def _noop(job_id):
+        pass
+
+    monkeypatch.setattr(wm, "_send_completion_email", _noop)
+
+    await wm.process_next_chunk(_Engine([{"start": 1.0, "end": 2.0, "text": "hi"}]))
+
+    assert seen == [
+        (chunk_index * 450.0, min(450.0, 1200.0 - chunk_index * 450.0), expect_final)
+    ]
+
+
 async def test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_job(
     monkeypatch,
 ):
@@ -165,7 +226,9 @@ async def test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_jo
 
     monkeypatch.setattr(wm, "should_cache_whole_audio", _fail_should_cache)
 
-    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         out_path.write_bytes(b"fake-audio")
         return True, None
 
@@ -289,7 +352,9 @@ async def test_process_next_chunk_extracts_a_sub_split_window_from_its_intra_cli
 
     extract_calls = []
 
-    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         extract_calls.append(
             {"media_url": media_url, "start": start, "duration": duration}
         )

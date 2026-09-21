@@ -426,29 +426,54 @@ async def probe_multi_clip_chunk_plan(
     return plan
 
 
-async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
+# The final progress line ffmpeg prints, e.g.
+#   size=N/A time=00:01:00.01 bitrate=N/A speed=2.53e+03x
+# `time=` there is how much audio was actually DECODED. Verified 2026-09-21
+# against real ffmpeg 8.1.2: a decoded 60 s slice reports time=00:01:00.01.
+# The sign-less pattern skips ffmpeg's occasional `time=-00:00:00.02`
+# warm-up lines and a `time=N/A`, both of which mean "no reading".
+_FFMPEG_TIME_RE = re.compile(r"time=(\d+):(\d{2}):(\d{2}(?:\.\d+)?)")
+
+
+def _decoded_seconds_from_stderr(stderr_text: str) -> Optional[float]:
+    """Seconds of audio ffmpeg says it decoded, from its last `time=`
+    progress field. None when there is no such field -- unmeasurable, which
+    every caller must treat as "cannot tell", never as "short"."""
+    matches = _FFMPEG_TIME_RE.findall(stderr_text)
+    if not matches:
+        return None
+    hours, minutes, seconds = matches[-1]
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
+async def _decode_stats(path: Path) -> tuple[bool, Optional[float], Optional[float]]:
     """Runs ffmpeg's own `volumedetect` filter against an already-local
     file (no network involved, just decoding a small mp3 already on
-    disk). Returns `(decodable, mean_volume_db)`.
+    disk). Returns `(decodable, mean_volume_db, decoded_seconds)`.
 
     Two genuinely different outcomes, which this deliberately keeps
     apart (they were conflated into a single `None` until 2026-08-21 --
     see extract_chunk_audio()'s docstring for the real Sentry occurrence
     that cost):
 
-    * `(False, None)` -- ffmpeg exited non-zero, i.e. it could not decode
-      the file *at all*. Since this filter graph fully decodes the file
-      and writes nothing (`-f null -`), a non-zero exit here means the
-      bytes on disk aren't playable media, full stop.
-    * `(True, x)` / `(True, None)` -- ffmpeg decoded the file fine; the
-      volume was parsed, or it wasn't (an ffmpeg version that words the
-      line differently, an unexpected stderr shape). "Decoded but
-      unparseable" must not be mistaken for corruption, hence True.
+    * `(False, None, None)` -- ffmpeg exited non-zero, i.e. it could not
+      decode the file *at all*. Since this filter graph fully decodes the
+      file and writes nothing (`-f null -`), a non-zero exit here means
+      the bytes on disk aren't playable media, full stop.
+    * `(True, x, y)` -- ffmpeg decoded the file fine. The volume and/or
+      the decoded length were parsed, or one/both weren't (an ffmpeg
+      version that words the line differently, an unexpected stderr
+      shape): each is None when unparseable. "Decoded but unparseable"
+      must not be mistaken for corruption, hence True.
 
-    ffmpeg missing from PATH or timing out also yields `(True, None)`,
-    on purpose: neither says anything about *the file*, and reporting a
-    broken environment as a corrupt chunk would send the caller's
-    retry/failure budget after the wrong thing.
+    `decoded_seconds` (WO-935) is the real length of what decoded, read
+    from the same run at no extra cost. It is what lets a caller notice a
+    chunk that is valid but SHORT -- see `_chunk_is_materially_short()`.
+
+    ffmpeg missing from PATH or timing out also yields `(True, None,
+    None)`, on purpose: neither says anything about *the file*, and
+    reporting a broken environment as a corrupt chunk would send the
+    caller's retry/failure budget after the wrong thing.
     """
     try:
         returncode, _stdout, stderr = await _run(
@@ -462,7 +487,7 @@ async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
             "-",
         )
     except (FileNotFoundError, asyncio.TimeoutError):
-        return True, None
+        return True, None, None
 
     if returncode != 0:
         logger.warning(
@@ -471,15 +496,79 @@ async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
             returncode,
             _stderr_tail(stderr, 500),
         )
-        return False, None
+        return False, None, None
 
-    for line in stderr.decode(errors="replace").splitlines():
+    stderr_text = stderr.decode(errors="replace")
+    decoded_seconds = _decoded_seconds_from_stderr(stderr_text)
+    for line in stderr_text.splitlines():
         if "mean_volume:" in line:
             try:
-                return True, float(line.split("mean_volume:")[1].strip().split(" ")[0])
+                return (
+                    True,
+                    float(line.split("mean_volume:")[1].strip().split(" ")[0]),
+                    decoded_seconds,
+                )
             except (IndexError, ValueError):
-                return True, None
-    return True, None
+                return True, None, decoded_seconds
+    return True, None, decoded_seconds
+
+
+async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
+    """`(decodable, mean_volume_db)` -- the original two-value shape of
+    `_decode_stats()`, kept because callers and tests read it. See that
+    function for the full contract."""
+    decodable, mean_volume, _decoded_seconds = await _decode_stats(path)
+    return decodable, mean_volume
+
+
+# WO-935: how many seconds SHORT of the length asked for a chunk may decode
+# before it counts as truncated. A chunk can be valid and still short -- the
+# first 1000 bytes of a real 12.6 KB mp3 decode cleanly (confirmed with real
+# ffmpeg 2026-08-21, see extract_chunk_audio()'s docstring) -- so
+# _decode_stats()'s "does it decode at all" check passes it, and Whisper then
+# silently transcribes only what survived.
+#
+# Measured, not guessed. 2026-09-21, real public government media: 14
+# sources on 12 hosts (Utah PMN mp3 and mp4, Granicus HLS on 2 hosts and
+# Granicus mp4, Sliq HLS, Cablecast HLS on 4 hosts, Invintus mp4, a county
+# mp4, Telvue HLS; 0.2 to 6 hours long). For each, one 60-second chunk from
+# 40% in and one from the very end, cut with this module's own
+# extract_chunk_audio() and decoded with ffmpeg. "Shortfall" is asked-for
+# length minus decoded length:
+#
+#   middle chunks   shortfall -0.05 to 0.00 s   (worst 0.05 s)
+#   final chunks    shortfall  0.00 to 1.83 s   (worst 1.83 s; the other 13
+#                   sources are all under 0.2 s)
+#
+# So input-side `-ss` on HLS does NOT make a real chunk's length drift (the
+# worry recorded when WO-25 declined this guard), and a final chunk's
+# asked-for length (the remaining probed duration) is close to what the audio
+# really holds. Even so, a final chunk is not checked at all (see
+# `is_final_chunk`): its length depends on the container's duration matching
+# its audio, which 14 sources cannot promise for every host. 15 seconds is
+# about 8x the worst deviation seen on any chunk and about 300x a middle
+# chunk's, so it does not fire on a healthy one, while a chunk missing more
+# than 15 s of speech is a real loss.
+_SHORT_CHUNK_TOLERANCE_SECONDS = 15.0
+
+
+def _chunk_is_materially_short(
+    requested_seconds: float, decoded_seconds: Optional[float]
+) -> bool:
+    """True when a chunk decoded more than `_SHORT_CHUNK_TOLERANCE_SECONDS`
+    shorter than the length that was asked for. An unmeasurable decoded
+    length (None) is never "short" -- no reading is not a finding."""
+    if decoded_seconds is None or requested_seconds <= 0:
+        return False
+    return requested_seconds - decoded_seconds > _SHORT_CHUNK_TOLERANCE_SECONDS
+
+
+def _short_chunk_reason(requested_seconds: float, decoded_seconds: float) -> str:
+    return (
+        "ffmpeg reported success but the output is only "
+        f"{decoded_seconds:.0f}s of the {requested_seconds:.0f}s asked for "
+        "(likely truncated)"
+    )
 
 
 # Real, confirmed threshold, not guessed: a known-good real meeting
@@ -965,12 +1054,32 @@ async def slice_cached_audio(
     start: float,
     duration: float,
     out_path: Path,
+    is_final_chunk: bool = False,
 ) -> tuple[bool, Optional[str]]:
     """Cut one chunk out of an already-downloaded audio file. Local disk
     only -- no network, no seek penalty, and `-c copy` so there is no
     re-encode either. Input-side `-ss` is correct and cheap here: the
     pathology it triggers on remote HLS/progressive sources is entirely
     about fetching, and this file is on disk.
+
+    **The slice is checked before it is handed to Whisper (WO-935).**
+    `-c copy` only proves ffmpeg exited 0 and wrote bytes. A corrupt or
+    truncated byte range in the cached whole-file audio therefore used to
+    reach `engine.transcribe_chunk()` raw, as an unhandled PyAV
+    `InvalidDataError` (errno 1094995529) -- 5 real production jobs on 2
+    platforms, one losing 15 of 25 chunks (BACKLOG). The same
+    `_decode_stats()` check `extract_chunk_audio()` has had since
+    2026-08-21 now runs here, so an undecodable slice is an ordinary
+    `(False, reason)`. Verified with real ffmpeg 2026-09-21: a slice that
+    starts past the end of the cached file exits 0 and writes a 369-byte
+    file that then fails to decode with exit 183.
+
+    It also fails a slice that decodes but is MORE than
+    `_SHORT_CHUNK_TOLERANCE_SECONDS` shorter than `duration` -- a cache cut
+    off mid-chunk (the file is valid, just short). `is_final_chunk` turns
+    that half off: the last chunk of a file is asked for "what is left of
+    the probed duration", which the audio may not quite hold. The caller
+    decides (worker.segment_utils.is_last_window_of_source()).
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -997,6 +1106,23 @@ async def slice_cached_audio(
         return False, f"slicing cached audio exited {returncode}: {tail}"
     if not (out_path.exists() and out_path.stat().st_size > 0):
         return False, "slicing cached audio produced no output"
+
+    decodable, _mean_volume, decoded_seconds = await _decode_stats(out_path)
+    if not decodable:
+        logger.warning(
+            "Cached-audio slice at %ss for %s exists (%s bytes) but isn't decodable",
+            start,
+            cached_path,
+            out_path.stat().st_size,
+        )
+        return False, (
+            "slicing cached audio produced a file that isn't decodable "
+            "(likely truncated/corrupt)"
+        )
+    if not is_final_chunk and _chunk_is_materially_short(duration, decoded_seconds):
+        return False, "slicing cached audio: " + _short_chunk_reason(
+            duration, decoded_seconds
+        )
     return True, None
 
 
@@ -1007,6 +1133,7 @@ async def extract_chunk_audio(
     duration: float,
     source_page_url: str,
     out_path: Path,
+    is_final_chunk: bool = False,
 ) -> tuple[bool, Optional[str]]:
     """Extract just [start, start+duration) as small mono 16kHz mp3 audio.
     For a direct file this is an HTTP Range fetch of just that slice; for
@@ -1042,11 +1169,26 @@ async def extract_chunk_audio(
     thrown from deep inside whisper. Verified against real ffmpeg
     2026-08-21: a severely truncated/garbage mp3 exits 183 (= the low
     byte of AVERROR_INVALIDDATA, the *same* error code PyAV surfaces as
-    errno 1094995529), while a valid file exits 0. Honest limit: a file
-    truncated only at its *tail* still decodes cleanly (confirmed -- the
-    first 1000 bytes of a real 12.6KB mp3 exit 0 with a correct
-    mean_volume), and PyAV opens those too, so this catches
-    "not playable at all," not "shorter than requested."
+    errno 1094995529), while a valid file exits 0. That check alone had a
+    limit: a file truncated only at its *tail* still decodes cleanly
+    (confirmed -- the first 1000 bytes of a real 12.6KB mp3 exit 0 with a
+    correct mean_volume), and PyAV opens those too, so it caught "not
+    playable at all," not "shorter than requested." The next paragraph is
+    the length half.
+
+    **Shorter than requested is now caught too (WO-935).** The same decode
+    pass reports how much audio actually decoded (`_decode_stats()`), and a
+    chunk that decodes more than `_SHORT_CHUNK_TOLERANCE_SECONDS` shorter
+    than `duration` is treated like an undecodable one: one output-side-seek
+    retry (a truncated pull is often transient), then a plain `(False,
+    reason)`. That tolerance is measured on real media -- see the constant's
+    own comment. `is_final_chunk=True` skips this half of the check: the
+    last chunk of a file is asked for "what is left of the probed duration",
+    which the audio may not quite hold, and a truncated end of a whole
+    meeting is what WO-935's finished-transcript check
+    (coverage_check.own_transcript_early_end_warning) is for. The caller
+    decides (worker.segment_utils.is_last_window_of_source()); the default
+    is the strict check.
 
     **A failed seek gets one output-side-seek retry before giving up
     (WO-45).** The extraction below is a fast input-side `-ss`, which on
@@ -1086,7 +1228,7 @@ async def extract_chunk_audio(
     )
     decodable, mean_volume = (False, None)
     if ok:
-        decodable, mean_volume = await _mean_volume_db(out_path)
+        decodable, mean_volume, decoded_seconds = await _decode_stats(out_path)
         if not decodable:
             # The signature of the WO-45 seek bug: exit 0, a real file on
             # disk, nothing decodable in it.
@@ -1102,6 +1244,20 @@ async def extract_chunk_audio(
                 out_path.stat().st_size,
             )
             ok, worth_seek_retry = False, True
+        elif not is_final_chunk and _chunk_is_materially_short(
+            duration, decoded_seconds
+        ):
+            # WO-935: decodable but SHORT -- a valid file whose tail is
+            # missing. Same recovery as above: one output-side retry.
+            reason = _short_chunk_reason(duration, decoded_seconds)
+            logger.warning(
+                "Chunk audio at %ss for %s decodes but is short: %s -- "
+                "retrying with an output-side seek before giving up",
+                start,
+                media_url,
+                reason,
+            )
+            ok, worth_seek_retry = False, True
 
     # `start > 0` because at 0 there is no seek to get wrong -- the
     # fallback would be an identical, slower run of the same command.
@@ -1115,9 +1271,19 @@ async def extract_chunk_audio(
             output_side_seek=True,
         )
         retry_decodable = False
+        retry_short = False
         if retry_ok:
-            retry_decodable, retry_volume = await _mean_volume_db(out_path)
-        if retry_ok and retry_decodable:
+            (
+                retry_decodable,
+                retry_volume,
+                retry_decoded_seconds,
+            ) = await _decode_stats(out_path)
+            retry_short = (
+                not is_final_chunk
+                and retry_decodable
+                and _chunk_is_materially_short(duration, retry_decoded_seconds)
+            )
+        if retry_ok and retry_decodable and not retry_short:
             logger.info(
                 "Chunk audio at %ss for %s recovered by an output-side seek after the "
                 "input-side seek returned %s -- see media_probe.py's WO-45 note",
@@ -1136,7 +1302,7 @@ async def extract_chunk_audio(
                 "Output-side-seek fallback for %s @ %ss did not recover the chunk (%s)",
                 media_url,
                 start,
-                retry_reason or "still undecodable",
+                retry_reason or ("still short" if retry_short else "still undecodable"),
             )
 
     if not ok:

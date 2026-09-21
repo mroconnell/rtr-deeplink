@@ -71,10 +71,17 @@ def check_enabled() -> bool:
 
 
 def last_cue_seconds(segments: Sequence) -> float:
-    """Latest cue end (falling back to start) across all cues; 0.0 if none."""
+    """Latest cue end (falling back to start) across all cues; 0.0 if none.
+
+    Takes cue objects (a resolver's `TranscriptSegment`) or plain dicts (the
+    `{"start", "end", "text"}` shape our own transcription stores), so the
+    same function serves both -- see `own_transcript_early_end_warning()`."""
     latest = 0.0
     for s in segments:
-        end = getattr(s, "end", None) or getattr(s, "start", None) or 0.0
+        if isinstance(s, dict):
+            end = s.get("end") or s.get("start") or 0.0
+        else:
+            end = getattr(s, "end", None) or getattr(s, "start", None) or 0.0
         latest = max(latest, float(end))
     return latest
 
@@ -116,6 +123,74 @@ def partial_transcript_warning(last_cue_s: float, duration_s: float) -> str:
         f"about {duration_words(last_cue_s)} of what looks like a "
         f"{duration_words(duration_s, attributive=True)} recording. "
         "The captions stop early at the source."
+    )
+
+
+def own_transcript_early_end_warning(
+    segments: Sequence, duration_seconds: Optional[float]
+) -> Optional[str]:
+    """WO-935: the same partial-coverage rule, for a transcript WE made.
+
+    WO-923 warns at resolve time, from the source's captions. That can never
+    see a transcript made by our own Whisper (the cloud worker or
+    `scripts/transcribe_backlog_locally.py`): those finish elsewhere, and a
+    re-check of a page with no source captions finds nothing to warn about.
+    Measured example: Leon Valley TX (page 1676) holds a Whisper transcript
+    of 4,541 cues whose last cue is at 86% of a 6.5-hour video, with no
+    notice on the page.
+
+    Both transcription paths call THIS function, once, on the finished
+    transcript and the video's own real length (the cloud job's
+    `probed_duration_seconds`, or the local script's own ffprobe). One
+    function is the point: the two paths already carry separate copies of
+    `detect_hallucination_warnings` (`archive/utils/transcription_quality.py`
+    and `worker/segment_utils.py`), which is how they drift.
+
+    Rules, all binding (BACKLOG_PHASES.md, "Rules for the own-Whisper
+    marker"):
+
+    * Same threshold as WO-923 -- `looks_partial()`: last cue under 90% of
+      the video AND at least 10 minutes uncovered. Not changed here.
+    * Only the LAST cue is compared with the video's length. Gaps inside a
+      transcript are normal (the voice filter skips silence), so they are
+      never looked at. Trailing silence is the remaining false-positive
+      risk; the 10-minute floor limits it.
+    * The length must be a real one. `None` or 0 means "cannot measure":
+      returns None, never a guess.
+    * The warning carries `PARTIAL_TRANSCRIPT_MARKER`, the Archive's
+      existing `_EARLY_TRUNCATION_MARKER`, so it is already wired into the
+      "good transcript" checks and the `truncated_transcript` bucket. The
+      wording is the Archive's own job-creation wording
+      (`_flag_default_transcript_if_truncated_early`), which does not say
+      "the captions stop early at the source" -- that would be false for
+      our own transcript.
+    * `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches it off, the same switch as
+      the resolve-time check (set it in the Archive's and the worker's
+      environment as well as the resolver's; the test suite sets it to 0).
+
+    **Known false-positive shape, measured 2026-09-21 -- read before
+    trusting a flag.** Our own transcription covers the WHOLE audio: every
+    chunk is extracted and transcribed before a job completes. So when the
+    last cue is far short of the video's end, the usual reason is that the
+    audio after it is SILENT (the voice filter skips it), not that the
+    transcript was cut. Both real pages checked had exactly that: page 1676
+    (Leon Valley show 179, last cue 5:34:53 of a 6:29:59 video) is speech up
+    to 20,050 s and digital silence (mean -83 dB) from 20,500 s to the end;
+    Leon Valley show 185 (last cue 3:16:24 of a 6:00:00 video, a fixed
+    recording window) is silent (mean -71 dB) from 12,500 s on. The rule
+    cannot tell these from a real truncation, and this function
+    deliberately does not try (BACKLOG_PHASES.md rule 3). See BACKLOG_DONE's
+    WO-935 entry for what that costs and the follow-up it proposes.
+    """
+    if not check_enabled():
+        return None
+    last = last_cue_seconds(segments)
+    if not looks_partial(last, duration_seconds):
+        return None
+    return (
+        f"This transcript {PARTIAL_TRANSCRIPT_MARKER} — it covers "
+        f"about {duration_words(last)} of what looks like a "
+        f"{duration_words(duration_seconds, attributive=True)} recording."
     )
 
 
