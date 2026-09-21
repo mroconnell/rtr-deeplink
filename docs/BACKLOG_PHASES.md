@@ -610,7 +610,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | "One live page is keyed to the wrong government: a real" | Nothing: page 7328 already shows Chenango Town, NY | Nothing |
 | "13 archived YouTube pages point at a video that is gone (7" | Wait for the drip Mac's status check of 101 pages, then read each row the tool builds | WO-934's delete rows |
 | "A Pennsylvania Public Utility Commission hearing was briefly" | Decided 2026-09-21: no mint | Nothing |
-| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Decided 2026-09-21 for 24 of the 28 rows that needed him. Still his: pages 3367 (Derry) and 3453 (Hopkins on Vimeo), pages 6906 and 7086 (after the drip Mac's video check), and whether the `solanocoe.granicus.com` pin is authoritative | The merge, the deploy, then the Render-shell run |
+| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Decided 2026-09-21 for 24 of the 28 rows that needed him. Still his: pages 3367 (Derry) and 3453 (Hopkins on Vimeo), pages 6906 and 7086 (after the drip Mac's video check). The `solanocoe.granicus.com` pin is now authoritative (Ryan, 2026-09-21) | The merge, the deploy, then the Render-shell run |
 | "Render account bandwidth hit its 25 GB/month Pro-plan cap on" | Read the billing dashboard | Ops |
 | "Run `scripts/backfill_video_channel.py --apply` from the" | Two backfills from the Render shell | Makes 1,138 channel pins work across 1,903 pages |
 | "45 of the 51 `transcribed=true`-no-page research rows found no live" | Approve the hand-checked plan | Phase 3 |
