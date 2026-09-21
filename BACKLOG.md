@@ -182,7 +182,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
-  [HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973,…
+  [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -2158,12 +2158,12 @@ of human step they need.
   - **Constraint**: nothing reads or advances this queue automatically (a test fails the build if it did); no automatic promotion; never resolve a YouTube page from any machine except the drip Mac (none of the 82 is YouTube-hosted). The 2026-08-22 standing decision against bulk re-transcription is respected: this is a bounded, evidence-backed set with a human review gate. Two stale slugs found while checking (page 775 `port-colborne-resolution-...` is really Brockton ON, page 893 `peterborough-attachments-...` is really Uxbridge ON) are left alone.
   - **History**: `BACKLOG_DONE.md` WO-929 and WO-928; `rtr-business/research/wo928_era_evidence.md`, `wo929_population_recheck.csv`.
 
-- **[HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973, Cablecast show 185), and no re-check can ever reach 1595.**
-  - **Issue**: page 1595 (`leon-2026-07-21-city-council-regular-meeting-7-21-2026`, made 2026-08-19) has no `external_id`. Page 3973 (`leon-valley-tx-2026-07-21-...`, made 2026-09-01) has `cablecast:leonvalleytx.cablecast.tv:185`. Both URL forms (`/show/185` and `/show/185?site=1`) look up to 3973 now, so a re-check of 1595's own URL writes to 3973. That is why the partial-transcript warning reached 3973 and never 1595. Page 1676 (show 179) is the same legacy shape but has no twin.
-  - **Impact**: 1595 shows a transcript that stops at 55% of a 6-hour video with no warning. Its twin shows the warning.
-  - **Next action**: delete 1595 (dry run first, read the title) after adding a `_SLUG_REDIRECTS` entry from its slug to 3973's, or give 1595 the external_id and delete 3973 instead. Then check for other Cablecast pages with a NULL `external_id` and a `?site=1` URL (count them from `/internal/export/pages`).
-  - **Constraint**: Ryan's call which one survives; 3973 already carries the warning and the newer id scheme.
-  - **History**: `BACKLOG_DONE.md` WO-925.
+- **[HUMAN] Other Cablecast pages with no `external_id` may be twins of a keyed page, as Leon Valley's was.**
+  - **Issue**: page 1595 (a `?site=1` copy of Leon Valley show 185, no `external_id`) was a twin of page 3973 and no re-check could reach it; Ryan had it deleted on 2026-09-21 (WO-941 entry in `BACKLOG_DONE.md`). The same shape (a Cablecast page made from a `?site=1` or other query-string URL, so its `external_id` is NULL) may exist on other pages. Nobody has counted them.
+  - **Impact**: unknown; each such twin shows a stale, unwarned transcript that no re-check can update.
+  - **Next action**: list Cablecast pages with a NULL `external_id` from `/internal/export/pages` (read-only), group by normalised show URL, and report the pairs that share a show with a keyed page; delete or key each after a hand-check.
+  - **Constraint**: deleting a page needs a `_SLUG_REDIRECTS` entry first; never bulk-delete.
+  - **History**: `BACKLOG_DONE.md` WO-925 and WO-941.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 

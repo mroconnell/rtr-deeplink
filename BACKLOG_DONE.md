@@ -1,5 +1,28 @@
 # Backlog — done
 
+## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
+
+**Why this ran.** WO-925's scan flagged 35 pages whose web address names a different place than the page's government. Ryan asked for a hand-check, then approved four fixes: delete the junk pages, mint BART, rename the 30 stale addresses, and correct the Lisbon channel pin. The Leon Valley twin (page 1595) was also deleted the same day.
+
+**What the hand-check found (35 pages).**
+
+| Result | Count of 35 | What it means |
+|---|---|---|
+| Stale address, government correct | 30 | The address was frozen from an ingest-time guess. Renamed here, with redirects. |
+| Real mis-key, fixed by hand | 2 | Yamhill County OR (was filed under the city of Dayton) and a Lisbon IA council meeting (was filed under Mount Vernon). |
+| Real mis-key, fixed by a mint | 1 | A BART board meeting keyed to Bart Township, PA. |
+| Junk page, deleted | 2 | A software vendor's promo video keyed to Nemaha County KS, and a domain-parking page keyed to Pawnee County OK. |
+
+**What was done.**
+- **Twin page and junk pages:** page 1595 (Leon Valley, a duplicate of page 3973) and the two junk pages were deleted after dry runs. The Oak Bluffs page (10200) was retitled, dated to the town's agenda (2026-06-04) and renamed.
+- **BART:** minted `rtr:us:ca:san-francisco-bay-area-rapid-transit-district` (Census unit 100767). Its Granicus host pin now points at it instead of Alameda County. The page override and research row follow the deploy.
+- **30 renames:** 30 redirect entries added to `_SLUG_REDIRECTS`. Each rename is applied with `reslug-page` after the Archive deploy carries them.
+- **Lisbon:** the `channel=@mountvernon-lisbonsun1180` pin is removed. That channel is a joint Mount Vernon and Lisbon newspaper, so a channel pin filed Lisbon's council meeting under Mount Vernon. Three per-video pins replace it (two Mount Vernon meetings, one Lisbon).
+
+**Caution.** A fallback pin ranks below a registry name match, which is how BART's Alameda County pin never took effect and the page landed in a Pennsylvania township. The BART pin is a fallback too, so a future BART Granicus page may be misfiled again until Ryan decides on an authoritative pin. The tenant host is BART's own, so an authoritative pin would be safe.
+
+**Deploy.** Archive (redirects, curated row) and resolver (pins). Renames, the BART page override and its research row run after it.
+
 ## WO-929: a separate re-transcription queue for the 82 pages with defective older Whisper text [Done 2026-09-21]
 
 **Why this ran.** WO-928 found 82 pages whose only transcript is older Whisper text (made before the voice filter, or a repair copy of it) with a real defect in the text. Ryan asked for a separate queue so the local Whisper machine can transcribe them again with the voice-filter engine, apart from the tier-3 no-captions queue. This WO builds the queue, a review tool, a test and a runbook. It transcribed nothing and wrote nothing to the production Archive.

@@ -2577,6 +2577,40 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # Oak Bluffs Town Advisory Board Meeting, 2026-06-04) so its address is
     # renamed with the same POST /internal/admin/reslug-page call.
     "oak-bluffs-ma-2026-06-08-video1516165031": "oak-bluffs-ma-2026-06-04-oak-bluffs-town-advisory-board-meeting",
+    # 2026-09-21 (WO-941): 30 pages whose address was frozen from an ingest-time
+    # guess (a neighbouring town or the county) while the stored government is
+    # now correct (hand-checked by the conductor, WO-925 scan); renamed with
+    # POST /internal/admin/reslug-page after this deploy.
+    "detroit-mi-2026-06-22-council-meeting-june-22-2026": "charlotte-nc-2026-06-22-council-meeting-june-22-2026",
+    "los-angeles-county-ca-2025-10-27-city-council-meeting-agenda-on-2025-10-27-7-00": "culver-city-ca-2025-10-27-city-council-meeting-agenda-on-2025-10-27-7-00-pm-regu",
+    "vaughan-2025-01-14-planning-and-development-committee": "caledon-on-2025-01-14-planning-and-development-committee",
+    "burlington-2021-06-21-council": "oakville-on-2021-06-21-council",
+    "port-colborne-resolution-2026-08-11-council-meeting": "brockton-on-2026-08-11-council-meeting",
+    "peterborough-attachments-2026-01-26-council-meeting": "uxbridge-on-2026-01-26-council-meeting",
+    "toronto-2024-08-22-council": "wasaga-beach-on-2024-08-22-council",
+    "oshawa-2026-03-09-regular-council-meeting": "whitby-on-2026-03-09-regular-council-meeting",
+    "kitchener-2024-10-09-2025-budget-plan-report-financial-services-2024-18-council": "kincardine-on-2024-10-09-2025-budget-plan-report-financial-services-2024-18-coun",
+    "brantford-regarding-professional-activity-2025-12-08-regular-council-meeting": "shelburne-on-2025-12-08-regular-council-meeting",
+    "burlington-2026-01-14-council-meeting": "courtenay-bc-2026-01-14-council-meeting",
+    "city-of-foley-2021-02-17-baldwin-county-commission-regular-on-2021-02-17-10-00-a": "baldwin-county-al-2021-02-17-baldwin-county-commission-regular-on-2021-02-17-10",
+    "county-of-cuyahoga-oh-2021-12-06-bedford-city-council-december-6-2021": "bedford-city-oh-2021-12-06-bedford-city-council-december-6-2021",
+    "unknown-jurisdiction-2026-01-22-city-council-on-2026-01-22-6-00-pm-city-hall110": "canton-ga-2026-01-22-city-council-on-2026-01-22-6-00-pm-city-hall110-academy-str",
+    "city-of-duncan-town-2025-01-22-committee-of-the-whole-meeting-wednesday-january": "cowichan-valley-bc-2025-01-22-committee-of-the-whole-meeting-wednesday-january-2",
+    "county-of-los-angeles-ca-2026-01-12-city-council-regular-meeting-january-12-2026": "malibu-ca-2026-01-12-city-council-regular-meeting-january-12-2026",
+    "city-of-sb-2026-01-12-city-council-meeting-january-12-2026": "seal-beach-ca-2026-01-12-city-council-meeting-january-12-2026",
+    "county-of-san-bernardino-comprehensive-treatment-2026-01-08-city-council-special": "victorville-ca-2026-01-08-city-council-special-meeting-of-january-8-2026",
+    "county-of-monterey-ca-2024-12-03-planning-commission": "watsonville-ca-2024-12-03-planning-commission",
+    "may-tx-2024-05-15-may-15-2024-city-council-meeting": "jersey-village-tx-2024-05-15-may-15-2024-city-council-meeting-may-2024",
+    "unknown-jurisdiction-2024-04-02-committee-of-the-whole-on-2024-04-02-1-30-pm-mee": "kenai-peninsula-borough-ak-2024-04-02-committee-of-the-whole-on-2024-04-02-1-30",
+    "unknown-jurisdiction-2026-01-06-board-work-session-01-06-2026": "lewisville-independent-school-district-tx-2026-01-06-board-work-session-01-06-20",
+    "unknown-jurisdiction-2024-10-01-assembly-regular-meeting-on-2024-10-01-6-00-pm": "matanuska-susitna-borough-ak-2024-10-01-assembly-regular-meeting-on-2024-10-01-6",
+    "unknown-jurisdiction-2025-11-10-city-council-on-2025-11-10-5-00-pm": "north-richland-hills-tx-2025-11-10-city-council-on-2025-11-10-5-00-pm",
+    "unknown-jurisdiction-2025-10-13-committee-of-the-whole": "lakewood-oh-2025-11-14-committee-of-the-whole",
+    "unknown-jurisdiction-2022-12-13-board-of-port-commissioners-on-2022-12-13-1-00-p": "port-of-san-diego-ca-2022-12-13-board-of-port-commissioners-on-2022-12-13-1-00-p",
+    "unknown-jurisdiction-2026-01-13-city-council-on-2026-01-13-5-15-pm": "sandy-ut-2026-01-13-city-council-on-2026-01-13-5-15-pm",
+    "new-york-ny-2026-08-19-8-18-26-council-meeting-mp4": "ringwood-nj-2026-08-19-8-18-26-council-meeting-mp4",
+    "brattleboro-vt-2026-03-04-2026-newfane-town-meeting-3-3-26": "newfane-town-vt-2026-03-04-2026-newfane-town-meeting-3-3-26",
+    "whately-ma-2026-09-10-deerfield-selectboard-september-9-2026": "deerfield-ma-2026-09-09-deerfield-selectboard-september-9-2026",
 }
 
 
