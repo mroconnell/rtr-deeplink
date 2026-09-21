@@ -1,0 +1,80 @@
+{#- Context variables:
+     entries (list of entry dicts, published only, newest-first -- see
+       _context_entry.html's own comment for the full per-entry shape)
+     page (int, 1-based)
+     has_prev (bool)
+     has_next (bool)
+     indexable (bool -- false emits <meta name="robots" content="noindex">;
+       page > 1 is ALWAYS noindexed too, regardless of `indexable`, same
+       posture as jurisdiction_page.html's thin-page tag)
+     is_editor (bool -- true shows a "New entry / manage" link to
+       /context/new; false for every signed-out or non-allowlisted reader)
+     active_account (passed straight through -- base.html's nav reads it)
+     globals: public_base_url, generic_card_image_url, generic_card_image_alt
+-#}
+{% extends "base.html" %}
+{% block title %}Full Context — Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.">
+  <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — Full Context" href="/context/feed.xml">
+  {#- page 1 is real navigable content; page 2+ is the same posture as
+     /meetings' pagination -- a near-duplicate listing page, not worth a
+     crawler's own index slot. `indexable` can also say no on page 1
+     itself (e.g. an empty feed), so both conditions are checked. -#}
+  {% if not indexable or page > 1 %}
+  <meta name="robots" content="noindex">
+  {% endif %}
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/context">
+  <meta property="og:url" content="{{ public_base_url }}/context">
+  {% endif %}
+  <meta property="og:title" content="Full Context | Red Tape Recordings">
+  <meta property="og:description" content="Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.">
+  <meta property="og:type" content="website">
+  {#- No meeting of its own -- this page describes the whole feed, not
+     one clip -- so it uses the same shared placeholder every other
+     whole-site page (home, /meetings, /coverage) falls back to. -#}
+  {% if generic_card_image_url %}
+  <meta property="og:image" content="{{ generic_card_image_url }}">
+  <meta property="og:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if generic_card_image_url else 'summary' }}">
+  {% if generic_card_image_url %}
+  <meta name="twitter:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <main class="meeting-list-page context-page">
+    <h1>Full Context</h1>
+    <p class="subtitle">
+      Clips of public meetings travel fast on social media, and they usually arrive without the rest of the meeting.
+      Each entry below links the post to the full recording at that moment, so you can watch what came before and after.
+      &middot; <a href="/context/feed.xml">RSS feed</a>
+      {%- if is_editor %} &middot; <a href="/context/new">New entry / manage</a>{% endif %}
+    </p>
+
+    {% if entries %}
+    <div class="context-entry-list">
+      {% for entry in entries %}
+      {% include "_context_entry.html" %}
+      {% endfor %}
+    </div>
+    {% if has_prev or has_next %}
+    <nav class="pagination" aria-label="Pagination">
+      {% if has_prev %}
+      <a href="/context?page={{ page - 1 }}">&larr; Previous</a>
+      {% endif %}
+      <span class="pagination-status">Page {{ page }}</span>
+      {% if has_next %}
+      <a href="/context?page={{ page + 1 }}">Next &rarr;</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p class="subtitle">No entries yet &mdash; check back soon.</p>
+    {% endif %}
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/context_embeds.js"></script>
+{% endblock %}

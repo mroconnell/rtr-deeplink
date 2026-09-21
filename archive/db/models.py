@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -675,9 +676,10 @@ class SavedItem(Base):
     stable user id (e.g. "user_2abc..."), never an email address. This
     table deliberately stores **no PII at all**: Clerk holds the email,
     we hold only an opaque id plus what was saved, so an account-deletion
-    webhook (see app/main.py's /api/clerk/webhook) only ever needs one
-    `DELETE ... WHERE clerk_user_id = ...` to fully satisfy a right-to-
-    deletion request on our side.
+    webhook (see app/main.py's /api/clerk/webhook) only ever needs a
+    `DELETE ... WHERE clerk_user_id = ...` here (plus one more, unrelated
+    statement against ContextEntry below -- see that model's own
+    docstring) to fully satisfy a right-to-deletion request on our side.
 
     Unsave is a hard delete, not a status flip -- unlike TranscriptVersion
     (never deleted, just demoted), nothing else ever references a
@@ -720,6 +722,127 @@ class SavedItem(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ContextEntry(Base):
+    """One short, editor-written entry in the public `/context` feed
+    (WO-942) -- a social-media post (Instagram/TikTok/YouTube/etc.) that
+    shows a clip from a real public meeting, paired with a deep link into
+    this Archive's own `/m/{slug}?t=` at the moment being referenced.
+
+    **Unrelated to SocialPost above, despite the similar name.** SocialPost
+    is this app's own *outbound* auto-posting ledger -- one row per
+    (meeting page, network) this app posted about on Bluesky/Mastodon.
+    ContextEntry is the opposite direction: an *inbound* citation of
+    someone else's public post, written by hand by an editor, about a
+    meeting this app may or may not have archived. Nothing here ever calls
+    out to Instagram/TikTok/etc. -- see archive/utils/context_links.py's
+    module docstring for why no server-side fetch of a social post happens
+    at all, ever. An entry with no matched meeting (`meeting_page_id`
+    NULL) stays an unpublished draft -- see `status` below.
+
+    **Stores no PII.** `created_by_clerk_user_id` is Clerk's own opaque
+    user id, same convention as SavedItem.clerk_user_id above -- never an
+    email or a name. Everything else on this row is editorial content the
+    editor chose to publish, not personal data about them.
+
+    **Why `status` and `created_by_clerk_user_id` exist even though only
+    allowlisted editors (archive/utils/context_editors.py) can write an
+    entry today.** Today's editor check is a closed allowlist, so every
+    row's author is already trusted and every entry an editor saves is
+    either a private `draft` or a live `published` one -- there's no
+    review queue yet. Both columns are already exactly what an *open*
+    submission flow (anyone can suggest a clip, an editor reviews it
+    before it goes live) would need, and adding them now means that
+    later feature is a new status value plus a review UI, not a schema
+    change against a table that already has real rows in it.
+    """
+
+    __tablename__ = "context_entries"
+    __table_args__ = (
+        UniqueConstraint("social_url_key", name="uq_context_entry_social_url_key"),
+        Index("ix_context_entries_status_published_at", "status", "published_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # The canonical https URL rebuilt from the parsed social post -- never
+    # the raw string an editor pasted (see context_links.parse_social_url()
+    # for what "canonical" means per network). Long enough for a realistic
+    # pasted URL with tracking params still attached, matching
+    # MeetingPageUrlAlias.url_normalized's own String(2048) width.
+    social_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    # The dedupe identity key context_links.parse_social_url() derives from
+    # social_url -- e.g. "instagram:DdF8tEDMtZs" -- so a `/p/` and a
+    # `/reel/` link to the same post collide on save rather than producing
+    # two entries for the same clip. Unique below.
+    social_url_key: Mapped[str] = mapped_column(String(512), nullable=False)
+
+    # "instagram" | "tiktok" | "youtube" | "facebook" | "x" | "threads" |
+    # "bluesky" | "reddit" | "linkedin" | "other" -- plain String, not an
+    # enum, same reasoning as SocialPost.network above: a new network an
+    # editor wants to cite never needs a migration.
+    network: Mapped[str] = mapped_column(String(20), nullable=False)
+    # The handle/outlet as the editor typed it (e.g. "@cityhallwatch") --
+    # display-only, never parsed or verified against the real post.
+    source_label: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    # The editor's own written context for the clip. Length is capped in
+    # app code (context_links.CONTEXT_SUMMARY_MAX), not here, so the cap
+    # can change with no migration.
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # NULL when no meeting has been matched yet -- such an entry can never
+    # be published (see save_context_entry()'s validation) and stays a
+    # private draft until an editor finds and attaches one. ON DELETE
+    # SET NULL rather than CASCADE: deleting the underlying meeting page
+    # (archive/db/crud.py's delete_meeting_pages_by_slug()) should demote
+    # the entry back to an unmatched draft, not silently destroy editorial
+    # content that still cites a real social post.
+    meeting_page_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("meeting_pages.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Seconds into the meeting the cited clip shows -- the deep link's `t`.
+    # NULL when match_kind isn't "exact" (an approximate/related match may
+    # have no single defensible second).
+    t_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # "exact" | "approximate" | "related" -- how confidently social_url's
+    # clip corresponds to meeting_page_id/t_seconds; see
+    # context_links.MATCH_KINDS for the reader-facing label of each.
+    match_kind: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    # "draft" | "published" | "hidden". A draft is never shown on the
+    # public feed (regardless of whether it has a meeting yet); "hidden"
+    # is a published entry pulled back out of public view without losing
+    # its published_at (see below) or its content, e.g. to fix a mistake
+    # before re-publishing.
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="draft", server_default="draft"
+    )
+
+    created_by_clerk_user_id: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+
+    # Set the FIRST time this entry becomes "published", and never touched
+    # again after that -- including across a later hide -> republish cycle
+    # -- so the public feed's sort order (published_at desc) stays stable
+    # instead of an entry jumping back to the top every time an editor
+    # toggles it.
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 

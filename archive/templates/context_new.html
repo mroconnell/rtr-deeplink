@@ -1,0 +1,101 @@
+{#- Context variables:
+     entries (list of entry dicts, ALL statuses, newest-updated first --
+       see _context_entry.html's own comment for the full per-entry shape)
+     editing (an entry dict, or None -- when set, the form is pre-filled
+       from it; `editing.deep_link` seeds the Meeting link field since
+       that's the same relative link the form itself accepts back)
+     match_kinds (dict of slug -> display label, in display order --
+       rendered as <option>s under a blank "Not decided" option)
+     summary_max (int, 500 -- the summary textarea's maxlength and the
+       number shown in the live character counter)
+     active_account (passed straight through -- base.html's nav reads it)
+
+   Editor-only page for the small allowlist of editors -- never indexed,
+   never linked from anywhere but context.html's own "New entry / manage"
+   link (shown there only when is_editor is true). The route author gates
+   access to this page itself; this template assumes whoever reaches it
+   is already allowed to be here.
+-#}
+{% extends "base.html" %}
+{% block title %}Full Context — editor | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="robots" content="noindex">
+{% endblock %}
+{% block content %}
+  <main class="meeting-list-page context-editor-page">
+    <h1>Full Context &mdash; editor</h1>
+    {% if editing %}
+    <p class="subtitle">Editing entry #{{ editing.id }} &mdash; <a href="/context/new">cancel</a></p>
+    {% endif %}
+
+    {#- No `action`/`method` on purpose -- a form that would still submit
+       (as a form-encoded POST) with JS off is exactly what this site's
+       JSON-only CSRF posture rules out. context_editor.js intercepts
+       submit and is the only thing that ever sends this. -#}
+    <form id="contextEntryForm" class="context-entry-form">
+      <input type="hidden" name="id" value="{{ editing.id if editing else '' }}">
+      {#- Filled in by context_editor.js on a 400/409/401/404/502 --
+         hidden until there's something to say, same pattern as this
+         file's own per-entry action-status spans below. -#}
+      <div id="contextFormAlert" class="context-form-alert" hidden role="alert"></div>
+
+      <label class="context-field">
+        Social post URL
+        <input type="url" name="social_url" required value="{{ editing.social_url if editing else '' }}" placeholder="https://www.instagram.com/p/...">
+      </label>
+
+      <label class="context-field">
+        Summary
+        <textarea name="summary" required maxlength="{{ summary_max }}" rows="4">{{ editing.summary if editing else '' }}</textarea>
+        <span class="context-char-count" id="contextSummaryCount">0 / {{ summary_max }}</span>
+      </label>
+
+      <label class="context-field">
+        Who posted it
+        <input type="text" name="source_label" maxlength="120" value="{{ editing.source_label if editing and editing.source_label else '' }}">
+        <span class="context-field-help">The account or outlet, as you want it shown</span>
+      </label>
+
+      <label class="context-field">
+        Meeting link
+        <input type="text" name="rtr_link" value="{{ editing.deep_link if editing and editing.deep_link else '' }}" placeholder="/m/some-meeting?t=754">
+        <span class="context-field-help">Paste the link from &ldquo;Share video at M:SS&rdquo; on the meeting page. Leave blank to save a draft.</span>
+      </label>
+
+      <label class="context-field">
+        Match
+        <select name="match_kind">
+          <option value=""{% if not editing or not editing.match_kind %} selected{% endif %}>Not decided</option>
+          {% for slug, label in match_kinds.items() %}
+          <option value="{{ slug }}"{% if editing and editing.match_kind == slug %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="context-form-actions">
+        <button type="submit" class="cassette-btn-outline" data-status="draft">Save draft</button>
+        <button type="submit" class="cassette-btn" data-status="published">Publish</button>
+      </div>
+    </form>
+
+    {% set draft_count = entries | selectattr("status", "equalto", "draft") | list | length %}
+    {% set published_count = entries | selectattr("status", "equalto", "published") | list | length %}
+    {% set hidden_count = entries | selectattr("status", "equalto", "hidden") | list | length %}
+    <h2>All entries <span class="context-status-counts">{{ draft_count }} draft &middot; {{ published_count }} published &middot; {{ hidden_count }} hidden</span></h2>
+
+    {% if entries %}
+    <div class="context-entry-list context-entry-list-editor">
+      {% set editor_view = true %}
+      {% for entry in entries %}
+      {% include "_context_entry.html" %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="subtitle">No entries yet.</p>
+    {% endif %}
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/context_embeds.js"></script>
+  <script src="/archive-static/context_editor.js"></script>
+{% endblock %}
