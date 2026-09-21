@@ -39,7 +39,11 @@ committing to build any of it yet.
 nullable `search_params` JSON, nullable self-referential
 `parent_note_id` for reposts, `body_text`) replaces the original
 separate `SavedSearch` table, since all four turn out to be the same
-underlying shape. `Account`/`AccountSession` stay as originally sketched.
+underlying shape. Phase 1 shipped without `Account`/`AccountSession`:
+Clerk holds sign-in and identity, and this app's database holds only
+`SavedItem` rows keyed by Clerk's opaque user id (`archive/db/models.py`).
+The `Note` table is still a proposal for the later phases; phase 1 built
+the narrower `SavedItem` instead.
 `NoteSubscription` (account_id, `search_params`, `notify_in_profile`,
 `notify_by_email`) makes the two subscription channels independent
 toggles on one row — `notify_by_email` is what "email alerts for saved
@@ -50,9 +54,11 @@ file-upload capability anywhere in this codebase) not touched by this
 scoping pass.
 
 **Proposed phased plan, deliberately still not one big build:**
-1. Passwordless accounts (magic link, session cookie) + base `Note`
-   model (`saved_meeting`/`saved_search` only) — no billing, could ship
-   free.
+1. **Shipped 2026-08-11:** accounts and saved items (`saved_meeting`/
+   `saved_search`), free, no billing. Built on Clerk sign-in with
+   `SavedItem` — not the magic link, session cookie and base `Note`
+   model first sketched here. See `README.md`'s "Accounts (Clerk)"
+   section.
 2. Public/private profile pages; `NoteSubscription` (both channels) —
    this is what unlocks "email alerts."
 3. `post`/`repost` note types — the profile becomes a real feed.
