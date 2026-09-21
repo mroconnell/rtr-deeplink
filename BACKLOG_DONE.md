@@ -1,5 +1,75 @@
 # Backlog — done
 
+## WO-928: a source- and era-aware way to tell which transcript version is better [Done 2026-09-21]
+
+**Why this ran.** Ryan pointed out that many of our older Whisper transcripts hold made-up words over silence, and that the newer versions (made with a voice filter) have fewer words and no made-up text. WO-927 preferred the version with more cues and words, so it could have pushed the wrong version live. Page 1624 already had to be reverted for that. This WO builds a way to judge two versions without counting cues or words, and re-measures. Nothing was ingested, promoted, re-checked or deleted.
+
+**What was tested.** The metadata of every version on all 10,264 pages (21 requests, no text). Then 672 transcript reads at one per second (limit 700), and 2 audit calls. Every signal was checked against 50 hand-read pairs (first, middle and last cues plus the flagged run).
+
+**When the voice filter arrived, and what `created_at` means.** The code change reached `main` on 2026-08-20 08:17 PT; Ryan confirms it ran locally from the 18th. Nothing on a version row records the engine or filter setting, so the date is all we have. It also misleads: on 2026-08-31 05:07 to 05:09 UTC a repair run made 110 new Whisper rows from old text (a few cues dropped) and made them the default. Reading the text of 77 pairs: 55 are repair copies of old text, 17 are real re-runs, 5 are in between. So a date-only rule wrongly calls repair copies "new". The measured cutover is not the 18th or the 20th: the silence made-up-text signature ("dead air", "Thank you." every 30 seconds) is on 27% of versions before 08-18, 25% from 08-18 to 08-19 21:00 UTC, and 3% after (0 of 32 after the cloud merge). Full evidence: `rtr-business/research/wo928_era_evidence.md`.
+
+| Phase 1 outcome | Count | What it means |
+|---|---|---|
+| Whisper versions before 08-18 / in the mixed window / after 08-19 21:00 UTC | 191 / 96 / 3,617 | of 3,904 Whisper versions |
+| Repair copies among 77 shown/hidden Whisper pairs read | 55 | dated after the filter, text from before it |
+| Real re-runs among those 77 | 17 | the case where the filter replaced a made-up text |
+| Reliable era marker stored on a version | none | era is a probable label; the text signals decide |
+
+**The census (metadata only, all 1,153 multi-version pages).** Best hidden version = the first present of post Whisper, mixed-window Whisper, sourced captions, deduped, pre Whisper.
+
+| Shown version | Best hidden: post Whisper | Mixed-window Whisper | Sourced captions | Deduped | Pre Whisper |
+|---|---|---|---|---|---|
+| Sourced captions | 53 | 2 | 553 | 0 | 0 |
+| Deduped | 1 | 0 | 22 | 0 | 0 |
+| Post Whisper | 331 | 15 | 106 | 0 | 29 |
+| Mixed-window Whisper | 3 | 2 | 0 | 0 | 0 |
+| Pre Whisper | 1 | 0 | 28 | 0 | 7 |
+
+Single-version pages: 5,954 sourced; 2,692 post Whisper; 62 mixed-window Whisper; 97 pre Whisper.
+
+| Headline question | Count | What it means |
+|---|---|---|
+| (a) Shown is pre/window Whisper and a post Whisper is hidden | 4 pages (1225, 1340, 1353, 1357) | the reverse of WO-927. Only 2 (1225, 1353) have a defect in the shown text; both hand-confirmed |
+| (b) Only version is pre/window Whisper | 159 pages | 0 carry a hallucination or garbled warning; 38 are listed by the hallucination audit as not yet flagged; 45 show a defect in the text |
+| (c) Shown sourced captions with a hidden Whisper version | 55 pages | |
+| (c) Shown Whisper with a hidden sourced version | 143 pages | |
+
+The quality audit (one call) reports 9,727 success, 45 garbled, 23 non-English, 8 truncated of 10,264. The hallucination audit (one call) lists 186 Whisper versions: 83 already flagged, 103 not; 138 made by the cloud worker and 48 by the local script.
+
+**Signals and their precision (hand-read, 50 pairs = 100 versions).** Each is reported separately, never merged. Cue count and word count are not signals.
+
+| Signal | Flagged | Really defective | Precision | Caveat |
+|---|---|---|---|---|
+| Dead air (4+ near-identical cues 20 s+ apart) | 18 | 18 | 1.00 | catches 39% of defects: the silence shape only |
+| Loop signature (the repo's own rule) | 25 | 24 | 0.96 | also fires on stutter loops of real speech the filter does not stop |
+| Hallucination detector (the repo's own) | 27 | 26 | 0.96 | |
+| Roll-up overlap 0.20 or more | 5 | 5 | 1.00 | only on caption text |
+| Coarse cues (median 100+ words) | 3 | 3 | 1.00 | 12 to 45 huge all-caps blocks; not deep-linkable |
+| Adjacent duplicates 10% or more | 2 | 2 | 1.00 | rare; the WO-927 page 1624 shape |
+| Label-only (median under 3 words) | 2 | 1 | 0.50 | false on page 1254, a real short transcript |
+| Existing warning text | 13 | 9 | 0.69 | 4 wrong: the YouTube auto-caption note |
+| Any of the above | 47 | 41 | 0.87 | finds 41 of 46 defective versions (89%) |
+
+Words per minute and last-cue time are reported only as context. Coverage against the video's length could not be computed: the Archive stores no duration on the page, so every page counts as unmeasurable.
+
+**Candidate lists** (`rtr-business/research/wo928_candidates.csv`; never promoted).
+
+| List | Pages | What it means |
+|---|---|---|
+| A: shown pre/window Whisper with a defect, clean post Whisper hidden | 2 (1225, 1353) | hand-confirmed; the hidden version reads clean |
+| B: shown has a defect, a hidden version has none | 8 fully read; 6 hand-confirmed (1018, 1022, 1225, 1353, 1967, 1990) | 725 low priority; 1658 hand-read says leave as is. A random sample of 78 of the 1,042 other multi-version pages found 0 more (upper bound about 40) |
+| C: pre/window text with a defect and nothing cleaner (re-transcription pool) | 82 pages, 254 hours | 46 with the silence signature the filter prevents, 35 with speech loops it does not, 1 other. 45 single-version, 37 multi (28 are repair copies) |
+
+**The WO-927 result was wrong.** Of its 5 "clearly worse" pages (1254, 1500, 1624, 2000, 3086), none needs a promotion: 1254's shown version is the clean filtered one (the hidden one is Welsh text and one phrase repeated 93 times, so WO-927's rule would have promoted the wrong one), 2000's hidden version is 45 huge caption blocks, 1624 and 1500 show a fine version now, 3086 is two clean sourced versions. Its label-only pair (241, 3938) already shows the clean version. `scripts/wo927_worse_shown_versions.py` and its test are deleted; `scripts/wo928_version_quality.py` replaces them.
+
+**Caution.** The era cutover comes from a sample of 369 read versions (not random: multi-version pages and pre-window singles). Repair-copy detection by date only was right on 55 of 56 checked and wrong once more later, so the tool checks content. B beyond the pages read is an estimate: 0 found in 78, at most about 40.
+
+**Recommendation.** Promote the 6 hand-confirmed B pages after a look at each. Decide the 82-page pool: the 46 silence-signature pages first. Run the tool on the Render shell for the exact B count.
+
+**Deploy status.** None: a script, a test, docs. Nothing reaches production.
+
+**Files.** `scripts/wo928_version_quality.py`, `tests/test_wo928_version_quality.py`; `rtr-business/research/wo928_era_evidence.md`, `wo928_census.csv`, `wo928_signal_calibration.csv`, `wo928_candidates.csv`, `wo928_summary.csv`, `wo928_methods_section.md` (left for the conductor to commit).
+
 ## WO-927: how many pages show a worse transcript than a hidden version they already hold? [Done 2026-09-20]
 
 **Why this ran.** Edina MN (page 3645) showed speaker labels only while a hidden version held the real words. Ryan asked whether Edina was one page or a pattern. This WO measured it. Nothing was changed or promoted.
@@ -21,6 +91,8 @@
 | b2. Rule b and hidden has at least 1.25x the words | 5 (1254, 1500, 1624, 2000, 3086) | Exact |
 | c. Shown flagged garbled or truncated, hidden not | 1 (1658) | Exact |
 | d. Shown language mismatch, hidden matches | 0 | Exact |
+
+**Correction (WO-928, 2026-09-21).** The result below counted cues and words, which is the wrong signal for our own Whisper text (before the voice filter it invented text over silence). "At least 7 pages clearly worse" does not hold; none of the 5 word-count pages needs a promotion. See WO-928 above. The script it names is deleted.
 
 **Result.** Edina is not a one-off, but it is rare. At least 7 pages (0.6% of multi-version pages) show clearly worse text. Rule b alone is 2.9%, but 24 of its 33 pages hold the same words cut into more cues, so they are not worse. Page 1254's hidden version is labelled Welsh, so check it by hand.
 

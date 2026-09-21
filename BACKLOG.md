@@ -179,8 +179,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   iQM2's real meeting-body field lives only on the calendar listing…
   PrimeGov has a real, structured `committeeId` field — but no…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
-  [HUMAN] Run the WO-927 read-only count from the Render shell, then…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
+  [HUMAN] Decide which hidden transcript versions to promote (WO-928…
+  [HUMAN] Decide whether to re-transcribe the pre-voice-filter Whisper…
   [HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973,…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
@@ -2143,12 +2144,19 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-- **[HUMAN] Run the WO-927 read-only count from the Render shell, then decide which hidden versions to promote.**
-  - **Issue**: WO-927 (2026-09-20) measured pages that show a worse transcript than a hidden version they hold, over public URLs only. Exact so far: 1 page with a garbled shown version (1658), 0 language cases, 33 pages where the shown version has under 60% of a hidden version's cues (24 of them are only a different way of cutting the same words, 5 hold at least 1.25x fewer words: 1254, 1500, 1624, 2000, 3086). The label-only shape (the Edina shape) is a lower bound of 2 pages (241, 3938), because only 167 of 1,153 multi-version pages were read.
-  - **Impact**: at least 7 pages show clearly worse text than a hidden version. The true label-only count is unknown until every multi-version page is read.
-  - **Next action**: from the Archive service's Render shell run `python scripts/wo927_worse_shown_versions.py --out wo927_worse_shown_full.csv` (read-only SELECTs, one page at a time, safe to stop). Send the CSV to the conductor. Then promote each confirmed better version with `POST /internal/transcript-version/promote`, one at a time, reading the page first.
-  - **Constraint**: never promote from the count alone. Cue count is not quality; hand-read each page. Do not read all pages over the public site (standing decision: no bulk workload from an interactive session).
-  - **History**: `BACKLOG_DONE.md` WO-927; files `rtr-business/research/wo927_*`.
+- **[HUMAN] Decide which hidden transcript versions to promote (WO-928 measured; WO-927's "7 pages clearly worse" was wrong).**
+  - **Issue**: WO-927 (2026-09-20) counted cues and words, which favours our own pre-voice-filter Whisper text (it invents text over silence). WO-928 (2026-09-21) redid it from the text. Of the 5 pages WO-927 called "clearly worse" (1254, 1500, 1624, 2000, 3086), none needs a promotion: 1254's shown version is the clean one (the hidden one is Welsh text and one phrase x93), 2000's hidden version is 45 huge caption blocks, 1624 and 1500 show a fine version now (the roll-up caption on 1624 is hidden, and 1500's hidden version is a single cue), 3086 is two clean sourced versions. What is real: category A (shown is pre-filter Whisper with a defect, a clean post-filter Whisper is hidden) = 2 pages, 1225 and 1353. Category B (shown has a defect, a hidden version has none) = 8 pages fully read, 6 hand-confirmed: 1018, 1022, 1225, 1353 (loops) and 1967, 1990 (shown is 45 or 16 huge all-caps caption blocks that cannot be deep-linked); 725 is low priority, 1658 should stay as is. A random sample of 78 of the 1,042 multi-version pages not fully read found 0 more (upper bound about 40).
+  - **Impact**: about 6 pages show a clearly worse text than a hidden version. Small. In the random sample of 78 pairs the hidden version was the defective one in 34, both were clean in 41, and both defective in 3.
+  - **Next action**: read `rtr-business/research/wo928_candidates.csv` (rows A and B, high confidence first), then promote each confirmed page with `POST /internal/transcript-version/promote`, one at a time, reading the page first. Optionally run `python scripts/wo928_version_quality.py --out wo928_full.csv` from the Archive service's Render shell (read-only) for the exact count over all pages.
+  - **Constraint**: never promote from a signal alone, and never from cue or word count. A version dated after another can be a repair copy of it (55 of 77 checked pairs); check content, not `created_at`.
+  - **History**: `BACKLOG_DONE.md` WO-928 (and the corrected WO-927); files `rtr-business/research/wo928_*`. `scripts/wo927_worse_shown_versions.py` is deleted: its rules b and b2 were the flawed ones.
+
+- **[HUMAN] Decide whether to re-transcribe the pre-voice-filter Whisper pool (WO-928: 82 pages, 254 hours of audio).**
+  - **Issue**: 287 Whisper versions were made before the voice filter (VAD) took full effect (191 before 2026-08-18 and 96 in the mixed window up to about 2026-08-19 21:00 UTC; that cutover is measured from the text, not the 18th or the 20th). 159 pages have only such a version, none carries a hallucination or garbled warning, and 45 of them show a defect in the text (38 of those are listed by `GET /internal/transcription/hallucination-candidates` as not yet flagged). Adding pages whose shown version is a 2026-08-31 repair copy of pre-filter text, the pool is 82 pages, 46 with the silence signature ("Thank you." every 30 seconds) that the filter prevents and 35 with loops of real speech that it does not.
+  - **Impact**: 254 hours of meeting audio in one pool; the 46 silence-signature pages are the ones a re-run is likely to fix. The 35 speech-loop pages may reproduce (the 2026-08-22 decision: loops come from the audio).
+  - **Next action**: Ryan picks a scope. Suggested: the 46 silence-signature pages first (`wo928_candidates.csv`, category C, `shown_why` contains `dead_air`), through the cloud worker or `scripts/transcribe_backlog_locally.py --promote`. Then repair the remaining loops with `scripts/repair_repetition_loops.py` rather than a re-run.
+  - **Constraint**: the 2026-08-22 standing decision says do not bulk re-transcribe; this is a bounded, evidence-backed subset, not a bulk run. A repair copy is not a re-run: its era is its parent's.
+  - **History**: `BACKLOG_DONE.md` WO-928; `rtr-business/research/wo928_era_evidence.md`.
 
 - **[HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973, Cablecast show 185), and no re-check can ever reach 1595.**
   - **Issue**: page 1595 (`leon-2026-07-21-city-council-regular-meeting-7-21-2026`, made 2026-08-19) has no `external_id`. Page 3973 (`leon-valley-tx-2026-07-21-...`, made 2026-09-01) has `cablecast:leonvalleytx.cablecast.tv:185`. Both URL forms (`/show/185` and `/show/185?site=1`) look up to 3973 now, so a re-check of 1595's own URL writes to 3973. That is why the partial-transcript warning reached 3973 and never 1595. Page 1676 (show 179) is the same legacy shape but has no twin.
