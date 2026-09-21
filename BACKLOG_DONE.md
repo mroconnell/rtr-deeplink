@@ -1,5 +1,77 @@
 # Backlog — done
 
+## WO-934 follow-up: Ryan's answers on Derry, Hopkins, Sebring and Malibu; Derry needs no mint; two new `requires` rules in the repair tool [Done 2026-09-21]
+
+**Why this ran.** WO-934 left four rows open for Ryan: page 3367 (Derry, NH), page 3453 (Hopkins on Vimeo), and the two deletes 6906 (Sebring) and 7086 (Malibu). He answered all four in chat on 2026-09-21. The answers needed two changes to the repair tool, because the old `requires` rules could not express them.
+
+**Ryan's answers (verbatim, relayed by the conductor).**
+
+| Page | What Ryan said |
+|---|---|
+| 3367, Derry NH | "Derry Cooperative School District" |
+| 3453, Hopkins on Vimeo | "Hopkins, MN" |
+| 6906, Sebring FL | "Sebring video does not play - videos like this play: https://www.youtube.com/live/yTeXBxcodt8?si=D8AzLOdwY-t_KUoj" (he checked by clicking the link) |
+| 7086, Malibu CA | "Malibu video does not play - Malibu video hub is https://www.malibucity.org/662/Public-Meeting-Video-Archive and video links like this play: https://www.youtube.com/watch?v=XoWrMZwRFcU" |
+
+He had told the conductor earlier, for Malibu, to ingest a replacement first (`PveTE-5yFiU`, pinned on `main`) and then delete 7086.
+
+**What changed on the sheet.** 26 rows now say `approve`.
+
+| Row | Change |
+|---|---|
+| 3453 Hopkins | target `us:sd:2714260` (Hopkins Public School District, MN), approved. No mint. |
+| 3367 Derry | target `us:sd:3302610`, approved. **Not minted** (see below). |
+| 6906 Sebring | delete approved. The approval is **inferred**: Ryan said the video does not play, not "delete". It is read by analogy with Malibu, and the conductor is confirming it with him. The row's reason says so. |
+| 7086 Malibu | delete approved |
+
+Both delete rows keep the ordering rule. Neither may run until its replacement video is on a live page under the same government. Malibu's hub address and the working link `XoWrMZwRFcU` are recorded on row 7086 as evidence only. Nothing was ingested.
+
+**Derry: no mint, and why.** The instruction was to mint "Derry Cooperative School District", because the Census school-district list seemed to have no cooperative district. The collision check found otherwise.
+
+| Source | What it says |
+|---|---|
+| `us_school_districts.csv` | `3302610, Derry School District, NH, elementary`: the Census list's name for LEA 3302610 |
+| NCES's own page for LEA 3302610 (`nces.ed.gov/ccd/districtsearch/district_detail.asp?ID2=3302610`, fetched 2026-09-21) | "Derry Cooperative School District", Derry NH 03038 |
+| Census of Governments `cog_units.csv` | unit 181197, "DERRY COOP SCH DIST", school district, NH |
+
+So the existing id `us:sd:3302610` is the cooperative, under a shorter name. A mint would have created a second government for the same district. The sheet row points at the existing id, and no mint is needed before the row runs. I added one curated row keyed to that id (the Boise "curated alias" pattern) so the name readers see is "Derry Cooperative School District, NH" and the Census unit is linked. Tests show the district is one government, that the Census unit is the one named, and that both spellings resolve to it. If Ryan wants a mint anyway, say so; the cost is a duplicate district.
+
+**Derry: the pin.** A per-media pin was added: `videoplayer.telvue.com`, match `/media/951693`, fallback, to `us:sd:3302610`. The pin format supports a media-level match (the resolver looks for the match text anywhere in the address, and there is a precedent, `media/1040134` for Ashland). The whole TelVue token `CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l` is NOT pinned to the district: it also carries Derry town meetings (pages 3525 and 3573) and stays pinned to Derry town. The match starts with a slash on purpose: matching rows of one strength are tried in alphabetical order, and a match that starts with a letter sorts after the token row and never wins. A test shows media 951693 files under the district, media 1038769 on the same token stays Derry town, and the playlist form of the address matches too. One existing test used media 951693 as its Derry-town example; it now uses media 1038769. On a shared host a matching pin of any strength applies, so the fallback pin is effective here (checked in the resolver).
+
+**The tool: two new `requires` rules** (`scripts/repair_wrong_pages.py`), with tests.
+
+| Rule | What it does |
+|---|---|
+| `video-gone:<who>-<YYYY-MM-DD>` (for example `video-gone:ryan-2026-09-21`) | A person's recorded check satisfies the video-gone requirement, with no drip status file. It is trusted for 14 days, the same limit as a status check. A date in the future is refused. A NEWER status file that says the video is alive overrules it. A malformed token fails `check`. The bare `video-gone` still needs a status file. |
+| `replacement-video:<video_id>` (replaces `replacement-page:<id>`, which is now refused with a message saying so) | The live Archive must hold ANOTHER page carrying that video id, filed under the same government as the page to be deleted. The tool finds it by reading the Archive's page list, read-only, 500 pages a request, once per run; it looks at each page's video address, source address and `youtube:<id>` external id. A page is never its own replacement. Refused otherwise, with the reason: not ingested yet, or live under a different government. |
+
+Every other safety is unchanged: a dry run first, the expected-slug and government refusal, `--allow-deletes`, `--only-ids`, the batch cap, and stopping on the first unexpected answer (a failed page-list read stops the run). The two committed rows are exercised in a test against stand-in pages: refused with no replacement, refused with a replacement under another government, deleted only with the replacement live and `--allow-deletes`, still refused when stale, and refused once Ryan's check is more than 14 days old. A second test drives the same rule through the real Archive app on a local SQLite file.
+
+**Result: what a run would do now** (if every live page still matches; from the tool's own decision code).
+
+| What happens to the row | Count of 48 rows |
+|---|---|
+| Re-key written | 40 |
+| Delete written (needs `--allow-deletes`): pages 6114, 6101, 6830 | 3 |
+| Delete written once its replacement page is live: pages 6906, 7086 | 2 |
+| Skipped: 2504 (approved, but no registry id to write) | 1 |
+| Skipped: Ryan kept 6119 and 6218 | 2 |
+
+The sheet by action and confidence is now 24 high and 17 medium re-keys, and 2 high and 5 medium deletes.
+
+**Caution.**
+- **Sebring's approval is inferred.** If Ryan did not mean "delete", clear row 6906's `ryan_decision`.
+- **The replacement pages do not exist yet.** The drip Mac ingests them. Until then the two delete rows are refused, which is the point. Both videos are already pinned to their city, so the pages will be filed correctly.
+- **The Derry media pin assumes a TelVue media id is unique across organisations.** The precedent pins do too. The match `/media/951693` would also match a media id that merely starts with those digits; none exists in the current id range.
+- **Ryan's click check ages out after 14 days.** If the run slips past 2026-10-05, someone must look again and re-date the token.
+- **Only the five mint rows need the Archive deploy to know a new id.** Derry, Hopkins and the deletes need nothing minted.
+
+**Recommendation.** Merge, deploy, run the WO-934 commands. When the drip has ingested `yTeXBxcodt8` and `PveTE-5yFiU`, run the Sebring and Malibu deletes with `--only-ids 6906,7086` (dry run first). Ask Ryan whether he wants `XoWrMZwRFcU` ingested.
+
+**Deploy status.** The Derry curated row and pin are data files inside the image, so the Archive and the resolver need the next deploy (the same one WO-934 already asks for). Scripts, sheet and docs need none. No model changed, so `alembic check` was not run.
+
+**Docs updated.** `BACKLOG.md` (the "Apply the reviewed wrong-page sheet" entry and the gone-video entry's constraint; TOC regenerated), `docs/BACKLOG_PHASES.md` (the WO-934 status and Ryan's list).
+
 ## WO-934: one bulk tool and one reviewed sheet for wrong live pages, five governments minted, seven stale or decided entries closed, four rewritten [Done 2026-09-21]
 
 **Why this ran.** Phase 1 of `docs/BACKLOG_PHASES.md` is about wrong content readers can see. About 50 live pages sit under the wrong government or hold a video that is not a meeting. Fixing one meant a hand-typed call to the Archive. Ryan asked for one tool that repairs many pages in reviewed batches, one reviewed list of the pages, and a check of which backlog entries were still true. Three of five "Needs a human" entries were already stale when the work began. Ryan then gave decisions on the sheet's rows, in two rounds (below), and this entry records both.

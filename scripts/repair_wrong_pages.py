@@ -41,11 +41,21 @@ The safety rules, all enforced here.
   * A row that needs Ryan (`needs_ryan=yes`) does nothing until `ryan_decision`
     says `approve`. `reject` skips it. Deletes ALWAYS need `approve`, even
     when `needs_ryan` says `no`, and need `--allow-deletes` on top.
-  * `requires` holds conditions the tool checks: `video-gone` (a checked,
-    recent status file must say this page's video is deleted, private or
-    malformed; pass it with `--video-status`) and `replacement-page:<id>`
-    (that page must exist now and carry the same government). An empty or
-    unknown condition is never met.
+  * `requires` holds conditions the tool checks, all of which must hold:
+      `video-gone`  a checked, recent status file (`--video-status`) must say
+                    this page's video is deleted, private or malformed.
+      `video-gone:<who>-<YYYY-MM-DD>`  a person's recorded check on that date
+                    (for example `video-gone:ryan-2026-09-21`, Ryan clicking
+                    the link) stands in for the status file. It is trusted
+                    for the same 14 days a status check is, and a NEWER status
+                    file that says the video is alive overrules it.
+      `replacement-video:<video_id>`  the live Archive must hold ANOTHER page
+                    for that video, filed under the same government. The tool
+                    finds it by reading the Archive's page list (read-only,
+                    500 pages per request), because the replacement's page id
+                    cannot be known before the page exists.
+    An unknown or malformed condition is never met, and a sheet that carries
+    one fails `check`.
   * Every row is tried as a dry run first, even under `--apply`, and the
     answer must match the expected values. After a write the page is read
     again and must show the new state.
@@ -89,6 +99,7 @@ import csv
 import datetime as dt
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass, field
@@ -101,7 +112,7 @@ import httpx
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from app.platforms.youtube_ids import extract_video_id  # noqa: E402
+from app.platforms.youtube_ids import _RESERVED_NON_IDS, extract_video_id  # noqa: E402
 
 DEFAULT_WORKLIST = REPO_ROOT / "reports" / "wrong_page_worklist.csv"
 
@@ -235,11 +246,25 @@ class Row:
         return self.ryan_decision == "reject"
 
 
+_HUMAN_CHECK_RE = re.compile(r"^([a-z][a-z0-9]*)-(\d{4}-\d{2}-\d{2})$")
+_VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def parse_human_check(arg: str) -> Optional[Tuple[str, dt.date]]:
+    """`ryan-2026-09-21` -> ("ryan", date(2026, 9, 21)); None when malformed."""
+    match = _HUMAN_CHECK_RE.match(arg)
+    if not match:
+        return None
+    try:
+        return match.group(1), dt.date.fromisoformat(match.group(2))
+    except ValueError:
+        return None
+
+
 def parse_requires(text: str) -> Tuple[List[Tuple[str, str]], List[str]]:
-    """`video-gone;replacement-page:123` -> [("video-gone", ""), ("replacement-page", "123")].
-    Returns (tokens, problems). An empty argument on `replacement-page` is
-    allowed to parse (it is how the sheet says "not ingested yet") and is
-    never treated as met."""
+    """`video-gone:ryan-2026-09-21;replacement-video:PveTE-5yFiU` ->
+    [("video-gone", "ryan-2026-09-21"), ("replacement-video", "PveTE-5yFiU")].
+    Returns (tokens, problems)."""
     tokens: List[Tuple[str, str]] = []
     problems: List[str] = []
     for part in (text or "").split(";"):
@@ -248,10 +273,26 @@ def parse_requires(text: str) -> Tuple[List[Tuple[str, str]], List[str]]:
             continue
         kind, _, arg = part.partition(":")
         kind, arg = kind.strip(), arg.strip()
-        if kind == "video-gone" and not arg:
-            tokens.append((kind, ""))
-        elif kind == "replacement-page" and (arg == "" or arg.isdigit()):
+        if kind == "video-gone" and (not arg or parse_human_check(arg)):
             tokens.append((kind, arg))
+        elif kind == "video-gone":
+            problems.append(
+                f"{part!r}: a human check reads video-gone:<who>-<YYYY-MM-DD>"
+            )
+        elif (
+            kind == "replacement-video"
+            and _VIDEO_ID_RE.match(arg)
+            and arg not in _RESERVED_NON_IDS
+        ):
+            tokens.append((kind, arg))
+        elif kind == "replacement-video":
+            problems.append(
+                f"{part!r}: replacement-video needs an 11-character video id"
+            )
+        elif kind == "replacement-page":
+            problems.append(
+                f"{part!r}: replacement-page is gone; use replacement-video:<video_id>"
+            )
         else:
             problems.append(f"unknown condition {part!r} in requires")
     return tokens, problems
@@ -427,6 +468,27 @@ def _keep_newest(table: dict, key, status: str, checked: dt.date) -> None:
         table[key] = (status, checked)
 
 
+def page_video_ids(page: dict) -> List[str]:
+    """Every YouTube video id a live page carries: its video address, its
+    source address, and a `youtube:<id>` external id. Empty for a page with
+    none (a Granicus or CivicClerk page, say)."""
+    found: List[str] = []
+    for text in (page.get("video_url"), page.get("source_url_normalized")):
+        video_id = extract_video_id(text or "")
+        if video_id and video_id not in found:
+            found.append(video_id)
+    external = (page.get("external_id") or "").strip()
+    if external.startswith("youtube:"):
+        tail = external[len("youtube:") :]
+        if (
+            _VIDEO_ID_RE.match(tail)
+            and tail not in _RESERVED_NON_IDS
+            and tail not in found
+        ):
+            found.append(tail)
+    return found
+
+
 # ---------------------------------------------------------------------------
 # The Archive, over HTTP
 # ---------------------------------------------------------------------------
@@ -449,6 +511,7 @@ class ArchiveClient:
         self.calls: List[str] = []
         # Every call that was NOT a dry run. Empty means nothing was written.
         self.writes: List[str] = []
+        self._video_index: Optional[Dict[str, List[dict]]] = None
 
     def _send(self, method: str, path: str, **kwargs) -> dict:
         self.calls.append(f"{method} {path}")
@@ -493,6 +556,47 @@ class ArchiveClient:
                     found[int(page["id"])] = page
         return found
 
+    def reset_video_index(self) -> None:
+        """Forget the page list read for `replacement-video`; run_rows() calls
+        this first, so one run never reads a list older than itself."""
+        self._video_index = None
+
+    def pages_with_video(self, video_id: str) -> List[dict]:
+        """Live pages whose video is `video_id`, for `replacement-video`.
+
+        There is no route that finds a page by video id, and a replacement
+        page's id cannot be known before it exists, so this reads the page
+        list the same read-only way `scripts/wrong_page_screen.py` does:
+        `GET /internal/export/pages`, 500 metadata rows per request, no
+        transcripts. It reads the whole list once per run and keeps only a
+        small dict per page, so later calls cost nothing.
+        """
+        if self._video_index is None:
+            index: Dict[str, List[dict]] = {}
+            after_id = 0
+            while True:
+                body = self._send(
+                    "GET",
+                    "/internal/export/pages",
+                    params={"after_id": after_id, "limit": 500},
+                )
+                pages = body.get("pages")
+                if not isinstance(pages, list):
+                    raise UnexpectedResponse("export/pages answered no 'pages' list")
+                for page in pages:
+                    small = {
+                        "id": page.get("id"),
+                        "slug": page.get("slug"),
+                        "gov_id": page.get("gov_id"),
+                    }
+                    for found in page_video_ids(page):
+                        index.setdefault(found, []).append(small)
+                after_id = body.get("next_after_id")
+                if after_id is None:
+                    break
+            self._video_index = index
+        return list(self._video_index.get(video_id, []))
+
     def override(self, page_id: int, gov_id: str, *, dry_run: bool) -> dict:
         if not dry_run:
             self.writes.append(f"override page {page_id} -> {gov_id}")
@@ -532,6 +636,9 @@ class Context:
     max_status_age_days: int = MAX_STATUS_AGE_DAYS
     apply: bool = False
     allow_deletes: bool = False
+    # video id -> the live pages that carry it (ArchiveClient.pages_with_video).
+    # None means "cannot look", and a `replacement-video` row is then refused.
+    find_video: Optional[Callable[[str], List[dict]]] = None
 
 
 def _live_gov(page: dict) -> str:
@@ -561,33 +668,82 @@ def check_requirements(row: Row, ctx: Context) -> Optional[str]:
     page = ctx.live.get(row.page_id) or {}
     for kind, arg in row.requires:
         if kind == "video-gone":
-            if ctx.status is None:
-                return "video-gone needs a checked status file (--video-status)"
-            video_id = extract_video_id(
-                page.get("video_url") or ""
-            ) or extract_video_id(page.get("source_url_normalized") or "")
-            found = ctx.status.lookup(row.page_id, video_id)
-            if found is None:
-                return "the status file has no check of this page's video"
-            status, checked = found
-            age = (ctx.today - checked).days
-            if age > ctx.max_status_age_days:
-                return f"the video check is {age} days old (limit {ctx.max_status_age_days})"
-            if status not in GONE_STATUSES:
-                return f"the video check on {checked} says {status!r}, not gone"
-        elif kind == "replacement-page":
-            if not arg:
-                return "no replacement page id yet (replacement-page: is empty)"
-            replacement = ctx.live.get(int(arg))
-            if replacement is None:
-                return f"replacement page {arg} is not live"
-            if _live_gov(replacement) != _live_gov(page):
-                return (
-                    f"replacement page {arg} is filed under "
-                    f"{_live_gov(replacement) or NO_GOV!r}, not this page's "
-                    f"{_live_gov(page) or NO_GOV!r}"
-                )
+            problem = _video_gone_unmet(row, page, arg, ctx)
+            if problem:
+                return problem
+        elif kind == "replacement-video":
+            problem = _replacement_video_unmet(row, page, arg, ctx)
+            if problem:
+                return problem
     return None
+
+
+def _status_for(row: Row, page: dict, ctx: Context) -> Optional[Tuple[str, dt.date]]:
+    if ctx.status is None:
+        return None
+    video_id = extract_video_id(page.get("video_url") or "") or extract_video_id(
+        page.get("source_url_normalized") or ""
+    )
+    return ctx.status.lookup(row.page_id, video_id)
+
+
+def _video_gone_unmet(row: Row, page: dict, arg: str, ctx: Context) -> Optional[str]:
+    """None when the video is shown gone: by a person's dated check (`arg`),
+    or, with no `arg`, by a recent status file."""
+    found = _status_for(row, page, ctx)
+    if arg:
+        who, checked = parse_human_check(arg)  # validated when the sheet was read
+        age = (ctx.today - checked).days
+        if age < 0:
+            return f"the recorded check by {who} is dated {checked}, in the future"
+        if age > ctx.max_status_age_days:
+            return (
+                f"the check by {who} on {checked} is {age} days old "
+                f"(limit {ctx.max_status_age_days}): look again and re-date it"
+            )
+        # A status file that is NEWER than the person's check and says the
+        # video is alive overrules it: a private video can be made public.
+        if found is not None:
+            status, status_date = found
+            if status_date > checked and status not in GONE_STATUSES:
+                return (
+                    f"a status check on {status_date} says {status!r}, newer than "
+                    f"the check by {who} on {checked}"
+                )
+        return None
+    if ctx.status is None:
+        return "video-gone needs a checked status file (--video-status)"
+    if found is None:
+        return "the status file has no check of this page's video"
+    status, checked = found
+    age = (ctx.today - checked).days
+    if age > ctx.max_status_age_days:
+        return f"the video check is {age} days old (limit {ctx.max_status_age_days})"
+    if status not in GONE_STATUSES:
+        return f"the video check on {checked} says {status!r}, not gone"
+    return None
+
+
+def _replacement_video_unmet(
+    row: Row, page: dict, video_id: str, ctx: Context
+) -> Optional[str]:
+    """None when the live Archive holds another page for `video_id`, filed
+    under the same government as the page this row would delete."""
+    if ctx.find_video is None:
+        return (
+            "replacement-video needs a live read of the Archive, and none is available"
+        )
+    holders = [p for p in ctx.find_video(video_id) if p.get("id") != row.page_id]
+    if not holders:
+        return f"no live page has video {video_id} yet: ingest the replacement first"
+    mine = _live_gov(page)
+    if any(_live_gov(p) == mine for p in holders):
+        return None
+    filed = sorted({_live_gov(p) or NO_GOV for p in holders})
+    return (
+        f"video {video_id} is live on page {holders[0].get('id')}, but under "
+        f"{', '.join(filed)}, not this page's {mine or NO_GOV}"
+    )
 
 
 def decide(row: Row, ctx: Context) -> Tuple[str, str]:
@@ -842,12 +998,11 @@ def run_rows(
     """Decide every row from a fresh live read, then try the eligible ones."""
     report = RunReport()
     chosen = [r for r in rows if only_ids is None or r.page_id in only_ids]
+    reset = getattr(client, "reset_video_index", None)
+    if reset is not None:
+        reset()
 
     wanted = {r.page_id for r in chosen if not r.rejected}
-    for r in chosen:
-        for kind, arg in r.requires:
-            if kind == "replacement-page" and arg.isdigit():
-                wanted.add(int(arg))
     try:
         live = client.read_pages(wanted)
     except UnexpectedResponse as exc:
@@ -860,13 +1015,23 @@ def run_rows(
         apply=apply,
         allow_deletes=allow_deletes,
         max_status_age_days=max_status_age_days,
+        find_video=getattr(client, "pages_with_video", None),
     )
     if today is not None:
         ctx.today = today
 
     written = 0
     for row in chosen:
-        outcome, detail = decide(row, ctx)
+        try:
+            outcome, detail = decide(row, ctx)
+        except UnexpectedResponse as exc:
+            # The page list read for `replacement-video` failed.
+            result = Result(row, HALTED, str(exc), live.get(row.page_id) or {})
+            report.results.append(result)
+            if log:
+                log.write(result)
+            report.halted = f"page {row.page_id}: {exc}"
+            return report
         if outcome not in (WOULD_REKEY, WOULD_DELETE):
             result = Result(row, outcome, detail, live.get(row.page_id) or {})
         elif apply and written >= batch_size:
