@@ -57,10 +57,71 @@ than pure click-to-load. `BACKLOG.md`'s CSP/embed-origins entry corrected
 — its "Show the post here" button framing undersold what a missing CSP
 origin would break now that some embeds autoload with no button at all.
 
+**Permalink pages (asked mid-review).** Ryan reviewed the feed and asked
+whether each entry had its own URL, since today's only anchor
+(`#context-{id}`) isn't stable — an entry moves to page 2 as newer ones
+publish. Built `GET /context/{id}` (`archive/main.py`'s `context_entry_
+page()`, `archive/db/crud.py`'s `get_public_context_entry()`), a
+permalink page for one entry, proxied by the resolver the same way as
+the other `/context*` routes. It renders published entries only — a
+draft or hidden entry's permalink is a plain 404, even for the signed-in
+editor (a draft previews in the editor's own list instead), and an
+orphaned entry (its meeting deleted) is excluded by the same INNER JOIN
+the public feed already uses. Every entry gained a `permalink` key
+(`/context/{id}`) on the shared data contract, present regardless of
+status, so a headline (or the fallback below) always has somewhere
+stable to point.
+
+**The h1/link rule.** On the feed and the editor list, a headline is a
+link to its own permalink — except a not-yet-published entry in the
+editor list, where that link would 404, so it stays plain text there.
+On the permalink page itself, the SAME headline becomes that page's one
+`<h1>`, plain text (a page never links to itself); an entry with no
+headline uses the matched meeting's own title as that `<h1>` instead
+(get_public_context_entry() guarantees a permalink page always has a
+meeting). An entry with no headline is still linkable everywhere: the
+public feed gets a small, quiet "Link to this post" text link riding
+along in the original-post line, and the editor list gets a "View post"
+action next to Edit (only shown once published, same reasoning as the
+headline link). The permalink page reuses `_context_entry.html`, the
+same partial the feed and editor list already share, via two new flags
+(`permalink_view=true`, `autoload=true` — a reader who opened one
+specific post should see its embed without a click) — no separate markup
+to drift.
+
+**Deliberately left alone.** The RSS feed (`context_feed.xml.jinja`) is
+untouched — its `<link>` still points at the entry's meeting deep link,
+not the new permalink; that's a real semantics question (what "the URL
+for this item" should mean to a subscriber), not a code change, and
+belongs with the sitemap decision below rather than folding in
+silently. Per-entry permalinks are also NOT in the sitemap yet — both
+gaps are logged as one new `BACKLOG.md` entry (Growth, audience &
+discoverability) to decide once the feed clears `CONTEXT_MIN_INDEXABLE`
+and stops being `noindex`'d; today neither gap costs any real indexing.
+
+Permalink pages were checked in the browser through the resolver, with
+one draft, one titled published entry and one untitled published entry.
+
+| Check | Result |
+|---|---|
+| `/context/{id}` for a published entry | 200 |
+| For a draft, an unknown id, and `/context/abc` | 404 each |
+| `/context/new` and `/context/feed.xml` | Still reach their own routes |
+| Feed: titled entry | The title links to `/context/2` |
+| Feed: untitled entry | "Original post on X · Link to this post", linking to `/context/3` |
+| Entry page | Exactly one `<h1>`, not a link. Embed loads with no click. A "← Full Context" link back. |
+| Share tags | Title, summary, canonical URL, and an absolute `og:image` for the frame at `t=754` |
+| `noindex` | Present with 2 published entries (below the threshold of 5) |
+
+One fix came out of that check. The title rendered at 16.8px, 0.8px
+larger than body text, so it did not read as a heading on either page.
+It is now 1.3rem and semibold on the feed, and 1.8rem as the entry
+page's `<h1>`.
+
 **Verification.**
 
 All five CI gates passed locally on 2026-09-21: `ruff check`, `ruff
-format --check`, the full suite (**4657 passed, 16 skipped, 4 xfailed, 0 failed**), `alembic check` for
+format --check`, the full suite (**4680 passed, 16 skipped, 4 xfailed, 0 failed**), `alembic check` for
 both services on a fresh migration-built SQLite (single head
 `f3a29d6e1c48`), and the `BACKLOG_DONE.md` heading check. Node tests: 81
 passed.

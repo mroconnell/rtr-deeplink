@@ -48,6 +48,27 @@ async def _make_page(external_id: str) -> str:
     return result["slug"]
 
 
+async def _make_youtube_page(external_id: str) -> str:
+    # A YouTube-hosted MEETING (distinct from a YouTube social post) --
+    # its card_url comes back already-absolute (i.ytimg.com, see
+    # youtube_thumbnail_url()), the other of the two shapes
+    # test_context_entry_page_og_image_absolute_for_youtube_card exists
+    # to check. dQw4w9WgXcQ is a real, stable public video id, same
+    # reasoning as test_context_shows_embed_attributes_for_youtube_entry
+    # above -- the source_url below is synthetic (identity only comes
+    # from (platform, external_id) for an ingest like this), so it need
+    # not itself be a real YouTube URL.
+    source_url = f"https://example.com/context-pages-youtube-test/{external_id}"
+    payload = {
+        **_payload(external_id, source_url),
+        "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "video_format": "youtube",
+        "platform": "youtube",
+    }
+    result = await crud.ingest_resolution(payload, source_url)
+    return result["slug"]
+
+
 async def _publish_entry(
     social_url: str,
     *,
@@ -507,3 +528,329 @@ def test_archive_page_nav_has_full_context_link():
     response = client.get("/coverage")
     assert response.status_code == 200
     assert '<a class="nav-link" href="/context">Full Context</a>' in response.text
+
+
+# --- /context/{id} permalink page (WO-945 follow-up) ------------------------
+#
+# Same shared-DB caution as the rest of this module: scope assertions to
+# the one entry under test (there's only ever one <article> on a
+# permalink page's own response, but other tests' published entries still
+# populate the FEED assertions below, so those go through _entry_html()
+# same as the autoload section above).
+
+
+async def test_context_entry_page_404s_for_a_draft():
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="Still a draft.",
+        status="draft",
+    )
+    response = client.get(f"/context/{result['ok']['id']}")
+    assert response.status_code == 404
+
+
+async def test_context_entry_page_404s_for_a_hidden_entry():
+    entry = await _publish_entry(_social_url(), summary="Will be hidden.")
+    await crud.set_context_entry_status(entry["id"], "hidden")
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 404
+
+
+def test_context_entry_page_404s_for_an_unknown_id():
+    response = client.get("/context/999999999")
+    assert response.status_code == 404
+
+
+def test_context_entry_page_404s_for_a_non_numeric_id():
+    # Starlette's :int path convertor simply doesn't match "abc" -- this
+    # falls through to the app's own StarletteHTTPException(404) handler
+    # (archive/main.py), which renders the same not_found.html, so the
+    # only thing worth pinning here is the status code.
+    response = client.get("/context/abc")
+    assert response.status_code == 404
+
+
+def test_context_new_and_feed_xml_are_not_captured_by_the_int_route():
+    # /context/new and /context/feed.xml must keep resolving to their own
+    # routes, not fall through to context_entry_page() -- registration
+    # order plus the :int convertor should already guarantee this; this
+    # is the outside-in check.
+    new_response = client.get("/context/new")
+    assert new_response.status_code in (200, 404)  # 404 only if not an editor
+    assert new_response.headers.get("content-type", "").startswith("text/html")
+
+    feed_response = client.get("/context/feed.xml")
+    assert feed_response.status_code == 200
+    assert feed_response.headers["content-type"].startswith("application/rss+xml")
+
+
+async def test_context_entry_page_200_headline_is_the_only_h1(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Body text.",
+        title="The one and only heading",
+    )
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert response.text.count("<h1") == 1
+    assert '<h1 class="context-headline">The one and only heading</h1>' in response.text
+    # Not a link to itself.
+    assert (
+        f'<h1 class="context-headline"><a href="/context/{entry["id"]}">'
+        not in response.text
+    )
+
+
+async def test_context_entry_page_escapes_the_summary(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Innocent text <script>alert(1)</script> more text.",
+        title="Escaping check",
+    )
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert "<script>alert(1)</script>" not in response.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+
+
+async def test_context_entry_page_no_headline_uses_meeting_title_as_h1(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(_social_url(), summary="No title on this one.")
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert response.text.count("<h1") == 1
+    assert f'<h1 class="context-headline">{entry["title"]}</h1>' in response.text
+
+
+async def test_context_entry_page_noindex_follows_the_feed_threshold(monkeypatch):
+    entry = await _publish_entry(_social_url(), summary="Threshold check.")
+
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 1_000_000)
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex">' in response.text
+
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex">' not in response.text
+
+
+async def test_context_entry_page_canonical_and_og_tags(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Canonical and OG tag check.",
+        title="Canonical check headline",
+    )
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    permalink = f"https://redtaperecordings.com/context/{entry['id']}"
+    assert f'<link rel="canonical" href="{permalink}">' in response.text
+    assert f'<meta property="og:url" content="{permalink}">' in response.text
+    assert (
+        '<meta property="og:title" content="Canonical check headline">' in response.text
+    )
+    assert 'property="og:description" content="Canonical and OG tag check.">' in (
+        response.text
+    )
+    assert '<meta property="og:type" content="article">' in response.text
+
+
+async def test_context_entry_page_og_image_absolute_for_youtube_card(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    slug = await _make_youtube_page(f"ctx-permalink-ytpage-{uuid.uuid4().hex[:10]}")
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="YouTube-backed og:image check.",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry = result["ok"]
+    assert entry["card_url"] is not None
+    assert entry["card_url"].startswith("https://i.ytimg.com/")
+
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    # Already absolute -- must NOT be double-prefixed with public_base_url.
+    assert f'<meta property="og:image" content="{entry["card_url"]}">' in response.text
+    assert (
+        f'content="https://redtaperecordings.com{entry["card_url"]}"'
+        not in response.text
+    )
+
+
+async def test_context_entry_page_og_image_absolute_for_relative_card_url(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    slug = await _make_page(f"ctx-permalink-thumb-{uuid.uuid4().hex[:10]}")
+    page = await crud.get_page_by_slug(slug)
+    stored = await crud.store_thumbnail(
+        page["id"],
+        offset_seconds=30,
+        image_bytes=b"fake-jpeg-bytes",
+        etag="deadbeef-permalink",
+        is_default=True,
+    )
+    assert stored is True
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="Relative card_url og:image check.",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry = result["ok"]
+    assert entry["card_url"] == f"/m/{slug}/card.jpg"
+
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert (
+        f'<meta property="og:image" content="https://redtaperecordings.com{entry["card_url"]}">'
+        in response.text
+    )
+
+
+async def test_context_entry_page_og_image_falls_back_to_generic(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "generic_card_image_url",
+        "https://redtaperecordings.com/m/some-generic/card.jpg",
+    )
+    slug = await _make_page(f"ctx-permalink-nocard-{uuid.uuid4().hex[:10]}")
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="No card_url at all -- falls back to the generic image.",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry = result["ok"]
+    assert entry["card_url"] is None
+
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert (
+        '<meta property="og:image" content="https://redtaperecordings.com/m/some-generic/card.jpg">'
+        in response.text
+    )
+
+
+async def test_context_entry_page_embed_autoloads(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(_yt_url(), summary="Embed should autoload here.")
+    response = client.get(f"/context/{entry['id']}")
+    assert response.status_code == 200
+    assert "data-embed-autoload" in response.text
+    assert 'data-embed-kind="youtube"' in response.text
+
+
+async def test_feed_headline_links_to_the_permalink(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Headline should link to the permalink on the feed.",
+        title="Linked headline",
+    )
+    response = client.get("/context")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry["id"])
+    assert html is not None
+    assert (
+        f'<h2 class="context-headline"><a href="/context/{entry["id"]}">Linked headline</a></h2>'
+        in html
+    )
+
+
+async def test_feed_no_headline_entry_still_has_a_permalink_link(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="No headline, but still linkable."
+    )
+    response = client.get("/context")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry["id"])
+    assert html is not None
+    assert "context-headline" not in html
+    assert (
+        f'<a href="/context/{entry["id"]}" class="context-permalink-quiet">Link to this post</a>'
+        in html
+    )
+
+
+async def test_editor_list_draft_headline_is_not_a_link(monkeypatch):
+    monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_permalink_editor")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_ctx_permalink_editor"
+    )
+    unique_title = f"Draft headline {uuid.uuid4().hex[:10]}"
+    created = await crud.save_context_entry(
+        "user_ctx_permalink_editor",
+        social=parse_social_url(_social_url()),
+        summary="A draft with a headline.",
+        title=unique_title,
+        status="draft",
+    )
+    entry_id = created["ok"]["id"]
+
+    response = client.get("/context/new")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry_id)
+    assert html is not None
+    assert f'<h2 class="context-headline">{unique_title}</h2>' in html
+    assert f'<a href="/context/{entry_id}">{unique_title}</a>' not in html
+
+
+async def test_editor_list_published_entry_headline_links_to_permalink(monkeypatch):
+    monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_permalink_editor2")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_ctx_permalink_editor2"
+    )
+    unique_title = f"Published headline {uuid.uuid4().hex[:10]}"
+    entry = await _publish_entry(
+        _social_url(), summary="A published entry with a headline.", title=unique_title
+    )
+
+    response = client.get("/context/new")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry["id"])
+    assert html is not None
+    assert (
+        f'<h2 class="context-headline"><a href="/context/{entry["id"]}">{unique_title}</a></h2>'
+        in html
+    )
+    assert (
+        f'<a href="/context/{entry["id"]}" class="cassette-btn-outline">View post</a>'
+        in html
+    )

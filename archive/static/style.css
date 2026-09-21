@@ -2022,13 +2022,39 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 .context-status-hidden { background: var(--error-bg); color: var(--secondary); }
 
 /* The editor's own optional short title for an entry (WO-945) -- sits
-   above the match badge/summary, a notch below .featured-title's meeting
-   heading in weight since it's the entry's own heading, not the page's. */
+   above the match badge/summary. It is the post's headline, so it reads
+   as one: clearly larger than the summary and than the meeting-title link
+   further down. At the first draft's 1.05rem it was 0.8px bigger than
+   body text and did not read as a heading at all (seen in the browser). */
 .context-headline {
-  margin: 0 0 0.35rem;
-  font-size: 1.05rem;
-  line-height: 1.35;
+  margin: 0 0 0.45rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.3;
   color: var(--fg);
+}
+/* On the entry's own permalink page the same element is the page's one
+   <h1> (see _context_entry.html's permalink_view), so it gets page-
+   heading size. */
+h1.context-headline {
+  font-size: 1.8rem;
+  line-height: 1.2;
+  margin-bottom: 0.6rem;
+}
+@media (max-width: 576px) {
+  h1.context-headline { font-size: 1.5rem; }
+}
+/* On the feed/editor list the headline is usually a link to the entry's
+   own permalink (WO-945 follow-up) -- no color override, same as
+   .featured-title's own link right below it (shared_static/
+   highlights.css), just the underline held back until hover so the
+   heading itself isn't visually noisier than the plain-text case. */
+.context-headline a {
+  text-decoration: none;
+}
+.context-headline a:hover,
+.context-headline a:focus {
+  text-decoration: underline;
 }
 
 /* Match-kind badge: "exact" is solid (the strongest claim -- this is the
@@ -2197,3 +2223,26 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
   font-size: 0.9rem;
 }
 .context-form-alert a { color: var(--secondary); font-weight: 600; }
+
+/* The quiet fallback permalink link (WO-945 follow-up) shown next to the
+   original-post link only when an entry has no headline to carry a link
+   to its own permalink -- same muted-until-hover treatment as
+   .context-source a right next to it, so it reads as a secondary, not a
+   primary, action on the card. */
+.context-permalink-quiet {
+  color: var(--muted);
+  text-decoration: none;
+}
+.context-permalink-quiet:hover,
+.context-permalink-quiet:focus {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+/* The permalink page's own "← Full Context" back link (WO-945
+   follow-up) -- reuses .subtitle's existing muted color/max-width/link
+   styling as-is, this only adds a little breathing room before the
+   entry card starts below it. */
+.context-back-link {
+  margin-bottom: 1.25rem;
+}

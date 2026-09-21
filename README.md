@@ -2091,7 +2091,7 @@ parses the slug and `t` out of the pasted link itself. `line`/`version`
 params on a pasted link are ignored for now (see `BACKLOG.md`).
 
 **Architecture.** The Archive renders the public pages and owns the
-writes; the resolver holds the public domain and proxies three GET
+writes; the resolver holds the public domain and proxies four GET
 routes plus two public write endpoints, the same two-hop pattern
 save-meeting/save-search already use (see "Accounts (Clerk)" above).
 There is no catch-all proxy — each route is explicit.
@@ -2101,9 +2101,10 @@ There is no catch-all proxy — each route is explicit.
 | `GET /context` | resolver → proxies to Archive, forwarding the `Cookie` header | the public feed page |
 | `GET /context/feed.xml` | resolver → proxies to Archive, **no** cookie forwarded | RSS feed |
 | `GET /context/new` | resolver → proxies to Archive, forwarding the `Cookie` header | the editor form + draft list |
+| `GET /context/{id}` | resolver → proxies to Archive, forwarding the `Cookie` header | one entry's own permalink page (WO-945 follow-up) |
 | `POST /api/context/save` | resolver, public | verifies the Clerk session, forwards the verified user id to Archive |
 | `POST /api/context/set-status` | resolver, public | same — publish/hide/draft transitions |
-| `GET /context`, `/context/feed.xml`, `/context/new` | Archive | renders the page/feed/form; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
+| `GET /context`, `/context/feed.xml`, `/context/new`, `/context/{id}` | Archive | renders the page/feed/form/permalink; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
 | `POST /internal/context/save` | Archive, token-gated | the real write, re-checking the allowlist |
 | `POST /internal/context/set-status` | Archive, token-gated | status transitions, re-checking the allowlist |
 
@@ -2114,7 +2115,8 @@ Front-end: `archive/static/context_embeds.js` (click-to-load, plus the
 page-1 autoload path — WO-945),
 `archive/static/context_editor.js` (the form). Templates:
 `archive/templates/context.html`, `_context_entry.html`,
-`context_new.html`, `context_feed.xml.jinja`.
+`context_new.html`, `context_feed.xml.jinja`, `context_entry_page.html`
+(the permalink page, WO-945 follow-up).
 
 **Data model.** A new Archive table, `context_entries` (model
 `ContextEntry`, `archive/db/models.py`), with one Alembic migration —
@@ -2157,6 +2159,25 @@ rename happens.
 at least `CONTEXT_MIN_INDEXABLE` (5) published entries — the same
 thin-page reasoning as the `/state/*`/`/j/*` hub pages (see
 `STATE_HUB_PAGES.md`). Pages after the first are always `noindex`.
+
+**Permalink pages (`/context/{id}`, WO-945 follow-up).** The feed's own
+per-entry anchor (`#context-{id}`) isn't a stable link — an entry slides
+to page 2 as newer ones publish. Every entry also gets a real URL,
+`/context/{id}`, which 404s for anything that isn't a published entry
+with a real, still-existing meeting (a draft, a hidden entry, an orphan
+whose meeting was deleted, or an unknown id) — even for the signed-in
+editor, who previews a draft on `/context/new` instead. When an entry has
+a title, that title is the link to its permalink everywhere it appears
+(the feed, the editor list); the permalink page itself renders that same
+title as its own `<h1>` (or, absent one, the matched meeting's title).
+An entry with no title is still linkable — a small "Link to this post"
+text link on the feed, a "View post" action in the editor list. The
+permalink page's own embed always autoloads (unlike the feed's capped,
+page-1-only autoload — see above), since a reader who opened one specific
+post wants to see it. Indexing follows the feed's own threshold
+(`CONTEXT_MIN_INDEXABLE`), not a per-entry decision. Not yet in the
+sitemap, and the RSS feed's `<link>` still points at the entry's meeting
+deep link rather than its permalink — both are open, see `BACKLOG.md`.
 
 **Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
 a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
@@ -3102,10 +3123,13 @@ archive/
     feed.xml.jinja            feed.xml (RSS) template
     context.html               the public /context feed -- see "Full
                            Context feed" above
-    _context_entry.html       one feed entry, included by context.html
+    _context_entry.html       one feed entry, included by context.html,
+                           context_new.html and context_entry_page.html
     context_new.html           the editor form + draft list, backs
                            /context/new
     context_feed.xml.jinja    /context/feed.xml (RSS)
+    context_entry_page.html    one entry's own permalink page, backs
+                           /context/{id} -- WO-945 follow-up
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM, plus

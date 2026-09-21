@@ -1966,6 +1966,19 @@ async def archive_context_new(request: Request):
     )
 
 
+# Registered AFTER /context/new and /context/feed.xml, same reasoning as
+# archive/main.py's own context_entry_page() route -- Starlette's `:int`
+# convertor already can't match either literal path, but the ordering
+# makes that obvious to a reader without having to reason about it.
+@app.get("/context/{entry_id:int}")
+async def archive_context_entry_page(request: Request, entry_id: int):
+    return await _proxy_to_archive(
+        f"context/{entry_id}",
+        str(request.query_params),
+        request.headers.get("cookie"),
+    )
+
+
 @app.get("/sitemap.xml")
 async def archive_sitemap():
     return await _proxy_to_archive("sitemap.xml", "")

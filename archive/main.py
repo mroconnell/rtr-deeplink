@@ -3612,6 +3612,51 @@ async def context_new(request: Request, id: Optional[int] = None):
     return response
 
 
+# Registered AFTER /context/new and /context/feed.xml on purpose, even
+# though Starlette's `:int` convertor already can't match either literal
+# path ("new"/"feed.xml" aren't digits) -- the ordering makes that
+# non-collision obvious to a reader without having to reason about the
+# convertor, and matches how every other literal-before-parametrized pair
+# in this file is ordered.
+@app.get("/context/{entry_id:int}")
+async def context_entry_page(request: Request, entry_id: int):
+    """The WO-945 permalink page for one Full Context entry -- a stable
+    URL a headline (or, absent one, the feed's quiet permalink link) can
+    point at regardless of which feed page the entry is currently on.
+
+    Same in-route 404 pattern as context_new() above: a draft, a hidden
+    entry, or an unknown id all render the plain not_found.html, never a
+    distinct "exists but not public" response -- get_public_context_
+    entry() already applies the real published+has-meeting rule, so
+    every rejection reason collapses to the same 404 here. This holds
+    even for a signed-in editor: a draft previews in the editor's own
+    list (/context/new), not at its own permalink.
+    """
+    entry = await crud.get_public_context_entry(entry_id)
+    if entry is None:
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    # Same threshold and same "read the module attribute at call time so
+    # a test can monkeypatch it" reasoning as context_feed() above --
+    # individual permalink pages follow the feed's own indexing decision
+    # rather than always being indexable, since a feed too thin to index
+    # is also too thin to have proven any one entry's lasting value.
+    indexable = (
+        await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE
+    )
+    return templates.TemplateResponse(
+        request,
+        "context_entry_page.html",
+        {
+            "entry": entry,
+            "indexable": indexable,
+            "is_editor": is_context_editor(get_clerk_user_id(request)),
+            "active_account": get_clerk_user_id(request),
+        },
+    )
+
+
 # Public, indexable static pages -- not MeetingPage rows, so they have no
 # real lastmod and aren't produced by list_all_page_slugs(). Deliberately
 # excludes /account/saved, /alerts/unsubscribe, /meeting (already

@@ -79,6 +79,7 @@ _CONTRACT_KEYS = {
     "status",
     "summary",
     "headline",
+    "permalink",
     "social_url",
     "network",
     "network_label",
@@ -530,6 +531,82 @@ async def test_get_context_entry_round_trips_a_saved_entry():
 
 async def test_get_context_entry_returns_none_for_unknown_id():
     assert await crud.get_context_entry(999_999_999) is None
+
+
+# --- get_public_context_entry (WO-945 permalink pages) --------------------
+
+
+async def test_get_public_context_entry_returns_a_published_entry_with_a_meeting():
+    slug = await _make_page("ctx-permalink-published")
+    page = await crud.get_page_by_slug(slug)
+    created = await crud.save_context_entry(
+        "user_ctx_permalink_published",
+        social=_social(),
+        summary="Publicly permalinkable.",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry_id = created["ok"]["id"]
+
+    fetched = await crud.get_public_context_entry(entry_id)
+    assert fetched is not None
+    assert fetched["id"] == entry_id
+    assert fetched["has_meeting"] is True
+    assert fetched["permalink"] == f"/context/{entry_id}"
+
+
+async def test_get_public_context_entry_returns_none_for_a_draft():
+    created = await crud.save_context_entry(
+        "user_ctx_permalink_draft",
+        social=_social(),
+        summary="Still a draft.",
+        status="draft",
+    )
+    entry_id = created["ok"]["id"]
+    assert await crud.get_public_context_entry(entry_id) is None
+
+
+async def test_get_public_context_entry_returns_none_for_a_hidden_entry():
+    slug = await _make_page("ctx-permalink-hidden")
+    page = await crud.get_page_by_slug(slug)
+    created = await crud.save_context_entry(
+        "user_ctx_permalink_hidden",
+        social=_social(),
+        summary="Was published, now hidden.",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry_id = created["ok"]["id"]
+    await crud.set_context_entry_status(entry_id, "hidden")
+    assert await crud.get_public_context_entry(entry_id) is None
+
+
+async def test_get_public_context_entry_returns_none_for_an_orphaned_entry():
+    # Same hand-crafted orphan shape as
+    # test_public_list_excludes_drafts_hidden_and_orphans above: "published"
+    # in the DB with no real meeting joinable. Neither writer can actually
+    # produce this (see that test's own comment), but the INNER JOIN must
+    # exclude it regardless of how it got there.
+    async with async_session() as session:
+        orphan = ContextEntry(
+            social_url=_social().canonical_url,
+            social_url_key=f"url:https://example.com/permalink-orphan-{uuid.uuid4().hex}",
+            network="other",
+            summary="An orphaned published row.",
+            meeting_page_id=None,
+            status="published",
+        )
+        session.add(orphan)
+        await session.commit()
+        orphan_id = orphan.id
+
+    assert await crud.get_public_context_entry(orphan_id) is None
+
+
+async def test_get_public_context_entry_returns_none_for_unknown_id():
+    assert await crud.get_public_context_entry(999_999_999) is None
 
 
 # --- card_url: YouTube vs a real stored thumbnail vs neither --------------

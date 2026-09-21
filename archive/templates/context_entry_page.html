@@ -1,0 +1,74 @@
+{#- Context variables:
+     entry (dict, PUBLIC-view -- see _context_entry.html's own comment for
+       the full per-entry shape. Always has_meeting=true, status=
+       "published" here: get_public_context_entry() (archive/db/crud.py)
+       already enforces that, so this template never needs to branch on
+       either.)
+     indexable (bool -- same CONTEXT_MIN_INDEXABLE threshold as the feed
+       itself, archive/main.py's context_entry_page() re-checks it at
+       call time, see that route's own comment for why a single entry's
+       indexing follows the WHOLE feed's threshold rather than its own)
+     is_editor (bool -- passed straight through, matching every other
+       context.html-family template, even though this page shows no
+       editor controls today)
+     active_account (passed straight through -- base.html's nav reads it)
+     globals: public_base_url, generic_card_image_url, generic_card_image_alt
+
+   The WO-945 permalink page for one Full Context entry (`/context/{id}`)
+   -- a stable URL for a headline (or, absent one, the feed's quiet
+   permalink affordance) to link to, since an entry's position on the
+   paginated feed moves over time. Renders the SAME _context_entry.html
+   partial the feed uses, with `permalink_view=true` (its own headline
+   becomes this page's one <h1>, not a link back to itself) and
+   `autoload=true` (a reader who opened one specific post wants to see
+   it, unlike the feed's page-1-only, capped autoload). -#}
+{% extends "base.html" %}
+{% set _entry_title = entry.headline or entry.title or "Full Context" %}
+{% set _description = entry.summary|truncate(160) %}
+{% block title %}{{ _entry_title }} — Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="{{ _description }}">
+  <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — Full Context" href="/context/feed.xml">
+  {#- Same posture as the feed itself: a permalink page only earns an
+     index slot once the whole feed has proven itself worth crawling --
+     see context_entry_page()'s own comment on why this isn't decided
+     per-entry. -#}
+  {% if not indexable %}
+  <meta name="robots" content="noindex">
+  {% endif %}
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}{{ entry.permalink }}">
+  <meta property="og:url" content="{{ public_base_url }}{{ entry.permalink }}">
+  {% endif %}
+  <meta property="og:title" content="{{ _entry_title }}">
+  <meta property="og:description" content="{{ _description }}">
+  <meta property="og:type" content="article">
+  {#- entry.card_url is either already absolute (youtube_thumbnail_url()'s
+     i.ytimg.com URLs) or a site-relative /m/{slug}/card.jpg path (see
+     _context_entry_dict()'s own comment) -- prefix public_base_url only
+     in the relative case, same "absolute for every scraper" reasoning as
+     meeting_page.html's own thumbnail_url. -#}
+  {% set _image_url = (entry.card_url if entry.card_url.startswith('http') else (public_base_url ~ entry.card_url)) if (entry.card_url and public_base_url) else generic_card_image_url %}
+  {% set _image_alt = ("Video still from " ~ _entry_title) if entry.card_url else generic_card_image_alt %}
+  {% if _image_url %}
+  <meta property="og:image" content="{{ _image_url }}">
+  <meta property="og:image:alt" content="{{ _image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if _image_url else 'summary' }}">
+  {% if _image_url %}
+  <meta name="twitter:image:alt" content="{{ _image_alt }}">
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <main class="meeting-list-page context-page context-entry-page">
+    <p class="subtitle context-back-link"><a href="/context">&larr; Full Context</a></p>
+    <div class="context-entry-list">
+      {% set permalink_view = true %}
+      {% set autoload = true %}
+      {% include "_context_entry.html" %}
+    </div>
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/context_embeds.js"></script>
+{% endblock %}

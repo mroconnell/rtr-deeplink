@@ -11012,6 +11012,16 @@ def _context_entry_dict(
     is a completely different thing: the MEETING's own title, only ever
     set once `page` is known (None until then, same as every other
     meeting-dependent field). Do not conflate the two.
+
+    `permalink` (WO-945 follow-up) is this entry's own stable URL,
+    `/context/{id}` -- computed straight from `entry["id"]`, present on
+    EVERY entry regardless of status/meeting (unlike most of this dict,
+    which is meeting-dependent). It exists so a headline (or, absent one,
+    the quiet permalink affordance -- see _context_entry.html) always has
+    somewhere stable to link, even for an entry that later moves off page
+    1 of the feed. It is not itself a check that the permalink page will
+    200 for this entry -- get_public_context_entry() (the route behind
+    it) applies the real published+has-meeting rule at read time.
     """
     t_seconds = entry["t_seconds"]
     result = {
@@ -11019,6 +11029,7 @@ def _context_entry_dict(
         "status": entry["status"],
         "summary": entry["summary"],
         "headline": entry["headline"],
+        "permalink": f"/context/{entry['id']}",
         "social_url": entry["social_url"],
         "network": entry["network"],
         "network_label": NETWORK_LABELS.get(entry["network"], NETWORK_LABELS["other"]),
@@ -11204,6 +11215,42 @@ async def get_context_entry(entry_id: int) -> Optional[dict]:
         if entry is None:
             return None
         return await _context_entry_response(session, entry)
+
+
+async def get_public_context_entry(entry_id: int) -> Optional[dict]:
+    """One entry by id, PUBLIC-view shape -- backs the permalink page
+    (`GET /context/{id}`, archive/main.py). Same rule list_context_
+    entries(public=True) applies to the feed: only a `published` entry
+    with a real, still-existing meeting (INNER JOIN, not a plain lookup +
+    status check) is servable here -- a draft, a hidden entry, or an
+    orphan whose meeting was deleted (see delete_meeting_pages_by_slug()'s
+    demotion above -- the demotion already flips status back to draft, so
+    an orphan can't actually reach this function as `published`, but the
+    JOIN keeps the two checks in one place rather than trusting that
+    invariant silently holds forever). None for any of those, or an
+    unknown id, or the table not existing yet -- the route turns None
+    into a plain 404, same as everywhere else that already means "nothing
+    to show," never a distinct "it exists but you can't see it" signal.
+    """
+    async with async_session() as session:
+        if not await _context_available(session):
+            return None
+        row = (
+            await session.execute(
+                select(ContextEntry, MeetingPage)
+                .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                .where(ContextEntry.id == entry_id, ContextEntry.status == "published")
+            )
+        ).first()
+        if row is None:
+            return None
+        entry, page = row
+        frames = await _context_servable_frames(session, [page.id])
+        return _context_entry_dict(
+            _entry_row_to_dict(entry),
+            _context_page_row_to_dict(page),
+            servable_frames=frames,
+        )
 
 
 async def save_context_entry(
