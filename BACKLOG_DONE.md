@@ -113,7 +113,7 @@ Of the 90 school-body pages, 33 are sheet rows. The other 57 are not on the shee
 - **Two rows (6119 and 6218) look like a government's own channel** (6218's handle is the city's; 6119's handle matches an agency site, which is an inference). Under Ryan's three-outcome rule such a video is kept but hidden. Hiding is not built, so the tool can only delete them. Ryan should write `reject` until hiding exists.
 
 **Recommendation.**
-1. **Ryan, one question that decides 14 rows:** should a school-board meeting that sits under a county or a city be re-filed under the school district? The audit left this open because some districts cover the same land as the county. If yes, approve the 14 proposed re-keys.
+1. **Ryan, one question that decides 13 of the 14 proposed re-keys:** should a school-board meeting that sits under a county or a city be re-filed under the school district? The audit left this open because some districts cover the same land as the county. If yes, approve those 13. The 14th, Duval County (page 5501), is a page with no government at all.
 2. **Ryan, the mint decisions:** page 5945 (South Snohomish County Fire and Rescue RFA, Census unit 248695), page 10852 (North Valley Public Safety Department, no Census unit), and two county offices of education (Santa Clara, pages 645 and 2004; Solano, page 5301). Or leave them unresolved.
 3. **Ryan, four best-effort rows and page 2504:** approve or reject each (see the sheet).
 4. **Deploy the Archive** (already due for WO-932, WO-933 and WO-935) so the tool and the sheet reach the Render shell. Then, on the Archive's Render shell:

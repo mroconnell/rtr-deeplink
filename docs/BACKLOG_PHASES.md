@@ -595,7 +595,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | "One live page is keyed to the wrong government: a real" | Nothing: page 7328 already shows Chenango Town, NY | Nothing |
 | "13 archived YouTube pages point at a video that is gone (7" | Wait for the drip Mac's status check of 101 pages, then read each row the tool builds | WO-934's delete rows |
 | "A Pennsylvania Public Utility Commission hearing was briefly" | Decided 2026-09-21: no mint | Nothing |
-| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Write approve or reject on the 28 rows that need him (one question, whether a school board under a county moves to its district, settles 14) | The Render-shell run |
+| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Write approve or reject on the 28 rows that need him (one question, whether a school board under a county or city moves to its district, settles 13 of the 14 proposed re-keys) | The Render-shell run |
 | "Render account bandwidth hit its 25 GB/month Pro-plan cap on" | Read the billing dashboard | Ops |
 | "Run `scripts/backfill_video_channel.py --apply` from the" | Two backfills from the Render shell | Makes 1,138 channel pins work across 1,903 pages |
 | "45 of the 51 `transcribed=true`-no-page research rows found no live" | Approve the hand-checked plan | Phase 3 |
