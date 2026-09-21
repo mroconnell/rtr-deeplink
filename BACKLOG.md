@@ -179,7 +179,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   iQM2's real meeting-body field lives only on the calendar listing…
   PrimeGov has a real, structured `committeeId` field — but no…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
+  [HUMAN] Run the WO-927 read-only count from the Render shell, then…
   [HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973,…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
@@ -2141,6 +2142,13 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+- **[HUMAN] Run the WO-927 read-only count from the Render shell, then decide which hidden versions to promote.**
+  - **Issue**: WO-927 (2026-09-20) measured pages that show a worse transcript than a hidden version they hold, over public URLs only. Exact so far: 1 page with a garbled shown version (1658), 0 language cases, 33 pages where the shown version has under 60% of a hidden version's cues (24 of them are only a different way of cutting the same words, 5 hold at least 1.25x fewer words: 1254, 1500, 1624, 2000, 3086). The label-only shape (the Edina shape) is a lower bound of 2 pages (241, 3938), because only 167 of 1,153 multi-version pages were read.
+  - **Impact**: at least 7 pages show clearly worse text than a hidden version. The true label-only count is unknown until every multi-version page is read.
+  - **Next action**: from the Archive service's Render shell run `python scripts/wo927_worse_shown_versions.py --out wo927_worse_shown_full.csv` (read-only SELECTs, one page at a time, safe to stop). Send the CSV to the conductor. Then promote each confirmed better version with `POST /internal/transcript-version/promote`, one at a time, reading the page first.
+  - **Constraint**: never promote from the count alone. Cue count is not quality; hand-read each page. Do not read all pages over the public site (standing decision: no bulk workload from an interactive session).
+  - **History**: `BACKLOG_DONE.md` WO-927; files `rtr-business/research/wo927_*`.
 
 - **[HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973, Cablecast show 185), and no re-check can ever reach 1595.**
   - **Issue**: page 1595 (`leon-2026-07-21-city-council-regular-meeting-7-21-2026`, made 2026-08-19) has no `external_id`. Page 3973 (`leon-valley-tx-2026-07-21-...`, made 2026-09-01) has `cablecast:leonvalleytx.cablecast.tv:185`. Both URL forms (`/show/185` and `/show/185?site=1`) look up to 3973 now, so a re-check of 1595's own URL writes to 3973. That is why the partial-transcript warning reached 3973 and never 1595. Page 1676 (show 179) is the same legacy shape but has no twin.
