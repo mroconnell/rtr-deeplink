@@ -1,0 +1,125 @@
+# Re-transcription queue (WO-929, 2026-09-21).
+#
+# What this is: 82 archived pages whose ONLY usable transcript is older
+# Whisper text made before voice-activity filtering (or a repair copy of
+# it), and whose text shows a real defect (WO-928, BACKLOG_DONE.md). Each
+# is to be transcribed again on a local machine with the voice-filter
+# engine, pushed as a NEW hidden version, compared with the old one by a
+# person, and only then promoted.
+#
+# How it differs from scripts/tier3_auto_transcription_queue.txt: the tier-3
+# queue is pages with video and NO transcript, advanced automatically by a
+# workflow. These pages already have a transcript. NOTHING reads, advances,
+# prunes or deduplicates this file automatically: no workflow, no feed
+# script, no cloud worker. It is run by hand from docs/RETRANSCRIPTION_QUEUE.md.
+# tests/test_retranscription_queue.py fails the build if any automatic
+# script starts reading it, or if a URL here is also in a tier-3 file.
+#
+# Format: one page source URL per line (bare URL, no tab: the local script
+# takes each line whole). Lines starting with # are comments. The sidecar
+# scripts/retranscription_queue_meta.csv holds page id, slug, platform,
+# hours, defect and order for each line. Progress is recorded there as
+# `# done,...` lines, never by deleting a line here.
+#
+# Order: PILOT first (run WITHOUT --promote and compare by hand), then MAIN
+# (silence signature, then loops, then other; shorter first within each),
+# then DRIP-MAC-ONLY (YouTube-hosted pages: only the drip Mac, Ol McClaude's,
+# may resolve YouTube. None as of 2026-09-21).
+#
+# Regenerate nothing by hand. Slice sections with
+# scripts/retranscription_queue_slice.py.
+
+# === SECTION: PILOT (5 pages, 9.1 hours) ===
+# Shortest pages with a clear silence signature (dead-air run of 20+), three platforms. Run first, no --promote.
+https://pub-cofs.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=58293cac-3902-4247-b308-e088f8570311&lang=English
+https://pub-salinecounty.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=3966f7b8-157d-4697-8a3a-979ae42ffca9&lang=English
+https://pub-grey.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=f0963b51-e859-4e3b-84b8-5e291920f038&lang=English
+https://riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video
+https://king.granicus.com/player/clip/11361?redirect=true&view_id=4
+# === END SECTION: PILOT ===
+
+# === SECTION: MAIN (77 pages, 245.2 hours) ===
+# Silence signature first, then loops, then other; shorter first inside each group.
+https://pub-brockton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6c349fc0-2fe5-41f1-abf4-fbdc006243fc&lang=English
+https://pub-uxbridge.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=03deab6d-e7bb-489d-87e1-7bae42f87ed2&lang=English
+https://pub-hollister.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=299bd710-dc57-43b6-94c0-0f7cf8755477&lang=English
+https://pub-greensboro-nc.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=61a49efe-41e6-4556-8586-5f08c4be580a&lang=English
+https://cook-county.granicus.com/player/clip/5807?redirect=true&view_id=2
+https://pub-yorbalinda.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=152b7a1b-b69a-4712-8129-3ef87f5f5804&lang=English
+https://pub-whitby.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=42e0a6b9-64d6-4c20-9249-1f4c912da0eb&lang=English
+https://pub-westgrey.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=185f57ab-1987-4f83-a55d-e1f4690be27b&lang=English
+https://pub-acwtownship.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=a7bd7498-169d-446f-9b56-b13cd98ab332&Item=7&Tab=attachments&lang=English
+https://winston-salem.granicus.com/player/clip/4274?view_id=4
+https://pub-rmwb.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=69b8392a-f127-4d71-ab9a-b56599712216&lang=English
+https://napacity.granicus.com/player/clip/3442?redirect=true&view_id=12
+https://pub-leduc.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=4f4f9c6d-4989-41c8-9e3f-1644ae919c48&Item=46&Tab=attachments&lang=English
+https://berkeley.granicus.com/player/clip/5432?publish_id=e388f85e-2074-11f0-955d-005056a89546&redirect=true
+https://weho.granicus.com/player/clip/4140?view_id=22
+https://pub-sturgeoncounty.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=21d7c952-9a01-4ac6-b0da-f10d6e8927d6&Item=21&Tab=attachments&lang=English
+https://pub-cvrd.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=bf1e4c40-043e-4f56-a71b-a55898b747cb&Item=8858&Tab=attachments&lang=English
+https://pub-lakecountry.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=1e5421b2-353a-41e4-9690-ae0cc9c15065&Item=33&Tab=attachments&lang=English
+https://pub-airdrie.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=b9dfc210-f052-419f-beb7-4397bac4b6e9&lang=English
+https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=040eb0ed-a34a-4a23-82a5-ca49618238e7&lang=English
+https://pub-creston.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=7842f25a-1553-4e34-b5cd-b009d49fa8f2&lang=English
+https://napacity.granicus.com/player/clip/3465?redirect=true&view_id=12
+https://gilroyca.portal.civicclerk.com/event/30/media
+https://pub-penticton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=68c850e6-fed9-4d0a-86c2-3aa35f3041ad&Item=32&Tab=attachments&lang=English
+https://pub-morinville.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=1d813ba8-589c-4edd-99eb-97ef9f9e63d1&Item=33&Tab=attachments&lang=English
+https://pub-oxfordcounty.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=c0e66299-bcbc-403c-ab63-d2eff2d4b4b7&lang=English
+https://pub-llbc.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=aa2665c4-ad08-43ad-8247-8b9babbff814&Item=29&Tab=attachments&lang=English
+https://pub-wasagabeach.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=0a8fdf3f-1d7d-4aef-9ba5-07cff969a8a2&lang=English
+https://pub-tetoncounty.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=ea11a480-1597-4547-81d6-46be8d9910c5&Item=61%09%3Dattachments&lang=English
+https://pub-scrd.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=45b3d6fd-5a5d-4069-af14-e0b2495e0d4e&Item=16&Tab=attachments&lang=English
+https://berkeley.granicus.com/player/clip/4709?redirect=true&view_id=5
+https://annapolismd.granicus.com/player/clip/1410
+https://docs.steamboatsprings.net/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=2463
+https://sccgov.iqm2.com/Citizens/SplitView.aspx?MeetingID=17601&Mode=Video
+https://pub-brentwood.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=e03af11e-b750-49e6-b11f-3cbe9140e755&lang=English
+https://pub-hermosabeach.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=035265e6-cbc2-4980-a86b-f670890b1351&lang=English
+https://onbase.comptoncity.org/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=2809
+https://anaheim.granicus.com/player/clip/3511
+https://brevardcountyfl.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=1305&Mode=Video
+https://pub-kenora.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=25e770c0-a47f-47b8-9c38-afac033cb33d&Item=18&Tab=attachments&lang=English
+https://cupertino.granicus.com/player/clip/1774?redirect=true&view_id=18
+https://worcestercountymd.new.swagit.com/videos/355852
+https://northkingstownschoolri.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=1434&Mode=Video
+https://hainescity.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=1916&Mode=Video
+https://addison.granicus.com/player/clip/7081?view_id=2
+https://actransit.granicus.com/player/clip/1000
+https://cumberland.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=1477&Mode=Video
+https://napacity.granicus.com/player/clip/3432?redirect=true&view_id=12
+https://pub-surreyschools.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=7fd269bb-90ce-432a-936e-a182612b995c&lang=English
+https://pub-espanola.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=cb766e9e-cc8c-496c-a677-802e7d3a98a1&Item=40&Tab=attachments&lang=English
+https://chapelhill.granicus.com/player/clip/8134
+https://aurora-il.granicus.com/player/clip/1510?view_id=1
+https://baycitytx.iqm2.com/Citizens/SplitView.aspx?Format=Minutes&MeetingID=1864&Mode=Video
+https://anoka-k12.granicus.com/player/clip/800?view_id=2
+https://clark.granicus.com/player/clip/8133?redirect=true&view_id=28
+https://ringgoldcityga.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=1041&Mode=Video
+https://allentownpa.granicus.com/player/clip/1798
+https://milwaukee.granicus.com/player/clip/5265?redirect=true&view_id=2
+https://monterey.granicus.com/player/clip/6258?redirect=true&view_id=5
+https://pub-rideaulakes.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=0b2f5cb0-1d08-4259-83c9-c3c2291c90fb&lang=English
+https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?doctype=3&id=4665
+https://chino.granicus.com/player/clip/4828
+https://cedarparktx.granicus.com/player/clip/1292?view_id=8
+https://sandiego.granicus.com/player/clip/9460?redirect=true&view_id=3
+https://allegheny.granicus.com/player/clip/1049
+https://pub-tuckerga.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=16c9a98c-d02d-415d-a732-8ab1f3813db6&lang=English
+https://fairfax.granicus.com/player/clip/4588?view_id=13
+https://pub-goderich.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=5d36cd2f-4c90-4c5c-8260-6456ce73dbad&lang=Englis
+https://pub-cityofwatsonville.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=5ac3ee7a-aede-49bc-9665-b676f58efc8b&lang=English
+https://berkeley.granicus.com/player/clip/5568?publish_id=bbac8b36-f6f9-11f0-bb28-005056a89546&redirect=true
+https://houstontx.new.swagit.com/videos/394648
+https://weho.granicus.com/MediaPlayer.php?clip_id=4175&view_id=22
+https://pub-slocity.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=66acf87a-4bd9-4fbe-b80c-4bd95816ee36&lang=English
+https://pub-garfield.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=ad3e4b73-e1ea-4d48-adf2-6439e7b0cdc7&Item=66&Tab=attachments&lang=English
+https://alamedacounty.granicus.com/player/clip/10426?redirect=true&view_id=2
+https://cabq.granicus.com/player/clip/506
+https://amherstoh.new.swagit.com/videos/292625
+# === END SECTION: MAIN ===
+
+# === SECTION: DRIP-MAC-ONLY (0 pages, 0.0 hours) ===
+# YouTube-hosted pages: run only on the drip Mac (Ol McClaude's). Never resolve YouTube from any other machine.
+# (none: no page in the 82 has a YouTube-hosted video, checked 2026-09-21)
+# === END SECTION: DRIP-MAC-ONLY ===
