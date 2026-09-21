@@ -99,7 +99,6 @@ DISCOVERY_ROOT = Path.home() / "Documents" / "rtr-discovery"
 sys.path.insert(0, str(DISCOVERY_ROOT))
 
 import aiohttp  # noqa: E402
-from bs4 import BeautifulSoup  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
@@ -475,119 +474,12 @@ def rank_tier3_candidates(cands: List[Tier3Candidate]) -> List[Tier3Candidate]:
     return ordered or plausible
 
 
-async def raw_candidate_identity_check(
-    session: aiohttp.ClientSession, url: str, cand: "Cand"
-) -> Tuple[Optional[bool], str]:
-    """Fetch one real candidate URL directly (bypassing the platform
-    adapter entirely) and look for a name/state/kind conflict or a real
-    name-token match in its raw title+body text.
-
-    Real, confirmed-live bug this exists to close (WO-168, 2026-09-10):
-    `process_confirmed_tenant`'s post-resolve conflict checks only run
-    against candidates that reach `resolved_ok` -- which requires
-    segments/agenda_items/agenda_link/video_url (discovery's own
-    `nothing_to_ingest` filter). A government with NO video at all is a
-    legitimate, common outcome (this repo's own "a video-less host is a
-    valid record" rule) -- but eScribe's `agenda_items` specifically
-    means "agenda items with a real video timestamp bookmark"
-    (`escribe.py`'s own `_extract_agenda_items` docstring), so a real
-    eScribe meeting with no embedded iSiLIVE video (an external YouTube/
-    WebEx/Townhall-Streams link mentioned only as text, not a bug) NEVER
-    produces a resolved_ok row -- meaning the identity checks never ran
-    at all. Two guessed eScribe tenants in the 30-government pilot
-    slipped past this way: `pub-woodstock.escribemeetings.com` (real
-    content: "The Corporation of the City of Woodstock ... County of
-    Oxford" -- Woodstock, ONTARIO, not the Connecticut town this guess
-    was for) and `pub-lakewood.escribemeetings.com` (real content:
-    "Township Of Lakewood, County Of Ocean, State Of New Jersey" -- not
-    the Colorado city this guess was for). Both were caught only by a
-    human reading the real page by hand, which is the pilot-verification
-    step this exact incident is why that step exists. This function is
-    the automated version of that same check: fetch a real candidate
-    page directly and read its own text, independent of whether the
-    adapter extracted anything structured from it.
-
-    Returns (True, detail) on a real name-token match (positive
-    confirmation), (False, detail) on a confident conflict, or
-    (None, detail) when genuinely inconclusive (fetch failed, or no
-    name tokens either way) -- inconclusive is NOT treated as
-    confirmation anywhere that calls this."""
-    try:
-        async with session.get(
-            url,
-            headers=hs.UA_HEADERS,
-            timeout=aiohttp.ClientTimeout(total=15),
-            allow_redirects=True,
-        ) as resp:
-            if resp.status >= 400:
-                return None, f"candidate page unreachable ({resp.status}), unverified"
-            html = await resp.text(errors="replace")
-    except Exception as e:  # noqa: BLE001
-        return None, f"candidate page fetch failed, unverified: {type(e).__name__}"
-
-    soup = BeautifulSoup(html, "html.parser")
-    title = (soup.title.get_text(strip=True) if soup.title else "") or ""
-    body_text = soup.get_text(" ", strip=True)[:4000]
-    combined = f"{title} {body_text}".strip()
-
-    conflict = w145._state_or_kind_conflict(cand, combined, "raw candidate page")
-    # Real, confirmed-live false positive this guards against (WO-168,
-    # 2026-09-10): a full page dump (unlike the short title/jurisdiction
-    # strings wo145's own checks were built against) commonly carries the
-    # row's own state as a plain address abbreviation -- "Livingston
-    # County Administration Building 304 E. Grand River, Board Chambers,
-    # Howell MI 48843" -- which `_state_or_kind_conflict`'s leading
-    # "Name, ST" regex and `_cross_border_collision`'s same regex both
-    # miss (both require the state code at the very start of the string,
-    # immediately after a comma). Without this, Livingston County, MI's
-    # own raw page was flagged as a false conflict against "Livingston
-    # No. 331," a real Alberta rural municipality, purely because no
-    # LEADING "Name, ST" pattern happened to open the page text.
-    state_abbr = (cand.state or "").strip().upper()
-    has_state_abbr_anywhere = bool(
-        state_abbr and re.search(rf"\b{re.escape(state_abbr)}\b", combined)
-    )
-    if not conflict and not has_state_abbr_anywhere:
-        # Always run, regardless of platform: only fires on an exact
-        # Canadian-municipality name collision with no state/province
-        # code anywhere in the text, so it's cheap and low-risk to run
-        # unconditionally here rather than threading a platform check
-        # through this fallback path.
-        conflict = w145._cross_border_collision(cand, combined)
-    if conflict:
-        return False, conflict
-
-    # Real, confirmed-live false positive this guards against (WO-168,
-    # 2026-09-10): `clark.granicus.com` guessed for Clark County, KS
-    # returned True on a bare name-token match alone, because the real
-    # content -- Clark County, NEVADA's own zoning notices ("Dapple Gray
-    # Road," "Lone Mountain," real Las Vegas-area places) -- of course
-    # also says "Clark County" throughout. A name match alone can never
-    # rule out the identically-named, larger, more-likely-to-actually-
-    # hold-this-subdomain government -- Fulton County GA/Atlanta beating
-    # out Fulton County, KY for `fulton.granicus.com` is the same shape.
-    # A positive match now additionally requires the row's OWN state to
-    # appear somewhere too (abbreviation as a standalone word, or the
-    # full state name) -- absent that, a bare name match is downgraded
-    # to inconclusive, not confirmed.
-    tokens = w145._name_tokens(cand.name)
-    combined_lower = combined.lower()
-    name_matches = bool(tokens and any(t in combined_lower for t in tokens))
-    state_abbr = (cand.state or "").strip().upper()
-    row_state_name = w145.STATE_NAMES.get(state_abbr, "")
-    own_state_present = bool(
-        state_abbr and re.search(rf"\b{re.escape(state_abbr)}\b", combined)
-    ) or bool(row_state_name and row_state_name.lower() in combined_lower)
-    if name_matches and own_state_present:
-        return True, f"raw candidate page names {cand.name!r} and {cand.state}"
-    if name_matches:
-        return (
-            None,
-            f"raw candidate page names {cand.name!r} but never mentions "
-            f"{cand.state} anywhere -- could be a same-named government "
-            "in a different state, not confirmed",
-        )
-    return None, "no name-token match on raw candidate page, unverified"
+# WO-932 (2026-09-21): `raw_candidate_identity_check()` moved into
+# `wo145_api_first_sweep.py` (next to the conflict checks it calls) so that
+# sweep's shared `process_enumerator_platform()` can run it too -- this
+# file imports wo145, so it could not be the other way round. Same function,
+# same name here; its docstring records the real Woodstock/Lakewood incident.
+raw_candidate_identity_check = w145.raw_candidate_identity_check
 
 
 # --------------------------------------------------------------------------

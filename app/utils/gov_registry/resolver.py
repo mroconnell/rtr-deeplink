@@ -1286,6 +1286,26 @@ def _state_is_type_initials(name: Optional[str], state: str) -> bool:
     )
 
 
+# A state/province code written INSIDE a name, straight after a place-type
+# word: "Bracken County KY Fiscal Court". Case-sensitive on the code, so a
+# lower-case or title-case word ("County in ...", "City Or") never counts.
+_EMBEDDED_STATE_RE = re.compile(
+    r"\b(?i:county|parish|city|town|village|township|borough)\s+([A-Z]{2})\b"
+)
+
+
+def _embedded_state_code(text: Optional[str]) -> str:
+    """The real state/province code a name spells out inside itself right
+    after a place-type word ("Bracken County KY Fiscal Court" -> "KY"), or
+    "" when there is none. Only used to REFUSE a mint, never to pick a state:
+    see the rung-6 guard in `_resolve_government_ladder()`."""
+    for match in _EMBEDDED_STATE_RE.finditer(text or ""):
+        code = match.group(1)
+        if code in _VALID_STATE_ABBRS:
+            return code
+    return ""
+
+
 _TYPE_WORD_TAIL_RE = re.compile(
     r"\s+(city|town|township|village|borough|county|parish|municipality|"
     r"charter township|city and borough|cdp)$",
@@ -1444,6 +1464,26 @@ _ENTITY_TYPE_WORDS = frozenset(
 _TRAILING_STATION_RE = re.compile(r"[\s-]*\b(?:tv|fm|am|dt|media|channel)\b\s*$", re.I)
 
 
+# A compass or position word that is a fragment, never a whole government
+# name: see `_looks_like_a_name()`, test 5.
+_BARE_DIRECTION_WORDS = frozenset(
+    {
+        "north",
+        "south",
+        "east",
+        "west",
+        "central",
+        "northern",
+        "southern",
+        "eastern",
+        "western",
+        "upper",
+        "lower",
+        "greater",
+    }
+)
+
+
 def _looks_like_a_name(name: str) -> bool:
     """Whether a cleaned string is plausibly a government's NAME, and so
     worth minting an `rtr:` id for.
@@ -1477,6 +1517,17 @@ def _looks_like_a_name(name: str) -> bool:
     if not tokens:
         return False
     if len(tokens) == 1 and _CALLSIGN_RE.match(tokens[0]):
+        return False
+    if len(tokens) == 1 and tokens[0].lower() in _BARE_DIRECTION_WORDS:
+        # 5. **Not a bare compass word.** Real and live (found 2026-09-21 in
+        #    the production export, page 5945): a Washington fire authority,
+        #    "South Snohomish County Fire and Rescue RFA", was trimmed by the
+        #    name repair to "South" -- also a place in Manitoba -- and minted
+        #    as `rtr:ca:mb:south`, a Canadian province on a US government and
+        #    a name nobody can look up. Only reachable here when no national
+        #    table matched the string (a real "West, TX" or "Central, LA"
+        #    resolves at rung 4, before any mint), so what is left is a
+        #    fragment left over from a repair, never a government.
         return False
     long_tokens = [t for t in tokens if len(t) >= 4]
     if not long_tokens:
@@ -2461,6 +2512,38 @@ def _resolve_government_ladder(
             reason = f"no {name!r} in {state} -- counties are exhaustively listed"
         else:
             reason = f"not a government name: {cleaned!r}"
+        gov = Government(
+            gov_id="",
+            gov_name=name,
+            gov_type=gov_type or classify.OTHER,
+            country=country,
+            source="unresolved",
+            evidence=reason,
+        )
+        return _match(gov, TIER_UNRESOLVED, reason, meeting_body)
+    # 6b. Refuse a mint whose state exists only because the repair step
+    #     truncated the name, when the name itself spells out a different
+    #     state (WO-932). Real: a Kentucky county's fiscal court, channel
+    #     name "Bracken County KY Fiscal Court". Rung 2 trimmed it to
+    #     "Bracken", which is a real place in Saskatchewan and a county
+    #     (not a place) in Kentucky, so the repaired string became
+    #     "Bracken, SK"; rung 3 then classified the RAW name as a court and
+    #     minted THAT with the repaired string's state:
+    #     `rtr:ca:sk:bracken-county-ky-fiscal-court`, a Canadian province on
+    #     a US government (found live 2026-09-10, WO-153). The state here did
+    #     not come from anything the page wrote -- `raw_state` is empty and
+    #     the page's own text says KY. Unresolved is the honest answer (it
+    #     goes on the pin worklist), the same call rung 5a makes for a
+    #     subdomain's type initials. Deliberately narrow: only a code that
+    #     follows a place-type word counts, and a trailing state the page
+    #     itself wrote (`raw_state`) is never second-guessed.
+    embedded_state = _embedded_state_code(raw_stripped)
+    if state and embedded_state and embedded_state != state and not raw_state:
+        reason = (
+            f"{cleaned!r} carries state {state} only because name repair "
+            f"truncated {raw_stripped!r}, and the name itself says "
+            f"{embedded_state}"
+        )
         gov = Government(
             gov_id="",
             gov_name=name,

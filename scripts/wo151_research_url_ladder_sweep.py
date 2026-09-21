@@ -131,6 +131,7 @@ import scripts.hub_sweep_wo126 as hs  # noqa: E402
 from app.utils.video_hand_check import assess_video_candidate  # noqa: E402
 from scripts.wo145_api_first_sweep import (  # noqa: E402
     _cross_border_collision,
+    _host_name_conflict,
     _state_or_kind_conflict,
     _title_place_conflict,
 )
@@ -538,6 +539,15 @@ async def act_on_resolved_wo151(
         border_conflict = _cross_border_collision(gov, combined)
         if border_conflict:
             raise hs.Skip("wrong-domain-mapping", border_conflict)
+    # WO-932: the host itself -- Beltrami city, MN's clip on
+    # `minnesotapuc.granicus.com` passed every check above (WO-190). A REVIEW
+    # flag only; carried on the row's note (see the `row["note"]` line in
+    # process_candidate) because `res.detail` is overwritten further down.
+    setattr(
+        res,
+        "host_name_flag",
+        _host_name_conflict(gov, urlparse(meeting_url).netloc, lead.platform) or "",
+    )
 
     covered = index.covered(result, meeting_url)
     if covered:
@@ -1043,6 +1053,9 @@ async def process_candidate(
         else ("3" if res.outcome == "queued_tier3" else "")
     )
     row["note"] = res.detail
+    _host_flag = getattr(res, "host_name_flag", "")
+    if _host_flag:
+        row["note"] = f"{res.detail} -- {_host_flag}" if res.detail else _host_flag
 
     # --- headless rung: only when every start URL that answered did so
     # with a real (non-blocked, non-challenge) page but no platform link.

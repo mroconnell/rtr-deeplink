@@ -154,6 +154,10 @@ from app.utils.video_hand_check import (  # noqa: E402
     looks_like_real_meeting as _looks_like_real_meeting,
 )
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
+from scripts.identity_gate import (  # noqa: E402
+    host_name_conflict,
+    jurisdiction_check_hook,
+)
 
 import yt_dlp  # noqa: E402
 
@@ -237,7 +241,15 @@ TIER3_HANDLER = None
 # independent-city trap. None preserves the original apply_display_
 # jurisdiction-only behavior (fills a blank jurisdiction, never
 # overwrites or rejects).
-JURISDICTION_CHECK_HOOK = None
+#
+# WO-932 (2026-09-21): ON by default now. It used to default to None, so a
+# wrapper that installed neither this hook nor IDENTITY_CHECK_HOOK filed
+# pages under the research row's gov_id with no check at all (WO-913's first
+# ingest batch, found 2026-09-20) -- the Archive treats a caller-supplied
+# gov_id as a pin and only requires that it exists. The function is the same
+# one WO-149 wrote, now in scripts/identity_gate.py; set this to None only to
+# reproduce the old unchecked behavior on purpose.
+JURISDICTION_CHECK_HOOK = jurisdiction_check_hook
 
 # WO-169 hook (2026-09-10): when set, resolve_seed()'s internal candidate
 # loops (civicplus, granicus, civicclerk, the generic CalendarPageError
@@ -1878,6 +1890,18 @@ async def process_row(
                 if mismatch:
                     last_reason = f"{platform}: wrong-domain-mapping: {mismatch}"
                     continue
+            # WO-932: the host the video was found on against the
+            # government's own name. Flag only, never a skip -- see
+            # identity_gate.host_name_conflict()'s docstring. The flag rides
+            # on the row's reason text so the run log carries it.
+            _gov = government_for_id(gov_id)
+            _host_flag = host_name_conflict(
+                urlparse(final_seed).netloc,
+                platform,
+                unit_name,
+                (_gov.state if _gov else "") or "",
+            )
+            _flag_suffix = f" -- {_host_flag}" if _host_flag else ""
             _seen_keys.add(key)
             apply_display_jurisdiction(result, gov_id)
 
@@ -1930,7 +1954,7 @@ async def process_row(
                     unit_name,
                     platform,
                     "ingested_tier1_2",
-                    f"{len(segments)} transcript segments{note}",
+                    f"{len(segments)} transcript segments{note}{_flag_suffix}",
                     final_seed,
                     title,
                     date,
@@ -1972,7 +1996,7 @@ async def process_row(
                     platform,
                     "queued_tier3_pending",
                     "real video, no transcript yet -- handed to TIER3_HANDLER for "
-                    "probing before it is queued",
+                    "probing before it is queued" + _flag_suffix,
                     final_seed,
                     title,
                     date,
@@ -2017,7 +2041,8 @@ async def process_row(
                     "tier3_auto_transcription_queue.txt, not appended again"
                     if already_queued
                     else "real video, no transcript yet -- appended to tier3_auto_transcription_queue.txt"
-                ),
+                )
+                + _flag_suffix,
                 final_seed,
                 title,
                 date,
