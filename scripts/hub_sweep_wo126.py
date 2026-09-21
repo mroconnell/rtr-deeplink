@@ -142,6 +142,7 @@ from app.utils.gov_registry import registry as gov_registry  # noqa: E402
 from app.utils.gov_registry import resolver as gov_resolver  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _headers, _ingest  # noqa: E402
+from scripts.identity_gate import host_name_conflict  # noqa: E402
 from scripts.nationwide_2404_ingest import (  # noqa: E402
     HIGH_RISK_TITLE_PLATFORMS,
     _looks_like_real_meeting,
@@ -1063,6 +1064,19 @@ async def act_on_resolved(
             video_url=result.video_url or "",
         )
 
+    # WO-932: the host the video was found on against the government's own
+    # name (Beltrami city, MN's clip on `minnesotapuc.granicus.com`, WO-190).
+    # A REVIEW flag only, never a skip; carried on `res.host_name_flag` and
+    # appended to the report's `detail` column where the row is written.
+    setattr(
+        res,
+        "host_name_flag",
+        host_name_conflict(
+            urlparse(meeting_url).netloc, lead.platform, gov.name, gov.state
+        )
+        or "",
+    )
+
     covered = index.covered(result, meeting_url)
     if covered:
         res.outcome = "already_covered"
@@ -1187,6 +1201,16 @@ async def act_on_resolved(
         f"anywhere ({meeting_url}) -- agenda-only is never ingested by this sweep",
         meeting_url=meeting_url,
     )
+
+
+def _with_host_flag(res: Result) -> str:
+    """`res.detail` with the WO-932 host-name review flag appended, when the
+    row carries one. `res.detail` is overwritten on several paths (a probe
+    verdict, a duplicate note), so the flag lives on its own attribute."""
+    flag = getattr(res, "host_name_flag", "")
+    if not flag:
+        return res.detail
+    return f"{res.detail} -- {flag}" if res.detail else flag
 
 
 def _fill(res: Result, result: ResolvedMeeting, meeting_url: str, title: str) -> Result:
@@ -1640,7 +1664,7 @@ async def main() -> None:
                     "key_check": res.key_check,
                     "pin": res.pin,
                     "youtube_channel_link": res.youtube_channel_link,
-                    "detail": res.detail[:400],
+                    "detail": _with_host_flag(res)[:400],
                     "checked_at": datetime.now(timezone.utc).strftime(
                         "%Y-%m-%dT%H:%M:%SZ"
                     ),

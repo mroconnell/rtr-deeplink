@@ -110,6 +110,7 @@ from app.platforms.queue_probe import (  # noqa: E402
 )
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
+from scripts.identity_gate import host_name_conflict  # noqa: E402
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
 
 from discovery.ledger import Ledger  # noqa: E402
@@ -675,6 +676,134 @@ def _title_place_conflict(cand: Cand, title: str) -> Optional[str]:
     return None
 
 
+def _host_name_conflict(cand: Cand, host: str, platform: str) -> Optional[str]:
+    """WO-932: the host a resolved video was found on against the row's own
+    name -- the check `_state_or_kind_conflict()` and its siblings never made,
+    since all of them read the page's title/jurisdiction/body text only.
+    Beltrami city, MN resolved to `minnesotapuc.granicus.com` (a 2013
+    Minnesota Public Utilities Commission hearing) and passed every text
+    check, because that video's title names no place at all (WO-190,
+    2026-09-11). A REVIEW flag, never a skip: see
+    `scripts/identity_gate.host_name_conflict()` for the rules and why a
+    shared regional media consortium must not be dropped on this alone."""
+    return host_name_conflict(host, platform, cand.name, cand.state)
+
+
+async def raw_candidate_identity_check(
+    session: aiohttp.ClientSession, url: str, cand: "Cand"
+) -> Tuple[Optional[bool], str]:
+    """Fetch one real candidate URL directly (bypassing the platform
+    adapter entirely) and look for a name/state/kind conflict or a real
+    name-token match in its raw title+body text.
+
+    Real, confirmed-live bug this exists to close (WO-168, 2026-09-10):
+    `process_confirmed_tenant`'s post-resolve conflict checks only run
+    against candidates that reach `resolved_ok` -- which requires
+    segments/agenda_items/agenda_link/video_url (discovery's own
+    `nothing_to_ingest` filter). A government with NO video at all is a
+    legitimate, common outcome (this repo's own "a video-less host is a
+    valid record" rule) -- but eScribe's `agenda_items` specifically
+    means "agenda items with a real video timestamp bookmark"
+    (`escribe.py`'s own `_extract_agenda_items` docstring), so a real
+    eScribe meeting with no embedded iSiLIVE video (an external YouTube/
+    WebEx/Townhall-Streams link mentioned only as text, not a bug) NEVER
+    produces a resolved_ok row -- meaning the identity checks never ran
+    at all. Two guessed eScribe tenants in the 30-government pilot
+    slipped past this way: `pub-woodstock.escribemeetings.com` (real
+    content: "The Corporation of the City of Woodstock ... County of
+    Oxford" -- Woodstock, ONTARIO, not the Connecticut town this guess
+    was for) and `pub-lakewood.escribemeetings.com` (real content:
+    "Township Of Lakewood, County Of Ocean, State Of New Jersey" -- not
+    the Colorado city this guess was for). Both were caught only by a
+    human reading the real page by hand, which is the pilot-verification
+    step this exact incident is why that step exists. This function is
+    the automated version of that same check: fetch a real candidate
+    page directly and read its own text, independent of whether the
+    adapter extracted anything structured from it.
+
+    Returns (True, detail) on a real name-token match (positive
+    confirmation), (False, detail) on a confident conflict, or
+    (None, detail) when genuinely inconclusive (fetch failed, or no
+    name tokens either way) -- inconclusive is NOT treated as
+    confirmation anywhere that calls this."""
+    try:
+        async with session.get(
+            url,
+            headers=hs.UA_HEADERS,
+            timeout=aiohttp.ClientTimeout(total=15),
+            allow_redirects=True,
+        ) as resp:
+            if resp.status >= 400:
+                return None, f"candidate page unreachable ({resp.status}), unverified"
+            html = await resp.text(errors="replace")
+    except Exception as e:  # noqa: BLE001
+        return None, f"candidate page fetch failed, unverified: {type(e).__name__}"
+
+    soup = BeautifulSoup(html, "html.parser")
+    title = (soup.title.get_text(strip=True) if soup.title else "") or ""
+    body_text = soup.get_text(" ", strip=True)[:4000]
+    combined = f"{title} {body_text}".strip()
+
+    conflict = _state_or_kind_conflict(cand, combined, "raw candidate page")
+    # Real, confirmed-live false positive this guards against (WO-168,
+    # 2026-09-10): a full page dump (unlike the short title/jurisdiction
+    # strings wo145's own checks were built against) commonly carries the
+    # row's own state as a plain address abbreviation -- "Livingston
+    # County Administration Building 304 E. Grand River, Board Chambers,
+    # Howell MI 48843" -- which `_state_or_kind_conflict`'s leading
+    # "Name, ST" regex and `_cross_border_collision`'s same regex both
+    # miss (both require the state code at the very start of the string,
+    # immediately after a comma). Without this, Livingston County, MI's
+    # own raw page was flagged as a false conflict against "Livingston
+    # No. 331," a real Alberta rural municipality, purely because no
+    # LEADING "Name, ST" pattern happened to open the page text.
+    state_abbr = (cand.state or "").strip().upper()
+    has_state_abbr_anywhere = bool(
+        state_abbr and re.search(rf"\b{re.escape(state_abbr)}\b", combined)
+    )
+    if not conflict and not has_state_abbr_anywhere:
+        # Always run, regardless of platform: only fires on an exact
+        # Canadian-municipality name collision with no state/province
+        # code anywhere in the text, so it's cheap and low-risk to run
+        # unconditionally here rather than threading a platform check
+        # through this fallback path.
+        conflict = _cross_border_collision(cand, combined)
+    if conflict:
+        return False, conflict
+
+    # Real, confirmed-live false positive this guards against (WO-168,
+    # 2026-09-10): `clark.granicus.com` guessed for Clark County, KS
+    # returned True on a bare name-token match alone, because the real
+    # content -- Clark County, NEVADA's own zoning notices ("Dapple Gray
+    # Road," "Lone Mountain," real Las Vegas-area places) -- of course
+    # also says "Clark County" throughout. A name match alone can never
+    # rule out the identically-named, larger, more-likely-to-actually-
+    # hold-this-subdomain government -- Fulton County GA/Atlanta beating
+    # out Fulton County, KY for `fulton.granicus.com` is the same shape.
+    # A positive match now additionally requires the row's OWN state to
+    # appear somewhere too (abbreviation as a standalone word, or the
+    # full state name) -- absent that, a bare name match is downgraded
+    # to inconclusive, not confirmed.
+    tokens = _name_tokens(cand.name)
+    combined_lower = combined.lower()
+    name_matches = bool(tokens and any(t in combined_lower for t in tokens))
+    state_abbr = (cand.state or "").strip().upper()
+    row_state_name = STATE_NAMES.get(state_abbr, "")
+    own_state_present = bool(
+        state_abbr and re.search(rf"\b{re.escape(state_abbr)}\b", combined)
+    ) or bool(row_state_name and row_state_name.lower() in combined_lower)
+    if name_matches and own_state_present:
+        return True, f"raw candidate page names {cand.name!r} and {cand.state}"
+    if name_matches:
+        return (
+            None,
+            f"raw candidate page names {cand.name!r} but never mentions "
+            f"{cand.state} anywhere -- could be a same-named government "
+            "in a different state, not confirmed",
+        )
+    return None, "no name-token match on raw candidate page, unverified"
+
+
 async def check_tenant_identity(
     session: aiohttp.ClientSession, netloc: str, cand: Cand
 ) -> Tuple[bool, str]:
@@ -896,6 +1025,10 @@ async def act_on_result(
         if border_conflict:
             raise hs.Skip("wrong-domain-mapping", border_conflict)
 
+    # WO-932: a FIFTH class -- the host itself. Flag only, never a skip.
+    host_flag = _host_name_conflict(cand, urlparse(meeting_url).netloc, platform)
+    flag_suffix = f" -- {host_flag}" if host_flag else ""
+
     result.jurisdiction = cand.jurisdiction
     gov = hs.Gov(
         cand.gov_id,
@@ -929,8 +1062,10 @@ async def act_on_result(
         rep.tier = "tier1_2"
         rep.meeting_url = meeting_url
         rep.video_url = result.video_url or ""
-        rep.note = f"{len(segments)} transcript segments" + (
-            "" if response.get("created") else " (matched an existing page)"
+        rep.note = (
+            f"{len(segments)} transcript segments"
+            + ("" if response.get("created") else " (matched an existing page)")
+            + flag_suffix
         )
         return rep
 
@@ -973,7 +1108,10 @@ async def act_on_result(
         rep.tier = "tier3"
         rep.meeting_url = meeting_url
         rep.video_url = result.video_url
-        rep.note = "real video, no captions -- written to wo145_tier3_pending.csv, awaiting WO-144 probe"
+        rep.note = (
+            "real video, no captions -- written to wo145_tier3_pending.csv, "
+            "awaiting WO-144 probe" + flag_suffix
+        )
         return rep
 
     raise hs.Skip(
@@ -1224,6 +1362,39 @@ async def process_enumerator_platform(
             # WO for a plain Skip.
             rep = _apply_skip_to_report(rep, e)
             continue
+
+    # WO-932: nothing was ingested or queued, so none of the post-resolve
+    # identity checks above ever saw a real candidate's text. A real tenant
+    # with meetings but no embeddable video is common and legitimate -- and
+    # for eScribe/CivicWeb `agenda_items` means "has a video timestamp
+    # bookmark", so such a tenant never reaches `resolved_ok` at all. That is
+    # how `pub-woodstock.escribemeetings.com` (real content: Woodstock,
+    # ONTARIO) and `pub-lakewood.escribemeetings.com` (real content: Lakewood
+    # Township, New Jersey) were guessed for a Connecticut town and a
+    # Colorado city and slipped through (WO-168 pilot, 2026-09-10). Fetch one
+    # real candidate page directly, independent of the adapter, and refuse to
+    # let a confident conflict pass as a plain "no video". Already ported
+    # into WO-168's own driver; this is the shared function every sibling
+    # sweep reuses. A `wrong-domain-mapping` already recorded by a Skip above
+    # stands as it is, and a probe rejection is skipped too: a real video
+    # only reaches the probe after every identity check above passed.
+    if rep.reject_reason != "wrong-domain-mapping" and (
+        rep.outcome != "rejected_by_probe"
+    ):
+        newest = ledger.conn.execute(
+            "SELECT url_normalized FROM candidates WHERE tenant_netloc = ? "
+            "ORDER BY date DESC LIMIT 1",
+            (netloc,),
+        ).fetchone()
+        if newest is not None:
+            verified, raw_detail = await raw_candidate_identity_check(
+                session, newest["url_normalized"], cand
+            )
+            if verified is False:
+                rep.outcome = "skipped"
+                rep.reject_reason = "wrong-domain-mapping"
+                rep.note = f"netloc from {netloc_source}: {raw_detail}"
+                return rep
 
     # Nothing with video among the resolved_ok candidates; nothing_to_ingest
     # rejections mean truly empty content.

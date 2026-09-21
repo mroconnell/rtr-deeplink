@@ -1,5 +1,113 @@
 # Backlog — done
 
+## WO-932: an identity gate at ingest, and the count for one decision about the Archive [Done 2026-09-21]
+
+**Why this ran.** Phase 1 of `docs/BACKLOG_PHASES.md` is about stopping wrong content that readers can see. Six backlog entries described ways a page can be filed under a government the source does not belong to. This work order closes the parts that are settled, counts the part that is not, and finds the cause of the last one.
+
+**What was built.**
+- **One shared module, `scripts/identity_gate.py`.** It holds two pure checks (no network, no `.env`), so every sweep can import it.
+- **WO-134 now installs the jurisdiction check by default.** The check is WO-149's `jurisdiction_check_hook()`, moved into the new module. Before, a wrapper script that installed no hook filed pages under the research row's `gov_id` with no check. WO-149 re-exports the name, so every existing import still works.
+- **A bug fixed on the way.** The hook read a two-letter *word* as a state. It upper-cased the whole guess, so "in" in Lake in the Hills IL, "or" in Truth or Consequences NM and "de" in Ponce de Leon FL each read as Indiana, Oregon and Delaware. WO-280 fixed the same bug in wo146's copy. It stayed harmless here only while the hook was opt-in. A code now counts only after a comma, or as an upper-case word in text that is not all upper-case.
+- **A host-name check, `host_name_conflict()`.** It compares the vendor tenant a video was found on with the government's name. It flags. It never skips. It is wired into `wo134`'s `process_row()`, into `hub_sweep_wo126.act_on_resolved()` (so the WO-151 sweep and every sweep built on it), and into `wo145`'s `act_on_result()`. The flag rides on the row's reason or note text.
+- **A mint guard in the resolver** (`app/utils/gov_registry/resolver.py`). Two new refusals, both leave the page `unresolved` for the pin worklist. (1) The state came only from the repair step and the name itself spells a different state (Bracken County KY). (2) The whole name is one compass word, left over from a repair ("South", "North").
+- **WO-145's shared sweep now runs the raw-page identity check** when a tenant has meetings but no video. The function moved from `wo168` into `wo145` (an alias stays in `wo168`).
+- **A read-only counting tool, `scripts/wo932_state_check_dry_run.py`.** It reads an inventory CSV and counts what a blocking Archive state check would refuse. It builds nothing into the Archive.
+- **Tests.** `tests/test_wo932_identity_gate.py` (55), `tests/test_wo932_state_check_dry_run.py` (14), `tests/test_wo932_wo145_raw_identity.py` (7; these skip in CI because `wo145` imports rtr-discovery, and were run locally).
+
+**Result: the six entries.**
+
+| Entry (first words) | Result | What is left |
+|---|---|---|
+| The Archive files a page under whatever `gov_id` a sweep sends | Half closed. The default-on hook is built. | Whether the Archive should return 409 on a state mismatch. Ryan's call. |
+| The wrong-government checks never look at the resolved video's own | Closed, flag first as the entry asked | Nothing reads the flags yet. |
+| A minted `rtr:` id's state code can be a false positive | Closed. The entry's cause was wrong. | Two stale rows stay on purpose. |
+| A real US government's YouTube video got minted with a | Closed | Two more live pages of the same shape, below. |
+| A tenant with no video content never runs the identity conflict | Half closed. The code is ported. | The audit of rows already written. |
+| A live page is keyed to the wrong government entirely, Bamberg | Investigated. The page is gone. | Cause found, below. |
+
+**Result: what a blocking Archive state check would refuse.** Run on the local inventory export from 2026-09-21 (`/tmp/rtr_meeting_inventory/meeting_inventory.csv`, a copy of what `export_meeting_inventory.py --source export` writes). No production data was fetched for this.
+
+| Result | Count of 10,280 |
+|---|---|
+| Pages with no government on them (nothing to check) | 593 |
+| Pages whose government id the registry cannot read | 290 |
+| Pages whose stored name carries no state (a state check says nothing) | 1,029 |
+| Pages whose stored state agrees with the registry | 8,356 |
+| Pages a blocking state check would refuse | 12 |
+
+I read the 12 by hand from the export's own columns (channel handle, host, meeting title). This is a reading, not a live check.
+
+| Reading of the 12 | Count of 12 | Pages |
+|---|---|---|
+| The registry government looks right. The stored state was a bad guess. | 10 | 7832 Maine Twp IL, 7979 Elk Grove Twp IL, 7990 Shields Twp IL, 8270 Castine ME, 8454 North Haven ME, 8828 Wheatland Co AB, 9261 Coopertown TN, 10214 Marathon FL, 10343 Weston MA, 10397 Wellfleet MA |
+| The stored name looks right and the registry government looks wrong. | 1 | 9073 Washington County: channel `@washcoar`, stored AR, filed under AL |
+| Cannot tell without reading the page. | 1 | 7885 Brimfield Township (an OH pin from a WO-134 hit; the guess said IL) |
+
+Page 10214 is a documented case: WO-306 found that `castus.py` guesses "City Of Marathon, WI" for a Florida tenant, and pinned it by `gov_id` for that reason. A blocking check would have refused the correct page there.
+
+**Result: the host-name flag on real data.** Over every pin in `tenant_overrides.csv` that sits on a single-tenant vendor host:
+
+| Result | Count of 1,281 pins |
+|---|---|
+| Host name shares a word with the government (or is a listed consortium) | 1,223 |
+| Flagged for review | 58 |
+
+All 58 are abbreviated tenants a person can read at a glance (`ccsf`, `stpete`, `lawa`). The real Beltrami case (`minnesotapuc.granicus.com`) flags. `hcnv.granicus.com` (Humboldt County NV) passes. Shorewood's `reflect-lmcc.cablecast.tv` passes because it is on a closed allow-list of one.
+
+**Result: the Bracken County shape, and two more live pages.** The Bracken page (7279) is already keyed `us:county:21023` in the 2026-09-21 export. The mechanism was still live. The repair step trimmed "Bracken County KY Fiscal Court" to "Bracken", a Saskatchewan place, and the mint used that province on the raw name. On YouTube it cannot happen now (rung 1b, WO-210). On any other host it could. Searching the same export for the same shape found two live pages, both shown to readers with a wrong name:
+
+| Page | What the reader sees | What it really is | Id today |
+|---|---|---|---|
+| 5945 | "South, MB (Canada)" | South Snohomish County Fire and Rescue RFA, Washington | `rtr:ca:mb:south` |
+| 10852 | "North, UT" | North Valley Public Safety Department, Utah | `rtr:us:ut:north` |
+
+The resolver no longer mints either. The two pages keep their ids until someone re-keys them (a pin or an "ok mint"). A `backfill_gov_id.py` dry run will propose moving them to unresolved. That is honest, but read it first.
+
+**Result: the false-state-code entry.** Its cause was wrong. It said the code was lifted from the name text. It came from the subdomain reader, fixed 2026-09-10 (#836), with both hosts pinned the same day. The name text alone never mints either name (tested). Two stale committed rows remain in `governments.csv` (`rtr:us:sc:arkansas-supreme-court`, `rtr:us:sd:oxnard-school-district`), and `hub_slug_aliases.csv` still points at them. A new test fails if a third appears.
+
+**Result: Bamberg (investigation only).** Page 6124 is not in the 2026-09-21 export. Its neighbours 6122, 6123 and 6125 are. Nothing under `us:county:51135` (Nottoway) or `us:county:45009` (Bamberg) is either. So the live wrong page is gone. I did not find who removed it. The cause, from the code and the old audit:
+1. Bamberg's video was `youtube.com/embed/live_stream`, YouTube's "whatever is live now" placeholder.
+2. Until WO-296 and WO-303a (2026-09-12) the id extractor returned `live_stream` as if it were a real video id.
+3. The Archive matches a page by `(platform, external_id)` alone (`_find_existing_page`, and its own comment says it trusts the id to be unique).
+4. Another government whose site embeds the same placeholder landed on the same row and rewrote its government, name and title. `reports/gov_id_problem_cases.csv` (2026-09-09) already filed page 6124 as "generic embed id collision".
+
+The entry's guess (a batch ingest with an off-by-one) is not supported. Not verified: which government wrote last, and the row's stored `external_id`. Both need one read of the row.
+
+**Caution.**
+- The host-name flag is a review flag only. Nothing collects the flags yet. Making it block needs a review of the 58 and a longer allow-list.
+- The default-on hook forces `result.jurisdiction = unit_name` for every wrapper that reaches `process_row()`. A wrapper that relied on the adapter's own string will now carry the research row's name. WO-149, 218, 223 and 912 already did this.
+- The dry-run count is an upper bound and cannot see a wrong government in the SAME state (a town under its county's site). It reads the newest name per page. Sweeps that force the registry name send no wrong state by construction.
+- The Bamberg cause is inferred from code and an old audit. It was not checked against production.
+- The two new resolver guards are narrow on purpose. They stop the two shapes above and nothing else.
+
+**Recommendation.**
+1. **Do not build the blocking Archive check yet.** Of the 12 pages it would refuse, 10 look correct and 1 looks like a real error. It would block more right pages than wrong ones, because the guess it reads is often a bad channel-name guess. If Ryan wants a signal there, log it instead of refusing. That is Ryan's decision.
+2. **Fix page 9073.** `tenant_overrides.csv` has `www.youtube.com,channel=@washcoar,us:county:01129,fallback,wo171_localview`, which files an Arkansas channel under Washington County, AL. Two per-video pins already say `us:county:05143` (AR). Hand this to WO-934's list.
+3. **Re-key pages 5945 and 10852** with a pin or an "ok mint" (WO-934).
+4. Run the read-only re-check of the eScribe and CivicWeb rows already written (block 2 below).
+
+**Deploy status.** `app/utils/gov_registry/resolver.py` is on `main` after merge but **not live** until Ryan deploys the resolver. It also runs inside the Archive on a re-resolve, so it reaches the Archive only with an Archive deploy. Everything else (`scripts/`, `tests/`, `docs/`, this file) needs no deploy. No model changed, so no migration and no `alembic check` was needed.
+
+**Docs updated.** `docs/COVERAGE_HANDOVER.md` §3 (it said the hooks were opt-in and default `None`). `README.md` names none of this. `BACKLOG.md` and `CLAUDE.md` were left to WO-931.
+
+**For WO-931: what to change in `BACKLOG.md`.**
+
+1. **Replace** "The Archive files a page under whatever `gov_id` a sweep sends":
+   - **Issue**: WO-134 now installs `jurisdiction_check_hook()` by default (WO-932). Still open: should `/internal/ingest` return 409 when a payload's state disagrees with the registry state for a caller-supplied `gov_id`.
+   - **Impact**: 2026-09-21 export, 12 of 10,280 pages would be refused. By my reading 10 are correct pages with a bad guessed state, 1 is a real error (page 9073), 1 is unclear. A same-state mismatch is not caught either way.
+   - **Next action**: Ryan's yes or no. If yes, log a flag before refusing anything.
+   - **Constraint**: several sweeps force `result.jurisdiction = unit_name` and rely on the ladder being skipped. Do not add a blocking Archive check without re-running `scripts/wo932_state_check_dry_run.py` on a fresh inventory.
+   - **History**: WO-932.
+2. **Replace** "A tenant with no video content never runs the identity conflict":
+   - **Issue**: the raw-page fallback is now in `wo145`'s `process_enumerator_platform()` (WO-932). Rows already written by WO-145 to 152 were never re-checked.
+   - **Impact**: an eScribe or CivicWeb tenant with no video may carry a wrong tenant to government attribution in `jurisdiction_coverage.csv`. Never a live page.
+   - **Next action**: for every WO-145/146/147/148/149/150/152 row on eScribe or CivicWeb with outcome `no-video-found`, `no-meeting-nor-video` or `meeting-without-video`, call `wo145.raw_candidate_identity_check()` on one real candidate page (one polite fetch per row). The rows live in `rtr-business/research`, so the conductor runs it.
+   - **Constraint**: inconclusive is not a mismatch. Do not fill a blank from a guess.
+   - **History**: WO-168, WO-932.
+3. **Close** "The wrong-government checks never look at the resolved video's own", and add: "Host-name review flags are recorded on sweep rows but nothing collects them. Next action: after a sweep, list `host-name-review` notes and hand-check them; grow `CONSORTIUM_TENANT_HOSTS` from confirmed cases. Constraint: block only after that review."
+4. **Close** the two Bracken and false-state-code entries. Add: "Pages 5945 (`rtr:ca:mb:south`) and 10852 (`rtr:us:ut:north`) show a repair fragment as the government. Next action: pin or mint both. Constraint: run `backfill_gov_id.py` as a dry run first."
+5. **Close** Bamberg with the cause above. Also: "YouTubeAssetFinder.extract_video_id()'s regex matches YouTube's own" and the `[EASY]` "video-ID regex accepts a generic live stream" entry are stale for the code. The fix landed 2026-09-12 (`youtube_ids._RESERVED_NON_IDS`, WO-296 and WO-303a), and pages 6124, 6106 and 5095 are not in the 2026-09-21 export. Verify and close them, or narrow them to data.
+
 ## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
 
 **Why this ran.** WO-925's scan flagged 35 pages whose web address names a different place than the page's government. Ryan asked for a hand-check, then approved four fixes: delete the junk pages, mint BART, rename the 30 stale addresses, and correct the Lisbon channel pin. The Leon Valley twin (page 1595) was also deleted the same day.
