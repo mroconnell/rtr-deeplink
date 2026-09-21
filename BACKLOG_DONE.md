@@ -1,5 +1,35 @@
 # Backlog — done
 
+## WO-927: how many pages show a worse transcript than a hidden version they already hold? [Done 2026-09-20]
+
+**Why this ran.** Edina MN (page 3645) showed speaker labels only while a hidden version held the real words. Ryan asked whether Edina was one page or a pattern. This WO measured it. Nothing was changed or promoted.
+
+**What was tested.** The public site can show any hidden version: `/m/<slug>/transcript.srt?version=<id>` returns that version's cues. `GET /internal/export/pages` lists every version of every page (id, language, source, default flag, cue count, warnings) without the text. So the version count and warnings were read for all 10,262 pages (21 requests), then cues for 190 pages (373 transcript reads, 1 per second, under the 700 cap). Seed for the random sample: 927.
+
+| Outcome | Count of 10,262 pages | What it means |
+|---|---|---|
+| One version | 8,801 | Nothing to compare |
+| No version | 308 | Agenda or video only |
+| More than one version | 1,153 | 11.2% of pages. Swagit 25%, telvue 39%, granicus 12.5%, youtube 9.8% |
+
+**Reads.** 84 random multi-version pages (stratified by platform), then the 19 pages whose hidden version has the same cue count as the shown one (the Edina shape), then every page where the shown version has under 60% of a hidden version's cues (71 pages). Each rule is reported alone.
+
+| Rule | Pages meeting it, out of 1,153 multi-version pages | How known |
+|---|---|---|
+| a. Label-only shown text, hidden has real words | at least 2 (241, 3938) | Lower bound. 0 of 84 in the random sample (upper bound about 3.6%) |
+| b. Shown has under 60% of the cues, hidden covers more | 33 | Exact |
+| b2. Rule b and hidden has at least 1.25x the words | 5 (1254, 1500, 1624, 2000, 3086) | Exact |
+| c. Shown flagged garbled or truncated, hidden not | 1 (1658) | Exact |
+| d. Shown language mismatch, hidden matches | 0 | Exact |
+
+**Result.** Edina is not a one-off, but it is rare. At least 7 pages (0.6% of multi-version pages) show clearly worse text. Rule b alone is 2.9%, but 24 of its 33 pages hold the same words cut into more cues, so they are not worse. Page 1254's hidden version is labelled Welsh, so check it by hand.
+
+**Caution.** Cue count is not quality. Rule a cannot be counted exactly over the public site without reading all 1,153 pages, which the standing no-bulk-workload decision rules out. The video language is not stored, so rule d relies on the shown version's own language warning.
+
+**Recommendation.** Run `scripts/wo927_worse_shown_versions.py` from the Archive Render shell (read-only) for the exact rule a count. Hand-read each page before any promotion.
+
+**Deploy status.** None. A script and a test only. Files: `rtr-business/research/wo927_*.csv`.
+
 ## WO-926: the partial-transcript warning did not reach the shown Edina MN page, because the fix only ran on a push that made a new version [Done 2026-09-20]
 
 **Why this ran.** WO-925 added a rule that copies the "may end before the meeting did" warning onto the version a page shows. After the Archive deploy the Edina MN page (3645) still showed no warning, even though a re-check answered "pushed" with the warning attached. This WO finds out why and fixes it. Nothing was written to the production Archive. All numbers below come from our own public pages and a local run of the Cablecast adapter.
