@@ -13,6 +13,8 @@ write-side pieces and are covered in this same file's later additions,
 not here.
 """
 
+import json
+import re
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -25,14 +27,19 @@ from archive.utils.context_links import parse_social_url
 client = TestClient(archive.main.app)
 
 
-def _payload(external_id: str, source_url: str) -> dict:
+def _payload(
+    external_id: str,
+    source_url: str,
+    jurisdiction: str = "Context Page Test City, CA",
+    title: str = "Context Page Test Meeting",
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
         "external_id": external_id,
-        "title": "Context Page Test Meeting",
+        "title": title,
         "date": "2026-01-01",
-        "jurisdiction": "Context Page Test City, CA",
+        "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
         "segments": [],
@@ -42,9 +49,15 @@ def _payload(external_id: str, source_url: str) -> dict:
     }
 
 
-async def _make_page(external_id: str) -> str:
+async def _make_page(
+    external_id: str,
+    jurisdiction: str = "Context Page Test City, CA",
+    title: str = "Context Page Test Meeting",
+) -> str:
     url = f"https://example.granicus.com/player/clip/{external_id}"
-    result = await crud.ingest_resolution(_payload(external_id, url), url)
+    result = await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction=jurisdiction, title=title), url
+    )
     return result["slug"]
 
 
@@ -66,6 +79,29 @@ async def _make_youtube_page(external_id: str) -> str:
         "platform": "youtube",
     }
     result = await crud.ingest_resolution(payload, source_url)
+    return result["slug"]
+
+
+async def _make_page_with_segments(
+    external_id: str,
+    segments: list,
+    *,
+    source: str = "sourced",
+    transcript_warnings: list | None = None,
+) -> str:
+    # Real segment shape (start/end/text) -- app/utils/vtt_parser.py
+    # produces it, archive/templates/meeting_page.html renders it
+    # (id="seg-{{ loop.index0 }}"); see tests/test_context_entries.py's
+    # own copy of this helper for the excerpt-window crud tests this
+    # module's page-level excerpt tests build on top of.
+    url = f"https://example.granicus.com/player/clip/{external_id}"
+    payload = {
+        **_payload(external_id, url),
+        "segments": segments,
+        "source": source,
+        "transcript_warnings": transcript_warnings or [],
+    }
+    result = await crud.ingest_resolution(payload, url)
     return result["slug"]
 
 
@@ -553,7 +589,7 @@ async def test_context_entry_page_404s_for_a_draft():
 async def test_context_entry_page_404s_for_a_hidden_entry():
     entry = await _publish_entry(_social_url(), summary="Will be hidden.")
     await crud.set_context_entry_status(entry["id"], "hidden")
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 404
 
 
@@ -562,20 +598,26 @@ def test_context_entry_page_404s_for_an_unknown_id():
     assert response.status_code == 404
 
 
-def test_context_entry_page_404s_for_a_non_numeric_id():
-    # Starlette's :int path convertor simply doesn't match "abc" -- this
-    # falls through to the app's own StarletteHTTPException(404) handler
-    # (archive/main.py), which renders the same not_found.html, so the
-    # only thing worth pinning here is the status code.
-    response = client.get("/context/abc")
-    assert response.status_code == 404
+def test_context_entry_page_404s_for_junk_refs():
+    # _CONTEXT_ENTRY_REF_RE (archive/main.py) simply doesn't match any of
+    # these -- each falls through to the app's own
+    # StarletteHTTPException(404) handler, which renders the same
+    # not_found.html, so the only thing worth pinning here is the status
+    # code. "12-UPPER" specifically checks that the slug half is
+    # lowercase-only, matching what context_permalink() ever actually
+    # produces; a 30-digit id checks the length cap
+    # (_CONTEXT_ENTRY_REF_MAX_DIGITS) never reaches int() at all.
+    for ref in ("abc", "12abc", "12-UPPER", "9" * 30):
+        response = client.get(f"/context/{ref}")
+        assert response.status_code == 404, ref
 
 
-def test_context_new_and_feed_xml_are_not_captured_by_the_int_route():
+def test_context_new_and_feed_xml_are_not_captured_by_the_entry_ref_route():
     # /context/new and /context/feed.xml must keep resolving to their own
     # routes, not fall through to context_entry_page() -- registration
-    # order plus the :int convertor should already guarantee this; this
-    # is the outside-in check.
+    # order plus _CONTEXT_ENTRY_REF_RE (neither "new" nor "feed.xml"
+    # matches `^(\d+)...`) should already guarantee this; this is the
+    # outside-in check.
     new_response = client.get("/context/new")
     assert new_response.status_code in (200, 404)  # 404 only if not an editor
     assert new_response.headers.get("content-type", "").startswith("text/html")
@@ -592,7 +634,7 @@ async def test_context_entry_page_200_headline_is_the_only_h1(monkeypatch):
         summary="Body text.",
         title="The one and only heading",
     )
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert response.text.count("<h1") == 1
     assert '<h1 class="context-headline">The one and only heading</h1>' in response.text
@@ -610,7 +652,7 @@ async def test_context_entry_page_escapes_the_summary(monkeypatch):
         summary="Innocent text <script>alert(1)</script> more text.",
         title="Escaping check",
     )
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert "<script>alert(1)</script>" not in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
@@ -619,7 +661,7 @@ async def test_context_entry_page_escapes_the_summary(monkeypatch):
 async def test_context_entry_page_no_headline_uses_meeting_title_as_h1(monkeypatch):
     monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
     entry = await _publish_entry(_social_url(), summary="No title on this one.")
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert response.text.count("<h1") == 1
     assert f'<h1 class="context-headline">{entry["title"]}</h1>' in response.text
@@ -629,12 +671,12 @@ async def test_context_entry_page_noindex_follows_the_feed_threshold(monkeypatch
     entry = await _publish_entry(_social_url(), summary="Threshold check.")
 
     monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 1_000_000)
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert '<meta name="robots" content="noindex">' in response.text
 
     monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert '<meta name="robots" content="noindex">' not in response.text
 
@@ -651,9 +693,9 @@ async def test_context_entry_page_canonical_and_og_tags(monkeypatch):
         summary="Canonical and OG tag check.",
         title="Canonical check headline",
     )
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
-    permalink = f"https://redtaperecordings.com/context/{entry['id']}"
+    permalink = f"https://redtaperecordings.com{entry['permalink']}"
     assert f'<link rel="canonical" href="{permalink}">' in response.text
     assert f'<meta property="og:url" content="{permalink}">' in response.text
     assert (
@@ -686,7 +728,7 @@ async def test_context_entry_page_og_image_absolute_for_youtube_card(monkeypatch
     assert entry["card_url"] is not None
     assert entry["card_url"].startswith("https://i.ytimg.com/")
 
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     # Already absolute -- must NOT be double-prefixed with public_base_url.
     assert f'<meta property="og:image" content="{entry["card_url"]}">' in response.text
@@ -726,7 +768,7 @@ async def test_context_entry_page_og_image_absolute_for_relative_card_url(
     entry = result["ok"]
     assert entry["card_url"] == f"/m/{slug}/card.jpg"
 
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert (
         f'<meta property="og:image" content="https://redtaperecordings.com{entry["card_url"]}">'
@@ -759,7 +801,7 @@ async def test_context_entry_page_og_image_falls_back_to_generic(monkeypatch):
     entry = result["ok"]
     assert entry["card_url"] is None
 
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert (
         '<meta property="og:image" content="https://redtaperecordings.com/m/some-generic/card.jpg">'
@@ -770,7 +812,7 @@ async def test_context_entry_page_og_image_falls_back_to_generic(monkeypatch):
 async def test_context_entry_page_embed_autoloads(monkeypatch):
     monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
     entry = await _publish_entry(_yt_url(), summary="Embed should autoload here.")
-    response = client.get(f"/context/{entry['id']}")
+    response = client.get(entry["permalink"])
     assert response.status_code == 200
     assert "data-embed-autoload" in response.text
     assert 'data-embed-kind="youtube"' in response.text
@@ -788,7 +830,7 @@ async def test_feed_headline_links_to_the_permalink(monkeypatch):
     html = _entry_html(response.text, entry["id"])
     assert html is not None
     assert (
-        f'<h2 class="context-headline"><a href="/context/{entry["id"]}">Linked headline</a></h2>'
+        f'<h2 class="context-headline"><a href="{entry["permalink"]}">Linked headline</a></h2>'
         in html
     )
 
@@ -804,7 +846,7 @@ async def test_feed_no_headline_entry_still_has_a_permalink_link(monkeypatch):
     assert html is not None
     assert "context-headline" not in html
     assert (
-        f'<a href="/context/{entry["id"]}" class="context-permalink-quiet">Link to this post</a>'
+        f'<a href="{entry["permalink"]}" class="context-permalink-quiet">Link to this post</a>'
         in html
     )
 
@@ -823,13 +865,14 @@ async def test_editor_list_draft_headline_is_not_a_link(monkeypatch):
         status="draft",
     )
     entry_id = created["ok"]["id"]
+    permalink = created["ok"]["permalink"]
 
     response = client.get("/context/new")
     assert response.status_code == 200
     html = _entry_html(response.text, entry_id)
     assert html is not None
     assert f'<h2 class="context-headline">{unique_title}</h2>' in html
-    assert f'<a href="/context/{entry_id}">{unique_title}</a>' not in html
+    assert f'<a href="{permalink}">{unique_title}</a>' not in html
 
 
 async def test_editor_list_published_entry_headline_links_to_permalink(monkeypatch):
@@ -847,10 +890,486 @@ async def test_editor_list_published_entry_headline_links_to_permalink(monkeypat
     html = _entry_html(response.text, entry["id"])
     assert html is not None
     assert (
-        f'<h2 class="context-headline"><a href="/context/{entry["id"]}">{unique_title}</a></h2>'
+        f'<h2 class="context-headline"><a href="{entry["permalink"]}">{unique_title}</a></h2>'
         in html
     )
     assert (
-        f'<a href="/context/{entry["id"]}" class="cassette-btn-outline">View post</a>'
+        f'<a href="{entry["permalink"]}" class="cassette-btn-outline">View post</a>'
         in html
     )
+
+
+# --- slugged permalinks + 301s (WO-946) -------------------------------------
+
+
+async def test_context_entry_page_301s_from_the_bare_id(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="Bare id redirect check.", title="Bare Id Redirect Check"
+    )
+    bare = f"/context/{entry['id']}"
+    assert bare != entry["permalink"]  # this entry really does have a slug
+
+    response = client.get(bare, follow_redirects=False)
+    assert response.status_code == 301
+    assert response.headers["location"] == entry["permalink"]
+
+
+async def test_context_entry_page_301_preserves_the_query_string(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Query string redirect check.",
+        title="Query String Check",
+    )
+    bare = f"/context/{entry['id']}"
+    response = client.get(f"{bare}?utm_source=test&x=1", follow_redirects=False)
+    assert response.status_code == 301
+    assert response.headers["location"] == f"{entry['permalink']}?utm_source=test&x=1"
+
+
+async def test_context_entry_page_301s_from_a_stale_slug_after_a_title_edit(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="Stale slug check.", title="Original Title Here"
+    )
+    stale_permalink = entry["permalink"]
+
+    updated = await crud.save_context_entry(
+        "user_context_pages_test",
+        entry_id=entry["id"],
+        social=parse_social_url(entry["social_url"]),
+        summary=entry["summary"],
+        title="Updated Title Entirely",
+        meeting_page_id=entry["meeting_page_id"],
+        t_seconds=entry["t_seconds"],
+        match_kind=entry["match_kind"],
+        status="published",
+    )
+    new_entry = updated["ok"]
+    assert new_entry["permalink"] != stale_permalink
+
+    response = client.get(stale_permalink, follow_redirects=False)
+    assert response.status_code == 301
+    assert response.headers["location"] == new_entry["permalink"]
+
+
+async def test_context_entry_page_301s_from_a_wrong_slug(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="Wrong slug check.", title="The Real Title"
+    )
+    wrong = f"/context/{entry['id']}-totally-the-wrong-slug"
+    assert wrong != entry["permalink"]
+
+    response = client.get(wrong, follow_redirects=False)
+    assert response.status_code == 301
+    assert response.headers["location"] == entry["permalink"]
+
+
+# --- title tag (WO-946) -----------------------------------------------------
+
+
+def _expected_title(headline: str, jurisdiction_display: str | None) -> str:
+    """Mirrors context_entry_page.html's own <title> rule (WO-946) --
+    used here because effective_jurisdiction() (archive/db/crud.py) can
+    enrich a plain jurisdiction string at ingest time (e.g. a real,
+    recognized government gets its registry display name, "(city)"
+    disambiguators and all), so a test can't safely assume its own raw
+    input string is what ends up in entry["jurisdiction_display"]. Tests
+    below always read that field back from the real entry rather than
+    guessing, then use this to compute what the page SHOULD show."""
+    named = bool(jurisdiction_display) and (
+        jurisdiction_display.lower() in headline.lower()
+    )
+    with_gov = headline + (
+        f" — {jurisdiction_display}" if (jurisdiction_display and not named) else ""
+    )
+    # The place is what people search for, so it is never what gets
+    # dropped: past ~65 characters only the site suffix goes.
+    full = f"{with_gov} | Red Tape Recordings"
+    if len(full) <= 65:
+        return full
+    return with_gov
+
+
+async def test_context_entry_page_title_includes_jurisdiction_when_it_fits(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    # A short, clearly-synthetic jurisdiction (per CLAUDE.md's synthetic-
+    # test convention -- not a real place, so no registry enrichment can
+    # apply) with a short headline that omits it, so the full "headline —
+    # jurisdiction | Red Tape Recordings" line should fit under 65 chars.
+    slug = await _make_page(
+        f"ctx-title-short-{uuid.uuid4().hex[:8]}", jurisdiction="Testville, ZZ"
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Short title tag check.",
+        title="Council votes on zoning",
+        slug=slug,
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    expected = _expected_title("Council votes on zoning", entry["jurisdiction_display"])
+    assert len(expected) <= 65  # sanity: this test's premise is "it fits"
+    assert f"<title>{expected}</title>" in response.text
+    assert entry["jurisdiction_display"] in expected  # the jurisdiction really is there
+
+
+async def test_context_entry_page_title_omits_jurisdiction_already_named(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page(
+        f"ctx-title-named-{uuid.uuid4().hex[:8]}", jurisdiction="Testville, ZZ"
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Jurisdiction-already-named title tag check.",
+        title="Testville, ZZ council votes on zoning",
+        slug=slug,
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    expected = _expected_title(
+        "Testville, ZZ council votes on zoning", entry["jurisdiction_display"]
+    )
+    assert f"<title>{expected}</title>" in response.text
+    # Never doubled -- the jurisdiction appears once (inside the headline
+    # itself), not appended a second time.
+    title_text = response.text.split("<title>")[1].split("</title>")[0]
+    assert title_text.lower().count(entry["jurisdiction_display"].lower()) == 1
+
+
+async def test_context_entry_page_title_keeps_jurisdiction_and_drops_the_site_suffix(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    # Deliberately verbose and obviously synthetic -- long enough that
+    # "headline — jurisdiction | Red Tape Recordings" can't fit in 65
+    # characters, however the real jurisdiction_display ends up reading.
+    long_jurisdiction = (
+        "Zzznonexistent Testing Placeholder Municipality Number Twelve, ZZ"
+    )
+    slug = await _make_page(
+        f"ctx-title-long-gov-{uuid.uuid4().hex[:8]}", jurisdiction=long_jurisdiction
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Long jurisdiction title tag check.",
+        title="Budget vote",
+        slug=slug,
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    expected = _expected_title("Budget vote", entry["jurisdiction_display"])
+    # This test's premise: the full line really was too long to fit. The
+    # first draft dropped the JURISDICTION here; an ordinary 56-character
+    # headline came out with no place name at all (seen in the browser).
+    assert len(f"{expected} | Red Tape Recordings") > 65
+    assert entry["jurisdiction_display"] in expected
+    assert "Red Tape Recordings" not in expected
+    assert f"<title>{expected}</title>" in response.text
+
+
+async def test_context_entry_page_title_never_shortens_the_headline_itself(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    long_headline = (
+        "A very long headline that exceeds the sixty five character budget on its own"
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Headline-never-shortened title tag check.",
+        title=long_headline,
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    expected = _expected_title(long_headline, entry["jurisdiction_display"])
+    assert expected.startswith(long_headline)
+    assert f"<title>{expected}</title>" in response.text
+
+
+# --- JSON-LD (WO-946) --------------------------------------------------------
+
+_JSON_LD_RE = re.compile(
+    r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>', re.DOTALL
+)
+
+
+async def test_context_entry_page_json_ld_parses_and_resists_script_breakout(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    evil_headline = "Evil headline </script><script>alert(1)</script>"
+    entry = await _publish_entry(
+        _social_url(), summary="JSON-LD breakout check.", title=evil_headline
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    # The literal breakout string must never appear unescaped anywhere on
+    # the page -- tojson's \u-escaping is what prevents this.
+    assert "</script><script>alert(1)</script>" not in response.text
+
+    blocks = _JSON_LD_RE.findall(response.text)
+    assert len(blocks) == 2
+    blog_posting = json.loads(blocks[0])  # raises if it doesn't parse
+    assert blog_posting["@type"] == "BlogPosting"
+    assert blog_posting["headline"] == evil_headline
+    assert (
+        blog_posting["isBasedOn"] == f"https://redtaperecordings.com/m/{entry['slug']}"
+    )
+    assert blog_posting["citation"] == entry["social_url"]
+    assert blog_posting["publisher"] == {
+        "@type": "Organization",
+        "name": "Red Tape Recordings",
+    }
+    assert blog_posting["author"] == {
+        "@type": "Organization",
+        "name": "Red Tape Recordings",
+    }
+
+    breadcrumbs = json.loads(blocks[1])  # raises if it doesn't parse
+    assert breadcrumbs["@type"] == "BreadcrumbList"
+    names = [item["name"] for item in breadcrumbs["itemListElement"]]
+    assert names == ["Home", "Full Context", evil_headline]
+
+
+# --- visible publish date (WO-946) ------------------------------------------
+
+
+async def test_context_entry_page_has_a_visible_time_element(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="Time element check.", title="Time element headline"
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert '<time datetime="' in response.text
+    assert '<meta property="article:published_time" content="' in response.text
+
+
+# --- sitemap (WO-946) --------------------------------------------------------
+
+
+async def test_sitemap_lists_slugged_context_entry_permalinks_at_threshold(
+    monkeypatch,
+):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Sitemap presence check.",
+        title="Sitemap Presence Headline",
+    )
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert (
+        f"<loc>https://redtaperecordings.com{entry['permalink']}</loc>" in response.text
+    )
+
+
+async def test_sitemap_omits_context_entries_below_threshold(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 1_000_000)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Sitemap absence check.",
+        title="Sitemap Absence Headline",
+    )
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert (
+        f"<loc>https://redtaperecordings.com{entry['permalink']}</loc>"
+        not in response.text
+    )
+
+
+# --- transcript excerpt (WO-946) --------------------------------------------
+
+_EXCERPT_PAGE_SEGMENTS = [
+    {
+        "start": 0.0,
+        "end": 10.0,
+        "text": "Good morning, let's call this meeting to order.",
+    },
+    {
+        "start": 10.0,
+        "end": 40.0,
+        "text": "First item on the agenda is the budget discussion.",
+    },
+    {
+        "start": 40.0,
+        "end": 70.0,
+        "text": "We have a motion to approve the zoning changes.",
+    },
+]
+
+
+async def test_context_entry_page_renders_a_transcript_excerpt(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page_with_segments(
+        f"ctx-excerpt-render-{uuid.uuid4().hex[:8]}", _EXCERPT_PAGE_SEGMENTS
+    )
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="Excerpt render check.",
+        title="Excerpt render headline",
+        meeting_page_id=page["id"],
+        t_seconds=10,
+        match_kind="exact",
+        status="published",
+    )
+    entry = result["ok"]
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "What was said at this moment" in response.text
+    assert _EXCERPT_PAGE_SEGMENTS[1]["text"] in response.text
+    # Jinja autoescape turns "&" into "&amp;" inside the href attribute.
+    assert f"/m/{slug}?t=10&amp;line=seg-1&amp;version=" in response.text
+    assert "Keep reading in the full transcript" in response.text
+
+
+async def test_context_entry_page_excerpt_heading_matches_match_kind(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page_with_segments(
+        f"ctx-excerpt-approx-{uuid.uuid4().hex[:8]}", _EXCERPT_PAGE_SEGMENTS
+    )
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="Approximate match excerpt heading check.",
+        title="Approximate excerpt headline",
+        meeting_page_id=page["id"],
+        t_seconds=10,
+        match_kind="approximate",
+        status="published",
+    )
+    entry = result["ok"]
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "Around this moment in the meeting" in response.text
+
+
+async def test_context_entry_page_excerpt_text_is_escaped(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    evil_segments = [
+        {
+            "start": 0.0,
+            "end": 10.0,
+            "text": "Innocent text <script>alert(1)</script> more.",
+        },
+        {
+            "start": 10.0,
+            "end": 40.0,
+            "text": "Second line to satisfy the 2-segment floor.",
+        },
+    ]
+    slug = await _make_page_with_segments(
+        f"ctx-excerpt-xss-{uuid.uuid4().hex[:8]}", evil_segments
+    )
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="XSS excerpt check.",
+        title="XSS excerpt headline",
+        meeting_page_id=page["id"],
+        t_seconds=0,
+        match_kind="exact",
+        status="published",
+    )
+    entry = result["ok"]
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "<script>alert(1)</script>" not in response.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+
+
+async def test_context_entry_page_no_excerpt_without_t_seconds(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page_with_segments(
+        f"ctx-excerpt-no-t-{uuid.uuid4().hex[:8]}", _EXCERPT_PAGE_SEGMENTS
+    )
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="No t_seconds at all.",
+        title="No t seconds headline",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="published",
+    )
+    entry = result["ok"]
+    assert entry["t_seconds"] is None
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "context-excerpt" not in response.text
+
+
+async def test_context_entry_page_no_excerpt_without_segments(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(), summary="No segments at all.", title="No segments headline"
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "context-excerpt" not in response.text
+
+
+async def test_context_entry_page_no_excerpt_with_a_quality_marker_warning(
+    monkeypatch,
+):
+    from archive.db.crud import _GARBLED_MARKER
+
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page_with_segments(
+        f"ctx-excerpt-garbled-{uuid.uuid4().hex[:8]}",
+        _EXCERPT_PAGE_SEGMENTS,
+        transcript_warnings=[f"This transcript {_GARBLED_MARKER}."],
+    )
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_context_pages_test",
+        social=parse_social_url(_social_url()),
+        summary="Garbled transcript excerpt check.",
+        title="Garbled excerpt headline",
+        meeting_page_id=page["id"],
+        t_seconds=10,
+        match_kind="exact",
+        status="published",
+    )
+    entry = result["ok"]
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert "context-excerpt" not in response.text
+
+
+async def test_context_feed_never_loads_transcript_excerpts(monkeypatch):
+    # The feed must never pay for a segments-JSON read -- see
+    # get_context_transcript_excerpt()'s own docstring on why (six-figure
+    # bytes per meeting, times 20 entries on a page). Monkeypatched to
+    # raise so this fails loudly if the feed route is ever changed to
+    # call it.
+    async def _must_not_be_called(*args, **kwargs):
+        raise AssertionError("the feed must never load a transcript excerpt")
+
+    monkeypatch.setattr(crud, "get_context_transcript_excerpt", _must_not_be_called)
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    await _publish_entry(
+        _yt_url(), summary="Feed must never load excerpts.", title="Feed excerpt guard"
+    )
+    response = client.get("/context")
+    assert response.status_code == 200

@@ -496,7 +496,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
     `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
-    `[IMPROVEMENT-ROUND]` Full Context permalink pages aren't in the…
+    `[IMPROVEMENT-ROUND]` The Full Context RSS item link still points at…
     `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
   Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
@@ -7258,32 +7258,27 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     README's "Meeting card images" section (the existing YouTube-redirect
     behavior this inherits).
 
-- **`[IMPROVEMENT-ROUND]` Full Context permalink pages aren't in the sitemap, and the RSS item link still points at the meeting, not the post.**
-  - **Issue**: WO-945's follow-up (2026-09-21) gave each Full Context
-    entry its own stable URL, `/context/{id}` (`archive/main.py`'s
-    `context_entry_page()`). Two things were deliberately left alone
-    when it shipped: `_SITEMAP_STATIC_PATHS`/the sitemap builder never
-    lists a per-entry URL, and `context_feed.xml.jinja`'s `<item><link>`
-    still points at the entry's meeting deep link
-    (`/m/{slug}?t={seconds}`), not its own permalink.
+- **`[IMPROVEMENT-ROUND]` The Full Context RSS item link still points at the meeting, not the post.**
+  - **Issue**: `context_feed.xml.jinja`'s `<item><link>` points at the
+    entry's meeting deep link (`/m/{slug}?t={seconds}`), not the entry's
+    own permalink (`/context/{id}-{slug}`, slugged in WO-946). The
+    sitemap half of this same residual (each published entry's permalink
+    listed once the feed clears `CONTEXT_MIN_INDEXABLE`) shipped in
+    WO-946 — this is what's left.
   - **Impact**: none today — the feed itself is still below
-    `CONTEXT_MIN_INDEXABLE` and `noindex`'d, so neither gap costs any
-    indexing. Once the feed clears that threshold, a permalink page with
-    no sitemap entry is undiscoverable to a crawler except by following
-    the feed's own HTML links, and an RSS reader/aggregator that uses
-    `<link>` as "the URL for this item" sends a reader to the meeting
-    rather than the curated post that cited it.
-  - **Next action**: once the feed is indexable, decide both: (1) add
-    each published entry's `permalink` to the sitemap (or a dedicated
-    `/context/sitemap.xml`, matching how `/state/*`/`/j/*` are handled),
-    and (2) decide whether `<link>` should become the permalink (with the
-    meeting deep link demoted to inside `<description>`, where it already
-    partly lives) — a real RSS semantics choice, not just a code change,
-    since it affects what "the URL for this item" means to a subscriber.
-  - **Constraint**: not started — both are cheap once decided; the open
-    question is the RSS semantics choice, not implementation effort.
-  - **History**: `BACKLOG_DONE.md`'s WO-945 entry (permalink pages
-    paragraph).
+    `CONTEXT_MIN_INDEXABLE` and `noindex`'d. Once it clears that
+    threshold, an RSS reader/aggregator that uses `<link>` as "the URL
+    for this item" sends a reader to the meeting rather than the curated
+    post that cited it.
+  - **Next action**: once the feed is indexable, decide whether `<link>`
+    should become the permalink (with the meeting deep link demoted to
+    inside `<description>`, where it already partly lives) — a real RSS
+    semantics choice, not just a code change, since it affects what "the
+    URL for this item" means to a subscriber.
+  - **Constraint**: not started — cheap once decided; the open question
+    is the RSS semantics choice, not implementation effort. Deliberately
+    left alone in WO-946 for the same reason.
+  - **History**: `BACKLOG_DONE.md`'s WO-945 and WO-946 entries.
 
 - **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
   - **Issue**: `/m/{slug}` never shows that a meeting has one or more

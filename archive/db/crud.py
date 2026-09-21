@@ -100,6 +100,7 @@ from ..utils.context_links import (
     NETWORK_LABELS,
     SocialRef,
 )
+from ..utils.context_links import context_permalink as _context_permalink
 from ..utils.context_links import embed_for as _context_embed_for
 from ..utils.video_thumbnail import target_offset_seconds, youtube_thumbnail_url
 from . import hub_slugs
@@ -11013,15 +11014,21 @@ def _context_entry_dict(
     set once `page` is known (None until then, same as every other
     meeting-dependent field). Do not conflate the two.
 
-    `permalink` (WO-945 follow-up) is this entry's own stable URL,
-    `/context/{id}` -- computed straight from `entry["id"]`, present on
-    EVERY entry regardless of status/meeting (unlike most of this dict,
-    which is meeting-dependent). It exists so a headline (or, absent one,
-    the quiet permalink affordance -- see _context_entry.html) always has
-    somewhere stable to link, even for an entry that later moves off page
-    1 of the feed. It is not itself a check that the permalink page will
-    200 for this entry -- get_public_context_entry() (the route behind
-    it) applies the real published+has-meeting rule at read time.
+    `permalink` (WO-945 follow-up; slugged as of WO-946) is this entry's
+    own stable URL, `/context/{id}-{slug}` (context_links.context_
+    permalink()) -- present on EVERY entry regardless of status/meeting
+    (unlike most of this dict, which is meeting-dependent). It exists so
+    a headline (or, absent one, the quiet permalink affordance -- see
+    _context_entry.html) always has somewhere stable to link, even for an
+    entry that later moves off page 1 of the feed. It is not itself a
+    check that the permalink page will 200 for this entry --
+    get_public_context_entry() (the route behind it) applies the real
+    published+has-meeting rule at read time. Computed once below with
+    whatever's known at that point (headline only, if there's no meeting
+    yet) and recomputed at the very end once jurisdiction_display/title
+    are known, so a draft with no meeting still gets a real permalink
+    value (never reachable while it's a draft, but correct once it's
+    matched and published) instead of staying stuck on the id-only form.
     """
     t_seconds = entry["t_seconds"]
     result = {
@@ -11029,7 +11036,7 @@ def _context_entry_dict(
         "status": entry["status"],
         "summary": entry["summary"],
         "headline": entry["headline"],
-        "permalink": f"/context/{entry['id']}",
+        "permalink": _context_permalink(entry["id"], entry["headline"], None, None),
         "social_url": entry["social_url"],
         "network": entry["network"],
         "network_label": NETWORK_LABELS.get(entry["network"], NETWORK_LABELS["other"]),
@@ -11047,6 +11054,11 @@ def _context_entry_dict(
         "created_at": entry["created_at"],
         "updated_at": entry["updated_at"],
         "has_meeting": page is not None,
+        # WO-946: the raw MeetingPage.id, for a caller that needs to query
+        # the meeting directly (get_context_transcript_excerpt()) --
+        # distinct from `id` above (the ContextEntry's own id) and from
+        # `slug` below (the meeting's public identity, not its PK).
+        "meeting_page_id": None,
         "slug": None,
         "title": None,
         "jurisdiction": None,
@@ -11065,20 +11077,29 @@ def _context_entry_dict(
     card_url = youtube_thumbnail_url(page.get("video_url"))
     if not card_url and servable_frames.would_serve(page["id"], t_seconds):
         card_url = f"/m/{slug}/card.jpg{suffix}"
+    jurisdiction_display = effective_jurisdiction(
+        page.get("gov_id"), page["jurisdiction"]
+    )
 
     result.update(
         {
+            "meeting_page_id": page["id"],
             "slug": slug,
             "title": page["title"],
             "jurisdiction": page["jurisdiction"],
-            "jurisdiction_display": effective_jurisdiction(
-                page.get("gov_id"), page["jurisdiction"]
-            ),
+            "jurisdiction_display": jurisdiction_display,
             "hub_slug": _hub_identity(page.get("gov_id"), page["jurisdiction"])[1],
             "date": page["date"],
             "date_html": str(meeting_date_html(page.get("date"))),
             "deep_link": f"/m/{slug}{suffix}",
             "card_url": card_url,
+            # Recomputed now that jurisdiction_display/title are known --
+            # see this function's own docstring on why the earlier value
+            # (headline-only, computed above) isn't the final answer for
+            # an entry with a meeting but no headline.
+            "permalink": _context_permalink(
+                entry["id"], entry["headline"], jurisdiction_display, page["title"]
+            ),
         }
     )
     return result
@@ -11205,6 +11226,61 @@ async def count_published_context_entries() -> int:
         return int(total)
 
 
+# WO-946: how many entries the sitemap ever lists, newest-updated first
+# -- a real cap, not a theoretical one: this table has no known upper
+# bound the way meeting pages roughly do, and a sitemap is meant to help
+# a crawler prioritize, not enumerate every URL that has ever existed.
+CONTEXT_SITEMAP_MAX_ENTRIES = 500
+
+
+async def list_context_entries_for_sitemap() -> list[dict]:
+    """The narrow slice sitemap() (archive/main.py) needs to list every
+    published entry's permalink -- id, headline, the two facts context_
+    links.context_permalink() falls back to when there's no headline
+    (jurisdiction_display, the meeting's title), and updated_at for
+    <lastmod>. Deliberately NOT _context_entry_dict()'s full shape: no
+    embed parsing, no servable-frames/thumbnail lookup, no summary/social
+    fields -- a sitemap listing has no use for any of them, and pulling
+    them in would mean this function paying for expensive lookups it
+    doesn't need CONTEXT_SITEMAP_MAX_ENTRIES times over.
+
+    Same INNER JOIN posture as list_context_entries(public=True): only a
+    `published` entry with a real, still-existing meeting can appear
+    (matches get_public_context_entry()'s own rule, so nothing here could
+    list a URL that would itself 404). [] when the table doesn't exist
+    yet, same as every other context_entries reader.
+    """
+    async with async_session() as session:
+        if not await _context_available(session):
+            return []
+        rows = (
+            await session.execute(
+                select(
+                    ContextEntry.id,
+                    ContextEntry.title,
+                    MeetingPage.gov_id,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.title,
+                    ContextEntry.updated_at,
+                )
+                .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                .where(ContextEntry.status == "published")
+                .order_by(ContextEntry.updated_at.desc(), ContextEntry.id.desc())
+                .limit(CONTEXT_SITEMAP_MAX_ENTRIES)
+            )
+        ).all()
+        return [
+            {
+                "id": row[0],
+                "headline": row[1],
+                "jurisdiction_display": effective_jurisdiction(row[2], row[3]),
+                "meeting_title": row[4],
+                "updated_at": row[5],
+            }
+            for row in rows
+        ]
+
+
 async def get_context_entry(entry_id: int) -> Optional[dict]:
     """One entry by id, editor-view shape (any status, meeting optional) --
     for the edit form, and for re-reading an entry right after a save."""
@@ -11251,6 +11327,235 @@ async def get_public_context_entry(entry_id: int) -> Optional[dict]:
             _context_page_row_to_dict(page),
             servable_frames=frames,
         )
+
+
+# WO-946: how far a transcript excerpt (get_context_transcript_excerpt()
+# below) reaches past its starting segment -- a time budget and a
+# character budget, whichever is hit first, with a floor of 2 segments
+# (when that many exist) so a single short segment never stands alone.
+# Deliberately generous-but-bounded: long enough to actually be "what was
+# said," short enough that the entry page stays a snippet, not a full
+# transcript reader -- "Keep reading in the full transcript" is the link
+# for that.
+_TRANSCRIPT_EXCERPT_MAX_SECONDS = 90
+_TRANSCRIPT_EXCERPT_MAX_CHARS = 900
+_TRANSCRIPT_EXCERPT_MIN_SEGMENTS = 2
+# How far before `t_seconds` this will still look for a starting segment,
+# when no segment's own `start` is <= t_seconds (the clip references a
+# moment slightly earlier than the transcript's first real line) -- see
+# this function's own docstring.
+_TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS = 5
+# The excerpt has to be what was said AT the linked moment, or nothing.
+# Without this bound both lookups above degrade silently: a `t_seconds`
+# past the transcript's last line (a transcript that stops early -- common
+# enough to have its own truncation marker) picked that last line, and a
+# `t_seconds` before the first line picked the first line however many
+# minutes later it started. Either way the page would present unrelated
+# speech as the clip's context. A minute covers real pauses (a recess, a
+# silent vote) without reaching into a different part of the meeting.
+_TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS = 60
+
+
+async def get_context_transcript_excerpt(
+    meeting_page_id: int, t_seconds: int
+) -> Optional[dict]:
+    """A short excerpt of the meeting's own transcript around `t_seconds`
+    -- what makes a Full Context permalink page more than a thin wrapper
+    around a link (see STATE_HUB_PAGES.md's diagnosis of why Google
+    declines pages shaped like that). Backs `GET /context/{id}`
+    (archive/main.py's context_entry_page()) only -- never the feed,
+    which would mean loading a `segments` JSON blob (six-figure bytes per
+    meeting) for every one of 20 entries on a page.
+
+    Returns None when there's nothing honest to show: no default
+    TranscriptVersion; a default version with no segments at all;
+    `_has_real_warning_free_transcript()` says this version is garbled,
+    likely-hallucinated, or a truncated Granicus scrape (the exact same
+    "is this actually a good transcript" check every other quality-gated
+    reader in this file already uses -- see that function's own
+    docstring; a new quality marker only ever needs adding there, not
+    reinvented here); or no segment falls anywhere near the window.
+
+    Window: starts at the segment "containing" `t_seconds` -- the last
+    segment whose own `start` is <= `t_seconds`, same rule shared_static/
+    deep_link.js's findActiveSegment() uses client-side for the same
+    concept. If no segment qualifies (the clip's moment is earlier than
+    the transcript's own first line -- a real, if rare, editor-matching
+    case), falls back to the first segment starting within
+    _TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS after `t_seconds`. From there,
+    consecutive segments are added until _TRANSCRIPT_EXCERPT_MAX_SECONDS
+    of meeting time or _TRANSCRIPT_EXCERPT_MAX_CHARS of text is reached,
+    whichever comes first -- except the first _TRANSCRIPT_EXCERPT_MIN_
+    SEGMENTS segments are always included even if that alone already
+    exceeds either budget, so a single long segment can't produce a
+    one-line excerpt when a second one is available.
+
+    Each returned line's `deep_link` uses the segment's REAL index in the
+    full segments array (not its position within this excerpt) as
+    `line=seg-{N}` -- the exact convention meeting_page.html's own
+    transcript rendering (`id="seg-{{ loop.index0 }}"`) and shared_static/
+    deep_link.js's `getDeepLinkLine()`/`findActiveSegment()` already agree
+    on, so a reader who clicks through lands with the same line
+    highlighted.
+    `continues` is true when the excerpt stopped before the transcript's
+    real end -- there's more to read past what's shown.
+    """
+    async with async_session() as session:
+        row = (
+            await session.execute(
+                select(
+                    MeetingPage.slug,
+                    TranscriptVersion.id,
+                    TranscriptVersion.language,
+                    TranscriptVersion.source,
+                    TranscriptVersion.segments,
+                    TranscriptVersion.transcript_warnings,
+                )
+                .join(
+                    TranscriptVersion,
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                )
+                .where(
+                    MeetingPage.id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        ).first()
+        if row is None:
+            return None
+        slug, version_id, language, source, segments, warnings = row
+        if not segments:
+            return None
+        if not _has_real_warning_free_transcript(warnings):
+            return None
+
+        start_idx: Optional[int] = None
+        for i, seg in enumerate(segments):
+            if seg.get("start", 0) <= t_seconds:
+                start_idx = i
+            else:
+                break
+        if start_idx is None:
+            for i, seg in enumerate(segments):
+                if (
+                    seg.get("start", 0)
+                    >= t_seconds - _TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS
+                ):
+                    start_idx = i
+                    break
+        if start_idx is None:
+            return None
+
+        # See _TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS: the chosen line must
+        # actually be near the linked moment, in either direction.
+        chosen = segments[start_idx]
+        chosen_start = chosen.get("start", 0)
+        chosen_end = chosen.get("end", chosen_start)
+        if chosen_start > t_seconds:
+            gap = chosen_start - t_seconds
+        else:
+            gap = max(0, t_seconds - chosen_end)
+        if gap > _TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS:
+            return None
+
+        included = [start_idx]
+        window_start = segments[start_idx].get("start", 0)
+        total_chars = len(segments[start_idx].get("text", ""))
+        i = start_idx + 1
+        while i < len(segments):
+            seg = segments[i]
+            elapsed = seg.get("end", seg.get("start", 0)) - window_start
+            prospective_chars = total_chars + len(seg.get("text", ""))
+            if len(included) >= _TRANSCRIPT_EXCERPT_MIN_SEGMENTS and (
+                elapsed > _TRANSCRIPT_EXCERPT_MAX_SECONDS
+                or prospective_chars > _TRANSCRIPT_EXCERPT_MAX_CHARS
+            ):
+                break
+            included.append(i)
+            total_chars = prospective_chars
+            i += 1
+
+        lines = []
+        for idx in included:
+            seg = segments[idx]
+            seg_start = seg.get("start", 0)
+            lines.append(
+                {
+                    "index": idx,
+                    "start": seg_start,
+                    "timestamp_label": format_timestamp_label(seg_start),
+                    "text": seg.get("text", ""),
+                    "deep_link": f"/m/{slug}?t={int(seg_start)}&line=seg-{idx}&version={version_id}",
+                }
+            )
+
+        return {
+            "version_id": version_id,
+            "language": language,
+            "source": source,
+            "lines": lines,
+            "paragraphs": _excerpt_paragraphs(lines),
+            "continues": included[-1] < len(segments) - 1,
+        }
+
+
+# Rough size at which a run of caption lines is broken into a new
+# paragraph, once the text so far ends a sentence.
+_EXCERPT_PARAGRAPH_SOFT_CHARS = 320
+_SPEAKER_CHANGE_MARKER = ">>"
+
+
+def _excerpt_paragraphs(lines: list[dict]) -> list[dict]:
+    """Groups an excerpt's raw caption lines into readable paragraphs.
+
+    Broadcast-style captions arrive as fragments of a few words each --
+    the real Jacksonville FL excerpt this was checked against (Granicus
+    clip 7447, t=754) was 34 lines such as "[12:34] yourself." and
+    "[12:48] move on?". One timestamp per fragment is unreadable, and it
+    is poor page text for the same reason. `lines` stays in the payload
+    untouched (it is the faithful record, and what the per-line tests
+    pin); this is only how the page presents it.
+
+    A new paragraph starts at a speaker change -- the ">>" convention
+    captioners use, which is stripped from the text since the paragraph
+    break now carries that meaning -- or once a paragraph has passed
+    _EXCERPT_PARAGRAPH_SOFT_CHARS and the text so far ends a sentence.
+    Each paragraph keeps its FIRST line's index/start/timestamp/deep link,
+    so its timestamp still lands on the exact transcript row it opens
+    with. Our own audio transcriptions have no ">>" and longer lines; the
+    size rule alone handles those.
+    """
+    paragraphs: list[dict] = []
+    current: Optional[dict] = None
+    for line in lines:
+        # A marker can sit mid-line ("thank you. >> Understood"), so split
+        # on it: the first piece continues the current speaker, every
+        # later piece is a new one.
+        pieces = (line.get("text") or "").split(_SPEAKER_CHANGE_MARKER)
+        for position, piece in enumerate(pieces):
+            text = piece.strip()
+            if not text:
+                continue
+            speaker_change = position > 0
+            ends_sentence = current is not None and current["text"].endswith(
+                (".", "?", "!")
+            )
+            long_enough = (
+                current is not None
+                and len(current["text"]) >= _EXCERPT_PARAGRAPH_SOFT_CHARS
+            )
+            if current is None or speaker_change or (long_enough and ends_sentence):
+                current = {
+                    "index": line["index"],
+                    "start": line["start"],
+                    "timestamp_label": line["timestamp_label"],
+                    "deep_link": line["deep_link"],
+                    "text": text,
+                }
+                paragraphs.append(current)
+            else:
+                current["text"] = f"{current['text']} {text}"
+    return paragraphs
 
 
 async def save_context_entry(

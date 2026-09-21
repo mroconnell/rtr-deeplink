@@ -23,4 +23,10 @@
     <lastmod>{{ entry.updated_at.strftime('%Y-%m-%d') }}</lastmod>
   </url>
 {%- endfor %}
+{%- for c in context_entries %}
+  <url>
+    <loc>{{ base_url }}{{ c.permalink }}</loc>
+    <lastmod>{{ c.updated_at.strftime('%Y-%m-%d') }}</lastmod>
+  </url>
+{%- endfor %}
 </urlset>

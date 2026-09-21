@@ -12,6 +12,7 @@ import pytest
 from archive.utils.context_links import (
     CONTEXT_SUMMARY_MAX,
     ContextLinkError,
+    context_permalink,
     embed_for,
     parse_rtr_link,
     parse_social_url,
@@ -367,3 +368,83 @@ def test_context_summary_max_is_a_positive_int():
     # depends on this being usable as a length cap.
     assert isinstance(CONTEXT_SUMMARY_MAX, int)
     assert CONTEXT_SUMMARY_MAX > 0
+
+
+# --- context_permalink() (WO-946) ------------------------------------------
+
+
+def test_context_permalink_uses_the_headline_when_there_is_one():
+    assert (
+        context_permalink(12, "Council votes on zoning change", "Some City, CA", "x")
+        == "/context/12-council-votes-on-zoning-change"
+    )
+
+
+def test_context_permalink_falls_back_to_jurisdiction_and_meeting_title():
+    # No headline -- basis is jurisdiction_display + meeting_title.
+    assert (
+        context_permalink(12, None, "Dublin, CA", "City Council Meeting")
+        == "/context/12-dublin-ca-city-council-meeting"
+    )
+
+
+def test_context_permalink_empty_headline_string_also_falls_back():
+    # An empty (not None) headline -- save_context_entry() always stores
+    # None for a blank title, but the pure function itself should treat
+    # both the same way rather than assuming its caller's convention.
+    assert (
+        context_permalink(12, "   ", "Dublin, CA", "City Council Meeting")
+        == "/context/12-dublin-ca-city-council-meeting"
+    )
+
+
+def test_context_permalink_strips_punctuation():
+    assert (
+        context_permalink(5, 'Budget & Zoning: "Special" Session!', None, None)
+        == "/context/5-budget-zoning-special-session"
+    )
+
+
+def test_context_permalink_drops_apostrophes_rather_than_hyphenating_them():
+    """Seen in the browser (WO-946): "program's cost" slugged to
+    "program-s-cost". Both the straight and the typographic apostrophe,
+    since a title pasted from a phone usually carries the curly one."""
+    assert (
+        context_permalink(6, "Staff on the program's cost", None, None)
+        == "/context/6-staff-on-the-programs-cost"
+    )
+    assert (
+        context_permalink(6, "Staff on the program’s cost", None, None)
+        == "/context/6-staff-on-the-programs-cost"
+    )
+
+
+def test_context_permalink_handles_unicode():
+    # slugify_text() (archive/utils/slugify.py) is ASCII-only by design --
+    # this pins that context_permalink() inherits that behavior rather
+    # than crashing or double-encoding on a non-ASCII headline.
+    result = context_permalink(7, "Café society café", None, None)
+    assert result.startswith("/context/7-")
+    assert result == "/context/7-caf-society-caf"
+
+
+def test_context_permalink_caps_a_very_long_headline_on_a_hyphen_boundary():
+    long_headline = "word " * 40  # slugifies to "word-word-word-..." (200 chars)
+    result = context_permalink(9, long_headline, None, None)
+    prefix = "/context/9-"
+    assert result.startswith(prefix)
+    slug = result[len(prefix) :]
+    assert len(slug) <= 70
+    # Cut on a hyphen boundary -- never ends mid-word, never a trailing "-".
+    assert not slug.endswith("-")
+    assert slug.rsplit("-", 1)[-1] == "word"
+
+
+def test_context_permalink_empty_basis_is_a_bare_id():
+    # Pure punctuation slugifies to "" -- no meeting either, so there's
+    # nothing at all to build a slug from.
+    assert context_permalink(3, "!!!", None, None) == "/context/3"
+
+
+def test_context_permalink_no_headline_no_meeting_is_a_bare_id():
+    assert context_permalink(3, None, None, None) == "/context/3"

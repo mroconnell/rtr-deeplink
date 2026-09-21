@@ -2246,3 +2246,56 @@ h1.context-headline {
 .context-back-link {
   margin-bottom: 1.25rem;
 }
+
+/* The permalink page's visible publish date (WO-946), right under its
+   <h1> -- small and muted, informational rather than a competing focal
+   point next to the headline. */
+.context-published-date {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* The transcript excerpt section (WO-946) -- real words spoken at the
+   clipped moment, the thing that makes a permalink page more than a
+   thin wrapper around a link. Calm on purpose: it reads as part of the
+   entry's own card, not a separate, competing block. */
+.context-excerpt {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.context-excerpt h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+.context-excerpt-disclaimer {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.context-excerpt-lines {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+}
+.context-excerpt-line {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.context-excerpt-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-right: 0.35rem;
+}
+.context-excerpt-timestamp:hover,
+.context-excerpt-timestamp:focus {
+  color: var(--fg);
+  text-decoration: underline;
+}
+.context-excerpt-continue {
+  font-size: 0.9rem;
+}

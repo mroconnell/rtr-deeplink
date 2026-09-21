@@ -83,6 +83,15 @@
        guarantees has_meeting=true here, so entry.title is never None).
        Never a link: a permalink page doesn't link to itself. -#}
     <h1 class="context-headline">{{ entry.headline or entry.title or "Untitled meeting" }}</h1>
+    {% if entry.published_at %}
+    {#- A visible publish date (WO-946), right under the headline --
+       article:published_time (meta block) and BlogPosting's
+       datePublished (JSON-LD) carry the same value machine-readably;
+       this is the human-visible copy. Plain "YYYY-MM-DD", the same
+       style every other date on this site already shows (see
+       date_status.meeting_date_html()), not a fancy relative phrase. -#}
+    <p class="context-published-date">Posted <time datetime="{{ entry.published_at.isoformat() }}">{{ entry.published_at.strftime('%Y-%m-%d') }}</time></p>
+    {% endif %}
     {% elif entry.headline %}
     {#- UNTRUSTED, editor-written -- always plain autoescape, never |safe,
        same as summary/source_label below. h2: below the page's own h1
