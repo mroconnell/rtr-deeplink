@@ -14,6 +14,7 @@ from worker.segment_utils import (
     chunk_start,
     count_seam_overlap_segments,
     detect_hallucination_warnings,
+    is_last_window_of_source,
     merge_chunk_segments,
     shift_segments,
 )
@@ -613,3 +614,39 @@ def test_archive_duplicate_agrees_with_worker_on_every_real_fixture(name):
 
     segments = _load_srt_fixture(name)
     assert archive_detect(segments) == detect_hallucination_warnings(segments)
+
+
+# --- WO-935: which chunk may legitimately be short ---------------------------
+
+
+def test_only_the_last_chunk_of_a_fixed_window_job_is_the_last_window():
+    # Leon Valley show 179: 23,399.666 s at 450 s windows = 52 chunks.
+    assert [is_last_window_of_source(i, 3) for i in range(3)] == [False, False, True]
+    assert is_last_window_of_source(0, 1) is True  # a single-chunk job
+    assert is_last_window_of_source(51, 52) is True
+    assert is_last_window_of_source(50, 52) is False
+
+
+def test_a_multi_clip_plan_marks_the_last_window_of_each_clip():
+    # Shape of a real per-clip plan (WO-79/95): one entry per clip, or several
+    # windows of one long clip. Only the entry after which the FILE changes
+    # (or that ends the plan) runs to the end of its file.
+    plan = [
+        {"media_url": "https://x/clip-a.mp4", "media_start": 0.0, "start": 0.0},
+        {"media_url": "https://x/clip-a.mp4", "media_start": 450.0, "start": 450.0},
+        {"media_url": "https://x/clip-b.mp4", "media_start": 0.0, "start": 900.0},
+        {"media_url": "https://x/clip-c.mp4", "media_start": 0.0, "start": 1200.0},
+    ]
+    assert [is_last_window_of_source(i, 4, plan) for i in range(4)] == [
+        False,
+        True,
+        True,
+        True,
+    ]
+
+
+def test_an_ordinary_one_window_per_clip_plan_is_all_last_windows():
+    plan = [
+        {"media_url": f"https://x/clip-{n}.mp4", "duration": 300.0} for n in range(3)
+    ]
+    assert all(is_last_window_of_source(i, 3, plan) for i in range(3))

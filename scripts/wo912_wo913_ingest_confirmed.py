@@ -36,7 +36,9 @@ this run left it off on its first batch, relying on the hand-check alone. It is
 installed now: WO-149's `jurisdiction_check_hook()` rejects a hit whose
 adapter-guessed state disagrees with the row's registry government (a De Kalb,
 TX row whose site is De Kalb, IL's) and pins the jurisdiction to the row's own
-name.
+name. (Since WO-932, 2026-09-21, WO-134 installs that hook by default, so a
+wrapper that forgets it is still covered; `configure()` keeps setting it
+explicitly.)
 
 WO-134 reads the platform link from `hit_source_urls`; when that value is
 already a URL of the named platform (`detect_platform(url) == platform`) it

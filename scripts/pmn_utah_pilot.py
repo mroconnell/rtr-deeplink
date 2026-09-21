@@ -154,6 +154,7 @@ from app.platforms.base import (  # noqa: E402
     get_finder,
 )
 from app.utils.url_normalize import normalize_url  # noqa: E402
+from app.utils.video_hand_check import allowlisted_word  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 from scripts.nationwide_431_ingest import (  # noqa: E402
     HIGH_RISK_TITLE_PLATFORMS,
@@ -191,22 +192,6 @@ MAX_ENUM_PAGES = (
     # have silently truncated a 6-month run about 4,000 notices short with no
     # warning at all -- see the print() below, added at the same time, so a
     # future window wide enough to hit even THIS cap fails loudly instead.
-)
-
-MEETING_ALLOWLIST = (
-    "council",
-    "commission",
-    "board",
-    "committee",
-    "meeting",
-    "session",
-    "hearing",
-    "authority",
-    "trustees",
-    "supervisors",
-    "assembly",
-    "selectboard",
-    "select board",
 )
 
 # Government Types actually worth trying to map to a Census gov_id --
@@ -591,8 +576,11 @@ async def fetch_notice_detail(
 
 
 def looks_like_meeting_title(title: str) -> bool:
-    t = title.lower()
-    return any(kw in t for kw in MEETING_ALLOWLIST)
+    # WO-933: the governing-body word list now lives once, in
+    # app/utils/video_hand_check.py (this file kept its own copy, matched as
+    # a plain substring). Same list, word-boundary match like every other
+    # caller.
+    return allowlisted_word(title) is not None
 
 
 # ---------------------------------------------------------------------------

@@ -130,6 +130,7 @@ from app.platforms.base import detect_platform  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 
 import scripts.wo134_confirmed_hits_ingest as wo134  # noqa: E402
+from scripts.identity_gate import jurisdiction_check_hook  # noqa: E402
 
 RESEARCH_DIR = Path("/Users/mroconnell/Documents/rtr-business/research")
 CANDIDATES_CSV = RESEARCH_DIR / "wo149_candidates.csv"
@@ -1033,98 +1034,13 @@ wo134.TIER3_HANDLER = tier3_pending_handler
 
 
 # --- jurisdiction force-and-verify hook (the wrong-domain-mapping trap) --
-
-# County name -> plausible state-name/abbreviation tokens the adapter's
-# OWN jurisdiction guess is allowed to carry. If the adapter's guess
-# names a state that flatly conflicts with the expected one, this is the
-# real, documented trap (Charleston County SC / Charleston WV): reject
-# the hit rather than force-overwriting silently.
-_STATE_ABBRS = {
-    "AL",
-    "AK",
-    "AZ",
-    "AR",
-    "CA",
-    "CO",
-    "CT",
-    "DE",
-    "FL",
-    "GA",
-    "HI",
-    "ID",
-    "IL",
-    "IN",
-    "IA",
-    "KS",
-    "KY",
-    "LA",
-    "ME",
-    "MD",
-    "MA",
-    "MI",
-    "MN",
-    "MS",
-    "MO",
-    "MT",
-    "NE",
-    "NV",
-    "NH",
-    "NJ",
-    "NM",
-    "NY",
-    "NC",
-    "ND",
-    "OH",
-    "OK",
-    "OR",
-    "PA",
-    "RI",
-    "SC",
-    "SD",
-    "TN",
-    "TX",
-    "UT",
-    "VT",
-    "VA",
-    "WA",
-    "WV",
-    "WI",
-    "WY",
-}
-
-
-def jurisdiction_check_hook(
-    result, gov_id: str, unit_name: str, platform: str, final_seed: str
-) -> Tuple[bool, str]:
-    expected_state = ""
-    gov = government_for_id(gov_id)
-    if gov and gov.state:
-        expected_state = gov.state.strip().upper()
-
-    guess = (result.jurisdiction or "").strip()
-    if guess and expected_state:
-        # Find any 2-letter state abbreviation token in the guess (e.g.
-        # "Charleston, WV" or "Charleston WV Recreation Commission") and
-        # check it against the expected state. A guess with no such
-        # token (a bare city/county name, or one already carrying the
-        # expected state) is not a conflict.
-        tokens = re.findall(r"\b([A-Z]{2})\b", guess.upper())
-        found_states = [t for t in tokens if t in _STATE_ABBRS]
-        if found_states and expected_state not in found_states:
-            return False, (
-                f"wrong-domain-mapping: adapter jurisdiction guess {guess!r} "
-                f"names {found_states[0]}, expected {expected_state} "
-                f"(gov_id={gov_id}, seed={final_seed})"
-            )
-
-    # Compatible (or no signal either way) -- force the exact registry
-    # name, wo130_county_ingest.py's pattern, so gov_id resolves
-    # server-side to THIS county rather than drifting to rtr:unknown or a
-    # same-named place.
-    result.jurisdiction = unit_name
-    return True, ""
-
-
+#
+# WO-932 (2026-09-21): the hook moved to scripts/identity_gate.py so
+# wo134_confirmed_hits_ingest.py can install it by default (it imports this
+# file's parent, so it could not import the hook from here without a cycle).
+# `jurisdiction_check_hook` is re-exported under its old name -- every script
+# that does `wo149.jurisdiction_check_hook` (wo912_wo913_ingest_confirmed.py,
+# wo218/wo223) keeps working unchanged.
 wo134.JURISDICTION_CHECK_HOOK = jurisdiction_check_hook
 
 

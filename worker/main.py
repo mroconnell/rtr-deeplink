@@ -70,6 +70,7 @@ from worker.segment_utils import (
     chunk_duration,
     chunk_start,
     count_seam_overlap_segments,
+    is_last_window_of_source,
     shift_segments,
 )
 from worker.transcription_engine import TranscriptionEngine, build_default_engine
@@ -374,9 +375,12 @@ async def _chunk_audio_via_cache(
     start: float,
     duration: float,
     out_path: Path,
+    is_final_chunk: bool = False,
 ) -> tuple[bool, Optional[str]]:
     """Slice this chunk out of the job's cached audio, downloading that
-    cache first if this worker does not have it yet."""
+    cache first if this worker does not have it yet. `is_final_chunk` is
+    passed through to slice_cached_audio() (WO-935): a last chunk may
+    legitimately be shorter than requested, a middle one may not."""
     cached = _job_audio_cache_path(job_id)
     if not cached.exists():
         logger.info(
@@ -397,7 +401,11 @@ async def _chunk_audio_via_cache(
             cached.stat().st_size,
         )
     return await slice_cached_audio(
-        cached, start=start, duration=duration, out_path=out_path
+        cached,
+        start=start,
+        duration=duration,
+        out_path=out_path,
+        is_final_chunk=is_final_chunk,
     )
 
 
@@ -481,6 +489,14 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                 exc_info=True,
             )
 
+    # WO-935: the chunk audio is checked against the length asked for, so a
+    # valid-but-short chunk fails instead of silently transcribing only what
+    # survived -- except a chunk that runs to the END of its media file,
+    # whose asked-for length is "what is left of the probed duration" and
+    # may legitimately be a little more than the audio holds. Decided by the
+    # same helper scripts/transcribe_backlog_locally.py uses.
+    is_final_chunk = is_last_window_of_source(chunk_index, total_chunks, chunk_plan)
+
     # Both halves below can legitimately outlast STALE_CLAIM_AFTER on a
     # slow source -- WO-54's whole-file pull alone gets its own 360s
     # budget -- so the claim is refreshed for as long as this genuinely
@@ -516,6 +532,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                     start=start,
                     duration=duration,
                     out_path=audio_path,
+                    is_final_chunk=is_final_chunk,
                 )
                 if not extracted:
                     # Fall back to the per-chunk path rather than failing
@@ -540,6 +557,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                         duration=duration,
                         source_page_url=source_url,
                         out_path=audio_path,
+                        is_final_chunk=is_final_chunk,
                     )
             else:
                 extracted, extraction_error = await extract_chunk_audio(
@@ -548,6 +566,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                     duration=duration,
                     source_page_url=source_url,
                     out_path=audio_path,
+                    is_final_chunk=is_final_chunk,
                 )
             if not extracted:
                 logger.warning(

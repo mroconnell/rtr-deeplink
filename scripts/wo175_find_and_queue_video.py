@@ -42,7 +42,6 @@ Usage:
 import asyncio
 import csv
 import os
-import re
 import subprocess
 import sys
 import time
@@ -67,6 +66,9 @@ load_dotenv()
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.queue_probe import probe_queue_entry  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402
+    looks_like_real_meeting as shared_looks_like_real_meeting,
+)
 
 register_all_finders()
 
@@ -80,51 +82,6 @@ TENANT_OVERRIDES_CSV = (
     REPO_ROOT / "app" / "utils" / "jurisdiction_data" / "tenant_overrides.csv"
 )
 
-MEETING_ALLOWLIST = (
-    "council",
-    "commission",
-    "board",
-    "committee",
-    "meeting",
-    "session",
-    "hearing",
-    "authority",
-    "trustees",
-    "supervisors",
-    "assembly",
-    "selectboard",
-    "select board",
-    "bocc",
-)
-PROMO_BLOCKLIST = (
-    "promo",
-    "advertisement",
-    "commercial",
-    "psa",
-    "public service announcement",
-    "how to",
-    "tutorial",
-    "instructional",
-    "training video",
-    "orientation video",
-    "welcome",
-    "message from the mayor",
-    "highlight reel",
-    "sizzle reel",
-    "ribbon cutting",
-    "parade",
-    "test stream",
-    "test broadcast",
-    "sample video",
-    "demo video",
-    "career",
-    "job fair",
-    "recruitment",
-    "state of the city",
-    "year in review",
-    "commercial break",
-    "tour of",
-)
 PREFERRED_MIN = 9 * 60
 PREFERRED_MAX = 40 * 60
 MAX_CANDIDATES_TRIED = 6
@@ -132,15 +89,11 @@ MAX_CANDIDATES_TRIED = 6
 BLOCK_MARKERS = ("429", "sign in to confirm", "not a bot")
 
 
-def _contains_word(text: str, phrase: str) -> bool:
-    return re.search(r"\b" + re.escape(phrase) + r"\b", text) is not None
-
-
 def looks_like_real_meeting(title: str) -> bool:
-    t = (title or "").lower()
-    if any(_contains_word(t, b) for b in PROMO_BLOCKLIST):
-        return False
-    return any(_contains_word(t, kw) for kw in MEETING_ALLOWLIST)
+    # WO-933: the allow/block lists and the word-boundary match now live once,
+    # in app/utils/video_hand_check.py. This script has always required a
+    # governing-body word, so that stays.
+    return shared_looks_like_real_meeting(title, require_allowlist=True)
 
 
 def is_block_signature(text: str) -> bool:

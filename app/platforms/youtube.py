@@ -526,6 +526,9 @@ class YouTubeAssetFinder(AssetFinder):
             video_channel_id=(info.get("channel_id") or None),
             video_url=video_url,
             video_format="youtube",
+            # WO-935: real length from yt-dlp, never guessed -- None when
+            # yt-dlp gave none (still live / not started / degraded resolve).
+            video_duration_seconds=cls._duration_seconds(info),
             segments=segments,
             transcript_language=transcript_language,
             video_warnings=video_warnings,
@@ -582,6 +585,16 @@ class YouTubeAssetFinder(AssetFinder):
             else None
         )
         return transcript_marker, video_marker
+
+    @staticmethod
+    def _duration_seconds(info: dict) -> Optional[float]:
+        """yt-dlp's `duration` (whole seconds) as a float, or None when it
+        is missing, not a number, or not positive. Never a guess: the
+        partial-transcript check treats None as "cannot measure"."""
+        duration = info.get("duration")
+        if isinstance(duration, bool) or not isinstance(duration, (int, float)):
+            return None
+        return float(duration) if duration > 0 else None
 
     @staticmethod
     def _channel_handle(info: dict) -> Optional[str]:
@@ -733,6 +746,14 @@ class YouTubeAssetFinder(AssetFinder):
                 # the same metadata-only extract_info() call already made
                 # for title/date/captions above, not a second network hit.
                 "playable_in_embed": info.get("playable_in_embed"),
+                # WO-935: the video's own length in seconds -- another field
+                # of the same metadata-only extract_info() call, so it costs
+                # no extra request. resolve_video_id() hands it to
+                # ResolvedMeeting.video_duration_seconds, which is what lets
+                # the WO-923 partial-transcript check (coverage_check.py)
+                # run on a YouTube page at all. yt-dlp leaves it None for a
+                # stream that is still live or not yet started.
+                "duration": info.get("duration"),
                 # True only when NEITHER manual nor auto-generated captions
                 # exist in ANY language -- see resolve_video_id()'s own
                 # comment on why that's the real "channel disabled

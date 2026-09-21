@@ -2611,6 +2611,14 @@ _SLUG_REDIRECTS: dict[str, str] = {
     "new-york-ny-2026-08-19-8-18-26-council-meeting-mp4": "ringwood-nj-2026-08-19-8-18-26-council-meeting-mp4",
     "brattleboro-vt-2026-03-04-2026-newfane-town-meeting-3-3-26": "newfane-town-vt-2026-03-04-2026-newfane-town-meeting-3-3-26",
     "whately-ma-2026-09-10-deerfield-selectboard-september-9-2026": "deerfield-ma-2026-09-09-deerfield-selectboard-september-9-2026",
+    # 2026-09-21 (WO-942): Culver City's 2025-10-27 council meeting (Granicus
+    # clip 3415) existed as two pages; page 289 (older id scheme) took a
+    # collision suffix when renamed and is deleted (Ryan approved, like the
+    # Leon Valley twin), keeping page 3138.
+    "culver-city-ca-2025-10-27-city-council-meeting-agenda-on-2025-10-27-7-00-pm-regu-b21be3": "culver-city-ca-2025-10-27-city-council-meeting-agenda-on-2025-10-27-7-00-pm-regu",
+    # 2026-09-21 (WO-942): BART board meeting re-filed from Bart Township, PA
+    # to the newly minted San Francisco Bay Area Rapid Transit District.
+    "alameda-county-ca-2026-01-22-board-of-directors-on-2026-01-22-9-00-am-the-board": "san-francisco-bay-area-rapid-transit-district-bart-ca-2026-01-22-board-of-direct",
 }
 
 
