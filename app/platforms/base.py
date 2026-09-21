@@ -3,7 +3,7 @@ import inspect
 import re
 import types
 from abc import ABC, abstractmethod
-from typing import FrozenSet, List, Optional, Tuple, TypedDict
+from typing import Callable, FrozenSet, List, Optional, Tuple, TypedDict
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -857,7 +857,11 @@ _ONCLICK_URL_RE = re.compile(r"""\(\s*['"]([^'"]+)""")
 
 
 def find_platform_link(
-    html: str, page_url: str, *, exclude: FrozenSet[str] = frozenset()
+    html: str,
+    page_url: str,
+    *,
+    exclude: FrozenSet[str] = frozenset(),
+    accept: Optional[Callable[[str, str], bool]] = None,
 ) -> Optional[Tuple[str, str]]:
     """Scans every <a href>/<iframe src>/<video src>/<source src> on a page
     for a link to a platform `detect_platform()` recognizes, returning
@@ -906,6 +910,16 @@ def find_platform_link(
     Skipping any candidate whose own detected platform equals `page_url`'s
     closes this the same general way, for every caller -- a same-platform
     link is internal navigation, never a real delegation target.
+
+    `accept` (WO-933, 2026-09-21): an optional `accept(url, platform) ->
+    bool` a caller can pass to refuse a candidate and keep scanning. This
+    function takes the FIRST vendor-shaped link in document order and never
+    asks whether it is a real meeting video, so a decorative hero video, a
+    widget's animation file or somebody else's channel could shadow a real
+    link further down the page (WO-355: 62 of 64 bare-homepage "video found"
+    verdicts were decorative). `app.utils.video_hand_check.
+    prescreen_homepage_link()` is the ready-made check. Default None keeps
+    every existing caller's behavior exactly as it was.
     """
     soup = BeautifulSoup(html, "html.parser")
     page_url_no_fragment = urlparse(page_url)._replace(fragment="").geturl()
@@ -952,6 +966,8 @@ def find_platform_link(
                 continue
             platform = detect_platform(candidate)
             if platform == "unknown" or platform in exclude or platform == own_platform:
+                continue
+            if accept is not None and not accept(candidate, platform):
                 continue
             return candidate, platform
     return None

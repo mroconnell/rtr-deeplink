@@ -85,7 +85,7 @@ banff.escribemeetings.com,,ca:csd:4815035,fallback,wildcard_http_sweep_2,bare fo
 bangormaine.gov,,us:place:2302795,fallback,ryan_stated,"Bangor, ME -- us_places.csv Bangor city"
 barrhead.escribemeetings.com,,ca:csd:4813019,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Barrhead
 barrie.escribemeetings.com,,ca:csd:3543042,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Barrie
-bart.granicus.com,,us:county:06001,fallback,landing_page,"landing page https://bart.granicus.com/ reads ""Bay Area Rapid Transit"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
+bart.granicus.com,,rtr:us:ca:san-francisco-bay-area-rapid-transit-district,authoritative,ryan_stated,"San Francisco Bay Area Rapid Transit District -- bart.granicus.com is the district's own single-tenant Granicus host (landing page reads 'Bay Area Rapid Transit'), so authoritative is safe. Ryan, 2026-09-21 ('upgrade the BART pin to authoritative'): a fallback ranked below the registry name match that keyed page 250 to Bart Township, PA, and the earlier Alameda County stand-in never took effect for the same reason. Minted in WO-941."
 bathurst.escribemeetings.com,,rtr:ca:nb:bathurst,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Bathurst, NB'"
 batonrougela.new.swagit.com,,us:place:2205000,fallback,consolidated_government,Every archived page on this host keys to this consolidated city-county already (2026-09-10 audit of ~30 such governments); pinned so a re-spelling can never split it.
 battlegroundps.new.swagit.com,,us:sd:5300380,fallback,archive_study_2026-09-09,1 solid page(s) all us:sd:5300380; 1 weak page(s) e.g. /m/dec-08-2025-board-of-directors
@@ -3026,7 +3026,9 @@ www.youtube.com,channel=@montgomeryva,us:county:51121,fallback,wo171_localview,"
 www.youtube.com,channel=@morrisonillinois8718,us:place:1750530,fallback,wo171_localview,"Morrison city, IL -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
 www.youtube.com,channel=@mounthollync9659,us:place:3744960,fallback,wo171_localview,"Mount Holly city, NC -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
 www.youtube.com,channel=@mountolivenc7950,us:place:3745100,fallback,wo171_localview,"Mount Olive town, NC -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
-www.youtube.com,channel=@mountvernon-lisbonsun1180,us:place:1954840,fallback,wo171_localview,"Mount Vernon city, IA -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
+www.youtube.com,et9QAIe1MCc,us:place:1954840,fallback,wo941,"Mount Vernon city, IA -- WO-941: Mount Vernon City Council Aug 3 2026 meeting (Mount Vernon-Lisbon Sun channel)"
+www.youtube.com,PxoH1N6Dm04,us:place:1954840,fallback,wo941,"Mount Vernon city, IA -- WO-941: Mount Vernon City Council March 2 2026 meeting (Mount Vernon-Lisbon Sun channel)"
+www.youtube.com,xgxO1UaKeNY,us:place:1945615,fallback,wo941,"Lisbon city, IA -- WO-941: Lisbon City Council Aug 24 2026 meeting (Mount Vernon-Lisbon Sun channel)"
 www.youtube.com,channel=@municipalityofbluewater6196,ca:csd:3540010,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/bluewater-on-2020-12-07-council-07-dec-2020; owner title ""Municipality of Bluewater"""
 www.youtube.com,channel=@municipalityoffrenchriver,ca:csd:3552001,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/french-river-on-2026-05-06-special-meeting-zba-06-may-2026; owner title ""Municipality of French River"""
 www.youtube.com,channel=@municipalityofmeaford,ca:csd:3542047,fallback,archive_study_2026-09-09,"3 solidly-identified archive page(s), e.g. /m/meaford-on-2025-08-27-committee-of-adjustment-27-aug-2025; owner title ""Municipality of Meaford"""

@@ -14,6 +14,7 @@ from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_bytes, read_capped_text
+from ..utils.video_hand_check import prescreen_homepage_link
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     detect_language_from_texts,
@@ -342,6 +343,31 @@ _NO_TRANSCRIPT_WARNING = (
 )
 
 
+def _is_not_decorative(html: str, page_url: str, link_url: str) -> bool:
+    """WO-933: the shared gate's reject-only screen (app/utils/
+    video_hand_check.py) for a link this adapter is about to present as
+    "the video". Refuses a widget's own animation file (`a0.muscache.com`,
+    an Airbnb embed found on two real government pages), a hero-embed
+    query signature, a link that is not a video at all, and a video that
+    sits in a looping `<video>` with no player controls (the homepage
+    banner shape -- McLeansboro IL, Atlantic City NJ and Union Grove WI
+    are real examples on file). `check_filename=False` on purpose: this
+    adapter serves a page the USER pointed at, so a filename token
+    ("welcome", "explore") is too weak a reason to hide a real player. A
+    refused link is treated as if it were never on the page, so the honest
+    "no video found" / pointer outcome below applies instead of a banner
+    shown as the meeting."""
+    return (
+        prescreen_homepage_link(html, page_url, link_url, check_filename=False) is None
+    )
+
+
+def _drop_decorative_media(
+    html: str, page_url: str, media_urls: List[str]
+) -> List[str]:
+    return [m for m in media_urls if _is_not_decorative(html, page_url, m)]
+
+
 class GenericFallbackAssetFinder(AssetFinder):
     """Best-effort handling for any URL `detect_platform()` doesn't
     recognize -- registered under `platform_name = "unknown"`, the exact
@@ -547,7 +573,7 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         # Video tier 4: a directly playable media URL found by the shared
         # generic scan.
-        media_urls = scan_media_urls(html, url)
+        media_urls = _drop_decorative_media(html, url, scan_media_urls(html, url))
         video_url, video_format = self._pick_video_url(media_urls)
 
         # Video tier 5: nothing playable -- point at where the video
@@ -1093,7 +1119,14 @@ class GenericFallbackAssetFinder(AssetFinder):
         this is a bonus attempt on top of the existing fallback logic, not
         allowed to replace an honest "found nothing" with a crash.
         """
-        match = find_platform_link(html, page_url, exclude=frozenset({"youtube"}))
+        match = find_platform_link(
+            html,
+            page_url,
+            exclude=frozenset({"youtube"}),
+            accept=lambda candidate, _platform: _is_not_decorative(
+                html, page_url, candidate
+            ),
+        )
         if not match:
             return None
         candidate, platform = match
@@ -1222,7 +1255,7 @@ def scan_page_for_video_evidence(
     video_id = GenericFallbackAssetFinder._find_youtube_video_id(html)
     if video_id:
         return f"https://www.youtube.com/embed/{video_id}", "youtube", None, False
-    media_urls = scan_media_urls(html, page_url)
+    media_urls = _drop_decorative_media(html, page_url, scan_media_urls(html, page_url))
     video_url, video_format = GenericFallbackAssetFinder._pick_video_url(media_urls)
     if video_url:
         return video_url, video_format, None, False

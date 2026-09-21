@@ -332,7 +332,9 @@ async def test_transcribe_meeting_retries_a_chunk_extraction_that_fails_once(
     attempts = []
     local_media.setattr(tbl, "get_finder", lambda platform: _AlwaysResolves())
 
-    async def _extract(video_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        video_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         attempts.append(start)
         if len(attempts) == 1:
             return False, _REAL_FFMPEG_TIMEOUT_REASON
@@ -401,7 +403,9 @@ async def test_transcribe_meeting_downloads_youtube_audio_via_yt_dlp(local_media
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
         return True, None
 
-    async def _fake_slice(cached_path, *, start, duration, out_path):
+    async def _fake_slice(
+        cached_path, *, start, duration, out_path, is_final_chunk=False
+    ):
         assert cached_path.exists()
         slices.append(start)
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
@@ -553,7 +557,9 @@ async def test_transcribe_meeting_caches_whole_audio_once_for_champds(local_medi
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
         return True, None
 
-    async def _fake_slice(cached_path, *, start, duration, out_path):
+    async def _fake_slice(
+        cached_path, *, start, duration, out_path, is_final_chunk=False
+    ):
         assert cached_path.exists()
         slices.append(start)
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
@@ -594,7 +600,9 @@ async def test_transcribe_meeting_falls_back_to_per_chunk_after_a_failed_whole_a
         full_pull_attempts.append(media_url)
         return False, "full-audio download timed out after 360s"
 
-    async def _fake_per_chunk(media_url, *, start, duration, source_page_url, out_path):
+    async def _fake_per_chunk(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         per_chunk_calls.append(start)
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
         return True, None
@@ -608,6 +616,99 @@ async def test_transcribe_meeting_falls_back_to_per_chunk_after_a_failed_whole_a
     assert result["ok"] is True
     assert len(full_pull_attempts) == 1  # not retried on chunk 2
     assert per_chunk_calls == [0.0, 900.0]  # every chunk still got transcribed
+
+
+# --- WO-935: a cached slice that fails is re-cut from the source ------------
+#
+# slice_cached_audio() now fails an undecodable or short slice (see
+# tests/test_media_probe.py). worker/main.py already falls back to a
+# per-chunk pull when the whole-audio path fails for ANY reason (WO-58); this
+# script only did so when the initial whole-file pull failed. It now matches
+# the worker for a failed slice too, per the "two independent transcription
+# paths" rule.
+
+
+async def test_a_failed_cached_slice_is_cut_from_the_source_for_that_chunk_only(
+    local_media,
+):
+    local_media.setattr(tbl, "get_finder", lambda platform: _ResolvesToChampds())
+
+    full_pulls, slices, per_chunk = [], [], []
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        full_pulls.append(media_url)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+        return True, None
+
+    async def _fake_slice(
+        cached_path, *, start, duration, out_path, is_final_chunk=False
+    ):
+        slices.append((start, is_final_chunk))
+        if start == 0.0:
+            return False, (
+                "slicing cached audio produced a file that isn't decodable "
+                "(likely truncated/corrupt)"
+            )
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    async def _fake_per_chunk(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
+        per_chunk.append((start, is_final_chunk))
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    local_media.setattr(tbl, "extract_full_audio", _fake_full)
+    local_media.setattr(tbl, "slice_cached_audio", _fake_slice)
+    local_media.setattr(tbl, "extract_chunk_audio", _fake_per_chunk)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(), _REAL_CHAMPDS_URL, "champds", chunk_size_seconds=900
+    )
+    assert result["ok"] is True
+    assert len(full_pulls) == 1  # the cache is kept and reused, not re-pulled
+    # Chunk 1's slice failed (so it was re-cut from the source), chunk 2's
+    # sliced fine. The last of the two chunks is told it is the final one.
+    assert per_chunk == [(0.0, False)]
+    assert slices == [(0.0, False), (900.0, True)]
+
+
+async def test_a_failed_slice_of_a_youtube_meeting_has_nothing_to_fall_back_to(
+    local_media,
+):
+    """A YouTube meeting has no URL ffmpeg can read, only the local file --
+    so a failed slice is reported, not retried against the embed page."""
+    local_media.setattr(tbl, "get_finder", lambda platform: _YouTubeDelegated())
+
+    def _fake_download(video_id, out_dir):
+        raw = out_dir / "yt_audio.webm"
+        raw.write_bytes(b"\x00" * 10)
+        return raw, None
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+        return True, None
+
+    async def _fake_slice(cached_path, *, start, duration, out_path, **kwargs):
+        return False, "slicing cached audio produced a file that isn't decodable"
+
+    async def _fail_if_called(*a, **k):
+        raise AssertionError("per-chunk extraction must not run for YouTube audio")
+
+    local_media.setattr(tbl, "_yt_dlp_download_best_audio", _fake_download)
+    local_media.setattr(tbl, "extract_full_audio", _fake_full)
+    local_media.setattr(tbl, "slice_cached_audio", _fake_slice)
+    local_media.setattr(tbl, "extract_chunk_audio", _fail_if_called)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(),
+        "https://ashlandcowi.portal.civicclerk.com/event/395/media",
+        "civicclerk",
+        chunk_size_seconds=900,
+    )
+    assert result["ok"] is False
+    assert "isn't decodable" in result["reason"]
 
 
 # --- WO-79 port: a real multi-clip Swagit meeting (2026-08-31) -------------
@@ -710,7 +811,9 @@ async def test_transcribe_meeting_stitches_a_real_multi_clip_swagit_meeting(
 
     extract_calls = []
 
-    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         extract_calls.append(
             {"media_url": media_url, "start": start, "duration": duration}
         )
@@ -757,7 +860,9 @@ async def test_a_late_chunk_failure_keeps_the_chunks_already_transcribed(local_m
 
     local_media.setattr(tbl, "probe_duration", _probe)
 
-    async def _extract(video_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        video_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         if start >= 2700.0:  # chunk 4 of 5 and beyond
             return False, _REAL_FFMPEG_TIMEOUT_REASON
         return True, None
@@ -795,7 +900,9 @@ async def test_a_resumed_run_only_transcribes_the_remaining_chunks(local_media):
 
     failing_from = {"start": 2700.0}
 
-    async def _extract(video_url, *, start, duration, source_page_url, out_path):
+    async def _extract(
+        video_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         if start >= failing_from["start"]:
             return False, _REAL_FFMPEG_TIMEOUT_REASON
         return True, None

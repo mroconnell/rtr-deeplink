@@ -12,7 +12,7 @@ dependency-direction reasoning).
 import re
 import unicodedata
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def shift_segments(
@@ -59,6 +59,33 @@ def chunk_duration(
     for every chunk except the last, which is clamped to what's left."""
     start = chunk_start(chunk_index, chunk_size_seconds)
     return max(0.0, min(chunk_size_seconds, total_duration_seconds - start))
+
+
+def is_last_window_of_source(
+    chunk_index: int,
+    total_chunks: int,
+    chunk_plan: Optional[List[Dict[str, Any]]] = None,
+) -> bool:
+    """True when this chunk runs to the END of the media file it is cut
+    from, so it may legitimately decode SHORTER than the length that was
+    asked for (WO-935). The requested length of a last chunk is "what is
+    left of the probed duration", and a container's duration can run a
+    little past its real audio -- a short last chunk is normal, a short
+    middle chunk is not.
+
+    A fixed-window job: only the final chunk. A multi-clip chunk plan
+    (WO-79/95): the last window of each clip, i.e. an entry whose next entry
+    is another file (or that has no next entry); in the ordinary one-window-
+    per-clip plan that is every entry. Shared here so the cloud worker and
+    scripts/transcribe_backlog_locally.py decide it the same way.
+    """
+    if not chunk_plan:
+        return chunk_index >= total_chunks - 1
+    entry = chunk_plan[chunk_index]
+    following = (
+        chunk_plan[chunk_index + 1] if chunk_index + 1 < len(chunk_plan) else None
+    )
+    return following is None or following.get("media_url") != entry.get("media_url")
 
 
 # --- Seam-duplication dedup -------------------------------------------------

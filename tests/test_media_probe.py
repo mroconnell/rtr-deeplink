@@ -463,6 +463,321 @@ async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
     assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)
 
 
+# --- WO-935: slice_cached_audio() and short chunks (2026-09-21) -------------
+#
+# Two gaps, one fix. (1) slice_cached_audio() checked only that ffmpeg exited 0
+# and wrote bytes, so an undecodable slice of the cached whole-file audio
+# reached Whisper as an unhandled PyAV InvalidDataError -- five real
+# production jobs on two platforms (BACKLOG). (2) Neither extraction function
+# noticed a chunk that decodes fine but is SHORT (the first 1000 bytes of a
+# real 12.6 KB mp3 decode cleanly, WO-25).
+#
+# The ffmpeg facts baked in below were observed, not invented, with real
+# ffmpeg 8.1.2 on 2026-09-21 (see the live test further down for the same
+# behaviour run for real):
+#   * a slice that starts past the end of a cached file exits 0 and writes a
+#     369-byte file, which then fails to decode with exit 183;
+#   * `time=` on the last progress line is how much audio decoded
+#     (a 60 s slice reported `time=00:01:00.01`).
+# What is synthetic is only that ffmpeg is faked in the mocked tests, to reach
+# each branch. The 15 s tolerance was measured on 14 real sources: see
+# _SHORT_CHUNK_TOLERANCE_SECONDS' own comment.
+
+
+def _real_decode_stderr(decoded: str) -> bytes:
+    """The stderr of a real, successful `volumedetect` decode run, with the
+    `time=` field set to `decoded` ("HH:MM:SS.ss")."""
+    return (
+        b"[Parsed_volumedetect_0 @ 0xb8c828900] n_samples: 960239\n"
+        b"[Parsed_volumedetect_0 @ 0xb8c828900] mean_volume: -21.5 dB\n"
+        b"[Parsed_volumedetect_0 @ 0xb8c828900] max_volume: -18.5 dB\n"
+        b"[out#0/null @ 0xb8c828180] video:0KiB audio:1875KiB subtitle:0KiB "
+        b"other streams:0KiB global headers:0KiB muxing overhead: unknown\n"
+        b"size=N/A time=" + decoded.encode() + b" bitrate=N/A speed=2.53e+03x "
+        b"elapsed=0:00:00.02    \n"
+    )
+
+
+def test_decoded_seconds_reads_the_last_time_field():
+    assert media_probe._decoded_seconds_from_stderr(
+        _real_decode_stderr("00:01:00.01").decode()
+    ) == pytest.approx(60.01)
+    # Several progress updates (ffmpeg separates them with \r), the last one
+    # wins; a warm-up `time=-00:00:00.02` must not be read as a length.
+    text = (
+        "size=N/A time=-00:00:00.02 bitrate=N/A\r"
+        "size=N/A time=00:00:20.00 bitrate=N/A\r"
+        "size=N/A time=01:02:03.50 bitrate=N/A speed=99x\n"
+    )
+    assert media_probe._decoded_seconds_from_stderr(text) == pytest.approx(3723.5)
+
+
+@pytest.mark.parametrize("text", ["", "size=N/A time=N/A bitrate=N/A", "no progress"])
+def test_decoded_seconds_is_none_when_ffmpeg_gave_no_reading(text):
+    assert media_probe._decoded_seconds_from_stderr(text) is None
+
+
+@pytest.mark.parametrize(
+    "requested, decoded, expected",
+    [
+        (900.0, 900.0, False),  # healthy
+        (60.0, 58.17, False),  # the real worst final chunk (Telvue) was 1.83 s short
+        (900.0, 900.0 - 15.0, False),  # exactly at the tolerance
+        (900.0, 900.0 - 15.5, True),  # just over it
+        (900.0, 300.0, True),  # a third of the chunk
+        (900.0, None, False),  # no reading is not a finding
+        (0.0, 0.0, False),
+    ],
+)
+def test_chunk_is_materially_short_uses_a_fixed_tolerance(requested, decoded, expected):
+    assert media_probe._chunk_is_materially_short(requested, decoded) is expected
+
+
+def _slice_run(out_path, *, extraction_bytes, volumedetect_result):
+    """media_probe._run() stand-in for slice_cached_audio(): the slice call
+    exits 0 and writes `extraction_bytes` (the real shape of both the bad and
+    the good case), the decode call returns `volumedetect_result`."""
+
+    async def _run(*args, timeout=None):
+        if "volumedetect" in args:
+            return volumedetect_result
+        out_path.write_bytes(extraction_bytes)
+        return 0, b"", b""
+
+    return _run
+
+
+async def test_slice_cached_audio_rejects_an_undecodable_slice(tmp_path, monkeypatch):
+    """The real production shape: exit 0, a non-empty file, nothing
+    decodable in it. The 369 bytes are what real ffmpeg wrote for a slice
+    past the end of a cached file."""
+    cached = tmp_path / "full.mp3"
+    cached.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+    out_path = tmp_path / "chunk_3.mp3"
+    monkeypatch.setattr(
+        media_probe,
+        "_run",
+        _slice_run(
+            out_path,
+            extraction_bytes=b"ID3\x04" + b"\x00" * 365,
+            volumedetect_result=(183, b"", _REAL_UNDECODABLE_STDERR),
+        ),
+    )
+
+    ok, reason = await media_probe.slice_cached_audio(
+        cached, start=2700.0, duration=900.0, out_path=out_path
+    )
+
+    assert out_path.exists() and out_path.stat().st_size > 0  # the old check passes it
+    assert ok is False
+    assert reason and "decodable" in reason
+
+
+async def test_slice_cached_audio_accepts_a_healthy_slice(tmp_path, monkeypatch):
+    """Positive control: the guard must not start failing good slices."""
+    cached = tmp_path / "full.mp3"
+    cached.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+    out_path = tmp_path / "chunk_1.mp3"
+    monkeypatch.setattr(
+        media_probe,
+        "_run",
+        _slice_run(
+            out_path,
+            extraction_bytes=b"\xff\xfb" + b"\x00" * 4000,
+            volumedetect_result=(0, b"", _real_decode_stderr("00:15:00.02")),
+        ),
+    )
+    assert await media_probe.slice_cached_audio(
+        cached, start=900.0, duration=900.0, out_path=out_path
+    ) == (True, None)
+
+
+async def test_slice_cached_audio_rejects_a_valid_but_short_slice(
+    tmp_path, monkeypatch
+):
+    cached = tmp_path / "full.mp3"
+    cached.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+    out_path = tmp_path / "chunk_1.mp3"
+    monkeypatch.setattr(
+        media_probe,
+        "_run",
+        _slice_run(
+            out_path,
+            extraction_bytes=b"\xff\xfb" + b"\x00" * 4000,
+            volumedetect_result=(0, b"", _real_decode_stderr("00:05:00.00")),
+        ),
+    )
+
+    ok, reason = await media_probe.slice_cached_audio(
+        cached, start=900.0, duration=900.0, out_path=out_path
+    )
+    assert ok is False
+    assert reason and "only 300s of the 900s" in reason
+
+    # The same short slice is fine when it is the last chunk of the file.
+    assert await media_probe.slice_cached_audio(
+        cached, start=900.0, duration=900.0, out_path=out_path, is_final_chunk=True
+    ) == (True, None)
+
+
+async def test_slice_cached_audio_without_a_time_reading_is_not_short(
+    tmp_path, monkeypatch
+):
+    """An ffmpeg that words its progress line differently gives no length;
+    that must never fail a chunk (only a real reading can)."""
+    cached = tmp_path / "full.mp3"
+    cached.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+    out_path = tmp_path / "chunk_1.mp3"
+    monkeypatch.setattr(
+        media_probe,
+        "_run",
+        _slice_run(
+            out_path,
+            extraction_bytes=b"\xff\xfb" + b"\x00" * 4000,
+            volumedetect_result=(0, b"", _REAL_VOLUMEDETECT_STDERR),
+        ),
+    )
+    assert await media_probe.slice_cached_audio(
+        cached, start=900.0, duration=900.0, out_path=out_path
+    ) == (True, None)
+
+
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None, reason="ffmpeg not installed on this machine"
+)
+async def test_slice_cached_audio_against_real_ffmpeg(tmp_path):
+    """The live half of the mocked tests above: no mocking, real ffmpeg on a
+    real 30 s mp3 encoded exactly the way extract_full_audio() encodes the
+    cache (mono, 16 kHz, 32 kbps). Pins the synthetic constants to real
+    behaviour: a slice past the end exits 0 with a tiny file that fails to
+    decode; a slice that runs off the end decodes but is short."""
+    cached = tmp_path / "full.mp3"
+    returncode, _o, _e = await media_probe._run(
+        "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=30",
+        "-ac", "1", "-ar", "16000", "-c:a", "libmp3lame", "-b:a", "32k", str(cached),
+    )  # fmt: skip
+    assert returncode == 0
+
+    healthy = await media_probe.slice_cached_audio(
+        cached, start=5.0, duration=10.0, out_path=tmp_path / "healthy.mp3"
+    )
+    assert healthy == (True, None)
+
+    past_the_end = await media_probe.slice_cached_audio(
+        cached, start=40.0, duration=10.0, out_path=tmp_path / "past_end.mp3"
+    )
+    assert past_the_end[0] is False
+    assert past_the_end[1] and "decodable" in past_the_end[1]
+
+    # 10 s of audio left for a 30 s ask: 20 s short, over the 15 s tolerance.
+    runs_off_the_end = await media_probe.slice_cached_audio(
+        cached, start=20.0, duration=30.0, out_path=tmp_path / "short.mp3"
+    )
+    assert runs_off_the_end[0] is False
+    assert runs_off_the_end[1] and "asked for" in runs_off_the_end[1]
+
+    # ...and the same slice is fine as the last chunk of the file.
+    assert await media_probe.slice_cached_audio(
+        cached,
+        start=20.0,
+        duration=30.0,
+        out_path=tmp_path / "short_final.mp3",
+        is_final_chunk=True,
+    ) == (True, None)
+
+
+# -- extract_chunk_audio(): a short chunk gets one output-side retry --------
+
+
+_SHORT_ATTEMPT = (
+    b"\xff\xfb" + b"\x00" * 4000,
+    (0, b"", _real_decode_stderr("00:05:00.00")),
+)
+_FULL_ATTEMPT = (
+    b"\xff\xfb" + b"\x00" * 4000,
+    (0, b"", _real_decode_stderr("00:15:00.02")),
+)
+
+
+async def test_a_short_chunk_is_recovered_by_the_output_side_retry(
+    tmp_path, monkeypatch
+):
+    """A truncated pull is often transient (the connection dropped once), so
+    the same one output-side retry that recovers an undecodable chunk is
+    tried before giving up."""
+    out_path = tmp_path / "chunk_1.mp3"
+    _run, calls = _fake_run_recording(
+        out_path, attempts=[_SHORT_ATTEMPT, _FULL_ATTEMPT]
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    ) == (True, None)
+    assert len(calls) == 2
+    assert _seek_is_input_side(calls[1]) is False
+
+
+async def test_a_chunk_that_is_short_twice_fails_with_the_short_reason(
+    tmp_path, monkeypatch
+):
+    out_path = tmp_path / "chunk_1.mp3"
+    _run, calls = _fake_run_recording(
+        out_path, attempts=[_SHORT_ATTEMPT, _SHORT_ATTEMPT]
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    )
+    assert (ok, len(calls)) == (False, 2)
+    assert reason and "only 300s of the 900s" in reason
+
+
+async def test_a_short_final_chunk_is_accepted(tmp_path, monkeypatch):
+    """The last chunk's asked-for length is what is left of the probed
+    duration, which the audio may not quite hold -- never a failure."""
+    out_path = tmp_path / "chunk_3.mp3"
+    _run, calls = _fake_run_recording(out_path, attempts=[_SHORT_ATTEMPT])
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=2700.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+        is_final_chunk=True,
+    ) == (True, None)
+    assert len(calls) == 1
+
+
+async def test_a_short_first_chunk_is_not_retried(tmp_path, monkeypatch):
+    """At start=0 there is no seek to get wrong (same rule as the
+    undecodable case above): one attempt, then fail."""
+    out_path = tmp_path / "chunk_0.mp3"
+    _run, calls = _fake_run_recording(out_path, attempts=[_SHORT_ATTEMPT])
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=0.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    )
+    assert (ok, len(calls)) == (False, 1)
+    assert reason and "asked for" in reason
+
+
 # --- chunk_size_seconds_for_platform(): two separate constraints ---------
 # Granicus's 300s is a TIMEOUT constraint, real and measured 2026-08-25
 # (BACKLOG_DONE.md): 24/24 real Granicus chunk failures over 3 days were

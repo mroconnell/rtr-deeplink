@@ -76,7 +76,16 @@ from .base import (
     get_finder,
 )
 from ..utils.url_guard import read_capped_text
-from ..utils.video_hand_check import classify_video_hand_check
+from ..utils.video_hand_check import (
+    PASS,
+    REJECT,
+    GateVerdict,
+    assess_video_candidate,
+    classify_video_hand_check,
+    page_evidence,
+    prescreen_homepage_link,
+    structural_reject,
+)
 
 logger = logging.getLogger("rtr_deeplink.passive_verify")
 
@@ -181,6 +190,19 @@ class VerifyResult:
     including a `deep_walk=True` call that found no video at all --
     existing callers that never pass `deep_walk` see no change in
     behavior or shape.
+
+    `video_title`, `video_gate`, `video_gate_reason`, `rejected_video_links`
+    (WO-933, 2026-09-21, all default empty): the shared "is this really a
+    meeting video?" gate (`app/utils/video_hand_check.py`). `video_gate` is
+    "pass", "reject" or "cannot_tell" when a single video found by a bare
+    homepage scan was checked, and "" when no such check ran (a hub that is
+    itself a known platform's page, or a per-meeting listing walk).
+    `video_title` is the resolved video's own title (a Vimeo oEmbed title,
+    say) when known. `rejected_video_links` lists every homepage link the
+    gate refused on the way, `{"url", "platform", "reason"}` each, so a
+    sweep can count them as findings. A "cannot_tell" video is real but
+    unverified: `video_found` stays True, `meeting_found` is False, so
+    `tier` is None and no caller credits it as a meeting by accident.
     """
 
     meeting_found: bool
@@ -193,6 +215,10 @@ class VerifyResult:
     candidates_checked: int = 0
     ranking_fix_applied: bool = False
     video_candidates: List[dict] = field(default_factory=list)
+    video_title: Optional[str] = None
+    video_gate: str = ""
+    video_gate_reason: str = ""
+    rejected_video_links: List[dict] = field(default_factory=list)
 
     @property
     def tier(self) -> Optional[int]:
@@ -2016,6 +2042,18 @@ async def _walk_candidates(
     )
     checked = 0
     collected: List[dict] = []
+    # WO-933: candidates the shared gate refused on the way (see
+    # `VerifyResult.rejected_video_links`). Only the STRUCTURAL checks run
+    # here (not a video link, a decorative address, a test-event title): a
+    # per-meeting listing row already vouches for itself, and WO-355's
+    # deep-walk hand-read step (`select_on_mission_candidate()`) is where
+    # a listed row's title is judged.
+    rejected: List[dict] = []
+
+    def _finish(result: VerifyResult) -> VerifyResult:
+        result.rejected_video_links = rejected
+        return result
+
     for candidate in candidates[:effective_limit]:
         url = candidate.get("url") if isinstance(candidate, dict) else None
         if not url:
@@ -2045,7 +2083,7 @@ async def _walk_candidates(
                 result.candidates_checked = checked
                 if deep_walk:
                     result.video_candidates = collected
-                return result
+                return _finish(result)
             continue
         candidate_platform = detect_platform(url)
         if candidate_platform == "unknown":
@@ -2077,7 +2115,7 @@ async def _walk_candidates(
                 result.candidates_checked = checked
                 if deep_walk:
                     result.video_candidates = collected
-                return result
+                return _finish(result)
             continue
         except (CalendarPageError, NoVideoCandidateFound):
             # A candidate that is itself another listing, or a page that
@@ -2086,6 +2124,21 @@ async def _walk_candidates(
             continue
         except Exception:  # noqa: BLE001
             continue
+        if resolved.video_url:
+            refusal = structural_reject(resolved.video_url, title=title)
+            if refusal is None and resolved.title:
+                refusal = structural_reject(None, title=resolved.title)
+            if refusal is not None:
+                # WO-933: a decorative address, a non-video link or a test
+                # upload is not a meeting video, however it was listed.
+                rejected.append(
+                    {
+                        "url": resolved.video_url,
+                        "platform": resolved.platform or candidate_platform,
+                        "reason": refusal.reason,
+                    }
+                )
+                continue
         if resolved.video_url and not await _confirm_not_audio_only(resolved.video_url):
             # WO-347/WO-348: a real, live audio-only file (e.g. a
             # CivicClerk `.mp3`), not video -- keep walking rather than
@@ -2111,59 +2164,71 @@ async def _walk_candidates(
             )
             if not deep_walk or len(collected) >= collect_limit:
                 first = collected[0]
-                return VerifyResult(
-                    meeting_found=True,
-                    video_found=True,
-                    captions_found=first["captions_found"],
-                    meeting_url=first["url"],
-                    platform=first["platform"],
-                    verdict=f"{base_verdict}_found_video",
-                    evidence=(
-                        f"{base_verdict}: walked {checked} of {len(candidates)} real "
-                        "candidates newest-first, found real video"
-                        + (
-                            f" ({len(collected)} collected for deep-walk hand-read)"
-                            if deep_walk
-                            else ""
-                        )
-                    ),
-                    candidates_checked=checked,
-                    video_candidates=collected if deep_walk else [],
+                return _finish(
+                    VerifyResult(
+                        meeting_found=True,
+                        video_found=True,
+                        captions_found=first["captions_found"],
+                        meeting_url=first["url"],
+                        platform=first["platform"],
+                        verdict=f"{base_verdict}_found_video",
+                        evidence=(
+                            f"{base_verdict}: walked {checked} of {len(candidates)} real "
+                            "candidates newest-first, found real video"
+                            + (
+                                f" ({len(collected)} collected for deep-walk hand-read)"
+                                if deep_walk
+                                else ""
+                            )
+                        ),
+                        candidates_checked=checked,
+                        video_candidates=collected if deep_walk else [],
+                    )
                 )
             continue
     if collected:
         # deep_walk exhausted the listing before reaching collect_limit,
         # but still found at least one video candidate along the way.
         first = collected[0]
-        return VerifyResult(
-            meeting_found=True,
-            video_found=True,
-            captions_found=first["captions_found"],
-            meeting_url=first["url"],
-            platform=first["platform"],
-            verdict=f"{base_verdict}_found_video",
+        return _finish(
+            VerifyResult(
+                meeting_found=True,
+                video_found=True,
+                captions_found=first["captions_found"],
+                meeting_url=first["url"],
+                platform=first["platform"],
+                verdict=f"{base_verdict}_found_video",
+                evidence=(
+                    f"{base_verdict}: walked {checked} of {len(candidates)} real "
+                    f"candidates newest-first, found {len(collected)} with video "
+                    "(listing exhausted before reaching the collect limit)"
+                ),
+                candidates_checked=checked,
+                video_candidates=collected,
+            )
+        )
+    return _finish(
+        VerifyResult(
+            meeting_found=checked > 0,
+            video_found=False,
+            captions_found=False,
+            meeting_url=None,
+            platform=platform,
+            verdict=f"{base_verdict}_no_video" if checked else f"{base_verdict}_empty",
             evidence=(
                 f"{base_verdict}: walked {checked} of {len(candidates)} real "
-                f"candidates newest-first, found {len(collected)} with video "
-                "(listing exhausted before reaching the collect limit)"
+                "candidates newest-first, none had video"
+                + (
+                    f"; the shared gate refused {len(rejected)} video link(s) as "
+                    "not a meeting recording"
+                    if rejected
+                    else ""
+                )
+                if checked
+                else f"{base_verdict}: zero real candidates found"
             ),
             candidates_checked=checked,
-            video_candidates=collected,
         )
-    return VerifyResult(
-        meeting_found=checked > 0,
-        video_found=False,
-        captions_found=False,
-        meeting_url=None,
-        platform=platform,
-        verdict=f"{base_verdict}_no_video" if checked else f"{base_verdict}_empty",
-        evidence=(
-            f"{base_verdict}: walked {checked} of {len(candidates)} real candidates "
-            "newest-first, none had video"
-            if checked
-            else f"{base_verdict}: zero real candidates found"
-        ),
-        candidates_checked=checked,
     )
 
 
@@ -2325,6 +2390,7 @@ async def _resolve_and_walk(
             platform=resolved.platform or platform,
             verdict="resolved",
             evidence="resolve() found real video directly",
+            video_title=resolved.title,
         )
 
     # resolve() succeeded but found no video (or found one that turned out
@@ -2424,6 +2490,113 @@ async def verify_hub(
         )
 
 
+def _homepage_link_filter(html: str, page_url: str, rejected: List[dict]):
+    """The `find_platform_link(..., accept=...)` predicate for a bare
+    homepage scan (WO-933): refuses a link the shared gate can already
+    tell is not a meeting video -- a decorative address or filename, a
+    non-video link, a looping hero `<video>` -- and records each refusal
+    in `rejected`, so a decorative first link no longer shadows a real one
+    further down the page."""
+
+    def accept(candidate_url: str, candidate_platform: str) -> bool:
+        refusal = prescreen_homepage_link(html, page_url, candidate_url)
+        if refusal is None:
+            return True
+        rejected.append(
+            {
+                "url": candidate_url,
+                "platform": candidate_platform,
+                "reason": refusal.reason,
+            }
+        )
+        return False
+
+    return accept
+
+
+def _apply_homepage_gate(
+    result: VerifyResult,
+    *,
+    html: str,
+    page_url: str,
+    link_url: str,
+    name: Optional[str],
+    rejected: List[dict],
+) -> VerifyResult:
+    """The post-resolve half of the shared gate (WO-933), for a single video
+    a bare homepage scan found and `_resolve_and_walk()` resolved. WO-355
+    hand-read 64 such "video found" verdicts and 62 were wrong (a hero
+    video, a promo, a documentary): nothing checked WHAT the video was.
+    A listing walk (`verdict` is not "resolved") is left alone -- the
+    listing vouches for its rows.
+
+    PASS: the result stands, with `video_gate` recorded. REJECT: not a
+    meeting recording, so no video and no meeting are credited (verdict
+    "video_rejected"). CANNOT_TELL: the video is real but nothing shows it
+    is a meeting recording, so `video_found` stays True and `meeting_found`
+    is False (verdict "resolved_unverified_video", `tier` None) -- recorded,
+    never defaulted to accepted."""
+    result.rejected_video_links = list(rejected) + list(result.rejected_video_links)
+    if not result.video_found or result.verdict != "resolved":
+        return result
+    verdict: GateVerdict = assess_video_candidate(
+        title=result.video_title,
+        video_url=link_url,
+        platform=result.platform,
+        evidence=page_evidence(html, link_url, page_url),
+        gov_name=name,
+        # No `page_url`: the same-organization flag is for a link found by
+        # FOLLOWING another page. Here the page is the hub an earlier phase
+        # already confirmed for this government, so the flag has nothing to
+        # compare (`run_access_ladder()` is where hops happen and where it
+        # runs).
+        check_filename=True,
+    )
+    result.video_gate = verdict.verdict
+    result.video_gate_reason = verdict.reason
+    if verdict.verdict == PASS:
+        return result
+    refused = [
+        *result.rejected_video_links,
+        {"url": link_url, "platform": result.platform, "reason": verdict.reason},
+    ]
+    if verdict.verdict == REJECT:
+        return VerifyResult(
+            meeting_found=False,
+            video_found=False,
+            captions_found=False,
+            meeting_url=None,
+            platform=result.platform,
+            verdict="video_rejected",
+            evidence=(
+                f"found a video at {link_url} but the shared gate rejected it as "
+                f"not a meeting recording ({verdict.tag}): {verdict.detail}"
+            ),
+            video_title=result.video_title,
+            video_gate=verdict.verdict,
+            video_gate_reason=verdict.reason,
+            rejected_video_links=refused,
+        )
+    # Anything else is CANNOT_TELL.
+    return VerifyResult(
+        meeting_found=False,
+        video_found=True,
+        captions_found=result.captions_found,
+        meeting_url=result.meeting_url,
+        platform=result.platform,
+        verdict="resolved_unverified_video",
+        evidence=(
+            f"found a playable video at {link_url}, but nothing shows it is a "
+            f"meeting recording ({verdict.tag}): {verdict.detail}. Recorded as "
+            "cannot tell, not credited as a meeting."
+        ),
+        video_title=result.video_title,
+        video_gate=verdict.verdict,
+        video_gate_reason=verdict.reason,
+        rejected_video_links=list(result.rejected_video_links),
+    )
+
+
 async def _verify_hub_impl(
     hub_url: str,
     platform_hint: Optional[str] = None,
@@ -2440,6 +2613,10 @@ async def _verify_hub_impl(
     detected = detect_platform(hub_url)
     candidate_url = hub_url
     platform = detected if detected != "unknown" else platform_hint
+    # WO-933: set only when the platform below came from a bare homepage
+    # link scan -- the one path whose "video found" needs the shared gate.
+    homepage_hit: Optional[tuple] = None  # (html, page_url, link_url)
+    rejected_links: List[dict] = []
     invintus_hub = False
     if detected == "unknown":
         from .invintus import is_invintus_hub_url
@@ -2470,7 +2647,12 @@ async def _verify_hub_impl(
                 verdict="fetch_failed",
                 evidence=err or "empty response",
             )
-        match = find_platform_link(html, final_url, exclude=frozenset({"youtube"}))
+        match = find_platform_link(
+            html,
+            final_url,
+            exclude=frozenset({"youtube"}),
+            accept=_homepage_link_filter(html, final_url, rejected_links),
+        )
         invintus_client = None
         if match is None or platform_hint == "invintus":
             # WO-922: a government page that embeds an Invintus event
@@ -2485,6 +2667,7 @@ async def _verify_hub_impl(
             platform = "invintus"
         elif match:
             candidate_url, platform = match
+            homepage_hit = (html, final_url, candidate_url)
         elif platform_hint:
             # No recognizable platform link found by the generic scan,
             # but phase 3 already knows (from some other signal, e.g. a
@@ -2510,6 +2693,7 @@ async def _verify_hub_impl(
             state=state,
         )
         if probed is not None:
+            probed.rejected_video_links = list(rejected_links)
             return probed
         return VerifyResult(
             meeting_found=False,
@@ -2518,7 +2702,14 @@ async def _verify_hub_impl(
             meeting_url=None,
             platform=None,
             verdict="no_platform_detected",
-            evidence="detect_platform() -> unknown and no platform hint given",
+            evidence="detect_platform() -> unknown and no platform hint given"
+            + (
+                f"; the shared gate refused {len(rejected_links)} homepage video "
+                "link(s) as not a meeting recording"
+                if rejected_links
+                else ""
+            ),
+            rejected_video_links=list(rejected_links),
         )
 
     result = await _resolve_and_walk(
@@ -2530,6 +2721,31 @@ async def _verify_hub_impl(
         listing_limit=listing_limit,
         video_collect_limit=video_collect_limit,
     )
+    if homepage_hit is not None:
+        page_html, page_url, link_url = homepage_hit
+        result = _apply_homepage_gate(
+            result,
+            html=page_html,
+            page_url=page_url,
+            link_url=link_url,
+            name=name,
+            rejected=rejected_links,
+        )
+        if result.verdict == "video_rejected":
+            # The one link the scan found was not a meeting recording: try
+            # what the `platform is None` branch above tries -- the
+            # government's own agenda/minutes pages -- before giving up.
+            probed = await _probe_first_party_agenda_pages(
+                hub_url,
+                home_html=page_html,
+                home_final_url=page_url,
+                name=name,
+                state=state,
+            )
+            if probed is not None:
+                probed.rejected_video_links = list(result.rejected_video_links)
+                return probed
+            return result
 
     # Ranking fix (conductor's fix #3): the platform reached is a known
     # aggregator and it found no video -- check the ORIGINAL hub page for
@@ -2537,9 +2753,17 @@ async def _verify_hub_impl(
     if platform in AGGREGATOR_PLATFORMS and not result.video_found:
         html, final_url, err = await _fetch(hub_url)
         if not err and html is not None:
+            vendor_rejected: List[dict] = []
             vendor_match = find_platform_link(
-                html, final_url, exclude=frozenset({"youtube"}) | AGGREGATOR_PLATFORMS
+                html,
+                final_url,
+                exclude=frozenset({"youtube"}) | AGGREGATOR_PLATFORMS,
+                accept=_homepage_link_filter(html, final_url, vendor_rejected),
             )
+            result.rejected_video_links = [
+                *result.rejected_video_links,
+                *vendor_rejected,
+            ]
             if vendor_match:
                 vendor_url, vendor_platform = vendor_match
                 vendor_result = await _resolve_and_walk(
@@ -2551,7 +2775,33 @@ async def _verify_hub_impl(
                     listing_limit=listing_limit,
                     video_collect_limit=video_collect_limit,
                 )
-                if vendor_result.video_found or (
+                # WO-933: the same homepage-video gate as the main path. A
+                # vendor video the gate rejects or cannot verify is NOT
+                # preferred over the aggregator's own result (which may have
+                # found real meeting rows); it is only noted.
+                vendor_result = _apply_homepage_gate(
+                    vendor_result,
+                    html=html,
+                    page_url=final_url,
+                    link_url=vendor_url,
+                    name=name,
+                    rejected=[],
+                )
+                if vendor_result.video_gate in ("reject", "cannot_tell"):
+                    result.rejected_video_links = [
+                        *result.rejected_video_links,
+                        {
+                            "url": vendor_url,
+                            "platform": vendor_platform,
+                            "reason": vendor_result.video_gate_reason,
+                        },
+                    ]
+                    result.evidence += (
+                        f"; a vendor video link on the hub page ({vendor_url}) was "
+                        f"not credited: {vendor_result.video_gate} "
+                        f"({vendor_result.video_gate_reason})"
+                    )
+                elif vendor_result.video_found or (
                     not result.meeting_found and vendor_result.meeting_found
                 ):
                     vendor_result.evidence = (

@@ -96,6 +96,15 @@ from app.platforms.base import (  # noqa: E402
     resolve_via_platform,
 )
 from app.utils.url_normalize import normalize_url  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402, F401
+    HIGH_RISK_TITLE_PLATFORMS,
+    MEETING_ALLOWLIST,
+    PROMO_BLOCKLIST,
+    assess_video_candidate,
+)
+from app.utils.video_hand_check import (  # noqa: E402
+    looks_like_real_meeting as _looks_like_real_meeting,
+)
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 
 RESEARCH_DIR = Path("/Users/mroconnell/Documents/rtr-business/research")
@@ -122,57 +131,9 @@ UA_HEADERS = {
 # video platforms this project can resolve.
 UNSUPPORTED_PLATFORMS = {"boarddocs", "municipalcodeonline"}
 
-# Real governing-body words -- reused from granicus.py's own
-# GOVERNING_BODY_KEYWORDS plus the obvious siblings other adapters'
-# fixtures show in real titles (assembly/authority/trustees/hearing).
-MEETING_ALLOWLIST = (
-    "council",
-    "commission",
-    "board",
-    "committee",
-    "meeting",
-    "session",
-    "hearing",
-    "authority",
-    "trustees",
-    "supervisors",
-    "assembly",
-    "selectboard",
-    "select board",
-)
-# Real, confirmed-live false-positive shapes this is guarding against --
-# see this file's module docstring and ENUMERATION_METHODS.md's "Step 2's
-# real weak spot" section (a promo video, an instructional video, both
-# ingested as if they were real meetings).
-PROMO_BLOCKLIST = (
-    "promo",
-    "advertisement",
-    "commercial",
-    "psa",
-    "public service announcement",
-    "how to",
-    "tutorial",
-    "instructional",
-    "training video",
-    "orientation video",
-    "welcome",
-    "message from the mayor",
-    "highlight reel",
-    "sizzle reel",
-    "ribbon cutting",
-    "parade",
-    "test stream",
-    "test broadcast",
-    "sample video",
-    "demo video",
-    "career",
-    "job fair",
-    "recruitment",
-    "state of the city",
-    "year in review",
-    "commercial break",
-    "tour of",
-)
+# WO-933 (2026-09-21): MEETING_ALLOWLIST, PROMO_BLOCKLIST and
+# HIGH_RISK_TITLE_PLATFORMS now live ONCE in app/utils/video_hand_check.py
+# (imported at the top of this file under the same names).
 
 HOP2_FETCH_CAP = 4  # how many hop2_urls to try fetching per row before giving up
 
@@ -332,31 +293,6 @@ async def youtube_oembed_title(
             return data.get("title")
     except Exception:
         return None
-
-
-def _looks_like_real_meeting(title: str, *, require_allowlist: bool = False) -> bool:
-    """require_allowlist=True is the stricter check, for the highest-risk
-    case: a single video found via a generic scan of a general-purpose
-    video host's page (YouTube/Vimeo), with no structured per-meeting
-    listing backing it up. Real, confirmed-live gap found running this
-    script 2026-09-07, AFTER the blocklist-only check already caught
-    Grandview WA's promo video: a blocklist alone missed Colfax, WA's
-    real queued title, "Colfax, Washington on the Palouse Scenic Byway"
-    (a tourism video) -- no blocklist word describes every way a non-
-    meeting video can be titled, so for this specific risk class the
-    check is flipped to require a real meeting signal (GOVERNING_BODY-
-    style keyword) rather than just the absence of a bad one. NOT applied
-    to CivicPlus/CivicClerk/Legistar/Municode Meetings candidates -- those
-    already come from a real per-meeting agenda/events system by
-    construction (a candidate row IS a meeting record, even when its own
-    title is generic, e.g. CivicPlus's own "Untitled meeting" default),
-    so requiring a keyword there would wrongly reject real meetings."""
-    t = (title or "").lower()
-    if any(b in t for b in PROMO_BLOCKLIST):
-        return False
-    if require_allowlist and not any(kw in t for kw in MEETING_ALLOWLIST):
-        return False
-    return True
 
 
 def _parse_candidate_date(date_str: str) -> Optional[datetime]:
@@ -647,7 +583,7 @@ async def resolve_civicplus_seed(seed_url: str):
 # gap: Grandview WA (a Vimeo promo, single-video no-listing case) and
 # Colfax WA (a YouTube tourism video, same shape) both slipped past a
 # blocklist-only check -- see _looks_like_real_meeting()'s own docstring.
-HIGH_RISK_TITLE_PLATFORMS = {"youtube", "vimeo"}
+# (HIGH_RISK_TITLE_PLATFORMS is defined once, in app/utils/video_hand_check.py.)
 
 
 async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: str):
@@ -811,15 +747,22 @@ async def process_row(session: aiohttp.ClientSession, row: dict) -> RowResult:
             oembed_title = await youtube_oembed_title(session, result.video_url)
             if oembed_title:
                 effective_title = oembed_title
-        if not _looks_like_real_meeting(
-            effective_title, require_allowlist=high_risk_title
-        ):
-            why = (
-                "no governing-body keyword in title"
-                if high_risk_title
-                else "blocklisted term in title"
-            )
-            last_reason = f"{platform}: title looks like a non-meeting video ({why}), not ingested: {effective_title!r} ({final_seed})"
+        # WO-933: the shared "is this really a meeting video?" gate
+        # (app/utils/video_hand_check.py) replaces this script's own
+        # title check. Same title rules (blocklist; a governing-body word
+        # for a HIGH_RISK platform), plus a decorative address, a test
+        # upload and a wrong-body or ceremony title. Anything but a PASS
+        # is skipped, and the reason says whether the gate rejected the
+        # video or could not tell.
+        gate = assess_video_candidate(
+            title=effective_title,
+            video_url=result.video_url,
+            platform=platform,
+            gov_name=unit_name,
+            require_evidence=high_risk_title,
+        )
+        if not gate.passed:
+            last_reason = f"{platform}: {gate.skip_note()}, not ingested: {effective_title!r} ({final_seed})"
             continue
 
         _seen_keys.add(key)

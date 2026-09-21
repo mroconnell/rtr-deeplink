@@ -1,0 +1,118 @@
+{#- Context variables:
+     entry (dict, the WO-943 Full Context data contract -- exactly these
+       keys: id, status, summary (UNTRUSTED, plain-escaped), social_url,
+       network, network_label, source_label (UNTRUSTED, plain-escaped),
+       embed (None or {"kind":"youtube","video_id":..} /
+       {"kind":"instagram","permalink":..} /
+       {"kind":"tiktok","video_id":..,"cite":..}), match_kind, match_label,
+       t_seconds, timestamp_label, published_at/created_at/updated_at,
+       has_meeting, and -- all None when has_meeting is false -- slug,
+       title, jurisdiction, jurisdiction_display, hub_slug, date,
+       date_html (Markup, render with |safe), deep_link, card_url)
+     editor_view (bool, default false -- set `{% set editor_view = true %}`
+       before including this from context_new.html; the public feed
+       (context.html) never sets it, so the default below applies)
+
+   Included by both context.html (public feed, editor_view unset/false)
+   and context_new.html (editor list, editor_view=true) -- one entry's
+   markup lives in exactly one place so the two surfaces can't drift.
+
+   Reading order matches the public contract exactly: thumb, match badge,
+   summary, original-post link, meeting title + where/date, the "watch
+   the full context" call to action, then the click-to-load embed. Every
+   meeting-dependent piece (thumb/title/where/CTA) is gated on
+   `entry.has_meeting`, not on the individual field being truthy -- the
+   contract guarantees those fields are None together, but gating on the
+   one flag reads the intent directly and can't be fooled by a single
+   missing field on an otherwise-real match. This must render a draft
+   with every meeting field None without crashing, since the editor list
+   shows every status. -#}
+{% set editor_view = editor_view | default(false) %}
+<article class="featured-meeting context-entry" id="context-{{ entry.id }}">
+  {% if editor_view %}
+  {#- Editor-only: which of the three statuses this entry is in right
+     now, so a long list is scannable without opening each entry. Public
+     readers never see this -- the public feed only ever queries
+     published entries in the first place. -#}
+  <span class="context-status-badge context-status-{{ entry.status }}">{{ entry.status }}</span>
+  {% endif %}
+  {% if entry.card_url %}
+  {#- Same "only ever emitted when the bytes are confirmed to exist"
+     posture as _featured_meetings.html's card_url -- decorative, so
+     alt="" and aria-hidden on the link, same as every other card on the
+     site. -#}
+  <a class="featured-thumb" href="{{ entry.deep_link }}" tabindex="-1" aria-hidden="true">
+    <img src="{{ entry.card_url }}" alt="" loading="lazy" decoding="async">
+  </a>
+  {% endif %}
+  <div class="featured-body">
+    {% if entry.match_label %}
+    {#- Three kinds, visually distinguishable but calm -- exact is solid
+       (the strongest claim: this is the moment), approximate/related are
+       outline (weaker claims). The title attribute spells out what the
+       label means in plain words for a reader who doesn't already know
+       the site's vocabulary. -#}
+    <span class="context-match-badge context-match-{{ entry.match_kind }}"
+      {%- if entry.match_kind == "exact" %} title="This link starts at the moment shown in the post"
+      {%- elif entry.match_kind == "approximate" %} title="Same meeting. The moment is our best estimate"
+      {%- elif entry.match_kind == "related" %} title="A related meeting, not the one in the post"
+      {%- endif %}>{{ entry.match_label }}</span>
+    {% endif %}
+    {#- UNTRUSTED, editor-written -- always plain autoescape, never |safe. -#}
+    <p class="context-summary">{{ entry.summary }}</p>
+    <p class="context-source">
+      <a href="{{ entry.social_url }}" target="_blank" rel="noopener nofollow ugc">Original post on {{ entry.network_label }}{% if entry.source_label %} by {{ entry.source_label }}{% endif %}</a>
+    </p>
+    {% if entry.has_meeting %}
+    <h3 class="featured-title">
+      <a href="/m/{{ entry.slug }}">{{ entry.title or "Untitled meeting" }}</a>
+    </h3>
+    <p class="featured-where">
+      {%- if entry.jurisdiction -%}
+        {%- if entry.hub_slug %}<a href="/j/{{ entry.hub_slug }}">{{ entry.jurisdiction_display }}</a>
+        {%- else %}{{ entry.jurisdiction_display }}{% endif -%}
+      {%- endif -%}
+      {%- if entry.date %}{% if entry.jurisdiction %} &middot; {% endif %}{{ entry.date_html|safe }}{% endif -%}
+    </p>
+    <a class="featured-deeplink" href="{{ entry.deep_link }}">
+      <span aria-hidden="true">&#9654;</span> Watch the full context{% if entry.timestamp_label %} from {{ entry.timestamp_label }}{% endif %}
+    </a>
+    {% elif editor_view %}
+    {#- The editor list shows every status, including a fresh draft with
+       no meeting linked yet -- this stands in for the thumb/title/where/
+       CTA block above rather than leaving a silent gap. -#}
+    <p class="context-no-meeting">No meeting matched yet</p>
+    {% endif %}
+    {% if entry.embed %}
+    {#- Click-to-load only -- no third party is contacted until the
+       reader clicks (context_embeds.js). Only parser-derived values go
+       into the data attributes; the button starts hidden so there is
+       never a dead control when JS is off, and context_embeds.js is the
+       only thing that un-hides it. -#}
+    <div class="context-embed" data-embed-kind="{{ entry.embed.kind }}"
+      {%- if entry.embed.kind == "youtube" %} data-embed-id="{{ entry.embed.video_id }}"
+      {%- elif entry.embed.kind == "instagram" %} data-embed-url="{{ entry.embed.permalink }}"
+      {%- elif entry.embed.kind == "tiktok" %} data-embed-id="{{ entry.embed.video_id }}" data-embed-url="{{ entry.embed.cite }}"
+      {%- endif %}>
+      <button type="button" class="context-embed-load" hidden>Show the post here</button>
+    </div>
+    {% endif %}
+    {% if editor_view %}
+    <div class="context-entry-actions">
+      <a href="/context/new?id={{ entry.id }}" class="cassette-btn-outline">Edit</a>
+      {#- context_editor.js reads data-set-status off whichever of these
+         is clicked and POSTs /api/context/set-status; which buttons show
+         depends on the entry's current status (see WO-943's contract). -#}
+      {% if entry.status == "draft" %}
+      <button type="button" class="cassette-btn-outline" data-entry-id="{{ entry.id }}" data-set-status="published">Publish</button>
+      {% elif entry.status == "published" %}
+      <button type="button" class="cassette-btn-outline" data-entry-id="{{ entry.id }}" data-set-status="hidden">Hide</button>
+      {% elif entry.status == "hidden" %}
+      <button type="button" class="cassette-btn-outline" data-entry-id="{{ entry.id }}" data-set-status="published">Publish</button>
+      <button type="button" class="cassette-btn-outline" data-entry-id="{{ entry.id }}" data-set-status="draft">Move to drafts</button>
+      {% endif %}
+      <span class="context-entry-action-status" data-entry-status-msg role="status"></span>
+    </div>
+    {% endif %}
+  </div>
+</article>

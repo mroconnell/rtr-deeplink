@@ -184,7 +184,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
-  [HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973,…
+  [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -460,7 +460,7 @@ Reliability, ops & cost  (16)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (29)
+Trust, safety & data quality  (30)
   A partial transcript made by our own transcription cannot get the…
   The Archive files a page under whatever `gov_id` a sweep sends…
   Nothing records that a page was deliberately deleted, so a later…
@@ -487,21 +487,23 @@ Trust, safety & data quality  (29)
   `[LATER]` Mastodon auto-posting has made zero real posts
   `[IMPROVEMENT-ROUND]` Social auto-posting only fires on page…
   `[LATER]` Prompt injection isn't a live product risk today, but the…
+  `[LATER]` If a Content-Security-Policy is ever added, it must allow…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
-  Product direction & open strategic questions  (1)
+  Product direction & open strategic questions  (2)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
+    `[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (8)
+  Growth, audience & discoverability  (11)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -510,12 +512,16 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
     [IMPROVEMENT-ROUND] PDF agenda text-extraction for a searchable
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
-  Search & metadata quality  (5)
+    `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
+    `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
+    `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
+  Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
     [IMPROVEMENT-ROUND] Once `meeting_body` has real, strategic coverage,
     [IMPROVEMENT-ROUND] Transcript version picker: real option labels
     [IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
+    `[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from…
   Transcription quality & cost  (3)
     [IMPROVEMENT-ROUND] Hallucinated-transcript detection doesn't catch
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
@@ -2176,12 +2182,12 @@ of human step they need.
   - **Constraint**: nothing reads or advances this queue automatically (a test fails the build if it did); no automatic promotion; never resolve a YouTube page from any machine except the drip Mac (none of the 82 is YouTube-hosted). The 2026-08-22 standing decision against bulk re-transcription is respected: this is a bounded, evidence-backed set with a human review gate. Two stale slugs found while checking (page 775 `port-colborne-resolution-...` is really Brockton ON, page 893 `peterborough-attachments-...` is really Uxbridge ON) are left alone.
   - **History**: `BACKLOG_DONE.md` WO-929 and WO-928; `rtr-business/research/wo928_era_evidence.md`, `wo929_population_recheck.csv`.
 
-- **[HUMAN] Leon Valley TX has two pages for one meeting (1595 and 3973, Cablecast show 185), and no re-check can ever reach 1595.**
-  - **Issue**: page 1595 (`leon-2026-07-21-city-council-regular-meeting-7-21-2026`, made 2026-08-19) has no `external_id`. Page 3973 (`leon-valley-tx-2026-07-21-...`, made 2026-09-01) has `cablecast:leonvalleytx.cablecast.tv:185`. Both URL forms (`/show/185` and `/show/185?site=1`) look up to 3973 now, so a re-check of 1595's own URL writes to 3973. That is why the partial-transcript warning reached 3973 and never 1595. Page 1676 (show 179) is the same legacy shape but has no twin.
-  - **Impact**: 1595 shows a transcript that stops at 55% of a 6-hour video with no warning. Its twin shows the warning.
-  - **Next action**: delete 1595 (dry run first, read the title) after adding a `_SLUG_REDIRECTS` entry from its slug to 3973's, or give 1595 the external_id and delete 3973 instead. Then check for other Cablecast pages with a NULL `external_id` and a `?site=1` URL (count them from `/internal/export/pages`).
-  - **Constraint**: Ryan's call which one survives; 3973 already carries the warning and the newer id scheme.
-  - **History**: `BACKLOG_DONE.md` WO-925.
+- **[HUMAN] Other Cablecast pages with no `external_id` may be twins of a keyed page, as Leon Valley's was.**
+  - **Issue**: page 1595 (a `?site=1` copy of Leon Valley show 185, no `external_id`) was a twin of page 3973 and no re-check could reach it; Ryan had it deleted on 2026-09-21 (WO-941 entry in `BACKLOG_DONE.md`). The same shape (a Cablecast page made from a `?site=1` or other query-string URL, so its `external_id` is NULL) may exist on other pages. Nobody has counted them.
+  - **Impact**: unknown; each such twin shows a stale, unwarned transcript that no re-check can update.
+  - **Next action**: list Cablecast pages with a NULL `external_id` from `/internal/export/pages` (read-only), group by normalised show URL, and report the pairs that share a show with a keyed page; delete or key each after a hand-check.
+  - **Constraint**: deleting a page needs a `_SLUG_REDIRECTS` entry first; never bulk-delete.
+  - **History**: `BACKLOG_DONE.md` WO-925 and WO-941.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
@@ -7489,6 +7495,23 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   whether to worry about prompt injection / fake government submissions;
   see `TRUST_THREAT_MODEL.md`.
 
+### `[LATER]` If a Content-Security-Policy is ever added, it must allow the three Full Context embed origins
+
+- **Issue**: neither the resolver nor the Archive sets a
+  Content-Security-Policy header today, so this isn't live-blocking
+  anything — but WO-943's Full Context feed (2026-09-21) added
+  click-to-load embeds from `www.youtube-nocookie.com`,
+  `www.instagram.com`, and `www.tiktok.com` (see README's "Full Context
+  feed" section). A CSP written without checking current features first
+  would silently break those three embeds.
+- **Impact**: none today. Would break the "Show the post here" button on
+  every Instagram/TikTok/YouTube Full Context entry the moment a CSP
+  shipped without these three origins allowed.
+- **Next action**: none now — re-read this entry (and grep the codebase
+  for every third-party origin actually loaded, not just these three)
+  before adding a CSP.
+- **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 
 - **Issue**: fake/spoofed "government" pages and non-government content
@@ -7747,6 +7770,26 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     scheduled — needs Ryan's call before it becomes one.
   - **History**: [FEED_CITIES.md](FEED_CITIES.md).
 
+- **`[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context feed, plus a moderation/review queue.**
+  - **Issue**: WO-943 (2026-09-21) shipped `/context` as editor-only —
+    only Clerk user ids listed in `CONTEXT_EDITOR_CLERK_IDS` can post.
+    Letting any signed-in user submit a clip would grow the feed much
+    faster, but needs a review step before a submission goes public.
+  - **Impact**: today the feed's size is capped by how much time an
+    allowlisted editor has, not by how many good clips exist.
+  - **Next action**: build a submission form for any signed-in user, plus
+    an editor review queue (approve/reject/edit before publish). The
+    schema already supports this without a migration — `ContextEntry`'s
+    `status` column just needs a new value (e.g. `pending_review`) and
+    `created_by_clerk_user_id` already records the real submitter.
+  - **Constraint**: blocked on the same open moderation question
+    `ACCOUNTS_PLAN.md` already flags for `post`/`repost` notes — public,
+    free-text user-generated content is real new surface area this app
+    has never had. Don't build the open submission form before that
+    question has an answer.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; `ACCOUNTS_PLAN.md`'s
+    2026-09-21 note.
+
 ### `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 — see [ACCOUNTS_PLAN.md](ACCOUNTS_PLAN.md)
 
 - **Issue**: phase 1 (Clerk sign-in, saved meetings/searches) shipped
@@ -7906,6 +7949,58 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     turns out to be a pop/lift effect rather than sweep/fill once
     actually watched.
 
+- **`[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context entry to Bluesky.**
+  - **Issue**: WO-943 (2026-09-21) shipped the Full Context feed
+    (`/context`) but nothing announces a newly published entry the way a
+    newly created Archive page already does.
+  - **Impact**: a real, editor-curated moment (a social clip tied to its
+    exact meeting second) is exactly the kind of content the existing
+    Bluesky account was built to announce — see "Social auto-posting"
+    above — but today it never does.
+  - **Next action**: reuse `archive/utils/social.py`'s existing
+    Bluesky-posting code, triggered from `set_context_entry_status()`
+    when an entry's status transitions to `published`.
+  - **Constraint**: `SocialPost`'s unique constraint is per (meeting
+    page, network) — see `archive/db/models.py`. A Full Context
+    announcement is a different post about a page that may already have
+    its own `SocialPost` row from the page's own creation, so posting
+    both needs a real design decision (a second `SocialPost` row keyed
+    differently, or a separate ledger table) before this can reuse the
+    existing dedupe mechanism as-is.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; README's "Social
+    auto-posting" and "Full Context feed" sections.
+
+- **`[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings show the generic YouTube thumbnail, not the clipped moment.**
+  - **Issue**: `/m/{slug}/card.jpg` redirects a YouTube-backed meeting to
+    YouTube's own standard thumbnail regardless of `t` (see "Meeting card
+    images" above) — only a non-YouTube meeting gets a true extracted
+    frame at the timestamp. Many meetings that get clipped on social
+    media are on YouTube.
+  - **Impact**: many Full Context entries will show a generic video
+    thumbnail rather than the actual clipped moment, weakening the
+    entry's own visual hook.
+  - **Next action**: Ryan's call between two options — accept the generic
+    thumbnail as a known limitation, or extract a real frame for
+    YouTube-backed pages, which this app has deliberately not done so
+    far (YouTube serves its own thumbnail cheaply; a real frame would
+    need downloading/seeking the video, unlike the ffmpeg extraction
+    already used for non-YouTube pages).
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry (states the caveat);
+    README's "Meeting card images" section (the existing YouTube-redirect
+    behavior this inherits).
+
+- **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
+  - **Issue**: `/m/{slug}` never shows that a meeting has one or more
+    Full Context entries pointing at it, even though `ContextEntry.
+    meeting_page_id` is indexed and already the FK every entry carries.
+  - **Impact**: a reader on the meeting page itself has no way to
+    discover the social clip(s) that reference it — the link only works
+    one direction (from `/context` to the meeting), not back.
+  - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
+    for that `meeting_page_id` and render a small "clipped on social
+    media" section/badge linking to each.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+
 ### Search & metadata quality
 
 - **[IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
@@ -7993,6 +8088,22 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **History**: the in-app search half (this site's own `/meetings`
     search already matches every version) and the UX half (version
     picker, shipped 2026-08-12) are both in `BACKLOG_DONE.md`.
+
+- **`[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from the pasted share link — only `t` is kept.**
+  - **Issue**: WO-943's editor form parses a pasted "Share video at M:SS"
+    link's `slug` and `t`, but reads and discards any `line`/`version`
+    params the link also carries.
+  - **Impact**: arriving at a meeting from a Full Context entry never
+    highlights the matching transcript row, unlike a plain deep link
+    copied with a transcript line selected — the video still seeks to
+    `t`, but the transcript-side highlight is silently lost.
+  - **Next action**: extend `ContextEntry` (or `context_links.py`'s
+    parse) to also store `line`/`version` when present, and pass them
+    through to the `/m/{slug}` deep link the feed renders.
+  - **Constraint**: not started — `t_seconds` is the only timestamp field
+    on `ContextEntry` today; adding `line`/`version` is a small schema
+    change (nullable columns), not a redesign.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### Transcription quality & cost
 

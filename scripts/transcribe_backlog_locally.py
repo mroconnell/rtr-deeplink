@@ -195,6 +195,7 @@ from worker.segment_utils import (  # noqa: E402
     chunk_duration,
     chunk_start,
     detect_hallucination_warnings,
+    is_last_window_of_source,
     merge_chunk_segments,
     shift_segments,
 )
@@ -1354,8 +1355,17 @@ async def transcribe_meeting(
     whole_audio_cache_failed = False
 
     async def _extract_chunk(
-        media_url: str, cache_path: Path, start: float, dur: float, out_path: Path
+        media_url: str,
+        cache_path: Path,
+        start: float,
+        dur: float,
+        out_path: Path,
+        is_final_chunk: bool = False,
     ):
+        # `is_final_chunk` (WO-935): whether this chunk runs to the end of
+        # its media file, so it may legitimately decode shorter than asked
+        # for. Passed on to both extraction functions, which fail a
+        # valid-but-short chunk otherwise.
         nonlocal whole_audio_cache_failed
         if use_whole_audio_cache and not whole_audio_cache_failed:
             if not cache_path.exists():
@@ -1380,14 +1390,42 @@ async def transcribe_meeting(
                         duration=dur,
                         source_page_url=source_url,
                         out_path=out_path,
+                        is_final_chunk=is_final_chunk,
                     )
                 logger.info(
                     "    cached %s bytes of audio -- every remaining chunk of "
                     "this meeting is now a local slice with no network at all",
                     cache_path.stat().st_size,
                 )
-            return await slice_cached_audio(
-                cache_path, start=start, duration=dur, out_path=out_path
+            sliced, slice_reason = await slice_cached_audio(
+                cache_path,
+                start=start,
+                duration=dur,
+                out_path=out_path,
+                is_final_chunk=is_final_chunk,
+            )
+            if sliced or youtube_audio_path is not None:
+                # A YouTube meeting has no URL ffmpeg can read directly
+                # (only the local file above), so there is nothing to fall
+                # back to -- report the slice's own failure.
+                return sliced, slice_reason
+            # WO-935: the slice now fails when this stretch of the cached
+            # audio is undecodable or short (see slice_cached_audio()).
+            # Re-slicing the same cache cannot fix that, so -- like
+            # worker/main.py's WO-58 fallback -- cut just THIS chunk from the
+            # source instead, and keep using the cache for the rest.
+            logger.info(
+                "    cached slice failed (%s) -- extracting this chunk "
+                "straight from the source instead",
+                slice_reason,
+            )
+            return await extract_chunk_audio(
+                media_url,
+                start=start,
+                duration=dur,
+                source_page_url=source_url,
+                out_path=out_path,
+                is_final_chunk=is_final_chunk,
             )
         return await extract_chunk_audio(
             media_url,
@@ -1395,6 +1433,7 @@ async def transcribe_meeting(
             duration=dur,
             source_page_url=source_url,
             out_path=out_path,
+            is_final_chunk=is_final_chunk,
         )
 
     chunks_done = first_chunk
@@ -1440,9 +1479,19 @@ async def transcribe_meeting(
                         dur = chunk_duration(idx, chunk_size_seconds, duration)
                         meeting_offset = start
                     audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
+                    # WO-935: same helper as worker/main.py, so both paths
+                    # decide "may this chunk be short" identically.
+                    is_final_chunk = is_last_window_of_source(
+                        idx, total_chunks, chunk_plan
+                    )
                     extracted, extraction_error = await retry_async(
                         lambda: _extract_chunk(
-                            chunk_media_url, whole_audio_path, start, dur, audio_path
+                            chunk_media_url,
+                            whole_audio_path,
+                            start,
+                            dur,
+                            audio_path,
+                            is_final_chunk,
                         ),
                         label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
                         attempts=MEDIA_ATTEMPTS,

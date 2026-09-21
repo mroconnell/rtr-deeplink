@@ -35,7 +35,24 @@ def test_privacy_page_carries_last_updated_date():
     the page says it's the signal for whether the policy is current."""
     response = resolver_client.get("/privacy")
     assert response.status_code == 200
-    assert "Last updated: September 2, 2026" in response.text
+    assert "Last updated: September 21, 2026" in response.text
+
+
+def test_privacy_page_discloses_third_party_content_in_general_terms():
+    """WO-943: pages here load players, preview images and social posts
+    from other services, and the policy says so.
+
+    Deliberately general (Ryan, 2026-09-21). An earlier draft promised
+    specifics -- embeds load only after a click, video is never re-hosted
+    -- and each one was a commitment the product will make exceptions to,
+    including hosting its own video. The last three assertions keep those
+    promises from creeping back in: a privacy page should describe what
+    happens, not pin how a feature is built."""
+    response = resolver_client.get("/privacy")
+    assert "Some pages show content from other services" in response.text
+    assert "only after you click" not in response.text
+    assert "never re-host" not in response.text
+    assert "streams from the government" not in response.text
 
 
 def test_privacy_page_keeps_the_sale_distinction():

@@ -305,12 +305,21 @@ reasons. That is how every sweep below was scoped.
   row IS the identity**, and a row whose recorded domain belongs to
   another government (a county's, a tribe's, a namesake in another state:
   De Kalb TX's row carries De Kalb IL's site) files that government's
-  meetings under it. The only mechanical check is WO-134's opt-in
-  `JURISDICTION_CHECK_HOOK` / `IDENTITY_CHECK_HOOK` (default `None`; most
-  sweeps install one. WO-149's `jurisdiction_check_hook()` rejects an
-  adapter guess that names a different STATE and does not catch a
-  same-state mismatch such as a town whose row carries its county's
-  domain). A tier-3 queue line for a single-tenant host sends no id
+  meetings under it. The mechanical checks live in WO-134's ingest path.
+  Since WO-932 (2026-09-21) `JURISDICTION_CHECK_HOOK` is ON by default:
+  `scripts/identity_gate.py`'s `jurisdiction_check_hook()` (WO-149's hook,
+  moved) rejects an adapter guess that names a different STATE and does
+  not catch a same-state mismatch such as a town whose row carries its
+  county's domain. `IDENTITY_CHECK_HOOK` is still per-sweep (default
+  `None`; most sweeps install a hand-read gate). Also since WO-932 the
+  ingest path FLAGS, without skipping, a video found on a vendor tenant
+  whose host name shares no word with the government
+  (`identity_gate.host_name_conflict()`, the Beltrami MN / minnesotapuc
+  case): the flag rides on the row's reason text. Whether the ARCHIVE
+  should also return 409 on a state mismatch is still open and is Ryan's
+  call; `scripts/wo932_state_check_dry_run.py` counts what it would
+  refuse from an inventory export (2026-09-21: 12 of 10,280 pages, all
+  listed in `BACKLOG_DONE.md`'s WO-932 entry). A tier-3 queue line for a single-tenant host sends no id
   (`queue_probe.has_owner()` returns `(True, None, "")`), so the Archive's
   own ladder decides; for a shared host the feed sends a per-video pin's
   id or the line is refused. Counts from the hand-check that surfaced

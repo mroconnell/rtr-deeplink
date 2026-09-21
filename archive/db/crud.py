@@ -93,9 +93,18 @@ from ..topics import (
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
+from ..utils.context_links import (
+    CONTEXT_SUMMARY_MAX,
+    MATCH_KINDS,
+    NETWORK_LABELS,
+    SocialRef,
+)
+from ..utils.context_links import embed_for as _context_embed_for
+from ..utils.video_thumbnail import youtube_thumbnail_url
 from . import hub_slugs
 from .engine import async_session
 from .models import (
+    ContextEntry,
     MeetingHighlight,
     MeetingPage,
     MeetingPageThumbnail,
@@ -10572,11 +10581,27 @@ async def list_saved_items(clerk_user_id: str) -> dict:
 
 
 async def delete_account_data(clerk_user_id: str) -> int:
-    """Hard-deletes every SavedItem for this Clerk account -- the entire
+    """Hard-deletes every SavedItem for this Clerk account, and detaches
+    (never deletes) any ContextEntry they authored -- the entire
     right-to-deletion story on our side of the app.main.py user.deleted
-    webhook handler, since this table stores no other PII to clean up.
-    Returns the number of rows removed (for the webhook handler's own
-    logging, not load-bearing)."""
+    webhook handler.
+
+    SavedItem stores no other PII, so a hard delete is the whole story
+    there. A ContextEntry is different: it's public editorial content an
+    allowlisted editor (archive/utils/context_editors.py) wrote for the
+    `/context` feed, and `created_by_clerk_user_id` is the only thing on
+    that row even associated with the account (see ContextEntry's own
+    docstring) -- so a deletion request nulls that one column and leaves
+    the entry itself exactly as published, rather than pulling real public
+    content off the site because its author's account was later deleted.
+    Guarded by _context_available() so this still works before the
+    context_entries migration has run.
+
+    Returns the number of SavedItem rows removed (for the webhook
+    handler's own logging, not load-bearing) -- unchanged in meaning by
+    the ContextEntry addition above, since that's a null-out, not a
+    delete, and no caller has ever counted on it either way.
+    """
     async with async_session() as session:
         rows = (
             (
@@ -10590,6 +10615,14 @@ async def delete_account_data(clerk_user_id: str) -> int:
         count = len(rows)
         for row in rows:
             await session.delete(row)
+
+        if await _context_available(session):
+            await session.execute(
+                update(ContextEntry)
+                .where(ContextEntry.created_by_clerk_user_id == clerk_user_id)
+                .values(created_by_clerk_user_id=None)
+            )
+
         await session.commit()
         return count
 
@@ -10610,6 +10643,25 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
     `meeting_page_thumbnails` (a single-transaction failure, so it would
     have rolled back cleanly rather than partially deleting -- just never
     actually removed anything).
+
+    ContextEntry (WO-943) is handled differently from every row above: it
+    is DETACHED, never deleted -- `meeting_page_id` is set NULL and a
+    `published` entry is demoted to `draft` (see the loop below), the same
+    "unmatched entries stay a private draft" rule save_context_entry()
+    already enforces on the way in. It's public editorial content that
+    happens to cite this meeting, not a row that exists *because of* this
+    meeting, so losing the page it deep-links into should knock the entry
+    back into the editor's queue to re-match, not destroy it. This is a
+    real FK requirement, not just good manners: the column really is
+    `ON DELETE SET NULL` at the DB level (see the ContextEntry model), but
+    Postgres still enforces that constraint at DELETE time, and SQLite
+    (dev/CI, no `PRAGMA foreign_keys` set anywhere in this app) enforces
+    nothing at all by default -- so without doing this by hand first, a
+    Postgres delete of a page with any ContextEntry attached would fail
+    with the exact same class of FK violation the thumbnail/social-post
+    gap above did, while the same call would silently leave an orphaned
+    `meeting_page_id` behind in SQLite. Guarded by _context_available() so
+    this still works before the context_entries migration has run.
 
     Built for one specific real cleanup (3 PrimeGov UAT/staging tenant
     pages accidentally real-ingested during a bulk gate-blindness recheck,
@@ -10724,6 +10776,29 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             for social_post in social_posts:
                 await session.delete(social_post)
 
+            if await _context_available(session):
+                context_entries = (
+                    (
+                        await session.execute(
+                            select(ContextEntry).where(
+                                ContextEntry.meeting_page_id == page.id
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for context_entry in context_entries:
+                    context_entry.meeting_page_id = None
+                    # A published entry can't stay published with nothing
+                    # to deep-link into -- save_context_entry() enforces
+                    # the same "publishing needs a meeting" rule on the
+                    # way in. Demoted to draft, not deleted, so it
+                    # reappears in the editor's own queue to re-match
+                    # rather than silently vanishing from both feeds.
+                    if context_entry.status == "published":
+                        context_entry.status = "draft"
+
             # Explicit flush before deleting the page itself -- these
             # child models have no ORM relationship() back to MeetingPage
             # (that's why they're deleted by hand above at all), so
@@ -10750,6 +10825,531 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             "not_found": not_found,
             "deleted": 0 if dry_run else len(found),
         }
+
+
+# --- Full Context feed (WO-943) -----------------------------------------
+#
+# The public `/context` feed: short, editor-written entries that cite a
+# social-media post showing a clip from a public meeting, each linking
+# into this Archive's own `/m/{slug}?t=` at the moment referenced. See
+# archive/db/models.py's ContextEntry docstring for the table's design,
+# and archive/utils/context_links.py for the (pure, no-I/O) URL parsing
+# that produces the `SocialRef` this section's write path takes.
+#
+# _context_entry_dict() is the one place that shape gets built -- every
+# reader below (list_context_entries() in both modes, get_context_entry(),
+# and the "ok" branch of the two writers) returns exactly its keys, since
+# the templates rendering this feed are built directly against that key
+# set, not against whatever a given query happened to select.
+
+CONTEXT_MIN_INDEXABLE = 5
+# Below this many published entries, the feed isn't worth a dedicated
+# sitemap/RSS listing yet -- a threshold, not a behavior, so whichever
+# route wants it (the sitemap builder, an RSS feed) reads one shared
+# number rather than each guessing its own.
+CONTEXT_PAGE_SIZE = 20
+
+_CONTEXT_CHECK_TTL = timedelta(minutes=1)
+_context_state: dict[str, Any] = {"available": False, "checked_at": None}
+
+
+async def _context_available(session) -> bool:
+    """True when the context_entries table really exists on the connected
+    database -- the same deploy-order-tolerance pattern
+    _thumbnails_available() applies to meeting_page_thumbnails (see that
+    function's docstring): always True on SQLite (dev/CI, where
+    create_all() builds every table from today's model), migration-gated
+    on Postgres, where the schema can genuinely lag the code until
+    render.yaml's preDeployCommand catches up. Cached for
+    _CONTEXT_CHECK_TTL so running the migration against a live service
+    flips this on within a minute with no restart.
+    """
+    if session.bind.dialect.name != "postgresql":
+        return True
+    now = datetime.now(timezone.utc)
+    checked_at = _context_state["checked_at"]
+    if checked_at is not None and now - checked_at < _CONTEXT_CHECK_TTL:
+        return bool(_context_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'context_entries'"
+            )
+        )
+    ).first()
+    _context_state["available"] = row is not None
+    _context_state["checked_at"] = now
+    return bool(_context_state["available"])
+
+
+def _entry_row_to_dict(entry: ContextEntry) -> dict:
+    """ORM row -> plain dict, the same "never hand an ORM object back to a
+    caller" rule this file follows everywhere else."""
+    return {
+        "id": entry.id,
+        "social_url": entry.social_url,
+        "social_url_key": entry.social_url_key,
+        "network": entry.network,
+        "source_label": entry.source_label,
+        "summary": entry.summary,
+        "meeting_page_id": entry.meeting_page_id,
+        "t_seconds": entry.t_seconds,
+        "match_kind": entry.match_kind,
+        "status": entry.status,
+        "created_by_clerk_user_id": entry.created_by_clerk_user_id,
+        "published_at": entry.published_at,
+        "created_at": entry.created_at,
+        "updated_at": entry.updated_at,
+    }
+
+
+def _context_page_row_to_dict(page: MeetingPage) -> dict:
+    """The narrow slice of MeetingPage _context_entry_dict() actually
+    needs -- deliberately not get_page_by_slug()'s full dict (which also
+    loads every TranscriptVersion's segments blob, entirely beside the
+    point for a feed card)."""
+    return {
+        "id": page.id,
+        "slug": page.slug,
+        "title": page.title,
+        "jurisdiction": page.jurisdiction,
+        "gov_id": page.gov_id,
+        "date": page.date,
+        "video_url": page.video_url,
+    }
+
+
+def _context_entry_dict(
+    entry: dict, page: Optional[dict], *, thumb_page_ids: set
+) -> dict:
+    """The one shape every context-feed reader returns. See this section's
+    own intro comment for why the exact key set is load-bearing.
+
+    `embed` is computed here, at read time, by re-parsing the stored
+    (network, social_url) -- see context_links.embed_for()'s own
+    docstring for why that's deliberate rather than a stored column.
+    """
+    t_seconds = entry["t_seconds"]
+    result = {
+        "id": entry["id"],
+        "status": entry["status"],
+        "summary": entry["summary"],
+        "social_url": entry["social_url"],
+        "network": entry["network"],
+        "network_label": NETWORK_LABELS.get(entry["network"], NETWORK_LABELS["other"]),
+        "source_label": entry["source_label"],
+        "embed": _context_embed_for(entry["network"], entry["social_url"]),
+        "match_kind": entry["match_kind"],
+        "match_label": MATCH_KINDS.get(entry["match_kind"])
+        if entry["match_kind"]
+        else None,
+        "t_seconds": t_seconds,
+        "timestamp_label": (
+            format_timestamp_label(t_seconds) if t_seconds is not None else None
+        ),
+        "published_at": entry["published_at"],
+        "created_at": entry["created_at"],
+        "updated_at": entry["updated_at"],
+        "has_meeting": page is not None,
+        "slug": None,
+        "title": None,
+        "jurisdiction": None,
+        "jurisdiction_display": None,
+        "hub_slug": None,
+        "date": None,
+        "date_html": None,
+        "deep_link": None,
+        "card_url": None,
+    }
+    if page is None:
+        return result
+
+    slug = page["slug"]
+    suffix = f"?t={int(t_seconds)}" if t_seconds is not None else ""
+    card_url = youtube_thumbnail_url(page.get("video_url"))
+    if not card_url and page["id"] in thumb_page_ids:
+        card_url = f"/m/{slug}/card.jpg{suffix}"
+
+    result.update(
+        {
+            "slug": slug,
+            "title": page["title"],
+            "jurisdiction": page["jurisdiction"],
+            "jurisdiction_display": effective_jurisdiction(
+                page.get("gov_id"), page["jurisdiction"]
+            ),
+            "hub_slug": _hub_identity(page.get("gov_id"), page["jurisdiction"])[1],
+            "date": page["date"],
+            "date_html": str(meeting_date_html(page.get("date"))),
+            "deep_link": f"/m/{slug}{suffix}",
+            "card_url": card_url,
+        }
+    )
+    return result
+
+
+async def _context_entry_response(session, entry: ContextEntry) -> dict:
+    """Builds one entry's full response dict from a freshly written/
+    updated ORM row -- the common tail of save_context_entry() and
+    set_context_entry_status(), which both already hold `entry` and just
+    need its meeting (if any) and thumbnail availability looked up."""
+    page = None
+    if entry.meeting_page_id is not None:
+        page_row = (
+            await session.execute(
+                select(MeetingPage).where(MeetingPage.id == entry.meeting_page_id)
+            )
+        ).scalar_one_or_none()
+        page = _context_page_row_to_dict(page_row) if page_row is not None else None
+    thumb_ids = await pages_with_thumbnails(session, [page["id"]]) if page else set()
+    return _context_entry_dict(
+        _entry_row_to_dict(entry), page, thumb_page_ids=thumb_ids
+    )
+
+
+async def list_context_entries(
+    *, public: bool, page: int = 1, page_size: int = CONTEXT_PAGE_SIZE
+) -> dict:
+    """The `/context` feed's one read path, in two modes.
+
+    `public=True` -- the public feed: only `published` rows, INNER JOINed
+    against MeetingPage so an orphaned entry (its meeting later deleted --
+    see delete_meeting_pages_by_slug()'s demotion above) can never render,
+    even transiently. Ordered `published_at desc, id desc` -- published_at
+    is sticky (see ContextEntry.published_at's own docstring), so a hide
+    -> republish cycle never reshuffles the feed.
+
+    `public=False` -- the editor's own list: every status, OUTER JOINed so
+    a draft with no meeting yet still shows up (that's the whole point of
+    an editor's queue). Ordered `updated_at desc, id desc` -- "what did I
+    touch most recently" is the useful order for editing, not "what went
+    live most recently."
+
+    Returns {"entries": [...], "page", "page_size", "total", "has_prev",
+    "has_next"}. Table missing -> an empty, well-formed result, never an
+    exception (see _context_available()).
+    """
+    page = max(1, page)
+    async with async_session() as session:
+        if not await _context_available(session):
+            return {
+                "entries": [],
+                "page": page,
+                "page_size": page_size,
+                "total": 0,
+                "has_prev": False,
+                "has_next": False,
+            }
+
+        if public:
+            join_condition = ContextEntry.meeting_page_id == MeetingPage.id
+            base_query = select(ContextEntry, MeetingPage).join(
+                MeetingPage, join_condition
+            )
+            base_query = base_query.where(ContextEntry.status == "published")
+            count_query = (
+                select(func.count())
+                .select_from(ContextEntry)
+                .join(MeetingPage, join_condition)
+                .where(ContextEntry.status == "published")
+            )
+            order = (ContextEntry.published_at.desc(), ContextEntry.id.desc())
+        else:
+            base_query = select(ContextEntry, MeetingPage).outerjoin(
+                MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id
+            )
+            count_query = select(func.count()).select_from(ContextEntry)
+            order = (ContextEntry.updated_at.desc(), ContextEntry.id.desc())
+
+        total = int((await session.execute(count_query)).scalar_one())
+
+        rows = (
+            await session.execute(
+                base_query.order_by(*order)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+
+        page_ids = [meeting.id for _entry, meeting in rows if meeting is not None]
+        thumb_ids = await pages_with_thumbnails(session, page_ids)
+
+        entries = [
+            _context_entry_dict(
+                _entry_row_to_dict(entry),
+                _context_page_row_to_dict(meeting) if meeting is not None else None,
+                thumb_page_ids=thumb_ids,
+            )
+            for entry, meeting in rows
+        ]
+
+    return {
+        "entries": entries,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "has_prev": page > 1,
+        "has_next": (page * page_size) < total,
+    }
+
+
+async def count_published_context_entries() -> int:
+    """The public feed's real size -- e.g. for CONTEXT_MIN_INDEXABLE
+    gating -- without paging through the whole thing. 0 when the table
+    doesn't exist yet, same as every other context_entries reader."""
+    async with async_session() as session:
+        if not await _context_available(session):
+            return 0
+        total = (
+            await session.execute(
+                select(func.count())
+                .select_from(ContextEntry)
+                .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                .where(ContextEntry.status == "published")
+            )
+        ).scalar_one()
+        return int(total)
+
+
+async def get_context_entry(entry_id: int) -> Optional[dict]:
+    """One entry by id, editor-view shape (any status, meeting optional) --
+    for the edit form, and for re-reading an entry right after a save."""
+    async with async_session() as session:
+        if not await _context_available(session):
+            return None
+        entry = await session.get(ContextEntry, entry_id)
+        if entry is None:
+            return None
+        return await _context_entry_response(session, entry)
+
+
+async def save_context_entry(
+    clerk_user_id: str,
+    *,
+    entry_id: Optional[int] = None,
+    social: SocialRef,
+    summary: str,
+    source_label: Optional[str] = None,
+    meeting_page_id: Optional[int] = None,
+    t_seconds: Optional[int] = None,
+    match_kind: Optional[str] = None,
+    status: str = "draft",
+) -> dict:
+    """Creates (entry_id=None) or updates (entry_id set) one context entry
+    -- the one write path both "save as draft" and "publish" go through
+    (status is just which value the caller passes). Returns
+    `{"ok": <entry dict, see _context_entry_dict()>}` on success, or
+    `{"error": <code>, "message": <plain English>, ...}` on any validation
+    failure.
+
+    Error codes: `not_found` (unknown entry_id), `duplicate` (+
+    `existing_id`/`existing_status` -- updating an entry to its OWN
+    existing key is never a duplicate, see below), `summary_required`,
+    `summary_too_long`, `invalid_match_kind`, `invalid_status` (this
+    function only ever accepts `draft`/`published` -- `hidden` is
+    set_context_entry_status()'s alone), `meeting_required`/
+    `match_kind_required` (publishing needs a meeting, a match kind, and a
+    summary -- summary is already required for every status),
+    `timestamp_required` (an `exact` match needs `t_seconds`),
+    `unknown_meeting` (meeting_page_id doesn't reference a real page).
+
+    Duplicate detection is belt-and-braces: a pre-check SELECT (so the
+    common case returns a clean, specific error with the existing row's
+    id/status) plus catching the UniqueConstraint's IntegrityError (so a
+    genuine race between two editors saving the same post at once still
+    can't produce two rows) -- the same two-layer pattern save_search()
+    and claim_social_post() already use elsewhere in this file for their
+    own unique constraints. Both checks exclude the row being updated by
+    id, so re-saving an entry against its own existing social_url_key
+    never trips as a duplicate of itself.
+
+    `created_by_clerk_user_id` is set only on create -- an update never
+    reassigns authorship (see ContextEntry's own docstring on why).
+    `published_at` is set only the first time status becomes
+    "published" -- already-published entries keep their original value
+    even if re-saved with a changed summary.
+    """
+    if status not in ("draft", "published"):
+        return {
+            "error": "invalid_status",
+            "message": "Status has to be either a draft or published.",
+        }
+
+    clean_summary = (summary or "").strip()
+    if not clean_summary:
+        return {
+            "error": "summary_required",
+            "message": "Write a short summary of the clip first.",
+        }
+    if len(clean_summary) > CONTEXT_SUMMARY_MAX:
+        return {
+            "error": "summary_too_long",
+            "message": f"Keep the summary under {CONTEXT_SUMMARY_MAX} characters.",
+        }
+
+    clean_source_label = (source_label or "").strip() or None
+    if clean_source_label is not None:
+        clean_source_label = clean_source_label[:120]
+
+    if match_kind is not None and match_kind not in MATCH_KINDS:
+        return {
+            "error": "invalid_match_kind",
+            "message": "That's not a match kind this app knows about.",
+        }
+
+    if status == "published":
+        if meeting_page_id is None:
+            return {
+                "error": "meeting_required",
+                "message": "Publishing needs a matched meeting first.",
+            }
+        if match_kind is None:
+            return {
+                "error": "match_kind_required",
+                "message": "Publishing needs a match kind (exact, approximate or related).",
+            }
+    if match_kind == "exact" and t_seconds is None:
+        return {
+            "error": "timestamp_required",
+            "message": "An exact match needs a timestamp.",
+        }
+
+    async with async_session() as session:
+        if meeting_page_id is not None:
+            exists = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.id == meeting_page_id)
+                )
+            ).first()
+            if exists is None:
+                return {
+                    "error": "unknown_meeting",
+                    "message": "That meeting doesn't exist.",
+                }
+
+        entry: Optional[ContextEntry] = None
+        if entry_id is not None:
+            entry = await session.get(ContextEntry, entry_id)
+            if entry is None:
+                return {"error": "not_found", "message": "That entry doesn't exist."}
+
+        dup_query = select(ContextEntry).where(
+            ContextEntry.social_url_key == social.key
+        )
+        if entry is not None:
+            dup_query = dup_query.where(ContextEntry.id != entry.id)
+        duplicate = (await session.execute(dup_query)).scalars().first()
+        if duplicate is not None:
+            return {
+                "error": "duplicate",
+                "message": "This post is already in the feed.",
+                "existing_id": duplicate.id,
+                "existing_status": duplicate.status,
+            }
+
+        becomes_published = status == "published"
+        try:
+            if entry is None:
+                entry = ContextEntry(
+                    social_url=social.canonical_url,
+                    social_url_key=social.key,
+                    network=social.network,
+                    source_label=clean_source_label,
+                    summary=clean_summary,
+                    meeting_page_id=meeting_page_id,
+                    t_seconds=t_seconds,
+                    match_kind=match_kind,
+                    status=status,
+                    created_by_clerk_user_id=clerk_user_id,
+                )
+                if becomes_published:
+                    entry.published_at = datetime.now(timezone.utc)
+                session.add(entry)
+            else:
+                entry.social_url = social.canonical_url
+                entry.social_url_key = social.key
+                entry.network = social.network
+                entry.source_label = clean_source_label
+                entry.summary = clean_summary
+                entry.meeting_page_id = meeting_page_id
+                entry.t_seconds = t_seconds
+                entry.match_kind = match_kind
+                entry.status = status
+                if becomes_published and entry.published_at is None:
+                    entry.published_at = datetime.now(timezone.utc)
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            existing = (
+                (
+                    await session.execute(
+                        select(ContextEntry).where(
+                            ContextEntry.social_url_key == social.key
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return {
+                "error": "duplicate",
+                "message": "This post is already in the feed.",
+                "existing_id": existing.id if existing else None,
+                "existing_status": existing.status if existing else None,
+            }
+
+        await session.refresh(entry)
+        return {"ok": await _context_entry_response(session, entry)}
+
+
+async def set_context_entry_status(entry_id: int, status: str) -> dict:
+    """Flips an entry's status alone -- the editor list's quick publish/
+    hide/unhide actions, without re-submitting the whole form.
+
+    Same publish rule save_context_entry() enforces (a meeting, a match
+    kind, and a timestamp if the match kind is "exact") applies here too:
+    an entry saved as a draft with no meeting yet can't become publishable
+    just by flipping this one field. Same published_at stickiness as well
+    -- set only the first time an entry goes live, never again.
+
+    Returns `{"ok": <entry dict>}` or `{"error": <code>, "message": ...}`,
+    same shape and error codes as save_context_entry() where they overlap
+    (`not_found`, `meeting_required`, `match_kind_required`,
+    `timestamp_required`), plus `invalid_status` for anything other than
+    draft/published/hidden.
+    """
+    if status not in ("draft", "published", "hidden"):
+        return {"error": "invalid_status", "message": "That's not a real status."}
+
+    async with async_session() as session:
+        entry = await session.get(ContextEntry, entry_id)
+        if entry is None:
+            return {"error": "not_found", "message": "That entry doesn't exist."}
+
+        if status == "published":
+            if entry.meeting_page_id is None:
+                return {
+                    "error": "meeting_required",
+                    "message": "Publishing needs a matched meeting first.",
+                }
+            if entry.match_kind is None:
+                return {
+                    "error": "match_kind_required",
+                    "message": "Publishing needs a match kind (exact, approximate or related).",
+                }
+            if entry.match_kind == "exact" and entry.t_seconds is None:
+                return {
+                    "error": "timestamp_required",
+                    "message": "An exact match needs a timestamp.",
+                }
+            if entry.published_at is None:
+                entry.published_at = datetime.now(timezone.utc)
+
+        entry.status = status
+        await session.commit()
+        await session.refresh(entry)
+        return {"ok": await _context_entry_response(session, entry)}
 
 
 async def reslug_page(slug: str, *, dry_run: bool) -> dict:
