@@ -1,6 +1,6 @@
-# Re-transcription queue (WO-929, 2026-09-21).
+# Re-transcription queue (WO-929, 2026-09-21; 12 pages added by WO-944, 2026-09-21).
 #
-# What this is: 82 archived pages whose ONLY usable transcript is older
+# What this is: 94 archived pages whose ONLY usable transcript is older
 # Whisper text made before voice-activity filtering (or a repair copy of
 # it), and whose text shows a real defect (WO-928, BACKLOG_DONE.md). Each
 # is to be transcribed again on a local machine with the voice-filter
@@ -38,7 +38,7 @@ https://riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&Meeting
 https://king.granicus.com/player/clip/11361?redirect=true&view_id=4
 # === END SECTION: PILOT ===
 
-# === SECTION: MAIN (77 pages, 245.2 hours) ===
+# === SECTION: MAIN (89 pages, 311.5 hours) ===
 # Silence signature first, then loops, then other; shorter first inside each group.
 https://pub-brockton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6c349fc0-2fe5-41f1-abf4-fbdc006243fc&lang=English
 https://pub-uxbridge.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=03deab6d-e7bb-489d-87e1-7bae42f87ed2&lang=English
@@ -117,9 +117,21 @@ https://pub-garfield.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=ad3e4b73-
 https://alamedacounty.granicus.com/player/clip/10426?redirect=true&view_id=2
 https://cabq.granicus.com/player/clip/506
 https://amherstoh.new.swagit.com/videos/292625
+https://metrarr.granicus.com/player/clip/939?view_id=5
+https://oaklandparkfl.granicus.com/player/clip/3947?view_id=5
+https://pub-chulavista.escribemeetings.com/Meeting.aspx?Agenda=PostAgenda&Id=662715ac-708c-4c6b-b604-1a87172b0989&lang=English
+https://napa.granicus.com/player/clip/5812?redirect=true&view_id=3
+https://lausd.granicus.com/player/clip/4576
+https://pub-lethbridge.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=266df4bd-7226-4e7b-a500-50d5363f0154&lang=English
+https://pub-richmond.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=7089743b-46fb-4cdb-b56d-66adcbe55d7d&lang=English&ref=grandviewindependent.com
+https://pub-vacaville.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=ce448ac0-747f-489c-937a-d90049e60224&lang=English
+https://burbank.granicus.com/player/clip/10931
+https://pub-halifax.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=12be73ef-3727-4a0c-86a8-05f82372e57a&Item=40&Tab=attachments&lang=English
+https://pub-calgary.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=0e8adb9c-ec86-4257-a6ef-dee8a2dd61c5&Item=75&Tab=attachments&lang=English
+https://traviscotx.portal.civicclerk.com/event/2579/media
 # === END SECTION: MAIN ===
 
 # === SECTION: DRIP-MAC-ONLY (0 pages, 0.0 hours) ===
 # YouTube-hosted pages: run only on the drip Mac (Ol McClaude's). Never resolve YouTube from any other machine.
-# (none: no page in the 82 has a YouTube-hosted video, checked 2026-09-21)
+# (none: no page in the 94 has a YouTube-hosted video, checked 2026-09-21)
 # === END SECTION: DRIP-MAC-ONLY ===

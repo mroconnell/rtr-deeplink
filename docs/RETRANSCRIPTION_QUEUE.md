@@ -6,15 +6,19 @@ you need.
 
 ## What this queue is
 
-82 pages on the site have only one usable transcript, and it is old
+94 pages on the site have only one usable transcript, and it is old
 Whisper text with a real defect. "Old" means made before the voice filter
 (voice-activity filtering, or VAD) went in on 2026-08-18, or a repair
-copy of that text. The defect is in the text itself: 46 pages show the
+copy of that text. The defect is in the text itself: 58 pages show the
 silence signature ("Thank you." every 30 seconds over a silent stretch),
 and 35 show loops of the same words. One shows neither of those (a
-repeated line with roll-up overlap). WO-928 found them
-(`BACKLOG_DONE.md`, WO-928). None carries a warning marker, so the cloud
-worker will never pick them up on its own.
+repeated line with roll-up overlap). WO-928 found 82 of them
+(`BACKLOG_DONE.md`, WO-928). WO-944 (2026-09-21) added 12 more: 11 that
+Ryan's full run of the same tool over all 9,976 pages found, and page
+724, which the conductor found by hand (its shown text runs 522 minutes
+with the silence signature, and its only cleaner hidden version covers
+just 74 minutes, so a fresh transcription is the fix). None carries a
+warning marker, so the cloud worker will never pick them up on its own.
 
 The queue is `scripts/retranscription_queue.txt`. Its side file is
 `scripts/retranscription_queue_meta.csv` (page id, slug, platform, hours,
@@ -23,10 +27,10 @@ defect, order, section, route for every line).
 | Section | Pages | Audio hours | What it is |
 |---|---|---|---|
 | PILOT | 5 | 9.1 | Shortest pages with a clear silence signature, three platforms. Run first, by hand, and compare. |
-| MAIN | 77 | 245.2 | The rest. Silence-signature pages first, then loops, then the one other. Shorter first inside each group. |
-| DRIP-MAC-ONLY | 0 | 0 | YouTube-hosted pages. None of the 82 is YouTube-hosted (checked 2026-09-21), so it is empty. |
+| MAIN | 89 | 311.5 | The rest. Silence-signature pages first, then loops, then the one other. Shorter first inside each group. The last 12 lines are the WO-944 additions, shorter first (page 724 last), in their own group at the end. |
+| DRIP-MAC-ONLY | 0 | 0 | YouTube-hosted pages. None of the 94 is YouTube-hosted (checked 2026-09-21), so it is empty. |
 
-Total 82 pages, 254.3 hours of audio. Durations are the video's own
+Total 94 pages, 320.6 hours of audio. Durations are the video's own
 length, read from playlist and file headers on 2026-09-21. No media was
 downloaded to build this list.
 
@@ -214,15 +218,15 @@ number.
 Then the arithmetic is fixed. 254.3 hours of audio divided by the
 measured speed:
 
-| If this machine runs at | 254.3 hours of audio takes | The pilot (9.1 h) takes |
+| If this machine runs at | 320.6 hours of audio takes | The pilot (9.1 h) takes |
 |---|---|---|
-| 1 times real time | 254.3 hours | 9.1 hours |
-| 2 times real time | 127.2 hours | 4.6 hours |
-| 4 times real time | 63.6 hours | 2.3 hours |
+| 1 times real time | 320.6 hours | 9.1 hours |
+| 2 times real time | 160.3 hours | 4.6 hours |
+| 4 times real time | 80.2 hours | 2.3 hours |
 
 ## Cannot re-transcribe
 
-None. All 82 pages were resolved fresh through the site's own adapters on
+None. All 94 pages were resolved fresh through the site's own adapters on
 2026-09-21 and every one returned a playable video with a header-read
 duration. If a page fails later (a removed video, a 404), do not remove
 its line. Record it with a `# done,...,failed` line and tell the
