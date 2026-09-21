@@ -1,5 +1,149 @@
 # Backlog — done
 
+## WO-942: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
+
+**Why this ran.** Ryan finds many short clips of public meetings on
+Instagram, TikTok, and YouTube. A clip travels on its own, and some draw
+real community attention, but nothing let a viewer get from the clip
+back to the full meeting. This WO builds `/context`: a public feed of
+short, editor-written entries, each linking a real social post to a
+`/m/{slug}?t={seconds}` deep link into the meeting it shows.
+
+**What was decided, and why.**
+
+| Decision | Why |
+|---|---|
+| Editor-only posting (`CONTEXT_EDITOR_CLERK_IDS` allowlist), not open submissions | Public, free-text user-generated content needs a moderation answer this repo doesn't have yet — see `ACCOUNTS_PLAN.md`'s open moderation question. Building the narrow version first is a cheap real-world test of the idea without that answer. |
+| Every entry's text is editor-written; no server-side fetch of any social post, ever | Instagram is login-walled to a non-browser client (checked live 2026-09-21, see below). Rather than build a fetch path that partly works, nothing is fetched — the editor pastes the meeting link and writes the summary by hand. |
+| Embeds are click-to-load, only for Instagram/TikTok/YouTube | This site has no cookie-consent banner. A page of 20 entries loading 20 third-party players unconditionally would both violate that posture and be slow. YouTube uses `youtube-nocookie.com`; Instagram/TikTok use their own official `embed.js`. Every other network is link-out only. |
+| `status`/`created_by_clerk_user_id` columns exist even though only allowlisted editors can write today | So open submissions with a review queue are a new status value and a review UI later, not a schema change against a table that already has real rows. |
+| New table (`ContextEntry`), not a reuse of `SocialPost` | `SocialPost` is this app's own *outbound* Bluesky/Mastodon auto-poster (one row per meeting page it announced) — an unrelated, opposite-direction concept that happens to share the word "social." Reusing it would have conflated the two. |
+
+**Instagram login-wall check (2026-09-21, live).** Two real Instagram
+posts were opened signed-out to confirm nothing server-side could ever
+read post content. One showed only the account name and a truncated
+caption; the other was age-restricted and showed nothing at all. This is
+why every entry's summary is editor-written rather than extracted.
+
+**Data model.** New Archive table `context_entries` (`ContextEntry`,
+`archive/db/models.py`), one Alembic migration. Columns: `social_url`,
+`social_url_key` (unique — `instagram:{shortcode}` / `tiktok:{id}` /
+`youtube:{id}` / else the normalized URL, so the same post can't be
+entered twice), `network`, `source_label`, `summary` (max 500 chars,
+capped in app code so the cap can change with no migration),
+`meeting_page_id` (nullable FK, `ON DELETE SET NULL`), `t_seconds`,
+`match_kind` (`exact`/`approximate`/`related`), `status`
+(`draft`/`published`/`hidden`), `created_by_clerk_user_id`,
+`published_at`, `created_at`, `updated_at`. Stores no PII — only Clerk's
+opaque user id as author, same convention as `SavedItem`. On Clerk's
+`user.deleted` webhook the author id is nulled and the entry is kept
+(it's editorial content, not the author's personal data, so nothing
+about right-to-deletion requires removing it). When a meeting page is
+deleted (`delete_meeting_pages_by_slug`), its published entries demote
+back to `draft` rather than being destroyed, so they reappear in the
+editor's own list instead of silently pointing at a gone page.
+
+**Architecture.** The Archive renders `/context`, `/context/feed.xml`,
+`/context/new`, and owns the writes (`POST /internal/context/save`,
+`POST /internal/context/set-status`, token-gated like every
+`/internal/*` route, and re-checking the allowlist server-side rather
+than trusting the resolver's check). The resolver holds the public
+domain, so it adds three explicit GET proxy routes (there is no
+catch-all proxy) — `/context` and `/context/new` forward the session
+cookie, `/context/feed.xml` does not — plus two public write endpoints,
+`POST /api/context/save` and `POST /api/context/set-status`, which
+verify the Clerk session and forward the verified user id, the same
+two-hop pattern `save-meeting`/`save-search` already use. JSON bodies
+only, matching the existing CSRF posture (no CORS middleware, no
+form-encoded POSTs). New pure modules: `archive/utils/context_links.py`
+(parses a pasted social URL and a pasted RTR share link; the `line`/
+`version` params on that pasted link are read and ignored for now — only
+`t` is kept, see `BACKLOG.md`) and `archive/utils/context_editors.py`
+(the allowlist check).
+
+**Card-image caveat — a real, known limitation, not a bug.**
+`/m/{slug}/card.jpg` redirects a YouTube-backed meeting to YouTube's own
+standard thumbnail regardless of `t`; only a non-YouTube meeting gets a
+true extracted frame at the timestamp. Many clipped meetings are on
+YouTube, so many Full Context entries will show a generic video
+thumbnail rather than the actual clipped moment.
+
+**A real doc bug found and fixed along the way.** `CLAUDE.md`'s WO-number
+rule (`git grep -ohE 'WO-[0-9]+' origin/main | sort -t- -k2 -n | tail -1`)
+was re-run to assign this WO's own number and returned `WO-999` — not a
+real work order, but a literal test-fixture string in
+`tests/test_check_backlog_done_headings.py`. The real max on 2026-09-21,
+excluding that string, was WO-941. `CLAUDE.md` now says so, so the next
+session doesn't lose time on the same false read.
+
+**SEO.** `/context` is `noindex` and left out of the sitemap until it
+holds at least `CONTEXT_MIN_INDEXABLE` (5) published entries, the same
+thin-page reasoning as the `/state/*`/`/j/*` hub pages. Pages after the
+first are always `noindex`.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4407 passed, 16
+skipped, 0 failed**), `alembic check` for both services against a fresh
+migration-built SQLite, and the `BACKLOG_DONE.md` heading check. Node
+tests: 78 passed. New test files: `test_context_links.py`,
+`test_context_entries.py`, `test_context_internal_routes.py`,
+`test_context_pages.py`, `test_context_api_routes.py`.
+
+Then both services were run locally, on scratch SQLite files, with
+`.env` loading blocked, and driven through the resolver in a real
+browser. Two real meetings were resolved and pushed first: Jacksonville
+FL (Granicus clip 7447) and Philadelphia (YouTube `5LZqoNDRMYk`).
+
+| Check | Result |
+|---|---|
+| `/context/new` signed out, and signed in but not on the allowlist | 404 both times |
+| `POST /api/context/save` signed out / non-editor / form-encoded body | 401 / 404 / 422 |
+| Editor page | 200 with `Cache-Control: private, no-store` |
+| Draft with no meeting | Saved. Absent from `/context`. Publishing it refused: "Publishing needs a matched meeting first." |
+| Summary containing `<script>` | Rendered as plain text |
+| Pasted full share link (`?t=754&line=seg-40&version=1`) | Entry shows "from 12:34". Clicking it lands with the video at exactly 754 seconds. |
+| Card image, Granicus meeting | A real 1280x720 frame at `t=754` |
+| Card image, YouTube meeting | YouTube's standard thumbnail (the caveat above, confirmed) |
+| Same Instagram post pasted again as `/reel/` instead of `/p/` | 409, with the existing entry's id |
+| `http://` post link / unknown meeting slug | 400 with a plain-English message each |
+| Network requests before any click | None to YouTube's player, Instagram or TikTok |
+| YouTube embed after click | `youtube-nocookie.com` iframe loads |
+| Hide, then republish | Leaves the public feed, returns, `published_at` unchanged |
+| `/context/feed.xml` | `application/rss+xml`, `X-Robots-Tag: noindex`, parses, absolute deep links |
+| 2 published entries (below the threshold of 5) | `noindex` present, `/context` absent from the sitemap |
+| Nav at 1000px / page at 375px | One row / no sideways scroll |
+
+**Three things the review and the browser caught that the tests had
+not.** (1) A pasted link with `?t=nan` passed the range check, because
+`nan` is neither below zero nor above the cap, and then crashed in
+`int()` — a 500 for the editor. The range test is now written
+positively and pinned by a test. (2) The first draft of the privacy
+sentence said nothing is requested from those services before a click.
+Watching the real page's requests showed one exception: a
+YouTube-hosted meeting's card image loads from `i.ytimg.com` when the
+page opens. The sentence now says so, and a test pins both halves.
+(3) TikTok's `embed.js` builds its player frame even for a video id
+that does not exist, and shows TikTok's own "unavailable" message
+inside it. So the "Couldn't load it here" fallback only fires when the
+script is blocked outright, not for a deleted post. The entry still
+stands on its own either way.
+
+**Found in passing, not fixed here.** The privacy page does not mention
+that meeting pages load YouTube's player and thumbnails for
+YouTube-hosted meetings. That gap predates this WO.
+
+**Caution.** Open submissions are explicitly out of scope for this WO —
+see `ACCOUNTS_PLAN.md`'s note and `BACKLOG.md`'s "Open submissions to
+Full Context" entry for why, and what's still blocking it. The YouTube
+generic-thumbnail gap above is a known, accepted limitation, not
+something this WO attempted to fix.
+
+**Deploy status.** Merging ships nothing (`autoDeploy: false`). Deploy
+the Archive first — it carries the migration and the routes — then the
+resolver, or the nav link 404s in between. The form stays a 404 until
+`CONTEXT_EDITOR_CLERK_IDS` is set on the Archive service in the Render
+dashboard.
+
 ## WO-933: one shared check for "is this really a meeting video?" replaces eleven copies of the rule [Done 2026-09-21]
 
 **Why this ran.** Hand-reads found that the rule for "is this video a meeting?" was wrong too often. 62 of 64 "video found" verdicts from a bare homepage scan were not meetings (WO-355). 7 of 16 channel-listing hits were not (WO-147, WO-149). The rule also lived in eleven scripts that had drifted apart. Five older copies still passed "Larry J. Dix Boardroom". Phase 1 of `docs/BACKLOG_PHASES.md` asks for one gate before any growth sweep runs.

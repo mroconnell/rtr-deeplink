@@ -35,7 +35,21 @@ def test_privacy_page_carries_last_updated_date():
     the page says it's the signal for whether the policy is current."""
     response = resolver_client.get("/privacy")
     assert response.status_code == 200
-    assert "Last updated: September 2, 2026" in response.text
+    assert "Last updated: September 21, 2026" in response.text
+
+
+def test_privacy_page_discloses_click_to_load_embeds():
+    """WO-942: /context can load Instagram/TikTok/YouTube players, but only
+    after a click. The policy has to say so, and that claim is only true
+    while archive/static/context_embeds.js stays click-to-load -- if embeds
+    ever load on scroll instead, this sentence must change with it.
+
+    The second assertion pins the one exception, found by watching the
+    real page's network requests: a YouTube-hosted meeting's card image is
+    served from i.ytimg.com on page load, before any click."""
+    response = resolver_client.get("/privacy")
+    assert "only after you click" in response.text
+    assert "its preview image comes from YouTube" in response.text
 
 
 def test_privacy_page_keeps_the_sale_distinction():
