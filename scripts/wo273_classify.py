@@ -44,6 +44,18 @@ Scoring, in order:
      drift apart. Singular "agenda", "calendar", "government" and "media"
      are DELIBERATELY excluded (near-noise per that analysis) -- a URL
      matching only those scores zero and is not flagged at all.
+  3b. A resolving guessed subdomain (`resolving_subdomains`, from
+     wo273_recon.py's DNS step) that is NOT the government's own catch-all
+     wildcard becomes a candidate URL (`https://<host>/`) even when it is
+     an A record with no CNAME to a known vendor -- the shape of
+     live.pomonaca.gov (Cablecast), which the CNAME-only check above can
+     never see. Video-style labels (video/live/stream/media/mediasite)
+     count as a MEETING/VIDEO candidate, meeting/agenda-style labels as a
+     HUB candidate, each at the exact score that reaches "medium"
+     confidence and no higher, method "dns-subdomain". It never outranks a
+     real sitemap/Wayback URL (strictly-greater comparison), and phase 3
+     fetches it live, so a false hit (e.g. `media.` being a press page) is
+     caught there, not trusted here.
   4. `platform_fingerprints.fingerprint()` (WO-267) is NOT applied in this
      phase: phase 1 never fetches a full HTML page body (only sitemap/
      robots XML/text), and platform_fingerprints' signals are measured
@@ -147,6 +159,46 @@ def dns_platform(rec: dict) -> tuple:
     return "", ""
 
 
+# Guessed-subdomain label -> the kind of candidate it makes. Labels come
+# from wo273_recon.VENDOR_SUBDOMAIN_GUESSES; scores are the exact medium-
+# confidence thresholds used in classify_record() below.
+DNS_VIDEO_LABELS = {"video", "live", "stream", "media", "mediasite"}
+DNS_HUB_LABELS = {
+    "agenda",
+    "agendas",
+    "meetings",
+    "events",
+    "docs",
+    "weblink",
+    "laserfiche",
+    "onbase",
+    "granicus",
+    "legistar",
+    "civicweb",
+    "boarddocs",
+}
+DNS_HUB_SCORE = 20.0
+DNS_MEETING_SCORE = 8.0
+
+
+def dns_subdomain_candidates(rec: dict) -> list:
+    """[(kind, url, score)] for each resolving, non-wildcard guessed
+    subdomain -- kind is "meeting" or "hub". Pure, no network."""
+    out = []
+    for sub in (rec.get("dns") or {}).get("resolving_subdomains", []):
+        if sub.get("likely_own_domain_wildcard"):
+            continue
+        label = (sub.get("subdomain") or "").lower()
+        host = sub.get("host")
+        if not host:
+            continue
+        if label in DNS_VIDEO_LABELS:
+            out.append(("meeting", f"https://{host}/", DNS_MEETING_SCORE))
+        elif label in DNS_HUB_LABELS:
+            out.append(("hub", f"https://{host}/", DNS_HUB_SCORE))
+    return out
+
+
 def classify_record(rec: dict) -> dict:
     domain = rec.get("domain", "")
     urls = all_urls_from_record(rec)
@@ -177,6 +229,14 @@ def classify_record(rec: dict) -> dict:
             meeting_method = (
                 "sitemap" if u in (rec.get("sitemap_urls") or []) else "wayback"
             )
+
+    for kind, url, score in dns_subdomain_candidates(rec):
+        if kind == "meeting" and score > best_meeting_score:
+            best_meeting_score, best_meeting_url = score, url
+            meeting_method = "dns-subdomain"
+        elif kind == "hub" and score > best_hub_score:
+            best_hub_score, best_hub_url = score, url
+            hub_method = "dns-subdomain"
 
     if platform:
         confidence = "high"

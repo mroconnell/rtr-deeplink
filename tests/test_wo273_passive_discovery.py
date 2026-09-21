@@ -475,3 +475,54 @@ def test_wo268_copy_agrees_with_wo273_on_every_shape():
         "lincoln.ne.gov",
     ):
         assert wo268.registrable_label(d) == wo273_recon.registrable_label(d), d
+
+
+# --- WO-273 addendum: A-record-only guessed subdomains (live.pomonaca.gov) ---
+
+
+def _dns_rec(*subs):
+    return {
+        "domain": "pomonaca.gov",
+        "dns": {
+            "resolving_subdomains": [
+                {
+                    "subdomain": label,
+                    "host": f"{label}.pomonaca.gov",
+                    "cname": "",
+                    "a": ["47.176.139.71"],
+                    "family": "",
+                    "likely_own_domain_wildcard": wild,
+                }
+                for label, wild in subs
+            ]
+        },
+    }
+
+
+def test_a_record_only_video_subdomain_becomes_meeting_candidate():
+    row = wo273_classify.classify_record(_dns_rec(("live", False)))
+    assert row["best_meeting_url"] == "https://live.pomonaca.gov/"
+    assert row["meeting_method"] == "dns-subdomain"
+    assert row["confidence"] == "medium"
+    assert row["platform"] == ""
+
+
+def test_meetings_style_subdomain_becomes_hub_candidate():
+    row = wo273_classify.classify_record(_dns_rec(("meetings", False)))
+    assert row["best_hub_url"] == "https://meetings.pomonaca.gov/"
+    assert row["hub_method"] == "dns-subdomain"
+    assert row["confidence"] == "medium"
+
+
+def test_own_domain_wildcard_subdomain_is_ignored():
+    row = wo273_classify.classify_record(_dns_rec(("live", True)))
+    assert row["best_meeting_url"] == ""
+    assert row["confidence"] == "none"
+
+
+def test_real_url_outscores_dns_subdomain_candidate():
+    rec = _dns_rec(("live", False))
+    rec["sitemap_urls"] = ["https://pomonaca.gov/mediaplayer.php?clip=1"]
+    row = wo273_classify.classify_record(rec)
+    assert row["best_meeting_url"] == "https://pomonaca.gov/mediaplayer.php?clip=1"
+    assert row["meeting_method"] == "sitemap"
