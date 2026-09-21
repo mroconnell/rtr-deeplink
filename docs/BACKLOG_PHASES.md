@@ -69,9 +69,14 @@ start, so two agents never claim the same one.
   usage dashboard needs a login. So the plan keeps PRs few: never more than
   3 open at once, merged one at a time (rule 10). Merge PRs that touch the
   same files as one PR, and avoid extra pushes.
-- **The Phase 1 deploy checkpoint is due.** WO-932, WO-933 and WO-935 are
-  merged and not live. WO-934 and the Chenango town page repair wait for the
-  deploy.
+- **The Phase 1 deploy checkpoint is due, but on hold.** WO-932, WO-933 and
+  WO-935 are merged and not live. WO-934 and the Chenango town page repair
+  wait for the deploy. **Do not ask Ryan to deploy until he has pasted the
+  output of `scripts/wo928_version_quality.py`,** run in the Archive's
+  Render shell with the B and C rows printed in the same command. A deploy
+  restarts the instance and wipes `/tmp`, and his earlier full output
+  (9,977 pages read) was lost exactly that way. Once he confirms the paste,
+  the deploy is clear.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
@@ -357,7 +362,13 @@ compares a finished transcript with the video's length:
 1. **Confirm what production is running.** Deploys are manual, so `main`
    moving does not mean production moved. This decides whether the 49
    CivicPlus pages are safe to re-push, because their identity fix (WO-214)
-   only helps once deployed.
+   only helps once deployed. **Answer found 2026-09-21:** the resolver and
+   the Archive were verified at `2f2ff9a` after Ryan's deploy that evening,
+   so WO-932, WO-933 and WO-935 are not live. The two workers were
+   redeployed on 2026-09-20 (after WO-923). Their current commit is
+   unverified, and they have no version endpoint. The resolver reports its
+   commit at `/admin/version` and the Archive at `/internal/version`, both
+   behind the admin token.
 2. WO-932 and WO-933 run in parallel. They touch different code.
 3. WO-935's decode guard is worth having before more large transcription
    runs, because a corrupt chunk can lose part of a meeting. It is not a
@@ -366,9 +377,11 @@ compares a finished transcript with the video's length:
    confirms it is ready to run now, and `docs/RETRANSCRIPTION_QUEUE.md`
    lists no prerequisite. It starts with a pilot of 5 pages and no
    `--promote`.
-4. **Deploy checkpoint.** 932, 933 and 935 are merged (2026-09-21). Ask
-   Ryan for one manual deploy. It is due. The Chenango town page repair
-   waits for it.
+4. **Deploy checkpoint.** 932, 933 and 935 are merged (2026-09-21). One
+   manual deploy is due, but **wait for Ryan's `wo928_version_quality`
+   paste first** (see Cautions). The Chenango town page repair waits for
+   the deploy. So do PR #1303 (WO-942 redirects) and the delete-pages and
+   reslug that follow it, which need the same Archive deploy.
 5. WO-934 applies its repairs after the deploy, from the Render shell.
 
 **Done when**
