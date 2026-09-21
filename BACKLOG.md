@@ -121,8 +121,7 @@ Standing decisions — do NOT re-raise  (13)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
-  Two rules the code and the WO briefs say are in `CLAUDE.md` are not…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
   `direct_file` refuses South Carolina's legislature video…
@@ -876,14 +875,6 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### Two rules the code and the WO briefs say are in `CLAUDE.md` are not in it: "YouTube is fetched only by the drip Mac" and "send the government's id in every ingest payload" `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `app/platforms/queue_probe.py`'s `has_owner()` docstring cites "`CLAUDE.md`'s 'send the government's id in every ingest payload' rule," and the WO-912/913 brief said a YouTube URL is never fetched directly ("drip-Mac-only, see CLAUDE.md"). A search of the checked-in `CLAUDE.md` finds neither one (no "drip", no "ingest payload"). Both rules are real and written down elsewhere: `docs/YOUTUBE_DRIP_RUNBOOK.md` rules 1 and 5, and `docs/COVERAGE_HANDOVER.md` §3 (WO-222, and the identity bullet WO-913 added).
-- **Impact**: `CLAUDE.md` is the first file every agent reads. The missing YouTube rule is how a normal WO-134 ingest made about two YouTube requests from the wrong Mac, and headless browser loads made a handful more (WO-913; both routes are now closed by `scripts/youtube_fetch_guard.py` and the browser block in `fetch_headless_sync()`, PR #1254).
-- **Next action**: add two short bullets to `CLAUDE.md` that point at those two docs and at `scripts/youtube_fetch_guard.py`.
-- **Constraint**: `AGENTS.md` is a copy of `CLAUDE.md` (PR #1210 refreshed it after it went three days stale); change both in the same commit.
-- **History**: `BACKLOG_DONE.md`'s WO-913 entry.
 
 ### State legislatures: chamber rows still without a page (91 of 99 on 2026-09-20, not recounted since) — Sliq Harmony is live, Oregon and Wisconsin Invintus meetings are queued, the Washington TVW adapter is still to build `[JUST-DO-IT]` `[BIG]`
 

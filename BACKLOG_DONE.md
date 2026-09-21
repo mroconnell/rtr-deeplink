@@ -9,13 +9,13 @@
 | Result | Count | What it means |
 |---|---|---|
 | Duplicate entries removed | 2 | A merge dropped them and a restore on 2026-09-11 put them back while the originals stayed. The restored copy (current History line) was kept. |
-| Finished entries moved here | 6 | Each one proven finished first (table below). The full text is at the bottom of this entry, word for word. |
+| Finished entries moved here | 7 | Each one proven finished first (table below). The full text is at the bottom of this entry, word for word. |
 | Listed as finished, left open | 1 | "Nothing has found which sweep/script ingests a Viebit". Its own text says the gap is not closed (table below). |
 | Partly-done entry rewritten | 1 | "State legislatures": six Sliq pages are live and five meetings are queued since the entry was written. |
 | Entry split in two | 1 | "A partial transcript made by our own transcription..." became the own-Whisper marker entry (WO-935) and the 35-address entry. |
 | Structure fixes | 4 | Diligent entry moved from Standing decisions to Ship next; two Standing decisions given `###` headings so the table of contents lists them; a stray paragraph pointing at a section that no longer exists removed; the Standing decisions preamble moved up under its heading. |
 | Old numbers corrected | 1 | `CHALLENGE_MARKERS` copies: 8 scripts became 9 (12 files with any challenge-marker list). |
-| Other docs fixed | 4 | `ACCOUNTS_PLAN.md` no longer calls phase 1 a magic link; the BoxCast pointer in the Atlantic City entry no longer names a section that is gone; `BACKLOG.md`'s header now points at `docs/BACKLOG_PHASES.md`; that file's Status column is updated. |
+| Other docs fixed | 6 | `ACCOUNTS_PLAN.md` no longer calls phase 1 a magic link; the BoxCast pointer in the Atlantic City entry no longer names a section that is gone; `BACKLOG.md`'s header now points at `docs/BACKLOG_PHASES.md`; that file's Status column is updated; `CLAUDE.md` gained the two missing rules and `AGENTS.md` was regenerated from it in the same commit. |
 
 **Proof for each move.** Each row is what I re-ran on 2026-09-21 against `origin/main`, not what the entry said.
 
@@ -27,6 +27,7 @@
 | `queue_probe.write_pin_row()` refuses a blank `match` | WO-307 (PR #1091) | The guard now requires only host and `gov_id`; a blank match is refused only on a shared multi-government host. `pytest tests/test_queue_probe.py -k write_pin_row`: 3 passed. |
 | `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` | WO-285 (PR #1056, item 5) | `civicplus.py` now reads the page with `read_capped_text()` (declared encoding, then UTF-8 with `errors="replace"`). `pytest tests/test_civicplus.py -k non_utf8`: 1 passed, on real Richmond Hill GA bytes with the same error text (byte `0xe2`, position 10). Walworth WI itself was not re-fetched. |
 | A jurisdiction string with a leading "The " before the type phrase | WO-251 (PR #1024) | `resolve_government("The Town of Hooksett, NH")` returns `us:cousub:3301337300` at tier `registry`, the same as "Town of Hooksett, NH". "The Woodlands, TX" keeps its "The" (`rtr:us:tx:the-woodlands`), so a real "The" name is not mangled. In production `/j/hooksett-nh` answers 200 and `/j/the-town-of-hooksett-nh` answers 404. |
+| Two rules the code and the WO briefs say are in `CLAUDE.md` are not | This WO, with Ryan's yes on 2026-09-21 | `scripts/youtube_fetch_guard.py` has `install()`; `queue_probe.has_owner()` exists and cites the ingest rule; `docs/YOUTUBE_DRIP_RUNBOOK.md` rules 1 and 5 and `docs/COVERAGE_HANDOVER.md` section 3 exist. `CLAUDE.md` now carries both bullets (22 lines added). `AGENTS.md` was regenerated with the branding swaps, which reproduce PR #1210's file with 0 differing lines. Four lines of older drift came along: a clarification that a new truncation marker reaches the SQL check by itself. One sentence in the second bullet was reworded from the draft: WO-932 makes WO-134's jurisdiction check default-on, so the bullet now says only that the identity hook is off unless a wrapper installs it. |
 
 **Listed as finished, but not moved or closed.**
 
@@ -36,7 +37,6 @@
 | `escribe.py`'s `resolve()` raises the same raw `UnicodeDecodeError` | The twin of the CivicPlus entry. `escribe.py` line 116 still calls `response.text()`. | The same fix in that file. |
 | "Leon Valley TX has two pages for one meeting" | Already handled: WO-941 (PR #1287) turned it into a residual entry before this WO started. | Nothing more to do here. |
 | "`rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop" | The entry's constraint says not to close it on quiet alone, and Gmail could not be checked here. | A person checks Gmail for "Exited with status 134" alerts since 2026-09-13. |
-| "Two rules the code and the WO briefs say are in `CLAUDE.md` are not" | Adding them changes the project's instruction file, which needs Ryan's yes. Nothing in `CLAUDE.md` or `AGENTS.md` was changed. | Ryan approves; add the two bullets and regenerate `AGENTS.md` as PR #1210 did. |
 
 **State legislatures (rewrite).** The entry said 91 of 99 chamber rows had no page. That was true on the morning of 2026-09-20. Since then six Sliq pages went live (Arkansas, Colorado, Delaware, New Mexico, Oklahoma, West Virginia; each answered HTTP 200 on 2026-09-21) and PR #1260 queued five meetings (Kansas Sliq and four Invintus). I did not write a new number. The six pages are filed under the state with a committee as the meeting body, and `wo921_ingested.csv` records no chamber for them, so how many of the 99 rows they satisfy needs each committee read by hand. The entry now says the number is stale.
 
@@ -49,7 +49,7 @@
 - The header of `BACKLOG.md` still lists a section, "Platform & jurisdiction coverage", that no longer exists (filing rule 5). I left it, because choosing which section replaces it is a judgement call.
 - `YouTubeAssetFinder.extract_video_id()`'s regex entry (in WO-934's list) is half done: WO-296 fixed the regex, so only the stored fake ids on four pages and the CivicClerk field are left. I left it for WO-934, which lists it.
 
-**Recommendation.** Run the crash-loop check in Gmail this week; it decides whether one more entry closes. Ask Ryan about the two `CLAUDE.md` bullets. Merge this WO last, rebase on `origin/main` and rerun `python3 scripts/build_backlog_toc.py` right before merging.
+**Recommendation.** Ryan approved the two `CLAUDE.md` bullets on 2026-09-21 and they are in this WO. Run the crash-loop check in Gmail this week; it decides whether one more entry closes. Merge this WO last, rebase on `origin/main` and rerun `python3 scripts/build_backlog_toc.py` right before merging.
 
 **Deploy status.** Docs only, no deploy.
 
@@ -172,6 +172,16 @@ Each was open in `BACKLOG.md` until 2026-09-21 and is closed by the proof above.
   - **History**: found 2026-09-09 while running `scripts/
     score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
     not yet in `BACKLOG_DONE.md`.
+
+#### Two rules the code and the WO briefs say are in `CLAUDE.md` are not in it: "YouTube is fetched only by the drip Mac" and "send the government's id in every ingest payload" `[JUST-DO-IT]` `[EASY]`
+
+*Closed 2026-09-21 (WO-931), with Ryan's yes the same day. The two bullets are in `CLAUDE.md`, and `AGENTS.md` was regenerated from it in the same commit.*
+
+- **Issue**: `app/platforms/queue_probe.py`'s `has_owner()` docstring cites "`CLAUDE.md`'s 'send the government's id in every ingest payload' rule," and the WO-912/913 brief said a YouTube URL is never fetched directly ("drip-Mac-only, see CLAUDE.md"). A search of the checked-in `CLAUDE.md` finds neither one (no "drip", no "ingest payload"). Both rules are real and written down elsewhere: `docs/YOUTUBE_DRIP_RUNBOOK.md` rules 1 and 5, and `docs/COVERAGE_HANDOVER.md` §3 (WO-222, and the identity bullet WO-913 added).
+- **Impact**: `CLAUDE.md` is the first file every agent reads. The missing YouTube rule is how a normal WO-134 ingest made about two YouTube requests from the wrong Mac, and headless browser loads made a handful more (WO-913; both routes are now closed by `scripts/youtube_fetch_guard.py` and the browser block in `fetch_headless_sync()`, PR #1254).
+- **Next action**: add two short bullets to `CLAUDE.md` that point at those two docs and at `scripts/youtube_fetch_guard.py`.
+- **Constraint**: `AGENTS.md` is a copy of `CLAUDE.md` (PR #1210 refreshed it after it went three days stale); change both in the same commit.
+- **History**: `BACKLOG_DONE.md`'s WO-913 entry.
 
 ## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
 
