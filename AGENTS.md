@@ -366,6 +366,28 @@ under everything else. This repo extracts and fixes just that part.
   of video titles), and channel extraction is **not lazy** — it
   materializes the whole channel before returning, so `playlistend` is
   load-bearing, not an optimization.
+- **YouTube is fetched only by the drip Mac (`scripts/youtube_drip.py`) —
+  a script run anywhere else must make zero YouTube requests, including
+  the indirect ones.** The office shares one internet connection and
+  YouTube blocks it after a few dozen requests. The easy ones to miss: a
+  CivicClerk, Legistar, CivicPlus, Granicus or PrimeGov event whose media is
+  a YouTube embed (the adapter fetches captions), the tier-3 queue probe
+  (yt-dlp metadata), and WO-134's title check (YouTube's oEmbed). WO-913
+  (2026-09-20) made about two such requests from the wrong Mac through a
+  normal ingest. Any wrapper that resolves, probes or ingests off the drip
+  Mac calls `scripts/youtube_fetch_guard.install()` first (it makes any
+  lookup of a YouTube hostname raise; the headless-browser path has its
+  own block in `fetch_headless_sync()`). See `docs/YOUTUBE_DRIP_RUNBOOK.md`
+  rules 1 and 5.
+- **Send the government's id (`gov_id`) in every ingest payload.** The
+  Archive treats a caller's `gov_id` as a pin: it only checks the id exists
+  in the registry, and refuses (409) only when that meeting's page already
+  sits under a different real id. The Archive itself does not check the
+  source really is that government, and WO-134's identity check hook is off
+  unless a wrapper installs it. Read `docs/COVERAGE_HANDOVER.md` §3
+  (identity) before writing any ingest wrapper, and see BACKLOG.md's
+  "The Archive files a page under whatever `gov_id` a sweep sends" entry.
+  `app/platforms/queue_probe.py`'s `has_owner()` cites this rule.
 - **We query sites politely — and "politely" means following a host's
   house rules, not avoiding every technical measure they've put up.** A
   realistic `Referer`/User-Agent so a naive hotlink check doesn't
@@ -525,7 +547,10 @@ under everything else. This repo extracts and fixes just that part.
   this is normally the only line that needs touching), `_good_default_
   transcript_exists()` (a *separate* raw-SQL reimplementation of the same
   check, used by the cloud worker's own candidate search — doesn't call
-  the Python helper, has to be updated by hand), and, if the new marker
+  the Python helper; since WO-923 (2026-09-20) it is built from the same
+  `_TRUNCATION_MARKERS` tuple, so a new *truncation* marker added there
+  reaches it automatically, while a garbled/hallucination-style marker
+  still needs a line in it), and, if the new marker
   deserves its own bucket rather than folding into an existing one,
   `_classify_page_outcome()` + `_OUTCOME_LABELS`/`_OUTCOME_RANK` (the
   `/internal/transcript-quality-audit` reporting — see the 2026-08-23
