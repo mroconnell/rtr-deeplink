@@ -431,6 +431,83 @@ async def delete_account_data(clerk_user_id: str) -> Optional[dict]:
         return None
 
 
+async def context_save(clerk_user_id: str, payload: dict) -> Optional[tuple[int, dict]]:
+    """POSTs to /internal/context/save and hands back the Archive's real
+    (status, body) pair -- unlike save_meeting() and friends above, which
+    collapse everything that isn't a 200 down to None.
+
+    Those other wrappers get away with that because their callers only
+    ever need to know "did it work" (a save/unsave button has nothing more
+    to say if it didn't). This form has real, specific validation to
+    report -- a duplicate post with a link to the existing entry, a
+    meeting link that doesn't match anything, a summary that's too long --
+    and every one of those is a real 400/409 with its own `error`/
+    `message` the editor should see, not just "something went wrong."
+    Losing the status code here would mean re-deriving it from the body's
+    shape, which is exactly the kind of drift-prone duplication the
+    Archive's own error codes exist to avoid.
+
+    `clerk_user_id` is added to `payload` here, not by the caller --
+    app/main.py's /api/context/save route must never forward a
+    caller-supplied one (see that route's own docstring on why).
+
+    Returns None only when the Archive is unreachable/unconfigured or its
+    body isn't JSON -- both genuinely mean "no answer to relay," where
+    (status, body) would be a lie.
+    """
+    base = _base_url()
+    if not base:
+        return None
+    body = {**payload, "clerk_user_id": clerk_user_id}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/context/save",
+                json=body,
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                try:
+                    parsed = await response.json()
+                except (aiohttp.ContentTypeError, ValueError):
+                    return None
+                return response.status, parsed
+    except Exception:
+        logger.exception("Archive context-save request failed.")
+        return None
+
+
+async def context_set_status(
+    clerk_user_id: str, entry_id: int, status: str
+) -> Optional[tuple[int, dict]]:
+    """Same (status, body) contract as context_save() above, and the same
+    reason for it -- a publish/hide/republish click can hit meeting_
+    required or a stale entry id, and the editor needs to see which."""
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/context/set-status",
+                json={
+                    "clerk_user_id": clerk_user_id,
+                    "id": entry_id,
+                    "status": status,
+                },
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                try:
+                    parsed = await response.json()
+                except (aiohttp.ContentTypeError, ValueError):
+                    return None
+                return response.status, parsed
+    except Exception:
+        logger.exception("Archive context-set-status request failed.")
+        return None
+
+
 async def proxy_get(
     path: str,
     query_string: str,

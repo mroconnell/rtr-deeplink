@@ -160,11 +160,52 @@ def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
     resolver_client.get(
         "/archive-static/style.css", headers={"Cookie": "__session=abc123"}
     )
+    # WO-942: /context is auth-aware (is_editor reads the visitor's own
+    # session), but /context/feed.xml is a public RSS endpoint with no
+    # per-visitor content, same split as /meetings vs. /feed.xml below.
+    resolver_client.get("/context", headers={"Cookie": "__session=abc123"})
+    resolver_client.get("/context/feed.xml", headers={"Cookie": "__session=abc123"})
 
     by_path = {path.split("/")[0]: cookie for path, cookie in captured}
     assert by_path["meetings"] == "__session=abc123"
     assert captured[1][1] == "__session=abc123"  # the m/{slug} call
     assert by_path["static"] is None
+    # Both start with "context/" as their first path segment, so check
+    # each call by its full internal path rather than by_path above
+    # (which would just let the second overwrite the first).
+    context_calls = dict(c for c in captured if c[0].startswith("context"))
+    assert context_calls["context"] == "__session=abc123"
+    assert context_calls["context/feed.xml"] is None
+
+
+def test_proxy_forwards_cookie_to_context_new(monkeypatch):
+    """/context/new (the editor form) is auth-aware the same way
+    /account/saved is -- Archive itself decides is_context_editor() from
+    the forwarded session, so the resolver's proxy must pass the cookie
+    through here too."""
+    captured = []
+
+    async def _fake_proxy_get(
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
+    ):
+        captured.append((path, cookie_header))
+
+        class _FakeResponse:
+            status = 200
+            headers = {}
+            content = _EmptyAsyncIter()
+
+        class _FakeSession:
+            async def close(self):
+                pass
+
+        return _FakeSession(), _FakeResponse()
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    resolver_client.get("/context/new", headers={"Cookie": "__session=abc123"})
+
+    assert captured == [("context/new", "__session=abc123")]
 
 
 class _EmptyAsyncIter:

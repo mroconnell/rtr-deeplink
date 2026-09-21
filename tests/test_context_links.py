@@ -322,6 +322,28 @@ def test_parse_rtr_link_non_numeric_timestamp_rejected():
     assert exc_info.value.code == "invalid_timestamp"
 
 
+@pytest.mark.parametrize("t_value", ["nan", "NaN", "inf", "-inf"])
+def test_parse_rtr_link_non_finite_timestamp_rejected(t_value):
+    """float() accepts all of these, and "nan" is neither below zero nor
+    above the cap -- it reached int() and raised an uncaught ValueError
+    (a 500 for the editor) until the range test was written positively."""
+    with pytest.raises(ContextLinkError) as exc_info:
+        parse_rtr_link(f"{BASE}/m/{REAL_SLUG}?t={t_value}", BASE)
+    assert exc_info.value.code == "invalid_timestamp"
+
+
+def test_parse_social_url_tiktok_handle_outside_real_charset_is_link_out_only():
+    """Synthetic: the handle is rebuilt into the stored canonical URL, so a
+    path that isn't TikTok's own handle charset must not be treated as an
+    embeddable video -- it falls back to a plain link-out citation."""
+    ref = parse_social_url(
+        'https://www.tiktok.com/@bad"handle/video/7301234567890123456'
+    )
+    assert ref.network == "tiktok"
+    assert ref.key.startswith("url:")
+    assert embed_for("tiktok", ref.canonical_url) is None
+
+
 def test_parse_rtr_link_extra_path_suffix_rejected():
     with pytest.raises(ContextLinkError) as exc_info:
         parse_rtr_link(f"{BASE}/m/{REAL_SLUG}/video", BASE)

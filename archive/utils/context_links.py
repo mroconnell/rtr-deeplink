@@ -165,7 +165,9 @@ def _parse_instagram(parts) -> SocialRef:
 
 _TIKTOK_HOSTS = {"tiktok.com", "www.tiktok.com", "m.tiktok.com"}
 _TIKTOK_SHORT_HOSTS = {"vm.tiktok.com", "vt.tiktok.com"}
-_TIKTOK_PATH_RE = re.compile(r"^/@(?P<user>[^/]+)/video/(?P<id>\d+)")
+# The username is rebuilt into the stored canonical URL, so it is held to
+# TikTok's own handle charset rather than "anything but a slash".
+_TIKTOK_PATH_RE = re.compile(r"^/@(?P<user>[A-Za-z0-9_.]+)/video/(?P<id>\d+)")
 
 
 def _parse_tiktok(parts) -> SocialRef:
@@ -435,7 +437,10 @@ def parse_rtr_link(
             raise ContextLinkError(
                 "invalid_timestamp", "That timestamp doesn't look like a number."
             )
-        if t_value < 0 or t_value > _MAX_T_SECONDS:
+        # Written as a positive range test on purpose: float("nan") parses
+        # fine and is neither < 0 nor > the cap, so the obvious "reject if
+        # outside" form lets it through to int(), which raises.
+        if not (0 <= t_value <= _MAX_T_SECONDS):
             raise ContextLinkError(
                 "invalid_timestamp", "That timestamp is out of range."
             )
