@@ -496,6 +496,53 @@ It is not a tight loop. It is one repeat run per 30 days per flagged page, plus 
 
 **Deploy.** Archive (redirects, curated row) and resolver (pins). Renames, the BART page override and its research row run after it.
 
+## CivicClerk Emporia canary `TimeoutError` (2026-09-14) confirmed a one-off, not a recurring regression [Done 2026-09-21]
+
+Inbox-triage flagged (2026-09-15 run) a first-ever `FAIL civicclerk:
+TimeoutError` against `https://emporiaks.portal.civicclerk.com/event/585/media`
+— the adapter health canary's sole `civicclerk` sample (Emporia, KS; the
+real populated-captions example from the 2026-08-08 entry), from the
+2026-09-14 19:44 UTC run. No prior occurrence of this signature existed
+anywhere in `BACKLOG.md`/`BACKLOG_DONE.md`, and the inbox note explicitly
+flagged it as "watch for recurrence before treating this as more than
+noise."
+
+Re-checked 2026-09-21 via the real GitHub Actions run logs (not just
+re-reading the triage note) for every "Adapter health canary" run since:
+2026-09-16 (`35136251373`), 2026-09-17 (`35261358481`), 2026-09-18
+(`35378371892`), 2026-09-19 (`35459294828`), 2026-09-20 (`35527887727`)
+— zero further `FAIL civicclerk` in any of the five. Every one of those
+runs' failures was the already-known, already-open Phoenix Legistar 410
+(plus a separate, one-off `aurora_tv` recurrence on 2026-09-19, filed as
+its own `BACKLOG.md` entry).
+
+**Closing as a one-off transient blip**, same pattern as the Aurora
+2026-08-18 precedent this file already documents below — one occurrence,
+no recurrence across 5 subsequent daily runs (6 days), Emporia's own
+CivicClerk data unchanged. No code change made.
+
+## Inbox-triage's 2026-09-14 Archive health-check-timeout entry consolidated into a new `BACKLOG.md` entry [Done 2026-09-21]
+
+The inbox-triage Routine's 2026-09-14 run flagged a single
+`rtr-deeplink-archive` "HTTP health check failed" recurrence after WO-80
+(2026-08-30) as possibly a one-off, framing it as "the fix held for
+exactly two weeks." Its own 2026-09-17 run corrected that: a full 30-day
+label search found the alert had actually recurred 5 times in the window
+(2026-08-29, twice on 2026-08-31, 2026-09-13, 2026-09-17), not once, and
+tied the 2026-09-17 occurrence to a confirmed downstream failure (the
+`send-search-alerts` cron's 502).
+
+Re-verified 2026-09-21: `archive/main.py`'s `/api/health` (WO-80's fix)
+is unchanged since; no further code has addressed this. Rather than
+promote the superseded single-occurrence framing as its own item, both
+inbox findings were folded into one consolidated `BACKLOG.md` entry
+("`rtr-deeplink-archive`'s 'HTTP health check failed' alert recurs
+roughly weekly...", Reliability, ops & cost section) that carries the
+corrected 5-occurrence history and the one confirmed consequence.
+Recorded here per the promotion protocol so this investigation step
+isn't lost, even though it never became a standalone `BACKLOG.md` item
+on its own.
+
 ## WO-929: a separate re-transcription queue for the 82 pages with defective older Whisper text [Done 2026-09-21]
 
 **Why this ran.** WO-928 found 82 pages whose only transcript is older Whisper text (made before the voice filter, or a repair copy of it) with a real defect in the text. Ryan asked for a separate queue so the local Whisper machine can transcribe them again with the voice-filter engine, apart from the tier-3 no-captions queue. This WO builds the queue, a review tool, a test and a runbook. It transcribed nothing and wrote nothing to the production Archive.
