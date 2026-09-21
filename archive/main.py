@@ -2566,6 +2566,17 @@ _SLUG_REDIRECTS: dict[str, str] = {
     "oak-bluffs-ma-2026-08-27-8-26-26-florence-urban-renewal-agency": "florence-or-2026-08-27-8-26-26-florence-urban-renewal-agency",
     "oak-bluffs-ma-2026-09-08-sc-board-meeting-2026-09-08": "steele-county-mn-2026-09-08-sc-board-meeting-2026-09-08",
     "oak-bluffs-ma-2026-09-02-september-2-2026-council-meeting": "middletown-township-pa-2026-09-02-september-2-2026-council-meeting",
+    # 2026-09-21: page 1595 was a second copy of the Leon Valley TX 2026-07-21
+    # council meeting (same Cablecast show 185, reached through a `?site=1`
+    # URL with no external_id); page 3973 is the keyed page every re-check
+    # writes to. Ryan approved deleting 1595 on 2026-09-21; this keeps its
+    # old address working.
+    "leon-2026-07-21-city-council-regular-meeting-7-21-2026": "leon-valley-tx-2026-07-21-city-council-regular-meeting-7-21-2026",
+    # 2026-09-21: page 10200's title and date were corrected (a Vimeo
+    # file-name title and the upload date, to the town's own agenda entry:
+    # Oak Bluffs Town Advisory Board Meeting, 2026-06-04) so its address is
+    # renamed with the same POST /internal/admin/reslug-page call.
+    "oak-bluffs-ma-2026-06-08-video1516165031": "oak-bluffs-ma-2026-06-04-oak-bluffs-town-advisory-board-meeting",
 }
 
 
