@@ -920,3 +920,151 @@ def test_extract_info_carries_the_channel_keys_the_handle_reader_needs(monkeypat
     result = YouTubeAssetFinder._extract_info("abcdefghijk")
     assert YouTubeAssetFinder._channel_handle(result) == "@boxeldercountyut"
     assert result["channel_id"] == "UCxxxxxxxxxxxxxxxxxxxxxx"
+
+
+# --- WO-935: the video's own length reaches ResolvedMeeting ------------------
+#
+# The WO-923 partial-transcript check needs a real video length, and YouTube
+# is never probed with ffprobe (an iframe, and YouTube is blocked from here),
+# so the only source is what yt-dlp already returns: `info["duration"]`,
+# whole seconds. Recorded yt-dlp shape, real values: Philadelphia City
+# Council's "Committee on Education 08-06-26" (video 5LZqoNDRMYk) is listed
+# with `"duration": 16089` in tests/fixtures/youtube_channel/
+# phila_channel_listing.json, a real yt-dlp channel listing. (A flat listing
+# entry and a single-video info dict spell the field the same way: an int
+# number of seconds.)
+#
+# NOT verified, and cannot be from this machine: YouTube blocks it, so no live
+# `extract_info()` call was made. What is confirmed here is that the key is
+# carried through the trimmed dict, read into the field, and that the WO-923
+# rule then fires on it. Whether every real yt-dlp response carries the key
+# still needs the drip Mac to say.
+
+PHILA_EDUCATION_VIDEO_ID = "5LZqoNDRMYk"
+PHILA_EDUCATION_SECONDS = 16089
+
+
+def _phila_info(**overrides) -> dict:
+    info = _info_with_track(is_manual=True)
+    info["duration"] = PHILA_EDUCATION_SECONDS
+    info.update(overrides)
+    return info
+
+
+async def test_resolve_video_id_carries_the_videos_length(monkeypatch):
+    info = _phila_info()
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        PHILA_EDUCATION_VIDEO_ID, source_url="https://phila.legistar.com/x"
+    )
+
+    assert result.video_duration_seconds == 16089.0
+
+
+@pytest.mark.parametrize("value", [None, 0, -1, "16089", True, [], {}], ids=repr)
+async def test_a_missing_or_unusable_length_stays_none(monkeypatch, value):
+    """Never a guess: yt-dlp leaves `duration` None for a stream still live
+    or not yet started, and anything that is not a positive number is
+    treated the same way. None means "cannot measure" downstream."""
+    info = _phila_info(duration=value)
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        PHILA_EDUCATION_VIDEO_ID, source_url="https://example.com"
+    )
+    assert result.video_duration_seconds is None
+
+
+async def test_a_resolve_with_no_duration_key_at_all_stays_none(monkeypatch):
+    info = _info_with_track(is_manual=True)  # the older, key-less shape
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
+    assert result.video_duration_seconds is None
+
+
+async def test_the_blocked_degraded_resolve_has_no_length(monkeypatch):
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
+    assert result.video_duration_seconds is None
+
+
+def test_extract_info_carries_the_duration_key_through_its_trimmed_dict(monkeypatch):
+    """The exact WO-244 mistake, guarded for this key: a reader added without
+    the key being added to `_extract_info()`'s trimmed dict is a silent no-op
+    for every YouTube page."""
+    from app.platforms import youtube as yt_module
+
+    info = {
+        "title": "Committee on Education 08-06-26",
+        "uploader": "Philadelphia City Council",
+        "duration": PHILA_EDUCATION_SECONDS,
+        "subtitles": {},
+        "automatic_captions": {},
+    }
+
+    class FakeYDL:
+        def __init__(self, opts):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def extract_info(self, url, download=False):
+            return info
+
+    monkeypatch.setattr(yt_module.yt_dlp, "YoutubeDL", FakeYDL)
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_pick_caption_track", staticmethod(lambda ydl, i: None)
+    )
+    assert YouTubeAssetFinder._extract_info(PHILA_EDUCATION_VIDEO_ID)["duration"] == (
+        PHILA_EDUCATION_SECONDS
+    )
+
+
+async def test_the_partial_transcript_rule_now_runs_on_a_youtube_result(monkeypatch):
+    """The point of carrying the length: WO-923's check has something to
+    compare the captions with. Cue times are synthetic scaffolding around the
+    real 16,089 s length (the captions of the real video are not on disk)."""
+    from app.platforms.coverage_check import (
+        PARTIAL_TRANSCRIPT_MARKER,
+        flag_partial_transcript,
+    )
+
+    monkeypatch.setenv("RTR_PARTIAL_TRANSCRIPT_CHECK", "1")
+
+    def _vtt(last_cue: str) -> str:
+        return (
+            "WEBVTT\n\n00:00:10.000 --> 00:00:14.000\nCall to order.\n\n"
+            f"{last_cue}\nThe meeting is adjourned.\n"
+        )
+
+    async def _resolve(vtt: str):
+        info = _phila_info()
+        info["_chosen_track"] = (vtt.encode("utf-8"), "en", True)
+        monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+        return await YouTubeAssetFinder.resolve_video_id(
+            PHILA_EDUCATION_VIDEO_ID, source_url="https://phila.legistar.com/x"
+        )
+
+    # Captions stop at 2:00:00 of a 4:28:09 video: partial.
+    stops_early = await flag_partial_transcript(
+        await _resolve(_vtt("01:59:50.000 --> 02:00:00.000"))
+    )
+    assert any(PARTIAL_TRANSCRIPT_MARKER in w for w in stops_early.transcript_warnings)
+
+    # Captions run to within seconds of the end: not partial.
+    complete = await flag_partial_transcript(
+        await _resolve(_vtt("04:28:00.000 --> 04:28:05.000"))
+    )
+    assert not any(PARTIAL_TRANSCRIPT_MARKER in w for w in complete.transcript_warnings)

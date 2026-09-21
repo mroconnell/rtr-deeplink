@@ -630,12 +630,20 @@ Rhode Island Senate page: captions to 81 minutes of a 149-minute video).
 Every registered adapter's `resolve()` now ends with
 `app/platforms/coverage_check.py`: when the video's duration is known
 (`ResolvedMeeting.video_duration_seconds` from the adapter, or a
-header-only ffprobe of an HLS/mp4/mp3 file; never YouTube, never guessed)
-and the last caption ends under 90% of it with 10+ minutes uncovered, it
-adds a reader warning containing "may end before the meeting did". That is
-the Archive's existing `_EARLY_TRUNCATION_MARKER`, so the page reports as
-`truncated_transcript` and stays eligible for re-transcription with no new
-plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
+header-only ffprobe of an HLS/mp4/mp3 file; never guessed, and never an
+ffprobe of a YouTube page — since WO-935 a YouTube resolve carries the
+length yt-dlp already returns) and the last caption ends under 90% of it
+with 10+ minutes uncovered, it adds a reader warning containing "may end
+before the meeting did". That is the Archive's existing
+`_EARLY_TRUNCATION_MARKER`, so the page reports as `truncated_transcript`
+and stays eligible for re-transcription with no new plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
+
+This check reads source captions only. A transcript we made ourselves
+(the cloud worker or `scripts/transcribe_backlog_locally.py`) is not
+compared with the video's length. That was built for WO-935 and held: on the
+two real pages measured, the audio after the last cue was silent, so the
+warning would have been wrong. It is filed to come back together with a
+tail-silence check (see `BACKLOG_DONE.md`, WO-935).
 
 **Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
 one always-on process that fetches captions for waiting pages, feeds the
@@ -1425,7 +1433,11 @@ number of concurrent worker processes.
    a long-running job; a chunk whose fast input-side seek comes back
    undecodable gets one retry with a slower output-side seek, which is
    what makes Cablecast's fMP4 VOD work at all — see
-   `media_probe.py`'s `_extract_chunk_once()`), transcribe it with a
+   `media_probe.py`'s `_extract_chunk_once()`; since WO-935 a chunk that
+   decodes but is more than 15 seconds shorter than asked for is treated
+   the same way, and a slice of the cached whole-file audio gets the same
+   decode check — the last chunk of a file is exempt, since its asked-for
+   length is only what is left of the probed duration), transcribe it with a
    self-hosted `faster-whisper`
    model (loaded once at process startup, reused for every job), shift
    its timestamps from chunk-relative to full-meeting-relative seconds

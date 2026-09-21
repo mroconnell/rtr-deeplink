@@ -101,7 +101,9 @@ async def test_first_chunk_downloads_once_and_later_chunks_do_not(
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
         return True, None
 
-    async def _fake_slice(cached_path, *, start, duration, out_path):
+    async def _fake_slice(
+        cached_path, *, start, duration, out_path, is_final_chunk=False
+    ):
         assert cached_path.exists(), "sliced from a cache that isn't there"
         slices.append(start)
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
@@ -123,6 +125,39 @@ async def test_first_chunk_downloads_once_and_later_chunks_do_not(
 
     assert len(downloads) == 1, "the meeting was downloaded more than once"
     assert slices == [0.0, 900.0, 1800.0, 2700.0]
+
+
+async def test_the_slice_is_told_whether_it_is_the_final_chunk(tmp_path, monkeypatch):
+    """WO-935: slice_cached_audio() fails a valid-but-short slice, except the
+    last chunk of the file, which may legitimately be short. The worker's
+    cache helper has to pass that fact through, or the last chunk of every
+    cached job would be judged like a middle one."""
+    seen: list[bool] = []
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+        return True, None
+
+    async def _fake_slice(cached_path, *, start, duration, out_path, is_final_chunk):
+        seen.append(is_final_chunk)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    monkeypatch.setattr(worker_main, "extract_full_audio", _fake_full)
+    monkeypatch.setattr(worker_main, "slice_cached_audio", _fake_slice)
+
+    for index, final in ((0, False), (1, True)):
+        await worker_main._chunk_audio_via_cache(
+            job_id=4243,
+            media_url="https://play.champds.com/DOWNLOAD-MEDIA/x/eventmainmedia/1",
+            source_url="https://play.champds.com/x/event/1",
+            start=index * 900.0,
+            duration=900.0,
+            out_path=tmp_path / f"chunk_{index}.mp3",
+            is_final_chunk=final,
+        )
+    assert seen == [False, True]
 
 
 async def test_a_failed_download_leaves_no_half_written_cache(tmp_path, monkeypatch):
@@ -170,6 +205,16 @@ def test_startup_sweep_removes_orphans_from_a_crashed_run():
     assert worker_main._AUDIO_CACHE_ROOT.exists()
 
 
+# Real ffmpeg 8.1.2 stderr from a decoded slice (observed 2026-09-21: the
+# `time=` field is how much audio decoded), with the 60 s shown there
+# replaced by 15 minutes to match the 900 s chunk these tests ask for.
+_REAL_DECODE_STDERR_900S = (
+    b"[Parsed_volumedetect_0 @ 0xb8c828900] mean_volume: -21.5 dB\n"
+    b"[Parsed_volumedetect_0 @ 0xb8c828900] max_volume: -18.5 dB\n"
+    b"size=N/A time=00:15:00.02 bitrate=N/A speed=2.53e+03x elapsed=0:00:00.02\n"
+)
+
+
 # --- the ffmpeg argv -----------------------------------------------------
 
 
@@ -208,6 +253,10 @@ async def test_slicing_never_re_encodes(monkeypatch, tmp_path):
     seen = {}
 
     async def _run(*args, timeout=None):
+        if "volumedetect" in args:
+            # WO-935: the slice is now decoded once to prove it is usable.
+            # Not the slice call itself, so it must not overwrite `seen`.
+            return 0, b"", _REAL_DECODE_STDERR_900S
         seen["args"] = list(args)
         Path(args[-1]).write_bytes(b"\xff\xfb" + b"\x00" * 100)
         return 0, b"", b""
@@ -243,7 +292,9 @@ async def test_a_failed_whole_audio_pull_falls_back_to_per_chunk(tmp_path, monke
 
     per_chunk_calls = []
 
-    async def _fake_per_chunk(media_url, *, start, duration, source_page_url, out_path):
+    async def _fake_per_chunk(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
         per_chunk_calls.append(start)
         out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
         return True, None
