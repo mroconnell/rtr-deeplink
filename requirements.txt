@@ -89,7 +89,7 @@ multidict==6.7.1
     #   yarl
 packaging==26.3
     # via limits
-playwright==1.62.0
+playwright==1.63.0
     # via -r requirements.in
 propcache==0.5.2
     # via
@@ -167,11 +167,3 @@ wrapt==2.3.0
     # via deprecated
 yarl==1.24.5
     # via aiohttp
-
-# Deliberately unpinned (WO-11, 2026-08-16) -- YouTube actively breaks
-# scrapers and yt-dlp only works because it chases them; pinning it is a
-# bug, not hygiene. See requirements.in's matching comment. Re-add this
-# line after every `pip-compile requirements.in` re-run -- pip-compile
-# doesn't know about it since it's excluded from requirements.in on
-# purpose.
-yt-dlp

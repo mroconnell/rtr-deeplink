@@ -10,7 +10,7 @@ asyncpg>=0.29
 aiosqlite>=0.20
 python-dotenv>=1.0
 slowapi>=0.1.9
-playwright>=1.62
+playwright>=1.63.0
 alembic>=1.19.2
 # Auth (2026-08-10): Clerk, chosen specifically so this app never has to
 # hand-roll session/cookie/password security -- see BACKLOG.md's
