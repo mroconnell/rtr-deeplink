@@ -23,8 +23,11 @@
      have a matched meeting in practice, but the feed must not emit a
      broken "https://...None" link if one somehow doesn't, so both the
      title and the link fall back to something real rather than assuming
-     the field is present. -#}
-  {%- set item_title = (entry.title or "A meeting") ~ (" — " ~ entry.jurisdiction_display if entry.jurisdiction_display else "") %}
+     the field is present. WO-945: the editor's own `headline`, when set,
+     wins outright over the meeting-title-based line below -- it's a
+     title the editor wrote specifically for this entry, so it's a better
+     fit for an RSS reader than a generated one. -#}
+  {%- set item_title = entry.headline or ((entry.title or "A meeting") ~ (" — " ~ entry.jurisdiction_display if entry.jurisdiction_display else "")) %}
   {%- set item_link = base_url ~ (entry.deep_link or "/context") %}
   <item>
     <title>{{ item_title|e }}</title>

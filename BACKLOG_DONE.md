@@ -1,5 +1,102 @@
 # Backlog — done
 
+## WO-945: Full Context — an optional entry title, and the first few page-1 embeds load on their own [Done 2026-09-21]
+
+**Why this ran.** Two small additions to the Full Context feed
+(`/context`), which shipped earlier the same day as WO-943. Ryan wanted
+to give a post a short title of his own, and said the feed "looks so
+much better" once its embeds are already showing rather than every one
+starting behind a click.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `title` column, `ContextEntry` (`archive/db/models.py`) | Optional, editor-written, nullable, `String(160)` — wider than the app-code cap (`CONTEXT_TITLE_MAX`, 120) on purpose, so the cap can change with no migration. One new Alembic migration (`f3a29d6e1c48`, revises `ab513927d28d`). |
+| `save_context_entry(..., title=...)` (`archive/db/crud.py`) | Strips it; empty becomes `None`; over `CONTEXT_TITLE_MAX` returns `title_too_long`. Set on both create and update. |
+| Routes | `archive/main.py`'s `ContextSaveRequest` and `app/main.py`'s `ContextSaveApiRequest` both gained `title`; the resolver route already forwards the whole body via `req.model_dump()`, so no other change was needed there. |
+| Templates | `_context_entry.html` renders a headline as `<h2 class="context-headline">` above the match badge, absent entirely when there's no title; `context_new.html` gained a "Title" text input, pre-filled from `editing.headline`; `context_feed.xml.jinja`'s `<title>` uses the headline when set. |
+| `CONTEXT_AUTOLOAD_EMBEDS = 3` (`archive/db/crud.py`) | On page 1 of the public feed only, the first 3 entries that have an embed load it on their own; everything else (later page-1 entries, every entry on page 2+, the whole editor list) stays click-to-load. |
+
+**The `headline` naming decision.** The entry dict every reader already
+returns (`_context_entry_dict()`) has a key called `title` that means the
+**matched meeting's** own title — that key existed before this WO and
+couldn't be renamed. The new column is called `title` too, because
+that's the word Ryan uses for it, and the API/form field matches. So the
+write side (DB column, request field, form input) is `title` throughout,
+but the read side needed a different dict key to avoid the two meanings
+colliding — it's `headline`. `_entry_row_to_dict()` does the actual
+rename (`entry.title` → `dict["headline"]`); every downstream reader
+(the public feed, the editor list, the RSS feed) uses `headline` for the
+entry's own title and `title` only ever for the meeting's.
+
+**The autoload design.** Three entries, page 1 only, lazy. Three because
+Ryan's ask was cosmetic ("looks so much better") not functional, and
+each embed is a real third-party request and page weight — the same
+reasoning WO-943 used to make embeds click-to-load in the first place —
+so the number stays small rather than growing with the feed. Page-1-only
+because a paginated listing page (page 2+) has no first-impression
+problem to solve and autoloading there would just add cost with no
+benefit. Lazy (`IntersectionObserver`, `rootMargin: "600px 0px"`, falling
+back to loading immediately when unavailable) so a phone visitor doesn't
+pay for three players before scrolling to any of them. `context.html`
+counts embeds with a Jinja `namespace` as it loops so an entry with no
+embed (link-out only) never consumes one of the three slots. The "Show
+the post here" button is never shown for an autoload entry — `context_
+embeds.js`'s autoload path never un-hides it — and both paths (click,
+autoload) share the same loader, the same ~8s "Couldn't load it here"
+fallback, and a `data-embed-loaded` guard against double-loading. The
+privacy page needed no edit: it already describes third-party content in
+general terms rather than promising every embed is click-to-load
+(Ryan, 2026-09-21, the same day as WO-943).
+
+**Docs.** README's "Full Context feed" section updated: the title field
+and the `headline`/`title` naming note in the data-model part, and the
+embeds paragraph rewritten to describe click-to-load-plus-autoload rather
+than pure click-to-load. `BACKLOG.md`'s CSP/embed-origins entry corrected
+— its "Show the post here" button framing undersold what a missing CSP
+origin would break now that some embeds autoload with no button at all.
+
+**Verification.**
+
+All five CI gates passed locally on 2026-09-21: `ruff check`, `ruff
+format --check`, the full suite (**4657 passed, 16 skipped, 4 xfailed, 0 failed**), `alembic check` for
+both services on a fresh migration-built SQLite (single head
+`f3a29d6e1c48`), and the `BACKLOG_DONE.md` heading check. Node tests: 81
+passed.
+
+Both services were then run locally on scratch SQLite, with `.env`
+loading blocked, and driven through the resolver in a real browser. One
+real meeting (Jacksonville FL, Granicus clip 7447) and five published
+entries on it, one of them with no embed.
+
+| Check | Result |
+|---|---|
+| Title sent through `POST /api/context/save` | Saved, trimmed, returned as `headline`. The meeting's own `title` is untouched. |
+| Title of 130 characters | 400: "Keep the title under 120 characters." |
+| Title containing `<script>` | Renders as plain text in an `<h2>`. No script element is created. |
+| Editor form at `?id=1` | Title pre-filled, `maxlength` 120. Edited and published from the form. New title shows on `/context` and as the RSS item title. |
+| Entry with no title | Looks exactly as before. No empty heading. |
+| Feed order 5, 4, 3, 2, 1, where entry 2 has no embed | Entries 5, 4 and 3 load their players with no click and never show a button. Entry 1 keeps "Show the post here". Entry 2 does not use up a slot. |
+| Editor page | No autoloaded embeds. |
+
+**A real bug the browser check found, fixed in this WO.** Entries four
+and five rendered broken images. Cause: a non-YouTube meeting stores at
+most three extracted frames (`MAX_FRAMES_PER_PAGE`). The first three
+entries' timestamps used all three before any default frame existed.
+The card route serves the exact frame, else the page's default frame,
+else a 404. WO-943's feed only asked "does this page have any stored
+frame", which is the right question for the hub cards (their `?t=` is
+the default frame) and the wrong one for an arbitrary timestamp. The
+feed now mirrors the route's rule exactly (`crud._ContextFrames`), so
+such an entry shows no image instead of a broken one. Two tests pin both
+halves of the rule. Rechecked in the browser: no broken images.
+
+**Caution.** On a meeting that already holds three frames, further
+entries show the meeting's default frame, not their own moment. With no
+default frame they show no image. That is the existing frame cap
+working as designed, not something this WO changes.
+
 ## WO-944: 12 more pages added to the re-transcription queue (82 to 94 pages, 254.3 to 320.6 hours) [Done 2026-09-21]
 
 **Why this ran.** WO-929 built a separate queue for pages whose only transcript is older Whisper text with a real defect (category C of `scripts/wo928_version_quality.py`). It held 82 pages. Ryan ran the same tool over the whole Archive on 2026-09-21 (9,976 pages read) and category C came out at 93: the 82 already queued plus 11 new ones. The conductor also found page 724 by hand. This WO checks all 12 again and adds them. It transcribed nothing and wrote nothing to the production Archive.

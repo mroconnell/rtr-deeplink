@@ -1343,6 +1343,10 @@ class ContextSaveApiRequest(BaseModel):
     id: Optional[int] = None
     social_url: str = Field(max_length=2048)
     summary: str = Field(max_length=2000)
+    # Same generous-vs.-the-real-cap reasoning as summary above (WO-945) --
+    # forwarded to Archive via model_dump() below, which is what carries
+    # this straight through with no other change needed on this side.
+    title: Optional[str] = Field(default=None, max_length=300)
     source_label: Optional[str] = Field(default=None, max_length=300)
     rtr_link: Optional[str] = Field(default=None, max_length=2048)
     match_kind: Optional[str] = None

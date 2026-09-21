@@ -66,6 +66,37 @@ async def test_save_uses_the_verified_session_id_not_the_body(monkeypatch):
     assert "clerk_user_id" not in captured["payload"]
 
 
+async def test_save_forwards_title_in_the_payload(monkeypatch):
+    # WO-945: title has no special handling in this route (it's just
+    # another field on ContextSaveApiRequest, forwarded via
+    # req.model_dump() like summary/source_label/etc.) -- this pins that
+    # it actually reaches archive_client.context_save() rather than being
+    # silently dropped the way a forged clerk_user_id is (see the test
+    # above for that, deliberate, case).
+    monkeypatch.setattr(
+        app.main, "get_clerk_user_id", lambda request: "user_from_session"
+    )
+
+    captured = {}
+
+    async def _fake_context_save(clerk_user_id, payload):
+        captured["payload"] = payload
+        return 200, {"entry": {"id": 1}}
+
+    monkeypatch.setattr(app.main.archive_client, "context_save", _fake_context_save)
+
+    response = client.post(
+        "/api/context/save",
+        json={
+            "social_url": "https://x.com/a/status/1",
+            "summary": "x",
+            "title": "A short headline",
+        },
+    )
+    assert response.status_code == 200
+    assert captured["payload"]["title"] == "A short headline"
+
+
 async def test_set_status_uses_the_verified_session_id(monkeypatch):
     monkeypatch.setattr(
         app.main, "get_clerk_user_id", lambda request: "user_from_session_2"

@@ -22,7 +22,7 @@ from archive.db import crud
 from archive.db.engine import async_session
 from archive.db.models import ContextEntry
 from archive.utils.context_editors import is_context_editor
-from archive.utils.context_links import SocialRef, parse_social_url
+from archive.utils.context_links import CONTEXT_TITLE_MAX, SocialRef, parse_social_url
 
 
 def _social(suffix: str | None = None) -> SocialRef:
@@ -78,6 +78,7 @@ _CONTRACT_KEYS = {
     "id",
     "status",
     "summary",
+    "headline",
     "social_url",
     "network",
     "network_label",
@@ -197,6 +198,112 @@ async def test_updating_unknown_entry_id_returns_not_found():
         status="draft",
     )
     assert result["error"] == "not_found"
+
+
+# --- title / headline (WO-945) --------------------------------------------
+#
+# ContextEntry.title is the DB column and the API/form field name; the
+# entry dict's read-side key is `headline` instead, because `title` on
+# that dict already means the matched MEETING's own title (see
+# archive/db/crud.py's _entry_row_to_dict()/_context_entry_dict() comments
+# for why). These tests pin that split so it can't quietly drift back
+# together.
+
+
+async def test_title_is_saved_and_returned_as_headline():
+    result = await crud.save_context_entry(
+        "user_ctx_title_basic",
+        social=_social(),
+        summary="A clip.",
+        title="A short headline",
+        status="draft",
+    )
+    assert "ok" in result
+    assert result["ok"]["headline"] == "A short headline"
+
+
+async def test_title_is_stripped():
+    result = await crud.save_context_entry(
+        "user_ctx_title_stripped",
+        social=_social(),
+        summary="A clip.",
+        title="   Padded headline   ",
+        status="draft",
+    )
+    assert result["ok"]["headline"] == "Padded headline"
+
+
+async def test_empty_title_becomes_none():
+    result = await crud.save_context_entry(
+        "user_ctx_title_empty",
+        social=_social(),
+        summary="A clip.",
+        title="   ",
+        status="draft",
+    )
+    assert result["ok"]["headline"] is None
+
+
+async def test_missing_title_is_none():
+    result = await crud.save_context_entry(
+        "user_ctx_title_missing", social=_social(), summary="A clip.", status="draft"
+    )
+    assert result["ok"]["headline"] is None
+
+
+async def test_overlong_title_is_rejected():
+    result = await crud.save_context_entry(
+        "user_ctx_title_long",
+        social=_social(),
+        summary="A clip.",
+        title="x" * (CONTEXT_TITLE_MAX + 1),
+        status="draft",
+    )
+    assert result["error"] == "title_too_long"
+
+
+async def test_updating_an_entry_changes_its_title():
+    social = _social()
+    created = await crud.save_context_entry(
+        "user_ctx_title_update",
+        social=social,
+        summary="Original summary.",
+        title="Original headline",
+        status="draft",
+    )
+    entry_id = created["ok"]["id"]
+    assert created["ok"]["headline"] == "Original headline"
+
+    updated = await crud.save_context_entry(
+        "user_ctx_title_update",
+        entry_id=entry_id,
+        social=social,
+        summary="Original summary.",
+        title="Updated headline",
+        status="draft",
+    )
+    assert updated["ok"]["id"] == entry_id
+    assert updated["ok"]["headline"] == "Updated headline"
+
+
+async def test_entry_title_does_not_affect_the_meetings_own_title_key():
+    slug = await _make_page("ctx-title-vs-meeting-title")
+    page = await crud.get_page_by_slug(slug)
+    result = await crud.save_context_entry(
+        "user_ctx_title_vs_meeting",
+        social=_social(),
+        summary="A clip.",
+        title="Editor's own headline",
+        meeting_page_id=page["id"],
+        match_kind="related",
+        status="draft",
+    )
+    entry = result["ok"]
+    # The meeting's own title (from MeetingPage.title) is unaffected by
+    # the entry's headline -- the two are separate fields under separate
+    # keys ("title" vs. "headline") on purpose.
+    assert entry["title"] == "Context Test Meeting"
+    assert entry["headline"] == "Editor's own headline"
 
 
 # --- duplicate detection ----------------------------------------------
@@ -484,6 +591,75 @@ async def test_non_youtube_page_with_a_stored_thumbnail_gets_a_card_url():
         status="draft",
     )
     assert result["ok"]["card_url"] == f"/m/{slug}/card.jpg"
+
+
+async def test_stored_frames_but_none_the_card_route_would_serve_gets_no_card_url():
+    """WO-945, found in the browser: five entries on one meeting used up
+    MAX_FRAMES_PER_PAGE with three timestamp frames before any default
+    frame existed, and entries four and five rendered broken images.
+
+    /m/{slug}/card.jpg serves the exact frame, else the page's DEFAULT
+    frame, else 404. "This page has some stored frame" is therefore not
+    enough to advertise a card for an arbitrary `?t=`. Synthetic frames
+    (fake bytes), real route rule."""
+    from archive.utils.video_thumbnail import target_offset_seconds
+
+    slug = await _make_page("ctx-capped-no-default")
+    page = await crud.get_page_by_slug(slug)
+    # A frame for some OTHER moment, and deliberately not the default.
+    assert await crud.store_thumbnail(
+        page["id"],
+        offset_seconds=target_offset_seconds(timestamp=100),
+        image_bytes=b"fake-jpeg-bytes",
+        etag="frame-at-100",
+        is_default=False,
+    )
+
+    miss = await crud.save_context_entry(
+        "user_ctx_capped",
+        social=_social(),
+        summary="No exact frame for t=4000, and no default frame either.",
+        meeting_page_id=page["id"],
+        t_seconds=4000,
+        match_kind="exact",
+        status="draft",
+    )
+    assert miss["ok"]["card_url"] is None
+
+    hit = await crud.save_context_entry(
+        "user_ctx_capped",
+        social=_social(),
+        summary="The exact frame for t=100 is stored.",
+        meeting_page_id=page["id"],
+        t_seconds=100,
+        match_kind="exact",
+        status="draft",
+    )
+    assert hit["ok"]["card_url"] == f"/m/{slug}/card.jpg?t=100"
+
+
+async def test_default_frame_covers_any_timestamp():
+    """The other half of the route's rule: with a default frame stored,
+    any `?t=` is servable (the route falls back to the default)."""
+    slug = await _make_page("ctx-default-covers-any-t")
+    page = await crud.get_page_by_slug(slug)
+    assert await crud.store_thumbnail(
+        page["id"],
+        offset_seconds=30,
+        image_bytes=b"fake-jpeg-bytes",
+        etag="the-default",
+        is_default=True,
+    )
+    result = await crud.save_context_entry(
+        "user_ctx_default_any_t",
+        social=_social(),
+        summary="No exact frame for t=4000, but the default exists.",
+        meeting_page_id=page["id"],
+        t_seconds=4000,
+        match_kind="exact",
+        status="draft",
+    )
+    assert result["ok"]["card_url"] == f"/m/{slug}/card.jpg?t=4000"
 
 
 # --- interaction with delete_meeting_pages_by_slug / delete_account_data --

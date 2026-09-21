@@ -7043,13 +7043,15 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `www.instagram.com`, and `www.tiktok.com` (see README's "Full Context
   feed" section). A CSP written without checking current features first
   would silently break those three embeds.
-- **Impact**: none today. Would break the "Show the post here" button on
-  every Instagram/TikTok/YouTube Full Context entry the moment a CSP
-  shipped without these three origins allowed.
+- **Impact**: none today. Would break every Instagram/TikTok/YouTube Full
+  Context embed the moment a CSP shipped without these three origins
+  allowed — both the ones a reader clicks "Show the post here" to load,
+  and (WO-945, 2026-09-21) the first few embeds on page 1 that now load
+  on their own; see README's "Full Context feed" section.
 - **Next action**: none now — re-read this entry (and grep the codebase
   for every third-party origin actually loaded, not just these three)
   before adding a CSP.
-- **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+- **History**: `BACKLOG_DONE.md`'s WO-943 and WO-945 entries.
 
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 

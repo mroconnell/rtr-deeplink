@@ -49,6 +49,7 @@ from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.context_editors import is_context_editor
 from .utils.context_links import (
     CONTEXT_SUMMARY_MAX,
+    CONTEXT_TITLE_MAX,
     MATCH_KINDS,
     ContextLinkError,
     parse_rtr_link,
@@ -2472,6 +2473,10 @@ class ContextSaveRequest(BaseModel):
     # "summary_too_long" message, not a raw 422 from FastAPI's own
     # validation, which would show the visitor nothing useful.
     summary: str = Field(max_length=2000)
+    # Same "generous vs. the real cap" reasoning as summary above, so an
+    # over-length title comes back as save_context_entry()'s friendly
+    # "title_too_long" message (WO-945).
+    title: Optional[str] = Field(default=None, max_length=300)
     source_label: Optional[str] = Field(default=None, max_length=300)
     rtr_link: Optional[str] = Field(default=None, max_length=2048)
     match_kind: Optional[str] = None
@@ -2530,6 +2535,7 @@ async def internal_context_save(
         entry_id=req.id,
         social=social,
         summary=req.summary,
+        title=req.title,
         source_label=req.source_label,
         meeting_page_id=meeting_page_id,
         t_seconds=t_seconds,
@@ -3515,7 +3521,8 @@ def _parse_context_page(raw: str) -> int:
 
 @app.get("/context")
 async def context_feed(request: Request, page: str = "1"):
-    data = await crud.list_context_entries(public=True, page=_parse_context_page(page))
+    parsed_page = _parse_context_page(page)
+    data = await crud.list_context_entries(public=True, page=parsed_page)
     # Read at call time via the module attribute (crud.CONTEXT_MIN_
     # INDEXABLE), not a name bound at import time, so a test can
     # monkeypatch it per case -- same reasoning as crud._context_
@@ -3523,6 +3530,10 @@ async def context_feed(request: Request, page: str = "1"):
     indexable = (
         await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE
     )
+    # WO-945: autoload is page-1-only (see CONTEXT_AUTOLOAD_EMBEDS's own
+    # comment for why) -- read via the module attribute, same monkeypatch
+    # reasoning as CONTEXT_MIN_INDEXABLE above.
+    autoload_embeds = crud.CONTEXT_AUTOLOAD_EMBEDS if parsed_page == 1 else 0
     return templates.TemplateResponse(
         request,
         "context.html",
@@ -3531,6 +3542,7 @@ async def context_feed(request: Request, page: str = "1"):
             "indexable": indexable,
             "is_editor": is_context_editor(get_clerk_user_id(request)),
             "active_account": get_clerk_user_id(request),
+            "autoload_embeds": autoload_embeds,
         },
     )
 
@@ -3590,6 +3602,7 @@ async def context_new(request: Request, id: Optional[int] = None):
             "editing": editing,
             "match_kinds": MATCH_KINDS,
             "summary_max": CONTEXT_SUMMARY_MAX,
+            "title_max": CONTEXT_TITLE_MAX,
             "active_account": get_clerk_user_id(request),
         },
     )

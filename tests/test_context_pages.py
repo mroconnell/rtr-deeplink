@@ -52,6 +52,7 @@ async def _publish_entry(
     social_url: str,
     *,
     summary: str = "A published clip for a route test.",
+    title: str | None = None,
     match_kind: str = "exact",
     t_seconds: int = 42,
     status: str = "published",
@@ -64,6 +65,7 @@ async def _publish_entry(
         "user_context_pages_test",
         social=parse_social_url(social_url),
         summary=summary,
+        title=title,
         meeting_page_id=page["id"],
         t_seconds=t_seconds,
         match_kind=match_kind,
@@ -76,6 +78,17 @@ async def _publish_entry(
 def _social_url(suffix: str | None = None) -> str:
     suffix = suffix or uuid.uuid4().hex[:16]
     return f"https://example.com/context-pages-test/{suffix}"
+
+
+def _yt_url(suffix: str | None = None) -> str:
+    # A syntactically real-shaped (11-char) but not-a-real-video id --
+    # what's under test with these is context_links.embed_for()'s own
+    # data-embed-* wiring and the autoload counting logic, not any actual
+    # video, so a fake-but-correctly-shaped id is fine here (unlike
+    # test_context_shows_embed_attributes_for_youtube_entry above, which
+    # deliberately uses a real one -- see that test's own comment).
+    vid = (suffix or uuid.uuid4().hex)[:11]
+    return f"https://www.youtube.com/watch?v={vid}"
 
 
 def _entry_html(page_text: str, entry_id: int) -> str | None:
@@ -119,6 +132,37 @@ async def test_context_escapes_a_malicious_summary():
     assert response.status_code == 200
     assert "<script>alert(1)</script>" not in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+
+
+async def test_context_headline_renders_as_a_heading_and_is_escaped(monkeypatch):
+    # WO-945: same UNTRUSTED/plain-escape posture as summary above, on
+    # the entry's own optional title.
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="Body text for the headline test.",
+        title="Breaking <script>alert(1)</script> news",
+    )
+    response = client.get("/context")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry["id"])
+    assert html is not None
+    assert '<h2 class="context-headline">' in html
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+async def test_context_absent_headline_renders_no_heading_element(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    entry = await _publish_entry(
+        _social_url(),
+        summary="No headline set for this one.",
+    )
+    response = client.get("/context")
+    assert response.status_code == 200
+    html = _entry_html(response.text, entry["id"])
+    assert html is not None
+    assert "context-headline" not in html
 
 
 async def test_context_shows_embed_attributes_for_youtube_entry():
@@ -237,6 +281,21 @@ async def test_context_feed_xml_parses_with_ampersand_and_angle_bracket():
     )
 
 
+async def test_context_feed_xml_title_uses_headline_when_present():
+    unique = uuid.uuid4().hex[:10]
+    await _publish_entry(
+        _social_url(),
+        summary="Body text.",
+        title=f"A real headline & more {unique}",
+    )
+    response = client.get("/context/feed.xml")
+    root = ET.fromstring(response.text)  # raises if invalid -- pins the & escapes
+    titles = [item.find("title").text for item in root.findall("./channel/item")]
+    assert any(
+        t is not None and f"A real headline & more {unique}" in t for t in titles
+    )
+
+
 async def test_context_feed_xml_link_is_absolute_deep_link(monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
     entry = await _publish_entry(_social_url(), summary="Absolute link check.")
@@ -275,6 +334,16 @@ def test_context_new_200s_for_an_editor_with_no_store_and_noindex(monkeypatch):
     assert '<meta name="robots" content="noindex">' in response.text
 
 
+def test_context_new_has_a_title_input(monkeypatch):
+    monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_new_real_editor")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_ctx_new_real_editor"
+    )
+    response = client.get("/context/new")
+    assert response.status_code == 200
+    assert 'name="title"' in response.text
+
+
 async def test_context_new_prefills_from_id(monkeypatch):
     monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_new_real_editor")
     monkeypatch.setattr(
@@ -286,6 +355,21 @@ async def test_context_new_prefills_from_id(monkeypatch):
     response = client.get(f"/context/new?id={entry['id']}")
     assert response.status_code == 200
     assert unique_summary in response.text
+
+
+async def test_context_new_prefills_title_from_headline(monkeypatch):
+    monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_new_real_editor")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_ctx_new_real_editor"
+    )
+    unique_title = f"Prefill title check {uuid.uuid4().hex[:12]}"
+    entry = await _publish_entry(
+        _social_url(), summary="Body text.", title=unique_title
+    )
+
+    response = client.get(f"/context/new?id={entry['id']}")
+    assert response.status_code == 200
+    assert f'value="{unique_title}"' in response.text
 
 
 async def test_context_new_editor_list_renders_a_draft_with_no_meeting(monkeypatch):
@@ -306,6 +390,104 @@ async def test_context_new_editor_list_renders_a_draft_with_no_meeting(monkeypat
     assert response.status_code == 200
     assert draft_summary in response.text
     assert "No meeting matched yet" in response.text
+
+
+# --- autoload embeds (WO-945) -----------------------------------------------
+#
+# The test DB is shared across this whole module (see this file's own
+# docstring), so these assert on the entries THIS test itself just
+# published -- by id, via _entry_html() -- never on a page's full text or
+# a raw count of every `data-embed-autoload` on it, which other tests'
+# published entries could also contribute to.
+
+
+async def test_context_autoloads_first_three_of_five_embeddable_entries(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page(f"ctx-autoload-five-{uuid.uuid4().hex[:10]}")
+
+    # Published oldest-to-newest below; the feed orders newest-first (see
+    # list_context_entries()'s own docstring), so the on-page order ends
+    # up e5, e4, e3, e2, e1 -- e5/e4/e3 land in the first three embed
+    # slots and e2/e1 (a 4th and 5th embeddable entry) fall past the cap.
+    e1 = await _publish_entry(_yt_url(), summary="Autoload one.", slug=slug)
+    e2 = await _publish_entry(_yt_url(), summary="Autoload two.", slug=slug)
+    e3 = await _publish_entry(_yt_url(), summary="Autoload three.", slug=slug)
+    e4 = await _publish_entry(_yt_url(), summary="Autoload four.", slug=slug)
+    e5 = await _publish_entry(_yt_url(), summary="Autoload five.", slug=slug)
+
+    response = client.get("/context")
+    assert response.status_code == 200
+    for entry in (e5, e4, e3):
+        html = _entry_html(response.text, entry["id"])
+        assert html is not None
+        assert "data-embed-autoload" in html
+    for entry in (e2, e1):
+        html = _entry_html(response.text, entry["id"])
+        assert html is not None
+        assert "data-embed-kind=" in html  # still has an embed...
+        assert "data-embed-autoload" not in html  # ...just not autoloaded
+
+
+async def test_context_non_embeddable_entry_does_not_use_an_autoload_slot(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page(f"ctx-autoload-skip-{uuid.uuid4().hex[:10]}")
+
+    # Published oldest-to-newest (e1, e2, e3, then non_embed last), so the
+    # on-page order ends up (newest first): non_embed, e3, e2, e1. If the
+    # non-embeddable entry wrongly consumed one of the three autoload
+    # slots just by taking up a position ahead of the real embeds, the
+    # oldest one (e1, third in the *real* count but fourth in raw
+    # position) would fall past the cap. It shouldn't -- only entries
+    # that actually have an embed count.
+    e1 = await _publish_entry(_yt_url(), summary="Skip-slot one.", slug=slug)
+    e2 = await _publish_entry(_yt_url(), summary="Skip-slot two.", slug=slug)
+    e3 = await _publish_entry(_yt_url(), summary="Skip-slot three.", slug=slug)
+    non_embed = await _publish_entry(
+        f"https://x.com/someuser/status/{uuid.uuid4().int % 10_000_000_000}",
+        summary="Skip-slot non-embed.",
+        slug=slug,
+    )
+
+    response = client.get("/context")
+    assert response.status_code == 200
+    non_embed_html = _entry_html(response.text, non_embed["id"])
+    assert non_embed_html is not None
+    assert "data-embed-kind=" not in non_embed_html
+    for entry in (e1, e2, e3):
+        html = _entry_html(response.text, entry["id"])
+        assert html is not None
+        assert "data-embed-autoload" in html
+
+
+def test_context_page_two_never_autoloads(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    # Page-level, not per-entry: context_feed() passes autoload_embeds=0
+    # for every page past the first (see its own comment), so no entry on
+    # page 2 can ever carry the attribute -- true regardless of which
+    # entries land there, so this checks the whole response.
+    response = client.get("/context?page=2")
+    assert response.status_code == 200
+    assert "data-embed-autoload" not in response.text
+
+
+def test_context_autoload_embeds_zero_disables_it(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setattr(crud, "CONTEXT_AUTOLOAD_EMBEDS", 0)
+    response = client.get("/context")
+    assert response.status_code == 200
+    assert "data-embed-autoload" not in response.text
+
+
+def test_context_new_never_autoloads(monkeypatch):
+    monkeypatch.setenv("CONTEXT_EDITOR_CLERK_IDS", "user_ctx_new_real_editor")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_ctx_new_real_editor"
+    )
+    response = client.get("/context/new")
+    assert response.status_code == 200
+    assert "data-embed-autoload" not in response.text
 
 
 # --- sitemap / nav link (phase 2) -------------------------------------------

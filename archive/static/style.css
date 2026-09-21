@@ -2021,6 +2021,16 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 .context-status-published { background: var(--success-bg); color: var(--success-fg); }
 .context-status-hidden { background: var(--error-bg); color: var(--secondary); }
 
+/* The editor's own optional short title for an entry (WO-945) -- sits
+   above the match badge/summary, a notch below .featured-title's meeting
+   heading in weight since it's the entry's own heading, not the page's. */
+.context-headline {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: var(--fg);
+}
+
 /* Match-kind badge: "exact" is solid (the strongest claim -- this is the
    moment), "approximate"/"related" are outline (weaker claims), so the
    three read as visually distinguishable at a glance without competing

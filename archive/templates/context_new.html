@@ -8,6 +8,10 @@
        rendered as <option>s under a blank "Not decided" option)
      summary_max (int, 500 -- the summary textarea's maxlength and the
        number shown in the live character counter)
+     title_max (int, 120, WO-945 -- the title input's maxlength; pre-filled
+       from `editing.headline`, NOT `editing.title` -- that key is the
+       matched meeting's own title, a different thing, see
+       _context_entry.html's own comment)
      active_account (passed straight through -- base.html's nav reads it)
 
    Editor-only page for the small allowlist of editors -- never indexed,
@@ -42,6 +46,12 @@
       <label class="context-field">
         Social post URL
         <input type="url" name="social_url" required value="{{ editing.social_url if editing else '' }}" placeholder="https://www.instagram.com/p/...">
+      </label>
+
+      <label class="context-field">
+        Title
+        <input type="text" name="title" maxlength="{{ title_max }}" value="{{ editing.headline if editing and editing.headline else '' }}">
+        <span class="context-field-help">Optional. A short headline for the post.</span>
       </label>
 
       <label class="context-field">

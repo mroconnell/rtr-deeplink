@@ -9,6 +9,10 @@
        posture as jurisdiction_page.html's thin-page tag)
      is_editor (bool -- true shows a "New entry / manage" link to
        /context/new; false for every signed-out or non-allowlisted reader)
+     autoload_embeds (int, WO-945 -- how many of THIS page's entries with
+       an embed should autoload; archive/main.py's context_feed() passes
+       crud.CONTEXT_AUTOLOAD_EMBEDS on page 1 and 0 on every later page,
+       so the loop below doesn't need its own page check)
      active_account (passed straight through -- base.html's nav reads it)
      globals: public_base_url, generic_card_image_url, generic_card_image_alt
 -#}
@@ -55,7 +59,18 @@
 
     {% if entries %}
     <div class="context-entry-list">
+      {#- WO-945: the first `autoload_embeds` entries that HAVE an embed
+         load it on their own instead of click-to-load -- an entry with
+         no embed (link-out only) must not use up a slot. A namespace is
+         needed because Jinja's `{% set %}` inside a loop doesn't persist
+         across iterations otherwise. -#}
+      {% set ns = namespace(autoloaded=0) %}
       {% for entry in entries %}
+      {% set autoload = false %}
+      {% if entry.embed and ns.autoloaded < autoload_embeds %}
+        {% set autoload = true %}
+        {% set ns.autoloaded = ns.autoloaded + 1 %}
+      {% endif %}
       {% include "_context_entry.html" %}
       {% endfor %}
     </div>

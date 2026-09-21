@@ -1,8 +1,11 @@
 {#- Context variables:
-     entry (dict, the WO-943 Full Context data contract -- exactly these
-       keys: id, status, summary (UNTRUSTED, plain-escaped), social_url,
-       network, network_label, source_label (UNTRUSTED, plain-escaped),
-       embed (None or {"kind":"youtube","video_id":..} /
+     entry (dict, the WO-943/WO-945 Full Context data contract -- exactly
+       these keys: id, status, summary (UNTRUSTED, plain-escaped),
+       headline (UNTRUSTED, plain-escaped, optional -- the EDITOR's own
+       short title for this entry, WO-945; not to be confused with
+       `title` below, which is the MEETING's title), social_url, network,
+       network_label, source_label (UNTRUSTED, plain-escaped), embed
+       (None or {"kind":"youtube","video_id":..} /
        {"kind":"instagram","permalink":..} /
        {"kind":"tiktok","video_id":..,"cite":..}), match_kind, match_label,
        t_seconds, timestamp_label, published_at/created_at/updated_at,
@@ -12,22 +15,28 @@
      editor_view (bool, default false -- set `{% set editor_view = true %}`
        before including this from context_new.html; the public feed
        (context.html) never sets it, so the default below applies)
+     autoload (bool, default false -- WO-945; set by context.html's loop
+       for the first CONTEXT_AUTOLOAD_EMBEDS entries that have an embed,
+       page 1 only. context_new.html never sets it, so the editor list
+       never autoloads.)
 
    Included by both context.html (public feed, editor_view unset/false)
    and context_new.html (editor list, editor_view=true) -- one entry's
    markup lives in exactly one place so the two surfaces can't drift.
 
-   Reading order matches the public contract exactly: thumb, match badge,
-   summary, original-post link, meeting title + where/date, the "watch
-   the full context" call to action, then the click-to-load embed. Every
-   meeting-dependent piece (thumb/title/where/CTA) is gated on
-   `entry.has_meeting`, not on the individual field being truthy -- the
-   contract guarantees those fields are None together, but gating on the
-   one flag reads the intent directly and can't be fooled by a single
-   missing field on an otherwise-real match. This must render a draft
-   with every meeting field None without crashing, since the editor list
-   shows every status. -#}
+   Reading order matches the public contract exactly: thumb, headline (if
+   any), match badge, summary, original-post link, meeting title +
+   where/date, the "watch the full context" call to action, then the
+   embed (click-to-load, or autoloaded for the first few on page 1 -- see
+   `autoload` above). Every meeting-dependent piece (thumb/title/where/CTA)
+   is gated on `entry.has_meeting`, not on the individual field being
+   truthy -- the contract guarantees those fields are None together, but
+   gating on the one flag reads the intent directly and can't be fooled
+   by a single missing field on an otherwise-real match. This must render
+   a draft with every meeting field None without crashing, since the
+   editor list shows every status. -#}
 {% set editor_view = editor_view | default(false) %}
+{% set autoload = autoload | default(false) %}
 <article class="featured-meeting context-entry" id="context-{{ entry.id }}">
   {% if editor_view %}
   {#- Editor-only: which of the three statuses this entry is in right
@@ -46,6 +55,14 @@
   </a>
   {% endif %}
   <div class="featured-body">
+    {% if entry.headline %}
+    {#- UNTRUSTED, editor-written -- always plain autoescape, never |safe,
+       same as summary/source_label below. h2: below the page's own h1
+       ("Full Context") and above this entry's own meeting-title h3
+       further down, so the outline stays sensible with or without one of
+       these present. -#}
+    <h2 class="context-headline">{{ entry.headline }}</h2>
+    {% endif %}
     {% if entry.match_label %}
     {#- Three kinds, visually distinguishable but calm -- exact is solid
        (the strongest claim: this is the moment), approximate/related are
@@ -84,12 +101,18 @@
     <p class="context-no-meeting">No meeting matched yet</p>
     {% endif %}
     {% if entry.embed %}
-    {#- Click-to-load only -- no third party is contacted until the
+    {#- Click-to-load by default -- no third party is contacted until the
        reader clicks (context_embeds.js). Only parser-derived values go
        into the data attributes; the button starts hidden so there is
        never a dead control when JS is off, and context_embeds.js is the
-       only thing that un-hides it. -#}
+       only thing that un-hides it. `data-embed-autoload` (WO-945) is the
+       one exception: for the first few embeddable entries on page 1 of
+       the public feed (see `autoload` above), context_embeds.js loads
+       this one on its own, lazily, as it nears the viewport, and never
+       un-hides the button for it -- see that file's own comment on the
+       "must never flash" rule. -#}
     <div class="context-embed" data-embed-kind="{{ entry.embed.kind }}"
+      {%- if autoload %} data-embed-autoload{% endif %}
       {%- if entry.embed.kind == "youtube" %} data-embed-id="{{ entry.embed.video_id }}"
       {%- elif entry.embed.kind == "instagram" %} data-embed-url="{{ entry.embed.permalink }}"
       {%- elif entry.embed.kind == "tiktok" %} data-embed-id="{{ entry.embed.video_id }}" data-embed-url="{{ entry.embed.cite }}"
