@@ -163,6 +163,15 @@ reasons. That is how every sweep below was scoped.
   2026-09-09 entries. Retired hub slugs need rows in
   `archive/data/hub_slug_aliases.csv` or they 404; the applied report's
   before/after slug columns are the source.
+- **Repairs** (`scripts/repair_wrong_pages.py`, WO-934) fix pages that are
+  already wrong: a re-key or a delete per row of one reviewed sheet
+  (`reports/wrong_page_worklist.csv`), through the two existing Archive
+  routes. Dry run by default, five writes per run, and a row is refused when
+  its live page no longer matches what the row expected (three of five
+  backlog entries were stale on the day it was written). A blank target means
+  a mint is needed first; nothing fills it from a guess. Run it from the
+  Archive's Render shell. `scripts/wrong_page_screen.py` is the read-only
+  title screen that finds candidates.
 - **Identity joins** are the cheapest coverage win found so far: when the
   research file says a government is "ingested" but the registry shows no
   page, the page usually exists on that government's own host under a

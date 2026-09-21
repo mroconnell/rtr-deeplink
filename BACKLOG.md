@@ -185,32 +185,29 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
     [JUST-DO-IT] `archive_client.send_search_alerts()` has no retry, so…
     [JUST-DO-IT] `list_all_page_slugs()` doesn't exclude…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
-  Production actions only Ryan should take  (14)
+  Production actions only Ryan should take  (11)
     [HUMAN] Render account bandwidth hit its 25 GB/month Pro-plan cap on…
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
     [HUMAN] 310 real school-district YouTube/Vimeo leads from the WO-292…
-    [HUMAN] Sequatchie County, TN's page (id 7377) is not a real…
+    [HUMAN] Apply the reviewed wrong-page sheet,…
+    [HUMAN] Pages 5945 and 10852 show a repair fragment as the government…
     [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
-    [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
-    [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
-    [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
-    [HUMAN] `[WAIT]` WO-941's hand-check of the 35 mismatched page…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (212)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -278,7 +275,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (212)
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
   [NEEDS-AUDIT]…
-  [NEEDS-AUDIT] Three live wrong-government cases wait for WO-934's…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own…
@@ -294,10 +290,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (212)
   [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
-  [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
-  [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
+  [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live…
+  [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same…
   [NEEDS-AUDIT] Same source URL, different query string, two
-  [NEEDS-AUDIT] Three pages from the school-district audit resolved
   [LATER] GovDelivery -- a proposed discovery lead for finding new
   [LATER] Two real, scoped enumerator/adapter gaps found chasing the
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
@@ -1892,8 +1887,8 @@ WO-932 and WO-913.
 
 - **[JUST-DO-IT] 82 archived YouTube meetings have embedding switched off by the owner, so our player shows "Video unavailable" while the video is alive on YouTube and the transcript renders beside it.**
   - **Issue**: YouTube's oEmbed returns HTTP 401 for a video whose owner disabled playback on other sites (82 of 95 non-answering videos in the 2026-09-09 study; the watch page reports the video playable and all 82 pages already hold a transcript). The embed on our page then says "Playback on other websites has been disabled by the video owner — Watch on YouTube", verified live on `/m/peachtree-corners-ga-2026-08-27-peachtree-corners-city-council-meeting-august-25`. Deep links into these pages seek nothing.
-  - **Impact**: 82 pages (plus every future one from those channels) deliver the transcript but not the product's core promise, a shareable moment in the video. Separately, 13 videos are genuinely gone (7 deleted/404, 3 private/403, 3 malformed ids/400) and 11 of those pages have no transcript either.
-  - **Next action**: both halves shipped, but only reach *future* resolves, not these 82 already-archived pages. WO-135 (2026-09-09) made the detection real — `YouTubeAssetFinder.resolve_video_id()` reads yt-dlp's own `playable_in_embed` field (not oEmbed, which this entry's Issue line got wrong) at zero extra request cost and sets `YOUTUBE_EMBED_DISABLED_MARKER` (`app/platforms/youtube.py`) on `video_warnings`, and `check_permanent_failure()` lets a caller check it ahead of time. WO-136 (2026-09-09) shipped the consuming side — `archive/templates/meeting_page.html` and `app/static/player.js` both render a "Watch on YouTube" link (`youtube.com/watch?v=…&t=754s`, honouring the deep-linked start time) in place of the dead player whenever `video_warnings` carries that marker, or the player errors at runtime. **Still open**: neither path re-checks a page that already has a transcript — `scripts/fetch_youtube_transcripts.py`'s daily precheck only ever looks at `/internal/transcript-wanted`'s no-transcript queue, and these 82 pages are excluded from it by definition (they already hold one) — so a one-time backfill sweep (call `YouTubeAssetFinder.check_permanent_failure()` per page, POST the video marker to `/internal/pages/{slug}/video-status`) is what's left to actually reach them. The 13 dead pages want `noindex` and a removal list; that is a product call, filed under Needs a human.
+  - **Impact**: 82 pages (plus every future one from those channels) deliver the transcript but not the product's core promise, a shareable moment in the video. A separate study count of gone videos is tracked in the entry "13 archived YouTube pages point at a video that is gone".
+  - **Next action**: both halves shipped, but only reach *future* resolves, not these 82 already-archived pages. WO-135 (2026-09-09) made the detection real — `YouTubeAssetFinder.resolve_video_id()` reads yt-dlp's own `playable_in_embed` field (not oEmbed, which this entry's Issue line got wrong) at zero extra request cost and sets `YOUTUBE_EMBED_DISABLED_MARKER` (`app/platforms/youtube.py`) on `video_warnings`, and `check_permanent_failure()` lets a caller check it ahead of time. WO-136 (2026-09-09) shipped the consuming side — `archive/templates/meeting_page.html` and `app/static/player.js` both render a "Watch on YouTube" link (`youtube.com/watch?v=…&t=754s`, honouring the deep-linked start time) in place of the dead player whenever `video_warnings` carries that marker, or the player errors at runtime. **Still open**: neither path re-checks a page that already has a transcript — `scripts/fetch_youtube_transcripts.py`'s daily precheck only ever looks at `/internal/transcript-wanted`'s no-transcript queue, and these 82 pages are excluded from it by definition (they already hold one) — so a one-time backfill sweep (call `YouTubeAssetFinder.check_permanent_failure()` per page, POST the video marker to `/internal/pages/{slug}/video-status`) is what's left to actually reach them. WO-934 built the check for it: `scripts/check_youtube_video_status.py` records HTTP 401 as `embedding_disabled` for any CSV with `page_id` and `video_url`. Pointed at the YouTube pages that have a transcript and no channel on record (222 with no channel in the 2026-09-21 export, 203 of them with a transcript), it names which are these 82. Only the drip Mac may run it.
   - **Constraint**: the check reuses the same metadata-only yt-dlp extraction WO-135 already added, not the caption fetch — not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
   - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer). WO-135's detection and WO-136's consuming side + thin-page fold-in (a *second* shape — a dead embed with no transcript at all, noindexed/delisted until a transcript lands) are both `BACKLOG_DONE.md`.
 
@@ -2292,12 +2287,19 @@ of human step they need.
   - **Constraint**: one drip per office connection, drip Mac only -- see MEMORY.md's "YouTube drip ownership" note.
   - **History**: `BACKLOG_DONE.md`'s WO-292 entry; `rtr-business/research/wo292_youtube_leads.txt`, `wo292_targeted.csv`.
 
-- **[HUMAN] Sequatchie County, TN's page (id 7377) is not a real government meeting -- a personal jam session video, delete or not is Ryan's call.**
-  - **Issue**: WO-242 (2026-09-11), hand-checking a suspect per-video pin, found the video behind page 7377 (`sequatchie-county-tn-2026-09-09-ed-brown-jam-session-2024`) is "Ed Brown - Jam Session 2024" on the channel "BTC Fiber" (an internet provider) -- a personal music jam session, not any government's meeting. The wrong pin that keyed it to Sequatchie County has been deleted so it can't re-fire, but the page itself already exists and isn't a real meeting of any government.
-  - **Impact**: one live page shows non-meeting content under a real government's hub. Low volume (1 page), but it's exactly the kind of content this site's "only real government meetings" promise excludes.
-  - **Next action**: Ryan decides whether to delete page 7377 via `POST /internal/admin/delete-pages` (dry run first) -- this WO didn't do it unilaterally since deleting a pre-existing live page (not one this WO's own run created) is a production action, not a pin correction.
-  - **Constraint**: don't re-key it to a different government -- there's no real government meeting here at all to key it to.
-  - **History**: `BACKLOG_DONE.md`, WO-242, 2026-09-11.
+- **[HUMAN] Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv` (48 rows), from the Archive's Render shell once the Archive is deployed.**
+  - **Issue**: WO-934 built `scripts/repair_wrong_pages.py` and the sheet. 20 rows are re-keys that need no decision (the page's own title or host names the school district or county). 28 rows wait for Ryan: 14 re-keys with a proposed target, 7 re-keys with no target yet (5945, 10852, 645, 2004, 5301 need a mint; 3453 needs the state chosen; 2504 needs a choice between unresolved and delete), and 7 deletes (6114 is approved; the other six are not).
+  - **Impact**: 41 live pages show the wrong government, and 7 show a video that is not a meeting, until the run happens. The Render shell only sees files from the deployed commit, so the run cannot start until the Archive is deployed with this sheet.
+  - **Next action**: on the Archive's Render shell, `python scripts/repair_wrong_pages.py check reports/wrong_page_worklist.csv`, then `... run reports/wrong_page_worklist.csv` (a dry run: nothing changes), read it, then `... run reports/wrong_page_worklist.csv --apply --batch-size 5` again and again until nothing is left to write. Ryan writes `approve` or `reject` in `ryan_decision` for each row that needs him; the tool skips a blank one. Page 6114 is the one approved delete: `--apply --allow-deletes --only-ids 6114`. After the run, `python scripts/wrong_page_screen.py --from-archive --worklist reports/wrong_page_worklist.csv --out /tmp/wrong_page_screen.csv` re-runs the screen (read-only).
+  - **Constraint**: the override endpoint also writes draft `tenant_overrides.csv` lines to a file on the Archive machine; the tool copies them into its log. Commit none for a shared host (a city's Granicus, Cablecast or CivicClerk site that also carries its school board): the rule would file the city's other meetings under the school district. Copy the log out before any deploy; a deploy wipes `/tmp` and the shell's working files.
+  - **History**: `BACKLOG_DONE.md` WO-934.
+
+- **[HUMAN] Pages 5945 and 10852 show a repair fragment as the government ("South, MB (Canada)", "North, UT"); each needs Ryan's "ok mint", or to be left unresolved.**
+  - **Issue**: found by WO-932. Page 5945 is South Snohomish County Fire and Rescue RFA, Washington (Census of Governments unit 248695; host southsnofire.granicus.com). Page 10852 is the North Valley Public Safety Department, Utah (no Census unit). The resolver no longer mints either fragment, but both pages keep `rtr:ca:mb:south` and `rtr:us:ut:north`. Both are rows on `reports/wrong_page_worklist.csv` with a blank target.
+  - **Impact**: two pages a reader sees under a fragment of a government, one of them under Manitoba.
+  - **Next action**: Ryan says "ok mint" for either or both (then mint the row in `curated_governments.csv`, deploy, fill `target_gov_id` and write `approve`), or says leave unresolved (then a `backfill_gov_id.py` dry run for the page's host, read first).
+  - **Constraint**: never re-key from a name alone; the override endpoint refuses an id with no registry row.
+  - **History**: `BACKLOG_DONE.md` WO-932 and WO-934. The third case this entry used to carry, page 9073 and the `@washcoar` pin, was fixed by WO-934: both pins now say Washington County, AR, and pages 9073 and 9681 are re-key rows waiting for the Render-shell run.
 
 - **[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue or not is Ryan's call.**
   - **Issue**: WO-226's spot-check confirmed two CITISTAT broadcasts on
@@ -2333,36 +2335,6 @@ of human step they need.
     Duda-hosted `#!` fragment page, a document library subdomain the
     crawl never found) or something session-gated.
   - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
-- **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
-  - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
-    video its retry-set/one-hop pipelines produced and found the
-    real page for 3 of them still needs a database-level fix, not just
-    a `jurisdiction_coverage.csv` correction: page 7341 (slug
-    `leelanau-county-mi-2026-09-01-conflict-of-interest-and-complaint-
-    policy-committe`) is keyed to Cleveland Township, MI
-    (`us:cousub:2608916400`) but the meeting is really Leelanau County's
-    own (`us:county:26089`); page 8298 (`dublin-2026-09-05-city-council-
-    meeting-9-3-26`) and page 8590 (`delta-county-2026-09-01-delta-
-    county-board-of-commissioners-meeting-9-1-2026`) both landed with
-    `gov_id=None` when this WO tried to re-key them to their real
-    governments (Dublin city, GA -- `us:place:1324376`; Delta County, MI
-    -- `us:county:26041`). All three were dry-run verified (the API
-    call's own response showed the exact before/after diff) but the real
-    write was refused by the sandbox's own safety classifier, same shape
-    every prior hand-check WO (WO-152, WO-191, WO-196, WO-199) hit for a
-    mutating admin call.
-  - **Impact**: the three real, correct governments this WO's own hand-
-    check confirmed (Leelanau County, Dublin GA, Delta County) show as
-    covered in `jurisdiction_coverage.csv` (Leelanau already did before
-    this WO; Dublin GA and Delta County were deliberately left NOT
-    marked as covered there, ahead of the fix) but their live page
-    still shows the wrong or no government to a reader.
-  - **Next action**: `POST /internal/jurisdiction/override?ids=7341&gov_id=us:county:26089` (Leelanau County), `POST /internal/jurisdiction/override?ids=8298&gov_id=us:place:1324376` (Dublin, GA), `POST /internal/jurisdiction/override?ids=8590&gov_id=us:county:26041` (Delta County, MI) -- `dry_run=true` first to confirm, matches this WO's own dry-run output. After it runs, add `transcribed=True`/clear `reject_reason` for Dublin GA (`us:place:1324376`) and Delta County (`us:county:26041`) in `jurisdiction_coverage.csv` (Leelanau's row already reflects it).
-  - **Constraint**: same shape as WO-152/WO-191/WO-196/WO-199's own
-    identical asks -- needs a human or a differently-permissioned
-    session, not a retry from this one.
-  - **History**: `BACKLOG_DONE.md`, WO-184 continuation, 2026-09-11.
-
 - **[HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but WO-211 ran in a sandbox with no `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` at all -- needs a session with real Archive access to run them.**
   - **Issue**: WO-211 (2026-09-11) confirmed six real meetings by title/
     channel that have no Archive page yet: Cap-Acadie regional
@@ -2430,61 +2402,12 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md` WO-175, 2026-09-10;
     `rtr-business/research/wo175_methods_section.md`.
 
-- **[HUMAN] One live page is keyed to the wrong government: a real Chenango TOWN, NY meeting displays as Chenango COUNTY, NY -- fixed for future ingests, needs a deploy + backfill for this one page.**
-  - **Issue**: WO-145's breadth sweep ingested `townofchenango.civicweb.net`'s real Town Board meeting under `us:cousub:3600715110` (Chenango town, NY), but `key_check()` couldn't resolve that jurisdiction string to the intended id at registry/pinned confidence (Chenango County, NY is a real, different, larger New York county with the same base name) -- the page live-keyed to the county instead. A `strength=fallback` pin (`townofchenango.civicweb.net` -> `us:cousub:3600715110`) is now in `tenant_overrides.csv` (this PR), which fixes every future ingest/re-resolve of this tenant, but does nothing for the page that already exists.
-  - **Impact**: one live page, `/m/chenango-county-ny-2026-09-02-town-board-02-sep-2026`, displays and is keyed as "Chenango County, NY" instead of the real Chenango town whose meeting it actually is.
-  - **Next action**: after this PR deploys, run `backfill_gov_id.py --hosts townofchenango.civicweb.net` to re-key the one existing page.
-  - **Constraint**: the pin must be live (deployed) before the backfill runs, or it re-resolves to the same wrong id.
-  - **History**: WO-145, `BACKLOG_DONE.md` 2026-09-10.
-
-- **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids); 11 have no transcript.**
-  - **Issue**: per-video oEmbed statuses in `reports/shared_host_lookups.csv` (blank channel) cross-checked against the export; the video ids are the 404/403/400 rows in the study's classifier.
-  - **Impact**: pages with neither video nor transcript are indexable and offer a reader nothing.
-  - **Next action**: product call — `noindex` them, or delete via the existing delete-pages endpoint; the 2 that do have a transcript can stay with the dead-player fix from Ship next.
-  - **History**: gov-id enumeration audit, 2026-09-09.
-
-- **[HUMAN] A Pennsylvania Public Utility Commission hearing was briefly live as "Spring Township, PA" — the page is now deleted; open question is only whether Ryan wants a PUC government minted for any future occurrence.**
-  - **Issue**: two concurrent sessions the same night (2026-09-11) independently found the same wrong page: WO-204 (fixing a hub-slug bug) checked
-    `spring-township-pa-2026-09-10-pennsylvania-public-utility-commission-papuc-publi`
-    before pinning it to any of the 5 real "Spring Township" governments
-    in PA and confirmed via yt-dlp that the channel is "PennsylvaniaPUC"
-    (@PennsylvaniaPUC), describing itself as "Recording of the September
-    10, 2026 Public Meeting of the Pennsylvania Public Utility
-    Commission held in the Commonwealth Keystone Building's Hearing Room
-    1 (Harrisburg, PA)" — nothing about the video names a township.
-    WO-183's own hand-check found the same page independently (its
-    Spring township, Berks County candidate was found via a bare-
-    channel scan of a link that government's own site made to PA PUC's
-    channel) and, per its hand-check protocol for a confirmed wrong
-    government, deleted the page via `POST /internal/admin/delete-pages`
-    before WO-204's own entry (asking Ryan to choose leave/mint/delete)
-    had merged. `rtr-business/research/jurisdiction_coverage.csv`'s
-    Spring Township, Berks County row is corrected (evidence cleared,
-    `reject_reason=off-mission`).
-  - **Impact**: no live page remains under the wrong name today — this
-    is no longer a public-facing trust problem. The only thing still
-    open is whether the Pennsylvania Public Utility Commission is worth
-    minting as its own government (same "ok mint" pattern as WO-201's
-    PennDOT/Upper Delaware Council/Southwestern PA Commission) so a
-    future PA PUC video anyone finds attributes correctly instead of
-    getting silently discarded as off-mission.
-  - **Next action**: Ryan decides whether the Pennsylvania Public
-    Utility Commission is in scope to mint as a government at all (it
-    is a state regulatory body, not a local government in the sense
-    this project otherwise tracks) before any future PA PUC find gets
-    anywhere past off-mission.
-  - **Constraint**: don't pin any future PA PUC find to any of the 5 real
-    Spring Townships (Berks/Centre/Snyder/Crawford/Perry Counties, PA) —
-    none of them held or posted this meeting.
-  - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
-    `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
-
-- **[HUMAN] `[WAIT]` WO-941's hand-check of the 35 mismatched page addresses is finished, but its 30 renames and the BART page override wait for the Archive deploy.**
-  - **Issue**: WO-925's scan flagged 35 pages whose address names a different place than their page's government. WO-941 (2026-09-21) hand-checked all 35 (30 stale address with the right government; 2 real mis-keys fixed by hand; 1 real mis-key fixed by minting BART; 2 junk pages deleted). The 30 stale addresses have `_SLUG_REDIRECTS` entries in `archive/main.py` on `main`, but each rename is applied with `POST /internal/admin/reslug-page` only after the Archive deploy carries them. On 2026-09-21 production still served the old address (for example `detroit-mi-2026-06-22-council-meeting-june-22-2026` answered HTTP 200) and the new one (`charlotte-nc-2026-06-22-council-meeting-june-22-2026`) answered 404, so no rename had run yet.
-  - **Impact**: 30 pages keep an address that names the wrong place until the renames run, and the BART board meeting stays keyed to Bart Township, PA until its page override runs.
-  - **Next action**: after Ryan deploys the Archive and the resolver, run `reslug-page` for the 30 (dry run first), then apply the BART page override and its research row. Ryan already made BART's Granicus pin authoritative (PR #1299, 2026-09-21), so a future BART page keys correctly once the resolver is deployed.
-  - **Constraint**: never re-key from an address alone; a rename needs its `_SLUG_REDIRECTS` entry live first.
-  - **History**: `BACKLOG_DONE.md` WO-941 and WO-925. Split from the 35-address entry by WO-931.
+- **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids) says a 2026-09-09 study, but the 13 are not on record and no delete is approved on that finding.**
+  - **Issue**: the study kept only counts per oEmbed status. `reports/shared_host_lookups.csv` has no status column (a blank channel only means the video did not answer, which also covers embedding-off videos), so the 13 cannot be rebuilt. Of the 184 live pages with a blank-channel lookup there, 181 have English transcripts, so their videos exist; only 3 have none (pages 6114, 6906, 7086). The 2026-09-21 export has 101 YouTube pages with no transcript (89 "Captions disabled / video unavailable", 12 blank). The stored warnings are counts (1 or 0), so local data cannot tell a gone video from disabled captions.
+  - **Impact**: no page can be named as gone, so none can be deleted or hidden on evidence. Deleting from the unchecked 101 would remove pages whose videos are alive and only lack captions, which the drip's audio lane can transcribe.
+  - **Next action**: (1) the drip Mac owner runs `scripts/check_youtube_video_status.py` on `reports/wo934_youtube_no_transcript_pool.csv` (101 videos, about 4 hours). (2) `python scripts/repair_wrong_pages.py gone-videos reports/wo934_youtube_no_transcript_pool.csv STATUS --exclude-worklist reports/wrong_page_worklist.csv --out ROWS` writes a delete row for each video confirmed gone. (3) Ryan reads each row and writes approve or reject. (4) The Render-shell run, dry run first, with `--video-status STATUS`.
+  - **Constraint**: YouTube requests come from the drip Mac only. Page 6114 is the one approved delete in this group, on its own grounds: Ryan approved it on 2026-09-21 because it is a county-homepage intro video and not a meeting. Pages 6906 and 7086 are not approved. 7086 is a real Malibu meeting; the tool refuses it until a checked status file says its video is gone and the replacement page (https://www.youtube.com/watch?v=PveTE-5yFiU) exists.
+  - **History**: `BACKLOG_DONE.md` WO-934; gov-id enumeration audit, 2026-09-09.
 
 ### Decisions about already-live content
 
@@ -2941,13 +2864,6 @@ of human step they need.
   - **Next action**: give this test its own explicit fixture that calls `archive.main`'s `init_models()` (or the equivalent used elsewhere in this suite) before asserting on `actual_columns`, rather than relying on import-order luck from unrelated test modules.
   - **Constraint**: none known — this is a test-isolation fix, not a change to `/admin/schema-info` itself.
   - **History**: found incidentally rebasing WO-166 (`BACKLOG_DONE.md`, 2026-09-10) onto `main`; not caused by that PR — confirmed by running the same test against a clean `origin/main` worktree with no WO-166 changes present at all.
-
-- **[NEEDS-AUDIT] Three live wrong-government cases wait for WO-934's worklist: pages 5945 and 10852 show a repair fragment as the government, and the `@washcoar` channel pin files an Arkansas channel under Washington County, AL (page 9073).**
-  - **Issue**: found by WO-932 on the local export of 2026-09-21. Page 5945 shows "South, MB (Canada)" (id `rtr:ca:mb:south`) but is South Snohomish County Fire and Rescue RFA, Washington. Page 10852 shows "North, UT" (id `rtr:us:ut:north`) but is the North Valley Public Safety Department, Utah. The resolver no longer mints either shape (WO-932), but both pages keep their ids until someone re-keys them. Page 9073 (Washington County, stored state AR) sits under `us:county:01129` (Washington County, AL) because `tenant_overrides.csv` holds `www.youtube.com,channel=@washcoar,us:county:01129,fallback,wo171_localview`; two per-video pins already say `us:county:05143` (AR).
-  - **Impact**: three pages a reader sees under the wrong government or a fragment of one. Page 9073 is the one real error among the 12 pages a blocking Archive state check would refuse.
-  - **Next action**: WO-934 hand-checks each and re-keys with a pin or an "ok mint" (an "ok mint" needs Ryan's yes); correct or remove the `@washcoar` pin and re-key page 9073 to `us:county:05143`.
-  - **Constraint**: run `backfill_gov_id.py` as a dry run first and read it; it will propose moving 5945 and 10852 to unresolved, which is honest, but read it before applying. Never re-key from a name alone.
-  - **History**: `BACKLOG_DONE.md` WO-932 (pages 5945 and 10852, the pin) and WO-171 (the pin's source).
 
 - **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34 occurrences 2026-08-30 through 2026-09-10 20:54 UTC, then quiet — `--loop asyncio` (WO-239) is looking like a real fix, not yet confirmed for long enough to close.**
   - **Issue**: identical "Exited with status 134" Render alerts, 34 occurrences from 2026-08-30 16:54 UTC through 2026-09-10 20:54 UTC, one of which (2026-09-10, mid-afternoon PDT) exited with status 139 (SIGSEGV) rather than 134. Memory pressure stays ruled out (14-day and same-day graphs both stay well under the `standard` plan's 2GB ceiling except the 2026-09-01 exception already on record). **WO-239 (2026-09-10) added `PYTHONFAULTHANDLER=1` to all four services and captured two real fault dumps the same day — both show `Unexpected error 9 on netlink descriptor` immediately before the fatal signal, and neither dump marks any thread "Current thread" the way an ordinary Python-level fault does.** That message comes from libuv, the C library uvloop (uvicorn's silent default event loop, never a deliberate choice recorded anywhere in this repo) is built on — a real, evidence-based lead toward uvloop/libuv specifically.
@@ -3443,157 +3359,19 @@ of human step they need.
     and the page text names a real neighbouring government — the shape a
     ladder fix would have to recognise, if one is ever built.
 
-- **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
-  pages (not just the 1 Gloucester case above) -- a shared multi-
-  government tenant's "pick something recent" candidate logic has no
-  signal that distinguishes a school board from the city/county/town
-  body sharing the same channel.**
-  - **Issue**: found during a manual title-check audit of the school-
-    district enumeration effort (`rtr-business/research/
-    ENUMERATION_METHODS.md` §63), not assumed -- every one of these
-    resolved through a real per-tenant listing/candidate-pick step, to a
-    real, current meeting, on the correct platform, for the **wrong**
-    government:
-    - Canton City, OH (Cablecast) -> "The Poetry Room with Corey Lipkins
-      Jr, Episode 7" -- a talk show, not a meeting at all.
-      `/m/2026-08-03-the-poetry-room-with-corey-lipkins-jr-episode-7-the-return`
-    - Champaign CUSD 4, IL (Cablecast) -> a real City Plan Commission
-      meeting. `/m/2026-09-02-plan-commission-9-2-26`
-    - Gloucester County Public Schools, VA (eScribe) -> a real County
-      Planning Commission meeting (separate live page from the WO-106
-      entry above, same underlying name-bleed root cause -- also mistagged
-      jurisdiction as Gloucester, **MA**).
-      `/m/gloucester-ma-2026-09-03-planning-commission`
-    - Brookline, MA (CivicClerk) -> the **Town's** "Indigenous Peoples
-      Celebration Committee," not a school committee.
-      `/m/brookline-town-ma-2026-09-04-indigenous-peoples-celebration-committee-meeting`
-    - Park County, MT (Granicus) -> the **County's** "Solid Waste
-      Board." `/m/park-county-2026-08-20-solid-waste-board-8-20-2026`
-    - Brooklyn School District, CT (CivicClerk) -> the **Town's**
-      "Planning & Zoning Commission."
-      `/m/brooklyn-town-ct-2026-09-02-planning-zoning-commission-meeting`
-  - **Not yet checked**: title-checking only happened for the ~26 pages
-    this specific school-district effort touched, not this Archive's
-    full corpus of shared-tenant ingests generally -- this pattern is
-    very likely present elsewhere (any Cablecast/CivicClerk/eScribe
-    tenant shared across multiple governments), just not audited yet.
-  - **Update 2026-09-06, corrected**: 2 of 3 candidates originally
-    believed "caught before going live" (removed from
-    `scripts/tier3_auto_transcription_queue.txt` on the same audit pass)
-    really were caught in time -- Niagara Falls City SD, NY (Cablecast,
-    would-have resolved to "Mayor Restaino Weekly Update," a general PR
-    video) and St. Lucie, FL (Cablecast, a bare live-channel URL with no
-    title/date/jurisdiction) never made it into any live page, confirmed
-    by a full scan of all 5,399 pages in `/internal/export/pages` for
-    their exact source URLs -- zero matches. **The third one was wrong:
-    Prince George's County Public Schools, MD's `pgcps.cablecast.tv`
-    tenant was already live, twice, before this session's own (never
-    pushed/committed) queue-file edit could matter at all** --
-    `/m/2026-03-03-student-built-tinyhome` and a duplicate
-    `/m/2026-03-03-student-built-tinyhome-7c70cf` (same show,
-    `?site=1` query-string difference on the source URL creating a
-    second row -- a real, separate URL-normalization gap, not
-    investigated further here), both "Student Built TinyHome," not a
-    meeting. Neither came from anything in this session's own pipeline
-    runs; almost certainly a separate, concurrent effort (the wildcard-
-    sweep work, WO-115/116/117) independently swept the same
-    `pgcps.cablecast.tv` tenant and hit the identical "pick something
-    recent off a shared channel" failure mode. **A third pgcps page was
-    found the same way, never flagged by this session's own pipeline at
-    all**: `/m/2024-09-06-newsbreak-school-house-justice`, "Newsbreak:
-    School House Justice" -- also clearly not a board meeting. All 3
-    pgcps.cablecast.tv pages need the same takedown as the 6 above,
-    total 9, not 6.
-  - **Likely related, not yet confirmed as the same bug**: `jurisdiction`
-    resolved to `None` (not wrong, just entirely missing) for 3 more of
-    the same effort's pages -- Andover, MA (CivicPlus/castus.tv), Duval,
-    FL (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain
-    strongly suggests "Duval County School Board," a dedicated tenant,
-    so likely correct content just missing the tag), and East Brunswick
-    Township, NJ (NovusAgenda, where title/date also both came back
-    `None` -- possibly not a real per-meeting page at all, unconfirmed).
-  - **Next action**: not attempted here, per this project's
-    established "flag it, don't touch code" pattern for jurisdiction/
-    government-identity bugs -- these need the same kind of
-    per-candidate discriminator (title/body-name keyword match against
-    the expected government type) that `GOVERNMENT_IDENTITY_ARCHITECTURE
-    .md` §4/§5 already discusses for the single-tenant case, generalized
-    to reject a candidate outright rather than just mis-tag its
-    jurisdiction. **Update 2026-09-07: all 9 wrong-content pages deleted**
-    via `POST /internal/admin/delete-pages?dry_run=false` (`"deleted":9`,
-    all 9 `found`, none `not_found`), after the FK-violation 500 fix
-    (PR #751) deployed to `rtr-deeplink-archive` (confirmed live,
-    `dep-daf2qu2d0e5s73aigg30`, commit `441388fd1c`, which includes
-    `ed59dfa`). The underlying picker bug that produced these 9 pages is
-    still open -- nothing above prevents a future enumeration pass from
-    hitting the same shared-tenant/no-discriminator failure again.
-  - **Priority: HIGH.** Confirmed by two independent audits (this one and
-    the full-corpus screen below) to be a real, repeating failure mode,
-    not a one-off -- every cleanup so far has been reactive (delete after
-    the fact), and nothing stops the next enumeration pass from
-    reproducing it. The per-candidate discriminator described in **Next
-    action** above is the actual fix; flagged 2026-09-09 as the highest-
-    leverage item on this whole list.
+- **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live pages (not just the 1 Gloucester case above) -- the cleanup is done, but the picker that produced them still has no discriminator.**
+  - **Issue**: found 2026-09-06 in the school-district enumeration audit. The "pick something recent" step on a shared tenant (Cablecast, CivicClerk, eScribe, Granicus) resolved a real, current meeting of the wrong government, or a non-meeting such as a talk show. Nine pages were deleted on 2026-09-07. WO-934 confirmed on 2026-09-21 that all nine are gone (none of their slugs is in the export, including the three `pgcps.cablecast.tv` pages).
+  - **Impact**: nothing stops the next enumeration pass doing it again. WO-932's `host_name_conflict()` flags a tenant whose name shares no word with the government but never blocks, and nothing collects the flags. WO-933's shared gate checks a video's title and shape, not which body met.
+  - **Next action**: a per-candidate check that rejects a candidate whose meeting body belongs to a different kind of government than the row's (a school board on a city's row), as `GOVERNMENT_IDENTITY_ARCHITECTURE.md` sections 4 and 5 describe. First decide whether the WO-932 host-name flag should block on shared tenants.
+  - **Constraint**: no live wrong page is left from this batch. The 23 wrong-type pages from the same audit are on `reports/wrong_page_worklist.csv`.
+  - **History**: `BACKLOG_DONE.md` WO-934 (the original entry text), WO-932, WO-933. Priority HIGH, flagged 2026-09-09.
 
-- **[NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
-  wrong-content pattern at much larger scale than the 9-page school-
-  district batch, plus a second, distinct pattern: school-district
-  meetings tagged to the wrong KIND of government, not just the wrong
-  meeting.**
-  - **Issue**: a title/jurisdiction/`gov_type` heuristic screen (see
-    `rtr-business/research/archive_audit/AUDIT_REPORT.md` for full
-    method and every category) flagged 414 of 5,857 live pages (7.1%).
-    Of those, **16 are the same kind of bug as the entry above** --
-    non-meeting content (talk shows, a Granicus vendor-conference video
-    self-tagged with a fake "jurisdiction", 8 Legistar/CivicClerk staff
-    admin-*training* videos ingested as if they were public meetings) --
-    and **23 more are a real, independently-named school district
-    (DJUSD, AUSD, Hopkins School District, etc.) tagged to the city/
-    township it happens to be colocated with** (e.g. "DJUSD Board of
-    Education" tagged `jurisdiction=Davis, CA, gov_type=municipality`
-    instead of the actual school district) -- a re-tag fix, not a
-    delete, since the meeting itself is real and correctly identified,
-    just attached to the wrong government record.
-  - **Real, material uncertainty, not yet resolved**: a further 13
-    "county"-tagged school-board pages could not be classified with
-    confidence -- several states (Florida, some Virginia divisions) run
-    school districts genuinely coterminous with the county, so "county"
-    may already be correct there; needs state-by-state research, not a
-    blanket rule. Separately, 305 pages were flagged only by "no
-    meeting-shaped keyword in the title," and a 50-item random sample
-    of that bucket suggests it's a real mixed bag (~20-30% genuine
-    non-meeting content -- PR videos, ceremonies, mayoral video blogs --
-    the rest a mix of a regex limitation on plurals and a judgment call
-    about whether ceremonial/civic content like State-of-the-City
-    addresses is in scope at all) -- none of the 305 were individually
-    re-verified. **Priority: HIGH** on finishing this specific bucket --
-    the 50-item sample's ~20-30% hit rate on real non-meeting content,
-    projected across all 305, implies real live junk this audit hasn't
-    found yet; flagged 2026-09-09 as the other top-priority item
-    alongside the discriminator fix above, not because the fix is hard
-    but because nobody has looked at the other ~255 rows yet.
-  - **Update 2026-09-08: the 16 non-meeting-content pages are deleted**
-    (`"deleted":16`, all 16 `found`, none `not_found`, confirmed via the
-    same `POST /internal/admin/delete-pages` treatment as the original 9).
-  - **Impact**: 25 of the original 9+16=25 wrong-content pages found by
-    this audit effort are now gone. The 23 wrong-government-*type* pages
-    (real meetings, wrong government record) are still live and untouched
-    -- these are a re-tag, not a delete. The real school districts behind
-    them (15 distinct ones) were added to `rtr-business/research/
-    master_open_candidates_deduped.csv` as their own tracked government
-    units (`us:sd:` gov_ids, real NCES LEA IDs) so they don't get lost as
-    open work.
-  - **Next action**: the 23 wrong-government-type pages need either 23
-    individual `POST /internal/jurisdiction/override` calls or a new
-    bulk endpoint -- no bulk re-tag tool exists today. **Priority: LOW
-    (trivial)** -- the content is already correct and live, this is a
-    metadata correction with no user-facing urgency; flagged 2026-09-09.
-    The 13 state-specific-review rows are similarly **Priority: LOW
-    (trivial)** -- small count, needs desk research (state school-
-    governance structure) more than engineering time. Both left to Ryan,
-    not made unilaterally.
-  - **History**: full per-category CSVs in `rtr-business/research/
-    archive_audit/categorized/`; raw export in `all_pages_raw.jsonl`.
+- **[NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same wrong-content pattern at a larger scale: 16 pages deleted, 35 on the sheet, and the biggest bucket (305 titles with no meeting word) was never read.**
+  - **Issue**: the 2026-09-06 screen flagged 414 of 5,857 pages. On 2026-09-21: the 16 non-meeting pages are deleted (all 16 absent from the export). The 23 school-district pages filed under a city or township are 22 rows on `reports/wrong_page_worklist.csv`, plus two same-shape siblings the re-screen found (1882, 1694); one is a joint meeting (2257) left off on purpose. Of the 13 county-tagged school boards, 11 are rows; one is a registry typing question (535) and one a joint meeting (3407). The 305 titles with no meeting-shaped word were never read, and 284 are still live. A 50-item sample in 2026-09 suggested 20 to 30 percent are non-meeting content.
+  - **Impact**: unread live pages that may not be meetings. The re-screen on the 2026-09-21 export flags 639 of 10,280 pages; 39 are sheet rows; 545 include the no-meeting-keyword rule.
+  - **Next action**: (1) apply the sheet (the Render-shell entry above). (2) Re-run the screen after it. (3) Read the no-keyword bucket in batches of 50 and add real cases to the sheet. (4) Look at the 15 school-board pages the re-screen flagged that no rule explains (list in `BACKLOG_DONE.md` WO-934).
+  - **Constraint**: the screen is not a verdict. A title with no meeting word is often a real meeting ("Hearings" and "Sessions" do not match the word list). Never delete on the screen alone.
+  - **History**: `rtr-business/research/archive_audit/AUDIT_REPORT.md`; `BACKLOG_DONE.md` WO-934.
 
 - **[NEEDS-AUDIT] Same source URL, different query string, two
   `MeetingPage` rows -- a real URL-normalization gap.**
@@ -3616,27 +3394,6 @@ of human step they need.
     rather than user-facing-broken; flagged 2026-09-09.
   - **History**: found via `rtr-business/research/archive_audit/`'s
     full-corpus screen entry above.
-
-- **[NEEDS-AUDIT] Three pages from the school-district audit resolved
-  with `jurisdiction=None` entirely -- missing, not wrong.**
-  - **Issue**: Andover, MA (CivicPlus/`cloud.castus.tv`), Duval, FL
-    (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain strongly
-    suggests "Duval County School Board," a dedicated tenant, so likely
-    correct content just missing the tag), and East Brunswick Township,
-    NJ (NovusAgenda, where title/date also both came back `None` --
-    possibly not a real per-meeting page at all, unconfirmed) all
-    resolved with no jurisdiction attached at all. Confirmed live
-    2026-09-06/07 while re-resolving candidates for the school-district
-    enumeration effort; not root-caused at the code level.
-  - **Impact**: 3 confirmed instances; likely related to the same class
-    of gap as the wrong-government-type pattern above (a tenant/platform
-    the jurisdiction-enrichment pipeline doesn't have a rule for) but not
-    confirmed as the same root cause.
-  - **Next action**: none yet. **Priority: LOW (trivial)** -- 3 known
-    instances, no user-facing harm beyond a missing metadata field;
-    flagged 2026-09-09.
-  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §63
-    Round 7.
 
 - **[LATER] GovDelivery -- a proposed discovery lead for finding new
   jurisdictions, never tried.**
@@ -4221,32 +3978,10 @@ of human step they need.
 
 ### 6 `best_effort` YouTube pages archived a promotional/off-topic video instead of the real meeting `[NEEDS-AUDIT]`
 
-- **Issue**: while building WO-136's local-transcription candidate list
-  (2026-09-09), 6 of 91 YouTube-no-transcript pages turned out to hold a
-  video that plainly isn't the claimed meeting: "Welcome to Crowley
-  County!" (`/m/crowley-county-co-2025-09-08-welcome-to-crowley-county`),
-  "Greenwood County, Kansas" (generic channel intro, no meeting-shaped
-  title at all), "VFW Appreciation 2025"
-  (`/m/athens-county-oh-2025-09-23-vfw-appreciation-2025`),
-  "HugeDomains.com - Location Matters" (a domain-parking sales video, on
-  a page whose own source URL is `hugedomains.com/domain_profile.cfm`),
-  "Welcome to Rolling Meadows 2019", and "Drone footage over New Haven,
-  Indiana". All 6 are `best_effort_resolve=yes` (generic_fallback) and
-  all 6 resolved from a generic government homepage or an
-  `.../AgendaCenter` root, not a specific meeting's own page.
-- **Impact**: 6 live pages misrepresent a promotional/unrelated video as
-  a named government meeting on a specific date; excluded from WO-136's
-  transcription run for exactly this reason (transcribing a drone video
-  or a domain-parking pitch is not this product's job). Likely a larger,
-  uncounted population — this is only the slice inside one 91-page study.
-- **Next action**: decide a real signal generic_fallback's video-guessing
-  path (`app/platforms/generic_fallback.py`) could check before attaching
-  a homepage's YouTube embed as *the* meeting video — e.g. an implausible
-  duration for the claimed meeting type, or the video's own title/
-  description having no meeting-shaped words at all. Until then, these 6
-  pages want a manual look (unpublish or re-point at a real recording if
-  one exists).
-- **History**: WO-136, 2026-09-09 (`BACKLOG_DONE.md`).
+- **Issue**: WO-136 (2026-09-09) found 6 of 91 no-transcript YouTube pages that hold a video plainly not the claimed meeting. On 2026-09-21 two are gone ("Welcome to Crowley County!" is not in the export; the HugeDomains page was deleted by WO-941). Four are live: 6101 (Greenwood County KS), 6119 (Athens County OH, "VFW Appreciation 2025"), 6218 (Rolling Meadows IL, "Welcome to Rolling Meadows 2019") and 6830 (New Haven IN, drone footage). All four are `best_effort_resolve=yes`, came from a generic government homepage or an `.../AgendaCenter` root, and hold no transcript. They are delete rows on `reports/wrong_page_worklist.csv`, all `needs_ryan`.
+- **Impact**: 4 live pages present an unrelated video as a named government meeting. The population is probably larger than these four.
+- **Next action**: Ryan writes approve or reject on each of the four rows. Two (6119, 6218) come from a government's own channel, which under Ryan's three-outcome rule is kept but hidden; hiding is not built, so the only action the tool has is delete. Separately, decide a real signal `generic_fallback.py` can check before it attaches a homepage's YouTube embed as the meeting video. `classify_video_hand_check()` (WO-933) returns no concern for any of the six titles (checked 2026-09-21), so it does not close this.
+- **History**: WO-136, 2026-09-09 (`BACKLOG_DONE.md`); `BACKLOG_DONE.md` WO-934.
 
 ### WO-34's roll-up calibration gap: a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
 
