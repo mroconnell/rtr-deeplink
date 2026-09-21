@@ -1343,6 +1343,10 @@ class ContextSaveApiRequest(BaseModel):
     id: Optional[int] = None
     social_url: str = Field(max_length=2048)
     summary: str = Field(max_length=2000)
+    # Same generous-vs.-the-real-cap reasoning as summary above (WO-945) --
+    # forwarded to Archive via model_dump() below, which is what carries
+    # this straight through with no other change needed on this side.
+    title: Optional[str] = Field(default=None, max_length=300)
     source_label: Optional[str] = Field(default=None, max_length=300)
     rtr_link: Optional[str] = Field(default=None, max_length=2048)
     match_kind: Optional[str] = None
@@ -1959,6 +1963,19 @@ async def archive_context_feed_xml(request: Request):
 async def archive_context_new(request: Request):
     return await _proxy_to_archive(
         "context/new", str(request.query_params), request.headers.get("cookie")
+    )
+
+
+# Registered AFTER /context/new and /context/feed.xml, same reasoning as
+# archive/main.py's own context_entry_page() route -- Starlette's `:int`
+# convertor already can't match either literal path, but the ordering
+# makes that obvious to a reader without having to reason about it.
+@app.get("/context/{entry_id:int}")
+async def archive_context_entry_page(request: Request, entry_id: int):
+    return await _proxy_to_archive(
+        f"context/{entry_id}",
+        str(request.query_params),
+        request.headers.get("cookie"),
     )
 
 

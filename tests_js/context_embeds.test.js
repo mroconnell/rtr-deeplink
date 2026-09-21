@@ -122,3 +122,24 @@ describe('fallbackUrlFor', () => {
     assert.equal(window.fallbackUrlFor(container), null);
   });
 });
+
+describe('isAutoloadEmbed', () => {
+  test('true when data-embed-autoload is present (boolean attribute)', () => {
+    const window = makeWindow();
+    const container = window.document.createElement('div');
+    container.setAttribute('data-embed-autoload', '');
+    assert.equal(window.isAutoloadEmbed(container), true);
+  });
+
+  test('false when data-embed-autoload is absent -- the click-to-load default', () => {
+    const window = makeWindow();
+    const container = window.document.createElement('div');
+    assert.equal(window.isAutoloadEmbed(container), false);
+  });
+
+  test('false for a null/undefined container', () => {
+    const window = makeWindow();
+    assert.equal(window.isAutoloadEmbed(null), false);
+    assert.equal(window.isAutoloadEmbed(undefined), false);
+  });
+});

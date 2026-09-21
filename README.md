@@ -2006,7 +2006,11 @@ editor-written summary (max 500 characters — never fetched or generated,
 see "No server-side fetch" below); a link out to the original post
 (`rel="noopener nofollow ugc"`); the meeting's own card image (see
 "Meeting card images" above); a match label; and a "Watch the full
-context" deep link, `/m/{slug}?t={seconds}`.
+context" deep link, `/m/{slug}?t={seconds}`. An entry may also carry an
+optional short **title** (max 120 characters, `CONTEXT_TITLE_MAX`,
+WO-945) — the editor's own headline for the post, shown as its own
+heading above the match badge when set. It's entirely optional; an entry
+with none looks exactly as it did before this existed.
 
 **Match labels** say how precisely the clip maps onto the meeting:
 
@@ -2016,27 +2020,40 @@ context" deep link, `/m/{slug}?t={seconds}`.
 | `approximate` | "Same meeting, moment approximate" | The right meeting, but no defensible single second. |
 | `related` | "Related meeting" | A different, related meeting than the one the clip shows. |
 
-**Embeds are click-to-load, and only for three networks.** For an
-Instagram, TikTok, or YouTube post, the entry also offers a "Show the
-post here" button. The embed itself — an official `embed.js` widget for
-Instagram/TikTok, a `youtube-nocookie.com` iframe for YouTube — loads
-only after the reader clicks it. **No post is loaded from Instagram,
-TikTok, or YouTube before that click.** One exception, confirmed by
-watching the real page's requests: when the *meeting* is hosted on
-YouTube, its card image loads from `i.ytimg.com` as the page opens.
-Click-to-load is a product choice, not a promise: the privacy page
+**Embeds exist only for three networks, and most of them are still
+click-to-load.** For an Instagram, TikTok, or YouTube post, the entry
+also offers a "Show the post here" button. The embed itself — an
+official `embed.js` widget for Instagram/TikTok, a `youtube-nocookie.com`
+iframe for YouTube — normally loads only after the reader clicks it.
+**As of WO-945 (2026-09-21), that's no longer the whole story**: on
+**page 1 of the public feed only**, the first `CONTEXT_AUTOLOAD_EMBEDS`
+(3) entries that have an embed load it on their own, lazily — an
+`IntersectionObserver` with a generous `rootMargin` starts the load as
+the entry nears the viewport, not the instant the page opens, and every
+entry after those first three still requires a click, as does every
+entry on page 2 onward and everything on the editor's own list
+(`/context/new`). This is a deliberate, capped trade-off: Ryan wanted the
+feed to look less empty with the players already showing, but every
+embed is still a real third-party request and page weight — which is
+exactly why WO-943 made embeds click-to-load in the first place — so the
+autoload count stays small and page-1-only rather than growing with the
+feed. One exception predates all of this, confirmed by watching the real
+page's requests: when the *meeting* is hosted on YouTube, its card image
+loads from `i.ytimg.com` as the page opens, autoload or not. This
+loading behavior is a product choice, not a promise: the privacy page
 deliberately describes third-party content in general terms (Ryan,
 2026-09-21), so changing how embeds load needs no policy edit, and
 `tests/test_privacy_page.py` keeps feature-level promises from creeping
-back in. This site has no cookie-consent banner,
-and a page of 20 entries should not silently load 20 third-party
-players. If the embed fails, the entry still stands on its own — the
-link-out and the deep link both still work. The "Couldn't load it here"
-fallback fires when the network's script is blocked outright. For a
-deleted post, TikTok's script still builds its frame and shows its own
-"unavailable" message inside it (confirmed live). Every other network (Facebook, X, Threads, Bluesky, Reddit,
-LinkedIn, anything else) is link-out only; there is no embed widget for
-those.
+back in. This site has no cookie-consent banner, which is exactly why the
+count stays capped rather than autoloading everything on the page. If an
+embed fails, the entry still stands on its own — the link-out and the
+deep link both still work. The "Couldn't load it here" fallback fires the
+same way whether the embed was click-triggered or autoloaded, when the
+network's script is blocked outright. For a deleted post, TikTok's script
+still builds its frame and shows its own "unavailable" message inside it
+(confirmed live). Every other network (Facebook, X, Threads, Bluesky,
+Reddit, LinkedIn, anything else) is link-out only; there is no embed
+widget for those, so it never autoloads or shows the button.
 
 **No server-side fetch of any social post, ever.** Instagram in
 particular is login-walled to a non-browser client — checked live
@@ -2074,7 +2091,7 @@ parses the slug and `t` out of the pasted link itself. `line`/`version`
 params on a pasted link are ignored for now (see `BACKLOG.md`).
 
 **Architecture.** The Archive renders the public pages and owns the
-writes; the resolver holds the public domain and proxies three GET
+writes; the resolver holds the public domain and proxies four GET
 routes plus two public write endpoints, the same two-hop pattern
 save-meeting/save-search already use (see "Accounts (Clerk)" above).
 There is no catch-all proxy — each route is explicit.
@@ -2084,19 +2101,22 @@ There is no catch-all proxy — each route is explicit.
 | `GET /context` | resolver → proxies to Archive, forwarding the `Cookie` header | the public feed page |
 | `GET /context/feed.xml` | resolver → proxies to Archive, **no** cookie forwarded | RSS feed |
 | `GET /context/new` | resolver → proxies to Archive, forwarding the `Cookie` header | the editor form + draft list |
+| `GET /context/{id}` | resolver → proxies to Archive, forwarding the `Cookie` header | one entry's own permalink page (WO-945 follow-up) |
 | `POST /api/context/save` | resolver, public | verifies the Clerk session, forwards the verified user id to Archive |
 | `POST /api/context/set-status` | resolver, public | same — publish/hide/draft transitions |
-| `GET /context`, `/context/feed.xml`, `/context/new` | Archive | renders the page/feed/form; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
+| `GET /context`, `/context/feed.xml`, `/context/new`, `/context/{id}` | Archive | renders the page/feed/form/permalink; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
 | `POST /internal/context/save` | Archive, token-gated | the real write, re-checking the allowlist |
 | `POST /internal/context/set-status` | Archive, token-gated | status transitions, re-checking the allowlist |
 
 New pure modules: `archive/utils/context_links.py` (parses a pasted
 social URL and a pasted RTR share link, and describes each network's
 embed) and `archive/utils/context_editors.py` (the allowlist check).
-Front-end: `archive/static/context_embeds.js` (click-to-load),
+Front-end: `archive/static/context_embeds.js` (click-to-load, plus the
+page-1 autoload path — WO-945),
 `archive/static/context_editor.js` (the form). Templates:
 `archive/templates/context.html`, `_context_entry.html`,
-`context_new.html`, `context_feed.xml.jinja`.
+`context_new.html`, `context_feed.xml.jinja`, `context_entry_page.html`
+(the permalink page, WO-945 follow-up).
 
 **Data model.** A new Archive table, `context_entries` (model
 `ContextEntry`, `archive/db/models.py`), with one Alembic migration —
@@ -2106,24 +2126,58 @@ above) and is otherwise unrelated. Columns: `social_url` (the canonical
 URL) and `social_url_key` (the dedupe identity — `instagram:{shortcode}`,
 `tiktok:{id}`, `youtube:{id}`, or else the normalized URL, unique —
 so the same post can't be entered twice), `network`, `source_label`,
-`summary`, `meeting_page_id` (nullable FK, `ON DELETE SET NULL`),
-`t_seconds`, `match_kind`, `status`, `created_by_clerk_user_id`,
-`published_at`, `created_at`, `updated_at`. Stores **no PII** — only
-Clerk's opaque user id as author, same convention as `SavedItem` (see
-"Accounts (Clerk)" above). `status` and `created_by_clerk_user_id` exist
-even though only allowlisted editors can write today, so that open
-submissions with a review queue are a later schema-free addition — see
-`BACKLOG.md`. On Clerk's `user.deleted` webhook, an entry's author id is
-nulled and the entry itself is kept (it's editorial content, not the
-author's personal data). When a meeting page is deleted
-(`delete_meeting_pages_by_slug`), its published entries are demoted back
-to drafts, so they reappear in the editor's own list instead of quietly
-pointing at nothing.
+`summary`, `title` (nullable, optional, added WO-945 — the editor's short
+headline for the entry, capped in app code at `CONTEXT_TITLE_MAX`
+regardless of the wider column), `meeting_page_id` (nullable FK,
+`ON DELETE SET NULL`), `t_seconds`, `match_kind`, `status`,
+`created_by_clerk_user_id`, `published_at`, `created_at`, `updated_at`.
+Stores **no PII** — only Clerk's opaque user id as author, same
+convention as `SavedItem` (see "Accounts (Clerk)" above). `status` and
+`created_by_clerk_user_id` exist even though only allowlisted editors can
+write today, so that open submissions with a review queue are a later
+schema-free addition — see `BACKLOG.md`. On Clerk's `user.deleted`
+webhook, an entry's author id is nulled and the entry itself is kept
+(it's editorial content, not the author's personal data). When a meeting
+page is deleted (`delete_meeting_pages_by_slug`), its published entries
+are demoted back to drafts, so they reappear in the editor's own list
+instead of quietly pointing at nothing.
+
+**`title` vs. `headline` — a deliberate naming split.** The DB column and
+the API/form field are both called `title` — the word Ryan uses for an
+entry's own short headline. But the entry dict every reader (the public
+feed, the RSS feed, the editor form) actually gets back already has a key
+called `title` that means something else entirely: the **matched
+meeting's** own title (`MeetingPage.title`, joined in at read time). To
+avoid that collision, `archive/db/crud.py` reads the entry's own title
+back under a different dict key, `headline`, and leaves `title` alone
+for the meeting's. So: write `title`, read `headline` for the entry's own
+one, read `title` for the meeting's. See that file's "Full Context feed"
+section (`_entry_row_to_dict()`/`_context_entry_dict()`) for where the
+rename happens.
 
 **SEO.** `/context` is `noindex` and left out of the sitemap until it has
 at least `CONTEXT_MIN_INDEXABLE` (5) published entries — the same
 thin-page reasoning as the `/state/*`/`/j/*` hub pages (see
 `STATE_HUB_PAGES.md`). Pages after the first are always `noindex`.
+
+**Permalink pages (`/context/{id}`, WO-945 follow-up).** The feed's own
+per-entry anchor (`#context-{id}`) isn't a stable link — an entry slides
+to page 2 as newer ones publish. Every entry also gets a real URL,
+`/context/{id}`, which 404s for anything that isn't a published entry
+with a real, still-existing meeting (a draft, a hidden entry, an orphan
+whose meeting was deleted, or an unknown id) — even for the signed-in
+editor, who previews a draft on `/context/new` instead. When an entry has
+a title, that title is the link to its permalink everywhere it appears
+(the feed, the editor list); the permalink page itself renders that same
+title as its own `<h1>` (or, absent one, the matched meeting's title).
+An entry with no title is still linkable — a small "Link to this post"
+text link on the feed, a "View post" action in the editor list. The
+permalink page's own embed always autoloads (unlike the feed's capped,
+page-1-only autoload — see above), since a reader who opened one specific
+post wants to see it. Indexing follows the feed's own threshold
+(`CONTEXT_MIN_INDEXABLE`), not a per-entry decision. Not yet in the
+sitemap, and the RSS feed's `<link>` still points at the entry's meeting
+deep link rather than its permalink — both are open, see `BACKLOG.md`.
 
 **Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
 a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
@@ -2131,6 +2185,17 @@ of `t` (see "Meeting card images" above). Only a non-YouTube meeting gets
 a true frame extracted at the timestamp. Many of the meetings that get
 clipped on social media are on YouTube, so many Full Context entries will
 show a generic video thumbnail rather than the actual clipped moment.
+
+**A second card limit: three frames per meeting.** A non-YouTube meeting
+stores at most `MAX_FRAMES_PER_PAGE` (3) extracted frames. Once a meeting
+has three, a new entry's exact moment cannot be stored, and the card
+route serves the meeting's *default* frame instead. If there is no
+default frame either, the route returns a 404, so the feed shows no
+image for that entry rather than a broken one. The feed decides this
+with the card route's own rule (exact frame, else default, else nothing)
+— see `crud._ContextFrames`. "The page has some stored frame" is not
+enough for an arbitrary timestamp; that shortcut rendered broken images
+in the WO-945 browser check.
 
 **Deploy order.** Deploy the Archive first — it carries the migration
 and the new routes — then the resolver, or the nav link 404s in between.
@@ -3058,18 +3123,22 @@ archive/
     feed.xml.jinja            feed.xml (RSS) template
     context.html               the public /context feed -- see "Full
                            Context feed" above
-    _context_entry.html       one feed entry, included by context.html
+    _context_entry.html       one feed entry, included by context.html,
+                           context_new.html and context_entry_page.html
     context_new.html           the editor form + draft list, backs
                            /context/new
     context_feed.xml.jinja    /context/feed.xml (RSS)
+    context_entry_page.html    one entry's own permalink page, backs
+                           /context/{id} -- WO-945 follow-up
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM, plus
                            the Save-this-meeting toggle
   static/saved_items.js     unsave-button handlers on the saved-items page
-  static/context_embeds.js  click-to-load Instagram/TikTok/YouTube
-                           embeds on /context -- see "Full Context feed"
-                           above
+  static/context_embeds.js  Instagram/TikTok/YouTube embeds on /context --
+                           click-to-load, plus lazy autoload for the
+                           first few on page 1 (WO-945) -- see "Full
+                           Context feed" above
   static/context_editor.js  the /context/new form
 ```
 

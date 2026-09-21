@@ -1,8 +1,13 @@
 {#- Context variables:
-     entry (dict, the WO-943 Full Context data contract -- exactly these
-       keys: id, status, summary (UNTRUSTED, plain-escaped), social_url,
-       network, network_label, source_label (UNTRUSTED, plain-escaped),
-       embed (None or {"kind":"youtube","video_id":..} /
+     entry (dict, the WO-943/WO-945 Full Context data contract -- exactly
+       these keys: id, status, summary (UNTRUSTED, plain-escaped),
+       headline (UNTRUSTED, plain-escaped, optional -- the EDITOR's own
+       short title for this entry, WO-945; not to be confused with
+       `title` below, which is the MEETING's title), permalink (this
+       entry's own stable URL, `/context/{id}`, WO-945 follow-up -- present
+       on every entry regardless of status), social_url, network,
+       network_label, source_label (UNTRUSTED, plain-escaped), embed
+       (None or {"kind":"youtube","video_id":..} /
        {"kind":"instagram","permalink":..} /
        {"kind":"tiktok","video_id":..,"cite":..}), match_kind, match_label,
        t_seconds, timestamp_label, published_at/created_at/updated_at,
@@ -12,22 +17,48 @@
      editor_view (bool, default false -- set `{% set editor_view = true %}`
        before including this from context_new.html; the public feed
        (context.html) never sets it, so the default below applies)
+     autoload (bool, default false -- WO-945; set by context.html's loop
+       for the first CONTEXT_AUTOLOAD_EMBEDS entries that have an embed,
+       page 1 only, and unconditionally by context_entry_page.html's own
+       single-entry include (WO-945 follow-up) -- a reader who opened one
+       specific post wants to see it. context_new.html never sets it, so
+       the editor list never autoloads.)
+     permalink_view (bool, default false -- WO-945 follow-up; set only by
+       context_entry_page.html, the permalink page for one entry. Changes
+       exactly one thing: the headline (or, absent one, the meeting title)
+       becomes this page's own <h1>, plain text, never a link back to the
+       page it's already on -- context_entry_page.html emits no other h1.
+       context.html and context_new.html never set it.)
 
-   Included by both context.html (public feed, editor_view unset/false)
-   and context_new.html (editor list, editor_view=true) -- one entry's
-   markup lives in exactly one place so the two surfaces can't drift.
+   Included by context.html (public feed, editor_view unset/false),
+   context_new.html (editor list, editor_view=true), and
+   context_entry_page.html (one entry's own permalink page,
+   permalink_view=true) -- one entry's markup lives in exactly one place
+   so the three surfaces can't drift.
 
-   Reading order matches the public contract exactly: thumb, match badge,
-   summary, original-post link, meeting title + where/date, the "watch
-   the full context" call to action, then the click-to-load embed. Every
-   meeting-dependent piece (thumb/title/where/CTA) is gated on
-   `entry.has_meeting`, not on the individual field being truthy -- the
-   contract guarantees those fields are None together, but gating on the
-   one flag reads the intent directly and can't be fooled by a single
-   missing field on an otherwise-real match. This must render a draft
-   with every meeting field None without crashing, since the editor list
-   shows every status. -#}
+   Reading order matches the public contract exactly: thumb, headline (if
+   any), match badge, summary, original-post link (+ a quiet permalink
+   link when there's no headline to carry one, see below), meeting title +
+   where/date, the "watch the full context" call to action, then the
+   embed (click-to-load, or autoloaded for the first few on page 1, or
+   always on the permalink page -- see `autoload` above). Every meeting-
+   dependent piece (thumb/title/where/CTA) is gated on `entry.has_meeting`,
+   not on the individual field being truthy -- the contract guarantees
+   those fields are None together, but gating on the one flag reads the
+   intent directly and can't be fooled by a single missing field on an
+   otherwise-real match. This must render a draft with every meeting field
+   None without crashing, since the editor list shows every status.
+
+   Every entry is linkable at `entry.permalink`, even one with no headline
+   to carry the link: on the public feed a small "Link to this post" link
+   rides along in the source line (below); in the editor list, a "View
+   post" action does the same job next to Edit, but only once an entry is
+   actually published -- a draft/hidden entry's permalink 404s (see
+   get_public_context_entry()'s own docstring), so linking to it there
+   would be a dead end. -#}
 {% set editor_view = editor_view | default(false) %}
+{% set autoload = autoload | default(false) %}
+{% set permalink_view = permalink_view | default(false) %}
 <article class="featured-meeting context-entry" id="context-{{ entry.id }}">
   {% if editor_view %}
   {#- Editor-only: which of the three statuses this entry is in right
@@ -46,6 +77,27 @@
   </a>
   {% endif %}
   <div class="featured-body">
+    {% if permalink_view %}
+    {#- This page's one <h1> -- the entry's own headline when it has one,
+       else the matched meeting's title (get_public_context_entry()
+       guarantees has_meeting=true here, so entry.title is never None).
+       Never a link: a permalink page doesn't link to itself. -#}
+    <h1 class="context-headline">{{ entry.headline or entry.title or "Untitled meeting" }}</h1>
+    {% elif entry.headline %}
+    {#- UNTRUSTED, editor-written -- always plain autoescape, never |safe,
+       same as summary/source_label below. h2: below the page's own h1
+       ("Full Context") and above this entry's own meeting-title h3
+       further down, so the outline stays sensible with or without one of
+       these present. Links to this entry's own permalink (WO-945 follow-
+       up) -- except in the editor list for an entry that isn't published
+       yet, where that link would 404 (see this file's own header
+       comment). -#}
+    {% if editor_view and entry.status != "published" %}
+    <h2 class="context-headline">{{ entry.headline }}</h2>
+    {% else %}
+    <h2 class="context-headline"><a href="{{ entry.permalink }}">{{ entry.headline }}</a></h2>
+    {% endif %}
+    {% endif %}
     {% if entry.match_label %}
     {#- Three kinds, visually distinguishable but calm -- exact is solid
        (the strongest claim: this is the moment), approximate/related are
@@ -62,6 +114,17 @@
     <p class="context-summary">{{ entry.summary }}</p>
     <p class="context-source">
       <a href="{{ entry.social_url }}" target="_blank" rel="noopener nofollow ugc">Original post on {{ entry.network_label }}{% if entry.source_label %} by {{ entry.source_label }}{% endif %}</a>
+      {% if not entry.headline and not permalink_view and not editor_view -%}
+      {#- Every entry is linkable, even one with no headline to carry the
+         link -- see this file's own header comment. Quiet on purpose
+         (small, muted -- styled in the context-* section of style.css)
+         since it's a fallback, not the primary action on the card. Note
+         the whitespace control is on the OTHER side of each tag here
+         (trim after `%}`, not before) so a real space survives between
+         "...YouTube" and the middot -- the opposite of this file's usual
+         convention, and deliberate. -#}
+      &middot; <a href="{{ entry.permalink }}" class="context-permalink-quiet">Link to this post</a>
+      {%- endif %}
     </p>
     {% if entry.has_meeting %}
     <h3 class="featured-title">
@@ -84,12 +147,18 @@
     <p class="context-no-meeting">No meeting matched yet</p>
     {% endif %}
     {% if entry.embed %}
-    {#- Click-to-load only -- no third party is contacted until the
+    {#- Click-to-load by default -- no third party is contacted until the
        reader clicks (context_embeds.js). Only parser-derived values go
        into the data attributes; the button starts hidden so there is
        never a dead control when JS is off, and context_embeds.js is the
-       only thing that un-hides it. -#}
+       only thing that un-hides it. `data-embed-autoload` (WO-945) is the
+       one exception: for the first few embeddable entries on page 1 of
+       the public feed (see `autoload` above), context_embeds.js loads
+       this one on its own, lazily, as it nears the viewport, and never
+       un-hides the button for it -- see that file's own comment on the
+       "must never flash" rule. -#}
     <div class="context-embed" data-embed-kind="{{ entry.embed.kind }}"
+      {%- if autoload %} data-embed-autoload{% endif %}
       {%- if entry.embed.kind == "youtube" %} data-embed-id="{{ entry.embed.video_id }}"
       {%- elif entry.embed.kind == "instagram" %} data-embed-url="{{ entry.embed.permalink }}"
       {%- elif entry.embed.kind == "tiktok" %} data-embed-id="{{ entry.embed.video_id }}" data-embed-url="{{ entry.embed.cite }}"
@@ -100,6 +169,12 @@
     {% if editor_view %}
     <div class="context-entry-actions">
       <a href="/context/new?id={{ entry.id }}" class="cassette-btn-outline">Edit</a>
+      {% if entry.status == "published" %}
+      {#- Only once published -- a draft/hidden entry's permalink 404s
+         (see this file's own header comment), so linking to it here
+         would be a dead end. -#}
+      <a href="{{ entry.permalink }}" class="cassette-btn-outline">View post</a>
+      {% endif %}
       {#- context_editor.js reads data-set-status off whichever of these
          is clicked and POSTs /api/context/set-status; which buttons show
          depends on the entry's current status (see WO-943's contract). -#}

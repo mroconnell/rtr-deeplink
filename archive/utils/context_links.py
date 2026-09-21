@@ -30,6 +30,11 @@ _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 _MAX_RAW_URL_LENGTH = 2048
 CONTEXT_SUMMARY_MAX = 500
+# WO-945: the editor's optional short title for an entry (the API/form
+# field and DB column are both `title`; the read-side dict key is
+# `headline` -- see archive/db/crud.py's "Full Context feed" section for
+# why). Narrower than a full summary -- a headline, not a second summary.
+CONTEXT_TITLE_MAX = 120
 
 MATCH_KINDS = {
     "exact": "Exact moment",

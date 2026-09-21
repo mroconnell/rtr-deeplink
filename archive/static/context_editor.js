@@ -91,6 +91,7 @@ function wireContextEntryForm() {
 
     const payload = {
       social_url: form.querySelector('input[name="social_url"]').value,
+      title: form.querySelector('input[name="title"]').value,
       summary: form.querySelector('textarea[name="summary"]').value,
       source_label: form.querySelector('input[name="source_label"]').value,
       rtr_link: form.querySelector('input[name="rtr_link"]').value,

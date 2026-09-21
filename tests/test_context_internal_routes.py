@@ -291,6 +291,44 @@ async def test_set_status_publish_hide_republish(monkeypatch):
     assert republished.json()["entry"]["status"] == "published"
 
 
+def test_save_round_trips_title_as_headline(monkeypatch):
+    # WO-945: the request/DB field is `title`; the response's key is
+    # `headline` (see archive/db/crud.py's own comment on why they
+    # differ) -- pins that the route carries the value through under the
+    # renamed key rather than dropping or misnaming it.
+    _allow(monkeypatch)
+    response = client.post(
+        "/internal/context/save",
+        json={
+            "clerk_user_id": _EDITOR,
+            "social_url": _social_url(),
+            "summary": "A clip with a real title.",
+            "title": "A short headline",
+        },
+        headers=_TOKEN,
+    )
+    assert response.status_code == 200
+    entry = response.json()["entry"]
+    assert entry["headline"] == "A short headline"
+    assert "title" in entry  # still present -- it's the meeting's own title
+
+
+def test_save_400s_for_an_overlong_title(monkeypatch):
+    _allow(monkeypatch)
+    response = client.post(
+        "/internal/context/save",
+        json={
+            "clerk_user_id": _EDITOR,
+            "social_url": _social_url(),
+            "summary": "A clip.",
+            "title": "x" * 200,
+        },
+        headers=_TOKEN,
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "title_too_long"
+
+
 async def test_response_json_round_trips_for_an_entry_with_a_meeting(monkeypatch):
     # Pins that the entry dict's datetimes (published_at/created_at/
     # updated_at) and Markup date_html all serialize cleanly through

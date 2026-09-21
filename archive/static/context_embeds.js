@@ -1,12 +1,15 @@
-// Click-to-load embeds for Full Context entries (/context, /context/new --
+// Embeds for Full Context entries (/context, /context/new --
 // _context_entry.html renders both). Privacy posture: no third party
-// (YouTube, Instagram, TikTok) is contacted until the reader actually
-// clicks "Show the post here" -- the server only ever renders a hidden
-// button plus a few parser-derived data-* attributes (see
-// _context_entry.html's own comment on why only those values reach the
-// DOM). Everything below builds elements with createElement/setAttribute
-// only, never innerHTML/string-concatenated HTML, since data-embed-url
-// ultimately comes from an editor-typed social post URL.
+// (YouTube, Instagram, TikTok) is contacted before either the reader
+// clicks "Show the post here", or -- for the first few embeddable entries
+// on page 1 of the public feed (WO-945, `data-embed-autoload` on the
+// container, set server-side by context.html) -- before that entry nears
+// the viewport. Either way, the server only ever renders a hidden button
+// plus a few parser-derived data-* attributes (see _context_entry.html's
+// own comment on why only those values reach the DOM). Everything below
+// builds elements with createElement/setAttribute only, never innerHTML/
+// string-concatenated HTML, since data-embed-url ultimately comes from an
+// editor-typed social post URL.
 //
 // Same "plain top-level function declarations, no module system" shape as
 // shared_static/deep_link.js -- see that file's own header comment. Kept
@@ -188,14 +191,67 @@ function loadEmbed(container) {
   }, 8000);
 }
 
+// Pure helper (unit-tested directly, see tests_js/context_embeds.test.js)
+// -- whether a `.context-embed` container should load on its own rather
+// than click-to-load. `data-embed-autoload` is a boolean attribute (no
+// value), so its presence alone is what matters; dataset exposes that as
+// `''` (present) vs. `undefined` (absent).
+function isAutoloadEmbed(container) {
+  return !!container && container.dataset.embedAutoload !== undefined;
+}
+
+// Guards against a double load -- an autoload container's IntersectionObserver
+// firing more than once (it doesn't, since observeAutoloadEmbed()
+// unobserves on the first hit, but a defensive check costs nothing), or,
+// in principle, an autoload container that somehow also has a live click
+// handler. Marks the container so a second call is a no-op.
+function loadEmbedOnce(container) {
+  if (!container || container.dataset.embedLoaded) return;
+  container.dataset.embedLoaded = 'true';
+  const btn = container.querySelector('.context-embed-load');
+  if (btn) btn.remove();
+  loadEmbed(container);
+}
+
+// Autoload entries load lazily -- a generous rootMargin so the embed is
+// ready by the time a reader actually scrolls to it, without loading all
+// of them the instant the page opens (the whole point of capping
+// CONTEXT_AUTOLOAD_EMBEDS and keeping this page-1-only server-side).
+// IntersectionObserver is supported everywhere this site targets, but a
+// missing one degrades to loading right away rather than an entry that
+// silently never loads.
+function observeAutoloadEmbed(container) {
+  if (typeof IntersectionObserver === 'undefined') {
+    loadEmbedOnce(container);
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          observer.unobserve(container);
+          loadEmbedOnce(container);
+        }
+      });
+    },
+    { rootMargin: '600px 0px' }
+  );
+  observer.observe(container);
+}
+
 function wireContextEmbeds() {
-  document.querySelectorAll('.context-embed-load').forEach((btn) => {
+  document.querySelectorAll('.context-embed').forEach((container) => {
+    if (isAutoloadEmbed(container)) {
+      // The "Show the post here" button must never flash for an autoload
+      // entry -- so, unlike the click-to-load branch below, its `hidden`
+      // attribute (set by the template) is never touched here.
+      observeAutoloadEmbed(container);
+      return;
+    }
+    const btn = container.querySelector('.context-embed-load');
+    if (!btn) return;
     btn.hidden = false;
-    btn.addEventListener('click', () => {
-      const container = btn.closest('.context-embed');
-      btn.remove();
-      if (container) loadEmbed(container);
-    });
+    btn.addEventListener('click', () => loadEmbedOnce(container));
   });
 }
 

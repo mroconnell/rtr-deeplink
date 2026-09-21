@@ -165,17 +165,27 @@ def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
     # per-visitor content, same split as /meetings vs. /feed.xml below.
     resolver_client.get("/context", headers={"Cookie": "__session=abc123"})
     resolver_client.get("/context/feed.xml", headers={"Cookie": "__session=abc123"})
+    resolver_client.get("/context/new", headers={"Cookie": "__session=abc123"})
+    # WO-945 follow-up: the permalink page is auth-aware too (is_editor,
+    # same as /context itself), and -- the actual thing under test here --
+    # must be routed to its OWN internal path ("context/123"), not
+    # swallowed by /context/new or /context/feed.xml's literal routes
+    # (see archive_context_entry_page()'s own comment on why it's
+    # registered after them).
+    resolver_client.get("/context/123", headers={"Cookie": "__session=abc123"})
 
     by_path = {path.split("/")[0]: cookie for path, cookie in captured}
     assert by_path["meetings"] == "__session=abc123"
     assert captured[1][1] == "__session=abc123"  # the m/{slug} call
     assert by_path["static"] is None
-    # Both start with "context/" as their first path segment, so check
-    # each call by its full internal path rather than by_path above
-    # (which would just let the second overwrite the first).
+    # All start with "context" as their first path segment, so check each
+    # call by its full internal path rather than by_path above (which
+    # would just let the later ones overwrite the earlier).
     context_calls = dict(c for c in captured if c[0].startswith("context"))
     assert context_calls["context"] == "__session=abc123"
     assert context_calls["context/feed.xml"] is None
+    assert context_calls["context/new"] == "__session=abc123"
+    assert context_calls["context/123"] == "__session=abc123"
 
 
 def test_proxy_forwards_cookie_to_context_new(monkeypatch):

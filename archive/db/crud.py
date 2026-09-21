@@ -95,12 +95,13 @@ from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
 from ..utils.context_links import (
     CONTEXT_SUMMARY_MAX,
+    CONTEXT_TITLE_MAX,
     MATCH_KINDS,
     NETWORK_LABELS,
     SocialRef,
 )
 from ..utils.context_links import embed_for as _context_embed_for
-from ..utils.video_thumbnail import youtube_thumbnail_url
+from ..utils.video_thumbnail import target_offset_seconds, youtube_thumbnail_url
 from . import hub_slugs
 from .engine import async_session
 from .models import (
@@ -10848,6 +10849,16 @@ CONTEXT_MIN_INDEXABLE = 5
 # route wants it (the sitemap builder, an RSS feed) reads one shared
 # number rather than each guessing its own.
 CONTEXT_PAGE_SIZE = 20
+# WO-945: how many of page 1's entries get their embed loaded automatically
+# rather than click-to-load. A real trade-off, not a free win -- it looks
+# better with the players already showing, but each one is a third-party
+# request and real page weight, which is exactly why click-to-load was the
+# WO-943 default in the first place. Capped small and page-1-only keeps
+# that cost bounded regardless of how many entries the feed grows to;
+# archive/main.py's context_feed() reads this module attribute at call
+# time (not page > 1) so a test can monkeypatch it per case, same pattern
+# as CONTEXT_MIN_INDEXABLE above.
+CONTEXT_AUTOLOAD_EMBEDS = 3
 
 _CONTEXT_CHECK_TTL = timedelta(minutes=1)
 _context_state: dict[str, Any] = {"available": False, "checked_at": None}
@@ -10885,7 +10896,13 @@ async def _context_available(session) -> bool:
 
 def _entry_row_to_dict(entry: ContextEntry) -> dict:
     """ORM row -> plain dict, the same "never hand an ORM object back to a
-    caller" rule this file follows everywhere else."""
+    caller" rule this file follows everywhere else.
+
+    `entry.title` (the DB column, WO-945) is read into the dict key
+    `"headline"`, not `"title"` -- `_context_entry_dict()` below already
+    uses `"title"` for the MEETING's own title (MeetingPage.title, joined
+    in separately), and reusing the name here would collide the two.
+    """
     return {
         "id": entry.id,
         "social_url": entry.social_url,
@@ -10893,6 +10910,7 @@ def _entry_row_to_dict(entry: ContextEntry) -> dict:
         "network": entry.network,
         "source_label": entry.source_label,
         "summary": entry.summary,
+        "headline": entry.title,
         "meeting_page_id": entry.meeting_page_id,
         "t_seconds": entry.t_seconds,
         "match_kind": entry.match_kind,
@@ -10920,8 +10938,66 @@ def _context_page_row_to_dict(page: MeetingPage) -> dict:
     }
 
 
+class _ContextFrames:
+    """Which card frames /m/{slug}/card.jpg would actually SERVE for a set
+    of pages -- the feed's own, stricter form of pages_with_thumbnails().
+
+    pages_with_thumbnails() answers "does this page have any stored
+    frame", which is the right question for the hub cards: their `?t=` is
+    the meeting's own highlight, i.e. the page's default frame. It is the
+    wrong question here. A feed entry's `?t=` is whatever moment the
+    editor picked, and the card route's chain is exact frame -> the
+    page's DEFAULT frame -> 404 (see meeting_card_image()). So a page can
+    hold stored frames and still 404 for this entry: confirmed in the
+    browser (WO-945) with five entries on one meeting --
+    video_thumbnail.MAX_FRAMES_PER_PAGE (3) was used up by the first three
+    timestamps before any default frame existed, and entries four and
+    five rendered broken images. Mirroring the route's rule exactly is
+    what keeps this file's "never advertise a card URL that would 404"
+    promise true for an arbitrary timestamp.
+
+    A brand-new entry's exact frame is still being extracted when its
+    first reader arrives (see internal_context_save()'s warm); until it
+    lands the entry shows the default frame, or no image at all -- never
+    a broken one.
+    """
+
+    def __init__(self, default_page_ids: set, frame_keys: set):
+        self._default_page_ids = default_page_ids
+        self._frame_keys = frame_keys
+
+    def would_serve(self, page_id: int, t_seconds: Optional[int]) -> bool:
+        if page_id in self._default_page_ids:
+            return True
+        if t_seconds is None:
+            return False
+        offset = target_offset_seconds(timestamp=int(t_seconds))
+        return (page_id, offset) in self._frame_keys
+
+
+async def _context_servable_frames(session, page_ids: Sequence[int]) -> _ContextFrames:
+    """One query for every page on the feed page, same bulk reasoning as
+    pages_with_thumbnails(). Empty (nothing servable) when the thumbnails
+    table doesn't exist yet."""
+    if not page_ids or not await _thumbnails_available(session):
+        return _ContextFrames(set(), set())
+    rows = (
+        await session.execute(
+            select(
+                MeetingPageThumbnail.meeting_page_id,
+                MeetingPageThumbnail.offset_seconds,
+                MeetingPageThumbnail.is_default,
+            ).where(MeetingPageThumbnail.meeting_page_id.in_(list(page_ids)))
+        )
+    ).all()
+    return _ContextFrames(
+        {row[0] for row in rows if row[2]},
+        {(row[0], row[1]) for row in rows},
+    )
+
+
 def _context_entry_dict(
-    entry: dict, page: Optional[dict], *, thumb_page_ids: set
+    entry: dict, page: Optional[dict], *, servable_frames: "_ContextFrames"
 ) -> dict:
     """The one shape every context-feed reader returns. See this section's
     own intro comment for why the exact key set is load-bearing.
@@ -10929,12 +11005,31 @@ def _context_entry_dict(
     `embed` is computed here, at read time, by re-parsing the stored
     (network, social_url) -- see context_links.embed_for()'s own
     docstring for why that's deliberate rather than a stored column.
+
+    `headline` (WO-945) is the editor's own optional short title for this
+    entry (`entry["headline"]`, itself read from ContextEntry.title --
+    see _entry_row_to_dict()'s own comment on the rename). `title` below
+    is a completely different thing: the MEETING's own title, only ever
+    set once `page` is known (None until then, same as every other
+    meeting-dependent field). Do not conflate the two.
+
+    `permalink` (WO-945 follow-up) is this entry's own stable URL,
+    `/context/{id}` -- computed straight from `entry["id"]`, present on
+    EVERY entry regardless of status/meeting (unlike most of this dict,
+    which is meeting-dependent). It exists so a headline (or, absent one,
+    the quiet permalink affordance -- see _context_entry.html) always has
+    somewhere stable to link, even for an entry that later moves off page
+    1 of the feed. It is not itself a check that the permalink page will
+    200 for this entry -- get_public_context_entry() (the route behind
+    it) applies the real published+has-meeting rule at read time.
     """
     t_seconds = entry["t_seconds"]
     result = {
         "id": entry["id"],
         "status": entry["status"],
         "summary": entry["summary"],
+        "headline": entry["headline"],
+        "permalink": f"/context/{entry['id']}",
         "social_url": entry["social_url"],
         "network": entry["network"],
         "network_label": NETWORK_LABELS.get(entry["network"], NETWORK_LABELS["other"]),
@@ -10968,7 +11063,7 @@ def _context_entry_dict(
     slug = page["slug"]
     suffix = f"?t={int(t_seconds)}" if t_seconds is not None else ""
     card_url = youtube_thumbnail_url(page.get("video_url"))
-    if not card_url and page["id"] in thumb_page_ids:
+    if not card_url and servable_frames.would_serve(page["id"], t_seconds):
         card_url = f"/m/{slug}/card.jpg{suffix}"
 
     result.update(
@@ -11002,10 +11097,8 @@ async def _context_entry_response(session, entry: ContextEntry) -> dict:
             )
         ).scalar_one_or_none()
         page = _context_page_row_to_dict(page_row) if page_row is not None else None
-    thumb_ids = await pages_with_thumbnails(session, [page["id"]]) if page else set()
-    return _context_entry_dict(
-        _entry_row_to_dict(entry), page, thumb_page_ids=thumb_ids
-    )
+    frames = await _context_servable_frames(session, [page["id"]] if page else [])
+    return _context_entry_dict(_entry_row_to_dict(entry), page, servable_frames=frames)
 
 
 async def list_context_entries(
@@ -11073,13 +11166,13 @@ async def list_context_entries(
         ).all()
 
         page_ids = [meeting.id for _entry, meeting in rows if meeting is not None]
-        thumb_ids = await pages_with_thumbnails(session, page_ids)
+        frames = await _context_servable_frames(session, page_ids)
 
         entries = [
             _context_entry_dict(
                 _entry_row_to_dict(entry),
                 _context_page_row_to_dict(meeting) if meeting is not None else None,
-                thumb_page_ids=thumb_ids,
+                servable_frames=frames,
             )
             for entry, meeting in rows
         ]
@@ -11124,12 +11217,49 @@ async def get_context_entry(entry_id: int) -> Optional[dict]:
         return await _context_entry_response(session, entry)
 
 
+async def get_public_context_entry(entry_id: int) -> Optional[dict]:
+    """One entry by id, PUBLIC-view shape -- backs the permalink page
+    (`GET /context/{id}`, archive/main.py). Same rule list_context_
+    entries(public=True) applies to the feed: only a `published` entry
+    with a real, still-existing meeting (INNER JOIN, not a plain lookup +
+    status check) is servable here -- a draft, a hidden entry, or an
+    orphan whose meeting was deleted (see delete_meeting_pages_by_slug()'s
+    demotion above -- the demotion already flips status back to draft, so
+    an orphan can't actually reach this function as `published`, but the
+    JOIN keeps the two checks in one place rather than trusting that
+    invariant silently holds forever). None for any of those, or an
+    unknown id, or the table not existing yet -- the route turns None
+    into a plain 404, same as everywhere else that already means "nothing
+    to show," never a distinct "it exists but you can't see it" signal.
+    """
+    async with async_session() as session:
+        if not await _context_available(session):
+            return None
+        row = (
+            await session.execute(
+                select(ContextEntry, MeetingPage)
+                .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                .where(ContextEntry.id == entry_id, ContextEntry.status == "published")
+            )
+        ).first()
+        if row is None:
+            return None
+        entry, page = row
+        frames = await _context_servable_frames(session, [page.id])
+        return _context_entry_dict(
+            _entry_row_to_dict(entry),
+            _context_page_row_to_dict(page),
+            servable_frames=frames,
+        )
+
+
 async def save_context_entry(
     clerk_user_id: str,
     *,
     entry_id: Optional[int] = None,
     social: SocialRef,
     summary: str,
+    title: Optional[str] = None,
     source_label: Optional[str] = None,
     meeting_page_id: Optional[int] = None,
     t_seconds: Optional[int] = None,
@@ -11143,12 +11273,18 @@ async def save_context_entry(
     `{"error": <code>, "message": <plain English>, ...}` on any validation
     failure.
 
+    `title` (WO-945) is the editor's optional short headline -- stripped,
+    an empty string becomes None (never stored as ""), and it's stored on
+    ContextEntry.title but read back as the entry dict's `headline` key
+    (see _entry_row_to_dict()'s own comment on why the name changes on the
+    way out).
+
     Error codes: `not_found` (unknown entry_id), `duplicate` (+
     `existing_id`/`existing_status` -- updating an entry to its OWN
     existing key is never a duplicate, see below), `summary_required`,
-    `summary_too_long`, `invalid_match_kind`, `invalid_status` (this
-    function only ever accepts `draft`/`published` -- `hidden` is
-    set_context_entry_status()'s alone), `meeting_required`/
+    `summary_too_long`, `title_too_long`, `invalid_match_kind`,
+    `invalid_status` (this function only ever accepts `draft`/`published`
+    -- `hidden` is set_context_entry_status()'s alone), `meeting_required`/
     `match_kind_required` (publishing needs a meeting, a match kind, and a
     summary -- summary is already required for every status),
     `timestamp_required` (an `exact` match needs `t_seconds`),
@@ -11186,6 +11322,13 @@ async def save_context_entry(
         return {
             "error": "summary_too_long",
             "message": f"Keep the summary under {CONTEXT_SUMMARY_MAX} characters.",
+        }
+
+    clean_title = (title or "").strip() or None
+    if clean_title is not None and len(clean_title) > CONTEXT_TITLE_MAX:
+        return {
+            "error": "title_too_long",
+            "message": f"Keep the title under {CONTEXT_TITLE_MAX} characters.",
         }
 
     clean_source_label = (source_label or "").strip() or None
@@ -11257,6 +11400,7 @@ async def save_context_entry(
                     network=social.network,
                     source_label=clean_source_label,
                     summary=clean_summary,
+                    title=clean_title,
                     meeting_page_id=meeting_page_id,
                     t_seconds=t_seconds,
                     match_kind=match_kind,
@@ -11272,6 +11416,7 @@ async def save_context_entry(
                 entry.network = social.network
                 entry.source_label = clean_source_label
                 entry.summary = clean_summary
+                entry.title = clean_title
                 entry.meeting_page_id = meeting_page_id
                 entry.t_seconds = t_seconds
                 entry.match_kind = match_kind

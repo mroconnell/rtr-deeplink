@@ -481,7 +481,7 @@ Trust, safety & data quality  (27)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -491,7 +491,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
     `[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (11)
+  Growth, audience & discoverability  (12)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -502,6 +502,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
     `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
+    `[IMPROVEMENT-ROUND]` Full Context permalink pages aren't in the…
     `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
   Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
@@ -7043,13 +7044,15 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `www.instagram.com`, and `www.tiktok.com` (see README's "Full Context
   feed" section). A CSP written without checking current features first
   would silently break those three embeds.
-- **Impact**: none today. Would break the "Show the post here" button on
-  every Instagram/TikTok/YouTube Full Context entry the moment a CSP
-  shipped without these three origins allowed.
+- **Impact**: none today. Would break every Instagram/TikTok/YouTube Full
+  Context embed the moment a CSP shipped without these three origins
+  allowed — both the ones a reader clicks "Show the post here" to load,
+  and (WO-945, 2026-09-21) the first few embeds on page 1 that now load
+  on their own; see README's "Full Context feed" section.
 - **Next action**: none now — re-read this entry (and grep the codebase
   for every third-party origin actually loaded, not just these three)
   before adding a CSP.
-- **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+- **History**: `BACKLOG_DONE.md`'s WO-943 and WO-945 entries.
 
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 
@@ -7527,6 +7530,33 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **History**: `BACKLOG_DONE.md`'s WO-943 entry (states the caveat);
     README's "Meeting card images" section (the existing YouTube-redirect
     behavior this inherits).
+
+- **`[IMPROVEMENT-ROUND]` Full Context permalink pages aren't in the sitemap, and the RSS item link still points at the meeting, not the post.**
+  - **Issue**: WO-945's follow-up (2026-09-21) gave each Full Context
+    entry its own stable URL, `/context/{id}` (`archive/main.py`'s
+    `context_entry_page()`). Two things were deliberately left alone
+    when it shipped: `_SITEMAP_STATIC_PATHS`/the sitemap builder never
+    lists a per-entry URL, and `context_feed.xml.jinja`'s `<item><link>`
+    still points at the entry's meeting deep link
+    (`/m/{slug}?t={seconds}`), not its own permalink.
+  - **Impact**: none today — the feed itself is still below
+    `CONTEXT_MIN_INDEXABLE` and `noindex`'d, so neither gap costs any
+    indexing. Once the feed clears that threshold, a permalink page with
+    no sitemap entry is undiscoverable to a crawler except by following
+    the feed's own HTML links, and an RSS reader/aggregator that uses
+    `<link>` as "the URL for this item" sends a reader to the meeting
+    rather than the curated post that cited it.
+  - **Next action**: once the feed is indexable, decide both: (1) add
+    each published entry's `permalink` to the sitemap (or a dedicated
+    `/context/sitemap.xml`, matching how `/state/*`/`/j/*` are handled),
+    and (2) decide whether `<link>` should become the permalink (with the
+    meeting deep link demoted to inside `<description>`, where it already
+    partly lives) — a real RSS semantics choice, not just a code change,
+    since it affects what "the URL for this item" means to a subscriber.
+  - **Constraint**: not started — both are cheap once decided; the open
+    question is the RSS semantics choice, not implementation effort.
+  - **History**: `BACKLOG_DONE.md`'s WO-945 entry (permalink pages
+    paragraph).
 
 - **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
   - **Issue**: `/m/{slug}` never shows that a meeting has one or more

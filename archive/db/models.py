@@ -792,6 +792,19 @@ class ContextEntry(Base):
     # can change with no migration.
     summary: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Optional short headline for the entry (WO-945), editor-written and
+    # UNTRUSTED like summary/source_label above. Length is capped in app
+    # code (context_links.CONTEXT_TITLE_MAX), not here -- same reasoning as
+    # summary's own cap -- which is why this column is a little wider
+    # (160) than the cap (120): the cap can shrink or grow with no
+    # migration as long as it never exceeds the column width. Read back as
+    # the entry dict's `headline` key, never `title` -- that key already
+    # means the MEETING's own title (MeetingPage.title, joined in at read
+    # time) elsewhere in this dict, and this column must never collide
+    # with it. See archive/db/crud.py's "Full Context feed" section for
+    # where that mapping happens.
+    title: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+
     # NULL when no meeting has been matched yet -- such an entry can never
     # be published (see save_context_entry()'s validation) and stays a
     # private draft until an editor finds and attaches one. ON DELETE
