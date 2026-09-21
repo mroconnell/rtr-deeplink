@@ -38,8 +38,8 @@ phases, so the column adds to a little over the file's 392.
 
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
-| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Done on branch `claude/wo931-backlog-tidy`; no PR open yet (PR cap) |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | Not started |
+| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 not started |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
 | 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
@@ -69,6 +69,9 @@ start, so two agents never claim the same one.
   usage dashboard needs a login. So the plan keeps PRs few: never more than
   3 open at once, merged one at a time (rule 10). Merge PRs that touch the
   same files as one PR, and avoid extra pushes.
+- **The Phase 1 deploy checkpoint is due.** WO-932, WO-933 and WO-935 are
+  merged and not live. WO-934 and the Chenango town page repair wait for the
+  deploy.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
@@ -76,9 +79,9 @@ start, so two agents never claim the same one.
 
 1. Start with Phase 1. Phase 0 (WO-931) is small and follows as soon as a PR
    slot is free.
-2. First wave: WO-932, WO-933 and WO-935, three PRs at most. WO-931 opens
-   when one of them has merged. It merges last anyway.
-3. Ask Ryan for one deploy when that wave merges. Then run WO-934.
+2. First wave: WO-932, WO-933 and WO-935 merged on 2026-09-21. WO-931
+   opens its PR after them and merges last.
+3. Ask Ryan for one deploy now that the wave has merged. Then run WO-934.
 4. Batch the merges. Say plainly which merged code is not yet live.
 5. Check the GitHub Actions usage before the first wave if Ryan can see
    it. Whatever it shows, keep to 3 open PRs and merge one at a time.
@@ -181,6 +184,16 @@ What it delivers:
 Done when: no duplicate headings, the table of contents is regenerated, CI
 is green.
 
+**What WO-931 did differently from this list.** "Nothing has found which
+sweep/script ingests a Viebit" stayed open: WO-316 deleted the two pages
+but its own entry says the sweep is still unidentified. The 35 addresses
+were already hand-checked by WO-941, so the split gave one own-transcription
+entry and a small residual for the renames. Ryan approved the two
+`CLAUDE.md` bullets in chat on 2026-09-21, so they were added and
+`AGENTS.md` regenerated. The crash-loop entry stayed open: it needs a
+Gmail check that WO-931 could not make. WO-931 ran in two passes; the second
+filed what WO-932, WO-933 and WO-935 closed.
+
 ---
 
 ## Phase 1: stop and repair wrong content
@@ -191,29 +204,49 @@ is green.
 | WO | What it delivers | Runs after |
 |---|---|---|
 | WO-932 | An identity gate at ingest. WO-134's checks become on by default. A dry run counts how many existing sweep payloads a blocking Archive check would refuse. | Nothing |
-| WO-933 | One shared gate that asks whether a video is really a meeting, in `app/utils/video_hand_check.py`. It replaces the copies of `HIGH_RISK_TITLE_PLATFORMS` (6 files today). Sweeps and `verify_hub` use it. | Nothing |
-| WO-935 | Transcript honesty for our own transcription. A decodability guard on cached audio, then the existing "may end before the meeting did" warning on a finished own-Whisper transcript that stops early, then the video length from YouTube so the check can run on YouTube pages. | Nothing |
+| WO-933 | One shared gate that asks whether a video is really a meeting, in `app/utils/video_hand_check.py`. The rule lived in eleven scripts; it is now one module, and `HIGH_RISK_TITLE_PLATFORMS` has one definition (youtube, vimeo, cablecast, swagit). Sweeps and `verify_hub` use it. Merged 2026-09-21, not live. | Nothing |
+| WO-935 | Transcript honesty for our own transcription. Scope is now A, B and D: (A) a decodability guard on cached audio, (B) a short-chunk check, and (D) the video length from YouTube so the check can run on YouTube pages. Merged 2026-09-21, not live. The own-transcript "may end before the meeting did" warning (C) was built, measured and **held** by Ryan; see below. | Nothing |
 | WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. | The deploy checkpoint, and Ryan's page decisions |
 
-**Entries WO-932 closes**
+**What happened to each entry (filed by WO-931, 2026-09-21).** The lists
+below are the plan as written, with the outcome after each title. The full
+record is in `BACKLOG_DONE.md`'s WO-931, WO-932, WO-933 and WO-935 entries.
+Search each title in `BACKLOG.md` for what is left.
 
-- "The Archive files a page under whatever `gov_id` a sweep sends"
+**Entries WO-932 worked on**
+
+- "The Archive files a page under whatever `gov_id` a sweep sends" (half
+  closed: WO-134's check is on by default; the 409 question is open with
+  WO-932's count)
 - "The wrong-government checks never look at the resolved video's own"
-- "A minted `rtr:` id's state code can be a false positive"
-- "A real US government's YouTube video got minted with a"
-- "A live page is keyed to the wrong government entirely — Bamberg"
-- "A tenant with no video content never runs the identity conflict"
+  (closed; a new entry says nothing collects the host-name flags)
+- "A minted `rtr:` id's state code can be a false positive" (closed; the
+  entry's cause was wrong)
+- "A real US government's YouTube video got minted with a" (closed; two more
+  pages and a pin became a new entry, below)
+- "A live page is keyed to the wrong government entirely — Bamberg" (closed;
+  the page is gone)
+- "A tenant with no video content never runs the identity conflict" (half
+  closed: the raw-page fallback is ported; the audit of old rows is open)
 
-**Entries WO-933 closes**
+**Entries WO-933 worked on**
 
-- "A decorative video with no web-address signature at all"
-- "A real tier 1/3 "video found" verdict off"
-- "A bare YouTube channel-listing scan measurably ingests non-meeting"
-- "`classify_video_hand_check()`'s title-keyword"
-- "`find_platform_link()` accepts the first vendor-shaped"
-- "`HIGH_RISK_TITLE_PLATFORMS` (`{"youtube", "vimeo"}`,"
-- "A bare homepage link to a video file (`direct_file`"
-- "A Vimeo video whose own title is a camera file"
+- "A decorative video with no web-address signature at all" (closed)
+- "A real tier 1/3 "video found" verdict off" (half closed: three checks
+  are not built)
+- "A bare YouTube channel-listing scan measurably ingests non-meeting" (open:
+  waits on Ryan's view of 4 titles)
+- "`classify_video_hand_check()`'s title-keyword" (corrected: only the French
+  shape is a miss)
+- "`find_platform_link()` accepts the first vendor-shaped" (half closed: the
+  note is built and partly wired)
+- "`HIGH_RISK_TITLE_PLATFORMS` (`{"youtube", "vimeo"}`," (closed: one
+  definition)
+- "A bare homepage link to a video file (`direct_file`" (closed)
+- "A video whose own title is a camera or file name" (open build: Ryan chose
+  the fallback title "<government name> archive video" on every platform)
+- "`find_video_candidates()`'s video-file-extension regex matches Airbnb's"
+  (closed; not in the plan's list)
 
 **Entries WO-934 closes**
 
@@ -221,32 +254,54 @@ is green.
 - "Wrong-government-content pattern confirmed on 6 live"
 - "Three pages from the school-district audit resolved"
 - "6 `best_effort` YouTube pages archived a promotional/off-topic video"
-- "`YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own"
 - "82 archived YouTube meetings have embedding switched off"
-- "A partial transcript made by our own transcription cannot get the" (part
-  2 only: hand-check the 35 page addresses marked `review:` in
-  `rtr-business/research/wo925_slug_mismatch_scan.csv`; never re-key from an
-  address alone)
+- "Three live wrong-government cases wait for WO-934's worklist" (new: pages
+  5945 and 10852, and the `@washcoar` pin behind page 9073)
+- "WO-941's hand-check of the 35 mismatched page addresses is finished" (the
+  hand-check was done in WO-941; what is left is the 30 renames and the BART
+  page override after the Archive deploy)
+- "`YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own" is
+  no longer here: WO-931 closed it (WO-296 fixed the regex; the pages are
+  gone or fixed).
 
-**Entries WO-935 closes**
+**Entries WO-935 worked on**
 
-- "`slice_cached_audio()` skips the corrupt-chunk"
-- "A chunk truncated only at its tail still passes the"
-- "A partial transcript made by our own transcription cannot get the" (part 1
-  only: the own-Whisper marker; WO-931 splits the entry)
-- "Partial-transcript check has only measured 574 of ~5,800 non-YouTube" (the
-  code half: YouTube video length; the other half is on Ryan's list)
-- "Repetition-loop transcript-defect population" (mostly covered by WO-929)
+- "`slice_cached_audio()` skips the corrupt-chunk" (closed)
+- "A chunk truncated only at its tail still passes the" (closed, except the
+  last chunk of a file)
+- "Own transcription: a warning for a transcript that stops early needs a
+  tail-silence check built with it" (held by Ryan; replaces "A partial
+  transcript made by our own transcription cannot get the")
+- "The partial-transcript check reaches only some YouTube pages" (replaces
+  "Partial-transcript check has only measured 574 of ~5,800 non-YouTube"; the
+  resolver half is built; the drip lane and Ryan's Render-shell run are open)
+- "Repetition-loop transcript-defect population" (not touched; still open)
 
 **Already built, so not in this phase.** The warning for source captions
 shipped in WO-923 (PR #1266). WO-925 (#1269) and WO-926 (#1272) made it
 reach the version readers are shown. WO-927 and WO-928 (#1276, #1278) added
 the version-quality tool, and WO-929 (#1280) built the re-transcription
-queue. WO-935 must read those `BACKLOG_DONE.md` entries first and touch only
-what is left. What is left is the own-Whisper gap: WO-925 records that page
-1676 (Leon Valley TX) holds a Whisper transcript ending at 86% of a
+queue. WO-935 read those `BACKLOG_DONE.md` entries first and touched only
+what was left. What was left was the own-Whisper gap: WO-925 records that
+page 1676 (Leon Valley TX) holds a Whisper transcript ending at 86% of a
 6.5-hour video, and a re-check reads source captions only, so it can never
-add a warning there.
+add a warning there. WO-935 then measured that gap, and Ryan held the
+warning. See the next paragraph.
+
+**Why the own-Whisper warning is held (WO-935, 2026-09-21).** WO-935 built
+the warning, ran it on three real pages, and Ryan decided on 2026-09-21 to
+hold it. Our own transcription covers the whole audio, so a short last cue
+mostly means silence after the meeting. Page 1676 has speech until about
+20,050 s and digital silence from 20,500 s. Leon Valley show 185 is silent
+from about 12,500 s of a 6:00:00 recording. So the WO-925 reading of page
+1676 as "partial at 86%" looks wrong. That comes from two pages sampled at
+four points each. It is not proven. A real cut in a cloud job already gets
+the "transcription was interrupted" warning. Built as first planned, the
+warning would tell readers that complete transcripts may end early, and
+each flagged page would be re-run every 30 days. The plan now is one piece:
+the warning together with a tail-silence check, when Ryan says. The open
+entry is "Own transcription: a warning for a transcript that stops early
+needs a tail-silence check built with it".
 
 **What was checked in the code (2026-09-21).** Neither transcription path
 compares a finished transcript with the video's length:
@@ -261,7 +316,7 @@ compares a finished transcript with the video's length:
   It runs when a transcription job is created, so it never sees a
   transcript that finishes later.
 
-**Rules for the own-Whisper marker.**
+**Rules for the own-Whisper marker (for the held piece, when it is built).**
 
 1. **Reuse the existing marker.** `_EARLY_TRUNCATION_MARKER` ("may end before
    the meeting did") is already in `_TRUNCATION_MARKERS` and wired into the
@@ -273,11 +328,14 @@ compares a finished transcript with the video's length:
    the last cue ends under 90% of the video with at least 10 minutes
    uncovered. The entry's own constraint says so. The job-creation helper
    above uses only the 10-minute test, so do not copy it as is.
-3. **Never flag silence the voice filter skipped.** Compare only the last
-   cue with the video's length. Gaps inside the transcript are normal,
-   because the voice filter legitimately skips silence, and WO-928 found no
-   reliable marker of which pages that affects. Trailing silence is the
-   remaining false-positive risk, and the 10-minute floor limits it.
+3. **Never flag silence.** Compare only the last cue with the video's
+   length. Gaps inside the transcript are normal, because the voice filter
+   legitimately skips silence, and WO-928 found no reliable marker of which
+   pages that affects. Trailing silence is the false-positive risk, and
+   WO-935 found it is the usual cause of a short last cue. The fix under
+   discussion samples 30 seconds of audio halfway between the last cue and
+   the end, and skips the warning if it is silent. That changes this rule,
+   so it needs Ryan's yes.
 4. **Use a real length, never a guess.** The cloud path has
    `probed_duration_seconds`. The local script needs its own probe. A page
    with no stored length is counted as unmeasurable, not flagged.
@@ -308,8 +366,9 @@ compares a finished transcript with the video's length:
    confirms it is ready to run now, and `docs/RETRANSCRIPTION_QUEUE.md`
    lists no prerequisite. It starts with a pilot of 5 pages and no
    `--promote`.
-4. **Deploy checkpoint.** Merge 932, 933 and 935, then ask Ryan for one
-   manual deploy. The Chenango town page repair waits for it.
+4. **Deploy checkpoint.** 932, 933 and 935 are merged (2026-09-21). Ask
+   Ryan for one manual deploy. It is due. The Chenango town page repair
+   waits for it.
 5. WO-934 applies its repairs after the deploy, from the Render shell.
 
 **Done when**
@@ -318,15 +377,19 @@ compares a finished transcript with the video's length:
 - A re-run of the 5,857-page screen shows the wrong-government and
   non-meeting lists at zero, or every remaining page is accepted by Ryan in
   writing.
-- A finished own-Whisper transcript that stops early carries the same
-  warning a source-caption transcript already does.
+- A bad audio chunk fails instead of being transcribed short (WO-935 A and
+  B: merged, live after the deploy).
+- The own-transcript early-end warning is held by Ryan's decision (2026-09-21)
+  and does not gate Phase 1. It comes back as one piece with a tail-silence
+  check.
 
 **The one design choice left for Ryan**
 
-After WO-932's dry run, Ryan decides: should the Archive return 409 when a
-page's state disagrees with the registry's? The entry's own constraint says
-not to build a blocking check before counting what it would refuse. WO-932
-brings Ryan that number and one question.
+Ryan decides: should the Archive return 409 when a page's state disagrees
+with the registry's? WO-932 counted it: 12 of 10,280 pages would be
+refused; 10 look like correct pages with a wrongly guessed state, 1 is a
+real error, 1 is unclear. WO-932 advises not building a blocking check yet.
+Ryan has not decided.
 
 ---
 
@@ -470,7 +533,11 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 
 | Item | What Ryan does | Unblocks |
 |---|---|---|
-| "Leon Valley TX has two pages for one meeting" | Already decided 2026-09-21: page 3973 survives, and deleting 1595 is approved (PR #1282 added the redirect). Only the delete is left, and it runs after the next Archive deploy. The backlog entry still reads as open. | WO-934, WO-931 |
+| "Leon Valley TX has two pages for one meeting" | Decided and done 2026-09-21: page 3973 survives, 1595 was deleted (WO-941). The entry is now "Other Cablecast pages with no `external_id`". | Nothing |
+| "A video whose own title is a camera or file name" | Decided 2026-09-21: the fallback title is "<government name> archive video" on every platform. One detail is open: keep the date on a date-only title | A small build |
+| "A bare YouTube channel-listing scan measurably ingests non-meeting" | Look at 4 titles that still pass and pick a design | Phase 1 follow-up |
+| "The Archive files a page under whatever `gov_id`" | Yes or no on refusing a state mismatch (12 of 10,280 pages; WO-932 advises not yet) | Phase 1 |
+| "Own transcription: a warning for a transcript that stops early" | Held. Say when to build it with the tail-silence check | Later |
 | "Sequatchie County, TN's page (id 7377) is not a real" | Keep or delete | WO-934 |
 | "3 live/pending Archive pages need `POST" | Approve three override calls, dry run first | WO-934 |
 | "One live page is keyed to the wrong government: a real" | One scoped backfill after the deploy (Chenango town, NY) | WO-934 |
@@ -492,7 +559,7 @@ Longer jobs, not minutes:
   82 pages, multi-day machine time. Ready now: pilot of 5 first, no
   `--promote`, per `docs/RETRANSCRIPTION_QUEUE.md`. It waits on nothing
   planned here.
-- "Partial-transcript check has only measured 574 of ~5,800 non-YouTube": run
+- "The partial-transcript check reaches only some YouTube pages": run
   `scripts/backfill_archived_pages.py` from the resolver's Render shell, then
   read the `truncated_transcript` count at `/internal/transcript-quality-audit`.
   It needs the WO-923 resolver code live. The conductor says it is; confirm
@@ -572,7 +639,7 @@ against code on `origin/main`:
 |---|---|
 | `slice_cached_audio()` has no check that its output decodes | Confirmed |
 | No typed `ResolveError` exists in the adapters | Confirmed |
-| `HIGH_RISK_TITLE_PLATFORMS` is copied across scripts | Confirmed in 6 files |
+| `HIGH_RISK_TITLE_PLATFORMS` is copied across scripts | Confirmed in 6 files. WO-933 later found eleven scripts with their own copy of some part of the rule, and replaced them with one definition |
 | `CHALLENGE_MARKERS` is copied across scripts | Entry says 8; it is now 12 files |
 | The two "duplicate" entries are true duplicates | Same entry twice; the restored copy has the newer History line |
 
