@@ -2461,10 +2461,10 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
     `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
 
-- **[HUMAN] `[WAIT]` WO-941's hand-check of the 35 mismatched page addresses is finished, but its 30 renames, the BART page override and BART's authoritative-pin choice all wait for the Archive deploy.**
+- **[HUMAN] `[WAIT]` WO-941's hand-check of the 35 mismatched page addresses is finished, but its 30 renames and the BART page override wait for the Archive deploy.**
   - **Issue**: WO-925's scan flagged 35 pages whose address names a different place than their page's government. WO-941 (2026-09-21) hand-checked all 35 (30 stale address with the right government; 2 real mis-keys fixed by hand; 1 real mis-key fixed by minting BART; 2 junk pages deleted). The 30 stale addresses have `_SLUG_REDIRECTS` entries in `archive/main.py` on `main`, but each rename is applied with `POST /internal/admin/reslug-page` only after the Archive deploy carries them. On 2026-09-21 production still served the old address (for example `detroit-mi-2026-06-22-council-meeting-june-22-2026` answered HTTP 200) and the new one (`charlotte-nc-2026-06-22-council-meeting-june-22-2026`) answered 404, so no rename had run yet.
-  - **Impact**: 30 pages keep an address that names the wrong place until the renames run. BART's Granicus pin is a fallback, which ranks below a registry name match, so a future BART Granicus page may be misfiled the way the first one was.
-  - **Next action**: after Ryan deploys the Archive, run `reslug-page` for the 30 (dry run first), apply the BART page override and its research row, and ask Ryan whether BART's Granicus pin should be authoritative (the tenant host is BART's own, so it would be safe).
+  - **Impact**: 30 pages keep an address that names the wrong place until the renames run, and the BART board meeting stays keyed to Bart Township, PA until its page override runs.
+  - **Next action**: after Ryan deploys the Archive and the resolver, run `reslug-page` for the 30 (dry run first), then apply the BART page override and its research row. Ryan already made BART's Granicus pin authoritative (PR #1299, 2026-09-21), so a future BART page keys correctly once the resolver is deployed.
   - **Constraint**: never re-key from an address alone; a rename needs its `_SLUG_REDIRECTS` entry live first.
   - **History**: `BACKLOG_DONE.md` WO-941 and WO-925. Split from the 35-address entry by WO-931.
 
