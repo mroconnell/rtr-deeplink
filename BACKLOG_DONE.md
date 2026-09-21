@@ -1,5 +1,178 @@
 # Backlog — done
 
+## WO-931: backlog tidy — 2 duplicates removed, 6 finished entries moved here, 1 entry rewritten, 1 split in two, structure and numbers fixed [Done 2026-09-21]
+
+**Why this ran.** `BACKLOG.md` had grown to about 8,240 lines and about 390 open entries. WO-930 (`docs/BACKLOG_PHASES.md`, Phase 0) listed the entries that were duplicated, already finished, only partly done, misfiled, or carrying old numbers. A backlog people can trust is what every later phase is read from. This WO is Phase 0. It changes only Markdown files: no code, no data, no deploy.
+
+**What was done.**
+
+| Result | Count | What it means |
+|---|---|---|
+| Duplicate entries removed | 2 | A merge dropped them and a restore on 2026-09-11 put them back while the originals stayed. The restored copy (current History line) was kept. |
+| Finished entries moved here | 6 | Each one proven finished first (table below). The full text is at the bottom of this entry, word for word. |
+| Listed as finished, left open | 1 | "Nothing has found which sweep/script ingests a Viebit". Its own text says the gap is not closed (table below). |
+| Partly-done entry rewritten | 1 | "State legislatures": six Sliq pages are live and five meetings are queued since the entry was written. |
+| Entry split in two | 1 | "A partial transcript made by our own transcription..." became the own-Whisper marker entry (WO-935) and the 35-address entry. |
+| Structure fixes | 4 | Diligent entry moved from Standing decisions to Ship next; two Standing decisions given `###` headings so the table of contents lists them; a stray paragraph pointing at a section that no longer exists removed; the Standing decisions preamble moved up under its heading. |
+| Old numbers corrected | 1 | `CHALLENGE_MARKERS` copies: 8 scripts became 9 (12 files with any challenge-marker list). |
+| Other docs fixed | 4 | `ACCOUNTS_PLAN.md` no longer calls phase 1 a magic link; the BoxCast pointer in the Atlantic City entry no longer names a section that is gone; `BACKLOG.md`'s header now points at `docs/BACKLOG_PHASES.md`; that file's Status column is updated. |
+
+**Proof for each move.** Each row is what I re-ran on 2026-09-21 against `origin/main`, not what the entry said.
+
+| Entry moved | Shipped by | What I re-ran |
+|---|---|---|
+| YouTube video-ID regex accepts a generic "live stream" embed | WO-296 (PR #1065), WO-303a (PR #1082) | `youtube_ids.extract_video_id()` returns no id for `/embed/live_stream?channel=...`, `/embed/livestreaming?rel=0` and `/embed/videoseries?list=...`, and still returns the id for `/embed/dQw4w9WgXcQ?rel=0`. Tests in `tests/test_youtube.py`. |
+| Boxcast tier-1 pages need the signed playlist | WO-229 (PR #987) | `boxcast.refresh_playlist_url()` exists; `archive/utils/video_refresh.py` lists `boxcast` in `NEEDS_REFRESH`; `GET /m/{slug}/video` exists in `archive/main.py`. The one open question (does BoxCast re-sign after 2026-09-13 19:56 UTC) already has its own `[WAIT]` entry. |
+| Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) | WO-316 (PR #1097) | WO-316's entry records the dry run and the delete of both pages. Both old addresses now return HTTP 404 in production. |
+| `queue_probe.write_pin_row()` refuses a blank `match` | WO-307 (PR #1091) | The guard now requires only host and `gov_id`; a blank match is refused only on a shared multi-government host. `pytest tests/test_queue_probe.py -k write_pin_row`: 3 passed. |
+| `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` | WO-285 (PR #1056, item 5) | `civicplus.py` now reads the page with `read_capped_text()` (declared encoding, then UTF-8 with `errors="replace"`). `pytest tests/test_civicplus.py -k non_utf8`: 1 passed, on real Richmond Hill GA bytes with the same error text (byte `0xe2`, position 10). Walworth WI itself was not re-fetched. |
+| A jurisdiction string with a leading "The " before the type phrase | WO-251 (PR #1024) | `resolve_government("The Town of Hooksett, NH")` returns `us:cousub:3301337300` at tier `registry`, the same as "Town of Hooksett, NH". "The Woodlands, TX" keeps its "The" (`rtr:us:tx:the-woodlands`), so a real "The" name is not mangled. In production `/j/hooksett-nh` answers 200 and `/j/the-town-of-hooksett-nh` answers 404. |
+
+**Listed as finished, but not moved or closed.**
+
+| Entry | Why it stays | What would close it |
+|---|---|---|
+| "Nothing has found which sweep/script ingests a Viebit `?folder=ALL` URL" | WO-316 deleted the two pages, but its own entry says which sweep made them is still not identified. WO-128's sweep log lists the Big Lake URL as a skipped resolve; it is dated a day after the pages were made, so it is a lead about where the URL came from, not a finding. | Naming the sweep. |
+| `escribe.py`'s `resolve()` raises the same raw `UnicodeDecodeError` | The twin of the CivicPlus entry. `escribe.py` line 116 still calls `response.text()`. | The same fix in that file. |
+| "Leon Valley TX has two pages for one meeting" | Already handled: WO-941 (PR #1287) turned it into a residual entry before this WO started. | Nothing more to do here. |
+| "`rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop" | The entry's constraint says not to close it on quiet alone, and Gmail could not be checked here. | A person checks Gmail for "Exited with status 134" alerts since 2026-09-13. |
+| "Two rules the code and the WO briefs say are in `CLAUDE.md` are not" | Adding them changes the project's instruction file, which needs Ryan's yes. Nothing in `CLAUDE.md` or `AGENTS.md` was changed. | Ryan approves; add the two bullets and regenerate `AGENTS.md` as PR #1210 did. |
+
+**State legislatures (rewrite).** The entry said 91 of 99 chamber rows had no page. That was true on the morning of 2026-09-20. Since then six Sliq pages went live (Arkansas, Colorado, Delaware, New Mexico, Oklahoma, West Virginia; each answered HTTP 200 on 2026-09-21) and PR #1260 queued five meetings (Kansas Sliq and four Invintus). I did not write a new number. The six pages are filed under the state with a committee as the meeting body, and `wo921_ingested.csv` records no chamber for them, so how many of the 99 rows they satisfy needs each committee read by hand. The entry now says the number is stale.
+
+**The 35-address entry (split).** WO-941 already hand-checked all 35 addresses. The split therefore gave one open entry for the own-Whisper marker (WO-935) and a small residual for what WO-941 left waiting on the Archive deploy. On 2026-09-21 production still served the old address of a renamed page (HTTP 200) and 404 for the new one, so no rename had run.
+
+**Caution.**
+
+- `scripts/check_backlog_done_headings.py` prints a warning, not a failure, for each entry moved here, because they sit under this one heading instead of each having its own `##` heading. The PR description lists them.
+- The BoxCast `[WAIT]` entry was due on 2026-09-13. Nobody has recorded the check. It is now cheap to run.
+- The header of `BACKLOG.md` still lists a section, "Platform & jurisdiction coverage", that no longer exists (filing rule 5). I left it, because choosing which section replaces it is a judgement call.
+- `YouTubeAssetFinder.extract_video_id()`'s regex entry (in WO-934's list) is half done: WO-296 fixed the regex, so only the stored fake ids on four pages and the CivicClerk field are left. I left it for WO-934, which lists it.
+
+**Recommendation.** Run the crash-loop check in Gmail this week; it decides whether one more entry closes. Ask Ryan about the two `CLAUDE.md` bullets. Merge this WO last, rebase on `origin/main` and rerun `python3 scripts/build_backlog_toc.py` right before merging.
+
+**Deploy status.** Docs only, no deploy.
+
+### The moved entries, word for word
+
+Each was open in `BACKLOG.md` until 2026-09-21 and is closed by the proof above.
+
+#### `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed placeholder as if it were a real 11-character video ID
+
+*Closed 2026-09-21 (WO-931). Shipped by WO-296 (`BACKLOG_DONE.md`); the Archive's own copies of the regex were fixed by WO-303a.*
+
+- **Issue**: `_VIDEO_ID_RE` in `app/platforms/youtube.py` captures any
+  `[A-Za-z0-9_-]{11}` following `embed/` (etc.). A source page whose
+  embed is a generic "watch whatever's live now" widget rather than a
+  specific archived video — `.../embed/live_stream` (YouTube's own
+  reserved literal for "current live stream on this channel", exactly 11
+  characters) or `.../embed/livestreaming?rel=0` (truncates to the
+  11-char `livestreami`) — matches the same as a real ID, so
+  `resolve_video_id()` treats it as a real video and only fails later, at
+  transcript-fetch time (`VideoUnavailable`/`VideoUnplayable`).
+- **Impact**: low — confirmed on 2 live pages in the 2026-09-09 export
+  (`mount-vernon-tx`, `bamberg-county-sc-livestream` — the latter is also
+  the mis-keyed-government entry above), both of which already show no
+  video/transcript to readers, so the reader-facing outcome is the same
+  as a correctly-detected "no real video." This is a diagnostic-accuracy
+  gap, not a content-correctness one. Found while building WO-131's
+  YouTube-transcript identity filter, not chased further.
+- **Next action**: reject the literal `live_stream` outright, and treat
+  an extracted ID containing "livestream" as suspect rather than a real
+  video ID.
+- **History**: found 2026-09-09, WO-131.
+
+#### [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist re-resolved at view time (or the broadcast id stored) -- until then no Boxcast page can be ingested.
+
+*Closed 2026-09-21 (WO-931). Shipped by WO-229 (`BACKLOG_DONE.md`). The open question of whether BoxCast re-signs an expired playlist is a separate `[WAIT]` entry in `BACKLOG.md`.*
+
+- **[JUST-DO-IT] Boxcast tier-1 pages need the signed playlist re-resolved at view time (or the broadcast id stored) -- until then no Boxcast page can be ingested.**
+  - **Issue**: a Boxcast-hosted meeting's stored `video_url` is a signed,
+    time-limited playlist URL, not a stable link -- confirmed captioned
+    Boxcast pages exist for South Bay FL, Atlantic City NJ and St. Louis
+    County MO (WO-226/WO-227), but the signed URL will expire after the
+    page is created, breaking playback for anyone who opens it later.
+  - **Impact**: every real, captioned Boxcast meeting found so far
+    (South Bay FL: 721 caption segments; Atlantic City NJ; St. Louis
+    County MO) stays un-ingested until this is fixed, even though the
+    adapter and the pins already exist (WO-227).
+  - **Next action**: either re-resolve the playlist URL at render/view
+    time or store the Boxcast broadcast id and resolve a fresh signed
+    URL from it on render. Until one of these ships, no Boxcast page
+    gets ingested (WO-227/WO-227b's own note).
+  - **Constraint**: don't ingest a Boxcast tier-1 page before this ships
+    -- the page would go dead the moment the signed URL expires.
+  - **History**: `BACKLOG_DONE.md`'s WO-227 and WO-226 entries, 2026-09-11.
+
+#### [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) have a Viebit folder-listing URL as `source_url_normalized`, not a real meeting — a `?folder=ALL` page was ingested as if it were a single video.
+
+*Closed 2026-09-21 (WO-931). Both pages were deleted by WO-316 (`BACKLOG_DONE.md`). Which sweep made them is still open, as its own entry in `BACKLOG.md`.*
+
+- **[NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) have a Viebit folder-listing URL as `source_url_normalized`, not a real meeting — a `?folder=ALL` page was ingested as if it were a single video.**
+  - **Issue**: found live 2026-09-12 (WO-307) cross-checking `wo306_export_pages.json` while queuing real Viebit meetings for these same two governments. Page ids 6523 (`https://buffalo.viebit.com/?folder=ALL`) and 6524 (`https://biglake.viebit.com/?folder=ALL`) both have `video_url=null`, `video_warnings: ["Could not find Viebit's video configuration on this page."]`, and a title scraped from an agenda/packet link elsewhere on that folder page ("HRA *Special Meeting* Agenda (PDF)", "City Council Regular Meeting Packet") rather than any real meeting content. `gov_id` is `rtr:unknown:<host>` on both — no government identity, no video, no real transcript.
+  - **Impact**: two junk pages live on the site today (no user-facing content, but they exist and count toward the Archive's page total); once this WO's real, hand-picked Viebit meetings for these same two governments finish transcribing, each government will have TWO pages — one real, one junk — which could confuse a reader landing on the wrong one via search or a stale link.
+  - **Next action**: confirm live via `POST /internal/admin/delete-pages` (dry run first) that both slugs are exactly this shape, then delete them; separately, find which sweep/script ingests a Viebit `?folder=ALL` URL as a candidate page at all (neither `viebit.py`'s `resolve()` nor `list_recent_videos()`, added by WO-306, ever produces this URL shape, so it came from something else — an AgendaCenter-style sweep that treated the folder link on a government's calendar page as if it were the meeting URL) and check whether other platforms have the same gap.
+  - **Constraint**: don't delete without a fresh dry run first — the slugs above are as of 2026-09-12's export and could have changed.
+  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-307 entry; `rtr-business/research/wo307_methods_section.md` (§319).
+
+#### [NEEDS-AUDIT] `app/platforms/queue_probe.write_pin_row()` refuses a blank `match` unconditionally, stricter than the registry loader it feeds — a caller can't write the normal single-tenant "whole host = one government" pin shape through it at all.
+
+*Closed 2026-09-21 (WO-931). Fixed by WO-307 (`BACKLOG_DONE.md`).*
+
+- **[NEEDS-AUDIT] `app/platforms/queue_probe.write_pin_row()` refuses a blank `match` unconditionally, stricter than the registry loader it feeds — a caller can't write the normal single-tenant "whole host = one government" pin shape through it at all.**
+  - **Issue**: found live 2026-09-12 (WO-286). `write_pin_row()`'s own guard is `if not host or not match or not gov_id: return False` — a blank `match` is refused outright. But `app/utils/gov_registry/registry.py` (lines ~154-156) explicitly documents a blank `match` on a normal single-tenant host as valid and meaningful ("the whole host really is one government"), and real committed rows already use it this way (e.g. `summitcounty.granicus.com,,us:county:49043,...`, WO-213b). `queue_probe.finish_candidate()`'s own `pin=` parameter passes straight through to `write_pin_row()`, so a caller that wants to pin a genuinely single-tenant vendor subdomain (the common case for granicus/civicclerk/iqm2/etc.) through `finish_candidate()` silently gets no pin written at all — `write_pin_row()` returns `False` with no error, and `FinishOutcome.pinned` is `False` with nothing in the printed output to flag it as wrong rather than "nothing to pin."
+  - **Impact**: any `finish_candidate()` caller passing a blank-match `pin` dict for a single-tenant host gets silently no pin, not an error — WO-286 worked around it by writing these pins directly with its own small helper (`scripts/wo286_apply_tier3.py`'s `write_single_tenant_pin()`) instead of through `finish_candidate()`'s own `pin=` parameter.
+  - **Next action**: loosen `write_pin_row()`'s guard to `if not host or not gov_id: return False` (drop `match` from the required set), matching the loader's own tolerance — a blank match is a real, intentional shape, not a malformed row, for anything outside `MULTI_GOV_HOSTS` (which already has its own separate, correct guard elsewhere in the loader).
+  - **Constraint**: don't loosen the loader-side guard for `MULTI_GOV_HOSTS` itself — that one is deliberately strict (WO-210) and this entry is only about `write_pin_row()`'s own stricter-than-necessary check for the normal single-tenant case.
+  - **History**: `BACKLOG_DONE.md`'s WO-286 entry (2026-09-12).
+
+#### [NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` on at least one real tenant, aborting the whole candidate instead of skipping it.
+
+*Closed 2026-09-21 (WO-931). Fixed by WO-285 (`BACKLOG_DONE.md`, item 5). The eScribe twin of this entry stays open.*
+
+- **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` on at least one real tenant, aborting the whole candidate instead of skipping it.**
+  - **Issue:** WO-216 (2026-09-11) hit `RowError: civicplus: resolve raised: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte` resolving Walworth town, WI's CivicPlus AgendaCenter page. The byte sequence (`0xe2` needing a continuation) suggests a mis-decoded smart quote or em-dash in page content the adapter reads as UTF-8 without a fallback.
+  - **Impact:** the whole candidate fails as a hard error rather than being skipped/retried on the next hit, the same shape `civicplus.py`'s other known encoding gap (see the adjacent `[NEEDS-AUDIT]` entry on its docstring's fallback claim) already flags — Walworth's own government was never resolved this run.
+  - **Next action:** reproduce against Walworth's live AgendaCenter page, find which response `civicplus.py` decodes as strict UTF-8, and add the same encoding-fallback handling used elsewhere in that adapter (or a `try`/`except UnicodeDecodeError` that degrades to a skip, not a `RowError`).
+  - **Constraint:** don't swallow the error silently — log it so a future sweep can tell "genuinely no content" apart from "this tenant's encoding broke the adapter."
+  - **History:** found live, `BACKLOG_DONE.md` WO-216, 2026-09-11.
+
+#### [NEEDS-AUDIT] A jurisdiction string with a leading "The " before the type phrase (`"The Town of X, ST"`) fails to resolve at all, even though `"Town of X, ST"` (same government, no "The") resolves correctly.
+
+*Closed 2026-09-21 (WO-931). Fixed by WO-251 (`BACKLOG_DONE.md`).*
+
+- **[NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
+  type phrase (`"The Town of X, ST"`) fails to resolve at all, even
+  though `"Town of X, ST"` (same government, no "The") resolves
+  correctly.**
+  - **Issue**: `resolve_government("The Town of Hooksett, NH")` mints
+    `rtr:us:nh:hooksett`; `resolve_government("Town of Hooksett, NH")`
+    and `resolve_government("Hooksett, NH")` both correctly return
+    `us:cousub:3301337300`. Hooksett is a real, active-government NH
+    town, present in `us_cousubs.csv` — the leading article alone is
+    what breaks the match. Found nationwide-measuring the `us:cousub:`
+    resolver ladder for WO-121; not a New-England-only search, just the
+    one real example turned up so far.
+  - **Impact**: small but real and live — `hooksett.granicus.com` (2
+    archived pages, confirmed via `GET /internal/export/pages`) is
+    minted instead of keyed to the real NH town today. Unmeasured how
+    many other hosts/pages carry the same "The Town/City/Village of X"
+    phrasing.
+  - **Next action**: find where the raw name is stripped of its type
+    phrase (`resolver.py`'s name-normalization path) and confirm whether
+    a leading "The " is handled there at all before deciding the fix —
+    don't blindly strip every leading "The": at least one real
+    government (`The Woodlands, TX`) legitimately keeps "The" as part of
+    its common name, so the fix needs to distinguish "The" as an article
+    in front of a type phrase from "The" as the first word of the name
+    itself.
+  - **Constraint**: verify the fix against both directions before
+    landing — `"The Town of Hooksett, NH"` must resolve, and a genuine
+    "The"-prefixed place name must not get mangled.
+  - **History**: found 2026-09-09 while running `scripts/
+    score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
+    not yet in `BACKLOG_DONE.md`.
+
 ## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
 
 **Why this ran.** WO-925's scan flagged 35 pages whose web address names a different place than the page's government. Ryan asked for a hand-check, then approved four fixes: delete the junk pages, mint BART, rename the 30 stale addresses, and correct the Lisbon channel pin. The Leon Valley twin (page 1595) was also deleted the same day.
