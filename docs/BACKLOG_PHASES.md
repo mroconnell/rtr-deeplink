@@ -1,6 +1,7 @@
 # Backlog phases and deliverables
 
-Written 2026-09-21 (WO-930), from `origin/main` at commit `2c0ab6a` (PR #1280).
+Written 2026-09-21 (WO-930), from `origin/main` at commit `2c0ab6a` (PR #1280),
+then corrected the same day for later PRs (#1281, #1282) and the conductor's review.
 It turns `BACKLOG.md` into an ordered plan: what to do first, what each step
 delivers, and what waits on Ryan.
 
@@ -38,7 +39,7 @@ phases, so the column adds to a little over the file's 392.
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
 | 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Not started |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 6 quick page decisions, one deploy, then a yes or no on an Archive check | Not started |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | Not started |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
 | 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
@@ -59,6 +60,14 @@ start, so two agents never claim the same one.
 - **Merging ships nothing.** All four services deploy by hand. Code on
   `main` is not live until Ryan deploys. Each phase ends at a deploy
   checkpoint (below).
+- **GitHub Actions minutes are short.** The 2026-09-21 inbox triage (PR
+  #1281) reports that the account had used 90% of its 2,000 included
+  minutes by 2026-09-20, with the reset on 2026-10-01. Every PR, and every
+  push to it, runs the full test workflow, and the queue-advance workflows
+  run every 4 to 6 hours on top. This plan proposes about ten PRs. That
+  figure comes from an unattended report and is not verified here, because
+  the usage dashboard needs a login. Before a wave, check the usage. Merge
+  PRs that touch the same files as one PR, and avoid extra pushes.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
@@ -69,6 +78,9 @@ start, so two agents never claim the same one.
 2. Run WO-932, WO-933 and WO-935 in parallel as the first wave.
 3. Ask Ryan for one deploy when that wave merges. Then run WO-934.
 4. Batch the merges. Say plainly which merged code is not yet live.
+5. Check the GitHub Actions minutes before launching the first wave (see
+   Cautions). If they are tight, stagger the wave rather than open all
+   the PRs at once.
 
 ## How to find an entry
 
@@ -157,6 +169,9 @@ What it delivers:
   `CLAUDE.md` are not" is a real gap. Regenerate `AGENTS.md` after, as #1210
   did. `ACCOUNTS_PLAN.md` still calls phase 1 a "magic link" although Clerk
   shipped.
+- **Split one entry that has two halves.** "A partial transcript made by our
+  own transcription cannot get the" covers an own-Whisper warning (WO-935)
+  and 35 page addresses to hand-check (WO-934). They have different fixes.
 - **Add a one-line pointer** to this file in `BACKLOG.md`'s header.
 
 Done when: no duplicate headings, the table of contents is regenerated, CI
@@ -173,7 +188,7 @@ is green.
 |---|---|---|
 | WO-932 | An identity gate at ingest. WO-134's checks become on by default. A dry run counts how many existing sweep payloads a blocking Archive check would refuse. | Nothing |
 | WO-933 | One shared gate that asks whether a video is really a meeting, in `app/utils/video_hand_check.py`. It replaces the copies of `HIGH_RISK_TITLE_PLATFORMS` (6 files today). Sweeps and `verify_hub` use it. | Nothing |
-| WO-935 | Transcript honesty. A decode guard on cached audio, then a visible warning on partial own-Whisper transcripts. That clears the way for WO-929's re-transcription run over the 82 defective pages. | Nothing |
+| WO-935 | Transcript honesty for our own transcription. A decodability guard on cached audio, then the existing "may end before the meeting did" warning on a finished own-Whisper transcript that stops early, then the video length from YouTube so the check can run on YouTube pages. | Nothing |
 | WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. | The deploy checkpoint, and Ryan's page decisions |
 
 **Entries WO-932 closes**
@@ -204,14 +219,32 @@ is green.
 - "6 `best_effort` YouTube pages archived a promotional/off-topic video"
 - "`YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own"
 - "82 archived YouTube meetings have embedding switched off"
+- "A partial transcript made by our own transcription cannot get the" (part
+  2 only: hand-check the 35 page addresses marked `review:` in
+  `rtr-business/research/wo925_slug_mismatch_scan.csv`; never re-key from an
+  address alone)
 
 **Entries WO-935 closes**
 
 - "`slice_cached_audio()` skips the corrupt-chunk"
-- "Partial-transcript check has only measured 574 of ~5,800 non-YouTube"
-- "A partial transcript made by our own transcription cannot get the"
 - "A chunk truncated only at its tail still passes the"
+- "A partial transcript made by our own transcription cannot get the" (part 1
+  only: the own-Whisper marker; WO-931 splits the entry)
+- "Partial-transcript check has only measured 574 of ~5,800 non-YouTube" (the
+  code half: YouTube video length; the other half is on Ryan's list)
 - "Repetition-loop transcript-defect population" (mostly covered by WO-929)
+
+**Already built, so not in this phase.** The warning for source captions
+shipped in WO-923 (PR #1266). WO-925 (#1269) and WO-926 (#1272) made it
+reach the version readers are shown. WO-927 and WO-928 (#1276, #1278) added
+the version-quality tool, and WO-929 (#1280) built the re-transcription
+queue. WO-935 must read those `BACKLOG_DONE.md` entries first and touch only
+what is left. What is left is the own-Whisper gap: WO-925 records that page
+1676 (Leon Valley TX) holds a Whisper transcript ending at 86% of a
+6.5-hour video, and a re-check reads source captions only, so it can never
+add a warning there. The only place the Archive checks a finished
+transcript against the video's length today is when a transcription job is
+created.
 
 **Order inside Phase 1**
 
@@ -220,10 +253,13 @@ is green.
    CivicPlus pages are safe to re-push, because their identity fix (WO-214)
    only helps once deployed.
 2. WO-932 and WO-933 run in parallel. They touch different code.
-3. WO-935's decode guard must land before the 254-hour re-transcription
-   run. Both transcription paths share `media_probe.py`. The run itself is
-   a multi-day machine job that Ryan starts from the runbook in
-   `docs/RETRANSCRIPTION_QUEUE.md`.
+3. WO-935's decode guard is worth having before more large transcription
+   runs, because a corrupt chunk can lose part of a meeting. It is not a
+   gate for anything else. In particular WO-929's re-transcription queue
+   (82 pages, 254 hours) does not depend on any WO here. The conductor
+   confirms it is ready to run now, and `docs/RETRANSCRIPTION_QUEUE.md`
+   lists no prerequisite. It starts with a pilot of 5 pages and no
+   `--promote`.
 4. **Deploy checkpoint.** Merge 932, 933 and 935, then ask Ryan for one
    manual deploy. The Chenango town page repair waits for it.
 5. WO-934 applies its repairs after the deploy, from the Render shell.
@@ -234,7 +270,8 @@ is green.
 - A re-run of the 5,857-page screen shows the wrong-government and
   non-meeting lists at zero, or every remaining page is accepted by Ryan in
   writing.
-- Partial transcripts carry a visible warning.
+- A finished own-Whisper transcript that stops early carries the same
+  warning a source-caption transcript already does.
 
 **The one design choice left for Ryan**
 
@@ -297,6 +334,12 @@ brings Ryan that number and one question.
 - "A slow-trickling response can hang a sweep past every"
 - "A sweep script's per-government wall-clock cap can't"
 - "No sweep script calls the new playlist-expansion helper"
+
+**Read first, for WO-937.** The `BACKLOG_DONE.md` entries for WO-929 and
+for WO-918 (which records the WO-917 hand-check of 133 queued videos). PR
+#1224 also took 627 non-YouTube lines out of the shared queue into a local
+Whisper batch, so the shared queue and that batch are separate places.
+Dedup and the owner check must know which side a line lives on.
 
 **Cautions**
 
@@ -376,7 +419,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 
 | Item | What Ryan does | Unblocks |
 |---|---|---|
-| "Leon Valley TX has two pages for one meeting" | Pick which of pages 1595 and 3973 survives | WO-934 |
+| "Leon Valley TX has two pages for one meeting" | Already decided 2026-09-21: page 3973 survives, and deleting 1595 is approved (PR #1282 added the redirect). Only the delete is left, and it runs after the next Archive deploy. The backlog entry still reads as open. | WO-934, WO-931 |
 | "Sequatchie County, TN's page (id 7377) is not a real" | Keep or delete | WO-934 |
 | "3 live/pending Archive pages need `POST" | Approve three override calls, dry run first | WO-934 |
 | "One live page is keyed to the wrong government: a real" | One scoped backfill after the deploy (Chenango town, NY) | WO-934 |
@@ -395,7 +438,14 @@ Longer jobs, not minutes:
 - "Decide which hidden transcript versions to promote (WO-928": about 6
   versions, one at a time.
 - "Run the re-transcription queue for the pre-voice-filter": WO-929's run,
-  82 pages, multi-day machine time. It needs WO-935's decode guard first.
+  82 pages, multi-day machine time. Ready now: pilot of 5 first, no
+  `--promote`, per `docs/RETRANSCRIPTION_QUEUE.md`. It waits on nothing
+  planned here.
+- "Partial-transcript check has only measured 574 of ~5,800 non-YouTube": run
+  `scripts/backfill_archived_pages.py` from the resolver's Render shell, then
+  read the `truncated_transcript` count at `/internal/transcript-quality-audit`.
+  It needs the WO-923 resolver code live. The conductor says it is; confirm
+  first (Phase 1, step 1).
 - "310 real school-district YouTube/Vimeo leads from the WO-292": route to
   the drip Mac.
 - "~1,676 archived YouTube video ids have no channel on record": run after
@@ -474,6 +524,12 @@ against code on `origin/main`:
 | `HIGH_RISK_TITLE_PLATFORMS` is copied across scripts | Confirmed in 6 files |
 | `CHALLENGE_MARKERS` is copied across scripts | Entry says 8; it is now 12 files |
 | The two "duplicate" entries are true duplicates | Same entry twice; the restored copy has the newer History line |
+
+The conductor reviewed the first draft the same day and made two
+corrections, both checked against the repo. WO-935 had proposed a
+partial-transcript warning that WO-923, WO-925 and WO-926 had already built
+for source captions, so it now covers only the own-Whisper gap. And WO-929's
+re-transcription run was described as waiting on WO-935. It does not.
 
 Limits:
 
