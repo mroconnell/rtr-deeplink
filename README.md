@@ -2261,6 +2261,24 @@ permalink — a real semantics question (what "the URL for this item"
 should mean to a subscriber), not a code change, left open in
 `BACKLOG.md` alongside it.
 
+**Entries also appear on their government's hub and their state page
+(WO-947).** Asked by Ryan: "a page like this that is related to
+Indianapolis would also appear under the Indianapolis hub, right? And
+Indiana?" `/j/{hub_slug}` and `/state/{state_slug}` each show a "Seen on
+social media" section listing the published entries whose meeting
+belongs to them — up to 3 on a hub, 6 on a state — each linking to its
+own permalink page, which had almost no internal links pointing at it
+before this. Membership is decided the exact same way the page decides
+which *meetings* it shows (never by matching the entry's stored
+jurisdiction text) — see `STATE_HUB_PAGES.md`'s "Seen on social media"
+section for why that distinction is load-bearing here. The section is
+absent entirely (not shown empty) when there's nothing to list, and only
+shows on the bare page, not under a `?topic=` filter. The link runs both
+ways: an entry's own permalink page names its government (already
+linking to its hub since WO-943) and now also its state, next to it —
+`crud.effective_state_abbr()`, a pure function over data the entry
+already carries, not a query.
+
 **Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
 a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
 of `t` (see "Meeting card images" above). Only a non-YouTube meeting gets

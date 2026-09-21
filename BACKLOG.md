@@ -7284,13 +7284,18 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **Issue**: `/m/{slug}` never shows that a meeting has one or more
     Full Context entries pointing at it, even though `ContextEntry.
     meeting_page_id` is indexed and already the FK every entry carries.
-  - **Impact**: a reader on the meeting page itself has no way to
-    discover the social clip(s) that reference it — the link only works
-    one direction (from `/context` to the meeting), not back.
+    WO-947 (2026-09-21) added the same kind of backlink to `/j/{hub_slug}`
+    and `/state/{state_slug}` ("Seen on social media"), so `/m/` is now
+    the one surface an entry cites without linking back.
+  - **Impact**: a reader on the meeting page itself still has no way to
+    discover the social clip(s) that reference it.
   - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
     for that `meeting_page_id` and render a small "clipped on social
-    media" section/badge linking to each.
-  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+    media" section/badge linking to each — `crud.list_context_entries_
+    for_pages()` (WO-947) already does the query shape this needs; the
+    condition here would just be `MeetingPage.id == page.id` instead of
+    a hub's/state's page set.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 and WO-947 entries.
 
 ### Search & metadata quality
 

@@ -51,8 +51,12 @@ Both surfaces share the same components, in this order:
 3. **Featured meetings** — a genuine transcript quote per meeting, deep
    linked to the second it was said, with the stored video frame from
    that moment.
-4. **Most watched governments** (state pages only).
-5. **Government list** — grouped by kind; a sticky sidebar on desktop,
+4. **Seen on social media** (WO-947) — Full Context entries (`/context`)
+   whose meeting belongs to this hub/state, each linking to its own
+   permalink page. Absent entirely, not empty, when there are none — see
+   "Rendering rules" below.
+5. **Most watched governments** (state pages only).
+6. **Government list** — grouped by kind; a sticky sidebar on desktop,
    below the results on mobile.
 
 State pages show 12 featured cards, hubs show 6 — a hub is one
@@ -402,6 +406,64 @@ JS-collapsed: every `/j/` link stays in the initial HTML, because
 internal links to the hubs are part of what this page is *for*. Topic
 chips become a horizontal scroll strip on phones, where a dozen wrapped
 chips would push results a full screen down.
+
+### Seen on social media — WO-947, 2026-09-21
+
+Ryan, reviewing a Full Context entry page: "a page like this that is
+related to Indianapolis would also appear under the Indianapolis hub,
+right? And Indiana?" It didn't yet — an entry page had almost no internal
+links pointing at it — so both surfaces now list the entries whose
+meeting belongs to them, each linking to its own permalink page.
+
+**Membership is the hub's/state's own page-membership rule, never a text
+match** — the same principle "Which pages a hub shows" above establishes
+for meetings applies here without exception. A hub's entries are
+`ContextEntry` rows whose `meeting_page_id` satisfies
+`_hub_page_condition(group)`, the exact condition the hub's own meeting
+list already uses. A state's entries satisfy the state's own
+already-verified page-id set (`get_state_page_data()`'s SQL suffix match,
+refined by its per-row case re-check for SQLite — reusing the *final*,
+post-refinement id set, not just the SQL half, is what actually reuses
+"the same condition"). `crud.list_context_entries_for_pages()` takes that
+condition as a parameter rather than deriving one of its own. Getting
+this wrong has a real, measured cost: a jurisdiction-text match already
+put unrelated video on four real governments' hubs once (see "Which pages
+a hub shows" above) — an entry citing a social clip is exactly as
+vulnerable to that coincidence as a meeting page itself.
+
+**No empty state, on purpose** — same reasoning as every other section on
+these pages. With no entries, the whole block (heading, subtitle, list)
+is simply absent, not present-and-empty: a repeated "Seen on social
+media" heading with nothing under it across roughly a thousand mostly
+quiet hubs would be exactly the thin templated content §1 diagnosed
+Google declining this site for.
+
+**Bare view only.** A `?topic=` view is an alternate cut of the page
+about one curated subject; Full Context entries aren't topic-tagged, so
+showing them under a topic filter would be unrelated to that cut.
+
+**Cheap.** One small extra query per render — a join against the page
+set the render's own main query already selected, `LIMIT`-capped, no
+`segments`, no thumbnail lookup, no transcript-excerpt loader (that's the
+entry page's own job, WO-946). Wrapped in try/except and logged, the same
+posture `sitemap()` already uses for its own Full Context calls, so a
+failure here can never take down the hub/state page around it.
+
+**Placement and limits.** After the featured meetings, before the
+meeting/government list — `archive/templates/_context_mentions.html`,
+included by both `jurisdiction_page.html` and `state_page.html`,
+Archive-side only (this partial is not in `shared_templates/`; the
+resolver never renders it, so it can use Archive-only Jinja behavior with
+no risk of repeating WO-50's shared-partial filter mistake). `HUB_
+CONTEXT_ENTRIES` (3) is smaller than `STATE_CONTEXT_ENTRIES` (6) for the
+same reason `HUB_FEATURED_COUNT` is smaller than `STATE_FEATURED_COUNT`:
+one government has fewer entries to choose from than a whole state, and
+either way this section is secondary to the page's own lead content, not
+a replacement for it. One outbound link per entry lives on the entry
+page itself (WO-946); every link in this section stays internal (the
+government link, the entry's own permalink) so a hub/state page's link
+equity is spent on the site, not handed to the social network the entry
+cites.
 
 ### Structured data
 
