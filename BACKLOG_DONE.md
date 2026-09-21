@@ -19,6 +19,8 @@
 - **30 renames:** 30 redirect entries added to `_SLUG_REDIRECTS`. Each rename is applied with `reslug-page` after the Archive deploy carries them.
 - **Lisbon:** the `channel=@mountvernon-lisbonsun1180` pin is removed. That channel is a joint Mount Vernon and Lisbon newspaper, so a channel pin filed Lisbon's council meeting under Mount Vernon. Three per-video pins replace it (two Mount Vernon meetings, one Lisbon).
 
+**Follow-up (WO-942, 2026-09-21).** The 30 renames applied after the deploy; page 289 (Culver City, clip 3415) collided with a twin (page 3138) and took a suffix, so Ryan approved deleting 289 and keeping 3138, with the same redirect-first order as Leon Valley. The BART page's own address was also renamed. `reslug-page` previews only the base address and does not check for collisions, so every rename is compared with its preview and stops on a difference.
+
 **Caution.** A fallback pin ranks below a registry name match, which is how BART's Alameda County pin never took effect and the page landed in a Pennsylvania township. The BART pin was first written as a fallback; Ryan upgraded it to authoritative the same day (source `ryan_stated`), since the tenant host is BART's own and no other government can share it.
 
 **Deploy.** Archive (redirects, curated row) and resolver (pins). Renames, the BART page override and its research row run after it.
