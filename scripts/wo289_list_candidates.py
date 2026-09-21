@@ -55,6 +55,7 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.models import ResolvedMeeting  # noqa: E402
 
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
+from app.utils.video_hand_check import assess_video_candidate  # noqa: E402
 from scripts.wo145_api_first_sweep import (  # noqa: E402
     ENUMERATOR_HIGH_RISK_TITLE_PLATFORMS,
     ENUMERATOR_PLATFORMS,
@@ -319,7 +320,16 @@ async def check_candidate(
     if not effective_title and result.video_url:
         effective_title = await hs.youtube_oembed_title(session, result.video_url) or ""
     high_risk = cand.platform_norm in ENUMERATOR_HIGH_RISK_TITLE_PLATFORMS
-    if not hs._looks_like_real_meeting(effective_title, require_allowlist=high_risk):
+    # WO-933: the shared "is this really a meeting video?" gate
+    # (app/utils/video_hand_check.py); anything but a PASS is skipped.
+    gate = assess_video_candidate(
+        title=effective_title,
+        video_url=result.video_url,
+        platform=cand.platform_norm,
+        gov_name=cand.name,
+        require_evidence=high_risk,
+    )
+    if not gate.passed:
         return "off-mission"
 
     adapter_signal = f"{result.jurisdiction or ''} {result.meeting_body or ''}".strip()
