@@ -111,6 +111,7 @@ from app.platforms.queue_probe import (  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
+from app.utils.video_hand_check import assess_video_candidate  # noqa: E402
 
 from discovery.ledger import Ledger  # noqa: E402
 from discovery.enumerate_stage import enumerate_candidates  # noqa: E402
@@ -194,10 +195,12 @@ SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast"}
 # Swagit carries the identical risk (a government's own general-purpose
 # video channel, not a dedicated meeting system) and is added
 # defensively even without an observed live false positive yet.
-ENUMERATOR_HIGH_RISK_TITLE_PLATFORMS = hs.HIGH_RISK_TITLE_PLATFORMS | {
-    "cablecast",
-    "swagit",
-}
+#
+# WO-933 (2026-09-21): the shared set in app/utils/video_hand_check.py now
+# holds cablecast and swagit for EVERY script, so this name is just an alias
+# kept for the scripts (wo168, wo289) that import it. The wider set this
+# script needed first is the only set there is.
+ENUMERATOR_HIGH_RISK_TITLE_PLATFORMS = hs.HIGH_RISK_TITLE_PLATFORMS
 
 # Confirmed real US/Canada name collisions on both -- see
 # _load_canadian_csd_names()'s own docstring.
@@ -839,10 +842,19 @@ async def act_on_result(
     effective_title = result.title or ""
     if not effective_title and result.video_url:
         effective_title = await hs.youtube_oembed_title(session, result.video_url) or ""
-    if not hs._looks_like_real_meeting(effective_title, require_allowlist=high_risk):
+    # WO-933: the shared "is this really a meeting video?" gate
+    # (app/utils/video_hand_check.py); anything but a PASS is skipped.
+    gate = assess_video_candidate(
+        title=effective_title,
+        video_url=result.video_url,
+        platform=platform,
+        gov_name=cand.name,
+        require_evidence=high_risk,
+    )
+    if not gate.passed:
         raise hs.Skip(
             "off-mission",
-            f"{platform}: title looks like a non-meeting video: {effective_title!r} ({meeting_url})",
+            f"{platform}: {gate.skip_note()}: {effective_title!r} ({meeting_url})",
         )
 
     # Post-resolve identity check, stronger than the pre-resolve landing-

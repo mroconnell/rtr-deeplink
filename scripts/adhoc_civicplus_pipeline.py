@@ -137,6 +137,7 @@ from app.platforms.base import (  # noqa: E402
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
+from app.utils.video_hand_check import looks_like_real_meeting  # noqa: E402
 
 DEFAULT_CANDIDATES_CSV = (
     Path(__file__).resolve().parent
@@ -210,64 +211,14 @@ def domain_from_web_address(web_address):
     return netloc or None
 
 
-# Same real, confirmed-live false-positive shapes
-# scripts/nationwide_2404_ingest.py's own MEETING_ALLOWLIST/PROMO_BLOCKLIST
-# guard against (see that file's module docstring and
-# ENUMERATION_METHODS.md's "Step 2's real weak spot" section) -- copied
-# rather than imported, matching this repo's existing convention of each
-# adhoc/nationwide pipeline script carrying its own copy (see
-# civicclerk_latest_event_url()'s own docstring below).
-_MEETING_ALLOWLIST = (
-    "council",
-    "commission",
-    "board",
-    "committee",
-    "meeting",
-    "session",
-    "hearing",
-    "authority",
-    "trustees",
-    "supervisors",
-    "assembly",
-    "selectboard",
-    "select board",
-)
-_PROMO_BLOCKLIST = (
-    "promo",
-    "advertisement",
-    "commercial",
-    "psa",
-    "public service announcement",
-    "how to",
-    "tutorial",
-    "instructional",
-    "training video",
-    "orientation video",
-    "welcome",
-    "message from the mayor",
-    "highlight reel",
-    "sizzle reel",
-    "ribbon cutting",
-    "parade",
-    "test stream",
-    "test broadcast",
-    "sample video",
-    "demo video",
-    "career",
-    "job fair",
-    "recruitment",
-    "state of the city",
-    "year in review",
-    "commercial break",
-    "tour of",
-)
-
-
+# WO-933 (2026-09-21): this script used to carry its own copy of
+# nationwide_2404_ingest.py's MEETING_ALLOWLIST/PROMO_BLOCKLIST (a plain
+# substring test, and missing the later "bocc" and "interview" entries).
+# It now asks the shared gate's title rule (app/utils/video_hand_check.py).
+# This pipeline only ever sees CivicPlus/CivicClerk listing rows, and it
+# has always required a governing-body word, so that stays.
 def _looks_like_real_meeting(title: str) -> bool:
-    t = (title or "").lower()
-    if any(b in t for b in _PROMO_BLOCKLIST):
-        return False
-    return any(kw in t for kw in _MEETING_ALLOWLIST)
+    return looks_like_real_meeting(title, require_allowlist=True)
 
 
 async def civicclerk_latest_event_url(session, tenant_url: str):

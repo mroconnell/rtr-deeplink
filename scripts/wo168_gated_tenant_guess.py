@@ -112,6 +112,7 @@ from app.platforms.queue_probe import probe_queue_entry  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
+from app.utils.video_hand_check import assess_video_candidate  # noqa: E402
 import scripts.wo145_api_first_sweep as w145  # noqa: E402
 
 from discovery.ledger import Ledger  # noqa: E402
@@ -754,9 +755,16 @@ async def process_confirmed_tenant(
             effective_title = (
                 await hs.youtube_oembed_title(session, result.video_url) or ""
             )
-        if not hs._looks_like_real_meeting(
-            effective_title, require_allowlist=high_risk
-        ):
+        # WO-933: the shared "is this really a meeting video?" gate
+        # (app/utils/video_hand_check.py); anything but a PASS is skipped.
+        gate = assess_video_candidate(
+            title=effective_title,
+            video_url=result.video_url,
+            platform=platform,
+            gov_name=cand.name,
+            require_evidence=high_risk,
+        )
+        if not gate.passed:
             continue
 
         adapter_signal = (

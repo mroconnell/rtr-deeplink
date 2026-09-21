@@ -1,5 +1,100 @@
 # Backlog — done
 
+## WO-933: one shared check for "is this really a meeting video?" replaces eleven copies of the rule [Done 2026-09-21]
+
+**Why this ran.** Hand-reads found that the rule for "is this video a meeting?" was wrong too often. 62 of 64 "video found" verdicts from a bare homepage scan were not meetings (WO-355). 7 of 16 channel-listing hits were not (WO-147, WO-149). The rule also lived in eleven scripts that had drifted apart. Five older copies still passed "Larry J. Dix Boardroom". Phase 1 of `docs/BACKLOG_PHASES.md` asks for one gate before any growth sweep runs.
+
+**What was built.** One module, `app/utils/video_hand_check.py`. Its entry point is `assess_video_candidate()`. It returns one of three answers:
+
+| Answer | Meaning | What the caller does |
+|---|---|---|
+| `pass` | Evidence it is a meeting: a governing-body word in the title, a meeting phrase next to the link, or a caller who says it came from a per-meeting listing or a meeting-only platform | Goes ahead |
+| `reject` | Evidence it is not: a decorative-asset host, a hero-embed address, a looping `<video>` with no controls, a test upload, a wrong-body or ceremony title, a promo title, a link that is not a video | Skips it |
+| `cannot_tell` | Neither | Records that, and does not accept it |
+
+The gate never defaults to accept. `MIN_PLAUSIBLE_MEETING_SECONDS` was not touched.
+
+Where it is used:
+
+- **`verify_hub()`** (`app/platforms/passive_verify.py`). A video found by a bare homepage scan is now judged after it resolves. A `cannot_tell` video keeps `video_found=True`, gets `meeting_found=False` and verdict `resolved_unverified_video`, so `tier` is empty and no caller credits it. A `reject` gets verdict `video_rejected`. Every refused link is listed in `rejected_video_links`. A per-meeting listing walk only gets the structural checks (decorative address, test title).
+- **`find_platform_link()`** (`app/platforms/base.py`) takes an optional `accept` function, so a refused first link no longer hides a real link below it.
+- **`generic_fallback.py`** no longer offers a hero video, a widget animation file or a non-video link as "the video". It does not use filename words, because the user chose the page.
+- **The ingest scripts.** `wo134_confirmed_hits_ingest.py`, the four `nationwide_*_ingest.py` scripts and `wo130_county_ingest.py` lost their own copies of the lists, the risky-platform set and `_looks_like_real_meeting()`. They import the shared ones and call the gate. `hub_sweep_wo126.py`, `wo145`, `wo151`, `wo168` and `wo289` call the gate too. `wo147`'s `_is_decorative_hit()`, `wo175`, `adhoc_civicplus_pipeline.py`, `pmn_utah_pilot.py` and `wo264`'s `find_video_candidates()` use the shared pieces.
+- **The ladder** (`run_access_ladder()` in `wo147`) adds a note, never a rejection, when a hit was found on a page that looks like another organization's site.
+- **`HIGH_RISK_TITLE_PLATFORMS`** is defined once: youtube, vimeo, cablecast, swagit.
+
+**Result.**
+
+| Question | Count | Result |
+|---|---|---|
+| Files that had their own copy of some part of the rule | 11 | Now one |
+| Real channel-list titles run through the old rule and the gate (six big-city channels) | 1,119 | 666 pass, same as before; 0 that passed before now fail; 46 reject; 407 cannot tell |
+| Real homepages with a looping hero video caught by the markup rule (McLeansboro IL, Atlantic City NJ, Union Grove WI) | 3 of 3 | None of the three has a filename the old check knew |
+| Real meeting-player pages checked for a looping `<video>` | 10 | 0 hits, so no false rejects |
+| Real Cablecast and Swagit meeting titles that still pass | 7 of 7 | Hometown IL's two non-meeting titles come back `cannot_tell` |
+| Live Vimeo titles re-checked today (one request each) | 3 | McLeansboro "Why McLeansboro.mp4"; Lavon "TML_Muni Awards_2020_Finalmp4" (the Texas Municipal League's video); Oak Bluffs still "video1516165031" |
+| New tests | 114 (110 pass, 4 are strict expected-fails) | Full suite: 4,378 passed, 16 skipped, 4 expected fails; `ruff check`, `ruff format --check` and the heading check pass |
+
+**Entries in `BACKLOG.md` and what happened to each** (search by the words in quotes).
+
+| Entry | Result | What is left |
+|---|---|---|
+| "A decorative video with no web-address signature at all" | Closed | The gate reads the video's own title (Vimeo's oEmbed title already comes back from the adapter) and the text next to the link. A raw file with no title is `cannot_tell`, as the entry's constraint asks |
+| "`HIGH_RISK_TITLE_PLATFORMS` (`{"youtube", "vimeo"}`," | Closed | Cablecast and Swagit added. One definition |
+| "A bare homepage link to a video file (`direct_file`" | Closed | A body-and-meeting phrase near the link is required. The entry's "or a recent date" option was not built, because a date alone does not say meeting |
+| "`find_video_candidates()`'s video-file-extension regex matches Airbnb's" | Closed (not in the plan's list) | Rejects by host (`muscache.com`) |
+| "A real tier 1/3 "video found" verdict off" | Half closed | Built: address shape (plus `videobg` and `background`), looping-video markup, direct-file context, test titles. Not built: CivicClerk events with no agenda, a dead-link check, a shared-template check |
+| "`find_platform_link()` accepts the first vendor-shaped" | Half closed | Built: the `accept` hook, the not-a-video checks, the same-organization note. Not built: the note in two other ladder copies, a re-measure, the wrong-recorded-site cases |
+| "A Vimeo video whose own title is a camera file" | Half closed | The gate treats `video123`, `IMG_123` and bare numbers as no title. The page-title fallback and the count still need Ryan's choice |
+| "`classify_video_hand_check()`'s title-keyword" | Not closed, corrected | 3 of its 4 "missed" shapes already pass today. Only the French one is a miss, with one real example |
+| "A bare YouTube channel-listing scan measurably ingests non-meeting" | Not closed | The design is an open choice. 4 of its 7 real titles still pass |
+
+**Open parts, in the entry shape, for `BACKLOG.md` (WO-931 applies these).**
+
+- **[NEEDS-AUDIT] A real tier 1/3 "video found" verdict off `verify_hub()`'s bare-homepage fallback: three checks are still not built.**
+  - **Issue**: WO-933 built the address, looping-video, meeting-context and test-title checks. `verify_hub()` now records a homepage video it cannot verify as `resolved_unverified_video` (tier empty). Not built: (1) `_civicclerk_walker()` carries only title, date and url, so an event with no `agendaId`/`agendaName` is not caught; (2) a dead `externalVideoUrl` (Winter Garden city FL, a 404) is caught only later by the queue probe; (3) the same video address on unrelated domains (Coatesville IN and Genoa WI, one shared stock video) is not checked.
+  - **Impact**: a CivicClerk test event is caught only when its title is just "test" and a number ("TEST 3", Forest Park city GA). A test event with a real-looking title still passes.
+  - **Next action**: make the walker carry `agendaId`/`agendaName` and treat both empty as `cannot_tell`; HEAD-check `externalVideoUrl` before crediting it; add a per-run check for one video address seen on several unrelated governments.
+  - **Constraint**: one real test-event example only, so do not widen the title rule (`^TEST\b` also rejects "Test City Council Meeting", which a fixture caught). Test against real CivicClerk events with and without agendas.
+  - **History**: `BACKLOG_DONE.md` WO-933, WO-348, WO-355.
+- **[NEEDS-AUDIT] A bare YouTube channel-listing scan measurably ingests non-meeting videos: 4 of the 7 real titles still pass.**
+  - **Issue**: re-run 2026-09-21. "Commissioners Tour Picatinny Arsenal's ...", "Larry J. Dix Boardroom" and "Senate Bill 152: ... Committees" are rejected by the word-boundary rule. WO-933 made every script use it (five older copies passed them). Still passing: "HAIRitage 2026 CROWN Act Workshop: Advice from Our Commissioner Board", "Council Participation Instructions", "What Does a County Commissioner or Council Member Do?", "Pennsylvania Fish and Boat Commission Water Conservation Officer training: Boating Scenarios". They are pinned as strict expected-fail tests in `tests/test_video_gate_wo933.py`.
+  - **Impact**: about 4% of channel-listing hits (7 of 167 in WO-147 and WO-149). Not re-measured.
+  - **Next action**: Ryan or the next session picks the design: a date-shaped token, a negative-signal list for explainer, training and state content, or a lower-trust review queue for channel-listing hits. Fact to weigh: none of the 4 titles has a date, and one real correct title on file has none either ("BZA Special Meeting"). Remove the expected-fail markers when it is fixed.
+  - **Constraint**: do not change `MEETING_ALLOWLIST`/`PROMO_BLOCKLIST` from this small sample.
+  - **History**: `BACKLOG_DONE.md` WO-933, WO-147, WO-149.
+- **[NEEDS-AUDIT] `classify_video_hand_check()`'s title-keyword pre-filter misses one real meeting-title shape: French.**
+  - **Issue**: re-derived 2026-09-21. "MV Council 6.21.2021", "BZA Special Meeting" and "Common Council: Meeting of September 8, 2026" all pass the current rule, so the WO-279 claim for them does not reproduce (why they were missed then was not found). Only "569e séance ordinaire du 1 juin 2026" (Val-d'Or QC) still fails.
+  - **Impact**: real French-titled meetings on Canadian channels become `cannot_tell`.
+  - **Next action**: wait for a second real French meeting title, then add a small French word set to `MEETING_ALLOWLIST` (one place now).
+  - **Constraint**: do not widen from one example.
+  - **History**: `BACKLOG_DONE.md` WO-279, WO-933.
+- **[NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped link on a homepage even when it belongs to a different organization: the note is built but only partly wired.**
+  - **Issue**: WO-933 added the `accept` hook, the not-a-video checks and `same_organization_flag()`. It is a note in `run_access_ladder()` (`wo147`), never a rejection. Not done: `wo148_headless_sweep.py`, `wo149_county_ladder_sweep.py` and `wo265_school_district_sweep.py` carry their own copies and get no note. The rule was not re-measured (built from the entry's own numbers: 47 of 57 wrong flagged, 4 of 80 right). It cannot see the 11 of 57 wrong finds that came from a wrong recorded website, because the page is then the recorded site.
+  - **Impact**: the ladder copies still hand back other organizations' links without a note.
+  - **Next action**: re-run the rule once on WO-912's hand-read finds; wire the note into the three copies (or retire them); look at how to catch a wrong recorded website.
+  - **Constraint**: flag, never reject: real shared cable-access channels have no name overlap.
+  - **History**: `BACKLOG_DONE.md` WO-933, WO-908, WO-909, WO-912, WO-913.
+- **[NEEDS-AUDIT] `[EASY]` A Vimeo video whose own title is a camera file name ("video1516165031") becomes the page title as-is: the gate now sees it, the page title does not change.**
+  - **Issue**: `vimeo.com/1199438213` still returns the title "video1516165031" (checked live 2026-09-21). The gate treats `^video\d+$`, `^IMG_\d+` and `^\d+$` as no title (`cannot_tell`). `vimeo.py` still uses the oEmbed title as-is.
+  - **Impact**: a meaningless page title and address. The count of Archive pages with such titles has not been run (a read-only export).
+  - **Next action**: count the pages. Ryan chooses the fallback: a title built from the channel name and date, or the government name plus "meeting video". Then build it in the adapter with a test.
+  - **Constraint**: never invent a meeting name; the fallback must come from data on the video itself.
+  - **History**: `BACKLOG_DONE.md` WO-925, WO-933.
+
+**Caution.**
+
+- The gate rejects wrong-body and ceremony titles (`classify_video_hand_check()`) on per-meeting listings in the ingest scripts too. A real meeting titled "Swearing In and Regular Council Meeting" would be skipped and logged as a reject. That is a recorded skip, never a wrong page.
+- `generic_fallback.py` is user-facing. A real meeting page whose player loops and has no controls would lose its video and show "no video found". None of the 10 real player pages on file does this.
+- Sweeps that map results by `meeting_found` will file a `resolved_unverified_video` under "no meeting". The video is in `video_found`, `evidence` and `rejected_video_links`. A report should count these as their own finding.
+- The same-organization rule and the Swagit addition were built from the entries' own numbers and reasoning. Neither was re-measured here.
+- About a dozen other sweep scripts still call only the shared title rule, not the whole gate: `wo128`, `wo146`, `wo148`, `wo150`, `wo196`, `wo235`, `wo247`, `wo252`, `wo279`, `wo290`, `wo340`, `pmn_utah_pilot`. `wo355`, `wo361` and `wo364` (one-off hand-read scripts) keep their own copy of the decorative and meeting-phrase lists; they wrote fixed research files and were left alone.
+- `wo134_confirmed_hits_ingest.py` also changed under WO-932. Expect a small rebase there: this WO only replaced its lists and one title check.
+
+**Recommendation.** Deploy with the Phase 1 checkpoint, not before. Then decide two things: the channel-listing design, and the Vimeo camera-file fallback. Run the "count of Archive pages" export first.
+
+**Deploy status.** The changes under `app/` (`base.py`, `generic_fallback.py`, `passive_verify.py`, `utils/video_hand_check.py`) are on `main` once merged but are **not live** until Ryan deploys. Only `generic_fallback.py` changes what the resolver shows readers (`base.py` only gains an optional argument). `passive_verify.py` and the scripts run from a laptop. No migration. Docs updated: `README.md` (project structure and the generic-fallback section). `BACKLOG.md` and `CLAUDE.md` were left to WO-931. `docs/BACKLOG_PHASES.md`'s "copied across scripts, confirmed in 6 files" line is now out of date.
+
 ## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
 
 **Why this ran.** WO-925's scan flagged 35 pages whose web address names a different place than the page's government. Ryan asked for a hand-check, then approved four fixes: delete the junk pages, mint BART, rename the 30 stale addresses, and correct the Lisbon channel pin. The Leon Valley twin (page 1595) was also deleted the same day.

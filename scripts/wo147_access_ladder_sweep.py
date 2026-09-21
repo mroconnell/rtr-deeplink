@@ -131,6 +131,11 @@ load_dotenv()
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402
+    decorative_url_reason,
+    not_a_real_video_link_reason,
+    same_organization_flag,
+)
 
 import scripts.wo134_confirmed_hits_ingest as wo134  # noqa: E402
 
@@ -493,19 +498,19 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
 # change; a "Rosemary-Farm-Video" subject-mismatch case has no
 # government-decorative word at all and is out of scope for a keyword
 # list (it's part of the separate, still-open wrong-organization entry).
-_DECORATIVE_FILENAME_RE = re.compile(
-    r"(promo|promotion|accueil|welcome|tourism|flyover|drone|dji_|"
-    r"site.?asset|homepage|hero|banner|banniere|placeholder|discover|explore)",
-    re.IGNORECASE,
-)
-
-
+#
+# WO-933 (2026-09-21): the token list, the hero-embed query check and the
+# decorative-asset host list now live ONCE in app/utils/video_hand_check.py
+# (`decorative_url_reason()`), where `verify_hub()` and `generic_fallback`
+# use them too. This function is that check with the filename tokens on,
+# plus the "not a video or a channel at all" check (a bare `youtube.com`, a
+# search page, a Shorts clip, a Google sign-in page: 10 of WO-912's 57 wrong
+# finds), so the ladder keeps climbing past those the same way.
 def _is_decorative_hit(url: str) -> bool:
-    u = (url or "").lower()
-    if "background=1" in u or "loop=1" in u:
-        return True
-    path = urlparse(url).path
-    return bool(_DECORATIVE_FILENAME_RE.search(path))
+    return (
+        decorative_url_reason(url, check_filename=True) is not None
+        or not_a_real_video_link_reason(url) is not None
+    )
 
 
 # --- WO-228 (2026-09-11): scored, ranked replacement for the old
@@ -1259,7 +1264,36 @@ class LadderResult:
     hit_url: Optional[str] = None
 
 
+def _flag_other_organization(
+    result: LadderResult, name: str, domain: str
+) -> LadderResult:
+    """WO-933: notes (never rejects) a platform hit that was found on a page
+    which looks like somebody else's site. `find_platform_link()` takes the
+    first vendor-shaped link in document order and never asks whose it is;
+    WO-908/909/912/913 hand-read 57 + 12 + 11 wrong hits of this kind (a
+    state agency, a hosting company's badge, a neighboring county's page).
+    The rule is `same_organization_flag()` in app/utils/video_hand_check.py,
+    the one measured on WO-912's finds. It is a NOTE for a human look, not a
+    rejection: a real shared cable-access channel has no name overlap at all
+    (BACKLOG.md's constraint). The outcome, `platform` and `hit_url` are
+    untouched."""
+    if not (result.platform and result.hit_url):
+        return result
+    flag = same_organization_flag(result.final_url, name, gov_domain=domain)
+    if flag is not None:
+        note = f"cannot tell whose link this is: {flag.detail}"
+        result.note = f"{result.note}; {note}" if result.note else note
+    return result
+
+
 async def run_access_ladder(
+    session: aiohttp.ClientSession, name: str, state: str, domain: str, prior_url: str
+) -> LadderResult:
+    result = await _run_access_ladder_impl(session, name, state, domain, prior_url)
+    return _flag_other_organization(result, name, domain)
+
+
+async def _run_access_ladder_impl(
     session: aiohttp.ClientSession, name: str, state: str, domain: str, prior_url: str
 ) -> LadderResult:
     """Plain -> browser-headers -> headless, stopping at a challenge or

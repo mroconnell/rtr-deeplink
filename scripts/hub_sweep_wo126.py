@@ -142,8 +142,11 @@ from app.utils.gov_registry import registry as gov_registry  # noqa: E402
 from app.utils.gov_registry import resolver as gov_resolver  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _headers, _ingest  # noqa: E402
-from scripts.nationwide_2404_ingest import (  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402
     HIGH_RISK_TITLE_PLATFORMS,
+    assess_video_candidate,
+)
+from scripts.nationwide_2404_ingest import (  # noqa: E402
     _looks_like_real_meeting,
     _parse_candidate_date,
     civicclerk_latest_event_url,
@@ -1050,15 +1053,27 @@ async def act_on_resolved(
             meeting_url=meeting_url,
         )
 
-    # Title gate (the nationwide scripts' own, blocklist for structured
-    # listings, allowlist-required for a bare YouTube/Vimeo hit).
+    # Video gate. WO-933: the shared "is this really a meeting video?"
+    # gate (app/utils/video_hand_check.py) -- the same title rules this
+    # used to apply itself (blocklist for structured listings, a
+    # governing-body word for a bare YouTube/Vimeo/Cablecast/Swagit hit),
+    # plus a decorative address, a test upload and a wrong-body or
+    # ceremony title. Anything but a PASS is skipped; the reason says
+    # whether the gate rejected the video or could not tell.
     effective_title = result.title or lead.title or ""
     if not effective_title and result.video_url:
         effective_title = await youtube_oembed_title(session, result.video_url) or ""
-    if not _looks_like_real_meeting(effective_title, require_allowlist=high_risk):
+    gate = assess_video_candidate(
+        title=effective_title,
+        video_url=result.video_url,
+        platform=lead.platform,
+        gov_name=gov.name,
+        require_evidence=high_risk,
+    )
+    if not gate.passed:
         raise Skip(
             "off-mission",
-            f"{lead.platform}: title looks like a non-meeting video: {effective_title!r} ({meeting_url})",
+            f"{lead.platform}: {gate.skip_note()}: {effective_title!r} ({meeting_url})",
             meeting_url=meeting_url,
             video_url=result.video_url or "",
         )
