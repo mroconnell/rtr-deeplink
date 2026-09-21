@@ -49,10 +49,6 @@ from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
-# WO-935: the one shared own-transcription early-end check (also imported by
-# scripts/transcribe_backlog_locally.py) -- see that function's docstring.
-from app.platforms.coverage_check import own_transcript_early_end_warning
-
 from ..utils.date_status import (
     iso_meeting_date,
     meeting_date_html,
@@ -10138,28 +10134,13 @@ async def report_chunk_result(
             # and the worker's own idle-time auto-generated ones, the one
             # place both actually finish.
             hallucination_warnings = detect_hallucination_warnings(job.partial_segments)
-            # WO-935: a finished job already holds the video's real ffprobed
-            # length (`probed_duration_seconds`), and nothing compared it with
-            # the transcript it produced -- the only length check ran when a
-            # job was CREATED (_flag_default_transcript_if_truncated_early).
-            # Same rule as WO-923 (last cue under 90% of the video and 10+
-            # minutes uncovered), same marker, so a page whose own transcript
-            # stops early is warned exactly like one whose captions do. Only
-            # the last cue is compared, never gaps inside the transcript. A
-            # job with no real length (0/None) is unmeasurable, not flagged.
-            early_end_warning = own_transcript_early_end_warning(
-                job.partial_segments, job.probed_duration_seconds
-            )
             version = TranscriptVersion(
                 meeting_page_id=job.meeting_page_id,
                 language=language,
                 source="transcribed",
                 is_default=False,  # promote_transcript_version sets the real default below
                 segments=sorted(job.partial_segments, key=lambda s: s["start"]),
-                transcript_warnings=[
-                    *hallucination_warnings,
-                    *([early_end_warning] if early_end_warning else []),
-                ],
+                transcript_warnings=hallucination_warnings,
                 content_hash=_content_hash(job.partial_segments),
             )
             session.add(version)

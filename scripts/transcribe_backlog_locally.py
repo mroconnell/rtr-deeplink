@@ -177,7 +177,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
-from app.platforms.coverage_check import own_transcript_early_end_warning  # noqa: E402
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
@@ -1578,18 +1577,6 @@ async def transcribe_meeting(
     # script pushed it live, unlike the scraped-caption path's existing
     # is_likely_garbled() check.
     warnings = detect_hallucination_warnings(sorted_segments)
-    # WO-935: this script already holds the video's real length (`duration`,
-    # from ffprobe -- or the summed per-clip probes of a chunk plan -- above),
-    # and nothing compared it with the finished transcript before it was
-    # pushed. Same shared check the cloud path runs in
-    # archive/db/crud.py's report_chunk_result(); see
-    # own_transcript_early_end_warning() for the rules (last cue only, WO-923's
-    # threshold, the existing marker). Per this repo's "two independent
-    # transcription paths" convention, the cloud fix does not reach this
-    # script on its own, so it is called here too.
-    early_end_warning = own_transcript_early_end_warning(sorted_segments, duration)
-    if early_end_warning:
-        warnings = [*warnings, early_end_warning]
     return {
         "ok": True,
         "segments": sorted_segments,
@@ -1720,18 +1707,9 @@ async def process_one(
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
 
-    # WO-935: transcript_warnings can now also carry the early-end warning,
-    # which is not a hallucination -- label each kind for what it is.
-    hallucinated_note = ""
-    if any(
-        "hallucinated by the transcription model" in w
-        for w in result["transcript_warnings"]
-    ):
-        hallucinated_note += " -- LOOKS HALLUCINATED"
-    if any(
-        "may end before the meeting did" in w for w in result["transcript_warnings"]
-    ):
-        hallucinated_note += " -- MAY END BEFORE THE MEETING DID"
+    hallucinated_note = (
+        " -- LOOKS HALLUCINATED" if result["transcript_warnings"] else ""
+    )
 
     if dry_run:
         return {

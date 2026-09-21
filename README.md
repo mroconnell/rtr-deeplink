@@ -631,24 +631,19 @@ Every registered adapter's `resolve()` now ends with
 `app/platforms/coverage_check.py`: when the video's duration is known
 (`ResolvedMeeting.video_duration_seconds` from the adapter, or a
 header-only ffprobe of an HLS/mp4/mp3 file; never guessed, and never an
-ffprobe of a YouTube page — a YouTube resolve carries the length yt-dlp
-already returns, WO-935) and the last caption ends under 90% of it with
-10+ minutes uncovered, it
-adds a reader warning containing "may end before the meeting did". That is
+ffprobe of a YouTube page — since WO-935 a YouTube resolve carries the
+length yt-dlp already returns) and the last caption ends under 90% of it
+with 10+ minutes uncovered, it adds a reader warning containing "may end before the meeting did". That is
 the Archive's existing `_EARLY_TRUNCATION_MARKER`, so the page reports as
 `truncated_transcript` and stays eligible for re-transcription with no new
 plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
 
-**The same warning on a transcript we made ourselves (WO-935,
-2026-09-21).** Both transcription paths — the cloud worker's finish step
-(`report_chunk_result()`) and `scripts/transcribe_backlog_locally.py` —
-call `coverage_check.own_transcript_early_end_warning()` on the finished
-transcript and the video's real probed length: same threshold, same
-marker, only the last cue compared, no length means no warning. Read its
-docstring before trusting a flag: on our own transcripts a short last cue
-is usually dead air after the meeting, not a cut transcript (BACKLOG_DONE's
-WO-935 entry has the two real pages measured). The same switch turns it
-off; set it in the Archive's and the worker's environment too.
+This check reads source captions only. A transcript we made ourselves
+(the cloud worker or `scripts/transcribe_backlog_locally.py`) is not
+compared with the video's length. That was built for WO-935 and held: on the
+two real pages measured, the audio after the last cue was silent, so the
+warning would have been wrong. It is filed to come back together with a
+tail-silence check (see `BACKLOG_DONE.md`, WO-935).
 
 **Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
 one always-on process that fetches captions for waiting pages, feeds the
@@ -1458,10 +1453,7 @@ number of concurrent worker processes.
    own real text the same way every scraped-caption adapter already does)
    and is promoted to the page's default (closing a real, previously-
    unaddressed gap: earlier, only a page's *very first* transcript version
-   ever became default — see `BACKLOG_DONE.md`). Since WO-935 its last cue
-   is also compared with the job's probed video length, and a transcript
-   that stops well short carries the "may end before the meeting did"
-   warning (see the partial-transcript paragraph above). Nothing is deleted — the
+   ever became default — see `BACKLOG_DONE.md`). Nothing is deleted — the
    original scraped version (if any) stays reachable through the existing
    version picker. An email goes out with an excerpt and a link to the
    permanent page.

@@ -1184,11 +1184,10 @@ async def extract_chunk_audio(
     reason)`. That tolerance is measured on real media -- see the constant's
     own comment. `is_final_chunk=True` skips this half of the check: the
     last chunk of a file is asked for "what is left of the probed duration",
-    which the audio may not quite hold, and a truncated end of a whole
-    meeting is what WO-935's finished-transcript check
-    (coverage_check.own_transcript_early_end_warning) is for. The caller
-    decides (worker.segment_utils.is_last_window_of_source()); the default
-    is the strict check.
+    which the audio may not quite hold, so a cut inside the last chunk is
+    NOT caught here. The caller decides
+    (worker.segment_utils.is_last_window_of_source()); the default is the
+    strict check.
 
     **A failed seek gets one output-side-seek retry before giving up
     (WO-45).** The extraction below is a fast input-side `-ss`, which on

@@ -1,8 +1,10 @@
 # Backlog — done
 
-## WO-935: bad audio chunks now fail instead of being transcribed, our own transcripts get the "may end before the meeting did" warning, and YouTube pages carry their video length [Done 2026-09-21]
+## WO-935: bad audio chunks now fail instead of being transcribed, and YouTube pages carry their video length; the own-transcript warning is built, measured, and held [Done 2026-09-21]
 
-**Why this ran.** Ryan's rule for Phase 1 is to fix what readers see wrong first. Three gaps let a partly missing transcript reach a reader with no notice. A cut or corrupt chunk of cached audio reached Whisper as-is. A transcript that Whisper finished was never compared with the video's length. And YouTube pages had no video length, so the WO-923 check could not run on them. The warning for source captions (WO-923, WO-925, WO-926) was already built. This WO covers what was left: our own transcription, and YouTube.
+**Why this ran.** Ryan's rule for Phase 1 is to fix what readers see wrong first. Two gaps let audio that was cut or corrupt reach Whisper as if it were fine. A slice of cached audio was only checked for "ffmpeg exited 0 and wrote bytes". A chunk that decodes but is short was never noticed. A third gap: YouTube pages had no video length, so the WO-923 check could not run on them. The warning for source captions (WO-923, WO-925, WO-926) was already built.
+
+**Ryan's decision (2026-09-21, in chat).** Ship A, B and D. Hold C, the warning for a transcript that our own transcription finished. Consider a tail-silence check later, bundled with C as one piece. Nothing for C or the tail-silence check is in this PR.
 
 **What was checked first.** Each backlog entry was re-derived against the code and against real ffmpeg before anything was built.
 
@@ -10,7 +12,7 @@
 |---|---|---|
 | `slice_cached_audio()` skips the corrupt-chunk | The cached-audio slice only checks that ffmpeg exited 0 and wrote bytes | True. No fix in git history. Real ffmpeg: a slice starting past the end of a cache writes a 369-byte file, exit 0, and the old code answered "ok" |
 | A chunk truncated only at its tail still passes the | A valid but short chunk passes every check | True. Real ffmpeg: a slice with 10 seconds of audio left, asked for 30, answered "ok". The entry's worry that HLS seeking makes real chunk lengths differ did not hold (see the measurement below) |
-| A partial transcript made by our own transcription cannot get the (part 1) | Neither path compares a finished transcript with the video's length | True on both paths. Page 1676 (Leon Valley TX, Cablecast show 179) re-measured live: 4,541 cues, last cue at 5:34:53, video 6:29:59 |
+| A partial transcript made by our own transcription cannot get the (part 1) | Neither path compares a finished transcript with the video's length | The claim is true on both paths. The premise is wrong, see "Piece C, held" below |
 | Partial-transcript check has only measured 574 of (the code half) | YouTube pages never get a video length | True. `youtube.py` never set the field, although yt-dlp returns `duration` |
 
 **What was built, and which transcription path each change reaches.**
@@ -18,12 +20,10 @@
 | Piece | Change | Cloud worker | Local script |
 |---|---|---|---|
 | A | `slice_cached_audio()` now decodes its slice once and fails an undecodable one, as `extract_chunk_audio()` already did | Yes. It already re-cuts a failed chunk from the source (WO-58) | Yes |
-| A, local only | A failed slice is now re-cut from the source for that chunk only. Before, the script re-sliced the same bad cache on every retry | Already had this | Added, so the two paths match |
+| A, local only | A failed cached slice is now re-cut from the source for that chunk only. Before, the script re-sliced the same bad cache on every retry | Already had this | Added, so the two paths match |
 | B | A chunk that decodes but is more than 15 seconds shorter than asked for is treated like an undecodable one: one output-side retry, then a plain failure. Applies to `extract_chunk_audio()` and `slice_cached_audio()`. The last chunk of a file is exempt (`is_final_chunk`, decided by one shared helper, `worker/segment_utils.py`) | Yes | Yes |
-| C | `own_transcript_early_end_warning()` in `app/platforms/coverage_check.py`, called once on the finished transcript and the video's real probed length. Same threshold as WO-923, same marker, last cue only | Yes, in `report_chunk_result()` | Yes, in `transcribe_meeting()` |
 | D | `youtube.py` carries yt-dlp's `duration` into `ResolvedMeeting.video_duration_seconds` | No | No. See the reach note below |
-
-Both paths call the one function in C. That is on purpose: the two copies of `detect_hallucination_warnings` are how the paths drift. A test checks that both import the same function object.
+| C | Not built. Held, see below | | |
 
 **Piece B: how the 15 seconds was chosen.** The entry said to measure real chunk lengths before choosing a tolerance. This was done on real public government media: 14 sources on 12 hosts (Utah PMN mp3 and mp4, Granicus HLS and mp4, Sliq HLS, Cablecast HLS on four hosts, Invintus, a county mp4, Telvue HLS), 0.2 to 6 hours long. For each: one 60-second chunk from 40% in, and one from the very end, cut with the repo's own `extract_chunk_audio()` and decoded with ffmpeg. "Shortfall" is seconds asked for minus seconds decoded.
 
@@ -32,7 +32,7 @@ Both paths call the one function in C. That is on purpose: the two copies of `de
 | Middle (60 s at 40% in) | 14 | -0.05 to 0.00 s | 0.05 s |
 | Last (60 s at the very end) | 14 | 0.00 to 1.83 s | 1.83 s (Telvue). The other 13 are under 0.2 s |
 
-So 15 seconds is about 8 times the worst case seen and about 300 times a middle chunk's. The last chunk is not checked at all, even though its worst real case was 1.83 seconds. Its asked-for length is the remaining probed duration, which a container can overstate. A missing tail on the last chunk is what piece C is for.
+So 15 seconds is about 8 times the worst case seen and about 300 times a middle chunk's. The last chunk is not checked at all, even though its worst real case was 1.83 seconds. Its asked-for length is the remaining probed duration, which a container can overstate. **A cut inside the last chunk of a file is therefore not caught by anything in this PR.**
 
 **The same real slices, old code against new code.** A real 30-second mp3 made exactly the way the cache is made, cut three ways:
 
@@ -42,82 +42,68 @@ So 15 seconds is about 8 times the worst case seen and about 300 times a middle 
 | Starts past the end (start 40 s). Writes a 369-byte file | ok (wrong) | fails: "isn't decodable" |
 | Runs off the end (start 20 s, ask 30 s, 10 s of audio left) | ok (wrong) | fails: "only 10s of the 30s asked for" |
 
-**Piece C: the three real pages, and what the audio after the last cue holds.** The rule was run on three real pages. For the first two, 30-second samples of the audio after the last cue were cut and their volume read. Nothing was transcribed. Speech in these recordings reads about -22 to -41 dB.
+**Piece D: what it reaches, and what was not verified.** The length is carried by every path that returns the YouTube result whole: a direct YouTube URL, LIMS, ProudCity, PrimeGov and Legistar's page-link path (read in the code, not run live). It is not carried by eScribe or CivicClerk, which copy fields out of the YouTube result and drop it. It is not reached by the drip's captions lane, which uses `youtube-transcript-api` and builds its own payload. **The live check was not made.** YouTube blocks this machine. The real yt-dlp field shape comes from the repo's Philadelphia channel-listing fixture (video `5LZqoNDRMYk`, `"duration": 16089`). Tests confirm the key is carried through, read into the field, and that the WO-923 rule then fires on it.
+
+**Piece C, held: the evidence.** C was built and run on three real pages, then removed at Ryan's decision. It compared a finished own transcript's last cue with the video's length, using WO-923's rule (under 90% with 10+ minutes uncovered) and the existing marker. For the first two pages, 30-second samples of the audio after the last cue were cut and their volume read. Nothing was transcribed. Speech in these recordings reads about -22 to -41 dB.
 
 | Page | Last cue ends | Video length | Share of video | Flagged by the rule | Audio after the last cue |
 |---|---|---|---|---|---|
-| 1676, Leon Valley show 179 | 5:34:53 | 6:29:59 | 86% | Yes | Speech until about 5.57 h. Silent (-83 dB) at all 4 points sampled from 5.69 h to the end |
-| Leon Valley show 185 (2026-07-21). The shown version is our Whisper | 3:16:24 | 6:00:00 | 55% | Yes | Speech until about 3.26 h. Silent (-71 dB) at all 4 points sampled from 3.47 h to the end |
+| 1676, Leon Valley show 179 | 5:34:53 (20,093 s) | 6:29:59 | 86% | Yes | Speech (-38 dB) at 20,050 s. Digital silence (about -83 dB) at all 4 points sampled, from 20,500 s to 23,300 s |
+| Leon Valley show 185 (2026-07-21). The shown version is our Whisper | 3:16:24 (11,784 s) | 6:00:00 | 55% | Yes | Speech (-22 to -23 dB) at 11,000 s and 11,750 s. Silent (about -71 dB) at all 4 points sampled, from 12,500 s to 21,000 s |
 | Leon Valley 2025-06-19 | 2:23:50 | 2:23:52 | 99.98% | No | Not checked |
 
-Both flagged pages are complete transcripts with dead air after the meeting. The second video is a round 6:00:00, a fixed recording window. The rule cannot tell dead air from a cut transcript, and the plan says not to try (rule 3). See Caution.
+Three pages is not a rate. The Archive stores no video lengths, so how many own transcripts the rule would flag is unmeasured.
 
-**Rule 6, the re-run cost, read from the code.** A flagged page stops counting as having a good transcript, so the finders may pick it again. `_cooldown_active()` makes a page whose newest job COMPLETED wait `AUTO_TRANSCRIPTION_MAX_COOLDOWN`, 30 days. A test confirms a flagged, just-finished page is in that cooldown.
+**The premise was wrong.** The backlog entry, and WO-925 before it, read page 1676 as a partial transcript at 86%. But our own transcription covers the whole audio: every chunk is cut and transcribed before a job completes. So a short last cue mostly means silence after the meeting. The video for show 185 is a round 6:00:00, a fixed recording window. A real cut in a cloud job is already caught: a job that fails partway publishes what it finished with the existing "the transcription was interrupted" warning. The local script keeps a checkpoint and pushes nothing when a chunk fails. And A and B now make a bad chunk in the middle of a file fail instead of being transcribed short. So the WO-925 reading of page 1676 looks wrong. This is from two pages sampled at four points each, not proven.
+
+**Piece C, held: what it would cost, read from the code.** A flagged page stops counting as having a good transcript, so the finders may pick it again. `_cooldown_active()` makes a page whose newest job completed wait `AUTO_TRANSCRIPTION_MAX_COOLDOWN`, 30 days. This was confirmed with a test while C existed.
 
 | Who made the flagged transcript | Cloud finder | Local script's candidate list |
 |---|---|---|
 | The cloud worker (has a job row) | Picks it again after 30 days | Same 30-day wait |
 | The local script (no job row: it never creates one) | Picks it again straight away. After that cloud job completes, 30 days | Lists it on every default run until a cloud job completes. Nothing records that a local run happened |
 
-So it is not a tight loop. It is a repeat run once per 30 days per flagged page, plus one extra for a page the local script made. A page whose recording really has dead air is flagged and re-run each time. The cloud re-run also promotes its own version, unconditionally, over the one on the page.
+It is not a tight loop. It is one repeat run per 30 days per flagged page, plus one extra for a page the local script made. A page whose recording really has dead air would be flagged and re-run each time. The cloud re-run also promotes its own version, unconditionally, over the one on the page, and the cloud model is smaller than the one on Ryan's Mac.
 
-**Piece D: what it reaches, and what was not verified.** The length is carried by every path that returns the YouTube result whole: a direct YouTube URL, LIMS, ProudCity, PrimeGov and Legistar's page-link path (read in the code, not run live). It is not carried by eScribe or CivicClerk, which copy fields out of the YouTube result and drop it. It is not reached by the drip's captions lane, which uses `youtube-transcript-api` and builds its own payload. **The live check was not made.** YouTube blocks this machine. The real yt-dlp field shape comes from the repo's Philadelphia channel-listing fixture (video `5LZqoNDRMYk`, `"duration": 16089`). Tests confirm the key is carried through, read into the field, and that the WO-923 rule then fires on it.
-
-**Tests.** A new file, `tests/test_own_transcript_early_end.py` (24 cases), and additions to seven existing test files. It includes a live-ffmpeg test that runs the three slices above for real. The new finalize test that expects the warning fails on the old `crud.py` and passes on the new one. Twelve older test fakes gained an `is_final_chunk` argument, and one test that read the slice command was changed to ignore the new decode call.
+**Tests.** Additions to six existing test files (`test_media_probe`, `test_whole_audio_cache`, `test_transcribe_backlog_locally`, `test_worker_multi_clip_chunk_plan`, `test_worker_segment_utils`, `test_youtube`). One is a live-ffmpeg test that runs the three slices above for real. Twelve older test fakes gained an `is_final_chunk` argument, and one test that read the slice command was changed to ignore the new decode call.
 
 **Caution.**
 
-- **The own-transcript warning will flag some complete transcripts.** Both real pages that it flagged have dead air after the meeting, not a cut transcript. Three pages is not a rate, and the Archive stores no video lengths, so the real count is unmeasured.
-- **Extra work follows a flag.** Each flagged page is re-transcribed once per 30 days. For a dead-air page the answer never changes.
-- **A flagged local transcript can be replaced by a worse one.** The cloud re-run promotes its own version over the one shown. The cloud model is smaller than the one Ryan's Mac uses.
+- **A cut inside the last chunk of a file is not caught.** Only the last chunk is exempt. Nothing in this PR checks it.
 - **The 15 seconds comes from 14 sources.** Sources that seek badly (ChampDS, IQM2 progressive files) were not in the measured set. A sixth of a chunk is the likely worst case, not a tested one.
 - **The chunk-length reading was checked on ffmpeg 8.1.2 only.** The worker runs 7.1.5 and the Archive 5.1.9. If an older ffmpeg words its progress line differently, the check reads nothing and does nothing. A missing reading is never treated as "short".
-- **A third script is not covered.** `scripts/retranscribe_first_chunk.py` splices a new first chunk onto an existing transcript and pushes only hallucination warnings, so it would drop an early-end flag. It has no duration probe.
+- **A newly failing chunk can fail a job.** A chunk that is short by more than 15 seconds now fails after one retry, where before it was transcribed short. That is intended, and a job that then fails terminally publishes what it finished with the "interrupted" warning.
+- **Piece D is unverified live**, as above.
 
-**Recommendation.** Deploy the audio checks (A and B) with the next deploy. They are measured, and they only fail chunks that are truly bad. Hold the own-transcript warning (C) for Ryan's decision. Choose one:
+**Recommendation.** Deploy A, B and D with the next deploy. They are measured, and they only fail chunks that are truly bad. Leave C on the shelf until the tail-silence check is built with it (block below).
 
-1. Ship it as built. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` in the Archive's and the workers' environment turns it off with no code change.
-2. Add a tail check first: before adding the warning, sample 30 seconds of audio halfway between the last cue and the video's end. If it is silent (mean volume under about -60 dB, against -22 to -41 dB for speech and -71 to -83 dB for dead air here), skip the warning. Cost: one short audio pull per flagged transcript. This changes rule 3 of the plan, so it needs a yes.
+**Deploy status.** Worker and resolver code is on `main` once merged but not live until Ryan deploys. The worker image carries `media_probe.py` and `segment_utils.py`. The resolver carries `youtube.py`. The Archive service has no change. No schema change and no migration. The local script takes effect on its next run from a checkout with this change.
 
-**Deploy status.** Worker, Archive and resolver code is on `main` once merged but not live until Ryan deploys. The Archive imports `app/platforms/coverage_check.py`. The worker image carries `media_probe.py` and `segment_utils.py`. The resolver carries `youtube.py`. No schema change and no migration. The local script takes effect on its next run from a checkout with this change.
+**Backlog entries this touches** (title fragments):
 
-**Backlog entries this closes** (title fragments):
-
-- `slice_cached_audio()` skips the corrupt-chunk (fully)
-- A chunk truncated only at its tail still passes the (for every chunk but the last, which is exempt on purpose and is covered by piece C)
-- A partial transcript made by our own transcription cannot get the (part 1, the marker). Part 2, the 35 page addresses, was hand-checked in WO-941 (the entry below this one), so the whole entry can close once WO-941's post-deploy renames run
-- Partial-transcript check has only measured 574 of (the code half only)
+- Closed: `slice_cached_audio()` skips the corrupt-chunk.
+- Closed for every chunk but the last: A chunk truncated only at its tail still passes the. The last-chunk part is folded into the first block below.
+- Closed, code half only: Partial-transcript check has only measured 574 of. The rest is the second block below and Ryan's Render-shell run.
+- **Not closed by this PR:** A partial transcript made by our own transcription cannot get the. It becomes the rewritten open entry below. Its part 2 (the 35 page addresses) was hand-checked in WO-941, so the rewritten entry drops it.
 
 **Not touched.** "Repetition-loop transcript-defect population" is listed under WO-935 in the plan but is not one of the four pieces assigned here. It stays open.
 
 **For `BACKLOG.md` (WO-931 files these; entry-shaped).**
 
-- **Own-transcript "may end before the meeting did" flag cannot tell dead air from a cut transcript `[NEEDS-AUDIT]`**
-  - **Issue**: `coverage_check.own_transcript_early_end_warning()` compares only the last cue with the video's length. Our own transcription covers the whole audio, so a short last cue is usually silence after the meeting. Both real pages checked were exactly that: page 1676 (silent from 5.69 h to the end) and Leon Valley show 185 (silent from 3.47 h, a round 6:00:00 window).
-  - **Impact**: complete transcripts get a "may end before the meeting did" warning, and each is re-transcribed every 30 days with the same result. The re-run promotes the cloud version over the shown one.
-  - **Next action**: Ryan decides (see the Recommendation above). If the tail check is wanted, build it in the worker and the local script: sample 30 seconds midway between the last cue and the end, and skip the warning when it is silent. Then measure how many own transcripts the rule flags, from the Render shell.
-  - **Constraint**: do not change the 90% / 10-minute threshold or the marker text. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` is the off switch.
-  - **History**: `BACKLOG_DONE.md` WO-935.
-- **A transcript the local script made has no job history, so nothing makes it wait before it is picked again `[NEEDS-AUDIT]`**
-  - **Issue**: the cooldown (`_cooldown_active()`) reads `TranscriptionJob` rows. `scripts/transcribe_backlog_locally.py` creates none. A locally made transcript flagged early-end is a candidate straight away for the cloud finder, and on every default run of the local candidate list until a cloud job completes.
-  - **Impact**: one or more repeat runs per flagged page, and a cloud version promoted over the local one.
-  - **Next action**: decide whether the cooldown should also count the age of a `transcribed` default version that carries the early-end marker.
-  - **Constraint**: none known.
-  - **History**: `BACKLOG_DONE.md` WO-935.
-- **The partial-transcript check reaches only some YouTube pages `[NEEDS-AUDIT]`**
+- **Own transcription: a warning for a transcript that stops early needs a tail-silence check built with it `[NEEDS-AUDIT]`** (replaces the entry "A partial transcript made by our own transcription cannot get the reader warning through a re-check, and 35 page addresses name a different place than their page")
+  - **Issue**: WO-925 read page 1676 (Leon Valley TX show 179, our own Whisper, 4,541 cues, last cue 5:34:53 of a 6:29:59 video) as a partial transcript that no re-check could warn about. WO-935 built the warning (WO-923's rule and marker, called from `report_chunk_result()` and `transcribe_meeting()`) and Ryan held it. Sampled audio shows the last cue is followed by silence on both real pages checked: page 1676 speaks until about 20,050 s and reads about -83 dB from 20,500 s; Leon Valley show 185 reads about -71 dB from 12,500 s. Our own transcription covers the whole audio, so a short last cue mostly means trailing silence. A real cut in a cloud job is already marked "the transcription was interrupted". Separately, WO-935's short-chunk check exempts the last chunk of a file, so a cut inside it is caught by nothing.
+  - **Impact**: none is shown to readers today. If the warning were built as it was, complete transcripts would carry "may end before the meeting did". Each flagged page would be re-transcribed every 30 days with the same result (a page with a job row waits 30 days). A transcript the local script made has no job row, so the cloud finder picks it again at once, once, and after that 30 days. The cloud re-run promotes its own smaller-model version over the one shown. Three pages is not a rate: the Archive stores no video lengths, so the flagged count is unmeasured.
+  - **Next action**: Ryan decides when. Then build the warning and a tail-silence check as one piece. When the last cue is under 90% of the video with 10+ minutes uncovered, sample 30 seconds of audio halfway between the last cue and the video's end (volume only), and skip the warning if it is silent (mean volume under about -60 dB; speech read -22 to -41 dB and dead air -71 to -83 dB on the two pages). Put it in one shared function called by both paths. The first version, with a 24-case test file, is in the first commit (`2cf4f49`) of PR #1301. Also decide whether a locally made transcript should wait before the cloud finder picks it again, and give `scripts/retranscribe_first_chunk.py` the same call: it splices a new first chunk onto an existing transcript, pushes only hallucination warnings, and so would drop an early-end flag from the transcript it started with. Then count how many own transcripts the rule flags, from the Render shell.
+  - **Constraint**: Ryan's decision, 2026-09-21: hold until the tail-silence check is built with it. Do not change the 90% / 10-minute threshold or the marker text. Sampling audio changes the plan's rule 3 ("compare only the last cue"), so that change needs Ryan's yes. No bulk sweep of the production Archive from a laptop.
+  - **History**: `BACKLOG_DONE.md` WO-925 (the 86% reading) and WO-935 (the measurements above).
+- **The partial-transcript check reaches only some YouTube pages `[NEEDS-AUDIT]`** (the remaining part of "Partial-transcript check has only measured 574 of ~5,800 non-YouTube pages, and never checks YouTube-sourced ones")
   - **Issue**: WO-935 carries yt-dlp's length on the resolver path. eScribe and CivicClerk copy fields out of the YouTube result and drop the length. The drip's captions lane (`scripts/fetch_youtube_transcripts.py`, `process_one()`) uses `youtube-transcript-api` and builds its own payload, with no length. On Render YouTube is blocked, so a backfill from the resolver's shell cannot fill the length in.
   - **Impact**: most of the ~4,500 YouTube-sourced pages still cannot be checked.
   - **Next action**: have the drip's captions lane read `duration` (its `check_permanent_failure()` call already makes the yt-dlp call) and run the WO-923 rule before it pushes. Copy the length through in eScribe and CivicClerk. The live check needs the drip Mac. The other half of the old entry (the Render-shell backfill, then read `truncated_transcript`) is still Ryan's.
   - **Constraint**: never fetch YouTube from this office machine. No bulk sweep of the production Archive from a laptop.
   - **History**: `BACKLOG_DONE.md` WO-923 and WO-935.
-- **`scripts/retranscribe_first_chunk.py` drops an early-end flag `[JUST-DO-IT]` `[EASY]`**
-  - **Issue**: it splices a new first chunk onto an existing transcript and pushes only hallucination warnings, with no duration probe.
-  - **Impact**: low. It is a rare manual tool.
-  - **Next action**: probe the video's length and call `own_transcript_early_end_warning()` before pushing.
-  - **Constraint**: none known.
-  - **History**: `BACKLOG_DONE.md` WO-935.
 
-**Docs updated:** `README.md` (the WO-923 paragraph, the transcription "Processing" step, the "Completion" step). `docs/BACKLOG_PHASES.md` names WO-935 as not started; its Status column is per phase, and Phase 1 is still open, so it is left for the conductor.
+**Docs updated:** `README.md` (the WO-923 paragraph now says own transcripts are not compared and why, and that YouTube resolves carry a length; the transcription "Processing" step describes the short-chunk check). `docs/BACKLOG_PHASES.md` names WO-935 as not started; its Status column is per phase, and Phase 1 is still open, so it is left for the conductor.
 
 ## WO-941: BART minted, five pages deleted or fixed after the 35-address hand-check, 30 stale addresses renamed, and the Lisbon channel pin corrected [Done 2026-09-21]
 
