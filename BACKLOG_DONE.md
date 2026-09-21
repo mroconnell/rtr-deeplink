@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-943: 12 more pages added to the re-transcription queue (82 to 94 pages, 254.3 to 320.6 hours) [Done 2026-09-21]
+## WO-944: 12 more pages added to the re-transcription queue (82 to 94 pages, 254.3 to 320.6 hours) [Done 2026-09-21]
 
 **Why this ran.** WO-929 built a separate queue for pages whose only transcript is older Whisper text with a real defect (category C of `scripts/wo928_version_quality.py`). It held 82 pages. Ryan ran the same tool over the whole Archive on 2026-09-21 (9,976 pages read) and category C came out at 93: the 82 already queued plus 11 new ones. The conductor also found page 724 by hand. This WO checks all 12 again and adds them. It transcribed nothing and wrote nothing to the production Archive.
 
@@ -28,7 +28,7 @@ By defect: 58 pages with the silence signature (236.4 h), 35 with loops only (84
 
 **Recommendation.** Nothing changes for the pilot. When the main queue is run in batches, run the 12 last, or put the three longest in their own overnight batch.
 
-**Deploy status.** None needed. Queue file, sidecar, docs and a test are not under any path Render builds from. Docs updated: `docs/RETRANSCRIPTION_QUEUE.md`, `BACKLOG.md` (the queue entry: 82 to 94 pages, hours, sections), the queue file's header comments. WO-929's entry below is left as written: it describes what was true then. Files for the conductor to commit in rtr-business: `research/wo943_population_recheck.csv`, `research/wo943_methods_section.md`.
+**Deploy status.** None needed. Queue file, sidecar, docs and a test are not under any path Render builds from. Docs updated: `docs/RETRANSCRIPTION_QUEUE.md`, `BACKLOG.md` (the queue entry: 82 to 94 pages, hours, sections), the queue file's header comments. WO-929's entry below is left as written: it describes what was true then. Files for the conductor to commit in rtr-business: `research/wo944_population_recheck.csv`, `research/wo944_methods_section.md`.
 ## WO-943: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
 
 **Why this ran.** Ryan finds many short clips of public meetings on

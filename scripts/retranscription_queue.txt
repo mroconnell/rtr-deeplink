@@ -1,4 +1,4 @@
-# Re-transcription queue (WO-929, 2026-09-21; 12 pages added by WO-943, 2026-09-21).
+# Re-transcription queue (WO-929, 2026-09-21; 12 pages added by WO-944, 2026-09-21).
 #
 # What this is: 94 archived pages whose ONLY usable transcript is older
 # Whisper text made before voice-activity filtering (or a repair copy of

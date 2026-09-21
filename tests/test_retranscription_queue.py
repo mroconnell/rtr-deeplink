@@ -248,8 +248,8 @@ def test_the_two_auto_feeders_name_only_their_own_files():
 # --- the slice helper ----------------------------------------------------
 
 
-def test_wo943_additions_are_queued_at_the_end_of_main():
-    # WO-943 added 12 pages after WO-929's 82; existing lines were not moved.
+def test_wo944_additions_are_queued_at_the_end_of_main():
+    # WO-944 added 12 pages after WO-929's 82; existing lines were not moved.
     rows = _meta_rows()
     added = {"14", "258", "334", "354", "374", "724"}
     added |= {"779", "819", "840", "852", "872", "894"}

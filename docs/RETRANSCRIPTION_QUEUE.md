@@ -13,7 +13,7 @@ copy of that text. The defect is in the text itself: 58 pages show the
 silence signature ("Thank you." every 30 seconds over a silent stretch),
 and 35 show loops of the same words. One shows neither of those (a
 repeated line with roll-up overlap). WO-928 found 82 of them
-(`BACKLOG_DONE.md`, WO-928). WO-943 (2026-09-21) added 12 more: 11 that
+(`BACKLOG_DONE.md`, WO-928). WO-944 (2026-09-21) added 12 more: 11 that
 Ryan's full run of the same tool over all 9,976 pages found, and page
 724, which the conductor found by hand (its shown text runs 522 minutes
 with the silence signature, and its only cleaner hidden version covers
@@ -27,7 +27,7 @@ defect, order, section, route for every line).
 | Section | Pages | Audio hours | What it is |
 |---|---|---|---|
 | PILOT | 5 | 9.1 | Shortest pages with a clear silence signature, three platforms. Run first, by hand, and compare. |
-| MAIN | 89 | 311.5 | The rest. Silence-signature pages first, then loops, then the one other. Shorter first inside each group. The last 12 lines are the WO-943 additions, shorter first (page 724 last), in their own group at the end. |
+| MAIN | 89 | 311.5 | The rest. Silence-signature pages first, then loops, then the one other. Shorter first inside each group. The last 12 lines are the WO-944 additions, shorter first (page 724 last), in their own group at the end. |
 | DRIP-MAC-ONLY | 0 | 0 | YouTube-hosted pages. None of the 94 is YouTube-hosted (checked 2026-09-21), so it is empty. |
 
 Total 94 pages, 320.6 hours of audio. Durations are the video's own
