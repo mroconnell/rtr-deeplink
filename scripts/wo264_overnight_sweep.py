@@ -148,6 +148,7 @@ import aiohttp  # noqa: E402
 
 import scripts.wo147_access_ladder_sweep as ladder  # noqa: E402
 from app.utils.jurisdiction_enrich import _STATE_NAME_TO_ABBR_LOWER  # noqa: E402
+from app.utils.video_hand_check import structural_reject  # noqa: E402
 
 _STATE_ABBR_TO_NAME_LOWER: Dict[str, str] = {
     abbr: name for name, abbr in _STATE_NAME_TO_ABBR_LOWER.items()
@@ -302,6 +303,16 @@ def find_video_candidates(html: str, final_url: str, limit: int = 8) -> List[str
             if not value or value.startswith(("javascript:", "mailto:", "tel:", "#")):
                 continue
             full = urljoin(final_url, value)
+            # WO-933: the shared gate's structural screen (app/utils/
+            # video_hand_check.py) refuses page furniture before the
+            # extension regex can match it -- by HOST, not by path: an
+            # Airbnb embed's own animation file
+            # (`a0.muscache.com/videos/search-bar-icons/hevc/house-twirl-
+            # selected.mov`) matched as a "video" on two real governments
+            # (Ferdinand town, IN; Council Grove city, KS -- WO-284) -- and
+            # a bare `youtube.com`, a search page or a Shorts clip.
+            if structural_reject(full) is not None:
+                continue
             host = urlparse(full).netloc.lower()
             is_hit = any(h in host for h in _VIDEO_HOST_HINTS) or bool(
                 _VIDEO_FILE_EXT_RE.search(full)

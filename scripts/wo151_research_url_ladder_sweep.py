@@ -128,6 +128,7 @@ from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url  # noqa: E402
 
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
+from app.utils.video_hand_check import assess_video_candidate  # noqa: E402
 from scripts.wo145_api_first_sweep import (  # noqa: E402
     _cross_border_collision,
     _host_name_conflict,
@@ -503,10 +504,19 @@ async def act_on_resolved_wo151(
     effective_title = result.title or lead.title or ""
     if not effective_title and result.video_url:
         effective_title = await hs.youtube_oembed_title(session, result.video_url) or ""
-    if not hs._looks_like_real_meeting(effective_title, require_allowlist=high_risk):
+    # WO-933: the shared "is this really a meeting video?" gate
+    # (app/utils/video_hand_check.py); anything but a PASS is skipped.
+    gate = assess_video_candidate(
+        title=effective_title,
+        video_url=result.video_url,
+        platform=lead.platform,
+        gov_name=gov.name,
+        require_evidence=high_risk,
+    )
+    if not gate.passed:
         raise hs.Skip(
             "off-mission",
-            f"{lead.platform}: title looks like a non-meeting video: {effective_title!r} ({meeting_url})",
+            f"{lead.platform}: {gate.skip_note()}: {effective_title!r} ({meeting_url})",
         )
 
     # --- WO-145's wrong-government checks, reused verbatim, run against
