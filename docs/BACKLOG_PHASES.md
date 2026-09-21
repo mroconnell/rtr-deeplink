@@ -64,23 +64,24 @@ start, so two agents never claim the same one.
   #1281) reports that the account had used 90% of its 2,000 included
   minutes by 2026-09-20, with the reset on 2026-10-01. Every PR, and every
   push to it, runs the full test workflow, and the queue-advance workflows
-  run every 4 to 6 hours on top. This plan proposes about ten PRs. That
-  figure comes from an unattended report and is not verified here, because
-  the usage dashboard needs a login. Before a wave, check the usage. Merge
-  PRs that touch the same files as one PR, and avoid extra pushes.
+  run every 4 to 6 hours on top. That figure comes from an unattended
+  report. Neither the conductor nor this plan could verify it, because the
+  usage dashboard needs a login. So the plan keeps PRs few: never more than
+  3 open at once, merged one at a time (rule 10). Merge PRs that touch the
+  same files as one PR, and avoid extra pushes.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
 ## Recommendation
 
-1. Start Phase 0 and Phase 1 together. WO-931 is small and runs beside the
-   rest.
-2. Run WO-932, WO-933 and WO-935 in parallel as the first wave.
+1. Start with Phase 1. Phase 0 (WO-931) is small and follows as soon as a PR
+   slot is free.
+2. First wave: WO-932, WO-933 and WO-935, three PRs at most. WO-931 opens
+   when one of them has merged. It merges last anyway.
 3. Ask Ryan for one deploy when that wave merges. Then run WO-934.
 4. Batch the merges. Say plainly which merged code is not yet live.
-5. Check the GitHub Actions minutes before launching the first wave (see
-   Cautions). If they are tight, stagger the wave rather than open all
-   the PRs at once.
+5. Check the GitHub Actions usage before the first wave if Ryan can see
+   it. Whatever it shows, keep to 3 open PRs and merge one at a time.
 
 ## How to find an entry
 
@@ -119,13 +120,16 @@ These come from `CLAUDE.md` and the conductor.
    after `gh pr create`.
 9. **Respect the Standing decisions.** They are listed at the end of this
    file.
+10. **Keep PRs few.** Never have more than 3 open at once. Rebase, then
+    merge one at a time. Phase 0 and any docs-only work share one branch
+    each. The conductor puts CI at about 3 minutes per PR plus reruns.
 
 ---
 
 ## Phase 0: tidy the backlog
 
-**WO-931.** Runs beside Phase 1. It is the only WO in Phases 0 to 2 that
-edits `BACKLOG.md`, so it merges last.
+**WO-931.** Runs beside Phase 1 once a PR slot is free (rule 10). It is the
+only WO in Phases 0 to 2 that edits `BACKLOG.md`, so it merges last.
 
 What it delivers:
 
@@ -242,9 +246,53 @@ queue. WO-935 must read those `BACKLOG_DONE.md` entries first and touch only
 what is left. What is left is the own-Whisper gap: WO-925 records that page
 1676 (Leon Valley TX) holds a Whisper transcript ending at 86% of a
 6.5-hour video, and a re-check reads source captions only, so it can never
-add a warning there. The only place the Archive checks a finished
-transcript against the video's length today is when a transcription job is
-created.
+add a warning there.
+
+**What was checked in the code (2026-09-21).** Neither transcription path
+compares a finished transcript with the video's length:
+
+- The cloud path finishes in `report_chunk_result()` in `archive/db/crud.py`.
+  On the last chunk it publishes the version with hallucination warnings
+  only, although the job already holds a real ffprobed
+  `probed_duration_seconds`.
+- The local script, `scripts/transcribe_backlog_locally.py`, does the same
+  before it pushes.
+- The only length check is `_flag_default_transcript_if_truncated_early()`.
+  It runs when a transcription job is created, so it never sees a
+  transcript that finishes later.
+
+**Rules for the own-Whisper marker.**
+
+1. **Reuse the existing marker.** `_EARLY_TRUNCATION_MARKER` ("may end before
+   the meeting did") is already in `_TRUNCATION_MARKERS` and wired into the
+   three places `CLAUDE.md` names: the Python check, the SQL predicate
+   `_good_default_transcript_exists()`, and `_classify_page_outcome()`. Add no
+   new marker. If one is ever needed, update all three and add a case to
+   `tests/test_transcription_jobs.py`.
+2. **Do not change the threshold or the marker text.** Use WO-923's rule:
+   the last cue ends under 90% of the video with at least 10 minutes
+   uncovered. The entry's own constraint says so. The job-creation helper
+   above uses only the 10-minute test, so do not copy it as is.
+3. **Never flag silence the voice filter skipped.** Compare only the last
+   cue with the video's length. Gaps inside the transcript are normal,
+   because the voice filter legitimately skips silence, and WO-928 found no
+   reliable marker of which pages that affects. Trailing silence is the
+   remaining false-positive risk, and the 10-minute floor limits it.
+4. **Use a real length, never a guess.** The cloud path has
+   `probed_duration_seconds`. The local script needs its own probe. A page
+   with no stored length is counted as unmeasurable, not flagged.
+5. **Fix both paths.** `CLAUDE.md` says an improvement to one path does not
+   reach the other. There are also two copies of
+   `detect_hallucination_warnings`, in `archive/utils/transcription_quality.py`
+   and `worker/segment_utils.py`, which is exactly how the paths drift. Put
+   the new check in one place both can import, or add it to both and test
+   that they agree.
+6. **A flagged page stops counting as having a good transcript.** The
+   auto-transcription finder may pick it again. WO-45 already makes a page
+   whose newest job completed wait out the maximum cooldown, so the cost is
+   one repeat run per cooldown, not a tight loop. Decide that on purpose,
+   and read `_cooldown_active()` first. A page whose audio really does end
+   early will be flagged, re-run and flagged again.
 
 **Order inside Phase 1**
 
