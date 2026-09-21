@@ -96,6 +96,7 @@ _CONTRACT_KEYS = {
     "meeting_page_id",
     "slug",
     "title",
+    "gov_id",
     "jurisdiction",
     "jurisdiction_display",
     "hub_slug",

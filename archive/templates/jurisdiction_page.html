@@ -127,6 +127,12 @@
     {% endwith %}
     {% endif %}
 
+    {#- WO-947: "Seen on social media" -- see _context_mentions.html's own
+       comment for the membership rule and why there's no empty state.
+       show_jurisdiction defaults false, correct for a hub: every entry
+       here is already this same government. -#}
+    {% include "_context_mentions.html" %}
+
     <h2>All archived {{ display }} meetings</h2>
     <div class="meeting-list">
       {% for m in pages %}

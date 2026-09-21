@@ -3697,6 +3697,17 @@ async def context_entry_page(request: Request, entry_ref: str):
         value = entry[key]
         if value is not None and value.tzinfo is None:
             entry[key] = value.replace(tzinfo=timezone.utc)
+    # WO-947: "Part of {State}", next to the existing hub link -- a pure
+    # function over data the entry dict already carries (gov_id, added
+    # for exactly this), not a query. crud.effective_state_abbr() is the
+    # same function jurisdiction_page.html's own breadcrumb uses (see
+    # this file's /j/{hub_slug} route), so this handles the same two
+    # edge cases a plain suffix parse wouldn't: a Canadian jurisdiction's
+    # " (Canada)"-suffixed display text, and a state government itself
+    # (e.g. "State of California"), which has no ", CA" to parse at all.
+    state_abbr = crud.effective_state_abbr(entry["gov_id"], entry["jurisdiction"])
+    state_slug = state_slug_from_abbr(state_abbr) if state_abbr else None
+    state_name = US_STATE_ABBR_TO_NAME[state_abbr] if state_abbr else None
     return templates.TemplateResponse(
         request,
         "context_entry_page.html",
@@ -3706,6 +3717,8 @@ async def context_entry_page(request: Request, entry_ref: str):
             "indexable": indexable,
             "is_editor": is_context_editor(get_clerk_user_id(request)),
             "active_account": get_clerk_user_id(request),
+            "state_slug": state_slug,
+            "state_name": state_name,
         },
     )
 

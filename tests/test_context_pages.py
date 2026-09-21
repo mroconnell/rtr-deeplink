@@ -1157,6 +1157,41 @@ async def test_context_entry_page_has_a_visible_time_element(monkeypatch):
     assert '<meta property="article:published_time" content="' in response.text
 
 
+# --- entry page "Part of {State}" link (WO-947) -----------------------------
+
+
+async def test_context_entry_page_links_to_its_state(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    # _make_page()'s default jurisdiction ("Context Page Test City, CA")
+    # ends in a plain ", CA" suffix -- state_abbr_from_jurisdiction()
+    # parses that directly with no registry lookup needed.
+    entry = await _publish_entry(
+        _social_url(), summary="State link check.", title="State link headline"
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert 'href="/state/california"' in response.text
+    assert ">California</a>" in response.text
+
+
+async def test_context_entry_page_state_link_is_absent_for_an_unparseable_jurisdiction(
+    monkeypatch,
+):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    slug = await _make_page(
+        f"ctx-state-none-{uuid.uuid4().hex[:8]}", jurisdiction="Somewhere Unplaceable"
+    )
+    entry = await _publish_entry(
+        _social_url(),
+        summary="No parseable state suffix.",
+        title="No state headline",
+        slug=slug,
+    )
+    response = client.get(entry["permalink"])
+    assert response.status_code == 200
+    assert 'href="/state/' not in response.text
+
+
 # --- sitemap (WO-946) --------------------------------------------------------
 
 
