@@ -2299,3 +2299,47 @@ h1.context-headline {
 .context-excerpt-continue {
   font-size: 0.9rem;
 }
+
+/* "Seen on social media" (WO-947) -- the hub/state pages' own list of
+   Full Context entries. A secondary block, not the page's main content
+   (the featured meetings above it are that), so it's deliberately
+   compact: no thumbnails, no embeds, no quoted transcript text, just
+   enough to recognize the clip and follow the link. .state-section-
+   heading/.state-section-sub (used elsewhere on both pages) are reused
+   for the heading/subtitle rather than inventing a third heading style. */
+.context-mentions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.context-mentions-item {
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.context-mentions-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.context-mentions-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.context-mentions-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.context-mentions-source {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.context-mentions-more {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}

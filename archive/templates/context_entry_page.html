@@ -176,6 +176,13 @@
     <div class="context-entry-list">
       {% set permalink_view = true %}
       {% set autoload = true %}
+      {#- WO-947: "Part of {State}", next to the existing hub link --
+         state_slug/state_name are computed in the route from data this
+         entry already carries (gov_id/jurisdiction), a pure function
+         call, no extra query. None on a stateless jurisdiction (a
+         Canadian territory with no province, or an unparseable one),
+         same as jurisdiction_page.html's own state link. -#}
+      {% set state_link = {"slug": state_slug, "name": state_name} if state_slug else none %}
       {% include "_context_entry.html" %}
     </div>
     {% if excerpt %}

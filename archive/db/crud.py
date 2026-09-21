@@ -6858,6 +6858,12 @@ async def get_state_coverage_index() -> list[dict]:
 # it would not be.
 STATE_HIGHLIGHT_POOL = 150
 STATE_FEATURED_COUNT = 12
+# WO-947: Full Context entries shown on /state/{slug}'s "Seen on social
+# media" section -- a state pools every government in it, same reasoning
+# as STATE_FEATURED_COUNT being 4x HUB_FEATURED_COUNT below, just smaller
+# since this section is secondary to the featured cards, not the page's
+# lead content.
+STATE_CONTEXT_ENTRIES = 6
 # "Most active governments" is meaningless for a state with a handful of
 # governments (the list would just be the whole state, reordered), so the
 # section renders only above this threshold.
@@ -7495,6 +7501,26 @@ async def get_state_page_data(
         pool = [p for p in by_date if p["has_transcript"]][:STATE_HIGHLIGHT_POOL]
         highlights = await _load_highlights(session, [p["id"] for p in pool])
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+        # WO-947 ("Seen on social media"): entries whose meeting is in
+        # `pages` -- the exact, already-verified set of pages this state
+        # page shows (built above from _state_scope_condition() PLUS the
+        # per-row case-check right after it, not the raw SQL condition
+        # alone -- see that check's own comment on why SQLite's
+        # case-insensitive LIKE needs it). Reusing this final id set,
+        # rather than re-deriving a condition from the entry's own stored
+        # jurisdiction text, is what STATE_HUB_PAGES.md's "Which pages a
+        # hub shows" section asks for (a text match already put unrelated
+        # video on four real governments' hubs once). Bare view only,
+        # same reasoning as the hub's own gate: `?topic=` is an alternate,
+        # untagged cut of the page. Wrapped so a problem here can never
+        # take the whole state page down.
+        context_entries = []
+        if not topic_slug:
+            context_entries = await _context_entries_for_page_ids(
+                {p["id"] for p in pages},
+                limit=STATE_CONTEXT_ENTRIES,
+                label=f"state {abbr}",
+            )
 
     # Grouped by GOVERNMENT (`gov_id`), not by the slug of a display
     # string -- WO-99. Each row links to its /j/{slug} hub, and every
@@ -7611,6 +7637,10 @@ async def get_state_page_data(
         ],
         "total_pages": len(pages),
         "jurisdiction_count": len(jurisdictions),
+        # WO-947. Always present (possibly []) -- see the comment where
+        # it's built, above, for the membership rule and why it's
+        # bare-view-only.
+        "context_entries": context_entries,
     }
 
 
@@ -8128,6 +8158,13 @@ JURISDICTION_HUB_MIN_INDEXABLE = 2
 # after a handful of snippets the reader is better served by the full
 # meeting list directly below them.
 HUB_FEATURED_COUNT = 6
+# WO-947: Full Context entries shown on /j/{slug}'s "Seen on social
+# media" section. Smaller than STATE_CONTEXT_ENTRIES for the same reason
+# HUB_FEATURED_COUNT is smaller than STATE_FEATURED_COUNT -- one
+# government has fewer entries to choose from than a whole state, and
+# this section is secondary to the page's own featured cards and meeting
+# list, not the lead content.
+HUB_CONTEXT_ENTRIES = 3
 # At most this many featured cards on a hub may come from the same
 # meeting body. A hub is one government, so its cards routinely all read
 # "City Council" while the Planning Commission, the school board and the
@@ -8667,6 +8704,25 @@ async def get_jurisdiction_hub_data(
         inherited_chips = (
             [] if own_chips else await _state_topic_chips(session, group["state_abbr"])
         )
+        # WO-947 ("Seen on social media"): entries whose meeting belongs to
+        # THIS hub's own page set -- reusing _hub_page_condition(group), the
+        # exact condition the meeting-list query above already applies,
+        # rather than a jurisdiction-TEXT match (STATE_HUB_PAGES.md's
+        # "Which pages a hub shows" section is why: a text match already put
+        # unrelated video on four real governments' hubs once). Bare view
+        # only: `?topic=` is an alternate cut of the page about one subject,
+        # and entries aren't topic-tagged, so showing them under a topic
+        # filter would be unrelated to that cut. Wrapped in try/except (like
+        # sitemap()'s own context calls) so a problem here can never take
+        # the whole hub page down -- this section is secondary, the meeting
+        # list above it is not.
+        context_entries = []
+        if not topic_slug:
+            context_entries = await _context_entries_isolated(
+                _hub_page_condition(group),
+                limit=HUB_CONTEXT_ENTRIES,
+                label=f"hub {slug}",
+            )
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
     topic_counts = _pool_topic_counts(highlights)
@@ -8727,6 +8783,10 @@ async def get_jurisdiction_hub_data(
         # than match a name (and for the 301 alias lookup on this route).
         "gov_id": group["key"],
         "gov_type": group["gov_type"],
+        # WO-947. Always present (possibly []) -- see the comment where
+        # it's built, above, for the membership rule and why it's
+        # bare-view-only.
+        "context_entries": context_entries,
     }
 
 
@@ -11061,6 +11121,12 @@ def _context_entry_dict(
         "meeting_page_id": None,
         "slug": None,
         "title": None,
+        # WO-947: the meeting's own gov_id, so a caller (context_entry_
+        # page()'s own "Part of {State}" link) can derive the state via
+        # effective_state_abbr() -- a pure, in-memory registry lookup,
+        # no extra query -- without needing a second field alongside
+        # `jurisdiction` just for that one purpose.
+        "gov_id": None,
         "jurisdiction": None,
         "jurisdiction_display": None,
         "hub_slug": None,
@@ -11086,6 +11152,7 @@ def _context_entry_dict(
             "meeting_page_id": page["id"],
             "slug": slug,
             "title": page["title"],
+            "gov_id": page.get("gov_id"),
             "jurisdiction": page["jurisdiction"],
             "jurisdiction_display": jurisdiction_display,
             "hub_slug": _hub_identity(page.get("gov_id"), page["jurisdiction"])[1],
@@ -11279,6 +11346,159 @@ async def list_context_entries_for_sitemap() -> list[dict]:
             }
             for row in rows
         ]
+
+
+async def _context_entries_isolated(page_condition, *, limit: int, label: str) -> list:
+    """list_context_entries_for_pages() in its OWN session, never raising.
+
+    A hub or state page must never fail because of this optional block,
+    and a try/except around a query in the PAGE'S session does not deliver
+    that on Postgres: a failed statement aborts the whole transaction, so
+    every later query on that session fails too ("current transaction is
+    aborted") and the page 500s anyway. SQLite does not behave that way,
+    which is why no test could have caught it. A separate session confines
+    the damage to this block."""
+    try:
+        async with async_session() as ctx_session:
+            return await list_context_entries_for_pages(
+                ctx_session, page_condition, limit=limit
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context entries for %s.", label
+        )
+        return []
+
+
+async def _context_entries_for_page_ids(
+    page_ids: set, *, limit: int, label: str
+) -> list:
+    """The state page's form: entries whose meeting is in `page_ids`.
+
+    Starts from the ENTRIES side on purpose. A state's page set runs to
+    thousands of ids and grows with the archive; passing it as one
+    `IN (...)` list is a query whose size tracks the corpus (and asyncpg
+    caps a statement at 32,767 parameters). The entries table is tiny by
+    comparison -- it is hand-written, one row per post -- so this reads
+    the published entries' meeting ids first, intersects in Python, and
+    only then asks for the few that matched. Membership is still exactly
+    get_state_page_data()'s own final page list, never a text match."""
+    if not page_ids:
+        return []
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return []
+            rows = (
+                await ctx_session.execute(
+                    select(ContextEntry.meeting_page_id)
+                    .where(
+                        ContextEntry.status == "published",
+                        ContextEntry.meeting_page_id.is_not(None),
+                    )
+                    .distinct()
+                )
+            ).all()
+            matched = sorted({row[0] for row in rows} & set(page_ids))
+            if not matched:
+                return []
+            return await list_context_entries_for_pages(
+                ctx_session, MeetingPage.id.in_(matched), limit=limit
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context entries for %s.", label
+        )
+        return []
+
+
+async def list_context_entries_for_pages(
+    session, page_condition, *, limit: int
+) -> list[dict]:
+    """Published Full Context entries whose MEETING PAGE satisfies
+    `page_condition` -- backs the "Seen on social media" section on
+    `/j/{slug}` and `/state/{slug}` (WO-947).
+
+    `page_condition` is the CALLER's own page-membership rule, reused
+    as-is rather than re-derived from the entry's own stored jurisdiction
+    text: `_hub_page_condition(group)` for a hub (the same two-arm gov_id/
+    un-keyed-by-host rule `get_jurisdiction_hub_data()` already applies to
+    its own meeting list), or `MeetingPage.id.in_(page_ids)` built from
+    `get_state_page_data()`'s own already-verified page-id list for a
+    state (its SQL suffix match is refined by a Python re-check for
+    SQLite's case-insensitive LIKE -- reusing the post-refinement id set
+    is what actually reuses "the same condition" rather than only its SQL
+    half). STATE_HUB_PAGES.md's "Which pages a hub shows" section is why
+    a text match is refused here at all: it already put unrelated video on
+    four real governments' hubs once (Orem UT, Tooele UT, Box Elder County
+    UT, Caledonia Township MI), purely because stored jurisdiction TEXT
+    coincided -- an entry citing a social clip is exactly as vulnerable to
+    that coincidence as a meeting page itself.
+
+    Takes an already-open `session` -- both callers already hold one for
+    their own main query, so this is one small extra indexed query per
+    render (`status` + a join against an already-selected page-id/gov_id
+    set, LIMIT'd to `limit`), not a second connection. Deliberately never
+    loads `segments`, never calls get_context_transcript_excerpt(), and
+    does no thumbnail lookup -- this is a secondary section listing a
+    handful of entries, not the excerpt-bearing permalink page. Table
+    missing -> `[]`, the same tolerance every other context_entries reader
+    in this file already has; BOTH callers wrap this call in try/except
+    too (logging the failure), since an optional secondary section must
+    never 500 a hub/state page.
+
+    Only `status == "published"` entries whose meeting still exists
+    (INNER JOIN -- an orphaned entry is demoted back to `draft` by
+    `delete_meeting_pages_by_slug()`, so this mirrors that rule rather
+    than re-deciding it). Newest-published first (`published_at desc, id
+    desc`, the same stable order the feed itself uses), capped at
+    `limit` (`HUB_CONTEXT_ENTRIES` / `STATE_CONTEXT_ENTRIES`).
+    """
+    if not await _context_available(session):
+        return []
+    rows = (
+        await session.execute(
+            select(ContextEntry, MeetingPage)
+            .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+            .where(ContextEntry.status == "published", page_condition)
+            .order_by(ContextEntry.published_at.desc(), ContextEntry.id.desc())
+            .limit(limit)
+        )
+    ).all()
+    entries = []
+    for entry, page in rows:
+        t_seconds = entry.t_seconds
+        jurisdiction_display = effective_jurisdiction(page.gov_id, page.jurisdiction)
+        entries.append(
+            {
+                "id": entry.id,
+                "headline": entry.title,
+                "summary": entry.summary,
+                "permalink": _context_permalink(
+                    entry.id, entry.title, jurisdiction_display, page.title
+                ),
+                "match_kind": entry.match_kind,
+                "match_label": MATCH_KINDS.get(entry.match_kind)
+                if entry.match_kind
+                else None,
+                "network_label": NETWORK_LABELS.get(
+                    entry.network, NETWORK_LABELS["other"]
+                ),
+                "source_label": entry.source_label,
+                "published_at": entry.published_at,
+                "slug": page.slug,
+                "title": page.title,
+                "date_html": str(meeting_date_html(page.date)),
+                "jurisdiction_display": jurisdiction_display,
+                "hub_slug": _hub_identity(page.gov_id, page.jurisdiction)[1],
+                "deep_link": f"/m/{page.slug}"
+                + (f"?t={int(t_seconds)}" if t_seconds is not None else ""),
+                "timestamp_label": (
+                    format_timestamp_label(t_seconds) if t_seconds is not None else None
+                ),
+            }
+        )
+    return entries
 
 
 async def get_context_entry(entry_id: int) -> Optional[dict]:

@@ -1,5 +1,98 @@
 # Backlog — done
 
+## WO-947: Full Context entries appear on their government's hub and their state page [Done 2026-09-21]
+
+**Why this ran.** Ryan, reviewing a Full Context entry page: "a page like
+this that is related to Indianapolis would also appear under the
+Indianapolis hub, right? And Indiana?" It didn't yet. Good for readers,
+and entry pages had almost no internal links pointing at them.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `crud.list_context_entries_for_pages(session, page_condition, *, limit)` | Published entries whose meeting satisfies a caller-supplied page-membership condition. Light dict (no `segments`, no thumbnail lookup, no excerpt loader) — id, headline, summary, permalink, match_kind/label, network_label, source_label, published_at, slug, meeting title, date_html, jurisdiction_display, hub_slug, deep_link, timestamp_label. |
+| Hub wiring (`get_jurisdiction_hub_data()`) | Calls it with `_hub_page_condition(group)` — the exact condition the hub's own meeting-list query already uses. `HUB_CONTEXT_ENTRIES = 3`. |
+| State wiring (`get_state_page_data()`) | Calls it with `MeetingPage.id.in_([p["id"] for p in pages])` — `pages` is that function's own already-verified page-id set (post the SQLite case-check refinement, not just the raw SQL suffix match). `STATE_CONTEXT_ENTRIES = 6`. |
+| `archive/templates/_context_mentions.html` | "Seen on social media" — headline (or a truncated summary) linking to the entry's permalink, the match badge, the government link (state page only), meeting title + date, "Original post on {network}" as plain text (no outbound link). No empty state: renders to nothing when `context_entries == []`. Included by both `jurisdiction_page.html` and `state_page.html`, after the featured meetings, before the meeting/government list. |
+| Entry page (`context_entry_page.html`) | A "Part of {State}" link next to the existing hub link — `crud.effective_state_abbr()` over the entry's own `gov_id`/`jurisdiction` (one new dict key, `gov_id`, zero extra queries), not a page-specific lookup. |
+
+**Membership: reused, not re-derived.** Both wirings pass the SAME
+page-membership decision the hub/state page already made for its own
+meeting list, never a jurisdiction-text match — `STATE_HUB_PAGES.md`'s
+"Which pages a hub shows" section already measured what a text match
+costs (four real governments' hubs carrying unrelated video once). A
+`tests/test_context_on_hubs.py` case models that exact contamination
+shape for Full Context: an un-keyed page on a `MULTI_GOV_HOSTS` host
+whose stored jurisdiction text coincidentally reads "Walnut Creek, CA"
+does not pull its cited entry onto Walnut Creek's real hub.
+
+**Bare view only; no empty state.** A `?topic=` view is an alternate,
+untagged cut of the page, so the section is skipped there. With zero
+entries the block is fully absent — no heading, no wrapper — the same
+reasoning every other section on these pages already follows, since a
+repeated empty heading across ~1,000 hubs is exactly the thin templated
+content `STATE_HUB_PAGES.md` §1 diagnosed Google declining this site for.
+
+**Cheap.** One small extra query per render, using the session the
+caller already has open, wrapped in try/except and logged (mirrors how
+`sitemap()` already guards its own Full Context calls) so a failure here
+can never take the hub/state page down with it.
+
+**The hub `noindex` condition — checked, not changed.** `jurisdiction_
+page.html`'s `noindex` is driven purely by `indexable = len(pages) >=
+JURISDICTION_HUB_MIN_INDEXABLE` (2) — a meeting-page COUNT, with no
+awareness of Full Context entries at all. So: a hub with only one meeting
+page but with real Full Context entries attached is still `noindex`'d
+today. Left alone per the brief; flagged here for Ryan to decide whether
+that should change.
+
+**Docs.** `STATE_HUB_PAGES.md`: added to §2's component list, and a new
+"Seen on social media" subsection under "Rendering rules" covering the
+membership rule, the no-empty-state reasoning, bare-view-only, cost, and
+placement/limits. `README.md`'s "Full Context feed" section: a new
+paragraph. `BACKLOG.md`: the WO-943 "clipped on social media" `/m/`
+backlink residual now notes hubs/state pages already link to entry pages,
+leaving `/m/` as the one remaining surface without a backlink.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4883 passed, 16 skipped, 4 xfailed, 0 failed**),
+`alembic check` for both services (no migration in this WO), and the
+`BACKLOG_DONE.md` heading check. Node tests: 81 passed.
+
+Both services were then run locally on scratch SQLite, with `.env`
+loading blocked, and driven through the resolver in a real browser: a
+real Jacksonville FL meeting (Granicus clip 7447) with two published
+entries and one draft.
+
+| Check | Result |
+|---|---|
+| `/j/jacksonville-fl` | "Seen on social media" with both published entries, newest first, each linking to its slugged entry page |
+| The draft | On neither page |
+| Links out to social media inside the section | None |
+| An untitled entry | Its link text is the start of its summary. A `<script>` in that summary renders as plain text. |
+| `/state/florida` | The same two entries, each with a link to the Jacksonville hub |
+| `/j/jacksonville-fl?topic=…` | No section at all |
+| Entry page | Now reads "Jacksonville, FL · Florida · 2026-08-03", with both as links |
+
+**Two things the review caught that no test could have, fixed in this
+WO.**
+
+1. *The failure guard did not hold on Postgres.* The entries query ran
+   in the page's own database session inside a try/except. On Postgres
+   a failed statement aborts the whole transaction, so every later query
+   on that session fails too and the page returns a 500 anyway. SQLite
+   does not behave that way, so the "lookup raises, page still renders"
+   tests passed. The lookup now runs in its own session
+   (`crud._context_entries_isolated()`).
+2. *The state lookup grew with the archive.* It passed every page id in
+   the state as one `IN (…)` list. A large state has thousands of pages.
+   The entries table is tiny by comparison, so the lookup now starts
+   there: read the published entries' meeting ids, intersect with the
+   state's page set in Python, then fetch the few that matched
+   (`crud._context_entries_for_page_ids()`). Membership is unchanged. It
+   is still the state page's own final page list.
+
 ## WO-946: Full Context entry pages get a slugged URL and real SEO substance — a transcript excerpt, structured data, a sitemap listing [Done 2026-09-21]
 
 **Why this ran.** Ryan reviewed the WO-945 permalink pages and asked two
