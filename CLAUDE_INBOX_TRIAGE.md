@@ -107,6 +107,127 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-21
+
+331 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 6 batches, back to 2026-08-28), 21 new after the ledger
+filter — everything older than 2026-09-20 14:17 UTC was already covered
+by prior runs.
+
+**Out of scope / informational, no write-up**: 1 Search Console alert for
+how-to-adu.com (different property from this repo). 1 transcription
+worker daily report. 1 "RTR feed drop 2026-09-20" report (51 meetings
+written — a success report, not a failure). 9 dependabot "won't notify
+again about this release" comments (PRs #1172-#1178, #765, #767) —
+dependabot managing its own notification state, nothing to act on. 1 GH
+Actions "Run failed: Nightly sweep and alerts - master" for
+`mroconnell/rtr-upcoming` and 1 Render "Web Service rtr-upcoming exceeded
+its memory limit" — both a different repository/service from this one,
+same already-flagged open question from the 2026-09-20 run about whether
+this Routine's scope should widen to include `rtr-upcoming`; not
+re-investigating since nothing new to add. 1 "YouTube transcripts: none
+new today" report (16 individual video failures) — read in full: all 16
+are either `VideoUnplayable: ... This live event will begin` (a scheduled
+livestream that hasn't started yet) or `NoTranscriptFound: ... No
+transcripts were found for any of the requested language codes: ('en',)`
+(no English captions on the video) — both are known, expected per-video
+outcomes for this feed, not a new failure mode.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Transcription job 3900 failed (Moulton Borough NH,
+`townhallstreams.com/stream.php?id=76131`, "ffmpeg reported success but
+the output file isn't decodable (likely truncated/corrupt)" at chunk
+9/10, 2026-09-21 08:17-08:22 UTC) — same exact meeting and error
+signature as job 3727 (already noted as a duplicate in the 2026-09-20
+run's own section) of the already-open `[JUST-DO-IT]`
+"`slice_cached_audio()` skips the corrupt-chunk decodability guard"
+entry. GitHub Actions "Adapter health canary" failed on `main` (run
+`35527887727`, 2026-09-20 18:05 UTC) — pulled the real job log: 40/41
+platforms OK, the one failure is `ClientResponseError: 410` against
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is
+a genuinely dead meeting" entry seen in every recent run. Render
+`rtr-deeplink-archive` "HTTP health check failed (timed out after 5
+seconds)" (2026-09-21 01:06 UTC) — same already-tracked recurring pattern
+discussed at length in the 2026-09-14/09-17 sections, no new development.
+Render `test-redtaperecordings` "Exited with status 3" (2026-09-21 00:38
+UTC) — same already-confirmed-closed noise per `BACKLOG_DONE.md`'s
+2026-08-30 entry, as in every prior run's section.
+
+- **Confirmed** — the tier-3 auto-transcription queue-advance workflow's
+  "wait for the `pull_request`-triggered `test.yml` check to register"
+  fix (`BACKLOG_DONE.md`'s "Queue-advance automation" saga, fixed and
+  "verified end-to-end" 2026-08-18) regressed once, live: GitHub Actions
+  run `35564702718` (2026-09-21 05:29-05:32 UTC) fed 12 URLs, committed
+  the queue + probe-sidecar changes, and opened PR #1277 exactly as
+  designed — but then hit the identical `"no checks reported on the
+  'queue-advance/tier3-35564702718' branch"` error the 2026-08-18 fix was
+  built to prevent: the workflow's 60-second poll (12 attempts × 5s) for
+  at least one check to register gave up before GitHub's own
+  `pull_request`-triggered `test.yml` run had registered, so `gh pr
+  checks --watch --fail-fast` failed immediately and the `feed` job
+  exited 1, leaving PR #1277 open with no automated merge attempted.
+  Sized against the last 30 tier-3 queue-advance PRs (`gh`/GitHub search,
+  `#1117`-`#1277`): every other one merged automatically in **2-3
+  minutes**; #1277 sat open for **5 hours 37 minutes** until Ryan merged
+  it by hand at 11:08 UTC. This is a genuine recurrence, not a
+  misdiagnosis — the exact same root cause and error string as the
+  original 2026-08-18 incident, ruled out as a fluke by checking the 30
+  most recent runs and finding only this one outlier.
+  - **Impact**: rare (1 of the last 30 automated runs, ~3%) but real —
+    this breaks the "genuinely, verifiably unattended end-to-end"
+    guarantee `BACKLOG_DONE.md` recorded for this exact workflow. No data
+    was lost (the queue script's upsert logic makes re-ingestion
+    harmless, per that entry's own note), but the 12-URL batch sat
+    un-merged and un-fed to Archive for over 5 hours, and would have sat
+    longer without a human noticing and merging by hand — there's no
+    automated retry or alert if a human isn't watching.
+  - **Next action**: widen the poll window and/or attempt count in the
+    workflow step that waits for the check to register (currently 12 ×
+    5s = 60s) — GitHub's own registration delay evidently exceeds 60s at
+    least occasionally. A cheap, low-risk change since the loop already
+    exists; just needs more headroom.
+  - **Open question**: whether this is worth a `BACKLOG.md` entry now
+    (one occurrence in ~30 runs since the original fix) or is better
+    tracked as "watch for a second occurrence" — leaving that call to
+    whoever promotes this.
+
+- **Confirmed** — GitHub's own usage alert: the `mroconnell` account has
+  used **90%** of its 2,000 included Actions minutes for this billing
+  cycle, with **11 days** left until the 2026-10-01 reset (alert
+  timestamp 2026-09-20 16:18 UTC). This is a new alert type for this
+  label — no earlier occurrence found anywhere in the 30-day search
+  window, and nothing in `BACKLOG.md`/`BACKLOG_DONE.md`/
+  `CLAUDE_BACKLOG.md` mentions GitHub Actions minutes (as opposed to
+  Render's separately-tracked bandwidth/pipeline-minute caps, a different
+  budget on a different service).
+  - **Impact**: this repo depends on GitHub Actions for CI gating on
+    every PR (`test.yml`), the adapter health canary, and both
+    queue-advance workflows (tier-3 and Granicus) — each queue-advance
+    run alone opens a PR and triggers a full `test.yml` run, and per the
+    finding above these run roughly every 4-6 hours around the clock, on
+    top of every interactive session's own PR test runs. If the account
+    exhausts its included minutes before the reset, GitHub either blocks
+    further Actions runs or starts charging overage (which one depends
+    on account billing settings this Routine can't see) — either way
+    that would stop CI gating for open PRs and pause both unattended
+    queue-advance workflows for up to 11 days. Exact minutes-per-run
+    isn't visible from here (GitHub's usage dashboard is account-level
+    and auth-walled), so the precise day this would first bite isn't
+    confirmable from this Routine, only that 90% is already spent with
+    over a third of the cycle still to go.
+  - **Open question**: is this expected/already on Ryan's radar (e.g. a
+    known consequence of the recent parallel-session waves generating
+    many PR-branch CI runs), or does it need a response before the cycle
+    resets — recommend checking GitHub's billing settings for this
+    account (overage vs. hard stop) since that changes whether this is
+    "CI might pause" or "CI might start costing money."
+
+Ledger: 21 message IDs reviewed and recorded this run (21 new, 310
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-20
 
 176 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
