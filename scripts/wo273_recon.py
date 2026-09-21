@@ -253,6 +253,17 @@ VENDOR_SUBDOMAIN_GUESSES = [
     "legistar",
     "civicweb",
     "boarddocs",
+    # Added 2026-09-20 from subdomains confirmed real on a government's own
+    # domain (rtr-business research, DNS/CT-log sweep + coverage registry):
+    "live",  # live.pomonaca.gov -- Cablecast, an A record with no CNAME
+    "media",  # media.cityofaikensc.gov -- Vimeo-backed media library
+    "stream",  # stream.a2gov.org -- Ann Arbor's Cablecast site
+    "mediasite",  # mediasite.sussexcountyde.gov -- Sonic Foundry
+    "events",  # events.eurekacountynv.gov/meetings
+    "weblink",  # Laserfiche WebLink agendas, 5 governments
+    "laserfiche",  # 3 governments
+    "onbase",  # OnBase Agenda Online, 2 governments
+    "docs",  # 6 governments
 ]
 
 # Per WO-268's live-confirmed DNS-wildcarding finding: only civicweb.net
