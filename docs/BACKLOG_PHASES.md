@@ -404,6 +404,22 @@ refused; 10 look like correct pages with a wrongly guessed state, 1 is a
 real error, 1 is unclear. WO-932 advises not building a blocking check yet.
 Ryan has not decided.
 
+**Added 2026-09-21: keep videos that are not meetings out of view.** WO
+numbers come from the conductor when it starts, after the deploy. Ryan
+decided that every channel-sourced video is one of three outcomes. **A** is a
+meeting and gets a normal page. **B** is a government video that is not a
+meeting: the page exists and a direct link works, but it is noindexed and
+left out of search, hubs, `/meetings`, the feed and the sitemap. **C** is not
+related (personal videos, TV clips, school sports and performances, children
+or minors as the primary speakers, videos with little to no speech): no page
+is created, and a live one is taken down. "Cannot tell" is a B, never an A.
+It builds in three steps: a per-page listing flag and the hiding, then the
+rules inside WO-933's gate, then a pass over pages already live through
+WO-934's worklist. The rules, the evidence behind them and the cautions are in
+the backlog entry "A bare YouTube channel-listing scan measurably ingests
+non-meeting". Ryan expects edge cases and is content to wait for a real
+exception on a larger user base.
+
 ---
 
 ## Phase 2: stop wasting effort
