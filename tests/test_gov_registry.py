@@ -3449,7 +3449,10 @@ def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
     pinned = resolver.resolve_government(
         None,
         tenant_host="videoplayer.telvue.com",
-        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/951693",
+        # Derry's town meeting, media 1038769 (pages 3525 and 3573). Media
+        # 951693 on the same token is the school board's, and has its own
+        # per-media pin since WO-934's follow-up (see the Derry test below).
+        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/1038769",
     )
     assert pinned.gov_id == "us:cousub:3301517940"  # Derry, NH
 
@@ -3888,3 +3891,95 @@ def test_wo934_a_stateless_county_office_name_uses_the_authoritative_host_pin():
     )
     assert match.gov_id == _WO934_SOLANO_COE
     assert match.tier == resolver.TIER_PINNED
+
+
+# --- WO-934 follow-up: the Derry Cooperative School District (page 3367) ------
+#
+# Ryan named the body on 2026-09-21. The Census school-district list has it
+# under a shorter name ("Derry School District", LEA 3302610), and NCES's own
+# page for that id is titled "Derry Cooperative School District" (fetched
+# 2026-09-21), so it is NOT minted: a mint would duplicate the district. A
+# curated row keyed to the national id sets the name and links the Census
+# unit, and a per-media pin files page 3367 under it.
+
+_DERRY_COOP = "us:sd:3302610"
+
+
+def test_the_derry_cooperative_is_one_district_not_two():
+    govs = registry.governments()
+    gov = govs[_DERRY_COOP]
+    assert gov.source.startswith("curated")
+    assert (gov.gov_name, gov.gov_type, gov.state) == (
+        "Derry Cooperative School District",
+        "school_district",
+        "NH",
+    )
+    assert gov.cog_id == "181197"
+    # The national table still carries the same id under the Census name, and
+    # no second government (minted or otherwise) has the cooperative's name.
+    with open(DATA_DIR / "us_school_districts.csv", newline="", encoding="utf-8") as fh:
+        census = {row["geoid"]: row for row in csv.DictReader(fh)}
+    assert (census["3302610"]["name"], census["3302610"]["state"]) == (
+        "Derry School District",
+        "NH",
+    )
+    named = [
+        g.gov_id
+        for g in govs.values()
+        if (g.gov_name.lower(), g.state) == ("derry cooperative school district", "NH")
+    ]
+    assert named == [_DERRY_COOP]
+    assert not [g for g in govs if g.startswith("rtr:us:nh:derry")]
+    slug = display.hub_slug(gov)
+    assert [g.gov_id for g in govs.values() if display.hub_slug(g) == slug] == [
+        _DERRY_COOP
+    ]
+
+
+def test_the_derry_cooperative_census_unit_is_the_one_named():
+    with open(DATA_DIR / "cog_units.csv", newline="", encoding="utf-8") as fh:
+        units = {row["cog_id"]: row for row in csv.DictReader(fh)}
+    unit = units["181197"]
+    assert unit["name"] == "DERRY COOP SCH DIST"
+    assert (unit["state"], unit["gov_type"]) == ("NH", "school_district")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Derry Cooperative School District, NH",
+        # the Census spelling stays a declared alias of the same district
+        "Derry School District, NH",
+    ],
+)
+def test_a_derry_cooperative_name_with_a_state_matches_the_row(raw):
+    match = resolve(raw)
+    assert match.gov_id == _DERRY_COOP
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_name == "Derry Cooperative School District, NH"
+
+
+def test_page_3367s_media_is_the_districts_and_the_towns_media_is_not():
+    """Media 951693 (School Board Meeting - Meeting of 05/13/25) is the
+    district's; media 1038769 (Town Council - 08/04/26, pages 3525 and 3573) on
+    the same Derry org token stays Derry town. The token is NOT pinned to the
+    district: it carries both."""
+    school = resolve(
+        "Derry, NH",
+        host="videoplayer.telvue.com",
+        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/951693",
+    )
+    assert (school.gov_id, school.tier) == (_DERRY_COOP, resolver.TIER_PINNED)
+    town = resolve(
+        "Derry, NH",
+        host="videoplayer.telvue.com",
+        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/1038769",
+    )
+    assert town.gov_id == "us:cousub:3301517940"
+    # The playlist form of the same media address matches too.
+    playlist = resolve(
+        "Derry, NH",
+        host="videoplayer.telvue.com",
+        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/playlists/4824/media/951693",
+    )
+    assert playlist.gov_id == _DERRY_COOP

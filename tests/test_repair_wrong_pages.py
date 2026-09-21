@@ -87,13 +87,16 @@ _APPROVED_DELETES = {
     6114,  # a county homepage intro video, not a meeting
     6101,  # Greenwood County, KS: an unrelated rocket-lab channel's video
     6830,  # New Haven, IN: a private person's drone footage
+    6906,  # Sebring, FL: Ryan clicked it, it does not play (approval inferred)
+    7086,  # Malibu, CA: Ryan clicked it, it does not play
 }
 _REJECTED = {6119, 6218}  # government videos that are not meetings: kept
 _APPROVED_SCHOOL_BOARD_REKEYS = {
     1414, 2610, 2899, 3787, 3885, 1311, 1324, 1333, 5565, 1938, 2298, 2666, 5501,
 }  # fmt: skip
 _APPROVED_MINT_REKEYS = {5945, 10852, 645, 2004, 5301}
-_STILL_WAITING = {3367, 3453, 6906, 7086}
+_APPROVED_RYAN_NAMED_REKEYS = {3367, 3453}  # Derry, NH and Hopkins, MN
+_STILL_WAITING: set = set()
 
 
 def test_the_approved_rows_are_exactly_the_ones_ryan_approved():
@@ -105,7 +108,10 @@ def test_the_approved_rows_are_exactly_the_ones_ryan_approved():
     assert approved_deletes == _APPROVED_DELETES
     approved_rekeys = {r.page_id for r in rows if r.approved and r.action == "rekey"}
     assert approved_rekeys == (
-        _APPROVED_SCHOOL_BOARD_REKEYS | _APPROVED_MINT_REKEYS | {2504}
+        _APPROVED_SCHOOL_BOARD_REKEYS
+        | _APPROVED_MINT_REKEYS
+        | _APPROVED_RYAN_NAMED_REKEYS
+        | {2504}
     )
     assert {r.page_id for r in rows if r.rejected} == _REJECTED
     waiting = {
@@ -114,17 +120,54 @@ def test_the_approved_rows_are_exactly_the_ones_ryan_approved():
     assert waiting == _STILL_WAITING
 
 
-def test_the_gone_video_group_only_deletes_6114_and_the_rest_wait():
-    """Pages 6906 and 7086 wait for a checked status file; 7086 also waits for
-    its replacement page. Neither is approved."""
+def test_sebring_and_malibu_are_approved_but_wait_for_their_replacement_pages():
+    """Ryan clicked both videos on 2026-09-21 and neither plays. Each delete
+    still needs its replacement page live (`replacement-video`), and the
+    recorded check is the `video-gone` evidence. Page 6906's approval is an
+    inference by analogy with Malibu, and its reason says so."""
     by_id = {r.page_id: r for r in _sheet_rows()}
-    for page_id in (6906, 7086):
+    expected = {
+        6906: [("video-gone", "ryan-2026-09-21"), ("replacement-video", "yTeXBxcodt8")],
+        7086: [("video-gone", "ryan-2026-09-21"), ("replacement-video", "PveTE-5yFiU")],
+    }
+    for page_id, requires in expected.items():
         row = by_id[page_id]
-        assert row.action == "delete"
-        assert row.needs_ryan and not row.approved
-        assert ("video-gone", "") in row.requires
-    assert ("replacement-page", "") in by_id[7086].requires
+        assert row.action == "delete" and row.approved and row.needs_ryan
+        assert row.requires == requires
+        assert "2026-09-21" in row.reason
+    assert "INFERRED" in by_id[6906].reason
+    assert "INFERRED" not in by_id[7086].reason
+    # Malibu's further examples are recorded as evidence only: nothing ingested.
+    evidence = by_id[7086].evidence
+    assert "malibucity.org/662/Public-Meeting-Video-Archive" in evidence
+    assert "XoWrMZwRFcU" in evidence
     assert by_id[6114].approved and by_id[6114].requires == []
+
+
+def test_the_replacement_videos_are_already_pinned_to_the_same_government():
+    """The replacement for each delete row is pinned to the page's own
+    government on main, so the page the drip creates is filed where the tool
+    will look for it."""
+    pins = (
+        REPO_ROOT / "app" / "utils" / "jurisdiction_data" / "tenant_overrides.csv"
+    ).read_text(encoding="utf-8")
+    by_id = {r.page_id: r for r in _sheet_rows()}
+    for page_id, video_id in ((6906, "yTeXBxcodt8"), (7086, "PveTE-5yFiU")):
+        gov = by_id[page_id].expected_current_gov_id
+        assert f"www.youtube.com,{video_id},{gov},fallback" in pins
+
+
+def test_derry_and_hopkins_carry_the_ids_ryan_named():
+    """Ryan, 2026-09-21: page 3367 is the Derry Cooperative School District,
+    page 3453 is Hopkins, MN. Derry is NOT minted: NCES's own page for LEA
+    3302610 is titled 'Derry Cooperative School District'."""
+    by_id = {r.page_id: r for r in _sheet_rows()}
+    assert by_id[3367].target_gov_id == "us:sd:3302610" and by_id[3367].approved
+    assert by_id[3453].target_gov_id == "us:sd:2714260" and by_id[3453].approved
+    assert "Derry Cooperative School District" in by_id[3367].reason
+    assert "Hopkins, MN" in by_id[3453].reason
+    gov = government_for_id("us:sd:3302610")
+    assert gov is not None and gov.gov_name == "Derry Cooperative School District"
 
 
 def test_the_minted_rows_carry_the_minted_ids_and_say_the_deploy_comes_first():
@@ -172,14 +215,13 @@ def test_deletes_always_wait_for_ryan_and_no_rekey_runs_without_evidence():
             assert row.action == "rekey" and row.target_gov_id, row.origin
 
 
-def test_the_only_rows_with_no_target_are_the_two_with_no_id_to_write():
-    """A blank target is a finding, not a gap to fill from a guess: page 3453
-    (which Hopkins district is not proven) and page 2504 (Ryan will not mint a
-    state commission)."""
+def test_the_only_row_with_no_target_is_the_one_with_no_id_to_write():
+    """A blank target is a finding, not a gap to fill from a guess: page 2504
+    (Ryan will not mint a state commission)."""
     blank = {
         r.page_id for r in _sheet_rows() if r.action == "rekey" and not r.target_gov_id
     }
-    assert blank == {3453, 2504}
+    assert blank == {2504}
     for row in _sheet_rows():
         if row.action == "rekey" and not row.target_gov_id:
             assert row.needs_ryan
@@ -270,7 +312,11 @@ def test_a_good_row_reads_cleanly():
             "no target must say needs_ryan=yes",
         ),
         ({"requires": "video-alive"}, "unknown condition"),
-        ({"requires": "replacement-page:abc"}, "unknown condition"),
+        ({"requires": "replacement-page:12"}, "replacement-page is gone"),
+        ({"requires": "replacement-video:"}, "11-character video id"),
+        ({"requires": "replacement-video:short"}, "11-character video id"),
+        ({"requires": "video-gone:ryan-21-9-2026"}, "video-gone:<who>-<YYYY-MM-DD>"),
+        ({"requires": "video-gone:ryan-2026-13-40"}, "video-gone:<who>-<YYYY-MM-DD>"),
     ],
 )
 def test_a_bad_row_is_reported(over, fragment):
@@ -292,11 +338,21 @@ def test_a_delete_row_needs_a_slug_ryan_and_no_target():
 
 
 def test_requires_tokens():
-    tokens, problems = parse_requires("video-gone; replacement-page:12")
-    assert tokens == [("video-gone", ""), ("replacement-page", "12")] and not problems
-    tokens, problems = parse_requires("replacement-page:")
-    assert tokens == [("replacement-page", "")] and not problems
+    tokens, problems = parse_requires("video-gone; replacement-video:PveTE-5yFiU")
+    assert tokens == [("video-gone", ""), ("replacement-video", "PveTE-5yFiU")]
+    assert not problems
+    tokens, problems = parse_requires(
+        "video-gone:ryan-2026-09-21;replacement-video:yTeXBxcodt8"
+    )
+    assert tokens == [
+        ("video-gone", "ryan-2026-09-21"),
+        ("replacement-video", "yTeXBxcodt8"),
+    ]
+    assert not problems
     assert parse_requires("")[0] == []
+    assert tool.parse_human_check("ryan-2026-09-21") == ("ryan", dt.date(2026, 9, 21))
+    assert tool.parse_human_check("2026-09-21") is None
+    assert tool.parse_human_check("ryan-2026-02-30") is None
 
 
 def test_a_page_may_appear_once_across_sheets(tmp_path):
@@ -352,6 +408,14 @@ class FakeClient:
 
     def read_pages(self, ids):
         return {i: dict(self.pages[i]) for i in set(ids) if i in self.pages}
+
+    def pages_with_video(self, video_id):
+        self.calls.append(("pages_with_video", video_id, True))
+        return [
+            {"id": p["id"], "slug": p["slug"], "gov_id": p["gov_id"]}
+            for p in self.pages.values()
+            if video_id in tool.page_video_ids(p)
+        ]
 
     def override(self, page_id, gov_id, *, dry_run):
         self.calls.append(("override", page_id, dry_run))
@@ -668,46 +732,179 @@ def test_only_a_recent_gone_status_satisfies_video_gone(status, expected):
     assert _outcomes(report) == {1: expected}
 
 
-def test_a_replacement_page_must_exist_and_share_the_government():
+def test_a_replacement_video_must_be_live_on_another_page_under_the_same_government():
+    """The replacement's page id cannot be known before the drip creates the
+    page, so the tool finds it by the video id. Pages 51 and 52 are stand-ins."""
     status = _status(page_id=1)
-    blank = _gone_delete_row(1, requires="video-gone;replacement-page:")
-    missing = _gone_delete_row(1, requires="video-gone;replacement-page:50")
-    good = _gone_delete_row(1, requires="video-gone;replacement-page:51")
-    other_gov = _gone_delete_row(1, requires="video-gone;replacement-page:52")
+    rv = "replacement-video:zzzzzzzzzzz"
 
-    def fresh():
-        return FakeClient([_yt_page(1), _page(51), _page(52, gov="us:place:9999999")])
+    def fresh(*extra):
+        return FakeClient([_yt_page(1), *extra])
 
-    for row, expected in [
-        (blank, tool.REFUSED_REQUIRES),
-        (missing, tool.REFUSED_REQUIRES),
-        (other_gov, tool.REFUSED_REQUIRES),
-        (good, tool.DELETED),
-    ]:
-        report = _run([row], fresh(), apply=True, allow_deletes=True, status=status)
-        assert _outcomes(report) == {1: expected}, row.requires
+    def outcome(client):
+        row = _gone_delete_row(1, requires=f"video-gone;{rv}")
+        report = _run([row], client, apply=True, allow_deletes=True, status=status)
+        return report.results[0]
 
-
-def test_the_malibu_shape_page_7086_cannot_be_deleted_by_its_committed_row():
-    """The real 7086 row, run against a stand-in page: with a fresh 'deleted'
-    check but no replacement page id, and even with Ryan's approve, it is refused."""
-    (row,) = [r for r in _sheet_rows() if r.page_id == 7086]
-    row.ryan_decision = "approve"  # pretend Ryan approved, to prove the second lock
-    page = _yt_page(
-        7086,
-        video_id="JGHPsOlz7wI",
-        gov=row.expected_current_gov_id,
-        slug=row.expected_slug,
+    # Not ingested yet: refused, and the reason says to ingest it first.
+    result = outcome(fresh())
+    assert (
+        result.outcome == tool.REFUSED_REQUIRES
+        and "ingest the replacement first" in result.detail
     )
+    # Live, but under another government: refused.
+    other = _yt_page(52, video_id="zzzzzzzzzzz", gov="us:place:9999999")
+    result = outcome(fresh(other))
+    assert (
+        result.outcome == tool.REFUSED_REQUIRES and "not this page's" in result.detail
+    )
+    # Live under the same government: deleted.
+    good = _yt_page(51, video_id="zzzzzzzzzzz")
+    client = fresh(good)
+    assert outcome(client).outcome == tool.DELETED
+    assert set(client.pages) == {51}
+    # A page never counts as its own replacement.
+    own = FakeClient([_yt_page(1, video_id="zzzzzzzzzzz")])
+    assert outcome(own).outcome == tool.REFUSED_REQUIRES
+
+
+def test_page_video_ids_reads_the_address_the_source_and_the_external_id():
+    page = {
+        "video_url": "https://www.youtube.com/embed/aaaaaaaaaaa",
+        "source_url_normalized": "https://www.youtube.com/watch?v=bbbbbbbbbbb",
+        "external_id": "youtube:ccccccccccc",
+    }
+    assert tool.page_video_ids(page) == ["aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc"]
+    assert tool.page_video_ids({"video_url": "https://x.granicus.com/a.m3u8"}) == []
+    assert tool.page_video_ids({"external_id": "youtube:live_stream"}) == []
+
+
+def test_replacement_video_with_no_way_to_look_is_refused():
+    row = _gone_delete_row(1, requires="replacement-video:zzzzzzzzzzz")
+    ctx = tool.Context(
+        live={1: _yt_page(1)}, today=TODAY, apply=True, allow_deletes=True
+    )
+    assert "none is available" in tool.check_requirements(row, ctx)
+
+
+def _human_row(check, replacement="zzzzzzzzzzz"):
+    return _gone_delete_row(
+        1, requires=f"video-gone:{check};replacement-video:{replacement}"
+    )
+
+
+def test_a_recorded_human_check_stands_in_for_the_status_file():
+    good = _yt_page(51, video_id="zzzzzzzzzzz")
+    client = FakeClient([_yt_page(1), good])
     report = _run(
-        [row],
-        FakeClient([page]),
+        [_human_row("ryan-2026-09-21")], client, apply=True, allow_deletes=True
+    )  # no status file at all
+    assert _outcomes(report) == {1: tool.DELETED}
+
+
+@pytest.mark.parametrize(
+    "check, fragment",
+    [
+        ("ryan-2026-08-01", "51 days old"),  # too old to trust
+        ("ryan-2026-09-30", "in the future"),  # not yet dated
+    ],
+)
+def test_a_human_check_must_be_recent_and_not_in_the_future(check, fragment):
+    good = _yt_page(51, video_id="zzzzzzzzzzz")
+    client = FakeClient([_yt_page(1), good])
+    report = _run([_human_row(check)], client, apply=True, allow_deletes=True)
+    assert _outcomes(report) == {1: tool.REFUSED_REQUIRES}
+    assert fragment in report.results[0].detail
+    assert client.writes == []
+
+
+def test_a_newer_status_check_that_says_alive_overrules_a_human_check():
+    """Ryan clicked on the 21st and it did not play; the drip Mac checked on
+    the 23rd and the video answers. A private video can be made public."""
+    good = _yt_page(51, video_id="zzzzzzzzzzz")
+    client = FakeClient([_yt_page(1), good])
+    newer_ok = StatusIndex()
+    newer_ok.by_page[1] = ("ok", dt.date(2026, 9, 23))
+    report = _run(
+        [_human_row("ryan-2026-09-21")],
+        client,
         apply=True,
         allow_deletes=True,
-        status=_status(page_id=7086, video_id="JGHPsOlz7wI"),
+        status=newer_ok,
+        today=dt.date(2026, 9, 24),
     )
-    assert _outcomes(report) == {7086: tool.REFUSED_REQUIRES}
-    assert "replacement" in report.results[0].detail
+    assert _outcomes(report) == {1: tool.REFUSED_REQUIRES}
+    assert "newer" in report.results[0].detail
+    # An OLDER alive check does not overrule the person's later look.
+    older_ok = StatusIndex()
+    older_ok.by_page[1] = ("ok", dt.date(2026, 9, 10))
+    report = _run(
+        [_human_row("ryan-2026-09-21")],
+        FakeClient([_yt_page(1), good]),
+        apply=True,
+        allow_deletes=True,
+        status=older_ok,
+        today=dt.date(2026, 9, 22),
+    )
+    assert _outcomes(report) == {1: tool.DELETED}
+
+
+def test_the_committed_sebring_and_malibu_rows_follow_the_ordering_rule():
+    """The REAL rows, run against stand-in pages. Ryan approved both deletes,
+    and neither may run until its replacement video is on a live page under
+    the same government. The stand-in pages copy each row's expected slug and
+    government; the replacement is added or left out."""
+    rows = {r.page_id: r for r in _sheet_rows() if r.page_id in (6906, 7086)}
+    videos = {
+        6906: ("_RZBcYEbQr4", "yTeXBxcodt8"),
+        7086: ("JGHPsOlz7wI", "PveTE-5yFiU"),
+    }
+    today = dt.date(2026, 9, 22)  # the day after Ryan's check
+    for page_id, (old, new) in videos.items():
+        row = rows[page_id]
+
+        def page(replacement_gov=None):
+            pages = [
+                _yt_page(
+                    page_id,
+                    video_id=old,
+                    gov=row.expected_current_gov_id,
+                    slug=row.expected_slug,
+                )
+            ]
+            if replacement_gov is not None:
+                pages.append(_yt_page(900 + page_id, video_id=new, gov=replacement_gov))
+            return FakeClient(pages)
+
+        # 1. replacement not ingested yet: refused, nothing written
+        client = page()
+        report = _run([row], client, apply=True, allow_deletes=True, today=today)
+        assert _outcomes(report) == {page_id: tool.REFUSED_REQUIRES}, page_id
+        assert client.writes == []
+        # 2. replacement live under another government: refused
+        client = page("us:place:9999999")
+        report = _run([row], client, apply=True, allow_deletes=True, today=today)
+        assert _outcomes(report) == {page_id: tool.REFUSED_REQUIRES}
+        # 3. replacement live under the page's own government: deleted, and only
+        #    with --allow-deletes
+        client = page(row.expected_current_gov_id)
+        report = _run([row], client, apply=True, allow_deletes=False, today=today)
+        assert _outcomes(report) == {page_id: tool.SKIP_NO_DELETES}
+        assert client.writes == []
+        report = _run([row], client, apply=True, allow_deletes=True, today=today)
+        assert _outcomes(report) == {page_id: tool.DELETED}
+        assert client.writes == [f"delete {row.expected_slug}"]
+        # 4. a stale row is still refused, replacement or not
+        stale = page(row.expected_current_gov_id)
+        stale.pages[page_id]["slug"] = "someone-renamed-this"
+        report = _run([row], stale, apply=True, allow_deletes=True, today=today)
+        assert _outcomes(report) == {page_id: tool.REFUSED_STALE}
+        # 5. Ryan's check ages out after 14 days
+        report = _run(
+            [row], page(row.expected_current_gov_id), apply=True, allow_deletes=True,
+            today=dt.date(2026, 10, 6),
+        )  # fmt: skip
+        assert _outcomes(report) == {page_id: tool.REFUSED_REQUIRES}
 
 
 # --- status file and gone-videos --------------------------------------------
@@ -1268,3 +1465,79 @@ def test_page_2504_the_backfill_path_would_leave_it_under_beltrami():
         path="/MediaPlayer.php?clip_id=2731&view_id=2",
     )
     assert page_5816.gov_id == "" and page_5816.tier == "unresolved"
+
+
+def _ingest_youtube(http, video_id):
+    """A YouTube page keyed to the synthetic government (a caller gov_id is a pin)."""
+    payload = {
+        "platform": "youtube",
+        "source_url": f"https://www.youtube.com/watch?v={video_id}",
+        "input_url_normalized": f"https://www.youtube.com/watch?v={video_id}",
+        "external_id": f"youtube:{video_id}",
+        "title": f"City Council Regular Meeting {video_id}",
+        "date": "2026-08-01",
+        "jurisdiction": "Wo934 Default City, ZZ",
+        "gov_id": _GOV_ID,
+        "video_url": f"https://www.youtube.com/embed/{video_id}",
+        "video_format": "youtube",
+        "segments": [],
+    }
+    reply = http.post(
+        "/internal/ingest",
+        json=payload,
+        headers={"Authorization": f"Bearer {_AUTH_TOKEN}"},
+    )
+    assert reply.status_code == 200, reply.text
+    return reply.json()["slug"]
+
+
+async def test_real_archive_a_delete_waits_for_its_replacement_video_to_be_live(
+    live_archive,
+):
+    """The Sebring and Malibu rule against the real Archive: the delete row is
+    refused until another live page carries the replacement's video id under
+    the same government. The tool finds it through the real page-list route."""
+    client, http = live_archive
+    old_slug = _ingest_youtube(http, "Wo934Gone01")
+    old_id = await _page_id(old_slug)
+    row = _row(
+        page_id=str(old_id),
+        action="delete",
+        target_gov_id="",
+        needs_ryan="yes",
+        confidence="medium",
+        ryan_decision="approve",
+        expected_current_gov_id=_GOV_ID,
+        expected_slug=old_slug,
+        requires="video-gone:ryan-2026-09-21;replacement-video:Wo934Repl01",
+    )
+
+    before = _run([row], client, apply=True, allow_deletes=True)
+    assert _outcomes(before) == {old_id: tool.REFUSED_REQUIRES}
+    assert "ingest the replacement first" in before.results[0].detail
+    assert client.writes == []
+    assert old_id in client.read_pages([old_id])
+
+    new_slug = _ingest_youtube(http, "Wo934Repl01")
+    new_id = await _page_id(new_slug)
+    after = _run([row], client, apply=True, allow_deletes=True)
+    assert _outcomes(after) == {old_id: tool.DELETED}
+    assert client.writes == [f"delete {old_slug}"]
+    live = client.read_pages([old_id, new_id])
+    assert old_id not in live and new_id in live
+
+
+async def test_real_archive_the_page_list_read_finds_a_page_by_any_of_its_video_ids(
+    live_archive,
+):
+    client, http = live_archive
+    slug = _ingest_youtube(http, "Wo934Scan01")
+    page_id = await _page_id(slug)
+    found = client.pages_with_video("Wo934Scan01")
+    assert [p["id"] for p in found] == [page_id]
+    assert found[0]["gov_id"] == _GOV_ID
+    assert client.pages_with_video("Wo934None01") == []
+    # one read of the list serves every later question in the run
+    calls = len(client.calls)
+    client.pages_with_video("Wo934Scan01")
+    assert len(client.calls) == calls

@@ -39,7 +39,7 @@ phases, so the column adds to a little over the file's 392.
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
 | 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan decided 24 of the 28 rows that needed him, and its run waits for the merge and the deploy |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan has decided every row that needed him (2026-09-21), and its run waits for the merge and the deploy, and for two replacement pages |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
 | 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
@@ -215,7 +215,7 @@ filed what WO-932, WO-933 and WO-935 closed.
 | WO-932 | An identity gate at ingest. WO-134's checks become on by default. A dry run counts how many existing sweep payloads a blocking Archive check would refuse. | Nothing |
 | WO-933 | One shared gate that asks whether a video is really a meeting, in `app/utils/video_hand_check.py`. The rule lived in eleven scripts; it is now one module, and `HIGH_RISK_TITLE_PLATFORMS` has one definition (youtube, vimeo, cablecast, swagit). Sweeps and `verify_hub` use it. Merged 2026-09-21, not live. | Nothing |
 | WO-935 | Transcript honesty for our own transcription. Scope is now A, B and D: (A) a decodability guard on cached audio, (B) a short-chunk check, and (D) the video length from YouTube so the check can run on YouTube pages. Merged 2026-09-21, not live. The own-transcript "may end before the meeting did" warning (C) was built, measured and **held** by Ryan; see below. | Nothing |
-| WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. **Built 2026-09-21:** `scripts/repair_wrong_pages.py`, `reports/wrong_page_worklist.csv` (48 rows; Ryan decided 24 of the 28 that needed him on 2026-09-21), five minted governments, `scripts/wrong_page_screen.py`, and a drip-Mac video checker. The run itself is still to do. | The deploy checkpoint, and Ryan's page decisions |
+| WO-934 | One bulk re-tag tool and one reviewed worklist for wrong live pages. It re-runs the 5,857-page screen afterwards. **Built 2026-09-21:** `scripts/repair_wrong_pages.py`, `reports/wrong_page_worklist.csv` (48 rows; Ryan decided every row that needed him on 2026-09-21), five minted governments, `scripts/wrong_page_screen.py`, and a drip-Mac video checker. The run itself is still to do. | The deploy checkpoint, and Ryan's page decisions |
 
 **What happened to each entry (filed by WO-931, 2026-09-21).** The lists
 below are the plan as written, with the outcome after each title. The full
@@ -610,7 +610,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | "One live page is keyed to the wrong government: a real" | Nothing: page 7328 already shows Chenango Town, NY | Nothing |
 | "13 archived YouTube pages point at a video that is gone (7" | Wait for the drip Mac's status check of 101 pages, then read each row the tool builds | WO-934's delete rows |
 | "A Pennsylvania Public Utility Commission hearing was briefly" | Decided 2026-09-21: no mint | Nothing |
-| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Decided 2026-09-21 for 24 of the 28 rows that needed him. Still his: pages 3367 (Derry) and 3453 (Hopkins on Vimeo), pages 6906 and 7086 (after the drip Mac's video check). The `solanocoe.granicus.com` pin is now authoritative (Ryan, 2026-09-21) | The merge, the deploy, then the Render-shell run |
+| "Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv`" | Decided 2026-09-21 for every row that needed him, Derry ("Derry Cooperative School District"), Hopkins ("Hopkins, MN"), Sebring and Malibu (their videos do not play) included. Nothing is left for him but the conductor's check that Sebring's delete was meant. The `solanocoe.granicus.com` pin is authoritative (Ryan, 2026-09-21) | The merge, the deploy, then the Render-shell run |
 | "Render account bandwidth hit its 25 GB/month Pro-plan cap on" | Read the billing dashboard | Ops |
 | "Run `scripts/backfill_video_channel.py --apply` from the" | Two backfills from the Render shell | Makes 1,138 channel pins work across 1,903 pages |
 | "45 of the 51 `transcribed=true`-no-page research rows found no live" | Approve the hand-checked plan | Phase 3 |
