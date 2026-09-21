@@ -51,6 +51,12 @@ items).
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
   journalists/advocates already do this manually with screenshots.
+  **2026-09-21, WO-943**: the Full Context feed (`/context`) ships the
+  other direction of this idea — an editor-written entry links an
+  *existing* social clip back to the meeting, rather than generating a
+  new shareable card from a transcript excerpt. This idea is still open
+  and still distinct. See `README.md`'s "Full Context feed" section and
+  `BACKLOG_DONE.md`'s WO-943 entry.
 - **Social auto-posting: durable queue instead of drop-on-burst.**
   Discussed with Ryan 2026-08-21 while building the between-posts buffer
   (`SOCIAL_MIN_POST_INTERVAL_SECONDS`, see README's "Social
@@ -633,6 +639,14 @@ jurisdiction work itself would unlock.
   and archive successfully (many candidates are on city YouTube
   channels, which the resolver already handles — worth confirming
   per-moment before it makes the page).
+  **2026-09-21, WO-943**: this idea's own phrase, "full context," is now
+  the real name of a shipped feature — the `/context` feed of
+  editor-written entries, each linking a social-media clip to its exact
+  moment in the archived meeting. `/context` is a reverse-chronological
+  feed, not a curated collection page, so this idea's "durable
+  listicle-bait, permanent page" framing is still open and still
+  distinct. See `README.md`'s "Full Context feed" section and
+  `BACKLOG_DONE.md`'s WO-943 entry.
 
 ## Google Search Console — indexing-exclusion alerts (2026-08-16/17)
 

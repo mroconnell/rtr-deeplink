@@ -439,6 +439,16 @@ services:
         sync: false
       - key: CLERK_JWT_KEY
         sync: false
+      # Full Context feed (/context, WO-943, 2026-09-21) -- comma-
+      # separated Clerk user ids allowed to post at /context/new (see
+      # README's "Full Context feed" section). Archive-only: the
+      # allowlist is checked here, not on the resolver. Leave unset to
+      # disable posting entirely (reading /context is unaffected).
+      # SILENT-FAILURE RISK: must be the *production* Clerk user id
+      # (Clerk dashboard -> Users), not a development-instance id -- a
+      # wrong value gives no error anywhere, the form just stays a 404.
+      - key: CONTEXT_EDITOR_CLERK_IDS
+        sync: false
       # HMAC key for the saved-search alert email's per-alert unsubscribe
       # link (archive/utils/link_tokens.py) -- deliberately its own
       # secret, not a reuse of CLERK_SECRET_KEY/ARCHIVE_INGEST_TOKEN

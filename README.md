@@ -1738,6 +1738,7 @@ a "My Saved Items" nav link, and a user avatar.
 | In-page transcript search, transcript download (Text/SRT) | Unsaving either of the above |
 | `/meetings` site-wide search across the Archive | "My Saved Items" (`/account/saved`) |
 | "Report a problem with this meeting" | |
+| Reading the Full Context feed (`/context`, `/context/feed.xml`) | Posting to Full Context (`/context/new`) — needs an account **and** editor status (`CONTEXT_EDITOR_CLERK_IDS`), see "Full Context feed" below |
 | Requesting on-demand transcription from audio — email only, see "On-demand transcription" below | |
 
 Requesting a transcription is **not** Clerk-gated — by deliberate design,
@@ -1988,6 +1989,154 @@ clickable.
 > (no account exists yet) — treat it as best-effort until one is
 > watched, same as any schema-verified-but-not-content-verified path
 > in this repo; see `BACKLOG.md` for the open residuals.
+
+## Full Context feed (`/context`)
+
+**Why this exists.** Ryan finds many short clips of public meetings
+circulating on Instagram, TikTok, and YouTube. A clip travels on its own,
+stripped of the rest of the meeting, and some draw real community
+attention (comments, reposts, news pickup) — but a viewer who wants the
+full context has no way to get from the clip back to the actual moment in
+the actual meeting. `/context` is a public feed of short, editor-written
+entries, each linking a real social post to the exact deep-linked second
+of the meeting it came from.
+
+**What an entry shows.** Every published entry always carries: an
+editor-written summary (max 500 characters — never fetched or generated,
+see "No server-side fetch" below); a link out to the original post
+(`rel="noopener nofollow ugc"`); the meeting's own card image (see
+"Meeting card images" above); a match label; and a "Watch the full
+context" deep link, `/m/{slug}?t={seconds}`.
+
+**Match labels** say how precisely the clip maps onto the meeting:
+
+| Label | Reader-facing text | What it means |
+|---|---|---|
+| `exact` | "Exact moment" | The linked timestamp is the clip itself. Requires a `t` value to publish. |
+| `approximate` | "Same meeting, moment approximate" | The right meeting, but no defensible single second. |
+| `related` | "Related meeting" | A different, related meeting than the one the clip shows. |
+
+**Embeds are click-to-load, and only for three networks.** For an
+Instagram, TikTok, or YouTube post, the entry also offers a "Show the
+post here" button. The embed itself — an official `embed.js` widget for
+Instagram/TikTok, a `youtube-nocookie.com` iframe for YouTube — loads
+only after the reader clicks it. **No post is loaded from Instagram,
+TikTok, or YouTube before that click.** One exception, confirmed by
+watching the real page's requests: when the *meeting* is hosted on
+YouTube, its card image loads from `i.ytimg.com` as the page opens.
+Click-to-load is a product choice, not a promise: the privacy page
+deliberately describes third-party content in general terms (Ryan,
+2026-09-21), so changing how embeds load needs no policy edit, and
+`tests/test_privacy_page.py` keeps feature-level promises from creeping
+back in. This site has no cookie-consent banner,
+and a page of 20 entries should not silently load 20 third-party
+players. If the embed fails, the entry still stands on its own — the
+link-out and the deep link both still work. The "Couldn't load it here"
+fallback fires when the network's script is blocked outright. For a
+deleted post, TikTok's script still builds its frame and shows its own
+"unavailable" message inside it (confirmed live). Every other network (Facebook, X, Threads, Bluesky, Reddit,
+LinkedIn, anything else) is link-out only; there is no embed widget for
+those.
+
+**No server-side fetch of any social post, ever.** Instagram in
+particular is login-walled to a non-browser client — checked live
+2026-09-21 against two real posts opened signed-out: one showed only the
+account name and a truncated caption, the other was age-restricted and
+showed nothing at all. So every entry's text is written by hand by an
+editor, not extracted from the post.
+
+**Who can post.** A web form at `/context/new`, open only to a signed-in
+Clerk user (see "Accounts (Clerk)" above) whose Clerk user id appears in
+the env var `CONTEXT_EDITOR_CLERK_IDS` (comma-separated) on the
+**Archive** service. Everyone else — signed in or not — gets a 404, not
+a "you don't have access" page. This is the first "this signed-in user
+has a role" mechanism in the repo; before it, admin access meant only a
+shared bearer token used with curl, and there were no admin HTML forms at
+all.
+
+> **Silent-failure risk.** `CONTEXT_EDITOR_CLERK_IDS` must hold the
+> *production* Clerk user id (Clerk dashboard → Users), not a
+> development-instance id. A wrong value gives no error anywhere — the
+> form just keeps 404ing. The var fails closed: leaving it unset means
+> nobody is an editor, not everybody.
+
+**Drafts and publishing.** An entry with no matched meeting is a private
+draft — only an editor can see it, on `/context/new`'s own list.
+Publishing requires a meeting, a match label, and a summary; `exact`
+additionally requires a timestamp. Statuses: `draft`, `published`,
+`hidden` (a published entry pulled back out of public view without
+losing its content or its original publish order).
+
+**Editor workflow.** Find the moment on the meeting page, click "Share
+video at M:SS" to copy its link, then paste that link into the form
+together with the social post's URL and a short summary. The server
+parses the slug and `t` out of the pasted link itself. `line`/`version`
+params on a pasted link are ignored for now (see `BACKLOG.md`).
+
+**Architecture.** The Archive renders the public pages and owns the
+writes; the resolver holds the public domain and proxies three GET
+routes plus two public write endpoints, the same two-hop pattern
+save-meeting/save-search already use (see "Accounts (Clerk)" above).
+There is no catch-all proxy — each route is explicit.
+
+| Route | Service | Purpose |
+|---|---|---|
+| `GET /context` | resolver → proxies to Archive, forwarding the `Cookie` header | the public feed page |
+| `GET /context/feed.xml` | resolver → proxies to Archive, **no** cookie forwarded | RSS feed |
+| `GET /context/new` | resolver → proxies to Archive, forwarding the `Cookie` header | the editor form + draft list |
+| `POST /api/context/save` | resolver, public | verifies the Clerk session, forwards the verified user id to Archive |
+| `POST /api/context/set-status` | resolver, public | same — publish/hide/draft transitions |
+| `GET /context`, `/context/feed.xml`, `/context/new` | Archive | renders the page/feed/form; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
+| `POST /internal/context/save` | Archive, token-gated | the real write, re-checking the allowlist |
+| `POST /internal/context/set-status` | Archive, token-gated | status transitions, re-checking the allowlist |
+
+New pure modules: `archive/utils/context_links.py` (parses a pasted
+social URL and a pasted RTR share link, and describes each network's
+embed) and `archive/utils/context_editors.py` (the allowlist check).
+Front-end: `archive/static/context_embeds.js` (click-to-load),
+`archive/static/context_editor.js` (the form). Templates:
+`archive/templates/context.html`, `_context_entry.html`,
+`context_new.html`, `context_feed.xml.jinja`.
+
+**Data model.** A new Archive table, `context_entries` (model
+`ContextEntry`, `archive/db/models.py`), with one Alembic migration —
+named to avoid the existing `SocialPost` table, which is this app's own
+*outbound* Bluesky/Mastodon auto-poster (see "Social auto-posting"
+above) and is otherwise unrelated. Columns: `social_url` (the canonical
+URL) and `social_url_key` (the dedupe identity — `instagram:{shortcode}`,
+`tiktok:{id}`, `youtube:{id}`, or else the normalized URL, unique —
+so the same post can't be entered twice), `network`, `source_label`,
+`summary`, `meeting_page_id` (nullable FK, `ON DELETE SET NULL`),
+`t_seconds`, `match_kind`, `status`, `created_by_clerk_user_id`,
+`published_at`, `created_at`, `updated_at`. Stores **no PII** — only
+Clerk's opaque user id as author, same convention as `SavedItem` (see
+"Accounts (Clerk)" above). `status` and `created_by_clerk_user_id` exist
+even though only allowlisted editors can write today, so that open
+submissions with a review queue are a later schema-free addition — see
+`BACKLOG.md`. On Clerk's `user.deleted` webhook, an entry's author id is
+nulled and the entry itself is kept (it's editorial content, not the
+author's personal data). When a meeting page is deleted
+(`delete_meeting_pages_by_slug`), its published entries are demoted back
+to drafts, so they reappear in the editor's own list instead of quietly
+pointing at nothing.
+
+**SEO.** `/context` is `noindex` and left out of the sitemap until it has
+at least `CONTEXT_MIN_INDEXABLE` (5) published entries — the same
+thin-page reasoning as the `/state/*`/`/j/*` hub pages (see
+`STATE_HUB_PAGES.md`). Pages after the first are always `noindex`.
+
+**Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
+a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
+of `t` (see "Meeting card images" above). Only a non-YouTube meeting gets
+a true frame extracted at the timestamp. Many of the meetings that get
+clipped on social media are on YouTube, so many Full Context entries will
+show a generic video thumbnail rather than the actual clipped moment.
+
+**Deploy order.** Deploy the Archive first — it carries the migration
+and the new routes — then the resolver, or the nav link 404s in between.
+The form stays a 404 until `CONTEXT_EDITOR_CLERK_IDS` is set on the
+Archive service in the Render dashboard (see "Deploys are manual" in
+`CLAUDE.md`).
 
 ## The home page (`/`)
 
@@ -2668,15 +2817,20 @@ app/
                            /archive-static/*, /meetings, /account/saved,
                            /coverage, /coverage/detail, /state/*,
                            /api/jurisdictions, /sitemap.xml, /feed.xml
-                           Archive proxy routes,
+                           Archive proxy routes, /context, /context/new,
+                           /context/feed.xml (see "Full Context feed"
+                           above),
                            /api/newsletter/signup, /unsubscribe, the
                            accounts routes (/api/account/*,
                            /api/clerk/webhook) and their three
                            lifecycle-triggered emails -- see "Accounts
-                           (Clerk)" above
+                           (Clerk)" above, and /api/context/save,
+                           /api/context/set-status (see "Full Context
+                           feed" above)
   archive_client.py        lookup()/push() to the Archive + proxy_get()
                            (cookie-forwarding for auth-aware pages) +
-                           the /internal/account/* wrappers
+                           the /internal/account/* wrappers +
+                           the /internal/context/* wrappers
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
                            async engine/session
@@ -2781,7 +2935,10 @@ archive/
                            search box), /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
-                           (Clerk)" above
+                           (Clerk)" above, plus /context, /context/new,
+                           /context/feed.xml and the token-gated
+                           /internal/context/* routes -- see "Full
+                           Context feed" above
   db/
     engine.py              own DATABASE_URL resolution + local SQLite
                            fallback (archive_dev.db -- never shares the
@@ -2791,7 +2948,8 @@ archive/
                            demand transcription" above), SavedItem (see
                            "Accounts (Clerk)" above),
                            MeetingPageThumbnail (extracted video frames,
-                           see "Meeting card images" above)
+                           see "Meeting card images" above), ContextEntry
+                           (see "Full Context feed" above)
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
@@ -2817,7 +2975,10 @@ archive/
                            promote_transcript_version(), and the saved-
                            items functions (save/unsave meeting/search,
                            list_saved_items, delete_account_data -- the
-                           right-to-deletion cascade)
+                           right-to-deletion cascade), plus the
+                           ContextEntry save/status/list functions
+                           backing /context, /context/feed.xml and
+                           /context/new -- see "Full Context feed" above
   data/
     hub_slug_aliases.csv     retired /j/ slugs -> the hub they 301 to,
                            generated by scripts/score_gov_registry.py --
@@ -2861,6 +3022,13 @@ archive/
                            agenda_items, including the endOffset
                            resolution for a run of items sharing one
                            source timestamp
+    context_links.py          parses a pasted social-post URL into
+                           network/id/social_url_key, parses a pasted
+                           RTR share link into slug/t, and describes each
+                           network's embed (or lack of one) -- see "Full
+                           Context feed" above
+    context_editors.py        CONTEXT_EDITOR_CLERK_IDS allowlist check --
+                           see "Full Context feed" above
   templates/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for
@@ -2888,11 +3056,21 @@ archive/
                            state_all50.html
     sitemap.xml.jinja         sitemap.xml template
     feed.xml.jinja            feed.xml (RSS) template
+    context.html               the public /context feed -- see "Full
+                           Context feed" above
+    _context_entry.html       one feed entry, included by context.html
+    context_new.html           the editor form + draft list, backs
+                           /context/new
+    context_feed.xml.jinja    /context/feed.xml (RSS)
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM, plus
                            the Save-this-meeting toggle
   static/saved_items.js     unsave-button handlers on the saved-items page
+  static/context_embeds.js  click-to-load Instagram/TikTok/YouTube
+                           embeds on /context -- see "Full Context feed"
+                           above
+  static/context_editor.js  the /context/new form
 ```
 
 `shared_static/` holds the handful of JS files identical between the

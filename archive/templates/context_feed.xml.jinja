@@ -1,0 +1,40 @@
+{#- Context variables:
+     entries (list of entry dicts, published only -- see
+       _context_entry.html's own comment for the full per-entry shape)
+     base_url (absolute, no trailing slash)
+     feed_url (absolute -- this feed's own URL, for atom:link rel="self")
+
+   select_autoescape() keys off the template's real file extension, which
+   for a "*.xml.jinja" name is ".jinja" -- not one of the extensions it
+   auto-escapes -- so, same as feed.xml.jinja, every interpolated value
+   below is escaped explicitly with `|e` rather than relying on that.
+   `entry.summary`/`entry.source_label` are editor-written and untrusted
+   on top of that, but the same `|e` covers both reasons at once. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>Red Tape Recordings — Full Context</title>
+  <link>{{ base_url|e }}/context</link>
+  <description>Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.</description>
+  <atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="{{ feed_url|e }}" rel="self" type="application/rss+xml"/>
+{%- for entry in entries %}
+  {#- Meeting-dependent fields are all None together when has_meeting is
+     false (see the data contract) -- a published entry should always
+     have a matched meeting in practice, but the feed must not emit a
+     broken "https://...None" link if one somehow doesn't, so both the
+     title and the link fall back to something real rather than assuming
+     the field is present. -#}
+  {%- set item_title = (entry.title or "A meeting") ~ (" — " ~ entry.jurisdiction_display if entry.jurisdiction_display else "") %}
+  {%- set item_link = base_url ~ (entry.deep_link or "/context") %}
+  <item>
+    <title>{{ item_title|e }}</title>
+    <link>{{ item_link|e }}</link>
+    <guid isPermaLink="false">rtr-context-{{ entry.id }}</guid>
+    {%- if entry.published_at %}
+    <pubDate>{{ entry.published_at.strftime('%a, %d %b %Y %H:%M:%S %z') }}</pubDate>
+    {%- endif %}
+    <description>{{ ((entry.summary or "") ~ " Original post: " ~ entry.social_url)|e }}</description>
+  </item>
+{%- endfor %}
+</channel>
+</rss>

@@ -21,7 +21,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -1288,6 +1288,95 @@ async def api_unsave_search(request: Request, req: UnsaveSearchApiRequest):
     return result if result is not None else {"removed": False}
 
 
+# Full Context feed (WO-943) ----------------------------------------------
+#
+# A separate 401 constant from _NOT_LOGGED_IN above -- same shape and
+# status, different sentence, since "sign in to save meetings and
+# searches" would be a wrong (if harmless) thing to tell someone trying
+# to post to the Full Context feed.
+_CONTEXT_NOT_LOGGED_IN = JSONResponse(
+    {"error": "not_logged_in", "message": "Sign in to post to Full Context."},
+    status_code=401,
+)
+
+
+def _context_api_response(result: Optional[tuple]):
+    """Maps an archive_client.context_save()/context_set_status() result
+    onto this route's own HTTP response. See those functions' own
+    docstrings for why they hand back the raw (status, body) instead of
+    collapsing to a plain None the way save_meeting() etc. do.
+
+    A 403 from Archive (signed in, but not on CONTEXT_EDITOR_CLERK_IDS)
+    becomes a 404 here -- a signed-in non-editor must not learn this
+    endpoint exists at all, the same disguise posture every /internal/*
+    route already uses for a bad bearer token. Archive's OWN token-
+    disguise 404 (`{"detail": "Not Found"}`, no "error" key -- see
+    archive/main.py's _token_ok() gate) is distinguished from a real
+    "that entry doesn't exist" 404 (`{"error": "not_found", ...}`, from
+    the crud layer) by that shape, and reported as a 502 -- it means the
+    two services' ARCHIVE_INGEST_TOKEN values have drifted apart, not
+    that anything the visitor did was wrong.
+    """
+    if result is None:
+        return JSONResponse(
+            {
+                "error": "archive_unreachable",
+                "message": "The archive is unreachable right now. Try again in a moment.",
+            },
+            status_code=502,
+        )
+    status, body = result
+    if status == 403:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if status == 404 and "error" not in body:
+        return JSONResponse(
+            {
+                "error": "archive_unreachable",
+                "message": "The archive is unreachable right now. Try again in a moment.",
+            },
+            status_code=502,
+        )
+    return JSONResponse(body, status_code=status)
+
+
+class ContextSaveApiRequest(BaseModel):
+    id: Optional[int] = None
+    social_url: str = Field(max_length=2048)
+    summary: str = Field(max_length=2000)
+    source_label: Optional[str] = Field(default=None, max_length=300)
+    rtr_link: Optional[str] = Field(default=None, max_length=2048)
+    match_kind: Optional[str] = None
+    status: str = "draft"
+
+
+@app.post("/api/context/save")
+@limiter.limit("60/minute")
+async def api_context_save(request: Request, req: ContextSaveApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _CONTEXT_NOT_LOGGED_IN
+    # clerk_user_id is never taken from req -- ContextSaveApiRequest has
+    # no such field, so a caller-supplied one in the JSON body is silently
+    # dropped by Pydantic rather than ever reaching archive_client.
+    result = await archive_client.context_save(clerk_user_id, req.model_dump())
+    return _context_api_response(result)
+
+
+class ContextSetStatusApiRequest(BaseModel):
+    id: int
+    status: str
+
+
+@app.post("/api/context/set-status")
+@limiter.limit("60/minute")
+async def api_context_set_status(request: Request, req: ContextSetStatusApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _CONTEXT_NOT_LOGGED_IN
+    result = await archive_client.context_set_status(clerk_user_id, req.id, req.status)
+    return _context_api_response(result)
+
+
 # On-demand transcription -------------------------------------------------
 #
 # Checkpoint granularity for the worker service, not an external API's
@@ -1849,6 +1938,27 @@ async def archive_jurisdiction_page(path: str, request: Request):
         str(request.query_params),
         request.headers.get("cookie"),
         allow_redirects=False,
+    )
+
+
+@app.get("/context")
+async def archive_context_feed(request: Request):
+    return await _proxy_to_archive(
+        "context", str(request.query_params), request.headers.get("cookie")
+    )
+
+
+@app.get("/context/feed.xml")
+async def archive_context_feed_xml(request: Request):
+    # No cookie -- same reasoning as /feed.xml's own proxy below: a public
+    # RSS reader carries no Clerk session to forward.
+    return await _proxy_to_archive("context/feed.xml", str(request.query_params))
+
+
+@app.get("/context/new")
+async def archive_context_new(request: Request):
+    return await _proxy_to_archive(
+        "context/new", str(request.query_params), request.headers.get("cookie")
     )
 
 
