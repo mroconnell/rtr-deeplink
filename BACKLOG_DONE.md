@@ -89,7 +89,7 @@ thin-page reasoning as the `/state/*`/`/j/*` hub pages. Pages after the
 first are always `noindex`.
 
 **Verification.** All five CI gates passed locally on 2026-09-21: `ruff
-check`, `ruff format --check`, the full suite (**4407 passed, 16
+check`, `ruff format --check`, the full suite (**4593 passed, 16
 skipped, 0 failed**), `alembic check` for both services against a fresh
 migration-built SQLite, and the `BACKLOG_DONE.md` heading check. Node
 tests: 78 passed. New test files: `test_context_links.py`,
