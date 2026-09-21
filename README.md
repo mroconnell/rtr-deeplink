@@ -1248,6 +1248,16 @@ human to commit, so an override becomes a rule rather than a stamp on N
 rows — `BACKLOG.md`'s Santa Clara entry is a hub that re-fragmented
 within two days of a row-level fix.
 
+`scripts/repair_wrong_pages.py` (WO-934) repairs named pages in bulk from
+one reviewed sheet, `reports/wrong_page_worklist.csv`. A row either
+re-keys a page (that same override route) or deletes it
+(`POST /internal/admin/delete-pages`). It is a dry run by default, writes at
+most 5 rows per run, and refuses any row whose live page no longer matches
+what the row expected, so a stale row never acts. Run it from the Archive's
+Render shell; the commands are in `BACKLOG_DONE.md`'s WO-934 entry.
+`scripts/wrong_page_screen.py` is the read-only title screen that finds
+candidates for the sheet.
+
 **`reports/gov_id_problem_cases.csv` + `scripts/check_gov_id_problem_
 cases.py` (gov-id audit, 2026-09-10)** — a hand-picked regression corpus
 of ~80 archived pages whose identity a human verified and which are
