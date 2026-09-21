@@ -38,14 +38,14 @@ phases, so the column adds to a little over the file's 392.
 
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
-| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Not started |
+| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Done on branch `claude/wo931-backlog-tidy`; no PR open yet (PR cap) |
 | 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | Not started |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
 | 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
 | 5 | Improve what the pages say | Numbers when it starts | 10 | Nothing until Phase 4 is done | Not started |
 
-WO-930 is this plan. The conductor reserved WO-931 to WO-940 for the
+WO-930 is this plan (merged, PR #1283). The conductor reserved WO-931 to WO-940 for the
 deliverables. Later phases get numbers from the conductor when they
 start, so two agents never claim the same one.
 
@@ -374,7 +374,8 @@ brings Ryan that number and one question.
 
 **Entries WO-939 closes**
 
-- "`CHALLENGE_MARKERS` is duplicated across 8 scripts, and one"
+- "`CHALLENGE_MARKERS` is duplicated across 9 scripts, and one" (WO-931
+  re-counted it; the title said 8)
 - "`wo149_county_ladder_sweep.py` carries its own separate, unpatched"
 - "`wo191_access_ladder_sweep.py`'s headless budget is computed at"
 - "`scripts/wo321_recon.py`'s phase-1 reconnaissance hung"
@@ -434,12 +435,14 @@ Starts only after the Phase 1 gates are deployed. Order inside the phase:
 
 1. **Cheap wins, some needing no code.**
    - "Reprobe the rest of the Town Hall Streams tier-3 queue"
-   - "97 of the 257 Diligent Community" (once WO-931 moves it)
+   - "97 of the 257 Diligent Community" (WO-931 moved it to Ship next)
    - "WO-153's leftover Part B/C rows: 111 shared-host domains still"
    - "The small-video-platform sweep's leftover 8 rows"
-2. **State legislatures.** The entry says 91 of 99 chamber rows have no
-   page, but #1260's notes record six Sliq pages already live, so re-count
-   first. TVW is multi-day.
+2. **State legislatures.** Search "State legislatures:". WO-931 rewrote the
+   entry: the 91 of 99 count is marked stale, because six Sliq pages are
+   live and five meetings are queued (#1260), and nobody has recounted. A
+   recount needs each committee read by hand, since the pages are filed
+   under the state, not the chamber. TVW is multi-day.
 3. **Discovery re-runs that need machine time.**
    - "WO-259's full-ladder homepage re-scan: 431 of 964 governments done"
    - "WordPress's own `/?s=agenda` search is a confirmed, cheap way to find"
@@ -542,8 +545,8 @@ Side bets that need a go or no-go from Ryan:
 ## Not in any phase
 
 - **13 Standing decisions.** Nothing to build. The table of contents lists
-  12, but one of those is a build item and two real decisions have no
-  heading (Phase 0 fixes this). In short:
+  13 since WO-931 moved a build item out and gave two real decisions
+  their headings. In short:
   - Viebit stays untranscribable.
   - Cloudflare human-verification challenges are never solved.
   - No unbounded scan or bulk run hits the production database from an
