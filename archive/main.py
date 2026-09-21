@@ -14,7 +14,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
@@ -46,6 +46,14 @@ from .utils import email as email_utils
 from .utils import social
 from .utils.cache_static import RevalidatingStaticFiles
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.context_editors import is_context_editor
+from .utils.context_links import (
+    CONTEXT_SUMMARY_MAX,
+    MATCH_KINDS,
+    ContextLinkError,
+    parse_rtr_link,
+    parse_social_url,
+)
 from .utils.date_status import (
     iso_meeting_date,
     meeting_date_html,
@@ -2427,6 +2435,156 @@ async def internal_delete_account_data(
     return {"deleted": count}
 
 
+def _context_editor_forbidden() -> JSONResponse:
+    return JSONResponse(
+        {
+            "error": "not_editor",
+            "message": "You don't have access to edit the Full Context feed.",
+        },
+        status_code=403,
+    )
+
+
+def _context_result_response(result: dict):
+    """Maps a save_context_entry()/set_context_entry_status() result dict
+    onto the WO-943 contract's HTTP shape. `ok` -> 200 wrapped as
+    {"entry": ...}; `duplicate` -> 409 with the whole error dict (carries
+    existing_id/existing_status, which context_editor.js reads to link to
+    the existing entry); `not_found` -> 404 (already just {"error",
+    "message"}); every other error code (summary_required,
+    invalid_match_kind, meeting_required, etc.) -> 400, also already
+    exactly {"error", "message"} from the crud layer."""
+    if "ok" in result:
+        return {"entry": result["ok"]}
+    if result["error"] == "duplicate":
+        return JSONResponse(result, status_code=409)
+    if result["error"] == "not_found":
+        return JSONResponse(result, status_code=404)
+    return JSONResponse(result, status_code=400)
+
+
+class ContextSaveRequest(BaseModel):
+    clerk_user_id: str
+    id: Optional[int] = None
+    social_url: str = Field(max_length=2048)
+    # Generous vs. CONTEXT_SUMMARY_MAX (500) on purpose -- an over-length
+    # summary should come back as save_context_entry()'s friendly
+    # "summary_too_long" message, not a raw 422 from FastAPI's own
+    # validation, which would show the visitor nothing useful.
+    summary: str = Field(max_length=2000)
+    source_label: Optional[str] = Field(default=None, max_length=300)
+    rtr_link: Optional[str] = Field(default=None, max_length=2048)
+    match_kind: Optional[str] = None
+    status: str = "draft"
+
+
+@app.post("/internal/context/save")
+async def internal_context_save(
+    req: ContextSaveRequest,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not is_context_editor(req.clerk_user_id):
+        return _context_editor_forbidden()
+
+    try:
+        social = parse_social_url(req.social_url)
+    except ContextLinkError as exc:
+        return JSONResponse(
+            {"error": exc.code, "message": exc.message}, status_code=400
+        )
+
+    meeting_page_id: Optional[int] = None
+    t_seconds: Optional[int] = None
+    target: Optional[dict] = None
+    slug: Optional[str] = None
+    rtr_link = (req.rtr_link or "").strip()
+    if rtr_link:
+        try:
+            slug, t_seconds = parse_rtr_link(
+                rtr_link, os.environ.get("PUBLIC_BASE_URL")
+            )
+        except ContextLinkError as exc:
+            return JSONResponse(
+                {"error": exc.code, "message": exc.message}, status_code=400
+            )
+        # _SLUG_REDIRECTS first, same as /m/{slug} -- a pasted link built
+        # from an old (since-reslugged) permalink should still resolve to
+        # its meeting, not bounce as unknown.
+        slug = _SLUG_REDIRECTS.get(slug, slug)
+        target = await crud.get_page_card_target(slug)
+        if target is None:
+            return JSONResponse(
+                {
+                    "error": "unknown_meeting",
+                    "message": "No meeting on this site matches that link.",
+                },
+                status_code=400,
+            )
+        meeting_page_id = target["id"]
+
+    result = await crud.save_context_entry(
+        req.clerk_user_id,
+        entry_id=req.id,
+        social=social,
+        summary=req.summary,
+        source_label=req.source_label,
+        meeting_page_id=meeting_page_id,
+        t_seconds=t_seconds,
+        match_kind=req.match_kind or None,
+        status=req.status,
+    )
+    if "ok" in result:
+        entry = result["ok"]
+        # Warms the exact frame a reader's deep link will need, the same
+        # "queue on write so the render path never waits on ffmpeg"
+        # posture /m/{slug} and /internal/ingest already use -- without
+        # this, the FIRST reader of a freshly published entry would be the
+        # one to trigger (and wait behind) a cold extraction. YouTube-
+        # backed pages never need this (youtube_thumbnail_url() already
+        # gives _context_entry_dict() a free i.ytimg.com thumbnail), so
+        # skip scheduling anything for those.
+        if (
+            entry["has_meeting"]
+            and entry["t_seconds"] is not None
+            and target is not None
+            and not youtube_thumbnail_url(target["video_url"])
+        ):
+            _schedule_card_warm(
+                background_tasks,
+                page_id=target["id"],
+                video_url=target["video_url"],
+                video_format=target["video_format"],
+                source_url=target["source_url"],
+                timestamp=entry["t_seconds"],
+                refresh_platform=(
+                    target["platform"] if target["platform"] in NEEDS_REFRESH else None
+                ),
+                refresh_slug=slug,
+            )
+    return _context_result_response(result)
+
+
+class ContextSetStatusRequest(BaseModel):
+    clerk_user_id: str
+    id: int
+    status: str
+
+
+@app.post("/internal/context/set-status")
+async def internal_context_set_status(
+    req: ContextSetStatusRequest, authorization: Optional[str] = Header(None)
+):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not is_context_editor(req.clerk_user_id):
+        return _context_editor_forbidden()
+    result = await crud.set_context_entry_status(req.id, req.status)
+    return _context_result_response(result)
+
+
 class DeletePagesRequest(BaseModel):
     slugs: list[str]
 
@@ -3343,6 +3501,104 @@ async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     )
 
 
+def _parse_context_page(raw: str) -> int:
+    """Same tolerant-string reasoning as meetings_index()'s fuzzy/
+    has_agenda params (see that route's own comment) -- a malformed or
+    non-numeric ?page= on this public feed should render page 1, not
+    422, since a bad/stale shared link shouldn't break the page."""
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return value if value > 0 else 1
+
+
+@app.get("/context")
+async def context_feed(request: Request, page: str = "1"):
+    data = await crud.list_context_entries(public=True, page=_parse_context_page(page))
+    # Read at call time via the module attribute (crud.CONTEXT_MIN_
+    # INDEXABLE), not a name bound at import time, so a test can
+    # monkeypatch it per case -- same reasoning as crud._context_
+    # available()'s own TTL cache being read fresh on every call.
+    indexable = (
+        await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE
+    )
+    return templates.TemplateResponse(
+        request,
+        "context.html",
+        {
+            **data,
+            "indexable": indexable,
+            "is_editor": is_context_editor(get_clerk_user_id(request)),
+            "active_account": get_clerk_user_id(request),
+        },
+    )
+
+
+@app.get("/context/feed.xml")
+async def context_feed_xml():
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    data = await crud.list_context_entries(
+        public=True, page=1, page_size=crud.CONTEXT_PAGE_SIZE
+    )
+    entries = data["entries"]
+    # Same naive-datetime -> UTC coercion as /feed.xml, and for the same
+    # reason: published_at is tz-aware on Postgres (prod) but SQLite
+    # (local dev) doesn't enforce it.
+    for entry in entries:
+        if entry["published_at"] is not None and entry["published_at"].tzinfo is None:
+            entry["published_at"] = entry["published_at"].replace(tzinfo=timezone.utc)
+    body = templates.get_template("context_feed.xml.jinja").render(
+        base_url=base,
+        feed_url=f"{base}/context/feed.xml",
+        entries=entries,
+    )
+    # Same reasoning as /feed.xml's own X-Robots-Tag -- an RSS feed isn't
+    # meant to be an indexable page in its own right.
+    return Response(
+        content=body,
+        media_type="application/rss+xml",
+        headers={"X-Robots-Tag": "noindex"},
+    )
+
+
+@app.get("/context/new")
+async def context_new(request: Request, id: Optional[int] = None):
+    """Editor-only entry form + management list -- gated the same way for
+    a signed-out visitor and a signed-in non-editor alike (a plain 404
+    via not_found.html, same in-route pattern /j/{hub_slug} uses for an
+    unknown slug): this page's existence isn't advertised to anyone who
+    can't use it, so there's no sign-in prompt to redirect to either.
+    """
+    if not is_context_editor(get_clerk_user_id(request)):
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    # public=False, a generous page_size: at one-editor scale the whole
+    # queue fits on one page, so paginating the editor's own list isn't
+    # worth building yet (see list_context_entries()'s own docstring for
+    # the public/editor mode split).
+    editor_entries = await crud.list_context_entries(
+        public=False, page=1, page_size=200
+    )
+    editing = await crud.get_context_entry(id) if id is not None else None
+    response = templates.TemplateResponse(
+        request,
+        "context_new.html",
+        {
+            "entries": editor_entries["entries"],
+            "editing": editing,
+            "match_kinds": MATCH_KINDS,
+            "summary_max": CONTEXT_SUMMARY_MAX,
+            "active_account": get_clerk_user_id(request),
+        },
+    )
+    # This form and list carry unpublished drafts -- never cached, by a
+    # shared proxy or the browser alike.
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
 # Public, indexable static pages -- not MeetingPage rows, so they have no
 # real lastmod and aren't produced by list_all_page_slugs(). Deliberately
 # excludes /account/saved, /alerts/unsubscribe, /meeting (already
@@ -3357,12 +3613,22 @@ async def sitemap():
     entries = await crud.list_all_page_slugs()
     states = await crud.get_state_coverage_index()
     hubs = await crud.list_indexable_hub_entries()
+    static_paths = list(_SITEMAP_STATIC_PATHS)
+    try:
+        # /context earns a sitemap slot on the same CONTEXT_MIN_INDEXABLE
+        # threshold the feed itself noindexes below (see context_feed()) --
+        # wrapped so a problem checking it can never take the whole
+        # sitemap down.
+        if await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE:
+            static_paths.append("/context")
+    except Exception:
+        logger.exception("Failed to check Full Context indexability for the sitemap.")
     body = templates.get_template("sitemap.xml.jinja").render(
         base_url=base,
         entries=entries,
         states=states,
         hubs=hubs,
-        static_paths=_SITEMAP_STATIC_PATHS,
+        static_paths=static_paths,
     )
     return Response(content=body, media_type="application/xml")
 

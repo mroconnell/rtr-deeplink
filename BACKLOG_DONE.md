@@ -1,5 +1,167 @@
 # Backlog — done
 
+## WO-943: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
+
+**Why this ran.** Ryan finds many short clips of public meetings on
+Instagram, TikTok, and YouTube. A clip travels on its own, and some draw
+real community attention, but nothing let a viewer get from the clip
+back to the full meeting. This WO builds `/context`: a public feed of
+short, editor-written entries, each linking a real social post to a
+`/m/{slug}?t={seconds}` deep link into the meeting it shows.
+
+**What was decided, and why.**
+
+| Decision | Why |
+|---|---|
+| Editor-only posting (`CONTEXT_EDITOR_CLERK_IDS` allowlist), not open submissions | Public, free-text user-generated content needs a moderation answer this repo doesn't have yet — see `ACCOUNTS_PLAN.md`'s open moderation question. Building the narrow version first is a cheap real-world test of the idea without that answer. |
+| Every entry's text is editor-written; no server-side fetch of any social post, ever | Instagram is login-walled to a non-browser client (checked live 2026-09-21, see below). Rather than build a fetch path that partly works, nothing is fetched — the editor pastes the meeting link and writes the summary by hand. |
+| Embeds are click-to-load, only for Instagram/TikTok/YouTube | This site has no cookie-consent banner. A page of 20 entries loading 20 third-party players unconditionally would both violate that posture and be slow. YouTube uses `youtube-nocookie.com`; Instagram/TikTok use their own official `embed.js`. Every other network is link-out only. |
+| `status`/`created_by_clerk_user_id` columns exist even though only allowlisted editors can write today | So open submissions with a review queue are a new status value and a review UI later, not a schema change against a table that already has real rows. |
+| New table (`ContextEntry`), not a reuse of `SocialPost` | `SocialPost` is this app's own *outbound* Bluesky/Mastodon auto-poster (one row per meeting page it announced) — an unrelated, opposite-direction concept that happens to share the word "social." Reusing it would have conflated the two. |
+
+**Instagram login-wall check (2026-09-21, live).** Two real Instagram
+posts were opened signed-out to confirm nothing server-side could ever
+read post content. One showed only the account name and a truncated
+caption; the other was age-restricted and showed nothing at all. This is
+why every entry's summary is editor-written rather than extracted.
+
+**Data model.** New Archive table `context_entries` (`ContextEntry`,
+`archive/db/models.py`), one Alembic migration. Columns: `social_url`,
+`social_url_key` (unique — `instagram:{shortcode}` / `tiktok:{id}` /
+`youtube:{id}` / else the normalized URL, so the same post can't be
+entered twice), `network`, `source_label`, `summary` (max 500 chars,
+capped in app code so the cap can change with no migration),
+`meeting_page_id` (nullable FK, `ON DELETE SET NULL`), `t_seconds`,
+`match_kind` (`exact`/`approximate`/`related`), `status`
+(`draft`/`published`/`hidden`), `created_by_clerk_user_id`,
+`published_at`, `created_at`, `updated_at`. Stores no PII — only Clerk's
+opaque user id as author, same convention as `SavedItem`. On Clerk's
+`user.deleted` webhook the author id is nulled and the entry is kept
+(it's editorial content, not the author's personal data, so nothing
+about right-to-deletion requires removing it). When a meeting page is
+deleted (`delete_meeting_pages_by_slug`), its published entries demote
+back to `draft` rather than being destroyed, so they reappear in the
+editor's own list instead of silently pointing at a gone page.
+
+**Architecture.** The Archive renders `/context`, `/context/feed.xml`,
+`/context/new`, and owns the writes (`POST /internal/context/save`,
+`POST /internal/context/set-status`, token-gated like every
+`/internal/*` route, and re-checking the allowlist server-side rather
+than trusting the resolver's check). The resolver holds the public
+domain, so it adds three explicit GET proxy routes (there is no
+catch-all proxy) — `/context` and `/context/new` forward the session
+cookie, `/context/feed.xml` does not — plus two public write endpoints,
+`POST /api/context/save` and `POST /api/context/set-status`, which
+verify the Clerk session and forward the verified user id, the same
+two-hop pattern `save-meeting`/`save-search` already use. JSON bodies
+only, matching the existing CSRF posture (no CORS middleware, no
+form-encoded POSTs). New pure modules: `archive/utils/context_links.py`
+(parses a pasted social URL and a pasted RTR share link; the `line`/
+`version` params on that pasted link are read and ignored for now — only
+`t` is kept, see `BACKLOG.md`) and `archive/utils/context_editors.py`
+(the allowlist check).
+
+**Card-image caveat — a real, known limitation, not a bug.**
+`/m/{slug}/card.jpg` redirects a YouTube-backed meeting to YouTube's own
+standard thumbnail regardless of `t`; only a non-YouTube meeting gets a
+true extracted frame at the timestamp. Many clipped meetings are on
+YouTube, so many Full Context entries will show a generic video
+thumbnail rather than the actual clipped moment.
+
+**A real doc bug found and fixed along the way.** `CLAUDE.md`'s WO-number
+rule (`git grep -ohE 'WO-[0-9]+' origin/main | sort -t- -k2 -n | tail -1`)
+was re-run to assign this WO's own number and returned `WO-999` — not a
+real work order, but a literal test-fixture string in
+`tests/test_check_backlog_done_headings.py`. The real max on 2026-09-21,
+excluding that string, was WO-941. `CLAUDE.md` now says so, so the next
+session doesn't lose time on the same false read.
+
+**This WO was renumbered once.** It was built as the next number after
+WO-941. While it was being built, another session merged its own work
+under that same number (PR #1303, the Culver City and BART redirects).
+That is the parallel-session collision `CLAUDE.md` already warns about:
+the grep only sees merged work. This WO took WO-943 before its PR was
+rebased.
+
+**SEO.** `/context` is `noindex` and left out of the sitemap until it
+holds at least `CONTEXT_MIN_INDEXABLE` (5) published entries, the same
+thin-page reasoning as the `/state/*`/`/j/*` hub pages. Pages after the
+first are always `noindex`.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4593 passed, 16
+skipped, 0 failed**), `alembic check` for both services against a fresh
+migration-built SQLite, and the `BACKLOG_DONE.md` heading check. Node
+tests: 78 passed. New test files: `test_context_links.py`,
+`test_context_entries.py`, `test_context_internal_routes.py`,
+`test_context_pages.py`, `test_context_api_routes.py`.
+
+Then both services were run locally, on scratch SQLite files, with
+`.env` loading blocked, and driven through the resolver in a real
+browser. Two real meetings were resolved and pushed first: Jacksonville
+FL (Granicus clip 7447) and Philadelphia (YouTube `5LZqoNDRMYk`).
+
+| Check | Result |
+|---|---|
+| `/context/new` signed out, and signed in but not on the allowlist | 404 both times |
+| `POST /api/context/save` signed out / non-editor / form-encoded body | 401 / 404 / 422 |
+| Editor page | 200 with `Cache-Control: private, no-store` |
+| Draft with no meeting | Saved. Absent from `/context`. Publishing it refused: "Publishing needs a matched meeting first." |
+| Summary containing `<script>` | Rendered as plain text |
+| Pasted full share link (`?t=754&line=seg-40&version=1`) | Entry shows "from 12:34". Clicking it lands with the video at exactly 754 seconds. |
+| Card image, Granicus meeting | A real 1280x720 frame at `t=754` |
+| Card image, YouTube meeting | YouTube's standard thumbnail (the caveat above, confirmed) |
+| Same Instagram post pasted again as `/reel/` instead of `/p/` | 409, with the existing entry's id |
+| `http://` post link / unknown meeting slug | 400 with a plain-English message each |
+| Network requests before any click | None to YouTube's player, Instagram or TikTok |
+| YouTube embed after click | `youtube-nocookie.com` iframe loads |
+| Hide, then republish | Leaves the public feed, returns, `published_at` unchanged |
+| `/context/feed.xml` | `application/rss+xml`, `X-Robots-Tag: noindex`, parses, absolute deep links |
+| 2 published entries (below the threshold of 5) | `noindex` present, `/context` absent from the sitemap |
+| Nav at 1000px / page at 375px | One row / no sideways scroll |
+
+**Three things the review and the browser caught that the tests had
+not.** (1) A pasted link with `?t=nan` passed the range check, because
+`nan` is neither below zero nor above the cap, and then crashed in
+`int()` — a 500 for the editor. The range test is now written
+positively and pinned by a test. (2) The first draft of the privacy
+sentence said nothing is requested from those services before a click.
+Watching the real page's requests showed one exception: a
+YouTube-hosted meeting's card image loads from `i.ytimg.com` when the
+page opens. That finding led to the privacy decision below.
+(3) TikTok's `embed.js` builds its player frame even for a video id
+that does not exist, and shows TikTok's own "unavailable" message
+inside it. So the "Couldn't load it here" fallback only fires when the
+script is blocked outright, not for a deleted post. The entry still
+stands on its own either way.
+
+**Privacy page: general on purpose (Ryan, 2026-09-21).** The first
+drafts promised specifics: embeds load only after a click, with one
+named exception. Ryan's call was to drop that kind of promise entirely.
+The product will make regular exceptions, and plans to host its own
+video soon. Three changes followed. The new paragraph became one
+general statement: some pages show content from other services, and
+when it loads, that service receives your request as it would on its
+own site. The older line "We never re-host video" was removed. The
+older sentence saying video "streams from the government's own source"
+was replaced with a plain statement that other services' own policies
+apply to them. A test now asserts the general sentence is present and
+the three specific promises are absent. This also closes a gap that
+predates this WO: the page never mentioned that meeting pages load
+YouTube's player and thumbnails.
+
+**Caution.** Open submissions are explicitly out of scope for this WO —
+see `ACCOUNTS_PLAN.md`'s note and `BACKLOG.md`'s "Open submissions to
+Full Context" entry for why, and what's still blocking it. The YouTube
+generic-thumbnail gap above is a known, accepted limitation, not
+something this WO attempted to fix.
+
+**Deploy status.** Merging ships nothing (`autoDeploy: false`). Deploy
+the Archive first — it carries the migration and the routes — then the
+resolver, or the nav link 404s in between. The form stays a 404 until
+`CONTEXT_EDITOR_CLERK_IDS` is set on the Archive service in the Render
+dashboard.
+
 ## WO-931: backlog tidy in two passes — 18 finished entries moved here, the open parts of WO-932, WO-933 and WO-935 filed, Ryan's decisions recorded, structure and numbers fixed [Done 2026-09-21]
 
 **Why this ran.** `BACKLOG.md` had grown to about 8,240 lines and about 390 open entries. WO-930 (`docs/BACKLOG_PHASES.md`, Phase 0) listed the entries that were duplicated, already finished, only partly done, misfiled, or carrying old numbers. A backlog people can trust is what every later phase is read from. This WO is Phase 0. It changes only Markdown files: no code, no data, no deploy.
@@ -823,6 +985,53 @@ It is not a tight loop. It is one repeat run per 30 days per flagged page, plus 
 **Caution.** A fallback pin ranks below a registry name match, which is how BART's Alameda County pin never took effect and the page landed in a Pennsylvania township. The BART pin was first written as a fallback; Ryan upgraded it to authoritative the same day (source `ryan_stated`), since the tenant host is BART's own and no other government can share it.
 
 **Deploy.** Archive (redirects, curated row) and resolver (pins). Renames, the BART page override and its research row run after it.
+
+## CivicClerk Emporia canary `TimeoutError` (2026-09-14) confirmed a one-off, not a recurring regression [Done 2026-09-21]
+
+Inbox-triage flagged (2026-09-15 run) a first-ever `FAIL civicclerk:
+TimeoutError` against `https://emporiaks.portal.civicclerk.com/event/585/media`
+— the adapter health canary's sole `civicclerk` sample (Emporia, KS; the
+real populated-captions example from the 2026-08-08 entry), from the
+2026-09-14 19:44 UTC run. No prior occurrence of this signature existed
+anywhere in `BACKLOG.md`/`BACKLOG_DONE.md`, and the inbox note explicitly
+flagged it as "watch for recurrence before treating this as more than
+noise."
+
+Re-checked 2026-09-21 via the real GitHub Actions run logs (not just
+re-reading the triage note) for every "Adapter health canary" run since:
+2026-09-16 (`35136251373`), 2026-09-17 (`35261358481`), 2026-09-18
+(`35378371892`), 2026-09-19 (`35459294828`), 2026-09-20 (`35527887727`)
+— zero further `FAIL civicclerk` in any of the five. Every one of those
+runs' failures was the already-known, already-open Phoenix Legistar 410
+(plus a separate, one-off `aurora_tv` recurrence on 2026-09-19, filed as
+its own `BACKLOG.md` entry).
+
+**Closing as a one-off transient blip**, same pattern as the Aurora
+2026-08-18 precedent this file already documents below — one occurrence,
+no recurrence across 5 subsequent daily runs (6 days), Emporia's own
+CivicClerk data unchanged. No code change made.
+
+## Inbox-triage's 2026-09-14 Archive health-check-timeout entry consolidated into a new `BACKLOG.md` entry [Done 2026-09-21]
+
+The inbox-triage Routine's 2026-09-14 run flagged a single
+`rtr-deeplink-archive` "HTTP health check failed" recurrence after WO-80
+(2026-08-30) as possibly a one-off, framing it as "the fix held for
+exactly two weeks." Its own 2026-09-17 run corrected that: a full 30-day
+label search found the alert had actually recurred 5 times in the window
+(2026-08-29, twice on 2026-08-31, 2026-09-13, 2026-09-17), not once, and
+tied the 2026-09-17 occurrence to a confirmed downstream failure (the
+`send-search-alerts` cron's 502).
+
+Re-verified 2026-09-21: `archive/main.py`'s `/api/health` (WO-80's fix)
+is unchanged since; no further code has addressed this. Rather than
+promote the superseded single-occurrence framing as its own item, both
+inbox findings were folded into one consolidated `BACKLOG.md` entry
+("`rtr-deeplink-archive`'s 'HTTP health check failed' alert recurs
+roughly weekly...", Reliability, ops & cost section) that carries the
+corrected 5-occurrence history and the one confirmed consequence.
+Recorded here per the promotion protocol so this investigation step
+isn't lost, even though it never became a standalone `BACKLOG.md` item
+on its own.
 
 ## WO-929: a separate re-transcription queue for the 82 pages with defective older Whisper text [Done 2026-09-21]
 

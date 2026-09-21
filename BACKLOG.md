@@ -122,7 +122,7 @@ Standing decisions — do NOT re-raise  (14)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
   The Archive files a page under whatever `gov_id` a sweep sends: do…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
   `direct_file` refuses South Carolina's legislature video…
@@ -181,7 +181,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
   The CivicClerk/eScribe/iQM2/Town Hall Streams "stale label" bucket's…
   `wo273_recon.py`'s domain-wide Wayback query still can't reach a…
   iQM2's real meeting-body field lives only on the calendar listing…
-  PrimeGov has a real, structured `committeeId` field — but no…
+  PrimeGov has a real, structured `committeeId` field — but no…  (2)
+    [JUST-DO-IT] `archive_client.send_search_alerts()` has no retry, so…
+    [JUST-DO-IT] `list_all_page_slugs()` doesn't exclude…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
@@ -208,7 +210,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (212)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -362,7 +364,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (61)
+  Adapter & platform gaps  (62)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -398,6 +400,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
     [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
+    [NEEDS-AUDIT] Aurora, CO's `aurora_tv` canary sample has failed twice…
     [NEEDS-AUDIT] A resolve that delegates to a generic video host…
     [NEEDS-AUDIT] `granicus.py`'s `_fetch_page()` raises an unhandled…
     [NEEDS-AUDIT] `wo134_confirmed_hits_ingest.py`'s Granicus fallback…
@@ -425,10 +428,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (15)
+Reliability, ops & cost  (16)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
-  `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
+  `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     [LATER] Tighten the two transcription workers to their real import
+    [NEEDS-AUDIT] `rtr-deeplink-archive`'s "HTTP health check failed"…
   Media-source reliability  (4)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
@@ -447,7 +451,7 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (26)
+Trust, safety & data quality  (27)
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
   The partial-transcript check reaches only some YouTube pages, and the…
@@ -471,21 +475,23 @@ Trust, safety & data quality  (26)
   `[LATER]` Mastodon auto-posting has made zero real posts
   `[IMPROVEMENT-ROUND]` Social auto-posting only fires on page…
   `[LATER]` Prompt injection isn't a live product risk today, but the…
+  `[LATER]` If a Content-Security-Policy is ever added, it must allow…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
-  Product direction & open strategic questions  (1)
+  Product direction & open strategic questions  (2)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
+    `[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (8)
+  Growth, audience & discoverability  (11)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -494,12 +500,16 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
     [IMPROVEMENT-ROUND] PDF agenda text-extraction for a searchable
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
-  Search & metadata quality  (5)
+    `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
+    `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
+    `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
+  Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
     [IMPROVEMENT-ROUND] Once `meeting_body` has real, strategic coverage,
     [IMPROVEMENT-ROUND] Transcript version picker: real option labels
     [IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
+    `[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from…
   Transcription quality & cost  (3)
     [IMPROVEMENT-ROUND] Hallucinated-transcript detection doesn't catch
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
@@ -2101,6 +2111,20 @@ WO-932 and WO-913.
 - **Next action**: the fastest real answer is a human (or a headless browser) watching the Network tab while `Portal/Meeting?meetingTemplateId=...` loads in an actual browser, looking for the request that supplies a committee name — rtr-discovery's FINDING-14 already flags this machine's own playwright/headless setup as blocked by a CPU-architecture mismatch, so this may need a different machine or a human to check. Confirm on at least 2 tenants before trusting whatever's found (this repo's own "one platform's file is not enough" rule).
 - **Constraint**: don't guess a REST path further without narrowing it from real traffic first — four guesses already 404'd, and PrimeGov's actual route naming isn't a fully predictable pattern from what's confirmed so far.
 - **History**: this repo's own `primegov.py` module docstring (the existing `ListArchivedMeetings`/`GetArchivedMeetingYears` API usage this finding builds on); `tests/test_primegov.py`'s real sample URLs (cambridgema, baycountyfl, slc, okc, toaks, lacity) used to check this live.
+
+- **[JUST-DO-IT] `archive_client.send_search_alerts()` has no retry, so one ~5s Archive health-check blip fails the whole day's saved-search alert sweep.**
+  - **Issue**: `app/archive_client.py:541-567`'s `send_search_alerts()` makes exactly one POST to the Archive's `/internal/account/send-search-alerts` and returns `None` on any non-200 response or connection failure — no retry, no backoff. `.github/workflows/send-search-alerts.yml` runs once a day (`35 23 * * *`) and calls this through `/admin/send-search-alerts` via a single `curl --fail-with-body`, also with no retry. Confirmed live: the workflow's first failure in 35 runs (run `35171305878`, 2026-09-17 01:38 UTC) was a 502 that traced directly to a `rtr-deeplink-archive` "HTTP health check failed (timed out after 5 seconds)" alert that fired one minute earlier (01:37:13 UTC) — the Archive was mid-restart at the exact moment the cron's single call hit it. Re-verified 2026-09-21 by reading the current code directly: `send_search_alerts()` still has no retry logic, and nothing has changed since.
+  - **Impact**: because both the cron and the proxy call are single-shot, a saved-search alert sweep that lands on a ~5-second Archive blip is silently skipped for the whole day, not delayed — nobody with a saved search got their alert email for 2026-09-17. The accounts/saved-item feature is relatively new (shipped 2026-08-11), so exact scope (how many saved searches, how often this coincides with a blip) isn't sized, but the Archive health-check timeout this depends on recurs roughly weekly (see the entry below) — this is a real, live single point of failure, not hypothetical.
+  - **Next action**: add at least one retry (even a single immediate retry, or a short backoff-and-retry) inside `send_search_alerts()` before giving up — the failure window it needs to survive is only ~5 seconds per the health-check alert's own text.
+  - **Constraint**: put the retry in `send_search_alerts()` itself so both the direct admin-endpoint caller and the cron benefit — don't only retry at the workflow (`curl`) level, since a human hitting `/admin/send-search-alerts` directly would still hit the same fragility.
+  - **History**: flagged by the inbox-triage Routine 2026-09-17; re-verified and promoted here 2026-09-21.
+
+- **[JUST-DO-IT] `list_all_page_slugs()` doesn't exclude `_SLUG_REDIRECTS` keys, so every reslugged page's old URL still ships in `sitemap.xml` as a 301 — Search Console already flagged it, and the dict has grown to 19 entries.**
+  - **Issue**: `archive/db/crud.py`'s `list_all_page_slugs()` (used by `archive/main.py`'s `/sitemap.xml`) selects every non-`unknown`, non-empty `MeetingPage` row by slug — it has no awareness of `archive/main.py`'s `_SLUG_REDIRECTS` dict (permanent 301s for hand-reslugged pages, `archive/main.py:2489`). If an old slug's row isn't caught by `_is_empty_page_condition()`, its stale slug stays in the sitemap and 301s the instant it's crawled. Confirmed live 2026-09-21 by reading both functions directly — neither has changed since this was first flagged.
+  - **Impact**: Google Search Console flagged this exact shape ("New reasons prevent pages in a sitemap from being indexed... Page with redirect", alert 2026-09-16 20:04 UTC). When first investigated (2026-09-17) `_SLUG_REDIRECTS` had exactly 1 relevant entry (the Kitchener, ON duplicate); as of this promotion it has **19** entries (WO-925 added 5 more mis-keyed Vimeo pages on 2026-09-20), so the real exposure is now up to 19 stale-slug URLs, not 1 — each whose old-slug row isn't empty is a live candidate for the same Search Console flag. Low severity either way (a 301 doesn't lose content, just wastes crawl budget and produces a Search-Console-visible flag), but the prior sizing undercounted it.
+  - **Next action**: exclude `_SLUG_REDIRECTS` keys from `list_all_page_slugs()`'s query (e.g. `.where(MeetingPage.slug.notin_(_SLUG_REDIRECTS.keys()))`, or relocate the dict somewhere `crud.py` can import without a circular-import problem).
+  - **Constraint**: the exact URL(s) Search Console flagged aren't confirmed (its dashboard is auth-walled, Ryan-only) — the fix is correct regardless of which of the 19 triggered this specific alert, so it doesn't need to wait on that confirmation.
+  - **History**: flagged by the inbox-triage Routine 2026-09-17; re-verified and promoted here 2026-09-21 with the corrected 19-entry count.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -5765,7 +5789,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Impact**: per `GET /internal/jurisdiction/missing`'s first real run
     (built 2026-08-31): **245** total no-jurisdiction pages — Cablecast
     101, TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10,
-    CivicClerk 7, unknown 4, TownHallStreams 1, Castus 1.
+    CivicClerk 7, unknown 4, TownHallStreams 1, Castus 1. This gap now has
+    a confirmed external SEO consequence, not just an internal count:
+    Google Search Console flagged "Events structured data: Missing field
+    'location'" (alert 2026-09-15 12:01 UTC) — root-caused directly to
+    `archive/templates/meeting_page.html`'s Event JSON-LD block, which
+    only emits `location` inside `{% if page.jurisdiction -%}` (still
+    true as of 2026-09-21). Every one of these 245 pages ships an Event
+    with no location, which Google now flags as a critical issue.
   - **Next action**: re-run `GET /internal/jurisdiction/missing` before
     trusting the 245 figure — eScribe's hyphen-matcher gap and 5 more
     Swagit special-purpose tenants were both fixed 2026-08-31, after this
@@ -5776,7 +5807,9 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `cablecast.py:589-602`, so a similar per-row pass on the current 101
     is plausible). YouTube has no structural fix (`uploader` is a channel
     name, not a government field); Swagit still needs a non-Census entity
-    table for the tenants beyond the 5 now registered.
+    table for the tenants beyond the 5 now registered. Re-running the
+    missing-jurisdiction count also answers "how many pages does Search
+    Console's location flag cover" at the same time.
   - **Constraint**: use `GET /internal/jurisdiction/missing` directly for
     current numbers — don't re-derive from `/internal/low-trust-pages`.
   - **History**: `BACKLOG_DONE.md` (WO-38's original 2026-08-21 audit and
@@ -5865,6 +5898,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Impact**: not production-facing today — every real call site wraps `finder.resolve()` in a generic `except Exception` (`app/main.py`), so a real visitor just gets an unpolished raw-exception-string error rather than a friendly "this meeting listing is no longer available" message. The real cost is the canary itself: it's failed daily (15:00 UTC) since 2026-08-29, and a genuine adapter regression elsewhere in the 30+ platform sweep risks getting lost in an already-red build.
   - **Next action**: swap the canary's Phoenix sample for a currently-live one. Two things found while re-verifying this (2026-09-05) worth handing to whoever picks it up: (1) Phoenix's Legistar pages need the full `?ID=...&GUID=...&Options=info|&Search=` querystring to load at all — the bare `?ID=` form 410s even for a real, live ID (confirmed against three live candidates pulled from `Calendar.aspx`: `1364180`/GUID `FE7842A8-9AF7-4022-90A6-9B0247C8DAB9`, `1363991`, `1363958`); (2) Phoenix's Legistar API shows `EventVideoPath: null` for every one of its 10 most recent events, matching the existing "Phoenix has no direct Legistar video links site-wide" finding (`BACKLOG_DONE.md`, 2026-08-11 survey) — so a good replacement sample must specifically exercise the WO-30 YouTube-channel fallback (a *past* meeting whose date/title should match Phoenix's YouTube channel), not just any live page. Separately, catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a friendly `video_warnings` message, the same pattern "no video link found" already uses.
   - **History**: `BACKLOG_DONE.md` (2026-08-11 survey first documented this meeting ID as gone). Flagged by the inbox-triage Routine's 2026-08-30 run; recurred identically on every canary run since (2026-08-30, 08-31, twice on 09-01/09-02).
+
+- **[NEEDS-AUDIT] Aurora, CO's `aurora_tv` canary sample has failed twice in 5 weeks with the identical "resolve returned no real content" signature, both times unreproducible by hand — worth watching, not yet a confirmed regression.**
+  - **Issue**: the adapter health canary's `FAIL aurora_tv: resolve returned no real content` against `https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026` has now happened twice: 2026-08-18 (run `32155218602`) and 2026-09-19 (run `35459294828`), roughly 5 weeks apart, same URL, same error signature both times. Both times a direct re-check immediately after (a plain fetch of the same URL) found the page fully healthy: HTTP 200, a real, well-formed `mp4_url` in the page's `drupal-settings-json` blob pointing at Aurora's own Cablecast storage (`reflect-aurora.cablecast.tv`). Re-checked a third time 2026-09-21 while promoting this entry: `app/platforms/aurora.py`'s parsing target is unchanged, and every canary run since 2026-09-19 (6 checked: 09-16, 09-17, 09-18, 09-19, 09-20, and today's 09-21) shows no third occurrence.
+  - **Impact**: only the canary's own health signal so far — no confirmed production impact either time, since this is a known-good page the live site serves correctly. Two data points a month apart, both non-reproducible by hand, are consistent with either a genuinely intermittent block (e.g. the GitHub Actions runner's IP occasionally rejected by `auroratv.org` or its CloudFront-fronted Cablecast storage — a possibility `aurora.py`'s own code comment already flags as unconfirmed) or coincidental unrelated blips at Aurora's origin. Not enough signal yet to tell which.
+  - **Next action**: watch for a third occurrence rather than building anything speculative now — if it recurs again, that's strong enough evidence of a real intermittent block to justify e.g. a retry inside the canary itself for this one platform, or a closer look at request headers/IP reputation.
+  - **Constraint**: don't spend more investigation time on this without a third occurrence — two data points a month apart, both clean on manual re-check, is the ceiling of what's knowable from here.
+  - **History**: `BACKLOG_DONE.md`'s "Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip" entry (the first occurrence); flagged again by the inbox-triage Routine 2026-09-20; re-verified and promoted here 2026-09-21.
 
 - **[NEEDS-AUDIT] A resolve that delegates to a generic video host (Vimeo/YouTube) can mint the wrong state for an ambiguous city name, even when the originating government page already unambiguously names the right one — confirmed live on 2 real pages from the 2026-09-09 2,404-candidate batch, two different mechanisms. The 2 known rows are hand-corrected; the mechanism is still open.**
   - **Issue**: (1) `rtr-deeplink.onrender.com/m/branford-fl-2026-07-01-board-of-selectmen-07-01-2026` — real content confirmed live (Connecticut General Statute cited on-camera, agenda link `branford-ct.gov/AgendaCenter/...`, closing line "town of Branford... branfordtd.org") but filed under Branford, **FL** instead of the real Branford, **CT**. Root cause: the candidate's own site is a white-labeled CivicPlus install (`www.branford-ct.gov`, no `civicplus.com` anywhere), whose AgendaCenter row delegated to a Vimeo video. `resolve_civicplus_seed()` (`scripts/nationwide_2404_ingest.py`, copied unchanged from `nationwide_1911_ingest.py`) computes `subdomain_jurisdiction = finder._jurisdiction_from_subdomain(seed_url)` specifically to override whatever the delegated platform guesses — but `CivicPlusAssetFinder._jurisdiction_from_subdomain()` (`app/platforms/civicplus.py:259-282`) only recognizes the `{state}-{name}.civicplus.com` tenant-subdomain shape: `netloc.split(".")[0]` on `www.branford-ct.gov` is `"www"`, which has no `-` to split on, so it returns `None` immediately — for *every* white-labeled CivicPlus domain, not just this one. With no override, Vimeo's own `_jurisdiction()` (`app/platforms/vimeo.py:641`, an oEmbed-`author_name` guess run through Census-validated `validated_label_extract()`) won with the wrong state for an ambiguous "Branford". (2) `rtr-deeplink.onrender.com/m/hartwick-ia-2026-09-02-planning-board-meeting-september-2026` — the candidate CSV's own row already names it unambiguously (`domain: hartwickny.gov`, `state_or_province: New York`, `hit_source_urls: vimeo=https://hartwickny.gov`), but the page is filed under Hartwick, **IA**. Different mechanism, same shape: this was a *direct* `platform=vimeo` hit (no CivicPlus wrapper), and `resolve_seed()`/`process_row()` never pass the CSV's own already-known city/state through as a hint or a post-resolve correction — the resolved `result.jurisdiction` is whatever Vimeo's own account-name guess produced, full stop.
@@ -6112,6 +6152,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   without a matching `render.yaml` edit leaves a worker silently running
   stale code. Only worth doing alongside a CI guard that keeps the two in
   sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
+
+- **[NEEDS-AUDIT] `rtr-deeplink-archive`'s "HTTP health check failed" alert recurs roughly weekly and WO-80 (2026-08-30) didn't fully close it — 5 occurrences in 30 days, one with a confirmed downstream failure.**
+  - **Issue**: WO-80 (2026-08-30) replaced `/api/health`'s O(n) `SELECT count(*)` with an O(1) `SELECT id ... LIMIT 1` specifically to stop the health probe stalling under load (`archive/main.py:302-334`, still live and unchanged as of 2026-09-21). Despite that, the same "HTTP health check failed (timed out after 5 seconds)" alert has recurred at least 5 times in the 30 days since: 2026-08-29, twice on 2026-08-31, 2026-09-13, and 2026-09-17 — not the "held for two weeks then broke once" pattern an earlier inbox-triage note assumed (that note under-searched; a full 30-day label search on 2026-09-17 found the earlier occurrences it missed).
+  - **Impact**: each occurrence self-resolves (Render auto-restarts/replaces the instance) and no UptimeRobot DOWN alert has ever correlated with one, so there's no confirmed reader-facing outage from the restarts themselves. But the 2026-09-17 occurrence (01:37:13 UTC) has one *confirmed* downstream consequence: it landed exactly one minute before `send-search-alerts.yml`'s single, no-retry call to `/admin/send-search-alerts`, which 502'd and silently skipped that day's entire saved-search alert sweep (see the `send_search_alerts()` retry entry in "Ship next" — that fix closes this one known consequence without needing this entry's own root cause found).
+  - **Next action**: nothing scoped yet beyond the retry fix above, which removes the only currently-known consequence. If this keeps recurring, the next step is pulling Render's own dashboard log for one of the exact 5-second windows (only Ryan can do that) to see what's actually slow — WO-80's fix addressed one plausible cause (an O(n) query) but evidently isn't the whole story.
+  - **Constraint**: don't assume a Render bandwidth-cap event explains this — the timing correlation floated for the 2026-09-13 occurrence (30 hours after the account hit its 25 GB/month cap) was never confirmed against Render's auth-walled usage dashboard, and dismissing this as "just the bandwidth cap" would stop looking for the real cause.
+  - **History**: `BACKLOG_DONE.md`'s WO-80 entry (the original fix); flagged/investigated by the inbox-triage Routine 2026-09-14 (first framed as a single break in a clean two-week stretch) and corrected 2026-09-17 (found the true 5-occurrence pattern); consolidated here 2026-09-21.
 
 ### Media-source reliability
 
@@ -6987,6 +7034,23 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   whether to worry about prompt injection / fake government submissions;
   see `TRUST_THREAT_MODEL.md`.
 
+### `[LATER]` If a Content-Security-Policy is ever added, it must allow the three Full Context embed origins
+
+- **Issue**: neither the resolver nor the Archive sets a
+  Content-Security-Policy header today, so this isn't live-blocking
+  anything — but WO-943's Full Context feed (2026-09-21) added
+  click-to-load embeds from `www.youtube-nocookie.com`,
+  `www.instagram.com`, and `www.tiktok.com` (see README's "Full Context
+  feed" section). A CSP written without checking current features first
+  would silently break those three embeds.
+- **Impact**: none today. Would break the "Show the post here" button on
+  every Instagram/TikTok/YouTube Full Context entry the moment a CSP
+  shipped without these three origins allowed.
+- **Next action**: none now — re-read this entry (and grep the codebase
+  for every third-party origin actually loaded, not just these three)
+  before adding a CSP.
+- **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 
 - **Issue**: fake/spoofed "government" pages and non-government content
@@ -7245,6 +7309,26 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     scheduled — needs Ryan's call before it becomes one.
   - **History**: [FEED_CITIES.md](FEED_CITIES.md).
 
+- **`[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context feed, plus a moderation/review queue.**
+  - **Issue**: WO-943 (2026-09-21) shipped `/context` as editor-only —
+    only Clerk user ids listed in `CONTEXT_EDITOR_CLERK_IDS` can post.
+    Letting any signed-in user submit a clip would grow the feed much
+    faster, but needs a review step before a submission goes public.
+  - **Impact**: today the feed's size is capped by how much time an
+    allowlisted editor has, not by how many good clips exist.
+  - **Next action**: build a submission form for any signed-in user, plus
+    an editor review queue (approve/reject/edit before publish). The
+    schema already supports this without a migration — `ContextEntry`'s
+    `status` column just needs a new value (e.g. `pending_review`) and
+    `created_by_clerk_user_id` already records the real submitter.
+  - **Constraint**: blocked on the same open moderation question
+    `ACCOUNTS_PLAN.md` already flags for `post`/`repost` notes — public,
+    free-text user-generated content is real new surface area this app
+    has never had. Don't build the open submission form before that
+    question has an answer.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; `ACCOUNTS_PLAN.md`'s
+    2026-09-21 note.
+
 ### `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 — see [ACCOUNTS_PLAN.md](ACCOUNTS_PLAN.md)
 
 - **Issue**: phase 1 (Clerk sign-in, saved meetings/searches) shipped
@@ -7404,6 +7488,58 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     turns out to be a pop/lift effect rather than sweep/fill once
     actually watched.
 
+- **`[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context entry to Bluesky.**
+  - **Issue**: WO-943 (2026-09-21) shipped the Full Context feed
+    (`/context`) but nothing announces a newly published entry the way a
+    newly created Archive page already does.
+  - **Impact**: a real, editor-curated moment (a social clip tied to its
+    exact meeting second) is exactly the kind of content the existing
+    Bluesky account was built to announce — see "Social auto-posting"
+    above — but today it never does.
+  - **Next action**: reuse `archive/utils/social.py`'s existing
+    Bluesky-posting code, triggered from `set_context_entry_status()`
+    when an entry's status transitions to `published`.
+  - **Constraint**: `SocialPost`'s unique constraint is per (meeting
+    page, network) — see `archive/db/models.py`. A Full Context
+    announcement is a different post about a page that may already have
+    its own `SocialPost` row from the page's own creation, so posting
+    both needs a real design decision (a second `SocialPost` row keyed
+    differently, or a separate ledger table) before this can reuse the
+    existing dedupe mechanism as-is.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry; README's "Social
+    auto-posting" and "Full Context feed" sections.
+
+- **`[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings show the generic YouTube thumbnail, not the clipped moment.**
+  - **Issue**: `/m/{slug}/card.jpg` redirects a YouTube-backed meeting to
+    YouTube's own standard thumbnail regardless of `t` (see "Meeting card
+    images" above) — only a non-YouTube meeting gets a true extracted
+    frame at the timestamp. Many meetings that get clipped on social
+    media are on YouTube.
+  - **Impact**: many Full Context entries will show a generic video
+    thumbnail rather than the actual clipped moment, weakening the
+    entry's own visual hook.
+  - **Next action**: Ryan's call between two options — accept the generic
+    thumbnail as a known limitation, or extract a real frame for
+    YouTube-backed pages, which this app has deliberately not done so
+    far (YouTube serves its own thumbnail cheaply; a real frame would
+    need downloading/seeking the video, unlike the ffmpeg extraction
+    already used for non-YouTube pages).
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry (states the caveat);
+    README's "Meeting card images" section (the existing YouTube-redirect
+    behavior this inherits).
+
+- **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
+  - **Issue**: `/m/{slug}` never shows that a meeting has one or more
+    Full Context entries pointing at it, even though `ContextEntry.
+    meeting_page_id` is indexed and already the FK every entry carries.
+  - **Impact**: a reader on the meeting page itself has no way to
+    discover the social clip(s) that reference it — the link only works
+    one direction (from `/context` to the meeting), not back.
+  - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
+    for that `meeting_page_id` and render a small "clipped on social
+    media" section/badge linking to each.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
+
 ### Search & metadata quality
 
 - **[IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
@@ -7491,6 +7627,22 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - **History**: the in-app search half (this site's own `/meetings`
     search already matches every version) and the UX half (version
     picker, shipped 2026-08-12) are both in `BACKLOG_DONE.md`.
+
+- **`[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from the pasted share link — only `t` is kept.**
+  - **Issue**: WO-943's editor form parses a pasted "Share video at M:SS"
+    link's `slug` and `t`, but reads and discards any `line`/`version`
+    params the link also carries.
+  - **Impact**: arriving at a meeting from a Full Context entry never
+    highlights the matching transcript row, unlike a plain deep link
+    copied with a transcript line selected — the video still seeks to
+    `t`, but the transcript-side highlight is silently lost.
+  - **Next action**: extend `ContextEntry` (or `context_links.py`'s
+    parse) to also store `line`/`version` when present, and pass them
+    through to the `/m/{slug}` deep link the feed renders.
+  - **Constraint**: not started — `t_seconds` is the only timestamp field
+    on `ContextEntry` today; adding `line`/`version` is a small schema
+    change (nullable columns), not a redesign.
+  - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### Transcription quality & cost
 

@@ -197,7 +197,10 @@ under everything else. This repo extracts and fixes just that part.
   numbers centrally** and agents use the number they're given rather
   than deriving one. Same root cause as the multi-session working-tree
   rule below — concurrent sessions can't infer shared state from a
-  snapshot of it.
+  snapshot of it. **As of 2026-09-21, this exact grep against
+  `origin/main` returns `WO-999`** — that's a literal test-fixture string
+  in `tests/test_check_backlog_done_headings.py`, not a real work order.
+  Ignore it; the real max on 2026-09-21 was WO-941.
 - **An open backlog entry carries the *conclusion*, in a fixed 5-field
   template — the investigation goes in `BACKLOG_DONE.md`, or, for the
   rare still-open one, `docs/investigations/`.** `BACKLOG.md`'s own
