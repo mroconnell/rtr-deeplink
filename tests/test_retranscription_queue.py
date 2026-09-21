@@ -248,6 +248,19 @@ def test_the_two_auto_feeders_name_only_their_own_files():
 # --- the slice helper ----------------------------------------------------
 
 
+def test_wo943_additions_are_queued_at_the_end_of_main():
+    # WO-943 added 12 pages after WO-929's 82; existing lines were not moved.
+    rows = _meta_rows()
+    added = {"14", "258", "334", "354", "374", "724"}
+    added |= {"779", "819", "840", "852", "872", "894"}
+    tail = rows[-12:]
+    assert {r["page_id"] for r in tail} == added
+    assert all(r["section"] == "MAIN" for r in tail)
+    assert tail[-1]["page_id"] == "724"  # conductor-found, longest, last
+    assert "conductor-found" in tail[-1]["defect_signal"]
+    assert [int(r["priority_rank"]) for r in tail] == list(range(83, 95))
+
+
 def test_slice_helper_skips_finished_pages_and_respects_count():
     sections = {"MAIN": ["u1", "u2", "u3", "u4"]}
     meta = [{"url": f"u{i}", "page_id": str(i)} for i in range(1, 5)]

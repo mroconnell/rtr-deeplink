@@ -1,5 +1,34 @@
 # Backlog — done
 
+## WO-943: 12 more pages added to the re-transcription queue (82 to 94 pages, 254.3 to 320.6 hours) [Done 2026-09-21]
+
+**Why this ran.** WO-929 built a separate queue for pages whose only transcript is older Whisper text with a real defect (category C of `scripts/wo928_version_quality.py`). It held 82 pages. Ryan ran the same tool over the whole Archive on 2026-09-21 (9,976 pages read) and category C came out at 93: the 82 already queued plus 11 new ones. The conductor also found page 724 by hand. This WO checks all 12 again and adds them. It transcribed nothing and wrote nothing to the production Archive.
+
+**What was checked.** One read of `/internal/export/pages` for the 12 pages (with the shown text), two public SRT reads of page 724's hidden version, and a fresh resolve and header-only length probe of each page's source URL through the site's own adapter (`probe_queue_entry()`, YouTube guard on). Three reads of the site in total, no media downloaded. The shown version's signals were recomputed with `scripts/wo928_version_quality.py`.
+
+| Outcome | Count of 12 | What it means |
+|---|---|---|
+| Kept in the queue | 12 | shown version unchanged and defective, video resolves |
+| Dropped: fixed, promoted, deleted or cannot re-transcribe | 0 | every video resolved and probed |
+| YouTube-hosted (drip Mac only) | 0 | none is; hosts are Granicus (5), eScribe (6), CivicClerk (1) |
+
+All 12 show the silence signature ("Thank you." over silence); 11 of them also show loops. Page 14 (Napa County) shows the silence signature only. Page 724 (Travis County TX, CivicClerk) was found by the conductor, not by category C: its shown version v3636 runs 522.7 minutes with a dead-air run of 25 cues, while its only cleaner hidden version v3457 covers just 74.3 minutes (a partial), so it was not promoted and a fresh transcription is the fix. The tool also flags loops on it, so its `defect_signal` in the sidecar is `dead_air;loop;conductor-found`. It is the longest page in the queue (8.71 hours).
+
+**The queue now.**
+
+| Section | Pages | Audio hours | What changed |
+|---|---|---|---|
+| PILOT | 5 | 9.1 | nothing |
+| MAIN | 89 | 311.5 | 12 lines added at the end (ranks 83 to 94), shorter first, page 724 last |
+| DRIP-MAC-ONLY | 0 | 0 | nothing |
+
+By defect: 58 pages with the silence signature (236.4 h), 35 with loops only (84.0 h), 1 other (0.3 h). Total 94 pages, 320.6 hours. No existing line was moved and the pilot was not touched.
+
+**Caution.** The 12 sit after the WO-929 loop and other groups, not inside the silence-signature group, because existing lines were not reordered. Eight of them run over 5 hours and three over 7 (Halifax 7.63 h, Calgary 7.95 h, Travis 8.71 h), so they are poor first picks for a run whose speed is not yet measured. Loops may reproduce, as WO-929 warned.
+
+**Recommendation.** Nothing changes for the pilot. When the main queue is run in batches, run the 12 last, or put the three longest in their own overnight batch.
+
+**Deploy status.** None needed. Queue file, sidecar, docs and a test are not under any path Render builds from. Docs updated: `docs/RETRANSCRIPTION_QUEUE.md`, `BACKLOG.md` (the queue entry: 82 to 94 pages, hours, sections), the queue file's header comments. WO-929's entry below is left as written: it describes what was true then. Files for the conductor to commit in rtr-business: `research/wo943_population_recheck.csv`, `research/wo943_methods_section.md`.
 ## WO-943: a public "Full Context" feed links social-media clips of meetings to their exact archived moment — editor-only, click-to-load embeds, no server-side fetch of any post [Done 2026-09-21]
 
 **Why this ran.** Ryan finds many short clips of public meetings on
