@@ -83,8 +83,10 @@ hammering question.
 """
 
 import asyncio
+import csv
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -133,6 +135,46 @@ from scripts.bulk_ingest import (  # noqa: E402
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 BATCH_SIZE = 12
+
+# WO-937: a durable per-line record of _push_if_has_video()'s own
+# [OK]/[SKIP]/[FAIL]/[NO-OWNER] result -- before this, the only place a
+# result lived was stdout, so once a line is popped off QUEUE_FILE (which
+# advances "regardless of individual outcomes," see main()'s own comment),
+# its fate only survived in that one day's GitHub Actions run transcript.
+# Real gap raised directly by Ryan, 2026-09-09, mid-run on the
+# 2,404-candidate batch -- every other batch ingest script here
+# (nationwide_*_ingest.py, wo130_county_ingest.py,
+# wo134_confirmed_hits_ingest.py) already writes a resumable per-row CSV
+# log; this was the one that didn't. Append-only, same shape as the probe
+# sidecar CSV (DEFAULT_SIDECAR_PATH) -- and, like that file, the
+# .github/workflows/feed-tier3-transcription.yml workflow's own commit
+# step must `git add` this path too or every run's rows are discarded
+# with the ephemeral runner (WO-254's own real incident, for the probe
+# sidecar CSV, before that workflow fix).
+FEED_LOG_CSV = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue_feed_log.csv"
+FEED_LOG_HEADER = ["timestamp", "url", "tag", "detail"]
+
+
+def _append_feed_log_row(url: str, result: str) -> None:
+    """`result` is `_push_if_has_video()`'s own `"[TAG] rest of message"`
+    string -- split into a `tag` column (OK/SKIP/FAIL/NO-OWNER) and a
+    `detail` column so a later reader can filter/count by outcome without
+    parsing free text."""
+    tag = "UNKNOWN"
+    detail = result
+    if result.startswith("[") and "]" in result:
+        end = result.index("]")
+        tag = result[1:end]
+        detail = result[end + 1 :].strip()
+    is_new = not FEED_LOG_CSV.exists()
+    FEED_LOG_CSV.parent.mkdir(parents=True, exist_ok=True)
+    with FEED_LOG_CSV.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if is_new:
+            writer.writerow(FEED_LOG_HEADER)
+        writer.writerow(
+            [datetime.now(timezone.utc).isoformat(timespec="seconds"), url, tag, detail]
+        )
 
 
 def _parse_queue_line(line: str) -> Tuple[str, Optional[str]]:
@@ -191,6 +233,18 @@ async def _push_if_has_video(
         video_url=result.video_url,
         source_page_url=result.source_url,
         platform=platform,
+        # WO-937: without this, a direct-file candidate whose URL itself
+        # carries no recognized extension (a ChampDS DOWNLOAD-MEDIA
+        # redirect, a CivicPlus DocumentCenter link) lost the one signal
+        # probe_queue_entry()'s dispatch needs once this caller already
+        # has `result` in hand -- the resolve-from-scratch path (when a
+        # caller passes no video_url at all) already carried this
+        # through correctly; only a caller passing video_url= separately
+        # could drop it. Confirmed live via this same gap in
+        # wo169_probe_rejected_rerun.py's own _real_probe_hook() (see
+        # BACKLOG.md's matching entry) -- this is the same class of bug
+        # in a second caller, not a new one.
+        video_format=result.video_format,
     )
     append_probe_row(probe_sidecar_path, probe)
     if probe.verdict.startswith("reject-"):
@@ -284,6 +338,7 @@ async def main() -> None:
             url, source_url_override = _parse_queue_line(line)
             result = await _push_if_has_video(session, url, source_url_override)
             print(result)
+            _append_feed_log_row(url, result)
             if result.startswith("[NO-OWNER]"):
                 no_owner_lines.append(line)
             if i < len(batch) - 1:

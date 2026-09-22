@@ -624,10 +624,16 @@ async def act_on_resolved_wo151(
             platform=lead.platform,
         )
         append_probe_row(DEFAULT_SIDECAR_PATH, probe)
-        res.detail = (
+        # WO-937: append rather than overwrite -- res.detail may already
+        # carry an earlier note (e.g. the YouTube caption-block circuit
+        # breaker's own skip marker), and an unconditional assignment here
+        # silently erased it with no trace (BACKLOG.md's matching entry,
+        # found running WO-151's continuation, 2026-09-10).
+        probe_note = (
             f"probe: verdict={probe.verdict} duration={probe.duration_seconds} "
             f"reason={probe.reason or ''}"
         )
+        res.detail = f"{res.detail}; {probe_note}" if res.detail else probe_note
         setattr(res, "probe_verdict", probe.verdict)
         setattr(res, "probe_reason", probe.reason or "")
         setattr(res, "probe_duration_seconds", probe.duration_seconds)

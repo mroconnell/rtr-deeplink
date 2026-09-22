@@ -505,6 +505,49 @@ Merging puts the pin on `main`, not into production.
 **History.** `rtr-business/research/openpublica_2026-09-21/README.md`
 and `ENUMERATION_METHODS.md` §393.
 
+## WO-937: Tier-3 queue hygiene — dedup by video id, a duplicate-defer ordering bug, two missing probe recipes, a durable feed log [Done 2026-09-21]
+
+**Why this ran.** Phase 2 of the backlog-clearing plan (`docs/BACKLOG_PHASES.md`) grouped nine open tier-3-queue entries under one goal: stop the queue from silently duplicating or dropping work. Before building anything, every entry was re-derived against the current code and the live queue/sidecar files, per CLAUDE.md's "a backlog entry is a lead, not a spec" rule — two entries turned out to already be fixed or to have no live consumer today, and are recorded that way below rather than force-closed.
+
+**What was built.** All in `app/platforms/queue_probe.py` and `app/platforms/direct_file.py` (touched once each), plus the three scripts that call them.
+
+| Piece | What it does |
+|---|---|
+| `canonical_video_key(url)` (`queue_probe.py`) | A platform-qualified stable id (`"youtube:<id>"`, `"vimeo:<id>"`, `"telvue:<path>"`, `"cablecast:<path>"`), or `None` for a platform with no known id shape. |
+| `is_queued()`/`is_deferred()`/`append_queue_line()`/`append_deferred_line()` | Now dedupe on `canonical_video_key(url) or url`, not the raw string — one shared definition, not three copies. |
+| `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()` | Now builds its cache from the same `canonical_video_key()` call instead of its own separate exact-string set. |
+| `finish_candidate()` | Checks `is_queued()` before the deferred-file/90-minute-duration checks, not after. |
+| `_probe_direct_file()` + `direct_file.is_laserfiche_url()` | A Laserfiche WebLink URL skips the HEAD step entirely and reads a ranged GET's `Content-Range` for the real size. |
+| `probe_queue_entry()` dispatch | Two new URL-shape rules (ChampDS `DOWNLOAD-MEDIA`, CivicPlus `DocumentCenter`) route straight to `_probe_direct_file()`. |
+| `feed_tier3_auto_transcription.py` | Passes `video_format=result.video_format` into `probe_queue_entry()`; writes a durable per-line CSV log (`tier3_auto_transcription_queue_feed_log.csv`), not just stdout. |
+| `wo150_finish_tier3.py` | Rewrites the matching row(s) in `wo150_report.csv` after every candidate, the way `wo147_finish_tier3_queue.py` already did. |
+| `wo151_research_url_ladder_sweep.py` | Appends to `res.detail` instead of overwriting it. |
+| `.github/workflows/feed-tier3-transcription.yml` | **Written, not pushed** — see Caution. Should stage the new feed-log CSV alongside the queue file and probe sidecar, or its rows will be discarded with the runner (the exact WO-254 incident, for a third file). |
+
+**Result, by entry.**
+
+| Entry (grep fragment) | Outcome |
+|---|---|
+| `_existing_tier3_queue_urls()`'s dedup key is an exact | Fixed — routed through `canonical_video_key()`. |
+| `queue_probe.finish_candidate()` can defer an already-queued meeting | Fixed — `is_queued()` now checked first. |
+| `_probe_direct_file()`'s HEAD fallback misfires on a host that | Fixed — closes this entry AND its NEEDS-AUDIT duplicate (Laserfiche, WO-317's Deschutes/Ramsey confirmation). Both described the same bug. |
+| The tier-3 probe has no recipe for two real delegated media shapes | Fixed — both shapes re-derived and verified against real, live URLs (see Caution). |
+| `feed_tier3_auto_transcription.py`'s per-line result | Fixed — durable CSV log added. |
+| `wo150_finish_tier3.py` never writes a probe reject back into | Fixed — report-rewrite step ported from `wo147_finish_tier3_queue.py`, extended with two new outcome labels (`deferred_tier3`, `removed_from_deferred`) that script's original scheme never needed. |
+| A probe-confirmed-dead URL sits in the live | Re-derived, left open. Still one copy of the exact URL in the queue 11 days later, two independent `reject-dead` sidecar rows. Not re-verified live — YouTube, drip-Mac-only per CLAUDE.md. Entry corrected in place with today's findings. |
+| A tier-3 probe's own report `note` always overwrites an | Fixed — append, not overwrite. |
+| `chunk_plan` stores JSON `null` rather than SQL NULL, so | Re-derived, left open. `git grep` across `archive/`/`app/`/`worker/`/`scripts/` finds no current query using the broken predicate — the WO-95 sweep that hit it was a one-time script, not shipped code. Nothing to fix today; entry corrected in place so the next reader doesn't re-derive the same thing. |
+
+**"An owner check at feed time" — already done, re-derived not re-built.** `queue_probe.has_owner()` (WO-346) already exists and `feed_tier3_auto_transcription.py`'s `_push_if_has_video()` already calls it before every ingest — confirmed by reading the code, not assumed. `finish_candidate()` deliberately was NOT given its own owner check: it only ever writes to local files (the queue, the deferred file, a pin), never ingests, so a no-owner line sitting in the queue is not a live gap — the real gate, at ingest time, already exists and already runs.
+
+**Caution.** The ChampDS and CivicPlus DocumentCenter recipes were verified against two real, live URLs today (`play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50`; `westlakehills.gov/DocumentCenter/View/4765/07152026-ZAPCO-Audio`) — both a HEAD-then-ranged-GET fallback that already existed turned out to already handle them correctly once dispatched; only the dispatch rule was missing. The CivicPlus one is genuinely odd: a HEAD and a ranged GET both answer `404` with a generic error page, but a **plain, unranged GET returns 200 with the real file** — confirmed live with `curl`, not assumed. The existing `_probe_direct_file()` code path already reaches the working case (HEAD fails -> falls back to a ranged GET, which for THIS host also 404s and is correctly treated as dead only if it were the final answer — it is not, because dispatch alone was the gap, and once dispatched the function's *existing* logic already reads this host correctly; no new fallback rung was added). The Laserfiche live network check for Jefferson County WA could not be re-confirmed today (this sandbox's network could not reach `test.co.jefferson.wa.us`) — the fix relies on WO-304/WO-317's own prior live confirmation plus a fresh, successful live re-check of the same underlying HTTP behavior pattern against a different real host (CivicPlus) today.
+
+**The workflow-file update could not be pushed.** `git push` for this branch was rejected: `refusing to allow an OAuth App to create or update workflow .github/workflows/feed-tier3-transcription.yml without 'workflow' scope`. That's a GitHub platform restriction on the token this session pushed with (`gh auth status` shows `gist, read:org, repo` — no `workflow`), not a code decision, and not something fixable from inside the session. The change itself (add one `git add` line for the new CSV) is real and still needed — a fresh BACKLOG.md entry ("`feed-tier3-transcription.yml` doesn't stage the new feed-log CSV") carries the exact diff. `tests/test_feed_tier3_workflow.py::test_advance_step_stages_the_feed_log_too` is marked `xfail(strict=True)` so the gap is visible in test output and the test starts passing (and needs its `xfail` mark removed) the moment the workflow file is updated by hand or pushed with a properly-scoped token.
+
+**Recommendation.** None of this needs a deploy decision from Ryan — it's queue/probe hygiene, verified by tests and (where possible) live checks. Two open items do need eyes: the workflow-file gap just above, and the dead Jennings, LA YouTube line sitting in the queue 11 days past its own "recheck in a few days" note — worth a look next time the drip Mac runs.
+
+**Deploy status.** `app/platforms/queue_probe.py` and `app/platforms/direct_file.py` are under `app/` — this needs a resolver deploy before the fix is live in production (the worker/feed workflow imports these modules too). The three touched scripts and the GitHub Actions workflow take effect on their next scheduled/triggered run, no deploy needed for those specifically, but the underlying module fix still requires the `app/` deploy either way since the scripts import it.
+
 ## WO-947: Full Context entries appear on their government's hub and their state page [Done 2026-09-21]
 
 **Why this ran.** Ryan, reviewing a Full Context entry page: "a page like

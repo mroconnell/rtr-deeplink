@@ -742,6 +742,13 @@ async def test_probe_queue_entry_accepts_audio_only_laserfiche_docid_shape(
     # `.mp3` is already in `_DIRECT_FILE_EXTENSIONS`, so NO change was
     # needed here. This test documents that finding against the real
     # Deschutes County, OR URL shape rather than a generic placeholder.
+    #
+    # WO-937: this shape's HEAD is now skipped entirely (see
+    # `_probe_direct_file()`'s own docstring) -- no `_mock_head` route is
+    # registered at all here, so the test would fail loudly with an
+    # "Unmocked HEAD" AssertionError if the code ever called it. Only a
+    # ranged GET (`mock_session`) is mocked, with the real confirmed
+    # Content-Range total (22,637,874 bytes).
     media_url = (
         "https://weblink.deschutes.org/WebLink/ElectronicFile.aspx"
         "?docid=94746&dbid=0&repo=LFPUB"
@@ -759,13 +766,20 @@ async def test_probe_queue_entry_accepts_audio_only_laserfiche_docid_shape(
 
     monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
 
-    with _mock_head(
-        {media_url: FakeResponse(status=200, headers={"Content-Length": "22637874"})}
+    with mock_session(
+        {
+            media_url: FakeResponse(
+                status=200,
+                headers={"Content-Range": "bytes 0-63/22637874"},
+                raw=b"ID3\x03\x00\x00\x00\x00\x00\x00",
+            )
+        }
     ):
         result = await probe_queue_entry(media_url)
 
     assert result.verdict == "accept"
-    assert result.probe_method == "head+ffprobe"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 22637874
     assert result.duration_seconds == 1899.488
 
 
@@ -775,7 +789,8 @@ async def test_probe_queue_entry_accepts_audio_only_laserfiche_edoc_shape(monkey
     # carry a real `.mp3` extension in the URL itself, so `media_path.
     # endswith(_DIRECT_FILE_EXTENSIONS)` accepts it directly, without
     # even needing the `video_format` fallback the docid shape above
-    # relies on.
+    # relies on. WO-937: still Laserfiche-shaped, so HEAD is skipped here
+    # too -- same reasoning as the docid-shape test above.
     media_url = (
         "https://weblink.cityoframsey.com/WebLink/0/edoc/813049/"
         "Meeting%20AudioVideo%20-%20Council%20Work%20Session%20-%2009082026.mp3"
@@ -793,14 +808,160 @@ async def test_probe_queue_entry_accepts_audio_only_laserfiche_edoc_shape(monkey
 
     monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
 
-    with _mock_head(
-        {media_url: FakeResponse(status=200, headers={"Content-Length": "39368600"})}
+    with mock_session(
+        {
+            media_url: FakeResponse(
+                status=200,
+                headers={"Content-Range": "bytes 0-63/39368600"},
+                raw=b"ID3\x03\x00\x00\x00\x00\x00\x00",
+            )
+        }
     ):
         result = await probe_queue_entry(media_url)
 
     assert result.verdict == "accept"
-    assert result.probe_method == "head+ffprobe"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 39368600
     assert result.duration_seconds == 4920.947
+
+
+async def test_probe_direct_file_laserfiche_head_error_page_size_is_ignored(
+    monkeypatch,
+):
+    # WO-937: the real confirmed bug (BACKLOG_DONE.md's WO-304/WO-317
+    # entries) -- a HEAD on a Laserfiche WebLink URL "succeeds" (302s to
+    # a generic Error.aspx page that itself answers 200) but reports that
+    # error page's own tiny size, never the real file's. No `_mock_head`
+    # route is registered here at all, so this test fails loudly if the
+    # code ever calls HEAD for this shape -- the ranged-GET route below
+    # carries the real, much larger, confirmed size instead.
+    media_url = (
+        "https://test.co.jefferson.wa.us/WeblinkExternal/ElectronicFile.aspx"
+        "?docid=10559483&dbid=0&repo=Jefferson"
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 17650.39
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with mock_session(
+        {
+            media_url: FakeResponse(
+                status=200,
+                headers={"Content-Range": "bytes 0-63/1782634832"},
+                raw=b"\x00\x00\x00\x20ftypisom",
+            )
+        }
+    ):
+        result = await probe_queue_entry(
+            media_url, video_url=media_url, platform="unknown", video_format="mp4"
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 1782634832
+    assert result.duration_seconds == 17650.39
+
+
+# --- WO-937: two delegated media shapes this dispatch had no recipe for
+# at all -- a ChampDS DOWNLOAD-MEDIA redirect and a CivicPlus
+# DocumentCenter link with no recognized extension. -----------------------
+
+
+async def test_probe_queue_entry_dispatches_champds_download_media_by_url_shape(
+    monkeypatch,
+):
+    # Real shape confirmed live 2026-09-21 (play.champds.com/DOWNLOAD-
+    # MEDIA/oakhilltn/eventmainmedia/50): a plain HEAD answers 200 with a
+    # real Content-Length/Content-Disposition, no ranged-GET fallback
+    # needed once this is dispatched to _probe_direct_file() at all. The
+    # caller here deliberately passes NO video_format -- the real gap
+    # this closes is a caller (feed_tier3_auto_transcription.py, before
+    # this WO) that had `result.video_format == "mp4"` in hand but never
+    # passed it through; the URL-shape dispatch below doesn't depend on
+    # that.
+    media_url = "https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50"
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 5432.1
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {
+            media_url: FakeResponse(
+                status=200,
+                headers={
+                    "Content-Length": "502134975",
+                    "Content-Disposition": "attachment; filename=OakHillTN_50.mp4",
+                },
+            )
+        }
+    ):
+        result = await probe_queue_entry(
+            "https://play.champds.com/oakhilltn/event/50",
+            video_url=media_url,
+            platform="champds",
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.size_bytes == 502134975
+    assert result.duration_seconds == 5432.1
+
+
+async def test_probe_queue_entry_dispatches_civicplus_documentcenter_by_url_shape(
+    monkeypatch,
+):
+    # Real shape confirmed live 2026-09-21 against West Lake Hills city,
+    # TX's real CivicClerk-delegated externalVideoUrl (westlakehills.gov/
+    # DocumentCenter/View/4765/07152026-ZAPCO-Audio): civicclerk.py's own
+    # video_format check is extension-only and never fires here (no `.`
+    # in the filename), so video_format stays None -- this dispatch must
+    # recognize the URL shape on its own. A HEAD genuinely 404s (the same
+    # generic CivicPlus error page WO-166's own docstring documents), and
+    # the EXISTING HEAD-404-then-ranged-GET fallback already reads the
+    # real file correctly once dispatched here -- confirmed live: status
+    # 200, real Content-Length, Content-Disposition naming the real file.
+    media_url = (
+        "https://www.westlakehills.gov/DocumentCenter/View/4765/07152026-ZAPCO-Audio"
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 2233.4
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with (
+        _mock_head({media_url: FakeResponse(status=404)}),
+        mock_session(
+            {
+                media_url: FakeResponse(
+                    status=200,
+                    headers={
+                        "Content-Length": "17671174",
+                        "Content-Disposition": (
+                            "inline;filename=07.15.2026 ZAPCO Audio.m4v"
+                        ),
+                    },
+                )
+            }
+        ),
+    ):
+        result = await probe_queue_entry(
+            "https://civicclerk.example.gov/event/900",
+            video_url=media_url,
+            platform="civicclerk",
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 17671174
+    assert result.duration_seconds == 2233.4
 
 
 # --- Resolve-first path (video_url not given) ---------------------------
@@ -1208,6 +1369,35 @@ async def test_finish_candidate_accept_over_90_minutes_defers_even_without_flag_
     assert url in paths["deferred_path"].read_text()
 
 
+async def test_finish_candidate_already_queued_but_now_over_90_minutes_is_recognized_not_deferred(
+    tmp_path,
+):
+    """WO-937 (closes the entry WO-290 filed, 2026-09-12): a meeting
+    already sitting in the real queue file, re-probed and found to run
+    over 90 minutes, must be recognized as already-queued -- not
+    deferred, which would leave a real duplicate (one line in the queue,
+    a second in the deferred file, for the same meeting; the real
+    incident was Yachats city, OR, see BACKLOG_DONE.md's WO-290 entry).
+    Before this fix, `finish_candidate()` checked `is_deferred()` and the
+    duration threshold WITHOUT ever checking `is_queued()` first."""
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=alreadyqueuedlong"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="accept", duration_seconds=100 * 60
+    )
+    paths["queue_path"].write_text(url + "\n")
+
+    outcome = await queue_probe.finish_candidate(
+        url, gov_id="us:place:0000099", jurisdiction="Yachats, OR", **paths
+    )
+
+    assert outcome.action == "already-queued"
+    assert outcome.queued is False
+    assert outcome.deferred is False
+    assert not paths["deferred_path"].exists()
+    assert paths["queue_path"].read_text().count(url) == 1
+
+
 async def test_finish_candidate_no_cache_probes_fresh_and_appends_sidecar(
     tmp_path, monkeypatch
 ):
@@ -1248,6 +1438,65 @@ def test_cached_verdict_none_when_url_never_probed(tmp_path):
             "https://example.com/never-probed", sidecar_path=sidecar_path
         )
         is None
+    )
+
+
+# --- WO-937: dedup by video id, not exact URL string --------------------
+
+
+def test_canonical_video_key_youtube_same_video_different_query_string():
+    # The real WO-149 incident this closes: Lake County, OH's embed URL
+    # carried extra player-widget query parameters, but it's the SAME
+    # video (by id) as the plain watch?v= URL already on the queue.
+    embed = (
+        "https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1&autoplay=0"
+        "&mute=0&modestbranding=0&disablekb=0&"
+    )
+    watch = "https://www.youtube.com/watch?v=AscWHEa0ay4"
+    assert queue_probe.canonical_video_key(embed) == "youtube:AscWHEa0ay4"
+    assert queue_probe.canonical_video_key(embed) == queue_probe.canonical_video_key(
+        watch
+    )
+
+
+def test_canonical_video_key_vimeo_same_video_different_path_shape():
+    a = "https://vimeo.com/1212025580"
+    b = "https://player.vimeo.com/video/1212025580"
+    assert queue_probe.canonical_video_key(a) == "vimeo:1212025580"
+    assert queue_probe.canonical_video_key(a) == queue_probe.canonical_video_key(b)
+
+
+def test_canonical_video_key_none_for_unrecognized_platform():
+    # Deliberately narrow (BACKLOG.md's own "don't over-generalize from
+    # one confirmed case yet" constraint) -- an ordinary direct-file URL
+    # falls back to exact-string dedup at the call site, unchanged.
+    assert queue_probe.canonical_video_key("https://example.com/m.mp4") is None
+
+
+def test_append_queue_line_dedupes_same_youtube_video_different_url_shape(tmp_path):
+    queue_path = tmp_path / "queue.txt"
+    watch_url = "https://www.youtube.com/watch?v=AscWHEa0ay4"
+    embed_url = (
+        "https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1&autoplay=0"
+        "&mute=0&modestbranding=0&disablekb=0&"
+    )
+    assert queue_probe.append_queue_line(watch_url, queue_path=queue_path) is True
+    # Same video, differently-formatted URL -- must be recognized as
+    # already-queued, not appended as a second, "new" line.
+    assert queue_probe.append_queue_line(embed_url, queue_path=queue_path) is False
+    lines = [ln for ln in queue_path.read_text().splitlines() if ln.strip()]
+    assert lines == [watch_url]
+
+
+def test_is_queued_recognizes_same_video_different_url_shape(tmp_path):
+    queue_path = tmp_path / "queue.txt"
+    queue_path.write_text("https://www.youtube.com/watch?v=AscWHEa0ay4\n")
+    assert (
+        queue_probe.is_queued(
+            "https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1",
+            queue_path=queue_path,
+        )
+        is True
     )
 
 

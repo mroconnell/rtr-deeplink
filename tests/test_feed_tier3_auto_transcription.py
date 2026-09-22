@@ -16,6 +16,9 @@ real. tests/test_queue_probe.py covers the probe itself.
 import csv
 from pathlib import Path
 
+import pytest
+
+import scripts.feed_tier3_auto_transcription as _feed_tier3_mod
 from app.platforms.queue_probe import ProbeResult
 from scripts.feed_tier3_auto_transcription import (
     _parse_queue_line,
@@ -23,8 +26,20 @@ from scripts.feed_tier3_auto_transcription import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _redirect_feed_log_csv(monkeypatch, tmp_path):
+    """WO-937: `_push_if_has_video()` now calls `_append_feed_log_row()`
+    on every real call, which by default writes to the tracked
+    tier3_auto_transcription_queue_feed_log.csv -- autouse so every test
+    in this module (not just the ones that test the log directly) writes
+    to a throwaway path instead of polluting the real tracked file."""
+    monkeypatch.setattr(
+        _feed_tier3_mod, "FEED_LOG_CSV", tmp_path / "feed_log_autouse.csv"
+    )
+
+
 async def _accepting_probe_stub(
-    url, *, video_url=None, source_page_url=None, platform=None
+    url, *, video_url=None, source_page_url=None, platform=None, video_format=None
 ):
     return ProbeResult(
         url=url,
@@ -75,9 +90,14 @@ def test_parse_queue_line_trailing_tab_with_no_second_field_has_no_override():
 
 
 class _FakeResolvedMeeting:
-    def __init__(self, video_url, source_url):
+    def __init__(self, video_url, source_url, video_format=None):
         self.video_url = video_url
         self.source_url = source_url
+        # WO-937: real ResolvedMeeting always carries this (None when the
+        # adapter set no format); _push_if_has_video() now passes it
+        # through to probe_queue_entry(), so a fake standing in for a real
+        # result needs the same attribute.
+        self.video_format = video_format
 
     def model_dump(self):
         return {"video_url": self.video_url, "source_url": self.source_url}
@@ -170,7 +190,7 @@ async def test_push_if_has_video_skips_a_probe_rejected_dead_link(monkeypatch):
     monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
 
     async def _rejecting_probe(
-        url, *, video_url=None, source_page_url=None, platform=None
+        url, *, video_url=None, source_page_url=None, platform=None, video_format=None
     ):
         return ProbeResult(
             url=url,
@@ -360,3 +380,47 @@ async def test_lmc_pending_lines_keep_exact_owner_through_feeder(monkeypatch):
         assert captured["payload"]["gov_id"] == row["gov_id"]
 
     assert mod.has_owner("https://lmctvny.new.swagit.com/videos/999999")[0] is False
+
+
+# --- WO-937: a durable per-line result log, not just stdout -------------
+
+
+def test_append_feed_log_row_writes_header_then_rows(monkeypatch, tmp_path):
+    import scripts.feed_tier3_auto_transcription as mod
+
+    log_path = tmp_path / "feed_log.csv"
+    monkeypatch.setattr(mod, "FEED_LOG_CSV", log_path)
+
+    mod._append_feed_log_row(
+        "https://example.gov/videos/1", "[OK] https://example.gov/videos/1 -> /m/1"
+    )
+    mod._append_feed_log_row(
+        "https://example.gov/videos/2", "[SKIP] no video found on re-resolve: ..."
+    )
+
+    with log_path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    assert [r["tag"] for r in rows] == ["OK", "SKIP"]
+    assert rows[0]["url"] == "https://example.gov/videos/1"
+    assert rows[0]["detail"] == "https://example.gov/videos/1 -> /m/1"
+    assert rows[1]["detail"] == "no video found on re-resolve: ..."
+    # A real, parseable UTC timestamp, not a placeholder.
+    assert rows[0]["timestamp"].endswith("+00:00")
+
+
+def test_append_feed_log_row_unmocked_no_owner_tag(monkeypatch, tmp_path):
+    import scripts.feed_tier3_auto_transcription as mod
+
+    log_path = tmp_path / "feed_log.csv"
+    monkeypatch.setattr(mod, "FEED_LOG_CSV", log_path)
+
+    mod._append_feed_log_row(
+        "https://youtube.com/watch?v=abc",
+        "[NO-OWNER] youtube.com is a shared host with no pin (https://youtube.com/watch?v=abc)",
+    )
+
+    with log_path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    assert rows[0]["tag"] == "NO-OWNER"
