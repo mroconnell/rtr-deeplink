@@ -1,0 +1,16 @@
+WO-1012: close out today's state-legislature push, split off the residual
+
+Ryan called today's state-legislature work done for now. Moves the full
+"91 of 99" entry to BACKLOG_DONE.md with the complete history (WO-919
+through WO-1011), and replaces it in BACKLOG.md with a smaller, focused
+entry for what's genuinely left: a direct_file.py .vtt sibling-caption
+fix, Vimeo's event-id extraction for Illinois/Georgia, a handful of
+states needing one more real hop, and New York Senate's permanent
+Cloudflare block. Cross-linked the residual entry to the existing
+generic_fallback.py [NEEDS-AUDIT] entry (Quincy MA) -- several of the
+remaining states are the same "custom, non-vendor, own-built site"
+problem class.
+
+Docs only, no code.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
