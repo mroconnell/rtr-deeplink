@@ -8,7 +8,7 @@ import aiohttp
 import wordninja
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, ResolveError
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 
@@ -215,7 +215,14 @@ class SuiteOneAssetFinder(AssetFinder):
     async def resolve(self, url: str) -> ResolvedMeeting:
         tenant, event_id = self._extract_ids(url)
         if not tenant:
-            raise ValueError(f"Could not find a SuiteOne tenant/event id in URL: {url}")
+            # WO-938, 2026-09-21: used to be a bare `ValueError` -- every
+            # existing caller already survives an unrecognized exception
+            # the same way (see `ResolveError`'s own docstring), this
+            # just gives it the shared typed shape instead of a raw
+            # stdlib one.
+            raise ResolveError(
+                f"Could not find a SuiteOne tenant/event id in URL: {url}"
+            )
         if not event_id and not self._is_live_stub_url(url):
             # WO-285, 2026-09-12: a bare tenant management-listing root
             # (e.g. `lunaconm.suiteonemedia.com/`, `rushcoin.
@@ -227,7 +234,9 @@ class SuiteOneAssetFinder(AssetFinder):
             # fixed by this change. Only the confirmed `/web/live` shape
             # right below degrades cleanly; everything else still fails
             # loudly rather than silently guessing at a listing page.
-            raise ValueError(f"Could not find a SuiteOne tenant/event id in URL: {url}")
+            raise ResolveError(
+                f"Could not find a SuiteOne tenant/event id in URL: {url}"
+            )
 
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []

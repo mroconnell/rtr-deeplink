@@ -14,6 +14,7 @@ from .base import AssetFinder
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_text
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -295,7 +296,17 @@ class GranicusAssetFinder(AssetFinder):
                 ) as response:
                     if response.status >= 400:
                         raise aiohttp.ClientError(f"HTTP {response.status} for {url}")
-                    return await response.text(), str(response.url)
+                    # WO-938, 2026-09-21: a real `AgendaViewer.php`
+                    # response (Harrisonburg, VA, WO-134) raised an
+                    # unhandled `UnicodeDecodeError` out of the plain
+                    # `response.text()` call this used to make -- the
+                    # same shape `civicplus.py` (WO-285) and
+                    # `escribe.py` (WO-938) already fixed, both via
+                    # `url_guard.read_capped_text()`. Reused here rather
+                    # than a new adapter-local fallback, same reasoning
+                    # -- plus a free response-size cap this fetch had
+                    # none of before.
+                    return await read_capped_text(response), str(response.url)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
                 if attempt == max_retries - 1:

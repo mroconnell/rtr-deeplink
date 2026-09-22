@@ -207,7 +207,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Fond du Lac County, WI — decide an authoritative host pin for…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -263,7 +263,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] `wo191_access_ladder_sweep.py`'s…
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
   [NEEDS-AUDIT] A YouTube/Vimeo `channel=@handle` pin can never fix an…
-  [NEEDS-AUDIT] `escribe.py`'s `resolve()` raises the same raw…
   [LATER] WO-217's guess-pattern domain search has 489 of 513 candidate…
   [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
   [NEEDS-AUDIT] A per-video fallback pin wins over the registry…
@@ -302,7 +301,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
   [NEEDS-AUDIT] No adapter for a meeting recording pointing at a
   [NEEDS-AUDIT] `[EASY]` BoxCast has a real, working adapter
-  [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
+  [NEEDS-AUDIT] `[EASY]` `civicclerk.py`'s `resolve()` raises a raw…
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
   [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
@@ -359,7 +358,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (62)
+  Adapter & platform gaps  (60)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -368,8 +367,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
-    [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
-    [NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
+    [NEEDS-AUDIT] `suiteone.py`'s `resolve()` has no real event-listing
     [JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
@@ -397,7 +395,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
     [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
     [NEEDS-AUDIT] Aurora, CO's `aurora_tv` canary sample has failed twice…
     [NEEDS-AUDIT] A resolve that delegates to a generic video host…
-    [NEEDS-AUDIT] `granicus.py`'s `_fetch_page()` raises an unhandled…
     [NEEDS-AUDIT] `wo134_confirmed_hits_ingest.py`'s Granicus fallback…
     [NEEDS-AUDIT] `[EXAMPLE]` A newer CivicPlus product generation…
     [NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found…
@@ -2554,7 +2551,7 @@ of human step they need.
   - **History**: this WO's `BACKLOG_DONE.md` entry.
 
 - **[NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event id from a bare fragment-only SuiteOne URL (`https://floydcoin.suiteonemedia.com/#home`), so a real, name-and-state-confirmed SuiteOne tenant fails to resolve at all.**
-  - **Issue**: found live 2026-09-12 (WO-325), Floyd County, IN (`us:county:18043`). The confirmed candidate URL is the tenant's bare homepage with only a `#home` hash fragment, which SuiteOne's own client-side routing turns into the real event listing after a page render — but `suiteone.py`'s `resolve()` raised `ValueError: Could not find a SuiteOne tenant/event id in URL` before any fetch, since the fragment carries no id the adapter's URL parser recognizes.
+  - **Issue**: found live 2026-09-12 (WO-325), Floyd County, IN (`us:county:18043`). The confirmed candidate URL is the tenant's bare homepage with only a `#home` hash fragment, which SuiteOne's own client-side routing turns into the real event listing after a page render — but `suiteone.py`'s `resolve()` raises `ResolveError: Could not find a SuiteOne tenant/event id in URL` (a bare `ValueError` before WO-938, 2026-09-21 — same message, just a typed exception now) before any fetch, since the fragment carries no id the adapter's URL parser recognizes.
   - **Impact**: one real, confirmed SuiteOne tenant (and plausibly others reached the same way — a bare tenant homepage rather than a deep link) can't be resolved at all until this is fixed.
   - **Next action**: check whether SuiteOne's own site structure exposes a listing/event API at a fixed path off the tenant root (the way other vendor adapters in this repo derive a listing URL from just the tenant hostname) that `resolve()` could fall back to when the given URL carries no parseable id.
   - **Constraint**: verify the fix against `floydcoin.suiteonemedia.com` itself before trusting it on another SuiteOne tenant — this repo's "test against a real URL first" rule, and this is currently the only SuiteOne sample in hand for this specific bare-homepage shape.
@@ -2567,12 +2564,12 @@ of human step they need.
   - **Constraint**: this only applies when the literal no-YouTube-calls rule is in effect (it has been for this whole "neither pass" round) — don't build this as a permanent restriction on `resolve()` itself, which is expected to follow embedded video links in normal operation.
   - **History**: `rtr-business/research/wo323_methods_section.md`; `BACKLOG_DONE.md`'s WO-323 entry; `rtr-business/research/wo324_methods_section.md` for the fix WO-324 built.
 
-- **[JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()` blindly calls `response.text()` on any URL, so a `/document/{id}` link that's actually a PDF (or otherwise non-UTF-8) raises `UnicodeDecodeError` instead of being recognized as a document, not an agenda page.**
-  - **Issue**: found live 2026-09-12 (WO-323), resolving 4 real CivicWeb candidates whose best-scored URL was a direct `/document/{id}` link (Athabasca AB, Algonquin Highlands ON via its Haliburton County tenant, Bracebridge ON, Warwick ON) — each raised `UnicodeDecodeError: 'utf-8' codec can't decode byte ...` inside `_fetch_text()`, caught by the function's own broad `except Exception` (logged via `logger.warning(..., exc_info=True)`, non-fatal), then treated as "no jurisdiction text found" rather than "this is a document, not HTML."
-  - **Impact**: low today — the broad except already prevents a crash, and all 4 affected rows had no agenda evidence anyway once this fallback was recorded as `no-meeting-nor-video`, so the outcome the sweep applied is unaffected. But the warning is silent noise on every run that touches one of these URLs, and a future caller that actually needs the PDF's real content (agenda text extraction, say) would get nothing with no signal as to why.
-  - **Next action**: check `response.content_type` (or the first bytes, `%PDF-`) before calling `.text()`; return a distinct signal (e.g. `is_binary=True`) rather than `None`, so a caller can tell "fetched fine, it's just not text" apart from "the fetch failed."
-  - **Constraint**: don't widen this into a PDF-parsing feature — CivicWeb's own real per-item deep-linking data (`IndexPoints`) is a separate, already-documented gap in this file; this entry is only about the fetch/decode step misreporting what happened.
-  - **History**: `rtr-business/research/wo323_methods_section.md`; `BACKLOG_DONE.md`'s WO-323 entry.
+- **[JUST-DO-IT] `[EASY]` `app/platforms/civicweb.py`'s `_fetch_text()` has no way to tell a caller "fetched fine, it's just not text" apart from "the fetch failed."**
+  - **Issue**: found live 2026-09-12 (WO-323), resolving 4 real CivicWeb candidates whose best-scored URL was a direct `/document/{id}` link (Athabasca AB, Algonquin Highlands ON via its Haliburton County tenant, Bracebridge ON, Warwick ON) — each raised `UnicodeDecodeError: 'utf-8' codec can't decode byte ...` inside `_fetch_text()`'s plain `response.text()` call, caught by the function's own broad `except Exception` (logged via `logger.warning(..., exc_info=True)`, non-fatal), then treated as "no jurisdiction text found" rather than "this is a document, not HTML." WO-938 (2026-09-21) closed the decode-crash half by wiring this fetch through `url_guard.read_capped_text()` (the same shared decode-safety helper `civicplus.py`/`escribe.py`/`granicus.py` already use) — a PDF now decodes with `errors="replace"` instead of raising, so the warning noise this entry originally reported is gone. What's still open is the second half: `_fetch_text()` still returns a garbled-but-non-None string for a PDF rather than a distinct "this is binary, not HTML" signal.
+  - **Impact**: low today — no crash either way now, and all 4 affected rows had no agenda evidence anyway once this fallback was recorded as `no-meeting-nor-video`, so the outcome the sweep applied is unaffected. A future caller that actually needs to tell a document apart from a real agenda page (agenda text extraction, say) still can't.
+  - **Next action**: check `response.content_type` (or the first bytes, `%PDF-`) before calling `read_capped_text()`; return a distinct signal (e.g. `is_binary=True`) rather than a garbled string, so a caller can tell the two cases apart.
+  - **Constraint**: don't widen this into a PDF-parsing feature — CivicWeb's own real per-item deep-linking data (`IndexPoints`) is a separate, already-documented gap in this file; this entry is only about the fetch step's own return signal.
+  - **History**: `rtr-business/research/wo323_methods_section.md`; `BACKLOG_DONE.md`'s WO-323 and WO-938 entries.
 
 - **[JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County PA) is keyed correctly but its permalink slug still carries the government it was first keyed to (`oak-bluffs-ma-…`) — a misleading URL, not a mis-key.**
   - **Issue**: WO-316 (2026-09-12) filed this page as "really an Oak Bluffs, MA meeting" from its slug and title alone. Checked the same day against the video itself, independently, by both this session and Breadth (2026-09-12): Vimeo `1224013872`'s own oEmbed author is "Middletown Township" (`vimeo.com/middletowndelco`), the title is "September 2, 2026 Council Meeting", the live page displays "Middletown (township), PA", the row is `gov_id=us:cousub:4204549136` with `manual_override`, and Oak Bluffs, MA (`us:cousub:2500750390`) has no page in today's inventory and its own Vimeo pin is a different video (`1199438213`). This session's own hand-check went one step further and read the video's real transcript segments directly: a speaker gives her home address as "51 Oriole Avenue in Lima" (a real village inside Middletown Township) and references "the Delco Cruisers" ("Delco" is the common short name for Delaware County, PA) — direct spoken confirmation, not just channel/oEmbed metadata. WO-310's "already correct" call stands; WO-316's "new bug" paragraph in `ENUMERATION_METHODS.md` §324 is wrong on the key. The only Oak Bluffs trace is the frozen page slug, left over from the page's first (wrong) key — itself residue of the already-fixed WO-183 blank-`vimeo.com`-match bug, which `tenant_overrides.csv`'s own WO-183 row documents as having mis-attributed "Middletown township PA" to Oak Bluffs, MA.
@@ -2783,12 +2780,6 @@ of human step they need.
   - **Next action**: either (a) have `_find_or_create_page()`'s existing-page branch also refresh `video_channel` from a truthy payload value (cheap, no network call, same pattern as the WO-215 fix for `platform`), which would let a *future* re-ingest/re-resolve of an existing page pick up a channel pin it currently can't; or (b) give `scripts/backfill_gov_id.py` an opt-in "live channel lookup" pass (oEmbed, no download) for rows whose only candidate pin is channel-level and whose stored `video_channel` is `NULL`. (a) is cheaper and fixes the root cause; (b) is a narrower patch for the already-archived backlog. Check how many currently-archived pages have `video_channel IS NULL` and a `gov_id` starting `rtr:unknown:` on a `MULTI_GOV_HOSTS` host before picking a size for either fix.
   - **Constraint**: don't retroactively backfill `video_channel` by guessing from the stored `jurisdiction`/title text -- it has to come from a real platform lookup (oEmbed/yt-dlp) or a fresh resolve, per this repo's "don't claim a data path works without a positive example" rule.
   - **History**: found by WO-221's Part C dry run, 2026-09-11 -- see `BACKLOG_DONE.md`'s WO-221 entry.
-- **[NEEDS-AUDIT] `escribe.py`'s `resolve()` raises the same raw `UnicodeDecodeError` shape as the CivicPlus bug above, on at least one real tenant.**
-  - **Issue:** WO-225 (2026-09-11) hit `RowError: escribe: resolve raised: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte` resolving Ladysmith, BC's eScribe tenant — the identical byte position and byte value as the CivicPlus bug in the entry directly above, strongly suggesting the same root cause (a mis-decoded smart quote or em-dash read as strict UTF-8) exists in more than one adapter, not just CivicPlus's.
-  - **Impact:** the whole candidate fails as a hard error rather than being skipped/retried on the next hit — Ladysmith's own government was never resolved this run; reclassified to `no-meeting-nor-video` in `jurisdiction_coverage.csv` for lack of a better label, not because nothing was actually there.
-  - **Next action:** reproduce against Ladysmith's live eScribe tenant, find which response `escribe.py` decodes as strict UTF-8, and add the same encoding-fallback handling as the CivicPlus fix once that lands — given the identical byte signature, consider whether a shared decode helper (used by both adapters) is the better fix than patching each adapter separately.
-  - **Constraint:** don't swallow the error silently — log it so a future sweep can tell "genuinely no content" apart from "this tenant's encoding broke the adapter."
-  - **History:** found live, `BACKLOG_DONE.md` WO-225, 2026-09-11.
 - **[LATER] WO-217's guess-pattern domain search has 489 of 513 candidate municipalities left unattempted, and the 24 tried so far found nothing.**
   - **Issue**: WO-217 (2026-09-11) checked all 601 municipalities of 5,000+ with no second domain on file against four listed sources (uscityurl, Wikidata, CivicMirror, hub host) — fully done. 513 found nothing there; guessing up to 8 web addresses per government (`cityofname.gov` and similar) is the last resort, and only 24 of those 513 were tried before the WO stopped on purpose (each guess is its own slow request — up to 8 per government when none hit).
   - **Impact**: none yet found among the 24 tried, all among the largest remaining cities (Philadelphia, Tuscaloosa, Santa Fe, Lynn, Newton, Cranston, Westland...) — weak evidence the guess step is worth much for well-established cities, though smaller, less-documented towns further down the list (population-descending order) haven't been tried and may do better.
@@ -3771,33 +3762,12 @@ of human step they need.
     (`BACKLOG_DONE.md`); the wiring gap found by WO-197 (2026-09-11,
     `BACKLOG_DONE.md`).
 
-- **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
-  `ValueError` instead of a clean "not a specific video" message.**
-  - **Issue**: `YouTubeAssetFinder`'s `resolve_video_id()` (`app/
-    platforms/youtube.py:78`) raises `ValueError(f"Could not find a
-    YouTube video ID in {url}")` for a URL shaped like `/channel/<id>/
-    live` or a bare `/channel/<id>` with no parseable video ID. Confirmed
-    live 2026-09-01 against `https://www.youtube.com/channel/
-    UCWnFQlV4Fi0Pv5aqZy_fcPA/live` (Borough of Bernardsville, NJ) during
-    the §49 Phase 1 resolve sweep; a second, related shape (`Could not
-    find an event ID in URL path: /`) hit repeatedly on CivicClerk/
-    Legistar-style URLs missing their event id, same underlying pattern.
-  - **Impact**: not a production crash — `/api/resolve`'s top-level
-    `except Exception` (`app/main.py:677`) already turns this into a
-    `{"error": "resolve_failed", "message": "Could not find a YouTube
-    video ID in ..."}` response rather than a 500. The gap is message
-    quality: the surfaced text is a raw internal exception string, not
-    something a reader (or this project's own resolve-sweep tooling)
-    can tell apart from a genuine unexpected failure without string-
-    matching on "Could not find".
-  - **Next action**: decide whether this is worth a dedicated exception
-    type (e.g. `NotASingleVideoError`) that `/api/resolve` renders as a
-    distinct, friendlier `error` code — same shape as `CalendarPageError`
-    already gets — versus leaving it as-is since the generic
-    `resolve_failed` path already prevents a hard crash either way.
-  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
-    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
-    record of it).
+- **[NEEDS-AUDIT] `[EASY]` `civicclerk.py`'s `resolve()` raises a raw `ValueError` for a URL with no `/event/{id}` path segment, the same shape WO-938 just fixed for YouTube.**
+  - **Issue**: `CivicClerkAssetFinder.resolve()` (`app/platforms/civicclerk.py:165`) raises `ValueError(f"Could not find an event ID in URL path: {parsed.path}")` for a bare tenant/listing URL with no `/event/{id}` segment — noted as a "second, related shape" while investigating the now-closed "A bare YouTube channel/live URL raises a raw ValueError" entry (WO-938, 2026-09-21 fixed the YouTube half with a typed `NotASingleVideoError(ResolveError)`), but never itself tracked as its own item until now.
+  - **Impact**: same as the YouTube case was before its fix — not a production crash (`/api/resolve`'s top-level `except Exception` already degrades this to a `resolve_failed` response), just a raw internal exception string instead of a typed, nameable failure.
+  - **Next action**: raise `app/platforms/base.py`'s shared `ResolveError` (or a small dedicated subclass, same pattern as `youtube.py`'s `NotASingleVideoError`) instead of the bare `ValueError`. Check for any `except ValueError` caller depending on the raw type first — `youtube.py`'s equivalent fix needed a `ResolveError`+`ValueError` multiple-inheritance shim to keep `scripts/wo134_confirmed_hits_ingest.py`'s own `except ValueError` branch working; confirm whether anything similar depends on CivicClerk's raw type before swapping it.
+  - **Constraint**: small, mechanical — same shape already proven safe for CivicPlus/eScribe/SuiteOne/Granicus/YouTube in WO-938.
+  - **History**: found as a side note while investigating the YouTube entry, 2026-09-01; filed as its own entry 2026-09-21 (WO-938) rather than left buried in that entry's text.
 
 - **[NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   item per page.**
@@ -5074,16 +5044,9 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: the check needs BOTH the pre-resolve landing-page text and a post-resolve check of the adapter's own jurisdiction/meeting_body/title — a JS-rendered SPA portal shell (confirmed on CivicClerk) carries no identifying text server-side, so the landing-page check alone misses it, and a tenant-seeded `gov_id` makes the resolved jurisdiction field circular for a candidate with no per-meeting government signal of its own (the title is the only independent signal left in that case).
   - **History**: WO-142 (`ENUMERATION_METHODS.md` §182, 2026-09-10) found 4 of these in a 29-row sample of mixed population and recommended checking `domain` against the resolved government. WO-145 (`BACKLOG_DONE.md`, 2026-09-10) confirmed the rate is markedly worse in the under-5,000-population tail and built + verified the reference fix above.
 
-- **[JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path) resolves "successfully" with zero content instead of finding a real meeting — confirmed on ~29 of 43 WO-128 candidates.**
-  - **Issue**: `escribe.py`'s `resolve()` fetches whatever URL it's given and never raises `CalendarPageError` for a listing/root page the way `civicplus.py`/`municode_meetings.py`/`vimeo.py` do, so `nationwide_*_ingest.py`'s `resolve_seed()` has no candidate list to pick from — it just returns an empty `ResolvedMeeting` (no agenda items, no video, no metadata), logged as `"resolved but no transcript/agenda/video"`. Real examples: `pub-southdundas.escribemeetings.com`, `pub-hawkesbury.escribemeetings.com`, `pub-smithsfalls.escribemeetings.com` (all real Ontario municipalities whose only known seed is the bare tenant host).
-  - **Impact**: any candidate list whose eScribe lead is a tenant host rather than a specific `Meeting.aspx?Id=...` URL — jurisdiction_coverage.csv's own `domain` column holds the bare tenant host for many Canadian eScribe governments — silently reads as "no content" instead of "never actually checked a real meeting."
-  - **Next action**: `scripts/adhoc_cdx_escribe_pipeline.py` already solved this for its own tenant-list input via `discover_candidate_ids()` (`POST {domain}/MeetingsCalendarView.aspx/GetCalendarMeetings`, most-recent-first, `HasVideo`-only). `scripts/wo128_known_platform_sweep.py` reuses that function directly for its own bare-tenant-root case (`_discover_escribe_meeting()`) — port the same pattern into `nationwide_2404_ingest.py`'s (or its next copy's) `locate_platform_url()`/`resolve_seed()`, the way `civicclerk_latest_event_url()` already handles the analogous bare-tenant-link case for CivicClerk.
-  - **Constraint**: `GetCalendarMeetings` is a real but undocumented tenant API — keep the same 120-day lookback and polite delay `adhoc_cdx_escribe_pipeline.py` already uses.
-  - **History**: found live 2026-09-09, WO-128 (known-platform sweep); worked around locally in `scripts/wo128_known_platform_sweep.py` rather than fixed at the shared-helper level, since `nationwide_2404_ingest.py` was mid-run against production the same day (same "don't change this mid-run" constraint as the agenda-only-ingest entry above).
-
-- **[NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
-  on a bare tenant management-listing root instead of finding a real
-  event — confirmed live on 3 counties in one run.**
+- **[NEEDS-AUDIT] `suiteone.py`'s `resolve()` has no real event-listing
+  lookup for a bare tenant management-listing root — confirmed live on
+  3 counties in one run.**
   - **Issue**: `SuiteOneAssetFinder.resolve()` requires a URL that
     already carries an `event`/`id` query parameter (`_extract_ids()`);
     given a bare tenant management root (`https://
@@ -5091,14 +5054,16 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     rushcoin.suiteonemedia.com/?embed=1`, `https://
     lincolnconm.suiteonemedia.com/` -- each a real, large "Meeting
     Management" listing page, 200-680KB, confirmed live 2026-09-12) it
-    raises `ValueError("Could not find a SuiteOne tenant/event id in
-    URL: ...")`, uncaught by `wo134_confirmed_hits_ingest.py`'s
-    `process_row()`, which surfaces as a hard `RowError` rather than a
-    content-classified skip. Same shape as this section's own eScribe
-    bare-tenant-root entry above and the Granicus bare-homepage-fallback
-    entry a few sections down — a third adapter with the identical
-    "given a listing/root page instead of a specific meeting URL, crash
-    instead of degrading" gap.
+    has nothing to resolve. WO-938 (2026-09-21) replaced the raw
+    `ValueError` this used to raise with the shared `ResolveError`
+    (`app/platforms/base.py`) — every existing caller already treated
+    an unrecognized exception the same way, so this changed nothing
+    about behavior, only the message/type — but did NOT build the
+    listing lookup itself; that's this entry's real remaining scope.
+    Same shape as this section's own eScribe bare-tenant-root entry
+    (closed by WO-938 — eScribe's own tenant calendar API made this
+    practical there) and the Granicus bare-homepage-fallback entry a
+    few sections down.
   - **Impact**: confirmed live 2026-09-10, WO-149's county sweep: Luna
     County NM, Rush County IN, and (WO-187, 2026-09-11) Lincoln County,
     NM all counted as `error` (not `skipped`) purely because their only
@@ -5111,15 +5076,19 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     already produces), is fixed as of WO-285 -- `resolve()` now degrades
     to an honest no-video result for that one specific shape instead of
     raising (`_is_live_stub_url()`). The bare management-listing root
-    case here is still open; WO-285 deliberately did not widen into it,
+    case here is still open; neither WO-285 nor WO-938 widened into it,
     per this entry's own "test against a real URL first" rule -- see
-    that WO's own BACKLOG_DONE.md entry.
+    those WOs' own `BACKLOG_DONE.md` entries.
   - **Next action**: give `SuiteOneAssetFinder` (or its caller) a real
     event-listing lookup for a bare tenant management root, the way
-    `civicclerk_latest_event_url()`/`_discover_escribe_meeting()` already
-    do for their platforms — module docstring doesn't document a listing
-    endpoint yet, so check for one on a live tenant (`lunaconm.
-    suiteonemedia.com`) before assuming none exists.
+    `civicclerk_latest_event_url()`/eScribe's own
+    `_discover_candidate_ids()` (`app/platforms/escribe.py`, WO-938)
+    already do for their platforms — module docstring doesn't document
+    a listing endpoint yet, so check for one on a live tenant
+    (`lunaconm.suiteonemedia.com`) before assuming none exists. If one
+    is found, `app/platforms/base.py`'s shared `resolve_newest_
+    candidate()` helper (built for eScribe's own case) is ready to
+    reuse for the try-each-candidate walk.
   - **Constraint**: only 3 tenants confirmed so far, all from one sweep
     — a real second example before generalizing further, per this
     repo's "test against a real URL first" rule.
@@ -5127,7 +5096,9 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-09-12 (`BACKLOG_DONE.md`) fixed the separate `/web/live` shape
     named here, and corrected that shape's own government from "Floyd
     County, GA" (WO-258's mistaken attribution) to the real Floyd
-    County, IN this entry already names.
+    County, IN this entry already names; WO-938, 2026-09-21
+    (`BACKLOG_DONE.md`) replaced the raw `ValueError` with a typed
+    `ResolveError`, no functional change.
 
 - **[JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title ("08/25/26 Heritage Commission") come back with `meeting_date` null.**
   - **Issue**: Manchester, NH (`cloud.castus.tv/vod/manchestertv`, confirmed live 2026-09-14 by a hand spot-check, real playable HLS) resolves cleanly through `app/platforms/castus.py`, but every video title is shaped `MM/DD/YY {body name}` and the adapter does not parse a date out of the title, so `meeting_date` is null on a page whose date is in plain sight.
@@ -5648,13 +5619,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: two independent fixes, don't conflate them. (1) Either broaden `_jurisdiction_from_subdomain()` to also recognize a non-`civicplus.com` domain's own city/state (e.g. from the candidate's known `city_name`/`state_or_province`, threaded through as a parameter) or have `resolve_civicplus_seed()` treat "not a `{state}-name.civicplus.com` subdomain" as a signal to trust the caller's own known jurisdiction over whatever the delegated platform guesses, rather than silently declining to override. (2) In the next `nationwide_NNNN_ingest.py` copy, thread the candidate row's own `city_name`/`state_or_province` through to `process_row()`'s ingest payload as a jurisdiction hint/override for direct video-host resolves (youtube/vimeo), at minimum when the platform's own guess disagrees with (or can't validate) the known value — the CSV already has ground truth for every row in this batch shape, unlike a cold resolve with no other signal.
   - **Constraint**: the 2 known rows are already fixed by hand — don't re-patch them. The rest of this bullet is stale as of WO-210 (2026-09-11) and kept only for history: `POST /internal/jurisdiction/override` no longer emits a blank-`match` `tenant_override_rules` line for a `MULTI_GOV_HOSTS` host (`vimeo.com`/`player.vimeo.com` included) at all — it now drafts one rule per real per-video match found in the batch, or a `tenant_override_notes` entry when it can't derive one, never a whole-host catch-all. Before building the systemic fix, consider whether a full sweep of this batch's other ~36 ingested + ~396 queued rows (via the Archive API, not slug text) for a similar mismatch is worth doing first, to size the real blast radius rather than guessing from 2 examples.
   - **History**: found 2026-09-09 spot-checking live pages from the 2,404-candidate platform-detection batch. Originally filed to this section, then swept into `BACKLOG_DONE.md` by mistake along with ~88 other unrelated open entries in PR #807's squashed "move the shadowed-county resolver bug to done" commit (which deleted this whole section's content from `BACKLOG.md` instead of just its own one entry) — restored here 2026-09-10 after noticing the whole section had vanished; the manual page fix is new, the systemic fix is not yet done. See this file's own note below about the other ~88 entries still needing the same recovery.
-
-- **[NEEDS-AUDIT] `granicus.py`'s `_fetch_page()` raises an unhandled `UnicodeDecodeError` on a real `AgendaViewer.php` response, even though the same clip resolves fine via `MediaPlayer.php`.**
-  - **Issue**: confirmed live 2026-09-09 building WO-134's confirmed-hits ingest — `GranicusAssetFinder.resolve("https://harrisonburg-va.granicus.com/AgendaViewer.php?view_id=2&clip_id=1369")` raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 11` from `_fetch_page()`'s `await response.text()` call (`app/platforms/granicus.py:236`), which has no `errors=` argument. `MediaPlayer.php?view_id=2&clip_id=1369` — same tenant, same clip — resolves cleanly with a real `video_url`. Every candidate row on a Granicus `ViewPublisher.php` listing page links to `AgendaViewer.php`, not `MediaPlayer.php`, so anything that scrapes that listing (as WO-134's own `granicus_candidate_rows()` now does) hits this by default unless it deliberately swaps the URL over.
-  - **Impact**: any code path that resolves a `AgendaViewer.php` URL directly crashes instead of degrading — worked around in `scripts/wo134_confirmed_hits_ingest.py` by rewriting the link to `MediaPlayer.php` before resolving, but `_fetch_page()` itself still has the bug for any other caller (a reader pasting an `AgendaViewer.php` link directly, for instance).
-  - **Next action**: add `errors="replace"` to `_fetch_page()`'s `response.text()` call (matching the pattern other adapters already use for exactly this reason), and confirm with a real `AgendaViewer.php` fixture the resulting page still parses into something sane rather than replacing meaningful content.
-  - **Constraint**: only confirmed on one tenant/clip so far (Harrisonburg VA) — worth a second real example before assuming the byte is always in the same spot/cause.
-  - **History**: WO-134, 2026-09-09.
 
 - **[NEEDS-AUDIT] `wo134_confirmed_hits_ingest.py`'s Granicus fallback treats a bot-blocked homepage fetch as a hard `error` instead of a content-classified `skipped` — 22 real, confirmed cases in one batch, all the same root cause.**
   - **Issue**: when a candidate row's `hit_source_urls[granicus]` is just the government's own bare homepage (not a real `*.granicus.com` URL or `ViewPublisher.php`/`AgendaViewer.php` path — a WO-133 headless-scan artifact, not a granicus.py bug), `granicus_locate_listing()` guesses `ViewPublisher.php?view_id=1..5` on the row's domain, and when that guess also comes up empty it falls back to fetching the bare homepage URL directly through `GranicusAssetFinder.resolve()`. 21 of 22 confirmed cases got a flat HTTP 403 back (one HTTP 520, one `SSLCertVerificationError`) — the same Akamai/WAF-style bot-blocking this file already documents elsewhere for plain-homepage fetches. The adapter's exception propagates all the way up as `RowError` (`"granicus: resolve raised: HTTP 403 for https://www.columbus.gov/Home"`), not a `RowSkip`.

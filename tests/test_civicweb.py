@@ -4,11 +4,14 @@ Real API shapes confirmed live 2026-08-12 against a real Dallas County, TX
 meeting (dallascounty.civicweb.net) -- see BACKLOG.md/BACKLOG_DONE.md.
 """
 
+import aiohttp
+
 from app.platforms.base import detect_platform, register
 from app.platforms.civicweb import CivicWebAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
+from conftest import load_fixture_bytes
 
 MEETING_URL = (
     "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
@@ -163,6 +166,30 @@ async def test_resolve_degrades_honestly_when_videolink_fetch_fails(caplog):
 
     assert result.video_url is None
     assert any("JSON fetch got HTTP 404" in r.message for r in caplog.records)
+
+
+async def test_fetch_text_non_utf8_response_degrades_instead_of_raising():
+    # WO-323 (2026-09-12): a real /document/{id} link that's actually a
+    # PDF (or otherwise non-UTF-8) raised UnicodeDecodeError straight
+    # out of the plain `response.text()` call this used to make -- the
+    # broad `except Exception` around it already kept this from
+    # crashing, but the response was silently discarded as None (logged
+    # as a warning) instead of decoding to real, findable text. WO-938
+    # (2026-09-21) reuses url_guard.read_capped_text(), the same shared
+    # decode-safety helper civicplus.py/escribe.py/granicus.py already
+    # use. This is a synthetic test reusing the SAME real non-UTF8 bytes
+    # tests/test_civicplus.py's own decode-safety test uses (a real PDF
+    # fetched live 2026-09-12, reproducing the identical recorded error
+    # text) rather than inventing new ones.
+    url = "https://achdidaho.civicweb.net/document/36574/"
+    pdf_bytes = load_fixture_bytes("civicplus", "richmondhill_documentcenter_5032.bin")
+
+    async with aiohttp.ClientSession() as session:
+        with mock_session({url: FakeResponse(status=200, raw=pdf_bytes, url=url)}):
+            text = await CivicWebAssetFinder._fetch_text(session, url)
+
+    assert isinstance(text, str)
+    assert "�" in text
 
 
 def test_extract_jurisdiction_fills_in_state_for_an_unambiguous_county():
