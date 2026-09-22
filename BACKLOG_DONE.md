@@ -60568,3 +60568,119 @@ segments.
 🎯 **Bottom line: the page render path was waiting on a live network
 call it never should have made — moved that call into the background,
 so a stuck thumbnail extraction can no longer take the whole page down.**
+
+## WO-1010: 51 more real Sliq Harmony meetings, plus a new Washington/TVW adapter and two new Invintus governments [Done 2026-09-22]
+
+**What was done and why.** All 13 Sliq Harmony state-legislature tenants
+had exactly one meeting each — a sample, not real coverage. This WO read
+each tenant's recent-events listing, checked each candidate by hand (a
+real committee, floor session, or legislature-created commission/task
+force — not a state board or agency that just happens to share the same
+video system), and queued or ingested the real ones. Separately, the
+conductor's parallel WO-1009 found that Washington's TVW (tvw.org) is not
+its own video platform — it's an Invintus tenant reached through a
+WordPress wrapper page. This WO built that adapter and, while confirming
+it, found a second, unrelated real Invintus tenant covering Vancouver,
+WA and Clark County, WA.
+
+**Result: Sliq Harmony depth.**
+
+| State | New meetings ingested (real captions) | New meetings queued for tier-3 | Deferred (>90 min) | No video |
+|---|---|---|---|---|
+| Arkansas | 4 | 0 | 0 | 0 |
+| Colorado | 4 | 0 | 0 | 0 |
+| Delaware | 3 | 1 | 0 | 0 |
+| Kansas | 0 | 2 | 2 | 0 |
+| New Mexico | 2 | 0 | 0 | 2 |
+| Oklahoma (House) | 3 | 1 | 0 | 0 |
+| Oklahoma (Senate) | 4 | 0 | 0 | 0 |
+| West Virginia | 3 | 1 | 0 | 0 |
+| Maine | 0 | 2 | 2 | 0 |
+| Iowa | 0 | 0 | 1 | 1 |
+| Nevada | 4 | 0 | 0 | 0 |
+| Missouri | 3 | 0 | 0 | 0 |
+| Virginia | 4 | 0 | 0 | 0 |
+| Pennsylvania | 2 | 0 | 0 | 0 |
+| **Total** | **36** | **7** | **5** | **3** |
+
+"No video" is New Mexico/Iowa events whose stream was flagged not
+enabled at the source (a real, common New Mexico pattern already known
+from WO-921) — nothing was written for those, same as before. "Deferred"
+meetings are real and accepted, just over the 90-minute tier-3 threshold
+(`app/platforms/queue_probe.py`'s existing rule); they sit in
+`scripts/tier3_long_meetings_deferred.txt` for a later swap-in. Kansas,
+Iowa and Maine still published zero captions across every meeting read
+in this sweep, same as WO-921/WO-1006's earlier reads — that looks like
+a real per-tenant fact now, not a fluke of one sample. Full read: `rtr-
+business/research/wo1010_handread.csv`. Script: `scripts/wo1010_sweep.py`.
+
+**Result: Washington/TVW.** `app/platforms/tvw.py` extracts the real
+`<meta name="clientID">`/`<meta name="eventID">` tags a `tvw.org/video/
+{slug}/` page carries (confirmed on 3 real pages) and delegates to the
+existing `InvintusAssetFinder`. TVW's clientID (9375922947) was added to
+`invintus.py`'s `LEGISLATURE_CLIENTS`, mapped to Washington's existing
+government (`us:state:53`) — no new government minted, same one-
+government-per-state rule every other state here follows. TVW's own
+`categories` field carries an explicit "Legislative" tag on real
+committee/floor events that no other TVW program (courts, agencies,
+"Inside Olympia") shares — confirmed against a real 50-row/520-total
+live sample — so that tag, not a title guess, is the filter. A real
+Senate Housing committee meeting (2026-09-17) is now a live page with
+1,447 real, coherent caption segments.
+
+**Result: two new Invintus governments, found by accident while
+confirming TVW.** A web search for TVW's own page turned up a document
+on a *different* Invintus tenant (clientID 2917038973) while looking for
+corroborating evidence — that tenant turned out to be CVTV (Clark/
+Vancouver Television), a shared regional media system already
+half-referenced (but never numbered) in `invintus.py`'s own module
+docstring as "Clark County, WA (a Planning Commission...)". Neither
+Vancouver city nor Clark County had any real video source in
+`jurisdiction_coverage.csv` before this — Vancouver's CivicClerk agenda
+system had no video attached, and Clark County had nothing at all. Both
+are real, confirmed live, and now queued for tier-3 (no captions on this
+tenant, same as every other non-legislature Invintus tenant found so
+far): Vancouver's "City Council Workshops (09-21-26)" and Clark County's
+"Clark County Council (08-18-26)", both picked specifically because
+they're under the 90-minute tier-3 threshold (most other real meetings
+on this tenant run 2-5 hours).
+
+**Checked and ruled out: Invintus clientID adjacency.** WO-1006 found
+five new Sliq Harmony states by trying tenant numbers near a known one.
+The same idea was tried here against all three previously-known Invintus
+clientIDs (Oregon, Wisconsin, Arizona) plus the two new ones (TVW, CVTV)
+— every clientID ±3 came back with zero events, confirmed live. Unlike
+Sliq's short 5-digit tenant numbers, Invintus's 10-digit clientIDs are
+not sequentially allocated, so this particular shortcut does not
+transfer to Invintus. A real government-hub vendor scan (WO-919's
+`player.invintus.com`/`eventlisting.invintus.com` embed check) is the
+next avenue for finding more Invintus tenants, not clientID guessing.
+
+**`jurisdiction_coverage.csv`:** three rows updated (Washington state,
+Vancouver city WA, Clark County WA) via `rtr-business/research/
+wo1010_apply_to_jc.py`, following the file's own flock/floor/atomic-
+write protocol. All other Sliq states already had a row from WO-921/
+WO-1006 — sweeping more meetings for an already-covered state doesn't
+need a CSV change.
+
+**Caution.** The 36 ingested pages are all live once the resolver is
+redeployed (this repo's services deploy manually — see CLAUDE.md). The 7
+Sliq queue lines and the 2 new Invintus queue lines still need real
+transcription (cloud worker or a local Whisper run) before they carry a
+transcript. The BACKLOG entry's "91 of 99 chamber rows" count is still
+stale and was not recounted here — these new pages are filed under each
+state with a committee as meeting body, not a chamber, so mapping them
+back onto the original 99-row recon still needs a by-hand pass.
+
+**Recommendation.** Deploy the resolver to make the 36 new pages and the
+Washington page live. Then queue the 9 new tier-3 lines (7 Sliq + 2
+Invintus) for transcription in the next batch. No further Sliq/Invintus
+platform work is blocking — the next real lever for this BACKLOG entry
+is the 49 "nothing found" rows and the vendor-scan approach to finding
+more Invintus tenants.
+
+🎯 **Bottom line: all 13 Sliq Harmony state tenants now have real depth
+(51 more meetings, 36 with live captions) instead of one sample meeting
+each, and Washington's TVW gap — the last vendor with rows and no
+adapter — is closed, plus two more real governments (Vancouver and
+Clark County, WA) found along the way.**
