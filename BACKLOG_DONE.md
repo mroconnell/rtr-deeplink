@@ -1,5 +1,60 @@
 # Backlog — done
 
+## WO-1012: fixed native SuiteOne queue probes misrouting into a second, doomed resolve hop [Done 2026-09-22]
+
+**Issue.** `app/platforms/queue_probe.py`'s dispatch routed into
+`_probe_suiteone()` whenever `resolved_platform == "suiteone"` OR
+`video_url`'s host contained `suiteonemedia.com`. The first half of that
+OR was only ever right for CivicClerk's delegation to a SuiteOne player
+page (where `resolved_platform` stays `"civicclerk"` and the host check
+alone catches it — WO-285). For a NATIVE `suiteone.py` resolve,
+`resolved_platform` really is `"suiteone"`, but `video_url` is already
+the final direct-file S3 URL (`suiteone.py`'s own `resolve()` always
+returns that, never a page). Routing an S3 URL back into
+`_probe_suiteone()` called `SuiteOneAssetFinder().resolve()` a SECOND
+time on it, which can't parse a tenant/event id out of an S3 host and
+always raised `ResolveError` — misprobing every real native SuiteOne
+queue candidate as `reject-dead`. Confirmed live 2026-09-22 probing
+`https://tuscaloosaal.suiteonemedia.com/event/?id=11029` (a real,
+queueable 78-minute meeting) exactly this way; worked around by hand at
+the time with a direct `_probe_direct_file()` call, which correctly
+returned `verdict=accept, duration=4696s`. Likely the first native
+(non-delegated) SuiteOne tier-3 probe ever attempted — every prior
+SuiteOne queue candidate went through CivicClerk delegation, which is
+why this went uncaught since WO-285 (2026-09-12).
+
+**Fix.** Dispatch now checks the shape of `video_url` instead of
+`resolved_platform`: only route into `_probe_suiteone()` (the second
+resolve hop) when `video_url`'s host is `suiteonemedia.com` AND it
+isn't already a resolved direct-file URL (checked against the same
+`_DIRECT_FILE_EXTENSIONS` the direct-file branch below it uses). A
+native resolve's already-direct S3 `.mp4` now falls straight through to
+the existing `_DIRECT_FILE_EXTENSIONS` check and `_probe_direct_file()`,
+same as any other direct-file platform.
+
+**Verification.** `tests/test_queue_probe.py::
+test_probe_queue_entry_native_suiteone_skips_the_second_resolve_hop`
+(new) monkeypatches `_probe_suiteone` to fail the test if called, and
+confirms the native S3-url case reaches `_probe_direct_file` and
+accepts with the real 4696s duration. The existing CivicClerk-delegation
+regression test (`test_probe_queue_entry_dispatches_suiteone_for_a_
+civicclerk_delegation`, WO-285) still passes unchanged — the host check
+alone still catches that shape. All five CI gates run locally: `ruff
+check`, `ruff format --check`, `python -m pytest` (full suite, 5010
+passed — the same two pre-existing failures in
+`test_repair_wrong_pages.py`/`test_wrong_page_screen.py` also flagged in
+WO-1004's entry above, confirmed unrelated by isolating this change with
+a tagged `git stash` and re-running against the clean tree), `alembic
+check` for both `app/` and `archive/` (no schema change, "No new
+upgrade operations detected"), `BACKLOG_DONE.md` heading-loss check.
+
+**Constraint.** Only the dispatch condition changed — `_probe_suiteone`
+and `_probe_direct_file` themselves are untouched.
+
+**History.** WO-285 (2026-09-12, the original CivicClerk-delegation
+fix and its own still-narrower `ResolveError`-for-unparseable-URL
+constraint, WO-938 2026-09-21).
+
 ## WO-1004: built the domain-health check tool — reuses the passive-discovery pipeline's own fetch/identity-check machinery, not yet run against the real registry [Done 2026-09-22]
 
 **What was built.** `scripts/wo1004_domain_health_check.py` — a thin

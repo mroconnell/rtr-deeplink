@@ -1101,9 +1101,24 @@ async def probe_queue_entry(
     # player page (`.../web/Player.aspx?id=...`), so `video_url` carries
     # a suiteonemedia.com host even though `resolved_platform` is
     # "civicclerk", not "suiteone".
-    if (
-        resolved_platform == "suiteone"
-        or "suiteonemedia.com" in urlparse(video_url or "").netloc.lower()
+    #
+    # WO-1012 (2026-09-22): dispatch used to also trigger on
+    # `resolved_platform == "suiteone"` alone -- right for the delegation
+    # case above, wrong for a NATIVE suiteone.py resolve, whose own
+    # `video_url` is already the final direct-file S3 URL (see
+    # suiteone.py's own resolve() / module docstring), not a
+    # suiteonemedia.com page needing a second hop. Routing that S3 URL
+    # back into `_probe_suiteone()` called `SuiteOneAssetFinder().resolve()`
+    # a SECOND time on it, which can't parse a tenant/event id out of an
+    # S3 host and always raised -- misprobing every real native SuiteOne
+    # meeting as reject-dead. Confirmed live 2026-09-22 (Tuscaloosa, AL).
+    # The second hop is only needed when `video_url` itself still IS a
+    # suiteonemedia.com page, so dispatch on that shape directly instead:
+    # a suiteonemedia.com host that isn't already a resolved direct-file
+    # URL.
+    suiteone_video = urlparse(video_url or "")
+    if "suiteonemedia.com" in suiteone_video.netloc.lower() and not (
+        suiteone_video.path.lower().endswith(_DIRECT_FILE_EXTENSIONS)
     ):
         return await _probe_suiteone(url, video_url, source_page_url, start)
 

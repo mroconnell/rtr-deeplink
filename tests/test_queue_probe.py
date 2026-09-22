@@ -1191,6 +1191,54 @@ async def test_probe_suiteone_no_video_yet_is_reject_dead():
     assert "no playable video" in result.reason
 
 
+async def test_probe_queue_entry_native_suiteone_skips_the_second_resolve_hop(
+    monkeypatch,
+):
+    # WO-1012 (2026-09-22): a NATIVE suiteone.py resolve (not a CivicClerk
+    # delegation) already returns the final direct-file S3 URL in
+    # `video_url` -- see suiteone.py's own resolve(). The dispatch used to
+    # route `resolved_platform == "suiteone"` into `_probe_suiteone()`
+    # unconditionally, which called `SuiteOneAssetFinder().resolve()` a
+    # SECOND time on that S3 url and always raised ("Could not find a
+    # SuiteOne tenant/event id in URL"), since an S3 host has no
+    # tenant/event id to parse. Confirmed live 2026-09-22 probing
+    # https://tuscaloosaal.suiteonemedia.com/event/?id=11029 (a real
+    # 78-minute meeting) this exact way. The fix dispatches on whether
+    # `video_url` is STILL a suiteonemedia.com page, not on
+    # `resolved_platform` -- so a native resolve's already-direct S3 file
+    # must go straight to `_probe_direct_file()`, never back through
+    # `_probe_suiteone()`.
+    meeting_url = "https://tuscaloosaal.suiteonemedia.com/event/?id=11029"
+    media_url = "https://s3.amazonaws.com/suiteone.tuscaloosaal.videofiles/abc123.mp4"
+
+    async def _fail_if_called(*args, **kwargs):
+        raise AssertionError(
+            "native SuiteOne resolve must not re-enter _probe_suiteone()"
+        )
+
+    monkeypatch.setattr(queue_probe, "_probe_suiteone", _fail_if_called)
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 4696.0
+
+    with mock.patch.object(media_probe, "probe_duration", _fake_probe_duration):
+        with _mock_head(
+            {
+                media_url: FakeResponse(
+                    status=200, headers={"Content-Length": "500000000"}
+                )
+            }
+        ):
+            result = await probe_queue_entry(
+                meeting_url, video_url=media_url, platform="suiteone"
+            )
+
+    assert result.verdict == "accept"
+    assert result.platform == "suiteone"
+    assert result.duration_seconds == 4696.0
+
+
 # --- WO-224: the shared finish step ----------------------------------------
 #
 # The bug: every wo1XX_finish_tier3*.py script's own "already probed,
