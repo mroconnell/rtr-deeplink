@@ -78,6 +78,71 @@ def _stderr_tail(stderr: bytes, limit: int) -> str:
     return "\n".join(lines)[-limit:].strip()
 
 
+# WO-936: a real HTTP 5xx from the remote server is a genuinely different
+# failure than our own _SUBPROCESS_TIMEOUT_SECONDS firing -- one means
+# the origin actually answered (if only to say "I'm broken"), the other
+# means nothing ever came back at all. Confirmed real and not just a
+# hypothetical distinction: BACKLOG.md's Granicus chunklist.m3u8 entry
+# (ffprobe -v verbose, 2026-08-21, Fountain Valley CA clip 607) found
+# Granicus's own CloudFront edge hangs 4-6 minutes before returning a
+# real 504 -- well past this module's own 120s timeout, so in production
+# that specific case always looks like an ordinary timeout first, and the
+# 504 that would eventually have arrived is never actually seen (see the
+# Standing Decision against raising _SUBPROCESS_TIMEOUT_SECONDS to chase
+# it). Classifying this still earns its keep for two narrower reasons:
+# (1) a source that fails FASTER than our timeout (a fast-failing 5xx)
+# gets the real code recorded in failure_history instead of a generic
+# "ffmpeg exited N", and (2) if the timeout is ever revisited, stored
+# failures already carry the distinction instead of it being
+# re-discovered from scratch, which is exactly what BACKLOG.md's own
+# history for this entry already was once.
+#
+# Two message shapes seen in real, live-captured ffmpeg output (see
+# tests/test_media_probe.py's _REAL_BANNER_HEAVY_STDERR, captured against
+# a real 404 on cpmedia.azureedge.net): "HTTP error NNN ..." and
+# "... Server returned NNN ...". Only 5xx is classified -- a 4xx (bad
+# URL, auth, a hotlink block) is already its own clear signal and doesn't
+# share this timeout-vs-real-error ambiguity.
+_HTTP_5XX_RE = re.compile(r"(?:HTTP error|Server returned)\s+(5\d\d)\b")
+
+
+def _remote_5xx_status(stderr_tail: str) -> Optional[str]:
+    """The real HTTP 5xx status code ffmpeg/ffprobe reported, if its
+    stderr actually names one -- None otherwise (including for a 4xx,
+    deliberately, see the module comment above)."""
+    match = _HTTP_5XX_RE.search(stderr_tail)
+    return match.group(1) if match else None
+
+
+def _classify_nonzero_exit(
+    returncode: int, stderr: bytes, *, prefix: str = "ffmpeg"
+) -> str:
+    """The failure reason string for an ffmpeg/ffprobe run that exited
+    non-zero -- shared by every caller below so "did the remote server
+    really answer with a 5xx" is classified the same way everywhere,
+    rather than reimplemented (and drifting) per call site."""
+    stderr_tail = _stderr_tail(stderr, 500)
+    remote_status = _remote_5xx_status(stderr_tail)
+    if remote_status:
+        logger.warning(
+            "%s got a real HTTP %s from the remote server (not a timeout, exit %s): %s",
+            prefix,
+            remote_status,
+            returncode,
+            stderr_tail,
+        )
+        detail = f": {stderr_tail}" if stderr_tail else ""
+        return (
+            f"remote server returned HTTP {remote_status} (a real error "
+            f"reply, not a timeout) -- {prefix} exited {returncode}{detail}"
+        )
+    return (
+        f"{prefix} exited {returncode}: {stderr_tail}"
+        if stderr_tail
+        else f"{prefix} exited {returncode}"
+    )
+
+
 # Below this, a "meeting" is more likely the wrong asset (a preview clip,
 # a trailer, an ad) than a real government meeting.
 #
@@ -731,19 +796,16 @@ async def _extract_chunk_once(
         )
 
     if returncode != 0:
-        stderr_tail = _stderr_tail(stderr, 500)
         logger.warning(
             "ffmpeg extraction failed (%s) for %s @ %ss: %s",
             returncode,
             media_url,
             start,
-            stderr_tail,
+            _stderr_tail(stderr, 500),
         )
         return (
             False,
-            f"ffmpeg exited {returncode}: {stderr_tail}"
-            if stderr_tail
-            else f"ffmpeg exited {returncode}",
+            _classify_nonzero_exit(returncode, stderr),
             True,
         )
     if not (out_path.exists() and out_path.stat().st_size > 0):
@@ -1039,9 +1101,8 @@ async def extract_full_audio(
         )
 
     if returncode != 0:
-        tail = _stderr_tail(stderr, 500)
-        return False, f"full-audio ffmpeg exited {returncode}: {tail}" if tail else (
-            f"full-audio ffmpeg exited {returncode}"
+        return False, _classify_nonzero_exit(
+            returncode, stderr, prefix="full-audio ffmpeg"
         )
     if not (out_path.exists() and out_path.stat().st_size > 0):
         return False, "full-audio ffmpeg reported success but wrote nothing"

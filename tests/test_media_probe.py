@@ -8,6 +8,7 @@ from app.platforms.media_probe import (
     _mean_volume_db,
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
+    extract_full_audio,
     is_plausible_meeting_duration,
     probe_has_video_stream,
 )
@@ -61,6 +62,49 @@ def test_stderr_tail_still_truncates_from_the_end():
     tail = media_probe._stderr_tail(long_stderr, 40)
     assert len(tail) <= 40
     assert tail.endswith("line 499")
+
+
+# --- WO-936: a real HTTP 5xx classified separately from a timeout -------
+#
+# _REAL_BANNER_HEAVY_STDERR above is a real, live-captured 404 -- reused
+# below as the confirmed-real SHAPE for both "HTTP error NNN ..." and
+# "Server returned NNN ..." (both patterns are in that one fixture). The
+# 504 fixture below is SYNTHETIC: no live-captured 504 stderr sample has
+# been saved in this repo. It substitutes 504/"Gateway Time-out" into
+# that same real, confirmed message shape rather than inventing a new
+# one, and rests on an independently-confirmed real fact: BACKLOG.md's
+# Granicus chunklist.m3u8 entry found (ffprobe -v verbose, 2026-08-21,
+# Fountain Valley CA clip 607) that Granicus's own CloudFront edge
+# genuinely returns a 504 after a 4-6 minute hang -- what's unconfirmed
+# is only the exact stderr wording ffmpeg would print for that specific
+# response, not that a real 504 occurs.
+_SYNTHETIC_504_STDERR = (
+    b"[https @ 0x953003520] HTTP error 504 Gateway Time-out\n"
+    b"[in#0 @ 0x952c20000] Error opening input: Server returned 504 "
+    b"Gateway Time-out\n"
+    b"Error opening input file https://archive-stream.granicus.com/x.m3u8.\n"
+    b"Error opening input files: Server returned 504 Gateway Time-out\n"
+)
+
+
+def test_remote_5xx_status_extracts_a_real_5xx_code():
+    assert (
+        media_probe._remote_5xx_status(
+            media_probe._stderr_tail(_SYNTHETIC_504_STDERR, 500)
+        )
+        == "504"
+    )
+
+
+def test_remote_5xx_status_ignores_a_4xx():
+    """A 404 is already unambiguous on its own -- not the timeout-vs-
+    real-error question this classification exists for."""
+    assert (
+        media_probe._remote_5xx_status(
+            media_probe._stderr_tail(_REAL_BANNER_HEAVY_STDERR, 500)
+        )
+        is None
+    )
 
 
 def test_plausible_duration_bounds():
@@ -174,6 +218,95 @@ async def test_extract_chunk_audio_accepts_decodable_output(tmp_path, monkeypatc
         source_page_url="https://example.org/meeting",
         out_path=out_path,
     ) == (True, None)
+
+
+def test_remote_5xx_status_ignores_an_ordinary_ffmpeg_error():
+    assert (
+        media_probe._remote_5xx_status(
+            media_probe._stderr_tail(_REAL_UNDECODABLE_STDERR, 500)
+        )
+        is None
+    )
+
+
+async def test_extract_chunk_audio_labels_a_real_5xx_distinctly_from_a_timeout(
+    tmp_path, monkeypatch
+):
+    """The whole point: a chunk failure whose stderr shows a real 5xx must
+    read differently than an ordinary ffmpeg exit or our own subprocess
+    timeout, so failure_history (and the daily report's failure digest)
+    doesn't have to re-derive the distinction from scratch every time --
+    see BACKLOG.md's Granicus chunklist.m3u8 entry, which is exactly that
+    re-derivation happening more than once."""
+    out_path = tmp_path / "chunk_0.mp3"
+
+    async def _run(*args):
+        return 8, b"", _SYNTHETIC_504_STDERR
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.granicus.com/player/clip/607",
+        start=0.0,  # no seek to get wrong -- one attempt, no retry
+        duration=900.0,
+        source_page_url="https://example.granicus.com/player/clip/607",
+        out_path=out_path,
+    )
+
+    assert ok is False
+    assert reason is not None
+    assert "HTTP 504" in reason
+    assert "not a timeout" in reason
+    assert "ffmpeg exited 8" in reason
+
+
+async def test_extract_chunk_audio_an_ordinary_failure_reads_exactly_as_before(
+    tmp_path, monkeypatch
+):
+    """The classification must not change anything for the common,
+    non-5xx case -- existing callers/tests key off this literal shape."""
+    out_path = tmp_path / "chunk_0.mp3"
+
+    async def _run(*args):
+        return 8, b"", _REAL_UNDECODABLE_STDERR
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=0.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    )
+
+    assert ok is False
+    assert reason == "ffmpeg exited 8: " + media_probe._stderr_tail(
+        _REAL_UNDECODABLE_STDERR, 500
+    )
+
+
+async def test_extract_full_audio_also_labels_a_real_5xx(tmp_path, monkeypatch):
+    """WO-54's whole-file cache path shares the same ffmpeg subprocess
+    shape (and the same timeout-vs-real-error ambiguity) as per-chunk
+    extraction, so it gets the same classification."""
+
+    async def _run(*args, timeout=None):
+        return 8, b"", _SYNTHETIC_504_STDERR
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_full_audio(
+        "https://example.granicus.com/player/clip/607",
+        source_page_url="https://example.granicus.com/player/clip/607",
+        out_path=tmp_path / "whole.mp3",
+    )
+
+    assert ok is False
+    assert reason is not None
+    assert "HTTP 504" in reason
+    assert "not a timeout" in reason
+    assert "full-audio ffmpeg exited 8" in reason
 
 
 async def test_mean_volume_db_treats_missing_ffmpeg_as_unknown(tmp_path, monkeypatch):
