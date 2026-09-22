@@ -3494,7 +3494,9 @@ async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     page). 404s for an unknown slug or one with no indexable meetings, same
     in-route pattern as /m/{slug} and /state/{slug}. Below
     crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
-    noindex (thin-content posture) and stays out of sitemap.xml."""
+    noindex (thin-content posture) and stays out of sitemap.xml -- unless
+    the hub carries at least one published Full Context entry (WO-1003),
+    which counts as real content on its own."""
     data = await crud.get_jurisdiction_hub_data(hub_slug, topic_slug=topic or None)
     if data is None:
         # A slug that used to be a hub and no longer is, because WO-99
