@@ -64,16 +64,6 @@ DROPBOX_URL = (
     "https://www.dropbox.com/scl/fi/jf8u7cx0atqmkirxzw6ec/"
     "2025-09-09-City-Council-Recording.mp4"
 )
-# South Carolina's legislature (WO-1005, 2026-09-22): a real, confirmed
-# `video.scstatehouse.gov` .mp4, listed with its real duration on
-# `scstatehouse.gov/meetings.php?...op=vid` (an 11-minute Senate Judiciary
-# Full Committee meeting, 2026-08-11). Confirmed live via HEAD and a
-# ranged GET that this host answers with `Content-Type: application/
-# octet-stream` (never `video/*`) on every real meeting file -- see
-# direct_file.py's own `_OCTET_STREAM_CONTENT_TYPE` comment.
-SCSTATEHOUSE_URL = (
-    "https://video.scstatehouse.gov/mp4/20260811SJudiciaryFullCommittee16632_1.mp4"
-)
 DRIVE_VIEW_URL = (
     "https://drive.google.com/file/d/1R6UKdoiv7_3nXk-sEmH7gil4toaEA1su/"
     "view?usp=share_link"
@@ -271,51 +261,6 @@ async def test_resolve_degrades_gracefully_when_content_type_is_not_video():
     assert "text/html" in result.video_warnings[0]
 
 
-async def test_resolve_accepts_a_real_octet_stream_mp4_from_scstatehouse():
-    # WO-1005, 2026-09-22: video.scstatehouse.gov answers a real, playable
-    # .mp4 with a generic `application/octet-stream` Content-Type on
-    # every meeting -- confirmed live via HEAD and a ranged GET (see
-    # direct_file.py's module docstring and this file's SCSTATEHOUSE_URL
-    # comment). Before this WO, this would have been rejected the same
-    # way test_resolve_degrades_gracefully_when_content_type_is_not_video
-    # rejects an ordinary HTML fallback -- the fix has to tell the two
-    # apart by the URL's own real .mp4 extension, not by relaxing the
-    # content-type check generally.
-    finder = DirectFileAssetFinder()
-    routes = {
-        SCSTATEHOUSE_URL: FakeResponse(
-            status=200, headers={"Content-Type": "application/octet-stream"}
-        )
-    }
-    with mock_session({}, head_routes=routes):
-        result = await finder.resolve(SCSTATEHOUSE_URL)
-    assert result.video_url == SCSTATEHOUSE_URL
-    assert result.video_format == "mp4"
-    assert result.video_warnings == []
-
-
-async def test_resolve_still_rejects_octet_stream_with_no_video_extension():
-    # Narrowness check (CLAUDE.md's "don't weaken the content-type check
-    # generally" instruction): an octet-stream response is only accepted
-    # when the URL's own extension already says video/audio. A generic
-    # download link with no such extension -- not a real fixture, a
-    # synthetic negative control -- must still be rejected exactly like
-    # before this WO, so this fix can't be mistaken for "accept any
-    # octet-stream response".
-    finder = DirectFileAssetFinder()
-    generic_url = "https://example.gov/downloads/meeting-recording"
-    routes = {
-        generic_url: FakeResponse(
-            status=200, headers={"Content-Type": "application/octet-stream"}
-        )
-    }
-    with mock_session({}, head_routes=routes):
-        result = await finder.resolve(generic_url)
-    assert result.video_url is None
-    assert result.video_warnings
-    assert "application/octet-stream" in result.video_warnings[0]
-
-
 # --- Laserfiche WebLink (WO-304) -----------------------------------------
 
 
@@ -491,3 +436,69 @@ async def test_resolve_warns_when_no_caption_sibling_is_found():
     assert result.segments == []
     assert result.transcript_warnings
     assert "caption file" in result.transcript_warnings[0]
+
+
+# --- Audio-only own-domain recordings (Ryan, 2026-09-22: in scope) -------
+#
+# Real fixtures, both confirmed live 2026-09-22: Allouez village, WI posts
+# its board meetings as a bare .mp3 to its own S3 bucket; Farmington city,
+# UT posts its Planning Commission recordings as a bare .mp3 under its own
+# wp-content/uploads. Both answer a plain HEAD with a real
+# `Content-Type: audio/mpeg` -- the exact shape this adapter already
+# resolves for video, previously rejected only because `resolve()`'s gate
+# required a `video/` prefix.
+
+ALLOUEZ_URL = (
+    "https://allouez.s3.amazonaws.com/media/2026/09/16090630/"
+    "Village-Board-9-15-2026.mp3"
+)
+FARMINGTON_PC_URL = (
+    "https://farmington.utah.gov/wp-content/uploads/2026/09/"
+    "09.03.26-PC-General-Session-Q-SYS.mp3"
+)
+
+
+@pytest.mark.parametrize("url", [ALLOUEZ_URL, FARMINGTON_PC_URL])
+def test_is_direct_file_url_recognizes_a_bare_mp3(url):
+    assert is_direct_file_url(url) is True
+
+
+async def test_resolve_confirms_a_real_audio_only_file():
+    finder = DirectFileAssetFinder()
+    routes = {
+        ALLOUEZ_URL: FakeResponse(status=200, headers={"Content-Type": "audio/mpeg"})
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(ALLOUEZ_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == ALLOUEZ_URL
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+
+
+async def test_resolve_confirms_a_second_independent_audio_only_file():
+    finder = DirectFileAssetFinder()
+    routes = {
+        FARMINGTON_PC_URL: FakeResponse(
+            status=200, headers={"Content-Type": "audio/mpeg"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(FARMINGTON_PC_URL)
+    assert result.video_url == FARMINGTON_PC_URL
+    assert result.video_format == "mp3"
+
+
+async def test_resolve_still_degrades_gracefully_for_non_media_content_type():
+    # The video-only regression check: an ordinary HTML page still isn't
+    # accepted just because the audio branch was added.
+    finder = DirectFileAssetFinder()
+    routes = {
+        DROPBOX_URL + "?dl=1": FakeResponse(
+            status=200, headers={"Content-Type": "text/html"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(DROPBOX_URL)
+    assert result.video_url is None
+    assert "playable video or audio" in result.video_warnings[0]

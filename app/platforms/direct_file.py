@@ -252,6 +252,53 @@ _MP3_FRAME_SYNC_PREFIXES = (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
 # not text/html".
 _OCTET_STREAM_CONTENT_TYPE = "application/octet-stream"
 
+# Audio-only own-domain recordings (Ryan, 2026-09-22: audio-only is in
+# scope) -- confirmed live against two real, independent governments the
+# same day: Allouez village, WI (`allouez.s3.amazonaws.com/media/.../
+# Village-Board-9-15-2026.mp3`, Content-Type `audio/mpeg`) and Farmington
+# city, UT's Planning Commission (`farmington.utah.gov/wp-content/
+# uploads/.../09.03.26-PC-General-Session-Q-SYS.mp3`, also
+# `audio/mpeg`). Both are bare, unauthenticated files on the
+# government's own domain, the exact shape this adapter already resolves
+# for video -- the only gap was `resolve()`'s content-type gate requiring
+# a `video/` prefix. `media_probe.py`'s duration probe and `player.js`'s
+# native `<audio>`/`<video>` fallback are already format-agnostic (the
+# same fact WO-317's Laserfiche audio branch already relies on), so no
+# new playback or transcription code is needed here, only recognizing
+# the format.
+_URL_EXTENSION_FORMATS = {
+    ".mp3": "mp3",
+    ".wav": "wav",
+    ".m4a": "m4a",
+    ".mp4": "mp4",
+    ".mov": "mp4",
+    ".m4v": "mp4",
+    ".webm": "webm",
+}
+
+
+def _media_format(media_url: str, content_type: Optional[str]) -> str:
+    """The real format to record -- the URL's own extension when it has
+    one of the recognized ones (precise), else a guess from the
+    Content-Type prefix (covers the octet-stream branch, which carries
+    no useful Content-Type of its own)."""
+    path = urlparse(media_url).path.lower()
+    for ext, fmt in _URL_EXTENSION_FORMATS.items():
+        if path.endswith(ext):
+            return fmt
+    if content_type and content_type.startswith("audio/"):
+        subtype = content_type.split("/", 1)[1].split(";")[0].strip()
+        return {
+            "mpeg": "mp3",
+            "mp3": "mp3",
+            "x-m4a": "m4a",
+            "mp4": "m4a",
+            "wav": "wav",
+            "x-wav": "wav",
+            "ogg": "ogg",
+        }.get(subtype, "audio")
+    return "mp4"
+
 
 def is_direct_file_url(url: str) -> bool:
     """True for a bare first-party/file-sharing video URL this adapter
@@ -371,7 +418,9 @@ class DirectFileAssetFinder(AssetFinder):
             # Content-Type, neither of which the check below can use.
             return await self._resolve_laserfiche(url, media_url)
         content_type = await self._head_content_type(media_url)
-        is_video_content_type = bool(content_type and content_type.startswith("video/"))
+        is_media_content_type = bool(
+            content_type and content_type.startswith(("video/", "audio/"))
+        )
         # South Carolina's legislature (WO-1005, see module docstring's
         # `_OCTET_STREAM_CONTENT_TYPE` comment): this host answers a real,
         # playable .mp4 with a generic octet-stream Content-Type on every
@@ -383,7 +432,7 @@ class DirectFileAssetFinder(AssetFinder):
             content_type == _OCTET_STREAM_CONTENT_TYPE
             and media_type(media_url) in ("video", "audio")
         )
-        if not (is_video_content_type or is_octet_stream_media_file):
+        if not (is_media_content_type or is_octet_stream_media_file):
             # Graceful degradation, not a raised error -- same convention
             # as every other adapter's "found something video-shaped but
             # couldn't confirm it" path (CLAUDE.md's "politely" bullet):
@@ -393,14 +442,14 @@ class DirectFileAssetFinder(AssetFinder):
                 source_url=url,
                 video_warnings=[
                     "direct_file: could not confirm this URL serves a "
-                    f"playable video (Content-Type: {content_type!r})"
+                    f"playable video or audio file (Content-Type: {content_type!r})"
                 ],
             )
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=media_url,
-            video_format="mp4",
+            video_format=_media_format(media_url, content_type),
         )
 
     @staticmethod
