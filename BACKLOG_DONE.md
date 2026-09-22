@@ -1,5 +1,59 @@
 # Backlog — done
 
+## WO-1004: built the domain-health check tool — reuses the passive-discovery pipeline's own fetch/identity-check machinery, not yet run against the real registry [Done 2026-09-22]
+
+**What was built.** `scripts/wo1004_domain_health_check.py` — a thin
+driver over `wo273_targeted.py`'s already-existing, already-reused fetch
+and identity-check functions (`polite_page_fetch`/`bounded_page_body`
+for the fetch, `is_catch_all_response`/`_body_fingerprint` for a
+parked-domain guard, `name_matches` for the identity check), pointed at
+a different population than WO-283 and its descendants ever targeted:
+every row in `jurisdiction_coverage.csv` that already HAS a `domain` on
+file, not just the "no known platform" governments. Adds one
+classification the existing pipeline didn't distinguish —
+`domain_mismatch` (the page fetches fine, isn't a parked shell, isn't a
+challenge gate, but doesn't name the right government) — alongside
+`domain_confirmed`, `domain_catch_all`, `domain_challenge_gate`, and
+`domain_unreachable`.
+
+**Why this shape.** Two hand audits (WO-145, WO-347) found the
+registry's `domain` field wrong or stale on 24% and 15% of hand-checked
+rows, and both times a human found it by auditing a sample after the
+fact, not because anything flagged it on its own. See `BACKLOG.md`'s
+still-open entry for the full write-up and both audits' real examples.
+
+**Verification.** `classify_domain_health()` is the one pure function
+this WO adds — the fetch, the catch-all guard, and the identity check
+are imported unchanged. `tests/test_wo1004_domain_health.py` (10 tests)
+covers it with real, verifiable facts already established elsewhere in
+this repo (Fresno, CA, the same unambiguous city `tests/test_civicclerk.
+py` already relies on; the real Crystal River FL / Elmore City OK /
+Hometown IL shapes from WO-145's and WO-347's own findings), not
+invented cases. All five CI gates run locally: `ruff check`, `ruff
+format --check`, `python -m pytest` (full suite, 5000 passed — two
+pre-existing failures in `test_repair_wrong_pages.py`/
+`test_wrong_page_screen.py` confirmed unrelated by isolating this
+change with a tagged `git stash` and re-running against clean `main`),
+no schema change so no `alembic check` needed, `BACKLOG.md`'s TOC/
+heading checks pass.
+
+**Not done: the actual run.** This session cannot run the script itself
+— `~/Documents/rtr-business` (where `jurisdiction_coverage.csv` lives)
+is off-limits to it per `CLAUDE.md`'s standing rule. Needs a machine
+with that repo checked out: `python3 scripts/wo1004_domain_health_check.
+py` (resumable, `--limit`/`--concurrency` flags), then a human
+hand-confirms each `domain_mismatch`/`domain_catch_all` row in the
+output (`research/wo1004_domain_health.csv`) before anything moves to
+`alternate_domains` — never overwrite `domain` directly.
+
+**Constraint.** Detection only — never writes to
+`jurisdiction_coverage.csv`, never ingests, never resolves through an
+adapter.
+
+**History.** `BACKLOG.md`'s "The registry's `domain` field is wrong or
+stale..." entry (still open — rewritten to describe the remaining run,
+not the build). WO-145 (2026-09-10), WO-347 (2026-09-13).
+
 ## WO-1005: South Carolina's octet-stream direct_file rejection fixed; TN/NV Granicus 403 retry added; one real meeting queued/ingested per state [Done 2026-09-22]
 
 **Issue.** `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4`
@@ -83,6 +137,7 @@ with a real transcript.
 **Constraint honored.** Every SC/NV probe was a HEAD or a ranged GET
 (via `ffprobe`/the adapter's own confirmation logic) — no meeting file
 was ever downloaded in full.
+
 ## WO-1007: closed a false alarm -- Pennsylvania's PennDOT/Legislature "conflict" was a stale research-file field, not a keying question [Done 2026-09-22]
 
 **What looked wrong.** WO-1006 (Sliq Harmony sweep, open PR #1340) found
