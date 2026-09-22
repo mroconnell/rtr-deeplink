@@ -3414,6 +3414,33 @@ def test_merrimack_cablecast_town_show_does_not_claim_vault():
     assert other.tier == resolver.TIER_BLANK
 
 
+def test_fort_wright_tbnk_pin_is_exact_and_preserves_park_hills():
+    """Recovered from an abandoned branch (`codex/fort-wright-tbnk-pin`,
+    2026-09-15) during a workspace sweep -- the pin itself never landed
+    in `tenant_overrides.csv`, only its test survived by coincidence of
+    this file's own history. Fort Wright's Sep 2 2026 City Council
+    Meeting is on the shared TBNK Castus tenant (see the Park Hills pin
+    below it, WO-309/WO-346); pinned per-video, not per-host, since the
+    tenant serves other Kentucky cities too."""
+    from app.platforms.queue_probe import has_owner
+
+    host = "cloud.castus.tv"
+    fort_wright = "/vod/tbnk/video/6a99dc635e30e8000213757d"
+    park_hills = "/vod/tbnk/video/6a83ae174c520c0002b5bfb0"
+    assert registry.is_multi_gov_host(host)
+    assert (
+        resolver.resolve_government(None, tenant_host=host, path=fort_wright).gov_id
+        == "us:place:2128612"
+    )
+    assert (
+        resolver.resolve_government(None, tenant_host=host, path=park_hills).gov_id
+        == "us:place:2159255"
+    )
+    assert has_owner("https://" + host + fort_wright)[:2] == (True, "us:place:2128612")
+    assert has_owner("https://" + host + park_hills)[:2] == (True, "us:place:2159255")
+    assert not has_owner("https://" + host + "/vod/tbnk/video/unpinned")[0]
+
+
 def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
     """WO-336: reflect-tst-mn.cablecast.tv is Town Square Television's
     shared Cablecast station, confirmed live to serve at least South St.
