@@ -2284,6 +2284,15 @@ linking to its hub since WO-943) and now also its state, next to it —
 `crud.effective_state_abbr()`, a pure function over data the entry
 already carries, not a query.
 
+**A published entry can also make a thin hub indexable (WO-1003).** A
+`/j/{hub_slug}` page is normally `noindex`'d below `JURISDICTION_HUB_MIN_
+INDEXABLE` (2) meetings, but a hub with just one meeting and a real,
+hand-written Full Context entry is no longer thin/near-duplicate content,
+so it's indexable either way now — see `STATE_HUB_PAGES.md`'s "A hub is
+also indexable via a published entry" section for the rule and where it's
+applied (the page's own `noindex` tag and `sitemap.xml`'s `/j/` list, kept
+in agreement). State pages have no such meeting-count gate to extend.
+
 **And the meeting page itself, the one surface an entry cites without
 linking back until now (WO-1002).** `/m/{slug}` shows a "This moment on
 social media" (or, when no shown entry has a real timestamp, "This
