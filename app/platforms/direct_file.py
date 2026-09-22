@@ -227,6 +227,31 @@ _M4A_BRAND_MARKER = b"M4A "
 # `.mp3` handling), not itself independently confirmed live.
 _MP3_FRAME_SYNC_PREFIXES = (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
 
+# South Carolina's legislature (WO-1005, 2026-09-22): every real
+# `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4` file
+# answers BOTH a plain HEAD and a ranged GET with `Content-Type:
+# application/octet-stream`, confirmed live against two real, small
+# meetings listed on `scstatehouse.gov/meetings.php?...op=vid` -- an
+# 11-minute Senate Judiciary full committee (2026-08-11,
+# `20260811SJudiciaryFullCommittee16632_1.mp4`, 251,172,111 bytes) and a
+# 14-minute House Government Efficiency and Legislative Oversight
+# subcommittee the same day
+# (`20260811HGovtEfficiencyandLegOversightLawEnforcementCriminal16624_1.mp4`,
+# 305,067,141 bytes). Both also answered `Accept-Ranges: bytes` with a
+# real `Content-Length`/`Content-Range`, so this is a real, playable
+# video file the host just labels generically -- not an error page.
+# `_HTML_ERROR_SNIFF_MARKERS` below is the deliberately narrow guard
+# that keeps this from turning into "accept anything that isn't
+# video/*": an octet-stream response is only accepted when the URL's
+# own extension already says "video" or "audio" (`media_type()`), so a
+# generic error page served as octet-stream (not observed on this host,
+# but not ruled out either) would still need a real video/audio
+# extension in its URL to slip through, and this repo's own "don't
+# weaken the content-type check generally" instruction is why this
+# stays scoped to the specific octet-stream value rather than "anything
+# not text/html".
+_OCTET_STREAM_CONTENT_TYPE = "application/octet-stream"
+
 
 def is_direct_file_url(url: str) -> bool:
     """True for a bare first-party/file-sharing video URL this adapter
@@ -346,7 +371,19 @@ class DirectFileAssetFinder(AssetFinder):
             # Content-Type, neither of which the check below can use.
             return await self._resolve_laserfiche(url, media_url)
         content_type = await self._head_content_type(media_url)
-        if not content_type or not content_type.startswith("video/"):
+        is_video_content_type = bool(content_type and content_type.startswith("video/"))
+        # South Carolina's legislature (WO-1005, see module docstring's
+        # `_OCTET_STREAM_CONTENT_TYPE` comment): this host answers a real,
+        # playable .mp4 with a generic octet-stream Content-Type on every
+        # meeting, confirmed live -- accept it ONLY when the URL's own
+        # extension already says video/audio, so this stays a narrow,
+        # host-shape-specific accept path rather than a general weakening
+        # of the content-type check.
+        is_octet_stream_media_file = (
+            content_type == _OCTET_STREAM_CONTENT_TYPE
+            and media_type(media_url) in ("video", "audio")
+        )
+        if not (is_video_content_type or is_octet_stream_media_file):
             # Graceful degradation, not a raised error -- same convention
             # as every other adapter's "found something video-shaped but
             # couldn't confirm it" path (CLAUDE.md's "politely" bullet):
