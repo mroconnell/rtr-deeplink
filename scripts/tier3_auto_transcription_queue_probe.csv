@@ -6785,8 +6785,6 @@ https://sg001-harmony.sliq.net/00304/Harmony/en/PowerBrowser/PowerBrowserV3/2026
 https://sg001-harmony.sliq.net/00328/Harmony/en/PowerBrowser/PowerBrowserV3/20260909/-1/1043,sliq_harmony,hls-master+variant,21598.38,,,1,accept,,0.39,2026-09-22T13:48:47+00:00,bulk_ingest,0
 https://play.champds.com/yumacoaz/event/637,champds,head+ffprobe,6112.84,2026-08-26,685040559,1,accept,,1.82,2026-09-22T12:46:23+00:00,,0
 https://play.champds.com/yumacoaz/event/615,champds,head+ffprobe,2593.01,2026-06-24,299510007,1,accept,,60.95,2026-09-22T12:47:37+00:00,,0
-https://olelo.granicus.com/MediaPlayer.php?view_id=13&clip_id=78970,granicus,hls-master+variant,1871.02,,,1,accept,,0.20,2026-09-22T16:08:12+00:00,bulk_ingest,0
-https://olelo.granicus.com/MediaPlayer.php?view_id=31&clip_id=82043,granicus,hls-master+variant,2549.47,,,1,accept,,7.06,2026-09-22T16:08:27+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00284/Harmony/en/PowerBrowser/PowerBrowserV3/20260918/-1/34486,sliq_harmony,hls-master+variant,2956.99,,,1,accept,,0.29,2026-09-22T16:05:18+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00284/Harmony/en/PowerBrowser/PowerBrowserV3/20260917/-1/34485,sliq_harmony,hls-master+variant,308.97,,,0,accept,,0.29,2026-09-22T16:05:22+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00284/Harmony/en/PowerBrowser/PowerBrowserV3/20260916/-1/34482,sliq_harmony,hls-master+variant,334.37,,,0,accept,,0.29,2026-09-22T16:05:26+00:00,bulk_ingest,0
@@ -6838,6 +6836,11 @@ https://sg001-harmony.sliq.net/00304/Harmony/en/PowerBrowser/PowerBrowserV3/2026
 https://sg001-harmony.sliq.net/00304/Harmony/en/PowerBrowser/PowerBrowserV3/20260908/-1/21645,sliq_harmony,hls-master+variant,4500.06,,,1,accept,,0.24,2026-09-22T16:08:42+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00328/Harmony/en/PowerBrowser/PowerBrowserV3/20260908/-1/1045,sliq_harmony,hls-master+variant,625.36,,,1,accept,,0.34,2026-09-22T16:08:46+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00328/Harmony/en/PowerBrowser/PowerBrowserV3/20260902/-1/1044,sliq_harmony,hls-master+variant,735.67,,,1,accept,,0.30,2026-09-22T16:08:50+00:00,bulk_ingest,0
+https://tuscaloosaal.suiteonemedia.com/event/?id=11029,suiteone,suiteone-resolve,,,,0,reject-dead,SuiteOne resolve raised: Could not find a SuiteOne tenant/event id in URL: https://s3.amazonaws.com/suiteone.tuscaloosaal.videofiles/8683a196.mp4,0.00,2026-09-22T16:38:06+00:00,ryan-coverage-triage-2026-09-22,0
+https://tuscaloosaal.suiteonemedia.com/event/?id=11029,suiteone,head+ffprobe,4696.07,2025-07-30,672963232,1,accept,,2.64,2026-09-22T16:39:33+00:00,ryan-coverage-triage-2026-09-22,0
+https://forestparkga.portal.civicclerk.com/event/1196/media,civicclerk,head+ffprobe,262.32,2026-08-18,5694253,0,accept,,2.31,2026-09-22T16:56:16+00:00,ryan-coverage-triage-2026-09-22,0
+https://olelo.granicus.com/MediaPlayer.php?view_id=13&clip_id=78970,granicus,hls-master+variant,1871.02,,,1,accept,,0.20,2026-09-22T16:08:12+00:00,bulk_ingest,0
+https://olelo.granicus.com/MediaPlayer.php?view_id=31&clip_id=82043,granicus,hls-master+variant,2549.47,,,1,accept,,7.06,2026-09-22T16:08:27+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=rA0lzBSBTYw,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] rA0lzBSBTYw: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.36,2026-09-22T17:18:41+00:00,,0
 https://www.youtube.com/watch?v=gQb4nCcnQFY,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] gQb4nCcnQFY: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.49,2026-09-22T17:18:45+00:00,,0
 https://www.youtube.com/watch?v=a9tGDFag22k,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] a9tGDFag22k: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.33,2026-09-22T17:18:49+00:00,,0
