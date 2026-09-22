@@ -55,7 +55,6 @@ rule every WO-3xx script already follows. Never downloads a media file.
 
 from __future__ import annotations
 
-import contextlib
 import datetime as _dt
 import json
 import logging
@@ -71,9 +70,11 @@ from .base import (
     CalendarPageError,
     NoVideoCandidateFound,
     UnsupportedPlatformError,
+    YouTubeResolveBlocked,
     detect_platform,
     find_platform_link,
     get_finder,
+    youtube_resolve_guard,
 )
 from ..utils.url_guard import read_capped_text
 from ..utils.video_hand_check import (
@@ -271,87 +272,18 @@ def _youtube_lead(url: str, note: str) -> VerifyResult:
     )
 
 
-class _YouTubeResolveBlocked(Exception):
-    """Raised by `_youtube_resolve_guard()` below instead of letting
-    YouTube actually get fetched.
-
-    Real, confirmed gap this closes (found live running this module
-    against WO-331's own control set, 2026-09-13): checking whether a
-    CANDIDATE url's own host is youtube.com (`_is_youtube_host()`, used
-    in `_walk_candidates`) is not enough on its own. A candidate that is
-    NOT itself a youtube.com URL -- e.g. a Municode Meetings meeting
-    page -- can still internally embed a YouTube video and delegate to
-    YouTube from INSIDE that adapter's own `resolve()`.
-
-    Two real, DIFFERENT chokepoints exist, confirmed live -- an earlier
-    version of this guard patched only the first and let a real yt-dlp
-    fetch through the second on a2gov.org's own Legistar->YouTube
-    delegation (City Council, LEGID=14158) before this was caught:
-    `YouTubeAssetFinder.resolve(url)` -- the path `civicplus.py`/
-    `municode_meetings.py`/`civicweb.py`/`generic_fallback.py` all use
-    (via `resolve_via_platform()`); and `YouTubeAssetFinder.
-    resolve_video_id(video_id, source_url)` -- the path `legistar.py`
-    (a real YouTube link found in an attachments table, or its own
-    channel-fallback match) and `primegov.py` (per CLAUDE.md's "PrimeGov
-    embeds a YouTube video" wrapper note) call DIRECTLY, bypassing
-    `.resolve()` entirely, specifically so they can pass the delegating
-    page's own `source_url` through. Both are patched here.
-    """
-
-    def __init__(self, url: str):
-        self.url = url
-        super().__init__(f"blocked a YouTube fetch for {url}")
-
-
-@contextlib.contextmanager
-def _youtube_resolve_guard():
-    """Scoped for the duration of one `verify_hub()` call (not a
-    permanent process-wide patch, so a caller elsewhere in the app that
-    legitimately wants a real YouTube resolve -- e.g. the YouTube drip --
-    is unaffected): monkeypatches both `YouTubeAssetFinder.resolve` and
-    `YouTubeAssetFinder.resolve_video_id` (see `_YouTubeResolveBlocked`'s
-    own docstring for why both) to raise `_YouTubeResolveBlocked` instead
-    of calling yt-dlp, then restores the originals on exit, success or
-    failure."""
-    from .youtube import YouTubeAssetFinder
-
-    original_resolve = YouTubeAssetFinder.resolve
-    original_resolve_video_id = YouTubeAssetFinder.resolve_video_id
-
-    async def _blocked(self, url: str):  # noqa: ANN001
-        # WO-348: confirmed live, running this fix's own group-1 rerun --
-        # `_verify_hub_impl()`'s own `platform_hint` fallback (used when
-        # `detect_platform()` says "unknown" and no vendor link was
-        # found) can set `platform="youtube"` from a caller's hint while
-        # `candidate_url` stays the ORIGINAL, non-youtube hub page (the
-        # hint just means some earlier phase's OWN scan thought this
-        # government's site mentions YouTube somewhere -- CLAUDE.md's own
-        # documented Aurora, CO false-positive shape). Before this fix,
-        # `_blocked()` raised unconditionally for ANY url, so this always
-        # produced a `youtube_lead` whose own `meeting_url` was the
-        # original hub page, not a real YouTube URL -- 8 real governments
-        # in one 1,514-row rerun (Ravenna OH, Helotes TX, Groton CT,
-        # Sugar Grove IL, Austell GA, Broadview IL, Blythewood SC, and a
-        # PDF-linked case on Bellevue WI) got a fabricated "video found"
-        # verdict this way, caught only by this WO's own hand-read gate.
-        # Only block a call that is genuinely about to fetch a real
-        # youtube.com/youtu.be URL; anything else calls through to the
-        # real `resolve()`, which raises its own honest error for a URL
-        # that was never a valid YouTube one to begin with.
-        if _is_youtube_host(url):
-            raise _YouTubeResolveBlocked(url)
-        return await original_resolve(self, url)
-
-    async def _blocked_video_id(cls, video_id: str, source_url: str):  # noqa: ANN001
-        raise _YouTubeResolveBlocked(f"https://www.youtube.com/watch?v={video_id}")
-
-    YouTubeAssetFinder.resolve = _blocked
-    YouTubeAssetFinder.resolve_video_id = classmethod(_blocked_video_id)
-    try:
-        yield
-    finally:
-        YouTubeAssetFinder.resolve = original_resolve
-        YouTubeAssetFinder.resolve_video_id = original_resolve_video_id
+# WO-939: `_YouTubeResolveBlocked`/`_youtube_resolve_guard()` used to be
+# defined here, privately, for `verify_hub()` alone. They're now
+# `base.py`'s `YouTubeResolveBlocked`/`youtube_resolve_guard()` -- the
+# same mechanism generalized so `resolve_via_platform(allow_youtube=False)`
+# and the `wo3xx_resolve_diagnostic.py` family can reuse it instead of
+# each growing their own copy (the exact duplication CLAUDE.md's own
+# CHALLENGE_MARKERS bullet warns about). Kept as module-level aliases
+# here so every existing reference/test in this file (and the WO-348
+# `platform_hint` reasoning in `base.py`'s docstring, carried over
+# verbatim) keeps working unchanged.
+_YouTubeResolveBlocked = YouTubeResolveBlocked
+_youtube_resolve_guard = youtube_resolve_guard
 
 
 async def _fetch(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]:

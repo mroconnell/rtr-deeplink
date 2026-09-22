@@ -120,14 +120,16 @@ def strict_video_marker_hits(text: str) -> List[str]:
     return [m for m in STRICT_VIDEO_MARKERS if re.search(m, low)]
 
 
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "cf-browser-verification",
-    "attention required",
-    "checking your browser",
-    "cf-chl-",
-    "verify you are human",
-]
+# WO-939: was this script's own shorter, 6-marker local copy (no
+# perimeterx/incapsula/px-captcha/Radware coverage) -- scripts/
+# challenge_markers.py is the canonical superset every sweep script now
+# imports; a wider marker list only ever detects MORE real challenge
+# pages, never fewer, so this is a pure widening, no behavior change for
+# a host that isn't using one of the newly-added vendors. Bare import
+# (not `scripts.challenge_markers`) since this script doesn't otherwise
+# add the repo root to sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
 
 def meeting_word_hits(text: str) -> List[str]:

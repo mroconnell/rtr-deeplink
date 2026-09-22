@@ -135,24 +135,18 @@ MAX_SUB_SITEMAPS = 3
 MAX_FLAGGED_RECORDED = 25  # cap per domain, per source, so the JSONL stays sane
 MAX_HUB_HEAD_CHECKS = 3
 
-# Same marker list as scripts/wo147_access_ladder_sweep.py's
-# CHALLENGE_MARKERS -- copied, not imported, to keep this script free of
-# that module's heavier aiohttp/app import chain.
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-]
+# WO-939: was "copied, not imported, to keep this script free of that
+# module's heavier aiohttp/app import chain" -- scripts/challenge_
+# markers.py is the pure-stdlib module built specifically so a script
+# with that same concern can still import the canonical list (which also
+# closes a real gap this copy had: WO-278's Radware/ShieldSquare
+# markers). Bare import, not `scripts.challenge_markers`, since this
+# script doesn't otherwise add the repo root to sys.path -- its own
+# directory (already on sys.path for a direct `python scripts/wo268_
+# passive_discovery.py` run) is inserted explicitly so this also works
+# if another script imports this one as a module.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
 # Copied verbatim from scripts/wo147_access_ladder_sweep.py's
 # _PLATFORM_ALIASES (WO-147, 2026-09-10) -- kept as a local copy rather

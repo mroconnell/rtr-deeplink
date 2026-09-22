@@ -38,10 +38,21 @@ from app.platforms.base import (
     get_finder,
     UnsupportedPlatformError,
     CalendarPageError,
+    youtube_resolve_guard,
 )  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wo324_targeted import record_youtube_lead  # noqa: E402
+
+# WO-939: this script's own pre-screen (page_only_video_is_youtube_embed(),
+# below) already catches a plain YouTube embed in the candidate page's raw
+# HTML -- the exact shape that caused the real Tweed ON incident above.
+# youtube_resolve_guard() is a second, independent layer around the actual
+# resolve() call, for a shape the regex pre-screen can't see: a delegated
+# platform (Legistar/CivicPlus/CivicWeb/Municode Meetings/PrimeGov) whose
+# OWN fetched page -- not this candidate page's raw HTML -- is what embeds
+# YouTube, or a JS-inserted embed the pre-screen's plain-GET HTML never
+# contains. See BACKLOG_DONE.md's WO-939 entry.
 
 register_all_finders()
 
@@ -97,7 +108,8 @@ async def main():
             await asyncio.sleep(1.5)
             continue
         try:
-            result = await finder.resolve(url)
+            with youtube_resolve_guard():
+                result = await finder.resolve(url)
         except CalendarPageError as e:
             print(f"CALENDAR_PAGE|{dom}|{gov_id}|{name}|{state}|{url}|{e}")
             await asyncio.sleep(1.5)

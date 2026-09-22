@@ -183,39 +183,16 @@ BROWSER_HEADERS = {
         "Chrome/151.0.0.0 Safari/537.36"
     ),
 }
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-]
+# WO-939: was this script's own local copy (missing WO-278's Radware/
+# ShieldSquare markers -- see scripts/challenge_markers.py's own
+# docstring for the full incident this consolidation closes).
+from scripts.challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
-HOP1_HINT_WORDS = [
-    "agenda",
-    "minutes",
-    "calendar",
-    "meeting",
-    "commissioners court",
-    "county commission",
-    "board of supervisors",
-    "board of commissioners",
-    "city council",
-    "town council",
-    "board of",
-    "video",
-    "stream",
-    "council",
-    "commission",
-]
+# WO-939: HOP1_HINT_WORDS used to feed this script's own separate,
+# unpatched find_hop_links() (deleted below, in favor of importing
+# wo147_access_ladder_sweep's scored/ranked version -- see that import's
+# own comment for the real gap this closes). Nothing else in this file
+# reads HOP1_HINT_WORDS.
 MAX_HOP_LINKS = 8
 
 _PLATFORM_ALIASES = {
@@ -404,22 +381,23 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
     return None
 
 
-def find_hop_links(html_text: str, final_url: str) -> List[str]:
-    soup = BeautifulSoup(html_text, "html.parser")
-    out: List[str] = []
-    seen = set()
-    for a in soup.find_all("a", href=True):
-        text = (a.get_text() or "").strip().lower()
-        href = a["href"]
-        hay = f"{text} {href}".lower()
-        if any(w in hay for w in HOP1_HINT_WORDS):
-            full = urljoin(final_url, href)
-            if full not in seen and urlparse(full).scheme in ("http", "https"):
-                seen.add(full)
-                out.append(full)
-        if len(out) >= MAX_HOP_LINKS:
-            break
-    return out
+# WO-939: was this script's own separate copy of find_hop_links()
+# (unranked, first-match, HOP1_HINT_WORDS-based) -- WO-228 (2026-09-11)
+# replaced wo147_access_ladder_sweep.py's own version with a scored,
+# ranked one (see that module's own docstring), but this county sweep
+# defined its own copy rather than importing, so the ranking fix never
+# reached it. Imported the same way wo184_onehop_pilot.py/wo187_
+# headless_challenge_sweep.py/wo217_group1_sweep.py/wo217_group2_
+# sweep.py already do. Signature-compatible with this file's existing
+# two-positional-arg call sites (`legacy`/`gov_id` are both keyword-only
+# and default to the new scored behavior). NOT importing wo147's WO-228
+# rules 2/3 (looks_like_document_hub()/find_calendar_entry_links()) in
+# this same change -- those need real changes to this file's own hop
+# loop control flow (what to do when a hop candidate doesn't look like a
+# real hub; whether to auto-follow one more hop into a calendar's dated
+# entries), not a drop-in import, and haven't been verified against a
+# real county government yet. See BACKLOG.md's follow-up entry.
+from scripts.wo147_access_ladder_sweep import find_hop_links  # noqa: E402
 
 
 _DNS_ERROR_PATTERNS = (
