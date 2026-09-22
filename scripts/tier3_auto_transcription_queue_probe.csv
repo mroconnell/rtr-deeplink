@@ -6723,3 +6723,26 @@ https://www.youtube.com/watch?v=DjTDUSPl7hk,youtube,yt-dlp-metadata,,,,0,reject-
 https://www.youtube.com/watch?v=mjryQPNsKnU,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] mjryQPNsKnU: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.54,2026-09-21T22:15:08+00:00,,0
 https://www.youtube.com/watch?v=WxIm05ZC5iA,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] WxIm05ZC5iA: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,1.42,2026-09-21T22:15:12+00:00,,0
 https://www.youtube.com/watch?v=rW-9w3z4cbk,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] rW-9w3z4cbk: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-,2.09,2026-09-21T22:15:17+00:00,,0
+https://cablecast.edisonnj.org/internetchannel/show/4124,cablecast,hls-master+variant,9973.01,,,1,accept,,1.00,2026-09-21T18:38:24+00:00,bulk_ingest,0
+https://reflect-tvctv.cablecast.tv/internetchannel/show/32082,cablecast,hls-master+variant,11498.87,,,1,accept,,1.15,2026-09-21T18:39:03+00:00,bulk_ingest,0
+https://reflect-dakotamediaaccess.cablecast.tv/internetchannel/show/12009,cablecast,hls-master+variant,3001.03,,,1,accept,,0.32,2026-09-21T18:39:17+00:00,bulk_ingest,0
+https://reflect-tvctv.cablecast.tv/internetchannel/show/32035,cablecast,hls-master+variant,7903.91,,,1,accept,,0.63,2026-09-21T18:41:34+00:00,bulk_ingest,0
+https://reflect-tvctv.cablecast.tv/internetchannel/show/32143,cablecast,hls-master+variant,4153.97,,,1,accept,,0.78,2026-09-21T18:41:43+00:00,bulk_ingest,0
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17032,cablecast,hls-master+variant,3951.42,,,1,accept,,0.55,2026-09-21T18:41:51+00:00,,0
+https://reflect-bcit.cablecast.tv/internetchannel/show/54621,cablecast,hls-master+variant,12249.20,,,1,accept,,1.25,2026-09-21T18:41:52+00:00,,0
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6643,cablecast,hls-master+variant,17323.01,,,1,accept,,1.45,2026-09-21T18:41:54+00:00,,0
+https://vsctv.cablecast.tv/internetchannel/show/7506,cablecast,hls-master+variant,6199.33,,,1,accept,,0.77,2026-09-21T18:41:54+00:00,,0
+https://reflect-tvctv.cablecast.tv/internetchannel/show/32028,cablecast,hls-master+variant,8983.00,,,1,accept,,7.35,2026-09-21T18:42:02+00:00,,0
+https://franklintwpnj.granicus.com/MediaPlayer.php?view_id=1&clip_id=3752,granicus,hls-master+variant,9883.09,,,1,accept,,8.85,2026-09-21T18:42:12+00:00,,0
+https://cityofgahanna.granicus.com/MediaPlayer.php?view_id=1&clip_id=623,granicus,hls-master+variant,2586.03,,,1,accept,,2.82,2026-09-21T18:42:15+00:00,,0
+https://cityofnewalbany.granicus.com/MediaPlayer.php?view_id=1&clip_id=248,granicus,hls-master+variant,5073.33,,,1,accept,,2.66,2026-09-21T18:42:18+00:00,,0
+https://oswego.granicus.com/MediaPlayer.php?view_id=2&clip_id=769,granicus,hls-master+variant,4527.01,,,1,accept,,2.21,2026-09-21T18:42:20+00:00,,0
+https://peabody.cablecast.tv/internetchannel/show/20173,cablecast,hls-master+variant,11171.21,,,1,accept,,1.41,2026-09-21T18:42:21+00:00,,0
+https://quincyil.granicus.com/MediaPlayer.php?view_id=1&clip_id=146,granicus,hls-master+variant,5931.34,,,1,accept,,1.87,2026-09-21T18:42:23+00:00,,0
+https://salem.cablecast.tv/internetchannel/show/19762,cablecast,hls-master+variant,7136.76,,,1,accept,,2.97,2026-09-21T18:42:26+00:00,,0
+https://sheridanwy.new.swagit.com/videos/400903,swagit,hls-master+variant,2599.99,,,1,accept,,1.79,2026-09-21T18:42:28+00:00,,0
+https://sapatv.cablecast.tv/internetchannel/show/44047,cablecast,hls-master+variant,10689.68,,,1,accept,,1.52,2026-09-21T18:42:30+00:00,,0
+https://weatherford.granicus.com/MediaPlayer.php?view_id=2&clip_id=3519,granicus,hls-master+variant,2.01,,,0,reject-short,duration 2.0s is below the 60s meeting-plausibility floor,2.69,2026-09-21T18:42:32+00:00,,0
+https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1058,granicus,hls-master+variant,7395.02,,,1,accept,,7.44,2026-09-21T18:45:01+00:00,,0
+https://weatherford.granicus.com/MediaPlayer.php?view_id=4&clip_id=3517,granicus,hls-master+variant,2394.47,,,1,accept,,5.21,2026-09-21T18:45:08+00:00,,0
+https://lmctvny.new.swagit.com/videos/394834,swagit,hls-master+variant,3925.01,,,1,accept,,1.52,2026-09-21T18:45:12+00:00,,0

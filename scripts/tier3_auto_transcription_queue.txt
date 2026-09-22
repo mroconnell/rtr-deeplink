@@ -949,3 +949,20 @@ https://maryestherfl.portal.civicclerk.com/event/110/media	https://maryestherfl.
 https://vimeo.com/195536478
 https://jupiterislandfl.portal.civicclerk.com/event/343/media
 https://live.pomonaca.gov/internetchannel/show/289
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17032	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17032
+https://reflect-bcit.cablecast.tv/internetchannel/show/54621	https://reflect-bcit.cablecast.tv/internetchannel/show/54621
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6643	https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6643
+https://vsctv.cablecast.tv/internetchannel/show/7506	https://vsctv.cablecast.tv/internetchannel/show/7506
+https://reflect-tvctv.cablecast.tv/internetchannel/show/32028	https://reflect-tvctv.cablecast.tv/internetchannel/show/32028
+https://franklintwpnj.granicus.com/MediaPlayer.php?view_id=1&clip_id=3752	https://franklintwpnj.granicus.com/player/clip/3753?view_id=3
+https://cityofgahanna.granicus.com/MediaPlayer.php?view_id=1&clip_id=623	https://cityofgahanna.granicus.com/player/clip/623?view_id=1
+https://cityofnewalbany.granicus.com/MediaPlayer.php?view_id=1&clip_id=248	https://cityofnewalbany.granicus.com/player/clip/349?view_id=2
+https://oswego.granicus.com/MediaPlayer.php?view_id=2&clip_id=769	https://oswego.granicus.com/player/clip/769?view_id=5
+https://peabody.cablecast.tv/internetchannel/show/20173	https://peabody.cablecast.tv/internetchannel/show/20173
+https://quincyil.granicus.com/MediaPlayer.php?view_id=1&clip_id=146	https://quincyil.granicus.com/player/clip/146?view_id=3
+https://salem.cablecast.tv/internetchannel/show/19762	https://salem.cablecast.tv/internetchannel/show/19762
+https://sheridanwy.new.swagit.com/videos/400903	https://sheridanwy.new.swagit.com/videos/400903
+https://sapatv.cablecast.tv/internetchannel/show/44047	https://sapatv.cablecast.tv/internetchannel/show/44047
+https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1058	https://narragansettri.granicus.com/player/clip/1058?view_id=1
+https://weatherford.granicus.com/MediaPlayer.php?view_id=4&clip_id=3517	https://weatherford.granicus.com/player/clip/3517?view_id=4
+https://lmctvny.new.swagit.com/videos/394834
