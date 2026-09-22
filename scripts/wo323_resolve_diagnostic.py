@@ -23,7 +23,20 @@ from app.platforms.base import (
     get_finder,
     UnsupportedPlatformError,
     CalendarPageError,
+    youtube_resolve_guard,
 )  # noqa: E402
+
+# WO-939: CLAUDE.md's "YouTube is fetched only by the drip Mac" rule
+# applies to this whole scratch-diagnostic family -- phase 3 already
+# never fetches a youtube.com/youtu.be URL directly, but a confirmed
+# non-YouTube candidate can still turn out to be a Legistar/CivicPlus/
+# CivicWeb/Municode Meetings/PrimeGov page (or a generic_fallback.py
+# candidate) that embeds YouTube and delegates to it from INSIDE
+# resolve() -- see BACKLOG_DONE.md's WO-939 entry for the real incident
+# this closes. youtube_resolve_guard() blocks both real chokepoints
+# (YouTubeAssetFinder.resolve()/.resolve_video_id()) regardless of which
+# adapter is doing the delegating, so a hit here surfaces as an ordinary
+# RESOLVE_FAILED|...|YouTubeResolveBlocked line instead of a real fetch.
 
 register_all_finders()
 
@@ -42,7 +55,8 @@ async def main():
             await asyncio.sleep(1.5)
             continue
         try:
-            result = await finder.resolve(url)
+            with youtube_resolve_guard():
+                result = await finder.resolve(url)
         except CalendarPageError as e:
             print(f"CALENDAR_PAGE|{dom}|{gov_id}|{name}|{state}|{url}|{e}")
             await asyncio.sleep(1.5)

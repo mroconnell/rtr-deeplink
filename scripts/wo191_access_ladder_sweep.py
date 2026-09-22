@@ -125,6 +125,38 @@ def _save_headless_used(used: int) -> None:
     HEADLESS_BUDGET_JSON.write_text(json.dumps({"used": used}))
 
 
+def init_headless_budget(path: Path, total: int) -> None:
+    """WO-939: the single call a reusing WO's own wrapper module needs to
+    point the headless-render budget at ITS OWN file, replacing the old
+    two-step dance a reusing caller had to remember by hand.
+
+    Real, confirmed gap this closes (WO-218, 2026-09-11): `_headless_used
+    = _load_headless_used()` used to run as a bare module-level statement,
+    evaluated the instant this module is imported -- reading wo191's OWN
+    `wo191_headless_budget.json` file. A later WO that imports this module
+    and (per this file's own docstring at the time) monkeypatches just
+    `HEADLESS_BUDGET_JSON` to its own file does not retroactively
+    recompute `_headless_used`; it silently keeps whatever wo191's file
+    held at import time. WO-218's own pilot run hit this directly: it
+    inherited wo191's real count (579, already over any per-WO cap),
+    silently disabling the headless rung for the whole pilot batch -- no
+    error, no warning, just every headless-eligible host falling through
+    to "no platform link found." WO-218's own wrapper (`scripts/
+    wo218_ladder_sweep.py`) worked around it by hand, re-running
+    `wo191._headless_used = wo191._load_headless_used()` itself right
+    after overriding `HEADLESS_BUDGET_JSON`; that call is now `init_
+    headless_budget()`, one call instead of two, so a future reusing WO
+    can't forget the second step.
+
+    Doesn't change this module's own default behavior (running `main()`
+    directly, with no override) -- `_headless_used` is still computed
+    once at import time below for that case, exactly as before."""
+    global HEADLESS_BUDGET_JSON, HEADLESS_BUDGET_TOTAL, _headless_used
+    HEADLESS_BUDGET_JSON = path
+    HEADLESS_BUDGET_TOTAL = total
+    _headless_used = _load_headless_used()
+
+
 _headless_used = _load_headless_used()
 _original_fetch_headless = wo147.fetch_headless
 
