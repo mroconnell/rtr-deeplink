@@ -77,10 +77,28 @@ def test_every_consolidated_script_shares_the_canonical_list(module_name):
     SECOND module-cache key and legitimately produces a second, equal-but-
     not-identical tuple object. That's a Python import-system fact about
     dual bare/qualified imports, not a real content drift -- what matters
-    is every script seeing the same 16 real markers, which `==` checks."""
+    is every script seeing the same 16 real markers, which `==` checks.
+
+    `wo145_api_first_sweep` also imports rtr-discovery (`discovery.ledger`)
+    at module level, same gap `tests/test_wo932_wo145_raw_identity.py`
+    already documents: CI has no `~/Documents/rtr-discovery` checkout, so
+    this fails there with `ModuleNotFoundError: No module named
+    'discovery'` even though it imports fine on a machine that has that
+    sibling repo checked out (confirmed live 2026-09-21 -- passed locally,
+    failed in CI on first push). Skip that one param there rather than
+    fail the build; the other 8 don't touch rtr-discovery and still run
+    everywhere."""
     sys.path.insert(0, "scripts")
     try:
         module = __import__(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == "discovery":
+            pytest.skip(
+                f"{module_name} imports rtr-discovery (`discovery`), not "
+                "installed here -- needs a machine with "
+                "~/Documents/rtr-discovery checked out"
+            )
+        raise
     finally:
         if sys.path and sys.path[0] == "scripts":
             sys.path.pop(0)
