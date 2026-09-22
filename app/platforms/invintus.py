@@ -160,6 +160,15 @@ def is_invintus_meeting_url(url: str) -> bool:
 #               courts, the governor, campaigns and news conferences, so a
 #               legislative filter is needed, see below)
 #   6361162879  Arizona Legislature (already handled by az_legislature.py)
+#   9375922947  TVW / Washington State Legislature (tvw.org; handled by
+#               tvw.py's wrapper-page delegation, WO-1010, 2026-09-22 --
+#               see that module's own docstring. Unlike Wisconsin, TVW's
+#               own `categories` carry an explicit, clean "Legislative"
+#               tag that no other TVW-hosted program type shares
+#               (confirmed against a real 50-row live sample), so its
+#               branch below checks that tag directly rather than
+#               excluding non-legislative prefixes the way Wisconsin's
+#               does.)
 _SEARCH_URL = "https://api.v3.invintus.com/v2/Search/general"
 _PLAYER_URL = "https://player.invintus.com/?clientID={client_id}&eventID={event_id}"
 _HUB_WINDOW_DAYS = 120
@@ -171,6 +180,7 @@ _HUB_PAGE_SIZE = 50
 LEGISLATURE_CLIENTS = {
     "4879615486": ("us:state:41", "Oregon Legislative Assembly"),
     "2789595964": ("us:state:55", "Wisconsin State Legislature"),
+    "9375922947": ("us:state:53", "Washington State Legislature"),
 }
 
 _CLIENT_ID_IN_PAGE_RE = re.compile(r"""["']?clientID["']?\s*[:=]\s*["']?(\d{6,})""")
@@ -231,6 +241,24 @@ def legislative_chamber(
     if client_id == "4879615486":
         first = lowered.split(" ", 1)[0] if lowered else ""
         return {"house": "House", "senate": "Senate", "joint": "Joint"}.get(first)
+    if client_id == "9375922947":
+        # TVW (Washington): a real, explicit "Legislative" category tag
+        # (confirmed live on House/Senate/Joint committee events -- see
+        # this module's LEGISLATURE_CLIENTS comment) is the filter; no
+        # other TVW program type carries it. Chamber is then read from
+        # the title the same way Oregon's is, falling back to "Joint" for
+        # a real bicameral/interim body (JLARC, the Select Committee on
+        # Pension Policy, the Citizen Commission for Performance
+        # Measurement of Tax Preferences) whose title names the committee
+        # rather than a chamber.
+        if "legislative" not in cats:
+            return None
+        first = lowered.split(" ", 1)[0] if lowered else ""
+        if first == "house":
+            return "House"
+        if first == "senate":
+            return "Senate"
+        return "Joint"
     # Wisconsin (WisconsinEye): exclude non-legislative program types first.
     blocked_prefixes = (
         "news conference",

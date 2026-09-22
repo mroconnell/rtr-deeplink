@@ -231,6 +231,12 @@ CANARY_URLS: dict[str, list[str]] = {
     "townhallstreams": [
         "https://townhallstreams.com/stream.php?location_id=94&id=75799"
     ],
+    # Washington State Legislature (tvw.org), WO-1010 (2026-09-22) -- a
+    # real Senate Housing committee meeting, real coherent captions
+    # confirmed live. tvw.py delegates to InvintusAssetFinder; if this
+    # page ages off, swap in any recent `/video/{slug}/` page linked from
+    # tvw.org's own schedule.
+    "tvw": ["https://tvw.org/video/senate-housing-2026091165/"],
     # "unknown" is generic_fallback.py's registered platform_name -- the
     # exact string detect_platform() returns for an unmatched host, not a
     # placeholder. Kept under that key so the coverage test can compare

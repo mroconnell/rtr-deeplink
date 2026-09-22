@@ -119,6 +119,51 @@ def test_wisconsin_chambers_from_real_titles_and_categories():
         assert legislative_chamber(WI, title, cats) == expected, title
 
 
+def test_tvw_chambers_from_real_titles_and_categories():
+    # Real TVW (Washington) titles/categories, 2026-09-22 (WO-1010) --
+    # confirmed via a live 50-row/520-total Search/general sample that no
+    # non-legislative TVW program (courts, agencies, "Inside Olympia")
+    # carries the "Legislative" category tag.
+    TVW = "9375922947"
+    cases = [
+        ("Senate Housing", ["Legislative", "Senate Housing"], "Senate"),
+        (
+            "House Agriculture & Natural Resources",
+            ["Legislative", "House Agriculture & Natural Resources"],
+            "House",
+        ),
+        (
+            "Joint Oregon-Washington Legislative Action Committee",
+            ["Legislative", "Joint Oregon-Washington Legislative Action Committee"],
+            "Joint",
+        ),
+        (
+            "JLARC - Joint Legislative Audit & Review Committee",
+            ["Legislative", "Joint Legislative Audit & Review Committee"],
+            "Joint",
+        ),
+        (
+            "Select Committee on Pension Policy",
+            ["Legislative", "Select Committee on Pension Policy"],
+            "Joint",
+        ),
+        # Not legislative meetings -- no "Legislative" category tag:
+        (
+            "Division 2 Court of Appeals",
+            ["Division 2 Court of Appeals", "Other Court"],
+            None,
+        ),
+        (
+            "Bi-State Tolling Subcommittee",
+            ["Agencies and Boards", "Bi-State Tolling Subcommittee"],
+            None,
+        ),
+        ("Inside Olympia - Washington Income Tax", ["Inside Olympia", "SERIES"], None),
+    ]
+    for title, cats, expected in cases:
+        assert legislative_chamber(TVW, title, cats) == expected, title
+
+
 def test_unknown_tenant_has_no_chamber():
     # University Place, WA (the tenant invintus.py was first built on).
     assert legislative_chamber("1872740071", "House Committee", []) is None

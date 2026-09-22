@@ -5731,6 +5731,13 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # "sliq_harmony" as its platform. Seven state legislature sites share
     # it, one tenant path each; see sliq_harmony.py's module docstring.
     "sliq_harmony": "Sliq Harmony (state legislature video archives)",
+    # Washington State Legislature (tvw.org) -- WO-1010, 2026-09-22. Same
+    # shape as az_legislature above: tvw.py delegates to
+    # InvintusAssetFinder for the actual video but resets
+    # `resolved.platform` back to "tvw" afterward (confirmed by reading
+    # resolve() end to end), so a real pushed row keeps its own label
+    # rather than reading "invintus". See tvw.py's own module docstring.
+    "tvw": "Washington State Legislature (tvw.org)",
 }
 
 # Registered platforms (app/platforms/__init__.py's
