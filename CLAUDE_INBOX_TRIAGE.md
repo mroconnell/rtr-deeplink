@@ -228,6 +228,125 @@ already seen), 0 pruned.
 
 ---
 
+## 2026-09-22
+
+51 candidate message IDs pulled from `label:rtr-claude newer_than:30d` (one
+page, newest-first), 18 new after the ledger filter — everything older than
+2026-09-21 13:32 UTC was already covered by the 2026-09-21 run.
+
+**Out of scope / informational, no write-up**: 1 GitHub "sudo email
+verification code" (account-level 2FA action, not an operational alert about
+this repo). 1 GitHub "third-party GitHub Application is using new
+permissions" notice (ChatGPT Codex Connector re-authorized to view email
+addresses — account-level, not this repo's code). 1 transcription worker
+daily report. 8 dependabot "won't notify again about this release" comments
+(PRs #1289, #1290, #1292, #1295, #1296, #1297, #1298, and one on old PR
+#767 already noted in a prior run) — dependabot managing its own
+notification state. 2 GitHub Actions "PR run failed: Test" notices tied to
+individual feature/dependency-bump branches, not `main` — per the routine's
+own scope rule these don't get investigated (a human gate already blocks
+either branch from merging red): WO-939's own branch (run `35687211080`,
+one real `F` in `tests/test_challenge_markers.py`, in-progress work) and the
+by-hand dependabot multi-package bump branch (run `35682602971` — its
+failure is a real `pip` dependency conflict, "Cannot install alembic==1.19.2
+and alembic==1.20.0 because these package versions have conflicting
+dependencies," i.e. two different requirements files pin different alembic
+versions in that squashed bump — but it's caught by the existing PR-branch
+CI gate before it can reach `main`, so per the routine's rule it's not
+written up here; whoever finishes that branch will see it fail locally).
+1 "YouTube transcripts: none new today" report (16 individual video
+failures, read in full) — all 16 are either `VideoUnplayable: ... This live
+event will begin` or `NoTranscriptFound: ... No transcripts were found for
+any of the requested language codes: ('en',)`, both known per-video outcomes
+for this feed.
+
+**Duplicates, no new write-up** (verified against real code/logs): Render
+`rtr-deeplink-archive` "HTTP health check failed (timed out after 5
+seconds)" (2026-09-22 11:18 UTC) — same already-tracked recurring pattern
+discussed at length in the 09-14/09-17/09-20/09-21 sections. GitHub Actions
+"Adapter health canary" failed on `main` (run `35647642518`, 2026-09-21
+19:55 UTC) — pulled the real job log: `FAIL legistar[1]: ClientResponseError:
+410 ... phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is a
+genuinely dead meeting" entry seen in every recent run. Transcription job
+3987 failed (Passaic County NJ, Board of County Commissioners Reorganization
+Meeting, `passaiccountynj.granicus.com/MediaPlayer.php?clip_id=58&view_id=1`,
+"ffmpeg reported success but the output file isn't decodable (likely
+truncated/corrupt)" at chunk 96/97, 2026-09-21 23:35-23:40 UTC) — same exact
+error signature as jobs 3727 and 3900 (both already noted as duplicates in
+the 09-20/09-21 runs) of the already-open `[JUST-DO-IT]`
+"`slice_cached_audio()` skips the corrupt-chunk decodability guard" entry —
+this is the third occurrence in three days.
+
+- **Confirmed** — GitHub's own usage alert escalated: the `mroconnell`
+  account has now used **100%** of its 2,000 included Actions minutes for
+  this billing cycle (alert timestamp 2026-09-22 09:18 UTC), up from the
+  **90%** already flagged as a new, unresolved open question in the
+  2026-09-21 run's section. **9 days** remain until the 2026-10-01 reset.
+  Checked whether this is actually blocking CI: two `main`-adjacent PR
+  branch `test.yml` runs fired and completed normally *after* this alert
+  (`35682602971` at 03:18 UTC and `35687211080` at 04:35 UTC, both same
+  day) — both ran to completion and failed for real, unrelated code/config
+  reasons (see the dependabot-bump and WO-939 entries above), not because
+  the runner was blocked or queued. So as of this run, GitHub is not hard-
+  stopping Actions runs at 100% — either it's allowing overage (which would
+  mean unexpected billing) or the account has some other cushion; this
+  Routine still can't see GitHub's account-level billing settings to tell
+  which.
+  - **Impact**: unchanged from the 09-21 finding — CI gating on every PR,
+    the adapter health canary, and both queue-advance workflows (tier-3 and
+    Granicus, each running every 4-6 hours around the clock per that
+    finding) all depend on this budget. The open question from 09-21 (check
+    GitHub billing settings: overage vs. hard stop) is now more urgent,
+    since the account is no longer under the cap, it's over it.
+  - **Open question**: unresolved from 09-21 — is overage being billed, or
+    could a run get hard-blocked at any point in these final 9 days? Only
+    checkable from GitHub's account-level billing dashboard, which this
+    Routine has no access to.
+
+- **Confirmed** (event) / **Unconfirmed** (root cause) — the daily RTR feed
+  drop failed for 2026-09-21, a new failure mode for this alert type: every
+  other feed-drop report seen in the last 30 days (including the 09-19 and
+  09-20 runs, both explicitly noted as successes in prior triage sections)
+  completed cleanly. `discover.py` (run from `~/Documents/rtr-discovery` on
+  the data-product side, not this repo) exited 1 partway through its
+  `resolve` stage: `RuntimeError: GET
+  https://redtaperecordings.com/internal/export/pages -> HTTP 404 (a 404
+  can mean a bad ARCHIVE_INGEST_TOKEN, or an Archive without WO-93
+  deployed)`. Traced the real code this repo owns: `archive/main.py`'s
+  `/internal/export/pages` route (added under WO-93, `archive/main.py:600`)
+  deliberately returns 404-not-401 on a bad/missing token — "Same
+  404-not-401 token posture as every other `/internal/* route`" per its own
+  docstring — so a 404 here is indistinguishable, from the caller's side,
+  between "wrong token" and "route not present." This route is not newly
+  added (it backs the exact same successful 09-19/09-20 drops, so it has
+  clearly been live in production for a while), which rules out "Archive
+  without WO-93 deployed" as the explanation — that leaves either a
+  transient Archive availability gap at the moment of the 13:32 UTC request
+  (this repo's `rtr-deeplink-archive` service has a real, already-tracked
+  recurring pattern of Render health-check timeouts, see the duplicate
+  entry above, though no Render alert lands at exactly 13:30 UTC on
+  09-21) or a stale/rotated `ARCHIVE_INGEST_TOKEN` specific to the
+  `rtr-discovery`/`rtr-business` script's own environment (a file this
+  Routine has no access to, since it lives outside this repo).
+  - **Impact**: one full day's feed drop (2026-09-21) produced zero
+    manifest output — no meetings written to the data-product feed for that
+    day, a full-day gap in whatever pipeline reads those drops downstream.
+    Every other stage before `resolve` ran fine (379 tenants swept, 9 new
+    candidates found), so this wasn't a broad outage, just this one
+    network call.
+  - **Open question**: did the 2026-09-22 drop (runs ~13:30 UTC daily,
+    after this triage run) succeed? If it also fails with the same 404,
+    that would point to a genuinely bad/expired token rather than a one-off
+    Archive blip, and would need fixing in the `rtr-discovery` script's
+    environment — outside this repo, so outside what this Routine can fix
+    directly, but worth flagging to Ryan either way.
+
+Ledger: 18 message IDs reviewed and recorded this run (18 new, 451 already
+seen), 0 pruned.
+
+---
+
 ## Open item
 
 **Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,
