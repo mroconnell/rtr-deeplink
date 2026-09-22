@@ -26,6 +26,107 @@ test now runs as a normal, passing assertion of the fix.
 **Not live until this workflow next runs.** Nothing to deploy — this
 only affects GitHub Actions' own runner steps.
 
+## WO-940: One shared registry write helper, replacing three drifted write paths [Done 2026-09-22]
+
+**Why this ran.** Three separate write paths into shared CSV registry
+files had each drifted from `ENUMERATION_METHODS.md`'s §158 write
+protocol in a different way, all found and left open in `BACKLOG.md`:
+`wo127_civicplus_pipeline.py`'s shared coverage-write helper still used a
+hardcoded 25,000-row floor instead of the dynamic 99%-of-committed-size
+floor newer scripts already use; `score_gov_registry.py` overwrote
+`archive/data/hub_slug_aliases.csv` wholesale every run with no
+read-first, which WO-109 found would have silently dropped 615 of 672
+real redirect rows; and every `*_apply_to_jc.py` script's pre-write
+re-check compared only a row count and header fieldnames, which a real,
+confirmed collision (2026-09-10, WO-150/WO-147) showed can miss a
+same-row-count concurrent write and silently clobber uncommitted rows.
+`docs/BACKLOG_PHASES.md`'s Phase 3 named one shared helper as the fix for
+all three at once.
+
+**What was built.** One new, pure, repo-agnostic module,
+`scripts/registry_write_helper.py` (takes a file path, no assumption
+about which registry or which repo) — `read_modify_write(path,
+mutate_fn, *, lock_path=None, min_row_floor=None,
+expected_content_hash=None)`:
+
+| Piece | What it does |
+|---|---|
+| Locking | Exclusive `flock` on a sibling `.lock` file, held for the entire read-modify-write. `mutate_fn` always runs against the read taken fresh after the lock is acquired, never a snapshot a caller might already be holding. |
+| Row-count floor | `committed_row_count_floor(path, ratio=0.99, fallback=...)` computes the floor from `git show HEAD:<path>` at run time, never a hardcoded constant. Never raises: falls back to a caller-supplied value (or `None`, meaning "skip the floor") if git fails. |
+| Staleness | `expected_content_hash` lets a caller that read the file earlier assert "the file must still equal what I read"; the helper compares a SHA-256 of the fresh, lock-protected read against it and refuses to write on a mismatch — catches a same-row-count, same-fieldnames concurrent write, which a count/fieldname check cannot. |
+| Atomic write | A same-directory, per-call-unique temp file, then `os.replace()`. LF line endings throughout. |
+
+Two real in-repo callers wired through it:
+
+| Caller | Change |
+|---|---|
+| `scripts/wo127_civicplus_pipeline.py`'s `_coverage_read_modify_write()` (imported by `wo174_pipeline.py`, `wo259_full_ladder_scan.py`) | Delegates to the shared helper. `MIN_SANE_ROW_COUNT = 25000` survives only as the fallback used if the git-based floor computation itself fails — never lowered, and the primary floor is now the dynamic 99% value (comfortably above 25,000 at the file's real size). External contract (`bool`, never raises) is unchanged, so both importing scripts needed no changes. |
+| `scripts/score_gov_registry.py`'s `_write_hub_slug_aliases()` | No longer overwrites `archive/data/hub_slug_aliases.csv` wholesale. Reads the existing committed file first (through the helper) and unions it with the freshly-derived rows: an existing row absent from this run's fresh candidates is kept; an existing row whose `old_slug` has since become a live hub again is dropped ("proven stale"); a fresh candidate for a `old_slug` not already on file is added; a fresh candidate that DISAGREES with an existing row's destination is a collision — the incumbent wins by default and the collision is printed, never silently auto-applied (same "existing wins unless proven stale" default WO-109/WO-112 used by hand). |
+
+Confirmed safe to touch `wo127_civicplus_pipeline.py`: the conductor
+checked `BACKLOG_DONE.md`'s "WO-174 close-out" entry (closed out
+2026-09-11, complete) and the process list on this machine for anything
+importing it, matching, or currently running, plus asking around other
+concurrent sessions; nothing was found. The safety constraint in this
+WO's brief that would otherwise have blocked this part was cleared
+before any edit was made.
+
+**Result.**
+
+| Gate | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | Passed |
+| `ruff format --check` (touched files) | Passed |
+| Full suite, `python -m pytest` | 4990 passed, 16 skipped, 5 xfailed, 0 failed (24 more than pre-WO-940 — the new tests below) |
+| `alembic check` | Not run — no model changed |
+| `scripts/check_backlog_done_headings.py` | Passed |
+
+New tests, all synthetic by design (this module is pure and takes a file
+path — no real registry is touched):
+
+| File | Covers |
+|---|---|
+| `tests/test_registry_write_helper.py` | Basic edit/atomicity/LF endings, the row-count floor, `committed_row_count_floor()` against a real throwaway git repo (never rtr-business) and its fallback, a threaded concurrency test using two real file descriptors on the same `.lock` file, and `test_stale_hash_catches_a_same_row_count_concurrent_write` — a direct synthetic reproduction of the 2026-09-10 WO-150/WO-147 collision shape (two sessions read the same starting content; one writes; the other's stale-check must now catch it via the hash even though row count and fieldnames never changed). |
+| `tests/test_score_gov_registry_hub_aliases.py` | The WO-109 case (an existing row absent from this run's fresh candidates survives, reproducing the real `gloucester-ma` hand-added exception from `tests/test_hub_aliases.py`), the "proven stale" drop, the hamilton/victoria/woodland-shaped collision (incumbent kept, collision printed), an identical existing+fresh row not reported as a collision, and the dynamic floor refusing a truncated read. |
+| `tests/test_wo127_coverage_write_helper.py` | Missing file, a real edit, `mutate_fn` returning `False`, the dynamic floor catching a truncated read the OLD hardcoded 25,000 floor would have accepted, and the fallback-to-25000 behavior when no git repo is reachable. |
+
+Column names in every fixture CSV are the real `jurisdiction_
+coverage.csv`/`hub_slug_aliases.csv` headers (confirmed from
+`scripts/wo357_apply_to_jc.py`, `scripts/wo360_apply_to_jc.py`, and
+`score_gov_registry.py`'s own `score_rows()`) — only row values are made
+up.
+
+**BACKLOG.md entries closed**: "`jurisdiction_coverage.csv`'s shared
+write helper still uses a", "`scripts/score_gov_registry.py` overwrites",
+"§158's write protocol doesn't catch a same-row-count". One genuine
+residual split back out as its own `[HUMAN]` entry: the `victoria`
+bare-slug collision WO-112 left unresolved is now visible (via this WO's
+own collision report) rather than a silent risk — Ryan still needs to
+decide it.
+
+**Caution.** The helper's content-hash staleness check
+(`expected_content_hash`) is exercised only by this WO's own synthetic
+tests; neither in-repo caller passes it today; both callers' entire
+read-modify-write already happens inside one continuous lock hold, which
+is what actually prevents the WO-150/WO-147 shape structurally now — the
+parameter exists so a FUTURE caller that reads the file earlier, before
+acquiring the lock (e.g. to build a slow, network-bound mutation plan)
+can still get the same protection. `wo127_civicplus_pipeline.py`'s
+`MIN_SANE_ROW_COUNT` fallback was left at its original value, not
+removed, per this WO's explicit instruction never to lower a floor.
+
+**Recommendation.** No further action needed to close the three entries.
+Ryan's call on the `victoria` slug (new `[HUMAN]` entry above) is
+optional and low-reach. Phase 3's remaining Deliverables (domain-health
+sweep, pin-rules model, name-normalisation PRs) are unrelated to this WO
+and still need their own numbers when they start, per
+`docs/BACKLOG_PHASES.md`.
+
+**Deploy status.** Not needed. Every change is under `scripts/` and
+`tests/` — no `app/`, `archive/`, `worker/`, `shared_static/`,
+`shared_templates/`, `requirements.txt`, or `render.yaml` touched, so
+this doesn't affect what's live in production.
+
 ## WO-1003: A jurisdiction hub is also indexable via a published Full Context entry [Done 2026-09-21]
 
 **Why this ran.** WO-947 put Full Context entries on their government's

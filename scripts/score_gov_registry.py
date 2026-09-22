@@ -66,6 +66,10 @@ sys.path.insert(0, str(REPO_ROOT))
 from app.utils.gov_registry import registry, resolve_government  # noqa: E402
 from archive.utils.gov_groups import GROUP_LABELS, group_for_gov_type  # noqa: E402
 from archive.utils.jurisdiction_format import jurisdiction_hub_slug  # noqa: E402
+from scripts.registry_write_helper import (  # noqa: E402
+    committed_row_count_floor,
+    read_modify_write,
+)
 
 DEFAULT_DISCOVERY = Path.home() / "Documents" / "rtr-discovery"
 # The shared checkout's .env, not the worktree's -- CLAUDE.md's own
@@ -697,8 +701,11 @@ def _seed_governments(all_rows: List[dict]) -> None:
     print(f"  governments.csv: {len(merged)} rows")
 
 
+HUB_SLUG_ALIASES_FIELDNAMES = ["old_slug", "gov_id", "new_slug", "evidence"]
+
+
 def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
-    """Write `archive/data/hub_slug_aliases.csv` -- every `/j/` slug that
+    """Update `archive/data/hub_slug_aliases.csv` -- every `/j/` slug that
     stops being a hub, and where it goes.
 
     This has to be generated HERE, and only here, because the set of old
@@ -713,6 +720,22 @@ def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
     slug that survives as some other government's hub must never redirect,
     which is what would happen if the raw before/after pairs were dumped
     unfiltered.
+
+    WO-940: this used to overwrite the file wholesale every run, deriving
+    every row fresh with no read-first. WO-109 (2026-09-03) found that a
+    naive overwrite would have dropped 615 of 672 real, currently-serving
+    redirect rows -- a row whose (old, new) pair was only ever visible on
+    the FIRST run after the backfill that produced it becomes invisible
+    to every run after that, since a later run only ever sees
+    already-backfilled `jurisdiction` strings. WO-109 fixed this once, by
+    hand, with a merge; this makes that merge the normal behavior instead
+    of a one-off. See BACKLOG.md's "scripts/score_gov_registry.py
+    overwrites" entry and BACKLOG_DONE.md's WO-109/WO-112 writeup for the
+    full history, including the 3 real `old_slug` collisions
+    (hamilton/victoria/woodland) that a plain union can't resolve on its
+    own -- handled below the same way WO-109/WO-112 did: the EXISTING
+    (incumbent) row wins by default, and a differing fresh candidate is
+    reported, never silently auto-applied.
     """
     # A row with no `gov_id` is `unresolved` or `blank`: it has no
     # government, so it has no hub, and `_hub_identity()` will keep
@@ -721,12 +744,12 @@ def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
     # 404 -- `/j/cottage-grove` -> `/j/city-of-cottage-grove`, a redirect
     # to nothing, which is strictly worse than the 404 it replaced.
     live = {r["new_hub_slug"] for r in all_rows if r["new_hub_slug"] and r["gov_id"]}
-    rows: Dict[str, dict] = {}
+    fresh: Dict[str, dict] = {}
     for r in all_rows:
         old, new = r["old_hub_slug"], r["new_hub_slug"]
         if not r["gov_id"] or not old or not new or old == new or old in live:
             continue
-        rows.setdefault(
+        fresh.setdefault(
             old,
             {
                 "old_slug": old,
@@ -738,17 +761,99 @@ def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
                 ),
             },
         )
+
     path = REPO_ROOT / "archive" / "data" / "hub_slug_aliases.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(
-            fh, fieldnames=["old_slug", "gov_id", "new_slug", "evidence"]
+    if not path.exists():
+        # First-ever write: nothing committed to merge with yet. Seed a
+        # header-only file so this run, and every run after it, goes
+        # through the exact same read-modify-write path below.
+        with open(path, "w", newline="", encoding="utf-8") as fh:
+            csv.DictWriter(
+                fh, fieldnames=HUB_SLUG_ALIASES_FIELDNAMES, lineterminator="\n"
+            ).writeheader()
+
+    collisions: List[dict] = []
+    written_count = 0
+
+    def mutate(rows: List[dict]) -> bool:
+        nonlocal written_count
+        original = [dict(r) for r in rows]
+        merged: Dict[str, dict] = {
+            r["old_slug"]: dict(r) for r in rows if r.get("old_slug")
+        }
+
+        # "Proven stale": an existing committed redirect whose own
+        # old_slug has since become a live hub again must be dropped --
+        # the same rule already applied to a freshly-derived row above
+        # (`old in live`), now also applied to what's already on disk,
+        # since a slug can go from retired to live again on a later
+        # backfill/registry change.
+        for old_slug in list(merged):
+            if old_slug in live:
+                del merged[old_slug]
+
+        for old_slug, candidate in fresh.items():
+            existing = merged.get(old_slug)
+            if existing is None:
+                merged[old_slug] = candidate
+            elif (
+                existing["new_slug"] != candidate["new_slug"]
+                or existing["gov_id"] != candidate["gov_id"]
+            ):
+                # Same collision shape WO-109/WO-112 hit by hand
+                # (hamilton/victoria/woodland): the SAME old_slug,
+                # computed from two different tenants' raw jurisdiction
+                # text at two different points in time, legitimately
+                # wants two different destinations. No general tie-break
+                # rule exists (WO-112 resolved 2 of 3 only by Ryan's
+                # direct instruction, and left the third flagged for
+                # him) -- so the incumbent (existing, already-committed)
+                # row wins by default and this is reported, never
+                # silently auto-applied.
+                collisions.append(
+                    {
+                        "old_slug": old_slug,
+                        "incumbent_new_slug": existing["new_slug"],
+                        "incumbent_gov_id": existing["gov_id"],
+                        "candidate_new_slug": candidate["new_slug"],
+                        "candidate_gov_id": candidate["gov_id"],
+                    }
+                )
+            # else: identical target already on file -- nothing to do.
+
+        final_rows = [merged[k] for k in sorted(merged)]
+        rows[:] = final_rows
+        written_count = len(final_rows)
+        return final_rows != original
+
+    floor = committed_row_count_floor(path, repo_root=REPO_ROOT, ratio=0.99)
+    result = read_modify_write(path, mutate, min_row_floor=floor)
+
+    if collisions:
+        print(
+            f"  archive/data/hub_slug_aliases.csv: {len(collisions)} old_slug "
+            "collision(s) need a human decision (incumbent kept, per "
+            "WO-109/WO-112 precedent) -- see below:"
         )
-        writer.writeheader()
-        for row in sorted(rows.values(), key=lambda r: r["old_slug"]):
-            writer.writerow(row)
-    print(f"  archive/data/hub_slug_aliases.csv: {len(rows)} retired slugs")
-    return len(rows)
+        for c in collisions:
+            print(
+                f"    {c['old_slug']}: keeping -> {c['incumbent_new_slug']} "
+                f"({c['incumbent_gov_id']}); NOT applying candidate -> "
+                f"{c['candidate_new_slug']} ({c['candidate_gov_id']})"
+            )
+
+    if result.changed:
+        print(
+            f"  archive/data/hub_slug_aliases.csv: {written_count} retired "
+            "slugs (merged with existing, not overwritten)"
+        )
+    else:
+        print(
+            f"  archive/data/hub_slug_aliases.csv: {written_count} retired "
+            "slugs (unchanged)"
+        )
+    return written_count
 
 
 def _write_summary(

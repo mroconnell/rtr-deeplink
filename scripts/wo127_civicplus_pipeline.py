@@ -76,7 +76,6 @@ homepage-link shapes it handles.
 
 import asyncio
 import csv
-import fcntl
 import os
 import re
 import sys
@@ -103,6 +102,11 @@ from app.platforms.base import (  # noqa: E402
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from adhoc_civicplus_pipeline import homepage_civicclerk_fallback  # noqa: E402
+from registry_write_helper import (  # noqa: E402
+    TruncatedReadError,
+    committed_row_count_floor,
+    read_modify_write,
+)
 
 DEFAULT_HITS_CSV = (
     Path(__file__).resolve().parent / "civicplus_data" / "wo127_civicplus_hits.csv"
@@ -184,57 +188,62 @@ COVERAGE_LOCK = COVERAGE_CSV.with_suffix(".csv.lock")
 # read-whole-file/write-whole-file apply with no locking raced badly
 # enough that this exact file got truncated to ~13,005 and later ~16,517
 # lines in several sessions' working trees, down from its real 33,465+.
-# MIN_SANE_ROW_COUNT is comfortably below the real count and comfortably
-# above both observed truncation sizes -- a read landing under it is
-# treated as a corrupt/mid-write snapshot, never as a legitimate new
-# baseline.
+#
+# WO-940: this was a hardcoded floor (25,000 -- about 77% of the file's
+# real size, not the 99%-of-committed-HEAD floor
+# `ENUMERATION_METHODS.md` §158 and CLAUDE.md now ask new callers to
+# compute at run time). `_coverage_read_modify_write()` below now
+# computes that dynamic floor via the shared
+# `scripts/registry_write_helper.committed_row_count_floor()` on every
+# call. MIN_SANE_ROW_COUNT survives ONLY as the fallback used if that
+# git-based computation itself fails (e.g. no `.git` reachable) --
+# unchanged from its original value, so this is a strict tightening
+# toward 99%, never a lowering: the dynamic floor is far higher (99% of
+# 32,285+ lines as of the BACKLOG.md entry that tracked this) whenever
+# it can be computed at all, and this fallback is only ever the floor
+# actually enforced in the one case that already had zero floor
+# protection before.
 MIN_SANE_ROW_COUNT = 25000
 
 
 def _coverage_read_modify_write(mutate_fn):
-    """Shared read-modify-write for jurisdiction_coverage.csv, following
+    """Shared read-modify-write for jurisdiction_coverage.csv, delegating
+    to `scripts/registry_write_helper.read_modify_write()` (WO-940) --
     the cross-session write protocol agreed in ENUMERATION_METHODS.md
-    §158 after that truncation incident: (1) an `flock` around the
-    read-modify-write, not just an informal row-count check; (2) re-read
-    fresh immediately before writing; (3) refuse to write if the fresh
-    read looks truncated; (4) write to a same-directory temp file and
-    `os.replace()` over the real file, never in place; (5) LF line
-    endings throughout.
+    §158 after the 2026-09-09 truncation incident, factored into one
+    shared, repo-agnostic module: (1) an `flock` held for the entire
+    read-modify-write, not just an informal row-count check; (2)
+    `mutate_fn` always runs against the read taken fresh after the lock
+    is acquired; (3) refuse to write if that read looks truncated,
+    against a floor re-derived from the committed file's own size at run
+    time; (4) write to a same-directory temp file and `os.replace()`
+    over the real file, never in place; (5) LF line endings throughout.
 
     `mutate_fn(rows) -> changed: bool` mutates `rows` (a list of dicts)
     in place and returns whether anything actually changed; this wrapper
     handles everything else. Returns False (no write attempted) if the
     file is missing, empty, looks truncated, or `mutate_fn` made no
-    change."""
+    change -- same external contract as before this WO, so every
+    existing caller (`update_coverage_reject_reason()`,
+    `wo174_pipeline.py`, `wo259_full_ladder_scan.py`) is unaffected."""
     if not COVERAGE_CSV.exists():
         return False
-    COVERAGE_LOCK.touch(exist_ok=True)
-    with open(COVERAGE_LOCK, "w") as lock_f:
-        fcntl.flock(lock_f, fcntl.LOCK_EX)
-        try:
-            with open(COVERAGE_CSV, newline="", encoding="utf-8") as f:
-                rows = list(csv.DictReader(f))
-            if len(rows) < MIN_SANE_ROW_COUNT:
-                print(
-                    f"[COV-ERR] refusing to write: {COVERAGE_CSV.name} read back "
-                    f"only {len(rows)} rows (< {MIN_SANE_ROW_COUNT}) -- looks "
-                    "truncated, not a real baseline"
-                )
-                return False
-            if not rows:
-                return False
-            fieldnames = list(rows[0].keys())
-            if not mutate_fn(rows):
-                return False
-            tmp_path = COVERAGE_CSV.with_suffix(".csv.tmp")
-            with open(tmp_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
-                writer.writeheader()
-                writer.writerows(rows)
-            os.replace(tmp_path, COVERAGE_CSV)
-            return True
-        finally:
-            fcntl.flock(lock_f, fcntl.LOCK_UN)
+    floor = committed_row_count_floor(
+        COVERAGE_CSV, ratio=0.99, fallback=MIN_SANE_ROW_COUNT
+    )
+    try:
+        result = read_modify_write(
+            COVERAGE_CSV,
+            mutate_fn,
+            lock_path=COVERAGE_LOCK,
+            min_row_floor=floor,
+        )
+    except TruncatedReadError as exc:
+        print(f"[COV-ERR] refusing to write: {exc}")
+        return False
+    except FileNotFoundError:
+        return False
+    return result.changed
 
 
 def update_coverage_reject_reason(gov_id, reject_reason):
