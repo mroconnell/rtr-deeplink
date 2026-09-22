@@ -2255,11 +2255,16 @@ block. A visible `<time>` under the headline and a matching
 published entry's canonical permalink is also listed in `sitemap.xml`
 (capped at the 500 most recently updated, `crud.CONTEXT_SITEMAP_MAX_
 ENTRIES`) — the sitemap's own `/context` line already worked this way,
-and now individual entries do too. The RSS feed is untouched: its
-`<item><link>` still points at the entry's meeting deep link, not its
-permalink — a real semantics question (what "the URL for this item"
-should mean to a subscriber), not a code change, left open in
-`BACKLOG.md` alongside it.
+and now individual entries do too. **The RSS feed's `<item><link>` now
+points at the entry's own permalink too (WO-1001, 2026-09-21)**, not the
+meeting — "the URL for this item," to a subscriber, is the curated post,
+not the recording it cites. The old target — the meeting deep link —
+didn't disappear; it moved into `<description>`, as a plain sentence
+("Watch the full meeting from M:SS: {url}") alongside the existing
+"Original post:" line, so a reader who only sees the feed still gets to
+the recording. `<guid>` is untouched on purpose — it's what a reader uses
+to dedupe already-seen items, and changing it would re-deliver every
+existing item as new.
 
 **Entries also appear on their government's hub and their state page
 (WO-947).** Asked by Ryan: "a page like this that is related to
