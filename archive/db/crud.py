@@ -8835,7 +8835,7 @@ async def get_jurisdiction_hub_data(
     }
 
 
-async def _context_hub_membership_ids(session) -> tuple[set, set]:
+async def _context_hub_membership_ids() -> tuple[set, set]:
     """(gov_ids, page_ids) of every meeting page carrying >= 1 published
     Full Context entry -- WO-1003, backing list_indexable_hub_entries()'s
     OR-entries check below.
@@ -8854,17 +8854,21 @@ async def _context_hub_membership_ids(session) -> tuple[set, set]:
     set()) -- same tolerance every other context reader in this file
     already has for an optional signal that must never break the
     sitemap."""
-    if not await _context_available(session):
-        return set(), set()
+    # Its OWN session, deliberately -- see _context_entries_isolated(): a
+    # failed statement inside the sitemap's session would abort that whole
+    # transaction on Postgres and take the sitemap down with it.
     try:
-        rows = (
-            await session.execute(
-                select(MeetingPage.gov_id, MeetingPage.id)
-                .join(ContextEntry, ContextEntry.meeting_page_id == MeetingPage.id)
-                .where(ContextEntry.status == "published")
-                .distinct()
-            )
-        ).all()
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return set(), set()
+            rows = (
+                await ctx_session.execute(
+                    select(MeetingPage.gov_id, MeetingPage.id)
+                    .join(ContextEntry, ContextEntry.meeting_page_id == MeetingPage.id)
+                    .where(ContextEntry.status == "published")
+                    .distinct()
+                )
+            ).all()
     except Exception:
         logging.getLogger(__name__).exception(
             "Failed to load Full Context hub-membership ids for the sitemap."
@@ -8887,7 +8891,7 @@ async def list_indexable_hub_entries() -> list[dict]:
     stable file."""
     async with async_session() as session:
         groups = await _hub_groups(session)
-        entry_gov_ids, entry_page_ids = await _context_hub_membership_ids(session)
+        entry_gov_ids, entry_page_ids = await _context_hub_membership_ids()
     return sorted(
         (
             {
