@@ -1,5 +1,19 @@
 # rtr-deeplink
 
+> **Temporary (2026-09-22): GitHub Actions billing is maxed out.** The
+> `mroconnell` account has used 100% of its included Actions minutes for
+> this billing cycle, and adding a payment method or raising the budget
+> is currently blocked on GitHub's side. CI (`ruff`, `pytest`, `alembic
+> check`) has kept completing successfully so far, just sometimes with a
+> long delay before a run even registers — it has not been disabled. The
+> repo's required-check ruleset ("main — require tests") is staying on
+> deliberately; every merge still needs it to pass, and nobody should
+> bypass or remove it just because a check is slow. Until this is
+> resolved, be extra careful verifying a change locally (all five CI
+> gates — see `CLAUDE.md`) before pushing, since GitHub's own check is a
+> slower and less certain backstop right now than usual. Remove this
+> note once Actions billing is fixed.
+
 Paste the URL of a public government meeting recording. Get back the video
 and its transcript, side by side, with every line clickable — and a URL you
 can share that lands someone at that exact moment.
