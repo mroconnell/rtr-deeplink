@@ -147,6 +147,119 @@ edge cases, not a live user-visible bug.
 **Deploy status.** Merged to `main`, **not deployed**. No migration —
 no schema change.
 
+## WO-936: A detector for stuck transcription jobs, plus a real-error-vs-timeout label for Granicus failures [Done 2026-09-21]
+
+**Why this ran.** BACKLOG.md carried six related transcription-worker
+reliability findings: an OOM-killed chunk leaves no trace at all, the
+claim heartbeat WO-57 shipped has no ceiling so a wedged job can pin
+forever with no error, the flat 120s ffmpeg timeout doesn't adapt per
+source, a single job's per-host pull pattern, and two Granicus-specific
+findings about a real HTTP 504 getting confused with an ordinary
+timeout. Re-derived every entry before building anything, per
+`CLAUDE.md`'s "a backlog entry is a lead, not a spec" rule — two of the
+six needed different treatment than their titles suggested.
+
+**What was re-derived.**
+
+| Entry | What the re-check found |
+|---|---|
+| "A single job still makes N consecutive pulls to the same host" | Its own text already read "Next action: none planned" (WO-40 falsified the round-robin fix, 2026-08-21, tested against all 514 production jobs). Not an open bug — moved to Standing decisions instead of building anything for it. |
+| "East Lansing MI (Granicus): a new, deterministic ffmpeg filter-graph failure" | Confirmed still no `aresample` reference anywhere in `app/platforms/media_probe.py` or `worker/main.py` (`git grep -i aresample` — same check the entry itself records from 2026-09-05). A local ffmpeg filter-graph crash, unrelated to a remote HTTP response — a different root cause from the Granicus timeout entry, not merged into this fix. Left open, unchanged. |
+
+**What was built.**
+
+| Piece | What it does | Where |
+|---|---|---|
+| `TranscriptionJob.last_progress_at` | Set only inside `report_chunk_result()`, on both success and failure — never by the heartbeat, which is what makes it a real "did this job actually do anything" signal instead of "is some process still alive." | `archive/db/models.py`; migration `8695ecf4fe2d` |
+| `crud.STUCK_JOB_THRESHOLD` (3 hours) | One shared "this job is stuck" number, sized ~12x over the slowest real chunk ever measured (job 911, Detroit, ~15 min/chunk — see WO-57's own backlog entry). | `archive/db/crud.py` |
+| `crud.list_stuck_transcription_jobs()` | Every `in_progress` job whose `last_progress_at` (or `created_at`, for a job that predates the migration) is older than the threshold. | `archive/db/crud.py`, wired into `get_transcription_queue_summary()` |
+| Daily report "Stuck jobs" section | A queue-table row, a red warning line, and a per-job list (page, platform, chunk progress, how long it's been stalled, job id) — same shape as the existing failure digest. Empty summary key (older callers) degrades to "nothing stuck," not an error. | `archive/utils/email.py`, `send_worker_daily_report()` |
+| Heartbeat ceiling | `_heartbeat_loop()` now stops refreshing the claim once `crud.STUCK_JOB_THRESHOLD` has passed with no chunk finished, letting `STALE_CLAIM_AFTER` reclaim the job. Does not cancel the stuck transcription call itself (`asyncio.to_thread` can't be cancelled) — only stops protecting its claim, which is the safe half. | `worker/main.py`, `_heartbeat_loop()` |
+| Real-5xx vs. timeout label | `_classify_nonzero_exit()`/`_remote_5xx_status()` label a chunk failure `"remote server returned HTTP 5xx (a real error reply, not a timeout)"` when ffmpeg's own stderr actually names one (`"HTTP error NNN"`/`"Server returned NNN"`, confirmed real shapes). The existing `"ffmpeg timed out after 120s..."` message is untouched byte-for-byte (several tests key off it exactly). | `app/platforms/media_probe.py`, used by `_extract_chunk_once()` and `extract_full_audio()` |
+
+**Why the heartbeat cap is safe, not a regression of WO-57.** WO-57
+shipped the unconditional heartbeat specifically because reclaiming a
+*legitimately* slow chunk corrupts the transcript — two workers both
+report success for the same window, and `report_chunk_result()` appends
+(see `tests/test_claim_heartbeat.py`'s own docstring). Nothing
+legitimate has ever run remotely close to 3 hours; the cap only ever
+fires on a job that is already, genuinely wedged or OOM-looping. The
+same number backs both the detector and the cap on purpose — a job
+whose heartbeat stops is exactly a job the daily report would already
+be calling out.
+
+**Entries closed, entries left open or narrowed.**
+
+| Entry | Outcome |
+|---|---|
+| An OOM-killed chunk is completely invisible | Closed. A repeatedly-OOMing job never advances `last_progress_at`, so `list_stuck_transcription_jobs()` catches it and the daily report surfaces it. |
+| WO-57's claim heartbeat has no cap | Closed. The heartbeat now stops at `crud.STUCK_JOB_THRESHOLD`. |
+| Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out (real 504, not a rate limit) | Closed. The classification this entry's own "Next action" asked for is built. |
+| A single job still makes N consecutive pulls to the same host | Moved to Standing decisions — already a "none planned" finding (see re-derivation above), not an open bug. |
+| The 120s ffmpeg timeout is a flat value that doesn't adapt per source | Half-closed, per `BACKLOG.md`'s own "half-resolved → split" rule. The logging-distinction half of its "Next action" is the same fix as the Granicus entry above. The other half — detecting a slow-source shape early and widening/deferring that job's timeout — is a materially bigger design (a new per-job adaptive-timeout policy, not scoped here) and stays open in `BACKLOG.md`, narrowed to just that idea. |
+| East Lansing MI ffmpeg filter-graph failure | Left open, unchanged — confirmed a different, unrelated root cause (see re-derivation above). |
+
+**Two independent transcription paths — this landed in shared code, and
+in worker-only code, for different reasons.** Per `CLAUDE.md`'s "two
+independent transcription paths" rule: the real-5xx-vs-timeout
+classification lives in `app/platforms/media_probe.py`'s
+`_extract_chunk_once()`/`extract_full_audio()`, which both the cloud
+worker (`worker/main.py`) and `scripts/transcribe_backlog_locally.py`
+already call — so the local script gets the same classification with no
+separate change. The stuck-job detector and heartbeat cap are
+worker-only **by nature**, not by oversight: `scripts/
+transcribe_backlog_locally.py` runs as a single foreground process per
+invocation and never holds the `claim_next_chunk()`/`heartbeat_claim()`
+claim pattern the cloud worker uses, so there is no second process that
+could ever double-claim the same job, and nothing for a "claim went
+stale" detector to watch. Its own already-known gap (`BACKLOG.md`'s
+`transcribe_backlog_locally.py`'s asyncio/subprocess context hangs
+entry) is a different problem — a hung *local* process with nobody
+polling it — not this one.
+
+**Result.**
+
+| Check | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | Clean |
+| `ruff format --check` (same paths) | Clean |
+| `python -m pytest` (full suite) | 4899 passed, 16 skipped, 4 xfailed, 0 failed — 16 new tests added by this WO |
+| `alembic check` — archive | Clean; one new migration, `8695ecf4fe2d` |
+| `alembic check` — resolver (`app/`) | Clean; unchanged, no migration needed |
+| `scripts/check_backlog_done_headings.py` | Clean |
+
+**Caution.** `crud.STUCK_JOB_THRESHOLD`'s wide margin is measured
+against today's chunk sizes (WO-94's 450s default). If a future change
+raises the default chunk size substantially, re-measure the slowest real
+per-chunk pace before assuming 3 hours is still a safe margin — the
+whole safety argument for the heartbeat cap rests on that gap staying
+wide. Separately: the real-5xx classification only fires when ffmpeg's
+own stderr actually names an HTTP status. Granicus's specific
+`chunklist.m3u8` hang (4-6 minutes, then a real 504) is still cut off by
+the 120s subprocess timeout before ffmpeg ever sees that response, so in
+practice it still reports as an ordinary timeout — this fix helps a
+source that fails *faster* than 120s (a fast-failing 5xx) and helps any
+future re-check of stored failures, not that one specific slow-hang
+case. Fixing that one would mean raising `_SUBPROCESS_TIMEOUT_SECONDS`,
+which `BACKLOG.md` has a Standing decision against.
+
+**Recommendation.** Deploy when convenient — nothing here is a live
+regression, and the daily report already sends once a day, so the
+"Stuck jobs" line will start showing real data (or nothing) the first
+time it runs post-deploy.
+
+**Deploy status.** On `main`, not live. `archive/` (the Archive
+service, `rtr-deeplink-archive`) and `worker/` (both
+`rtr-transcription-worker` and `rtr-transcription-worker-2`) need a
+deploy for the detector, the report section, and the heartbeat cap to
+take effect; `app/platforms/media_probe.py` also ships to the resolver
+(`rtr-deeplink`) since it lives under `app/platforms/`, though the
+resolver's own synchronous feasibility check
+(`probe_duration()`) is unchanged by this WO. Deploys are manual
+(`render.yaml`'s `autoDeploy: false`) — merging this PR ships nothing by
+itself. The migration (`8695ecf4fe2d`) runs automatically via the
+Archive's `preDeployCommand` on its next deploy.
+
 ## Fond du Lac County, WI: authoritative host pin, queued for tier 3 (WO-1000, OpenPublica) [Done 2026-09-21]
 
 **Issue.** WO-1000's OpenPublica sweep found a real, new-to-Archive county
