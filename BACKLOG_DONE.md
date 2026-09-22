@@ -1,5 +1,15 @@
 # Backlog — done
 
+## WO-1002: Full Context entries appear on the meeting page they cite [Done 2026-09-21]
+
+**Why this ran.** WO-947 (same day, entry right below) put a "Seen on
+social media" list of Full Context entries on a government's hub page and
+its state page. That left one surface out: the meeting page itself
+(`/m/{slug}`), the one place a reader who followed the clip's own deep
+link actually lands. `BACKLOG.md` already carried this as a follow-up
+("this moment was clipped on social media" backlink); Ryan decided to
+build it.
+
 ## WO-1001: the Full Context RSS item link points at the post, not the meeting [Done 2026-09-21]
 
 **Why this ran.** `BACKLOG.md` had an open entry: the Full Context RSS
@@ -72,6 +82,66 @@ YouTube.
 
 | Piece | What it does |
 |---|---|
+| `crud.list_context_entries_for_meeting(meeting_page_id, *, limit=MEETING_CONTEXT_ENTRIES)` | A thin wrapper over WO-947's `list_context_entries_for_pages()` with the narrowest possible condition, `MeetingPage.id == meeting_page_id` — one meeting, not a hub's or state's whole page set. Run through `_context_entries_isolated()`, its own session, never raising, same as the hub/state callers. `MEETING_CONTEXT_ENTRIES = 5`. |
+| Route (`meeting_page()`, `archive/main.py`) | One new awaited call, `context_entries = await crud.list_context_entries_for_meeting(page["id"])`, after the 404 check and the card-warm scheduling, passed to the template. Always a list, never `None`. |
+| `_context_mentions.html` | Same partial WO-947 built, now with a `meeting_view` flag. In that mode: the heading reads "This moment on social media" when at least one shown entry has a real timestamp, else "This meeting on social media"; the redundant meeting title/date line is dropped (the page is already that meeting); each entry's timestamp becomes its own "at M:SS" link to `entry.deep_link`, so a reader jumps straight to the clipped second. The headline → permalink link, the match badge, "Original post on {network}" as plain text, and "More on Full Context →" are unchanged from the hub/state view. |
+| `meeting_page.html` | Included via `{% with meeting_view = True %}{% include "_context_mentions.html" %}{% endwith %}` — the same pattern `state_page.html` already used for `show_jurisdiction`. |
+| `archive/static/style.css` | A small addition inside the existing `context-*` section: `.context-mentions-meeting` (spacing) and `.context-mentions-timestamp` (the "at M:SS" link). |
+
+**Placement: inside the sticky video column, not a new row between it and
+the transcript.** `meeting_page.html`'s desktop layout (`@media
+(min-width: 900px)`) is a two-column CSS grid: `.meta` spans both columns
+explicitly (`grid-column: 1 / -1`), `#videoColumn` is pinned to column 1
+(`position: sticky`), and `#transcriptColumn` is pinned to column 2. A
+new sibling row inserted between `#videoColumn` and `#transcriptColumn`
+with no explicit `grid-column` gets auto-placed by the browser into
+whichever cell is free next — checked by hand, that landed it in
+`#transcriptColumn`'s own column at `#videoColumn`'s row, which then
+pushed the transcript down a full row with an empty gap next to it. The
+block was placed inside `#videoColumn` instead, right after the video/
+toolbar/report-problem/transcribe controls and before `#transcriptColumn`
+opens — it inherits column 1 for free, sits in the same sticky box those
+other secondary controls already share, and needs no new grid rule.
+Verified by hand in the browser at both a phone width and a real 1400px
+desktop width (screenshots below); the two-column layout held with no
+gap or misalignment either way.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check` and `ruff format --check` (clean on the changed Python files, and
+clean over the full `app/ archive/ worker/ scripts/ tests/` tree), the
+full suite (**4896 passed, 16 skipped, 4 xfailed, 0 failed** — 13 more
+than WO-947's own same-day count of 4883, exactly this WO's 13 new
+tests), `alembic check` for both services (no migration — no schema
+change), and the `BACKLOG_DONE.md` heading check. Node tests: 81 passed
+(unchanged — no JS touched).
+
+New test file `tests/test_context_on_meeting_page.py` (13 tests, same
+seeding pattern as `tests/test_context_on_hubs.py`): an entry shows on
+its own meeting, never a different one; draft/hidden/orphaned entries
+never show; the limit and newest-first order are respected; the heading
+falls back to "This meeting on social media" when no shown entry has a
+timestamp; the section is fully absent (no heading, no `context-mentions`
+class) with zero entries; and the page still 200s when the crud lookup
+raises (both a direct monkeypatch of the module-level function and one
+routed through the isolated-session helper).
+
+Both services were then run locally against a scratch SQLite database
+(`DATABASE_URL` set explicitly, `.env` never loaded) and driven through
+the resolver in a real browser, with a real Walnut Creek, CA meeting page
+seeded plus one published, exact-match entry at 94 seconds.
+
+| Check | Result |
+|---|---|
+| `/m/{slug}` | "This moment on social media" heading, headline linking to `/context/{id}-{slug}`, "Exact moment" badge, "at 1:34" link |
+| "at 1:34" link target | `/m/{slug}?t=94` — the real deep link, confirmed via the accessibility tree, not just visually |
+| Headline link target | `/context/1-a-clip-of-the-budget-vote` — the resolver's own `/context/{id}-{slug}` proxy route |
+| Desktop width (1400px) | Block renders inside the sticky left column, under the report/transcribe controls; transcript column stays aligned to its right with no gap |
+| Phone width | Block renders in the normal single-column flow, same content |
+
+**Docs.** `README.md`'s "Full Context feed" section: a new paragraph next
+to the WO-947 one it parallels. `BACKLOG.md`: the "clipped on social
+media" `/m/` backlink entry removed (built), TOC regenerated.
+
 | `ResolveError` (`app/platforms/base.py`) | The one typed exception an adapter raises for an expected "this URL can't produce a meeting" outcome, instead of a raw stdlib exception. Every existing caller already survives an unrecognized exception the same way (`/api/resolve`'s `except Exception`, every sweep script's own broad catch), so this changes the message and the type, not the behavior. |
 | `resolve_newest_candidate()` (`app/platforms/base.py`) | Shared "listing root → newest meeting" helper: given a newest-first list of candidate meeting URLs and an adapter's own `resolve_one` callback, tries each until one comes back with real content (segments, agenda items, an agenda link, or a video URL). Ported from the hand-rolled loop `scripts/wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()` already used. |
 | `escribe.py` | Decode: `response.text()` → `url_guard.read_capped_text()`. Bare tenant root: a new `_resolve_bare_tenant_root()` calls the real `GetCalendarMeetings` tenant API (same 120-day lookback/8-candidate cap `scripts/adhoc_cdx_escribe_pipeline.py` already used) and hands the result to `resolve_newest_candidate()`. Raises `NoVideoCandidateFound` (the same typed negative `civicplus.py` already uses for its own listing page) when nothing with video turns up. |

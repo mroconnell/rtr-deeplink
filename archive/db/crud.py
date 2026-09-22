@@ -8172,6 +8172,12 @@ HUB_FEATURED_COUNT = 6
 # this section is secondary to the page's own featured cards and meeting
 # list, not the lead content.
 HUB_CONTEXT_ENTRIES = 3
+# WO-1002: Full Context entries shown on /m/{slug} itself -- "this moment
+# was clipped on social media" (BACKLOG.md). Smaller than HUB_CONTEXT_
+# ENTRIES: a hub pools every meeting a government has ever had, but this
+# section only ever has entries citing ONE specific meeting, so there is
+# rarely more than a handful to show at all.
+MEETING_CONTEXT_ENTRIES = 5
 # At most this many featured cards on a hub may come from the same
 # meeting body. A hub is one government, so its cards routinely all read
 # "City Council" while the Planning Commission, the school board and the
@@ -11628,6 +11634,28 @@ async def list_context_entries_for_pages(
             }
         )
     return entries
+
+
+async def list_context_entries_for_meeting(
+    meeting_page_id: int, *, limit: int = MEETING_CONTEXT_ENTRIES
+) -> list[dict]:
+    """Published Full Context entries that cite THIS ONE meeting -- backs
+    the "this moment was clipped on social media" block on `/m/{slug}`
+    itself (WO-1002, BACKLOG.md). A thin wrapper over
+    list_context_entries_for_pages() with the narrowest possible
+    page_condition (a single MeetingPage.id, not a hub's or state's whole
+    page set), run through _context_entries_isolated() -- its own
+    session, never raising -- for the same reason the hub/state callers
+    do: a try/except in the CALLING session does not protect the page on
+    Postgres, since a failed statement aborts that whole transaction and
+    every later query on it fails too (see _context_entries_isolated()'s
+    own docstring). Newest-published first, published only -- both already
+    enforced by the shared function."""
+    return await _context_entries_isolated(
+        MeetingPage.id == meeting_page_id,
+        limit=limit,
+        label=f"meeting page {meeting_page_id}",
+    )
 
 
 async def get_context_entry(entry_id: int) -> Optional[dict]:
