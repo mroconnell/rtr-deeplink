@@ -1,5 +1,88 @@
 # Backlog — done
 
+## WO-1005: South Carolina's octet-stream direct_file rejection fixed; TN/NV Granicus 403 retry added; one real meeting queued/ingested per state [Done 2026-09-22]
+
+**Issue.** `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4`
+serves one real direct `.mp4` per meeting (listed with durations on
+`scstatehouse.gov/meetings.php?...op=vid`), but the host answers
+`Content-Type: application/octet-stream`, so `direct_file.py`'s
+`video/`-prefix check rejected it and nothing from South Carolina's
+legislature could be queued. Separately, `tnga.granicus.com` (Tennessee)
+and `nvleg.granicus.com` (Nevada) had been reported (WO-919,
+2026-09-20) answering the Granicus adapter's plain fetch with HTTP 403
+and a fuller browser header set with HTTP 200.
+
+**What was built.**
+
+1. `app/platforms/direct_file.py`: `resolve()` now also accepts a HEAD
+   response of exactly `Content-Type: application/octet-stream` when the
+   URL's own extension already says video/audio (`media_type()`) —
+   confirmed live against two real, small South Carolina meetings (an
+   11-minute Senate Judiciary Full Committee session, 251,172,111 bytes;
+   a 14-minute House Government Efficiency and Legislative Oversight
+   subcommittee session, 305,067,141 bytes), both via HEAD and a ranged
+   GET, never a full download. Scoped narrowly on purpose (see
+   `_OCTET_STREAM_CONTENT_TYPE`'s module comment): a generic
+   octet-stream response with no real video/audio extension in the URL
+   is still rejected exactly as before — a dedicated regression test
+   (`test_resolve_still_rejects_octet_stream_with_no_video_extension`,
+   `tests/test_direct_file.py`) pins that down.
+2. `app/platforms/granicus.py`: `_fetch_page()` now retries a real HTTP
+   403 once with a fuller browser header set (`_BROWSER_RETRY_HEADERS`)
+   before exhausting its existing backoff retries with the original
+   headers — never triggered by a 404, which can't be fixed by a
+   different header shape. **Live re-verification against both real
+   hosts on 2026-09-22 could not reproduce the original 403 on any
+   attempt** (bare aiohttp defaults, an empty User-Agent, a
+   `python-requests/...` UA, and the adapter's own existing Windows-
+   Chrome headers all returned 200; a full `resolve()` succeeded
+   end-to-end on a real clip from each tenant with no header changes
+   needed). Per CLAUDE.md's "a backlog entry is a lead, not a spec"
+   rule this is flagged rather than silently assumed away — most likely
+   IP-reputation/rate/time-of-day dependent, since neither tenant sits
+   behind Cloudflare (both are plain Apache, so not a JS challenge). The
+   retry rung is kept as a real, narrowly-scoped defensive fallback for
+   whatever produced the original finding. Tested against a synthetic
+   403-then-200 fixture (`tests/test_granicus.py`, real URL/header
+   shapes, constructed status sequence — commented as synthetic per
+   CLAUDE.md's rule) since the live 403 couldn't be captured for a real
+   fixture.
+
+**Real meetings queued/ingested (`scripts/wo1005_finish_states.py`, same
+`finish_candidate()`/`bulk_ingest._ingest()` functions every other
+tier-3/ingest script here already calls), each hand-read via a real
+`resolve()` call first, same WO-921 convention:
+
+| State | Chamber | Outcome | Why |
+|---|---|---|---|
+| South Carolina | Senate (Judiciary Full Committee) | queued to tier-3 | video only, no captions |
+| South Carolina | House (Govt Efficiency & Leg. Oversight subcommittee) | queued to tier-3 | video only, no captions |
+| Nevada | Senate (Floor Session, 2020-07-08) | probed, deferred (duration 9:00:01, over the 90-minute tier-3 cutoff) | video only, no captions |
+| Nevada | Assembly (Floor Session, 2020-07-08) | probed, deferred (duration 9:00:00) | video only, no captions |
+| Tennessee | Senate ("Senate Session - 13th Legislative Day") | **ingested**, live at `/m/state-of-tennessee-senate-session-13th-legislative-day` | real, coherent Granicus captions (2,827 cues, zero warnings) |
+| Tennessee | House ("House Floor Session - 3rd Legislative Day - 2nd Extraordinary Session", 2026-05-07) | **ingested**, live at `/m/state-of-tennessee-2026-05-07-house-floor-session-3rd-legislative-day-2nd-extrao` | real, coherent Granicus captions (4,214 cues, zero warnings) |
+
+Tennessee turned out to have real captions on both chambers — genuinely
+different from South Carolina and Nevada (both video-only), not the
+"expected video-with-no-captions for all three" case this WO started
+from, so those two picks were ingested as real pages instead of queued.
+Nevada's two picks were correctly probed and accepted but landed in
+`scripts/tier3_long_meetings_deferred.txt` rather than the tier-3 queue
+itself — both real floor sessions run about 9 hours, over the existing
+90-minute tier-3 cutoff (WO-205/WO-212's rule, unrelated to this WO).
+
+`~/Documents/rtr-business/research/jurisdiction_coverage.csv` rows for
+`us:state:45` (South Carolina), `us:state:47` (Tennessee), and
+`us:state:32` (Nevada) updated to clear their stale `reject_reason`
+(`resolve-failed`/`blocked-plain-http`, both written moments earlier by a
+parallel WO-1004 pass specifically because these bugs were still open)
+and set a real `example_meeting_url`; Tennessee's row also got
+`transcribed=True`/`shares_video=True` since it's a real ingested page
+with a real transcript.
+
+**Constraint honored.** Every SC/NV probe was a HEAD or a ranged GET
+(via `ffprobe`/the adapter's own confirmation logic) — no meeting file
+was ever downloaded in full.
 ## WO-1007: closed a false alarm -- Pennsylvania's PennDOT/Legislature "conflict" was a stale research-file field, not a keying question [Done 2026-09-22]
 
 **What looked wrong.** WO-1006 (Sliq Harmony sweep, open PR #1340) found

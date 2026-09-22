@@ -1,4 +1,5 @@
 import ssl
+from unittest import mock
 
 import aiohttp
 from aiohttp.client_reqrep import ConnectionKey
@@ -6,6 +7,7 @@ from bs4 import BeautifulSoup
 
 from app.platforms.granicus import (
     GranicusAssetFinder,
+    _BROWSER_RETRY_HEADERS,
     _is_broken_s3_underscore_host,
     _s3_path_style,
     list_recent_video_meetings,
@@ -1408,3 +1410,99 @@ async def test_fetch_page_non_utf8_response_degrades_instead_of_raising():
     # url_guard.read_capped_text()'s own contract.
     assert isinstance(html, str)
     assert "�" in html
+
+
+# --- 403 browser-headers retry (WO-1005, 2026-09-22) ---------------------
+#
+# BACKLOG_DONE.md's WO-919 entry reported tnga.granicus.com (Tennessee's
+# legislature) and nvleg.granicus.com (Nevada's) both answering the
+# adapter's plain fetch with HTTP 403 and a fuller browser header set with
+# HTTP 200. This WO's own live re-verification against both real hosts on
+# 2026-09-22 could NOT reproduce a 403 on any attempt (see granicus.py's
+# `_BROWSER_RETRY_HEADERS` module comment for the full caution) -- so
+# these are SYNTHETIC tests of the retry logic itself (a real URL/header
+# shape, a constructed 403-then-200 status sequence), not a captured real
+# response, per CLAUDE.md's synthetic-test rule. `aiohttp_mock.mock_
+# session` only routes by URL, not by header, so a bare `mock.patch`
+# stands in here instead of the shared helper.
+
+
+class _FakeGranicusResponse:
+    def __init__(self, status: int, text: str = "<html>ok</html>"):
+        self.status = status
+        self._text = text
+        self.url = "https://tnga.granicus.com/ViewPublisher.php?view_id=777"
+        self.headers = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def get_encoding(self):
+        return "utf-8"
+
+    async def read(self):
+        return self._text.encode("utf-8")
+
+
+async def test_fetch_page_retries_403_once_with_browser_headers():
+    url = "https://tnga.granicus.com/ViewPublisher.php?view_id=777"
+    calls = []
+
+    def fake_get(self, request_url, headers=None, **kwargs):
+        calls.append(dict(headers or {}))
+        if headers == _BROWSER_RETRY_HEADERS:
+            return _FakeGranicusResponse(200, "<html>browser headers worked</html>")
+        return _FakeGranicusResponse(403, "blocked")
+
+    async with aiohttp.ClientSession() as session:
+        with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
+            html, final_url = await GranicusAssetFinder()._fetch_page(session, url)
+
+    assert html == "<html>browser headers worked</html>"
+    assert len(calls) == 2
+    assert calls[1] == _BROWSER_RETRY_HEADERS
+
+
+async def test_fetch_page_never_retries_404_with_browser_headers():
+    # A missing page stays missing regardless of headers -- retrying one
+    # with a different header shape would just waste a request, exactly
+    # what this WO's fix is deliberately scoped to never do.
+    url = "https://tnga.granicus.com/ViewPublisher.php?view_id=999999"
+    calls = []
+
+    def fake_get(self, request_url, headers=None, **kwargs):
+        calls.append(dict(headers or {}))
+        return _FakeGranicusResponse(404, "not found")
+
+    async with aiohttp.ClientSession() as session:
+        with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
+            try:
+                await GranicusAssetFinder()._fetch_page(session, url, max_retries=1)
+                raised = False
+            except aiohttp.ClientError:
+                raised = True
+
+    assert raised
+    assert len(calls) == 1
+    assert not any(c == _BROWSER_RETRY_HEADERS for c in calls)
+
+
+async def test_fetch_page_raises_when_browser_headers_retry_also_fails():
+    url = "https://tnga.granicus.com/ViewPublisher.php?view_id=777"
+
+    def fake_get(self, request_url, headers=None, **kwargs):
+        return _FakeGranicusResponse(403, "still blocked")
+
+    async with aiohttp.ClientSession() as session:
+        with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
+            try:
+                await GranicusAssetFinder()._fetch_page(session, url, max_retries=1)
+                raised = False
+            except aiohttp.ClientError as e:
+                raised = True
+                assert "403" in str(e)
+
+    assert raised

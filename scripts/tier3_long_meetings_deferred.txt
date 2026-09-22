@@ -954,4 +954,6 @@ https://townhallstreams.com/stream.php?location_id=144&id=76256	https://townofpi
 https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	ca:csd:4812037	Lac la Biche County, AB	4:41:52	Regular Council Meeting
 https://www.townhallstreams.com/stream.php?location_id=107&id=73417	https://hamptonfalls.org/	us:cousub:3301533460	Hampton Falls, NH	1:48:34	Capital Improvement Committee
 https://live.pomonaca.gov/internetchannel/show/320		us:place:0658072	Pomona, CA	4:54:25	Pomona City Council Meeting 09-14-2026
+https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13425	https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13425	us:state:32	Nevada Legislature	9:00:01	Senate Floor Session - Jul 8th, 2020
+https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13426	https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13426	us:state:32	Nevada Legislature	9:00:00	Assembly Floor Session - Jul 8th, 2020
 https://play.champds.com/yumacoaz/event/637		us:county:04027	Yuma County, AZ	1:41:48	Planning & Zoning Meeting 8/25/2026

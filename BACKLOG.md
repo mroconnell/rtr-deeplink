@@ -123,10 +123,9 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (52)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
-  `direct_file` refuses South Carolina's legislature video…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
   `wo323_classify.py`'s and `wo324_classify.py`'s…
   The small-video-platform sweep's leftover 8 rows: real hits or fetch…
@@ -917,14 +916,6 @@ WO-932 and WO-913.
 - **Constraint:** no YouTube fetch; a tenant with no registry row goes to
   needs-human, not a guessed id.
 - **History:** `BACKLOG_DONE.md` WO-914 entry.
-
-### `direct_file` refuses South Carolina's legislature video (`Content-Type: application/octet-stream`), and the Granicus adapter has no browser-headers retry for TN/NV `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4` is one real direct mp4 per meeting, listed with durations on `scstatehouse.gov/meetings.php?...op=vid` (for example an 11-minute Senate Judiciary full committee on 2026-08-11, a 14-minute House oversight subcommittee the same day), but the host answers `application/octet-stream`, so `direct_file.py`'s `video/` check rejects it and nothing can be queued. Separately `tnga.granicus.com` and `nvleg.granicus.com` return 403 to the adapter's plain fetch and 200 to browser headers.
-- **Impact:** South Carolina House and Senate (2 chambers) and Tennessee and Nevada (4 chambers) stay unreachable. South Carolina would be a tier-3 queue candidate (no captions).
-- **Next action:** allow an extension-based (`.mp4`) accept for hosts that serve octet-stream in `direct_file.py`, then probe and queue one House and one Senate meeting; add the browser-headers retry after a 403 (never after a 404) to the Granicus listing fetch.
-- **Constraint:** ranged reads only for any sample; a South Carolina file is about 250 MB for 11 minutes; never download one.
-- **History:** [BACKLOG_DONE.md](BACKLOG_DONE.md) WO-919.
 
 ### Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path tokens (`page/livestream`-shaped, `page/agendas-minutes`-shaped) before adding either `[JUST-DO-IT]`
 
