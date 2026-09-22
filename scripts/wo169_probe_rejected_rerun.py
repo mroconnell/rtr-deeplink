@@ -119,6 +119,7 @@ async def _real_probe_hook(result, candidate_url: str) -> bool:
     probe = await probe_queue_entry(
         candidate_url,
         video_url=result.video_url,
+        video_format=getattr(result, "video_format", None),
         source_page_url=result.source_url or candidate_url,
     )
     append_probe_row(DEFAULT_SIDECAR_PATH, probe)
