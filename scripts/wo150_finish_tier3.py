@@ -33,6 +33,21 @@ probe" as its own row, per this WO's report requirements.
 (wo150_tier3_pending.csv itself is left untouched as the sweep's own
 append-only record.)
 
+Also rewrites the matching row(s) in rtr-business/research/wo150_report.csv
+in place (WO-937) -- the same step wo147_finish_tier3_queue.py already
+does, ported here because this script never had it: before this fix,
+wo150_report.csv kept reading `queued_tier3_pending` forever for a
+government whose only candidate the probe rejected, so that file
+overstated how many governments were really queued (found building
+WO-169's re-run candidate list, see BACKLOG_DONE.md's WO-150 entry).
+Same rules as wo147_finish_tier3_queue.py: `outcome`/`tier`/`reject_*`
+only change, `meeting_url`/`video_url` are preserved (not blanked, the
+WO-169 bug) on a reject, and `note` is appended to, never overwritten.
+A duration over 90 minutes (deferred, not queued) and a deliberate prior
+deferred-file removal (skipped-deferred) get their own outcome labels too
+-- wo147_finish_tier3_queue.py predates finish_candidate()'s DEFER_OVER_
+SECONDS rule and never had to handle them.
+
 Politeness: reuses probe_tier3_queue.py's own host-gate pattern (one
 host at a time, a real delay) and stops after 6 consecutive access-shaped
 probe failures. A cache hit skips the network entirely, so it never
@@ -70,6 +85,7 @@ register_all_finders()
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 PENDING_CSV = RESEARCH_DIR / "wo150_tier3_pending.csv"
 FINISH_LOG_CSV = RESEARCH_DIR / "wo150_tier3_finish_log.csv"
+REPORT_CSV = RESEARCH_DIR / "wo150_report.csv"
 FINISH_LOG_FIELDS = [
     "gov_id",
     "platform",
@@ -123,6 +139,71 @@ def _parse_wo150_pin_row(pin_row: str) -> dict | None:
     }
 
 
+# --- WO-937: mirror the probe outcome into wo150_report.csv, the way
+# wo147_finish_tier3_queue.py already does for its own report file -----
+
+
+def _load_report_rows() -> tuple[list[dict] | None, list[str] | None]:
+    if not REPORT_CSV.exists():
+        return None, None
+    with REPORT_CSV.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    return rows, fieldnames
+
+
+def _write_report_rows(rows: list[dict], fieldnames: list[str]) -> None:
+    tmp_path = REPORT_CSV.with_suffix(".csv.tmp")
+    with tmp_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    os.replace(tmp_path, REPORT_CSV)
+
+
+def _update_report_rows_for_gov_id(
+    rows: list[dict],
+    gov_id: str,
+    *,
+    outcome: str,
+    tier: str,
+    reject_reason: str,
+    reject_class: str,
+    note_suffix: str,
+    meeting_url: str | None = None,
+    video_url: str | None = None,
+) -> bool:
+    """Rewrites every row matching `gov_id` in place -- mirrors
+    wo147_finish_tier3_queue.py's own rewrite step (its `main()`, the
+    "Rewrite the matching wo147_report.csv rows in place" section) so
+    wo150_report.csv stops reading `queued_tier3_pending` forever for a
+    government the probe already accepted or rejected. `note` is
+    APPENDED to, never overwritten (the same append-not-overwrite rule
+    BACKLOG.md's separate wo151_research_url_ladder_sweep.py entry
+    asks for) -- an earlier note (e.g. a sweep's own review flag) must
+    survive this rewrite. `meeting_url`/`video_url` are only ever
+    REPLACED with a real, non-empty value -- never blanked -- per
+    WO-169's own fix for the identical mistake in
+    wo147_finish_tier3_queue.py. Returns True if any row was updated."""
+    updated = False
+    for r in rows:
+        if r.get("gov_id") != gov_id:
+            continue
+        r["outcome"] = outcome
+        r["tier"] = tier
+        r["reject_reason"] = reject_reason
+        r["reject_class"] = reject_class
+        if meeting_url:
+            r["meeting_url"] = meeting_url
+        if video_url:
+            r["video_url"] = video_url
+        existing_note = r.get("note") or ""
+        r["note"] = f"{existing_note}; {note_suffix}".strip("; ")
+        updated = True
+    return updated
+
+
 async def main_async(limit):
     if not PENDING_CSV.exists():
         print(f"No {PENDING_CSV.name} -- nothing to probe.")
@@ -151,6 +232,13 @@ async def main_async(limit):
         # incident this guards against: an unflushed header lost to a
         # hard kill before the first real row.
         log_f.flush()
+
+    report_rows, report_fieldnames = _load_report_rows()
+    if report_rows is None:
+        print(
+            f"WARNING: {REPORT_CSV} not found -- report rows will not be updated "
+            "(WO-937)."
+        )
 
     consecutive_errors = 0
     last_host = None
@@ -210,6 +298,83 @@ async def main_async(limit):
                 }
             )
             log_f.flush()
+
+            # WO-937: mirror this outcome into wo150_report.csv (see the
+            # module docstring and _update_report_rows_for_gov_id()'s own
+            # docstring). Rewritten after every row, not just at the end,
+            # so a hard kill mid-run leaves the file consistent with
+            # everything actually finished so far -- same durability
+            # reasoning as this loop's own per-row log_f.flush() above.
+            if report_rows is not None:
+                probe_note = (
+                    f"WO-144 probe: {result.verdict}, "
+                    f"{result.duration_seconds}s, date={result.date}"
+                )
+                if outcome.action in ("queued", "already-queued"):
+                    changed = _update_report_rows_for_gov_id(
+                        report_rows,
+                        row["gov_id"],
+                        outcome="queued_tier3",
+                        tier="tier3",
+                        reject_reason="",
+                        reject_class="",
+                        note_suffix=probe_note,
+                    )
+                elif outcome.action in ("deferred", "already-deferred"):
+                    # New outcome value -- wo147_finish_tier3_queue.py
+                    # predates finish_candidate()'s 90-minute defer rule
+                    # and has no equivalent of its own to copy.
+                    changed = _update_report_rows_for_gov_id(
+                        report_rows,
+                        row["gov_id"],
+                        outcome="deferred_tier3",
+                        tier="",
+                        reject_reason="",
+                        reject_class="",
+                        note_suffix=(
+                            f"{probe_note} -- over 90 min, parked in "
+                            "tier3_long_meetings_deferred.txt"
+                        ),
+                    )
+                elif outcome.action == "skipped-deferred":
+                    # New outcome value -- a WO-212 deliberate removal
+                    # from the deferred file stays out of the queue even
+                    # on an accept verdict; wo150_report.csv shouldn't
+                    # keep reading "pending" for it either.
+                    changed = _update_report_rows_for_gov_id(
+                        report_rows,
+                        row["gov_id"],
+                        outcome="removed_from_deferred",
+                        tier="",
+                        reject_reason="",
+                        reject_class="",
+                        note_suffix=(
+                            f"{probe_note} -- this URL is a deliberate "
+                            "tier3_long_meetings_deferred.txt removal, "
+                            "stays out of the queue"
+                        ),
+                    )
+                else:
+                    # action == "rejected" -- WO-169's own fix, ported
+                    # verbatim: meeting_url/video_url must survive this
+                    # rewrite, never be blanked.
+                    changed = _update_report_rows_for_gov_id(
+                        report_rows,
+                        row["gov_id"],
+                        outcome="rejected_by_probe",
+                        tier="",
+                        reject_reason="rejected_by_probe",
+                        reject_class="content",
+                        note_suffix=(
+                            f"WO-144 probe rejected: {result.verdict} -- "
+                            f"{result.reason or ''}"
+                        ),
+                        meeting_url=meeting_url,
+                        video_url=video_url,
+                    )
+                if changed:
+                    _write_report_rows(report_rows, report_fieldnames)
+
             cache_tag = " (cached)" if outcome.used_cache else ""
             print(
                 f"[{i + 1}/{len(to_process)}] [{result.verdict}{cache_tag}] {row['gov_id']} "

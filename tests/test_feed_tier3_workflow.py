@@ -24,6 +24,10 @@ WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "feed-tier3-transcription.
 
 QUEUE_FILE_PATH = "scripts/tier3_auto_transcription_queue.txt"
 PROBE_SIDECAR_PATH = "scripts/tier3_auto_transcription_queue_probe.csv"
+# WO-937: a third append-only path with the exact same WO-254 exposure --
+# _push_if_has_video() now also writes a durable per-line result log
+# instead of only printing to stdout (BACKLOG.md's matching entry).
+FEED_LOG_PATH = "scripts/tier3_auto_transcription_queue_feed_log.csv"
 
 
 def _advance_step_run_script() -> str:
@@ -44,18 +48,25 @@ def test_advance_step_stages_both_the_queue_file_and_the_probe_sidecar():
     assert f"git add {PROBE_SIDECAR_PATH}" in script
 
 
+def test_advance_step_stages_the_feed_log_too():
+    script = _advance_step_run_script()
+    assert f"git add {FEED_LOG_PATH}" in script
+
+
 def test_advance_step_checks_the_diff_after_staging_both_paths():
     """The no-op early-exit (`git diff --cached --quiet`) must run AFTER
-    both `git add` calls, not between them -- otherwise a probe-only
-    change (no queue-file change) would still get reported as "nothing to
-    commit" and silently dropped, which is exactly the bug this test
-    guards against."""
+    every `git add` call, not between them -- otherwise a probe-only or
+    feed-log-only change (no queue-file change) would still get reported
+    as "nothing to commit" and silently dropped, which is exactly the bug
+    this test guards against."""
     script = _advance_step_run_script()
     queue_add_at = script.index(f"git add {QUEUE_FILE_PATH}")
     probe_add_at = script.index(f"git add {PROBE_SIDECAR_PATH}")
+    feed_log_add_at = script.index(f"git add {FEED_LOG_PATH}")
     diff_check_at = script.index("git diff --cached --quiet")
     assert queue_add_at < diff_check_at
     assert probe_add_at < diff_check_at
+    assert feed_log_add_at < diff_check_at
 
 
 def test_workflow_still_runs_the_script_that_writes_the_probe_sidecar():

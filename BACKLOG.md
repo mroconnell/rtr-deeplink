@@ -122,7 +122,7 @@ Standing decisions — do NOT re-raise  (14)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
   The Archive files a page under whatever `gov_id` a sweep sends: do…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
   `direct_file` refuses South Carolina's legislature video…
@@ -134,9 +134,6 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
-  `queue_probe.finish_candidate()` can defer an already-queued meeting…
-  `_probe_direct_file()`'s HEAD fallback misfires on a host that…
-  The tier-3 probe has no recipe for two real delegated media shapes --…
   `CHALLENGE_MARKERS` is duplicated across 9 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
@@ -155,16 +152,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
-  `wo150_finish_tier3.py` never writes a probe reject back into…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   `tenant_overrides.csv`'s `evidence` text always says "WO-134…
   `wo145_api_first_sweep.py`'s `_title_place_conflict()`…
   Host-name review flags are recorded on sweep rows, but nothing…
   A YouTube short-link (`youtu.be/...`) dedup check runs before the…
-  Coverage registry: per-state view and other dashboard additions…  (11)
+  Coverage registry: per-state view and other dashboard additions…  (10)
     [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
-    [JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result…
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
@@ -206,7 +201,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (205)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -230,7 +225,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
   [NEEDS-AUDIT] 6 of the ~40 pages formerly keyed to Pittsford…
   [NEEDS-AUDIT] Nothing has found which sweep/script ingests a Viebit…
-  [NEEDS-AUDIT] `queue_probe.py`'s `_probe_direct_file()` records a…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
   [EASY]…
@@ -276,7 +270,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own…
-  [NEEDS-AUDIT] A tier-3 probe's own report `note` always overwrites an…
   [NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
@@ -419,7 +412,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (16)
+Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     [LATER] Tighten the two transcription workers to their real import
@@ -429,8 +422,7 @@ Reliability, ops & cost  (16)
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
     `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
-  Transcription queue & workers  (7)
-    [JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
+  Transcription queue & workers  (6)
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
@@ -1133,109 +1125,6 @@ WO-932 and WO-913.
   now that the code is fixed.
 - **History:** `BACKLOG_DONE.md`, WO-294 (2026-09-12).
 
-### `queue_probe.finish_candidate()` can defer an already-queued meeting instead of recognizing it, producing a duplicate queue line `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** found live 2026-09-12 (WO-290). `finish_candidate()` checks
-  whether `meeting_url` is already in the deferred file, then whether
-  the probed duration is over `DEFER_OVER_SECONDS` (90 min) -- and defers
-  unconditionally on the second check, without first checking whether
-  the URL is already sitting in the queue file. Only the short-meeting
-  "otherwise" branch's own `append_queue_line()` call does that dedupe
-  check (and it's a no-op there specifically because that's the only
-  place it's reached from). A meeting already queued by an earlier
-  sweep, re-probed by a later one and found to run over 90 minutes, gets
-  deferred instead of recognized as already-queued.
-- **Impact:** confirmed for one real government (Yachats city, OR,
-  `yachatsor.portal.civicclerk.com/event/1157/media` -- already queued
-  on `main` before WO-290 started). WO-290's own hand-requeue step (its
-  brief's "queue a long one anyway when no shorter one was found" rule)
-  then added a second, duplicate line for the same URL, caught by
-  `tests/test_transcription_queue_files.py::test_no_duplicate_rows`
-  before merge and fixed by hand. A future sweep that doesn't run that
-  test locally before committing could land a real duplicate.
-- **Next action:** add an `is_queued()` check at the top of
-  `finish_candidate()`'s accept/flag-long branch, before the deferred-
-  file and duration checks -- return `action="already-queued"`
-  immediately when the URL is already in `TIER3_QUEUE_FILE`, the same
-  way `append_queue_line()`'s own dedupe already behaves for the short
-  path.
-- **Constraint:** none -- pure ordering fix, no behavior change for a
-  URL that isn't already queued.
-- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-290 entry.
-
-### `_probe_direct_file()`'s HEAD fallback misfires on a host that answers HEAD with a 200 error page (not a 4xx) -- records a wrong `size_bytes`, though duration still comes out right `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `app/platforms/queue_probe.py`'s `_probe_direct_file()`
-  only falls back from HEAD to a ranged GET when the HEAD status is
-  `>= 400`. Confirmed live 2026-09-12 (WO-304) against Jefferson
-  County, WA's real Laserfiche WebLink video: a HEAD (`allow_redirects=
-  True`) 302s to `Error.aspx`, which itself answers **200** -- a real,
-  successful-looking status on a page that is not the video at all. The
-  fallback never fires, so `_size_from_headers()` reads the error page's
-  own `Content-Length` (2038 bytes) instead of the real file's (the real
-  file is ~1.7GB).
-- **Impact:** cosmetic, not blocking -- `media_probe.probe_duration()`
-  (ffprobe) fetches the URL directly regardless of what HEAD returned,
-  so the probe's `duration_seconds` and `verdict` came out correct
-  (`accept`, 17650.39s, matching the real ~4h54m meeting) even with the
-  wrong size. But `size_bytes` is wrong in
-  `scripts/tier3_auto_transcription_queue_probe.csv`'s audit trail for
-  this row, and any future caller that trusts this field (a size-based
-  sanity check, a cost estimate) would be misled on this same host shape.
-- **Next action:** in `_probe_direct_file()`, also fall back to the
-  ranged GET when the HEAD response's `Content-Type` isn't video-shaped
-  (e.g. `text/html` on a 200) -- not just on a 4xx status. Verify against
-  the real Jefferson County URL (`ElectronicFile.aspx?docid=10559483&
-  dbid=0&repo=Jefferson`) before shipping, and re-check the fix doesn't
-  regress WO-166's own confirmed HEAD-404-then-GET-200 case (Hudson, CO's
-  CivicPlus DocumentCenter link) since both paths share this function.
-- **Constraint:** don't widen this to "any HEAD with a non-video
-  Content-Type is suspect" without checking it against every platform
-  already routed through `_probe_direct_file()` -- a real video HEAD
-  response's Content-Type convention hasn't been re-surveyed since
-  WO-166.
-- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-166 and WO-304
-  entries.
-
-### The tier-3 probe has no recipe for two real delegated media shapes -- a ChampDS `DOWNLOAD-MEDIA` redirect and a CivicPlus DocumentCenter audio URL `[JUST-DO-IT]`
-
-- **Issue:** `app/platforms/queue_probe.py`'s `probe_queue_entry()`
-  returns `reject-dead` ("no probe recipe for this media shape") for a
-  video URL it has no dispatch rule for, even when the underlying
-  adapter already resolved real, playable video. WO-289 and WO-290
-  (2026-09-12, running the same night on non-overlapping population
-  bands) independently hit this on `new.swagit.com`/`play.champds.com`
-  (WO-289) and a ChampDS `DOWNLOAD-MEDIA` redirect (twice) plus a
-  CivicPlus `DocumentCenter` audio URL (WO-290). (This entry used to
-  also describe a third shape -- a CivicClerk event delegating to
-  Cablecast -- that's now fixed; see History.)
-- **Impact:** Belle Meade city TN and Oak Hill city TN (real ChampDS
-  events) and West Lake Hills city TX (a real CivicClerk event whose
-  `externalVideoUrl` is a CivicPlus DocumentCenter audio file, confirmed
-  live at `westlakehills.gov/DocumentCenter/View/4765/
-  07152026-ZAPCO-Audio`) each have a confirmed real meeting sitting
-  unqueued for no reason other than this gap -- re-running WO-290's
-  `--mode finish` against its existing decisions file will pick them up
-  automatically once the probe gains these two recipes, no new
-  discovery needed. **Correction (2026-09-17, WO-903):** an earlier
-  version of this entry wrongly filed all three of these governments
-  under the Cablecast shape -- verified live, none of them touches
-  Cablecast at all; see WO-903 in `BACKLOG_DONE.md` for the real
-  breakdown and the government (Excelsior, MN) the Cablecast fix was
-  actually verified against.
-- **Next action:** build a dispatch rule for each remaining shape in
-  `queue_probe.py` (or wherever `_probe_direct_file()`/its siblings
-  live): (1) a ChampDS `.../DOWNLOAD-MEDIA/.../eventmainmedia/{id}`
-  redirect -- confirm what it redirects to (probably a direct MP4/HLS)
-  and probe that; (2) a CivicPlus DocumentCenter link whose real
-  filename is an audio file, not the PDF this shape usually carries.
-- **Constraint:** verify each recipe against a real live URL before
-  shipping -- this repo's own rule against claiming a data path works
-  without a positive, live example.
-- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289, WO-290, WO-363,
-  WO-363b, and WO-903 entries; `~/Documents/rtr-business/research/
-  ENUMERATION_METHODS.md` §309/§310.
-
 ### `CHALLENGE_MARKERS` is duplicated across 9 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** nine scripts each carry their own literal copy of the same `CHALLENGE_MARKERS` list (used by `is_challenge()` to stop before a human-verification gate): `scripts/wo145_api_first_sweep.py`, `wo147_access_ladder_sweep.py`, `wo149_county_ladder_sweep.py`, `wo176_path_pilot.py`, `wo265_school_district_sweep.py`, `wo268_passive_discovery.py`, `wo270_wordpress_pilot.py`, `wo272_probe_first_party_paths.py` and `wo273_recon.py` (re-counted with `git grep` on 2026-09-21; the original count of 8 missed `wo145`). Three more files carry a related challenge-marker list of their own, which makes 12 files in all: `app/platforms/generic_fallback.py` (`_CHALLENGE_MARKERS`, 3 items) and `scripts/hub_sweep_wo126.py` and `score_gov_signals.py` (`_CLOUDFLARE_CHALLENGE_MARKERS`). Other scripts reuse a copy by import (`wo168`, `wo179`, `wo197`, `wo151`) or alias (`wo174`), so they inherit whatever their source has. WO-278 (2026-09-12) found a real, live gap while rechecking a WO-273 finding: a Radware/ShieldSquare bot-management challenge (`validate.perfdrive.com`, `<title>Radware Block Page</title>`) served with a real HTTP 200 after a 302, recognized by none of the copies. Its redirect URL echoes the requested target back as a query parameter, which is how a government's own name can leak into a page that never actually says anything about it — a real false-positive source for any script that checks page text against a government's name without first checking `is_challenge()`.
@@ -1759,38 +1648,6 @@ WO-932 and WO-913.
   as WO-153's own two writer scripts already do.
 - **History:** `BACKLOG_DONE.md` WO-153, 2026-09-10.
 
-### `wo150_finish_tier3.py` never writes a probe reject back into `wo150_report.csv` `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `scripts/wo150_finish_tier3.py` probes every WO-150 tier-3
-  candidate and logs the verdict to its own
-  `wo150_tier3_finish_log.csv`, but never rewrites the matching row in
-  `wo150_report.csv` the way `wo147_finish_tier3_queue.py` already does
-  (`queued_tier3_pending` -> `queued_tier3`/`rejected_by_probe`). Found
-  building WO-169's re-run candidate list: the one WO-150 probe-rejected
-  government (Great Falls city, MT) still reads `outcome=queued_tier3`
-  in `wo150_report.csv`, with the real reject verdict visible only by
-  cross-referencing the separate finish log.
-- **Impact:** `wo150_report.csv` overstates how many governments were
-  actually queued -- a government whose only candidate failed the probe
-  looks identical, in that file, to one that's really in the queue. Any
-  later pass that trusts `wo150_report.csv`'s own `outcome` column
-  (a `jurisdiction_coverage.csv` apply script, a funnel count) will be
-  wrong until this is fixed.
-- **Next action:** Port `wo147_finish_tier3_queue.py`'s own
-  report-rewrite step (see that file, lines ~296-330) into
-  `wo150_finish_tier3.py`: on accept, `queued_tier3_pending` ->
-  `queued_tier3`; on reject, `queued_tier3_pending` -> `rejected_by_probe`
-  (not `no_video_found` -- WO-169 gave this its own outcome since a real
-  video existed), keeping `meeting_url`/`video_url` rather than blanking
-  them (the exact bug WO-169 fixed in `wo147_finish_tier3_queue.py`
-  itself, `BACKLOG_DONE.md` 2026-09-10).
-- **Constraint:** `wo150_muni_ladder_sweep.py`/`wo150_finish_tier3.py`
-  had an active continuation session at the time this was found --
-  coordinate before editing, or confirm no other session is mid-edit on
-  either file.
-- **History:** Found and worked around (not fixed) during WO-169,
-  `BACKLOG_DONE.md` 2026-09-10.
-
 ### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** `scripts/wo150_muni_ladder_sweep.py`'s access ladder calls
@@ -1887,13 +1744,6 @@ WO-932 and WO-913.
   - **Next action**: both halves shipped, but only reach *future* resolves, not these 82 already-archived pages. WO-135 (2026-09-09) made the detection real — `YouTubeAssetFinder.resolve_video_id()` reads yt-dlp's own `playable_in_embed` field (not oEmbed, which this entry's Issue line got wrong) at zero extra request cost and sets `YOUTUBE_EMBED_DISABLED_MARKER` (`app/platforms/youtube.py`) on `video_warnings`, and `check_permanent_failure()` lets a caller check it ahead of time. WO-136 (2026-09-09) shipped the consuming side — `archive/templates/meeting_page.html` and `app/static/player.js` both render a "Watch on YouTube" link (`youtube.com/watch?v=…&t=754s`, honouring the deep-linked start time) in place of the dead player whenever `video_warnings` carries that marker, or the player errors at runtime. **Still open**: neither path re-checks a page that already has a transcript — `scripts/fetch_youtube_transcripts.py`'s daily precheck only ever looks at `/internal/transcript-wanted`'s no-transcript queue, and these 82 pages are excluded from it by definition (they already hold one) — so a one-time backfill sweep (call `YouTubeAssetFinder.check_permanent_failure()` per page, POST the video marker to `/internal/pages/{slug}/video-status`) is what's left to actually reach them. WO-934 built the check for it: `scripts/check_youtube_video_status.py` records HTTP 401 as `embedding_disabled` for any CSV with `page_id` and `video_url`. Pointed at the YouTube pages that have a transcript and no channel on record (222 with no channel in the 2026-09-21 export, 203 of them with a transcript), it names which are these 82. Only the drip Mac may run it.
   - **Constraint**: the check reuses the same metadata-only yt-dlp extraction WO-135 already added, not the caption fetch — not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
   - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer). WO-135's detection and WO-136's consuming side + thin-page fold-in (a *second* shape — a dead embed with no transcript at all, noindexed/delisted until a transcript lands) are both `BACKLOG_DONE.md`.
-
-- **[JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result needs a durable log, not just stdout.**
-  - **Issue**: `_push_if_has_video()` already returns a real `[OK]`/`[SKIP]`/`[FAIL]` reason string per queue line, but `main()` only `print()`s it — nothing writes it to a durable file, so once a line is dropped from `tier3_auto_transcription_queue.txt` (the queue always advances "regardless of individual outcomes," `feed_tier3_auto_transcription.py:203-206`) its outcome only survives in that day's GitHub Actions run transcript.
-  - **Impact**: tier-3 drain failures are invisible after the fact, unlike the `nationwide_*_ingest.py`/`wo130_county_ingest.py`/`wo134_confirmed_hits_ingest.py` scripts' own resumable per-row CSV log.
-  - **Next action**: add a durable per-line result log to `feed_tier3_auto_transcription.py` (append each `[OK]/[SKIP]/[FAIL]` line + URL + timestamp to a CSV alongside the queue file, mirroring the ingest scripts' own resumable-log pattern) instead of only printing to stdout.
-  - **Constraint**: none known.
-  - **History**: raised directly by Ryan, 2026-09-09, mid-run on the 2,404-candidate batch. This entry originally bundled a second item — agenda-only rows going straight to Archive instead of queuing to tier 3 — resolved differently than either option it posed: WO-130 (2026-09-09, same day) got an explicit, more specific rule directly from Ryan for the county population, "ONLY meetings with video," and implemented it in `wo130_county_ingest.py` as a THIRD outcome, `no_video_found` — recorded (reject_reason `no-video-found`) and left out of the Archive entirely, not queued to tier 3 either. Queuing was rejected on the merits, not just deferred: an agenda-only resolve has no `video_url`, so `_push_if_has_video()`'s "no video found on re-resolve" check would skip it every drain cycle forever — a queue entry that can structurally never succeed. Apply the same three-way split (ingest tier1/2, queue tier3, record-not-ingest agenda-only) to the next `nationwide_NNNN_ingest.py` copy too, per this project's copy-per-batch convention — `nationwide_2404_ingest.py` itself keeps its original `ingested_agenda_only` behavior unchanged, consistent with its own already-running log. WO-134 (2026-09-09, same day, the WO-129 confirmed-hits batch) independently reached the same three-way split in `wo134_confirmed_hits_ingest.py`'s own `no_video_found` outcome — this rule is now applied in two separate batch scripts, worth carrying into the next `nationwide_NNNN_ingest.py` copy alongside the durable-log fix above.
 
 - **[JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube channel-URL fallback into the next `nationwide_NNNN_ingest.py` copy.**
   - **Issue**: a `known_platform=youtube` hit (or a two-hop scan hit) is very often the CHANNEL itself (`youtube.com/@CountyName`), not a specific video — confirmed live 2026-09-09, WO-130: every one of ~30 county rows with a channel-shaped hit failed outright under `nationwide_2404_ingest.py`'s original logic (`YouTubeAssetFinder.resolve()` only extracts a video id, raises `ValueError` otherwise). Fixed for counties in `wo130_county_ingest.py`'s `youtube_channel_latest_video()` + the `_looks_like_channel_url()` gate in `resolve_seed()`: list the channel's `/videos` tab (flat, capped, same yt-dlp options as `youtube_channel.py`'s own listing) and pick the newest entry passing the existing governing-body title allowlist.
@@ -2584,12 +2434,6 @@ of human step they need.
   - **Next action**: search sweep scripts active around 2026-09-08 for one that treats a bare listing/index link as a candidate meeting URL without checking it resolves to one video; once found, check whether the same gap exists for other folder/listing-shaped platforms (CivicClerk's own listing pages, Cablecast's public site index, etc.). One lead, not a finding: `scripts/wo128_data/wo128_sweep_log.csv` line 183 lists `https://biglake.viebit.com/?folder=ALL` as a skipped resolve for Big Lake; WO-128 merged on 2026-09-09, a day after the pages were made, so it is a lead about where the URL was recorded, not a finding about who ingested it.
   - **Constraint**: don't guess which script did it without checking — several sweeps ran that week.
   - **History**: `BACKLOG_DONE.md`'s WO-307 and WO-316 entries (the first junk-page entry closed by WO-931); `rtr-business/research/wo307_methods_section.md` (§319).
-- **[NEEDS-AUDIT] `queue_probe.py`'s `_probe_direct_file()` records a wrong (tiny) `size_bytes` for a Laserfiche WebLink URL, because its HEAD-with-redirects call lands on the host's own generic error page, not the real file.**
-  - **Issue**: found live 2026-09-12 (WO-317) queuing Deschutes County, OR's and Ramsey city, MN's real audio-only Laserfiche recordings — the SAME bug `BACKLOG_DONE.md`'s WO-304 entry said it filed as "its own small BACKLOG.md item" for Jefferson County, WA's video (2 KB recorded instead of ~1.7 GB), which is not actually present in this file today (either never filed or lost without a matching `BACKLOG_DONE.md` note — worth knowing regardless of which). `_probe_direct_file()` HEADs `video_url` with `allow_redirects=True` for its `Content-Length`/`Last-Modified` signal; every Laserfiche WebLink host in this repo (Jefferson County; Deschutes; Ramsey) answers a plain HEAD with a 302 to `Error.aspx` (see `direct_file.py`'s own module docstring), and that redirect target returns `200` with its own small HTML body — so the HEAD "succeeds" and the size it reports is the error page's byte count (1993/845 bytes for these two), not the real file's (22,637,874/39,368,600 bytes, confirmed via a real ranged GET).
-  - **Impact**: cosmetic only so far — `verdict`/`duration_seconds` (the fields that actually gate accept/reject) come from a separate `ffprobe` call against `video_url` directly and are correct; `size_bytes` in the sidecar CSV is simply wrong for every Laserfiche queue line, which could mislead a human skimming that column for "is this a real file."
-  - **Next action**: have `_probe_direct_file()` fall back to a ranged GET (`Range: bytes=0-0`) when a HEAD's *final* response, after redirects, isn't recognizably the real file — e.g. compare against the same ISO-BMFF/ID3 magic-byte check `direct_file.py`'s own `_classify_laserfiche_media()` already does, or simply always prefer `Content-Range`'s total from a ranged GET for any URL this module already knows is a Laserfiche shape.
-  - **Constraint**: don't widen the ranged-GET fallback to every direct-file host without checking it doesn't regress the CivicPlus DocumentCenter case this function's own docstring already documents (a real 404-then-ranged-GET fallback, WO-166) — two different hosts hitting the same code path for different reasons.
-  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-317 entry.
 - **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
   - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
   - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.
@@ -2871,19 +2715,13 @@ of human step they need.
   - **Constraint**: touching this changes a column in an already-large, already-committed report file (`wo151_report.csv`) — a fix should apply going forward, not attempt to backfill 1,026 already-written rows.
   - **History**: found 2026-09-10 running WO-151's continuation (the remaining 930 governments).
 
-- **[NEEDS-AUDIT] A tier-3 probe's own report `note` always overwrites an earlier warning note on the same row, so a YouTube-block circuit breaker's own marker text never survives into a queued row's report line.**
-  - **Issue**: `wo151_research_url_ladder_sweep.py`'s continuation added a circuit breaker that skips the real yt-dlp network call after the first YouTube caption-block signature and returns a `ResolvedMeeting` whose `transcript_warnings` names the skip. But `act_on_resolved_wo151`'s tier-3 branch unconditionally sets `res.detail = f"probe: verdict={probe.verdict} ..."` right after, which becomes the report's `note` column — overwriting the skip marker with no trace.
-  - **Impact**: cosmetic/reporting only, not functional — every YouTube lead after the block still resolved to a clean video-only result and queued normally (confirmed: 0 crashes, 0 further-blocking signs). But the exact count of calls the breaker actually skipped can't be read back from `wo151_report.csv`, which the continuation's own `BACKLOG_DONE.md` entry reports as an honest gap rather than a guessed number.
-  - **Next action**: if a future sweep needs this count, append rather than overwrite `res.detail` (e.g. `res.detail = f"{res.detail}; {probe_summary}"` when `res.detail` is already set), or add a dedicated `breaker_skipped` column.
-  - **Constraint**: low priority — no known consumer needs this count today.
-  - **History**: found 2026-09-10 running WO-151's continuation.
-
 - **[NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live `tier3_auto_transcription_queue.txt`, added by an unidentified source before WO-150's continuation ever touched it.**
   - **Issue**: `https://www.youtube.com/embed/-pNyufIO7xM?feature=oembed` (Jennings city, LA) is already in `scripts/tier3_auto_transcription_queue.txt`. WO-150's continuation sweep (2026-09-10) independently found the same government's meeting and, per its own tier-3 gate, tried to probe it before queuing — but `scripts/wo150_finish_tier3.py` found the normalized `watch?v=` form already probed (by some other process, the same day) with a `reject-dead` verdict: `yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments` — a livestream placeholder, not a real recording. Neither WO-150 script wrote this queue line; its origin is unknown.
   - **Impact**: `scripts/feed_tier3_auto_transcription.py` will eventually pop this line and burn a transcription attempt on a dead video — same failure shape as the "queue feasibility collapsed to ~8%" entry below, just one specifically-confirmed instance rather than the aggregate trend.
   - **Next action**: re-check the video a few days out (the probe's own error text implies a livestream that hasn't started, not necessarily one that never will), then remove the one line from `tier3_auto_transcription_queue.txt` by hand if it's still dead.
-  - **Constraint**: don't remove queue lines in bulk off one probe run — this is a single, specifically-confirmed case, not a signal to re-probe the whole file.
+  - **Constraint**: don't remove queue lines in bulk off one probe run — this is a single, specifically-confirmed case, not a signal to re-probe the whole file. This is a YouTube URL — re-checking it live is drip-Mac-only work (CLAUDE.md), not something an interactive session elsewhere should do.
   - **History**: found running `wo150_finish_tier3.py` during WO-150's continuation. `rtr-deeplink/BACKLOG_DONE.md`'s WO-150 entry (Continuation block); `rtr-business/research/wo150_tier3_finish_log.csv`.
+  - **Re-checked 2026-09-21 (WO-937)**: still exactly one copy of this exact URL in `tier3_auto_transcription_queue.txt` (line 254, paired with `https://www.cityofjennings.com/council-meetings/` as its source_url) — 11 days after the "a few days out" recheck window this entry itself asked for, and it has neither been fed nor removed. The sidecar (`tier3_auto_transcription_queue_probe.csv`) has two independent `reject-dead` rows for the normalized `watch?v=-pNyufIO7xM` form, both with the same "This live event will begin in a few moments" reason, dated 2026-09-10T14:34:31Z and 2026-09-10T22:55:57Z (the second tagged `caller=bulk_ingest`) — no accept verdict for this video has ever been recorded. Not re-verified live here (this machine is not the drip Mac; no YouTube requests made). The drip Mac (or a future session running on it) should check whether the livestream ever aired and remove the line if it's still dead.
 
 - **[NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   domain (`"granicus.com" in netloc`, etc.) false-positives on the
@@ -5965,37 +5803,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Transcription queue & workers
 
-- **[JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
-  string match, so two differently-formatted URLs for the SAME video can
-  both queue — confirmed live, one real duplicate line produced and
-  removed by hand.**
-  - **Issue**: `scripts/wo134_confirmed_hits_ingest.py`'s
-    `_existing_tier3_queue_urls()` (shared by every WO-130/134/139/145-149
-    -style sweep) compares the new URL against the queue file's existing
-    first-tab-field values as plain strings. WO-149's county sweep queued
-    `https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1&autoplay=0&
-    ...&disablekb=0&` (Lake County, OH) as a "new" URL even though the
-    exact same video (`AscWHEa0ay4`) was already on the queue from
-    earlier work as a slightly differently-formatted string — same video
-    id, different player-widget query parameters attached. Caught by
-    `tests/test_transcription_queue_files.py`'s dangling-query-separator
-    check (the messy URL also had a trailing bare `&`), not by the dedup
-    logic itself, which is the actual bug.
-  - **Impact**: a real, exact-content duplicate line reached the queue
-    file in this WO's own run (removed by hand, see `BACKLOG_DONE.md`'s
-    WO-149 entry) — the dedup check gave false confidence that "not an
-    exact string match" meant "not a duplicate."
-  - **Next action**: extract each platform's stable video id (YouTube:
-    the 11-char id already extracted by `_YT_ID_RE`/`canonicalize_
-    youtube_url()`-style logic in `scripts/wo149_county_ladder_sweep.py`;
-    Vimeo/TelVue/Cablecast have their own id shapes already used by
-    `_tenant_override_match()`) and dedup on that instead of the raw URL
-    string.
-  - **Constraint**: don't over-generalize from one confirmed case yet —
-    worth checking whether the existing ~2,180-line queue file has more
-    of these before committing to a specific normalization function.
-  - **History**: WO-149, 2026-09-10.
-
 - **[NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
   `IS NOT NULL` matches 63 rows that aren't multi-clip jobs at all.**
   - **Issue**: `TranscriptionJob.chunk_plan` is
@@ -6034,6 +5841,15 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     clip over their own cap — the feature had a 100% failure rate on long
     clips, which was invisible partly because this predicate made
     multi-clip jobs look 22x more common than they are.
+  - **Re-checked 2026-09-21 (WO-937)**: `git grep -n "chunk_plan"` across
+    `archive/`, `app/`, `worker/`, `scripts/` finds no current query using
+    `chunk_plan IS NOT NULL`/`.isnot(None)` anywhere — the WO-95 sweep
+    that hit this was a one-time script, not committed code. So this is a
+    real, still-live landmine for the next query that reaches for the
+    obvious `IS NOT NULL` check, but there is nothing broken in shipped
+    code today to fix. Left open rather than closed for that reason; the
+    `Next action` above (prefer `json_typeof`) still stands for whoever
+    writes that query next.
 
 - **[NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
   records no failure, counts toward no retry cap, and silently discards
