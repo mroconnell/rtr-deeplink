@@ -353,13 +353,69 @@ async def test_context_feed_xml_title_uses_headline_when_present():
     )
 
 
-async def test_context_feed_xml_link_is_absolute_deep_link(monkeypatch):
+async def test_context_feed_xml_link_is_absolute_permalink(monkeypatch):
+    # WO-1001: <item><link> is the entry's OWN page now, not the meeting
+    # -- see BACKLOG_DONE.md's WO-1001 entry for why. entry["permalink"]
+    # is a slugged path built from the headline given here.
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
-    entry = await _publish_entry(_social_url(), summary="Absolute link check.")
+    entry = await _publish_entry(
+        _social_url(), summary="Absolute link check.", title="Absolute link headline"
+    )
     response = client.get("/context/feed.xml")
     root = ET.fromstring(response.text)
     links = [item.find("link").text for item in root.findall("./channel/item")]
-    assert f"https://redtaperecordings.com{entry['deep_link']}" in links
+    assert f"https://redtaperecordings.com{entry['permalink']}" in links
+    # The old <link> target (the meeting deep link) didn't disappear --
+    # it moved into the description, right alongside the original-post
+    # line, so a reader who only sees the feed still gets to the
+    # recording. entry["timestamp_label"] confirms the "from M:SS" phrase
+    # only appears when there's a real timestamp (the default
+    # _publish_entry() call is match_kind="exact", t_seconds=42).
+    descriptions = {
+        item.find("link").text: item.find("description").text
+        for item in root.findall("./channel/item")
+    }
+    own_description = descriptions[f"https://redtaperecordings.com{entry['permalink']}"]
+    assert entry["timestamp_label"] is not None
+    assert (
+        f"Watch the full meeting from {entry['timestamp_label']}: "
+        f"https://redtaperecordings.com{entry['deep_link']}"
+    ) in own_description
+
+
+async def test_context_feed_xml_guid_is_unchanged_by_the_link_fix():
+    # WO-1001: readers key on <guid> to dedupe already-seen items --
+    # changing it would re-deliver every existing item as new. Confirms
+    # the format is still exactly "rtr-context-{id}", isPermaLink="false".
+    entry = await _publish_entry(_social_url(), summary="Guid stability check.")
+    response = client.get("/context/feed.xml")
+    root = ET.fromstring(response.text)
+    guids = {
+        item.find("guid").text: item.find("guid").attrib.get("isPermaLink")
+        for item in root.findall("./channel/item")
+    }
+    assert guids[f"rtr-context-{entry['id']}"] == "false"
+
+
+async def test_context_feed_xml_untitled_entry_link_uses_jurisdiction_and_title_slug():
+    # No `title` passed -> context_permalink() falls back to the matched
+    # meeting's jurisdiction + title for the slug basis (see that
+    # function's own docstring) rather than leaving <link> pointed at the
+    # meeting or at a bare id-only permalink.
+    entry = await _publish_entry(
+        _social_url(), summary="No headline on this one.", title=None
+    )
+    assert entry["headline"] is None
+    # A bare id-only permalink ("/context/{id}") would mean the
+    # jurisdiction+title basis slugified to nothing -- not the case for
+    # this test's real, non-empty jurisdiction/title, so the permalink
+    # itself proves the slug basis was used, and the assertion below
+    # confirms the feed's <link> matches it exactly.
+    assert entry["permalink"] != f"/context/{entry['id']}"
+    response = client.get("/context/feed.xml")
+    root = ET.fromstring(response.text)
+    links = [item.find("link").text for item in root.findall("./channel/item")]
+    assert any(link is not None and link.endswith(entry["permalink"]) for link in links)
 
 
 # --- /context/new (editor-only, phase 2) -----------------------------------

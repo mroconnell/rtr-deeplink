@@ -2907,11 +2907,20 @@ async def meeting_page(
             refresh_slug=slug,
         )
 
+    # WO-1002: "this moment was clipped on social media" -- published
+    # Full Context entries citing this exact meeting (BACKLOG.md's
+    # "clipped on social media" `/m/` backlink; WO-947 already did the
+    # same for /j/{slug} and /state/{slug}). Always a list, never None --
+    # crud.list_context_entries_for_meeting() runs in its own session and
+    # never raises, so a failure here can never take this page down.
+    context_entries = await crud.list_context_entries_for_meeting(page["id"])
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
         {
             "page": page,
+            "context_entries": context_entries,
             "active_version": active_version,
             "page_is_empty": page_is_empty,
             "video_embedding_disabled": video_embedding_disabled,
@@ -3485,7 +3494,9 @@ async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     page). 404s for an unknown slug or one with no indexable meetings, same
     in-route pattern as /m/{slug} and /state/{slug}. Below
     crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
-    noindex (thin-content posture) and stays out of sitemap.xml."""
+    noindex (thin-content posture) and stays out of sitemap.xml -- unless
+    the hub carries at least one published Full Context entry (WO-1003),
+    which counts as real content on its own."""
     data = await crud.get_jurisdiction_hub_data(hub_slug, topic_slug=topic or None)
     if data is None:
         # A slug that used to be a hub and no longer is, because WO-99

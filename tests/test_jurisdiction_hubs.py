@@ -10,12 +10,14 @@ assertions are stable regardless of test order.
 
 import json
 import re
+import uuid
 
 from fastapi.testclient import TestClient
 
 import app.main
 import archive.main
 from archive.db import crud
+from archive.utils.context_links import parse_social_url
 from archive.utils.jurisdiction_format import jurisdiction_hub_slug
 
 client = TestClient(archive.main.app)
@@ -319,3 +321,134 @@ def test_resolver_proxies_hub_path():
     # exists on the resolver and targets the archive's j/ prefix.
     routes = {r.path: r for r in app.main.app.routes if hasattr(r, "path")}
     assert "/j/{path:path}" in routes
+
+
+# --- WO-1003: a hub is also indexable via a published Full Context entry ---
+#
+# Rio Vista, CA (this file's existing below-threshold hub, seeded above) is
+# used for the "no entry" baseline only -- a later test in this section
+# permanently publishes an entry on it, so nothing above this point may
+# assume it stays non-indexable. Every OTHER seed below is its own fresh,
+# real, unambiguous California town not used anywhere else in this suite
+# (checked by the grep this file's docstring already asks for): Winters
+# (Yolo County), Isleton (Sacramento County), Loomis (Placer County).
+
+
+async def _publish_entry_for(page_id: int, *, status: str = "published") -> dict:
+    suffix = uuid.uuid4().hex[:16]
+    result = await crud.save_context_entry(
+        "user_hub_indexable_test",
+        social=parse_social_url(f"https://example.com/hub-indexable-test/{suffix}"),
+        summary="A clip cited for the WO-1003 hub-indexable-via-entry tests.",
+        meeting_page_id=page_id,
+        t_seconds=5,
+        match_kind="exact",
+        status=status,
+    )
+    assert "ok" in result, result
+    return result["ok"]
+
+
+async def test_single_meeting_hub_with_no_entry_stays_noindexed_and_out_of_sitemap():
+    """Existing behaviour, pinned: a below-threshold hub with zero Full
+    Context entries is unaffected by WO-1003."""
+    await _seed_all()
+    data = await crud.get_jurisdiction_hub_data("rio-vista-ca")
+    assert data is not None and data["total_pages"] == 1
+    assert data["indexable"] is False
+    entries = {e["slug"] for e in await crud.list_indexable_hub_entries()}
+    assert "rio-vista-ca" not in entries
+    r = client.get("/j/rio-vista-ca")
+    assert '<meta name="robots" content="noindex">' in r.text
+    r2 = client.get("/sitemap.xml")
+    assert "/j/rio-vista-ca</loc>" not in r2.text
+
+
+async def test_single_meeting_hub_becomes_indexable_with_one_published_entry():
+    """The rule itself: one meeting, no entry -> noindex/absent (asserted
+    first, matching the previous test's baseline); the SAME hub with one
+    published entry -> indexable, no noindex, listed in the sitemap. A
+    `?topic=` render of the same hub must reach the identical verdict even
+    though it never fetches the display list (WO-947's bare-view-only
+    rule for the "Seen on social media" section itself is unaffected --
+    only the indexable/noindex decision behind it is checked here)."""
+    await _seed(
+        "granicus:hub-winters1",
+        jurisdiction="Winters, CA",
+        title="Winters City Council",
+        date="2026-01-05",
+    )
+    data = await crud.get_jurisdiction_hub_data("winters-ca")
+    assert data is not None and data["total_pages"] == 1
+    assert data["indexable"] is False
+    page_id = data["pages"][0]["id"]
+
+    await _publish_entry_for(page_id)
+
+    data = await crud.get_jurisdiction_hub_data("winters-ca")
+    assert data["indexable"] is True
+    entries = {e["slug"] for e in await crud.list_indexable_hub_entries()}
+    assert "winters-ca" in entries
+
+    r = client.get("/j/winters-ca")
+    assert r.status_code == 200
+    assert 'content="noindex"' not in r.text
+    r2 = client.get("/sitemap.xml")
+    assert "/j/winters-ca</loc>" in r2.text
+
+    # Same verdict under a topic filter, even though the entries LIST
+    # itself stays empty there (WO-947's own bare-view-only rule).
+    topic_data = await crud.get_jurisdiction_hub_data(
+        "winters-ca", topic_slug="housing-development"
+    )
+    assert topic_data["context_entries"] == []
+    assert topic_data["indexable"] is True
+    r3 = client.get("/j/winters-ca?topic=housing-development")
+    assert r3.status_code == 200
+    assert 'content="noindex"' not in r3.text
+
+
+async def test_draft_entry_does_not_make_a_single_meeting_hub_indexable():
+    await _seed(
+        "granicus:hub-isleton1",
+        jurisdiction="Isleton, CA",
+        title="Isleton City Council",
+        date="2026-01-06",
+    )
+    data = await crud.get_jurisdiction_hub_data("isleton-ca")
+    assert data is not None and data["total_pages"] == 1
+    page_id = data["pages"][0]["id"]
+
+    await _publish_entry_for(page_id, status="draft")
+
+    data = await crud.get_jurisdiction_hub_data("isleton-ca")
+    assert data["indexable"] is False
+    entries = {e["slug"] for e in await crud.list_indexable_hub_entries()}
+    assert "isleton-ca" not in entries
+    r = client.get("/j/isleton-ca")
+    assert '<meta name="robots" content="noindex">' in r.text
+
+
+async def test_entry_on_another_government_does_not_make_this_hub_indexable():
+    await _seed(
+        "granicus:hub-loomis1",
+        jurisdiction="Loomis, CA",
+        title="Loomis Town Council",
+        date="2026-01-07",
+    )
+    data = await crud.get_jurisdiction_hub_data("loomis-ca")
+    assert data is not None and data["total_pages"] == 1
+
+    # Yountville, CA (seeded by _seed_all() above) is a different
+    # government and already indexable on its own meeting count -- an
+    # entry there must not leak indexability onto Loomis.
+    await _seed_all()
+    ynt = await crud.get_jurisdiction_hub_data("yountville-ca")
+    await _publish_entry_for(ynt["pages"][0]["id"])
+
+    data = await crud.get_jurisdiction_hub_data("loomis-ca")
+    assert data["indexable"] is False
+    entries = {e["slug"] for e in await crud.list_indexable_hub_entries()}
+    assert "loomis-ca" not in entries
+    r = client.get("/j/loomis-ca")
+    assert '<meta name="robots" content="noindex">' in r.text

@@ -106,7 +106,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (14)
+Standing decisions — do NOT re-raise  (15)
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -121,6 +121,7 @@ Standing decisions — do NOT re-raise  (14)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
   The Archive files a page under whatever `gov_id` a sweep sends: do…
+  A single job still makes N consecutive pulls to the same host — WO-40…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
   State legislatures: chamber rows still without a page (91 of 99 on…
@@ -413,21 +414,17 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (16)
+Reliability, ops & cost  (12)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     [LATER] Tighten the two transcription workers to their real import
     [NEEDS-AUDIT] `rtr-deeplink-archive`'s "HTTP health check failed"…
-  Media-source reliability  (4)
-    `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
-    `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
+  Media-source reliability  (2)
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
     `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
-  Transcription queue & workers  (7)
+  Transcription queue & workers  (5)
     [JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
-    [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
-    [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
@@ -466,7 +463,7 @@ Trust, safety & data quality  (27)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (31)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -476,7 +473,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
     `[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (12)
+  Growth, audience & discoverability  (10)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -487,8 +484,6 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
     `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
-    `[IMPROVEMENT-ROUND]` The Full Context RSS item link still points at…
-    `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
   Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
@@ -877,6 +872,30 @@ unit_name` and rely on the ladder being skipped. A same-state mismatch (a
 town filed under its county's site) is not caught either way; that gap is
 tracked under the registry-domain entries. History: `BACKLOG_DONE.md`
 WO-932 and WO-913.
+
+### A single job still makes N consecutive pulls to the same host — WO-40 tested and falsified the round-robin fix `[STANDING]`
+
+- **Issue**: `claim_next_chunk()` claims a whole *job* and the worker
+  holds it through every chunk, so a 21-chunk meeting is still 21
+  consecutive pulls from one host inside a single job — queue-level
+  reordering can't reach inside a job.
+- **What this means**: leave within-job pull ordering alone. WO-40
+  (2026-08-21) tested "workers hammer one host across consecutive jobs,
+  so round-robin the queue by host" against all 514 production jobs and
+  falsified it: `same_host_different_job` failure pairs within 10
+  minutes were **0**, and chunk 0 is 3-4x more failure-prone per attempt
+  than any later chunk — the opposite of what an accumulating rate limit
+  would predict. Both real mechanisms WO-40 found (cold-storage
+  rehydration, where chunk 0 warms the asset for chunks 1..N; and a
+  persistently-slow source, which doesn't care about pacing) argue
+  against spreading pulls.
+- **Re-derived, not re-raised (WO-936, 2026-09-21)**: this entry sat
+  under `[NEEDS-AUDIT]` in Open bugs with its own "Next action: none
+  planned" already written — moved here rather than left to be
+  rediscovered as an open bug again. Worth another pass with fresh data
+  if job volume grows a lot, but not a currently-open question.
+- **History**: `BACKLOG_DONE.md` (WO-40, 2026-08-21) — full numbers and
+  the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -5785,65 +5804,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Media-source reliability
 
-#### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
-
-- **Issue**: some archived Granicus clips hang for minutes on
-  `chunklist.m3u8` before Granicus's own CloudFront edge returns a real
-  `504 Gateway Timeout` — confirmed 2026-08-21 with `ffprobe -v verbose`
-  against Fountain Valley CA clip 607 using the app's real request
-  headers (4-6 minute hang, then a genuine 504). `media_probe.py`'s own
-  120s timeout is shorter, so in production this always looks like our
-  own "ffmpeg timed out" first — the 504 that would eventually arrive is
-  never actually seen.
-- **Impact**: affects a small, not-yet-fully-sized slice of old/archived
-  clips. WO-83 (`2857d53`, #609, 2026-08-30) confirmed the failure mode
-  is still live: the same 8 `archive-stream.granicus.com` candidates were
-  being re-selected identically for 25+ hours before that fix landed.
-- **Next action**: add worker logging that distinguishes a real
-  5XX-after-a-long-hang from an ordinary connection-level timeout, so
-  this pattern stops being rediscovered from scratch. Not yet built.
-- **Constraint**: don't raise `_SUBPROCESS_TIMEOUT_SECONDS` to match
-  Granicus's own gateway timeout — that ties up a worker chunk slot for
-  minutes on every genuinely-dead asset, trading a fast clear failure for
-  a slow identical one. Current measurement (2 of 218 terminal failures,
-  ~4% of worker-hours) says this isn't costing much either way today, but
-  that's one measurement — not a permanent Standing decision, worth
-  re-checking as job volume grows.
-- **History**: `BACKLOG_DONE.md` — WO-83 `[Done 2026-08-30]` fixed the
-  downstream symptom (the backlog driver now records probe-only
-  feasibility failures so cooldown engages instead of looping on the same
-  dead candidates forever); the root 504/timeout issue and the logging
-  distinction above remain open here, not touched by that fix.
-- **Untested tool, not a fix**: `ViewPublisherRSS.php?mode=vpodcast` (a
-  Granicus RSS mode found 2026-09-04, see
-  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §58) adds a
-  direct-download `<enclosure>` URL (`DownloadFile.php?...clip_id=N`)
-  per item, on a different origin than `archive-stream.granicus.com`'s
-  CDN — a plausible alternate source for a clip stuck on this timeout,
-  not verified against one.
-
-#### `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the same host (WO-40 falsified the round-robin fix)
-
-- **Issue**: `claim_next_chunk()` claims a whole *job* and the worker
-  holds it through every chunk, so a 21-chunk meeting is still 21
-  consecutive pulls from one host inside a single job — queue-level
-  reordering can't reach inside a job.
-- **Impact**: none currently measured. WO-40 (2026-08-21) tested "workers
-  hammer one host across consecutive jobs, so round-robin the queue by
-  host" against all 514 production jobs and falsified it:
-  `same_host_different_job` failure pairs within 10 minutes were **0**,
-  and chunk 0 is 3-4x more failure-prone per attempt than any later
-  chunk — the opposite of what an accumulating rate limit would predict.
-- **Next action**: none planned. Current default is to leave within-job
-  pull ordering alone — both real mechanisms WO-40 found (cold-storage
-  rehydration, where chunk 0 warms the asset for chunks 1..N; and a
-  persistently-slow source, which doesn't care about pacing) argue
-  against spreading pulls. Not re-measured since; worth another pass with
-  fresh data as job volume grows rather than treating this as
-  permanently settled.
-- **History**: `BACKLOG_DONE.md` (WO-40, 2026-08-21) — full numbers and
-  the `GET /internal/transcription-failure-analysis` endpoint.
-
 #### `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't adapt per source
 
 - **Issue**: `_SUBPROCESS_TIMEOUT_SECONDS` is a flat 120s for every
@@ -5856,17 +5816,19 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   ~3.5 hours of retry against ~96 worker-hours available, about **4%**.
   Timeouts are not what caps real output at ~35 jobs/day (see "backlog
   keeps shrinking," below, for the actual cap).
-- **Next action**: two ideas considered, neither built: (1) detect the
-  slow-source shape early — a job whose first few chunks all need retries
-  will need them throughout — and widen or defer that job's timeout
-  rather than grinding repeated retries through the same slot; (2) add
-  the same real-5XX-vs-ordinary-timeout logging distinction called for in
-  the Granicus entry above.
+- **Next action**: detect the slow-source shape early — a job whose
+  first few chunks all need retries will need them throughout — and
+  widen or defer that job's timeout rather than grinding repeated
+  retries through the same slot. Not built: a real per-job adaptive-
+  timeout policy, bigger than a single-PR change (WO-936, 2026-09-21,
+  narrowed this entry to just this half — the other half, a real-5xx-
+  vs-timeout logging distinction, is done, see `BACKLOG_DONE.md`).
 - **Constraint**: whatever gets built must never starve a real
   user-submitted `PRIORITY_MEDIUM` job behind automated `PRIORITY_LOW`
   backlog work.
 - **History**: `BACKLOG_DONE.md` (WO-40, 2026-08-21) — same failure-
-  pattern measurement this residual is drawn from.
+  pattern measurement this residual is drawn from; WO-936 (2026-09-21)
+  closed the logging-distinction half of this entry's old Next action.
 
 #### `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic ffmpeg filter-graph failure has no known fix
 
@@ -5878,8 +5840,9 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   with all 3 retries hitting the exact same error text, including after
   the WO-45 output-side-seek retry (which fixes a different, empty/
   undecodable-file failure shape, not this one). No fix attempted yet —
-  confirmed 2026-09-05: no `aresample` reference anywhere in
-  `app/platforms/media_probe.py` or `worker/main.py`.
+  confirmed 2026-09-05, and re-confirmed 2026-09-21 (WO-936): no
+  `aresample` reference anywhere in `app/platforms/media_probe.py` or
+  `worker/main.py`.
 - **Impact**: this meeting has zero transcript (gave up at chunk 1/27).
   Scope beyond this one source is unmeasured — no query groups failures
   by this exact error string yet.
@@ -5889,6 +5852,11 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `-af aresample=async=1` (already known safe from the Napa VOD
   investigation, for a different, cosmetic dts-warning case) happens to
   route around this filter-config failure too.
+- **Constraint**: a local ffmpeg filter-graph crash, not a remote-server
+  problem — confirmed 2026-09-21 (WO-936) to be a genuinely different
+  root cause from the Granicus `chunklist.m3u8` timeout/504 entry
+  (`BACKLOG_DONE.md`), not the same bug seen twice. Don't fold a future
+  fix for one into the other.
 - **History**: found by the inbox-triage Routine's 2026-08-30 run;
   confirmed deterministic (2nd occurrence, same source/chunk) in the
   2026-08-31 run.
@@ -5964,82 +5932,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     clip over their own cap — the feature had a 100% failure rate on long
     clips, which was invisible partly because this predicate made
     multi-clip jobs look 22x more common than they are.
-
-- **[NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
-  records no failure, counts toward no retry cap, and silently discards
-  up to a chunk's worth of work.**
-  - **Issue**: a Render OOM kill terminates the worker process before
-    `report_chunk_result()` can run, so nothing is written to
-    `TranscriptionJob.failure_history`, `consecutive_chunk_failures`
-    never increments, and `MAX_CONSECUTIVE_CHUNK_FAILURES` is never
-    reached. `claimed_at` simply goes stale after `STALE_CLAIM_AFTER`
-    (5 min) and the same chunk is re-claimed as if nothing happened.
-  - **Impact**: OOMs are undetectable from the app's own data. Confirmed
-    2026-09-01: Render reported two "Ran out of memory (used over 2GB)"
-    kills on `rtr-transcription-worker-2`, while
-    `/internal/transcription-failure-analysis?days=1` showed 7 failures,
-    all ffmpeg timeouts, and zero trace of either kill. Every OOM also
-    throws away that chunk's work in progress — up to ~15 min at the
-    production pool's measured per-chunk pace — and a chunk that OOMs
-    deterministically will loop on that cycle indefinitely rather than
-    failing out. WO-94 removed one trigger (chunk size 900s → 450s,
-    peak RSS 1588MB → 977MB) but not the blind spot — and on
-    2026-09-02 the loop this describes ran for real: job 1419's
-    2,519s multi-clip chunk (WO-95) OOMed ~40 times over 3.5 hours,
-    and cost ~3.5 hours of diagnosis the worker's own data could not
-    shorten, because it recorded nothing. Throughput fell 42 → 14
-    jobs/day while it ran. No longer a theoretical cost.
-  - **Next action**: detection before prevention, and the cheap version
-    is enough — the process is killed, so it cannot report anything
-    itself, but the *next* process can notice: on startup, look for a
-    job whose `claimed_at` went stale without `chunks_completed` moving,
-    and record that as a distinct outcome. That also covers the
-    heartbeat-wedge entry below, which is the same blind spot seen from
-    the other end.
-  - **Constraint**: must not conflate an OOM with an ordinary
-    crash/restart/deploy, all of which produce the same stale claim —
-    and must not re-introduce the duplicate-window corruption WO-57
-    shipped to stop. Detection only; do not shorten
-    `STALE_CLAIM_AFTER` to make OOMs surface faster.
-  - **History**: found 2026-09-01 while diagnosing the two live OOM
-    kills that produced WO-94. Related: the heartbeat/no-timeout entry
-    directly below (a wedged job, rather than a killed one, is the same
-    invisibility from the opposite direction).
-
-- **[NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
-  has no timeout — together they can pin a job `in_progress` forever.**
-  - **Issue**: `_heartbeat_loop()` (`worker/main.py`) refreshes
-    `claimed_at` every 60s `while True:` until its surrounding block
-    exits, and that block ends in `engine.transcribe_chunk()` →
-    `asyncio.to_thread(self._transcribe_sync, ...)`
-    (`worker/transcription_engine.py:200`) with **no `wait_for` and no
-    timeout**. ffmpeg is bounded (2x `_SUBPROCESS_TIMEOUT_SECONDS`);
-    faster-whisper is not.
-  - **Impact**: a wedged transcription call keeps its claim fresh
-    indefinitely — `STALE_CLAIM_AFTER` never fires, no other worker
-    reclaims the job, and it sits `in_progress` with no error and no
-    failure email. Found 2026-08-25 by reading the code; **not yet
-    observed firing in production.** This is a known trade-off, not a
-    regression: before WO-57 the same wedge went stale after 5 minutes
-    and got reclaimed, which is exactly the duplicate-window/skipped-
-    chunk corruption WO-57 shipped to stop. Stuckness is the better
-    failure than corruption, but it's silent.
-  - **Next action**: build detection first, since it's the cheaper half —
-    nothing currently reports a job whose `chunks_completed` hasn't moved
-    far longer than its own observed per-chunk pace. This is the same
-    blind spot as the pool-wide "chunks flat while jobs active" check
-    shipped 2026-08-28, which only catches the whole pool going dead, not
-    one job wedged while the rest of the pool keeps moving.
-  - **Constraint**: any real cap must clear the measured legitimate case
-    by a wide margin — job 911 (Detroit, 21 chunks, `probed_duration`
-    18445.511s) completed 7 chunks between 14:22 and 16:08 UTC, ~15
-    min/chunk on the production pool, itself 3x `STALE_CLAIM_AFTER`.
-    Neither fix candidate is clean: capping the heartbeat's lifetime
-    reopens WO-57's corruption whenever a chunk legitimately runs past
-    the cap; wrapping transcription in `asyncio.wait_for` can't actually
-    cancel `to_thread`, so the thread leaks and the model stays loaded.
-  - **History**: `BACKLOG_DONE.md` — WO-57 (duplicate-window/skipped-
-    chunk fix) and the 2026-08-28 pool-wide "chunks flat" check.
 
 - **[NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.**
   - **Issue**: tracking whether the transcription backlog is actually
@@ -7153,44 +7045,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     README's "Meeting card images" section (the existing YouTube-redirect
     behavior this inherits).
 
-- **`[IMPROVEMENT-ROUND]` The Full Context RSS item link still points at the meeting, not the post.**
-  - **Issue**: `context_feed.xml.jinja`'s `<item><link>` points at the
-    entry's meeting deep link (`/m/{slug}?t={seconds}`), not the entry's
-    own permalink (`/context/{id}-{slug}`, slugged in WO-946). The
-    sitemap half of this same residual (each published entry's permalink
-    listed once the feed clears `CONTEXT_MIN_INDEXABLE`) shipped in
-    WO-946 — this is what's left.
-  - **Impact**: none today — the feed itself is still below
-    `CONTEXT_MIN_INDEXABLE` and `noindex`'d. Once it clears that
-    threshold, an RSS reader/aggregator that uses `<link>` as "the URL
-    for this item" sends a reader to the meeting rather than the curated
-    post that cited it.
-  - **Next action**: once the feed is indexable, decide whether `<link>`
-    should become the permalink (with the meeting deep link demoted to
-    inside `<description>`, where it already partly lives) — a real RSS
-    semantics choice, not just a code change, since it affects what "the
-    URL for this item" means to a subscriber.
-  - **Constraint**: not started — cheap once decided; the open question
-    is the RSS semantics choice, not implementation effort. Deliberately
-    left alone in WO-946 for the same reason.
-  - **History**: `BACKLOG_DONE.md`'s WO-945 and WO-946 entries.
-
-- **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
-  - **Issue**: `/m/{slug}` never shows that a meeting has one or more
-    Full Context entries pointing at it, even though `ContextEntry.
-    meeting_page_id` is indexed and already the FK every entry carries.
-    WO-947 (2026-09-21) added the same kind of backlink to `/j/{hub_slug}`
-    and `/state/{state_slug}` ("Seen on social media"), so `/m/` is now
-    the one surface an entry cites without linking back.
-  - **Impact**: a reader on the meeting page itself still has no way to
-    discover the social clip(s) that reference it.
-  - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
-    for that `meeting_page_id` and render a small "clipped on social
-    media" section/badge linking to each — `crud.list_context_entries_
-    for_pages()` (WO-947) already does the query shape this needs; the
-    condition here would just be `MeetingPage.id == page.id` instead of
-    a hub's/state's page set.
-  - **History**: `BACKLOG_DONE.md`'s WO-943 and WO-947 entries.
 
 ### Search & metadata quality
 

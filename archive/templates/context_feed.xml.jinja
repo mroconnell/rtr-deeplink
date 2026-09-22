@@ -18,17 +18,32 @@
   <description>Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.</description>
   <atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="{{ feed_url|e }}" rel="self" type="application/rss+xml"/>
 {%- for entry in entries %}
-  {#- Meeting-dependent fields are all None together when has_meeting is
-     false (see the data contract) -- a published entry should always
-     have a matched meeting in practice, but the feed must not emit a
-     broken "https://...None" link if one somehow doesn't, so both the
-     title and the link fall back to something real rather than assuming
-     the field is present. WO-945: the editor's own `headline`, when set,
-     wins outright over the meeting-title-based line below -- it's a
-     title the editor wrote specifically for this entry, so it's a better
-     fit for an RSS reader than a generated one. -#}
+  {#- WO-1001: <link> is the entry's OWN page, not the meeting -- an RSS
+     reader treats <link> as "the URL for this item," and that item is
+     the curated post, not the recording it cites. `entry.permalink`
+     (crud._context_entry_dict(), via context_links.context_permalink())
+     is present on every entry regardless of status/meeting, so no
+     fallback is needed here the way the old meeting-dependent `deep_link`
+     one was. <guid> stays untouched on purpose -- changing it would
+     re-deliver every already-seen item as new to every subscriber.
+     Meeting-dependent fields (title text, deep link) can still be None
+     together when has_meeting is false, even though this feed's own
+     query (list_context_entries(public=True)) only ever returns entries
+     with a real, still-existing meeting -- kept defensive rather than
+     assuming that join can never change. WO-945: the editor's own
+     `headline`, when set, wins outright over the meeting-title-based
+     line below -- it's a title the editor wrote specifically for this
+     entry, so it's a better fit for an RSS reader than a generated
+     one. -#}
   {%- set item_title = entry.headline or ((entry.title or "A meeting") ~ (" — " ~ entry.jurisdiction_display if entry.jurisdiction_display else "")) %}
-  {%- set item_link = base_url ~ (entry.deep_link or "/context") %}
+  {%- set item_link = base_url ~ entry.permalink %}
+  {#- The old <link> target -- the meeting deep link -- moves into the
+     description instead, so a reader who only sees the feed still gets
+     to the recording the way the old <link> gave them, alongside the
+     entry's own page. Omitted entirely when there's no matched meeting
+     (draft-shaped defensive case above; never true for a published,
+     feed-listed entry today). -#}
+  {%- set meeting_note = ((" Watch the full meeting" ~ (" from " ~ entry.timestamp_label if entry.timestamp_label else "") ~ ": " ~ base_url ~ entry.deep_link) if entry.deep_link else "") %}
   <item>
     <title>{{ item_title|e }}</title>
     <link>{{ item_link|e }}</link>
@@ -36,7 +51,7 @@
     {%- if entry.published_at %}
     <pubDate>{{ entry.published_at.strftime('%a, %d %b %Y %H:%M:%S %z') }}</pubDate>
     {%- endif %}
-    <description>{{ ((entry.summary or "") ~ " Original post: " ~ entry.social_url)|e }}</description>
+    <description>{{ ((entry.summary or "") ~ " Original post: " ~ entry.social_url ~ meeting_note)|e }}</description>
   </item>
 {%- endfor %}
 </channel>

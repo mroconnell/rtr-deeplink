@@ -2317,7 +2317,13 @@ async def get_transcription_queue_summary() -> dict:
     test suite (dialect-gated to None there by design), so this specific
     mistake wasn't caught until a real request hit it -- worth a live
     curl re-check after any future change here, not just `pytest`.
+
+    `stuck_jobs` (WO-936) is list_stuck_transcription_jobs()'s own,
+    separate session -- bounded by MAX_CONCURRENT_TRANSCRIPTION_JOBS (15)
+    in practice, since only an "in_progress" job can ever match, so this
+    stays cheap alongside everything else here.
     """
+    stuck_jobs = await list_stuck_transcription_jobs()
     async with async_session() as session:
         active_rows = (
             await session.execute(
@@ -2392,6 +2398,7 @@ async def get_transcription_queue_summary() -> dict:
             "jobs_completed_last_24h": jobs_completed_last_24h,
             "segments_added_last_24h": segments_added_last_24h,
             "backlog_no_transcript": backlog_no_transcript,
+            "stuck_jobs": stuck_jobs,
         }
 
 
@@ -8152,6 +8159,17 @@ async def search_jurisdictions(q: str, limit: int = 10) -> list[dict]:
 # singleton hub becomes indexable by itself the moment a second meeting
 # lands -- the bulk-ingest scripts add depth over time and this tracks
 # it with no code change. One dial; 3 is the conservative alternative.
+#
+# WO-1003: OR at least one published Full Context entry. A Full Context
+# entry is unique, hand-written text about that government -- exactly
+# what separates a thin templated hub from a page worth indexing
+# (STATE_HUB_PAGES.md §1's diagnosis of what Google was actually
+# declining). A hub with one meeting and a real entry is no longer a
+# near-duplicate of that meeting's own page; it has its own content. See
+# get_jurisdiction_hub_data() and list_indexable_hub_entries() below for
+# where the OR is applied -- one place for the page's own noindex verdict,
+# one for the sitemap's list, both reusing _hub_page_condition()'s exact
+# membership rule rather than any text match.
 JURISDICTION_HUB_MIN_INDEXABLE = 2
 
 # Fewer featured cards than a state page: a hub is one government, so
@@ -8165,6 +8183,12 @@ HUB_FEATURED_COUNT = 6
 # this section is secondary to the page's own featured cards and meeting
 # list, not the lead content.
 HUB_CONTEXT_ENTRIES = 3
+# WO-1002: Full Context entries shown on /m/{slug} itself -- "this moment
+# was clipped on social media" (BACKLOG.md). Smaller than HUB_CONTEXT_
+# ENTRIES: a hub pools every meeting a government has ever had, but this
+# section only ever has entries citing ONE specific meeting, so there is
+# rarely more than a handful to show at all.
+MEETING_CONTEXT_ENTRIES = 5
 # At most this many featured cards on a hub may come from the same
 # meeting body. A hub is one government, so its cards routinely all read
 # "City Council" while the Planning Commission, the school board and the
@@ -8717,11 +8741,26 @@ async def get_jurisdiction_hub_data(
         # the whole hub page down -- this section is secondary, the meeting
         # list above it is not.
         context_entries = []
+        has_context_entry = False
         if not topic_slug:
             context_entries = await _context_entries_isolated(
                 _hub_page_condition(group),
                 limit=HUB_CONTEXT_ENTRIES,
                 label=f"hub {slug}",
+            )
+            has_context_entry = bool(context_entries)
+        else:
+            # WO-1003: a `?topic=` view skips the DISPLAY list entirely
+            # (WO-947's "Bare view only" -- entries aren't topic-tagged,
+            # so showing them under a topic filter would be unrelated to
+            # that cut) but `indexable` below is a property of the
+            # government, not of which query string this render was
+            # requested with, so it must reach the SAME verdict the bare
+            # view would for the identical hub. One small existence-only
+            # query -- no columns/joins the display list needs -- isolated
+            # the same way _context_entries_isolated() is.
+            has_context_entry = await _context_entry_exists_isolated(
+                _hub_page_condition(group), label=f"hub {slug}"
             )
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
@@ -8773,7 +8812,13 @@ async def get_jurisdiction_hub_data(
         "active_topic_label": (
             TOPICS_BY_SLUG[active_slug].label if active_slug else None
         ),
-        "indexable": len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE,
+        # WO-1003: OR a real, hand-written Full Context entry -- see the
+        # module-level comment above JURISDICTION_HUB_MIN_INDEXABLE for
+        # why. `has_context_entry` reaches the same verdict on a `?topic=`
+        # render as on the bare one (see the branch above).
+        "indexable": (
+            len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE or has_context_entry
+        ),
         "min_indexable": JURISDICTION_HUB_MIN_INDEXABLE,
         # The raw strings, for the /meetings?jurisdiction= "search all" link
         # (the first is as good as any -- list_pages()'s jurisdiction
@@ -8790,13 +8835,63 @@ async def get_jurisdiction_hub_data(
     }
 
 
+async def _context_hub_membership_ids() -> tuple[set, set]:
+    """(gov_ids, page_ids) of every meeting page carrying >= 1 published
+    Full Context entry -- WO-1003, backing list_indexable_hub_entries()'s
+    OR-entries check below.
+
+    One small query for the WHOLE sitemap build, not one per hub: a hub's
+    own two-arm membership rule (_hub_page_condition() -- a keyed page by
+    `gov_id`, or an un-keyed page adopted by its own `id`) is checked in
+    Python against this pair of sets instead of running that condition
+    once per hub group. Same rule either way, so a contamination case
+    _hub_page_condition() already refuses (STATE_HUB_PAGES.md's "Which
+    pages a hub shows") can't sneak a hub past the threshold through this
+    path: an un-keyed page's id only lands in `page_ids` here if it was
+    also adopted into that hub's own `page_ids` by `_hub_groups()`.
+
+    Table missing, or the query failing for any other reason -> (set(),
+    set()) -- same tolerance every other context reader in this file
+    already has for an optional signal that must never break the
+    sitemap."""
+    # Its OWN session, deliberately -- see _context_entries_isolated(): a
+    # failed statement inside the sitemap's session would abort that whole
+    # transaction on Postgres and take the sitemap down with it.
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return set(), set()
+            rows = (
+                await ctx_session.execute(
+                    select(MeetingPage.gov_id, MeetingPage.id)
+                    .join(ContextEntry, ContextEntry.meeting_page_id == MeetingPage.id)
+                    .where(ContextEntry.status == "published")
+                    .distinct()
+                )
+            ).all()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context hub-membership ids for the sitemap."
+        )
+        return set(), set()
+    return (
+        {gov_id for gov_id, _page_id in rows if gov_id},
+        {page_id for _gov_id, page_id in rows},
+    )
+
+
 async def list_indexable_hub_entries() -> list[dict]:
     """[{slug, display, last_updated}] for every hub at or above
-    JURISDICTION_HUB_MIN_INDEXABLE -- sitemap.xml's /j/ entries (real
-    lastmod, same as the state entries). Sorted by slug for a stable
-    file."""
+    JURISDICTION_HUB_MIN_INDEXABLE, OR carrying >= 1 published Full
+    Context entry (WO-1003 -- see the module comment above
+    JURISDICTION_HUB_MIN_INDEXABLE for why an entry counts) -- sitemap.xml's
+    /j/ entries (real lastmod, same as the state entries). The entries
+    check costs one extra small query for the whole build
+    (_context_hub_membership_ids()), not one per hub. Sorted by slug for a
+    stable file."""
     async with async_session() as session:
         groups = await _hub_groups(session)
+        entry_gov_ids, entry_page_ids = await _context_hub_membership_ids()
     return sorted(
         (
             {
@@ -8806,6 +8901,8 @@ async def list_indexable_hub_entries() -> list[dict]:
             }
             for g in groups.values()
             if g["page_count"] >= JURISDICTION_HUB_MIN_INDEXABLE
+            or (set(g["gov_ids"]) & entry_gov_ids)
+            or (set(g["page_ids"]) & entry_page_ids)
         ),
         key=lambda g: g["slug"],
     )
@@ -8938,6 +9035,29 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # legitimately take as long as it needs.
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
+
+# WO-936: the shared "this job is stuck" threshold -- used both to flag a
+# job in list_stuck_transcription_jobs() (surfaced in the daily worker
+# report) and, in worker/main.py, to cap how long a live process may keep
+# refreshing its own claim (see CLAIM_HEARTBEAT_SECONDS' own comment
+# there). One number, one meaning, used both places on purpose: a job
+# whose heartbeat stops here is exactly a job this report would already
+# be calling out, so capping the heartbeat at this threshold does not add
+# a new risk, it just lets STALE_CLAIM_AFTER's existing reclaim path
+# finally reach a case it couldn't reach before (WO-57 made the heartbeat
+# unconditional with no ceiling at all).
+#
+# Sized with a wide margin over any legitimate per-chunk pace, the same
+# standard WO-57's own backlog entry sets: job 911 (Detroit, 21 chunks,
+# see that entry) was the slowest real chunk ever measured, at ~15
+# min/chunk on the production pool -- itself already 3x STALE_CLAIM_AFTER.
+# 3 hours clears that by 12x. A wide margin matters here specifically
+# because reclaiming a job that is NOT actually stuck reopens the exact
+# duplicate-segment corruption WO-57 shipped to stop (two workers both
+# reporting success for the same chunk) -- nothing legitimate observed
+# has ever run remotely close to this, so in practice this only ever
+# fires on a job that is genuinely wedged or OOM-looping.
+STUCK_JOB_THRESHOLD = timedelta(hours=3)
 
 # Escalating-backoff retry for a real user-submitted (PRIORITY_MEDIUM+) job
 # that's exhausted MAX_CONSECUTIVE_CHUNK_FAILURES -- added 2026-08-19 after
@@ -10133,6 +10253,12 @@ async def report_chunk_result(
             return {"error": "job_not_found"}
 
         job.claimed_at = None  # release the claim regardless of outcome
+        # WO-936: real activity happened (a chunk was attempted and this
+        # call is reporting its outcome), whether it succeeded or failed
+        # -- see TranscriptionJob.last_progress_at's own docstring for why
+        # this, and only this, is what list_stuck_transcription_jobs()
+        # trusts as "not stuck".
+        job.last_progress_at = datetime.now(timezone.utc)
 
         if not success:
             partial_version_id = None
@@ -10239,6 +10365,99 @@ async def report_chunk_result(
             "chunks_completed": job.chunks_completed,
             "total_chunks": job.total_chunks,
         }
+
+
+async def list_stuck_transcription_jobs(
+    *, threshold: timedelta = STUCK_JOB_THRESHOLD
+) -> list[dict]:
+    """A claimed job (status "in_progress") that has reported neither a
+    finished nor a failed chunk in `threshold` -- the shared detector for
+    two real, previously-invisible failure shapes (BACKLOG.md /
+    BACKLOG_DONE.md, WO-936):
+
+    1. **An OOM-killed chunk.** Render kills the worker process before
+       report_chunk_result() ever runs, so nothing is written anywhere --
+       claimed_at simply goes stale after STALE_CLAIM_AFTER and the same
+       chunk is silently re-claimed, as if nothing happened. If the OOM
+       is deterministic for that source, this loops: job 1419
+       (2026-09-02) OOMed roughly 40 times over 3.5 hours, invisible to
+       every check that existed at the time.
+    2. **A wedged transcription call.** worker/main.py's heartbeat
+       refreshes claimed_at every 60s regardless of real progress
+       (WO-57), so a hung faster-whisper call (unbounded -- see
+       CLAIM_HEARTBEAT_SECONDS' own comment on why there's no timeout on
+       that half) keeps claim_next_chunk() from ever reclaiming the job,
+       pinning it in_progress with no error and no failure email.
+
+    Both look identical from here: the job stays "in_progress" and its
+    own last real activity (last_progress_at, set only inside
+    report_chunk_result() -- never by the heartbeat, which is the whole
+    point) stops moving. Coalesced with created_at because the column is
+    nullable (added by migration after real jobs already existed) -- a
+    job whose column is still unset from before that migration is read
+    as "no progress since it was created", not as having no age at all.
+
+    Deliberately narrow to status == "in_progress" (a claim actually held
+    right now). A "queued"/"retry_scheduled" job sitting a long time
+    while the whole pool is idle is a different, already-covered signal
+    -- archive/utils/email.py's send_worker_daily_report() already warns
+    when cumulative_chunks_completed_all_time is flat while active_jobs
+    > 0 (2026-08-28), which catches the whole pool going dead. This
+    catches the complementary case: one job wedged while the rest of the
+    pool keeps moving fine, which that pool-wide check cannot see (named
+    explicitly as the same blind spot in BACKLOG.md's WO-57 heartbeat
+    entry).
+    """
+    cutoff = datetime.now(timezone.utc) - threshold
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.chunks_completed,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.claimed_at,
+                    TranscriptionJob.last_progress_at,
+                    TranscriptionJob.created_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(
+                    TranscriptionJob.status == "in_progress",
+                    func.coalesce(
+                        TranscriptionJob.last_progress_at,
+                        TranscriptionJob.created_at,
+                    )
+                    < cutoff,
+                )
+                .order_by(TranscriptionJob.id.asc())
+            )
+        ).all()
+
+    now = datetime.now(timezone.utc)
+    stuck = []
+    for r in rows:
+        last_progress = _aware(r.last_progress_at or r.created_at)
+        stuck.append(
+            {
+                "job_id": r.id,
+                "slug": r.slug,
+                "title": r.title,
+                "platform": r.platform,
+                "source_url": r.source_url_normalized,
+                "chunks_completed": r.chunks_completed,
+                "total_chunks": r.total_chunks,
+                "claimed_at": r.claimed_at.isoformat() if r.claimed_at else None,
+                "last_progress_at": r.last_progress_at.isoformat()
+                if r.last_progress_at
+                else None,
+                "stalled_for": _duration_words((now - last_progress).total_seconds()),
+            }
+        )
+    return stuck
 
 
 def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
@@ -11370,6 +11589,37 @@ async def _context_entries_isolated(page_condition, *, limit: int, label: str) -
         return []
 
 
+async def _context_entry_exists_isolated(page_condition, *, label: str) -> bool:
+    """Existence-only twin of _context_entries_isolated() -- WO-1003.
+
+    Used where a caller needs to know whether ANY published entry exists
+    for `page_condition` without paying for the columns/joins the display
+    list (`list_context_entries_for_pages()`) loads -- concretely, a
+    `?topic=` hub/state render that must agree with the bare view's
+    `indexable` verdict but does not fetch the entries list itself (see
+    get_jurisdiction_hub_data()). Same own-session isolation reasoning as
+    _context_entries_isolated(): a failed statement on Postgres aborts the
+    whole transaction, so this must not share the caller's session."""
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return False
+            row = (
+                await ctx_session.execute(
+                    select(ContextEntry.id)
+                    .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                    .where(ContextEntry.status == "published", page_condition)
+                    .limit(1)
+                )
+            ).first()
+            return row is not None
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to check Full Context entries for %s.", label
+        )
+        return False
+
+
 async def _context_entries_for_page_ids(
     page_ids: set, *, limit: int, label: str
 ) -> list:
@@ -11499,6 +11749,28 @@ async def list_context_entries_for_pages(
             }
         )
     return entries
+
+
+async def list_context_entries_for_meeting(
+    meeting_page_id: int, *, limit: int = MEETING_CONTEXT_ENTRIES
+) -> list[dict]:
+    """Published Full Context entries that cite THIS ONE meeting -- backs
+    the "this moment was clipped on social media" block on `/m/{slug}`
+    itself (WO-1002, BACKLOG.md). A thin wrapper over
+    list_context_entries_for_pages() with the narrowest possible
+    page_condition (a single MeetingPage.id, not a hub's or state's whole
+    page set), run through _context_entries_isolated() -- its own
+    session, never raising -- for the same reason the hub/state callers
+    do: a try/except in the CALLING session does not protect the page on
+    Postgres, since a failed statement aborts that whole transaction and
+    every later query on it fails too (see _context_entries_isolated()'s
+    own docstring). Newest-published first, published only -- both already
+    enforced by the shared function."""
+    return await _context_entries_isolated(
+        MeetingPage.id == meeting_page_id,
+        limit=limit,
+        label=f"meeting page {meeting_page_id}",
+    )
 
 
 async def get_context_entry(entry_id: int) -> Optional[dict]:

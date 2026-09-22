@@ -525,6 +525,28 @@
       {% if show_nyc_crosslink %}
       <p class="subtitle nyc-crosslink">Looking for deeper coverage of this meeting? <a href="https://citymeetings.nyc" target="_blank" rel="noopener noreferrer">citymeetings.nyc</a> — an independent project by Vikram Oberoi — publishes AI-generated chapter summaries for New York City Council meetings.</p>
       {% endif %}
+
+      {#- WO-1002: "this moment was clipped on social media"
+         (BACKLOG.md) -- Full Context entries citing THIS meeting.
+         Deliberately placed here, inside #videoColumn right after the
+         video/toolbar/report-problem/transcribe controls and before
+         #transcriptColumn opens below, rather than under the title in
+         .meta or as its own full-width row between the two columns:
+         .meta and #transcriptColumn are explicit grid-column targets on
+         desktop (see this page's own CSS comment above #videoColumn),
+         so a new sibling row between #videoColumn and #transcriptColumn
+         with no explicit column would get auto-placed into a cell one
+         of them wants, pushing the transcript down a row and leaving a
+         gap next to it -- staying inside #videoColumn's own already-
+         sticky box (grid-column: 1) avoids that entirely, and this is
+         exactly the kind of secondary-but-relevant control that box
+         already collects (save/report/transcribe). `{% raw %}{% with
+         meeting_view = True %}{% endraw %}` (not passing it inline) to
+         match state_page.html's own show_jurisdiction precedent for this
+         same partial. -#}
+      {% with meeting_view = True %}
+        {% include "_context_mentions.html" %}
+      {% endwith %}
     </div>
 
     <div id="transcriptColumn">

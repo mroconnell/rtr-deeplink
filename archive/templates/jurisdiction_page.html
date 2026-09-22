@@ -7,8 +7,12 @@
      (it's real navigation, and every /m/* page links here) but tells
      crawlers not to index it: a one-meeting hub is a near-duplicate of
      that meeting's own page -- thin/doorway content. Evaluated live, so
-     the tag disappears by itself once a second meeting lands. Same
-     posture as sitemap.xml, which lists only indexable hubs. #}
+     the tag disappears by itself once a second meeting lands -- OR once
+     this government has a published Full Context entry (WO-1003): a
+     hand-written entry is real content, not a near-duplicate, even on a
+     one-meeting hub. Same posture as sitemap.xml, which lists only
+     indexable hubs (crud.list_indexable_hub_entries() applies the same
+     OR). #}
   {% if not indexable %}
   <meta name="robots" content="noindex">
   {% endif %}
