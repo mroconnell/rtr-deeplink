@@ -1379,3 +1379,32 @@ async def test_list_recent_video_meetings_no_view_id_returns_empty():
         "https://napacity.granicus.com/player/clip/3450"
     )
     assert items == []
+
+
+async def test_fetch_page_non_utf8_response_degrades_instead_of_raising():
+    # WO-134 (2026-09-09): GranicusAssetFinder.resolve() on a real
+    # AgendaViewer.php response (Harrisonburg, VA) raised an unhandled
+    # UnicodeDecodeError straight out of _fetch_page()'s plain
+    # `response.text()` call -- the same shape civicplus.py's WO-285 fix
+    # and escribe.py's WO-938 fix already closed, both via
+    # url_guard.read_capped_text(). This is a synthetic test (no real
+    # Granicus AgendaViewer.php response is confirmed to BE raw non-UTF8
+    # bytes end to end -- the real finding was against a page that
+    # embeds one), so it reuses the SAME real non-UTF8 bytes
+    # tests/test_civicplus.py's own decode-safety test uses (a real PDF
+    # fetched live 2026-09-12, reproducing the identical recorded error
+    # text: "'utf-8' codec can't decode byte 0xe2 in position 10")
+    # rather than inventing new ones.
+    url = "https://harrisonburg-va.granicus.com/AgendaViewer.php?view_id=2&clip_id=1369"
+    pdf_bytes = load_fixture_bytes("civicplus", "richmondhill_documentcenter_5032.bin")
+    routes = {url: FakeResponse(status=200, raw=pdf_bytes, url=url)}
+
+    async with aiohttp.ClientSession() as session:
+        with mock_session(routes):
+            html, final_url = await GranicusAssetFinder()._fetch_page(session, url)
+
+    assert final_url == url
+    # No crash -- decoded with errors="replace" instead, same as
+    # url_guard.read_capped_text()'s own contract.
+    assert isinstance(html, str)
+    assert "�" in html

@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 
 import yt_dlp
 
-from .base import AssetFinder
+from .base import AssetFinder, ResolveError
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube_ids import extract_video_id
 from ..utils import jurisdiction_enrich
@@ -288,6 +288,43 @@ class YouTubeUnavailableError(ValueError):
         return self.reason in self.PERMANENT_REASONS
 
 
+class NotASingleVideoError(ResolveError, ValueError):
+    """Raised by `resolve()` when the given URL is a real YouTube-shaped
+    URL that doesn't name one specific video -- a bare channel link
+    (`/channel/<id>`), a channel's `/live` tab, a playlist embed, or
+    anything else `extract_video_id()` can't pull an 11-character video
+    id out of.
+
+    Confirmed live 2026-09-01 against `https://www.youtube.com/channel/
+    UCWnFQlV4Fi0Pv5aqZy_fcPA/live` (Borough of Bernardsville, NJ) during
+    the Phase 1 coverage-map resolve sweep -- see BACKLOG.md's "A bare
+    YouTube channel/live URL raises a raw ValueError" entry (WO-938,
+    2026-09-21). Used to be a bare `ValueError` with this same message;
+    every existing caller (`/api/resolve`'s top-level `except Exception`
+    in particular) already handles that identically to any other
+    exception, so this changes nothing about behavior -- it just names
+    the failure, the same way `CalendarPageError`/`NoVideoCandidateFound`
+    already give a caller that wants to tell this apart from "a genuine
+    adapter bug" something specific to catch.
+
+    Deliberately ALSO subclasses `ValueError` (not just `ResolveError`)
+    -- `scripts/wo134_confirmed_hits_ingest.py`'s `resolve_seed()` has a
+    real, live `except ValueError as e: if platform == "youtube" and
+    _YT_NOT_FOUND_VIDEO_ID in str(e): ...` branch (its own docstring:
+    "a legacy vanity channel URL ... raises this exact adapter error")
+    that falls back to a channel-listing depth search -- several
+    `nationwide_*_ingest.py`/`wo130_county_ingest.py` copies share this
+    function. Dropping `ValueError` from the MRO here would silently
+    break that fallback for every one of them; keeping it means every
+    existing `except ValueError` still catches this exactly as before,
+    while a caller can now also catch `ResolveError` specifically.
+    """
+
+    def __init__(self, url: str):
+        self.url = url
+        super().__init__(f"Could not find a YouTube video ID in {url}")
+
+
 class YouTubeAssetFinder(AssetFinder):
     """Resolves a standalone YouTube URL -- or a video id handed to it
     directly by a delegating platform (PrimeGov) -- into video + transcript.
@@ -338,7 +375,7 @@ class YouTubeAssetFinder(AssetFinder):
     async def resolve(self, url: str) -> ResolvedMeeting:
         video_id = self.extract_video_id(url)
         if not video_id:
-            raise ValueError(f"Could not find a YouTube video ID in {url}")
+            raise NotASingleVideoError(url)
         return await self.resolve_video_id(video_id, source_url=url)
 
     @classmethod

@@ -3,7 +3,16 @@ import inspect
 import re
 import types
 from abc import ABC, abstractmethod
-from typing import Callable, FrozenSet, List, Optional, Tuple, TypedDict
+from typing import (
+    Awaitable,
+    Callable,
+    FrozenSet,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypedDict,
+)
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -16,6 +25,91 @@ class UnsupportedPlatformError(Exception):
         self.url = url
         self.detected = detected
         super().__init__(f"No asset finder for platform '{detected}' ({url})")
+
+
+class ResolveError(Exception):
+    """The one typed exception an adapter's `resolve()` should raise for
+    an expected "this URL genuinely can't produce a meeting" outcome --
+    a URL shape it can't parse, a listing/channel page with no specific
+    video, encoded content it can't recover -- instead of letting a raw
+    stdlib exception (`ValueError`, `UnicodeDecodeError`, `LookupError`,
+    ...) escape uncaught (WO-938, 2026-09-21).
+
+    Every existing caller already survives an unrecognized exception:
+    `/api/resolve`'s top-level `except Exception` (`app/main.py`) turns
+    it into a `{"error": "resolve_failed", "message": str(e)}` response,
+    and every ingest/sweep script's own broad `except Exception` around
+    a `resolve()` call turns it into a `RowError`/`reject-dead`/skip.
+    Raising `ResolveError` (or a subclass) instead of a bare exception
+    doesn't change that -- it just gives the message a clean, reader-
+    facing wording instead of a raw internal repr (e.g. `KeyError:
+    'foo'`), and gives a caller that DOES want to tell "a real, expected
+    resolve failure" apart from "a genuine bug in this adapter" one type
+    to catch, the same way `CalendarPageError`/`NoVideoCandidateFound`
+    below already let a caller catch "here's a pick-list" or "checked,
+    found no video" specifically.
+
+    Not retrofitted across every existing adapter in this change --
+    `escribe.py`, `suiteone.py` and `youtube.py` raise it as of WO-938;
+    every adapter's decode step goes through `url_guard.read_capped_
+    text()` instead, which degrades in place rather than raising at
+    all, so most of the "raw exception escapes" class this exists for
+    is closed without ever needing to catch anything new.
+    """
+
+
+async def resolve_newest_candidate(
+    candidate_urls: Sequence[str],
+    resolve_one: Callable[[str], Awaitable[ResolvedMeeting]],
+) -> Tuple[Optional[ResolvedMeeting], Optional[str]]:
+    """Given a newest-first list of candidate meeting URLs -- already
+    discovered some other way (a tenant's own calendar/listing API is
+    not this function's concern) -- and the adapter's own per-URL
+    `resolve_one` callback, tries each candidate in turn and returns the
+    first `ResolvedMeeting` that actually carries real content
+    (segments, agenda items, an agenda link, or a video URL), or
+    `(None, reason)` if none of them do.
+
+    Shared "listing root -> newest meeting" helper (WO-938, 2026-09-21):
+    ported from the identical hand-rolled loop `scripts/
+    wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()`
+    already used for eScribe's own bare-tenant-root case (see BACKLOG.md
+    "A bare eScribe tenant root (no `Meeting.aspx` path)..."), moved
+    into the adapter itself (`escribe.py`'s `_resolve_bare_tenant_root()`)
+    so any caller -- not just a dedicated sweep script -- gets a real
+    meeting instead of a hollow "resolved successfully" empty result for
+    a bare tenant host. Factored out here, not left private to
+    `escribe.py`, so a future adapter with the same "given a listing
+    root instead of a specific meeting, walk it newest-first and use the
+    first real hit" shape (SuiteOne's own bare tenant-management-root
+    case is a real, confirmed, still-open example -- see BACKLOG.md)
+    doesn't have to hand-roll the same walk-and-check loop again.
+    """
+    if not candidate_urls:
+        return None, "no candidate meetings were found on this listing page"
+    last_reason = "none of the candidates checked had real content"
+    for candidate_url in candidate_urls:
+        try:
+            result = await resolve_one(candidate_url)
+        except (CalendarPageError, NoVideoCandidateFound, ResolveError) as e:
+            last_reason = str(e)
+            continue
+        except Exception as e:
+            # Same posture `_discover_escribe_meeting()` already took:
+            # one bad candidate (a transient fetch failure, an adapter
+            # bug on that specific page) shouldn't abort the whole
+            # newest-first walk -- try the next one and only give up
+            # once every candidate has been tried.
+            last_reason = f"resolve raised: {e}"
+            continue
+        if (
+            result.segments
+            or result.agenda_items
+            or result.agenda_link
+            or result.video_url
+        ):
+            return result, None
+    return None, last_reason
 
 
 class CalendarCandidate(TypedDict):

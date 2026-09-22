@@ -1,10 +1,12 @@
 import pytest
 import yt_dlp
 
+from app.platforms.base import ResolveError
 from app.platforms.youtube import (
     YOUTUBE_CAPTIONS_DISABLED_MARKER,
     YOUTUBE_EMBED_DISABLED_MARKER,
     YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
+    NotASingleVideoError,
     YouTubeAssetFinder,
     YouTubeUnavailableError,
     _parse_meeting_date_from_title,
@@ -630,8 +632,29 @@ async def test_resolve_delegates_to_resolve_video_id_for_a_standalone_url(monkey
 
 
 async def test_resolve_raises_for_a_non_youtube_url():
+    # WO-938, 2026-09-21: used to be a bare ValueError -- now the shared
+    # typed NotASingleVideoError (app/platforms/youtube.py), which is
+    # deliberately ALSO still a ValueError (see that class's own
+    # docstring for why: scripts/wo134_confirmed_hits_ingest.py's
+    # resolve_seed() has a real `except ValueError` branch keyed on this
+    # exact message).
+    with pytest.raises(NotASingleVideoError, match="Could not find a YouTube video ID"):
+        await YouTubeAssetFinder().resolve("https://example.com/not-youtube")
     with pytest.raises(ValueError, match="Could not find a YouTube video ID"):
         await YouTubeAssetFinder().resolve("https://example.com/not-youtube")
+    with pytest.raises(ResolveError, match="Could not find a YouTube video ID"):
+        await YouTubeAssetFinder().resolve("https://example.com/not-youtube")
+
+
+async def test_resolve_raises_not_a_single_video_error_for_a_bare_channel_live_url():
+    # Real, confirmed-live URL (WO-938's BACKLOG.md entry): Borough of
+    # Bernardsville, NJ's YouTube channel's /live tab -- a real channel,
+    # no specific video id in the URL at all. Found 2026-09-01 during the
+    # Phase 1 coverage-map resolve sweep.
+    with pytest.raises(NotASingleVideoError):
+        await YouTubeAssetFinder().resolve(
+            "https://www.youtube.com/channel/UCWnFQlV4Fi0Pv5aqZy_fcPA/live"
+        )
 
 
 # check_permanent_failure() -- the metadata-only precheck WO-135
