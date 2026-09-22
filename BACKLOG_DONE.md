@@ -113,6 +113,37 @@ resolver's own synchronous feasibility check
 itself. The migration (`8695ecf4fe2d`) runs automatically via the
 Archive's `preDeployCommand` on its next deploy.
 
+## Fond du Lac County, WI: authoritative host pin, queued for tier 3 (WO-1000, OpenPublica) [Done 2026-09-21]
+
+**Issue.** WO-1000's OpenPublica sweep found a real, new-to-Archive county
+government — Fond du Lac County, WI, the County Board of Supervisors —
+but held it out of the tier-3 queue rather than pin it. The tenant is the
+county's own single-tenant Granicus host, `fonddulac.granicus.com`, but
+the name ladder resolves "Fond du Lac, WI" to the city
+(`us:place:5526275`) before a `fallback` pin is consulted, so a
+`fallback` pin for `us:county:55039` would have been inert (checked
+2026-09-21 with `resolve_government()`).
+
+**Decision.** Ryan said yes to an authoritative pin. An authoritative pin
+covers the whole host; checked first that the tenant only carries County
+Board meetings (its own listing, 2026-09-21), so no city meeting would be
+mis-filed.
+
+**What was done.** Added
+`fonddulac.granicus.com,,us:county:55039,authoritative,ryan_stated,...`
+to `tenant_overrides.csv`. Queued the meeting
+(`https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1028`)
+in `scripts/tier3_auto_transcription_queue.txt`, re-probed live rather
+than trusting the saved figure (`app/platforms/queue_probe.probe_queue_entry()`
+returned `accept`, 1883.0 s, matching WO-1000's original probe) and
+appended the row to `scripts/tier3_auto_transcription_queue_probe.csv`.
+
+**Not live until deployed.** `tenant_overrides.csv` is under `app/`.
+Merging puts the pin on `main`, not into production.
+
+**History.** `rtr-business/research/openpublica_2026-09-21/README.md`
+and `ENUMERATION_METHODS.md` §393.
+
 ## WO-947: Full Context entries appear on their government's hub and their state page [Done 2026-09-21]
 
 **Why this ran.** Ryan, reviewing a Full Context entry page: "a page like
