@@ -1,5 +1,31 @@
 # Backlog — done
 
+## `.github/workflows/feed-tier3-transcription.yml` now stages the tier-3 feed log CSV (WO-937 follow-up) [Done 2026-09-22]
+
+**Issue.** WO-937 (2026-09-21) added a durable per-line result log to
+`feed_tier3_auto_transcription.py`
+(`scripts/tier3_auto_transcription_queue_feed_log.csv`), the same shape
+as the existing queue file and probe sidecar CSV — but the matching
+workflow-file edit (stage the new path in the "Advance queue via PR"
+commit step) couldn't be pushed from that session: `git push` was
+rejected with `refusing to allow an OAuth App to create or update
+workflow ... without 'workflow' scope`. That session's token had no
+`workflow` scope — a GitHub platform restriction, not a code problem.
+Until this landed, every real run of the workflow wrote new rows to the
+feed log on the ephemeral runner and discarded them when the job
+ended — the exact WO-254 incident, for a third file.
+
+**What was done.** Ryan added the `workflow` scope to this session's
+`gh` token (`gh auth refresh -s workflow`). Applied WO-937's
+already-written, already-tested diff: one more `git add` line in the
+commit step, matching the two already there. Removed the `xfail(strict=
+True)` mark from `tests/test_feed_tier3_workflow.py::test_advance_step_
+stages_the_feed_log_too` (and its now-unused `pytest` import), so the
+test now runs as a normal, passing assertion of the fix.
+
+**Not live until this workflow next runs.** Nothing to deploy — this
+only affects GitHub Actions' own runner steps.
+
 ## WO-1003: A jurisdiction hub is also indexable via a published Full Context entry [Done 2026-09-21]
 
 **Why this ran.** WO-947 put Full Context entries on their government's

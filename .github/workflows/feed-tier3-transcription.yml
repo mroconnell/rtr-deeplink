@@ -123,8 +123,16 @@ jobs:
           # commit. append_probe_row() only ever appends, so this commits
           # the tracked file's existing rows plus this run's new ones, the
           # same append-only union the file has always been built for.
+          #
+          # WO-937: a third append-only path, same reasoning --
+          # feed_tier3_auto_transcription.py now also writes a durable
+          # per-line [OK]/[SKIP]/[FAIL]/[NO-OWNER] log
+          # (tier3_auto_transcription_queue_feed_log.csv) instead of only
+          # printing to stdout. Stage it too, or its rows are discarded
+          # with the runner exactly like the probe sidecar used to be.
           git add scripts/tier3_auto_transcription_queue.txt
           git add scripts/tier3_auto_transcription_queue_probe.csv
+          git add scripts/tier3_auto_transcription_queue_feed_log.csv
           if git diff --cached --quiet; then
             echo "No queue or probe-sidecar change to commit."
             exit 0

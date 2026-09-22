@@ -17,7 +17,6 @@ rather than just eyeballing it."""
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -27,14 +26,12 @@ QUEUE_FILE_PATH = "scripts/tier3_auto_transcription_queue.txt"
 PROBE_SIDECAR_PATH = "scripts/tier3_auto_transcription_queue_probe.csv"
 # WO-937: a third append-only path with the exact same WO-254 exposure --
 # _push_if_has_video() now also writes a durable per-line result log
-# instead of only printing to stdout (BACKLOG.md's matching entry). The
-# workflow file itself could NOT be updated to stage this in the same
-# change (this session's git push was rejected: "refusing to allow an
-# OAuth App to create or update workflow ... without `workflow` scope" --
-# a GitHub platform restriction on the token used here, not a code
-# decision) -- see the xfail test below, and BACKLOG.md's matching entry
-# for the diff that still needs applying by hand or by a push with that
-# scope.
+# instead of only printing to stdout (BACKLOG.md's matching entry). WO-937
+# itself couldn't push the matching workflow-file update (its session's
+# git push was rejected: "refusing to allow an OAuth App to create or
+# update workflow ... without `workflow` scope", a GitHub platform
+# restriction on that token, not a code decision) -- applied by hand
+# 2026-09-22 once a `workflow`-scoped token was available.
 FEED_LOG_PATH = "scripts/tier3_auto_transcription_queue_feed_log.csv"
 
 
@@ -56,15 +53,6 @@ def test_advance_step_stages_both_the_queue_file_and_the_probe_sidecar():
     assert f"git add {PROBE_SIDECAR_PATH}" in script
 
 
-@pytest.mark.xfail(
-    reason=(
-        "WO-937: the workflow-file update that stages the new feed-log CSV "
-        "could not be pushed from this session (OAuth token lacks "
-        "`workflow` scope) -- still needs applying by hand. See "
-        "BACKLOG.md's matching entry for the exact diff."
-    ),
-    strict=True,
-)
 def test_advance_step_stages_the_feed_log_too():
     script = _advance_step_run_script()
     assert f"git add {FEED_LOG_PATH}" in script

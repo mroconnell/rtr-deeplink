@@ -123,8 +123,7 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (52)
-  `.github/workflows/feed-tier3-transcription.yml` doesn't stage the…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
   `direct_file` refuses South Carolina's legislature video…
@@ -891,35 +890,6 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### `.github/workflows/feed-tier3-transcription.yml` doesn't stage the new tier-3 feed log CSV — needs a `workflow`-scoped push, not an in-session one `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** WO-937 (2026-09-21) added a durable per-line result log to `feed_tier3_auto_transcription.py` (`scripts/tier3_auto_transcription_queue_feed_log.csv`), the same shape as the existing queue file and probe sidecar CSV — but the matching workflow-file edit (stage the new path in the "Advance queue via PR" commit step) could not be pushed: `git push` was rejected with `refusing to allow an OAuth App to create or update workflow .github/workflows/feed-tier3-transcription.yml without 'workflow' scope`. That session's token (`gh auth status`: `gist, read:org, repo`) has no `workflow` scope — a GitHub platform restriction, not a code problem.
-- **Impact:** until this lands, every real GitHub Actions run of this workflow writes new rows to the feed log locally on the ephemeral runner and then discards them when the job ends — the exact WO-254 incident (BACKLOG_DONE.md), for a third file. `tests/test_feed_tier3_workflow.py::test_advance_step_stages_the_feed_log_too` is marked `xfail(strict=True)` so this shows up in `pytest` output rather than silently passing.
-- **Next action:** apply this diff (already written and tested against the live YAML parser) with a token that has `workflow` scope, or paste it into the GitHub web editor, then remove the `xfail` mark from the test above:
-  ```diff
-  --- a/.github/workflows/feed-tier3-transcription.yml
-  +++ b/.github/workflows/feed-tier3-transcription.yml
-  @@ -123,8 +123,16 @@ jobs:
-             # commit. append_probe_row() only ever appends, so this commits
-             # the tracked file's existing rows plus this run's new ones, the
-             # same append-only union the file has always been built for.
-  +          #
-  +          # WO-937: a third append-only path, same reasoning --
-  +          # feed_tier3_auto_transcription.py now also writes a durable
-  +          # per-line [OK]/[SKIP]/[FAIL]/[NO-OWNER] log
-  +          # (tier3_auto_transcription_queue_feed_log.csv) instead of only
-  +          # printing to stdout. Stage it too, or its rows are discarded
-  +          # with the runner exactly like the probe sidecar used to be.
-             git add scripts/tier3_auto_transcription_queue.txt
-             git add scripts/tier3_auto_transcription_queue_probe.csv
-  +          git add scripts/tier3_auto_transcription_queue_feed_log.csv
-             if git diff --cached --quiet; then
-               echo "No queue or probe-sidecar change to commit."
-               exit 0
-  ```
-- **Constraint:** none — pure addition, same shape as the two `git add` lines already there.
-- **History:** `BACKLOG_DONE.md`'s WO-937 entry.
 
 ### State legislatures: chamber rows still without a page (91 of 99 on 2026-09-20, not recounted since) — Sliq Harmony is live, Oregon and Wisconsin Invintus meetings are queued, the Washington TVW adapter is still to build `[JUST-DO-IT]` `[BIG]`
 
