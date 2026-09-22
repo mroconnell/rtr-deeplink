@@ -1,5 +1,51 @@
 # Backlog — done
 
+## WO-1007: closed a false alarm -- Pennsylvania's PennDOT/Legislature "conflict" was a stale research-file field, not a keying question [Done 2026-09-22]
+
+**What looked wrong.** WO-1006 (Sliq Harmony sweep, open PR #1340) found
+a new Pennsylvania Legislature page to ingest, but
+`jurisdiction_coverage.csv`'s `us:state:42` row already carried a
+different meeting URL (a PennDOT public-meeting video) and flagged it as
+an open keying question for Ryan rather than overwrite it.
+
+**What it actually was.** WO-201 (below, 2026-09-11) already answered
+this, before WO-1006 ever ran: Ryan's decision there was "key PennDOT to
+its own gov body" -- PennDOT got its own government id
+(`rtr:us:pa:pennsylvania-department-of-transportation`), and the exact
+page in question was re-keyed to it, confirmed still live in production
+today (page id 8434). The research file was never updated after that
+re-key -- it has no column to track "this URL moved to a different
+gov_id" -- so its `us:state:42` row just went stale, and WO-1006 read
+that staleness as a live, unresolved conflict.
+
+**Ryan's clarification (2026-09-22).** PennDOT is a state agency,
+correctly its own government per WO-201; the state legislature is
+correctly a meeting_body under the state government itself, same
+treatment every other state in WO-1006 got. No architecture change, no
+re-key. The research file simply doesn't have a column for this kind of
+nuance -- the Archive already does, via each page's own `gov_id`.
+
+**Fix.** `research/wo1007_apply_to_jc.py` (rtr-business, local commit
+`c124a4d`, no PR/remote there) pointed `us:state:42`'s
+`example_meeting_url`/`example_agenda_or_calendar_url` at the real
+Pennsylvania Legislature Sliq Harmony page WO-1006 ingested, and set
+`suspected_video_provider=sliq_harmony`. Same Sec 158 write protocol
+(lock, floor, atomic rename) as every other jurisdiction_coverage.csv
+write.
+
+**Constraint:** none -- PennDOT's own gov_id and page are untouched.
+
+**Note on WO numbering.** This session's own WO-1004 (a jurisdiction_
+coverage.csv-only fix, rtr-business, no PR) turned out to collide with
+an unrelated, independently-numbered WO-1004 already merged here (#1339,
+"scope a domain-health outcome for the passive-discovery pipeline") --
+two different sessions picked the same number for two unrelated changes
+in two different repos. No technical conflict resulted (different files,
+different repos, rtr-business has no shared remote to collide on), but
+it's exactly the numbering-collision shape CLAUDE.md's "assign WO numbers
+centrally" rule exists to prevent; flagging rather than silently
+renumbering already-committed history.
+
 ## `.github/workflows/feed-tier3-transcription.yml` now stages the tier-3 feed log CSV (WO-937 follow-up) [Done 2026-09-22]
 
 **Issue.** WO-937 (2026-09-21) added a durable per-line result log to
