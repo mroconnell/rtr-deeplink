@@ -235,7 +235,7 @@ def is_direct_file_url(url: str) -> bool:
     served BY a recognized platform never reaches here."""
     if _DRIVE_FILE_ID_RE.search(url):
         return True
-    if _is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url):
+    if is_laserfiche_url(url):
         return True
     # A real video OR audio extension in the URL's own path -- covers a
     # bare first-party file (Palisade/Dundee/Cayuga Heights), Dropbox's
@@ -267,6 +267,23 @@ def _is_laserfiche_edoc_url(url: str) -> bool:
     other shape's HEAD does, so the generic own-domain HEAD-only check
     below would misclassify a real file as unconfirmed."""
     return bool(_LASERFICHE_EDOC_RE.search(url))
+
+
+def is_laserfiche_url(url: str) -> bool:
+    """True for either recognized Laserfiche WebLink download shape (the
+    docid-query `ElectronicFile.aspx` link, or WebLink 9's older `/edoc/`
+    path) -- see this module's docstring, "Laserfiche WebLink" and
+    "Audio-only Laserfiche" sections. Used internally (`is_direct_file_url()`,
+    `resolve()`) and, since WO-937, by `queue_probe.py`'s
+    `_probe_direct_file()`: that probe skips a HEAD request entirely for
+    this shape rather than trusting one -- confirmed live on THREE
+    independent real governments (Jefferson County WA/WO-304, Deschutes
+    County OR and Ramsey city MN/WO-317) that a HEAD here always 302s to
+    a generic `Error.aspx` page which itself answers 200 with the error
+    page's own small HTML body, never the real file's, so a HEAD-derived
+    `size_bytes` is always wrong for this host shape even though it looks
+    like a normal successful response."""
+    return bool(_is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url))
 
 
 def _laserfiche_sibling_caption_url(url: str) -> Optional[str]:
@@ -323,7 +340,7 @@ class DirectFileAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         media_url = _resolve_direct_media_url(url)
-        if _is_laserfiche_weblink_url(media_url) or _is_laserfiche_edoc_url(media_url):
+        if is_laserfiche_url(media_url):
             # A distinct sub-path -- see module docstring -- since this
             # host answers HEAD with a redirect and GET with a generic
             # Content-Type, neither of which the check below can use.

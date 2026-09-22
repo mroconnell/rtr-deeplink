@@ -1631,22 +1631,37 @@ _existing_tier3_queue_cache: Optional[set] = None
 
 
 def _existing_tier3_queue_urls() -> set:
-    """The set of video URLs already sitting in
-    scripts/tier3_auto_transcription_queue.txt (first tab-field of each
-    line, same key tests/test_transcription_queue_files.py's own
-    test_no_duplicate_rows checks) -- read once per process and kept in
-    sync as this run appends. Prevents this run (or a resumed one) from
-    writing an exact duplicate line; see the comment at this function's
-    only call site for the real duplicate-line incident this fixes."""
+    """The set of dedup KEYS (WO-937) already sitting in
+    scripts/tier3_auto_transcription_queue.txt -- each line's first
+    tab-field run through queue_probe.canonical_video_key() (falling back
+    to the raw URL for a platform with no known video-id shape), the same
+    helper app/platforms/queue_probe.py's own append_queue_line()/
+    is_queued() use, so this script and every finish script share ONE
+    dedup definition rather than three separate exact-string copies. Read
+    once per process and kept in sync as this run appends. Prevents this
+    run (or a resumed one) from writing a duplicate line for the SAME
+    video under a differently-formatted URL, not just an exact string
+    match -- confirmed real: WO-149's county sweep queued a YouTube embed
+    URL with extra player-widget query parameters as "new" even though
+    the same video (by id) was already queued under a plain watch?v= URL
+    (Lake County, OH). See the comment at this function's only call site
+    for the original exact-duplicate-line incident this dedupe was first
+    built for."""
     global _existing_tier3_queue_cache
     if _existing_tier3_queue_cache is None:
         urls = set()
         if TIER3_QUEUE_FILE.exists():
             for line in TIER3_QUEUE_FILE.read_text(encoding="utf-8").splitlines():
                 if line.strip():
-                    urls.add(line.split("\t", 1)[0])
+                    urls.add(_tier3_dedupe_key(line.split("\t", 1)[0]))
         _existing_tier3_queue_cache = urls
     return _existing_tier3_queue_cache
+
+
+def _tier3_dedupe_key(url: str) -> str:
+    """The same key `_existing_tier3_queue_urls()`'s own set is built
+    from -- see that function's docstring (WO-937)."""
+    return queue_probe.canonical_video_key(url) or url
 
 
 _existing_overrides_cache: Optional[set] = None
@@ -2023,14 +2038,16 @@ async def process_row(
             maybe_write_tenant_override(
                 platform, result, final_seed, gov_id, unit_name, source_tag
             )
-            already_queued = final_seed in _existing_tier3_queue_urls()
+            already_queued = (
+                _tier3_dedupe_key(final_seed) in _existing_tier3_queue_urls()
+            )
             if not already_queued:
                 source_line = (
                     f"{final_seed}\t{hit_url}" if hit_url != final_seed else final_seed
                 )
                 with TIER3_QUEUE_FILE.open("a", encoding="utf-8") as f:
                     f.write(source_line + "\n")
-                _existing_tier3_queue_urls().add(final_seed)
+                _existing_tier3_queue_urls().add(_tier3_dedupe_key(final_seed))
             return RowResult(
                 gov_id,
                 unit_name,
