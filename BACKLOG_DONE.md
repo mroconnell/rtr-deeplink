@@ -1,5 +1,80 @@
 # Backlog — done
 
+## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
+
+**Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.
+
+**Research-file/dashboard fix (WO-1004, WO-1007).** `coverage_registry.py`'s "US states" row showed Hub URL for 2 of 51 states even though the recon had one for almost every state — `domain`/`hub_url`/`tested` only ever come from `jurisdiction_coverage.csv`'s own fields, and WO-919/921/922's findings had never been written back there. Filled in 43 state rows; Hub URL went from 2 to 44 of 51, Tested from 9 to 50. Separately, Pennsylvania's row looked like an open PennDOT-vs-Legislature keying conflict — turned out to be a stale field: PennDOT was already split into its own government back in WO-201 (2026-09-11), the research file was just never updated after that re-key.
+
+**Sliq Harmony (WO-1006, WO-1010).** WO-1006 found Oklahoma's Senate tenant (00282) and five brand-new state legislature tenants (Maine, Iowa, Nevada, Missouri, Virginia) by trying nearby tenant numbers on the shared host; confirmed the two unread sibling servers (`sg002`/`sg004-harmony.sliq.net`) are exact mirrors of `sg001`'s catalog, not separate tenant pools; confirmed West Virginia's House is genuinely not on Sliq at all (its own site links a YouTube channel instead). WO-1010 then swept real depth into all 13 tenants — 51 additional real meetings hand-verified and ingested/queued (36 with real captions, 7 tier-3, 5 deferred as long meetings, 3 with no recording published). Kansas/Iowa/Maine confirmed zero captions across two independent sweeps — a real per-tenant fact.
+
+**Invintus / Washington TVW (WO-1010).** `tvw.org` turned out to be an Invintus tenant (clientID 9375922947) reached through a WordPress wrapper page with `<meta name="clientID"/"eventID">` tags, not a separate platform — `app/platforms/tvw.py` extracts those tags and delegates to the existing `InvintusAssetFinder`. A real Senate Housing committee meeting (1,447 real caption segments) is live. Investigating TVW also turned up a third real Invintus tenant, clientID 2917038973 (CVTV — Clark/Vancouver Television): Vancouver, WA City Council and Clark County, WA Council, neither of which had any real video source before. Both queued. Confirmed live that Invintus's 10-digit clientIDs are not sequentially allocated (unlike Sliq's 5-digit tenant numbers), so the "try adjacent numbers" trick that found five new Sliq states doesn't transfer here.
+
+**South Carolina / Tennessee / Nevada (WO-1005, PR #1341).** `direct_file.py` now accepts South Carolina's `video.scstatehouse.gov` `.mp4`s despite the host answering `Content-Type: application/octet-stream` (both chambers queued for tier-3). `granicus.py` got a browser-headers retry after a real 403 (never after a 404) — Tennessee's Senate and House are both ingested with real, coherent captions. Live re-verification could not reproduce the original Tennessee/Nevada 403 on 2026-09-22 (flagged rather than silently trusted, per this file's own "a backlog entry is a lead, not a spec" rule) — the retry rung was kept anyway as a real, narrowly-scoped defensive fallback. Nevada's real working video source turned out to be Sliq Harmony anyway, unrelated to the Granicus finding.
+
+**The 49 "nothing found" chambers + 6 blocked chambers (WO-1011).** Hand-checked all 49 rows from `wo919_report.csv` plus the 6 still-blocked chambers, one real platform/vendor identified per row where one exists (`rtr-business/research/wo1011_report.csv`). 11 of the 49 were already resolved by WO-1006/WO-1007/WO-1010 before this pass started. Of the true remainder: 2 real meetings ingested (Hawaii House and Senate, via Granicus, one hop off the hub — the automatic check missed them because the video is linked, not embedded), 1 queued (a Massachusetts House floor session with real WebVTT captions sitting next to the mp4, but `direct_file.py` has no generic same-path `.vtt` lookup outside its Laserfiche-specific case). 5 of the 6 blocked chambers (Illinois, Michigan, Mississippi's TLS failures; Connecticut, New Hampshire's timeouts) turned out transient — all reachable today with a real vendor identified. Only New York Senate's Cloudflare challenge is confirmed still real (`cf-mitigated: challenge` header) and was correctly left alone. Platform-grouping conclusion: this remaining population is far more fragmented than Sliq Harmony's — no single vendor unlocks more than ~6 chambers (Vimeo, pending its dynamic-event-id extraction for Illinois/Georgia).
+
+**Process note.** WO-1010 and WO-1011 ran concurrently and both independently rewrote the same BACKLOG.md state-legislature entry — a real content conflict, not the trivial append-only kind seen elsewhere in this push. Hand-merged both narratives into one entry rather than picking a side; verified via diff that no finding from either was dropped. Also caught (WO-1011) and avoided a near-miss on the shared `jurisdiction_coverage.csv`: WO-1010's concurrent Clark County/Vancouver WA edit was stashed, WO-1011's own Hawaii row committed from a clean base, then the stash popped back cleanly — verified after the fact that both sets of changes survived.
+
+**Not deployed.** Every fix above merged to `main` (PRs #1340, #1341, #1342, #1344, #1346, #1347) but this repo's deploys are manual — real content (Hawaii, Massachusetts, Tennessee, dozens of Sliq/Invintus meetings, Washington, Vancouver, Clark County) is sitting on `main` waiting on a deploy before it's visible in production.
+
+**What's left.** Split out as its own, smaller `BACKLOG.md` entry ("State legislatures: small residual fixes remain...") — a `direct_file.py` `.vtt` sibling-caption fix, Vimeo's event-id extraction for Illinois/Georgia, a handful of states needing one more real hop, deeper Invintus sweeps on the two new tenants, and New York Senate's permanent Cloudflare block.
+
+## WO-1013: fixed native SuiteOne queue probes misrouting into a second, doomed resolve hop [Done 2026-09-22]
+
+**Issue.** `app/platforms/queue_probe.py`'s dispatch routed into
+`_probe_suiteone()` whenever `resolved_platform == "suiteone"` OR
+`video_url`'s host contained `suiteonemedia.com`. The first half of that
+OR was only ever right for CivicClerk's delegation to a SuiteOne player
+page (where `resolved_platform` stays `"civicclerk"` and the host check
+alone catches it — WO-285). For a NATIVE `suiteone.py` resolve,
+`resolved_platform` really is `"suiteone"`, but `video_url` is already
+the final direct-file S3 URL (`suiteone.py`'s own `resolve()` always
+returns that, never a page). Routing an S3 URL back into
+`_probe_suiteone()` called `SuiteOneAssetFinder().resolve()` a SECOND
+time on it, which can't parse a tenant/event id out of an S3 host and
+always raised `ResolveError` — misprobing every real native SuiteOne
+queue candidate as `reject-dead`. Confirmed live 2026-09-22 probing
+`https://tuscaloosaal.suiteonemedia.com/event/?id=11029` (a real,
+queueable 78-minute meeting) exactly this way; worked around by hand at
+the time with a direct `_probe_direct_file()` call, which correctly
+returned `verdict=accept, duration=4696s`. Likely the first native
+(non-delegated) SuiteOne tier-3 probe ever attempted — every prior
+SuiteOne queue candidate went through CivicClerk delegation, which is
+why this went uncaught since WO-285 (2026-09-12).
+
+**Fix.** Dispatch now checks the shape of `video_url` instead of
+`resolved_platform`: only route into `_probe_suiteone()` (the second
+resolve hop) when `video_url`'s host is `suiteonemedia.com` AND it
+isn't already a resolved direct-file URL (checked against the same
+`_DIRECT_FILE_EXTENSIONS` the direct-file branch below it uses). A
+native resolve's already-direct S3 `.mp4` now falls straight through to
+the existing `_DIRECT_FILE_EXTENSIONS` check and `_probe_direct_file()`,
+same as any other direct-file platform.
+
+**Verification.** `tests/test_queue_probe.py::
+test_probe_queue_entry_native_suiteone_skips_the_second_resolve_hop`
+(new) monkeypatches `_probe_suiteone` to fail the test if called, and
+confirms the native S3-url case reaches `_probe_direct_file` and
+accepts with the real 4696s duration. The existing CivicClerk-delegation
+regression test (`test_probe_queue_entry_dispatches_suiteone_for_a_
+civicclerk_delegation`, WO-285) still passes unchanged — the host check
+alone still catches that shape. All five CI gates run locally: `ruff
+check`, `ruff format --check`, `python -m pytest` (full suite, 5010
+passed — the same two pre-existing failures in
+`test_repair_wrong_pages.py`/`test_wrong_page_screen.py` also flagged in
+WO-1004's entry above, confirmed unrelated by isolating this change with
+a tagged `git stash` and re-running against the clean tree), `alembic
+check` for both `app/` and `archive/` (no schema change, "No new
+upgrade operations detected"), `BACKLOG_DONE.md` heading-loss check.
+
+**Constraint.** Only the dispatch condition changed — `_probe_suiteone`
+and `_probe_direct_file` themselves are untouched.
+
+**History.** WO-285 (2026-09-12, the original CivicClerk-delegation
+fix and its own still-narrower `ResolveError`-for-unparseable-URL
+constraint, WO-938 2026-09-21).
+
 ## WO-1004: built the domain-health check tool — reuses the passive-discovery pipeline's own fetch/identity-check machinery, not yet run against the real registry [Done 2026-09-22]
 
 **What was built.** `scripts/wo1004_domain_health_check.py` — a thin
