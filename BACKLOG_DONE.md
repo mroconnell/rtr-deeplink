@@ -60814,3 +60814,37 @@ more Invintus tenants.
 each, and Washington's TVW gap — the last vendor with rows and no
 adapter — is closed, plus two more real governments (Vancouver and
 Clark County, WA) found along the way.**
+
+## WO-169 probe hook now forwards the resolved media format [Done 2026-09-22]
+
+The rerun script passed the resolved video URL but omitted its known format.
+That could reject playable media whose URL has no file extension, even though
+WO-166 already added support for identifying it by format.
+
+Added `video_format=getattr(result, "video_format", None)` to
+`_real_probe_hook()`'s `probe_queue_entry()` call. Existing URL arguments,
+sidecar logging, and verdict handling are unchanged. Objects without a
+`video_format` attribute still pass `None`.
+
+Verification: checked the hook in isolation with mocked probe and sidecar
+functions, covering format forwarding, the missing-attribute fallback, and
+accept/reject behavior. No ingestion script or production operation was run.
+The two targeted test files (`tests/test_queue_probe.py` and
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) passed: 73 passed,
+1 skipped. Ruff lint and format checks passed for the changed script;
+`git diff --check` and the completed-heading preservation check passed.
+The first test run hit sandbox-blocked DNS in an existing Vimeo test;
+the rerun with DNS access passed. Before pushing, full-repo lint and format,
+both fresh-SQLite migration checks, and all 81 JavaScript tests passed.
+Full pytest: 5,010 passed, 16 skipped, 4 xfailed, 2 failed. Both failures
+reproduce on unchanged main (`bc076ba`) and depend on the mutable local
+meeting export; recorded separately in BACKLOG.md.
+
+Original finding and investigation history (preserved from BACKLOG.md):
+
+- **[JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s `_real_probe_hook()` never passes `video_format` to `probe_queue_entry()`, so a WO-166-shaped direct-media candidate reaching it still misprobes as dead.**
+  - **Issue**: WO-166 (2026-09-10) taught `probe_queue_entry()` a `video_format=` fallback for a direct-media URL with no extension of its own (a CivicPlus DocumentCenter link whose real filename only shows up in `Content-Disposition`) — but `scripts/wo169_probe_rejected_rerun.py:119-123`'s `_real_probe_hook()` (the function wired to `wo134_confirmed_hits_ingest.py`'s `PROBE_HOOK`, so every candidate loop in that script's `resolve_seed()` runs through it) calls `probe_queue_entry(candidate_url, video_url=result.video_url, source_page_url=...)` with no `video_format=` at all. A real candidate this shape hits that hook, `video_url` has no extension, `video_format` stays `None`, and `_probe_direct_file()`'s dispatch check in `queue_probe.py` never fires — `probe_queue_entry()` falls through to `reject-dead` ("no probe recipe for this media shape") even though `resolve()` correctly found real, playable video.
+  - **Impact**: any future sweep run through `wo134_confirmed_hits_ingest.py` (which most sweep scripts in this repo drive through, per `CLAUDE.md`'s WO-169 note) will silently drop a real direct-video-file candidate at the probe step, the exact failure mode WO-166 was filed to fix — just one call site downstream of the fix rather than in it. Not touched by WO-166 itself since `scripts/wo1*.py` is another in-flight session's file during this parallel wave.
+  - **Next action**: add `video_format=getattr(result, "video_format", None)` to the `probe_queue_entry(...)` call in `_real_probe_hook()` (`scripts/wo169_probe_rejected_rerun.py:119-123`) — a one-line change, same shape `queue_probe.probe_queue_entry()`'s own docstring already documents as the fix for this exact gap.
+  - **Constraint**: none known — `probe_queue_entry()`'s `video_format` parameter already exists and already prefers a caller-supplied value over its own internal resolve, so this needs no other change.
+  - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (found while live-verifying WO-166's own 7 confirmed governments through this exact hook).
