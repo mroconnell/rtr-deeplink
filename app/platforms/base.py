@@ -362,6 +362,7 @@ def detect_platform(url: str) -> str:
     from .direct_file import is_direct_file_url
     from .boarddocs import is_boarddocs_tenant_url
     from .sliq_harmony import is_sliq_harmony_url
+    from .tvw import is_tvw_video_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -851,6 +852,13 @@ def detect_platform(url: str) -> str:
         # only an embedded Invintus clientID+eventID this module extracts
         # and hands to InvintusAssetFinder via resolve_via_platform().
         return "az_legislature"
+    if is_tvw_video_url(url):
+        # TVW / Washington State Legislature (tvw.org) -- found 2026-09-22
+        # (WO-1009's recon, adapter built by WO-1010): a real
+        # `tvw.org/video/{slug}/` page, delegating to InvintusAssetFinder
+        # the same way azleg.gov's wrapper pages do above -- see
+        # tvw.py's own module docstring for the real investigation.
+        return "tvw"
     if parse_wistia_account_url(url) is not None:
         # Wistia -- confirmed live 2026-09-10 (WO-161) against RegionalWebTV/
         # Advanced Media Solutions of Virginia's shared `amsva.wistia.com`
