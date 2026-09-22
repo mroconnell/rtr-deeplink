@@ -41,7 +41,7 @@ phases, so the column adds to a little over the file's 392.
 | 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Merged 2026-09-21 |
 | 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | Two rows still wait on a drip-Mac ingest | WO-932, WO-933, WO-935 merged and deployed 2026-09-21. WO-934's sheet ran on the Archive shell the same day: 38 re-keys and 3 deletes applied, page 2504 fixed, the 5,857-page screen re-run clean of everything the sheet covered. The Derry/Hopkins/Sebring/Malibu follow-up (PR #1315) merged too. Still open: the Sebring (page 6906) and Malibu (page 7086) deletes, each gated on its replacement video being ingested by the drip Mac first — not confirmed done as of this writing |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Merged 2026-09-22 (all four). **Not deployed yet** |
-| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | WO-940 merged 2026-09-22 (shared registry write helper; see Phase 3 section). **Not deployed yet** — it's scripts-only, so no deploy is required for it specifically, but it ships with whatever deploy covers Phase 2. Rest of the phase not started |
+| 3 | Fix the registry and identity foundations | WO-940, WO-1004, then numbers when it starts | 100 | A pin-rules design call | WO-940 merged 2026-09-22 (shared registry write helper; see Phase 3 section). **Not deployed yet** — it's scripts-only, so no deploy is required for it specifically, but it ships with whatever deploy covers Phase 2. WO-1004 (domain-health outcome for the passive-discovery pipeline) assigned 2026-09-22, not started. Rest of the phase not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
 | 5 | Improve what the pages say | Numbers when it starts | 10 | Nothing until Phase 4 is done | Not started |
 
@@ -571,11 +571,12 @@ data — it does not read, write, or commit in `rtr-business`, and it does
 not hand the conductor a file list. That part of the original plan
 turned out not to apply.
 
+**WO-1004, assigned 2026-09-22, not yet built**: give the existing passive-discovery pipeline (the WO-282/283 lineage) a "domain doesn't match" outcome. Hand audits found wrong recorded domains on about 15% and about 24% of the rows they checked, so wrong domains feed wrong ingests. This isn't a new sweep — that pipeline already fetches every government's homepage, domain-known rows included, and already checks the page names the right city and state before counting a candidate. The gap is just that a domain-on-file row failing that check isn't called out today; it's folded into the ordinary "nothing confirmed" result. WO-1004 adds that as its own worklist, hand-confirmed before anything touches the registry. See `BACKLOG.md`'s "The registry's `domain` field is wrong or stale on a real slice of rows" entry.
+
 The rest of the phase gets WO numbers when it starts:
 
 | Deliverable | Why | Entries to start from |
 |---|---|---|
-| A domain-health sweep of the registry | Hand audits found wrong recorded domains on about 15% and about 24% of the rows they checked. Wrong domains feed wrong ingests. | "6 of 40 governments in a hand-audit sample (15%) had a" |
 | A pin-rules model with a re-apply tool | At least 6 wrong per-video pins are still live, and a fallback pin beats the registry. | "A per-video fallback pin wins over the registry"; "A `tenant_overrides.csv` pin only affects future" |
 | One resolver name-normalisation PR | About 12 name edge cases are batchable (Charter Township, HTML entities, "district" read as BC). | The "Jurisdiction extraction & backfill" group in the table of contents |
 | One PR for Granicus and CivicPlus jurisdiction strings | Junk strings and split hubs show on live pages. | The same group |
