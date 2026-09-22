@@ -38,10 +38,10 @@ phases, so the column adds to a little over the file's 392.
 
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
-| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan has decided every row that needed him (2026-09-21), and its run waits for the merge and the deploy, and for two replacement pages |
-| 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
-| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | WO-940 built 2026-09-22 (shared registry write helper; see Phase 3 section), not yet merged. Rest of the phase not started |
+| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Merged 2026-09-21 |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | Two rows still wait on a drip-Mac ingest | WO-932, WO-933, WO-935 merged and deployed 2026-09-21. WO-934's sheet ran on the Archive shell the same day: 38 re-keys and 3 deletes applied, page 2504 fixed, the 5,857-page screen re-run clean of everything the sheet covered. The Derry/Hopkins/Sebring/Malibu follow-up (PR #1315) merged too. Still open: the Sebring (page 6906) and Malibu (page 7086) deletes, each gated on its replacement video being ingested by the drip Mac first — not confirmed done as of this writing |
+| 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Merged 2026-09-22 (all four). **Not deployed yet** |
+| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | WO-940 merged 2026-09-22 (shared registry write helper; see Phase 3 section). **Not deployed yet** — it's scripts-only, so no deploy is required for it specifically, but it ships with whatever deploy covers Phase 2. Rest of the phase not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
 | 5 | Improve what the pages say | Numbers when it starts | 10 | Nothing until Phase 4 is done | Not started |
 
@@ -69,31 +69,33 @@ start, so two agents never claim the same one.
   usage dashboard needs a login. So the plan keeps PRs few: never more than
   3 open at once, merged one at a time (rule 10). Merge PRs that touch the
   same files as one PR, and avoid extra pushes.
-- **The Phase 1 deploy checkpoint is due, but on hold.** WO-932, WO-933 and
-  WO-935 are merged and not live. WO-934's repairs wait for the deploy,
-  because the tool and its sheet reach the Render shell only with a deploy.
-  The Chenango town page needed no repair: WO-934 found it already keyed to
-  Chenango town. **Do not ask Ryan to deploy until he has pasted the
-  output of `scripts/wo928_version_quality.py`,** run in the Archive's
-  Render shell with the B and C rows printed in the same command. A deploy
-  restarts the instance and wipes `/tmp`, and his earlier full output
-  (9,977 pages read) was lost exactly that way. Once he confirms the paste,
-  the deploy is clear.
+- **The Phase 1 deploy happened 2026-09-21.** Ryan pasted the
+  `scripts/wo928_version_quality.py` output first, as this caution used to
+  ask, then deployed. WO-934's sheet ran the same day on the Archive shell:
+  38 re-keys and 3 deletes applied, page 2504 fixed. The Chenango town page
+  needed no repair: WO-934 found it already keyed to Chenango town. Two
+  rows (Sebring page 6906, Malibu page 7086) still wait on the drip Mac
+  ingesting each one's replacement video before their deletes can run.
+- **A second deploy checkpoint is now due, for Phase 2 and WO-940.** Both
+  merged 2026-09-22 and are not live yet. Nothing here is time-sensitive in
+  the way Phase 1's page-content fixes were, so there's no equivalent
+  "don't ask yet" caution — ask when convenient.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
 ## Recommendation
 
-1. Start with Phase 1. Phase 0 (WO-931) is small and follows as soon as a PR
-   slot is free.
-2. First wave: WO-932, WO-933 and WO-935 merged on 2026-09-21. WO-931
-   opens its PR after them and merges last.
-3. Ask Ryan for one deploy now that the wave has merged. WO-934's tool and
-   sheet are built; its run comes after the deploy (see its entry in
-   `BACKLOG_DONE.md` for the exact commands).
-4. Batch the merges. Say plainly which merged code is not yet live.
-5. Check the GitHub Actions usage before the first wave if Ryan can see
-   it. Whatever it shows, keep to 3 open PRs and merge one at a time.
+Phases 0 and 1 are done, deployed, and their repairs applied, except the
+two drip-Mac-gated deletes noted above. Phase 2 and WO-940 are merged and
+waiting on their own deploy. What's left:
+
+1. Ask Ryan for the Phase 2 / WO-940 deploy when convenient.
+2. Once the drip Mac has ingested the Malibu and Sebring replacement
+   videos, run the two remaining WO-934 sheet rows (deletes for pages 6906
+   and 7086).
+3. Batch merges and say plainly when merged code isn't live yet.
+4. Keep to 3 open PRs at once, merged one at a time (rule 10) — this
+   session hit the cap for real on 2026-09-21/22, so it's not theoretical.
 
 ## How to find an entry
 
