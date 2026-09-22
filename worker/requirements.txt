@@ -42,13 +42,13 @@ pydantic-core==2.46.5
     # via pydantic
 python-dotenv==1.2.3
     # via -r worker/requirements.in
-sentry-sdk==2.69.1
+sentry-sdk==2.69.2
     # via -r worker/requirements.in
 six==1.17.0
     # via langdetect
 soupsieve==2.9.2
     # via beautifulsoup4
-sqlalchemy[asyncio]==2.0.52
+sqlalchemy[asyncio]==2.0.54
     # via -r worker/requirements.in
 typing-extensions==4.16.0
     # via

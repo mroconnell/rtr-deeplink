@@ -966,3 +966,4 @@ https://sapatv.cablecast.tv/internetchannel/show/44047	https://sapatv.cablecast.
 https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1058	https://narragansettri.granicus.com/player/clip/1058?view_id=1
 https://weatherford.granicus.com/MediaPlayer.php?view_id=4&clip_id=3517	https://weatherford.granicus.com/player/clip/3517?view_id=4
 https://lmctvny.new.swagit.com/videos/394834
+https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1028	https://fonddulac.granicus.com/player/clip/1024?view_id=5

@@ -10,7 +10,7 @@ aiosignal==1.4.0
     #   aiohttp
 aiosqlite==0.22.1
     # via -r requirements.txt
-alembic==1.19.2
+alembic==1.20.0
     # via -r requirements.txt
 annotated-doc==0.0.5
     # via
@@ -169,7 +169,7 @@ pip-tools==7.6.1
     # via -r requirements-dev.in
 platformdirs==4.11.3
     # via pip-audit
-playwright==1.62.0
+playwright==1.63.0
     # via -r requirements.txt
 pluggy==1.6.0
     # via pytest
@@ -238,7 +238,7 @@ rich==15.0.0
     # via pip-audit
 ruff==0.16.7
     # via -r requirements-dev.in
-sentry-sdk==2.69.1
+sentry-sdk==2.69.2
     # via -r requirements.txt
 six==1.17.0
     # via
@@ -265,7 +265,7 @@ starlette==1.6.0
     # via
     #   -r requirements.txt
     #   fastapi
-svix==2.4.0
+svix==2.5.0
     # via -r requirements.txt
 tomli==2.4.1
     # via pip-audit
@@ -293,7 +293,7 @@ urllib3==2.7.0
     #   -r requirements.txt
     #   requests
     #   sentry-sdk
-uvicorn[standard]==0.52.4
+uvicorn[standard]==0.53.0
     # via -r requirements.txt
 uvloop==0.22.1
     # via
