@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1012: fixed native SuiteOne queue probes misrouting into a second, doomed resolve hop [Done 2026-09-22]
+## WO-1013: fixed native SuiteOne queue probes misrouting into a second, doomed resolve hop [Done 2026-09-22]
 
 **Issue.** `app/platforms/queue_probe.py`'s dispatch routed into
 `_probe_suiteone()` whenever `resolved_platform == "suiteone"` OR

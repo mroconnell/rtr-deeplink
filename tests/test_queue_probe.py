@@ -1194,7 +1194,7 @@ async def test_probe_suiteone_no_video_yet_is_reject_dead():
 async def test_probe_queue_entry_native_suiteone_skips_the_second_resolve_hop(
     monkeypatch,
 ):
-    # WO-1012 (2026-09-22): a NATIVE suiteone.py resolve (not a CivicClerk
+    # WO-1013 (2026-09-22): a NATIVE suiteone.py resolve (not a CivicClerk
     # delegation) already returns the final direct-file S3 URL in
     # `video_url` -- see suiteone.py's own resolve(). The dispatch used to
     # route `resolved_platform == "suiteone"` into `_probe_suiteone()`

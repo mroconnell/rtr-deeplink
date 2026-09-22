@@ -1102,7 +1102,7 @@ async def probe_queue_entry(
     # a suiteonemedia.com host even though `resolved_platform` is
     # "civicclerk", not "suiteone".
     #
-    # WO-1012 (2026-09-22): dispatch used to also trigger on
+    # WO-1013 (2026-09-22): dispatch used to also trigger on
     # `resolved_platform == "suiteone"` alone -- right for the delegation
     # case above, wrong for a NATIVE suiteone.py resolve, whose own
     # `video_url` is already the final direct-file S3 URL (see
