@@ -469,7 +469,7 @@ Trust, safety & data quality  (27)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (31)
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -479,7 +479,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
     `[IMPROVEMENT-ROUND]` `[BIG]` Open submissions to the Full Context…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (11)
+  Growth, audience & discoverability  (10)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -490,7 +490,6 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
     `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
-    `[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social…
   Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
@@ -7116,22 +7115,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     README's "Meeting card images" section (the existing YouTube-redirect
     behavior this inherits).
 
-- **`[IMPROVEMENT-ROUND]` `[EASY]` A "this moment was clipped on social media" backlink on `/m/` pages.**
-  - **Issue**: `/m/{slug}` never shows that a meeting has one or more
-    Full Context entries pointing at it, even though `ContextEntry.
-    meeting_page_id` is indexed and already the FK every entry carries.
-    WO-947 (2026-09-21) added the same kind of backlink to `/j/{hub_slug}`
-    and `/state/{state_slug}` ("Seen on social media"), so `/m/` is now
-    the one surface an entry cites without linking back.
-  - **Impact**: a reader on the meeting page itself still has no way to
-    discover the social clip(s) that reference it.
-  - **Next action**: on `/m/{slug}`, query published `ContextEntry` rows
-    for that `meeting_page_id` and render a small "clipped on social
-    media" section/badge linking to each — `crud.list_context_entries_
-    for_pages()` (WO-947) already does the query shape this needs; the
-    condition here would just be `MeetingPage.id == page.id` instead of
-    a hub's/state's page set.
-  - **History**: `BACKLOG_DONE.md`'s WO-943 and WO-947 entries.
 
 ### Search & metadata quality
 

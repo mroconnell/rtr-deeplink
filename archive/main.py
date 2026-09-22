@@ -2907,11 +2907,20 @@ async def meeting_page(
             refresh_slug=slug,
         )
 
+    # WO-1002: "this moment was clipped on social media" -- published
+    # Full Context entries citing this exact meeting (BACKLOG.md's
+    # "clipped on social media" `/m/` backlink; WO-947 already did the
+    # same for /j/{slug} and /state/{slug}). Always a list, never None --
+    # crud.list_context_entries_for_meeting() runs in its own session and
+    # never raises, so a failure here can never take this page down.
+    context_entries = await crud.list_context_entries_for_meeting(page["id"])
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
         {
             "page": page,
+            "context_entries": context_entries,
             "active_version": active_version,
             "page_is_empty": page_is_empty,
             "video_embedding_disabled": video_embedding_disabled,
