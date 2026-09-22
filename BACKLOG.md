@@ -178,10 +178,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
     [JUST-DO-IT] `archive_client.send_search_alerts()` has no retry, so…
     [JUST-DO-IT] `list_all_page_slugs()` doesn't exclude…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
+  [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -199,7 +200,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (200)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -269,7 +270,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own…
   [NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
-  [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
@@ -283,7 +283,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
   [NEEDS-AUDIT] Same source URL, different query string, two
   [LATER] GovDelivery -- a proposed discovery lead for finding new
   [LATER] Two real, scoped enumerator/adapter gaps found chasing the
-  [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -425,7 +424,7 @@ Reliability, ops & cost  (11)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (27)
+Trust, safety & data quality  (26)
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
   The partial-transcript check reaches only some YouTube pages, and the…
@@ -435,7 +434,6 @@ Trust, safety & data quality  (27)
   Lake City city, FL's `domain` (`cityoflakecityfl.gov`) resolves to a…
   8 rows carrying `prior_reject_reason=already-covered` checked live,…
   `jurisdiction_coverage.csv` has population rows sharing the bare,…
-  `jurisdiction_coverage.csv`'s shared write helper still uses a…
   A tenant with no video content never runs the identity conflict…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
   Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
@@ -1949,6 +1947,13 @@ of human step they need.
   - **Constraint**: deleting a page needs a `_SLUG_REDIRECTS` entry first; never bulk-delete.
   - **History**: `BACKLOG_DONE.md` WO-925 and WO-941.
 
+- **[HUMAN] The bare `/j/victoria` slug may be pinned to the wrong destination — the one real `hub_slug_aliases.csv` collision WO-112 left for Ryan, still unresolved.**
+  - **Issue**: `archive/data/hub_slug_aliases.csv` currently redirects `victoria` to `victoria-bc` (`ca:csd:5917034`). WO-112 (2026-09-03) fixed the other two same-shaped collisions found that day (`hamilton`, `woodland`) by Ryan's direct call, but he did not mention `victoria`, and it's flagged as a genuinely different case: `victoria-bc` may itself be the wrong committed value, not just the less-preferred one.
+  - **Impact**: `/j/victoria` may be sending readers to the wrong government's hub. Low reach unless someone actually links or searches the bare slug.
+  - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
+  - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
+  - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 
 - **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
@@ -2711,40 +2716,6 @@ of human step they need.
     `scripts/wo147_access_ladder_sweep.py` (`_is_vendor_marketing_apex()`),
     not yet applied to the shared `find_specific_platform_link()`/
     `detect_platform()` path. See `BACKLOG_DONE.md`'s WO-147 entry.
-- **[NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
-  concurrent write to `jurisdiction_coverage.csv`.**
-  - **Issue**: every `*_apply_to_jc.py` script (wo146/148/149/150's)
-    guards against a stale write with a pre-write re-check that compares
-    the file's row COUNT and header fieldnames against what it read at
-    the start of its lock hold. Real, confirmed-live collision,
-    2026-09-10: WO-150's second apply run (uncommitted at the time) and
-    WO-147's own apply run (a different candidate list) both touched the
-    file around the same time. WO-147's own read-modify-write cycle
-    apparently captured a snapshot that predated WO-150's second run,
-    then WO-147 committed that snapshot — silently reverting WO-150's
-    uncommitted row updates (Florence city AL, Lake Havasu City AZ, and
-    others) even though the row count and fieldnames never changed, so
-    the existing re-check never fired.
-  - **Impact**: a same-row-count concurrent write from another session
-    can silently clobber uncommitted work on this shared file, with no
-    error raised by either writer. Recovered here only because WO-150
-    diffed the file against its own last commit and noticed values it
-    had just written were gone; a less careful session wouldn't catch
-    this at all.
-  - **Next action**: strengthen the pre-write re-check in the shared
-    pattern (ideally factored into one real shared helper, per
-    `docs/BREADTH_SWEEP_BRIEF.md`'s own "optional next steps" note) to
-    compare a hash of the full file content (or at minimum the exact
-    rows each run is about to touch) against what was read at
-    lock-acquisition time, not just row count and fieldnames.
-  - **Constraint**: committing immediately after every write (already
-    the convention) shrinks the collision window but doesn't close it —
-    WO-150's own collision happened inside that window, before its
-    commit landed.
-  - **History**: WO-150, `BACKLOG_DONE.md` 2026-09-10. Recovered by
-    re-running `wo150_apply_to_jc.py` fresh against the post-collision
-    state and committing immediately; no data was permanently lost.
-
 - **[NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real feasibility has collapsed to ~8%, far below the ~88% the feed script's own docstring still assumes.**
   - **Issue**: fed the first 50 queue rows live 2026-09-07 (all IQM2) —
     only 4 resolved a real video, 46 got `[SKIP] no video found on
@@ -3207,69 +3178,6 @@ of human step they need.
   - **History**: `~/Documents/rtr-discovery/
     SCHOOL_DISTRICT_ENUMERATION_HANDOVER.md` Group 3;
     `rtr-business/research/ENUMERATION_METHODS.md` §63.
-
-- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
-  `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
-  run can silently drop or corrupt a real, currently-serving redirect
-  from an earlier run — not just the known `manual_override` blind spot
-  above, but any row whose source page has since been re-backfilled.**
-  - **Issue**: the script never reads the file it's about to overwrite —
-    it derives every row fresh, per run, from `old_hub_slug =
-    jurisdiction_hub_slug(CURRENT stored jurisdiction string)` vs `new_
-    hub_slug = resolve_government(that same string)`. The FIRST run after
-    a backfill can see genuine pre-backfill/post-backfill pairs; every
-    run after that sees only ALREADY-backfilled strings, so a page whose
-    retirement was captured once becomes permanently invisible to future
-    runs (exactly what `hub_aliases.py`'s own docstring warns about, but
-    the blast radius turned out to be the whole file, not one row). WO-109
-    (2026-09-03) re-ran the script against production and confirmed
-    it directly: of 672 previously-committed rows, a naive overwrite
-    with the fresh run's 57-row output would have dropped **615** of
-    them — real, currently-necessary redirects with no way to
-    reconstruct them from the database again.
-  - **Impact**: no damage today — WO-109 wrote a merge (keep every
-    existing row, add only genuinely-new `old_slug`s) by hand instead of
-    running the script's own overwrite, so the committed file lost
-    nothing. But that merge is currently a one-off manual step, not
-    something the tool does, so the very next person who runs
-    `scripts/score_gov_registry.py` in the ordinary documented way (no
-    special care) will regress this — silently, since the script prints
-    a row count and nothing else, and a smaller "57 retired slugs"
-    number reads as normal output, not a warning.
-  - **Next action**: teach `_write_hub_slug_aliases()` to read the
-    existing committed file first and union with the freshly-derived
-    rows (existing row wins unless proven stale) instead of overwriting,
-    the same merge WO-109 did by hand — see that PR's description for
-    the exact logic and the three ambiguous cases (below) it had to
-    reason through manually.
-  - **Constraint**: a union isn't quite enough on its own — WO-109 also
-    hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
-    bare `old_slug`, computed from two different tenants' raw
-    jurisdiction text at two different points in time, legitimately wants
-    two different destinations. Any fix needs a documented tie-break
-    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
-    2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
-    live site after the WO-107 backfill and gave an explicit, direct
-    call: `hamilton` now points to `hamilton-city-oh`
-    (`us:place:3933012`) and `woodland` now points to `woodland-wa`
-    (`us:place:5379625`), superseding WO-109's cautious default. Both old
-    incumbent destinations (`hamilton-police-services-board-on`,
-    `woodland-ca`) remain real, live hubs at their own unambiguous slugs
-    — re-verified via `display.hub_slug()` on their own gov_ids before
-    the flip — so nothing is orphaned, they're just no longer reachable
-    via the bare, ambiguous slug. `victoria` is UNCHANGED: Ryan did not
-    mention it, and it stays flagged for him per the note below (a
-    genuinely different case — `victoria-bc` may itself be the wrong
-    committed value, not just the less-preferred one). A durable
-    tie-break rule for the *general* case (which of two colliding raw
-    strings wins a bare slug) is still not built — WO-112 only resolved
-    these two specific instances by direct instruction, it did not add a
-    policy the tool applies on its own next run.
-  - **History**: found and worked around by hand in WO-109's PR
-    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
-    (2026-09-03) per Ryan's direct instruction. See both PRs'
-    descriptions for the full row-by-row reasoning and before/after
-    values.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   scoped `tenant_overrides.csv` pins, so its `hub_slug_aliases.csv` regen
@@ -6053,36 +5961,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   (and any other confirmed multi-tenant bare host) to a skip-list next
   to the existing govAccess/Akamai CNAME check.
 - **History**: `BACKLOG_DONE.md`'s WO-292 entry.
-
-### `jurisdiction_coverage.csv`'s shared write helper still uses a hardcoded 25,000-row floor, not the 99%-of-`HEAD` floor this repo's protocol now asks for `[NEEDS-AUDIT]`
-
-- **Issue**: `wo127_civicplus_pipeline.py`'s `_coverage_read_modify_write()`
-  (imported by `wo174_pipeline.py` and reused across many other sweeps)
-  refuses to write if a fresh read comes back under
-  `MIN_SANE_ROW_COUNT = 25000`, a constant set 2026-09-09 right after the
-  truncation incident that motivated the whole §158 write protocol.
-  `ENUMERATION_METHODS.md` §158 and this repo's own newer guidance (see
-  `CLAUDE.md`'s multi-session bullet) ask new callers to compute a 99%-
-  of-`git show HEAD:research/jurisdiction_coverage.csv | wc -l` floor at
-  run time instead of a hardcoded number. This one helper -- used by
-  more sweeps than any other single write path into this file -- was
-  never updated to match. 25,000 is about 77% of the file's real size
-  today (32,285 lines), not 99%.
-- **Impact**: nothing has broken yet -- 25,000 is still comfortably above
-  both real truncation sizes from the original incident (~13,005 and
-  ~16,517 lines) -- but the safety margin is much looser than the
-  current protocol intends, and the file keeps growing, so the gap
-  between "25,000" and "99% of current size" only widens over time.
-- **Next action**: replace the hardcoded constant with a run-time
-  computed floor (99% of a fresh `git show HEAD:...` line count, same
-  shape newer scripts like `wo191_apply_to_jc.py` already use), in the
-  one shared helper rather than each caller separately. Do this when the
-  pipeline importing it is NOT actively running (it is, as of this
-  writing -- WO-174's continuation) to avoid editing a module a live
-  process has already imported.
-- **Constraint**: don't lower the floor -- only tighten it towards 99%.
-- **History**: WO-174 continuation slice 1, `BACKLOG_DONE.md` 2026-09-11;
-  original floor and incident, `BACKLOG_DONE.md` WO-127, 2026-09-09.
 
 ### A tenant with no video content never runs the identity conflict checks: the raw-page fallback is now ported, the audit of rows already written is not `[NEEDS-AUDIT]`
 

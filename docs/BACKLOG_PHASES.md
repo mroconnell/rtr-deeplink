@@ -41,7 +41,7 @@ phases, so the column adds to a little over the file's 392.
 | 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
 | 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan has decided every row that needed him (2026-09-21), and its run waits for the merge and the deploy, and for two replacement pages |
 | 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
-| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
+| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | WO-940 built 2026-09-22 (shared registry write helper; see Phase 3 section), not yet merged. Rest of the phase not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
 | 5 | Improve what the pages say | Numbers when it starts | 10 | Nothing until Phase 4 is done | Not started |
 
@@ -534,17 +534,40 @@ Dedup and the owner check must know which side a line lives on.
 
 ## Phase 3: registry and identity foundations
 
-The first deliverable is **WO-940: one registry write helper.** It locks the
-file, re-reads it, compares a content hash instead of a row count, and
-renames atomically. It closes these entries and makes one-off registry fixes
-safe:
+The first deliverable, **WO-940: one registry write helper, is built**
+(`scripts/registry_write_helper.py`, `tests/test_registry_write_helper.py`).
+It locks the file, re-reads it under the lock, compares a content hash
+(not a row count) against what was read at lock-acquisition time,
+computes a 99%-of-committed-HEAD row-count floor at run time instead of a
+hardcoded one, and writes atomically via temp-file-then-rename. It is
+pure, repo-agnostic Python (takes a file path, no repo assumption), so it
+is unit-tested only against local fixture CSVs, never against the real
+registry. It closed these entries:
 
-- "`jurisdiction_coverage.csv`'s shared write helper still uses a"
-- "`scripts/score_gov_registry.py` overwrites"
-- "§158's write protocol doesn't catch a same-row-count"
+- "`jurisdiction_coverage.csv`'s shared write helper still uses a" — fixed
+  by wiring `scripts/wo127_civicplus_pipeline.py`'s
+  `_coverage_read_modify_write()` (imported by `wo174_pipeline.py` and
+  `wo259_full_ladder_scan.py`) through the new helper.
+- "`scripts/score_gov_registry.py` overwrites" — fixed by rewriting
+  `_write_hub_slug_aliases()` to read the existing committed
+  `archive/data/hub_slug_aliases.csv` first and union it with the
+  freshly-derived rows, existing-wins-unless-proven-stale, through the
+  new helper. Left one genuine residual: the `victoria` bare-slug
+  collision WO-112 didn't resolve is now a `[HUMAN]` BACKLOG.md entry
+  instead of a silent risk, since the new merge logic reports a
+  collision rather than guessing.
+- "§158's write protocol doesn't catch a same-row-count" — fixed by the
+  helper's own content-hash design; see
+  `tests/test_registry_write_helper.py`'s
+  `test_stale_hash_catches_a_same_row_count_concurrent_write` for a
+  synthetic reproduction of the real 2026-09-10 WO-150/WO-147 collision.
 
-Caution: the registry lives in `rtr-business`, where only the conductor
-commits. WO-940 hands the conductor a file list.
+**Correction to this plan's own original caution below**: WO-940's real
+scope (set by the conductor's brief, not this planning doc) was fixing
+the write PROTOCOL, in this repo's own code, never the registry's actual
+data — it does not read, write, or commit in `rtr-business`, and it does
+not hand the conductor a file list. That part of the original plan
+turned out not to apply.
 
 The rest of the phase gets WO numbers when it starts:
 
