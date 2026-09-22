@@ -152,6 +152,18 @@ MAX_SUB_SITEMAPS = 6
 MAX_FLAGGED_RECORDED = 60
 STALE_DAYS = 547  # ~18 months
 
+# WO-939: a real wall-clock cap on top of GOV_REQUEST_TIMEOUT/CDX_TIMEOUT
+# -- `requests`' own `timeout=` only bounds each individual socket read,
+# not the whole request, so a server that trickles bytes slowly enough
+# can hang well past it (confirmed live, WO-322: two real domains hung
+# 250-290+ seconds despite timeout=6; this is also the best-supported
+# explanation for wo321_recon.py's real, twice-reproduced rankincounty.org
+# hang, WO-321 -- see scripts/sweep_deadline.py's own module docstring).
+# Generous relative to the per-read timeouts above (a real slow-but-honest
+# response should still finish), nowhere near the 250s+ hangs observed.
+GOV_REQUEST_WALL_CLOCK_DEADLINE = 25
+CDX_WALL_CLOCK_DEADLINE = 45
+
 # CDX is confirmed live-degraded (see module docstring). WO-366
 # (2026-09-14) widened the retry budget from the original 2-attempt/2s
 # version after WO-337/338 got an archive answer for only 20/1,951 and
@@ -161,41 +173,26 @@ CDX_TIMEOUT = 20
 CDX_RETRY_BACKOFFS = [2, 8]
 ARCHIVE_CONCURRENCY = 8
 
-# Same marker list as scripts/wo147_access_ladder_sweep.py's
-# CHALLENGE_MARKERS / wo268's copy -- kept local so this stays free of
-# that module's heavier import chain.
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-    # WO-278 (2026-09-12): confirmed live against co.roseau.mn.us while
-    # rechecking WO-273's single Hyland "single-platform" domain -- a
-    # Radware/ShieldSquare bot-management challenge, served with a real
-    # HTTP 200 after a 302 through validate.perfdrive.com, that this list
-    # didn't recognize. Without this, the challenge page's own body (which
-    # never mentions the government) would just read as "no name match",
-    # but its REDIRECT URL echoes the original target back as a query
-    # parameter (ssc=https%3A%2F%2Fco.roseau.mn.us%2F...), so a careless
-    # url-inclusive match could spuriously "confirm" a platform from a
-    # block page. Not wired into a body/url decision here either way --
-    # is_challenge() is checked before that code runs regardless, so this
-    # is the correct, general fix for any future host behind the same
-    # vendor. See BACKLOG.md for the wider gap this same marker list is
-    # duplicated (unfixed elsewhere) across 7 other scripts.
-    "radware block page",
-    "perfdrive.com",
-    "shieldsquare",
-]
+# WO-939: this WAS the canonical copy (it's the one that got WO-278's
+# Radware/ShieldSquare markers first, 2026-09-12) -- moved to scripts/
+# challenge_markers.py so the other 8 scripts that copied it stop
+# silently drifting from it. Bare import, not `scripts.challenge_
+# markers`, since this module deliberately makes no sys.path change of
+# its own (kept free of app/'s heavier import chain -- see module
+# docstring); `scripts/` is already on sys.path for every way this file
+# is loaded today (a direct run, or wo321_recon.py's/wo325_recon.py's
+# own `sys.path.insert(0, str(SCRIPTS_DIR))` before `import wo273_recon`).
+from challenge_markers import CHALLENGE_MARKERS  # noqa: E402
+
+# WO-939: a real wall-clock deadline around polite_request()/cdx_get()/
+# wayback_id_read()'s own requests.request()/requests.get() calls -- see
+# GOV_REQUEST_WALL_CLOCK_DEADLINE's own comment above and scripts/
+# sweep_deadline.py's module docstring for the real hangs this closes.
+# DeadlineExceeded itself needs no special handling here -- every one of
+# this file's own call sites already catches a broad `except Exception`
+# around these calls (a timeout has always been one more ordinary fetch
+# failure to them, not a distinct case), so it's not imported by name.
+from sweep_deadline import run_with_deadline  # noqa: E402
 
 # Vendor host aliases, copied from scripts/wo147_access_ladder_sweep.py's
 # _PLATFORM_ALIASES (as wo268 also did) plus the extra hosts WO-267/
@@ -414,14 +411,20 @@ _ARCHIVE_SEMA = threading.Semaphore(ARCHIVE_CONCURRENCY)
 
 def polite_request(url: str, method: str = "GET", timeout=GOV_REQUEST_TIMEOUT):
     host = urlparse(url).netloc
+    # WO-939: run_with_deadline() wraps requests.request() itself, inside
+    # wait_and_request()'s per-host lock -- so a real hang releases that
+    # lock after GOV_REQUEST_WALL_CLOCK_DEADLINE instead of holding it
+    # (and blocking every future retry against this same host) forever.
     return RATE_LIMITER.wait_and_request(
         host,
+        run_with_deadline,
         requests.request,
         method,
         url,
         headers=HEADERS,
         timeout=timeout,
         allow_redirects=True,
+        deadline_seconds=GOV_REQUEST_WALL_CLOCK_DEADLINE,
     )
 
 
@@ -720,7 +723,17 @@ def cdx_get(url: str) -> requests.Response | None:
     for attempt in range(attempts):
         with _ARCHIVE_SEMA:
             try:
-                resp = requests.get(url, headers=HEADERS, timeout=CDX_TIMEOUT)
+                # WO-939: real wall-clock cap on top of CDX_TIMEOUT's
+                # per-read bound -- see GOV_REQUEST_WALL_CLOCK_DEADLINE's
+                # comment above. Held inside _ARCHIVE_SEMA the same as
+                # before, just bounded now instead of unbounded.
+                resp = run_with_deadline(
+                    requests.get,
+                    url,
+                    headers=HEADERS,
+                    timeout=CDX_TIMEOUT,
+                    deadline_seconds=CDX_WALL_CLOCK_DEADLINE,
+                )
                 if resp.status_code == 200:
                     return resp
             except Exception:  # noqa: BLE001
@@ -734,7 +747,13 @@ def wayback_id_read(url: str, timestamp: str) -> bytes | None:
     id_url = f"https://web.archive.org/web/{timestamp}id_/{url}"
     with _ARCHIVE_SEMA:
         try:
-            resp = requests.get(id_url, headers=HEADERS, timeout=CDX_TIMEOUT)
+            resp = run_with_deadline(
+                requests.get,
+                id_url,
+                headers=HEADERS,
+                timeout=CDX_TIMEOUT,
+                deadline_seconds=CDX_WALL_CLOCK_DEADLINE,
+            )
             if resp.status_code == 200:
                 return resp.content
         except Exception:  # noqa: BLE001

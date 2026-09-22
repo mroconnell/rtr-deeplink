@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import inspect
 import re
@@ -833,17 +834,142 @@ def get_finder(platform: str) -> AssetFinder:
     return _REGISTRY[platform]
 
 
-async def resolve_via_platform(url: str) -> ResolvedMeeting:
+_YOUTUBE_URL_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+        "youtu.be",
+        "www.youtu.be",
+    }
+)
+
+
+def _is_youtube_url(url: str) -> bool:
+    try:
+        host = urlparse(url).netloc.lower().split("@")[-1].split(":")[0]
+    except Exception:  # noqa: BLE001
+        return False
+    return host in _YOUTUBE_URL_HOSTS
+
+
+class YouTubeResolveBlocked(Exception):
+    """Raised by `youtube_resolve_guard()` below instead of letting
+    YouTube actually get fetched from inside a `resolve()` call.
+
+    WO-939: generalized from `app/platforms/passive_verify.py`'s own
+    private `_YouTubeResolveBlocked`/`_youtube_resolve_guard()` (built for
+    WO-325's a2gov.org incident -- see that module for the full story),
+    so any caller under a "no YouTube calls" constraint can use the same
+    proven mechanism, not just `verify_hub()`. `passive_verify.py` now
+    imports this rather than keeping its own copy.
+
+    Checking whether a CANDIDATE url's own host is youtube.com is not
+    enough on its own: a candidate that is NOT itself a youtube.com URL
+    (a Legistar/CivicPlus/CivicWeb/Municode Meetings page, a PrimeGov
+    meeting page, a plain government page `generic_fallback.py` scans) can
+    still internally embed a YouTube video and delegate to YouTube from
+    INSIDE that adapter's own `resolve()`. Two real, DIFFERENT chokepoints
+    every such delegation goes through, both patched here: `YouTubeAsset
+    Finder.resolve(url)` -- the path `civicplus.py`/`municode_meetings.py`/
+    `civicweb.py`/`generic_fallback.py`'s platform-link delegation all use
+    (via `resolve_via_platform()`); and `YouTubeAssetFinder.resolve_video_
+    id(video_id, source_url)` -- the path `legistar.py`, `primegov.py`,
+    and `generic_fallback.py`'s own embedded-video-id scan (per CLAUDE.md's
+    "PrimeGov embeds a YouTube video" wrapper note) call DIRECTLY, bypassing
+    `.resolve()` entirely, specifically so they can pass the delegating
+    page's own `source_url` through.
+    """
+
+    def __init__(self, url: str):
+        self.url = url
+        super().__init__(f"blocked a YouTube fetch for {url}")
+
+
+@contextlib.contextmanager
+def youtube_resolve_guard():
+    """Scoped for the duration of one call (not a permanent process-wide
+    patch, so a caller elsewhere in the app that legitimately wants a real
+    YouTube resolve -- e.g. the YouTube drip -- is unaffected): monkey-
+    patches both `YouTubeAssetFinder.resolve` and `YouTubeAssetFinder.
+    resolve_video_id` (see `YouTubeResolveBlocked`'s own docstring for why
+    both) to raise `YouTubeResolveBlocked` instead of calling yt-dlp, then
+    restores the originals on exit, success or failure.
+
+    This patches the CLASS, so it blocks every route into YouTube
+    regardless of which adapter delegates -- including `generic_fallback.
+    py`'s own regex-then-resolve_video_id path, which never routes through
+    `resolve_via_platform()` at all. That is the whole point: threading an
+    `allow_youtube` parameter through every individual adapter's `resolve()`
+    would mean editing a dozen-plus files (see CLAUDE.md's own list of
+    platforms that delegate to YouTube) and would still miss the next one
+    added later; patching the two shared chokepoints once covers all of
+    them, present and future, the same way WO-325's original fix proved
+    live against a real a2gov.org Legistar->YouTube delegation.
+
+    Use `resolve_via_platform(url, allow_youtube=False)` for the common
+    case; use this directly around a bare `finder.resolve(url)` call (the
+    shape the `wo3xx_resolve_diagnostic.py` family and similar hand-check
+    scripts use, since they need their own `UnsupportedPlatformError`/
+    `CalendarPageError` handling around `get_finder()`/`resolve()`
+    separately from `resolve_via_platform()`'s combined call).
+    """
+    from .youtube import YouTubeAssetFinder
+
+    original_resolve = YouTubeAssetFinder.resolve
+    original_resolve_video_id = YouTubeAssetFinder.resolve_video_id
+
+    async def _blocked(self, url: str):  # noqa: ANN001
+        # Only block a call that is genuinely about to fetch a real
+        # youtube.com/youtu.be URL; anything else calls through to the
+        # real `resolve()`, which raises its own honest error for a URL
+        # that was never a valid YouTube one to begin with. See WO-348's
+        # note in passive_verify.py: a caller's own `platform_hint` can
+        # say "youtube" while `url` is still the original, non-YouTube
+        # hub page -- that must not be blocked here either.
+        if _is_youtube_url(url):
+            raise YouTubeResolveBlocked(url)
+        return await original_resolve(self, url)
+
+    async def _blocked_video_id(cls, video_id: str, source_url: str):  # noqa: ANN001
+        raise YouTubeResolveBlocked(f"https://www.youtube.com/watch?v={video_id}")
+
+    YouTubeAssetFinder.resolve = _blocked
+    YouTubeAssetFinder.resolve_video_id = classmethod(_blocked_video_id)
+    try:
+        yield
+    finally:
+        YouTubeAssetFinder.resolve = original_resolve
+        YouTubeAssetFinder.resolve_video_id = original_resolve_video_id
+
+
+async def resolve_via_platform(
+    url: str, *, allow_youtube: bool = True
+) -> ResolvedMeeting:
     """Detect a URL's platform and delegate to its registered finder.
 
     Used by wrapper platforms like Legistar, which don't host video/captions
     themselves but redirect or link to a platform that does (usually
     Granicus) -- resolving the linked URL should go through that platform's
     real adapter, not be treated as a dead end.
+
+    `allow_youtube=False` (WO-939): for a caller operating under CLAUDE.md's
+    "YouTube is fetched only by the drip Mac" rule -- a sweep/hand-check
+    script running anywhere else. Wraps the delegated `resolve()` call in
+    `youtube_resolve_guard()` so a `YouTubeResolveBlocked` is raised instead
+    of a real yt-dlp fetch if this URL's own platform (or a platform it
+    further delegates to) turns out to embed a YouTube video. Default True
+    keeps every existing caller's behavior unchanged.
     """
     platform = detect_platform(url)
     finder = get_finder(platform)
-    return await finder.resolve(url)
+    if allow_youtube:
+        return await finder.resolve(url)
+    with youtube_resolve_guard():
+        return await finder.resolve(url)
 
 
 _DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")

@@ -122,7 +122,7 @@ Standing decisions — do NOT re-raise  (14)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
   The Archive files a page under whatever `gov_id` a sweep sends: do…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
   State legislatures: chamber rows still without a page (91 of 99 on…
   97 of the 257 Diligent Community "no video" tenants link their own…
   `direct_file` refuses South Carolina's legislature video…
@@ -137,14 +137,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
   `_probe_direct_file()`'s HEAD fallback misfires on a host that…
   The tier-3 probe has no recipe for two real delegated media shapes --…
-  `CHALLENGE_MARKERS` is duplicated across 9 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
   `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
-  `wo149_county_ladder_sweep.py` carries its own separate, unpatched…
-  `wo191_access_ladder_sweep.py`'s headless budget is computed at…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
@@ -207,7 +204,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Fond du Lac County, WI — decide an authoritative host pin for…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
@@ -223,7 +220,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] Jefferson County WA's real CivicPlus video is one hop…
   [NEEDS-AUDIT] A CivicPlus 20-government sample turned up a registry…
   [NEEDS-AUDIT] `scripts/wo321_recon.py`'s phase-1 reconnaissance hung…
-  [NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's…
   [NEEDS-AUDIT] `wo273_targeted.py`'s fallback rung 2 (headless render…
   [NEEDS-AUDIT] `app/platforms/suiteone.py` can't parse a tenant/event…
   [NEEDS-AUDIT] A hand-verification script that calls the real…
@@ -359,7 +355,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (62)
+  Adapter & platform gaps  (60)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -410,8 +406,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
     [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
     [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
     [JUST-DO-IT] `[EASY]` `[WAIT]` Three of WO-234's nine Laserfiche…
-    [NEEDS-AUDIT] A slow-trickling response can hang a sweep past every…
-    [NEEDS-AUDIT] `generic_fallback.py`'s embedded-YouTube delegation…
     [NEEDS-AUDIT] `cablecast.py` returns `segments=0` for a show whose…
     [NEEDS-AUDIT] The passive-discovery-v2 pipeline (WO-283/WO-320…
     [NEEDS-AUDIT] `verify_hub()`'s listing walk…
@@ -1240,14 +1234,6 @@ WO-932 and WO-913.
   WO-363b, and WO-903 entries; `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §309/§310.
 
-### `CHALLENGE_MARKERS` is duplicated across 9 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** nine scripts each carry their own literal copy of the same `CHALLENGE_MARKERS` list (used by `is_challenge()` to stop before a human-verification gate): `scripts/wo145_api_first_sweep.py`, `wo147_access_ladder_sweep.py`, `wo149_county_ladder_sweep.py`, `wo176_path_pilot.py`, `wo265_school_district_sweep.py`, `wo268_passive_discovery.py`, `wo270_wordpress_pilot.py`, `wo272_probe_first_party_paths.py` and `wo273_recon.py` (re-counted with `git grep` on 2026-09-21; the original count of 8 missed `wo145`). Three more files carry a related challenge-marker list of their own, which makes 12 files in all: `app/platforms/generic_fallback.py` (`_CHALLENGE_MARKERS`, 3 items) and `scripts/hub_sweep_wo126.py` and `score_gov_signals.py` (`_CLOUDFLARE_CHALLENGE_MARKERS`). Other scripts reuse a copy by import (`wo168`, `wo179`, `wo197`, `wo151`) or alias (`wo174`), so they inherit whatever their source has. WO-278 (2026-09-12) found a real, live gap while rechecking a WO-273 finding: a Radware/ShieldSquare bot-management challenge (`validate.perfdrive.com`, `<title>Radware Block Page</title>`) served with a real HTTP 200 after a 302, recognized by none of the copies. Its redirect URL echoes the requested target back as a query parameter, which is how a government's own name can leak into a page that never actually says anything about it — a real false-positive source for any script that checks page text against a government's name without first checking `is_challenge()`.
-- **Impact:** only `wo273_recon.py`'s copy has the 3 Radware markers (`git grep -il shieldsquare` finds no other Python file); the other 8 copies, and every script that inherits from them, still cannot recognize this challenge, so a future sweep that hits a Radware-protected host will silently treat its block page as real content instead of stopping at the gate.
-- **Next action:** add the same 3 markers (`radware block page`, `perfdrive.com`, `shieldsquare`) to the other 8 copies, or better, factor `CHALLENGE_MARKERS`/`is_challenge()` into one shared module every script imports — the duplication itself is why this kind of gap gets fixed once and stays open everywhere else.
-- **Constraint:** none — pure addition to a marker list, no behavior change for a host that isn't using this specific challenge vendor. `wo151` takes its list from `wo141_access_ladder_pilot.py` in `rtr-business/research`, which this repo cannot edit.
-- **History:** found and fixed in `wo273_recon.py` during WO-278 (2026-09-12); see `BACKLOG_DONE.md`'s WO-278 entry. Count corrected 2026-09-21 (WO-931).
-
 ### WO-259's full-ladder homepage re-scan: 431 of 964 governments done, 533 left -- method settled, just needs more runtime `[JUST-DO-IT]`
 
 - **Issue:** WO-259 (2026-09-11/12) re-scanned the front page of the 964
@@ -1416,58 +1402,6 @@ WO-932 and WO-913.
 - **History:** `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
   §268; `BACKLOG_DONE.md`'s WO-227 entry, 2026-09-11.
 
-### `wo149_county_ladder_sweep.py` carries its own separate, unpatched copy of `find_hop_links()` -- WO-228's ranking fix never reaches county sweeps that import from it `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** WO-228 (2026-09-11) replaced the old first-match
-  `find_hop_links()` in `scripts/wo147_access_ladder_sweep.py` with a
-  scored, ranked version (see `BACKLOG_DONE.md`'s WO-228 entry and
-  `rtr-business/research/ENUMERATION_METHODS.md` §270). `scripts/
-  wo149_county_ladder_sweep.py` defines its own separate `find_hop_links()`
-  (same name, own copy, not an import) at its own line ~406 — it still
-  has the old unranked, first-match behavior.
-- **Impact:** Any county sweep built on `wo149_county_ladder_sweep.py`
-  still records a calendar/events page as a hub the same way the fixed
-  code no longer does elsewhere.
-- **Next action:** Delete wo149's own copy and import `find_hop_links`/
-  `looks_like_document_hub`/`find_calendar_entry_links` from
-  `wo147_access_ladder_sweep.py` instead, the way `wo184_onehop_pilot.py`/
-  `wo187_headless_challenge_sweep.py`/`wo217_group1_sweep.py`/
-  `wo217_group2_sweep.py` already do.
-- **Constraint:** Check `wo149_county_ladder_sweep.py`'s own hop-loop
-  wiring first — it may call `find_hop_links` with slightly different
-  surrounding logic than wo147's ladder, not just a bare duplicate.
-- **History:** `BACKLOG_DONE.md`'s WO-228 entry.
-
-### `wo191_access_ladder_sweep.py`'s headless budget is computed at import time, so a reusing WO that overrides `HEADLESS_BUDGET_JSON` after import silently inherits WO-191's own stale cumulative count `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `_headless_used = _load_headless_used()` runs as a
-  module-level statement in `scripts/wo191_access_ladder_sweep.py`,
-  evaluated the instant the module is imported — reading WO-191's own
-  `wo191_headless_budget.json`. A later WO that imports this module and
-  monkeypatches `wo191.HEADLESS_BUDGET_JSON` to its own file (the
-  intended reuse pattern per that file's own docstring) does not
-  retroactively recompute `_headless_used`; it keeps whatever WO-191's
-  file held at import time.
-- **Impact:** WO-218 (2026-09-11) hit this directly: its pilot run
-  inherited WO-191's real count (579, already over any per-WO cap),
-  silently disabling the headless rung for the whole pilot batch — no
-  error, no warning, just every headless-eligible host falling through
-  to "no platform link found." Any future WO reusing this driver the
-  same way (WO-191's own docstring recommends exactly this pattern) will
-  hit the same silent budget contamination.
-- **Next action:** after any `HEADLESS_BUDGET_JSON` override, also
-  re-run `wo191._headless_used = wo191._load_headless_used()` (the fix
-  WO-218 applied in its own wrapper, `scripts/wo218_ladder_sweep.py`) —
-  or, better, move the wiring into a small `init_headless_budget(path,
-  total)` function in `wo191_access_ladder_sweep.py` itself that both
-  sets the path and recomputes `_headless_used`, so a reusing WO can't
-  forget the second step.
-- **Constraint:** a fix here should not touch WO-191's own default
-  behavior (calling `main()` directly, with no override) — the bug only
-  bites a reusing caller.
-- **History:** found and worked around in `rtr-deeplink` WO-218,
-  2026-09-11; see `~/Documents/rtr-business/research/
-  ENUMERATION_METHODS.md` §263.
 ### Two real domain leads found by WO-196, ready to act on but out of that WO's own four-group scope `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** Investigating two WO-190 rejects (both wrongly mapped to
@@ -2537,14 +2471,7 @@ of human step they need.
   - **Impact**: one government left un-swept per occurrence; low by itself, but a hang with no timeout can silently stall a whole concurrent batch if it recurs on a government processed early in a `ThreadPoolExecutor` batch rather than last.
   - **Next action**: instrument `wo273_recon.py`'s per-step calls (DNS/robots/sitemap/common-crawl) with an explicit per-step timeout (`requests` calls already take a `timeout=` kwarg in most call sites — check whether one is missing on this specific path) rather than relying on the overall process to eventually finish. Re-run against `rankincounty.org` alone with each step print-timed to isolate which one hangs.
   - **Constraint**: don't just add a blanket "kill after N seconds" wrapper at the sweep level — that hides which specific step is missing a timeout, and the next domain to hit it would silently lose the same amount of real data.
-  - **History**: `BACKLOG_DONE.md`'s WO-321 entry. **Update, WO-325 (2026-09-12)**: ran the same `wo273_recon.py` machinery (via `wo325_recon.py`, its own copy) against 658 more US counties, in three chunks, at concurrency 16 — 0 hangs, 0 errors. Consistent with this being specific to `rankincounty.org` itself (or another factor unique to that run) rather than a systemic gap in every recon step's timeout coverage; doesn't close the entry, since the root cause still isn't isolated, but narrows where to look.
-
-- **[NEEDS-AUDIT] `wo325_resolve_diagnostic.py` (and every sibling WO's copy of it) has no guard against a delegating adapter making a real YouTube fetch during a hand-check `resolve()` call, even though the candidate-ranking/fetch code already skips youtube.com/youtu.be URLs correctly.**
-  - **Issue**: WO-325 (2026-09-12) found this live. Every WO in the WO-320..325 family follows the same two-stage design: phase 3 (`wo325_targeted.py`) never fetches a youtube.com/youtu.be URL directly (`is_youtube_url()` gates every candidate fetch, and correctly recorded 116 YouTube leads without touching them this run) — but the separate hand-check stage (`wo325_resolve_diagnostic.py`) calls the REAL `app/platforms/*` `resolve()` pipeline on every confirmed non-YouTube candidate, and at least one real platform (`municode_meetings`, and per `CLAUDE.md`'s own platform-wrapper bullet, also PrimeGov and Chicago's City Clerk ELMS for Vimeo) legitimately delegates to YouTube/Vimeo mid-`resolve()` when a meeting embeds one. That delegation is correct, intentional adapter behavior for a real ingest — but it is exactly the "fetch a youtube.com URL" this WO's own rule said never to do, and nothing in the hand-check step's own code checks for it before or after the fact. See the matching `[HUMAN]` entry above (Sheboygan County, WI) for the one real case this run hit.
-  - **Impact**: a sweep operating under an explicit no-YouTube-fetch constraint can still make one, silently, any time its hand-check step happens to confirm a candidate on a YouTube/Vimeo-delegating platform. Low volume so far (1 of 117 hand-checked this run) but not zero, and not something the existing `is_youtube_url()` gate catches since the URL passed to `resolve()` was never a youtube.com URL itself.
-  - **Next action**: give `wo325_resolve_diagnostic.py` (and its siblings, `wo283_resolve_diagnostic.py` etc.) a pre-check: for a candidate whose platform is a known YouTube/Vimeo-delegating one (`municode_meetings`, `primegov`, the Chicago City Clerk ELMS path), either skip the real `resolve()` call and instead scan the page's own HTML for an embedded youtube.com/vimeo.com link (recording it as a lead, same as the direct-YouTube-URL case), or require an explicit opt-in flag before running `resolve()` on that platform under a "no YouTube calls" WO. Also cover `GenericFallbackAssetFinder` (`platform=unknown`) itself, not just the named wrapper adapters — it does its own regex scan for an embedded YouTube video id and calls `YouTubeAssetFinder.resolve_video_id()` when it finds one, which is a second, separate route into the same problem.
-  - **Constraint**: don't widen the fix to skip `resolve()` on every platform that COULD theoretically embed a YouTube video (most html-based platforms could) — only the platforms that are documented, structural wrappers per `CLAUDE.md`'s own list, plus `GenericFallbackAssetFinder`.
-  - **History**: `BACKLOG_DONE.md`'s WO-325 entry. **Not a one-off**: `rtr-business/research/ENUMERATION_METHODS.md` §334 (WO-322, running the same family of WOs in parallel, on a different population) independently hit the identical gap through `GenericFallbackAssetFinder`'s own YouTube-id regex scan — Plainfield town, VT, 1,705 real caption segments, also withheld rather than ingested. Two independent WOs hitting this the same day on two different population groups is a real, repeatable gap, not population-specific bad luck.
+  - **History**: `BACKLOG_DONE.md`'s WO-321 entry. **Update, WO-325 (2026-09-12)**: ran the same `wo273_recon.py` machinery (via `wo325_recon.py`, its own copy) against 658 more US counties, in three chunks, at concurrency 16 — 0 hangs, 0 errors. Consistent with this being specific to `rankincounty.org` itself (or another factor unique to that run) rather than a systemic gap in every recon step's timeout coverage; doesn't close the entry, since the root cause still isn't isolated, but narrows where to look. **Update, WO-939 (2026-09-21)**: `dig()` (the DNS step) was already bounded by a real, killable `subprocess.run(timeout=...)`, but `polite_request()`'s live robots.txt/sitemap fetch and `cdx_get()`/`wayback_id_read()`'s archive calls all shared the identical gap the sibling "slow-trickling response" entry above describes (`requests`' own `timeout=` bounds each read, not the whole call) — the best-supported remaining explanation, though still not independently isolated against `rankincounty.org` itself. Fixed all three call sites with `scripts/sweep_deadline.py`'s `run_with_deadline()` (a real wall-clock cutoff, per-call not per-step-hidden — satisfies this entry's own "don't just add a blanket kill-after-N-seconds wrapper" constraint, since a timeout is still attributable to whichever named function raised it). Not independently re-verified against a live `rankincounty.org` hang (would need a real, possibly-long network reproduction this WO didn't spend the time on) — downgrading this from "open, uninstrumented" to "open, now bounded even if the exact cause recurs," not to "confirmed fixed."
 
 - **[NEEDS-AUDIT] `wo273_targeted.py`'s fallback rung 2 (headless render via `wo147_access_ladder_sweep.fetch_headless_sync`) can wedge a whole phase-3 chunk with zero warning — no timeout on Chromium launch itself, only on page navigation.**
   - **Issue**: found live 2026-09-13 (WO-337). A 400-government phase-3 chunk at `--concurrency 32` produced zero new rows in `wo337_targeted.csv` for 9+ minutes, with the process's own CPU time barely moving — not a network stall (plain-HTTP fetches are bounded by `GOV_TIMEOUT`), consistent with several concurrent `confidence=none` governments all triggering rung 2's headless render at once and jamming on this machine's resources. `fetch_headless_sync()`'s `page.goto(..., timeout=15000)` and `page.wait_for_timeout(3000)` are both bounded, but `sync_playwright()`'s own startup and `p.chromium.launch()` are not — nothing times out a hung browser launch.
@@ -2717,7 +2644,7 @@ of human step they need.
   - **Issue**: WO-303 (2026-09-12) built the matching primitive this entry originally asked for (`find_governing_body_playlist()`/`yt_dlp_channel_playlists_mode()` in `scripts/wo235_channel_pilot.py`) and confirmed it against both real channels: Watertown city, SD's real by-year "City Council" family (found correctly, disambiguated from 3 sibling real per-body playlist families on the same channel) and Groton city, CT's real channel (correctly declines rather than guessing — its only `("town council",)`-matching playlists are 3 real "Meet the Candidates" forums, not meetings; its actual governing body, a Representative Town Meeting, has no single "the meetings" playlist at all, confirmed against a real 50-playlist capture). What's NOT built: nothing calls this helper automatically yet (a human still has to supply `body_keywords` and decide whether to invoke `--playlists` mode when a flat Videos-tab scan comes back empty), and Groton's own real meetings video genuinely has not been found by any method so far.
   - **Impact**: Watertown's gap is now closable in one more step (wire the helper into `discover_one()`'s existing empty-listing path); Groton's is not — its real governing body may not publish full RTM meetings to this channel at all, a data gap this WO's own code fix can't close.
   - **Next action**: wire `yt_dlp_channel_playlists_mode()` into `discover_one()`'s existing flow, triggered when the flat Videos-tab listing comes back with zero real candidates; body_keywords would need to come from the government's own recorded `meeting_body` or a small per-gov_kind default table (not yet built). For Groton specifically, check whether its real RTM meetings are published somewhere other than this YouTube channel before spending more time on the channel itself.
-  - **Constraint**: still only 2 real examples on file — don't build an automatic body_keywords-inference step from just these two until a third example confirms the shape.
+  - **Constraint**: still only 2 real examples on file — don't build an automatic body_keywords-inference step from just these two until a third example confirms the shape. **Re-derived WO-939 (2026-09-21), out of scope for that WO's sweep-robustness work**: `yt_dlp_channel_playlists_mode()` calls yt-dlp against a real YouTube channel listing — the same class of call CLAUDE.md's "YouTube is fetched only by the drip Mac" rule and `scripts/youtube_fetch_guard.py` exist to confine to the drip Mac. Wiring it into `discover_one()` needs that awareness (either only run this path from the drip Mac, or call `youtube_fetch_guard.install()` first so a wrong-machine run fails loudly instead of making the request) on top of the still-open 2-example constraint above — not a plain call-site fix.
   - **History**: `BACKLOG_DONE.md`'s WO-279 and WO-303 entries; `rtr-business/research/ENUMERATION_METHODS.md` §304.
 - **[NEEDS-AUDIT] Three real Kind-A finds from WO-258's hand-read gate, none minted or keyed anywhere yet: the New York State Board of Elections, the Early County, GA school district's own channel, and (part 2) Springfield, MA's School Committee.**
   - **Issue**: WO-258 (2026-09-11/12) found a real video wrongly resolved for three governments, all caught by the hand-read gate before any wrong page was created (no trust problem live). Orleans County, NY: the video is the NEW YORK STATE Board of Elections' own commissioners' meeting (`@NYSBOE`), a real state agency with no `gov_id` in this project's registry — same "ok to mint?" shape as WO-201's PennDOT/Upper Delaware Council entry above. Early County, GA: the video is the Early County SCHOOL SYSTEM's own channel (`@earlycountyschoolsystem1705`) — a real, different local government (a school district) that this project's national tables already cover as a type, just not looked up here. Springfield, MA (part 2, 2026-09-12): the candidate found on the CITY's row is the SPRINGFIELD SCHOOL COMMITTEE's own CivicClerk event — and the DIFFERENT video already recorded for Springfield city in `jurisdiction_coverage.csv` (from an earlier, unrelated sweep) lives on the same CivicClerk tenant, so it may have the identical problem and hasn't been checked.
@@ -5739,20 +5666,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: re-run a plain GET against the three hosts (see `rtr-business/research/wo255_not_reconfirmed.csv` for the exact hosts and reasons) next time coverage work touches these governments; add whichever re-confirm to `alternate_domains` following §158's write protocol. Never cross the Cloudflare challenge on Riverside's host — that's the standing policy above, not a thing to retry differently.
   - **History**: `BACKLOG_DONE.md`'s WO-255 entry; `rtr-business/research/wo255_not_reconfirmed.csv`.
 
-- **[NEEDS-AUDIT] A slow-trickling response can hang a sweep past every configured `requests` timeout, since `timeout=` bounds each read op, not the whole request.**
-  - **Issue**: found live, WO-322, 2026-09-12 — two domains (`cityofclaycenter.com`, `roselandgov.org`) hung 250-290+ seconds on every retry (concurrency 1 through 15, Internet Archive CDX healthy and unhealthy both tried), despite `wo273_recon.py`'s `polite_request()` passing an explicit `timeout=6`. A plain `curl` to the same homepage returned in under 2 seconds, so the domain itself isn't slow — something else in the recon pipeline (robots/sitemap fetch, or a redirect target) is. `requests`' `timeout` resets on each partial socket read rather than bounding total request duration, so a server that dribbles bytes slowly enough never trips it.
-  - **Impact**: any passive-discovery-v2 sweep can lose several minutes per affected domain; at scale (thousands of governments), a handful of these domains materially slows a chunked sweep and risks looking like a deadlock (it did, until traced).
-  - **Next action**: wrap the request in a real wall-clock timeout (a `concurrent.futures` call with `.result(timeout=N)`, or a watchdog thread that closes the underlying socket) rather than relying on `requests`' own `timeout=` parameter alone. WO-322 worked around this operationally with an external process-level watchdog (`wo322_run_chunk.sh`, kills the whole sweep process after a wall-clock deadline) rather than fixing the library call itself.
-  - **Constraint**: don't just raise the `timeout=` value — that makes the worst case slower without fixing the underlying gap.
-  - **History**: `BACKLOG_DONE.md`'s WO-322 entry; `rtr-business/research/ENUMERATION_METHODS.md` §334.
-
-- **[NEEDS-AUDIT] `generic_fallback.py`'s embedded-YouTube delegation makes a real YouTube network call during a sweep explicitly told to make none.**
-  - **Issue**: found live, WO-322, 2026-09-12 — a "no YouTube calls" sweep patched its own phase-3 targeted fetch to skip any youtube.com/youtu.be candidate URL, but a URL `detect_platform()` can't map to a named vendor host still routes to `GenericFallbackAssetFinder` (`platform_name = "unknown"`), whose `resolve()` scans the fetched page's own HTML for an embedded YouTube video id (`_find_youtube_video_id()`, a free, offline regex scan) and, if one is found, calls `YouTubeAssetFinder.resolve_video_id()` — a real network call. This is the same class of mistake WO-283 disclosed (`BACKLOG_DONE.md`'s WO-283 entry) recurring through a different code path: WO-283's own accidental calls came from its discovery pipeline's homepage fetch touching youtube.com URLs directly; WO-322's came from the *real resolve() pipeline itself*, on a plain government-domain page that merely embeds a video.
-  - **Impact**: any future sweep that hand-verifies a confirmed candidate through the real `resolve()` pipeline while under a "no YouTube calls" instruction can trip this the same way, with no warning — `resolve_diagnostic`-style scripts print `platform=unknown` or `platform=youtube` in their output, but nothing distinguishes "this call never touched YouTube" from "this call did" at the point of the call.
-  - **Next action**: give `GenericFallbackAssetFinder` (and/or `resolve()` generally) an opt-out flag that skips its YouTube-embed delegation, for callers operating under a YouTube-call restriction; or have it raise a distinct, catchable signal before making the network call so a caller can choose not to proceed.
-  - **Constraint**: the regex scan itself (`_find_youtube_video_id()`) is free/offline and should stay — only the follow-up `resolve_video_id()` call needs gating.
-  - **History**: `BACKLOG_DONE.md`'s WO-322 entry (found and disclosed the one real instance: Plainfield town, VT, withheld from ingest and recorded as an unverified `youtube_channel_leads.csv` lead instead); `rtr-business/research/ENUMERATION_METHODS.md` §334.
-
 - **[NEEDS-AUDIT] `cablecast.py` returns `segments=0` for a show whose own Cablecast API record says `hasCaptions: true`.**
   - **Issue**: found live, WO-322, 2026-09-12 — Orion charter Township, MI's Cablecast show (id 5821, `playback.orionontv.org`) has `"hasCaptions": true, "captionProvider": "CablecastCloudServices"` in its own `GET /cablecastapi/v1/shows/{id}` response, but `app/platforms/cablecast.py`'s `resolve()` still returned `segments=0` for the same show.
   - **Impact**: unmeasured how many other Cablecast tenants/shows carry the same `CablecastCloudServices` caption provider with real, fetchable captions this adapter isn't reading — this is the only confirmed instance so far.
@@ -5854,7 +5767,24 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Constraint**: don't assume a wall-clock `asyncio.wait_for()` wrapper
   is a real safety net against this class of bug — it only helps for a
   slow-but-cooperative (i.e., still awaiting) coroutine, not a truly
-  synchronous hang.
+  synchronous hang. **Re-derived WO-939 (2026-09-21)**: this WO built a
+  shared, thread-based wall-clock deadline (`scripts/sweep_deadline.py`'s
+  `run_with_deadline()`) for a different, sync-`requests`-call hang shape
+  (a slow-trickling response defeating `requests`' own per-read timeout —
+  see that entry above) and considered applying it here too. It doesn't
+  fit: `wo179_family_scale.py`'s own cap wraps an `aiohttp` coroutine
+  running inside a single-threaded asyncio event loop, and `run_with_
+  deadline()` would need that coroutine executing inside its own thread's
+  own event loop to bound it — a materially bigger change than a drop-in
+  wrap, and it would give up `aiohttp`'s connection-pool sharing across
+  that concurrency model for no real gain, since the actual complaint
+  here (a non-yielding CPU-bound hang) is what a thread-based deadline
+  *can* bound the wait on (same trade-off `run_with_deadline()`'s own
+  docstring documents: it stops the caller waiting, it does not kill the
+  hung work) — but doing that safely inside an asyncio program needs the
+  same subprocess isolation this entry's own "Next action" already calls
+  for, not a simpler swap. Left untouched; this entry's own conclusion
+  stands.
 - **History**: `BACKLOG_DONE.md`'s WO-179 entry has the full incident
   (root-cause isolation via `signal.alarm`, the exact regex, the fix).
 

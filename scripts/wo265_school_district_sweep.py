@@ -185,21 +185,10 @@ BROWSER_HEADERS = {
         "Chrome/151.0.0.0 Safari/537.36"
     ),
 }
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-]
+# WO-939: was this script's own local copy (missing WO-278's Radware/
+# ShieldSquare markers -- see scripts/challenge_markers.py's own
+# docstring for the full incident this consolidation closes).
+from scripts.challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
 
 def is_challenge(html_text: str) -> bool:

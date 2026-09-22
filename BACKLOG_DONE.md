@@ -1,5 +1,77 @@
 # Backlog — done
 
+## WO-939: Sweep scripts stop hanging forever and stop making YouTube calls by accident [Done 2026-09-21]
+
+**Why this ran.** Sweep scripts check many governments in one run. Three
+real problems kept showing up across them: (1) a bot-challenge marker
+list was copied into 9 different scripts, so a fix to one (a real
+Radware/ShieldSquare gap) never reached the other 8. (2) A slow website
+can make a sweep script wait forever — `requests`' own timeout only
+bounds one read at a time, not the whole call, so a website that sends
+back one byte per second never trips it. (3) A sweep script can
+accidentally call YouTube, which this repo is not allowed to do from any
+machine except the one dedicated "drip" Mac (see `CLAUDE.md`). This WO
+fixed all three, in one pull request, per `docs/BACKLOG_PHASES.md`'s
+Phase 2 plan.
+
+**What was built.**
+
+| Piece | What it does | Where |
+|---|---|---|
+| One shared marker list | `CHALLENGE_MARKERS`/`is_challenge()`, one copy instead of nine | `scripts/challenge_markers.py` (new) |
+| One shared wait-limit helper | `run_with_deadline()` runs a call on its own background thread and gives up waiting after a set number of seconds, even if the website never answers | `scripts/sweep_deadline.py` (new) |
+| One shared YouTube block | `youtube_resolve_guard()` / `resolve_via_platform(url, allow_youtube=False)` — stops a resolve call from reaching YouTube, no matter which adapter tries it | `app/platforms/base.py` |
+
+**Result: the 8 named backlog entries, what happened to each.**
+
+| Entry (short name) | Result |
+|---|---|
+| Marker list copied into 9 scripts | Fixed. All 9 now share one list. Count re-checked: still 9 today. |
+| `wo149`'s own separate, outdated hop-link finder | Fixed. `wo149` now uses the same, better hop-link finder as `wo147`. |
+| `wo191`'s wait-budget bug | Fixed. A new `init_headless_budget()` function does the reset in one call instead of two, so it can't be half-done by mistake. |
+| `wo321`'s phase-1 hang on one real website | Mitigated, not confirmed fixed. The most likely cause now has a real wait-limit. Not re-tested against the original hang. |
+| `wo325`'s missing YouTube block | Fixed. Same fix applied to all 9 similar hand-check scripts. |
+| Slow website can hang a sweep past its timeout | Fixed. Same wait-limit helper applied everywhere this pattern was found (4 places, not just 1). |
+| Per-government wait-limit that can't stop a real hang | Not changed. Re-checked: this is a different kind of code (it waits on many things at once) where our new fix doesn't fit. Explained in `BACKLOG.md`. |
+| Nothing calls the new YouTube-playlist helper | Left alone. It would make YouTube calls, so it needs the drip-Mac rule applied first — that's a separate, smaller job. Noted in `BACKLOG.md`. |
+
+**A ninth thing found and fixed along the way.** A second script,
+`wo273_targeted.py`, had the exact same slow-website bug as `wo273_recon.py`
+above — not one of the 8 named entries, but the same root cause, so it
+got the same fix. Its own BACKLOG entry (found by a different work order,
+WO-322) is folded into this one and removed.
+
+**Verification.**
+
+| Check | Result |
+|---|---|
+| New automated tests written | 30 (in 4 files: `test_base.py` additions, `test_challenge_markers.py`, `test_sweep_deadline.py`, `test_wo939_sweep_robustness.py`) |
+| Full test suite | All passed |
+| `ruff check` | Clean |
+| `ruff format --check` | Clean on touched files |
+| Real test: does the wait-limit actually stop a hang? | Yes — tested against a fake slow website that answers 1 byte per second; the call gave up after 3 seconds as configured |
+| Real bug found while testing | An early version of the wait-limit helper left a background thread running that was NOT marked as a "daemon" thread — meaning the whole script would refuse to exit even after giving up on the hung call. Fixed before shipping; a test now pins this. |
+
+**Caution.** The wait-limit helper stops the *script* from waiting
+forever — it does not, and cannot, force-stop the hung website call
+itself. That call keeps running in the background, unseen, until it
+finishes or the whole script process ends. This is the same known
+limitation another script (`wo337_targeted.py`) already accepted for a
+different kind of hang. A true kill would need a separate process, which
+is a bigger job, not done here.
+
+**Recommendation.** No action needed from Ryan. This is a scripts +
+resolver code change with no user-facing behavior change — nothing to
+watch on the live site.
+
+**Deploy status.** This PR touches `app/platforms/base.py` and
+`app/platforms/passive_verify.py` (the resolver service), plus several
+files under `scripts/`. Once merged to `main`, the `scripts/` changes
+need no deploy — they only run by hand. The `app/platforms/` change does
+need a deploy to reach production, same as any other resolver code
+change, though nothing here is urgent (it only affects sweep-script
+behavior, not what a site visitor sees).
+
 ## WO-947: Full Context entries appear on their government's hub and their state page [Done 2026-09-21]
 
 **Why this ran.** Ryan, reviewing a Full Context entry page: "a page like

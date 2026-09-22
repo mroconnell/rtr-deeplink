@@ -2,14 +2,19 @@ import pytest
 
 from app.platforms import base
 from app.platforms.base import (
+    AssetFinder,
     CIVICPLUS_CORPORATE_HOSTS,
     CORPORATE_HOSTS_BY_PLATFORM,
     UnsupportedPlatformError,
+    YouTubeResolveBlocked,
     detect_platform,
     find_platform_link,
     get_finder,
     register,
+    resolve_via_platform,
+    youtube_resolve_guard,
 )
+from app.platforms.models import ResolvedMeeting
 
 from conftest import load_fixture
 
@@ -521,3 +526,146 @@ def test_find_platform_link_returns_none_when_only_a_granicus_marketing_link_exi
         'opencities/">Powered by OpenCities</a></body></html>'
     )
     assert find_platform_link(html, "https://www.example-gov.org/calendar") is None
+
+
+# --- WO-939: resolve_via_platform(allow_youtube=False) / youtube_resolve_guard() ---
+#
+# Generalized from app/platforms/passive_verify.py's own private
+# _YouTubeResolveBlocked/_youtube_resolve_guard() (built for WO-325's real
+# a2gov.org Legistar->YouTube incident) into a shared, reusable mechanism.
+# These tests reuse that module's two real call shapes -- delegation via
+# YouTubeAssetFinder.resolve() (resolve_via_platform()'s own path) and via
+# YouTubeAssetFinder.resolve_video_id() (legistar.py/primegov.py's direct
+# call) -- rather than reinventing a third, unconfirmed one. Network-free:
+# the guard raises before any real yt-dlp fetch is attempted.
+
+
+def test_resolve_via_platform_blocks_youtube_dot_resolve_delegation(monkeypatch):
+    from app.platforms.youtube import YouTubeAssetFinder
+
+    youtube_already_registered = "youtube" in base._REGISTRY
+    if not youtube_already_registered:
+        register(YouTubeAssetFinder())
+
+    class _DelegatingFakeFinder(AssetFinder):
+        platform_name = "wo939_fake_delegating"
+
+        async def resolve(self, url: str) -> ResolvedMeeting:
+            return await get_finder("youtube").resolve(
+                "https://www.youtube.com/watch?v=wo939fake"
+            )
+
+    register(_DelegatingFakeFinder())
+    # detect_platform() only recognizes real vendor host shapes -- a fake
+    # test platform has no URL shape to give it, so point it at this
+    # finder directly, the way a real caller's own registered platform
+    # would be found from a real tenant URL.
+    monkeypatch.setattr(base, "detect_platform", lambda url: "wo939_fake_delegating")
+    try:
+        original_resolve = YouTubeAssetFinder.resolve
+        import asyncio
+
+        with pytest.raises(YouTubeResolveBlocked):
+            asyncio.run(
+                resolve_via_platform(
+                    "https://example.test/wo939_fake_delegating/meeting",
+                    allow_youtube=False,
+                )
+            )
+        # Scoped, not permanent: restored even though the call raised.
+        assert YouTubeAssetFinder.resolve is original_resolve
+    finally:
+        base._REGISTRY.pop("wo939_fake_delegating", None)
+        if not youtube_already_registered:
+            base._REGISTRY.pop("youtube", None)
+
+
+def test_resolve_via_platform_blocks_resolve_video_id_delegation(monkeypatch):
+    # legistar.py/primegov.py's shape: calls YouTubeAssetFinder.
+    # resolve_video_id() directly, never going through .resolve() at all.
+    from app.platforms.youtube import YouTubeAssetFinder
+
+    class _LegistarShapedFakeFinder(AssetFinder):
+        platform_name = "wo939_fake_legistar_shaped"
+
+        async def resolve(self, url: str) -> ResolvedMeeting:
+            return await YouTubeAssetFinder.resolve_video_id(
+                "wo939fake", source_url=url
+            )
+
+    register(_LegistarShapedFakeFinder())
+    monkeypatch.setattr(
+        base, "detect_platform", lambda url: "wo939_fake_legistar_shaped"
+    )
+    try:
+        import asyncio
+
+        with pytest.raises(YouTubeResolveBlocked):
+            asyncio.run(
+                resolve_via_platform(
+                    "https://example.test/wo939_fake_legistar_shaped/meeting",
+                    allow_youtube=False,
+                )
+            )
+    finally:
+        base._REGISTRY.pop("wo939_fake_legistar_shaped", None)
+
+
+def test_resolve_via_platform_default_allow_youtube_true_is_unaffected(monkeypatch):
+    # Default behavior (every existing caller) must be exactly unchanged:
+    # a finder that doesn't touch YouTube at all still resolves normally.
+    class _PlainFakeFinder(AssetFinder):
+        platform_name = "wo939_fake_plain"
+
+        async def resolve(self, url: str) -> ResolvedMeeting:
+            return ResolvedMeeting(platform=self.platform_name, source_url=url)
+
+    register(_PlainFakeFinder())
+    monkeypatch.setattr(base, "detect_platform", lambda url: "wo939_fake_plain")
+    try:
+        import asyncio
+
+        result = asyncio.run(
+            resolve_via_platform("https://example.test/wo939_fake_plain/meeting")
+        )
+        assert result.platform == "wo939_fake_plain"
+    finally:
+        base._REGISTRY.pop("wo939_fake_plain", None)
+
+
+def test_youtube_resolve_guard_restores_originals_on_success_too():
+    from app.platforms.youtube import YouTubeAssetFinder
+
+    original_resolve = YouTubeAssetFinder.resolve
+    original_resolve_video_id_func = YouTubeAssetFinder.resolve_video_id.__func__
+    with youtube_resolve_guard():
+        assert YouTubeAssetFinder.resolve is not original_resolve
+        assert YouTubeAssetFinder.resolve_video_id.__func__ is not (
+            original_resolve_video_id_func
+        )
+    assert YouTubeAssetFinder.resolve is original_resolve
+    # classmethod access creates a fresh bound-method object each time, so
+    # comparing the underlying function is the stable check here -- `is`
+    # on the bound method itself would spuriously fail even when nothing
+    # was left patched.
+    assert (
+        YouTubeAssetFinder.resolve_video_id.__func__ is original_resolve_video_id_func
+    )
+
+
+def test_youtube_resolve_guard_does_not_block_a_non_youtube_url():
+    # Same WO-348 shape passive_verify.py's own guard already handles: a
+    # caller passing a non-youtube.com URL straight to
+    # YouTubeAssetFinder.resolve() must get THAT function's own honest
+    # error, not a YouTubeResolveBlocked -- the guard only blocks a call
+    # that is genuinely about to fetch a real youtube.com/youtu.be URL.
+    from app.platforms.youtube import YouTubeAssetFinder
+
+    with youtube_resolve_guard():
+        with pytest.raises(Exception) as excinfo:
+            import asyncio
+
+            asyncio.run(
+                YouTubeAssetFinder().resolve("https://example.test/not-youtube")
+            )
+        assert not isinstance(excinfo.value, YouTubeResolveBlocked)

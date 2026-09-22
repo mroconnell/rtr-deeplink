@@ -120,6 +120,7 @@ from wo273_recon import (  # noqa: E402
     is_challenge,
     vendor_family_for_url,
 )
+from sweep_deadline import run_with_deadline  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -152,6 +153,18 @@ FIRST_PARTY_PROBE_PATHS = [
 ]
 GOV_TIMEOUT = 10  # 3s connect target / 10s read, one retry at most (brief)
 CDX_EXACT_TIMEOUT = 6  # short, single attempt -- see module docstring
+
+# WO-939: real wall-clock cap on top of GOV_TIMEOUT's per-read bound, same
+# gap and same fix as wo273_recon.py's GOV_REQUEST_WALL_CLOCK_DEADLINE
+# (see that constant's own comment, and scripts/sweep_deadline.py's
+# module docstring) -- confirmed live by the same WO-322 incident this
+# entry's siblings cite. `wo337_targeted.py`'s own `capped_polite_fetch()`
+# already worked around this in ITS OWN copy (a byte-cap + hand-rolled
+# streaming wall-clock loop) rather than editing this shared module,
+# since other WOs were running against it concurrently at the time --
+# this is the real, shared-module fix that comment said still belonged
+# here.
+GOV_REQUEST_WALL_CLOCK_DEADLINE = 25
 
 # WO-278 catch-all guard.
 MIN_CONFIRM_BODY_BYTES = 800  # same floor url_shape_mining.md's Stage 2 uses
@@ -292,14 +305,21 @@ def try_wayback_archived_body(url: str) -> tuple:
 def polite_fetch(url: str, method: str = "GET", **kwargs):
     key = vendor_family_for_url(url)
     allow_redirects = kwargs.pop("allow_redirects", True)
+    # WO-939: run_with_deadline() wraps requests.request() itself, inside
+    # wait_and_request()'s per-vendor-family lock -- so a hung response
+    # releases that lock after GOV_REQUEST_WALL_CLOCK_DEADLINE instead of
+    # holding it (wedging every OTHER candidate sharing that vendor
+    # family) forever. See GOV_REQUEST_WALL_CLOCK_DEADLINE's own comment.
     return RATE_LIMITER.wait_and_request(
         key,
+        run_with_deadline,
         requests.request,
         method,
         url,
         headers=HEADERS,
         timeout=GOV_TIMEOUT,
         allow_redirects=allow_redirects,
+        deadline_seconds=GOV_REQUEST_WALL_CLOCK_DEADLINE,
         **kwargs,
     )
 

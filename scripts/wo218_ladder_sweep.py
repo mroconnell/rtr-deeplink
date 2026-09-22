@@ -45,13 +45,16 @@ wo191.REPORT_CSV = RESEARCH_DIR / "wo218_ladder_report.csv"
 wo191.DISCOVERY_SEEDS_CSV = RESEARCH_DIR / "wo218_discovery_seeds.csv"
 wo191.HOST_ACCESS_MODES_CSV = RESEARCH_DIR / "wo218_host_access_modes.csv"
 wo191.TIER3_PENDING_CSV = RESEARCH_DIR / "wo218_tier3_pending.csv"
-wo191.HEADLESS_BUDGET_JSON = RESEARCH_DIR / "wo218_headless_budget.json"
-wo191.HEADLESS_BUDGET_TOTAL = 150  # per WO-218's brief
-# _headless_used was already computed at import time from wo191's OWN
-# budget file (a stale, unrelated cumulative count) before the override
-# above took effect -- re-derive it now from WO-218's own file so this
-# run's budget isn't contaminated by a different WO's tally.
-wo191._headless_used = wo191._load_headless_used()
+# WO-939: was two separate steps (set HEADLESS_BUDGET_JSON, then
+# separately re-run wo191._load_headless_used() by hand) -- wo191's own
+# _headless_used used to be computed at import time from wo191's OWN
+# budget file (a stale, unrelated cumulative count), and forgetting the
+# second step silently inherited it. init_headless_budget() does both in
+# one call now; see its own docstring in wo191_access_ladder_sweep.py
+# for the real incident (this WO's own pilot run) this replaced.
+wo191.init_headless_budget(
+    RESEARCH_DIR / "wo218_headless_budget.json", 150
+)  # 150 per WO-218's brief
 
 # County-specific wrong-domain-mapping guard (WO-149's pattern).
 wo134.JURISDICTION_CHECK_HOOK = wo149.jurisdiction_check_hook
