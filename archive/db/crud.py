@@ -2317,7 +2317,13 @@ async def get_transcription_queue_summary() -> dict:
     test suite (dialect-gated to None there by design), so this specific
     mistake wasn't caught until a real request hit it -- worth a live
     curl re-check after any future change here, not just `pytest`.
+
+    `stuck_jobs` (WO-936) is list_stuck_transcription_jobs()'s own,
+    separate session -- bounded by MAX_CONCURRENT_TRANSCRIPTION_JOBS (15)
+    in practice, since only an "in_progress" job can ever match, so this
+    stays cheap alongside everything else here.
     """
+    stuck_jobs = await list_stuck_transcription_jobs()
     async with async_session() as session:
         active_rows = (
             await session.execute(
@@ -2392,6 +2398,7 @@ async def get_transcription_queue_summary() -> dict:
             "jobs_completed_last_24h": jobs_completed_last_24h,
             "segments_added_last_24h": segments_added_last_24h,
             "backlog_no_transcript": backlog_no_transcript,
+            "stuck_jobs": stuck_jobs,
         }
 
 
@@ -8939,6 +8946,29 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 
+# WO-936: the shared "this job is stuck" threshold -- used both to flag a
+# job in list_stuck_transcription_jobs() (surfaced in the daily worker
+# report) and, in worker/main.py, to cap how long a live process may keep
+# refreshing its own claim (see CLAIM_HEARTBEAT_SECONDS' own comment
+# there). One number, one meaning, used both places on purpose: a job
+# whose heartbeat stops here is exactly a job this report would already
+# be calling out, so capping the heartbeat at this threshold does not add
+# a new risk, it just lets STALE_CLAIM_AFTER's existing reclaim path
+# finally reach a case it couldn't reach before (WO-57 made the heartbeat
+# unconditional with no ceiling at all).
+#
+# Sized with a wide margin over any legitimate per-chunk pace, the same
+# standard WO-57's own backlog entry sets: job 911 (Detroit, 21 chunks,
+# see that entry) was the slowest real chunk ever measured, at ~15
+# min/chunk on the production pool -- itself already 3x STALE_CLAIM_AFTER.
+# 3 hours clears that by 12x. A wide margin matters here specifically
+# because reclaiming a job that is NOT actually stuck reopens the exact
+# duplicate-segment corruption WO-57 shipped to stop (two workers both
+# reporting success for the same chunk) -- nothing legitimate observed
+# has ever run remotely close to this, so in practice this only ever
+# fires on a job that is genuinely wedged or OOM-looping.
+STUCK_JOB_THRESHOLD = timedelta(hours=3)
+
 # Escalating-backoff retry for a real user-submitted (PRIORITY_MEDIUM+) job
 # that's exhausted MAX_CONSECUTIVE_CHUNK_FAILURES -- added 2026-08-19 after
 # a real case (job 256, Redwood City CA, requested by an early user)
@@ -10133,6 +10163,12 @@ async def report_chunk_result(
             return {"error": "job_not_found"}
 
         job.claimed_at = None  # release the claim regardless of outcome
+        # WO-936: real activity happened (a chunk was attempted and this
+        # call is reporting its outcome), whether it succeeded or failed
+        # -- see TranscriptionJob.last_progress_at's own docstring for why
+        # this, and only this, is what list_stuck_transcription_jobs()
+        # trusts as "not stuck".
+        job.last_progress_at = datetime.now(timezone.utc)
 
         if not success:
             partial_version_id = None
@@ -10239,6 +10275,99 @@ async def report_chunk_result(
             "chunks_completed": job.chunks_completed,
             "total_chunks": job.total_chunks,
         }
+
+
+async def list_stuck_transcription_jobs(
+    *, threshold: timedelta = STUCK_JOB_THRESHOLD
+) -> list[dict]:
+    """A claimed job (status "in_progress") that has reported neither a
+    finished nor a failed chunk in `threshold` -- the shared detector for
+    two real, previously-invisible failure shapes (BACKLOG.md /
+    BACKLOG_DONE.md, WO-936):
+
+    1. **An OOM-killed chunk.** Render kills the worker process before
+       report_chunk_result() ever runs, so nothing is written anywhere --
+       claimed_at simply goes stale after STALE_CLAIM_AFTER and the same
+       chunk is silently re-claimed, as if nothing happened. If the OOM
+       is deterministic for that source, this loops: job 1419
+       (2026-09-02) OOMed roughly 40 times over 3.5 hours, invisible to
+       every check that existed at the time.
+    2. **A wedged transcription call.** worker/main.py's heartbeat
+       refreshes claimed_at every 60s regardless of real progress
+       (WO-57), so a hung faster-whisper call (unbounded -- see
+       CLAIM_HEARTBEAT_SECONDS' own comment on why there's no timeout on
+       that half) keeps claim_next_chunk() from ever reclaiming the job,
+       pinning it in_progress with no error and no failure email.
+
+    Both look identical from here: the job stays "in_progress" and its
+    own last real activity (last_progress_at, set only inside
+    report_chunk_result() -- never by the heartbeat, which is the whole
+    point) stops moving. Coalesced with created_at because the column is
+    nullable (added by migration after real jobs already existed) -- a
+    job whose column is still unset from before that migration is read
+    as "no progress since it was created", not as having no age at all.
+
+    Deliberately narrow to status == "in_progress" (a claim actually held
+    right now). A "queued"/"retry_scheduled" job sitting a long time
+    while the whole pool is idle is a different, already-covered signal
+    -- archive/utils/email.py's send_worker_daily_report() already warns
+    when cumulative_chunks_completed_all_time is flat while active_jobs
+    > 0 (2026-08-28), which catches the whole pool going dead. This
+    catches the complementary case: one job wedged while the rest of the
+    pool keeps moving fine, which that pool-wide check cannot see (named
+    explicitly as the same blind spot in BACKLOG.md's WO-57 heartbeat
+    entry).
+    """
+    cutoff = datetime.now(timezone.utc) - threshold
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.chunks_completed,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.claimed_at,
+                    TranscriptionJob.last_progress_at,
+                    TranscriptionJob.created_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(
+                    TranscriptionJob.status == "in_progress",
+                    func.coalesce(
+                        TranscriptionJob.last_progress_at,
+                        TranscriptionJob.created_at,
+                    )
+                    < cutoff,
+                )
+                .order_by(TranscriptionJob.id.asc())
+            )
+        ).all()
+
+    now = datetime.now(timezone.utc)
+    stuck = []
+    for r in rows:
+        last_progress = _aware(r.last_progress_at or r.created_at)
+        stuck.append(
+            {
+                "job_id": r.id,
+                "slug": r.slug,
+                "title": r.title,
+                "platform": r.platform,
+                "source_url": r.source_url_normalized,
+                "chunks_completed": r.chunks_completed,
+                "total_chunks": r.total_chunks,
+                "claimed_at": r.claimed_at.isoformat() if r.claimed_at else None,
+                "last_progress_at": r.last_progress_at.isoformat()
+                if r.last_progress_at
+                else None,
+                "stalled_for": _duration_words((now - last_progress).total_seconds()),
+            }
+        )
+    return stuck
 
 
 def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:

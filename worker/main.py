@@ -283,15 +283,58 @@ async def maybe_generate_auto_job() -> bool:
 # somebody else while this process is still working on it.
 CLAIM_HEARTBEAT_SECONDS = 60
 
+# WO-57 made this heartbeat unconditional -- a working worker refreshes
+# its claim "for as long as this genuinely runs" -- specifically because
+# ffmpeg extraction is bounded (2x _SUBPROCESS_TIMEOUT_SECONDS) but
+# faster-whisper transcription is not: engine.transcribe_chunk() ->
+# asyncio.to_thread(self._transcribe_sync, ...)
+# (worker/transcription_engine.py) has no wait_for and no timeout. That
+# was deliberate (a legitimately slow chunk must never be reclaimed out
+# from under its own worker, see tests/test_claim_heartbeat.py), but it
+# also meant nothing bounded a *wedged* call -- one that hangs forever --
+# so it could pin a job in_progress with no error and no failure email
+# (BACKLOG.md's WO-57 heartbeat entry, WO-936).
+#
+# crud.STUCK_JOB_THRESHOLD is the fix: past that much time with no chunk
+# finished, _heartbeat_loop() below stops refreshing so STALE_CLAIM_AFTER
+# can finally reclaim the job. It reuses the SAME threshold
+# crud.list_stuck_transcription_jobs() uses to flag a job in the daily
+# report -- see that constant's own comment in archive/db/crud.py for why
+# one number sized with a wide margin over any real per-chunk pace (job
+# 911, ~15 min/chunk, the slowest ever measured) makes this safe rather
+# than reopening WO-57's double-claim corruption: nothing legitimate has
+# ever run remotely close to it, so this only ever fires on a job that is
+# genuinely wedged or OOM-looping. This does NOT cancel the stuck
+# transcription call itself (asyncio.to_thread can't be cancelled -- the
+# thread and its loaded model leak until the process is redeployed) --
+# it only stops protecting the claim, which is the cheap, safe half.
+
 
 async def _heartbeat_loop(job_id: int) -> None:
     """Refresh this job's claim until cancelled. Never raises out: a
     failed heartbeat is worth a log line, but it must not take down the
     chunk that is otherwise going fine -- the worst case is the claim
     going stale, which is a recoverable state the system already
-    handles."""
+    handles.
+
+    Capped at crud.STUCK_JOB_THRESHOLD (WO-936) -- see that module-level
+    comment above for why stopping here, past that ceiling, is safe
+    rather than a regression of WO-57's own fix.
+    """
+    started = time.monotonic()
+    max_lifetime_seconds = crud.STUCK_JOB_THRESHOLD.total_seconds()
     while True:
         await asyncio.sleep(CLAIM_HEARTBEAT_SECONDS)
+        if time.monotonic() - started >= max_lifetime_seconds:
+            logger.warning(
+                "Job %s: heartbeat reached its %.0fs ceiling with no chunk "
+                "finished or failed yet -- stopping so the claim can go "
+                "stale and be reclaimed instead of pinning this job "
+                "forever (see crud.STUCK_JOB_THRESHOLD)",
+                job_id,
+                max_lifetime_seconds,
+            )
+            return
         try:
             if not await crud.heartbeat_claim(job_id):
                 logger.info(

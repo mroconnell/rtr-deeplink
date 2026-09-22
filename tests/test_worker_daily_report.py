@@ -166,10 +166,12 @@ def test_transcription_queue_stats_route_returns_expected_shape():
         "segments_added_last_24h",
         "backlog_no_transcript",
         "tier3_queue_remaining",
+        "stuck_jobs",
     ):
         assert key in body
     assert isinstance(body["tier3_queue_remaining"], int)
     assert body["tier3_queue_remaining"] >= 0
+    assert isinstance(body["stuck_jobs"], list)
 
 
 def test_send_worker_daily_report_route_requires_token():
@@ -544,6 +546,102 @@ async def test_daily_report_no_warning_when_no_active_jobs(monkeypatch):
         previous={"cumulative_chunks_completed": 4028},
     )
     assert "stalled or dead" not in captured["html"]
+
+
+# --- WO-936: the stuck-job section -----------------------------------------
+#
+# Separate from the "chunks flat" warning above: that one catches the
+# whole worker pool going dead. This one catches a single job wedged (an
+# OOM-killed chunk, a heartbeat with no ceiling -- see
+# crud.list_stuck_transcription_jobs()'s own docstring) while the rest of
+# the pool keeps completing chunks normally, which the pool-wide check
+# cannot see at all.
+
+
+def _stuck_job(
+    job_id=911, *, slug="detroit-mi", title="City Council", platform="granicus"
+):
+    return {
+        "job_id": job_id,
+        "slug": slug,
+        "title": title,
+        "platform": platform,
+        "source_url": "https://example.granicus.com/player/clip/911",
+        "chunks_completed": 7,
+        "total_chunks": 21,
+        "claimed_at": "2026-09-21T00:00:00+00:00",
+        "last_progress_at": "2026-09-20T18:00:00+00:00",
+        "stalled_for": "6 hours",
+    }
+
+
+async def test_daily_report_calls_out_a_stuck_job(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    summary = _summary(active_jobs=10, cumulative_chunks=4100)
+    summary["stuck_jobs"] = [_stuck_job()]
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=summary,
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    html = captured["html"]
+    assert "Stuck jobs" in html
+    assert "stalled" in html.lower()
+    assert "detroit-mi" in html
+    assert "7/21" in html
+    assert "6 hours" in html
+    assert "job 911" in html
+
+
+async def test_daily_report_no_stuck_section_when_none_are_stuck(monkeypatch):
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    summary = _summary(active_jobs=10, cumulative_chunks=4100)
+    summary["stuck_jobs"] = []
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=summary,
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    assert "Stuck jobs" not in captured["html"]
+
+
+async def test_daily_report_stuck_section_omitted_when_summary_predates_the_key(
+    monkeypatch,
+):
+    """Older callers' hand-built summary dicts (and this file's own
+    _summary() helper, used by every other test above) have no
+    "stuck_jobs" key at all -- must default to "none", not raise."""
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=_summary(active_jobs=10, cumulative_chunks=4100),
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    assert "Stuck jobs" not in captured["html"]
 
 
 # --- WO-66 residual: tier3_queue_remaining sourced from the database ------
