@@ -1,5 +1,62 @@
 # Backlog — done
 
+## WO-1001: the Full Context RSS item link points at the post, not the meeting [Done 2026-09-21]
+
+**Why this ran.** `BACKLOG.md` had an open entry: the Full Context RSS
+feed's `<item><link>` pointed at the entry's meeting deep link
+(`/m/{slug}?t={seconds}`), not the entry's own permalink
+(`/context/{id}-{slug}`, slugged in WO-946). The entry framed this as an
+open semantics question — what "the URL for this item" should mean to an
+RSS subscriber — left for Ryan to decide, not a code change to make
+unasked. He's now decided: the link should be the post's own page.
+
+**What changed.** `archive/templates/context_feed.xml.jinja`:
+
+| Field | Before | After |
+|---|---|---|
+| `<item><link>` | The meeting deep link, `{base_url}{entry.deep_link}` (falling back to `/context` when there was no meeting) | The entry's own permalink, `{base_url}{entry.permalink}` — always present on every entry (see `crud._context_entry_dict()`), so the fallback is no longer needed |
+| `<guid>` | `rtr-context-{entry.id}`, `isPermaLink="false"` | Unchanged, on purpose — readers key on it to dedupe already-seen items; changing it would re-deliver every item as new |
+| `<description>` | Summary + `" Original post: {social_url}"` | Same, plus one plain sentence carrying the old `<link>` target forward: `" Watch the full meeting from {timestamp_label}: {base_url}{deep_link}"` (the "from …" clause only appears when the entry has a timestamp) — so a reader who only sees the feed still gets to the recording, the way the old `<link>` gave them |
+| `<atom:link rel="self">` | Already present | Untouched — already there, no change needed |
+
+No route change: `archive/main.py`'s `/context/feed.xml` already passes
+each entry's full `_context_entry_dict()` shape (`permalink`, `deep_link`,
+`timestamp_label` all included), so this was a template-only fix.
+
+**Verification.** `tests/test_context_pages.py`: reworked
+`test_context_feed_xml_link_is_absolute_deep_link` into
+`test_context_feed_xml_link_is_absolute_permalink` (asserts `<link>` is
+the absolute permalink AND that the description now carries the "Watch
+the full meeting from …" sentence with the deep link), and added
+`test_context_feed_xml_guid_is_unchanged_by_the_link_fix` and
+`test_context_feed_xml_untitled_entry_link_uses_jurisdiction_and_title_
+slug` (an entry with no headline still gets a real, non-bare-id permalink
+in `<link>`, built from the matched meeting's jurisdiction + title). The
+existing ampersand/angle-bracket and headline-title tests were re-run
+unchanged to confirm the feed still parses.
+
+| Gate | Result |
+|---|---|
+| `tests/test_context_*.py tests/test_feed.py` | **250 passed** |
+| Full suite (`python -m pytest`) | **4885 passed, 16 skipped, 4 xfailed, 0 failed** |
+| `ruff check`/`ruff format --check` (files touched: `tests/test_context_pages.py`) | Both clean |
+| `alembic check` (both services) | N/A — no migration, no schema change |
+| `node --test tests_js/*.test.js` (`npm test`) | **81 passed** |
+| `scripts/check_backlog_done_headings.py --base-ref origin/main` | Passed, with the expected warning that the removed `BACKLOG.md` title now lives here instead |
+
+**Caution.** The feed is still below `CONTEXT_MIN_INDEXABLE` and
+`noindex`'d today (unchanged by this WO), so this has no live subscriber
+impact yet — it's correct ahead of the feed actually being indexed.
+`archive/main.py`'s `/context/feed.xml` route was not touched; if a
+future change to `_context_entry_dict()` ever makes `permalink` anything
+other than unconditionally present, the template's `<link>` would need a
+fallback again the way `deep_link`'s did.
+
+**Docs.** `README.md`'s "Full Context feed" section, "Sitemap and RSS"
+paragraph: rewritten to describe the new `<link>`/`<description>`
+behavior instead of the old "RSS feed is untouched" line. `BACKLOG.md`:
+the open entry removed (it's done), TOC rebuilt.
+
 ## WO-938: Adapter hardening — one typed resolve error, one shared decode helper, one listing-to-newest-meeting helper [Done 2026-09-21]
 
 **Why this ran.** Several adapters let a raw Python error (a decode
