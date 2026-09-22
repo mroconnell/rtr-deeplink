@@ -6836,3 +6836,5 @@ https://sg001-harmony.sliq.net/00304/Harmony/en/PowerBrowser/PowerBrowserV3/2026
 https://sg001-harmony.sliq.net/00304/Harmony/en/PowerBrowser/PowerBrowserV3/20260908/-1/21645,sliq_harmony,hls-master+variant,4500.06,,,1,accept,,0.24,2026-09-22T16:08:42+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00328/Harmony/en/PowerBrowser/PowerBrowserV3/20260908/-1/1045,sliq_harmony,hls-master+variant,625.36,,,1,accept,,0.34,2026-09-22T16:08:46+00:00,bulk_ingest,0
 https://sg001-harmony.sliq.net/00328/Harmony/en/PowerBrowser/PowerBrowserV3/20260902/-1/1044,sliq_harmony,hls-master+variant,735.67,,,1,accept,,0.30,2026-09-22T16:08:50+00:00,bulk_ingest,0
+https://tuscaloosaal.suiteonemedia.com/event/?id=11029,suiteone,suiteone-resolve,,,,0,reject-dead,SuiteOne resolve raised: Could not find a SuiteOne tenant/event id in URL: https://s3.amazonaws.com/suiteone.tuscaloosaal.videofiles/8683a196.mp4,0.00,2026-09-22T16:38:06+00:00,ryan-coverage-triage-2026-09-22,0
+https://tuscaloosaal.suiteonemedia.com/event/?id=11029,suiteone,head+ffprobe,4696.07,2025-07-30,672963232,1,accept,,2.64,2026-09-22T16:39:33+00:00,ryan-coverage-triage-2026-09-22,0
