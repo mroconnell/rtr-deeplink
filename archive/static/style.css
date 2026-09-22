@@ -2343,3 +2343,21 @@ h1.context-headline {
   margin-top: 0.75rem;
   font-size: 0.9rem;
 }
+
+/* meeting_view (WO-1002) -- the same section, included on /m/{slug}
+   itself. Sits inside #videoColumn's sticky box, so it's narrower than
+   the hub/state placement; the "at M:SS" link is the one piece unique
+   to this view (the hub/state view has nowhere sensible to jump to,
+   since it spans many meetings). */
+.context-mentions-meeting {
+  margin-top: 1.25rem;
+}
+.context-mentions-timestamp {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.context-mentions-timestamp:hover,
+.context-mentions-timestamp:focus {
+  text-decoration: underline;
+}

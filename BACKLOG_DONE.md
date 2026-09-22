@@ -1,5 +1,84 @@
 # Backlog — done
 
+## WO-1003: A jurisdiction hub is also indexable via a published Full Context entry [Done 2026-09-21]
+
+**Why this ran.** WO-947 put Full Context entries on their government's
+`/j/{hub_slug}` hub page, but left the hub's own `noindex` decision
+alone. That decision only counted meeting pages
+(`JURISDICTION_HUB_MIN_INDEXABLE`, currently 2) and had no idea an entry
+existed — flagged in WO-947's own entry below as a gap for Ryan to
+decide on. Ryan's answer: count entries. A hub with one meeting and a
+real, hand-written entry should not be hidden from Google — that entry
+is unique content, not a near-duplicate of the one meeting's own page.
+
+**What was built.** A hub is indexable when it clears the existing
+meeting-count threshold **OR** it has at least one *published* Full
+Context entry.
+
+| Piece | What it does |
+|---|---|
+| `crud.get_jurisdiction_hub_data()` | `indexable` is now `len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE or has_context_entry`. On the bare view, `has_context_entry` reuses the "Seen on social media" list WO-947 already fetches — no new query. On a `?topic=` view (which skips that list, since entries aren't topic-tagged), a small new existence-only query (`crud._context_entry_exists_isolated()`) answers the same question, so a topic view of a hub reaches the identical `noindex` verdict as the bare view of the same hub. |
+| `crud.list_indexable_hub_entries()` (sitemap.xml's `/j/` list) | Same OR, applied to the same page-membership rule. One new query for the WHOLE sitemap build (`crud._context_hub_membership_ids()` — every `gov_id`/page `id` with a published entry), checked in Python against each hub group's own ids rather than one query per hub. |
+| Both places | Reuse `_hub_page_condition()`'s exact two-arm membership rule (a keyed page by `gov_id`, an adopted un-keyed page by its own id) — never a jurisdiction-text match. `STATE_HUB_PAGES.md`'s "Which pages a hub shows" section is why: a text match already put unrelated video on four real governments' hubs once. |
+
+**Membership: reused, not re-derived** — same posture as WO-947 itself.
+Neither check invents its own idea of "this entry belongs to this hub";
+both ask the hub's own existing membership rule.
+
+**Docs.** `STATE_HUB_PAGES.md`: new "A hub is also indexable via a
+published entry" subsection under "Rendering rules", and the
+`JURISDICTION_HUB_MIN_INDEXABLE` tuning-table row now notes the OR.
+`README.md`'s "Full Context feed" section: a new paragraph, next to the
+existing WO-947 paragraph it extends. State pages have no meeting-count
+`noindex` gate at all (checked: `get_state_coverage_index()` indexes
+every state/province with >= 1 meeting outright) — nothing to extend
+there, noted rather than left silent.
+
+**Verification.** All CI gates passed locally on 2026-09-21.
+
+| Gate | Result |
+|---|---|
+| `ruff check` (changed files) | Passed |
+| `ruff format --check` (changed files) | Passed |
+| Full suite, `python -m pytest` | 4887 passed, 16 skipped, 4 xfailed, 0 failed (4 more passing than WO-947's own 4883 — the new tests below) |
+| `alembic check`, both services | Passed, no migration (no schema change) |
+| Node (`npm test`) | 81 passed |
+
+New tests, all in `tests/test_jurisdiction_hubs.py`: a below-threshold
+hub with no entry stays `noindex`'d and out of the sitemap (pins the old
+behavior); the same shape with one published entry becomes indexable, is
+listed in the sitemap, and reaches the same `indexable` value under a
+`?topic=` render; a draft entry does not flip a below-threshold hub; a
+published entry on a *different* government's meeting does not flip an
+unrelated below-threshold hub. Each uses its own fresh, real,
+unambiguous California town (Winters, Isleton, Loomis) so the shared
+test-session database can't cross-contaminate the count.
+
+**Caution — not a full fix, and worth watching.** An entry's own
+permalink page (`/context/{id}`) stays `noindex`'d until the whole Full
+Context feed clears `CONTEXT_MIN_INDEXABLE` (5) published entries —
+unchanged by this WO. So a hub can now be indexable because of an entry
+whose *own* page is not yet indexable itself. This is acceptable: the
+hub page is real, substantial content in its own right (the meeting list
+plus the entry's headline and summary shown inline in "Seen on social
+media"), it does not depend on the entry's permalink page being indexed,
+and Google can still reach the permalink page by a normal crawl from the
+now-indexable hub even before the permalink page earns its own index
+eligibility. If the feed never clears 5 entries, this asymmetry becomes
+permanent for that one entry's page — a small residual gap, not
+recorded as a new `BACKLOG.md` entry, since nothing today says whether
+it's worth widening `CONTEXT_MIN_INDEXABLE` or leaving it alone.
+
+## WO-1002: Full Context entries appear on the meeting page they cite [Done 2026-09-21]
+
+**Why this ran.** WO-947 (same day, entry right below) put a "Seen on
+social media" list of Full Context entries on a government's hub page and
+its state page. That left one surface out: the meeting page itself
+(`/m/{slug}`), the one place a reader who followed the clip's own deep
+link actually lands. `BACKLOG.md` already carried this as a follow-up
+("this moment was clipped on social media" backlink); Ryan decided to
+build it.
+
 ## WO-1001: the Full Context RSS item link points at the post, not the meeting [Done 2026-09-21]
 
 **Why this ran.** `BACKLOG.md` had an open entry: the Full Context RSS
@@ -72,6 +151,66 @@ YouTube.
 
 | Piece | What it does |
 |---|---|
+| `crud.list_context_entries_for_meeting(meeting_page_id, *, limit=MEETING_CONTEXT_ENTRIES)` | A thin wrapper over WO-947's `list_context_entries_for_pages()` with the narrowest possible condition, `MeetingPage.id == meeting_page_id` — one meeting, not a hub's or state's whole page set. Run through `_context_entries_isolated()`, its own session, never raising, same as the hub/state callers. `MEETING_CONTEXT_ENTRIES = 5`. |
+| Route (`meeting_page()`, `archive/main.py`) | One new awaited call, `context_entries = await crud.list_context_entries_for_meeting(page["id"])`, after the 404 check and the card-warm scheduling, passed to the template. Always a list, never `None`. |
+| `_context_mentions.html` | Same partial WO-947 built, now with a `meeting_view` flag. In that mode: the heading reads "This moment on social media" when at least one shown entry has a real timestamp, else "This meeting on social media"; the redundant meeting title/date line is dropped (the page is already that meeting); each entry's timestamp becomes its own "at M:SS" link to `entry.deep_link`, so a reader jumps straight to the clipped second. The headline → permalink link, the match badge, "Original post on {network}" as plain text, and "More on Full Context →" are unchanged from the hub/state view. |
+| `meeting_page.html` | Included via `{% with meeting_view = True %}{% include "_context_mentions.html" %}{% endwith %}` — the same pattern `state_page.html` already used for `show_jurisdiction`. |
+| `archive/static/style.css` | A small addition inside the existing `context-*` section: `.context-mentions-meeting` (spacing) and `.context-mentions-timestamp` (the "at M:SS" link). |
+
+**Placement: inside the sticky video column, not a new row between it and
+the transcript.** `meeting_page.html`'s desktop layout (`@media
+(min-width: 900px)`) is a two-column CSS grid: `.meta` spans both columns
+explicitly (`grid-column: 1 / -1`), `#videoColumn` is pinned to column 1
+(`position: sticky`), and `#transcriptColumn` is pinned to column 2. A
+new sibling row inserted between `#videoColumn` and `#transcriptColumn`
+with no explicit `grid-column` gets auto-placed by the browser into
+whichever cell is free next — checked by hand, that landed it in
+`#transcriptColumn`'s own column at `#videoColumn`'s row, which then
+pushed the transcript down a full row with an empty gap next to it. The
+block was placed inside `#videoColumn` instead, right after the video/
+toolbar/report-problem/transcribe controls and before `#transcriptColumn`
+opens — it inherits column 1 for free, sits in the same sticky box those
+other secondary controls already share, and needs no new grid rule.
+Verified by hand in the browser at both a phone width and a real 1400px
+desktop width (screenshots below); the two-column layout held with no
+gap or misalignment either way.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check` and `ruff format --check` (clean on the changed Python files, and
+clean over the full `app/ archive/ worker/ scripts/ tests/` tree), the
+full suite (**4896 passed, 16 skipped, 4 xfailed, 0 failed** — 13 more
+than WO-947's own same-day count of 4883, exactly this WO's 13 new
+tests), `alembic check` for both services (no migration — no schema
+change), and the `BACKLOG_DONE.md` heading check. Node tests: 81 passed
+(unchanged — no JS touched).
+
+New test file `tests/test_context_on_meeting_page.py` (13 tests, same
+seeding pattern as `tests/test_context_on_hubs.py`): an entry shows on
+its own meeting, never a different one; draft/hidden/orphaned entries
+never show; the limit and newest-first order are respected; the heading
+falls back to "This meeting on social media" when no shown entry has a
+timestamp; the section is fully absent (no heading, no `context-mentions`
+class) with zero entries; and the page still 200s when the crud lookup
+raises (both a direct monkeypatch of the module-level function and one
+routed through the isolated-session helper).
+
+Both services were then run locally against a scratch SQLite database
+(`DATABASE_URL` set explicitly, `.env` never loaded) and driven through
+the resolver in a real browser, with a real Walnut Creek, CA meeting page
+seeded plus one published, exact-match entry at 94 seconds.
+
+| Check | Result |
+|---|---|
+| `/m/{slug}` | "This moment on social media" heading, headline linking to `/context/{id}-{slug}`, "Exact moment" badge, "at 1:34" link |
+| "at 1:34" link target | `/m/{slug}?t=94` — the real deep link, confirmed via the accessibility tree, not just visually |
+| Headline link target | `/context/1-a-clip-of-the-budget-vote` — the resolver's own `/context/{id}-{slug}` proxy route |
+| Desktop width (1400px) | Block renders inside the sticky left column, under the report/transcribe controls; transcript column stays aligned to its right with no gap |
+| Phone width | Block renders in the normal single-column flow, same content |
+
+**Docs.** `README.md`'s "Full Context feed" section: a new paragraph next
+to the WO-947 one it parallels. `BACKLOG.md`: the "clipped on social
+media" `/m/` backlink entry removed (built), TOC regenerated.
+
 | `ResolveError` (`app/platforms/base.py`) | The one typed exception an adapter raises for an expected "this URL can't produce a meeting" outcome, instead of a raw stdlib exception. Every existing caller already survives an unrecognized exception the same way (`/api/resolve`'s `except Exception`, every sweep script's own broad catch), so this changes the message and the type, not the behavior. |
 | `resolve_newest_candidate()` (`app/platforms/base.py`) | Shared "listing root → newest meeting" helper: given a newest-first list of candidate meeting URLs and an adapter's own `resolve_one` callback, tries each until one comes back with real content (segments, agenda items, an agenda link, or a video URL). Ported from the hand-rolled loop `scripts/wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()` already used. |
 | `escribe.py` | Decode: `response.text()` → `url_guard.read_capped_text()`. Bare tenant root: a new `_resolve_bare_tenant_root()` calls the real `GetCalendarMeetings` tenant API (same 120-day lookback/8-candidate cap `scripts/adhoc_cdx_escribe_pipeline.py` already used) and hands the result to `resolve_newest_candidate()`. Raises `NoVideoCandidateFound` (the same typed negative `civicplus.py` already uses for its own listing page) when nothing with video turns up. |

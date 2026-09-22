@@ -2284,6 +2284,30 @@ linking to its hub since WO-943) and now also its state, next to it —
 `crud.effective_state_abbr()`, a pure function over data the entry
 already carries, not a query.
 
+**A published entry can also make a thin hub indexable (WO-1003).** A
+`/j/{hub_slug}` page is normally `noindex`'d below `JURISDICTION_HUB_MIN_
+INDEXABLE` (2) meetings, but a hub with just one meeting and a real,
+hand-written Full Context entry is no longer thin/near-duplicate content,
+so it's indexable either way now — see `STATE_HUB_PAGES.md`'s "A hub is
+also indexable via a published entry" section for the rule and where it's
+applied (the page's own `noindex` tag and `sitemap.xml`'s `/j/` list, kept
+in agreement). State pages have no such meeting-count gate to extend.
+
+**And the meeting page itself, the one surface an entry cites without
+linking back until now (WO-1002).** `/m/{slug}` shows a "This moment on
+social media" (or, when no shown entry has a real timestamp, "This
+meeting on social media") block for the published entries that cite that
+exact meeting — up to `MEETING_CONTEXT_ENTRIES` (5), newest first,
+reusing the same shared `_context_mentions.html` partial the hub/state
+pages use (a `meeting_view` flag drops the redundant meeting title/date
+line and turns each entry's timestamp into its own "at M:SS" link to the
+clipped second). `crud.list_context_entries_for_meeting()` is a thin
+wrapper over `list_context_entries_for_pages()` with `MeetingPage.id ==
+meeting_page_id` as the page condition, run through the same isolated-
+session helper the hub/state lookups use so a failure here can never take
+the meeting page down with it. Absent entirely — no heading, no wrapper —
+when nothing cites this meeting, which is most meetings.
+
 **Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
 a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
 of `t` (see "Meeting card images" above). Only a non-YouTube meeting gets

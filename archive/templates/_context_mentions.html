@@ -8,6 +8,23 @@
    Archive-only Jinja filters, so this stays out of shared_templates/ on
    purpose rather than risking that question at all).
 
+   WO-1002 added a second use: meeting_page.html includes this SAME
+   partial with meeting_view=true for the "this moment was clipped on
+   social media" block on /m/{slug} itself (BACKLOG.md). That view is
+   for entries about ONE already-named meeting, so it differs from the
+   hub/state view in three ways: (a) the heading names the moment, not
+   "media" in general -- "This moment on social media" when at least one
+   shown entry has a real timestamp, else "This meeting on social media";
+   (b) the meeting title + date line is dropped -- the page itself is
+   already that meeting, so repeating its title/date here would be
+   redundant; (c) a timestamp_label, when the entry has one, becomes its
+   own "at M:SS" link to entry.deep_link, so a reader can jump straight to
+   the clipped second without leaving the page. Everything else --
+   headline/permalink link, match badge, "Original post on {network}" as
+   plain text (never a link; that outbound link lives on the entry page
+   itself), and the "More on Full Context" link -- is identical in both
+   views.
+
    Context variables:
      context_entries (list of light entry dicts from crud.
        list_context_entries_for_pages() -- id, headline, summary,
@@ -15,33 +32,48 @@
        published_at, slug, title (the MEETING's title), date_html,
        jurisdiction_display, hub_slug, deep_link, timestamp_label.
        Newest-published first, already capped at HUB_CONTEXT_ENTRIES /
-       STATE_CONTEXT_ENTRIES by the caller. Always a list, never None --
-       [] on a topic view, a table-missing DB, or a load failure, see
-       get_jurisdiction_hub_data()/get_state_page_data()'s own comments)
+       STATE_CONTEXT_ENTRIES / MEETING_CONTEXT_ENTRIES by the caller.
+       Always a list, never None -- [] on a topic view, a table-missing
+       DB, or a load failure, see get_jurisdiction_hub_data()/
+       get_state_page_data()/list_context_entries_for_meeting()'s own
+       comments)
      show_jurisdiction (bool, default false -- true only from state_page.html.
        A hub omits the government link since every entry on it is the same
        government already named by the page itself; same reasoning
-       _featured_meetings.html's own show_jurisdiction flag uses)
+       _featured_meetings.html's own show_jurisdiction flag uses. Always
+       false in practice on meeting_view, since a meeting page already
+       names and links its own government elsewhere)
+     meeting_view (bool, default false -- true only from meeting_page.html;
+       see above for what it changes)
 
    **No empty state, on purpose.** With context_entries == [] this whole
    partial renders to nothing -- no heading, no wrapper -- so the block
    simply doesn't exist in the page's HTML. A "Seen on social media"
    heading repeated with nothing under it across ~1,000 mostly-empty hubs
    is exactly the thin templated content Google already declines this
-   site for (see STATE_HUB_PAGES.md's whole §1). Server-rendered in the
-   initial HTML, no JS, so a crawler sees these links.
+   site for (see STATE_HUB_PAGES.md's whole §1); the same reasoning holds
+   for a single meeting page with zero citing entries, which is most of
+   them.  Server-rendered in the initial HTML, no JS, so a crawler sees
+   these links.
 
    One outbound link per entry lives on the entry page itself (WO-946);
    this list deliberately keeps every link here internal (the headline/
-   summary link and the government link both point back into this site)
-   so a hub/state page's link equity stays on the site instead of
-   handing it to the social network being cited. "Original post on
-   {network}" names the source without linking it. -#}
+   summary link, the timestamp link, and the government link all point
+   back into this site) so a hub/state/meeting page's link equity stays
+   on the site instead of handing it to the social network being cited.
+   "Original post on {network}" names the source without linking it. -#}
 {% set show_jurisdiction = show_jurisdiction | default(false) %}
+{% set meeting_view = meeting_view | default(false) %}
 {% if context_entries %}
-<section class="context-mentions" aria-labelledby="contextMentionsHeading">
+{% set any_timestamp = meeting_view and (context_entries | selectattr("timestamp_label") | list | length > 0) %}
+<section class="context-mentions{% if meeting_view %} context-mentions-meeting{% endif %}" aria-labelledby="contextMentionsHeading">
+  {% if meeting_view %}
+  <h2 id="contextMentionsHeading" class="state-section-heading">{{ "This moment on social media" if any_timestamp else "This meeting on social media" }}</h2>
+  <p class="state-section-sub">Clips of this meeting that were shared on social media, linked to the recording.</p>
+  {% else %}
   <h2 id="contextMentionsHeading" class="state-section-heading">Seen on social media</h2>
   <p class="state-section-sub">Clips from these meetings that were shared on social media, linked to the full recording.</p>
+  {% endif %}
   <ul class="context-mentions-list">
     {%- for entry in context_entries %}
     <li class="context-mentions-item">
@@ -58,11 +90,17 @@
         {%- elif entry.match_kind == "related" %} title="A related meeting, not the one in the post"
         {%- endif %}>{{ entry.match_label }}</span>
       {%- endif %}
+      {%- if meeting_view %}
+      {%- if entry.timestamp_label %}
+      <p class="context-mentions-meta"><a href="{{ entry.deep_link }}" class="context-mentions-timestamp">at {{ entry.timestamp_label }}</a></p>
+      {%- endif %}
+      {%- else %}
       <p class="context-mentions-meta">
         {{- entry.title or "Untitled meeting" -}}
         {%- if show_jurisdiction and entry.hub_slug %} &middot; <a href="/j/{{ entry.hub_slug }}">{{ entry.jurisdiction_display }}</a>{% endif -%}
         {%- if entry.date_html %} &middot; {{ entry.date_html|safe }}{% endif -%}
       </p>
+      {%- endif %}
       <p class="context-mentions-source">Original post on {{ entry.network_label }}</p>
     </li>
     {%- endfor %}
