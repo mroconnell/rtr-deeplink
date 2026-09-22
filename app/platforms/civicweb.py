@@ -11,6 +11,7 @@ from .base import AssetFinder, UnsupportedPlatformError, resolve_via_platform
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_text
 
 logger = logging.getLogger("rtr_deeplink.civicweb")
 
@@ -528,6 +529,18 @@ class CivicWebAssetFinder(AssetFinder):
 
     @staticmethod
     async def _fetch_text(session: aiohttp.ClientSession, url: str) -> Optional[str]:
+        """WO-938, 2026-09-21: a `/document/{id}` link that's actually a
+        PDF (or otherwise non-UTF-8) used to raise `UnicodeDecodeError`
+        straight out of the plain `response.text()` call below -- caught
+        by the broad `except Exception` here, so never a crash, but the
+        page's own real (if not agenda-shaped) content was silently
+        discarded as `None`, logged as noise on every run that touches
+        one (confirmed live 2026-09-12, WO-323, on 4 real CivicWeb
+        candidates). Reuses `url_guard.read_capped_text()`, the same
+        shared decode-safety helper `civicplus.py`/`escribe.py`/
+        `granicus.py` already use, instead of a new local fallback --
+        the broad `except Exception` below still catches a genuine
+        network failure, just no longer a decode one."""
         try:
             async with session.get(
                 url, timeout=aiohttp.ClientTimeout(total=20)
@@ -539,7 +552,7 @@ class CivicWebAssetFinder(AssetFinder):
                         url,
                     )
                     return None
-                return await response.text()
+                return await read_capped_text(response)
         except Exception:
             logger.warning("CivicWeb text fetch failed for %s", url, exc_info=True)
             return None

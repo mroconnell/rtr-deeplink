@@ -1,5 +1,95 @@
 # Backlog — done
 
+## WO-938: Adapter hardening — one typed resolve error, one shared decode helper, one listing-to-newest-meeting helper [Done 2026-09-21]
+
+**Why this ran.** Several adapters let a raw Python error (a decode
+error, a bare `ValueError`) escape straight out of `resolve()` instead
+of degrading cleanly. This is Phase 2 of the backlog plan
+(`docs/BACKLOG_PHASES.md`) — the pipeline was wasting effort by treating
+a page it could have handled as a hard crash. WO-933 (merged earlier the
+same day) had already fixed the CivicPlus half of this pattern; this WO
+closes the rest of it: eScribe, SuiteOne, Granicus, CivicWeb, and
+YouTube.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `ResolveError` (`app/platforms/base.py`) | The one typed exception an adapter raises for an expected "this URL can't produce a meeting" outcome, instead of a raw stdlib exception. Every existing caller already survives an unrecognized exception the same way (`/api/resolve`'s `except Exception`, every sweep script's own broad catch), so this changes the message and the type, not the behavior. |
+| `resolve_newest_candidate()` (`app/platforms/base.py`) | Shared "listing root → newest meeting" helper: given a newest-first list of candidate meeting URLs and an adapter's own `resolve_one` callback, tries each until one comes back with real content (segments, agenda items, an agenda link, or a video URL). Ported from the hand-rolled loop `scripts/wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()` already used. |
+| `escribe.py` | Decode: `response.text()` → `url_guard.read_capped_text()`. Bare tenant root: a new `_resolve_bare_tenant_root()` calls the real `GetCalendarMeetings` tenant API (same 120-day lookback/8-candidate cap `scripts/adhoc_cdx_escribe_pipeline.py` already used) and hands the result to `resolve_newest_candidate()`. Raises `NoVideoCandidateFound` (the same typed negative `civicplus.py` already uses for its own listing page) when nothing with video turns up. |
+| `suiteone.py` | Both raw `raise ValueError(...)` sites → `ResolveError`. |
+| `granicus.py` | `_fetch_page()`'s `response.text()` → `read_capped_text()`. |
+| `civicweb.py` | `_fetch_text()`'s `response.text()` → `read_capped_text()`. |
+| `youtube.py` | New `NotASingleVideoError(ResolveError, ValueError)` replaces the raw `ValueError` a bare channel/live URL raised. Deliberately still a `ValueError` too — `scripts/wo134_confirmed_hits_ingest.py`'s `resolve_seed()` has a real, live `except ValueError` branch keyed on this exact message that falls back to a channel-listing depth search; dropping `ValueError` from the MRO would have silently broken it. |
+
+**Result.**
+
+| Gate | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | All checks passed |
+| `ruff format --check` (same paths) | All formatted |
+| `python -m pytest` (full suite) | 4889 passed, 16 skipped, 4 xfailed, 0 failed |
+| `alembic check` | Not run — no model changed |
+| `scripts/check_backlog_done_headings.py` | Passed |
+
+New/updated tests: `tests/test_escribe.py` (decode-safety + two new
+bare-tenant-root cases — discovers a real meeting, and raises
+`NoVideoCandidateFound` when none has video), `tests/test_suiteone.py`
+(both raise sites now assert `ResolveError`), `tests/test_granicus.py`
+(`_fetch_page()` decode-safety), `tests/test_civicweb.py`
+(`_fetch_text()` decode-safety), `tests/test_youtube.py`
+(`NotASingleVideoError`, plus a real bare `/channel/<id>/live` URL
+case). Every decode-safety test reuses the SAME real non-UTF8 bytes
+`tests/test_civicplus.py`'s own decode test uses (a real PDF fetched
+live 2026-09-12, reproducing the identical `'utf-8' codec can't decode
+byte 0xe2 in position 10` error) rather than inventing new bytes, per
+this repo's rule on decode-safety tests — each is commented as
+synthetic (no real eScribe/Granicus/CivicWeb response has itself been
+observed as raw non-UTF8 bytes; the finding was against a page that
+*embeds* one).
+
+**Entries closed.**
+
+| Entry | Outcome |
+|---|---|
+| "`escribe.py`'s `resolve()` raises the same raw" | Closed — decode fix |
+| "`granicus.py`'s `_fetch_page()` raises an unhandled" | Closed — decode fix |
+| "A bare YouTube channel/live URL raises a raw" | Closed — typed exception |
+| "A bare eScribe tenant root (no `Meeting.aspx` path)" | Closed — listing-to-newest-meeting helper built |
+
+**Entries rewritten, not closed — real residual gaps.**
+
+| Entry | What's still open |
+|---|---|
+| "`suiteone.py`'s `resolve()` raises a raw `ValueError`" | The raw-exception half is fixed. The real ask — a listing lookup for a bare tenant *management-root* page — is still unbuilt; `resolve_newest_candidate()` is ready for whoever builds it, once a real `GetEvents`-style endpoint is found on a live SuiteOne tenant. Retitled to describe the real gap. |
+| "`app/platforms/civicweb.py`'s `_fetch_text()`" | The decode-crash half is fixed. `_fetch_text()` still returns a garbled string for a PDF instead of a distinct `is_binary=True` signal — retitled to describe that remaining half. |
+
+**New entry filed.** "`civicclerk.py`'s `resolve()` raises a raw
+`ValueError`" — the same shape, on a different platform, surfaced as a
+side note while investigating the YouTube entry above but never
+tracked on its own until now. Small, same fix shape already proven
+safe five times in this WO.
+
+**Caution.** `youtube.py`'s `NotASingleVideoError` needed multiple
+inheritance (`ResolveError, ValueError`) specifically because
+`wo134_confirmed_hits_ingest.py` catches `ValueError` by type, not by
+message, around this exact call site. Before converting any OTHER
+adapter's raw exception to a bare `ResolveError` (not inheriting from
+whatever it used to be), grep for `except ValueError`/`except
+<OldType>` around every caller of that adapter's `resolve()` first —
+`suiteone.py` and the four decode sites were confirmed safe to convert
+outright (nothing catches by type), YouTube was not.
+
+**Recommendation.** This is `app/` code — on `main` but **not live**
+until Ryan deploys. Worth a real deploy once bundled with other Phase 2
+work (WO-936/937/939), since none of these fixes are individually
+urgent — they stop the pipeline from wasting effort on encoding/URL
+edge cases, not a live user-visible bug.
+
+**Deploy status.** Merged to `main`, **not deployed**. No migration —
+no schema change.
+
 ## WO-936: A detector for stuck transcription jobs, plus a real-error-vs-timeout label for Granicus failures [Done 2026-09-21]
 
 **Why this ran.** BACKLOG.md carried six related transcription-worker
