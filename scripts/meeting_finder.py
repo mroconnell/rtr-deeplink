@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""WO-1024: Meeting Finder CLI -- the runner for
+"""WO-1024/WO-1030: Meeting Finder CLI -- the runner for
 `app/platforms/meeting_finder/`. See docs/MEETING_FINDER.md for the
-design and that package's own docstrings for what's actually built
-(entry=resolve only; List/Identify/Scan/Hop/Start are wave 2).
+design and `runner.py`'s own docstring for how the phase loop (Start ->
+Identify -> List/Scan -> Hop -> Resolve -> Verdict) is wired.
 
     python scripts/meeting_finder.py --input rows.csv --out verdicts.csv \\
-        [--entry resolve] [--mode pin|audit] [--max-tries N] \\
+        [--entry start|identify|list|scan|resolve] [--mode pin|audit] \\
+        [--max-tries N] [--max-hops N] [--max-forks N] [--max-fetches N] \\
         [--concurrency N]
 
 `rows.csv` columns: `url` (required), `gov_id`, `platform_hint`,
 `url_source`, `mode`, `entry` -- see docs/MEETING_FINDER.md's "Input
 rows" table. A row's own `mode`/`entry` column overrides the CLI flag's
 default for that row only.
+
+`--max-hops`/`--max-forks`/`--max-fetches` are docs/MEETING_FINDER.md's
+Hop "Limits" table -- `max_fetches` is a PER-GOVERNMENT budget (one
+`Fetcher` per input row), not a total across the whole run.
 
 Politeness: one input at a time by default (CLAUDE.md's "we query sites
 politely" rule) -- `--concurrency` opts into more.
@@ -89,6 +94,21 @@ def main() -> None:
     parser.add_argument("--entry", choices=ENTRY_PHASES, default="resolve")
     parser.add_argument("--mode", choices=("pin", "audit"), default="pin")
     parser.add_argument("--max-tries", type=int, default=6)
+    parser.add_argument(
+        "--max-hops", type=int, default=2, help="Hop depth per fork (docs default: 2)"
+    )
+    parser.add_argument(
+        "--max-forks",
+        type=int,
+        default=3,
+        help="Extra Start starting points tried beyond the first (default: 3)",
+    )
+    parser.add_argument(
+        "--max-fetches",
+        type=int,
+        default=12,
+        help="Real page fetches allowed PER GOVERNMENT (default: 12)",
+    )
     parser.add_argument("--concurrency", type=int, default=1)
     args = parser.parse_args()
 
@@ -104,6 +124,9 @@ def main() -> None:
             inputs,
             args.out,
             max_tries=args.max_tries,
+            max_hops=args.max_hops,
+            max_forks=args.max_forks,
+            max_fetches=args.max_fetches,
             concurrency=args.concurrency,
         )
     )

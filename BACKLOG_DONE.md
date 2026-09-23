@@ -1,5 +1,97 @@
 # Backlog — done
 
+## WO-1030: Meeting Finder's phase-loop wiring + Start [Done 2026-09-23]
+
+**What.** Wired every Meeting Finder phase into one pipe
+(`app/platforms/meeting_finder/runner.py`'s `run_one()`/
+`_run_phase_loop()`): `Start -> Identify -> List / Scan -> Hop -> Resolve
+-> Verdict`, live for every entry point (`start`/`identify`/`list`/
+`scan`/`resolve` -- `phase-not-built` no longer applies to any of them).
+Also built **Start** (`app/platforms/meeting_finder/start.py`): DNS gate
+(apex/`www.`, then caller-supplied `alternates`), homepage variants,
+guessed vendor subdomains/CivicWeb-PrimeGov tenant labels that actually
+resolved, and sitemap URLs recognized as a platform or a meeting-page
+shape -- all reusing `scripts/wo282_recon.py`'s own functions
+(`dns_lookup()`, `fetch_live_robots_v2()`, `fetch_live_sitemap_v2()`) via
+`asyncio.to_thread()`, never re-derived.
+
+**The loop.** One `Fetcher` per government (shared `max_fetches` budget
+and per-host politeness across every fork/hop for that input) and one
+`seen` URL set (never revisits a URL). A fork is one of Start's own
+starting points tried as an independent path (`max_forks` bounds how
+many past the first); a hop is Hop's own single best next link within
+one fork's path (`max_hops` bounds depth, +1 for the very first/homepage
+fork). `entry=resolve` is unchanged from WO-1024 (no Identify/List/Scan/
+Hop); `entry=list` requires `platform_hint` and skips straight to
+`list_account()`; `entry=scan` fetches the one input URL and runs
+`scan_page()`; `entry=identify` runs the full loop from a single page,
+no Start/no forks; `entry=start` runs the full loop from a domain.
+Verdict's outcome, when nothing resolves, is the single most informative
+outcome collected along the way (`runner._pick_outcome()`) -- a real
+`meeting-without-video` beats `account-not-found`, which beats
+`unsupported-platform-no-adapter`, which beats a generic access block,
+which beats reporting nothing (`no-meeting-nor-video`, the floor).
+
+**Two known wave-2 gaps closed in the same pass** (both named in this
+WO's own brief). (1) Identify's rank-5 "YouTube meeting list" signal
+used to fire on ANY page with 2+ distinct YouTube video links, including
+a bare promotional carousel -- confirmed live on Piedmont, CA's own
+homepage (6 unrelated parks/rec videos falsely flagged before this fix,
+confirmed zero after). Fixed by requiring each counted video's own link
+to sit in a per-item dated row/section (`identify.py`'s
+`_youtube_link_has_meeting_context()`, reusing `scan.py`'s own date-
+detection helpers rather than a third implementation). (2) A List
+candidate with `has_video_hint=False` (the CivicPlus agenda-only
+fallback's real rows, WO-1028) already flowed through Resolve's existing
+`agenda_items`/`agenda_link` fallback into `meeting-without-video` with
+no further change needed -- confirmed by a dedicated unit test
+(`test_meeting_without_video_outcome_surfaces_from_list`).
+
+**Politeness across concurrent governments (this WO's own brief, point
+5).** `fetch.py`'s per-`Fetcher` host spacing only paces one
+government's own requests -- two different `Fetcher`s (two governments
+running concurrently under `--concurrency`) could otherwise both hit a
+shared vendor host (many tenants on `*.granicus.com`) at the same
+moment. Added a small process-wide, host-keyed pacer
+(`fetch._global_wait_for_host()`) every `Fetcher` instance now consults
+in addition to its own bookkeeping. Confirmed with a real two-instance,
+same-host test (`test_shared_host_pacer_spaces_two_fetcher_instances`).
+Existing fetch tests all reuse `127.0.0.1` (the loopback `TestServer`),
+so the new process-wide pacer would otherwise have serialized the whole
+existing test file at `per_host_delay_s` per test (measured: 50s, up
+from ~23s) -- fixed by resetting the pacer's own dict in an autouse
+fixture in `tests/test_meeting_finder_fetch.py`.
+
+**Merge note.** `listing.py` (WO-1028, PR #1382) and `scan.py`/`hop.py`
+(WO-1029, PR #1385) both merged to `main` during this WO's own build; no
+conflicts, this WO's wiring imports their real, merged interfaces
+directly (no shims).
+
+**Live smoke test** (10 real domains, `--entry start`, single
+concurrency, no YouTube fetch) -- see this WO's own PR description for
+the full per-government table. Real tier-1 (captioned) results:
+Antioch, CA (CivicClerk) and Peel Region, ON (eScribe). Real tier-3
+(video, no captions) result after a domain-name correction:
+Vacaville, CA (`cityofvacaville.gov`, eScribe -- its own real VTT
+captions currently 404, a separate, already-known gap, not something
+this WO introduced). Two of the ten test inputs used a wrong/stale
+domain guess (`vacaville.ca.gov`, `whitehall-oh.gov`) and correctly
+reported `dns-unresolvable` -- the DNS gate did its job. A real, found
+budget-starvation gap on Cass County, MN's own CivicPlus agenda-only
+tenant is logged as its own live `BACKLOG.md` entry rather than fixed
+here (it lives in `listing.py`'s own lister-ordering logic, not this
+WO's phase loop).
+
+**Verify.** `tests/test_wo1030_meeting_finder_runner.py` (17 tests: entry
+dispatch for every entry point, `max_hops`/`max_forks` enforcement, one
+extra homepage hop, never-revisit, budget-exceeded handling, outcome-
+priority selection, `run_inputs()` resume/dedupe) plus the fetch pacer
+test above and the identify false-positive-fix regression coverage in
+the existing `tests/test_wo1027_meeting_finder_identify.py` suite (all
+still green, no behavior change to the tests that already covered a real
+dated list). Five CI gates green (`ruff check`, `ruff format --check`,
+`pytest`, `alembic check` x2, the BACKLOG_DONE heading check).
+
 ## WO-1028: Meeting Finder's List phase [Done 2026-09-23]
 
 **What.** `app/platforms/meeting_finder/listing.py`'s `list_account

@@ -196,9 +196,7 @@ async def start(
     if robots_info.get("error"):
         notes.append(f"robots.txt: {robots_info['error']}")
 
-    sitemap_info = await asyncio.to_thread(
-        fetch_live_sitemap_v2, domain, robots_info
-    )
+    sitemap_info = await asyncio.to_thread(fetch_live_sitemap_v2, domain, robots_info)
     if sitemap_info.get("found"):
         for url in _sitemap_starting_points(sitemap_info.get("urls") or []):
             _add(url)

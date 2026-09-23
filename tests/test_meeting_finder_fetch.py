@@ -44,6 +44,24 @@ from tests.conftest import load_fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+
+@pytest.fixture(autouse=True)
+def _reset_host_pacer():
+    """WO-1030 added a process-wide per-host pacer (`_HOST_PACER_NEXT_AT`)
+    shared by every `Fetcher` instance, so two concurrent governments
+    sharing a vendor host still get spaced out (see that module's own
+    comment). Every test in this file hits `127.0.0.1` (the loopback
+    `TestServer`), so without a reset the pacer would carry a real delay
+    over from one test to the next and make this whole suite serialize
+    at `per_host_delay_s` per test -- reset before and after each test so
+    the pacer's own cross-instance behavior is tested deliberately (see
+    `test_shared_host_pacer_spaces_two_fetcher_instances`) without
+    silently taxing every other test in this file."""
+    fetch_module._HOST_PACER_NEXT_AT.clear()
+    yield
+    fetch_module._HOST_PACER_NEXT_AT.clear()
+
+
 # No `pytestmark = pytest.mark.asyncio` here: `pytest.ini` sets
 # `asyncio_mode = auto`, which already collects every `async def test_*`
 # below as an asyncio test on its own. A blanket module-level mark would
@@ -520,3 +538,45 @@ async def test_dropped_connection_retries_with_browser_headers():
     result = await fetcher.fetch("https://example.invalid/")
     assert result.access_mode == "browser-headers"
     assert result.outcome == "blocked-browser-headers"
+
+
+# ---------------------------------------------------------------------------
+# WO-1030: the shared per-host pacer -- politeness across CONCURRENT
+# Fetcher instances (one per government under runner.py's --concurrency),
+# not just within one instance.
+# ---------------------------------------------------------------------------
+
+
+async def test_shared_host_pacer_spaces_two_fetcher_instances():
+    import asyncio
+    import time
+
+    hits = []
+
+    async def handler(request):
+        hits.append(time.monotonic())
+        return web.Response(text="<html><a href='/x'>x</a></html>")
+
+    server = await _make_server({"/a": handler, "/b": handler})
+    try:
+        base = f"http://{server.host}:{server.port}"
+        delay = 0.4
+        fetcher_a = Fetcher(per_host_delay_s=delay, allow_headless=False)
+        fetcher_b = Fetcher(per_host_delay_s=delay, allow_headless=False)
+
+        start = time.monotonic()
+        await asyncio.gather(
+            fetcher_a.fetch(f"{base}/a"),
+            fetcher_b.fetch(f"{base}/b"),
+        )
+        elapsed = time.monotonic() - start
+
+        # Two DIFFERENT Fetcher instances, same host -- without the
+        # shared pacer, both requests fire back-to-back (near-zero
+        # elapsed); with it, the second one waits out the first's own
+        # per_host_delay_s.
+        assert elapsed >= delay * 0.9
+        assert len(hits) == 2
+        assert (hits[1] - hits[0]) >= delay * 0.9
+    finally:
+        await server.close()
