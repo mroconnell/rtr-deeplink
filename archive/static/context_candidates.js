@@ -210,7 +210,8 @@ function initCandidateQueue(root, fetchImpl, reloadImpl = () => window.location.
     try {
       const body = await submitCandidateRecheck(ids, fetchImpl);
       setStatus(candidateRecheckSummary(body.results || []));
-      if (refreshLink) refreshLink.hidden = false;
+      if (reviewForm) reloadImpl();
+      else if (refreshLink) refreshLink.hidden = false;
     } catch (error) {
       setStatus(error.message || 'The recheck could not be completed.');
     } finally {

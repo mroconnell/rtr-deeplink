@@ -10,6 +10,7 @@ const {
   candidateRecheckSummary,
   reviewErrorMessage,
   initCandidateReview,
+  initCandidateQueue,
 } = require('../archive/static/context_candidates.js');
 
 function tick() {
@@ -23,6 +24,8 @@ function reviewDom({ conflict = false, editorUrl = '/context/new?candidate=7&rev
   const dom = new JSDOM(`
     <main data-context-candidate-page>
       <button data-recheck-one="7">Recheck</button>
+      <span data-recheck-status></span>
+      <a data-refresh-queue hidden>Refresh</a>
       <button data-review-edit>Edit</button>
       <a data-editor-handoff data-editor-url="${editorUrl}" href="${editorUrl}" aria-disabled="false">Open</a>
       <form data-candidate-review-form data-candidate-id="7" data-candidate-version="12" hidden>
@@ -142,6 +145,34 @@ test('unchanged values can confirm a first review or acknowledge new research', 
     assert.equal(payload.fields.title, 'Original title');
     assert.equal(payload.expected_version, 12);
     assert.equal(reloads, 1);
+  }
+});
+
+test('detail recheck reloads on a completed response but not a network failure', async () => {
+  {
+    const { root } = reviewDom();
+    let reloads = 0;
+    const fetchImpl = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [{ id: 7, outcome: 'checked' }] }),
+    });
+    initCandidateQueue(root, fetchImpl, () => { reloads += 1; });
+    root.querySelector('[data-recheck-one]').click();
+    await tick();
+    assert.equal(reloads, 1);
+    assert.equal(root.querySelector('[data-recheck-status]').textContent, 'Recheck complete.');
+  }
+
+  {
+    const { root } = reviewDom();
+    let reloads = 0;
+    const fetchImpl = async () => { throw new Error('Network unavailable.'); };
+    initCandidateQueue(root, fetchImpl, () => { reloads += 1; });
+    root.querySelector('[data-recheck-one]').click();
+    await tick();
+    assert.equal(reloads, 0);
+    assert.equal(root.querySelector('[data-recheck-status]').textContent, 'Network unavailable.');
   }
 });
 
