@@ -26,9 +26,12 @@ What this reuses, and why, rather than re-implementing:
     pure-stdlib human-verification marker list every sweep script already
     uses. No changes needed there; it was already built to be imported.
   - `scripts/youtube_fetch_guard.py`'s `install()`/`is_youtube_host()` --
-    same reasoning. `install()` is called at import time here so the
-    in-process socket/aiohttp-resolver guard is active for every Fetcher,
-    on top of this module's own upfront host check.
+    same reasoning. `install()` is called from `Fetcher.__init__`, not at
+    import time: it makes any YouTube hostname lookup raise for the rest
+    of the PROCESS, not just this module, so calling it merely because
+    something imported this file would break YouTube for every other
+    caller sharing that process. `fetch()`'s own upfront host check
+    stands on its own regardless of whether the guard is installed.
   - The Akamai-specific two of `app/platforms/generic_fallback.py`'s own
     `_CHALLENGE_MARKERS` (`errors.edgesuite.net`, `access denied` --
     tied to the real captured body in `tests/fixtures/generic_fallback/
@@ -118,7 +121,11 @@ import certifi
 
 # CLAUDE.md: a fresh Homebrew-Python venv has an empty default SSL trust
 # store, and aiohttp builds its default SSLContext at import time -- this
-# must run before `import aiohttp`, not just before the first request.
+# must run before `import aiohttp`, not just before the first request, so
+# unlike the YouTube guard below this one CANNOT be deferred to
+# `Fetcher.__init__`. Low risk to run merely on import: it's a
+# `setdefault`, so it changes nothing for a process that already has a
+# real `SSL_CERT_FILE` (or a working trust store) of its own.
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 import aiohttp  # noqa: E402
@@ -133,11 +140,16 @@ from scripts.wo282_recon import cdx_get, newest_capture, wayback_id_read  # noqa
 from scripts.youtube_fetch_guard import install as _install_youtube_guard  # noqa: E402
 from scripts.youtube_fetch_guard import is_youtube_host  # noqa: E402
 
-# Guards this process's own socket/aiohttp resolution against a YouTube
-# hostname -- belt and braces on top of this module's own upfront
-# `is_youtube_host()` check in `fetch()`. Safe to call more than once
-# (idempotent).
-_install_youtube_guard()
+# NOT installed at import time on purpose (conductor review, WO-1025):
+# `youtube_fetch_guard.install()` makes ANY YouTube hostname lookup raise
+# for the rest of the PROCESS, not just this module -- calling it merely
+# because something imported `app.platforms.meeting_finder.fetch` would
+# break YouTube for every other caller sharing that process (another
+# test, a future script, or the drip Mac's `youtube_drip.py` if it ever
+# imports anything from this package). It's called from `Fetcher.__init__`
+# instead (idempotent, so constructing more than one `Fetcher` is fine),
+# and `fetch()`'s own upfront `is_youtube_host()` check stays regardless
+# of whether the guard is installed.
 
 _LINK_RE = re.compile(r"<a\b[^>]*\bhref\s*=", re.IGNORECASE)
 
@@ -219,6 +231,13 @@ class Fetcher:
         allow_wayback: bool = True,
         user_agent: str | None = None,
     ) -> None:
+        # Guards this PROCESS's own socket/aiohttp resolution against a
+        # YouTube hostname -- belt and braces on top of `fetch()`'s own
+        # upfront `is_youtube_host()` check. Installed here, not at
+        # import time (see this module's own comment above
+        # `_LINK_RE` for why), and idempotent -- constructing more than
+        # one `Fetcher` in the same process is fine.
+        _install_youtube_guard()
         self.max_fetches = max_fetches
         self.per_host_delay_s = per_host_delay_s
         self.allow_headless = allow_headless

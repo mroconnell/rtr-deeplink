@@ -28,6 +28,9 @@ Playwright helper itself.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -39,7 +42,13 @@ from app.platforms.meeting_finder.fetch import BudgetExceeded, Fetcher
 from scripts.wo147_access_ladder_sweep import BROWSER_HEADERS, HONEST_HEADERS
 from tests.conftest import load_fixture
 
-pytestmark = pytest.mark.asyncio
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# No `pytestmark = pytest.mark.asyncio` here: `pytest.ini` sets
+# `asyncio_mode = auto`, which already collects every `async def test_*`
+# below as an asyncio test on its own. A blanket module-level mark would
+# also apply (harmlessly, but with a warning -- see other test files that
+# do this) to this file's two plain synchronous subprocess tests below.
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +85,54 @@ async def test_youtu_be_short_link_also_refused():
     result = await fetcher.fetch("https://youtu.be/abc123")
     assert result.outcome == "youtube-not-fetched"
     assert fetcher.fetches_used == 0
+
+
+# ---------------------------------------------------------------------------
+# Conductor review (WO-1025): `youtube_fetch_guard.install()` makes ANY
+# YouTube hostname lookup raise for the rest of the PROCESS -- installing
+# it merely by importing this module would break YouTube for every other
+# caller sharing that process. It must only be installed once a Fetcher is
+# actually constructed. `scripts.youtube_fetch_guard._installed` is
+# process-global and never reset, so these run in fresh subprocesses
+# rather than sharing this test file's own process (every other test
+# above already constructs a Fetcher, which would make the guard look
+# permanently installed from here on).
+# ---------------------------------------------------------------------------
+
+
+def _run_in_fresh_subprocess(script: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        timeout=30,
+    )
+
+
+def test_importing_fetch_module_does_not_install_the_youtube_guard():
+    script = (
+        "import scripts.youtube_fetch_guard as guard\n"
+        "import app.platforms.meeting_finder.fetch  # noqa: F401\n"
+        "assert guard._installed is False, "
+        "'importing fetch.py alone installed the process-wide YouTube guard'\n"
+        "print('ok')\n"
+    )
+    result = _run_in_fresh_subprocess(script)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_constructing_a_fetcher_installs_the_youtube_guard():
+    script = (
+        "import scripts.youtube_fetch_guard as guard\n"
+        "from app.platforms.meeting_finder.fetch import Fetcher\n"
+        "assert guard._installed is False\n"
+        "Fetcher()\n"
+        "assert guard._installed is True\n"
+        "print('ok')\n"
+    )
+    result = _run_in_fresh_subprocess(script)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 # ---------------------------------------------------------------------------
