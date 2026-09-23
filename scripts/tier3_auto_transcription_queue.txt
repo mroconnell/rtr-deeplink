@@ -1053,3 +1053,14 @@ https://dunmorepa.gov/wp-content/themes/dunmore/videos/Dunmore+Council+Meeting+6
 https://gagecountyne.gov/wp-content/uploads/sites/35/2026/09/bos-2026-09-16.mp3	https://gagecountyne.gov/
 http://whitleycountyfiscalcourt.com/FCVideos/2024-06-18 16-04-07.mp4	http://whitleycountyfiscalcourt.com/
 https://vimeo.com/922203074	https://washingtonnc.gov/
+https://OLMOSPARKTX.portal.civicclerk.com/event/357/media	https://olmospark.org/
+https://byramms.portal.civicclerk.com/event/1040/media	https://byram-ms.us/
+https://stanwoodwa.portal.civicclerk.com/event/1007/media	https://stanwoodwa.org/
+https://reflect-wctv-village-willmette.cablecast.tv/internetchannel/show/887?site=1	https://wilmette.gov/
+https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1	Old Saybrook CT (shared regional Cablecast host, gallery 22)
+https://reflect-vsctv.cablecast.tv/internetchannel/gallery/10?site=1	Haddam CT (shared regional Cablecast host, gallery 10)
+https://reflect-vsctv.cablecast.tv/internetchannel/gallery/9?site=1	Deep River CT (shared regional Cablecast host, gallery 9)
+https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1	Clinton CT (shared regional Cablecast host, gallery 3)
+https://townhallstreams.com/towns/chichester_nh	https://chichesternh.org/
+https://townhallstreams.com/towns/moultonborough_nh	https://moultonboroughnh.gov/
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
