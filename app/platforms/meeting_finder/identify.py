@@ -86,6 +86,7 @@ from scripts.platform_fingerprints import fingerprint, load_signatures
 
 from .fetch import FetchResult, Fetcher
 from .models import OUTCOME_ACCOUNT_NOT_FOUND, OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER
+from .scan import _extract_date_text, _row_context, _walk_up_for_date
 
 # --- Ranking (Ryan, 2026-09-23; docs/MEETING_FINDER.md's Identify table) --
 
@@ -364,13 +365,62 @@ def _fingerprint_signals(
     return signals
 
 
-def _scan_links(html: str, final_url: str) -> Tuple[List[Signal], List[str]]:
+# A looser "date-ish" match than scan.py's own `_DATE_TEXT_RE` (which
+# requires a full year) -- a per-meeting YouTube link's own anchor text is
+# often just "Sep 8" (current-year meetings, no year printed), which is
+# still a real per-item date, not a promo carousel's caption. Kept local
+# to this one check rather than loosened in scan.py itself, since
+# scan.py's own callers (meeting-page-link detection) want the stricter,
+# full-year match to avoid a bare "page 8"/"item 8"-shaped false hit.
+_LENIENT_MONTH_DAY_RE = re.compile(
+    r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}\b",
+    re.IGNORECASE,
+)
+
+
+def _youtube_link_has_meeting_context(tag: Any) -> bool:
+    """True when a YouTube link `tag` sits in a per-item row/section that
+    itself carries a real date or a nearby dated heading -- "several
+    meetings each have their own YouTube link" (docs/MEETING_FINDER.md's
+    rank-5 row), not just several videos anywhere on the page.
+
+    Fixes a known false positive (this module's own docstring, "known
+    false-positive risk"): Piedmont, CA's own homepage links 6 distinct
+    YouTube ids from a plain promotional-video carousel with no date
+    anywhere near any of them -- confirmed live 2026-09-23 that none of
+    those anchors have a table-row/ancestor date context, so this check
+    correctly returns False for all six. Reuses `scan.py`'s own date-
+    finding helpers (row context + ancestor walk) rather than a third
+    date-detection implementation -- see this module's own import."""
+    text = tag.get_text(" ", strip=True) if hasattr(tag, "get_text") else ""
+    if _extract_date_text(text) or _LENIENT_MONTH_DAY_RE.search(text):
+        return True
+    title_attr = tag.get("title", "") if hasattr(tag, "get") else ""
+    if _extract_date_text(title_attr) or _LENIENT_MONTH_DAY_RE.search(title_attr):
+        return True
+    if getattr(tag, "name", None) != "a":
+        return False
+    try:
+        row = _row_context(tag)
+        if any(_extract_date_text(v) for v in row.values()):
+            return True
+        return bool(_walk_up_for_date(tag))
+    except AttributeError:
+        return False
+
+
+def _scan_links(
+    html: str, final_url: str
+) -> Tuple[List[Signal], List[str], FrozenSet[str]]:
     """Every `<a href>`/`<iframe src>`/`<embed src>`/`<video|source src>`/
     `<script src>` on the page (rule 3's "raw HTML including iframe/embed/
     script" instruction), classified and ranked. Returns
-    `(signals, youtube_urls)` -- `youtube_urls` is every distinct YouTube
-    URL found (channel or per-video), for the caller to fold into
-    `youtube_leads` and to decide the rank-5-vs-last split."""
+    `(signals, youtube_urls, dated_youtube_urls)` -- `youtube_urls` is
+    every distinct YouTube URL found (channel or per-video), for the
+    caller to fold into `youtube_leads`; `dated_youtube_urls` is the
+    subset whose own link sits in a per-item dated context (see
+    `_youtube_link_has_meeting_context()`), used to decide the
+    rank-5-vs-last split without counting a bare promo carousel."""
     soup = BeautifulSoup(html, "html.parser")
     final_no_fragment = urlparse(final_url)._replace(fragment="").geturl()
     own_platform = detect_platform(final_url)
@@ -379,6 +429,7 @@ def _scan_links(html: str, final_url: str) -> Tuple[List[Signal], List[str]]:
     own_site_meeting_pages = 0
     own_site_example: Optional[str] = None
     youtube_urls: List[str] = []
+    dated_youtube_urls: set = set()
     seen_youtube: set = set()
 
     for tag in soup.find_all(_SCAN_TAGS):
@@ -400,6 +451,8 @@ def _scan_links(html: str, final_url: str) -> Tuple[List[Signal], List[str]]:
             if candidate not in seen_youtube:
                 seen_youtube.add(candidate)
                 youtube_urls.append(candidate)
+            if _youtube_link_has_meeting_context(tag):
+                dated_youtube_urls.add(candidate)
             continue
 
         if platform == "unknown":
@@ -442,33 +495,42 @@ def _scan_links(html: str, final_url: str) -> Tuple[List[Signal], List[str]]:
                 ),
             )
         )
-    return signals, youtube_urls
+    return signals, youtube_urls, frozenset(dated_youtube_urls)
 
 
 def _youtube_signal_and_leads(
-    youtube_urls: List[str],
+    youtube_urls: List[str], dated_youtube_urls: FrozenSet[str]
 ) -> Tuple[Optional[Signal], List[str]]:
     """Splits found YouTube URLs into a rank-5 "meeting list" Signal
-    (2+ distinct per-video ids -- "several meetings each with their own
-    YouTube link", docs/MEETING_FINDER.md) plus the full lead list, or
-    just the lead list when there's only a channel link or a single
-    video. Every URL found becomes a lead either way -- Identify never
-    fetches YouTube itself (`Fetcher` already refuses to), it only
-    records what it saw."""
+    (2+ distinct per-video ids, each sitting in its own dated row/section
+    -- "several meetings each with their own YouTube link",
+    docs/MEETING_FINDER.md) plus the full lead list, or just the lead
+    list when there's only a channel link, a single video, or several
+    videos with no per-item date context (a promo carousel -- see
+    `_youtube_link_has_meeting_context()`'s own docstring for the real
+    Piedmont, CA false positive this guards against). Every URL found
+    becomes a lead either way -- Identify never fetches YouTube itself
+    (`Fetcher` already refuses to), it only records what it saw."""
     if not youtube_urls:
         return None, []
-    video_ids = {
-        vid: url for url in youtube_urls for vid in [extract_video_id(url)] if vid
+    dated_video_ids = {
+        vid
+        for url in youtube_urls
+        if url in dated_youtube_urls
+        for vid in [extract_video_id(url)]
+        if vid
     }
-    if len(video_ids) >= 2:
+    if len(dated_video_ids) >= 2:
+        dated_first = next(u for u in youtube_urls if u in dated_youtube_urls)
         signal = Signal(
             kind="youtube_meeting_list",
             platform="youtube",
-            url=youtube_urls[0],
+            url=dated_first,
             rank=RANK_YOUTUBE_MEETING_LIST,
             evidence=(
-                f"{len(video_ids)} distinct YouTube videos linked on this page -- "
-                "looks like a meeting list, not a single lead"
+                f"{len(dated_video_ids)} distinct YouTube videos, each in its own "
+                "dated row/section -- looks like a real meeting list, not a promo "
+                "carousel"
             ),
         )
         return signal, list(youtube_urls)
@@ -544,7 +606,7 @@ async def identify(
     # own `outcome` (e.g. cloudflare-challenge-blocked) is preserved below
     # unless a real platform/account is found despite it.
     signals: List[Signal] = []
-    link_signals, youtube_urls = _scan_links(html, final_url)
+    link_signals, youtube_urls, dated_youtube_urls = _scan_links(html, final_url)
     signals.extend(link_signals)
     found_platforms = frozenset(
         s.platform for s in link_signals if s.platform is not None
@@ -556,7 +618,9 @@ async def identify(
         civiclive_signal = _civiclive_first_party_signal(html)
         if civiclive_signal is not None:
             signals.append(civiclive_signal)
-    youtube_signal, youtube_leads = _youtube_signal_and_leads(youtube_urls)
+    youtube_signal, youtube_leads = _youtube_signal_and_leads(
+        youtube_urls, dated_youtube_urls
+    )
     if youtube_signal is not None:
         signals.append(youtube_signal)
 

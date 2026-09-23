@@ -153,6 +153,35 @@ from scripts.youtube_fetch_guard import is_youtube_host  # noqa: E402
 
 _LINK_RE = re.compile(r"<a\b[^>]*\bhref\s*=", re.IGNORECASE)
 
+# --- Cross-Fetcher-instance per-host pacing (WO-1030) -----------------
+#
+# `Fetcher._wait_for_host()` alone only paces requests made by ONE
+# `Fetcher` instance. `runner.py`'s `--concurrency` flag creates one
+# `Fetcher` per government running concurrently, and several governments
+# can share the same vendor host (many `*.granicus.com` tenants, for
+# instance) -- an instance-only wait lets two concurrent governments both
+# hit that shared host at the same moment, which is exactly the kind of
+# impoliteness CLAUDE.md's "we query sites politely" rule warns about.
+# This is a small, process-wide, host-keyed pacer every `Fetcher` consults
+# in addition to its own per-instance bookkeeping, so two DIFFERENT
+# `Fetcher`s (different governments) still can't both start a request to
+# the same host inside the same window. `_HOST_PACER_LOCK` guards the
+# dict with no `await` inside the critical section, so the check-and-
+# reserve is atomic under asyncio (no other task can interleave between
+# reading and writing `_HOST_PACER_NEXT_AT`).
+_HOST_PACER_NEXT_AT: dict[str, float] = {}
+_HOST_PACER_LOCK = asyncio.Lock()
+
+
+async def _global_wait_for_host(host: str, delay: float) -> None:
+    async with _HOST_PACER_LOCK:
+        now = time.monotonic()
+        next_at = max(now, _HOST_PACER_NEXT_AT.get(host, 0.0))
+        wait = next_at - now
+        _HOST_PACER_NEXT_AT[host] = next_at + delay
+    if wait > 0:
+        await asyncio.sleep(wait)
+
 # Per-attempt socket timeout. Deliberately shorter than
 # `wo282_recon.py`'s `GOV_REQUEST_WALL_CLOCK_DEADLINE` (25s): this is a
 # single-page interactive fetch inside a live Meeting Finder walk, not a
@@ -281,11 +310,17 @@ class Fetcher:
 
     async def _wait_for_host(self, host: str) -> None:
         delay = max(self.per_host_delay_s, self._crawl_delays.get(host, 0.0))
+        # Instance-local spacing (belt) plus the process-wide pacer
+        # (braces, WO-1030) -- see `_global_wait_for_host()`'s own
+        # comment for why a single Fetcher's own bookkeeping isn't
+        # enough once more than one Fetcher (one per government under
+        # `--concurrency`) can share a host.
         last = self._last_fetch_at.get(host)
         if last is not None:
             remaining = delay - (time.monotonic() - last)
             if remaining > 0:
                 await asyncio.sleep(remaining)
+        await _global_wait_for_host(host, delay)
 
     def _mark_host(self, host: str) -> None:
         self._last_fetch_at[host] = time.monotonic()
