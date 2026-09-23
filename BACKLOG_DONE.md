@@ -1,5 +1,43 @@
 # Backlog — done
 
+## Wheeling opening captions omitted in a new transcript version [Done 2026-09-22]
+
+Ryan reported poor audio and unreliable captions before 2:30 on
+`/m/meeting-1ab413` and authorized a new version. Published version 11769
+through `/internal/ingest` and made it default through
+`/internal/transcript-version/promote`. Replaced the 25 opening cues with
+`[Audio unclear; captions omitted]` spanning 0:00–2:30. This is an editorial
+omission based on Ryan's report, not a fresh audio transcription or an
+independent listening review. A visible version warning explains the edit.
+All 718 later segments retain their exact text and timestamps. Production
+export checks confirmed original version 11768 and the government identity
+pin remain intact; a browser check confirmed version 11769 and its note.
+The replacement link at 1:59 uses `?t=119&line=seg-0&version=11769`.
+
+## Restore metadata on two untitled council meetings [Done 2026-09-22]
+
+Two production pages had transcripts but no title, date, government label,
+or meeting body. Matched their exact source video IDs to the research
+source listing, then checked the transcripts and meeting evidence:
+
+- `/m/meeting-1ab413` (page 11036, YouTube `xQW4Swc9ZDY`):
+  Wheeling, WV, City Council Meeting, 2026-07-21,
+  `gov_id=us:place:5486452`. The transcript calls the July 21, 2026
+  City Council meeting to order; the source player confirms the date.
+- `/m/meeting-d38361` (page 11035, YouTube `r4svTYXCc6s`):
+  Cleveland, OH, City Council Meeting, 2026-09-14,
+  `gov_id=us:place:3916000`. The source player confirms the date;
+  the official Legistar agenda and transcript share the same resolutions.
+
+Updated these existing pages through HTTP `POST /internal/ingest` with
+their original source URLs and metadata only, then applied the government
+pins through `/internal/jurisdiction/override` after reviewing dry runs.
+Both pages now have `meeting_body=City Council` and identity confidence
+`manual_override`. Fresh production exports verified the corrected fields,
+unchanged slugs, and unchanged transcript versions (11768 and 11767).
+Browser checks confirmed both public pages display the corrected metadata.
+This repair does not establish which caller originally omitted the metadata.
+
 ## WO-903: CivicClerk now delegates a Cablecast `externalVideoUrl`/`externalMediaUrl` to CablecastAssetFinder — live-verified on Excelsior, MN; corrects a wrong government list in the WO-290 tier-3-probe entry [Done 2026-09-17]
 
 **Why this ran.** `BACKLOG.md`'s "tier-3 probe has no recipe for three

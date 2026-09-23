@@ -760,3 +760,48 @@ Granicus, TelVue, and ProudCity with zero signup. Running the same check
 against these four names first — before any manual crawl — would answer
 "is this platform even fingerprintable, and roughly how big is it" for
 free, the same way it did for the platforms already checked.
+
+## TypeSafe Jev for passive-discovery-v2's phase-2 confidence ranking (2026-09-22)
+
+Passive discovery v2's phase 2 (`scripts/wo282_classify.py`/`wo282_targeted.py`,
+see `rtr-business/research/ENUMERATION_METHODS.md`'s "Current methods" §2)
+scores each candidate offline against `hop_link_weights*.csv` — no network
+call, a fixed keyword/pattern weight table. Phase 3 then does a real fetch
+only on the candidates phase 2 ranked highest. Idea: try Jev as (or
+alongside) that ranking step — a "compare candidates' relevance to a query"
+judgment is one of TypeSafe's own recommended patterns (reranking), and
+since phase 3's real cost is the fetch it triggers, a better-ranked phase 2
+directly means fewer wasted phase-3 fetches on weak candidates.
+
+**Why this looks more promising than the two Jev uses already tried this
+session** (see `rtr-business/research/typesafe_jev_experiment/FINAL_REPORT.md`
+and this session's conversation log): the "what should we do next for this
+whole government" classifier underperformed — it showed real signs of
+reaching for a plausible-sounding answer without grounding (recommending
+"run the platform's own enumerator" on 57 rows where no platform was
+actually on file). A per-row domain-identity check, by contrast, tested
+well in a first pass (real fetched evidence in, a narrow probability/choice
+question out, playground-tested against a real example — Powers Lake city,
+ND). Phase-2 ranking is closer in shape to the identity check than to the
+next-action classifier: a bounded judgment over concrete evidence (the
+candidate link's text/position/surrounding page), not an open synthesis
+over sparse indirect signals.
+
+**Real numbers already in hand, from this session**: Jev is $0.042 per
+million input tokens, output free (typesafe.ai's own pricing, not in their
+docs site — see the Jev experiment's `FINAL_REPORT.md`). Phase 2 runs over
+every candidate in a recon batch (WO-283's was 7,746 governments) — cheap
+per call, but real money at that volume, unlike the current free heuristic
+weight table it would sit alongside or replace.
+
+**Not yet tested. Before building anything**: construct a small validation
+set the same way the Jev experiment did — real phase-2 candidates where the
+right ranking is already known (from an already-completed real sweep's
+outcomes) — and check whether Jev's ranking actually beats
+`hop_link_weights*.csv` on cases the weight table gets wrong, the same
+"test against real data, not intuition" step this project applies to every
+adapter and every enumeration method. Likely highest-value framing: not a
+blanket replacement of the free weight table, but a fallback specifically
+for candidates the weight table itself is unsure about (its own top-two
+scores close together) — same shape as the hop-link-scorer idea this
+session also raised and did not build.
