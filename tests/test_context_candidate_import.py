@@ -112,7 +112,7 @@ def _fake_lookup_module(evaluator):
 async def test_real_sheet_timestamp_and_free_text_sources_normalize():
     source = json.loads(FIXTURE.read_text(encoding="utf-8"))[0]
     # This mapping is explicit test input, not a claim about a hidden source
-    # schema. Every value and source header comes from the published Sheet row.
+    # schema. Every value and source header comes from the reviewed Sheet row.
     row = {
         "social_url": source["Reel URL"],
         "state": source["State"],

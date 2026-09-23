@@ -1,5 +1,55 @@
 # Backlog — done
 
+## WO-1014: private Context candidate intake and exact-meeting review queue [Done 2026-09-23]
+
+**What and why.** Ryan approved Milestone 1 after review of the Context handover,
+live pages and current repository. CSV/JSON research now becomes private
+candidates with preserved observations, an exact-recording lookup and an explained
+next action. Archive owns `archive/context/`; the resolver exposes explicit editor
+proxies. The existing public Context editor and publication states are reused.
+
+**Result.** One candidate per canonical social post. Changed research retains old
+observations and invalidates stale checks. Source identity locks, database
+uniqueness and version checks protect concurrent imports/rechecks. Conflicting
+research does not become a guessed association. Exact lookup uses existing slugs,
+stored URL aliases, normalized source URLs and fixture-verified platform IDs with
+tenant namespaces. Government/date suggestions never count as exact matches.
+Deleted meetings require recheck; edited editorial entries cannot leave a candidate
+pointing to another post. Import/recheck does not ingest, transcribe or publish.
+
+**Real source check.** The read-only Sheet export had 31 rows and 29 distinct posts.
+A local apply accepted 27 rows / 27 candidates, rejected four differing rows for
+two duplicate posts (Dallas and Santa Clarita), and had zero row errors. Replay
+created zero candidates or observations, with all 27 accepted observations unchanged.
+The database still had zero meetings, Context entries and transcription jobs.
+The 13 ingest-review, 10 recording-research and four unresolved outcomes are from
+an empty local Archive, not a production coverage claim. The 16 source columns
+have an explicit mapping; original rows remain intact. No Sheet or production
+write occurred.
+
+**Verification.** All 353 Context Python tests and 85 JavaScript tests passed.
+Full pytest completed with 5,115 passed, 16 skipped, four expected failures and two
+failures in already-documented local-export checks (`test_repair_wrong_pages`
+and `test_wrong_page_screen`; see BACKLOG's existing local-export entry). The
+initial sandbox run also reproduced six DNS-dependent failures on unchanged
+baseline code; they passed with normal DNS. Ruff lint/format, both SQLite Alembic
+upgrade/checks, backlog TOC and heading integrity passed. Disposable PostgreSQL
+migration plus concurrent duplicate and source-retarget checks passed. Unfiltered
+PostgreSQL autogenerate reports only its four intentionally unmapped baseline
+search objects, as documented by the CI workflow; no Context schema drift.
+Chrome verified queue layout, pagination/filtering, preserved research, successful
+recheck, retryable upstream outage and the existing editor through two localhost
+services. Native OS accessibility remained off.
+
+**Delivery and limits.** A lead integrated isolated concurrent import/storage,
+lookup/state and queue workers, then an independent review challenged identity,
+concurrency and publication boundaries. `README.md`, `docs/CONTEXT_PIPELINE_PLAN.md`
+and `docs/CONTEXT_CANDIDATES.md` now describe delivered behavior. One additive
+Archive migration, revision `9f20cd299f30`, adds two tables without a backfill.
+Deploy Archive before resolver; this work is not live until that manual release.
+Old-slug resolution, unknown mirror associations, ingestion and moment/editor
+prefilling remain outside this approved milestone.
+
 ## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
 
 **Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.

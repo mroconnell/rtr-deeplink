@@ -41,6 +41,7 @@ def _init_sentry() -> None:
 _init_sentry()
 
 from .db import crud
+from .context.routes import build_router as build_context_candidate_router
 from .db.engine import init_models
 from .topics import TOPICS
 from .utils import email as email_utils
@@ -3623,6 +3624,15 @@ async def context_new(request: Request, id: Optional[int] = None):
     # shared proxy or the browser alike.
     response.headers["Cache-Control"] = "private, no-store"
     return response
+
+
+app.include_router(
+    build_context_candidate_router(
+        templates=templates,
+        token_ok=lambda authorization: _token_ok(authorization),
+        clerk_user_id=lambda request: get_clerk_user_id(request),
+    )
+)
 
 
 # WO-946: "/context/{id}" or "/context/{id}-{slug}" -- the id is a plain

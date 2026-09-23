@@ -19,7 +19,7 @@ from .schemas import ImportRequest, InternalRecheckRequest, NextAction
 from ..utils.context_editors import is_context_editor
 
 _MAX_REQUEST_BYTES = 1_000_000
-_MAX_CANDIDATE_ID = 9_223_372_036_854_775_807
+_MAX_CANDIDATE_ID = 2_147_483_647
 _MAX_CANDIDATE_ID_DIGITS = len(str(_MAX_CANDIDATE_ID))
 _PRIVATE_HEADERS = {
     "Cache-Control": "private, no-store",

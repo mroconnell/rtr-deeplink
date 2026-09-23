@@ -508,6 +508,28 @@ async def context_set_status(
         return None
 
 
+async def context_candidates_recheck(
+    clerk_user_id: str, ids: list[int]
+) -> Optional[tuple[int, dict]]:
+    """Relay a bounded research recheck, preserving failure vs absence."""
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/context/candidates/recheck",
+                json={"clerk_user_id": clerk_user_id, "ids": ids},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                body = await response.json()
+                return (response.status, body) if isinstance(body, dict) else None
+    except Exception:
+        logger.exception("Archive candidate-recheck request failed.")
+        return None
+
+
 async def proxy_get(
     path: str,
     query_string: str,

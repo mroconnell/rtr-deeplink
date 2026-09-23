@@ -1,6 +1,6 @@
 """Provider-independent contracts for Context research (schema version 1)."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +17,7 @@ LookupOutcome = Literal["matched", "not_found", "ambiguous", "conflict", "error"
 MAX_IMPORT_ROWS = 100
 MAX_RECHECK_ROWS = 25
 PAGE_SIZE = 25
+CandidateId = Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]
 
 
 class NormalizedCandidate(BaseModel):
@@ -32,7 +33,8 @@ class NormalizedCandidate(BaseModel):
     network: str
     # Validated canonical fields: source_label, jurisdiction, state, gov_id,
     # meeting_date, meeting_body, recording_url, rtr_link, t_seconds, title,
-    # summary, notes, evidence. Missing facts remain None.
+    # summary, notes, evidence, proposed_match, source_timestamp, source_notes,
+    # source_ingest_claim. Missing facts remain None.
     claims: dict[str, Any]
     raw_payload: dict[str, Any]
     content_hash: str
@@ -61,7 +63,7 @@ class ImportRequest(BaseModel):
 
 class RecheckRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    ids: list[int] = Field(min_length=1, max_length=MAX_RECHECK_ROWS)
+    ids: list[CandidateId] = Field(min_length=1, max_length=MAX_RECHECK_ROWS)
 
 
 class InternalRecheckRequest(RecheckRequest):

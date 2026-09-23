@@ -1,6 +1,6 @@
 # Context pipeline implementation plan
 
-Prepared September 23, 2026. Proposal only; implementation awaits Ryan's approval.
+Prepared September 23, 2026. Approved by Ryan and implemented as WO-1014. See `CONTEXT_CANDIDATES.md` for the delivered workflow and verification. The sections below preserve the design and agent work split.
 
 I reviewed the September 22 handover in `rtr-business/research/RTR_Context_Pipeline_Fable_Handover_2026-09-22(1).docx`, the live Context feed and a published entry, and freshly fetched `origin/main` at `338e745`. The open working branch predates Context and contains unrelated edits. Implementation must start from current main in isolated worktrees.
 
@@ -154,4 +154,4 @@ Milestone 2 adds an operator-approved bridge to existing ingestion and tracks th
 
 Milestone 3 validates the proposed moment and prefills the existing editor. Use the transcript and recording first. Support another camera angle, approximate timing and recording cutoff as real outcomes. Keep uncertain allegations attributed to the speaker. Preserve enough evidence to explain the proposed label and the surrounding context. Reuse normal editor save/publish behavior, with no automatic publication. A custom matcher earns a separate proposal only if a measured sample shows that manual/Muse-assisted validation is the bottleneck.
 
-**Remaining input.** The handover does not include the candidate Sheet URL or actual headers. A link was requested during review. The provider-independent contract and work split can be approved now; the exact source mapping and real-data acceptance counts must wait for that source. No Muse API capabilities are assumed.
+**Source found during implementation.** The connected Drive contains the populated “IG Public Meetings - City, State, Date, Recording” Sheet (`1EdsnR7iE8mLyVV0Cv31LEJNjckeM12FmhYeoC7223fE`, `Sheet1`). Its 16 columns now have an explicit export mapping in `scripts/context_candidate_maps/ig_public_meetings.json`. The source was read only. No Muse API capabilities are assumed. Research claims live in JSON on the candidate and in immutable observations, rather than a separate database column per proposed fact.
