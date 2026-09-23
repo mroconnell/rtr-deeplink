@@ -1567,6 +1567,119 @@ def test_append_queue_line_is_dedupe_checked(tmp_path):
     assert lines == ["https://example.com/m.mp4\thttps://example.com/page"]
 
 
+def test_parse_queue_line_one_field():
+    assert queue_probe.parse_queue_line("https://example.com/v.mp4") == (
+        "https://example.com/v.mp4",
+        None,
+        None,
+    )
+
+
+def test_parse_queue_line_two_fields():
+    line = "https://example.com/v.mp4\thttps://gov.example/page"
+    assert queue_probe.parse_queue_line(line) == (
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        None,
+    )
+
+
+def test_parse_queue_line_three_fields():
+    line = "https://example.com/v.mp4\thttps://gov.example/page\tus:place:0000009"
+    assert queue_probe.parse_queue_line(line) == (
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        "us:place:0000009",
+    )
+
+
+def test_parse_queue_line_blank_source_with_gov_id():
+    line = "https://example.com/v.mp4\t\tus:place:0000009"
+    assert queue_probe.parse_queue_line(line) == (
+        "https://example.com/v.mp4",
+        None,
+        "us:place:0000009",
+    )
+
+
+def test_parse_queue_line_tolerates_six_field_deferred_shaped_line():
+    """A deferred-file line (url/source_url/gov_id/jurisdiction/duration/
+    title) still parses -- only the first three columns are read."""
+    line = (
+        "https://example.com/v.mp4\thttps://gov.example/page\tus:place:1\t"
+        "Example City, ST\t1:30:00\tCity Council"
+    )
+    assert queue_probe.parse_queue_line(line) == (
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        "us:place:1",
+    )
+
+
+def test_parse_queue_line_trims_whitespace():
+    line = "  https://example.com/v.mp4  \t  https://gov.example/page  \t  us:place:1  "
+    assert queue_probe.parse_queue_line(line) == (
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        "us:place:1",
+    )
+
+
+def test_append_queue_line_does_not_write_gov_id_while_flag_is_off(
+    tmp_path, monkeypatch
+):
+    """WO-1016: EMIT_GOV_ID_IN_QUEUE_LINES gates a 3rd field until every
+    live reader (including the drip Mac's own checkout) is confirmed
+    tolerant -- ships False, so a gov_id passed through today keeps
+    writing the exact same 1/2-field line as before."""
+    monkeypatch.setattr(queue_probe, "EMIT_GOV_ID_IN_QUEUE_LINES", False)
+    queue_path = tmp_path / "queue.txt"
+    queue_probe.append_queue_line(
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        gov_id="us:place:0000009",
+        queue_path=queue_path,
+    )
+    lines = [ln for ln in queue_path.read_text().splitlines() if ln.strip()]
+    assert lines == ["https://example.com/v.mp4\thttps://gov.example/page"]
+
+
+def test_append_queue_line_writes_gov_id_once_flag_is_on(tmp_path, monkeypatch):
+    monkeypatch.setattr(queue_probe, "EMIT_GOV_ID_IN_QUEUE_LINES", True)
+    queue_path = tmp_path / "queue.txt"
+    queue_probe.append_queue_line(
+        "https://example.com/v.mp4",
+        "https://gov.example/page",
+        gov_id="us:place:0000009",
+        queue_path=queue_path,
+    )
+    lines = [ln for ln in queue_path.read_text().splitlines() if ln.strip()]
+    assert lines == [
+        "https://example.com/v.mp4\thttps://gov.example/page\tus:place:0000009"
+    ]
+
+
+def test_append_queue_line_writes_gov_id_with_blank_source_once_flag_is_on(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(queue_probe, "EMIT_GOV_ID_IN_QUEUE_LINES", True)
+    queue_path = tmp_path / "queue.txt"
+    queue_probe.append_queue_line(
+        "https://example.com/v.mp4",
+        None,
+        gov_id="us:place:0000009",
+        queue_path=queue_path,
+    )
+    lines = [ln for ln in queue_path.read_text().splitlines() if ln.strip()]
+    assert lines == ["https://example.com/v.mp4\t\tus:place:0000009"]
+    # And the shared parser reads it back correctly.
+    assert queue_probe.parse_queue_line(lines[0]) == (
+        "https://example.com/v.mp4",
+        None,
+        "us:place:0000009",
+    )
+
+
 def test_append_deferred_line_writes_the_real_column_shape(tmp_path):
     deferred_path = tmp_path / "deferred.txt"
     queue_probe.append_deferred_line(

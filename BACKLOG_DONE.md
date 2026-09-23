@@ -17,6 +17,88 @@
 
 **Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
 
+## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
+
+**Issue.** `scripts/tier3_auto_transcription_queue.txt` lines were `URL`
+or `URL<TAB>SOURCE_URL` -- a research sweep that already knew the
+government had no way to record that on the line itself. The feeder
+(`scripts/feed_tier3_auto_transcription.py`) only ever got a gov_id from
+`queue_probe.has_owner()`'s `tenant_overrides.csv` per-video pin, which
+returns `(True, None, "")` on a single-tenant vendor host (a Granicus/
+CivicClerk/eScribe tenant subdomain) -- ownership is real there, but no
+cheap gov_id exists to hand back without the Archive's own full resolver
+ladder. CLAUDE.md's "send the government's id in every ingest payload"
+rule silently didn't apply to that whole class of line.
+
+**Fix.** One shared parser, `app.platforms.queue_probe.parse_queue_line()`
+(url, source_url, gov_id) -- tolerates 1, 2, 3, or more tab fields (a
+deferred-file-shaped line still parses, only the first 3 columns are
+read), a blank source field with a gov_id present (`URL\t\tGOV_ID`, the
+same shape `tier3_long_meetings_deferred.txt` already uses), and blank/
+whitespace exactly like the pre-existing behavior. Every LIVE reader now
+calls it instead of its own tab-split: `scripts/feed_tier3_auto_
+transcription.py`'s `_parse_queue_line()` is now a thin wrapper over it
+(kept under the same name since `scripts/youtube_drip.py` and
+`scripts/probe_tier3_queue.py` import that exact name), and
+`scripts/find_tier3_short_meeting_substitutes.py`'s `queue_lines()` was
+rewritten to call it instead of its own unsafe `line.partition("\t")`
+(which glued a 3rd field wholesale onto `source_url` -- a real break this
+change closes, not a hypothetical one). `scripts/youtube_drip.py`'s three
+call sites were updated to unpack the new 3-tuple. The feeder threads a
+line's own gov_id into the ingest payload: it wins over `has_owner()`'s
+pin gov_id when both exist and agree; when both exist and DISAGREE, the
+line is skipped (`[SKIP] gov_id disagreement: ...`, dropped from the
+queue like any other `[SKIP]`, never ingested under either id) rather
+than guessed at -- CLAUDE.md's "reports report, they never guess"
+standard applied to the feeder's own ingest decision.
+
+**Writers gated off on purpose.** `queue_probe.append_queue_line()`/
+`finish_candidate()` (the one shared writer every `wo1XX_finish_tier3*.py`
+sweep script already routes through) can now write a 3rd gov_id field,
+gated by a single module constant, `queue_probe.EMIT_GOV_ID_IN_QUEUE_
+LINES`, shipped `False` in this PR. Reason: the drip Mac
+(`scripts/youtube_drip.py`, "YouTube is fetched only by the drip Mac")
+runs its OWN separate checkout and only picks up `parse_queue_line()`'s
+tolerance on its own `git pull` -- flipping the writer on in the same PR
+that adds the readers would risk a 3-field line reaching a checkout that
+hasn't pulled yet.
+
+**Rollout order (not done in this PR past step 1):**
+1. Merge this PR's readers (`parse_queue_line()` + every caller updated).
+2. Confirm the drip Mac has `git pull`ed a checkout that includes it (its
+   own three `_parse_queue_line()` call sites already tolerate a 3-tuple
+   once pulled -- see `scripts/youtube_drip.py`'s own WO-1016 comment
+   next to `QUEUE_FILE`).
+3. Flip `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` to `True` in a follow-up
+   PR.
+
+**Existing queue backfill: read-only count, not done.** Of the 1,038
+non-comment lines in `scripts/tier3_auto_transcription_queue.txt` today
+(716 with a source_url field, 322 without), checking each against
+`queue_probe.has_owner()` found: **142 lines already resolve to an exact
+gov_id via a `tenant_overrides.csv` per-video pin** (these could carry a
+gov_id today, and the feeder already sends it via `has_owner()`,
+independent of this WO), 731 sit on a single-tenant host with no cheap
+per-video gov_id to derive this way (ownership is real, but not
+recoverable from a pin lookup alone), and 165 have no owner at all
+(shared host, no matching pin -- WO-346's known gap). No line was
+rewritten -- per this WO's brief, existing lines are not backfilled.
+
+**Tests.** `tests/test_queue_probe.py` (new `parse_queue_line()` cases:
+1/2/3/6 fields, blank source with gov_id, whitespace; `append_queue_line()`
+gated on/off); `tests/test_feed_tier3_auto_transcription.py` (parser
+3-tuple cases; a line's own gov_id reaching the payload with no pin; a
+line's gov_id agreeing with the pin; the disagreement-skip case, dropped
+and never ingested); `tests/test_wo346_no_owner_requeue.py`'s two
+existing `main()` tests updated for `_push_if_has_video()`'s new
+`line_gov_id` positional argument.
+
+**Not deployed.** Merged to `main` but every service here has
+`autoDeploy: false` -- this ships no ingest-behavior change today anyway
+(`EMIT_GOV_ID_IN_QUEUE_LINES` is off, and `_push_if_has_video()`'s new
+precedence logic is a no-op on every line without a 3rd field, i.e. every
+line in the queue today).
+
 ## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
 
 **Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.
