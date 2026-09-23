@@ -76,6 +76,12 @@ ACCESS_REASONS = frozenset(
         "cloudflare-challenge-blocked",
         "dns-unresolvable",
         "timeout",
+        # WO-1017 (2026-09-23): the govAccess/Akamai CNAME block --
+        # we never even attempted a fetch (§23's WO-283/WO-320/WO-324
+        # addenda in ENUMERATION_METHODS.md). Same class as the other
+        # access reasons above: worth retrying, including against an
+        # alternate domain.
+        "blocked-waf-akamai",
     }
 )
 

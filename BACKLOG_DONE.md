@@ -1,5 +1,89 @@
 # Backlog — done
 
+## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` kept (code still uses it) [Done 2026-09-23]
+
+**Issue.** Ryan asked for four cleanups to the research file's
+`reject_reason` taxonomy in `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §23: drop `cablecast-no-vod` (0 rows use it),
+convert `rejected_by_probe` to `rejected-by-probe` everywhere it's
+written, document three in-use-but-undocumented values
+(`blocked-waf-akamai`, `deferred-french-vocab`, `shared-gov-exception`),
+and point the doc's top-part "record the outcome" guidance at §23.
+
+**`cablecast-no-vod`: not removed.** Grepped both repos first, per this
+file's own "verify before acting" rule. `rtr-deeplink/scripts/
+coverage_alternates.py` still lists it in `CONTENT_REASONS`,
+`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, and
+`tests/test_coverage_alternates.py` asserts all three memberships —
+live, tested code, not just a doc mention. Removing the doc entry would
+leave the taxonomy and the code disagreeing about a value the code
+still actively classifies (the alternate-domain-hop trigger for it is
+real, working logic, just not exercised by any current row). Left the
+addendum in place with a 2026-09-23 note explaining why, flagged for
+Ryan to decide whether to also retire the code path.
+
+**`rejected_by_probe` → `rejected-by-probe`.** `scripts/
+wo134_confirmed_hits_ingest.py` now defines
+`REJECT_REASON_REJECTED_BY_PROBE = "rejected-by-probe"`; `scripts/
+wo147_access_ladder_sweep.py` (the still-current access-ladder code —
+confirmed via `docs/COVERAGE_HANDOVER.md`'s §270/§274 pointers and by
+counting importers: ~50 newer sweep/classify scripts import it, versus
+0 importers for the ~14 other `wo1NN_*`/`wo2NN_*` ladder-sweep scripts
+that also wrote the underscore literal) now writes that constant into
+its `reject_reason` cell instead of a fresh literal. The internal
+`RowResult.outcome`/`ProbeRejected` code string
+(`"rejected_by_probe"`, matched with `==`, asserted by
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) is unchanged on
+purpose — never written to the CSV directly, only compared in-process.
+The ~14 older, zero-importer one-off sweep/finish scripts
+(`wo150_muni_ladder_sweep.py`, `wo183/187/191/216/217/225/259_*`,
+`wo147_finish_tier3_queue.py`, `wo150_finish_tier3.py`,
+`wo168_gated_tenant_guess.py`, `wo196_wo190_followups.py`,
+`wo175_find_and_queue_video.py`, `wo230_agendacenter_followup.py`) and
+~26 one-shot `*_apply_to_jc.py` scripts in rtr-business were left
+alone, per this file's "leave historical one-off scripts alone" rule —
+none is imported by anything else, none is rerun. The 10 rows already
+on disk with the old spelling were rewritten by a new, dry-run-verified
+apply script (`wo1017_apply_to_jc.py`, run for real by the conductor),
+following ENUMERATION_METHODS.md's §158 protocol but doing a true
+line-based byte swap (both spellings are 18 characters) rather than a
+`csv.DictWriter` round-trip, so no other row's formatting could shift.
+
+**Three values added to §23** (new 2026-09-23 addendum, with class,
+meaning, source and live count): `blocked-waf-akamai` (access class —
+the govAccess/Akamai CNAME block, 40 rows), `deferred-french-vocab`
+(a new, distinct "parked for retry" class, not access or content — a
+Quebec government's targeted-fetch phase was deliberately skipped
+because the shared hop-link vocabulary is English-only, 201 rows), and
+`shared-gov-exception` (other/administrative — already fully defined in
+§317, just missing from §23's own table; the non-canonical row of a
+consolidated city-county pair, 33 rows).
+
+**Classification lists checked.** `blocked-waf-akamai` added to
+`scripts/coverage_alternates.py`'s `ACCESS_REASONS` (rtr-deeplink, with
+a new unit test) and to `wo226_apply_to_jc.py`'s `ACCESS_REJECT_REASONS`
+(rtr-business, uncommitted per this repo's "agents never commit in
+rtr-business" rule — left for the conductor). `coverage_registry.py`
+only tallies raw `reject_reason` strings, no access/content bucketing to
+update. `refresh_transcribed_flag.py`'s `VALUE_TYPE_REJECT_REASONS`
+already correctly includes `shared-gov-exception` and correctly excludes
+the other three; not touched (owned by a concurrent WO this session).
+Per Ryan's instruction, `rejected-by-probe`/`deferred-french-vocab`/
+`shared-gov-exception` were NOT added to any ACCESS/CONTENT/NEVER_RETRY
+list — classifying them changes real sweep retry behavior, so that's
+flagged in the doc for a human decision rather than done here.
+
+**Top-part pointer.** The "What to do when a stage finds something"
+section's "Nothing." bullet now points to §23 as the canonical
+`reject_reason` list, so a future session doesn't reinvent a value under
+a new spelling.
+
+**Not deployed** — docs and `research/`-directory scripts never needed
+a deploy and still don't; `scripts/coverage_alternates.py` and
+`scripts/wo134_confirmed_hits_ingest.py`/`wo147_access_ladder_sweep.py`
+are offline research/sweep tooling, not part of the resolver or worker
+services, so nothing here is blocked on a Render deploy either.
+
 ## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
 
 **Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.

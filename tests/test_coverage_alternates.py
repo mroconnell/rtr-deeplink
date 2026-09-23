@@ -923,3 +923,14 @@ def test_cablecast_no_vod_is_meeting_found_no_video():
     assert "cablecast-no-vod" in CONTENT_REASONS
     assert "cablecast-no-vod" in NEVER_RETRY_REASONS
     assert not is_retry_worthy("cablecast-no-vod", trigger="no-meeting")
+
+
+def test_blocked_waf_akamai_is_access_class():
+    # WO-1017 (2026-09-23): the govAccess/Akamai CNAME block is an
+    # access-class reason (we never attempted a fetch at all) -- worth
+    # retrying under both trigger policies, including against an
+    # alternate domain.
+    assert "blocked-waf-akamai" in ACCESS_REASONS
+    assert "blocked-waf-akamai" not in CONTENT_REASONS
+    assert is_retry_worthy("blocked-waf-akamai", trigger="access")
+    assert is_retry_worthy("blocked-waf-akamai", trigger="no-meeting")

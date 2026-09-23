@@ -383,6 +383,18 @@ def _finish_probe_selection(probed: List["queue_probe.ProbeResult"]):
 IDENTITY_CHECK_HOOK = None
 
 
+# WO-1017 (2026-09-23, Ryan): the research file's `reject_reason` column
+# writes this hyphenated spelling going forward -- `rejected_by_probe`
+# (underscore) stays as the internal `RowResult.outcome`/`ProbeRejected`
+# code below unchanged, since that's an in-process code string compared
+# with `==`, not a value written to jurisdiction_coverage.csv. Callers
+# that write a `reject_reason` cell for this outcome (e.g.
+# wo147_access_ladder_sweep.py) should use this constant rather than a
+# fresh literal, so the research file can't have the underscore spelling
+# written into it again.
+REJECT_REASON_REJECTED_BY_PROBE = "rejected-by-probe"
+
+
 @dataclass
 class RowResult:
     gov_id: str
