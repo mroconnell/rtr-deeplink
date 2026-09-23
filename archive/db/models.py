@@ -595,6 +595,29 @@ class TranscriptionJob(Base):
     claimed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # WO-936: the last time this job actually reported a finished or
+    # failed chunk (set only inside crud.report_chunk_result() -- never
+    # by worker/main.py's heartbeat, which only touches claimed_at). That
+    # distinction is the whole point: claimed_at alone can't tell a
+    # genuinely stuck job from a healthy one, because the heartbeat
+    # refreshes it every 60s regardless of real progress (confirmed by
+    # reading how SQLAlchemy's Core update() still fires this column's
+    # own onupdate -- heartbeat_claim()'s bulk UPDATE bumps updated_at
+    # too, so that column has the same blind spot). last_progress_at
+    # moves only on real activity, so a job whose worker OOM'd mid-chunk
+    # or is wedged in an unbounded transcription call (see
+    # CLAIM_HEARTBEAT_SECONDS' own comment) shows up as stalled here even
+    # though claimed_at/updated_at both look perfectly fresh -- see
+    # crud.list_stuck_transcription_jobs().
+    #
+    # Nullable: added by migration after real jobs already existed.
+    # Coalesce with created_at when reading it (same convention as
+    # jurisdiction_confidence IS NULL elsewhere in this codebase) --
+    # NULL means "no progress recorded since this column existed", not
+    # "definitely stuck".
+    last_progress_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     consecutive_chunk_failures: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )

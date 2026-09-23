@@ -1,3 +1,6 @@
+import pytest
+
+from app.platforms.base import ResolveError
 from app.platforms.suiteone import SuiteOneAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -204,14 +207,16 @@ async def test_resolve_degrades_to_no_date_when_event_missing_from_home_listing(
     assert result.title == "Traffic Safety Commission"
 
 
-async def test_resolve_missing_ids_raises_value_error():
-    import pytest
-
-    with pytest.raises(ValueError):
+async def test_resolve_missing_ids_raises_resolve_error():
+    # WO-938, 2026-09-21: used to be a bare ValueError -- now the shared
+    # typed ResolveError (app/platforms/base.py), same message. See
+    # BACKLOG.md's "suiteone.py's resolve() raises a raw ValueError"
+    # entry.
+    with pytest.raises(ResolveError):
         await SuiteOneAssetFinder().resolve("https://suiteonemedia.com/")
 
 
-async def test_resolve_bare_tenant_management_root_still_raises_value_error():
+async def test_resolve_bare_tenant_management_root_still_raises_resolve_error():
     # WO-285, 2026-09-12: a bare tenant management-listing root (real,
     # confirmed live examples: lunaconm.suiteonemedia.com/,
     # rushcoin.suiteonemedia.com/?embed=1 -- both real ~200-680KB listing
@@ -219,10 +224,9 @@ async def test_resolve_bare_tenant_management_root_still_raises_value_error():
     # the `/web/live` stub fixed below -- there's no known event-id
     # lookup for it yet (that's WO-149's own still-open BACKLOG.md entry:
     # "give SuiteOneAssetFinder a real event-listing lookup"). This still
-    # fails loudly rather than silently guessing.
-    import pytest
-
-    with pytest.raises(ValueError):
+    # fails loudly rather than silently guessing -- WO-938 only changed
+    # the exception's type, not this behavior.
+    with pytest.raises(ResolveError):
         await SuiteOneAssetFinder().resolve("https://lunaconm.suiteonemedia.com/")
 
 

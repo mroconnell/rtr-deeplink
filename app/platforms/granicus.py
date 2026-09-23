@@ -14,6 +14,7 @@ from .base import AssetFinder
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_text
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -243,6 +244,42 @@ US_STATE_ABBREVIATIONS = {
 }
 
 
+# WO-1005 (2026-09-22): a real access-ladder run (BACKLOG_DONE.md's
+# WO-919 entry) reported tnga.granicus.com (Tennessee's legislature) and
+# nvleg.granicus.com (Nevada's) both answering the adapter's plain fetch
+# with HTTP 403 and a realistic browser header set with HTTP 200. Live
+# re-verification on 2026-09-22 (this WO) could NOT reproduce a 403 on
+# either host on any of several fetch attempts (bare aiohttp defaults,
+# empty User-Agent, a `python-requests/...` UA, and this adapter's own
+# existing Windows-Chrome `self.headers` all returned 200) -- a real,
+# full `resolve()` succeeded end-to-end for a real clip on each tenant
+# with no header changes needed. Per CLAUDE.md's "a backlog entry is a
+# lead, not a spec" rule this is flagged rather than silently assumed:
+# the block was very plausibly real and IP-reputation/rate/time-of-day
+# dependent (an Apache host with no Cloudflare WAF in front of either
+# tenant, so not a JS challenge -- more likely a UA/behavior-based rule
+# that wasn't triggered this session), not a wrong original finding. This
+# rung is kept as a real, narrowly-scoped defensive fallback for
+# whatever produced it, exactly like CLAUDE.md's "politely" bullet
+# already describes for this same file's hotlink-check UA and Vimeo's
+# accepted-video-format precedent -- giving a host the specific,
+# realistic request shape it's asking for, not evading anything.
+_BROWSER_RETRY_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+}
+
+
 class GranicusAssetFinder(AssetFinder):
     """Resolves video + transcript for a Granicus meeting page.
 
@@ -283,8 +320,18 @@ class GranicusAssetFinder(AssetFinder):
         Mountain View meeting submitted as a MediaPlayer.php URL, where the
         old code (matching against the pre-redirect url) never guessed the
         captions.vtt path at all.
+
+        WO-1005 (2026-09-22): a 403 specifically (not any other error) gets
+        ONE extra, one-shot attempt with a fuller browser header set
+        (`_BROWSER_RETRY_HEADERS`, see its own module comment) before this
+        falls through to the ordinary backoff-and-retry loop below with the
+        original headers. A 404 never reaches this -- a missing page stays
+        missing regardless of what headers ask for it, so retrying one with
+        different headers would just waste a request, exactly the case
+        this is deliberately NOT built to handle.
         """
         last_error = None
+        tried_browser_headers = False
         for attempt in range(max_retries):
             try:
                 async with session.get(
@@ -293,9 +340,36 @@ class GranicusAssetFinder(AssetFinder):
                     allow_redirects=True,
                     timeout=aiohttp.ClientTimeout(total=30),
                 ) as response:
+                    if response.status == 403 and not tried_browser_headers:
+                        tried_browser_headers = True
+                        async with session.get(
+                            url,
+                            headers=_BROWSER_RETRY_HEADERS,
+                            allow_redirects=True,
+                            timeout=aiohttp.ClientTimeout(total=30),
+                        ) as retry_response:
+                            if retry_response.status < 400:
+                                return (
+                                    await read_capped_text(retry_response),
+                                    str(retry_response.url),
+                                )
+                            raise aiohttp.ClientError(
+                                f"HTTP {response.status} for {url} (browser-"
+                                f"headers retry also got HTTP {retry_response.status})"
+                            )
                     if response.status >= 400:
                         raise aiohttp.ClientError(f"HTTP {response.status} for {url}")
-                    return await response.text(), str(response.url)
+                    # WO-938, 2026-09-21: a real `AgendaViewer.php`
+                    # response (Harrisonburg, VA, WO-134) raised an
+                    # unhandled `UnicodeDecodeError` out of the plain
+                    # `response.text()` call this used to make -- the
+                    # same shape `civicplus.py` (WO-285) and
+                    # `escribe.py` (WO-938) already fixed, both via
+                    # `url_guard.read_capped_text()`. Reused here rather
+                    # than a new adapter-local fallback, same reasoning
+                    # -- plus a free response-size cap this fetch had
+                    # none of before.
+                    return await read_capped_text(response), str(response.url)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
                 if attempt == max_retries - 1:

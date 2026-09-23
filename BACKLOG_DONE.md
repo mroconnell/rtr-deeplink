@@ -1,5 +1,1496 @@
 # Backlog — done
 
+## WO-1019: retired the superseded wo273_recon/classify/targeted.py scripts, folding their shared library code into wo282_recon/classify/targeted.py, and wired PR #1275's A-record-only DNS-subdomain rule into wo282_classify.py [Done 2026-09-23]
+
+**Why this ran.** WO-282's passive-discovery-v2 scripts (`wo282_recon.py`/`wo282_classify.py`/`wo282_targeted.py`) still imported their shared DNS/archive/robots/sitemap/Wayback/Common-Crawl helpers, hub/meeting URL scoring, and fetch/catch-all-guard plumbing from `wo273_recon.py`/`wo273_classify.py`/`wo273_targeted.py` — the superseded v1 scripts, kept around purely as a library. About 65 files across `rtr-deeplink/scripts`, `tests`, and `rtr-business/research` (every per-WO clone from WO-283 through WO-338, plus one-off scripts and the DNS/CT-log sweep's queue feeder) imported one of the three wo273 modules. Retiring wo273's own scripts required moving that shared code somewhere it would keep living, not just deleting it.
+
+**What moved.** Everything WO-282's own scripts (or another importer) actually called, moved verbatim (no rewrite):
+  - `wo282_recon.py` gained: `HEADERS`/`HOST_DELAY_SECONDS`/`GOV_REQUEST_TIMEOUT`/`STALE_DAYS`/`CDX_TIMEOUT`/`CDX_RETRY_BACKOFFS`/`ARCHIVE_CONCURRENCY`, `_PLATFORM_ALIASES`/`_PATH_SHAPE_PLATFORMS`/`VENDOR_SUBDOMAIN_GUESSES`/`VENDOR_LABEL_TEMPLATES`, `HUB_WORD_LIFT`/`HUB_BIGRAM_LIFT`/`MEETING_WORD_HIT`, `hub_score()`/`meeting_score()`, `HostRateLimiter`/`RATE_LIMITER`/`_ARCHIVE_SEMA`, `polite_request()`/`is_challenge()`/`vendor_family_for_url()`, `dig()`/`registrable_label()`/`label_is_guessable()`/`dns_lookup()`, `cdx_get()`/`wayback_id_read()`/`newest_capture()`/`capture_age_days()`/`fetch_archived_sitemap_and_robots()`/`parse_robots()`/`parse_sitemap_xml()`/`rank_sub_sitemaps()`, `MEETING_PATH_REGEX`/`WAYBACK_TOP_N`/`fetch_wayback_domain_index()`, `probe_common_crawl()`/`fetch_common_crawl()`.
+  - `wo282_classify.py` gained: `vendor_platform_for_url()`/`all_urls_from_record()`/`dns_platform()` (importing `hub_score`/`meeting_score`/`_PLATFORM_ALIASES`/`_PATH_SHAPE_PLATFORMS` from `wo282_recon.py` instead of `wo273_recon.py`).
+  - `wo282_targeted.py` gained: `try_wayback_archived_body()`/`polite_fetch()`, `PAGE_BODY_LIMIT`/`non_page_url()`/`page_url_skip()`/`bounded_redirect_fetch()`/`polite_page_fetch()`/`bounded_page_body()`, `_body_fingerprint()`/`_sizes_close()`/`is_same_domain()`/`is_catch_all_response()`/`fetch_domain_reference()`, `name_matches()`, `GOV_TIMEOUT`/`CDX_EXACT_TIMEOUT`/`GOV_REQUEST_WALL_CLOCK_DEADLINE`/`MIN_CONFIRM_BODY_BYTES`/`CATCH_ALL_SIZE_TOLERANCE`/`NONSENSE_LABEL_LEN`.
+
+**What was deliberately NOT moved** — WO-273's own CLI/orchestration, never imported by WO-282 or anything else (confirmed by grep before touching anything): `wo273_recon.py`'s `fetch_live_robots()`/`fetch_live_sitemap()`/`process_government()`/`cmd_build_candidates()` and its JC-CSV candidate-pool builder (`NOTHING_FOUND_REASONS`/`VENDOR_DOMAIN_SUBSTRINGS`/`is_blank`/`is_vendor_domain`/`load_jc_rows`/`build_candidate_pool`/`load_wo268_domains`) — WO-282's own population comes from a separate `wo282_population.csv`, not a JC-CSV sweep; `wo273_targeted.py`'s own `fetch_and_score()`/`top_flagged_urls()`/`process_government_targeted()`/`cmd_sweep()`/`affected_domains()`/`main()` — superseded by `wo282_targeted.py`'s own, differently-shaped `fetch_and_score_v2()`/`process_with_candidates()`/`process_fallback_ladder()`, which read a ranked `candidates_json` list rather than per-kind `best_hub_url`/`best_meeting_url` columns; `wo273_classify.py`'s own `classify_record()`/`main()` for the same reason.
+
+**Importer inventory and repointing.** 43 real Python importers across `rtr-deeplink/scripts` (11 `_classify.py` clones, 10 `_recon.py` clones, 11 `_targeted.py` clones, and 11 one-off scripts: `wo292_fetch_vocab_homepages.py`, `wo327_refix_qc_primegov.py`, `wo360_county_muni_walk.py`, `wo361_find_hub.py`, `wo919_verify.py`, `wo1004_domain_health_check.py`, `wo281_homepage_hop.py`, `wo284_group_b.py`, `wo284_listing_hop.py`, `wo286_weak_confirm_pipeline.py`, `wo323_youtube_leads.py`) plus 2 test files (`tests/test_challenge_markers.py`, `tests/test_wo939_sweep_robustness.py`) and 2 rtr-business files (`research/dns_ctlog_sweep_2026-09-17/queue_pipeline.py`, `research/dns_ctlog_sweep_2026-09-17/production_run_2026-09-22/wayback_recheck.py`) were repointed from `wo273_recon`/`wo273_classify`/`wo273_targeted` to `wo282_recon`/`wo282_classify`/`wo282_targeted` — a mechanical rename, since every moved name already exists under the same name in its new home. Verified with a real import check (not just `ast.parse`): all 43 rtr-deeplink files import cleanly both before and after deleting the three wo273 scripts. `docs/investigations/passive_discovery_v2.md`, `docs/COVERAGE_HANDOVER.md`, `README.md` and `CLAUDE.md` were checked and none names a wo273 script as current/importable code, so none needed a change.
+
+**Historical data files left alone.** `wo281_homepage_hop.py` still reads `research/wo273_classified.csv`/`wo273_candidates.csv` as INPUT — WO-273's own real, still-on-disk output data, not code. Left untouched; this is data lineage, not a stale import.
+
+**Tests ported, three groups deliberately dropped.** `tests/test_wo273_passive_discovery.py` → `tests/test_wo282_passive_discovery.py` (new file's own module docstring has the full reasoning): every test case testing genuinely-moved code was ported against the WO-282 modules. Not ported: `build_candidate_pool()`/`is_vendor_domain()` tests (the retired JC-CSV candidate-pool builder), `top_flagged_urls()`/`fetch_and_score()` tests (WO-273's own retired per-kind ranking/fetch orchestration, superseded by `wo282_targeted.py`'s own), and `wo273_classify.classify_record()`'s best-url-column assertions (replaced by `wo282_classify.classify_record()`'s candidates_json-shaped equivalents). None of the three groups' underlying code was ever imported by WO-282 or anything else.
+
+**PR #1275's A-record-only rule, now actually used.** `dns_subdomain_candidates()` (a resolving guessed subdomain that's an A record with no CNAME to a known vendor — the shape of `live.pomonaca.gov`, Cablecast — still becomes a candidate at "medium" confidence) landed in `wo273_classify.py` via PR #1275 (merged 2026-09-21) but `wo282_classify.py` never called it — the rule was written for wo273's per-kind `best_hub_url`/`best_meeting_url` tracking and was never ported to wo282's ranked-candidate model. Wired in as a `source="dns-subdomain"` entry in `classify_record()`'s own `all_candidates` dict (added after sitemap/Wayback/homepage candidates, so a real, independently-found URL at an equal or higher score keeps its earlier, better rank). One deliberate scoring change: both DNS-subdomain kinds (hub and meeting-detail) now score at wo282's own medium-confidence floor (20.0), not wo273's split 20.0 (hub) / 8.0 (meeting) — wo282's confidence logic is a single top-score threshold, not a per-kind one, so an unscaled 8.0 meeting-detail candidate would never reach "medium" under this file's model.
+
+**Verification: replayed offline, twice, over the real 1,298-row `wo282_recon.jsonl`.**
+
+| Stage | Confidence split (none / low / medium / high) | Governments with no candidate |
+|---|---|---|
+| Before (original wo273-importing wo282_classify.py) | 848 / 295 / 143 / 12 | 696 |
+| After the pure move (no #1275 wiring yet) | 848 / 295 / 143 / 12 — **byte-identical CSV output** | 696 |
+| After wiring #1275 in | 820 / 282 / 184 / 12 | 667 |
+
+The #1275 wiring changes 50 of 1,298 rows: 28 `none`→`medium`, 13 `low`→`medium`, 8 `medium` rows gain a `dns-subdomain` candidate without a confidence change, 1 `high` row unchanged. Real examples: `ashlandborough.com` and `boroughofeastnewark.com` went from no candidate at all to a medium-confidence hub/meeting-detail candidate purely from DNS; `sibleyiowa.net` and `eastprairiemo.net` kept their existing real sitemap-sourced candidate ranked first (tie-broken by insertion order) while gaining DNS-subdomain candidates alongside it.
+
+**A caution worth carrying forward, not fixed here.** While tracing `wo282_recon.py`'s own `process_government_v2()`, confirmed a real, separate, pre-existing bug unrelated to this move: it reads `wayback_index["narrow_urls"]`, but `fetch_wayback_domain_index()` (the WO-366 redesign) only ever sets `"top_urls"` — a real `KeyError` whenever the Wayback health check passes, independently confirmed to have crashed a real production run 49 times on 2026-09-22 (`rtr-business/research/dns_ctlog_sweep_2026-09-17/production_run_2026-09-22/wayback_recheck.py`'s own docstring). Not fixed in this WO (out of scope for a pure refactor); flagged to the conductor, who reports PR #1368 (open as of this writing) already fixes it across all 11 affected recon scripts and adds its own regression test. Rebase/merge `origin/main` before landing this PR if #1368 merges first, keeping `"top_urls"` as the key everywhere.
+
+**CI gates.** All five local gates green: `ruff check`, `ruff format --check` (one file needed reformatting after the merge, applied), `python -m pytest` (5,008 passed, 16 skipped, 4 xfailed; the only 2 failures — `test_repair_wrong_pages.py`/`test_wrong_page_screen.py` — are pre-existing and unrelated, confirmed by reproducing them on a clean `git stash`'d tree), `alembic check` in both `archive/` and `app/` against a fresh migration-built SQLite, and `scripts/check_backlog_done_headings.py`.
+
+**Renumbered mid-session.** Started as WO-1014 (assigned at session start); renamed to WO-1019 after the conductor found another open PR (#1361) already using WO-1014.
+
+**Not deployed.** This is a pure Python-script refactor under `scripts/`/`tests/` with no `app/`/`archive/`/`worker/` changes — no deploy needed or requested.
+
+## WO-1015 part A: one shared, network-free host-recognition helper for discovery stages; stage 2/3 sweep scripts now check for platforms at all [Done 2026-09-23]
+
+**Issue.** `detect_platform()` (`app/platforms/base.py`) is the one real,
+maintained registry of every platform this repo has an adapter for, and
+almost every part of this app already asks it. Two discovery stages in
+`rtr-business/research/dns_ctlog_sweep_2026-09-17/` didn't: stage 2
+(`elastic_sweep_script.py`, the DNS/CNAME sweep) matched each CNAME hop
+against its own hand-typed `VENDOR_SUFFIXES` list, which mixed real
+adapter-backed platforms with vendors that have no adapter at all
+(`novusagenda.com`, `clerkshq.com`'s sibling `diligentoneplatform.com`,
+etc — some of those DO have adapters, the list just couldn't say so).
+Stage 3 (`cc_seek_script.py`, the Common Crawl seek) never checked for a
+platform at all — only a plain keyword guess (`HUB_KEYWORDS`).
+
+**Fix.** Added `app/platforms/host_recognition.py`: `platform_for_host()`
+answers `(platform, supported)` for a bare hostname by calling
+`detect_platform()` on a synthetic `https://<host>/` URL first, then a
+short, explicitly-sourced fallback list (`_HOST_ONLY_PLATFORMS`) for six
+real, adapter-backed platforms whose `detect_platform()` branch needs a
+path/query a bare host never has (Cablecast, BoxCast, BoardDocs,
+Invintus, Castus, Hyland — plus Wistia/Vimeo, recognized via their own
+existing host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is
+the one seeded, sourced list of known vendors with NO adapter (currently
+just `novusagenda.com`). Seattle Channel is the one adapter-backed
+platform deliberately NOT recognized by host alone (host is a general
+broadcast site, not single-purpose — documented in the module's own
+docstring).
+
+Hyland (`hylandcloud.com`) needed a conductor-review correction
+(2026-09-23): the first pass dropped it entirely, reasoning that
+`detect_platform()`'s own Hyland branch has no netloc check at all and
+its 3 known real tenants share no common host suffix
+(`tucsonaz.hylandcloud.com`, `mccobagenda.databankcloud.com`,
+`agendanet.saccounty.gov`). True, but beside the point: `hylandcloud.com`
+isn't NECESSARY to identify a Hyland tenant, but it IS SUFFICIENT — every
+real `*.hylandcloud.com` host seen so far (plus 8
+`tenant_overrides.csv` pins onto `hylandcloud.com` hosts) is a genuine
+Hyland customer, and the old stage-2 `VENDOR_SUFFIXES` list already
+matched on it. Restored as `("hylandcloud.com", "hyland")` in
+`_HOST_ONLY_PLATFORMS`; a Hyland tenant on any OTHER domain is still
+correctly unrecognized by host alone (no signal to lose there — it never
+had one).
+
+`granicusgovaccess.net` got its own decision from Ryan (2026-09-23,
+verbatim): "granicusgovaccess.net is a hint/signature for granicus
+platform sometimes but it is in fact a web host." So it's neither a
+platform nor an unsupported vendor — it's a third category,
+`VENDOR_WEB_HOST_HINTS`, for a host that's a vendor's own general-purpose
+WEBSITE hosting, not its meeting platform. `platform_for_host()`
+deliberately never returns it as a platform match (a web host is not a
+platform confirmation); a new `web_host_hint_for_host()` answers it
+separately (`"granicus"`), for a caller to use as a reason to go look for
+a real Granicus tenant elsewhere, never as a hit on its own. Matches by
+substring (same semantics the old `VENDOR_SUFFIXES` list already used for
+this entry), confirmed necessary live: a real Akamai `edgekey.net` CNAME
+target can carry `granicusgovaccess.net` as a middle label
+(`san-h2.granicusgovaccess.net.edgekey.net`, from a real Alameda, CA
+CNAME chain), not just as the host's own suffix.
+
+12 tests in `tests/test_host_recognition.py`, all against real hostnames
+already recorded elsewhere in this repo (module docstrings, README,
+existing fixtures).
+
+`elastic_sweep_script.py` and `cc_seek_script.py` (main rtr-business
+checkout, uncommitted per that repo's "agents never commit there" rule)
+now call this helper per CNAME hop / per Common Crawl record URL and add
+new `platform_hits` and `web_host_hints` fields (the latter clearly
+labelled `"note": "web-host hint only, NOT a platform match"` in the
+output). Existing fields (`vendor_match`, `platform_cname_hits`,
+`all_records`, `hub_hits`) are completely unchanged — nothing old is
+replaced or discarded, the new fields only add information. Both scripts
+import via the same `sys.path` trick
+`queue_pipeline.py`'s own `cmd_feed()` already uses to reach
+`~/Documents/rtr-deeplink`, guarded so either script still runs (with
+empty `platform_hits`/`web_host_hints`) if that checkout doesn't have the
+module yet
+(true today, since this PR is unmerged).
+
+**Replay against real data.** Stage 2: replayed offline against the 900
+existing entries in `raw_results.json` (91 with real DNS resolutions).
+The OLD list only ever matched `granicusgovaccess.net` in this dataset (6
+hits, all real). After Ryan's web-host-hint decision above, all 6 are now
+correctly labelled a "granicus" web-host hint (not a platform match) —
+0 same, 0 no-longer, 6 hinted; `vendor_match` itself is untouched either
+way. The new helper additionally found 4 real hits the old list
+completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
+(a third real CivicPlus CDN domain, matched via `detect_platform()`'s own
+bare `"civicplus"` substring branch) and `www.holyoke.org` (a ProudCity
+customer, matched via `detect_platform()`'s curated
+`PROUDCITY_KNOWN_DOMAINS` set) — `civicplus.io` is intentionally left as
+a plain platform match, not decided/changed in this pass. Re-ran this
+replay after the Hyland correction: zero `hylandcloud.com` hops appear
+anywhere in this particular 900-record dataset, so that fix has no
+visible effect on THIS dataset, only on any future sweep that actually
+hits a `hylandcloud.com` host. No existing stage-3 (`cc_seek_script.py`)
+output was found on disk to replay against (the files under `seek_results/`
+are from an unrelated legistar/granicus-family script); verified the new
+`classify_record_platform()` function directly instead against 5
+representative real URLs (Granicus, CivicClerk, Cablecast, Vimeo, one
+non-matching agenda PDF), all correct.
+
+**Not done (part B, left for a later WO):** stage 1's own hand-copied
+vendor alias list (`_PLATFORM_ALIASES` in `scripts/wo273_recon.py`) and
+its hand-typed first-party meeting-path list
+(`scripts/wo273_classify.py`) — out of scope for part A per the brief
+(another WO was moving those files into the WO-282 scripts concurrently).
+Whoever picks up part B should also check whether `scripts/wo273_classify.py`
+reading `app/utils/jurisdiction_data/first_party_meeting_paths.csv`
+should route through this same helper.
+
+**Also found, not acted on:** a real ClerkBase CNAME target,
+`dns.clerkbase.com`, distinct from the `clerkshq.com` domain the actual
+tenant sites use — seen in `raw_results.json`'s Sedgwick County, KS entry
+but not in the old `VENDOR_SUFFIXES` list either. Not added to
+`host_recognition.py` since it's an infra hop, not a confirmed real
+tenant-serving host on its own — flagged here for a future pass.
+
+## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` removed [Done 2026-09-23]
+
+**Issue.** Ryan asked for four cleanups to the research file's
+`reject_reason` taxonomy in `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §23: drop `cablecast-no-vod` (0 rows use it),
+convert `rejected_by_probe` to `rejected-by-probe` everywhere it's
+written, document three in-use-but-undocumented values
+(`blocked-waf-akamai`, `deferred-french-vocab`, `shared-gov-exception`),
+and point the doc's top-part "record the outcome" guidance at §23.
+
+**`cablecast-no-vod`: removed (after a conductor re-check).** The first
+pass grepped both repos and found `rtr-deeplink/scripts/
+coverage_alternates.py` still listing it in `CONTENT_REASONS`,
+`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, with
+`tests/test_coverage_alternates.py` asserting all three memberships —
+live, tested code, not just a doc mention — so it was left in place on
+the first PR revision, flagged for Ryan. The conductor's review of that
+PR confirmed those classification-list memberships and their test
+assertions were the ONLY code references anywhere: nothing writes the
+value, and 0 research rows carry it, so removing it changes no runtime
+behavior. Removed from both `frozenset`s in `coverage_alternates.py`
+and from the test (each left a one-line comment: "approved 2026-09-14,
+never used, removed 2026-09-23 per Ryan"); the §23 addendum in
+`ENUMERATION_METHODS.md` updated from "NOT removed" to "removed" the
+same way (locked, re-read, atomic replace).
+
+**`rejected_by_probe` → `rejected-by-probe`.** `scripts/
+wo134_confirmed_hits_ingest.py` now defines
+`REJECT_REASON_REJECTED_BY_PROBE = "rejected-by-probe"`; `scripts/
+wo147_access_ladder_sweep.py` (the still-current access-ladder code —
+confirmed via `docs/COVERAGE_HANDOVER.md`'s §270/§274 pointers and by
+counting importers: ~50 newer sweep/classify scripts import it, versus
+0 importers for the ~14 other `wo1NN_*`/`wo2NN_*` ladder-sweep scripts
+that also wrote the underscore literal) now writes that constant into
+its `reject_reason` cell instead of a fresh literal. The internal
+`RowResult.outcome`/`ProbeRejected` code string
+(`"rejected_by_probe"`, matched with `==`, asserted by
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) is unchanged on
+purpose — never written to the CSV directly, only compared in-process.
+The ~14 older, zero-importer one-off sweep/finish scripts
+(`wo150_muni_ladder_sweep.py`, `wo183/187/191/216/217/225/259_*`,
+`wo147_finish_tier3_queue.py`, `wo150_finish_tier3.py`,
+`wo168_gated_tenant_guess.py`, `wo196_wo190_followups.py`,
+`wo175_find_and_queue_video.py`, `wo230_agendacenter_followup.py`) and
+~26 one-shot `*_apply_to_jc.py` scripts in rtr-business were left
+alone, per this file's "leave historical one-off scripts alone" rule —
+none is imported by anything else, none is rerun. The 10 rows already
+on disk with the old spelling were rewritten by a new, dry-run-verified
+apply script (`wo1017_apply_to_jc.py`, run for real by the conductor),
+following ENUMERATION_METHODS.md's §158 protocol but doing a true
+line-based byte swap (both spellings are 18 characters) rather than a
+`csv.DictWriter` round-trip, so no other row's formatting could shift.
+
+**Three values added to §23** (new 2026-09-23 addendum, with class,
+meaning, source and live count): `blocked-waf-akamai` (access class —
+the govAccess/Akamai CNAME block, 40 rows), `deferred-french-vocab`
+(a new, distinct "parked for retry" class, not access or content — a
+Quebec government's targeted-fetch phase was deliberately skipped
+because the shared hop-link vocabulary is English-only, 201 rows), and
+`shared-gov-exception` (other/administrative — already fully defined in
+§317, just missing from §23's own table; the non-canonical row of a
+consolidated city-county pair, 33 rows).
+
+**Classification lists checked.** `blocked-waf-akamai` added to
+`scripts/coverage_alternates.py`'s `ACCESS_REASONS` (rtr-deeplink, with
+a new unit test) and to `wo226_apply_to_jc.py`'s `ACCESS_REJECT_REASONS`
+(rtr-business, uncommitted per this repo's "agents never commit in
+rtr-business" rule — left for the conductor). `coverage_registry.py`
+only tallies raw `reject_reason` strings, no access/content bucketing to
+update. `refresh_transcribed_flag.py`'s `VALUE_TYPE_REJECT_REASONS`
+already correctly includes `shared-gov-exception` and correctly excludes
+the other three; not touched (owned by a concurrent WO this session).
+Per Ryan's instruction, `rejected-by-probe`/`deferred-french-vocab`/
+`shared-gov-exception` were NOT added to any ACCESS/CONTENT/NEVER_RETRY
+list — classifying them changes real sweep retry behavior, so that's
+flagged in the doc for a human decision rather than done here.
+
+**Top-part pointer.** The "What to do when a stage finds something"
+section's "Nothing." bullet now points to §23 as the canonical
+`reject_reason` list, so a future session doesn't reinvent a value under
+a new spelling.
+
+**Not deployed** — docs and `research/`-directory scripts never needed
+a deploy and still don't; `scripts/coverage_alternates.py` and
+`scripts/wo134_confirmed_hits_ingest.py`/`wo147_access_ladder_sweep.py`
+are offline research/sweep tooling, not part of the resolver or worker
+services, so nothing here is blocked on a Render deploy either.
+
+## WO-1020: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
+
+**What was wrong.** `wo273_recon.fetch_wayback_domain_index()` asks the Wayback Machine which pages of a government's site it has saved. On 2026-09-14 (WO-366) its output field `narrow_urls` was renamed `top_urls`. The 11 per-WO recon scripts that call it (`wo282`, `wo283`, `wo320`–`wo325`, `wo331`, `wo337`, `wo338`) were never updated. Each one still copied `wayback_index["narrow_urls"]` into its record.
+
+**Why it mattered.** That line raised a `KeyError` (Python's error for a missing dict key) for every government, but only when the Wayback health check passed. `cmd_sweep()` catches the error, so the sweep kept running. It wrote an `access_mode: "error"` stub in place of the real record. A real production run on 2026-09-22 hit it 49 times, and Wayback was switched off for the rest of that run (see `rtr-business/research/dns_ctlog_sweep_2026-09-17/production_run_2026-09-22/wayback_recheck.py`'s docstring).
+
+**The fix.** All 11 scripts now read and write `top_urls`. That is also the key the downstream classifier reads (`wo273_classify.all_urls_from_record()`, which `wo282_classify.py` imports). So Wayback URLs now reach classification, where before they never could. Two stale test fixtures in `tests/test_wo273_passive_discovery.py` were also switched to `top_urls`.
+
+**Verification.** New test `tests/test_wo282_recon_wayback_index.py` runs `process_government_v2()` on each of the 11 scripts with the health check forced on. It stubs every network call except the Wayback function itself, which runs for real against a stubbed CDX reply.
+
+| Code under test | Result (of 11 scripts) |
+|---|---|
+| Before the fix | 11 failed |
+| After the fix | 11 passed |
+
+**Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
+
+## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
+
+**Issue.** `scripts/tier3_auto_transcription_queue.txt` lines were `URL`
+or `URL<TAB>SOURCE_URL` -- a research sweep that already knew the
+government had no way to record that on the line itself. The feeder
+(`scripts/feed_tier3_auto_transcription.py`) only ever got a gov_id from
+`queue_probe.has_owner()`'s `tenant_overrides.csv` per-video pin, which
+returns `(True, None, "")` on a single-tenant vendor host (a Granicus/
+CivicClerk/eScribe tenant subdomain) -- ownership is real there, but no
+cheap gov_id exists to hand back without the Archive's own full resolver
+ladder. CLAUDE.md's "send the government's id in every ingest payload"
+rule silently didn't apply to that whole class of line.
+
+**Fix.** One shared parser, `app.platforms.queue_probe.parse_queue_line()`
+(url, source_url, gov_id) -- tolerates 1, 2, 3, or more tab fields (a
+deferred-file-shaped line still parses, only the first 3 columns are
+read), a blank source field with a gov_id present (`URL\t\tGOV_ID`, the
+same shape `tier3_long_meetings_deferred.txt` already uses), and blank/
+whitespace exactly like the pre-existing behavior. Every LIVE reader now
+calls it instead of its own tab-split: `scripts/feed_tier3_auto_
+transcription.py`'s `_parse_queue_line()` is now a thin wrapper over it
+(kept under the same name since `scripts/youtube_drip.py` and
+`scripts/probe_tier3_queue.py` import that exact name), and
+`scripts/find_tier3_short_meeting_substitutes.py`'s `queue_lines()` was
+rewritten to call it instead of its own unsafe `line.partition("\t")`
+(which glued a 3rd field wholesale onto `source_url` -- a real break this
+change closes, not a hypothetical one). `scripts/youtube_drip.py`'s three
+call sites were updated to unpack the new 3-tuple. The feeder threads a
+line's own gov_id into the ingest payload: it wins over `has_owner()`'s
+pin gov_id when both exist and agree; when both exist and DISAGREE, the
+line is skipped (`[SKIP] gov_id disagreement: ...`, dropped from the
+queue like any other `[SKIP]`, never ingested under either id) rather
+than guessed at -- CLAUDE.md's "reports report, they never guess"
+standard applied to the feeder's own ingest decision.
+
+**Writers gated off on purpose.** `queue_probe.append_queue_line()`/
+`finish_candidate()` (the one shared writer every `wo1XX_finish_tier3*.py`
+sweep script already routes through) can now write a 3rd gov_id field,
+gated by a single module constant, `queue_probe.EMIT_GOV_ID_IN_QUEUE_
+LINES`, shipped `False` in this PR. Reason: the drip Mac
+(`scripts/youtube_drip.py`, "YouTube is fetched only by the drip Mac")
+runs its OWN separate checkout and only picks up `parse_queue_line()`'s
+tolerance on its own `git pull` -- flipping the writer on in the same PR
+that adds the readers would risk a 3-field line reaching a checkout that
+hasn't pulled yet.
+
+**Rollout order (not done in this PR past step 1):**
+1. Merge this PR's readers (`parse_queue_line()` + every caller updated).
+2. Confirm the drip Mac has `git pull`ed a checkout that includes it (its
+   own three `_parse_queue_line()` call sites already tolerate a 3-tuple
+   once pulled -- see `scripts/youtube_drip.py`'s own WO-1016 comment
+   next to `QUEUE_FILE`).
+3. Flip `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` to `True` in a follow-up
+   PR.
+
+**Existing queue backfill: read-only count, not done.** Of the 1,038
+non-comment lines in `scripts/tier3_auto_transcription_queue.txt` today
+(716 with a source_url field, 322 without), checking each against
+`queue_probe.has_owner()` found: **142 lines already resolve to an exact
+gov_id via a `tenant_overrides.csv` per-video pin** (these could carry a
+gov_id today, and the feeder already sends it via `has_owner()`,
+independent of this WO), 731 sit on a single-tenant host with no cheap
+per-video gov_id to derive this way (ownership is real, but not
+recoverable from a pin lookup alone), and 165 have no owner at all
+(shared host, no matching pin -- WO-346's known gap). No line was
+rewritten -- per this WO's brief, existing lines are not backfilled.
+
+**Tests.** `tests/test_queue_probe.py` (new `parse_queue_line()` cases:
+1/2/3/6 fields, blank source with gov_id, whitespace; `append_queue_line()`
+gated on/off); `tests/test_feed_tier3_auto_transcription.py` (parser
+3-tuple cases; a line's own gov_id reaching the payload with no pin; a
+line's gov_id agreeing with the pin; the disagreement-skip case, dropped
+and never ingested); `tests/test_wo346_no_owner_requeue.py`'s two
+existing `main()` tests updated for `_push_if_has_video()`'s new
+`line_gov_id` positional argument.
+
+**Not deployed.** Merged to `main` but every service here has
+`autoDeploy: false` -- this ships no ingest-behavior change today anyway
+(`EMIT_GOV_ID_IN_QUEUE_LINES` is off, and `_push_if_has_video()`'s new
+precedence logic is a no-op on every line without a 3rd field, i.e. every
+line in the queue today).
+
+## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
+
+**Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.
+
+**Research-file/dashboard fix (WO-1004, WO-1007).** `coverage_registry.py`'s "US states" row showed Hub URL for 2 of 51 states even though the recon had one for almost every state — `domain`/`hub_url`/`tested` only ever come from `jurisdiction_coverage.csv`'s own fields, and WO-919/921/922's findings had never been written back there. Filled in 43 state rows; Hub URL went from 2 to 44 of 51, Tested from 9 to 50. Separately, Pennsylvania's row looked like an open PennDOT-vs-Legislature keying conflict — turned out to be a stale field: PennDOT was already split into its own government back in WO-201 (2026-09-11), the research file was just never updated after that re-key.
+
+**Sliq Harmony (WO-1006, WO-1010).** WO-1006 found Oklahoma's Senate tenant (00282) and five brand-new state legislature tenants (Maine, Iowa, Nevada, Missouri, Virginia) by trying nearby tenant numbers on the shared host; confirmed the two unread sibling servers (`sg002`/`sg004-harmony.sliq.net`) are exact mirrors of `sg001`'s catalog, not separate tenant pools; confirmed West Virginia's House is genuinely not on Sliq at all (its own site links a YouTube channel instead). WO-1010 then swept real depth into all 13 tenants — 51 additional real meetings hand-verified and ingested/queued (36 with real captions, 7 tier-3, 5 deferred as long meetings, 3 with no recording published). Kansas/Iowa/Maine confirmed zero captions across two independent sweeps — a real per-tenant fact.
+
+**Invintus / Washington TVW (WO-1010).** `tvw.org` turned out to be an Invintus tenant (clientID 9375922947) reached through a WordPress wrapper page with `<meta name="clientID"/"eventID">` tags, not a separate platform — `app/platforms/tvw.py` extracts those tags and delegates to the existing `InvintusAssetFinder`. A real Senate Housing committee meeting (1,447 real caption segments) is live. Investigating TVW also turned up a third real Invintus tenant, clientID 2917038973 (CVTV — Clark/Vancouver Television): Vancouver, WA City Council and Clark County, WA Council, neither of which had any real video source before. Both queued. Confirmed live that Invintus's 10-digit clientIDs are not sequentially allocated (unlike Sliq's 5-digit tenant numbers), so the "try adjacent numbers" trick that found five new Sliq states doesn't transfer here.
+
+**South Carolina / Tennessee / Nevada (WO-1005, PR #1341).** `direct_file.py` now accepts South Carolina's `video.scstatehouse.gov` `.mp4`s despite the host answering `Content-Type: application/octet-stream` (both chambers queued for tier-3). `granicus.py` got a browser-headers retry after a real 403 (never after a 404) — Tennessee's Senate and House are both ingested with real, coherent captions. Live re-verification could not reproduce the original Tennessee/Nevada 403 on 2026-09-22 (flagged rather than silently trusted, per this file's own "a backlog entry is a lead, not a spec" rule) — the retry rung was kept anyway as a real, narrowly-scoped defensive fallback. Nevada's real working video source turned out to be Sliq Harmony anyway, unrelated to the Granicus finding.
+
+**The 49 "nothing found" chambers + 6 blocked chambers (WO-1011).** Hand-checked all 49 rows from `wo919_report.csv` plus the 6 still-blocked chambers, one real platform/vendor identified per row where one exists (`rtr-business/research/wo1011_report.csv`). 11 of the 49 were already resolved by WO-1006/WO-1007/WO-1010 before this pass started. Of the true remainder: 2 real meetings ingested (Hawaii House and Senate, via Granicus, one hop off the hub — the automatic check missed them because the video is linked, not embedded), 1 queued (a Massachusetts House floor session with real WebVTT captions sitting next to the mp4, but `direct_file.py` has no generic same-path `.vtt` lookup outside its Laserfiche-specific case). 5 of the 6 blocked chambers (Illinois, Michigan, Mississippi's TLS failures; Connecticut, New Hampshire's timeouts) turned out transient — all reachable today with a real vendor identified. Only New York Senate's Cloudflare challenge is confirmed still real (`cf-mitigated: challenge` header) and was correctly left alone. Platform-grouping conclusion: this remaining population is far more fragmented than Sliq Harmony's — no single vendor unlocks more than ~6 chambers (Vimeo, pending its dynamic-event-id extraction for Illinois/Georgia).
+
+**Process note.** WO-1010 and WO-1011 ran concurrently and both independently rewrote the same BACKLOG.md state-legislature entry — a real content conflict, not the trivial append-only kind seen elsewhere in this push. Hand-merged both narratives into one entry rather than picking a side; verified via diff that no finding from either was dropped. Also caught (WO-1011) and avoided a near-miss on the shared `jurisdiction_coverage.csv`: WO-1010's concurrent Clark County/Vancouver WA edit was stashed, WO-1011's own Hawaii row committed from a clean base, then the stash popped back cleanly — verified after the fact that both sets of changes survived.
+
+**Not deployed.** Every fix above merged to `main` (PRs #1340, #1341, #1342, #1344, #1346, #1347) but this repo's deploys are manual — real content (Hawaii, Massachusetts, Tennessee, dozens of Sliq/Invintus meetings, Washington, Vancouver, Clark County) is sitting on `main` waiting on a deploy before it's visible in production.
+
+**What's left.** Split out as its own, smaller `BACKLOG.md` entry ("State legislatures: small residual fixes remain...") — a `direct_file.py` `.vtt` sibling-caption fix, Vimeo's event-id extraction for Illinois/Georgia, a handful of states needing one more real hop, deeper Invintus sweeps on the two new tenants, and New York Senate's permanent Cloudflare block.
+
+## WO-1013: fixed native SuiteOne queue probes misrouting into a second, doomed resolve hop [Done 2026-09-22]
+
+**Issue.** `app/platforms/queue_probe.py`'s dispatch routed into
+`_probe_suiteone()` whenever `resolved_platform == "suiteone"` OR
+`video_url`'s host contained `suiteonemedia.com`. The first half of that
+OR was only ever right for CivicClerk's delegation to a SuiteOne player
+page (where `resolved_platform` stays `"civicclerk"` and the host check
+alone catches it — WO-285). For a NATIVE `suiteone.py` resolve,
+`resolved_platform` really is `"suiteone"`, but `video_url` is already
+the final direct-file S3 URL (`suiteone.py`'s own `resolve()` always
+returns that, never a page). Routing an S3 URL back into
+`_probe_suiteone()` called `SuiteOneAssetFinder().resolve()` a SECOND
+time on it, which can't parse a tenant/event id out of an S3 host and
+always raised `ResolveError` — misprobing every real native SuiteOne
+queue candidate as `reject-dead`. Confirmed live 2026-09-22 probing
+`https://tuscaloosaal.suiteonemedia.com/event/?id=11029` (a real,
+queueable 78-minute meeting) exactly this way; worked around by hand at
+the time with a direct `_probe_direct_file()` call, which correctly
+returned `verdict=accept, duration=4696s`. Likely the first native
+(non-delegated) SuiteOne tier-3 probe ever attempted — every prior
+SuiteOne queue candidate went through CivicClerk delegation, which is
+why this went uncaught since WO-285 (2026-09-12).
+
+**Fix.** Dispatch now checks the shape of `video_url` instead of
+`resolved_platform`: only route into `_probe_suiteone()` (the second
+resolve hop) when `video_url`'s host is `suiteonemedia.com` AND it
+isn't already a resolved direct-file URL (checked against the same
+`_DIRECT_FILE_EXTENSIONS` the direct-file branch below it uses). A
+native resolve's already-direct S3 `.mp4` now falls straight through to
+the existing `_DIRECT_FILE_EXTENSIONS` check and `_probe_direct_file()`,
+same as any other direct-file platform.
+
+**Verification.** `tests/test_queue_probe.py::
+test_probe_queue_entry_native_suiteone_skips_the_second_resolve_hop`
+(new) monkeypatches `_probe_suiteone` to fail the test if called, and
+confirms the native S3-url case reaches `_probe_direct_file` and
+accepts with the real 4696s duration. The existing CivicClerk-delegation
+regression test (`test_probe_queue_entry_dispatches_suiteone_for_a_
+civicclerk_delegation`, WO-285) still passes unchanged — the host check
+alone still catches that shape. All five CI gates run locally: `ruff
+check`, `ruff format --check`, `python -m pytest` (full suite, 5010
+passed — the same two pre-existing failures in
+`test_repair_wrong_pages.py`/`test_wrong_page_screen.py` also flagged in
+WO-1004's entry above, confirmed unrelated by isolating this change with
+a tagged `git stash` and re-running against the clean tree), `alembic
+check` for both `app/` and `archive/` (no schema change, "No new
+upgrade operations detected"), `BACKLOG_DONE.md` heading-loss check.
+
+**Constraint.** Only the dispatch condition changed — `_probe_suiteone`
+and `_probe_direct_file` themselves are untouched.
+
+**History.** WO-285 (2026-09-12, the original CivicClerk-delegation
+fix and its own still-narrower `ResolveError`-for-unparseable-URL
+constraint, WO-938 2026-09-21).
+
+## WO-1004: built the domain-health check tool — reuses the passive-discovery pipeline's own fetch/identity-check machinery, not yet run against the real registry [Done 2026-09-22]
+
+**What was built.** `scripts/wo1004_domain_health_check.py` — a thin
+driver over `wo273_targeted.py`'s already-existing, already-reused fetch
+and identity-check functions (`polite_page_fetch`/`bounded_page_body`
+for the fetch, `is_catch_all_response`/`_body_fingerprint` for a
+parked-domain guard, `name_matches` for the identity check), pointed at
+a different population than WO-283 and its descendants ever targeted:
+every row in `jurisdiction_coverage.csv` that already HAS a `domain` on
+file, not just the "no known platform" governments. Adds one
+classification the existing pipeline didn't distinguish —
+`domain_mismatch` (the page fetches fine, isn't a parked shell, isn't a
+challenge gate, but doesn't name the right government) — alongside
+`domain_confirmed`, `domain_catch_all`, `domain_challenge_gate`, and
+`domain_unreachable`.
+
+**Why this shape.** Two hand audits (WO-145, WO-347) found the
+registry's `domain` field wrong or stale on 24% and 15% of hand-checked
+rows, and both times a human found it by auditing a sample after the
+fact, not because anything flagged it on its own. See `BACKLOG.md`'s
+still-open entry for the full write-up and both audits' real examples.
+
+**Verification.** `classify_domain_health()` is the one pure function
+this WO adds — the fetch, the catch-all guard, and the identity check
+are imported unchanged. `tests/test_wo1004_domain_health.py` (10 tests)
+covers it with real, verifiable facts already established elsewhere in
+this repo (Fresno, CA, the same unambiguous city `tests/test_civicclerk.
+py` already relies on; the real Crystal River FL / Elmore City OK /
+Hometown IL shapes from WO-145's and WO-347's own findings), not
+invented cases. All five CI gates run locally: `ruff check`, `ruff
+format --check`, `python -m pytest` (full suite, 5000 passed — two
+pre-existing failures in `test_repair_wrong_pages.py`/
+`test_wrong_page_screen.py` confirmed unrelated by isolating this
+change with a tagged `git stash` and re-running against clean `main`),
+no schema change so no `alembic check` needed, `BACKLOG.md`'s TOC/
+heading checks pass.
+
+**Not done: the actual run.** This session cannot run the script itself
+— `~/Documents/rtr-business` (where `jurisdiction_coverage.csv` lives)
+is off-limits to it per `CLAUDE.md`'s standing rule. Needs a machine
+with that repo checked out: `python3 scripts/wo1004_domain_health_check.
+py` (resumable, `--limit`/`--concurrency` flags), then a human
+hand-confirms each `domain_mismatch`/`domain_catch_all` row in the
+output (`research/wo1004_domain_health.csv`) before anything moves to
+`alternate_domains` — never overwrite `domain` directly.
+
+**Constraint.** Detection only — never writes to
+`jurisdiction_coverage.csv`, never ingests, never resolves through an
+adapter.
+
+**History.** `BACKLOG.md`'s "The registry's `domain` field is wrong or
+stale..." entry (still open — rewritten to describe the remaining run,
+not the build). WO-145 (2026-09-10), WO-347 (2026-09-13).
+
+## WO-1005: South Carolina's octet-stream direct_file rejection fixed; TN/NV Granicus 403 retry added; one real meeting queued/ingested per state [Done 2026-09-22]
+
+**Issue.** `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4`
+serves one real direct `.mp4` per meeting (listed with durations on
+`scstatehouse.gov/meetings.php?...op=vid`), but the host answers
+`Content-Type: application/octet-stream`, so `direct_file.py`'s
+`video/`-prefix check rejected it and nothing from South Carolina's
+legislature could be queued. Separately, `tnga.granicus.com` (Tennessee)
+and `nvleg.granicus.com` (Nevada) had been reported (WO-919,
+2026-09-20) answering the Granicus adapter's plain fetch with HTTP 403
+and a fuller browser header set with HTTP 200.
+
+**What was built.**
+
+1. `app/platforms/direct_file.py`: `resolve()` now also accepts a HEAD
+   response of exactly `Content-Type: application/octet-stream` when the
+   URL's own extension already says video/audio (`media_type()`) —
+   confirmed live against two real, small South Carolina meetings (an
+   11-minute Senate Judiciary Full Committee session, 251,172,111 bytes;
+   a 14-minute House Government Efficiency and Legislative Oversight
+   subcommittee session, 305,067,141 bytes), both via HEAD and a ranged
+   GET, never a full download. Scoped narrowly on purpose (see
+   `_OCTET_STREAM_CONTENT_TYPE`'s module comment): a generic
+   octet-stream response with no real video/audio extension in the URL
+   is still rejected exactly as before — a dedicated regression test
+   (`test_resolve_still_rejects_octet_stream_with_no_video_extension`,
+   `tests/test_direct_file.py`) pins that down.
+2. `app/platforms/granicus.py`: `_fetch_page()` now retries a real HTTP
+   403 once with a fuller browser header set (`_BROWSER_RETRY_HEADERS`)
+   before exhausting its existing backoff retries with the original
+   headers — never triggered by a 404, which can't be fixed by a
+   different header shape. **Live re-verification against both real
+   hosts on 2026-09-22 could not reproduce the original 403 on any
+   attempt** (bare aiohttp defaults, an empty User-Agent, a
+   `python-requests/...` UA, and the adapter's own existing Windows-
+   Chrome headers all returned 200; a full `resolve()` succeeded
+   end-to-end on a real clip from each tenant with no header changes
+   needed). Per CLAUDE.md's "a backlog entry is a lead, not a spec"
+   rule this is flagged rather than silently assumed away — most likely
+   IP-reputation/rate/time-of-day dependent, since neither tenant sits
+   behind Cloudflare (both are plain Apache, so not a JS challenge). The
+   retry rung is kept as a real, narrowly-scoped defensive fallback for
+   whatever produced the original finding. Tested against a synthetic
+   403-then-200 fixture (`tests/test_granicus.py`, real URL/header
+   shapes, constructed status sequence — commented as synthetic per
+   CLAUDE.md's rule) since the live 403 couldn't be captured for a real
+   fixture.
+
+**Real meetings queued/ingested (`scripts/wo1005_finish_states.py`, same
+`finish_candidate()`/`bulk_ingest._ingest()` functions every other
+tier-3/ingest script here already calls), each hand-read via a real
+`resolve()` call first, same WO-921 convention:
+
+| State | Chamber | Outcome | Why |
+|---|---|---|---|
+| South Carolina | Senate (Judiciary Full Committee) | queued to tier-3 | video only, no captions |
+| South Carolina | House (Govt Efficiency & Leg. Oversight subcommittee) | queued to tier-3 | video only, no captions |
+| Nevada | Senate (Floor Session, 2020-07-08) | probed, deferred (duration 9:00:01, over the 90-minute tier-3 cutoff) | video only, no captions |
+| Nevada | Assembly (Floor Session, 2020-07-08) | probed, deferred (duration 9:00:00) | video only, no captions |
+| Tennessee | Senate ("Senate Session - 13th Legislative Day") | **ingested**, live at `/m/state-of-tennessee-senate-session-13th-legislative-day` | real, coherent Granicus captions (2,827 cues, zero warnings) |
+| Tennessee | House ("House Floor Session - 3rd Legislative Day - 2nd Extraordinary Session", 2026-05-07) | **ingested**, live at `/m/state-of-tennessee-2026-05-07-house-floor-session-3rd-legislative-day-2nd-extrao` | real, coherent Granicus captions (4,214 cues, zero warnings) |
+
+Tennessee turned out to have real captions on both chambers — genuinely
+different from South Carolina and Nevada (both video-only), not the
+"expected video-with-no-captions for all three" case this WO started
+from, so those two picks were ingested as real pages instead of queued.
+Nevada's two picks were correctly probed and accepted but landed in
+`scripts/tier3_long_meetings_deferred.txt` rather than the tier-3 queue
+itself — both real floor sessions run about 9 hours, over the existing
+90-minute tier-3 cutoff (WO-205/WO-212's rule, unrelated to this WO).
+
+`~/Documents/rtr-business/research/jurisdiction_coverage.csv` rows for
+`us:state:45` (South Carolina), `us:state:47` (Tennessee), and
+`us:state:32` (Nevada) updated to clear their stale `reject_reason`
+(`resolve-failed`/`blocked-plain-http`, both written moments earlier by a
+parallel WO-1004 pass specifically because these bugs were still open)
+and set a real `example_meeting_url`; Tennessee's row also got
+`transcribed=True`/`shares_video=True` since it's a real ingested page
+with a real transcript.
+
+**Constraint honored.** Every SC/NV probe was a HEAD or a ranged GET
+(via `ffprobe`/the adapter's own confirmation logic) — no meeting file
+was ever downloaded in full.
+
+## WO-1007: closed a false alarm -- Pennsylvania's PennDOT/Legislature "conflict" was a stale research-file field, not a keying question [Done 2026-09-22]
+
+**What looked wrong.** WO-1006 (Sliq Harmony sweep, open PR #1340) found
+a new Pennsylvania Legislature page to ingest, but
+`jurisdiction_coverage.csv`'s `us:state:42` row already carried a
+different meeting URL (a PennDOT public-meeting video) and flagged it as
+an open keying question for Ryan rather than overwrite it.
+
+**What it actually was.** WO-201 (below, 2026-09-11) already answered
+this, before WO-1006 ever ran: Ryan's decision there was "key PennDOT to
+its own gov body" -- PennDOT got its own government id
+(`rtr:us:pa:pennsylvania-department-of-transportation`), and the exact
+page in question was re-keyed to it, confirmed still live in production
+today (page id 8434). The research file was never updated after that
+re-key -- it has no column to track "this URL moved to a different
+gov_id" -- so its `us:state:42` row just went stale, and WO-1006 read
+that staleness as a live, unresolved conflict.
+
+**Ryan's clarification (2026-09-22).** PennDOT is a state agency,
+correctly its own government per WO-201; the state legislature is
+correctly a meeting_body under the state government itself, same
+treatment every other state in WO-1006 got. No architecture change, no
+re-key. The research file simply doesn't have a column for this kind of
+nuance -- the Archive already does, via each page's own `gov_id`.
+
+**Fix.** `research/wo1007_apply_to_jc.py` (rtr-business, local commit
+`c124a4d`, no PR/remote there) pointed `us:state:42`'s
+`example_meeting_url`/`example_agenda_or_calendar_url` at the real
+Pennsylvania Legislature Sliq Harmony page WO-1006 ingested, and set
+`suspected_video_provider=sliq_harmony`. Same Sec 158 write protocol
+(lock, floor, atomic rename) as every other jurisdiction_coverage.csv
+write.
+
+**Constraint:** none -- PennDOT's own gov_id and page are untouched.
+
+**Note on WO numbering.** This session's own WO-1004 (a jurisdiction_
+coverage.csv-only fix, rtr-business, no PR) turned out to collide with
+an unrelated, independently-numbered WO-1004 already merged here (#1339,
+"scope a domain-health outcome for the passive-discovery pipeline") --
+two different sessions picked the same number for two unrelated changes
+in two different repos. No technical conflict resulted (different files,
+different repos, rtr-business has no shared remote to collide on), but
+it's exactly the numbering-collision shape CLAUDE.md's "assign WO numbers
+centrally" rule exists to prevent; flagging rather than silently
+renumbering already-committed history.
+
+## `.github/workflows/feed-tier3-transcription.yml` now stages the tier-3 feed log CSV (WO-937 follow-up) [Done 2026-09-22]
+
+**Issue.** WO-937 (2026-09-21) added a durable per-line result log to
+`feed_tier3_auto_transcription.py`
+(`scripts/tier3_auto_transcription_queue_feed_log.csv`), the same shape
+as the existing queue file and probe sidecar CSV — but the matching
+workflow-file edit (stage the new path in the "Advance queue via PR"
+commit step) couldn't be pushed from that session: `git push` was
+rejected with `refusing to allow an OAuth App to create or update
+workflow ... without 'workflow' scope`. That session's token had no
+`workflow` scope — a GitHub platform restriction, not a code problem.
+Until this landed, every real run of the workflow wrote new rows to the
+feed log on the ephemeral runner and discarded them when the job
+ended — the exact WO-254 incident, for a third file.
+
+**What was done.** Ryan added the `workflow` scope to this session's
+`gh` token (`gh auth refresh -s workflow`). Applied WO-937's
+already-written, already-tested diff: one more `git add` line in the
+commit step, matching the two already there. Removed the `xfail(strict=
+True)` mark from `tests/test_feed_tier3_workflow.py::test_advance_step_
+stages_the_feed_log_too` (and its now-unused `pytest` import), so the
+test now runs as a normal, passing assertion of the fix.
+
+**Not live until this workflow next runs.** Nothing to deploy — this
+only affects GitHub Actions' own runner steps.
+
+## WO-940: One shared registry write helper, replacing three drifted write paths [Done 2026-09-22]
+
+**Why this ran.** Three separate write paths into shared CSV registry
+files had each drifted from `ENUMERATION_METHODS.md`'s §158 write
+protocol in a different way, all found and left open in `BACKLOG.md`:
+`wo127_civicplus_pipeline.py`'s shared coverage-write helper still used a
+hardcoded 25,000-row floor instead of the dynamic 99%-of-committed-size
+floor newer scripts already use; `score_gov_registry.py` overwrote
+`archive/data/hub_slug_aliases.csv` wholesale every run with no
+read-first, which WO-109 found would have silently dropped 615 of 672
+real redirect rows; and every `*_apply_to_jc.py` script's pre-write
+re-check compared only a row count and header fieldnames, which a real,
+confirmed collision (2026-09-10, WO-150/WO-147) showed can miss a
+same-row-count concurrent write and silently clobber uncommitted rows.
+`docs/BACKLOG_PHASES.md`'s Phase 3 named one shared helper as the fix for
+all three at once.
+
+**What was built.** One new, pure, repo-agnostic module,
+`scripts/registry_write_helper.py` (takes a file path, no assumption
+about which registry or which repo) — `read_modify_write(path,
+mutate_fn, *, lock_path=None, min_row_floor=None,
+expected_content_hash=None)`:
+
+| Piece | What it does |
+|---|---|
+| Locking | Exclusive `flock` on a sibling `.lock` file, held for the entire read-modify-write. `mutate_fn` always runs against the read taken fresh after the lock is acquired, never a snapshot a caller might already be holding. |
+| Row-count floor | `committed_row_count_floor(path, ratio=0.99, fallback=...)` computes the floor from `git show HEAD:<path>` at run time, never a hardcoded constant. Never raises: falls back to a caller-supplied value (or `None`, meaning "skip the floor") if git fails. |
+| Staleness | `expected_content_hash` lets a caller that read the file earlier assert "the file must still equal what I read"; the helper compares a SHA-256 of the fresh, lock-protected read against it and refuses to write on a mismatch — catches a same-row-count, same-fieldnames concurrent write, which a count/fieldname check cannot. |
+| Atomic write | A same-directory, per-call-unique temp file, then `os.replace()`. LF line endings throughout. |
+
+Two real in-repo callers wired through it:
+
+| Caller | Change |
+|---|---|
+| `scripts/wo127_civicplus_pipeline.py`'s `_coverage_read_modify_write()` (imported by `wo174_pipeline.py`, `wo259_full_ladder_scan.py`) | Delegates to the shared helper. `MIN_SANE_ROW_COUNT = 25000` survives only as the fallback used if the git-based floor computation itself fails — never lowered, and the primary floor is now the dynamic 99% value (comfortably above 25,000 at the file's real size). External contract (`bool`, never raises) is unchanged, so both importing scripts needed no changes. |
+| `scripts/score_gov_registry.py`'s `_write_hub_slug_aliases()` | No longer overwrites `archive/data/hub_slug_aliases.csv` wholesale. Reads the existing committed file first (through the helper) and unions it with the freshly-derived rows: an existing row absent from this run's fresh candidates is kept; an existing row whose `old_slug` has since become a live hub again is dropped ("proven stale"); a fresh candidate for a `old_slug` not already on file is added; a fresh candidate that DISAGREES with an existing row's destination is a collision — the incumbent wins by default and the collision is printed, never silently auto-applied (same "existing wins unless proven stale" default WO-109/WO-112 used by hand). |
+
+Confirmed safe to touch `wo127_civicplus_pipeline.py`: the conductor
+checked `BACKLOG_DONE.md`'s "WO-174 close-out" entry (closed out
+2026-09-11, complete) and the process list on this machine for anything
+importing it, matching, or currently running, plus asking around other
+concurrent sessions; nothing was found. The safety constraint in this
+WO's brief that would otherwise have blocked this part was cleared
+before any edit was made.
+
+**Result.**
+
+| Gate | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | Passed |
+| `ruff format --check` (touched files) | Passed |
+| Full suite, `python -m pytest` | 4990 passed, 16 skipped, 5 xfailed, 0 failed (24 more than pre-WO-940 — the new tests below) |
+| `alembic check` | Not run — no model changed |
+| `scripts/check_backlog_done_headings.py` | Passed |
+
+New tests, all synthetic by design (this module is pure and takes a file
+path — no real registry is touched):
+
+| File | Covers |
+|---|---|
+| `tests/test_registry_write_helper.py` | Basic edit/atomicity/LF endings, the row-count floor, `committed_row_count_floor()` against a real throwaway git repo (never rtr-business) and its fallback, a threaded concurrency test using two real file descriptors on the same `.lock` file, and `test_stale_hash_catches_a_same_row_count_concurrent_write` — a direct synthetic reproduction of the 2026-09-10 WO-150/WO-147 collision shape (two sessions read the same starting content; one writes; the other's stale-check must now catch it via the hash even though row count and fieldnames never changed). |
+| `tests/test_score_gov_registry_hub_aliases.py` | The WO-109 case (an existing row absent from this run's fresh candidates survives, reproducing the real `gloucester-ma` hand-added exception from `tests/test_hub_aliases.py`), the "proven stale" drop, the hamilton/victoria/woodland-shaped collision (incumbent kept, collision printed), an identical existing+fresh row not reported as a collision, and the dynamic floor refusing a truncated read. |
+| `tests/test_wo127_coverage_write_helper.py` | Missing file, a real edit, `mutate_fn` returning `False`, the dynamic floor catching a truncated read the OLD hardcoded 25,000 floor would have accepted, and the fallback-to-25000 behavior when no git repo is reachable. |
+
+Column names in every fixture CSV are the real `jurisdiction_
+coverage.csv`/`hub_slug_aliases.csv` headers (confirmed from
+`scripts/wo357_apply_to_jc.py`, `scripts/wo360_apply_to_jc.py`, and
+`score_gov_registry.py`'s own `score_rows()`) — only row values are made
+up.
+
+**BACKLOG.md entries closed**: "`jurisdiction_coverage.csv`'s shared
+write helper still uses a", "`scripts/score_gov_registry.py` overwrites",
+"§158's write protocol doesn't catch a same-row-count". One genuine
+residual split back out as its own `[HUMAN]` entry: the `victoria`
+bare-slug collision WO-112 left unresolved is now visible (via this WO's
+own collision report) rather than a silent risk — Ryan still needs to
+decide it.
+
+**Caution.** The helper's content-hash staleness check
+(`expected_content_hash`) is exercised only by this WO's own synthetic
+tests; neither in-repo caller passes it today; both callers' entire
+read-modify-write already happens inside one continuous lock hold, which
+is what actually prevents the WO-150/WO-147 shape structurally now — the
+parameter exists so a FUTURE caller that reads the file earlier, before
+acquiring the lock (e.g. to build a slow, network-bound mutation plan)
+can still get the same protection. `wo127_civicplus_pipeline.py`'s
+`MIN_SANE_ROW_COUNT` fallback was left at its original value, not
+removed, per this WO's explicit instruction never to lower a floor.
+
+**Recommendation.** No further action needed to close the three entries.
+Ryan's call on the `victoria` slug (new `[HUMAN]` entry above) is
+optional and low-reach. Phase 3's remaining Deliverables (domain-health
+sweep, pin-rules model, name-normalisation PRs) are unrelated to this WO
+and still need their own numbers when they start, per
+`docs/BACKLOG_PHASES.md`.
+
+**Deploy status.** Not needed. Every change is under `scripts/` and
+`tests/` — no `app/`, `archive/`, `worker/`, `shared_static/`,
+`shared_templates/`, `requirements.txt`, or `render.yaml` touched, so
+this doesn't affect what's live in production.
+
+## WO-1003: A jurisdiction hub is also indexable via a published Full Context entry [Done 2026-09-21]
+
+**Why this ran.** WO-947 put Full Context entries on their government's
+`/j/{hub_slug}` hub page, but left the hub's own `noindex` decision
+alone. That decision only counted meeting pages
+(`JURISDICTION_HUB_MIN_INDEXABLE`, currently 2) and had no idea an entry
+existed — flagged in WO-947's own entry below as a gap for Ryan to
+decide on. Ryan's answer: count entries. A hub with one meeting and a
+real, hand-written entry should not be hidden from Google — that entry
+is unique content, not a near-duplicate of the one meeting's own page.
+
+**What was built.** A hub is indexable when it clears the existing
+meeting-count threshold **OR** it has at least one *published* Full
+Context entry.
+
+| Piece | What it does |
+|---|---|
+| `crud.get_jurisdiction_hub_data()` | `indexable` is now `len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE or has_context_entry`. On the bare view, `has_context_entry` reuses the "Seen on social media" list WO-947 already fetches — no new query. On a `?topic=` view (which skips that list, since entries aren't topic-tagged), a small new existence-only query (`crud._context_entry_exists_isolated()`) answers the same question, so a topic view of a hub reaches the identical `noindex` verdict as the bare view of the same hub. |
+| `crud.list_indexable_hub_entries()` (sitemap.xml's `/j/` list) | Same OR, applied to the same page-membership rule. One new query for the WHOLE sitemap build (`crud._context_hub_membership_ids()` — every `gov_id`/page `id` with a published entry), checked in Python against each hub group's own ids rather than one query per hub. |
+| Both places | Reuse `_hub_page_condition()`'s exact two-arm membership rule (a keyed page by `gov_id`, an adopted un-keyed page by its own id) — never a jurisdiction-text match. `STATE_HUB_PAGES.md`'s "Which pages a hub shows" section is why: a text match already put unrelated video on four real governments' hubs once. |
+
+**Membership: reused, not re-derived** — same posture as WO-947 itself.
+Neither check invents its own idea of "this entry belongs to this hub";
+both ask the hub's own existing membership rule.
+
+**Docs.** `STATE_HUB_PAGES.md`: new "A hub is also indexable via a
+published entry" subsection under "Rendering rules", and the
+`JURISDICTION_HUB_MIN_INDEXABLE` tuning-table row now notes the OR.
+`README.md`'s "Full Context feed" section: a new paragraph, next to the
+existing WO-947 paragraph it extends. State pages have no meeting-count
+`noindex` gate at all (checked: `get_state_coverage_index()` indexes
+every state/province with >= 1 meeting outright) — nothing to extend
+there, noted rather than left silent.
+
+**Verification.** All CI gates passed locally on 2026-09-21.
+
+| Gate | Result |
+|---|---|
+| `ruff check` (changed files) | Passed |
+| `ruff format --check` (changed files) | Passed |
+| Full suite, `python -m pytest` | 4887 passed, 16 skipped, 4 xfailed, 0 failed (4 more passing than WO-947's own 4883 — the new tests below) |
+| `alembic check`, both services | Passed, no migration (no schema change) |
+| Node (`npm test`) | 81 passed |
+
+New tests, all in `tests/test_jurisdiction_hubs.py`: a below-threshold
+hub with no entry stays `noindex`'d and out of the sitemap (pins the old
+behavior); the same shape with one published entry becomes indexable, is
+listed in the sitemap, and reaches the same `indexable` value under a
+`?topic=` render; a draft entry does not flip a below-threshold hub; a
+published entry on a *different* government's meeting does not flip an
+unrelated below-threshold hub. Each uses its own fresh, real,
+unambiguous California town (Winters, Isleton, Loomis) so the shared
+test-session database can't cross-contaminate the count.
+
+**Caution — not a full fix, and worth watching.** An entry's own
+permalink page (`/context/{id}`) stays `noindex`'d until the whole Full
+Context feed clears `CONTEXT_MIN_INDEXABLE` (5) published entries —
+unchanged by this WO. So a hub can now be indexable because of an entry
+whose *own* page is not yet indexable itself. This is acceptable: the
+hub page is real, substantial content in its own right (the meeting list
+plus the entry's headline and summary shown inline in "Seen on social
+media"), it does not depend on the entry's permalink page being indexed,
+and Google can still reach the permalink page by a normal crawl from the
+now-indexable hub even before the permalink page earns its own index
+eligibility. If the feed never clears 5 entries, this asymmetry becomes
+permanent for that one entry's page — a small residual gap, not
+recorded as a new `BACKLOG.md` entry, since nothing today says whether
+it's worth widening `CONTEXT_MIN_INDEXABLE` or leaving it alone.
+
+## WO-1002: Full Context entries appear on the meeting page they cite [Done 2026-09-21]
+
+**Why this ran.** WO-947 (same day, entry right below) put a "Seen on
+social media" list of Full Context entries on a government's hub page and
+its state page. That left one surface out: the meeting page itself
+(`/m/{slug}`), the one place a reader who followed the clip's own deep
+link actually lands. `BACKLOG.md` already carried this as a follow-up
+("this moment was clipped on social media" backlink); Ryan decided to
+build it.
+
+## WO-1001: the Full Context RSS item link points at the post, not the meeting [Done 2026-09-21]
+
+**Why this ran.** `BACKLOG.md` had an open entry: the Full Context RSS
+feed's `<item><link>` pointed at the entry's meeting deep link
+(`/m/{slug}?t={seconds}`), not the entry's own permalink
+(`/context/{id}-{slug}`, slugged in WO-946). The entry framed this as an
+open semantics question — what "the URL for this item" should mean to an
+RSS subscriber — left for Ryan to decide, not a code change to make
+unasked. He's now decided: the link should be the post's own page.
+
+**What changed.** `archive/templates/context_feed.xml.jinja`:
+
+| Field | Before | After |
+|---|---|---|
+| `<item><link>` | The meeting deep link, `{base_url}{entry.deep_link}` (falling back to `/context` when there was no meeting) | The entry's own permalink, `{base_url}{entry.permalink}` — always present on every entry (see `crud._context_entry_dict()`), so the fallback is no longer needed |
+| `<guid>` | `rtr-context-{entry.id}`, `isPermaLink="false"` | Unchanged, on purpose — readers key on it to dedupe already-seen items; changing it would re-deliver every item as new |
+| `<description>` | Summary + `" Original post: {social_url}"` | Same, plus one plain sentence carrying the old `<link>` target forward: `" Watch the full meeting from {timestamp_label}: {base_url}{deep_link}"` (the "from …" clause only appears when the entry has a timestamp) — so a reader who only sees the feed still gets to the recording, the way the old `<link>` gave them |
+| `<atom:link rel="self">` | Already present | Untouched — already there, no change needed |
+
+No route change: `archive/main.py`'s `/context/feed.xml` already passes
+each entry's full `_context_entry_dict()` shape (`permalink`, `deep_link`,
+`timestamp_label` all included), so this was a template-only fix.
+
+**Verification.** `tests/test_context_pages.py`: reworked
+`test_context_feed_xml_link_is_absolute_deep_link` into
+`test_context_feed_xml_link_is_absolute_permalink` (asserts `<link>` is
+the absolute permalink AND that the description now carries the "Watch
+the full meeting from …" sentence with the deep link), and added
+`test_context_feed_xml_guid_is_unchanged_by_the_link_fix` and
+`test_context_feed_xml_untitled_entry_link_uses_jurisdiction_and_title_
+slug` (an entry with no headline still gets a real, non-bare-id permalink
+in `<link>`, built from the matched meeting's jurisdiction + title). The
+existing ampersand/angle-bracket and headline-title tests were re-run
+unchanged to confirm the feed still parses.
+
+| Gate | Result |
+|---|---|
+| `tests/test_context_*.py tests/test_feed.py` | **250 passed** |
+| Full suite (`python -m pytest`) | **4885 passed, 16 skipped, 4 xfailed, 0 failed** |
+| `ruff check`/`ruff format --check` (files touched: `tests/test_context_pages.py`) | Both clean |
+| `alembic check` (both services) | N/A — no migration, no schema change |
+| `node --test tests_js/*.test.js` (`npm test`) | **81 passed** |
+| `scripts/check_backlog_done_headings.py --base-ref origin/main` | Passed, with the expected warning that the removed `BACKLOG.md` title now lives here instead |
+
+**Caution.** The feed is still below `CONTEXT_MIN_INDEXABLE` and
+`noindex`'d today (unchanged by this WO), so this has no live subscriber
+impact yet — it's correct ahead of the feed actually being indexed.
+`archive/main.py`'s `/context/feed.xml` route was not touched; if a
+future change to `_context_entry_dict()` ever makes `permalink` anything
+other than unconditionally present, the template's `<link>` would need a
+fallback again the way `deep_link`'s did.
+
+**Docs.** `README.md`'s "Full Context feed" section, "Sitemap and RSS"
+paragraph: rewritten to describe the new `<link>`/`<description>`
+behavior instead of the old "RSS feed is untouched" line. `BACKLOG.md`:
+the open entry removed (it's done), TOC rebuilt.
+
+## WO-939: Sweep scripts stop hanging forever and stop making YouTube calls by accident [Done 2026-09-21]
+
+**Why this ran.** Sweep scripts check many governments in one run. Three
+real problems kept showing up across them: (1) a bot-challenge marker
+list was copied into 9 different scripts, so a fix to one (a real
+Radware/ShieldSquare gap) never reached the other 8. (2) A slow website
+can make a sweep script wait forever — `requests`' own timeout only
+bounds one read at a time, not the whole call, so a website that sends
+back one byte per second never trips it. (3) A sweep script can
+accidentally call YouTube, which this repo is not allowed to do from any
+machine except the one dedicated "drip" Mac (see `CLAUDE.md`). This WO
+fixed all three, in one pull request, per `docs/BACKLOG_PHASES.md`'s
+Phase 2 plan.
+
+**What was built.**
+
+| Piece | What it does | Where |
+|---|---|---|
+| One shared marker list | `CHALLENGE_MARKERS`/`is_challenge()`, one copy instead of nine | `scripts/challenge_markers.py` (new) |
+| One shared wait-limit helper | `run_with_deadline()` runs a call on its own background thread and gives up waiting after a set number of seconds, even if the website never answers | `scripts/sweep_deadline.py` (new) |
+| One shared YouTube block | `youtube_resolve_guard()` / `resolve_via_platform(url, allow_youtube=False)` — stops a resolve call from reaching YouTube, no matter which adapter tries it | `app/platforms/base.py` |
+
+**Result: the 8 named backlog entries, what happened to each.**
+
+| Entry (short name) | Result |
+|---|---|
+| Marker list copied into 9 scripts | Fixed. All 9 now share one list. Count re-checked: still 9 today. |
+| `wo149`'s own separate, outdated hop-link finder | Fixed. `wo149` now uses the same, better hop-link finder as `wo147`. |
+| `wo191`'s wait-budget bug | Fixed. A new `init_headless_budget()` function does the reset in one call instead of two, so it can't be half-done by mistake. |
+| `wo321`'s phase-1 hang on one real website | Mitigated, not confirmed fixed. The most likely cause now has a real wait-limit. Not re-tested against the original hang. |
+| `wo325`'s missing YouTube block | Fixed. Same fix applied to all 9 similar hand-check scripts. |
+| Slow website can hang a sweep past its timeout | Fixed. Same wait-limit helper applied everywhere this pattern was found (4 places, not just 1). |
+| Per-government wait-limit that can't stop a real hang | Not changed. Re-checked: this is a different kind of code (it waits on many things at once) where our new fix doesn't fit. Explained in `BACKLOG.md`. |
+| Nothing calls the new YouTube-playlist helper | Left alone. It would make YouTube calls, so it needs the drip-Mac rule applied first — that's a separate, smaller job. Noted in `BACKLOG.md`. |
+
+**A ninth thing found and fixed along the way.** A second script,
+`wo273_targeted.py`, had the exact same slow-website bug as `wo273_recon.py`
+above — not one of the 8 named entries, but the same root cause, so it
+got the same fix. Its own BACKLOG entry (found by a different work order,
+WO-322) is folded into this one and removed.
+
+**Verification.**
+
+| Check | Result |
+|---|---|
+| New automated tests written | 30 (in 4 files: `test_base.py` additions, `test_challenge_markers.py`, `test_sweep_deadline.py`, `test_wo939_sweep_robustness.py`) |
+| Full test suite | All passed |
+| `ruff check` | Clean |
+| `ruff format --check` | Clean on touched files |
+| Real test: does the wait-limit actually stop a hang? | Yes — tested against a fake slow website that answers 1 byte per second; the call gave up after 3 seconds as configured |
+| Real bug found while testing | An early version of the wait-limit helper left a background thread running that was NOT marked as a "daemon" thread — meaning the whole script would refuse to exit even after giving up on the hung call. Fixed before shipping; a test now pins this. |
+
+**Caution.** The wait-limit helper stops the *script* from waiting
+forever — it does not, and cannot, force-stop the hung website call
+itself. That call keeps running in the background, unseen, until it
+finishes or the whole script process ends. This is the same known
+limitation another script (`wo337_targeted.py`) already accepted for a
+different kind of hang. A true kill would need a separate process, which
+is a bigger job, not done here.
+
+**Recommendation.** No action needed from Ryan. This is a scripts +
+resolver code change with no user-facing behavior change — nothing to
+watch on the live site.
+
+**Deploy status.** This PR touches `app/platforms/base.py` and
+`app/platforms/passive_verify.py` (the resolver service), plus several
+files under `scripts/`. Once merged to `main`, the `scripts/` changes
+need no deploy — they only run by hand. The `app/platforms/` change does
+need a deploy to reach production, same as any other resolver code
+change, though nothing here is urgent (it only affects sweep-script
+behavior, not what a site visitor sees). Note: `app/platforms/base.py`
+also picked up WO-938's `ResolveError`/`resolve_newest_candidate()`
+(merged separately, same Phase 2) — both land in the same deploy
+regardless of which PR ships first.
+
+## WO-938: Adapter hardening — one typed resolve error, one shared decode helper, one listing-to-newest-meeting helper [Done 2026-09-21]
+
+**Why this ran.** Several adapters let a raw Python error (a decode
+error, a bare `ValueError`) escape straight out of `resolve()` instead
+of degrading cleanly. This is Phase 2 of the backlog plan
+(`docs/BACKLOG_PHASES.md`) — the pipeline was wasting effort by treating
+a page it could have handled as a hard crash. WO-933 (merged earlier the
+same day) had already fixed the CivicPlus half of this pattern; this WO
+closes the rest of it: eScribe, SuiteOne, Granicus, CivicWeb, and
+YouTube.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `crud.list_context_entries_for_meeting(meeting_page_id, *, limit=MEETING_CONTEXT_ENTRIES)` | A thin wrapper over WO-947's `list_context_entries_for_pages()` with the narrowest possible condition, `MeetingPage.id == meeting_page_id` — one meeting, not a hub's or state's whole page set. Run through `_context_entries_isolated()`, its own session, never raising, same as the hub/state callers. `MEETING_CONTEXT_ENTRIES = 5`. |
+| Route (`meeting_page()`, `archive/main.py`) | One new awaited call, `context_entries = await crud.list_context_entries_for_meeting(page["id"])`, after the 404 check and the card-warm scheduling, passed to the template. Always a list, never `None`. |
+| `_context_mentions.html` | Same partial WO-947 built, now with a `meeting_view` flag. In that mode: the heading reads "This moment on social media" when at least one shown entry has a real timestamp, else "This meeting on social media"; the redundant meeting title/date line is dropped (the page is already that meeting); each entry's timestamp becomes its own "at M:SS" link to `entry.deep_link`, so a reader jumps straight to the clipped second. The headline → permalink link, the match badge, "Original post on {network}" as plain text, and "More on Full Context →" are unchanged from the hub/state view. |
+| `meeting_page.html` | Included via `{% with meeting_view = True %}{% include "_context_mentions.html" %}{% endwith %}` — the same pattern `state_page.html` already used for `show_jurisdiction`. |
+| `archive/static/style.css` | A small addition inside the existing `context-*` section: `.context-mentions-meeting` (spacing) and `.context-mentions-timestamp` (the "at M:SS" link). |
+
+**Placement: inside the sticky video column, not a new row between it and
+the transcript.** `meeting_page.html`'s desktop layout (`@media
+(min-width: 900px)`) is a two-column CSS grid: `.meta` spans both columns
+explicitly (`grid-column: 1 / -1`), `#videoColumn` is pinned to column 1
+(`position: sticky`), and `#transcriptColumn` is pinned to column 2. A
+new sibling row inserted between `#videoColumn` and `#transcriptColumn`
+with no explicit `grid-column` gets auto-placed by the browser into
+whichever cell is free next — checked by hand, that landed it in
+`#transcriptColumn`'s own column at `#videoColumn`'s row, which then
+pushed the transcript down a full row with an empty gap next to it. The
+block was placed inside `#videoColumn` instead, right after the video/
+toolbar/report-problem/transcribe controls and before `#transcriptColumn`
+opens — it inherits column 1 for free, sits in the same sticky box those
+other secondary controls already share, and needs no new grid rule.
+Verified by hand in the browser at both a phone width and a real 1400px
+desktop width (screenshots below); the two-column layout held with no
+gap or misalignment either way.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check` and `ruff format --check` (clean on the changed Python files, and
+clean over the full `app/ archive/ worker/ scripts/ tests/` tree), the
+full suite (**4896 passed, 16 skipped, 4 xfailed, 0 failed** — 13 more
+than WO-947's own same-day count of 4883, exactly this WO's 13 new
+tests), `alembic check` for both services (no migration — no schema
+change), and the `BACKLOG_DONE.md` heading check. Node tests: 81 passed
+(unchanged — no JS touched).
+
+New test file `tests/test_context_on_meeting_page.py` (13 tests, same
+seeding pattern as `tests/test_context_on_hubs.py`): an entry shows on
+its own meeting, never a different one; draft/hidden/orphaned entries
+never show; the limit and newest-first order are respected; the heading
+falls back to "This meeting on social media" when no shown entry has a
+timestamp; the section is fully absent (no heading, no `context-mentions`
+class) with zero entries; and the page still 200s when the crud lookup
+raises (both a direct monkeypatch of the module-level function and one
+routed through the isolated-session helper).
+
+Both services were then run locally against a scratch SQLite database
+(`DATABASE_URL` set explicitly, `.env` never loaded) and driven through
+the resolver in a real browser, with a real Walnut Creek, CA meeting page
+seeded plus one published, exact-match entry at 94 seconds.
+
+| Check | Result |
+|---|---|
+| `/m/{slug}` | "This moment on social media" heading, headline linking to `/context/{id}-{slug}`, "Exact moment" badge, "at 1:34" link |
+| "at 1:34" link target | `/m/{slug}?t=94` — the real deep link, confirmed via the accessibility tree, not just visually |
+| Headline link target | `/context/1-a-clip-of-the-budget-vote` — the resolver's own `/context/{id}-{slug}` proxy route |
+| Desktop width (1400px) | Block renders inside the sticky left column, under the report/transcribe controls; transcript column stays aligned to its right with no gap |
+| Phone width | Block renders in the normal single-column flow, same content |
+
+**Docs.** `README.md`'s "Full Context feed" section: a new paragraph next
+to the WO-947 one it parallels. `BACKLOG.md`: the "clipped on social
+media" `/m/` backlink entry removed (built), TOC regenerated.
+
+| `ResolveError` (`app/platforms/base.py`) | The one typed exception an adapter raises for an expected "this URL can't produce a meeting" outcome, instead of a raw stdlib exception. Every existing caller already survives an unrecognized exception the same way (`/api/resolve`'s `except Exception`, every sweep script's own broad catch), so this changes the message and the type, not the behavior. |
+| `resolve_newest_candidate()` (`app/platforms/base.py`) | Shared "listing root → newest meeting" helper: given a newest-first list of candidate meeting URLs and an adapter's own `resolve_one` callback, tries each until one comes back with real content (segments, agenda items, an agenda link, or a video URL). Ported from the hand-rolled loop `scripts/wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()` already used. |
+| `escribe.py` | Decode: `response.text()` → `url_guard.read_capped_text()`. Bare tenant root: a new `_resolve_bare_tenant_root()` calls the real `GetCalendarMeetings` tenant API (same 120-day lookback/8-candidate cap `scripts/adhoc_cdx_escribe_pipeline.py` already used) and hands the result to `resolve_newest_candidate()`. Raises `NoVideoCandidateFound` (the same typed negative `civicplus.py` already uses for its own listing page) when nothing with video turns up. |
+| `suiteone.py` | Both raw `raise ValueError(...)` sites → `ResolveError`. |
+| `granicus.py` | `_fetch_page()`'s `response.text()` → `read_capped_text()`. |
+| `civicweb.py` | `_fetch_text()`'s `response.text()` → `read_capped_text()`. |
+| `youtube.py` | New `NotASingleVideoError(ResolveError, ValueError)` replaces the raw `ValueError` a bare channel/live URL raised. Deliberately still a `ValueError` too — `scripts/wo134_confirmed_hits_ingest.py`'s `resolve_seed()` has a real, live `except ValueError` branch keyed on this exact message that falls back to a channel-listing depth search; dropping `ValueError` from the MRO would have silently broken it. |
+
+**Result.**
+
+| Gate | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | All checks passed |
+| `ruff format --check` (same paths) | All formatted |
+| `python -m pytest` (full suite) | 4889 passed, 16 skipped, 4 xfailed, 0 failed |
+| `alembic check` | Not run — no model changed |
+| `scripts/check_backlog_done_headings.py` | Passed |
+
+New/updated tests: `tests/test_escribe.py` (decode-safety + two new
+bare-tenant-root cases — discovers a real meeting, and raises
+`NoVideoCandidateFound` when none has video), `tests/test_suiteone.py`
+(both raise sites now assert `ResolveError`), `tests/test_granicus.py`
+(`_fetch_page()` decode-safety), `tests/test_civicweb.py`
+(`_fetch_text()` decode-safety), `tests/test_youtube.py`
+(`NotASingleVideoError`, plus a real bare `/channel/<id>/live` URL
+case). Every decode-safety test reuses the SAME real non-UTF8 bytes
+`tests/test_civicplus.py`'s own decode test uses (a real PDF fetched
+live 2026-09-12, reproducing the identical `'utf-8' codec can't decode
+byte 0xe2 in position 10` error) rather than inventing new bytes, per
+this repo's rule on decode-safety tests — each is commented as
+synthetic (no real eScribe/Granicus/CivicWeb response has itself been
+observed as raw non-UTF8 bytes; the finding was against a page that
+*embeds* one).
+
+**Entries closed.**
+
+| Entry | Outcome |
+|---|---|
+| "`escribe.py`'s `resolve()` raises the same raw" | Closed — decode fix |
+| "`granicus.py`'s `_fetch_page()` raises an unhandled" | Closed — decode fix |
+| "A bare YouTube channel/live URL raises a raw" | Closed — typed exception |
+| "A bare eScribe tenant root (no `Meeting.aspx` path)" | Closed — listing-to-newest-meeting helper built |
+
+**Entries rewritten, not closed — real residual gaps.**
+
+| Entry | What's still open |
+|---|---|
+| "`suiteone.py`'s `resolve()` raises a raw `ValueError`" | The raw-exception half is fixed. The real ask — a listing lookup for a bare tenant *management-root* page — is still unbuilt; `resolve_newest_candidate()` is ready for whoever builds it, once a real `GetEvents`-style endpoint is found on a live SuiteOne tenant. Retitled to describe the real gap. |
+| "`app/platforms/civicweb.py`'s `_fetch_text()`" | The decode-crash half is fixed. `_fetch_text()` still returns a garbled string for a PDF instead of a distinct `is_binary=True` signal — retitled to describe that remaining half. |
+
+**New entry filed.** "`civicclerk.py`'s `resolve()` raises a raw
+`ValueError`" — the same shape, on a different platform, surfaced as a
+side note while investigating the YouTube entry above but never
+tracked on its own until now. Small, same fix shape already proven
+safe five times in this WO.
+
+**Caution.** `youtube.py`'s `NotASingleVideoError` needed multiple
+inheritance (`ResolveError, ValueError`) specifically because
+`wo134_confirmed_hits_ingest.py` catches `ValueError` by type, not by
+message, around this exact call site. Before converting any OTHER
+adapter's raw exception to a bare `ResolveError` (not inheriting from
+whatever it used to be), grep for `except ValueError`/`except
+<OldType>` around every caller of that adapter's `resolve()` first —
+`suiteone.py` and the four decode sites were confirmed safe to convert
+outright (nothing catches by type), YouTube was not.
+
+**Recommendation.** This is `app/` code — on `main` but **not live**
+until Ryan deploys. Worth a real deploy once bundled with other Phase 2
+work (WO-936/937/939), since none of these fixes are individually
+urgent — they stop the pipeline from wasting effort on encoding/URL
+edge cases, not a live user-visible bug.
+
+**Deploy status.** Merged to `main`, **not deployed**. No migration —
+no schema change.
+
+## WO-936: A detector for stuck transcription jobs, plus a real-error-vs-timeout label for Granicus failures [Done 2026-09-21]
+
+**Why this ran.** BACKLOG.md carried six related transcription-worker
+reliability findings: an OOM-killed chunk leaves no trace at all, the
+claim heartbeat WO-57 shipped has no ceiling so a wedged job can pin
+forever with no error, the flat 120s ffmpeg timeout doesn't adapt per
+source, a single job's per-host pull pattern, and two Granicus-specific
+findings about a real HTTP 504 getting confused with an ordinary
+timeout. Re-derived every entry before building anything, per
+`CLAUDE.md`'s "a backlog entry is a lead, not a spec" rule — two of the
+six needed different treatment than their titles suggested.
+
+**What was re-derived.**
+
+| Entry | What the re-check found |
+|---|---|
+| "A single job still makes N consecutive pulls to the same host" | Its own text already read "Next action: none planned" (WO-40 falsified the round-robin fix, 2026-08-21, tested against all 514 production jobs). Not an open bug — moved to Standing decisions instead of building anything for it. |
+| "East Lansing MI (Granicus): a new, deterministic ffmpeg filter-graph failure" | Confirmed still no `aresample` reference anywhere in `app/platforms/media_probe.py` or `worker/main.py` (`git grep -i aresample` — same check the entry itself records from 2026-09-05). A local ffmpeg filter-graph crash, unrelated to a remote HTTP response — a different root cause from the Granicus timeout entry, not merged into this fix. Left open, unchanged. |
+
+**What was built.**
+
+| Piece | What it does | Where |
+|---|---|---|
+| `TranscriptionJob.last_progress_at` | Set only inside `report_chunk_result()`, on both success and failure — never by the heartbeat, which is what makes it a real "did this job actually do anything" signal instead of "is some process still alive." | `archive/db/models.py`; migration `8695ecf4fe2d` |
+| `crud.STUCK_JOB_THRESHOLD` (3 hours) | One shared "this job is stuck" number, sized ~12x over the slowest real chunk ever measured (job 911, Detroit, ~15 min/chunk — see WO-57's own backlog entry). | `archive/db/crud.py` |
+| `crud.list_stuck_transcription_jobs()` | Every `in_progress` job whose `last_progress_at` (or `created_at`, for a job that predates the migration) is older than the threshold. | `archive/db/crud.py`, wired into `get_transcription_queue_summary()` |
+| Daily report "Stuck jobs" section | A queue-table row, a red warning line, and a per-job list (page, platform, chunk progress, how long it's been stalled, job id) — same shape as the existing failure digest. Empty summary key (older callers) degrades to "nothing stuck," not an error. | `archive/utils/email.py`, `send_worker_daily_report()` |
+| Heartbeat ceiling | `_heartbeat_loop()` now stops refreshing the claim once `crud.STUCK_JOB_THRESHOLD` has passed with no chunk finished, letting `STALE_CLAIM_AFTER` reclaim the job. Does not cancel the stuck transcription call itself (`asyncio.to_thread` can't be cancelled) — only stops protecting its claim, which is the safe half. | `worker/main.py`, `_heartbeat_loop()` |
+| Real-5xx vs. timeout label | `_classify_nonzero_exit()`/`_remote_5xx_status()` label a chunk failure `"remote server returned HTTP 5xx (a real error reply, not a timeout)"` when ffmpeg's own stderr actually names one (`"HTTP error NNN"`/`"Server returned NNN"`, confirmed real shapes). The existing `"ffmpeg timed out after 120s..."` message is untouched byte-for-byte (several tests key off it exactly). | `app/platforms/media_probe.py`, used by `_extract_chunk_once()` and `extract_full_audio()` |
+
+**Why the heartbeat cap is safe, not a regression of WO-57.** WO-57
+shipped the unconditional heartbeat specifically because reclaiming a
+*legitimately* slow chunk corrupts the transcript — two workers both
+report success for the same window, and `report_chunk_result()` appends
+(see `tests/test_claim_heartbeat.py`'s own docstring). Nothing
+legitimate has ever run remotely close to 3 hours; the cap only ever
+fires on a job that is already, genuinely wedged or OOM-looping. The
+same number backs both the detector and the cap on purpose — a job
+whose heartbeat stops is exactly a job the daily report would already
+be calling out.
+
+**Entries closed, entries left open or narrowed.**
+
+| Entry | Outcome |
+|---|---|
+| An OOM-killed chunk is completely invisible | Closed. A repeatedly-OOMing job never advances `last_progress_at`, so `list_stuck_transcription_jobs()` catches it and the daily report surfaces it. |
+| WO-57's claim heartbeat has no cap | Closed. The heartbeat now stops at `crud.STUCK_JOB_THRESHOLD`. |
+| Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out (real 504, not a rate limit) | Closed. The classification this entry's own "Next action" asked for is built. |
+| A single job still makes N consecutive pulls to the same host | Moved to Standing decisions — already a "none planned" finding (see re-derivation above), not an open bug. |
+| The 120s ffmpeg timeout is a flat value that doesn't adapt per source | Half-closed, per `BACKLOG.md`'s own "half-resolved → split" rule. The logging-distinction half of its "Next action" is the same fix as the Granicus entry above. The other half — detecting a slow-source shape early and widening/deferring that job's timeout — is a materially bigger design (a new per-job adaptive-timeout policy, not scoped here) and stays open in `BACKLOG.md`, narrowed to just that idea. |
+| East Lansing MI ffmpeg filter-graph failure | Left open, unchanged — confirmed a different, unrelated root cause (see re-derivation above). |
+
+**Two independent transcription paths — this landed in shared code, and
+in worker-only code, for different reasons.** Per `CLAUDE.md`'s "two
+independent transcription paths" rule: the real-5xx-vs-timeout
+classification lives in `app/platforms/media_probe.py`'s
+`_extract_chunk_once()`/`extract_full_audio()`, which both the cloud
+worker (`worker/main.py`) and `scripts/transcribe_backlog_locally.py`
+already call — so the local script gets the same classification with no
+separate change. The stuck-job detector and heartbeat cap are
+worker-only **by nature**, not by oversight: `scripts/
+transcribe_backlog_locally.py` runs as a single foreground process per
+invocation and never holds the `claim_next_chunk()`/`heartbeat_claim()`
+claim pattern the cloud worker uses, so there is no second process that
+could ever double-claim the same job, and nothing for a "claim went
+stale" detector to watch. Its own already-known gap (`BACKLOG.md`'s
+`transcribe_backlog_locally.py`'s asyncio/subprocess context hangs
+entry) is a different problem — a hung *local* process with nobody
+polling it — not this one.
+
+**Result.**
+
+| Check | Result |
+|---|---|
+| `ruff check app/ archive/ worker/ scripts/ tests/` | Clean |
+| `ruff format --check` (same paths) | Clean |
+| `python -m pytest` (full suite) | 4899 passed, 16 skipped, 4 xfailed, 0 failed — 16 new tests added by this WO |
+| `alembic check` — archive | Clean; one new migration, `8695ecf4fe2d` |
+| `alembic check` — resolver (`app/`) | Clean; unchanged, no migration needed |
+| `scripts/check_backlog_done_headings.py` | Clean |
+
+**Caution.** `crud.STUCK_JOB_THRESHOLD`'s wide margin is measured
+against today's chunk sizes (WO-94's 450s default). If a future change
+raises the default chunk size substantially, re-measure the slowest real
+per-chunk pace before assuming 3 hours is still a safe margin — the
+whole safety argument for the heartbeat cap rests on that gap staying
+wide. Separately: the real-5xx classification only fires when ffmpeg's
+own stderr actually names an HTTP status. Granicus's specific
+`chunklist.m3u8` hang (4-6 minutes, then a real 504) is still cut off by
+the 120s subprocess timeout before ffmpeg ever sees that response, so in
+practice it still reports as an ordinary timeout — this fix helps a
+source that fails *faster* than 120s (a fast-failing 5xx) and helps any
+future re-check of stored failures, not that one specific slow-hang
+case. Fixing that one would mean raising `_SUBPROCESS_TIMEOUT_SECONDS`,
+which `BACKLOG.md` has a Standing decision against.
+
+**Recommendation.** Deploy when convenient — nothing here is a live
+regression, and the daily report already sends once a day, so the
+"Stuck jobs" line will start showing real data (or nothing) the first
+time it runs post-deploy.
+
+**Deploy status.** On `main`, not live. `archive/` (the Archive
+service, `rtr-deeplink-archive`) and `worker/` (both
+`rtr-transcription-worker` and `rtr-transcription-worker-2`) need a
+deploy for the detector, the report section, and the heartbeat cap to
+take effect; `app/platforms/media_probe.py` also ships to the resolver
+(`rtr-deeplink`) since it lives under `app/platforms/`, though the
+resolver's own synchronous feasibility check
+(`probe_duration()`) is unchanged by this WO. Deploys are manual
+(`render.yaml`'s `autoDeploy: false`) — merging this PR ships nothing by
+itself. The migration (`8695ecf4fe2d`) runs automatically via the
+Archive's `preDeployCommand` on its next deploy.
+
+## Fond du Lac County, WI: authoritative host pin, queued for tier 3 (WO-1000, OpenPublica) [Done 2026-09-21]
+
+**Issue.** WO-1000's OpenPublica sweep found a real, new-to-Archive county
+government — Fond du Lac County, WI, the County Board of Supervisors —
+but held it out of the tier-3 queue rather than pin it. The tenant is the
+county's own single-tenant Granicus host, `fonddulac.granicus.com`, but
+the name ladder resolves "Fond du Lac, WI" to the city
+(`us:place:5526275`) before a `fallback` pin is consulted, so a
+`fallback` pin for `us:county:55039` would have been inert (checked
+2026-09-21 with `resolve_government()`).
+
+**Decision.** Ryan said yes to an authoritative pin. An authoritative pin
+covers the whole host; checked first that the tenant only carries County
+Board meetings (its own listing, 2026-09-21), so no city meeting would be
+mis-filed.
+
+**What was done.** Added
+`fonddulac.granicus.com,,us:county:55039,authoritative,ryan_stated,...`
+to `tenant_overrides.csv`. Queued the meeting
+(`https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1028`)
+in `scripts/tier3_auto_transcription_queue.txt`, re-probed live rather
+than trusting the saved figure (`app/platforms/queue_probe.probe_queue_entry()`
+returned `accept`, 1883.0 s, matching WO-1000's original probe) and
+appended the row to `scripts/tier3_auto_transcription_queue_probe.csv`.
+
+**Not live until deployed.** `tenant_overrides.csv` is under `app/`.
+Merging puts the pin on `main`, not into production.
+
+**History.** `rtr-business/research/openpublica_2026-09-21/README.md`
+and `ENUMERATION_METHODS.md` §393.
+
+## WO-937: Tier-3 queue hygiene — dedup by video id, a duplicate-defer ordering bug, two missing probe recipes, a durable feed log [Done 2026-09-21]
+
+**Why this ran.** Phase 2 of the backlog-clearing plan (`docs/BACKLOG_PHASES.md`) grouped nine open tier-3-queue entries under one goal: stop the queue from silently duplicating or dropping work. Before building anything, every entry was re-derived against the current code and the live queue/sidecar files, per CLAUDE.md's "a backlog entry is a lead, not a spec" rule — two entries turned out to already be fixed or to have no live consumer today, and are recorded that way below rather than force-closed.
+
+**What was built.** All in `app/platforms/queue_probe.py` and `app/platforms/direct_file.py` (touched once each), plus the three scripts that call them.
+
+| Piece | What it does |
+|---|---|
+| `canonical_video_key(url)` (`queue_probe.py`) | A platform-qualified stable id (`"youtube:<id>"`, `"vimeo:<id>"`, `"telvue:<path>"`, `"cablecast:<path>"`), or `None` for a platform with no known id shape. |
+| `is_queued()`/`is_deferred()`/`append_queue_line()`/`append_deferred_line()` | Now dedupe on `canonical_video_key(url) or url`, not the raw string — one shared definition, not three copies. |
+| `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()` | Now builds its cache from the same `canonical_video_key()` call instead of its own separate exact-string set. |
+| `finish_candidate()` | Checks `is_queued()` before the deferred-file/90-minute-duration checks, not after. |
+| `_probe_direct_file()` + `direct_file.is_laserfiche_url()` | A Laserfiche WebLink URL skips the HEAD step entirely and reads a ranged GET's `Content-Range` for the real size. |
+| `probe_queue_entry()` dispatch | Two new URL-shape rules (ChampDS `DOWNLOAD-MEDIA`, CivicPlus `DocumentCenter`) route straight to `_probe_direct_file()`. |
+| `feed_tier3_auto_transcription.py` | Passes `video_format=result.video_format` into `probe_queue_entry()`; writes a durable per-line CSV log (`tier3_auto_transcription_queue_feed_log.csv`), not just stdout. |
+| `wo150_finish_tier3.py` | Rewrites the matching row(s) in `wo150_report.csv` after every candidate, the way `wo147_finish_tier3_queue.py` already did. |
+| `wo151_research_url_ladder_sweep.py` | Appends to `res.detail` instead of overwriting it. |
+| `.github/workflows/feed-tier3-transcription.yml` | **Written, not pushed** — see Caution. Should stage the new feed-log CSV alongside the queue file and probe sidecar, or its rows will be discarded with the runner (the exact WO-254 incident, for a third file). |
+
+**Result, by entry.**
+
+| Entry (grep fragment) | Outcome |
+|---|---|
+| `_existing_tier3_queue_urls()`'s dedup key is an exact | Fixed — routed through `canonical_video_key()`. |
+| `queue_probe.finish_candidate()` can defer an already-queued meeting | Fixed — `is_queued()` now checked first. |
+| `_probe_direct_file()`'s HEAD fallback misfires on a host that | Fixed — closes this entry AND its NEEDS-AUDIT duplicate (Laserfiche, WO-317's Deschutes/Ramsey confirmation). Both described the same bug. |
+| The tier-3 probe has no recipe for two real delegated media shapes | Fixed — both shapes re-derived and verified against real, live URLs (see Caution). |
+| `feed_tier3_auto_transcription.py`'s per-line result | Fixed — durable CSV log added. |
+| `wo150_finish_tier3.py` never writes a probe reject back into | Fixed — report-rewrite step ported from `wo147_finish_tier3_queue.py`, extended with two new outcome labels (`deferred_tier3`, `removed_from_deferred`) that script's original scheme never needed. |
+| A probe-confirmed-dead URL sits in the live | Re-derived, left open. Still one copy of the exact URL in the queue 11 days later, two independent `reject-dead` sidecar rows. Not re-verified live — YouTube, drip-Mac-only per CLAUDE.md. Entry corrected in place with today's findings. |
+| A tier-3 probe's own report `note` always overwrites an | Fixed — append, not overwrite. |
+| `chunk_plan` stores JSON `null` rather than SQL NULL, so | Re-derived, left open. `git grep` across `archive/`/`app/`/`worker/`/`scripts/` finds no current query using the broken predicate — the WO-95 sweep that hit it was a one-time script, not shipped code. Nothing to fix today; entry corrected in place so the next reader doesn't re-derive the same thing. |
+
+**"An owner check at feed time" — already done, re-derived not re-built.** `queue_probe.has_owner()` (WO-346) already exists and `feed_tier3_auto_transcription.py`'s `_push_if_has_video()` already calls it before every ingest — confirmed by reading the code, not assumed. `finish_candidate()` deliberately was NOT given its own owner check: it only ever writes to local files (the queue, the deferred file, a pin), never ingests, so a no-owner line sitting in the queue is not a live gap — the real gate, at ingest time, already exists and already runs.
+
+**Caution.** The ChampDS and CivicPlus DocumentCenter recipes were verified against two real, live URLs today (`play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50`; `westlakehills.gov/DocumentCenter/View/4765/07152026-ZAPCO-Audio`) — both a HEAD-then-ranged-GET fallback that already existed turned out to already handle them correctly once dispatched; only the dispatch rule was missing. The CivicPlus one is genuinely odd: a HEAD and a ranged GET both answer `404` with a generic error page, but a **plain, unranged GET returns 200 with the real file** — confirmed live with `curl`, not assumed. The existing `_probe_direct_file()` code path already reaches the working case (HEAD fails -> falls back to a ranged GET, which for THIS host also 404s and is correctly treated as dead only if it were the final answer — it is not, because dispatch alone was the gap, and once dispatched the function's *existing* logic already reads this host correctly; no new fallback rung was added). The Laserfiche live network check for Jefferson County WA could not be re-confirmed today (this sandbox's network could not reach `test.co.jefferson.wa.us`) — the fix relies on WO-304/WO-317's own prior live confirmation plus a fresh, successful live re-check of the same underlying HTTP behavior pattern against a different real host (CivicPlus) today.
+
+**The workflow-file update could not be pushed.** `git push` for this branch was rejected: `refusing to allow an OAuth App to create or update workflow .github/workflows/feed-tier3-transcription.yml without 'workflow' scope`. That's a GitHub platform restriction on the token this session pushed with (`gh auth status` shows `gist, read:org, repo` — no `workflow`), not a code decision, and not something fixable from inside the session. The change itself (add one `git add` line for the new CSV) is real and still needed — a fresh BACKLOG.md entry ("`feed-tier3-transcription.yml` doesn't stage the new feed-log CSV") carries the exact diff. `tests/test_feed_tier3_workflow.py::test_advance_step_stages_the_feed_log_too` is marked `xfail(strict=True)` so the gap is visible in test output and the test starts passing (and needs its `xfail` mark removed) the moment the workflow file is updated by hand or pushed with a properly-scoped token.
+
+**Recommendation.** None of this needs a deploy decision from Ryan — it's queue/probe hygiene, verified by tests and (where possible) live checks. Two open items do need eyes: the workflow-file gap just above, and the dead Jennings, LA YouTube line sitting in the queue 11 days past its own "recheck in a few days" note — worth a look next time the drip Mac runs.
+
+**Deploy status.** `app/platforms/queue_probe.py` and `app/platforms/direct_file.py` are under `app/` — this needs a resolver deploy before the fix is live in production (the worker/feed workflow imports these modules too). The three touched scripts and the GitHub Actions workflow take effect on their next scheduled/triggered run, no deploy needed for those specifically, but the underlying module fix still requires the `app/` deploy either way since the scripts import it.
+
+## WO-947: Full Context entries appear on their government's hub and their state page [Done 2026-09-21]
+
+**Why this ran.** Ryan, reviewing a Full Context entry page: "a page like
+this that is related to Indianapolis would also appear under the
+Indianapolis hub, right? And Indiana?" It didn't yet. Good for readers,
+and entry pages had almost no internal links pointing at them.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `crud.list_context_entries_for_pages(session, page_condition, *, limit)` | Published entries whose meeting satisfies a caller-supplied page-membership condition. Light dict (no `segments`, no thumbnail lookup, no excerpt loader) — id, headline, summary, permalink, match_kind/label, network_label, source_label, published_at, slug, meeting title, date_html, jurisdiction_display, hub_slug, deep_link, timestamp_label. |
+| Hub wiring (`get_jurisdiction_hub_data()`) | Calls it with `_hub_page_condition(group)` — the exact condition the hub's own meeting-list query already uses. `HUB_CONTEXT_ENTRIES = 3`. |
+| State wiring (`get_state_page_data()`) | Calls it with `MeetingPage.id.in_([p["id"] for p in pages])` — `pages` is that function's own already-verified page-id set (post the SQLite case-check refinement, not just the raw SQL suffix match). `STATE_CONTEXT_ENTRIES = 6`. |
+| `archive/templates/_context_mentions.html` | "Seen on social media" — headline (or a truncated summary) linking to the entry's permalink, the match badge, the government link (state page only), meeting title + date, "Original post on {network}" as plain text (no outbound link). No empty state: renders to nothing when `context_entries == []`. Included by both `jurisdiction_page.html` and `state_page.html`, after the featured meetings, before the meeting/government list. |
+| Entry page (`context_entry_page.html`) | A "Part of {State}" link next to the existing hub link — `crud.effective_state_abbr()` over the entry's own `gov_id`/`jurisdiction` (one new dict key, `gov_id`, zero extra queries), not a page-specific lookup. |
+
+**Membership: reused, not re-derived.** Both wirings pass the SAME
+page-membership decision the hub/state page already made for its own
+meeting list, never a jurisdiction-text match — `STATE_HUB_PAGES.md`'s
+"Which pages a hub shows" section already measured what a text match
+costs (four real governments' hubs carrying unrelated video once). A
+`tests/test_context_on_hubs.py` case models that exact contamination
+shape for Full Context: an un-keyed page on a `MULTI_GOV_HOSTS` host
+whose stored jurisdiction text coincidentally reads "Walnut Creek, CA"
+does not pull its cited entry onto Walnut Creek's real hub.
+
+**Bare view only; no empty state.** A `?topic=` view is an alternate,
+untagged cut of the page, so the section is skipped there. With zero
+entries the block is fully absent — no heading, no wrapper — the same
+reasoning every other section on these pages already follows, since a
+repeated empty heading across ~1,000 hubs is exactly the thin templated
+content `STATE_HUB_PAGES.md` §1 diagnosed Google declining this site for.
+
+**Cheap.** One small extra query per render, using the session the
+caller already has open, wrapped in try/except and logged (mirrors how
+`sitemap()` already guards its own Full Context calls) so a failure here
+can never take the hub/state page down with it.
+
+**The hub `noindex` condition — checked, not changed.** `jurisdiction_
+page.html`'s `noindex` is driven purely by `indexable = len(pages) >=
+JURISDICTION_HUB_MIN_INDEXABLE` (2) — a meeting-page COUNT, with no
+awareness of Full Context entries at all. So: a hub with only one meeting
+page but with real Full Context entries attached is still `noindex`'d
+today. Left alone per the brief; flagged here for Ryan to decide whether
+that should change.
+
+**Docs.** `STATE_HUB_PAGES.md`: added to §2's component list, and a new
+"Seen on social media" subsection under "Rendering rules" covering the
+membership rule, the no-empty-state reasoning, bare-view-only, cost, and
+placement/limits. `README.md`'s "Full Context feed" section: a new
+paragraph. `BACKLOG.md`: the WO-943 "clipped on social media" `/m/`
+backlink residual now notes hubs/state pages already link to entry pages,
+leaving `/m/` as the one remaining surface without a backlink.
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4883 passed, 16 skipped, 4 xfailed, 0 failed**),
+`alembic check` for both services (no migration in this WO), and the
+`BACKLOG_DONE.md` heading check. Node tests: 81 passed.
+
+Both services were then run locally on scratch SQLite, with `.env`
+loading blocked, and driven through the resolver in a real browser: a
+real Jacksonville FL meeting (Granicus clip 7447) with two published
+entries and one draft.
+
+| Check | Result |
+|---|---|
+| `/j/jacksonville-fl` | "Seen on social media" with both published entries, newest first, each linking to its slugged entry page |
+| The draft | On neither page |
+| Links out to social media inside the section | None |
+| An untitled entry | Its link text is the start of its summary. A `<script>` in that summary renders as plain text. |
+| `/state/florida` | The same two entries, each with a link to the Jacksonville hub |
+| `/j/jacksonville-fl?topic=…` | No section at all |
+| Entry page | Now reads "Jacksonville, FL · Florida · 2026-08-03", with both as links |
+
+**Two things the review caught that no test could have, fixed in this
+WO.**
+
+1. *The failure guard did not hold on Postgres.* The entries query ran
+   in the page's own database session inside a try/except. On Postgres
+   a failed statement aborts the whole transaction, so every later query
+   on that session fails too and the page returns a 500 anyway. SQLite
+   does not behave that way, so the "lookup raises, page still renders"
+   tests passed. The lookup now runs in its own session
+   (`crud._context_entries_isolated()`).
+2. *The state lookup grew with the archive.* It passed every page id in
+   the state as one `IN (…)` list. A large state has thousands of pages.
+   The entries table is tiny by comparison, so the lookup now starts
+   there: read the published entries' meeting ids, intersect with the
+   state's page set in Python, then fetch the few that matched
+   (`crud._context_entries_for_page_ids()`). Membership is unchanged. It
+   is still the state page's own final page list.
+
+## WO-946: Full Context entry pages get a slugged URL and real SEO substance — a transcript excerpt, structured data, a sitemap listing [Done 2026-09-21]
+
+**Why this ran.** Ryan reviewed the WO-945 permalink pages and asked two
+things: "Can the url be slugged based on the title for SEO?" and "should
+we make any other improvements to that /context/id page for SEO?" The
+second question mattered more than the first — `STATE_HUB_PAGES.md`
+already diagnosed Google declining this site's hub pages for being thin
+and templated, and a permalink page with 2-3 sentences of editor summary
+was exactly that shape.
+
+**What was built.**
+
+| Piece | What it does |
+|---|---|
+| `context_permalink()` (`archive/utils/context_links.py`, pure, unit-tested) | Builds `/context/{id}-{slug}` — the slug from the entry's own title, or (no title) the matched meeting's jurisdiction + title, capped ~70 characters cut on a hyphen boundary. Reuses `slugify_text()` (`archive/utils/slugify.py`), the one slug rule this app already had. Computed fresh at read time in `_context_entry_dict()`, never stored — no migration. |
+| `GET /context/{entry_ref}` (`archive/main.py`, replacing the WO-945 `{entry_id:int}` route) | Looks up by id alone (never trusts the slug); anything not already at the entry's current canonical permalink — bare id, stale slug after a title edit, wrong slug — gets a real `301`, query string preserved. A malformed ref (`^(\d+)(?:-([a-z0-9-]*))?$`, id capped at 12 digits) 404s before ever touching the DB. |
+| Resolver widening (`app/main.py`) | Same regex, same reject-before-proxying; `allow_redirects=False` so the Archive's `301` reaches the browser instead of being silently followed and served as a `200` — the same real bug (and fix) `/m/{slug}` and `/j/{hub_slug}` already needed. |
+| `get_context_transcript_excerpt()` (`archive/db/crud.py`) | The real words spoken at the clipped moment: starts at the segment containing `t_seconds`, grows to ~90s/~900 chars (floor 2 segments), None on no default version, no segments, or a quality-marker warning. |
+| `context_entry_page.html` | A transcript-excerpt section (skipped entirely when there's nothing to show); a `<title>`/description rule that names the government without ever shortening the headline; `BlogPosting` + `BreadcrumbList` JSON-LD; a visible `<time>` + `article:published_time`. |
+| `list_context_entries_for_sitemap()` + `sitemap.xml.jinja` | Every published entry's canonical permalink, capped at the 500 most recently updated, once the feed clears `CONTEXT_MIN_INDEXABLE` — wrapped in the same try/except as the existing `/context` sitemap line. |
+
+**No migration.** Everything above reads existing columns (`ContextEntry.
+title`, `MeetingPage.jurisdiction`/`title`, `TranscriptVersion.segments`/
+`transcript_warnings`) or computes at read time. The one new dict key,
+`entry["meeting_page_id"]` (the raw FK, added to `_context_entry_dict()`
+so the route could call the excerpt loader without a second page lookup),
+is derived, not stored.
+
+**The segment shape and quality check, reused not reinvented.** Segments
+are `{"start": float, "end": float, "text": str}` — confirmed by reading
+`app/utils/vtt_parser.py` (the producer) and `archive/templates/
+meeting_page.html` (`id="seg-{{ loop.index0 }}"`, the 0-based index a
+deep link's `line=seg-N` targets). The quality gate is `archive/db/
+crud.py`'s existing `_has_real_warning_free_transcript()` — the same
+`_GARBLED_MARKER`/`_HALLUCINATION_MARKER`/`_GRANICUS_TRUNCATION_MARKER`
+check every other "is this actually a good transcript" reader in that
+file already uses (CLAUDE.md has its own bullet on why a new quality
+marker must never be checked ad hoc). Each excerpt line's `deep_link`
+uses the segment's real index in the FULL segments array, not its
+position within the excerpt window, so a reader who clicks through
+highlights the same line `meeting_page.html` itself would highlight.
+
+**The 301 reaching the browser through the proxy.** Read `app/archive_
+client.py`'s `proxy_get()` docstring first — its `allow_redirects`
+parameter exists specifically because aiohttp's own default
+(`allow_redirects=True`) silently follows a redirect *inside* the proxy
+and serves the target as a `200`, defeating the point of a permanent
+redirect (the real 2026-08-31/2026-09-11 incidents that affected every
+`_SLUG_REDIRECTS`/hub-alias entry ever shipped). The resolver's new
+`/context/{entry_ref}` proxy passes `allow_redirects=False` unconditionally
+(no sub-path structure the way `/m/` has card.jpg/transcript.txt, so
+there's no case that needs the opposite), same shape as `/j/{hub_slug}`'s
+own route. A dedicated test (`tests/test_archive_proxy_error_handling.py`)
+proves it with a fake aiohttp response, mirroring the existing `/m/`/`/j/`
+tests in the same file.
+
+**Caution.** A jurisdiction string is not always what the editor typed —
+`effective_jurisdiction()` can enrich a real, recognized government's
+name (registry display form, disambiguators like "(city)") even with no
+`gov_id` explicitly set, confirmed live while writing the title-tag tests
+(a plain "Elgin, IL" input came back "Elgin (city), IL"). Tests that need
+a jurisdiction to survive unenriched use an obviously-synthetic one
+("Testville, ZZ"); tests that check the real enrichment read `entry[
+"jurisdiction_display"]` back rather than assuming the raw input string.
+
+**Docs.** README's "Full Context feed" section: the slugged-URL/redirect
+rule, the transcript excerpt (what, when skipped, why — the thin-page
+diagnosis), structured data, and the sitemap rule. `BACKLOG.md`'s WO-945
+sitemap/RSS residual updated: the sitemap half is done, the RSS `<link>`
+half stays open (deliberately untouched this WO — a real RSS semantics
+question, not a code change).
+
+**Verification.** All five CI gates passed locally on 2026-09-21: `ruff
+check`, `ruff format --check`, the full suite (**4865 passed, 16 skipped, 4 xfailed, 0 failed**),
+`alembic check` for both services (no migration in this WO), and the
+`BACKLOG_DONE.md` heading check. Node tests: 81 passed.
+
+Both services were then run locally on scratch SQLite, with `.env`
+loading blocked, and driven through the resolver in a real browser. The
+meeting was real: Jacksonville FL, Granicus clip 7447, 2,177 caption
+segments from the government's own captions.
+
+| Check | Result |
+|---|---|
+| `/context/1` (bare id), seen by the browser | 301 to `/context/1-councilmember-presses-staff-…` |
+| A wrong slug with `?utm=x` | 301 to the right slug, query string kept |
+| The canonical slugged URL | 200 |
+| `/context/abc`, `/context/1abc`, a 24-digit id | 404 each |
+| `/context/new`, `/context/feed.xml` | Still reach their own routes |
+| Untitled entry | Slug built from the government and the meeting title |
+| Both JSON-LD blocks | Parse as `BlogPosting` and `BreadcrumbList` |
+| Excerpt for an entry at `t=754` (12:34) | Starts at the 12:31 line. 6 paragraphs. |
+| Clicking the excerpt's `[12:35]` timestamp | Meeting page opens with the video at 755 seconds, at transcript row 335, the line that paragraph opens with |
+
+**Four things the review and the browser caught, fixed in this WO.**
+
+1. *Unrelated speech shown as context.* "The last line starting at or
+   before `t`" can always be satisfied. A transcript that stops early
+   handed back its final line for a moment an hour later, and one that
+   starts late handed back its first line. The chosen line must now be
+   within 60 seconds of the linked moment, or there is no excerpt. Two
+   tests pin both directions.
+2. *34 fragments instead of speech.* Government captions arrive a few
+   words at a time. The first render was 34 lines such as "[12:34]
+   yourself.", one timestamp each. `crud._excerpt_paragraphs()` now
+   groups them, breaking at a speaker change (the `>>` captioners use,
+   including mid-line) or at a sentence end once a paragraph is long
+   enough. Each paragraph keeps its first line's timestamp link. The
+   test uses the real Jacksonville lines.
+3. *The page title lost the place name.* The first rule dropped the
+   government when the title ran past 65 characters. An ordinary
+   56-character headline came out with no place at all. The place is
+   what people search for, so now only the site suffix is dropped.
+4. *`program's` slugged to `program-s`.* Apostrophes are now removed
+   before slugging, here only. The shared `slugify_text()` is untouched,
+   because meeting-page slugs built from it are frozen.
+
+**Caution, not changed here.** An excerpt timestamp link rounds the time
+down, exactly as the meeting page's own share links do
+(`deep_link.js:69`). For a caption fragment shorter than a second, the
+meeting page then highlights the row just before it. That is the
+existing behaviour of every per-line share link on the site.
+
 ## WO-934 follow-up: Ryan's answers on Derry, Hopkins, Sebring and Malibu; Derry needs no mint; two new `requires` rules in the repair tool [Done 2026-09-21]
 
 **Why this ran.** WO-934 left four rows open for Ryan: page 3367 (Derry, NH), page 3453 (Hopkins on Vimeo), and the two deletes 6906 (Sebring) and 7086 (Malibu). He answered all four in chat on 2026-09-21. The answers needed two changes to the repair tool, because the old `requires` rules could not express them.
@@ -59548,3 +61039,153 @@ segments.
 🎯 **Bottom line: the page render path was waiting on a live network
 call it never should have made — moved that call into the background,
 so a stuck thumbnail extraction can no longer take the whole page down.**
+
+## WO-1010: 51 more real Sliq Harmony meetings, plus a new Washington/TVW adapter and two new Invintus governments [Done 2026-09-22]
+
+**What was done and why.** All 13 Sliq Harmony state-legislature tenants
+had exactly one meeting each — a sample, not real coverage. This WO read
+each tenant's recent-events listing, checked each candidate by hand (a
+real committee, floor session, or legislature-created commission/task
+force — not a state board or agency that just happens to share the same
+video system), and queued or ingested the real ones. Separately, the
+conductor's parallel WO-1009 found that Washington's TVW (tvw.org) is not
+its own video platform — it's an Invintus tenant reached through a
+WordPress wrapper page. This WO built that adapter and, while confirming
+it, found a second, unrelated real Invintus tenant covering Vancouver,
+WA and Clark County, WA.
+
+**Result: Sliq Harmony depth.**
+
+| State | New meetings ingested (real captions) | New meetings queued for tier-3 | Deferred (>90 min) | No video |
+|---|---|---|---|---|
+| Arkansas | 4 | 0 | 0 | 0 |
+| Colorado | 4 | 0 | 0 | 0 |
+| Delaware | 3 | 1 | 0 | 0 |
+| Kansas | 0 | 2 | 2 | 0 |
+| New Mexico | 2 | 0 | 0 | 2 |
+| Oklahoma (House) | 3 | 1 | 0 | 0 |
+| Oklahoma (Senate) | 4 | 0 | 0 | 0 |
+| West Virginia | 3 | 1 | 0 | 0 |
+| Maine | 0 | 2 | 2 | 0 |
+| Iowa | 0 | 0 | 1 | 1 |
+| Nevada | 4 | 0 | 0 | 0 |
+| Missouri | 3 | 0 | 0 | 0 |
+| Virginia | 4 | 0 | 0 | 0 |
+| Pennsylvania | 2 | 0 | 0 | 0 |
+| **Total** | **36** | **7** | **5** | **3** |
+
+"No video" is New Mexico/Iowa events whose stream was flagged not
+enabled at the source (a real, common New Mexico pattern already known
+from WO-921) — nothing was written for those, same as before. "Deferred"
+meetings are real and accepted, just over the 90-minute tier-3 threshold
+(`app/platforms/queue_probe.py`'s existing rule); they sit in
+`scripts/tier3_long_meetings_deferred.txt` for a later swap-in. Kansas,
+Iowa and Maine still published zero captions across every meeting read
+in this sweep, same as WO-921/WO-1006's earlier reads — that looks like
+a real per-tenant fact now, not a fluke of one sample. Full read: `rtr-
+business/research/wo1010_handread.csv`. Script: `scripts/wo1010_sweep.py`.
+
+**Result: Washington/TVW.** `app/platforms/tvw.py` extracts the real
+`<meta name="clientID">`/`<meta name="eventID">` tags a `tvw.org/video/
+{slug}/` page carries (confirmed on 3 real pages) and delegates to the
+existing `InvintusAssetFinder`. TVW's clientID (9375922947) was added to
+`invintus.py`'s `LEGISLATURE_CLIENTS`, mapped to Washington's existing
+government (`us:state:53`) — no new government minted, same one-
+government-per-state rule every other state here follows. TVW's own
+`categories` field carries an explicit "Legislative" tag on real
+committee/floor events that no other TVW program (courts, agencies,
+"Inside Olympia") shares — confirmed against a real 50-row/520-total
+live sample — so that tag, not a title guess, is the filter. A real
+Senate Housing committee meeting (2026-09-17) is now a live page with
+1,447 real, coherent caption segments.
+
+**Result: two new Invintus governments, found by accident while
+confirming TVW.** A web search for TVW's own page turned up a document
+on a *different* Invintus tenant (clientID 2917038973) while looking for
+corroborating evidence — that tenant turned out to be CVTV (Clark/
+Vancouver Television), a shared regional media system already
+half-referenced (but never numbered) in `invintus.py`'s own module
+docstring as "Clark County, WA (a Planning Commission...)". Neither
+Vancouver city nor Clark County had any real video source in
+`jurisdiction_coverage.csv` before this — Vancouver's CivicClerk agenda
+system had no video attached, and Clark County had nothing at all. Both
+are real, confirmed live, and now queued for tier-3 (no captions on this
+tenant, same as every other non-legislature Invintus tenant found so
+far): Vancouver's "City Council Workshops (09-21-26)" and Clark County's
+"Clark County Council (08-18-26)", both picked specifically because
+they're under the 90-minute tier-3 threshold (most other real meetings
+on this tenant run 2-5 hours).
+
+**Checked and ruled out: Invintus clientID adjacency.** WO-1006 found
+five new Sliq Harmony states by trying tenant numbers near a known one.
+The same idea was tried here against all three previously-known Invintus
+clientIDs (Oregon, Wisconsin, Arizona) plus the two new ones (TVW, CVTV)
+— every clientID ±3 came back with zero events, confirmed live. Unlike
+Sliq's short 5-digit tenant numbers, Invintus's 10-digit clientIDs are
+not sequentially allocated, so this particular shortcut does not
+transfer to Invintus. A real government-hub vendor scan (WO-919's
+`player.invintus.com`/`eventlisting.invintus.com` embed check) is the
+next avenue for finding more Invintus tenants, not clientID guessing.
+
+**`jurisdiction_coverage.csv`:** three rows updated (Washington state,
+Vancouver city WA, Clark County WA) via `rtr-business/research/
+wo1010_apply_to_jc.py`, following the file's own flock/floor/atomic-
+write protocol. All other Sliq states already had a row from WO-921/
+WO-1006 — sweeping more meetings for an already-covered state doesn't
+need a CSV change.
+
+**Caution.** The 36 ingested pages are all live once the resolver is
+redeployed (this repo's services deploy manually — see CLAUDE.md). The 7
+Sliq queue lines and the 2 new Invintus queue lines still need real
+transcription (cloud worker or a local Whisper run) before they carry a
+transcript. The BACKLOG entry's "91 of 99 chamber rows" count is still
+stale and was not recounted here — these new pages are filed under each
+state with a committee as meeting body, not a chamber, so mapping them
+back onto the original 99-row recon still needs a by-hand pass.
+
+**Recommendation.** Deploy the resolver to make the 36 new pages and the
+Washington page live. Then queue the 9 new tier-3 lines (7 Sliq + 2
+Invintus) for transcription in the next batch. No further Sliq/Invintus
+platform work is blocking — the next real lever for this BACKLOG entry
+is the 49 "nothing found" rows and the vendor-scan approach to finding
+more Invintus tenants.
+
+🎯 **Bottom line: all 13 Sliq Harmony state tenants now have real depth
+(51 more meetings, 36 with live captions) instead of one sample meeting
+each, and Washington's TVW gap — the last vendor with rows and no
+adapter — is closed, plus two more real governments (Vancouver and
+Clark County, WA) found along the way.**
+
+## WO-169 probe hook now forwards the resolved media format [Done 2026-09-22]
+
+The rerun script passed the resolved video URL but omitted its known format.
+That could reject playable media whose URL has no file extension, even though
+WO-166 already added support for identifying it by format.
+
+Added `video_format=getattr(result, "video_format", None)` to
+`_real_probe_hook()`'s `probe_queue_entry()` call. Existing URL arguments,
+sidecar logging, and verdict handling are unchanged. Objects without a
+`video_format` attribute still pass `None`.
+
+Verification: checked the hook in isolation with mocked probe and sidecar
+functions, covering format forwarding, the missing-attribute fallback, and
+accept/reject behavior. No ingestion script or production operation was run.
+The two targeted test files (`tests/test_queue_probe.py` and
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) passed: 73 passed,
+1 skipped. Ruff lint and format checks passed for the changed script;
+`git diff --check` and the completed-heading preservation check passed.
+The first test run hit sandbox-blocked DNS in an existing Vimeo test;
+the rerun with DNS access passed. Before pushing, full-repo lint and format,
+both fresh-SQLite migration checks, and all 81 JavaScript tests passed.
+Full pytest: 5,010 passed, 16 skipped, 4 xfailed, 2 failed. Both failures
+reproduce on unchanged main (`bc076ba`) and depend on the mutable local
+meeting export; recorded separately in BACKLOG.md.
+
+Original finding and investigation history (preserved from BACKLOG.md):
+
+- **[JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s `_real_probe_hook()` never passes `video_format` to `probe_queue_entry()`, so a WO-166-shaped direct-media candidate reaching it still misprobes as dead.**
+  - **Issue**: WO-166 (2026-09-10) taught `probe_queue_entry()` a `video_format=` fallback for a direct-media URL with no extension of its own (a CivicPlus DocumentCenter link whose real filename only shows up in `Content-Disposition`) — but `scripts/wo169_probe_rejected_rerun.py:119-123`'s `_real_probe_hook()` (the function wired to `wo134_confirmed_hits_ingest.py`'s `PROBE_HOOK`, so every candidate loop in that script's `resolve_seed()` runs through it) calls `probe_queue_entry(candidate_url, video_url=result.video_url, source_page_url=...)` with no `video_format=` at all. A real candidate this shape hits that hook, `video_url` has no extension, `video_format` stays `None`, and `_probe_direct_file()`'s dispatch check in `queue_probe.py` never fires — `probe_queue_entry()` falls through to `reject-dead` ("no probe recipe for this media shape") even though `resolve()` correctly found real, playable video.
+  - **Impact**: any future sweep run through `wo134_confirmed_hits_ingest.py` (which most sweep scripts in this repo drive through, per `CLAUDE.md`'s WO-169 note) will silently drop a real direct-video-file candidate at the probe step, the exact failure mode WO-166 was filed to fix — just one call site downstream of the fix rather than in it. Not touched by WO-166 itself since `scripts/wo1*.py` is another in-flight session's file during this parallel wave.
+  - **Next action**: add `video_format=getattr(result, "video_format", None)` to the `probe_queue_entry(...)` call in `_real_probe_hook()` (`scripts/wo169_probe_rejected_rerun.py:119-123`) — a one-line change, same shape `queue_probe.probe_queue_entry()`'s own docstring already documents as the fix for this exact gap.
+  - **Constraint**: none known — `probe_queue_entry()`'s `video_format` parameter already exists and already prefers a caller-supplied value over its own internal resolve, so this needs no other change.
+  - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (found while live-verifying WO-166's own 7 confirmed governments through this exact hook).

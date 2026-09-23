@@ -7,8 +7,12 @@
      (it's real navigation, and every /m/* page links here) but tells
      crawlers not to index it: a one-meeting hub is a near-duplicate of
      that meeting's own page -- thin/doorway content. Evaluated live, so
-     the tag disappears by itself once a second meeting lands. Same
-     posture as sitemap.xml, which lists only indexable hubs. #}
+     the tag disappears by itself once a second meeting lands -- OR once
+     this government has a published Full Context entry (WO-1003): a
+     hand-written entry is real content, not a near-duplicate, even on a
+     one-meeting hub. Same posture as sitemap.xml, which lists only
+     indexable hubs (crud.list_indexable_hub_entries() applies the same
+     OR). #}
   {% if not indexable %}
   <meta name="robots" content="noindex">
   {% endif %}
@@ -126,6 +130,12 @@
       {% include "_featured_meetings.html" %}
     {% endwith %}
     {% endif %}
+
+    {#- WO-947: "Seen on social media" -- see _context_mentions.html's own
+       comment for the membership rule and why there's no empty state.
+       show_jurisdiction defaults false, correct for a hub: every entry
+       here is already this same government. -#}
+    {% include "_context_mentions.html" %}
 
     <h2>All archived {{ display }} meetings</h2>
     <div class="meeting-list">

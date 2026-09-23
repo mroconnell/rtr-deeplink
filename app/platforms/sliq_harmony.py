@@ -67,6 +67,37 @@ chamber or committee is `meeting_body`. This adapter sets `jurisdiction`
 from a small tenant table (falling back to the site's own page title for
 an unlisted tenant) and `meeting_body` from the event title; the
 government id comes from per-tenant pins, never from the shared host.
+
+WO-1006 (2026-09-22) followed up on the two open questions from the
+paragraph above. `sg002-harmony.sliq.net` and `sg004-harmony.sliq.net`
+(both already known as media hosts) turned out to be full mirrors of
+`sg001`'s tenant catalog, not separate tenant pools -- the same tenant
+number returns byte-identical page titles and the same 404 on an unused
+number, on all three hosts. West Virginia's House of Delegates is not on
+Sliq Harmony at all -- confirmed by reading the WV Legislature's own
+"Live Media" page, whose Senate link is the Harmony URL and whose House
+links are a YouTube channel instead, so tenant 00289 covering the Senate
+only is not a gap. The Oklahoma Senate tenant WAS found by trying nearby
+tenant numbers on the same host: 00282, confirmed live with 6 of 8 recent
+meetings captioned. The same sweep (00270-00360) turned up six more
+governments with no prior page, tenant real and hand-verified via a page
+title/room match the same way WO-921 did (see
+`rtr-business/research/wo1006_handread.csv`): Maine (00281) and Iowa
+(00285), video-only, no captions on any meeting read; Nevada (00324),
+Missouri (00325) and Virginia (00304), most meetings captioned; and
+Pennsylvania (00328, House sessions only), replacing a
+`jurisdiction_coverage.csv` row that had been mis-keyed to an unrelated
+township's YouTube video. Two more numbers answered 200 but are not US
+state legislatures and were left out of this table on purpose: 00280
+(Government of Nunatsiavut, a Canadian Inuit self-governing region) and
+00290 (Bermuda Parliament) -- both real Sliq Harmony tenants, just
+outside this repo's US-jurisdiction scope. 00315/00316 ("Arkansas
+Bureau"/"Arkansas Senate") answered 200 but list zero recent events --
+dormant, not pursued further; Arkansas's one shared archive (00284)
+already covers both chambers. A much older host (`sg001-harmony...
+/00309`, referenced in stale search-indexed URLs as "Montana
+Legislature") 404s today -- Montana has apparently moved off Sliq
+Harmony since those pages were indexed.
 """
 
 import json
@@ -104,10 +135,23 @@ _EVENT_RE = re.compile(
     r"/powerbrowser/powerbrowserv3/(?:(\d{8})/-?\d+/)?(\d+)(?:/|$)", re.IGNORECASE
 )
 
-# The seven tenants confirmed live 2026-09-20 (WO-921). One government per
-# state (D1): the chamber/committee is the meeting body, never a
-# government of its own. An unlisted tenant falls back to the site's own
-# page title.
+# The seven tenants confirmed live 2026-09-20 (WO-921), plus seven more
+# confirmed live 2026-09-22 (WO-1006): the Oklahoma Senate (the WO-921
+# tenant, 00283, is the House only) and six brand-new states found by
+# enumerating nearby tenant numbers on the same shared host -- Maine,
+# Iowa, Nevada, Missouri, Virginia and Pennsylvania (the last replacing a
+# jurisdiction_coverage.csv row that had been mis-keyed to an unrelated
+# YouTube video). WO-1006 also confirmed `sg002-harmony.sliq.net` and
+# `sg004-harmony.sliq.net` are NOT separate tenant pools -- all three
+# hosts mirror the identical tenant catalog (same title, same 404s on an
+# unused tenant number), so there is no separate host-by-host tenant
+# space left to enumerate. West Virginia's House of Delegates was
+# confirmed to NOT be on Sliq Harmony at all (its own site links a
+# YouTube channel for House video, only the Senate uses Harmony) --
+# there is no missing WV House tenant to find.
+# One government per state (D1): the chamber/committee is the meeting
+# body, never a government of its own. An unlisted tenant falls back to
+# the site's own page title.
 TENANT_JURISDICTIONS: Dict[str, str] = {
     "00284": "Arkansas State Legislature",
     "00327": "Colorado General Assembly",
@@ -115,7 +159,14 @@ TENANT_JURISDICTIONS: Dict[str, str] = {
     "00287": "Kansas State Legislature",
     "00293": "New Mexico Legislature",
     "00283": "Oklahoma House of Representatives",
+    "00282": "Oklahoma Senate",
     "00289": "West Virginia Legislature",
+    "00281": "Maine State Legislature",
+    "00285": "Iowa State Legislature",
+    "00324": "Nevada State Legislature",
+    "00325": "Missouri General Assembly",
+    "00304": "Virginia General Assembly",
+    "00328": "Pennsylvania House of Representatives",
 }
 
 # Placeholder stream Urls Sliq writes when a meeting has no recording.

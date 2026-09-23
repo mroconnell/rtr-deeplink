@@ -81,6 +81,17 @@ from app.platforms.youtube import YOUTUBE_CAPTIONS_DISABLED_MARKER  # noqa: E402
 logger = logging.getLogger("youtube_drip")
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+# WO-1016: this script's own three `_parse_queue_line()` call sites now
+# unpack a 3-tuple (url, source_url, gov_id) -- that function is a thin
+# wrapper over app.platforms.queue_probe.parse_queue_line(), which
+# tolerates a queue line carrying an optional 3rd gov_id field. This Mac
+# runs its OWN checkout (CLAUDE.md's "YouTube is fetched only by the
+# drip Mac"), so this tolerance only takes effect here once this file's
+# `git pull` picks up this change -- see docs/YOUTUBE_DRIP_RUNBOOK.md and
+# BACKLOG.md's WO-1016 entry for the rollout order. Nothing here WRITES
+# a 3-field line yet (queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES is still
+# False) -- this is read-tolerance only, landed ahead of that flag on
+# purpose.
 # WO-248: the feed lane used to append every probe straight to the
 # tracked DEFAULT_SIDECAR_PATH (app/platforms/queue_probe.py), live,
 # while the drip ran for hours between the one daily `git pull` +
@@ -183,7 +194,7 @@ def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        url, src = _parse_queue_line(line)
+        url, src, _gov_id = _parse_queue_line(line)
         keep, _ = _classify_queue_url(url)
         if keep:
             out.append((line, url, src))
@@ -203,7 +214,7 @@ def check_lines(lines: List[str]) -> List[Tuple[str, str, str]]:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        url, _src = _parse_queue_line(line)
+        url, _src, _gov_id = _parse_queue_line(line)
         keep, detail = _classify_queue_url(url)
         out.append((line, "keep" if keep else "skip", detail))
     return out
@@ -240,7 +251,7 @@ def advance_queue_lines(lines: List[str], fed_urls: set) -> Tuple[List[str], int
     for raw in lines:
         line = raw.strip()
         if line and not line.startswith("#"):
-            url, _ = _parse_queue_line(line)
+            url, _, _gov_id = _parse_queue_line(line)
             if url in fed_urls:
                 dropped += 1
                 continue

@@ -190,21 +190,10 @@ BROWSER_HEADERS = {
         "Chrome/151.0.0.0 Safari/537.36"
     ),
 }
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-]
+# WO-939: was this script's own local copy (missing WO-278's Radware/
+# ShieldSquare markers -- see scripts/challenge_markers.py's own
+# docstring for the full incident this consolidation closes).
+from scripts.challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
 # --- copied verbatim (signature set only) from
 # rtr-business/research/wo129_two_hop_scan.py (WO-129, 2026-09-09) ---
@@ -2317,11 +2306,16 @@ async def process_candidate(
         # existed) per Ryan's "video existed, take the next candidate,
         # only report this once candidates are exhausted" rule -- see
         # CLAUDE.md's WO-169 entry and app/platforms/queue_probe.py.
+        # WO-1017 (2026-09-23): the `outcome` code below stays the
+        # underscore spelling (it's an in-process string, matched by
+        # `==` above and by tests) -- only the `reject_reason` cell,
+        # which lands in jurisdiction_coverage.csv, uses the hyphenated
+        # constant so the research file gets the new spelling.
         writer.writerow(
             {
                 **base_report,
                 "outcome": "rejected_by_probe",
-                "reject_reason": "rejected_by_probe",
+                "reject_reason": wo134.REJECT_REASON_REJECTED_BY_PROBE,
                 "reject_class": "content",
                 "meeting_url": result.seed_url,
                 "video_url": result.video_url,

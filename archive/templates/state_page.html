@@ -125,6 +125,17 @@
           {% include "_featured_meetings.html" %}
         {% endwith %}
 
+        {#- WO-947: "Seen on social media" -- see _context_mentions.html's
+           own comment for the membership rule and why there's no empty
+           state. show_jurisdiction=True here: a state pools many
+           governments, so each entry names which one. Placed inside
+           .state-main (not the sidebar) so mobile sees it in the same
+           source order as everything else in the main pane, ahead of the
+           sidebar's government list. -#}
+        {% with show_jurisdiction = True %}
+          {% include "_context_mentions.html" %}
+        {% endwith %}
+
         {#- Fallback when nothing has a stored highlight yet: a state
            whose meetings are all untranscribed, or one crawled before
            scripts/backfill_meeting_highlights.py has reached it. Without

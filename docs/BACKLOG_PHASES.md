@@ -38,10 +38,10 @@ phases, so the column adds to a little over the file's 392.
 
 | Phase | Goal | Work orders | Entries (about) | Needs from Ryan | Status |
 |---|---|---|---|---|---|
-| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | This PR (WO-931). It merges last |
-| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | 5 quick page decisions, one deploy, then a yes or no on an Archive check | WO-932, WO-933 and WO-935 merged 2026-09-21, **not deployed**. WO-934 built (tool, sheet, five governments minted, 7 entries closed): Ryan has decided every row that needed him (2026-09-21), and its run waits for the merge and the deploy, and for two replacement pages |
-| 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Not started |
-| 3 | Fix the registry and identity foundations | WO-940, then numbers when it starts | 100 | A pin-rules design call | Not started |
+| 0 | Tidy the backlog so the rest is trustworthy | WO-931 | 20 | Nothing | Merged 2026-09-21 |
+| 1 | Stop and repair wrong content readers can see | WO-932 to WO-935 | 55 | Two rows still wait on a drip-Mac ingest | WO-932, WO-933, WO-935 merged and deployed 2026-09-21. WO-934's sheet ran on the Archive shell the same day: 38 re-keys and 3 deletes applied, page 2504 fixed, the 5,857-page screen re-run clean of everything the sheet covered. The Derry/Hopkins/Sebring/Malibu follow-up (PR #1315) merged too. Still open: the Sebring (page 6906) and Malibu (page 7086) deletes, each gated on its replacement video being ingested by the drip Mac first — not confirmed done as of this writing |
+| 2 | Stop the pipeline wasting effort or failing silently | WO-936 to WO-939 | 80 | One deploy | Merged 2026-09-22 (all four). **Not deployed yet** |
+| 3 | Fix the registry and identity foundations | WO-940, WO-1004, then numbers when it starts | 100 | A pin-rules design call | WO-940 merged 2026-09-22 (shared registry write helper; see Phase 3 section). **Not deployed yet** — it's scripts-only, so no deploy is required for it specifically, but it ships with whatever deploy covers Phase 2. WO-1004 (domain-health check for the passive-discovery pipeline) built and merged 2026-09-22, unit-tested, not yet run — needs a machine with `rtr-business` checked out, which this session doesn't have. Rest of the phase not started |
 | 4 | Grow coverage on the fixed base | Numbers when it starts | 95 | The tier-3 freshness cutoff | Not started |
 | 5 | Improve what the pages say | Numbers when it starts | 10 | Nothing until Phase 4 is done | Not started |
 
@@ -69,31 +69,33 @@ start, so two agents never claim the same one.
   usage dashboard needs a login. So the plan keeps PRs few: never more than
   3 open at once, merged one at a time (rule 10). Merge PRs that touch the
   same files as one PR, and avoid extra pushes.
-- **The Phase 1 deploy checkpoint is due, but on hold.** WO-932, WO-933 and
-  WO-935 are merged and not live. WO-934's repairs wait for the deploy,
-  because the tool and its sheet reach the Render shell only with a deploy.
-  The Chenango town page needed no repair: WO-934 found it already keyed to
-  Chenango town. **Do not ask Ryan to deploy until he has pasted the
-  output of `scripts/wo928_version_quality.py`,** run in the Archive's
-  Render shell with the B and C rows printed in the same command. A deploy
-  restarts the instance and wipes `/tmp`, and his earlier full output
-  (9,977 pages read) was lost exactly that way. Once he confirms the paste,
-  the deploy is clear.
+- **The Phase 1 deploy happened 2026-09-21.** Ryan pasted the
+  `scripts/wo928_version_quality.py` output first, as this caution used to
+  ask, then deployed. WO-934's sheet ran the same day on the Archive shell:
+  38 re-keys and 3 deletes applied, page 2504 fixed. The Chenango town page
+  needed no repair: WO-934 found it already keyed to Chenango town. Two
+  rows (Sebring page 6906, Malibu page 7086) still wait on the drip Mac
+  ingesting each one's replacement video before their deletes can run.
+- **A second deploy checkpoint is now due, for Phase 2 and WO-940.** Both
+  merged 2026-09-22 and are not live yet. Nothing here is time-sensitive in
+  the way Phase 1's page-content fixes were, so there's no equivalent
+  "don't ask yet" caution — ask when convenient.
 - **Do not start Phase 4 early.** If growth sweeps run before the Phase 1
   gates are live, they create new wrong pages.
 
 ## Recommendation
 
-1. Start with Phase 1. Phase 0 (WO-931) is small and follows as soon as a PR
-   slot is free.
-2. First wave: WO-932, WO-933 and WO-935 merged on 2026-09-21. WO-931
-   opens its PR after them and merges last.
-3. Ask Ryan for one deploy now that the wave has merged. WO-934's tool and
-   sheet are built; its run comes after the deploy (see its entry in
-   `BACKLOG_DONE.md` for the exact commands).
-4. Batch the merges. Say plainly which merged code is not yet live.
-5. Check the GitHub Actions usage before the first wave if Ryan can see
-   it. Whatever it shows, keep to 3 open PRs and merge one at a time.
+Phases 0 and 1 are done, deployed, and their repairs applied, except the
+two drip-Mac-gated deletes noted above. Phase 2 and WO-940 are merged and
+waiting on their own deploy. What's left:
+
+1. Ask Ryan for the Phase 2 / WO-940 deploy when convenient.
+2. Once the drip Mac has ingested the Malibu and Sebring replacement
+   videos, run the two remaining WO-934 sheet rows (deletes for pages 6906
+   and 7086).
+3. Batch merges and say plainly when merged code isn't live yet.
+4. Keep to 3 open PRs at once, merged one at a time (rule 10) — this
+   session hit the cap for real on 2026-09-21/22, so it's not theoretical.
 
 ## How to find an entry
 
@@ -534,23 +536,47 @@ Dedup and the owner check must know which side a line lives on.
 
 ## Phase 3: registry and identity foundations
 
-The first deliverable is **WO-940: one registry write helper.** It locks the
-file, re-reads it, compares a content hash instead of a row count, and
-renames atomically. It closes these entries and makes one-off registry fixes
-safe:
+The first deliverable, **WO-940: one registry write helper, is built**
+(`scripts/registry_write_helper.py`, `tests/test_registry_write_helper.py`).
+It locks the file, re-reads it under the lock, compares a content hash
+(not a row count) against what was read at lock-acquisition time,
+computes a 99%-of-committed-HEAD row-count floor at run time instead of a
+hardcoded one, and writes atomically via temp-file-then-rename. It is
+pure, repo-agnostic Python (takes a file path, no repo assumption), so it
+is unit-tested only against local fixture CSVs, never against the real
+registry. It closed these entries:
 
-- "`jurisdiction_coverage.csv`'s shared write helper still uses a"
-- "`scripts/score_gov_registry.py` overwrites"
-- "§158's write protocol doesn't catch a same-row-count"
+- "`jurisdiction_coverage.csv`'s shared write helper still uses a" — fixed
+  by wiring `scripts/wo127_civicplus_pipeline.py`'s
+  `_coverage_read_modify_write()` (imported by `wo174_pipeline.py` and
+  `wo259_full_ladder_scan.py`) through the new helper.
+- "`scripts/score_gov_registry.py` overwrites" — fixed by rewriting
+  `_write_hub_slug_aliases()` to read the existing committed
+  `archive/data/hub_slug_aliases.csv` first and union it with the
+  freshly-derived rows, existing-wins-unless-proven-stale, through the
+  new helper. Left one genuine residual: the `victoria` bare-slug
+  collision WO-112 didn't resolve is now a `[HUMAN]` BACKLOG.md entry
+  instead of a silent risk, since the new merge logic reports a
+  collision rather than guessing.
+- "§158's write protocol doesn't catch a same-row-count" — fixed by the
+  helper's own content-hash design; see
+  `tests/test_registry_write_helper.py`'s
+  `test_stale_hash_catches_a_same_row_count_concurrent_write` for a
+  synthetic reproduction of the real 2026-09-10 WO-150/WO-147 collision.
 
-Caution: the registry lives in `rtr-business`, where only the conductor
-commits. WO-940 hands the conductor a file list.
+**Correction to this plan's own original caution below**: WO-940's real
+scope (set by the conductor's brief, not this planning doc) was fixing
+the write PROTOCOL, in this repo's own code, never the registry's actual
+data — it does not read, write, or commit in `rtr-business`, and it does
+not hand the conductor a file list. That part of the original plan
+turned out not to apply.
+
+**WO-1004, built 2026-09-22, not yet run**: `scripts/wo1004_domain_health_check.py` gives the registry's `domain` field a "doesn't match" outcome, reusing the existing passive-discovery pipeline's fetch and identity-check code (`wo273_targeted.py`) rather than a new ladder. Hand audits found wrong recorded domains on about 15% and about 24% of the rows they checked, so wrong domains feed wrong ingests. The tool is unit-tested (`tests/test_wo1004_domain_health.py`) and merged, but it needs to actually run against the real ~34k-row registry before it produces anything — that requires a machine with `~/Documents/rtr-business` checked out, which this session doesn't have. See `BACKLOG.md`'s "WO-1004 built a domain-health check..." entry for the run command and `BACKLOG_DONE.md`'s WO-1004 entry for what was built.
 
 The rest of the phase gets WO numbers when it starts:
 
 | Deliverable | Why | Entries to start from |
 |---|---|---|
-| A domain-health sweep of the registry | Hand audits found wrong recorded domains on about 15% and about 24% of the rows they checked. Wrong domains feed wrong ingests. | "6 of 40 governments in a hand-audit sample (15%) had a" |
 | A pin-rules model with a re-apply tool | At least 6 wrong per-video pins are still live, and a fallback pin beats the registry. | "A per-video fallback pin wins over the registry"; "A `tenant_overrides.csv` pin only affects future" |
 | One resolver name-normalisation PR | About 12 name edge cases are batchable (Charter Township, HTML entities, "district" read as BC). | The "Jurisdiction extraction & backfill" group in the table of contents |
 | One PR for Granicus and CivicPlus jurisdiction strings | Junk strings and split hubs show on live pages. | The same group |

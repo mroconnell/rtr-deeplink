@@ -20,6 +20,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
+from .slugify import slugify_text
 from .url_normalize import normalize_url
 
 # Same rule build_base_slug()/_unique_slug() (archive/db/crud.py) actually
@@ -452,3 +453,54 @@ def parse_rtr_link(
         t_seconds = int(t_value)  # floor, e.g. 123.7 -> 123
 
     return slug, t_seconds
+
+
+# --- The entry's own permalink (WO-946) -----------------------------------
+
+# ~70 characters, not slugify.MAX_BASE_LENGTH's 80 -- a context entry's
+# slug rides after "/context/{id}-", so it needs a little more headroom
+# than a bare /m/{slug} to stay under a reasonable total URL length.
+_PERMALINK_SLUG_MAX = 70
+
+
+def context_permalink(
+    entry_id: int,
+    headline: Optional[str],
+    jurisdiction_display: Optional[str],
+    meeting_title: Optional[str],
+) -> str:
+    """This entry's canonical URL, `/context/{id}-{slug}` -- the id is the
+    real identity (get_public_context_entry() looks up by id alone), the
+    slug is purely cosmetic, computed fresh from current data every time
+    this is called rather than stored, so editing a title (or the meeting
+    it's matched to) changes the slug for free with no backfill. Reuses
+    slugify_text() (archive/utils/slugify.py) -- the one slug rule this
+    app already uses everywhere else -- rather than a second, subtly
+    different one.
+
+    Basis: the entry's own headline when it has one (WO-945); otherwise
+    the matched meeting's jurisdiction + title, the same two facts a
+    reader would use to recognize the meeting from the feed card. Capped
+    at `_PERMALINK_SLUG_MAX` characters, cut back to the last hyphen
+    boundary so a long headline never ends mid-word. An entry with
+    neither a headline nor a meeting yet (a fresh draft) -- or one whose
+    basis slugifies to nothing at all (e.g. a headline that's pure
+    punctuation) -- gets a bare `/context/{id}`, which is already a valid,
+    permanent link on its own; the slug is a bonus, never required.
+    """
+    basis = (headline or "").strip()
+    if not basis:
+        basis = " ".join(p for p in (jurisdiction_display, meeting_title) if p)
+    # Apostrophes are dropped BEFORE slugifying, here only: slugify_text()
+    # turns every non-alphanumeric run into a hyphen, so "program's cost"
+    # came out as "program-s-cost" (seen in the browser). The shared
+    # function is left alone on purpose -- meeting-page slugs built from
+    # it are frozen, and changing its output would fork them.
+    basis = basis.replace("'", "").replace("’", "")
+    slug = slugify_text(basis) if basis else ""
+    if len(slug) > _PERMALINK_SLUG_MAX:
+        cut = slug[:_PERMALINK_SLUG_MAX]
+        if "-" in cut:
+            cut = cut.rsplit("-", 1)[0]
+        slug = cut.rstrip("-")
+    return f"/context/{entry_id}-{slug}" if slug else f"/context/{entry_id}"

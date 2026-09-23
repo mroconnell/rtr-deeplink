@@ -11,9 +11,12 @@
        {"kind":"instagram","permalink":..} /
        {"kind":"tiktok","video_id":..,"cite":..}), match_kind, match_label,
        t_seconds, timestamp_label, published_at/created_at/updated_at,
-       has_meeting, and -- all None when has_meeting is false -- slug,
-       title, jurisdiction, jurisdiction_display, hub_slug, date,
-       date_html (Markup, render with |safe), deep_link, card_url)
+       has_meeting, meeting_page_id, and -- all None when has_meeting is
+       false -- slug, title, gov_id (WO-947, the raw MeetingPage.gov_id --
+       not rendered directly, only read by context_entry_page.html's route
+       to build `state_link` below), jurisdiction, jurisdiction_display,
+       hub_slug, date, date_html (Markup, render with |safe), deep_link,
+       card_url)
      editor_view (bool, default false -- set `{% set editor_view = true %}`
        before including this from context_new.html; the public feed
        (context.html) never sets it, so the default below applies)
@@ -29,6 +32,12 @@
        becomes this page's own <h1>, plain text, never a link back to the
        page it's already on -- context_entry_page.html emits no other h1.
        context.html and context_new.html never set it.)
+     state_link ({"slug", "name"} or None, default None -- WO-947; set
+       only by context_entry_page.html, from a pure function over data
+       the entry already carries (crud.effective_state_abbr()), never a
+       query. Adds a "Part of {State}" link next to the existing hub link
+       in .featured-where. None on a stateless jurisdiction, same as
+       jurisdiction_page.html's own state link.)
 
    Included by context.html (public feed, editor_view unset/false),
    context_new.html (editor list, editor_view=true), and
@@ -59,6 +68,7 @@
 {% set editor_view = editor_view | default(false) %}
 {% set autoload = autoload | default(false) %}
 {% set permalink_view = permalink_view | default(false) %}
+{% set state_link = state_link | default(none) %}
 <article class="featured-meeting context-entry" id="context-{{ entry.id }}">
   {% if editor_view %}
   {#- Editor-only: which of the three statuses this entry is in right
@@ -83,6 +93,15 @@
        guarantees has_meeting=true here, so entry.title is never None).
        Never a link: a permalink page doesn't link to itself. -#}
     <h1 class="context-headline">{{ entry.headline or entry.title or "Untitled meeting" }}</h1>
+    {% if entry.published_at %}
+    {#- A visible publish date (WO-946), right under the headline --
+       article:published_time (meta block) and BlogPosting's
+       datePublished (JSON-LD) carry the same value machine-readably;
+       this is the human-visible copy. Plain "YYYY-MM-DD", the same
+       style every other date on this site already shows (see
+       date_status.meeting_date_html()), not a fancy relative phrase. -#}
+    <p class="context-published-date">Posted <time datetime="{{ entry.published_at.isoformat() }}">{{ entry.published_at.strftime('%Y-%m-%d') }}</time></p>
+    {% endif %}
     {% elif entry.headline %}
     {#- UNTRUSTED, editor-written -- always plain autoescape, never |safe,
        same as summary/source_label below. h2: below the page's own h1
@@ -135,7 +154,12 @@
         {%- if entry.hub_slug %}<a href="/j/{{ entry.hub_slug }}">{{ entry.jurisdiction_display }}</a>
         {%- else %}{{ entry.jurisdiction_display }}{% endif -%}
       {%- endif -%}
-      {%- if entry.date %}{% if entry.jurisdiction %} &middot; {% endif %}{{ entry.date_html|safe }}{% endif -%}
+      {#- WO-947: "Part of {State}", permalink-page only -- see
+         context_entry_page.html's own comment on state_link. Undefined
+         everywhere else this partial is included (the feed, the editor
+         list), so those two surfaces render byte-identically to before. -#}
+      {%- if state_link %} &middot; <a href="/state/{{ state_link.slug }}">{{ state_link.name }}</a>{% endif -%}
+      {%- if entry.date %}{% if entry.jurisdiction or state_link %} &middot; {% endif %}{{ entry.date_html|safe }}{% endif -%}
     </p>
     <a class="featured-deeplink" href="{{ entry.deep_link }}">
       <span aria-hidden="true">&#9654;</span> Watch the full context{% if entry.timestamp_label %} from {{ entry.timestamp_label }}{% endif %}

@@ -1,5 +1,19 @@
 # rtr-deeplink
 
+> **Temporary (2026-09-22): GitHub Actions billing is maxed out.** The
+> `mroconnell` account has used 100% of its included Actions minutes for
+> this billing cycle, and adding a payment method or raising the budget
+> is currently blocked on GitHub's side. CI (`ruff`, `pytest`, `alembic
+> check`) has kept completing successfully so far, just sometimes with a
+> long delay before a run even registers — it has not been disabled. The
+> repo's required-check ruleset ("main — require tests") is staying on
+> deliberately; every merge still needs it to pass, and nobody should
+> bypass or remove it just because a check is slow. Until this is
+> resolved, be extra careful verifying a change locally (all five CI
+> gates — see `CLAUDE.md`) before pushing, since GitHub's own check is a
+> slower and less certain backstop right now than usual. Remove this
+> note once Actions billing is fixed.
+
 Paste the URL of a public government meeting recording. Get back the video
 and its transcript, side by side, with every line clickable — and a URL you
 can share that lands someone at that exact moment.
@@ -2111,10 +2125,10 @@ There is no catch-all proxy — each route is explicit.
 | `GET /context` | resolver → proxies to Archive, forwarding the `Cookie` header | the public feed page |
 | `GET /context/feed.xml` | resolver → proxies to Archive, **no** cookie forwarded | RSS feed |
 | `GET /context/new` | resolver → proxies to Archive, forwarding the `Cookie` header | the editor form + draft list |
-| `GET /context/{id}` | resolver → proxies to Archive, forwarding the `Cookie` header | one entry's own permalink page (WO-945 follow-up) |
+| `GET /context/{id}` or `/context/{id}-{slug}` | resolver → proxies to Archive, forwarding the `Cookie` header | one entry's own permalink page (WO-945 follow-up, slugged in WO-946); anything but the current canonical form 301s |
 | `POST /api/context/save` | resolver, public | verifies the Clerk session, forwards the verified user id to Archive |
 | `POST /api/context/set-status` | resolver, public | same — publish/hide/draft transitions |
-| `GET /context`, `/context/feed.xml`, `/context/new`, `/context/{id}` | Archive | renders the page/feed/form/permalink; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
+| `GET /context`, `/context/feed.xml`, `/context/new`, `/context/{id}[-{slug}]` | Archive | renders the page/feed/form/permalink; `/context/new` re-checks the editor allowlist itself, not just trusting the resolver |
 | `POST /internal/context/save` | Archive, token-gated | the real write, re-checking the allowlist |
 | `POST /internal/context/set-status` | Archive, token-gated | status transitions, re-checking the allowlist |
 
@@ -2170,24 +2184,143 @@ at least `CONTEXT_MIN_INDEXABLE` (5) published entries — the same
 thin-page reasoning as the `/state/*`/`/j/*` hub pages (see
 `STATE_HUB_PAGES.md`). Pages after the first are always `noindex`.
 
-**Permalink pages (`/context/{id}`, WO-945 follow-up).** The feed's own
-per-entry anchor (`#context-{id}`) isn't a stable link — an entry slides
-to page 2 as newer ones publish. Every entry also gets a real URL,
-`/context/{id}`, which 404s for anything that isn't a published entry
-with a real, still-existing meeting (a draft, a hidden entry, an orphan
-whose meeting was deleted, or an unknown id) — even for the signed-in
-editor, who previews a draft on `/context/new` instead. When an entry has
-a title, that title is the link to its permalink everywhere it appears
-(the feed, the editor list); the permalink page itself renders that same
-title as its own `<h1>` (or, absent one, the matched meeting's title).
-An entry with no title is still linkable — a small "Link to this post"
-text link on the feed, a "View post" action in the editor list. The
-permalink page's own embed always autoloads (unlike the feed's capped,
-page-1-only autoload — see above), since a reader who opened one specific
-post wants to see it. Indexing follows the feed's own threshold
-(`CONTEXT_MIN_INDEXABLE`), not a per-entry decision. Not yet in the
-sitemap, and the RSS feed's `<link>` still points at the entry's meeting
-deep link rather than its permalink — both are open, see `BACKLOG.md`.
+**Permalink pages (`/context/{id}` or `/context/{id}-{slug}`, WO-945
+follow-up, slugged and given real SEO substance in WO-946).** The feed's
+own per-entry anchor (`#context-{id}`) isn't a stable link — an entry
+slides to page 2 as newer ones publish. Every entry also gets a real URL
+that 404s for anything that isn't a published entry with a real,
+still-existing meeting (a draft, a hidden entry, an orphan whose meeting
+was deleted, or an unknown id) — even for the signed-in editor, who
+previews a draft on `/context/new` instead. When an entry has a title,
+that title is the link to its permalink everywhere it appears (the feed,
+the editor list); the permalink page itself renders that same title as
+its own `<h1>` (or, absent one, the matched meeting's title). An entry
+with no title is still linkable — a small "Link to this post" text link
+on the feed, a "View post" action in the editor list. The permalink
+page's own embed always autoloads (unlike the feed's capped, page-1-only
+autoload — see above), since a reader who opened one specific post wants
+to see it. Indexing follows the feed's own threshold
+(`CONTEXT_MIN_INDEXABLE`), not a per-entry decision.
+
+**The URL is slugged, but the id is still the real identity.** The
+canonical form is `/context/{id}-{slug}` — `context_links.context_
+permalink()` builds the slug from the entry's own title, or, when it has
+none, from the matched meeting's jurisdiction + title, the same two facts
+a reader would use to recognize the meeting from the feed card. It's
+computed fresh on every read, not stored, so editing a title changes the
+slug for free with no backfill. The route (`archive/main.py`'s
+`context_entry_page()`) looks the entry up by id alone and never trusts
+the slug for that; any request that isn't already at the entry's current
+canonical permalink — a bare id, a stale slug left over from before a
+title edit, a mistyped slug — gets a real `301` to the canonical one,
+query string preserved. The resolver's proxy (`app/main.py`) widens the
+same way and passes `allow_redirects=False` so that `301` reaches the
+browser instead of being followed and silently served as a `200` — the
+same real bug (and the same fix) `/m/{slug}` and `/j/{hub_slug}` already
+had to be protected against; see those routes' own comments. An entry
+with no title and no meeting yet (a fresh draft) gets a bare `/context/
+{id}`, same as before.
+
+**The entry page isn't thin anymore (WO-946).** `STATE_HUB_PAGES.md`
+diagnosed Google declining this site's hub pages for being thin and
+templated; a permalink page with 2-3 sentences of editor summary was
+exactly that same shape. When the entry has a timestamp and the matched
+meeting has a real, non-garbled transcript, the page now also shows a
+short excerpt of what was actually said at that moment —
+`crud.get_context_transcript_excerpt()` starts at the segment containing
+the clip's `t_seconds` and grows the window to about 90 seconds or 900
+characters of real transcript text (whichever comes first, with a floor
+of 2 segments), reusing the exact same "is this actually a good
+transcript" check (`_has_real_warning_free_transcript()`) every other
+quality-gated reader in `archive/db/crud.py` already uses — a garbled,
+likely-hallucinated, or truncated transcript never gets excerpted. The
+chosen line must also sit within 60 seconds of the linked moment. Without
+that, a transcript that stops early handed back its last line for a
+moment an hour later, and unrelated speech presented as context is worse
+than no excerpt. The page shows *paragraphs*, not raw caption lines:
+government captions arrive a few words at a time (the real Jacksonville
+excerpt was 34 lines such as "[12:34] yourself."), so
+`crud._excerpt_paragraphs()` groups them, breaking at a speaker change
+(the `>>` captioners use) or at a sentence end once a paragraph is long
+enough. Each paragraph links to the moment it opens with (`?t=&line=seg-N&
+version=`, the same convention `archive/templates/meeting_page.html`
+and `shared_static/deep_link.js` already agree on), and the section
+carries the same honesty note about automatic captions/transcripts the
+meeting page itself shows. Skipped entirely — no section at all, not an
+empty one — when there's no timestamp, no segments, or the transcript
+fails that quality check. Only ever loaded on the entry page, never the
+feed: a transcript's `segments` JSON is six-figure bytes per meeting, and
+the feed can show 20 entries at once.
+
+**Structured data (WO-946).** The entry page's `<title>` names the
+government when the headline doesn't already. If the line would run past
+about 65 characters, the " | Red Tape Recordings" suffix is dropped. The
+headline and the government never are: the place is what people search
+for. A `BlogPosting` JSON-LD block (`headline`, `description`,
+`datePublished`/`dateModified`, `image` when there's a card, `isBasedOn`
+the meeting page, `citation` the social post) sits alongside a
+`BreadcrumbList` (Home → Full Context → this entry) — every value goes
+through Jinja's `|tojson`, same as `meeting_page.html`'s own JSON-LD, so
+an editor-written headline containing `</script>` can't break out of the
+block. A visible `<time>` under the headline and a matching
+`article:published_time` meta tag carry the publish date.
+
+**Sitemap and RSS.** Once the feed clears `CONTEXT_MIN_INDEXABLE`, every
+published entry's canonical permalink is also listed in `sitemap.xml`
+(capped at the 500 most recently updated, `crud.CONTEXT_SITEMAP_MAX_
+ENTRIES`) — the sitemap's own `/context` line already worked this way,
+and now individual entries do too. **The RSS feed's `<item><link>` now
+points at the entry's own permalink too (WO-1001, 2026-09-21)**, not the
+meeting — "the URL for this item," to a subscriber, is the curated post,
+not the recording it cites. The old target — the meeting deep link —
+didn't disappear; it moved into `<description>`, as a plain sentence
+("Watch the full meeting from M:SS: {url}") alongside the existing
+"Original post:" line, so a reader who only sees the feed still gets to
+the recording. `<guid>` is untouched on purpose — it's what a reader uses
+to dedupe already-seen items, and changing it would re-deliver every
+existing item as new.
+
+**Entries also appear on their government's hub and their state page
+(WO-947).** Asked by Ryan: "a page like this that is related to
+Indianapolis would also appear under the Indianapolis hub, right? And
+Indiana?" `/j/{hub_slug}` and `/state/{state_slug}` each show a "Seen on
+social media" section listing the published entries whose meeting
+belongs to them — up to 3 on a hub, 6 on a state — each linking to its
+own permalink page, which had almost no internal links pointing at it
+before this. Membership is decided the exact same way the page decides
+which *meetings* it shows (never by matching the entry's stored
+jurisdiction text) — see `STATE_HUB_PAGES.md`'s "Seen on social media"
+section for why that distinction is load-bearing here. The section is
+absent entirely (not shown empty) when there's nothing to list, and only
+shows on the bare page, not under a `?topic=` filter. The link runs both
+ways: an entry's own permalink page names its government (already
+linking to its hub since WO-943) and now also its state, next to it —
+`crud.effective_state_abbr()`, a pure function over data the entry
+already carries, not a query.
+
+**A published entry can also make a thin hub indexable (WO-1003).** A
+`/j/{hub_slug}` page is normally `noindex`'d below `JURISDICTION_HUB_MIN_
+INDEXABLE` (2) meetings, but a hub with just one meeting and a real,
+hand-written Full Context entry is no longer thin/near-duplicate content,
+so it's indexable either way now — see `STATE_HUB_PAGES.md`'s "A hub is
+also indexable via a published entry" section for the rule and where it's
+applied (the page's own `noindex` tag and `sitemap.xml`'s `/j/` list, kept
+in agreement). State pages have no such meeting-count gate to extend.
+
+**And the meeting page itself, the one surface an entry cites without
+linking back until now (WO-1002).** `/m/{slug}` shows a "This moment on
+social media" (or, when no shown entry has a real timestamp, "This
+meeting on social media") block for the published entries that cite that
+exact meeting — up to `MEETING_CONTEXT_ENTRIES` (5), newest first,
+reusing the same shared `_context_mentions.html` partial the hub/state
+pages use (a `meeting_view` flag drops the redundant meeting title/date
+line and turns each entry's timestamp into its own "at M:SS" link to the
+clipped second). `crud.list_context_entries_for_meeting()` is a thin
+wrapper over `list_context_entries_for_pages()` with `MeetingPage.id ==
+meeting_page_id` as the page condition, run through the same isolated-
+session helper the hub/state lookups use so a failure here can never take
+the meeting page down with it. Absent entirely — no heading, no wrapper —
+when nothing cites this meeting, which is most meetings.
 
 **Card-image caveat — a real limitation.** `/m/{slug}/card.jpg` redirects
 a YouTube-backed meeting to YouTube's own standard thumbnail, regardless
@@ -3139,7 +3272,8 @@ archive/
                            /context/new
     context_feed.xml.jinja    /context/feed.xml (RSS)
     context_entry_page.html    one entry's own permalink page, backs
-                           /context/{id} -- WO-945 follow-up
+                           /context/{id}[-{slug}] -- WO-945 follow-up,
+                           slugged + given real SEO substance in WO-946
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM, plus

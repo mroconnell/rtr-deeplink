@@ -80,6 +80,7 @@ from .base import (
     get_finder,
     is_multi_gov_host,
 )
+from .direct_file import is_laserfiche_url
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
 from .viebit import ViebitAssetFinder
@@ -112,6 +113,39 @@ _POLITE_UA = media_probe._DESKTOP_USER_AGENT
 # 277 real queue lines were being rejected "no probe recipe" for that
 # extension alone.
 _DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3", ".m4a")
+
+# WO-937: two real, confirmed delegated media shapes this dispatch had no
+# recipe for at all, even though the underlying file is real and playable
+# -- both route to `_probe_direct_file()` below, the same recipe an
+# ordinary CivicClerk `.mp4` already uses.
+#
+# ChampDS's own `DOWNLOAD-MEDIA/.../eventmainmedia/{id}` redirect --
+# champds.py's resolve() already sets `video_format="mp4"` for this shape,
+# so a caller that passes `video_url=` straight through WITHOUT also
+# passing `video_format=` (feed_tier3_auto_transcription.py before this
+# WO -- see that script's own fix) silently loses the one signal this
+# dispatch needs. Recognizing the URL shape directly here doesn't depend
+# on every caller threading video_format through correctly. Confirmed
+# live 2026-09-21 against a real ChampDS URL (play.champds.com/DOWNLOAD-
+# MEDIA/oakhilltn/eventmainmedia/50): a plain HEAD answers 200 with a real
+# Content-Length/Content-Disposition, so no further fallback is needed --
+# `_probe_direct_file()`'s existing HEAD path already handles it once
+# dispatched here.
+_CHAMPDS_DIRECT_MEDIA_MARKER = "/eventmainmedia/"
+
+# A CivicPlus DocumentCenter link with no recognized extension --
+# confirmed real via CivicClerk's own `externalVideoUrl` delegation
+# (West Lake Hills city TX, `westlakehills.gov/DocumentCenter/View/4765/
+# 07152026-ZAPCO-Audio`): civicclerk.py's own video_format check is
+# extension-only and never fires for this shape (no `.` in the filename
+# at all), so `video_format` stays None and this never reached a probe
+# recipe before. Confirmed live 2026-09-21: a HEAD 404s (the same generic
+# CivicPlus error page WO-166's own docstring already documents), but the
+# existing HEAD-404-then-ranged-GET fallback in `_probe_direct_file()`
+# already reads the real file correctly (200, real Content-Length,
+# Content-Disposition naming the real filename) -- no new fallback rung
+# needed here either, only the dispatch rule.
+_CIVICPLUS_DOCUMENT_CENTER_MARKER = "/documentcenter/view/"
 
 # yt-dlp's android/ios/tv internal clients have historically not enforced
 # the "web" client's PO-token anti-bot check -- same order, same
@@ -856,29 +890,59 @@ async def _probe_direct_file(
     Disposition`) with status 200, never 206. Without this fallback, 6 of
     this WO's own 7 confirmed direct-media governments would misprobe as
     `reject-dead` even though `resolve()` correctly found real, playable
-    video on every one of them."""
+    video on every one of them.
+
+    A Laserfiche WebLink URL (WO-937) skips the HEAD step entirely rather
+    than falling back to a ranged GET only on a 4xx -- confirmed live on
+    three independent real governments (Jefferson County WA/WO-304,
+    Deschutes County OR and Ramsey city MN/WO-317) that a HEAD here always
+    "succeeds" (302s to a generic `Error.aspx` page that itself answers
+    200) while reporting that error page's own tiny `Content-Length`
+    (e.g. 1993/845 bytes), never the real file's (22.6M/39.4M/1.7G bytes,
+    each confirmed via a real ranged GET) -- so trusting a "successful"
+    HEAD here is exactly backwards. See `direct_file.py`'s own
+    `is_laserfiche_url()` docstring. `Accept-Encoding: identity` avoids a
+    separately-confirmed real server bug on Ramsey's older WebLink 9
+    install: it gzip-encodes a small ranged response on its own (aiohttp
+    sends `Accept-Encoding: gzip` by default), producing a truncated
+    stream -- the same fix `direct_file.py`'s own
+    `_laserfiche_classify_media()` already applies."""
     method = "head+ffprobe"
     size_bytes = None
     date = None
     headers = _aiohttp_headers(source_page_url)
+    laserfiche = is_laserfiche_url(video_url)
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.head(
-                video_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
-            ) as response:
-                status = response.status
-                response_headers = response.headers
-
-            if status >= 400:
+            if laserfiche:
                 method = "ranged-get+ffprobe"
                 async with session.get(
                     video_url,
                     allow_redirects=True,
-                    headers={"Range": "bytes=0-0"},
+                    headers={"Range": "bytes=0-63", "Accept-Encoding": "identity"},
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as response:
                     status = response.status
                     response_headers = response.headers
+            else:
+                async with session.head(
+                    video_url,
+                    allow_redirects=True,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as response:
+                    status = response.status
+                    response_headers = response.headers
+
+                if status >= 400:
+                    method = "ranged-get+ffprobe"
+                    async with session.get(
+                        video_url,
+                        allow_redirects=True,
+                        headers={"Range": "bytes=0-0"},
+                        timeout=aiohttp.ClientTimeout(total=20),
+                    ) as response:
+                        status = response.status
+                        response_headers = response.headers
 
             if status >= 400:
                 return _dead(
@@ -1037,9 +1101,24 @@ async def probe_queue_entry(
     # player page (`.../web/Player.aspx?id=...`), so `video_url` carries
     # a suiteonemedia.com host even though `resolved_platform` is
     # "civicclerk", not "suiteone".
-    if (
-        resolved_platform == "suiteone"
-        or "suiteonemedia.com" in urlparse(video_url or "").netloc.lower()
+    #
+    # WO-1013 (2026-09-22): dispatch used to also trigger on
+    # `resolved_platform == "suiteone"` alone -- right for the delegation
+    # case above, wrong for a NATIVE suiteone.py resolve, whose own
+    # `video_url` is already the final direct-file S3 URL (see
+    # suiteone.py's own resolve() / module docstring), not a
+    # suiteonemedia.com page needing a second hop. Routing that S3 URL
+    # back into `_probe_suiteone()` called `SuiteOneAssetFinder().resolve()`
+    # a SECOND time on it, which can't parse a tenant/event id out of an
+    # S3 host and always raised -- misprobing every real native SuiteOne
+    # meeting as reject-dead. Confirmed live 2026-09-22 (Tuscaloosa, AL).
+    # The second hop is only needed when `video_url` itself still IS a
+    # suiteonemedia.com page, so dispatch on that shape directly instead:
+    # a suiteonemedia.com host that isn't already a resolved direct-file
+    # URL.
+    suiteone_video = urlparse(video_url or "")
+    if "suiteonemedia.com" in suiteone_video.netloc.lower() and not (
+        suiteone_video.path.lower().endswith(_DIRECT_FILE_EXTENSIONS)
     ):
         return await _probe_suiteone(url, video_url, source_page_url, start)
 
@@ -1048,8 +1127,11 @@ async def probe_queue_entry(
         return await _probe_hls(
             url, resolved_platform, video_url, source_page_url, start
         )
-    if media_path.endswith(_DIRECT_FILE_EXTENSIONS) or (
-        video_format and f".{video_format.lower()}" in _DIRECT_FILE_EXTENSIONS
+    if (
+        media_path.endswith(_DIRECT_FILE_EXTENSIONS)
+        or (video_format and f".{video_format.lower()}" in _DIRECT_FILE_EXTENSIONS)
+        or _CHAMPDS_DIRECT_MEDIA_MARKER in media_path
+        or _CIVICPLUS_DOCUMENT_CENTER_MARKER in media_path
     ):
         return await _probe_direct_file(
             url, resolved_platform, video_url, source_page_url, start
@@ -1254,6 +1336,134 @@ def _first_field_urls(path: Path) -> set[str]:
     return urls
 
 
+# WO-1016: one place that knows the tier-3 queue line SHAPE, so every
+# reader tolerates a 3rd field identically instead of each caller
+# reimplementing its own tab-split (the exact drift CLAUDE.md's WO-34
+# roll-up-caption note warns about for a different per-platform parsing
+# task -- same lesson, different file).
+#
+# `scripts/tier3_auto_transcription_queue.txt` has carried `URL` or
+# `URL<TAB>SOURCE_URL` since the 2026-09 sweeps
+# (`scripts/feed_tier3_auto_transcription.py`'s own `_parse_queue_line()`
+# docstring). This adds an optional 3rd `GOV_ID` field, in the same
+# column position `tier3_long_meetings_deferred.txt` already uses for its
+# own `url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>
+# title` layout -- so a line moved between the two files (as
+# `wo356_item4_move_long.py` already does by hand) keeps its first three
+# columns meaning the same thing in both places. Why gov_id belongs on
+# the QUEUE LINE at all, not just derived at feed time from
+# `has_owner()`'s `tenant_overrides.csv` pin: a research sweep often
+# already knows the government (it found this meeting BECAUSE it was
+# looking at that government's site) even when the video sits on a
+# single-tenant vendor host `has_owner()` can't hand a gov_id back for
+# without running the Archive's own full resolver ladder (see
+# `has_owner()`'s own docstring, the `(True, None, "")` case) --
+# CLAUDE.md's "send the government's id in every ingest payload" rule
+# otherwise silently doesn't apply to that whole class of line.
+#
+# Every field is TAB-separated; a line is a bare URL, `URL\tSOURCE_URL`,
+# or `URL\tSOURCE_URL\tGOV_ID`. SOURCE_URL may be blank when only GOV_ID
+# is known (`URL\t\tGOV_ID`) -- the deferred file already allows the same
+# blank-middle-field shape. A line with more than 3 tab fields (a
+# deferred-file line, which also carries jurisdiction/duration/title) is
+# still parsed correctly by this function -- it only reads the first
+# three columns and ignores the rest, so this is also safe to call on a
+# deferred-file line, though `append_deferred_line()`'s own writer stays
+# the source of truth for that file's full shape.
+def parse_queue_line(line: str) -> tuple[str, Optional[str], Optional[str]]:
+    """(url, source_url, gov_id) -- see this section's own module comment
+    above for the queue line format this parses. Every existing reader
+    used to do its own `line.partition("\\t")` (only 2 fields, unsafe:
+    a 3rd tab-separated field glues onto `source_url` wholesale) or
+    `line.split("\\t")` (already tolerant, but reimplemented per file) --
+    this is the one place that shape lives now (WO-1016). `source_url`
+    and `gov_id` come back as `None`, never `""`, when their column is
+    absent or blank, matching every existing caller's own "empty means
+    None" convention (e.g. `_parse_queue_line()`'s pre-WO-1016 behavior).
+    Does not strip a leading `#` comment or skip a blank line -- every
+    call site already filters those out before calling this, same as
+    before."""
+    parts = line.split("\t")
+    url = parts[0].strip()
+    source_url = parts[1].strip() if len(parts) > 1 else ""
+    gov_id = parts[2].strip() if len(parts) > 2 else ""
+    return url, (source_url or None), (gov_id or None)
+
+
+# WO-1016: `append_queue_line()`/`finish_candidate()` below can write a
+# 3rd `gov_id` field once every LIVE reader tolerates it -- this
+# module's own `parse_queue_line()`, `scripts/feed_tier3_auto_
+# transcription.py`'s feeder, `scripts/find_tier3_short_meeting_
+# substitutes.py`, `scripts/probe_tier3_queue.py`, and, on its OWN
+# separate checkout, the drip Mac's `scripts/youtube_drip.py`
+# (CLAUDE.md's "YouTube is fetched only by the drip Mac" -- that
+# script's copy of `_parse_queue_line()`'s call sites lives on a
+# different machine and only updates on its own `git pull`). Recommended
+# rollout (see BACKLOG.md's WO-1016 entry / docs/YOUTUBE_DRIP_RUNBOOK.md):
+# (1) merge this PR's readers, (2) confirm the drip Mac has pulled it,
+# (3) flip this to True. Left False here on purpose -- do NOT flip it in
+# the same PR that adds the readers, since nothing here can confirm the
+# drip Mac has pulled yet.
+EMIT_GOV_ID_IN_QUEUE_LINES = False
+
+
+def canonical_video_key(url: str) -> Optional[str]:
+    """A platform-qualified stable video id for `url` (e.g.
+    "youtube:dQw4w9WgXcQ"), so two differently-formatted URLs for the SAME
+    video collide on the same dedup key instead of only ever matching by
+    exact string -- WO-937. Closes the entry filed when WO-149's county
+    sweep queued a YouTube embed URL carrying extra player-widget query
+    parameters (`.../embed/AscWHEa0ay4?enablejsapi=1&...`) as "new" even
+    though the same video, by id, was already queued under a plain
+    `watch?v=` URL (Lake County, OH -- see BACKLOG_DONE.md's WO-149 entry).
+
+    Reuses the same per-platform id extraction already trusted elsewhere
+    in this module (`_probe_youtube`'s `YouTubeAssetFinder.extract_video_id`,
+    `_probe_vimeo`'s `parse_vimeo_video`) and the shape
+    `scripts/wo134_confirmed_hits_ingest.py`'s own `_tenant_override_match()`
+    already uses for TelVue/Cablecast (a bare tenant path -- confirmed
+    real shape, not a guess).
+
+    Returns None when `url` carries no video-id shape this function
+    recognizes -- deliberately narrow (YouTube/Vimeo/TelVue/Cablecast
+    only, per that entry's own "don't over-generalize from one confirmed
+    case yet" constraint) rather than a blanket URL-normalization. Every
+    caller below falls back to the raw URL string as its own dedup key in
+    that case, unchanged from pre-WO-937 behavior for every other
+    platform shape."""
+    if not url:
+        return None
+    yt_id = YouTubeAssetFinder.extract_video_id(url)
+    if yt_id:
+        return f"youtube:{yt_id}"
+    vimeo = parse_vimeo_video(url)
+    if vimeo:
+        return f"vimeo:{vimeo[0]}"
+    try:
+        platform = detect_platform(url)
+    except UnsupportedPlatformError:
+        return None
+    if platform in ("telvue", "cablecast"):
+        path = urlparse(url).path.strip("/")
+        if path:
+            return f"{platform}:{path}"
+    return None
+
+
+def _dedupe_key(url: str) -> str:
+    return canonical_video_key(url) or url
+
+
+def _existing_keys(path: Path) -> set[str]:
+    """Same set `_first_field_urls()` reads, but keyed by
+    `canonical_video_key()` (falling back to the raw URL when no known
+    video-id shape matches) -- WO-937, used by `is_queued()`/`is_deferred()`/
+    `append_queue_line()`/`append_deferred_line()` below so a same-video
+    duplicate under a differently-formatted URL is recognized, not just an
+    exact string match."""
+    return {_dedupe_key(u) for u in _first_field_urls(path)}
+
+
 def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
     """WO-346: the same owner check `archive/db/crud.py`'s
     `_resolve_page_government()` makes at ingest time (rung 1b of
@@ -1305,36 +1515,46 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
 
 
 def is_queued(meeting_url: str, *, queue_path: Path = TIER3_QUEUE_FILE) -> bool:
-    return meeting_url in _first_field_urls(queue_path)
+    return _dedupe_key(meeting_url) in _existing_keys(queue_path)
 
 
 def is_deferred(
     meeting_url: str, *, deferred_path: Path = TIER3_LONG_MEETINGS_DEFERRED_FILE
 ) -> bool:
-    return meeting_url in _first_field_urls(deferred_path)
+    return _dedupe_key(meeting_url) in _existing_keys(deferred_path)
 
 
 def append_queue_line(
     meeting_url: str,
     source_url: Optional[str] = None,
     *,
+    gov_id: str = "",
     queue_path: Path = TIER3_QUEUE_FILE,
 ) -> bool:
-    """Appends `meeting_url[\\tsource_url]` to the tier-3 queue file --
-    the exact line shape every wo1XX_finish_tier3*.py script already
-    writes (`url<TAB>source_url` when the source page differs from the
-    video URL itself, a bare `url` otherwise). Dedupe-checked against the
-    file's current contents first (same rule
+    """Appends `meeting_url[\\tsource_url[\\tgov_id]]` to the tier-3 queue
+    file -- the exact 1/2-field line shape every wo1XX_finish_tier3*.py
+    script already writes (`url<TAB>source_url` when the source page
+    differs from the video URL itself, a bare `url` otherwise), plus the
+    optional 3rd `gov_id` field this function CAN write once
+    `EMIT_GOV_ID_IN_QUEUE_LINES` is flipped True (see that constant's own
+    comment -- WO-1016. Left off in this PR: a `gov_id` argument is
+    accepted and threaded through unconditionally so a caller doesn't
+    need to know about the flag, but it is only actually written to disk
+    once the flag says every live reader is ready). Dedupe-checked
+    against the file's current contents first, by `canonical_video_key()`
+    (WO-937) so a same-video duplicate under a differently-formatted URL
+    is caught too, not just an exact string match -- same rule
     `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`
-    enforces). Returns True only when a new line was actually written --
+    enforces. Returns True only when a new line was actually written --
     never rewrites or reorders an existing line, append-only throughout."""
-    if meeting_url in _first_field_urls(queue_path):
+    if _dedupe_key(meeting_url) in _existing_keys(queue_path):
         return False
-    line = (
-        f"{meeting_url}\t{source_url}"
-        if source_url and source_url != meeting_url
-        else meeting_url
-    )
+    if gov_id and EMIT_GOV_ID_IN_QUEUE_LINES:
+        line = f"{meeting_url}\t{source_url or ''}\t{gov_id}"
+    elif source_url and source_url != meeting_url:
+        line = f"{meeting_url}\t{source_url}"
+    else:
+        line = meeting_url
     queue_path.parent.mkdir(parents=True, exist_ok=True)
     with queue_path.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
@@ -1356,10 +1576,11 @@ def append_deferred_line(
     file's own real column order (confirmed against its current rows):
     `url\\tsource_url\\tgov_id\\tjurisdiction\\tduration\\ttitle`, blanks
     allowed for any column but the url and duration. Dedupe-checked
-    against the file's current URLs, append-only, writes the file's own
-    header comment only when the file doesn't exist yet. Returns True
-    only when a new line was actually written."""
-    if meeting_url in _first_field_urls(deferred_path):
+    against the file's current URLs (by `canonical_video_key()`, WO-937 --
+    same reasoning as `append_queue_line()`), append-only, writes the
+    file's own header comment only when the file doesn't exist yet.
+    Returns True only when a new line was actually written."""
+    if _dedupe_key(meeting_url) in _existing_keys(deferred_path):
         return False
     duration = _format_hms(duration_seconds) if duration_seconds is not None else ""
     line = "\t".join(
@@ -1594,6 +1815,15 @@ async def finish_candidate(
     2. `reject-dead`/`reject-short`: nothing queued, pinned, or deferred.
        `probe.reason` already carries why.
     3. `accept`/`flag-long`:
+       - `meeting_url` already sits in the real queue file (by
+         `is_queued()`, WO-937) -> `action="already-queued"` immediately,
+         before either check below. Without this, a meeting already
+         queued by an earlier sweep, re-probed by a later one and found
+         to run over 90 minutes, fell straight into the duration check
+         below and was deferred instead of recognized as already-queued
+         -- a real duplicate (one line in the queue, a second in the
+         deferred file, for the same meeting; Yachats city, OR,
+         confirmed live WO-290, see BACKLOG_DONE.md's WO-290 entry).
        - `meeting_url` already sits in the deferred file -> stays out of
          the queue entirely (`action="skipped-deferred"`) -- a line
          removed there on purpose stays removed (WO-212's rule), even if
@@ -1623,6 +1853,11 @@ async def finish_candidate(
     if result.verdict not in _ACCEPT_VERDICTS:
         return FinishOutcome(probe=result, used_cache=used_cache, action="rejected")
 
+    if is_queued(meeting_url, queue_path=queue_path):
+        return FinishOutcome(
+            probe=result, used_cache=used_cache, action="already-queued"
+        )
+
     if is_deferred(meeting_url, deferred_path=deferred_path):
         return FinishOutcome(
             probe=result, used_cache=used_cache, action="skipped-deferred"
@@ -1646,7 +1881,9 @@ async def finish_candidate(
             deferred=deferred,
         )
 
-    queued = append_queue_line(meeting_url, source_url, queue_path=queue_path)
+    queued = append_queue_line(
+        meeting_url, source_url, gov_id=gov_id, queue_path=queue_path
+    )
     pinned = False
     if pin:
         pinned = write_pin_row(

@@ -51,8 +51,12 @@ Both surfaces share the same components, in this order:
 3. **Featured meetings** — a genuine transcript quote per meeting, deep
    linked to the second it was said, with the stored video frame from
    that moment.
-4. **Most watched governments** (state pages only).
-5. **Government list** — grouped by kind; a sticky sidebar on desktop,
+4. **Seen on social media** (WO-947) — Full Context entries (`/context`)
+   whose meeting belongs to this hub/state, each linking to its own
+   permalink page. Absent entirely, not empty, when there are none — see
+   "Rendering rules" below.
+5. **Most watched governments** (state pages only).
+6. **Government list** — grouped by kind; a sticky sidebar on desktop,
    below the results on mobile.
 
 State pages show 12 featured cards, hubs show 6 — a hub is one
@@ -403,6 +407,110 @@ internal links to the hubs are part of what this page is *for*. Topic
 chips become a horizontal scroll strip on phones, where a dozen wrapped
 chips would push results a full screen down.
 
+### Seen on social media — WO-947, 2026-09-21
+
+Ryan, reviewing a Full Context entry page: "a page like this that is
+related to Indianapolis would also appear under the Indianapolis hub,
+right? And Indiana?" It didn't yet — an entry page had almost no internal
+links pointing at it — so both surfaces now list the entries whose
+meeting belongs to them, each linking to its own permalink page.
+
+**Membership is the hub's/state's own page-membership rule, never a text
+match** — the same principle "Which pages a hub shows" above establishes
+for meetings applies here without exception. A hub's entries are
+`ContextEntry` rows whose `meeting_page_id` satisfies
+`_hub_page_condition(group)`, the exact condition the hub's own meeting
+list already uses. A state's entries satisfy the state's own
+already-verified page-id set (`get_state_page_data()`'s SQL suffix match,
+refined by its per-row case re-check for SQLite — reusing the *final*,
+post-refinement id set, not just the SQL half, is what actually reuses
+"the same condition"). `crud.list_context_entries_for_pages()` takes that
+condition as a parameter rather than deriving one of its own. Getting
+this wrong has a real, measured cost: a jurisdiction-text match already
+put unrelated video on four real governments' hubs once (see "Which pages
+a hub shows" above) — an entry citing a social clip is exactly as
+vulnerable to that coincidence as a meeting page itself.
+
+**No empty state, on purpose** — same reasoning as every other section on
+these pages. With no entries, the whole block (heading, subtitle, list)
+is simply absent, not present-and-empty: a repeated "Seen on social
+media" heading with nothing under it across roughly a thousand mostly
+quiet hubs would be exactly the thin templated content §1 diagnosed
+Google declining this site for.
+
+**Bare view only.** A `?topic=` view is an alternate cut of the page
+about one curated subject; Full Context entries aren't topic-tagged, so
+showing them under a topic filter would be unrelated to that cut.
+
+**Cheap.** One small extra query per render — a join against the page
+set the render's own main query already selected, `LIMIT`-capped, no
+`segments`, no thumbnail lookup, no transcript-excerpt loader (that's the
+entry page's own job, WO-946). Wrapped in try/except and logged, the same
+posture `sitemap()` already uses for its own Full Context calls, so a
+failure here can never take down the hub/state page around it.
+
+**Placement and limits.** After the featured meetings, before the
+meeting/government list — `archive/templates/_context_mentions.html`,
+included by both `jurisdiction_page.html` and `state_page.html`,
+Archive-side only (this partial is not in `shared_templates/`; the
+resolver never renders it, so it can use Archive-only Jinja behavior with
+no risk of repeating WO-50's shared-partial filter mistake). `HUB_
+CONTEXT_ENTRIES` (3) is smaller than `STATE_CONTEXT_ENTRIES` (6) for the
+same reason `HUB_FEATURED_COUNT` is smaller than `STATE_FEATURED_COUNT`:
+one government has fewer entries to choose from than a whole state, and
+either way this section is secondary to the page's own lead content, not
+a replacement for it. One outbound link per entry lives on the entry
+page itself (WO-946); every link in this section stays internal (the
+government link, the entry's own permalink) so a hub/state page's link
+equity is spent on the site, not handed to the social network the entry
+cites.
+
+### A hub is also indexable via a published entry — WO-1003, 2026-09-21
+
+WO-947 (above) linked a hub to its Full Context entries but left the
+hub's own `noindex` decision alone: `indexable` was purely
+`len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE`, a meeting-page COUNT with
+no awareness that an entry existed at all — flagged as a known gap in
+that WO's own `BACKLOG_DONE.md` entry. Ryan's call: count entries. A hub
+is now indexable when it clears the existing meeting-count threshold
+**OR** it carries at least one *published* Full Context entry. An entry
+is unique, hand-written text about that government — exactly what
+separates a thin templated hub from a page worth indexing (§1's
+diagnosis of what Google was declining). A hub with one meeting and a
+real entry is no longer a near-duplicate of that meeting's own page.
+
+**One place, reusing the same membership rule.** The OR lives in exactly
+the two functions that already decided this: `get_jurisdiction_hub_data()`
+(the page's own `indexable`/`noindex` verdict) and
+`list_indexable_hub_entries()` (sitemap.xml's `/j/` list) — the same two
+places "Which pages a hub shows" above already names as the pair that
+must agree. Both check the SAME two-arm condition `_hub_page_condition()`
+already uses for a hub's own meeting list (`gov_id` for a keyed page, the
+page's own `id` for an adopted un-keyed one), never a jurisdiction-text
+match — for the same reason WO-947 refused one for the entries list
+itself. On the sitemap side this is one extra small query for the WHOLE
+build (`crud._context_hub_membership_ids()`, a single distinct
+`gov_id`/`id` pair query joined to published entries), checked in Python
+against each hub group's own `gov_ids`/`page_ids` rather than one query
+per hub.
+
+**A `?topic=` render must reach the same verdict as the bare view.**
+`context_entries` (the "Seen on social media" display list) is still
+bare-view only (WO-947's own reasoning: entries aren't topic-tagged, so
+showing them under a topic filter is unrelated to that cut). But
+`indexable` is a property of the *government*, not of the query string a
+particular render was requested with, and the bare view's count-based
+half of the OR already didn't vary with `topic_slug`. So a topic render
+that skips fetching the display list still runs a small existence-only
+check (`crud._context_entry_exists_isolated()` — same join, `LIMIT 1`,
+no columns the display list needed) to answer the same question the
+bare view already answered for free by reusing its own fetched list.
+
+**State pages have no such threshold to extend.** `/state/*` has never
+had a meeting-count `noindex` gate — every state/province with >= 1
+archived meeting is indexable outright (`get_state_coverage_index()`),
+so there is nothing for this OR to attach to there. Left alone.
+
 ### Structured data
 
 `CollectionPage` + `BreadcrumbList` + an `ItemList` of `VideoObject`s.
@@ -439,7 +547,7 @@ content, not separate pages competing for the same query.
 | `MAX_MARKED_TOPICS` | 1 | `db/crud.py` |
 | `MOST_ACTIVE_MIN_GOVERNMENTS` / `_WINDOW_DAYS` / `_COUNT` | 8 / 90 / 6 | `db/crud.py` |
 | `FRESHNESS_WINDOW_DAYS` | 7 | `db/crud.py` |
-| `JURISDICTION_HUB_MIN_INDEXABLE` | 2 | `db/crud.py` |
+| `JURISDICTION_HUB_MIN_INDEXABLE` | 2 (OR >= 1 published Full Context entry, WO-1003) | `db/crud.py` |
 | `FREEZE_AFTER` / `FREEZE_MIN_PAGES` | 7 days / 2 | `db/hub_slugs.py` |
 
 `STATE_HIGHLIGHT_POOL` is a *recent* pool on purpose: "which subjects are

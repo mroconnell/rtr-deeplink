@@ -100,6 +100,7 @@ from ..utils.context_links import (
     NETWORK_LABELS,
     SocialRef,
 )
+from ..utils.context_links import context_permalink as _context_permalink
 from ..utils.context_links import embed_for as _context_embed_for
 from ..utils.video_thumbnail import target_offset_seconds, youtube_thumbnail_url
 from . import hub_slugs
@@ -2316,7 +2317,13 @@ async def get_transcription_queue_summary() -> dict:
     test suite (dialect-gated to None there by design), so this specific
     mistake wasn't caught until a real request hit it -- worth a live
     curl re-check after any future change here, not just `pytest`.
+
+    `stuck_jobs` (WO-936) is list_stuck_transcription_jobs()'s own,
+    separate session -- bounded by MAX_CONCURRENT_TRANSCRIPTION_JOBS (15)
+    in practice, since only an "in_progress" job can ever match, so this
+    stays cheap alongside everything else here.
     """
+    stuck_jobs = await list_stuck_transcription_jobs()
     async with async_session() as session:
         active_rows = (
             await session.execute(
@@ -2391,6 +2398,7 @@ async def get_transcription_queue_summary() -> dict:
             "jobs_completed_last_24h": jobs_completed_last_24h,
             "segments_added_last_24h": segments_added_last_24h,
             "backlog_no_transcript": backlog_no_transcript,
+            "stuck_jobs": stuck_jobs,
         }
 
 
@@ -5723,6 +5731,13 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # "sliq_harmony" as its platform. Seven state legislature sites share
     # it, one tenant path each; see sliq_harmony.py's module docstring.
     "sliq_harmony": "Sliq Harmony (state legislature video archives)",
+    # Washington State Legislature (tvw.org) -- WO-1010, 2026-09-22. Same
+    # shape as az_legislature above: tvw.py delegates to
+    # InvintusAssetFinder for the actual video but resets
+    # `resolved.platform` back to "tvw" afterward (confirmed by reading
+    # resolve() end to end), so a real pushed row keeps its own label
+    # rather than reading "invintus". See tvw.py's own module docstring.
+    "tvw": "Washington State Legislature (tvw.org)",
 }
 
 # Registered platforms (app/platforms/__init__.py's
@@ -6857,6 +6872,12 @@ async def get_state_coverage_index() -> list[dict]:
 # it would not be.
 STATE_HIGHLIGHT_POOL = 150
 STATE_FEATURED_COUNT = 12
+# WO-947: Full Context entries shown on /state/{slug}'s "Seen on social
+# media" section -- a state pools every government in it, same reasoning
+# as STATE_FEATURED_COUNT being 4x HUB_FEATURED_COUNT below, just smaller
+# since this section is secondary to the featured cards, not the page's
+# lead content.
+STATE_CONTEXT_ENTRIES = 6
 # "Most active governments" is meaningless for a state with a handful of
 # governments (the list would just be the whole state, reordered), so the
 # section renders only above this threshold.
@@ -7494,6 +7515,26 @@ async def get_state_page_data(
         pool = [p for p in by_date if p["has_transcript"]][:STATE_HIGHLIGHT_POOL]
         highlights = await _load_highlights(session, [p["id"] for p in pool])
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+        # WO-947 ("Seen on social media"): entries whose meeting is in
+        # `pages` -- the exact, already-verified set of pages this state
+        # page shows (built above from _state_scope_condition() PLUS the
+        # per-row case-check right after it, not the raw SQL condition
+        # alone -- see that check's own comment on why SQLite's
+        # case-insensitive LIKE needs it). Reusing this final id set,
+        # rather than re-deriving a condition from the entry's own stored
+        # jurisdiction text, is what STATE_HUB_PAGES.md's "Which pages a
+        # hub shows" section asks for (a text match already put unrelated
+        # video on four real governments' hubs once). Bare view only,
+        # same reasoning as the hub's own gate: `?topic=` is an alternate,
+        # untagged cut of the page. Wrapped so a problem here can never
+        # take the whole state page down.
+        context_entries = []
+        if not topic_slug:
+            context_entries = await _context_entries_for_page_ids(
+                {p["id"] for p in pages},
+                limit=STATE_CONTEXT_ENTRIES,
+                label=f"state {abbr}",
+            )
 
     # Grouped by GOVERNMENT (`gov_id`), not by the slug of a display
     # string -- WO-99. Each row links to its /j/{slug} hub, and every
@@ -7610,6 +7651,10 @@ async def get_state_page_data(
         ],
         "total_pages": len(pages),
         "jurisdiction_count": len(jurisdictions),
+        # WO-947. Always present (possibly []) -- see the comment where
+        # it's built, above, for the membership rule and why it's
+        # bare-view-only.
+        "context_entries": context_entries,
     }
 
 
@@ -8121,12 +8166,36 @@ async def search_jurisdictions(q: str, limit: int = 10) -> list[dict]:
 # singleton hub becomes indexable by itself the moment a second meeting
 # lands -- the bulk-ingest scripts add depth over time and this tracks
 # it with no code change. One dial; 3 is the conservative alternative.
+#
+# WO-1003: OR at least one published Full Context entry. A Full Context
+# entry is unique, hand-written text about that government -- exactly
+# what separates a thin templated hub from a page worth indexing
+# (STATE_HUB_PAGES.md §1's diagnosis of what Google was actually
+# declining). A hub with one meeting and a real entry is no longer a
+# near-duplicate of that meeting's own page; it has its own content. See
+# get_jurisdiction_hub_data() and list_indexable_hub_entries() below for
+# where the OR is applied -- one place for the page's own noindex verdict,
+# one for the sitemap's list, both reusing _hub_page_condition()'s exact
+# membership rule rather than any text match.
 JURISDICTION_HUB_MIN_INDEXABLE = 2
 
 # Fewer featured cards than a state page: a hub is one government, so
 # after a handful of snippets the reader is better served by the full
 # meeting list directly below them.
 HUB_FEATURED_COUNT = 6
+# WO-947: Full Context entries shown on /j/{slug}'s "Seen on social
+# media" section. Smaller than STATE_CONTEXT_ENTRIES for the same reason
+# HUB_FEATURED_COUNT is smaller than STATE_FEATURED_COUNT -- one
+# government has fewer entries to choose from than a whole state, and
+# this section is secondary to the page's own featured cards and meeting
+# list, not the lead content.
+HUB_CONTEXT_ENTRIES = 3
+# WO-1002: Full Context entries shown on /m/{slug} itself -- "this moment
+# was clipped on social media" (BACKLOG.md). Smaller than HUB_CONTEXT_
+# ENTRIES: a hub pools every meeting a government has ever had, but this
+# section only ever has entries citing ONE specific meeting, so there is
+# rarely more than a handful to show at all.
+MEETING_CONTEXT_ENTRIES = 5
 # At most this many featured cards on a hub may come from the same
 # meeting body. A hub is one government, so its cards routinely all read
 # "City Council" while the Planning Commission, the school board and the
@@ -8666,6 +8735,40 @@ async def get_jurisdiction_hub_data(
         inherited_chips = (
             [] if own_chips else await _state_topic_chips(session, group["state_abbr"])
         )
+        # WO-947 ("Seen on social media"): entries whose meeting belongs to
+        # THIS hub's own page set -- reusing _hub_page_condition(group), the
+        # exact condition the meeting-list query above already applies,
+        # rather than a jurisdiction-TEXT match (STATE_HUB_PAGES.md's
+        # "Which pages a hub shows" section is why: a text match already put
+        # unrelated video on four real governments' hubs once). Bare view
+        # only: `?topic=` is an alternate cut of the page about one subject,
+        # and entries aren't topic-tagged, so showing them under a topic
+        # filter would be unrelated to that cut. Wrapped in try/except (like
+        # sitemap()'s own context calls) so a problem here can never take
+        # the whole hub page down -- this section is secondary, the meeting
+        # list above it is not.
+        context_entries = []
+        has_context_entry = False
+        if not topic_slug:
+            context_entries = await _context_entries_isolated(
+                _hub_page_condition(group),
+                limit=HUB_CONTEXT_ENTRIES,
+                label=f"hub {slug}",
+            )
+            has_context_entry = bool(context_entries)
+        else:
+            # WO-1003: a `?topic=` view skips the DISPLAY list entirely
+            # (WO-947's "Bare view only" -- entries aren't topic-tagged,
+            # so showing them under a topic filter would be unrelated to
+            # that cut) but `indexable` below is a property of the
+            # government, not of which query string this render was
+            # requested with, so it must reach the SAME verdict the bare
+            # view would for the identical hub. One small existence-only
+            # query -- no columns/joins the display list needs -- isolated
+            # the same way _context_entries_isolated() is.
+            has_context_entry = await _context_entry_exists_isolated(
+                _hub_page_condition(group), label=f"hub {slug}"
+            )
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
     topic_counts = _pool_topic_counts(highlights)
@@ -8716,7 +8819,13 @@ async def get_jurisdiction_hub_data(
         "active_topic_label": (
             TOPICS_BY_SLUG[active_slug].label if active_slug else None
         ),
-        "indexable": len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE,
+        # WO-1003: OR a real, hand-written Full Context entry -- see the
+        # module-level comment above JURISDICTION_HUB_MIN_INDEXABLE for
+        # why. `has_context_entry` reaches the same verdict on a `?topic=`
+        # render as on the bare one (see the branch above).
+        "indexable": (
+            len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE or has_context_entry
+        ),
         "min_indexable": JURISDICTION_HUB_MIN_INDEXABLE,
         # The raw strings, for the /meetings?jurisdiction= "search all" link
         # (the first is as good as any -- list_pages()'s jurisdiction
@@ -8726,16 +8835,70 @@ async def get_jurisdiction_hub_data(
         # than match a name (and for the 301 alias lookup on this route).
         "gov_id": group["key"],
         "gov_type": group["gov_type"],
+        # WO-947. Always present (possibly []) -- see the comment where
+        # it's built, above, for the membership rule and why it's
+        # bare-view-only.
+        "context_entries": context_entries,
     }
+
+
+async def _context_hub_membership_ids() -> tuple[set, set]:
+    """(gov_ids, page_ids) of every meeting page carrying >= 1 published
+    Full Context entry -- WO-1003, backing list_indexable_hub_entries()'s
+    OR-entries check below.
+
+    One small query for the WHOLE sitemap build, not one per hub: a hub's
+    own two-arm membership rule (_hub_page_condition() -- a keyed page by
+    `gov_id`, or an un-keyed page adopted by its own `id`) is checked in
+    Python against this pair of sets instead of running that condition
+    once per hub group. Same rule either way, so a contamination case
+    _hub_page_condition() already refuses (STATE_HUB_PAGES.md's "Which
+    pages a hub shows") can't sneak a hub past the threshold through this
+    path: an un-keyed page's id only lands in `page_ids` here if it was
+    also adopted into that hub's own `page_ids` by `_hub_groups()`.
+
+    Table missing, or the query failing for any other reason -> (set(),
+    set()) -- same tolerance every other context reader in this file
+    already has for an optional signal that must never break the
+    sitemap."""
+    # Its OWN session, deliberately -- see _context_entries_isolated(): a
+    # failed statement inside the sitemap's session would abort that whole
+    # transaction on Postgres and take the sitemap down with it.
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return set(), set()
+            rows = (
+                await ctx_session.execute(
+                    select(MeetingPage.gov_id, MeetingPage.id)
+                    .join(ContextEntry, ContextEntry.meeting_page_id == MeetingPage.id)
+                    .where(ContextEntry.status == "published")
+                    .distinct()
+                )
+            ).all()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context hub-membership ids for the sitemap."
+        )
+        return set(), set()
+    return (
+        {gov_id for gov_id, _page_id in rows if gov_id},
+        {page_id for _gov_id, page_id in rows},
+    )
 
 
 async def list_indexable_hub_entries() -> list[dict]:
     """[{slug, display, last_updated}] for every hub at or above
-    JURISDICTION_HUB_MIN_INDEXABLE -- sitemap.xml's /j/ entries (real
-    lastmod, same as the state entries). Sorted by slug for a stable
-    file."""
+    JURISDICTION_HUB_MIN_INDEXABLE, OR carrying >= 1 published Full
+    Context entry (WO-1003 -- see the module comment above
+    JURISDICTION_HUB_MIN_INDEXABLE for why an entry counts) -- sitemap.xml's
+    /j/ entries (real lastmod, same as the state entries). The entries
+    check costs one extra small query for the whole build
+    (_context_hub_membership_ids()), not one per hub. Sorted by slug for a
+    stable file."""
     async with async_session() as session:
         groups = await _hub_groups(session)
+        entry_gov_ids, entry_page_ids = await _context_hub_membership_ids()
     return sorted(
         (
             {
@@ -8745,6 +8908,8 @@ async def list_indexable_hub_entries() -> list[dict]:
             }
             for g in groups.values()
             if g["page_count"] >= JURISDICTION_HUB_MIN_INDEXABLE
+            or (set(g["gov_ids"]) & entry_gov_ids)
+            or (set(g["page_ids"]) & entry_page_ids)
         ),
         key=lambda g: g["slug"],
     )
@@ -8877,6 +9042,29 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # legitimately take as long as it needs.
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
+
+# WO-936: the shared "this job is stuck" threshold -- used both to flag a
+# job in list_stuck_transcription_jobs() (surfaced in the daily worker
+# report) and, in worker/main.py, to cap how long a live process may keep
+# refreshing its own claim (see CLAIM_HEARTBEAT_SECONDS' own comment
+# there). One number, one meaning, used both places on purpose: a job
+# whose heartbeat stops here is exactly a job this report would already
+# be calling out, so capping the heartbeat at this threshold does not add
+# a new risk, it just lets STALE_CLAIM_AFTER's existing reclaim path
+# finally reach a case it couldn't reach before (WO-57 made the heartbeat
+# unconditional with no ceiling at all).
+#
+# Sized with a wide margin over any legitimate per-chunk pace, the same
+# standard WO-57's own backlog entry sets: job 911 (Detroit, 21 chunks,
+# see that entry) was the slowest real chunk ever measured, at ~15
+# min/chunk on the production pool -- itself already 3x STALE_CLAIM_AFTER.
+# 3 hours clears that by 12x. A wide margin matters here specifically
+# because reclaiming a job that is NOT actually stuck reopens the exact
+# duplicate-segment corruption WO-57 shipped to stop (two workers both
+# reporting success for the same chunk) -- nothing legitimate observed
+# has ever run remotely close to this, so in practice this only ever
+# fires on a job that is genuinely wedged or OOM-looping.
+STUCK_JOB_THRESHOLD = timedelta(hours=3)
 
 # Escalating-backoff retry for a real user-submitted (PRIORITY_MEDIUM+) job
 # that's exhausted MAX_CONSECUTIVE_CHUNK_FAILURES -- added 2026-08-19 after
@@ -10072,6 +10260,12 @@ async def report_chunk_result(
             return {"error": "job_not_found"}
 
         job.claimed_at = None  # release the claim regardless of outcome
+        # WO-936: real activity happened (a chunk was attempted and this
+        # call is reporting its outcome), whether it succeeded or failed
+        # -- see TranscriptionJob.last_progress_at's own docstring for why
+        # this, and only this, is what list_stuck_transcription_jobs()
+        # trusts as "not stuck".
+        job.last_progress_at = datetime.now(timezone.utc)
 
         if not success:
             partial_version_id = None
@@ -10178,6 +10372,99 @@ async def report_chunk_result(
             "chunks_completed": job.chunks_completed,
             "total_chunks": job.total_chunks,
         }
+
+
+async def list_stuck_transcription_jobs(
+    *, threshold: timedelta = STUCK_JOB_THRESHOLD
+) -> list[dict]:
+    """A claimed job (status "in_progress") that has reported neither a
+    finished nor a failed chunk in `threshold` -- the shared detector for
+    two real, previously-invisible failure shapes (BACKLOG.md /
+    BACKLOG_DONE.md, WO-936):
+
+    1. **An OOM-killed chunk.** Render kills the worker process before
+       report_chunk_result() ever runs, so nothing is written anywhere --
+       claimed_at simply goes stale after STALE_CLAIM_AFTER and the same
+       chunk is silently re-claimed, as if nothing happened. If the OOM
+       is deterministic for that source, this loops: job 1419
+       (2026-09-02) OOMed roughly 40 times over 3.5 hours, invisible to
+       every check that existed at the time.
+    2. **A wedged transcription call.** worker/main.py's heartbeat
+       refreshes claimed_at every 60s regardless of real progress
+       (WO-57), so a hung faster-whisper call (unbounded -- see
+       CLAIM_HEARTBEAT_SECONDS' own comment on why there's no timeout on
+       that half) keeps claim_next_chunk() from ever reclaiming the job,
+       pinning it in_progress with no error and no failure email.
+
+    Both look identical from here: the job stays "in_progress" and its
+    own last real activity (last_progress_at, set only inside
+    report_chunk_result() -- never by the heartbeat, which is the whole
+    point) stops moving. Coalesced with created_at because the column is
+    nullable (added by migration after real jobs already existed) -- a
+    job whose column is still unset from before that migration is read
+    as "no progress since it was created", not as having no age at all.
+
+    Deliberately narrow to status == "in_progress" (a claim actually held
+    right now). A "queued"/"retry_scheduled" job sitting a long time
+    while the whole pool is idle is a different, already-covered signal
+    -- archive/utils/email.py's send_worker_daily_report() already warns
+    when cumulative_chunks_completed_all_time is flat while active_jobs
+    > 0 (2026-08-28), which catches the whole pool going dead. This
+    catches the complementary case: one job wedged while the rest of the
+    pool keeps moving fine, which that pool-wide check cannot see (named
+    explicitly as the same blind spot in BACKLOG.md's WO-57 heartbeat
+    entry).
+    """
+    cutoff = datetime.now(timezone.utc) - threshold
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.chunks_completed,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.claimed_at,
+                    TranscriptionJob.last_progress_at,
+                    TranscriptionJob.created_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(
+                    TranscriptionJob.status == "in_progress",
+                    func.coalesce(
+                        TranscriptionJob.last_progress_at,
+                        TranscriptionJob.created_at,
+                    )
+                    < cutoff,
+                )
+                .order_by(TranscriptionJob.id.asc())
+            )
+        ).all()
+
+    now = datetime.now(timezone.utc)
+    stuck = []
+    for r in rows:
+        last_progress = _aware(r.last_progress_at or r.created_at)
+        stuck.append(
+            {
+                "job_id": r.id,
+                "slug": r.slug,
+                "title": r.title,
+                "platform": r.platform,
+                "source_url": r.source_url_normalized,
+                "chunks_completed": r.chunks_completed,
+                "total_chunks": r.total_chunks,
+                "claimed_at": r.claimed_at.isoformat() if r.claimed_at else None,
+                "last_progress_at": r.last_progress_at.isoformat()
+                if r.last_progress_at
+                else None,
+                "stalled_for": _duration_words((now - last_progress).total_seconds()),
+            }
+        )
+    return stuck
 
 
 def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
@@ -11013,15 +11300,21 @@ def _context_entry_dict(
     set once `page` is known (None until then, same as every other
     meeting-dependent field). Do not conflate the two.
 
-    `permalink` (WO-945 follow-up) is this entry's own stable URL,
-    `/context/{id}` -- computed straight from `entry["id"]`, present on
-    EVERY entry regardless of status/meeting (unlike most of this dict,
-    which is meeting-dependent). It exists so a headline (or, absent one,
-    the quiet permalink affordance -- see _context_entry.html) always has
-    somewhere stable to link, even for an entry that later moves off page
-    1 of the feed. It is not itself a check that the permalink page will
-    200 for this entry -- get_public_context_entry() (the route behind
-    it) applies the real published+has-meeting rule at read time.
+    `permalink` (WO-945 follow-up; slugged as of WO-946) is this entry's
+    own stable URL, `/context/{id}-{slug}` (context_links.context_
+    permalink()) -- present on EVERY entry regardless of status/meeting
+    (unlike most of this dict, which is meeting-dependent). It exists so
+    a headline (or, absent one, the quiet permalink affordance -- see
+    _context_entry.html) always has somewhere stable to link, even for an
+    entry that later moves off page 1 of the feed. It is not itself a
+    check that the permalink page will 200 for this entry --
+    get_public_context_entry() (the route behind it) applies the real
+    published+has-meeting rule at read time. Computed once below with
+    whatever's known at that point (headline only, if there's no meeting
+    yet) and recomputed at the very end once jurisdiction_display/title
+    are known, so a draft with no meeting still gets a real permalink
+    value (never reachable while it's a draft, but correct once it's
+    matched and published) instead of staying stuck on the id-only form.
     """
     t_seconds = entry["t_seconds"]
     result = {
@@ -11029,7 +11322,7 @@ def _context_entry_dict(
         "status": entry["status"],
         "summary": entry["summary"],
         "headline": entry["headline"],
-        "permalink": f"/context/{entry['id']}",
+        "permalink": _context_permalink(entry["id"], entry["headline"], None, None),
         "social_url": entry["social_url"],
         "network": entry["network"],
         "network_label": NETWORK_LABELS.get(entry["network"], NETWORK_LABELS["other"]),
@@ -11047,8 +11340,19 @@ def _context_entry_dict(
         "created_at": entry["created_at"],
         "updated_at": entry["updated_at"],
         "has_meeting": page is not None,
+        # WO-946: the raw MeetingPage.id, for a caller that needs to query
+        # the meeting directly (get_context_transcript_excerpt()) --
+        # distinct from `id` above (the ContextEntry's own id) and from
+        # `slug` below (the meeting's public identity, not its PK).
+        "meeting_page_id": None,
         "slug": None,
         "title": None,
+        # WO-947: the meeting's own gov_id, so a caller (context_entry_
+        # page()'s own "Part of {State}" link) can derive the state via
+        # effective_state_abbr() -- a pure, in-memory registry lookup,
+        # no extra query -- without needing a second field alongside
+        # `jurisdiction` just for that one purpose.
+        "gov_id": None,
         "jurisdiction": None,
         "jurisdiction_display": None,
         "hub_slug": None,
@@ -11065,20 +11369,30 @@ def _context_entry_dict(
     card_url = youtube_thumbnail_url(page.get("video_url"))
     if not card_url and servable_frames.would_serve(page["id"], t_seconds):
         card_url = f"/m/{slug}/card.jpg{suffix}"
+    jurisdiction_display = effective_jurisdiction(
+        page.get("gov_id"), page["jurisdiction"]
+    )
 
     result.update(
         {
+            "meeting_page_id": page["id"],
             "slug": slug,
             "title": page["title"],
+            "gov_id": page.get("gov_id"),
             "jurisdiction": page["jurisdiction"],
-            "jurisdiction_display": effective_jurisdiction(
-                page.get("gov_id"), page["jurisdiction"]
-            ),
+            "jurisdiction_display": jurisdiction_display,
             "hub_slug": _hub_identity(page.get("gov_id"), page["jurisdiction"])[1],
             "date": page["date"],
             "date_html": str(meeting_date_html(page.get("date"))),
             "deep_link": f"/m/{slug}{suffix}",
             "card_url": card_url,
+            # Recomputed now that jurisdiction_display/title are known --
+            # see this function's own docstring on why the earlier value
+            # (headline-only, computed above) isn't the final answer for
+            # an entry with a meeting but no headline.
+            "permalink": _context_permalink(
+                entry["id"], entry["headline"], jurisdiction_display, page["title"]
+            ),
         }
     )
     return result
@@ -11205,6 +11519,267 @@ async def count_published_context_entries() -> int:
         return int(total)
 
 
+# WO-946: how many entries the sitemap ever lists, newest-updated first
+# -- a real cap, not a theoretical one: this table has no known upper
+# bound the way meeting pages roughly do, and a sitemap is meant to help
+# a crawler prioritize, not enumerate every URL that has ever existed.
+CONTEXT_SITEMAP_MAX_ENTRIES = 500
+
+
+async def list_context_entries_for_sitemap() -> list[dict]:
+    """The narrow slice sitemap() (archive/main.py) needs to list every
+    published entry's permalink -- id, headline, the two facts context_
+    links.context_permalink() falls back to when there's no headline
+    (jurisdiction_display, the meeting's title), and updated_at for
+    <lastmod>. Deliberately NOT _context_entry_dict()'s full shape: no
+    embed parsing, no servable-frames/thumbnail lookup, no summary/social
+    fields -- a sitemap listing has no use for any of them, and pulling
+    them in would mean this function paying for expensive lookups it
+    doesn't need CONTEXT_SITEMAP_MAX_ENTRIES times over.
+
+    Same INNER JOIN posture as list_context_entries(public=True): only a
+    `published` entry with a real, still-existing meeting can appear
+    (matches get_public_context_entry()'s own rule, so nothing here could
+    list a URL that would itself 404). [] when the table doesn't exist
+    yet, same as every other context_entries reader.
+    """
+    async with async_session() as session:
+        if not await _context_available(session):
+            return []
+        rows = (
+            await session.execute(
+                select(
+                    ContextEntry.id,
+                    ContextEntry.title,
+                    MeetingPage.gov_id,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.title,
+                    ContextEntry.updated_at,
+                )
+                .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                .where(ContextEntry.status == "published")
+                .order_by(ContextEntry.updated_at.desc(), ContextEntry.id.desc())
+                .limit(CONTEXT_SITEMAP_MAX_ENTRIES)
+            )
+        ).all()
+        return [
+            {
+                "id": row[0],
+                "headline": row[1],
+                "jurisdiction_display": effective_jurisdiction(row[2], row[3]),
+                "meeting_title": row[4],
+                "updated_at": row[5],
+            }
+            for row in rows
+        ]
+
+
+async def _context_entries_isolated(page_condition, *, limit: int, label: str) -> list:
+    """list_context_entries_for_pages() in its OWN session, never raising.
+
+    A hub or state page must never fail because of this optional block,
+    and a try/except around a query in the PAGE'S session does not deliver
+    that on Postgres: a failed statement aborts the whole transaction, so
+    every later query on that session fails too ("current transaction is
+    aborted") and the page 500s anyway. SQLite does not behave that way,
+    which is why no test could have caught it. A separate session confines
+    the damage to this block."""
+    try:
+        async with async_session() as ctx_session:
+            return await list_context_entries_for_pages(
+                ctx_session, page_condition, limit=limit
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context entries for %s.", label
+        )
+        return []
+
+
+async def _context_entry_exists_isolated(page_condition, *, label: str) -> bool:
+    """Existence-only twin of _context_entries_isolated() -- WO-1003.
+
+    Used where a caller needs to know whether ANY published entry exists
+    for `page_condition` without paying for the columns/joins the display
+    list (`list_context_entries_for_pages()`) loads -- concretely, a
+    `?topic=` hub/state render that must agree with the bare view's
+    `indexable` verdict but does not fetch the entries list itself (see
+    get_jurisdiction_hub_data()). Same own-session isolation reasoning as
+    _context_entries_isolated(): a failed statement on Postgres aborts the
+    whole transaction, so this must not share the caller's session."""
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return False
+            row = (
+                await ctx_session.execute(
+                    select(ContextEntry.id)
+                    .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+                    .where(ContextEntry.status == "published", page_condition)
+                    .limit(1)
+                )
+            ).first()
+            return row is not None
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to check Full Context entries for %s.", label
+        )
+        return False
+
+
+async def _context_entries_for_page_ids(
+    page_ids: set, *, limit: int, label: str
+) -> list:
+    """The state page's form: entries whose meeting is in `page_ids`.
+
+    Starts from the ENTRIES side on purpose. A state's page set runs to
+    thousands of ids and grows with the archive; passing it as one
+    `IN (...)` list is a query whose size tracks the corpus (and asyncpg
+    caps a statement at 32,767 parameters). The entries table is tiny by
+    comparison -- it is hand-written, one row per post -- so this reads
+    the published entries' meeting ids first, intersects in Python, and
+    only then asks for the few that matched. Membership is still exactly
+    get_state_page_data()'s own final page list, never a text match."""
+    if not page_ids:
+        return []
+    try:
+        async with async_session() as ctx_session:
+            if not await _context_available(ctx_session):
+                return []
+            rows = (
+                await ctx_session.execute(
+                    select(ContextEntry.meeting_page_id)
+                    .where(
+                        ContextEntry.status == "published",
+                        ContextEntry.meeting_page_id.is_not(None),
+                    )
+                    .distinct()
+                )
+            ).all()
+            matched = sorted({row[0] for row in rows} & set(page_ids))
+            if not matched:
+                return []
+            return await list_context_entries_for_pages(
+                ctx_session, MeetingPage.id.in_(matched), limit=limit
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to load Full Context entries for %s.", label
+        )
+        return []
+
+
+async def list_context_entries_for_pages(
+    session, page_condition, *, limit: int
+) -> list[dict]:
+    """Published Full Context entries whose MEETING PAGE satisfies
+    `page_condition` -- backs the "Seen on social media" section on
+    `/j/{slug}` and `/state/{slug}` (WO-947).
+
+    `page_condition` is the CALLER's own page-membership rule, reused
+    as-is rather than re-derived from the entry's own stored jurisdiction
+    text: `_hub_page_condition(group)` for a hub (the same two-arm gov_id/
+    un-keyed-by-host rule `get_jurisdiction_hub_data()` already applies to
+    its own meeting list), or `MeetingPage.id.in_(page_ids)` built from
+    `get_state_page_data()`'s own already-verified page-id list for a
+    state (its SQL suffix match is refined by a Python re-check for
+    SQLite's case-insensitive LIKE -- reusing the post-refinement id set
+    is what actually reuses "the same condition" rather than only its SQL
+    half). STATE_HUB_PAGES.md's "Which pages a hub shows" section is why
+    a text match is refused here at all: it already put unrelated video on
+    four real governments' hubs once (Orem UT, Tooele UT, Box Elder County
+    UT, Caledonia Township MI), purely because stored jurisdiction TEXT
+    coincided -- an entry citing a social clip is exactly as vulnerable to
+    that coincidence as a meeting page itself.
+
+    Takes an already-open `session` -- both callers already hold one for
+    their own main query, so this is one small extra indexed query per
+    render (`status` + a join against an already-selected page-id/gov_id
+    set, LIMIT'd to `limit`), not a second connection. Deliberately never
+    loads `segments`, never calls get_context_transcript_excerpt(), and
+    does no thumbnail lookup -- this is a secondary section listing a
+    handful of entries, not the excerpt-bearing permalink page. Table
+    missing -> `[]`, the same tolerance every other context_entries reader
+    in this file already has; BOTH callers wrap this call in try/except
+    too (logging the failure), since an optional secondary section must
+    never 500 a hub/state page.
+
+    Only `status == "published"` entries whose meeting still exists
+    (INNER JOIN -- an orphaned entry is demoted back to `draft` by
+    `delete_meeting_pages_by_slug()`, so this mirrors that rule rather
+    than re-deciding it). Newest-published first (`published_at desc, id
+    desc`, the same stable order the feed itself uses), capped at
+    `limit` (`HUB_CONTEXT_ENTRIES` / `STATE_CONTEXT_ENTRIES`).
+    """
+    if not await _context_available(session):
+        return []
+    rows = (
+        await session.execute(
+            select(ContextEntry, MeetingPage)
+            .join(MeetingPage, ContextEntry.meeting_page_id == MeetingPage.id)
+            .where(ContextEntry.status == "published", page_condition)
+            .order_by(ContextEntry.published_at.desc(), ContextEntry.id.desc())
+            .limit(limit)
+        )
+    ).all()
+    entries = []
+    for entry, page in rows:
+        t_seconds = entry.t_seconds
+        jurisdiction_display = effective_jurisdiction(page.gov_id, page.jurisdiction)
+        entries.append(
+            {
+                "id": entry.id,
+                "headline": entry.title,
+                "summary": entry.summary,
+                "permalink": _context_permalink(
+                    entry.id, entry.title, jurisdiction_display, page.title
+                ),
+                "match_kind": entry.match_kind,
+                "match_label": MATCH_KINDS.get(entry.match_kind)
+                if entry.match_kind
+                else None,
+                "network_label": NETWORK_LABELS.get(
+                    entry.network, NETWORK_LABELS["other"]
+                ),
+                "source_label": entry.source_label,
+                "published_at": entry.published_at,
+                "slug": page.slug,
+                "title": page.title,
+                "date_html": str(meeting_date_html(page.date)),
+                "jurisdiction_display": jurisdiction_display,
+                "hub_slug": _hub_identity(page.gov_id, page.jurisdiction)[1],
+                "deep_link": f"/m/{page.slug}"
+                + (f"?t={int(t_seconds)}" if t_seconds is not None else ""),
+                "timestamp_label": (
+                    format_timestamp_label(t_seconds) if t_seconds is not None else None
+                ),
+            }
+        )
+    return entries
+
+
+async def list_context_entries_for_meeting(
+    meeting_page_id: int, *, limit: int = MEETING_CONTEXT_ENTRIES
+) -> list[dict]:
+    """Published Full Context entries that cite THIS ONE meeting -- backs
+    the "this moment was clipped on social media" block on `/m/{slug}`
+    itself (WO-1002, BACKLOG.md). A thin wrapper over
+    list_context_entries_for_pages() with the narrowest possible
+    page_condition (a single MeetingPage.id, not a hub's or state's whole
+    page set), run through _context_entries_isolated() -- its own
+    session, never raising -- for the same reason the hub/state callers
+    do: a try/except in the CALLING session does not protect the page on
+    Postgres, since a failed statement aborts that whole transaction and
+    every later query on it fails too (see _context_entries_isolated()'s
+    own docstring). Newest-published first, published only -- both already
+    enforced by the shared function."""
+    return await _context_entries_isolated(
+        MeetingPage.id == meeting_page_id,
+        limit=limit,
+        label=f"meeting page {meeting_page_id}",
+    )
+
+
 async def get_context_entry(entry_id: int) -> Optional[dict]:
     """One entry by id, editor-view shape (any status, meeting optional) --
     for the edit form, and for re-reading an entry right after a save."""
@@ -11251,6 +11826,235 @@ async def get_public_context_entry(entry_id: int) -> Optional[dict]:
             _context_page_row_to_dict(page),
             servable_frames=frames,
         )
+
+
+# WO-946: how far a transcript excerpt (get_context_transcript_excerpt()
+# below) reaches past its starting segment -- a time budget and a
+# character budget, whichever is hit first, with a floor of 2 segments
+# (when that many exist) so a single short segment never stands alone.
+# Deliberately generous-but-bounded: long enough to actually be "what was
+# said," short enough that the entry page stays a snippet, not a full
+# transcript reader -- "Keep reading in the full transcript" is the link
+# for that.
+_TRANSCRIPT_EXCERPT_MAX_SECONDS = 90
+_TRANSCRIPT_EXCERPT_MAX_CHARS = 900
+_TRANSCRIPT_EXCERPT_MIN_SEGMENTS = 2
+# How far before `t_seconds` this will still look for a starting segment,
+# when no segment's own `start` is <= t_seconds (the clip references a
+# moment slightly earlier than the transcript's first real line) -- see
+# this function's own docstring.
+_TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS = 5
+# The excerpt has to be what was said AT the linked moment, or nothing.
+# Without this bound both lookups above degrade silently: a `t_seconds`
+# past the transcript's last line (a transcript that stops early -- common
+# enough to have its own truncation marker) picked that last line, and a
+# `t_seconds` before the first line picked the first line however many
+# minutes later it started. Either way the page would present unrelated
+# speech as the clip's context. A minute covers real pauses (a recess, a
+# silent vote) without reaching into a different part of the meeting.
+_TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS = 60
+
+
+async def get_context_transcript_excerpt(
+    meeting_page_id: int, t_seconds: int
+) -> Optional[dict]:
+    """A short excerpt of the meeting's own transcript around `t_seconds`
+    -- what makes a Full Context permalink page more than a thin wrapper
+    around a link (see STATE_HUB_PAGES.md's diagnosis of why Google
+    declines pages shaped like that). Backs `GET /context/{id}`
+    (archive/main.py's context_entry_page()) only -- never the feed,
+    which would mean loading a `segments` JSON blob (six-figure bytes per
+    meeting) for every one of 20 entries on a page.
+
+    Returns None when there's nothing honest to show: no default
+    TranscriptVersion; a default version with no segments at all;
+    `_has_real_warning_free_transcript()` says this version is garbled,
+    likely-hallucinated, or a truncated Granicus scrape (the exact same
+    "is this actually a good transcript" check every other quality-gated
+    reader in this file already uses -- see that function's own
+    docstring; a new quality marker only ever needs adding there, not
+    reinvented here); or no segment falls anywhere near the window.
+
+    Window: starts at the segment "containing" `t_seconds` -- the last
+    segment whose own `start` is <= `t_seconds`, same rule shared_static/
+    deep_link.js's findActiveSegment() uses client-side for the same
+    concept. If no segment qualifies (the clip's moment is earlier than
+    the transcript's own first line -- a real, if rare, editor-matching
+    case), falls back to the first segment starting within
+    _TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS after `t_seconds`. From there,
+    consecutive segments are added until _TRANSCRIPT_EXCERPT_MAX_SECONDS
+    of meeting time or _TRANSCRIPT_EXCERPT_MAX_CHARS of text is reached,
+    whichever comes first -- except the first _TRANSCRIPT_EXCERPT_MIN_
+    SEGMENTS segments are always included even if that alone already
+    exceeds either budget, so a single long segment can't produce a
+    one-line excerpt when a second one is available.
+
+    Each returned line's `deep_link` uses the segment's REAL index in the
+    full segments array (not its position within this excerpt) as
+    `line=seg-{N}` -- the exact convention meeting_page.html's own
+    transcript rendering (`id="seg-{{ loop.index0 }}"`) and shared_static/
+    deep_link.js's `getDeepLinkLine()`/`findActiveSegment()` already agree
+    on, so a reader who clicks through lands with the same line
+    highlighted.
+    `continues` is true when the excerpt stopped before the transcript's
+    real end -- there's more to read past what's shown.
+    """
+    async with async_session() as session:
+        row = (
+            await session.execute(
+                select(
+                    MeetingPage.slug,
+                    TranscriptVersion.id,
+                    TranscriptVersion.language,
+                    TranscriptVersion.source,
+                    TranscriptVersion.segments,
+                    TranscriptVersion.transcript_warnings,
+                )
+                .join(
+                    TranscriptVersion,
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                )
+                .where(
+                    MeetingPage.id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        ).first()
+        if row is None:
+            return None
+        slug, version_id, language, source, segments, warnings = row
+        if not segments:
+            return None
+        if not _has_real_warning_free_transcript(warnings):
+            return None
+
+        start_idx: Optional[int] = None
+        for i, seg in enumerate(segments):
+            if seg.get("start", 0) <= t_seconds:
+                start_idx = i
+            else:
+                break
+        if start_idx is None:
+            for i, seg in enumerate(segments):
+                if (
+                    seg.get("start", 0)
+                    >= t_seconds - _TRANSCRIPT_EXCERPT_LOOKBACK_SECONDS
+                ):
+                    start_idx = i
+                    break
+        if start_idx is None:
+            return None
+
+        # See _TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS: the chosen line must
+        # actually be near the linked moment, in either direction.
+        chosen = segments[start_idx]
+        chosen_start = chosen.get("start", 0)
+        chosen_end = chosen.get("end", chosen_start)
+        if chosen_start > t_seconds:
+            gap = chosen_start - t_seconds
+        else:
+            gap = max(0, t_seconds - chosen_end)
+        if gap > _TRANSCRIPT_EXCERPT_MAX_GAP_SECONDS:
+            return None
+
+        included = [start_idx]
+        window_start = segments[start_idx].get("start", 0)
+        total_chars = len(segments[start_idx].get("text", ""))
+        i = start_idx + 1
+        while i < len(segments):
+            seg = segments[i]
+            elapsed = seg.get("end", seg.get("start", 0)) - window_start
+            prospective_chars = total_chars + len(seg.get("text", ""))
+            if len(included) >= _TRANSCRIPT_EXCERPT_MIN_SEGMENTS and (
+                elapsed > _TRANSCRIPT_EXCERPT_MAX_SECONDS
+                or prospective_chars > _TRANSCRIPT_EXCERPT_MAX_CHARS
+            ):
+                break
+            included.append(i)
+            total_chars = prospective_chars
+            i += 1
+
+        lines = []
+        for idx in included:
+            seg = segments[idx]
+            seg_start = seg.get("start", 0)
+            lines.append(
+                {
+                    "index": idx,
+                    "start": seg_start,
+                    "timestamp_label": format_timestamp_label(seg_start),
+                    "text": seg.get("text", ""),
+                    "deep_link": f"/m/{slug}?t={int(seg_start)}&line=seg-{idx}&version={version_id}",
+                }
+            )
+
+        return {
+            "version_id": version_id,
+            "language": language,
+            "source": source,
+            "lines": lines,
+            "paragraphs": _excerpt_paragraphs(lines),
+            "continues": included[-1] < len(segments) - 1,
+        }
+
+
+# Rough size at which a run of caption lines is broken into a new
+# paragraph, once the text so far ends a sentence.
+_EXCERPT_PARAGRAPH_SOFT_CHARS = 320
+_SPEAKER_CHANGE_MARKER = ">>"
+
+
+def _excerpt_paragraphs(lines: list[dict]) -> list[dict]:
+    """Groups an excerpt's raw caption lines into readable paragraphs.
+
+    Broadcast-style captions arrive as fragments of a few words each --
+    the real Jacksonville FL excerpt this was checked against (Granicus
+    clip 7447, t=754) was 34 lines such as "[12:34] yourself." and
+    "[12:48] move on?". One timestamp per fragment is unreadable, and it
+    is poor page text for the same reason. `lines` stays in the payload
+    untouched (it is the faithful record, and what the per-line tests
+    pin); this is only how the page presents it.
+
+    A new paragraph starts at a speaker change -- the ">>" convention
+    captioners use, which is stripped from the text since the paragraph
+    break now carries that meaning -- or once a paragraph has passed
+    _EXCERPT_PARAGRAPH_SOFT_CHARS and the text so far ends a sentence.
+    Each paragraph keeps its FIRST line's index/start/timestamp/deep link,
+    so its timestamp still lands on the exact transcript row it opens
+    with. Our own audio transcriptions have no ">>" and longer lines; the
+    size rule alone handles those.
+    """
+    paragraphs: list[dict] = []
+    current: Optional[dict] = None
+    for line in lines:
+        # A marker can sit mid-line ("thank you. >> Understood"), so split
+        # on it: the first piece continues the current speaker, every
+        # later piece is a new one.
+        pieces = (line.get("text") or "").split(_SPEAKER_CHANGE_MARKER)
+        for position, piece in enumerate(pieces):
+            text = piece.strip()
+            if not text:
+                continue
+            speaker_change = position > 0
+            ends_sentence = current is not None and current["text"].endswith(
+                (".", "?", "!")
+            )
+            long_enough = (
+                current is not None
+                and len(current["text"]) >= _EXCERPT_PARAGRAPH_SOFT_CHARS
+            )
+            if current is None or speaker_change or (long_enough and ends_sentence):
+                current = {
+                    "index": line["index"],
+                    "start": line["start"],
+                    "timestamp_label": line["timestamp_label"],
+                    "deep_link": line["deep_link"],
+                    "text": text,
+                }
+                paragraphs.append(current)
+            else:
+                current["text"] = f"{current['text']} {text}"
+    return paragraphs
 
 
 async def save_context_entry(

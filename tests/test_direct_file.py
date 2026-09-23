@@ -436,3 +436,69 @@ async def test_resolve_warns_when_no_caption_sibling_is_found():
     assert result.segments == []
     assert result.transcript_warnings
     assert "caption file" in result.transcript_warnings[0]
+
+
+# --- Audio-only own-domain recordings (Ryan, 2026-09-22: in scope) -------
+#
+# Real fixtures, both confirmed live 2026-09-22: Allouez village, WI posts
+# its board meetings as a bare .mp3 to its own S3 bucket; Farmington city,
+# UT posts its Planning Commission recordings as a bare .mp3 under its own
+# wp-content/uploads. Both answer a plain HEAD with a real
+# `Content-Type: audio/mpeg` -- the exact shape this adapter already
+# resolves for video, previously rejected only because `resolve()`'s gate
+# required a `video/` prefix.
+
+ALLOUEZ_URL = (
+    "https://allouez.s3.amazonaws.com/media/2026/09/16090630/"
+    "Village-Board-9-15-2026.mp3"
+)
+FARMINGTON_PC_URL = (
+    "https://farmington.utah.gov/wp-content/uploads/2026/09/"
+    "09.03.26-PC-General-Session-Q-SYS.mp3"
+)
+
+
+@pytest.mark.parametrize("url", [ALLOUEZ_URL, FARMINGTON_PC_URL])
+def test_is_direct_file_url_recognizes_a_bare_mp3(url):
+    assert is_direct_file_url(url) is True
+
+
+async def test_resolve_confirms_a_real_audio_only_file():
+    finder = DirectFileAssetFinder()
+    routes = {
+        ALLOUEZ_URL: FakeResponse(status=200, headers={"Content-Type": "audio/mpeg"})
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(ALLOUEZ_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == ALLOUEZ_URL
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+
+
+async def test_resolve_confirms_a_second_independent_audio_only_file():
+    finder = DirectFileAssetFinder()
+    routes = {
+        FARMINGTON_PC_URL: FakeResponse(
+            status=200, headers={"Content-Type": "audio/mpeg"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(FARMINGTON_PC_URL)
+    assert result.video_url == FARMINGTON_PC_URL
+    assert result.video_format == "mp3"
+
+
+async def test_resolve_still_degrades_gracefully_for_non_media_content_type():
+    # The video-only regression check: an ordinary HTML page still isn't
+    # accepted just because the audio branch was added.
+    finder = DirectFileAssetFinder()
+    routes = {
+        DROPBOX_URL + "?dl=1": FakeResponse(
+            status=200, headers={"Content-Type": "text/html"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(DROPBOX_URL)
+    assert result.video_url is None
+    assert "playable video or audio" in result.video_warnings[0]

@@ -93,8 +93,10 @@ _CONTRACT_KEYS = {
     "created_at",
     "updated_at",
     "has_meeting",
+    "meeting_page_id",
     "slug",
     "title",
+    "gov_id",
     "jurisdiction",
     "jurisdiction_display",
     "hub_slug",
@@ -553,7 +555,13 @@ async def test_get_public_context_entry_returns_a_published_entry_with_a_meeting
     assert fetched is not None
     assert fetched["id"] == entry_id
     assert fetched["has_meeting"] is True
-    assert fetched["permalink"] == f"/context/{entry_id}"
+    assert fetched["meeting_page_id"] == page["id"]
+    # No headline on this entry -- falls back to jurisdiction + meeting
+    # title (WO-946), both fixed strings from _payload() above.
+    assert (
+        fetched["permalink"]
+        == f"/context/{entry_id}-context-test-city-ca-context-test-meeting"
+    )
 
 
 async def test_get_public_context_entry_returns_none_for_a_draft():
@@ -823,6 +831,280 @@ async def test_delete_account_data_nulls_context_entry_author_and_keeps_the_entr
             )
         ).scalar_one()
         assert author is None
+
+
+# --- get_context_transcript_excerpt (WO-946) -------------------------------
+
+
+async def _make_page_with_segments(
+    external_id: str,
+    segments: list,
+    *,
+    source: str = "sourced",
+    transcript_warnings: list | None = None,
+) -> str:
+    url = f"https://example.granicus.com/player/clip/{external_id}"
+    payload = {
+        **_payload(external_id, url),
+        "segments": segments,
+        "source": source,
+        "transcript_warnings": transcript_warnings or [],
+    }
+    result = await crud.ingest_resolution(payload, url)
+    return result["slug"]
+
+
+# Five real-shaped segments (start/end/text -- the shape app/utils/
+# vtt_parser.py produces and archive/templates/meeting_page.html renders,
+# confirmed by reading both) spanning 230 seconds, used across several
+# tests below to exercise the excerpt window logic.
+_FIVE_SEGMENTS = [
+    {
+        "start": 0.0,
+        "end": 10.0,
+        "text": "Good morning everyone, let's call this meeting to order.",
+    },
+    {
+        "start": 10.0,
+        "end": 40.0,
+        "text": "First item on the agenda is the budget discussion for this fiscal year.",
+    },
+    {
+        "start": 40.0,
+        "end": 70.0,
+        "text": "We have a motion on the floor to approve the proposed changes to the zoning code.",
+    },
+    {
+        "start": 70.0,
+        "end": 200.0,
+        "text": "A long public comment segment with a lot of detail about the project's impact on residents near the affected area.",
+    },
+    {
+        "start": 200.0,
+        "end": 230.0,
+        "text": "Thank you for your comment. Let's move to the next item on the agenda.",
+    },
+]
+
+
+async def test_excerpt_starts_at_the_segment_containing_t_seconds():
+    slug = await _make_page_with_segments("ctx-excerpt-basic", _FIVE_SEGMENTS)
+    page = await crud.get_page_by_slug(slug)
+
+    excerpt = await crud.get_context_transcript_excerpt(page["id"], 40)
+    assert excerpt is not None
+    # Segment index 2 ("start": 40.0) is where 40 lands; the window then
+    # grows to the minimum of 2 segments (index 3 makes the window's
+    # elapsed time exceed the 90s budget on its own, but the floor still
+    # requires at least 2), then stops before index 4 because by then
+    # both the time and segment-count floor are satisfied.
+    assert [line["index"] for line in excerpt["lines"]] == [2, 3]
+    assert excerpt["continues"] is True
+    assert excerpt["lines"][0]["text"] == _FIVE_SEGMENTS[2]["text"]
+    assert excerpt["lines"][0]["timestamp_label"] == "0:40"
+
+
+async def test_excerpt_deep_links_use_the_segments_real_index_and_version():
+    slug = await _make_page_with_segments("ctx-excerpt-deeplink", _FIVE_SEGMENTS)
+    page = await crud.get_page_by_slug(slug)
+
+    excerpt = await crud.get_context_transcript_excerpt(page["id"], 40)
+    assert excerpt is not None
+    version_id = excerpt["version_id"]
+    # index 2, not 0 -- the real position in the FULL segments array, so a
+    # reader who clicks through highlights the same line meeting_page.html
+    # itself would highlight (id="seg-2").
+    assert (
+        excerpt["lines"][0]["deep_link"]
+        == f"/m/{slug}?t=40&line=seg-2&version={version_id}"
+    )
+    assert (
+        excerpt["lines"][1]["deep_link"]
+        == f"/m/{slug}?t=70&line=seg-3&version={version_id}"
+    )
+
+
+async def test_excerpt_stops_before_the_transcripts_real_end_reports_continues_false():
+    # t_seconds near the very end -- only 1 real segment left after the
+    # start, so the excerpt is just that final segment and there's
+    # nothing more to read.
+    slug = await _make_page_with_segments("ctx-excerpt-tail", _FIVE_SEGMENTS)
+    page = await crud.get_page_by_slug(slug)
+
+    excerpt = await crud.get_context_transcript_excerpt(page["id"], 200)
+    assert excerpt is not None
+    assert [line["index"] for line in excerpt["lines"]] == [4]
+    assert excerpt["continues"] is False
+
+
+async def test_excerpt_falls_back_to_lookback_when_t_is_before_the_first_segment():
+    # The transcript's first real line starts at 100s (e.g. silence
+    # trimmed at the front) and the clip's own t is 97 -- no segment's
+    # start is <= 97, so this falls back to the first segment starting
+    # within the 5s lookback window.
+    segments = [
+        {"start": 100.0, "end": 130.0, "text": "The meeting is now in session."},
+        {"start": 130.0, "end": 160.0, "text": "Moving to the first agenda item."},
+    ]
+    slug = await _make_page_with_segments("ctx-excerpt-lookback", segments)
+    page = await crud.get_page_by_slug(slug)
+
+    excerpt = await crud.get_context_transcript_excerpt(page["id"], 97)
+    assert excerpt is not None
+    assert excerpt["lines"][0]["index"] == 0
+
+
+async def test_excerpt_is_none_when_the_transcript_stops_long_before_t():
+    """Found in review (WO-946): "the last segment starting at or before
+    t" is always satisfiable, so a transcript that stops early handed back
+    its final line as the context for a moment an hour later. Unrelated
+    speech presented as what was said is worse than no excerpt."""
+    segments = [
+        {"start": 0.0, "end": 30.0, "text": "Call to order."},
+        {"start": 30.0, "end": 60.0, "text": "Roll call."},
+    ]
+    slug = await _make_page_with_segments("ctx-excerpt-stops-early", segments)
+    page = await crud.get_page_by_slug(slug)
+
+    assert await crud.get_context_transcript_excerpt(page["id"], 3600) is None
+    # Just past the end is still the same moment (a pause, a vote).
+    assert await crud.get_context_transcript_excerpt(page["id"], 90) is not None
+
+
+async def test_excerpt_is_none_when_the_transcript_starts_long_after_t():
+    """The mirror case: the fallback took the FIRST line however many
+    minutes after `t` it began."""
+    segments = [
+        {"start": 1800.0, "end": 1830.0, "text": "We are back from recess."},
+        {"start": 1830.0, "end": 1860.0, "text": "Item seven."},
+    ]
+    slug = await _make_page_with_segments("ctx-excerpt-starts-late", segments)
+    page = await crud.get_page_by_slug(slug)
+
+    assert await crud.get_context_transcript_excerpt(page["id"], 10) is None
+
+
+async def test_excerpt_returns_none_with_no_segments():
+    slug = await _make_page_with_segments("ctx-excerpt-empty", [])
+    page = await crud.get_page_by_slug(slug)
+    assert await crud.get_context_transcript_excerpt(page["id"], 10) is None
+
+
+async def test_excerpt_returns_none_for_a_garbled_transcript():
+    from archive.db.crud import _GARBLED_MARKER
+
+    slug = await _make_page_with_segments(
+        "ctx-excerpt-garbled",
+        _FIVE_SEGMENTS,
+        transcript_warnings=[f"This transcript {_GARBLED_MARKER}."],
+    )
+    page = await crud.get_page_by_slug(slug)
+    assert await crud.get_context_transcript_excerpt(page["id"], 40) is None
+
+
+async def test_excerpt_returns_none_for_a_hallucination_flagged_transcript():
+    from archive.db.crud import _HALLUCINATION_MARKER
+
+    slug = await _make_page_with_segments(
+        "ctx-excerpt-hallucinated",
+        _FIVE_SEGMENTS,
+        source="transcribed",
+        transcript_warnings=[f"Some lines may have been {_HALLUCINATION_MARKER}."],
+    )
+    page = await crud.get_page_by_slug(slug)
+    assert await crud.get_context_transcript_excerpt(page["id"], 40) is None
+
+
+async def test_excerpt_returns_none_for_a_truncated_granicus_transcript():
+    from archive.db.crud import _GRANICUS_TRUNCATION_MARKER
+
+    slug = await _make_page_with_segments(
+        "ctx-excerpt-truncated",
+        _FIVE_SEGMENTS,
+        transcript_warnings=[f"Stopped at {_GRANICUS_TRUNCATION_MARKER}."],
+    )
+    page = await crud.get_page_by_slug(slug)
+    assert await crud.get_context_transcript_excerpt(page["id"], 40) is None
+
+
+async def test_excerpt_returns_none_for_unknown_page_id():
+    assert await crud.get_context_transcript_excerpt(999_999_999, 10) is None
+
+
+async def test_excerpt_carries_language_and_source():
+    slug = await _make_page_with_segments(
+        "ctx-excerpt-source",
+        _FIVE_SEGMENTS,
+        source="transcribed",
+    )
+    page = await crud.get_page_by_slug(slug)
+    excerpt = await crud.get_context_transcript_excerpt(page["id"], 0)
+    assert excerpt is not None
+    assert excerpt["source"] == "transcribed"
+
+
+def _raw_line(index, start, text):
+    return {
+        "index": index,
+        "start": start,
+        "timestamp_label": crud.format_timestamp_label(start),
+        "deep_link": f"/m/some-slug?t={int(start)}&line=seg-{index}&version=1",
+        "text": text,
+    }
+
+
+def test_excerpt_paragraphs_group_caption_fragments_by_speaker():
+    """The text is REAL: the first lines of the Jacksonville FL excerpt
+    (Granicus clip 7447, t=754) exactly as the browser showed them --
+    34 fragments like "[12:34] yourself.", one timestamp each. Garbled
+    words and all; this is what government captions look like."""
+    lines = [
+        _raw_line(332, 751.0, "no rent at this time."),
+        _raw_line(333, 754.0, ">> What do do introduce"),
+        _raw_line(334, 754.9, "yourself."),
+        _raw_line(335, 755.5, ">> So sorry, new Dr shuttle"),
+        _raw_line(336, 756.8, "commander Jessell sheriff's"),
+        _raw_line(337, 762.0, "office. Ok, thank you."),
+        _raw_line(338, 762.5, ">> Understood arts of this is"),
+    ]
+    paragraphs = crud._excerpt_paragraphs(lines)
+
+    assert [p["text"] for p in paragraphs] == [
+        "no rent at this time.",
+        "What do do introduce yourself.",
+        "So sorry, new Dr shuttle commander Jessell sheriff's office. Ok, thank you.",
+        "Understood arts of this is",
+    ]
+    # Each paragraph keeps its FIRST line's identity, so its timestamp
+    # link still lands on the transcript row it opens with.
+    assert [p["index"] for p in paragraphs] == [332, 333, 335, 338]
+    assert paragraphs[2]["deep_link"].endswith("t=755&line=seg-335&version=1")
+    assert not any(">>" in p["text"] for p in paragraphs)
+
+
+def test_excerpt_paragraphs_split_a_speaker_change_in_the_middle_of_a_line():
+    # Synthetic: the mid-line shape, which the real sample above did not
+    # happen to contain.
+    paragraphs = crud._excerpt_paragraphs(
+        [_raw_line(10, 100.0, "Thank you, chair. >> Any questions from the board?")]
+    )
+    assert [p["text"] for p in paragraphs] == [
+        "Thank you, chair.",
+        "Any questions from the board?",
+    ]
+
+
+def test_excerpt_paragraphs_break_long_unmarked_speech_at_a_sentence_end():
+    # Synthetic: our own audio transcriptions carry no ">>" at all, so the
+    # size rule has to do the work alone.
+    sentence = "This sentence is here to take up room in the paragraph."
+    lines = [_raw_line(i, float(i * 5), sentence) for i in range(12)]
+    paragraphs = crud._excerpt_paragraphs(lines)
+
+    assert len(paragraphs) > 1
+    assert all(p["text"].endswith(".") for p in paragraphs)
+    # Nothing lost, nothing duplicated.
+    assert " ".join(p["text"] for p in paragraphs) == " ".join([sentence] * 12)
 
 
 # --- context_editors.is_context_editor ------------------------------------

@@ -1,18 +1,19 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, NoVideoCandidateFound, resolve_newest_candidate
 from .generic_fallback import scan_page_for_video_evidence
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_text
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     dedupe_rollup_cues,
@@ -60,6 +61,31 @@ _SUBDOMAIN_RE = re.compile(r"pub-([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAIN_RE = re.compile(r"([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAINS = {"tcdsbpublishing"}
 
+# A bare eScribe tenant root (no path at all, or anything else that
+# isn't one of these two real per-meeting page shapes) used to "resolve
+# successfully" with zero content -- see module docstring's real page
+# shapes above and `_resolve_bare_tenant_root()` below (WO-938,
+# 2026-09-21, closing BACKLOG.md's "A bare eScribe tenant root (no
+# `Meeting.aspx` path)..." entry). Same check `scripts/
+# wo128_known_platform_sweep.py`'s `_is_bare_escribe_tenant_url()`
+# already used for this, moved into the adapter itself.
+_MEETING_PATH_HINTS = ("meeting.aspx", "isistandaloneplayer.aspx")
+
+# Real, undocumented-but-public tenant API, confirmed live 2026-09-06
+# (`scripts/adhoc_cdx_escribe_pipeline.py`'s own module docstring has
+# the full investigation): `POST {domain}/MeetingsCalendarView.aspx/
+# GetCalendarMeetings` with a start/end date window returns every
+# meeting in range, each carrying a `MeetingDocumentLink` list whose
+# entries have their own `HasVideo` boolean -- filtering to meetings
+# with at least one `HasVideo` document finds a genuinely-recorded past
+# meeting directly, no blind multi-candidate resolve trial needed.
+# `_LISTING_LOOKBACK_DAYS`/`_LISTING_MAX_CANDIDATES` match that script's
+# own values exactly, per this repo's own constraint on this finding
+# ("keep the same 120-day lookback ... adhoc_cdx_escribe_pipeline.py
+# already uses").
+_LISTING_LOOKBACK_DAYS = 120
+_LISTING_MAX_CANDIDATES = 8
+
 
 class EscribeAssetFinder(AssetFinder):
     """Resolves video + transcript for an eScribe meeting page.
@@ -105,6 +131,13 @@ class EscribeAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if self._is_bare_tenant_root(url):
+            # See `_resolve_bare_tenant_root()`'s own docstring -- a
+            # tenant host with no Meeting.aspx/ISIStandAlonePlayer.aspx
+            # path is never a real meeting page on its own (WO-938,
+            # 2026-09-21).
+            return await self._resolve_bare_tenant_root(url)
+
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
 
@@ -113,7 +146,15 @@ class EscribeAssetFinder(AssetFinder):
                 url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 response.raise_for_status()
-                html = await response.text()
+                # WO-938, 2026-09-21: `escribe.py` raised the identical
+                # raw `UnicodeDecodeError` shape `civicplus.py` fixed
+                # (WO-285) -- confirmed live on Ladysmith, BC's real
+                # eScribe tenant, same byte value/position (0xe2,
+                # position 10). Reuses `url_guard.read_capped_text()`
+                # rather than a new adapter-local fallback, exactly as
+                # `civicplus.py` already does -- see that adapter's own
+                # comment for the full reasoning.
+                html = await read_capped_text(response)
 
             soup = BeautifulSoup(html, "html.parser")
             title, date, jurisdiction = self._extract_metadata(soup, url, html)
@@ -283,6 +324,99 @@ class EscribeAssetFinder(AssetFinder):
             transcript_warnings=transcript_warnings,
             best_effort=best_effort,
         )
+
+    @staticmethod
+    def _is_bare_tenant_root(url: str) -> bool:
+        path = urlparse(url).path.lower()
+        return not any(hint in path for hint in _MEETING_PATH_HINTS)
+
+    async def _resolve_bare_tenant_root(self, url: str) -> ResolvedMeeting:
+        """A bare eScribe tenant host (`pub-southdundas.escribemeetings.com`,
+        with no `Meeting.aspx`/`ISIStandAlonePlayer.aspx` path at all --
+        `jurisdiction_coverage.csv`'s own `domain` column holds exactly
+        this shape for many Canadian eScribe governments) used to fetch
+        clean but extract nothing -- no agenda items, no video, no
+        metadata a bare tenant homepage has -- which read as "no content"
+        rather than "never actually checked a real meeting." Confirmed
+        live 2026-09-09, WO-128: ~29 of 43 real candidates hit exactly
+        this (BACKLOG.md's "A bare eScribe tenant root..." entry).
+
+        Discovers this tenant's own most-recent real (`HasVideo`)
+        meetings via `_discover_candidate_ids()` and hands the resulting
+        newest-first `Meeting.aspx?Id=...` URLs to the shared
+        `resolve_newest_candidate()` walk (`app/platforms/base.py`),
+        which recurses back into this class's own `resolve()` for each
+        one -- same pattern `scripts/wo128_known_platform_sweep.py`'s
+        `_discover_escribe_meeting()` already used, just moved into the
+        adapter so every caller gets it, not only that one sweep script.
+        """
+        domain = urlparse(url).netloc
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            candidate_ids = await self._discover_candidate_ids(session, domain)
+        candidate_urls = [
+            f"https://{domain}/Meeting.aspx?Id={guid}" for guid in candidate_ids
+        ]
+        result, reason = await resolve_newest_candidate(candidate_urls, self.resolve)
+        if result is not None:
+            return result
+        raise NoVideoCandidateFound(
+            message=(
+                f"Checked {len(candidate_urls)} of this eScribe tenant's most "
+                f"recent meetings with video and found none with real content "
+                f"({reason})."
+                if candidate_urls
+                else "This eScribe tenant has no meeting with video in the "
+                f"last {_LISTING_LOOKBACK_DAYS} days."
+            ),
+            candidates_checked=len(candidate_urls),
+        )
+
+    @staticmethod
+    async def _discover_candidate_ids(
+        session: aiohttp.ClientSession, domain: str
+    ) -> List[str]:
+        """Most-recent-first meeting ids on this tenant with at least one
+        `HasVideo` document, via the same real, undocumented-but-public
+        `GetCalendarMeetings` page-method `scripts/
+        adhoc_cdx_escribe_pipeline.py`'s `discover_candidate_ids()`
+        already uses -- see this module's constants above for the
+        lookback window/candidate cap this reuses unchanged, and that
+        script's own module docstring for the full investigation (no
+        auth, no per-tenant meeting-type id needed, confirmed live on
+        Peel Region and Hamilton)."""
+        end = date.today()
+        start = end - timedelta(days=_LISTING_LOOKBACK_DAYS)
+        try:
+            async with session.post(
+                f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings",
+                json={
+                    "calendarStartDate": start.isoformat(),
+                    "calendarEndDate": end.isoformat(),
+                },
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        "eScribe calendar discovery got HTTP %s for %s",
+                        response.status,
+                        domain,
+                    )
+                    return []
+                data = await response.json(content_type=None)
+        except Exception:
+            logger.warning(
+                "eScribe calendar discovery failed for %s", domain, exc_info=True
+            )
+            return []
+
+        meetings = data.get("d") or []
+        with_video = [
+            m
+            for m in meetings
+            if any(d.get("HasVideo") for d in (m.get("MeetingDocumentLink") or []))
+        ]
+        with_video.sort(key=lambda m: m.get("StartDate") or "", reverse=True)
+        return [m["ID"] for m in with_video[:_LISTING_MAX_CANDIDATES] if m.get("ID")]
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):

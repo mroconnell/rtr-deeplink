@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import secrets
 import time
 from contextlib import asynccontextmanager
@@ -52,6 +53,7 @@ from .utils.context_links import (
     CONTEXT_TITLE_MAX,
     MATCH_KINDS,
     ContextLinkError,
+    context_permalink,
     parse_rtr_link,
     parse_social_url,
 )
@@ -2905,11 +2907,20 @@ async def meeting_page(
             refresh_slug=slug,
         )
 
+    # WO-1002: "this moment was clipped on social media" -- published
+    # Full Context entries citing this exact meeting (BACKLOG.md's
+    # "clipped on social media" `/m/` backlink; WO-947 already did the
+    # same for /j/{slug} and /state/{slug}). Always a list, never None --
+    # crud.list_context_entries_for_meeting() runs in its own session and
+    # never raises, so a failure here can never take this page down.
+    context_entries = await crud.list_context_entries_for_meeting(page["id"])
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
         {
             "page": page,
+            "context_entries": context_entries,
             "active_version": active_version,
             "page_is_empty": page_is_empty,
             "video_embedding_disabled": video_embedding_disabled,
@@ -3483,7 +3494,9 @@ async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     page). 404s for an unknown slug or one with no indexable meetings, same
     in-route pattern as /m/{slug} and /state/{slug}. Below
     crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
-    noindex (thin-content posture) and stays out of sitemap.xml."""
+    noindex (thin-content posture) and stays out of sitemap.xml -- unless
+    the hub carries at least one published Full Context entry (WO-1003),
+    which counts as real content on its own."""
     data = await crud.get_jurisdiction_hub_data(hub_slug, topic_slug=topic or None)
     if data is None:
         # A slug that used to be a hub and no longer is, because WO-99
@@ -3612,31 +3625,60 @@ async def context_new(request: Request, id: Optional[int] = None):
     return response
 
 
-# Registered AFTER /context/new and /context/feed.xml on purpose, even
-# though Starlette's `:int` convertor already can't match either literal
-# path ("new"/"feed.xml" aren't digits) -- the ordering makes that
-# non-collision obvious to a reader without having to reason about the
-# convertor, and matches how every other literal-before-parametrized pair
-# in this file is ordered.
-@app.get("/context/{entry_id:int}")
-async def context_entry_page(request: Request, entry_id: int):
-    """The WO-945 permalink page for one Full Context entry -- a stable
-    URL a headline (or, absent one, the feed's quiet permalink link) can
-    point at regardless of which feed page the entry is currently on.
+# WO-946: "/context/{id}" or "/context/{id}-{slug}" -- the id is a plain
+# decimal (capped at _CONTEXT_ENTRY_REF_MAX_DIGITS digits, so an absurdly
+# long numeric string 404s cleanly instead of reaching int() at all,
+# never a 500/overflow), the slug an OPTIONAL lowercase-alnum-and-hyphen
+# tail (may be empty, e.g. a trailing "-" with nothing after it, which
+# .match() still accepts -- the "canonical or 301" check below is what
+# actually enforces the real slug, not this shape check). Anything else
+# ("abc", "12abc", "12-UPPER") never matches at all.
+_CONTEXT_ENTRY_REF_RE = re.compile(r"^(\d+)(?:-([a-z0-9-]*))?$")
+_CONTEXT_ENTRY_REF_MAX_DIGITS = 12
 
-    Same in-route 404 pattern as context_new() above: a draft, a hidden
-    entry, or an unknown id all render the plain not_found.html, never a
-    distinct "exists but not public" response -- get_public_context_
-    entry() already applies the real published+has-meeting rule, so
-    every rejection reason collapses to the same 404 here. This holds
-    even for a signed-in editor: a draft previews in the editor's own
-    list (/context/new), not at its own permalink.
+
+# Registered AFTER /context/new and /context/feed.xml on purpose, even
+# though _CONTEXT_ENTRY_REF_RE already can't match either literal path
+# ("new"/"feed.xml" aren't `\d+...`) -- the ordering makes that
+# non-collision obvious to a reader without having to reason about the
+# regex, and matches how every other literal-before-parametrized pair in
+# this file is ordered.
+@app.get("/context/{entry_ref}")
+async def context_entry_page(request: Request, entry_ref: str):
+    """The WO-945/WO-946 permalink page for one Full Context entry -- a
+    stable, now SEO-slugged URL (`/context/{id}-{slug}`) a headline (or,
+    absent one, the feed's quiet permalink link) can point at regardless
+    of which feed page the entry is currently on. The id is the real
+    identity; the slug is cosmetic (context_links.context_permalink())
+    and never trusted for lookup -- a request for anything other than the
+    entry's CURRENT canonical permalink (a bare id, a stale slug after a
+    title edit, a mistyped slug) 301s to it, query string intact, so a
+    slug that goes stale the moment an editor changes a title never
+    becomes a dead link or a duplicate-content URL.
+
+    Same in-route 404 pattern as context_new() above: a malformed ref, an
+    unknown id, a draft, or a hidden entry all render the plain
+    not_found.html, never a distinct "exists but not public" response --
+    get_public_context_entry() already applies the real published+has-
+    meeting rule, so every rejection reason collapses to the same 404
+    here. This holds even for a signed-in editor: a draft previews in the
+    editor's own list (/context/new), not at its own permalink.
     """
+    match = _CONTEXT_ENTRY_REF_RE.match(entry_ref)
+    if not match or len(match.group(1)) > _CONTEXT_ENTRY_REF_MAX_DIGITS:
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    entry_id = int(match.group(1))
     entry = await crud.get_public_context_entry(entry_id)
     if entry is None:
         return templates.TemplateResponse(
             request, "not_found.html", {}, status_code=404
         )
+    canonical_ref = entry["permalink"].removeprefix("/context/")
+    if entry_ref != canonical_ref:
+        query = f"?{request.url.query}" if request.url.query else ""
+        return RedirectResponse(f"{entry['permalink']}{query}", status_code=301)
     # Same threshold and same "read the module attribute at call time so
     # a test can monkeypatch it" reasoning as context_feed() above --
     # individual permalink pages follow the feed's own indexing decision
@@ -3645,14 +3687,49 @@ async def context_entry_page(request: Request, entry_id: int):
     indexable = (
         await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE
     )
+    # WO-946: a real transcript excerpt at the clipped moment -- the thing
+    # that makes this page more than a thin, templated wrapper around a
+    # link (see STATE_HUB_PAGES.md's diagnosis of why Google declines
+    # pages shaped like that). Only loaded here, never on the feed
+    # (get_context_transcript_excerpt() reads a version's full `segments`
+    # JSON, six-figure bytes per meeting -- fine for one entry page, not
+    # for twenty on a feed), and only when there's a timestamp to excerpt
+    # around at all.
+    excerpt = None
+    if entry["t_seconds"] is not None:
+        excerpt = await crud.get_context_transcript_excerpt(
+            entry["meeting_page_id"], entry["t_seconds"]
+        )
+    # published_at/updated_at are tz-aware on Postgres (prod) but SQLite
+    # (local dev) doesn't enforce it -- same naive -> UTC coercion
+    # context_feed_xml() already applies, needed here too for a valid
+    # datePublished/dateModified/article:published_time.
+    for key in ("published_at", "updated_at"):
+        value = entry[key]
+        if value is not None and value.tzinfo is None:
+            entry[key] = value.replace(tzinfo=timezone.utc)
+    # WO-947: "Part of {State}", next to the existing hub link -- a pure
+    # function over data the entry dict already carries (gov_id, added
+    # for exactly this), not a query. crud.effective_state_abbr() is the
+    # same function jurisdiction_page.html's own breadcrumb uses (see
+    # this file's /j/{hub_slug} route), so this handles the same two
+    # edge cases a plain suffix parse wouldn't: a Canadian jurisdiction's
+    # " (Canada)"-suffixed display text, and a state government itself
+    # (e.g. "State of California"), which has no ", CA" to parse at all.
+    state_abbr = crud.effective_state_abbr(entry["gov_id"], entry["jurisdiction"])
+    state_slug = state_slug_from_abbr(state_abbr) if state_abbr else None
+    state_name = US_STATE_ABBR_TO_NAME[state_abbr] if state_abbr else None
     return templates.TemplateResponse(
         request,
         "context_entry_page.html",
         {
             "entry": entry,
+            "excerpt": excerpt,
             "indexable": indexable,
             "is_editor": is_context_editor(get_clerk_user_id(request)),
             "active_account": get_clerk_user_id(request),
+            "state_slug": state_slug,
+            "state_name": state_name,
         },
     )
 
@@ -3672,21 +3749,36 @@ async def sitemap():
     states = await crud.get_state_coverage_index()
     hubs = await crud.list_indexable_hub_entries()
     static_paths = list(_SITEMAP_STATIC_PATHS)
+    # WO-946: each published entry's own permalink, listed alongside /context
+    # itself once the feed clears the same indexability threshold -- a page
+    # too thin to index as a feed hasn't earned individual entry slots
+    # either. Wrapped the same way as the /context check right below it, so
+    # a problem here can never take the whole sitemap down.
+    context_entries = []
     try:
-        # /context earns a sitemap slot on the same CONTEXT_MIN_INDEXABLE
-        # threshold the feed itself noindexes below (see context_feed()) --
-        # wrapped so a problem checking it can never take the whole
-        # sitemap down.
         if await crud.count_published_context_entries() >= crud.CONTEXT_MIN_INDEXABLE:
             static_paths.append("/context")
+            for row in await crud.list_context_entries_for_sitemap():
+                context_entries.append(
+                    {
+                        "permalink": context_permalink(
+                            row["id"],
+                            row["headline"],
+                            row["jurisdiction_display"],
+                            row["meeting_title"],
+                        ),
+                        "updated_at": row["updated_at"],
+                    }
+                )
     except Exception:
-        logger.exception("Failed to check Full Context indexability for the sitemap.")
+        logger.exception("Failed to build Full Context sitemap entries.")
     body = templates.get_template("sitemap.xml.jinja").render(
         base_url=base,
         entries=entries,
         states=states,
         hubs=hubs,
         static_paths=static_paths,
+        context_entries=context_entries,
     )
     return Response(content=body, media_type="application/xml")
 

@@ -83,21 +83,11 @@ from scripts.cms_fingerprint import HONEST_HEADERS  # noqa: E402
 # imported -- that script lives in the sibling rtr-business repo). See
 # that file's own comments for the real pages each pattern was built
 # against.
-CHALLENGE_MARKERS = [
-    "just a moment",
-    "attention required! | cloudflare",
-    "checking your browser before accessing",
-    "cf-browser-verification",
-    "cf-chl-bypass",
-    "ddos protection by",
-    "sgcaptcha",
-    "px-captcha",
-    "perimeterx",
-    "distil_r_captcha",
-    "captcha-delivery",
-    "request unsuccessful. incapsula",
-    "access to this page has been denied",
-]
+#
+# WO-939: CHALLENGE_MARKERS itself moved to scripts/challenge_markers.py
+# (was this script's own local copy, missing WO-278's Radware/
+# ShieldSquare markers) -- see that module's own docstring.
+from scripts.challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 
 SUBDOMAIN_LINK_PATTERN = re.compile(
     r"https?://([a-z0-9][a-z0-9-]*)\."

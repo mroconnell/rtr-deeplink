@@ -1,8 +1,13 @@
+import json
+
+import pytest
+
+from app.platforms.base import NoVideoCandidateFound
 from app.platforms.escribe import EscribeAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
-from conftest import load_fixture
+from conftest import load_fixture, load_fixture_bytes
 
 # No fixture-based tests existed for this adapter before this file (see
 # BACKLOG.md's "zero test coverage" note). PAGE_URL/VTT_URL below are the
@@ -584,3 +589,105 @@ def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
             EscribeAssetFinder._jurisdiction_from_subdomain(f"https://{netloc}/x")
             == expected
         )
+
+
+# --- WO-938, 2026-09-21: decode-safety (escribe.py raised the same raw
+# UnicodeDecodeError shape civicplus.py fixed, WO-285) and the bare-
+# tenant-root "listing root -> newest meeting" helper. ---
+
+
+async def test_resolve_non_utf8_response_degrades_instead_of_raising():
+    # WO-225 (2026-09-11) hit `RowError: escribe: resolve raised: 'utf-8'
+    # codec can't decode byte 0xe2 in position 10: invalid continuation
+    # byte` resolving Ladysmith, BC's real eScribe tenant -- the exact
+    # same byte value/position as the civicplus.py bug WO-285 fixed. This
+    # is a synthetic test (no real eScribe tenant serving a raw PDF at
+    # its own Meeting.aspx URL has been found) but reuses the SAME real,
+    # non-UTF8 bytes tests/test_civicplus.py's own decode-safety test
+    # uses -- a real PDF fetched live 2026-09-12 from Richmond Hill GA's
+    # CivicPlus DocumentCenter, reproducing the identical error text --
+    # rather than inventing new ones, per this repo's rule on reusing
+    # real byte sequences for a decode-safety test.
+    url = "https://pub-ladysmith.escribemeetings.com/Meeting.aspx?Id=1"
+    pdf_bytes = load_fixture_bytes("civicplus", "richmondhill_documentcenter_5032.bin")
+    routes = {url: FakeResponse(status=200, raw=pdf_bytes, url=url)}
+
+    with mock_session(routes):
+        # No crash -- the raw, non-decodable bytes just carry no
+        # recognizable eScribe markup, so this degrades to the ordinary
+        # "no video integration found" outcome instead of raising.
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.platform == "escribe"
+    assert result.video_url is None
+
+
+async def test_resolve_bare_tenant_root_discovers_newest_meeting_with_video():
+    # WO-128 (2026-09-09): a bare eScribe tenant root -- no
+    # Meeting.aspx/ISIStandAlonePlayer.aspx path at all, the shape
+    # jurisdiction_coverage.csv's own `domain` column holds for many
+    # Canadian eScribe governments (real examples: pub-southdundas.
+    # escribemeetings.com, pub-hawkesbury.escribemeetings.com) -- used to
+    # "resolve" with zero content instead of finding a real meeting.
+    # This confirms the fix: discover the tenant's own newest HasVideo
+    # meeting via GetCalendarMeetings and actually resolve it.
+    domain = "pub-southdundas.escribemeetings.com"
+    tenant_url = f"https://{domain}/"
+    calendar_url = f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings"
+    meeting_guid = "981f78d7-8211-4b4b-b066-5f93b4fd5e74"
+    meeting_url = f"https://{domain}/Meeting.aspx?Id={meeting_guid}"
+
+    calendar_json = json.dumps(
+        {
+            "d": [
+                {
+                    "ID": meeting_guid,
+                    "StartDate": "2026-07-15T00:00:00",
+                    "MeetingDocumentLink": [{"HasVideo": True}],
+                }
+            ]
+        }
+    )
+    meeting_html = (
+        "<html><head><title>City Council Meeting - July 15, 2026</title></head>"
+        "<body>"
+        '<div id="isi_player" data-client_id="southdundas" '
+        'data-stream_name="clip.mp4"></div>'
+        "</body></html>"
+    )
+
+    routes = {meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url)}
+    # _fetch_vtt() tries every KNOWN_LANGUAGE_SUFFIXES entry -- none
+    # populated here, this test is only about the discovery+resolve
+    # wiring, not captions (already covered by the Bakersfield tests
+    # above).
+    for suffix in [None, "fr", "es", "zh", "zh-hant", "tl"]:
+        vtt_url = (
+            "https://video.isilive.ca/southdundas/clip.mp4"
+            + (f".{suffix}" if suffix else "")
+            + ".vtt"
+        )
+        routes[vtt_url] = FakeResponse(status=404)
+    post_routes = {calendar_url: FakeResponse(status=200, text=calendar_json)}
+
+    with mock_session(routes, post_routes=post_routes):
+        result = await EscribeAssetFinder().resolve(tenant_url)
+
+    assert result.source_url == meeting_url
+    assert result.title == "City Council Meeting"
+    assert result.date == "2026-07-15"
+    assert result.video_url is not None
+
+
+async def test_resolve_bare_tenant_root_raises_when_no_video_meeting_found():
+    # No real HasVideo meeting in the lookback window -- a genuine,
+    # confident negative (the same typed signal civicplus.py's own
+    # listing-page case already raises), not a silent empty success.
+    domain = "pub-quietcounty.escribemeetings.com"
+    tenant_url = f"https://{domain}/"
+    calendar_url = f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings"
+    post_routes = {calendar_url: FakeResponse(status=200, text=json.dumps({"d": []}))}
+
+    with mock_session({}, post_routes=post_routes):
+        with pytest.raises(NoVideoCandidateFound):
+            await EscribeAssetFinder().resolve(tenant_url)

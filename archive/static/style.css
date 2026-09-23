@@ -2246,3 +2246,118 @@ h1.context-headline {
 .context-back-link {
   margin-bottom: 1.25rem;
 }
+
+/* The permalink page's visible publish date (WO-946), right under its
+   <h1> -- small and muted, informational rather than a competing focal
+   point next to the headline. */
+.context-published-date {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* The transcript excerpt section (WO-946) -- real words spoken at the
+   clipped moment, the thing that makes a permalink page more than a
+   thin wrapper around a link. Calm on purpose: it reads as part of the
+   entry's own card, not a separate, competing block. */
+.context-excerpt {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.context-excerpt h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+.context-excerpt-disclaimer {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.context-excerpt-lines {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+}
+.context-excerpt-line {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.context-excerpt-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-right: 0.35rem;
+}
+.context-excerpt-timestamp:hover,
+.context-excerpt-timestamp:focus {
+  color: var(--fg);
+  text-decoration: underline;
+}
+.context-excerpt-continue {
+  font-size: 0.9rem;
+}
+
+/* "Seen on social media" (WO-947) -- the hub/state pages' own list of
+   Full Context entries. A secondary block, not the page's main content
+   (the featured meetings above it are that), so it's deliberately
+   compact: no thumbnails, no embeds, no quoted transcript text, just
+   enough to recognize the clip and follow the link. .state-section-
+   heading/.state-section-sub (used elsewhere on both pages) are reused
+   for the heading/subtitle rather than inventing a third heading style. */
+.context-mentions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.context-mentions-item {
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.context-mentions-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.context-mentions-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.context-mentions-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.context-mentions-source {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.context-mentions-more {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* meeting_view (WO-1002) -- the same section, included on /m/{slug}
+   itself. Sits inside #videoColumn's sticky box, so it's narrower than
+   the hub/state placement; the "at M:SS" link is the one piece unique
+   to this view (the hub/state view has nowhere sensible to jump to,
+   since it spans many meetings). */
+.context-mentions-meeting {
+  margin-top: 1.25rem;
+}
+.context-mentions-timestamp {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.context-mentions-timestamp:hover,
+.context-mentions-timestamp:focus {
+  text-decoration: underline;
+}

@@ -712,6 +712,54 @@ def _render_failure_digest(failures: list) -> str:
     return "".join(parts)
 
 
+def _render_stuck_jobs_section(stuck_jobs: list) -> str:
+    """The stuck-job section of the daily worker report (WO-936): a job
+    that is still claimed ("in_progress") but hasn't reported a finished
+    or failed chunk in crud.STUCK_JOB_THRESHOLD -- see
+    crud.list_stuck_transcription_jobs()'s own docstring for the two real
+    failure shapes this catches (an OOM-killed chunk, a wedged
+    transcription call) that were previously invisible to every existing
+    check, including the "chunks flat" warning above -- that one only
+    catches the WHOLE pool going dead, not one job wedged while the rest
+    keeps moving.
+
+    Empty string (no section at all) when nothing is stuck -- unlike the
+    failure digest above, this deliberately does NOT print a "none, all
+    clean" line for the common case, since a completely idle transcription
+    day already has no active jobs at all and adding a second always-on
+    section here would just be noise on every ordinary report.
+    """
+    if not stuck_jobs:
+        return ""
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    parts = [
+        f'<p style="color:#a00;font-weight:bold">⚠ {len(stuck_jobs)} job(s) still '
+        "claimed with no chunk finished or failed in hours -- the worker may "
+        "have been OOM-killed mid-chunk, or a transcription call may be "
+        "wedged (no timeout on that half). See below.</p>",
+        f"<h2>Stuck jobs ({len(stuck_jobs)})</h2>",
+        '<ul style="margin-top:0">',
+    ]
+    for j in stuck_jobs:
+        title = html.escape(j.get("title") or j.get("slug") or "(untitled)")
+        page = (
+            f'<a href="{base_url}/m/{html.escape(j["slug"])}">{title}</a>'
+            if base_url and j.get("slug")
+            else title
+        )
+        src = html.escape(j.get("source_url") or "")
+        progress = f"{j.get('chunks_completed')}/{j.get('total_chunks')}"
+        parts.append(
+            f"<li>{page} "
+            f'<span style="color:#666">[{html.escape(j.get("platform") or "?")}, '
+            f"chunks {progress}, stalled {html.escape(j.get('stalled_for') or '?')}, "
+            f"job {j.get('job_id')}]</span><br>"
+            f'<a href="{src}" style="font-size:90%;color:#666">{src}</a></li>'
+        )
+    parts.append("</ul>")
+    return "".join(parts)
+
+
 async def send_worker_daily_report(
     to: str,
     *,
@@ -758,6 +806,10 @@ async def send_worker_daily_report(
     )
     segments_24h = summary["segments_added_last_24h"]
     segments_24h_str = f"{segments_24h:,}" if segments_24h is not None else "n/a"
+    # WO-936: absent for any caller that doesn't pass it (older tests'
+    # hand-built summary dicts), same "missing means none" default the
+    # rest of this function already uses for optional summary keys.
+    stuck_jobs = summary.get("stuck_jobs") or []
 
     body = ""
     if chunks_24h == 0 and summary["active_jobs"] > 0:
@@ -766,6 +818,12 @@ async def send_worker_daily_report(
             f"in the last 24 hours while {summary['active_jobs']:,} job(s) "
             "are still active -- the worker pool may be stalled or dead, "
             "not just idle.</p>"
+        )
+    if stuck_jobs:
+        body += (
+            f'<p style="color:#a00;font-weight:bold">⚠ {len(stuck_jobs)} job(s) '
+            'still claimed with no progress in hours -- see "Stuck jobs" '
+            "below.</p>"
         )
     body += (
         "<h2>Transcription worker activity, last 24 hours</h2>"
@@ -778,12 +836,14 @@ async def send_worker_daily_report(
         '<table cellpadding="6" style="border-collapse: collapse">'
         f"<tr><td>Active jobs</td><td><strong>{summary['active_jobs']:,}</strong></td></tr>"
         f"<tr><td>Remaining chunks in active jobs</td><td><strong>{summary['remaining_chunks_in_active_jobs']:,}</strong></td></tr>"
+        f"<tr><td>Stuck (claimed, no progress in hours)</td><td><strong>{len(stuck_jobs):,}</strong></td></tr>"
         f"<tr><td>Meetings on the site with no transcript</td><td><strong>{summary['backlog_no_transcript']:,}</strong></td></tr>"
         f"<tr><td>Still in the tier-3 discovery queue (not yet archived)</td><td><strong>{summary['tier3_queue_remaining']:,}</strong></td></tr>"
         "</table>"
         f'<p style="color:#666">All-time cumulative: {summary["cumulative_chunks_completed_all_time"]:,} chunks, '
         f"{summary['cumulative_jobs_completed_all_time']:,} jobs completed.</p>"
     )
+    body += _render_stuck_jobs_section(stuck_jobs)
     if failures is not None:
         body += _render_failure_digest(failures)
     return await _send(to, "Transcription worker daily report", body)

@@ -217,8 +217,8 @@ def capped_polite_fetch(url: str, method: str = "GET"):
     return w273.RATE_LIMITER.wait_and_request(key, _do_capped_request, method, url)
 
 
-import wo273_targeted as w273t  # noqa: E402
-import wo273_recon as w273  # noqa: E402
+import wo282_targeted as w273t  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 import wo147_access_ladder_sweep as w147  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 

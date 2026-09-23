@@ -107,6 +107,49 @@ _REMIX_CONTEXT_RE = re.compile(
     r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL
 )
 
+# A gallery page (`/internetchannel/gallery/{id}`) -- Cablecast's own
+# per-category/per-town LISTING view on a shared, multi-tenant Remix
+# portal, found live 2026-09-23 (Ryan, hand-checking a batch of CivicPlus
+# governments whose AgendaCenter has no video): reflect-vsctv.cablecast.tv
+# is one shared Cablecast tenant serving FOUR distinct Connecticut towns
+# by gallery id (22=Old Saybrook, 10=Haddam, 9=Deep River, 3=Clinton),
+# each town's own real, current meeting videos filed under its own
+# gallery rather than a per-town subdomain. Before this fix these URLs
+# resolved by accident, through `generic_fallback.py`'s
+# `find_platform_link()` grabbing whichever `/internetchannel/show/{id}`
+# link happened to appear first in the page's raw HTML -- not necessarily
+# the newest meeting, and fragile: confirmed live the same day that a
+# single gallery page already lists 50 real shows with real pagination
+# beyond that (Old Saybrook's alone), so "first link in the DOM" is not a
+# considered choice.
+#
+# Confirmed live: a gallery page's `window.__remixContext` embeds the
+# SAME kind of show catalog the root-page "related shows" carousel does
+# (see `_SHOW_ID_SHORT_RE`'s own module note above) -- 234 distinct real
+# shows for Old Saybrook's gallery/22 alone, each already carrying a real
+# `title`, `eventDate` and (when ready) `vodUrl` with no extra fetch
+# needed to know WHICH show is newest. Only the bare `/internetchannel/
+# gallery/{id}` shape is confirmed -- unlike `_SHOW_ID_SHORT_RE`, no
+# customer has been seen serving a gallery at a prefix-dropped bare
+# `/gallery/{id}` path, so that shape is deliberately not matched here
+# rather than guessed.
+_GALLERY_ID_RE = re.compile(r"/internetchannel/gallery/(\d+)")
+
+# The SAME show's `eventDate` is formatted completely differently between
+# a gallery listing and that show's own dedicated page -- confirmed live
+# 2026-09-23 on Old Saybrook show 7413, present on both:
+#   gallery/22's embedded catalog: "7/14/2026 12:00:00 AM"
+#   show/7413's own page:          "2026-07-14T00:00:00-04:00" (real ISO,
+#                                   what `_format_date()` above expects)
+# So a gallery's own `eventDate` is only ever used here to pick the
+# NEWEST show for sorting -- `_resolve_gallery()` always re-resolves
+# through the winning show's own canonical `/internetchannel/show/{id}`
+# URL afterward (reusing the existing, already-correct show path in
+# full, transcript fetch included) rather than trying to build a
+# `ResolvedMeeting` directly from the gallery's own differently-shaped
+# data.
+_GALLERY_EVENT_DATE_FORMAT = "%m/%d/%Y %I:%M:%S %p"
+
 # A third, genuinely different real Cablecast portal template --
 # "CablecastPublicSite" (an Ember.js app, not Remix) -- found via a
 # 2026-08-29 wildcard-free DNS sweep and confirmed live on two independent
@@ -345,6 +388,10 @@ class CablecastAssetFinder(AssetFinder):
         publicsite_match = _PUBLICSITE_SHOW_ID_RE.search(urlparse(url).path)
         if publicsite_match:
             return await self._resolve_publicsite(url, int(publicsite_match.group(1)))
+
+        gallery_match = _GALLERY_ID_RE.search(urlparse(url).path)
+        if gallery_match:
+            return await self._resolve_gallery(url)
 
         show_id = self._extract_show_id(url)
         if show_id is None:
@@ -766,6 +813,139 @@ class CablecastAssetFinder(AssetFinder):
             except (aiohttp.ClientError, TimeoutError):
                 continue
         return None
+
+    async def _resolve_gallery(self, url: str) -> ResolvedMeeting:
+        """A gallery URL (`_GALLERY_ID_RE`, see module note) is a listing,
+        not one meeting -- picks the newest real (has a `vodUrl`) show in
+        THIS gallery's own scoped show list, then re-resolves through
+        that show's own canonical `/internetchannel/show/{id}` URL,
+        reusing `resolve()`'s own already-correct show path (transcript
+        fetch, jurisdiction, everything) rather than duplicating it here.
+
+        Real bug caught live 2026-09-23 building this: an earlier version
+        walked the WHOLE remix tree for any object shaped like a show,
+        which also picks up content that has nothing to do with this
+        gallery -- confirmed live on Old Saybrook's gallery/22: the site
+        homepage's own `slideShow` carousel (unrelated site-wide featured
+        content, "Arts & Entertainment with Deborah Gilbert") and a
+        SEPARATE gallery's own sample shows (`site.galleries[8]`, a
+        different category) are both reachable from that same page's
+        tree and were both wrongly returned as if they belonged to gallery
+        22. `_find_gallery_shows()` instead finds the one object in the
+        tree that's actually THIS gallery -- verified by its own
+        `cablecastGalleryId` matching the id in the URL, not by tree
+        position -- and reads only its own `shows` list."""
+        gallery_match = _GALLERY_ID_RE.search(urlparse(url).path)
+        gallery_id = int(gallery_match.group(1))
+
+        fetch_url = self._force_http(url)
+        html = await self._fetch_html(fetch_url)
+        if not html:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=["Could not fetch this Cablecast gallery page."],
+            )
+
+        remix_data = self._extract_remix_context(html)
+        shows = self._find_gallery_shows(remix_data, gallery_id) if remix_data else None
+        if shows is None:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    f"Could not find gallery {gallery_id}'s own show list."
+                ],
+            )
+        ready = [s for s in shows if s.get("vodUrl")]
+        if not ready:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    f"No video-ready show found in this gallery ({len(shows)} "
+                    "show(s) checked -- only the newest page of a paginated "
+                    "gallery is checked, an older page may still have one)."
+                ],
+            )
+
+        newest = max(
+            ready,
+            key=lambda s: (
+                self._parse_gallery_event_date(s.get("eventDate")) or datetime.min
+            ),
+        )
+        show_id = newest.get("showId")
+        parsed = urlparse(fetch_url)
+        canonical = f"{parsed.scheme}://{parsed.netloc}/internetchannel/show/{show_id}"
+        if parsed.query:
+            canonical = f"{canonical}?{parsed.query}"
+        return await self.resolve(canonical)
+
+    @staticmethod
+    def _find_gallery_shows(obj, gallery_id: int) -> Optional[List[dict]]:
+        """Same recursive-search shape as `_find_show()`/`_find_site()`
+        (Remix's loader data nesting is keyed by route id, not a fixed
+        path worth hardcoding -- confirmed live 2026-09-23 the real key
+        is `routes/_shell.gallery.$galleryId`, but matched here by the
+        gallery OBJECT's own identity instead, the same reasoning
+        `_find_site()`'s own docstring already gives for matching
+        `siteId`+`pageDescription` together rather than trusting tree
+        position). Returns the one gallery object's own `shows` list
+        whose `cablecastGalleryId` equals the id from the URL -- not
+        every show-shaped object anywhere on the page (see
+        `_resolve_gallery()`'s own docstring for the real bug that
+        distinction fixes)."""
+        if isinstance(obj, dict):
+            if obj.get("cablecastGalleryId") == gallery_id and isinstance(
+                obj.get("shows"), list
+            ):
+                return obj["shows"]
+            for value in obj.values():
+                found = CablecastAssetFinder._find_gallery_shows(value, gallery_id)
+                if found is not None:
+                    return found
+        elif isinstance(obj, list):
+            for item in obj:
+                found = CablecastAssetFinder._find_gallery_shows(item, gallery_id)
+                if found is not None:
+                    return found
+        return None
+
+    @staticmethod
+    def _parse_gallery_event_date(event_date: Optional[str]) -> Optional[datetime]:
+        """A gallery's own `eventDate` string -- see `_GALLERY_EVENT_DATE_
+        FORMAT`'s module note for why this is usually a different format
+        from `_format_date()` above and only ever used for sorting, never
+        shown to a user.
+
+        Real bug found live 2026-09-23 picking the newest Haddam, CT
+        show: the SAME show (id 5167) appears twice in one gallery page's
+        own catalog with its `eventDate` in BOTH formats at once
+        ("7/10/2024 12:00:00 AM" in one copy, the ISO "2024-07-10T00:00:
+        00-04:00" `_format_date()` expects in the other) -- `_find_all_
+        shows()`'s dedup keeps whichever copy it meets first in the tree,
+        so trying only the gallery format here let that show's real,
+        correct date silently fail to parse on the ISO-format copy
+        (treated as `datetime.min` -- effectively "no date"), which
+        wrongly lost the newest-show comparison to a real but older show
+        (Feb 2024) that happened to parse. Tries both formats now,
+        whichever copy survives dedup."""
+        if not event_date:
+            return None
+        try:
+            return datetime.strptime(event_date, _GALLERY_EVENT_DATE_FORMAT)
+        except ValueError:
+            pass
+        try:
+            # Stripped to naive (`max()` below compares across shows that
+            # may have landed on either format after dedup -- comparing a
+            # naive and a timezone-aware datetime raises TypeError, and
+            # every real example seen so far is midnight in the same
+            # local offset either way, so this loses no real precision).
+            return datetime.fromisoformat(event_date).replace(tzinfo=None)
+        except ValueError:
+            return None
 
     @staticmethod
     def _extract_show_id(url: str) -> Optional[int]:

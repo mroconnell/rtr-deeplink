@@ -24,6 +24,15 @@ WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "feed-tier3-transcription.
 
 QUEUE_FILE_PATH = "scripts/tier3_auto_transcription_queue.txt"
 PROBE_SIDECAR_PATH = "scripts/tier3_auto_transcription_queue_probe.csv"
+# WO-937: a third append-only path with the exact same WO-254 exposure --
+# _push_if_has_video() now also writes a durable per-line result log
+# instead of only printing to stdout (BACKLOG.md's matching entry). WO-937
+# itself couldn't push the matching workflow-file update (its session's
+# git push was rejected: "refusing to allow an OAuth App to create or
+# update workflow ... without `workflow` scope", a GitHub platform
+# restriction on that token, not a code decision) -- applied by hand
+# 2026-09-22 once a `workflow`-scoped token was available.
+FEED_LOG_PATH = "scripts/tier3_auto_transcription_queue_feed_log.csv"
 
 
 def _advance_step_run_script() -> str:
@@ -42,6 +51,11 @@ def test_advance_step_stages_both_the_queue_file_and_the_probe_sidecar():
     script = _advance_step_run_script()
     assert f"git add {QUEUE_FILE_PATH}" in script
     assert f"git add {PROBE_SIDECAR_PATH}" in script
+
+
+def test_advance_step_stages_the_feed_log_too():
+    script = _advance_step_run_script()
+    assert f"git add {FEED_LOG_PATH}" in script
 
 
 def test_advance_step_checks_the_diff_after_staging_both_paths():

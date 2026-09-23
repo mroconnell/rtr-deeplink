@@ -1,9 +1,19 @@
+import contextlib
 import functools
 import inspect
 import re
 import types
 from abc import ABC, abstractmethod
-from typing import Callable, FrozenSet, List, Optional, Tuple, TypedDict
+from typing import (
+    Awaitable,
+    Callable,
+    FrozenSet,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypedDict,
+)
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -16,6 +26,91 @@ class UnsupportedPlatformError(Exception):
         self.url = url
         self.detected = detected
         super().__init__(f"No asset finder for platform '{detected}' ({url})")
+
+
+class ResolveError(Exception):
+    """The one typed exception an adapter's `resolve()` should raise for
+    an expected "this URL genuinely can't produce a meeting" outcome --
+    a URL shape it can't parse, a listing/channel page with no specific
+    video, encoded content it can't recover -- instead of letting a raw
+    stdlib exception (`ValueError`, `UnicodeDecodeError`, `LookupError`,
+    ...) escape uncaught (WO-938, 2026-09-21).
+
+    Every existing caller already survives an unrecognized exception:
+    `/api/resolve`'s top-level `except Exception` (`app/main.py`) turns
+    it into a `{"error": "resolve_failed", "message": str(e)}` response,
+    and every ingest/sweep script's own broad `except Exception` around
+    a `resolve()` call turns it into a `RowError`/`reject-dead`/skip.
+    Raising `ResolveError` (or a subclass) instead of a bare exception
+    doesn't change that -- it just gives the message a clean, reader-
+    facing wording instead of a raw internal repr (e.g. `KeyError:
+    'foo'`), and gives a caller that DOES want to tell "a real, expected
+    resolve failure" apart from "a genuine bug in this adapter" one type
+    to catch, the same way `CalendarPageError`/`NoVideoCandidateFound`
+    below already let a caller catch "here's a pick-list" or "checked,
+    found no video" specifically.
+
+    Not retrofitted across every existing adapter in this change --
+    `escribe.py`, `suiteone.py` and `youtube.py` raise it as of WO-938;
+    every adapter's decode step goes through `url_guard.read_capped_
+    text()` instead, which degrades in place rather than raising at
+    all, so most of the "raw exception escapes" class this exists for
+    is closed without ever needing to catch anything new.
+    """
+
+
+async def resolve_newest_candidate(
+    candidate_urls: Sequence[str],
+    resolve_one: Callable[[str], Awaitable[ResolvedMeeting]],
+) -> Tuple[Optional[ResolvedMeeting], Optional[str]]:
+    """Given a newest-first list of candidate meeting URLs -- already
+    discovered some other way (a tenant's own calendar/listing API is
+    not this function's concern) -- and the adapter's own per-URL
+    `resolve_one` callback, tries each candidate in turn and returns the
+    first `ResolvedMeeting` that actually carries real content
+    (segments, agenda items, an agenda link, or a video URL), or
+    `(None, reason)` if none of them do.
+
+    Shared "listing root -> newest meeting" helper (WO-938, 2026-09-21):
+    ported from the identical hand-rolled loop `scripts/
+    wo128_known_platform_sweep.py`'s `_discover_escribe_meeting()`
+    already used for eScribe's own bare-tenant-root case (see BACKLOG.md
+    "A bare eScribe tenant root (no `Meeting.aspx` path)..."), moved
+    into the adapter itself (`escribe.py`'s `_resolve_bare_tenant_root()`)
+    so any caller -- not just a dedicated sweep script -- gets a real
+    meeting instead of a hollow "resolved successfully" empty result for
+    a bare tenant host. Factored out here, not left private to
+    `escribe.py`, so a future adapter with the same "given a listing
+    root instead of a specific meeting, walk it newest-first and use the
+    first real hit" shape (SuiteOne's own bare tenant-management-root
+    case is a real, confirmed, still-open example -- see BACKLOG.md)
+    doesn't have to hand-roll the same walk-and-check loop again.
+    """
+    if not candidate_urls:
+        return None, "no candidate meetings were found on this listing page"
+    last_reason = "none of the candidates checked had real content"
+    for candidate_url in candidate_urls:
+        try:
+            result = await resolve_one(candidate_url)
+        except (CalendarPageError, NoVideoCandidateFound, ResolveError) as e:
+            last_reason = str(e)
+            continue
+        except Exception as e:
+            # Same posture `_discover_escribe_meeting()` already took:
+            # one bad candidate (a transient fetch failure, an adapter
+            # bug on that specific page) shouldn't abort the whole
+            # newest-first walk -- try the next one and only give up
+            # once every candidate has been tried.
+            last_reason = f"resolve raised: {e}"
+            continue
+        if (
+            result.segments
+            or result.agenda_items
+            or result.agenda_link
+            or result.video_url
+        ):
+            return result, None
+    return None, last_reason
 
 
 class CalendarCandidate(TypedDict):
@@ -267,6 +362,7 @@ def detect_platform(url: str) -> str:
     from .direct_file import is_direct_file_url
     from .boarddocs import is_boarddocs_tenant_url
     from .sliq_harmony import is_sliq_harmony_url
+    from .tvw import is_tvw_video_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -305,6 +401,14 @@ def detect_platform(url: str) -> str:
         # CivicPlus's own corporate/marketing hosts (connect.civicplus.com
         # etc.) already returned "unknown" above, via _ALL_CORPORATE_HOSTS
         # -- this branch is only reached for a real per-government tenant.
+        # The bare "civicplus" substring also catches civicplus.io (found
+        # live 2026-09-23, WO-1015's host_recognition.py replay) -- Ryan's
+        # call on that domain (2026-09-23, verbatim): "we need to base the
+        # civicplus.io decision on real examples and data - can you
+        # default to keeping it for now" -- i.e. this is a DEFAULT pending
+        # real data, not a confirmed decision like granicusgovaccess.net's
+        # (see BACKLOG.md's "civicplus.io: platform or CivicPlus web host"
+        # entry).
         return "civicplus"
     if "primegov.com" in netloc:
         return "primegov"
@@ -403,6 +507,7 @@ def detect_platform(url: str) -> str:
     if (
         "/cablecastpublicsite/show/" in path
         or "/internetchannel/show/" in path
+        or "/internetchannel/gallery/" in path
         or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
@@ -463,6 +568,14 @@ def detect_platform(url: str) -> str:
         # gap WO-306 documented for CablecastPublicSite applied here too:
         # a real Cablecast Remix page on a government's own domain never
         # reached cablecast.py at all.
+        #
+        # 2026-09-23: "/internetchannel/gallery/{id}" added -- a per-town
+        # LISTING page on a shared, multi-tenant Remix portal (confirmed
+        # live: reflect-vsctv.cablecast.tv serves 4 distinct CT towns by
+        # gallery id) -- see cablecast.py's own `_GALLERY_ID_RE` module
+        # note for the full investigation and why this used to resolve
+        # only by accident, through generic_fallback.py grabbing whatever
+        # `/show/{id}` link happened to appear first in the page.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
@@ -756,6 +869,13 @@ def detect_platform(url: str) -> str:
         # only an embedded Invintus clientID+eventID this module extracts
         # and hands to InvintusAssetFinder via resolve_via_platform().
         return "az_legislature"
+    if is_tvw_video_url(url):
+        # TVW / Washington State Legislature (tvw.org) -- found 2026-09-22
+        # (WO-1009's recon, adapter built by WO-1010): a real
+        # `tvw.org/video/{slug}/` page, delegating to InvintusAssetFinder
+        # the same way azleg.gov's wrapper pages do above -- see
+        # tvw.py's own module docstring for the real investigation.
+        return "tvw"
     if parse_wistia_account_url(url) is not None:
         # Wistia -- confirmed live 2026-09-10 (WO-161) against RegionalWebTV/
         # Advanced Media Solutions of Virginia's shared `amsva.wistia.com`
@@ -833,17 +953,142 @@ def get_finder(platform: str) -> AssetFinder:
     return _REGISTRY[platform]
 
 
-async def resolve_via_platform(url: str) -> ResolvedMeeting:
+_YOUTUBE_URL_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+        "youtu.be",
+        "www.youtu.be",
+    }
+)
+
+
+def _is_youtube_url(url: str) -> bool:
+    try:
+        host = urlparse(url).netloc.lower().split("@")[-1].split(":")[0]
+    except Exception:  # noqa: BLE001
+        return False
+    return host in _YOUTUBE_URL_HOSTS
+
+
+class YouTubeResolveBlocked(Exception):
+    """Raised by `youtube_resolve_guard()` below instead of letting
+    YouTube actually get fetched from inside a `resolve()` call.
+
+    WO-939: generalized from `app/platforms/passive_verify.py`'s own
+    private `_YouTubeResolveBlocked`/`_youtube_resolve_guard()` (built for
+    WO-325's a2gov.org incident -- see that module for the full story),
+    so any caller under a "no YouTube calls" constraint can use the same
+    proven mechanism, not just `verify_hub()`. `passive_verify.py` now
+    imports this rather than keeping its own copy.
+
+    Checking whether a CANDIDATE url's own host is youtube.com is not
+    enough on its own: a candidate that is NOT itself a youtube.com URL
+    (a Legistar/CivicPlus/CivicWeb/Municode Meetings page, a PrimeGov
+    meeting page, a plain government page `generic_fallback.py` scans) can
+    still internally embed a YouTube video and delegate to YouTube from
+    INSIDE that adapter's own `resolve()`. Two real, DIFFERENT chokepoints
+    every such delegation goes through, both patched here: `YouTubeAsset
+    Finder.resolve(url)` -- the path `civicplus.py`/`municode_meetings.py`/
+    `civicweb.py`/`generic_fallback.py`'s platform-link delegation all use
+    (via `resolve_via_platform()`); and `YouTubeAssetFinder.resolve_video_
+    id(video_id, source_url)` -- the path `legistar.py`, `primegov.py`,
+    and `generic_fallback.py`'s own embedded-video-id scan (per CLAUDE.md's
+    "PrimeGov embeds a YouTube video" wrapper note) call DIRECTLY, bypassing
+    `.resolve()` entirely, specifically so they can pass the delegating
+    page's own `source_url` through.
+    """
+
+    def __init__(self, url: str):
+        self.url = url
+        super().__init__(f"blocked a YouTube fetch for {url}")
+
+
+@contextlib.contextmanager
+def youtube_resolve_guard():
+    """Scoped for the duration of one call (not a permanent process-wide
+    patch, so a caller elsewhere in the app that legitimately wants a real
+    YouTube resolve -- e.g. the YouTube drip -- is unaffected): monkey-
+    patches both `YouTubeAssetFinder.resolve` and `YouTubeAssetFinder.
+    resolve_video_id` (see `YouTubeResolveBlocked`'s own docstring for why
+    both) to raise `YouTubeResolveBlocked` instead of calling yt-dlp, then
+    restores the originals on exit, success or failure.
+
+    This patches the CLASS, so it blocks every route into YouTube
+    regardless of which adapter delegates -- including `generic_fallback.
+    py`'s own regex-then-resolve_video_id path, which never routes through
+    `resolve_via_platform()` at all. That is the whole point: threading an
+    `allow_youtube` parameter through every individual adapter's `resolve()`
+    would mean editing a dozen-plus files (see CLAUDE.md's own list of
+    platforms that delegate to YouTube) and would still miss the next one
+    added later; patching the two shared chokepoints once covers all of
+    them, present and future, the same way WO-325's original fix proved
+    live against a real a2gov.org Legistar->YouTube delegation.
+
+    Use `resolve_via_platform(url, allow_youtube=False)` for the common
+    case; use this directly around a bare `finder.resolve(url)` call (the
+    shape the `wo3xx_resolve_diagnostic.py` family and similar hand-check
+    scripts use, since they need their own `UnsupportedPlatformError`/
+    `CalendarPageError` handling around `get_finder()`/`resolve()`
+    separately from `resolve_via_platform()`'s combined call).
+    """
+    from .youtube import YouTubeAssetFinder
+
+    original_resolve = YouTubeAssetFinder.resolve
+    original_resolve_video_id = YouTubeAssetFinder.resolve_video_id
+
+    async def _blocked(self, url: str):  # noqa: ANN001
+        # Only block a call that is genuinely about to fetch a real
+        # youtube.com/youtu.be URL; anything else calls through to the
+        # real `resolve()`, which raises its own honest error for a URL
+        # that was never a valid YouTube one to begin with. See WO-348's
+        # note in passive_verify.py: a caller's own `platform_hint` can
+        # say "youtube" while `url` is still the original, non-YouTube
+        # hub page -- that must not be blocked here either.
+        if _is_youtube_url(url):
+            raise YouTubeResolveBlocked(url)
+        return await original_resolve(self, url)
+
+    async def _blocked_video_id(cls, video_id: str, source_url: str):  # noqa: ANN001
+        raise YouTubeResolveBlocked(f"https://www.youtube.com/watch?v={video_id}")
+
+    YouTubeAssetFinder.resolve = _blocked
+    YouTubeAssetFinder.resolve_video_id = classmethod(_blocked_video_id)
+    try:
+        yield
+    finally:
+        YouTubeAssetFinder.resolve = original_resolve
+        YouTubeAssetFinder.resolve_video_id = original_resolve_video_id
+
+
+async def resolve_via_platform(
+    url: str, *, allow_youtube: bool = True
+) -> ResolvedMeeting:
     """Detect a URL's platform and delegate to its registered finder.
 
     Used by wrapper platforms like Legistar, which don't host video/captions
     themselves but redirect or link to a platform that does (usually
     Granicus) -- resolving the linked URL should go through that platform's
     real adapter, not be treated as a dead end.
+
+    `allow_youtube=False` (WO-939): for a caller operating under CLAUDE.md's
+    "YouTube is fetched only by the drip Mac" rule -- a sweep/hand-check
+    script running anywhere else. Wraps the delegated `resolve()` call in
+    `youtube_resolve_guard()` so a `YouTubeResolveBlocked` is raised instead
+    of a real yt-dlp fetch if this URL's own platform (or a platform it
+    further delegates to) turns out to embed a YouTube video. Default True
+    keeps every existing caller's behavior unchanged.
     """
     platform = detect_platform(url)
     finder = get_finder(platform)
-    return await finder.resolve(url)
+    if allow_youtube:
+        return await finder.resolve(url)
+    with youtube_resolve_guard():
+        return await finder.resolve(url)
 
 
 _DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")

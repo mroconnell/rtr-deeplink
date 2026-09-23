@@ -227,6 +227,78 @@ _M4A_BRAND_MARKER = b"M4A "
 # `.mp3` handling), not itself independently confirmed live.
 _MP3_FRAME_SYNC_PREFIXES = (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
 
+# South Carolina's legislature (WO-1005, 2026-09-22): every real
+# `video.scstatehouse.gov/mp4/<date><H|S|J><committee><id>_1.mp4` file
+# answers BOTH a plain HEAD and a ranged GET with `Content-Type:
+# application/octet-stream`, confirmed live against two real, small
+# meetings listed on `scstatehouse.gov/meetings.php?...op=vid` -- an
+# 11-minute Senate Judiciary full committee (2026-08-11,
+# `20260811SJudiciaryFullCommittee16632_1.mp4`, 251,172,111 bytes) and a
+# 14-minute House Government Efficiency and Legislative Oversight
+# subcommittee the same day
+# (`20260811HGovtEfficiencyandLegOversightLawEnforcementCriminal16624_1.mp4`,
+# 305,067,141 bytes). Both also answered `Accept-Ranges: bytes` with a
+# real `Content-Length`/`Content-Range`, so this is a real, playable
+# video file the host just labels generically -- not an error page.
+# `_HTML_ERROR_SNIFF_MARKERS` below is the deliberately narrow guard
+# that keeps this from turning into "accept anything that isn't
+# video/*": an octet-stream response is only accepted when the URL's
+# own extension already says "video" or "audio" (`media_type()`), so a
+# generic error page served as octet-stream (not observed on this host,
+# but not ruled out either) would still need a real video/audio
+# extension in its URL to slip through, and this repo's own "don't
+# weaken the content-type check generally" instruction is why this
+# stays scoped to the specific octet-stream value rather than "anything
+# not text/html".
+_OCTET_STREAM_CONTENT_TYPE = "application/octet-stream"
+
+# Audio-only own-domain recordings (Ryan, 2026-09-22: audio-only is in
+# scope) -- confirmed live against two real, independent governments the
+# same day: Allouez village, WI (`allouez.s3.amazonaws.com/media/.../
+# Village-Board-9-15-2026.mp3`, Content-Type `audio/mpeg`) and Farmington
+# city, UT's Planning Commission (`farmington.utah.gov/wp-content/
+# uploads/.../09.03.26-PC-General-Session-Q-SYS.mp3`, also
+# `audio/mpeg`). Both are bare, unauthenticated files on the
+# government's own domain, the exact shape this adapter already resolves
+# for video -- the only gap was `resolve()`'s content-type gate requiring
+# a `video/` prefix. `media_probe.py`'s duration probe and `player.js`'s
+# native `<audio>`/`<video>` fallback are already format-agnostic (the
+# same fact WO-317's Laserfiche audio branch already relies on), so no
+# new playback or transcription code is needed here, only recognizing
+# the format.
+_URL_EXTENSION_FORMATS = {
+    ".mp3": "mp3",
+    ".wav": "wav",
+    ".m4a": "m4a",
+    ".mp4": "mp4",
+    ".mov": "mp4",
+    ".m4v": "mp4",
+    ".webm": "webm",
+}
+
+
+def _media_format(media_url: str, content_type: Optional[str]) -> str:
+    """The real format to record -- the URL's own extension when it has
+    one of the recognized ones (precise), else a guess from the
+    Content-Type prefix (covers the octet-stream branch, which carries
+    no useful Content-Type of its own)."""
+    path = urlparse(media_url).path.lower()
+    for ext, fmt in _URL_EXTENSION_FORMATS.items():
+        if path.endswith(ext):
+            return fmt
+    if content_type and content_type.startswith("audio/"):
+        subtype = content_type.split("/", 1)[1].split(";")[0].strip()
+        return {
+            "mpeg": "mp3",
+            "mp3": "mp3",
+            "x-m4a": "m4a",
+            "mp4": "m4a",
+            "wav": "wav",
+            "x-wav": "wav",
+            "ogg": "ogg",
+        }.get(subtype, "audio")
+    return "mp4"
+
 
 def is_direct_file_url(url: str) -> bool:
     """True for a bare first-party/file-sharing video URL this adapter
@@ -235,7 +307,7 @@ def is_direct_file_url(url: str) -> bool:
     served BY a recognized platform never reaches here."""
     if _DRIVE_FILE_ID_RE.search(url):
         return True
-    if _is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url):
+    if is_laserfiche_url(url):
         return True
     # A real video OR audio extension in the URL's own path -- covers a
     # bare first-party file (Palisade/Dundee/Cayuga Heights), Dropbox's
@@ -267,6 +339,23 @@ def _is_laserfiche_edoc_url(url: str) -> bool:
     other shape's HEAD does, so the generic own-domain HEAD-only check
     below would misclassify a real file as unconfirmed."""
     return bool(_LASERFICHE_EDOC_RE.search(url))
+
+
+def is_laserfiche_url(url: str) -> bool:
+    """True for either recognized Laserfiche WebLink download shape (the
+    docid-query `ElectronicFile.aspx` link, or WebLink 9's older `/edoc/`
+    path) -- see this module's docstring, "Laserfiche WebLink" and
+    "Audio-only Laserfiche" sections. Used internally (`is_direct_file_url()`,
+    `resolve()`) and, since WO-937, by `queue_probe.py`'s
+    `_probe_direct_file()`: that probe skips a HEAD request entirely for
+    this shape rather than trusting one -- confirmed live on THREE
+    independent real governments (Jefferson County WA/WO-304, Deschutes
+    County OR and Ramsey city MN/WO-317) that a HEAD here always 302s to
+    a generic `Error.aspx` page which itself answers 200 with the error
+    page's own small HTML body, never the real file's, so a HEAD-derived
+    `size_bytes` is always wrong for this host shape even though it looks
+    like a normal successful response."""
+    return bool(_is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url))
 
 
 def _laserfiche_sibling_caption_url(url: str) -> Optional[str]:
@@ -323,13 +412,27 @@ class DirectFileAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         media_url = _resolve_direct_media_url(url)
-        if _is_laserfiche_weblink_url(media_url) or _is_laserfiche_edoc_url(media_url):
+        if is_laserfiche_url(media_url):
             # A distinct sub-path -- see module docstring -- since this
             # host answers HEAD with a redirect and GET with a generic
             # Content-Type, neither of which the check below can use.
             return await self._resolve_laserfiche(url, media_url)
         content_type = await self._head_content_type(media_url)
-        if not content_type or not content_type.startswith("video/"):
+        is_media_content_type = bool(
+            content_type and content_type.startswith(("video/", "audio/"))
+        )
+        # South Carolina's legislature (WO-1005, see module docstring's
+        # `_OCTET_STREAM_CONTENT_TYPE` comment): this host answers a real,
+        # playable .mp4 with a generic octet-stream Content-Type on every
+        # meeting, confirmed live -- accept it ONLY when the URL's own
+        # extension already says video/audio, so this stays a narrow,
+        # host-shape-specific accept path rather than a general weakening
+        # of the content-type check.
+        is_octet_stream_media_file = (
+            content_type == _OCTET_STREAM_CONTENT_TYPE
+            and media_type(media_url) in ("video", "audio")
+        )
+        if not (is_media_content_type or is_octet_stream_media_file):
             # Graceful degradation, not a raised error -- same convention
             # as every other adapter's "found something video-shaped but
             # couldn't confirm it" path (CLAUDE.md's "politely" bullet):
@@ -339,14 +442,14 @@ class DirectFileAssetFinder(AssetFinder):
                 source_url=url,
                 video_warnings=[
                     "direct_file: could not confirm this URL serves a "
-                    f"playable video (Content-Type: {content_type!r})"
+                    f"playable video or audio file (Content-Type: {content_type!r})"
                 ],
             )
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=media_url,
-            video_format="mp4",
+            video_format=_media_format(media_url, content_type),
         )
 
     @staticmethod

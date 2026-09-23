@@ -8,9 +8,9 @@ as JSON-lines so scripts/wo292_derive_school_hop_weights.py can build
 the school hop-link vocabulary offline without a second fetch.
 Resumable by domain.
 
-Reuses scripts/wo282_recon.py's fetch_homepage()/extract_links() and
-scripts/wo273_recon.py's DNS/rate-limit/politeness helpers verbatim --
-no new fetch logic. Adds the 2026-09-12 Akamai/govAccess CNAME gate
+Reuses scripts/wo282_recon.py's fetch_homepage()/extract_links() and its
+DNS/rate-limit/politeness helpers verbatim -- no new fetch logic. Adds
+the 2026-09-12 Akamai/govAccess CNAME gate
 (this repo's own preamble rule for that morning's incident): a domain
 whose apex or www CNAMEs to granicusgovaccess.net is skipped and
 recorded blocked-waf-akamai rather than retried, per that confirmed
@@ -19,8 +19,8 @@ IP-level WAF block.
 Politeness: one government (domain) at a time in this script (no
 concurrency -- this is the small step-0 measurement fetch, not the
 1,000-district phase 1 pilot itself), >=1.5s between governments on top
-of wo273_recon's own >=2.5s-per-host floor inside fetch_homepage itself.
-Honest User-Agent (w273.HEADERS). Never past a human-verification gate
+of wo282_recon's own >=2.5s-per-host floor inside fetch_homepage itself.
+Honest User-Agent (w282.HEADERS). Never past a human-verification gate
 (fetch_homepage's own is_challenge() check already stops there).
 
 Run (from the repo root, shared venv):
@@ -42,7 +42,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
-import wo273_recon as w273  # noqa: E402
 import wo282_recon as w282  # noqa: E402
 
 # Redirect wo282_recon's homepage-gz save dir to THIS run's own scratch
@@ -108,10 +107,10 @@ def main():
         for domain in remaining:
             n += 1
             rec = {"domain": domain, "gov_id": by_domain[domain].get("gov_id", "")}
-            apex_cname = (w273.dig("CNAME", domain) or [""])[0]
-            www_cname = (w273.dig("CNAME", f"www.{domain}") or [""])[0]
-            apex_a = w273.dig("A", domain)
-            www_a = w273.dig("A", f"www.{domain}")
+            apex_cname = (w282.dig("CNAME", domain) or [""])[0]
+            www_cname = (w282.dig("CNAME", f"www.{domain}") or [""])[0]
+            apex_a = w282.dig("A", domain)
+            www_a = w282.dig("A", f"www.{domain}")
             rec["apex_cname"] = apex_cname
             rec["www_cname"] = www_cname
 
