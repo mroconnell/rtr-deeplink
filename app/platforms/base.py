@@ -507,6 +507,7 @@ def detect_platform(url: str) -> str:
     if (
         "/cablecastpublicsite/show/" in path
         or "/internetchannel/show/" in path
+        or "/internetchannel/gallery/" in path
         or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
@@ -567,6 +568,14 @@ def detect_platform(url: str) -> str:
         # gap WO-306 documented for CablecastPublicSite applied here too:
         # a real Cablecast Remix page on a government's own domain never
         # reached cablecast.py at all.
+        #
+        # 2026-09-23: "/internetchannel/gallery/{id}" added -- a per-town
+        # LISTING page on a shared, multi-tenant Remix portal (confirmed
+        # live: reflect-vsctv.cablecast.tv serves 4 distinct CT towns by
+        # gallery id) -- see cablecast.py's own `_GALLERY_ID_RE` module
+        # note for the full investigation and why this used to resolve
+        # only by accident, through generic_fallback.py grabbing whatever
+        # `/show/{id}` link happened to appear first in the page.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one

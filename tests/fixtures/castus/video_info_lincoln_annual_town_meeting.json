@@ -1,0 +1,19 @@
+{
+ "response": {
+  "success": true,
+  "payload": {
+   "file": {
+    "_id": "69cbe826f23ec40002de421d",
+    "metadata": {
+     "title": "Annual Town Meeting  03.28.26",
+     "filename": "Annual Town Meeting  03.28.26"
+    },
+    "date": "2026-03-31T15:23:31.773Z",
+    "transcoded": true,
+    "captioned": false,
+    "user": "6336406dfd70fd0009ad76f4",
+    "agenda": []
+   }
+  }
+ }
+}
