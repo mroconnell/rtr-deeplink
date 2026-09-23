@@ -201,8 +201,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (201)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
+  [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
   [NEEDS-AUDIT] Local-export tests depend on an inventory that changes…
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
@@ -2246,6 +2247,12 @@ of human step they need.
   - **Next action**: Ryan's call (2026-09-23, verbatim): "we need to base the civicplus.io decision on real examples and data - can you default to keeping it for now but note in the backlog that we should look for signs of civicplus.io in our research file and archive, and see if we would benefit from thinking about it as a different platform." Concretely: count governments in `rtr-business/research/jurisdiction_coverage.csv` and the stage-2 DNS/CNAME sweep results whose domain CNAMEs to or links a `civicplus.io` host, and count Archive pages whose `source_url`/`platform` is CivicPlus; then compare how many of those actually have a real AgendaCenter with video vs. agenda-only vs. nothing, the same way `civicplus.com`'s own real tenant behavior is already characterized (`civicplus.py`'s own module docstring). Decide from that whether `civicplus.io` should move to `VENDOR_WEB_HOST_HINTS` (a hint, not a platform match, mirroring `granicusgovaccess.net`) or stay a confirmed platform host.
   - **Constraint**: keep it classified as `"civicplus"` (no code change) until that data exists — do not guess either way.
   - **History**: `BACKLOG_DONE.md`'s WO-1015 entry (the replay that surfaced this); `app/platforms/base.py`'s civicplus branch carries a one-line comment pointing back here.
+
+- **[NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and unsupported research associations.**
+  - **Issue:** The September 22 targeted repair fixed 32 pages for 31 governments; the fresh export still has 217 blank-ID pages and 351 unresolved placeholders, outside this completed 54-row audit.
+  - **Next action:** Review the remaining unidentified pages by source; review the 23 audited research rows now cleared of unsupported transcription flags before claiming new coverage.
+  - **Constraint:** School boards, towns versus villages, and shared hosts must not be folded into another government's row to make a join succeed.
+  - **History:** See `BACKLOG_DONE.md`'s “Gov Coverage 54-row reconciliation” entry and `rtr-business/research/coverage_join_audit_2026-09-22/` for the row-level evidence and applied changes.
 
 - **[NEEDS-AUDIT] Local-export tests depend on an inventory that changes after repairs.**
   - **Issue**: `test_every_row_matches_the_local_export_it_was_built_from` and `test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages` fail with the current `/tmp/rtr_meeting_inventory/meeting_inventory.csv`: page 2504 has no government id, and page 3643 is no longer flagged.
