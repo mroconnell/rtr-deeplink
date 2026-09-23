@@ -1,0 +1,18 @@
+{
+ "response": {
+  "success": true,
+  "payload": {
+   "file": {
+    "_id": "6aab2089c74c3300024832f0",
+    "metadata": {
+     "filename": "Zoning Board 09-16-26.mp4"
+    },
+    "date": "2026-09-16T23:04:40.769Z",
+    "transcoded": true,
+    "captioned": false,
+    "user": "662ab8f7462d1041bed8203e",
+    "agenda": []
+   }
+  }
+ }
+}

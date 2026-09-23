@@ -226,7 +226,7 @@ async def main() -> None:
     urls = []
     seen = set()
     for line in lines:
-        url, _source_override = _parse_queue_line(line)
+        url, _source_override, _gov_id = _parse_queue_line(line)
         if url and url not in seen:
             seen.add(url)
             urls.append(url)

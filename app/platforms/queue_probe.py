@@ -1336,6 +1336,77 @@ def _first_field_urls(path: Path) -> set[str]:
     return urls
 
 
+# WO-1016: one place that knows the tier-3 queue line SHAPE, so every
+# reader tolerates a 3rd field identically instead of each caller
+# reimplementing its own tab-split (the exact drift CLAUDE.md's WO-34
+# roll-up-caption note warns about for a different per-platform parsing
+# task -- same lesson, different file).
+#
+# `scripts/tier3_auto_transcription_queue.txt` has carried `URL` or
+# `URL<TAB>SOURCE_URL` since the 2026-09 sweeps
+# (`scripts/feed_tier3_auto_transcription.py`'s own `_parse_queue_line()`
+# docstring). This adds an optional 3rd `GOV_ID` field, in the same
+# column position `tier3_long_meetings_deferred.txt` already uses for its
+# own `url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>
+# title` layout -- so a line moved between the two files (as
+# `wo356_item4_move_long.py` already does by hand) keeps its first three
+# columns meaning the same thing in both places. Why gov_id belongs on
+# the QUEUE LINE at all, not just derived at feed time from
+# `has_owner()`'s `tenant_overrides.csv` pin: a research sweep often
+# already knows the government (it found this meeting BECAUSE it was
+# looking at that government's site) even when the video sits on a
+# single-tenant vendor host `has_owner()` can't hand a gov_id back for
+# without running the Archive's own full resolver ladder (see
+# `has_owner()`'s own docstring, the `(True, None, "")` case) --
+# CLAUDE.md's "send the government's id in every ingest payload" rule
+# otherwise silently doesn't apply to that whole class of line.
+#
+# Every field is TAB-separated; a line is a bare URL, `URL\tSOURCE_URL`,
+# or `URL\tSOURCE_URL\tGOV_ID`. SOURCE_URL may be blank when only GOV_ID
+# is known (`URL\t\tGOV_ID`) -- the deferred file already allows the same
+# blank-middle-field shape. A line with more than 3 tab fields (a
+# deferred-file line, which also carries jurisdiction/duration/title) is
+# still parsed correctly by this function -- it only reads the first
+# three columns and ignores the rest, so this is also safe to call on a
+# deferred-file line, though `append_deferred_line()`'s own writer stays
+# the source of truth for that file's full shape.
+def parse_queue_line(line: str) -> tuple[str, Optional[str], Optional[str]]:
+    """(url, source_url, gov_id) -- see this section's own module comment
+    above for the queue line format this parses. Every existing reader
+    used to do its own `line.partition("\\t")` (only 2 fields, unsafe:
+    a 3rd tab-separated field glues onto `source_url` wholesale) or
+    `line.split("\\t")` (already tolerant, but reimplemented per file) --
+    this is the one place that shape lives now (WO-1016). `source_url`
+    and `gov_id` come back as `None`, never `""`, when their column is
+    absent or blank, matching every existing caller's own "empty means
+    None" convention (e.g. `_parse_queue_line()`'s pre-WO-1016 behavior).
+    Does not strip a leading `#` comment or skip a blank line -- every
+    call site already filters those out before calling this, same as
+    before."""
+    parts = line.split("\t")
+    url = parts[0].strip()
+    source_url = parts[1].strip() if len(parts) > 1 else ""
+    gov_id = parts[2].strip() if len(parts) > 2 else ""
+    return url, (source_url or None), (gov_id or None)
+
+
+# WO-1016: `append_queue_line()`/`finish_candidate()` below can write a
+# 3rd `gov_id` field once every LIVE reader tolerates it -- this
+# module's own `parse_queue_line()`, `scripts/feed_tier3_auto_
+# transcription.py`'s feeder, `scripts/find_tier3_short_meeting_
+# substitutes.py`, `scripts/probe_tier3_queue.py`, and, on its OWN
+# separate checkout, the drip Mac's `scripts/youtube_drip.py`
+# (CLAUDE.md's "YouTube is fetched only by the drip Mac" -- that
+# script's copy of `_parse_queue_line()`'s call sites lives on a
+# different machine and only updates on its own `git pull`). Recommended
+# rollout (see BACKLOG.md's WO-1016 entry / docs/YOUTUBE_DRIP_RUNBOOK.md):
+# (1) merge this PR's readers, (2) confirm the drip Mac has pulled it,
+# (3) flip this to True. Left False here on purpose -- do NOT flip it in
+# the same PR that adds the readers, since nothing here can confirm the
+# drip Mac has pulled yet.
+EMIT_GOV_ID_IN_QUEUE_LINES = False
+
+
 def canonical_video_key(url: str) -> Optional[str]:
     """A platform-qualified stable video id for `url` (e.g.
     "youtube:dQw4w9WgXcQ"), so two differently-formatted URLs for the SAME
@@ -1457,25 +1528,33 @@ def append_queue_line(
     meeting_url: str,
     source_url: Optional[str] = None,
     *,
+    gov_id: str = "",
     queue_path: Path = TIER3_QUEUE_FILE,
 ) -> bool:
-    """Appends `meeting_url[\\tsource_url]` to the tier-3 queue file --
-    the exact line shape every wo1XX_finish_tier3*.py script already
-    writes (`url<TAB>source_url` when the source page differs from the
-    video URL itself, a bare `url` otherwise). Dedupe-checked against the
-    file's current contents first, by `canonical_video_key()` (WO-937) so
-    a same-video duplicate under a differently-formatted URL is caught
-    too, not just an exact string match -- same rule
+    """Appends `meeting_url[\\tsource_url[\\tgov_id]]` to the tier-3 queue
+    file -- the exact 1/2-field line shape every wo1XX_finish_tier3*.py
+    script already writes (`url<TAB>source_url` when the source page
+    differs from the video URL itself, a bare `url` otherwise), plus the
+    optional 3rd `gov_id` field this function CAN write once
+    `EMIT_GOV_ID_IN_QUEUE_LINES` is flipped True (see that constant's own
+    comment -- WO-1016. Left off in this PR: a `gov_id` argument is
+    accepted and threaded through unconditionally so a caller doesn't
+    need to know about the flag, but it is only actually written to disk
+    once the flag says every live reader is ready). Dedupe-checked
+    against the file's current contents first, by `canonical_video_key()`
+    (WO-937) so a same-video duplicate under a differently-formatted URL
+    is caught too, not just an exact string match -- same rule
     `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`
     enforces. Returns True only when a new line was actually written --
     never rewrites or reorders an existing line, append-only throughout."""
     if _dedupe_key(meeting_url) in _existing_keys(queue_path):
         return False
-    line = (
-        f"{meeting_url}\t{source_url}"
-        if source_url and source_url != meeting_url
-        else meeting_url
-    )
+    if gov_id and EMIT_GOV_ID_IN_QUEUE_LINES:
+        line = f"{meeting_url}\t{source_url or ''}\t{gov_id}"
+    elif source_url and source_url != meeting_url:
+        line = f"{meeting_url}\t{source_url}"
+    else:
+        line = meeting_url
     queue_path.parent.mkdir(parents=True, exist_ok=True)
     with queue_path.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
@@ -1802,7 +1881,9 @@ async def finish_candidate(
             deferred=deferred,
         )
 
-    queued = append_queue_line(meeting_url, source_url, queue_path=queue_path)
+    queued = append_queue_line(
+        meeting_url, source_url, gov_id=gov_id, queue_path=queue_path
+    )
     pinned = False
     if pin:
         pinned = write_pin_row(
