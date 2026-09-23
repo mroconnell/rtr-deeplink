@@ -1125,3 +1125,140 @@ async def test_resolve_fastboot_fallback_is_not_tried_for_a_show_the_remix_path_
     # incorrectly tried, `mock_session` would raise on the unmocked
     # "/embed/vod" request instead of returning a normal result.
     assert result.video_url is not None
+
+
+# --- Gallery listing pages (2026-09-23) --------------------------------
+#
+# Real fixtures fetched live 2026-09-23: `oldsaybrook_gallery_22.html` is
+# reflect-vsctv.cablecast.tv's real `/internetchannel/gallery/22` page --
+# one shared Cablecast tenant serving 4 distinct Connecticut towns by
+# gallery id (this project's own research found the other 3: Haddam=10,
+# Deep River=9, Clinton=3), found while hand-checking CivicPlus
+# governments whose AgendaCenter has no video but whose homepage links
+# out to a separate video platform. `oldsaybrook_show_7480.html` is the
+# real page for the specific show gallery/22's own listing picks as
+# newest, used to confirm `_resolve_gallery()` really does delegate to
+# (and get a real result from) that show's own canonical page rather than
+# building a `ResolvedMeeting` out of the gallery's own (differently
+# shaped, see `_GALLERY_EVENT_DATE_FORMAT`'s module note) data directly.
+
+GALLERY_URL = "https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+GALLERY_FETCH_URL = "http://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+GALLERY_SHOW_URL = "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+
+
+def test_detect_platform_recognizes_cablecast_gallery_url():
+    assert detect_platform(GALLERY_URL) == "cablecast"
+
+
+async def test_resolve_gallery_picks_newest_ready_show_and_delegates_to_its_own_page():
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+    show_html = load_fixture("cablecast", "oldsaybrook_show_7480.html")
+    routes = {
+        GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html),
+        GALLERY_SHOW_URL: FakeResponse(status=200, text=show_html),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(GALLERY_URL)
+
+    # Real, live-confirmed newest ready show in this gallery page's own
+    # scoped list as of 2026-09-23 -- picking the wrong one (an older
+    # show, or content from a different gallery entirely -- see
+    # `_resolve_gallery()`'s own docstring for a real bug that did
+    # exactly that) would fail this.
+    assert result.title == (
+        "Old Saybrook Joint Zoning Commission Planning Commission "
+        "Regional Housing Plan Workshop - August 19 2026"
+    )
+    assert result.date == "2026-08-19"
+    assert result.video_url is not None
+    # source_url reflects the show's own canonical page the gallery walk
+    # delegated to, not the original gallery URL -- correct, matching
+    # every other delegation this adapter already does (e.g. the
+    # root-page fallback for a blocked bare "/show/{id}" URL above).
+    assert result.source_url == "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+
+
+def test_find_gallery_shows_matches_by_gallery_id_not_tree_position():
+    # Real shape confirmed live 2026-09-23: a gallery page's remix tree
+    # also embeds a site-wide "slideShow" carousel and OTHER galleries'
+    # own sample shows (a different category, "Arts & Entertainment"),
+    # both reachable from the same tree and both shaped just like a real
+    # per-gallery shows list (a dict with a "shows" key). Only the one
+    # object whose own `cablecastGalleryId` matches the id asked for
+    # should ever be returned.
+    tree = {
+        "state": {
+            "loaderData": {
+                "root": {
+                    "site": {
+                        "slideShow": [{"showId": 999, "title": "sitewide decoy"}],
+                        "galleries": [
+                            {
+                                "cablecastGalleryId": 8,
+                                "title": "Arts & Entertainment",
+                                "shows": [{"showId": 998, "title": "wrong gallery"}],
+                            }
+                        ],
+                    }
+                },
+                "routes/_shell.gallery.$galleryId": {
+                    "gallery": {
+                        "cablecastGalleryId": 22,
+                        "title": "Old Saybrook Meetings",
+                        "shows": [{"showId": 7413, "title": "right gallery"}],
+                    }
+                },
+            }
+        }
+    }
+    found = CablecastAssetFinder._find_gallery_shows(tree, 22)
+    assert found == [{"showId": 7413, "title": "right gallery"}]
+
+
+async def test_resolve_gallery_reports_cleanly_when_no_show_is_video_ready():
+    gallery_html_no_video = (
+        "<html><body><script>window.__remixContext = "
+        + json.dumps(
+            {
+                "state": {
+                    "loaderData": {
+                        "routes/_shell.gallery.$galleryId": {
+                            "gallery": {
+                                "cablecastGalleryId": 22,
+                                "shows": [
+                                    {"showId": 1, "title": "no video yet"},
+                                ],
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        + ";</script></body></html>"
+    )
+    routes = {GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html_no_video)}
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(GALLERY_URL)
+
+    assert result.video_url is None
+    assert "no video-ready show" in result.video_warnings[0].lower()
+
+
+def test_parse_gallery_event_date_handles_both_real_formats():
+    # Real bug found live 2026-09-23: the SAME show's eventDate appears in
+    # BOTH formats within one gallery page (see
+    # `_parse_gallery_event_date()`'s own docstring) -- whichever copy
+    # survives must still parse.
+    from datetime import datetime
+
+    assert CablecastAssetFinder._parse_gallery_event_date(
+        "7/10/2024 12:00:00 AM"
+    ) == datetime(2024, 7, 10)
+    assert CablecastAssetFinder._parse_gallery_event_date(
+        "2024-07-10T00:00:00-04:00"
+    ) == datetime(2024, 7, 10)
+    assert CablecastAssetFinder._parse_gallery_event_date(None) is None
+    assert CablecastAssetFinder._parse_gallery_event_date("not a date") is None
