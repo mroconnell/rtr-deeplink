@@ -257,19 +257,34 @@ every `wo3xx_resolve_diagnostic.py` sweep script) never sets it and sees
 identical behavior to before this WO -- confirmed by the full, unmodified
 `tests/test_passive_verify*.py` suite still passing.
 
-**A real limit found while live-testing this** (not fixed here, out of
-scope for List): `_civicplus_walker()`'s step 1 only adds a candidate
-when a listing row's own parsed `url` field is set -- an AgendaCenter
-tenant that is genuinely agenda-only (posts agendas/minutes but no video
-link on the row itself, e.g. Cass County, MN,
+**Agenda-only fallback (found live-testing, fixed for List in the same
+WO after conductor review).** `_civicplus_walker()`'s step 1 only adds a
+candidate when a listing row's own parsed `url` field is set -- an
+AgendaCenter tenant that is genuinely agenda-only (posts agendas/minutes
+but no video link on the row itself, e.g. Cass County, MN,
 `mn-casscounty.civicplus.com/AgendaCenter`, confirmed live 2026-09-23:
-37 real rows, every one missing a video `url`) comes back with zero
-candidates from List, the same as a tenant with no meetings at all --
-List can't currently tell "real meetings, no video" apart from "nothing
-found" for this one path, since the walker itself only ever surfaces a
-URL when it found one. `verify_hub()` (the older, resolve-and-judge
-caller of the same walker) has this same limit today. Logged as a
-residual List/Resolve gap, not reworked here.
+37 real rows, every one missing a video `url`) came back with zero
+candidates from List, the same as a tenant with no meetings at all.
+`listing._civicplus_agenda_only_fallback()` closes this for List:
+tried after every other lister comes back empty for a `civicplus`
+account, it re-parses the page with `CivicPlusAssetFinder()._find_
+candidate_rows()` directly (not `_civicplus_walker()`, which stays
+exactly as it is for `verify_hub()` and every other existing caller) and
+returns the video-less rows as `Candidate`s (`lister=
+"civicplus_agenda_only"`, `has_video_hint=False`), so Verdict has real
+rows to read as `meeting-without-video` instead of `no-meeting-nor-
+video`. Every other registered listing walker was checked for the same
+video-only filtering and found NOT to have it (CivicWeb/Legistar/
+eScribe/IQM2 never filtered on video; CivicClerk's walker only sorts
+`hasMedia`-true first, never drops the rest; Townhallstreams/Cablecast/
+Invintus list links that are inherently video). `municode_meetings.py`
+has the identical shape CivicPlus had before its own 2026-09-07 fix (its
+`resolve()` still calls the never-renamed `_find_video_rows()`) -- not
+given a fallback here (a different adapter file, and rtr-discovery's own
+enumerator already answers most real Municode Meetings accounts before
+that path is reached); see `BACKLOG.md`'s matching entry.
+`verify_hub()`'s own CivicPlus path keeps today's limit -- also
+`BACKLOG.md`, a separate entry from the one this WO closed for List.
 
 ### Scan
 

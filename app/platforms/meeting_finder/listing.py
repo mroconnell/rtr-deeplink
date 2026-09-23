@@ -53,6 +53,46 @@ Nothing found by any lister: `OUTCOME_NO_MEETING_NOR_VIDEO`. No adapter
 registered for the platform at all (and no passive_verify walker, no
 rtr-discovery enumerator): `OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER`.
 
+**Agenda-only fallback (conductor review, 2026-09-23): a lister that
+filters to video-bearing rows only must not make a real "meeting found,
+no video yet" tenant look identical to "nothing here at all."**
+Confirmed live on Cass County, MN (`mn-casscounty.civicplus.com/
+AgendaCenter`): `civicplus.py`'s own `_find_candidate_rows()` (renamed
+from `_find_video_rows()` on 2026-09-07 specifically so it would keep
+non-video rows too) returns 37 real rows, but `passive_verify.
+_civicplus_walker()`'s step 1 only calls `_add()` when a row's own `url`
+is set -- an agenda-only tenant returns `[]` from the walker, the same
+as an empty one. When lister (a) is CivicPlus and it (and every later
+lister) comes back empty, `_civicplus_agenda_only_fallback()` re-parses
+the same page with `CivicPlusAssetFinder()._find_candidate_rows()`
+directly (not `_civicplus_walker()` -- that function's own behavior is
+left untouched for `verify_hub()` and every other existing caller) and
+returns each real (title+date) row's `agenda_link`/`packet_link` as a
+`Candidate` with `has_video_hint=False` and a note, so Verdict at least
+has real rows to call `meeting-without-video` on rather than reading
+`no-meeting-nor-video` for an account that plainly isn't empty.
+
+**Checked every other lister for the same video-only filtering blind
+spot; CivicPlus is the only registered passive_verify walker that has
+it.** Every other bespoke walker in `_LISTING_WALKERS` already returns
+every real row regardless of video presence -- CivicWeb/Legistar/
+eScribe/IQM2 never filtered on video at the listing stage at all;
+CivicClerk's own walker only *sorts* `hasMedia`-true events first, it
+never drops the rest; Townhallstreams/Cablecast/Invintus list links that
+are inherently video already. **`municode_meetings.py` has the exact
+same shape CivicPlus had before its own 2026-09-07 fix** -- its
+`resolve()` still calls `self._find_video_rows()` (never renamed/
+generalized the way CivicPlus's was) to build its `CalendarPageError`
+pick-list (lister c), so an agenda-only Municode Meetings tenant would
+hit the same blind spot. Not fixed here: municode_meetings.py is a
+different adapter file, and in practice lister (b) (rtr-discovery's own
+`MunicodeMeetingsEnumerator`) already answers most Municode Meetings
+accounts before lister (c) is ever reached (confirmed live,
+`bristol-ri.municodemeetings.com` -- see this WO's live-check table) --
+logged as its own `BACKLOG.md` entry instead. Vimeo/Wistia/Tampa's own
+`CalendarPageError` lists are video-host listings by nature (every row
+already has a playable clip), so this blind spot doesn't apply to them.
+
 Lessons applied from `~/Documents/rtr-upcoming`'s
 `UPCOMING_AGENDAS_FIELD_GUIDE.md` ("Finding a vendor host", "Ranking",
 "Running those strategies against the whole roster"): a page's own
@@ -477,6 +517,115 @@ async def _list_via_generic_scan(
     return ListResult(candidates=candidates, lister="generic_link_scan", outcome=None)
 
 
+# --- Agenda-only fallback: platforms whose lister filters to video-only ---
+#
+# Platforms where lister (a)/(c) only surfaces a row when it already has a
+# video link, so a real agenda-only account (meetings posted, no video
+# yet) reads identically to an empty one. Registered per-platform rather
+# than a generic "re-fetch and guess" step: each one needs its own
+# adapter-specific row parser (`_find_candidate_rows()`'s own row shape is
+# CivicPlus's, not a generic contract). See this module's own docstring
+# for which platforms were checked and found NOT to need this (they
+# already return every row regardless of video).
+_AGENDA_ONLY_FALLBACK_PLATFORMS = frozenset({"civicplus"})
+
+
+async def _civicplus_agenda_only_fallback(
+    account_url: str, fetcher: Fetcher, limit: int
+) -> List[dict]:
+    """Re-parses `account_url` (and, if that has no rows, the canonical
+    `/AgendaCenter` guess) with `CivicPlusAssetFinder()._find_candidate_
+    rows()` directly -- NOT `passive_verify._civicplus_walker()`, whose
+    own behavior stays exactly as it is today for `verify_hub()` and every
+    other existing caller (see module docstring). Returns every real
+    (title+date) row that has an `agenda_link`/`packet_link` but no video
+    `url`, newest-first (the page's own render order, same as
+    `_civicplus_walker()` step 1 already assumes) -- a row with neither
+    link is worthless as a Candidate and is skipped.
+    """
+    from bs4 import BeautifulSoup
+
+    from app.platforms.civicplus import CivicPlusAssetFinder
+
+    finder = CivicPlusAssetFinder()
+
+    async def _rows_for(url: str) -> tuple[List[dict], Optional[str]]:
+        try:
+            result = await fetcher.fetch(url, need_links=True)
+        except BudgetExceeded:
+            return [], None
+        if result.status != 200 or result.html is None:
+            return [], None
+        final = result.final_url or url
+        soup = BeautifulSoup(result.html, "html.parser")
+        return finder._find_candidate_rows(soup, final), final
+
+    rows, final_url = await _rows_for(account_url)
+    if not rows:
+        base = f"{urlparse(final_url or account_url).scheme}://{urlparse(final_url or account_url).netloc}"
+        guess = f"{base}/AgendaCenter"
+        if guess.rstrip("/") != (final_url or account_url).rstrip("/"):
+            rows, _ = await _rows_for(guess)
+
+    out: List[dict] = []
+    for row in rows:
+        if row.get("url"):
+            # A real video-bearing row -- every earlier lister already
+            # tried and failed to use this, which only happens if
+            # resolving it didn't pan out (a dead link, an unreachable
+            # vendor). Not this fallback's job to retry it.
+            continue
+        link = row.get("agenda_link") or row.get("packet_link")
+        if not link:
+            continue
+        out.append(
+            {
+                "title": row.get("title") or "",
+                "date": row.get("date"),
+                "url": link,
+                "has_video_hint": False,
+            }
+        )
+        if len(out) >= limit:
+            break
+    return out
+
+
+async def _list_via_agenda_only_fallback(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    if platform not in _AGENDA_ONLY_FALLBACK_PLATFORMS:
+        return None
+    if platform == "civicplus":
+        try:
+            rows = await _civicplus_agenda_only_fallback(account_url, fetcher, limit)
+        except Exception as e:  # noqa: BLE001
+            return ListResult(
+                candidates=[],
+                lister="civicplus_agenda_only",
+                outcome=None,
+                note=f"agenda-only fallback raised {type(e).__name__}: {e}",
+            )
+    else:  # pragma: no cover -- no other platform registered yet
+        return None
+    if not rows:
+        return None
+    candidates = _candidates_from_dicts(
+        rows,
+        platform=platform,
+        account_url=account_url,
+        lister="civicplus_agenda_only",
+    )
+    if not candidates:
+        return None
+    return ListResult(
+        candidates=candidates,
+        lister="civicplus_agenda_only",
+        outcome=None,
+        note="real meeting rows found with no video link -- has_video_hint=False",
+    )
+
+
 def _has_any_adapter(platform: str) -> bool:
     passive_verify._ensure_walkers_registered()
     if platform in passive_verify._LISTING_WALKERS:
@@ -549,6 +698,13 @@ async def list_account(
             return e
         if e.note:
             notes.append(e.note)
+
+    f = await _list_via_agenda_only_fallback(platform, account_url, fetcher, limit)
+    if f is not None:
+        if f.candidates:
+            return f
+        if f.note:
+            notes.append(f.note)
 
     if not _has_any_adapter(platform):
         return ListResult(

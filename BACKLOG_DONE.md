@@ -38,23 +38,37 @@ scan, wrapping Meeting Finder's `Fetcher` (`fetch.py`, WO-1025 -- not
 edited by this WO) in the `(html, final_url, error)` shape `_fetch()`
 expects.
 
-**A real limit found live-testing, not fixed here.**
-`_civicplus_walker()`'s step 1 only adds a candidate when a listing
-row's own `url` field is set. Cass County, MN
+**Agenda-only fallback (added after conductor review of the first PR
+revision).** `_civicplus_walker()`'s step 1 only adds a candidate when a
+listing row's own `url` field is set. Cass County, MN
 (`mn-casscounty.civicplus.com/AgendaCenter`) is a real, live, genuinely
 agenda-only AgendaCenter tenant -- confirmed 2026-09-23: `_find_
 candidate_rows()` itself returns 37 real rows (title, date,
 agenda_link, packet_link all populated), but every row's `url` is
 `None`, so the walker's own `if row.get("url"): _add(...)` line never
-fires and it returns `[]`. From List's own vantage point this is
-indistinguishable from "this tenant has zero meetings at all" --
-`verify_hub()` (the older, resolve-and-judge caller of the same walker)
-has this exact same blind spot today, since it's the walker's own
-return value both callers share. Not reworked here -- flagged as an
-open BACKLOG.md item instead (see "CivicPlus's own listing walker can't
-tell agenda-only from empty").
+fires and it returns `[]`, indistinguishable from a tenant with zero
+meetings. Fixed for List (not for `_civicplus_walker()`/`verify_hub()`
+itself, left untouched -- see below): `listing._civicplus_agenda_only_
+fallback()` re-parses the page with `CivicPlusAssetFinder()._find_
+candidate_rows()` directly and, tried only after every other lister
+returns nothing for a `civicplus` account, returns the video-less rows
+as `Candidate`s (`lister="civicplus_agenda_only"`, `has_video_hint=
+False`). Confirmed live: Cass County now returns 5 real candidates
+(`has_video_hint=False`) instead of `no-meeting-nor-video`. Checked every
+other registered walker for the same filter -- CivicWeb/Legistar/
+eScribe/IQM2/CivicClerk/Townhallstreams/Cablecast/Invintus don't have it
+(see `listing.py`'s own docstring for the per-platform reasoning).
+`municode_meetings.py` has the identical pre-2026-09-07 CivicPlus shape
+(`resolve()` still calls the never-renamed `_find_video_rows()`) but
+wasn't given a fallback here (different adapter file; rtr-discovery's
+enumerator already answers most real accounts first). `verify_hub()`'s
+own CivicPlus path keeps today's limit -- both left as `BACKLOG.md`
+entries (`verify_hub()`'s own CivicPlus path, and municode_meetings.py`)
+rather than fixed here.
 
-**Live check (real accounts, `limit=5`, no YouTube):**
+**Live check (real accounts, `limit=5`, no YouTube), rerun 2026-09-23
+after the conductor fast-forwarded `~/Documents/rtr-discovery` to
+`origin/main` (`ba422a8`, includes `discovery/list_one.py`):**
 
 | Platform | Account | Lister used | Result | Candidates | Newest date |
 |---|---|---|---|---|---|
@@ -62,23 +76,15 @@ tell agenda-only from empty").
 | granicus | sandiego.granicus.com (view_id=3) | passive_verify:granicus | ok | 5 | 2026-09-23 |
 | legistar | boston.legistar.com/Calendar.aspx | passive_verify:legistar | ok | 5 | 2026-09-22 |
 | castus | cloud.castus.tv/vod/lincoln/ | adapter_hub | ok | 1 | (not in listing row) |
-| civicplus | mn-casscounty.civicplus.com/AgendaCenter | -- | no-meeting-nor-video | 0 | -- (agenda-only tenant, see above) |
-| municode_meetings | bristol-ri.municodemeetings.com | adapter_list | ok | 4 | 2026-09-16 |
+| civicplus | mn-casscounty.civicplus.com/AgendaCenter | civicplus_agenda_only | ok (agenda-only, no video) | 5 | 2026-09-15 |
+| municode_meetings | bristol-ri.municodemeetings.com | discovery:municode_meetings | ok | 4 | 2026-09-16 |
+| primegov | lacity.primegov.com | discovery:primegov | ok | 5 | 2026-09-22 |
+| swagit | webbcountytx.swagit.com | generic_link_scan | ok (rtr-discovery's own Swagit enumerator returned `not-enumerable`/param discovery found nothing for this tenant -- a real rtr-discovery limit, not a listing.py bug; List correctly fell through to lister e) | 5 | -- |
 
-rtr-discovery's `list_tenant()` (lister b, PrimeGov `lacity.primegov.com`)
-was verified against rtr-discovery's own unit tests
-(`tests/test_list_one.py`, 11 tests, all pass) and a synthetic
-integration test here (`test_lister_b_used_when_no_passive_verify_walker`)
-rather than a live call from this session -- **this session's local
-`~/Documents/rtr-discovery` checkout's `main` branch is stale**: it does
-not contain `discovery/list_one.py` even though that file is real and
-merged on `origin/main` (commit `ba422a8`, PR #41) -- confirmed via
-`git -C ~/Documents/rtr-discovery merge-base --is-ancestor ba422a8
-<local main tip>` returning false. Flagged as a `BACKLOG.md` entry
-(a stale local checkout of a sibling repo, not a code bug) rather than
-worked around by checking out `origin/main` over the shared clone
-(CLAUDE.md's multi-session caution -- another session may be using that
-checkout).
+municode_meetings now resolves via rtr-discovery (lister b) rather than
+its own `CalendarPageError` (lister c), since rtr-discovery's checkout is
+current -- lister ordering worked exactly as designed (b tried before c,
+first with candidates wins).
 
 **Verify.** Five CI gates: `ruff check`, `ruff format --check`, `pytest`
 (5,264 passed, 16 skipped, 4 xfailed, 2 failed -- both pre-existing,
@@ -86,8 +92,10 @@ unrelated to this change: `test_repair_wrong_pages.py`/
 `test_wrong_page_screen.py`'s stale-local-export failures), both
 `alembic check`s (no schema change, `app/db/` and `archive/db/`
 unaffected). New tests: `tests/test_wo1028_meeting_finder_listing.py`
-(12 tests, synthetic per CLAUDE.md's rule -- listing.py is orchestration
-over already real-verified pieces, not a new adapter).
+(14 tests, synthetic per CLAUDE.md's rule -- listing.py is orchestration
+over already real-verified pieces, not a new adapter; two of the 14 use
+the real `tests/fixtures/civicplus/ks_desoto_agendacenter.html` fixture
+for the agenda-only fallback rather than hand-built markup).
 
 ## WO-1024: Meeting Finder core -- models, pick, Resolve, identity check, Verdict, CLI [Done 2026-09-23]
 

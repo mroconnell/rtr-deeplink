@@ -431,3 +431,98 @@ async def test_known_adapter_but_nothing_found_is_no_meeting_outcome(
             "fake_empty", "https://fake.example.com/", fetcher
         )
     assert result.outcome == OUTCOME_NO_MEETING_NOR_VIDEO
+
+
+# --- Agenda-only fallback (conductor follow-up, 2026-09-23) -------------
+
+
+@pytest.mark.asyncio
+async def test_civicplus_agenda_only_fallback_uses_real_desoto_fixture(fetcher):
+    """`tests/fixtures/civicplus/ks_desoto_agendacenter.html` is a real,
+    raw-saved AgendaCenter page (already used by other civicplus tests) --
+    33 real `tr.catAgendaRow` rows, none of which carries a real (i.e.
+    `_is_real_video_link()`-qualifying) video link in its own `td.media`
+    cell, confirmed by calling `CivicPlusAssetFinder()._find_candidate_
+    rows()` on it directly. This exercises `_civicplus_agenda_only_
+    fallback()` against that real, agenda-only-shaped page and checks it
+    returns real rows with `has_video_hint=False` and a real agenda/
+    packet link as `url`."""
+    from tests.conftest import load_fixture
+
+    html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+
+    async def fake_fetch(url: str, *, need_links: bool = True):
+        from app.platforms.meeting_finder.fetch import FetchResult
+
+        return FetchResult(
+            requested_url=url,
+            final_url=url,
+            status=200,
+            html=html,
+            access_mode="plain",
+            outcome=None,
+            challenge=False,
+            wayback_timestamp=None,
+            links_only=False,
+            elapsed_ms=1,
+        )
+
+    with patch.object(fetcher, "fetch", side_effect=fake_fetch):
+        rows = await listing._civicplus_agenda_only_fallback(
+            "https://ks-desoto.civicplus.com/AgendaCenter", fetcher, limit=50
+        )
+
+    assert rows, "expected real agenda-only rows from the DeSoto fixture"
+    assert all(row["has_video_hint"] is False for row in rows)
+    assert all(row["url"] for row in rows)
+    assert all("/AgendaCenter/" in row["url"] for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_list_account_falls_back_to_agenda_only_when_civicplus_walker_finds_nothing(
+    fetcher,
+):
+    """End-to-end: when the real `_civicplus_walker()` (lister a) finds no
+    video-bearing candidates -- the real Cass County, MN shape confirmed
+    live 2026-09-23 -- `list_account()` must not report
+    `no-meeting-nor-video` for an account that plainly has real meetings.
+    Fakes lister (a) empty (isolating this test from `_civicplus_walker()`'s
+    own real-fixture coverage in test_passive_verify.py) and serves the
+    real DeSoto fixture to the agenda-only fallback's own fetch."""
+    from tests.conftest import load_fixture
+
+    html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+
+    async def empty_walker(hub_url: str) -> List[dict]:
+        return []
+
+    passive_verify.register_listing_walker("civicplus", empty_walker)
+
+    async def fake_fetch(url: str, *, need_links: bool = True):
+        from app.platforms.meeting_finder.fetch import FetchResult
+
+        return FetchResult(
+            requested_url=url,
+            final_url=url,
+            status=200,
+            html=html,
+            access_mode="plain",
+            outcome=None,
+            challenge=False,
+            wayback_timestamp=None,
+            links_only=False,
+            elapsed_ms=1,
+        )
+
+    with patch.object(fetcher, "fetch", side_effect=fake_fetch):
+        result = await listing.list_account(
+            "civicplus",
+            "https://ks-desoto.civicplus.com/AgendaCenter",
+            fetcher,
+            limit=5,
+        )
+
+    assert result.lister == "civicplus_agenda_only"
+    assert result.outcome is None
+    assert len(result.candidates) == 5
+    assert all(c.has_video_hint is False for c in result.candidates)
