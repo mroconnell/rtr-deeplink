@@ -28,10 +28,21 @@
 {% block content %}
   <main class="meeting-list-page context-editor-page">
     <h1>Full Context &mdash; editor</h1>
+    <p><a href="/context/candidates">Open research queue</a></p>
     {% if editing %}
     <p class="subtitle">Editing entry #{{ editing.id }} &mdash; <a href="/context/new">cancel</a></p>
     {% endif %}
 
+    {% if prefill_error %}
+    <p class="context-form-alert" role="alert">{{ prefill_error }}</p>
+    {% if candidate_id %}<p><a href="/context/candidates/{{ candidate_id }}">Return to candidate #{{ candidate_id }}</a></p>{% endif %}
+    {% endif %}
+    {% if prefill %}
+    <p class="subtitle">From your saved review of <a href="/context/candidates/{{ candidate_id }}">candidate #{{ candidate_id }}</a>. Nothing has been saved as an entry yet. Verify the proposed moment before publishing.</p>
+    {% for warning in prefill_warnings %}<p class="context-form-alert" role="alert">{{ warning }}</p>{% endfor %}
+    {% endif %}
+    {% set form_values = editing or prefill %}
+    {% if not prefill_error %}
     {#- No `action`/`method` on purpose -- a form that would still submit
        (as a form-encoded POST) with JS off is exactly what this site's
        JSON-only CSRF posture rules out. context_editor.js intercepts
@@ -45,39 +56,39 @@
 
       <label class="context-field">
         Social post URL
-        <input type="url" name="social_url" required value="{{ editing.social_url if editing else '' }}" placeholder="https://www.instagram.com/p/...">
+        <input type="url" name="social_url" required value="{{ form_values.social_url if form_values else '' }}" placeholder="https://www.instagram.com/p/...">
       </label>
 
       <label class="context-field">
         Title
-        <input type="text" name="title" maxlength="{{ title_max }}" value="{{ editing.headline if editing and editing.headline else '' }}">
+        <input type="text" name="title" maxlength="{{ title_max }}" value="{{ form_values.headline if form_values and form_values.headline else '' }}">
         <span class="context-field-help">Optional. A short headline for the post.</span>
       </label>
 
       <label class="context-field">
         Summary
-        <textarea name="summary" required maxlength="{{ summary_max }}" rows="4">{{ editing.summary if editing else '' }}</textarea>
+        <textarea name="summary" required maxlength="{{ summary_max }}" rows="4">{{ (form_values.summary or '') if form_values else '' }}</textarea>
         <span class="context-char-count" id="contextSummaryCount">0 / {{ summary_max }}</span>
       </label>
 
       <label class="context-field">
         Who posted it
-        <input type="text" name="source_label" maxlength="120" value="{{ editing.source_label if editing and editing.source_label else '' }}">
+        <input type="text" name="source_label" maxlength="120" value="{{ form_values.source_label if form_values and form_values.source_label else '' }}">
         <span class="context-field-help">The account or outlet, as you want it shown</span>
       </label>
 
       <label class="context-field">
         Meeting link
-        <input type="text" name="rtr_link" value="{{ editing.deep_link if editing and editing.deep_link else '' }}" placeholder="/m/some-meeting?t=754">
+        <input type="text" name="rtr_link" value="{{ form_values.deep_link if form_values and form_values.deep_link else '' }}" placeholder="/m/some-meeting?t=754">
         <span class="context-field-help">Paste the link from &ldquo;Share video at M:SS&rdquo; on the meeting page. Leave blank to save a draft.</span>
       </label>
 
       <label class="context-field">
         Match
         <select name="match_kind">
-          <option value=""{% if not editing or not editing.match_kind %} selected{% endif %}>Not decided</option>
+          <option value=""{% if not form_values or not form_values.match_kind %} selected{% endif %}>Not decided</option>
           {% for slug, label in match_kinds.items() %}
-          <option value="{{ slug }}"{% if editing and editing.match_kind == slug %} selected{% endif %}>{{ label }}</option>
+          <option value="{{ slug }}"{% if form_values and form_values.match_kind == slug %} selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>
@@ -87,6 +98,7 @@
         <button type="submit" class="cassette-btn" data-status="published">Publish</button>
       </div>
     </form>
+    {% endif %}
 
     {% set draft_count = entries | selectattr("status", "equalto", "draft") | list | length %}
     {% set published_count = entries | selectattr("status", "equalto", "published") | list | length %}

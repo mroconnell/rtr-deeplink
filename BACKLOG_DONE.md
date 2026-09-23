@@ -60,16 +60,43 @@ meeting recording); a governing-body preference (reusing `granicus.py`'s
 own `GOVERNING_BODY_KEYWORDS`, not copied) that only breaks a tie between
 two candidates dated the SAME day -- citing Tiburon's higher-volume
 "Heritage & Arts Only" listing view outranking its own Town Council view
-by item count alone.
+by item count alone. **wo134's own picking behavior changes on purpose as
+a result** -- since `pick.py` is now the one shared copy, every wo134
+caller gets the test/demo/minutes filter and the governing-body tie-break
+too, not just Meeting Finder; wo134's existing 96-test suite stayed green
+through this because none of its fixtures happen to exercise those three
+new branches, not because the branches are inert.
 
 **Identity (`identity.py`).** `check_identity()` derives "what the
 meeting itself says" identically in pin and audit mode: both switch off
 the specific tenant's own `tenant_overrides.csv` pin
-(`tenant_pin_switched_off()`, a scoped monkeypatch of
-`resolver._override_rows_for_host()`, restored on exit -- same idiom
-`youtube_resolve_guard()` already uses) before calling `resolve_
-government()`, so the answer always comes from the page's own content,
-never an echo of the pin that produced `gov_id` in the first place. Real,
+(`tenant_pin_switched_off()`) before calling `resolve_government()`, so
+the answer always comes from the page's own content, never an echo of
+the pin that produced `gov_id` in the first place. What actually
+distinguishes the two modes, since the derivation is identical: pin
+mode's `gov_id` is already the value in active use (an ingest would
+carry it forward regardless, per CLAUDE.md's gov_id-pin rule) and
+Identity is a QA backstop; audit mode's `gov_id` IS the thing under
+test, and a `disagrees`/`silent` verdict is the actual finding a human
+acts on. Meeting Finder writes nothing either way.
+
+**Concurrency fix (conductor review, before merge).** The first version
+of `tenant_pin_switched_off()` reassigned `gov_resolver._override_rows_
+for_host` directly on each call's entry/exit -- broken under
+`runner.py`'s own `--concurrency` flag: two overlapping calls each save
+what the OTHER already installed and restore it on exit, so the loser's
+restore silently undoes the other's active switch-off (or leaves a host
+switched off after both calls finish). Fixed by installing ONE
+permanent, idempotent wrapper on `resolver._override_rows_for_host` at
+import time that consults a `contextvars.ContextVar` holding the current
+set of switched-off hosts -- task-local under asyncio, so two concurrent
+tasks each see only their own host switched off. New test,
+`test_concurrent_switch_off_is_task_local`, runs two overlapping
+`asyncio.gather()`'d checks on two different real pinned hosts and
+asserts each only ever sees its own switch-off, with both restored
+afterward.
+
+Real,
 live-verified with `lincoln.escribemeetings.com` (`tenant_overrides.csv`'s
 `wildcard_http_sweep_2` row, pinned to `ca:csd:3526057` -- Lincoln,
 Ontario; "Lincoln" is also a common US place name): with the pin switched
@@ -125,7 +152,184 @@ Identify's account-unknown/guess-ladder handling). Also open: unifying
 `pick.py`'s pre-fetch title rule with `passive_verify.py`'s own
 newest-first walker ordering into one rule, noted but not attempted.
 
+## WO-1025: Meeting Finder's fetch helper (`app/platforms/meeting_finder/fetch.py`) [Done 2026-09-23]
+
+**What.** The one fetch helper `docs/MEETING_FINDER.md` says every phase
+(Start, Identify, Scan, Hop) shares: an async `Fetcher` with a single
+`fetch(url, need_links=True) -> FetchResult` method that runs the ladder
+that doc's "How every page is fetched" section describes -- plain
+request, browser headers only after a 403 or a dropped connection (never
+a 404), headless only when a page loaded but shows no `<a href>` links,
+and Wayback's latest capture (links only, via the `id_` raw form) only
+after a real human-verification challenge. YouTube is refused outright,
+before any request. `max_fetches`/`BudgetExceeded` caps real fetches per
+`Fetcher` instance; per-host politeness spacing defaults to 2.5s and a
+caller-known robots.txt `Crawl-delay` can be layered on via
+`note_crawl_delay()`. WO-1024 built the rest of the package
+(`Start`/`Identify`/`List`/`Scan`/`Hop`/`Resolve`/`Verdict`) in parallel;
+this WO owned only `fetch.py` and its tests.
+
+**Two corrections to the WO's own brief, found while building, folded
+into the code's docstring rather than silently worked around.**
+(1) It named `app/platforms/headless_browser.py` as `fetch_headless_sync()`'s
+home; that module only has the async Playwright path the LIMS/SLC finders
+use. The real function -- sync, blocks YouTube requests made by the
+browser itself -- lives in `scripts/wo147_access_ladder_sweep.py`, and is
+imported from there. (2) It said to reuse `scripts/wo282_recon.py`'s
+`cdx_get()`/`wayback_id_read()`/challenge markers "rather than
+re-implementing," with a fallback of moving the pure helper into
+`app/platforms/meeting_finder/` if a direct import proved awkward. A
+direct import worked fine (that script already puts `scripts/` on
+`sys.path` at its own module level, opens no DB connection and makes no
+network call at import time -- confirmed by WO-1021, and
+`tests/test_wo282_recon_wayback_index.py` already imports it the same
+way), so nothing was moved -- lower blast radius than editing a file
+under heavy, concurrent, multi-WO iteration for a helper an import already
+reaches cleanly.
+
+**One instruction folded in mid-build, from the conductor relaying
+rtr-upcoming's `UPCOMING_AGENDAS_FIELD_GUIDE.md` "Blocked hosts" section
+(re-measured there 2026-08-26 across 108 real hosts) after the first
+draft was already using a browser header set by default:** default to an
+honest, identifying User-Agent, not a Chrome header set (a real
+Cloudflare host there 403'd a Chrome UA whose TLS fingerprint didn't
+match its claim, while serving the honest UA 200); escalate to browser
+headers on a 403 **or** a connection-level refusal (a `RemoteDisconnected`-
+shaped reset with no status line -- confirmed there against Municode),
+never a 404; remember which header set worked **per host** for the rest
+of the run, since bot policy is applied at the edge and covers every page
+on that host, not just the one that got 403'd; and never call a bare 403
+a challenge -- only a real marker earns `cloudflare-challenge-blocked`/
+`blocked-waf-akamai`. Building the Akamai/Cloudflare split caught its own
+bug before merge: an early version imported
+`app/platforms/generic_fallback.py`'s whole `_CHALLENGE_MARKERS` tuple as
+"the Akamai markers," but that tuple bundles three markers for two
+different WAFs (`errors.edgesuite.net`/`access denied` are Akamai;
+`just a moment` is Cloudflare's own interstitial, per that module's own
+comment) -- a test asserting a Cloudflare "Just a moment..." page resolved
+to `cloudflare-challenge-blocked` caught it resolving to
+`blocked-waf-akamai` instead, before it shipped.
+
+**Verified.** 16 unit tests (`tests/test_meeting_finder_fetch.py`):
+real-loopback-server coverage of the ladder itself (plain success, the
+404-never-escalates rule, 403-then-browser-headers with per-host header
+memory confirmed on a second call, a bare-403-is-not-a-challenge case,
+the Akamai fixture from `tests/fixtures/generic_fallback/
+wayne_akamai_403.html`, the no-links -> headless trigger and its
+`need_links=False` bypass, budget exhaustion), plus a couple of
+synthetic branch tests (real aiohttp exception classes injected via a
+fake session) for DNS-unresolvable and dropped-connection classification,
+which no host in this suite reproduces on demand.
+
+Small live check, 8 real government pages, one `Fetcher` per URL:
+
+| What it covers | URL | `access_mode` | `outcome` | links found | wayback timestamp |
+|---|---|---|---|---|---|
+| Normal homepage (Swagit sample) | dublin.ca.gov | plain | none | 91 | -- |
+| 403 -> browser headers (rtr-upcoming field guide's own Municode example) | losgatos-ca.municodemeetings.com | browser-headers | none | 172 | -- |
+| SharePoint shell (generic_fallback.py's own comment) | discover.pbc.gov/countycommissioners/Pages/bcc-meeting-videos.aspx | plain | timeout | 0 | -- |
+| Known live Cloudflare JS challenge (headless_browser.py's own docstring) | lims.minneapolismn.gov/MarkedAgenda/CI/6133 | browser-headers | cloudflare-challenge-blocked | 0 | none found |
+| `cloudflare-challenge-blocked` row, jurisdiction_coverage.csv | town-of-addison.com | wayback | cloudflare-challenge-blocked | 14 | 20251119155402 |
+| `cloudflare-challenge-blocked` row, jurisdiction_coverage.csv | childersburg.org | wayback | cloudflare-challenge-blocked | 29 | 20260517010548 |
+| Normal homepage (Legistar sample) | boston.legistar.com/Calendar.aspx | plain | none | 275 | -- |
+| Normal homepage (eScribe sample) | pub-peelregion.escribemeetings.com | plain | none | 19 | -- |
+
+Every branch the WO asked to confirm live actually fired: a real 403 ->
+browser-headers recovery, a real Cloudflare challenge correctly told
+apart from a plain block and degraded to Wayback links-only (with two
+real captures actually read), and ordinary homepages passing straight
+through. The Palm Beach County SharePoint page timed out on the plain
+rung within this Fetcher's 15s per-attempt timeout rather than
+demonstrating the headless trigger -- an honest result, not a
+demonstration failure: nothing in this small check reproduces the
+"loads 200 with zero links" shape live; `tests/test_meeting_finder_fetch.py`
+covers that branch with a real local server instead.
+
+CI: all five gates green (`ruff check`, `ruff format --check`, `pytest`
+-- full suite 5091 passed / 2 pre-existing failures unrelated to this WO
+(`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, both a stale
+export fixture) / 16 skipped / 4 xfailed, `alembic check` x2, the
+BACKLOG_DONE heading check).
+
+## WO-1014: private Context candidate intake and exact-meeting review queue [Done 2026-09-23]
+
+**What and why.** Ryan approved Milestone 1 after review of the Context handover,
+live pages and current repository. CSV/JSON research now becomes private
+candidates with preserved observations, an exact-recording lookup and an explained
+next action. Archive owns `archive/context/`; the resolver exposes explicit editor
+proxies. The existing public Context editor and publication states are reused.
+
+**Result.** One candidate per canonical social post. Changed research retains old
+observations and invalidates stale checks. Source identity locks, database
+uniqueness and version checks protect concurrent imports/rechecks. Conflicting
+research does not become a guessed association. Exact lookup uses existing slugs,
+stored URL aliases, normalized source URLs and fixture-verified platform IDs with
+tenant namespaces. Government/date suggestions never count as exact matches.
+Deleted meetings require recheck; edited editorial entries cannot leave a candidate
+pointing to another post. Import/recheck does not ingest, transcribe or publish.
+
+**Real source check.** The read-only Sheet export had 31 rows and 29 distinct posts.
+A local apply accepted 27 rows / 27 candidates, rejected four differing rows for
+two duplicate posts (Dallas and Santa Clarita), and had zero row errors. Replay
+created zero candidates or observations, with all 27 accepted observations unchanged.
+The database still had zero meetings, Context entries and transcription jobs.
+The 13 ingest-review, 10 recording-research and four unresolved outcomes are from
+an empty local Archive, not a production coverage claim. The 16 source columns
+have an explicit mapping; original rows remain intact. No Sheet or production
+write occurred.
+
+**Review extension.** After frontend review, Ryan approved editable candidate facts,
+immutable saved reviews and a saved-only handoff to `/context/new`. The matched
+recording now has a separate proposed-moment link. Saved edits preserve imported
+source rows; conflicting fields require an explicit choice, and new research
+requires another review. Version checks prevent stale saves. Detail and editor
+prefill read one coherent review even during concurrent saves. Opening the editor
+does not create or publish an entry. The timestamp remains proposed until verified.
+
+**Verification.** All 391 Context Python tests and 92 JavaScript tests passed.
+After merging current main, full pytest completed with 5,208 passed, 16 skipped, four expected failures and two
+failures in already-documented local-export checks (`test_repair_wrong_pages`
+and `test_wrong_page_screen`; see BACKLOG's existing local-export entry). The
+initial sandbox run also reproduced six DNS-dependent failures on unchanged
+baseline code; they passed with normal DNS. Ruff lint/format, both SQLite Alembic
+upgrade/checks, backlog TOC and heading integrity passed. Disposable PostgreSQL
+migration plus concurrent duplicate and source-retarget checks passed. Unfiltered
+PostgreSQL autogenerate reports only its four intentionally unmapped baseline
+search objects, as documented by the CI workflow; no Context schema drift.
+Chrome verified queue layout, pagination/filtering, preserved research, successful
+recheck, retryable upstream outage, edit/save and saved-value editor prefilling
+through two localhost services. The matched-recording walkthrough uses a clearly
+marked local fake meeting with no video/transcript; no public entry was created.
+PostgreSQL concurrent review saves produced one saved and one stale result, with
+one immutable revision. Concurrent detail reads remained coherent. Native OS accessibility remained off.
+
+**Delivery and limits.** A lead integrated isolated concurrent import/storage,
+lookup/state and queue workers, then an independent review challenged identity,
+concurrency and publication boundaries. `README.md`, `docs/CONTEXT_PIPELINE_PLAN.md`
+and `docs/CONTEXT_CANDIDATES.md` now describe delivered behavior; the worker
+contract records the approved extension. Two additive Archive migrations,
+`9f20cd299f30` and `1816f75c1098`, add three tables without a backfill.
+Deploy Archive before resolver; this work is not live until that manual release.
+Old-slug resolution, unknown mirror associations, ingestion and automatic moment
+matching remain outside this approved scope.
+
 ## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
+
+**What.** Tier-3 queue writers that know the government now add its
+`gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES
+= True`). The feeder puts that `gov_id` in the ingest payload.
+
+**Why now.** WO-1016 merged the tolerant readers first and left writers
+off, because the drip Mac runs its own checkout. On 2026-09-23 Ol
+McClaude confirmed it brought its drip worktree (`~/rtr-deeplink-drip-worktree`,
+branch `drip-local`, previously 136 commits behind) to a `main` commit that
+includes WO-1016, restarted the drip, and the first line after restart fed
+a real meeting. Nothing it runs imports the retired `wo273_*` scripts.
+
+**Also recorded** in `docs/YOUTUBE_DRIP_RUNBOOK.md`: the drip runs from
+that worktree, not the main checkout, so pulling `main` alone does not
+update it; and SIGINT did not stop the drip that day (SIGTERM did), no
+diagnosis yet.
 
 **What.** Tier-3 queue writers that know the government now add its
 `gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES

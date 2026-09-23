@@ -2016,6 +2016,14 @@ clickable.
 
 ## Full Context feed (`/context`)
 
+**Private research intake (WO-1014).** Editors can review imported research at
+`/context/candidates`. CSV/JSON imports preserve source observations, check the
+existing Archive for the exact recording, and show a next action. Editors can
+save reviewed fields, follow a proposed timestamp, and open the Context editor
+with the saved values. This does not create or publish entries or ingest meetings. See
+[the operator guide](docs/CONTEXT_CANDIDATES.md) for preview/apply commands,
+source mapping, statuses, and release order.
+
 **Why this exists.** Ryan finds many short clips of public meetings
 circulating on Instagram, TikTok, and YouTube. A clip travels on its own,
 stripped of the rest of the meeting, and some draw real community

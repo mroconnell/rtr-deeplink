@@ -4,6 +4,8 @@ the account's own tenant_overrides.csv pin (see identity.py's own
 docstring for why this applies to both modes, not just audit).
 """
 
+import asyncio
+
 from app.platforms.meeting_finder.identity import (
     check_identity,
     tenant_pin_switched_off,
@@ -133,3 +135,48 @@ def test_tenant_pin_switched_off_only_affects_the_named_host():
         assert gov_resolver._override_rows_for_host("lincoln.escribemeetings.com") == []
     # Restored after the context manager exits.
     assert gov_resolver._override_rows_for_host("lincoln.escribemeetings.com")
+
+
+async def test_concurrent_switch_off_is_task_local():
+    """Conductor review, 2026-09-23: an earlier version of
+    `tenant_pin_switched_off()` reassigned `gov_resolver._override_rows_
+    for_host` directly on entry/exit -- two overlapping asyncio tasks
+    (reachable via `runner.py`'s own `--concurrency` flag) would corrupt
+    each other's state (see `tenant_pin_switched_off()`'s own docstring
+    for the exact failure sequence). This runs two switch-offs
+    concurrently, on two different real hosts, and checks each task sees
+    ONLY its own host switched off -- proving the `contextvars.ContextVar`
+    fix is genuinely task-local, not a repeat of the same bug."""
+    host_a = "lincoln.escribemeetings.com"
+    host_b = "adamscounty.primegov.com"
+
+    real_a = gov_resolver._override_rows_for_host(host_a)
+    real_b = gov_resolver._override_rows_for_host(host_b)
+    assert real_a, "expected a real tenant_overrides.csv row for host_a"
+    assert real_b, "expected a real tenant_overrides.csv row for host_b"
+
+    results = {}
+
+    async def _check(host, other_host):
+        with tenant_pin_switched_off(host):
+            # Yield twice, so both tasks are genuinely interleaved
+            # (overlapping, not sequential) while each has its own host
+            # switched off.
+            await asyncio.sleep(0.01)
+            results[f"{host}_own"] = gov_resolver._override_rows_for_host(host)
+            results[f"{host}_other"] = gov_resolver._override_rows_for_host(other_host)
+            await asyncio.sleep(0.01)
+
+    await asyncio.gather(_check(host_a, host_b), _check(host_b, host_a))
+
+    # Each task's OWN host was switched off inside its own `with` block...
+    assert results[f"{host_a}_own"] == []
+    assert results[f"{host_b}_own"] == []
+    # ...but the OTHER task's host was never affected -- task-local, not
+    # a shared/global switch-off.
+    assert results[f"{host_a}_other"] == real_b
+    assert results[f"{host_b}_other"] == real_a
+
+    # Both fully restored once both tasks have finished.
+    assert gov_resolver._override_rows_for_host(host_a) == real_a
+    assert gov_resolver._override_rows_for_host(host_b) == real_b

@@ -56,17 +56,32 @@ for a later wave, not attempted here.
 
 - **Identity derives "what the meeting itself says" the same way in pin
   and audit mode**: both switch off the specific tenant's own
-  `tenant_overrides.csv` pin (`identity.tenant_pin_switched_off()`, a
-  scoped monkeypatch of `resolver._override_rows_for_host()` for the
-  duration of one call -- same idiom `app/platforms/base.py`'s
-  `youtube_resolve_guard()` already uses) before calling
-  `resolve_government()`. The doc's own warning ("without switching the
-  pin off, the resolver would just echo the pin back") applies to pin
-  mode too, not only audit -- a host that already carries a whole-tenant
-  pin would otherwise always "agree" with itself regardless of what the
-  specific page actually said. The two modes differ only in bookkeeping
-  (which `mode` a `VerdictRow` records); `expected_gov_id` is
-  `FinderInput.gov_id` in both.
+  `tenant_overrides.csv` pin (`identity.tenant_pin_switched_off()`)
+  before calling `resolve_government()`. The doc's own warning ("without
+  switching the pin off, the resolver would just echo the pin back")
+  applies to pin mode too, not only audit -- a host that already carries
+  a whole-tenant pin would otherwise always "agree" with itself
+  regardless of what the specific page actually said.
+  **What actually distinguishes the two modes**, since the derivation is
+  identical: not the mechanism, but what `gov_id` MEANS. In pin mode it's
+  already the value in active use (an ingest would carry it forward
+  regardless, per CLAUDE.md's "send the government's id in every ingest
+  payload" rule) -- Identity here is a QA backstop. In audit mode it IS
+  the thing under test (a `tenant_overrides.csv` pin being audited for
+  correctness) -- a `disagrees`/`silent` verdict is the actual finding a
+  human acts on. Meeting Finder itself never writes anything either way.
+  **The switch-off mechanism itself (corrected 2026-09-23 after conductor
+  review):** a single, permanent, idempotent wrapper installed on
+  `resolver._override_rows_for_host` at import time, consulting a
+  `contextvars.ContextVar` that holds the current set of switched-off
+  hosts. An earlier version reassigned that attribute directly on each
+  call's entry/exit, which corrupted state under `runner.py`'s own
+  `--concurrency` flag (two overlapping calls could each restore the
+  wrong prior state, per `identity.py`'s own docstring for the exact
+  sequence). A `ContextVar` is task-local under asyncio, so two
+  concurrent tasks switching off different hosts never see each other's
+  switch-off -- proved by `tests/test_wo1024_meeting_finder_identity.py`'s
+  `test_concurrent_switch_off_is_task_local`.
 - **Resolve does not call `verify_hub()`** (a course correction during
   WO-1024's own build, see git history) -- Resolve's input is already a
   specific candidate URL, not a hub to walk; hub-walking stays List/
