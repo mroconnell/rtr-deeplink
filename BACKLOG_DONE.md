@@ -1,5 +1,93 @@
 # Backlog — done
 
+## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` removed [Done 2026-09-23]
+
+**Issue.** Ryan asked for four cleanups to the research file's
+`reject_reason` taxonomy in `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §23: drop `cablecast-no-vod` (0 rows use it),
+convert `rejected_by_probe` to `rejected-by-probe` everywhere it's
+written, document three in-use-but-undocumented values
+(`blocked-waf-akamai`, `deferred-french-vocab`, `shared-gov-exception`),
+and point the doc's top-part "record the outcome" guidance at §23.
+
+**`cablecast-no-vod`: removed (after a conductor re-check).** The first
+pass grepped both repos and found `rtr-deeplink/scripts/
+coverage_alternates.py` still listing it in `CONTENT_REASONS`,
+`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, with
+`tests/test_coverage_alternates.py` asserting all three memberships —
+live, tested code, not just a doc mention — so it was left in place on
+the first PR revision, flagged for Ryan. The conductor's review of that
+PR confirmed those classification-list memberships and their test
+assertions were the ONLY code references anywhere: nothing writes the
+value, and 0 research rows carry it, so removing it changes no runtime
+behavior. Removed from both `frozenset`s in `coverage_alternates.py`
+and from the test (each left a one-line comment: "approved 2026-09-14,
+never used, removed 2026-09-23 per Ryan"); the §23 addendum in
+`ENUMERATION_METHODS.md` updated from "NOT removed" to "removed" the
+same way (locked, re-read, atomic replace).
+
+**`rejected_by_probe` → `rejected-by-probe`.** `scripts/
+wo134_confirmed_hits_ingest.py` now defines
+`REJECT_REASON_REJECTED_BY_PROBE = "rejected-by-probe"`; `scripts/
+wo147_access_ladder_sweep.py` (the still-current access-ladder code —
+confirmed via `docs/COVERAGE_HANDOVER.md`'s §270/§274 pointers and by
+counting importers: ~50 newer sweep/classify scripts import it, versus
+0 importers for the ~14 other `wo1NN_*`/`wo2NN_*` ladder-sweep scripts
+that also wrote the underscore literal) now writes that constant into
+its `reject_reason` cell instead of a fresh literal. The internal
+`RowResult.outcome`/`ProbeRejected` code string
+(`"rejected_by_probe"`, matched with `==`, asserted by
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) is unchanged on
+purpose — never written to the CSV directly, only compared in-process.
+The ~14 older, zero-importer one-off sweep/finish scripts
+(`wo150_muni_ladder_sweep.py`, `wo183/187/191/216/217/225/259_*`,
+`wo147_finish_tier3_queue.py`, `wo150_finish_tier3.py`,
+`wo168_gated_tenant_guess.py`, `wo196_wo190_followups.py`,
+`wo175_find_and_queue_video.py`, `wo230_agendacenter_followup.py`) and
+~26 one-shot `*_apply_to_jc.py` scripts in rtr-business were left
+alone, per this file's "leave historical one-off scripts alone" rule —
+none is imported by anything else, none is rerun. The 10 rows already
+on disk with the old spelling were rewritten by a new, dry-run-verified
+apply script (`wo1017_apply_to_jc.py`, run for real by the conductor),
+following ENUMERATION_METHODS.md's §158 protocol but doing a true
+line-based byte swap (both spellings are 18 characters) rather than a
+`csv.DictWriter` round-trip, so no other row's formatting could shift.
+
+**Three values added to §23** (new 2026-09-23 addendum, with class,
+meaning, source and live count): `blocked-waf-akamai` (access class —
+the govAccess/Akamai CNAME block, 40 rows), `deferred-french-vocab`
+(a new, distinct "parked for retry" class, not access or content — a
+Quebec government's targeted-fetch phase was deliberately skipped
+because the shared hop-link vocabulary is English-only, 201 rows), and
+`shared-gov-exception` (other/administrative — already fully defined in
+§317, just missing from §23's own table; the non-canonical row of a
+consolidated city-county pair, 33 rows).
+
+**Classification lists checked.** `blocked-waf-akamai` added to
+`scripts/coverage_alternates.py`'s `ACCESS_REASONS` (rtr-deeplink, with
+a new unit test) and to `wo226_apply_to_jc.py`'s `ACCESS_REJECT_REASONS`
+(rtr-business, uncommitted per this repo's "agents never commit in
+rtr-business" rule — left for the conductor). `coverage_registry.py`
+only tallies raw `reject_reason` strings, no access/content bucketing to
+update. `refresh_transcribed_flag.py`'s `VALUE_TYPE_REJECT_REASONS`
+already correctly includes `shared-gov-exception` and correctly excludes
+the other three; not touched (owned by a concurrent WO this session).
+Per Ryan's instruction, `rejected-by-probe`/`deferred-french-vocab`/
+`shared-gov-exception` were NOT added to any ACCESS/CONTENT/NEVER_RETRY
+list — classifying them changes real sweep retry behavior, so that's
+flagged in the doc for a human decision rather than done here.
+
+**Top-part pointer.** The "What to do when a stage finds something"
+section's "Nothing." bullet now points to §23 as the canonical
+`reject_reason` list, so a future session doesn't reinvent a value under
+a new spelling.
+
+**Not deployed** — docs and `research/`-directory scripts never needed
+a deploy and still don't; `scripts/coverage_alternates.py` and
+`scripts/wo134_confirmed_hits_ingest.py`/`wo147_access_ladder_sweep.py`
+are offline research/sweep tooling, not part of the resolver or worker
+services, so nothing here is blocked on a Render deploy either.
+
 ## WO-1020: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
 
 **What was wrong.** `wo273_recon.fetch_wayback_domain_index()` asks the Wayback Machine which pages of a government's site it has saved. On 2026-09-14 (WO-366) its output field `narrow_urls` was renamed `top_urls`. The 11 per-WO recon scripts that call it (`wo282`, `wo283`, `wo320`–`wo325`, `wo331`, `wo337`, `wo338`) were never updated. Each one still copied `wayback_index["narrow_urls"]` into its record.

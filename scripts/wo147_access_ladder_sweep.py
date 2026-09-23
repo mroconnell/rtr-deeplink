@@ -2306,11 +2306,16 @@ async def process_candidate(
         # existed) per Ryan's "video existed, take the next candidate,
         # only report this once candidates are exhausted" rule -- see
         # CLAUDE.md's WO-169 entry and app/platforms/queue_probe.py.
+        # WO-1017 (2026-09-23): the `outcome` code below stays the
+        # underscore spelling (it's an in-process string, matched by
+        # `==` above and by tests) -- only the `reject_reason` cell,
+        # which lands in jurisdiction_coverage.csv, uses the hyphenated
+        # constant so the research file gets the new spelling.
         writer.writerow(
             {
                 **base_report,
                 "outcome": "rejected_by_probe",
-                "reject_reason": "rejected_by_probe",
+                "reject_reason": wo134.REJECT_REASON_REJECTED_BY_PROBE,
                 "reject_class": "content",
                 "meeting_url": result.seed_url,
                 "video_url": result.video_url,
