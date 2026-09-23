@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {
   selectedCandidateIds,
   submitCandidateRecheck,
+  candidateRecheckSummary,
 } = require('../archive/static/context_candidates.js');
 
 test('selectedCandidateIds returns only checked positive candidate ids', () => {
@@ -38,4 +39,17 @@ test('recheck turns a proxy error into a safe operator message', async () => {
     submitCandidateRecheck([7], fetchImpl),
     /Access denied\./
   );
+});
+
+test('recheck summary does not call stale or missing candidates complete', () => {
+  assert.equal(
+    candidateRecheckSummary([
+      { id: 7, outcome: 'checked' },
+      { id: 8, outcome: 'stale' },
+      { id: 9, outcome: 'not_found' },
+    ]),
+    '2 candidates need attention.'
+  );
+  assert.equal(candidateRecheckSummary([{ id: 7, outcome: 'error' }]), '1 candidate needs attention.');
+  assert.equal(candidateRecheckSummary([{ id: 7, outcome: 'checked' }]), 'Recheck complete.');
 });

@@ -19,6 +19,8 @@ from .schemas import ImportRequest, InternalRecheckRequest, NextAction
 from ..utils.context_editors import is_context_editor
 
 _MAX_REQUEST_BYTES = 1_000_000
+_MAX_CANDIDATE_ID = 9_223_372_036_854_775_807
+_MAX_CANDIDATE_ID_DIGITS = len(str(_MAX_CANDIDATE_ID))
 _PRIVATE_HEADERS = {
     "Cache-Control": "private, no-store",
     "X-Robots-Tag": "noindex",
@@ -46,6 +48,14 @@ def _importer_module():
     from . import importer
 
     return importer
+
+
+def _next_action_labels() -> dict[str, str]:
+    # status.py owns the wording; deferred for the same independently-tested
+    # package boundary as store/importer above.
+    from .status import NEXT_ACTION_LABELS
+
+    return NEXT_ACTION_LABELS
 
 
 def _private_json(content: Any, *, status_code: int = 200) -> JSONResponse:
@@ -115,8 +125,12 @@ async def _token_allowed(token_ok: Callable[[str | None], Any], token: str | Non
 
 
 async def _validated_body(request: Request, model):
-    body = await request.body()
-    if not body or len(body) > _MAX_REQUEST_BYTES:
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > _MAX_REQUEST_BYTES:
+            raise ValueError("invalid request")
+        body.extend(chunk)
+    if not body:
         raise ValueError("invalid request")
     try:
         payload = json.loads(body)
@@ -133,15 +147,7 @@ def _queue_context(**values: Any) -> dict[str, Any]:
         "active_account": values.pop("active_account", None),
         "safe_http_url": _safe_http_url,
         "safe_archive_url": _safe_archive_url,
-        "next_action_labels": {
-            "new": "New",
-            "check_failed": "Check failed",
-            "conflict": "Conflict",
-            "resolve_needed": "Resolve meeting",
-            "recording_needed": "Find recording",
-            "ingest_needed": "Review for ingest",
-            "moment_needed": "Review moment",
-        },
+        "next_action_labels": _next_action_labels(),
         **values,
     }
 
@@ -204,7 +210,11 @@ def build_router(*, templates, token_ok, clerk_user_id) -> APIRouter:
                 _queue_context(not_found=True),
                 status_code=404,
             )
-        if not candidate_id.isascii() or not candidate_id.isdecimal():
+        if (
+            not candidate_id.isascii()
+            or not candidate_id.isdecimal()
+            or len(candidate_id) > _MAX_CANDIDATE_ID_DIGITS
+        ):
             return _private_template(
                 templates,
                 request,
@@ -212,7 +222,7 @@ def build_router(*, templates, token_ok, clerk_user_id) -> APIRouter:
                 status_code=404,
             )
         parsed_id = int(candidate_id)
-        if parsed_id < 1:
+        if parsed_id < 1 or parsed_id > _MAX_CANDIDATE_ID:
             return _private_template(
                 templates,
                 request,

@@ -20,8 +20,18 @@ async function submitCandidateRecheck(ids, fetchImpl) {
   return body;
 }
 
+function candidateRecheckSummary(results) {
+  const unsuccessful = results.filter((item) => item.outcome !== 'checked').length;
+  if (unsuccessful) {
+    const noun = unsuccessful === 1 ? 'candidate needs' : 'candidates need';
+    return `${unsuccessful} ${noun} attention.`;
+  }
+  return 'Recheck complete.';
+}
+
 function initCandidateQueue(root, fetchImpl) {
   const status = root.querySelector('[data-recheck-status]');
+  const refreshLink = root.querySelector('[data-refresh-queue]');
   const selectedButton = root.querySelector('[data-recheck-selected]');
   const oneButton = root.querySelector('[data-recheck-one]');
   const setStatus = (message) => { if (status) status.textContent = message; };
@@ -30,8 +40,8 @@ function initCandidateQueue(root, fetchImpl) {
     setStatus('Checking…');
     try {
       const body = await submitCandidateRecheck(ids, fetchImpl);
-      const errors = (body.results || []).filter((item) => item.outcome === 'error').length;
-      setStatus(errors ? `${errors} candidate check failed. Reload to see the queue.` : 'Recheck complete. Reload to see the latest result.');
+      setStatus(candidateRecheckSummary(body.results || []));
+      if (refreshLink) refreshLink.hidden = false;
     } catch (error) {
       setStatus(error.message || 'The recheck could not be completed.');
     } finally {
@@ -46,7 +56,7 @@ function initCandidateQueue(root, fetchImpl) {
   if (oneButton) oneButton.addEventListener('click', () => run([Number.parseInt(oneButton.dataset.recheckOne, 10)], oneButton));
 }
 
-if (typeof module !== 'undefined') module.exports = { selectedCandidateIds, submitCandidateRecheck, initCandidateQueue };
+if (typeof module !== 'undefined') module.exports = { selectedCandidateIds, submitCandidateRecheck, candidateRecheckSummary, initCandidateQueue };
 if (typeof document !== 'undefined') {
   const root = document.querySelector('[data-context-candidate-page]');
   if (root) initCandidateQueue(root, window.fetch.bind(window));

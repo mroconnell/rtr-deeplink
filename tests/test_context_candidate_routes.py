@@ -80,6 +80,19 @@ def _client(monkeypatch, *, user_id=_EDITOR, store=None, importer=None):
     fake_importer = importer or SimpleNamespace()
     monkeypatch.setattr(routes, "_store_module", lambda: fake_store)
     monkeypatch.setattr(routes, "_importer_module", lambda: fake_importer)
+    monkeypatch.setattr(
+        routes,
+        "_next_action_labels",
+        lambda: {
+            "new": "Not checked yet",
+            "check_failed": "Check failed — retry",
+            "conflict": "Review conflicting evidence",
+            "resolve_needed": "Identify the meeting",
+            "recording_needed": "Find the full recording",
+            "ingest_needed": "Review recording for ingestion",
+            "moment_needed": "Review the moment and explanation",
+        },
+    )
     app = FastAPI()
     app.include_router(
         routes.build_router(
@@ -152,6 +165,58 @@ def test_detail_shows_observations_without_rendering_markup(monkeypatch):
     assert "\\u003cscript\\u003eraw()\\u003c/script\\u003e" in response.text
     assert "<script>raw()</script>" not in response.text
     assert 'href="/m/city-of-san-diego-ca-2026-08-19-public-safety"' in response.text
+    assert "data-refresh-queue hidden" in response.text
+
+
+def test_detail_renders_each_conflicting_research_value(monkeypatch):
+    class Store:
+        async def get_candidate(self, candidate_id):
+            candidate = _candidate(candidate_id)
+            candidate["source_conflicts"] = [
+                {
+                    "field": "meeting_date",
+                    "values": [
+                        {
+                            "value": "2026-08-19",
+                            "sources": [
+                                {
+                                    "provider": "provider-one",
+                                    "source_record_key": "row-one",
+                                }
+                            ],
+                        },
+                        {
+                            "value": "2026-08-20",
+                            "sources": [
+                                {
+                                    "provider": "provider-two",
+                                    "source_record_key": "row-two",
+                                }
+                            ],
+                        },
+                    ],
+                }
+            ]
+            return candidate
+
+    response = _client(monkeypatch, store=Store()).get("/context/candidates/7")
+    assert response.status_code == 200
+    assert "2026-08-19" in response.text
+    assert "provider-one / row-one" in response.text
+    assert "2026-08-20" in response.text
+    assert "provider-two / row-two" in response.text
+
+
+def test_detail_rejects_huge_numeric_id_before_calling_store(monkeypatch):
+    class Store:
+        async def get_candidate(self, candidate_id):
+            raise AssertionError("oversized id must not reach storage")
+
+    response = _client(monkeypatch, store=Store()).get(
+        "/context/candidates/" + "9" * 5_000
+    )
+    assert response.status_code == 404
+    _assert_private(response)
 
 
 def test_missing_candidate_and_store_error_are_distinct(monkeypatch):
