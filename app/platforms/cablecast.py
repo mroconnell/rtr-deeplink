@@ -853,7 +853,9 @@ class CablecastAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                video_warnings=[f"Could not find gallery {gallery_id}'s own show list."],
+                video_warnings=[
+                    f"Could not find gallery {gallery_id}'s own show list."
+                ],
             )
         ready = [s for s in shows if s.get("vodUrl")]
         if not ready:
@@ -869,8 +871,9 @@ class CablecastAssetFinder(AssetFinder):
 
         newest = max(
             ready,
-            key=lambda s: self._parse_gallery_event_date(s.get("eventDate"))
-            or datetime.min,
+            key=lambda s: (
+                self._parse_gallery_event_date(s.get("eventDate")) or datetime.min
+            ),
         )
         show_id = newest.get("showId")
         parsed = urlparse(fetch_url)

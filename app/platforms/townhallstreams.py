@@ -346,9 +346,7 @@ class TownHallStreamsAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                video_warnings=[
-                    "No past meeting found in this town's listing page."
-                ],
+                video_warnings=["No past meeting found in this town's listing page."],
             )
         last_result: Optional[ResolvedMeeting] = None
         for candidate in candidates[:_LISTING_MAX_TRIED]:

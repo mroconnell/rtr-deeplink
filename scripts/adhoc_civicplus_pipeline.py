@@ -457,7 +457,9 @@ async def homepage_civicclerk_fallback(session, domain: str):
         # Last resort: allow a bare YouTube channel link now that nothing
         # better -- any other platform, or a specific YouTube video/
         # playlist -- was found anywhere on the page.
-        match = find_platform_link(html, final_url, exclude=_NO_CIVICPLUS, accept=screen)
+        match = find_platform_link(
+            html, final_url, exclude=_NO_CIVICPLUS, accept=screen
+        )
         reason = "no known-platform link found on homepage (including bare channels)"
     if not match:
         return None, reason

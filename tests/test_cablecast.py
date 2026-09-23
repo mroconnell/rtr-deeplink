@@ -1143,7 +1143,9 @@ async def test_resolve_fastboot_fallback_is_not_tried_for_a_show_the_remix_path_
 # shaped, see `_GALLERY_EVENT_DATE_FORMAT`'s module note) data directly.
 
 GALLERY_URL = "https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
-GALLERY_FETCH_URL = "http://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+GALLERY_FETCH_URL = (
+    "http://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+)
 GALLERY_SHOW_URL = "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
 
 
@@ -1177,7 +1179,10 @@ async def test_resolve_gallery_picks_newest_ready_show_and_delegates_to_its_own_
     # delegated to, not the original gallery URL -- correct, matching
     # every other delegation this adapter already does (e.g. the
     # root-page fallback for a blocked bare "/show/{id}" URL above).
-    assert result.source_url == "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+    assert (
+        result.source_url
+        == "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+    )
 
 
 def test_find_gallery_shows_matches_by_gallery_id_not_tree_position():

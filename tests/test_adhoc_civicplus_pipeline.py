@@ -220,7 +220,9 @@ async def test_homepage_link_to_cablecast_is_no_longer_civicclerk_only():
     # fallback beyond CivicClerk is the whole point of that change.
     homepage_url = "https://wilmette.gov/"
     routes = {
-        homepage_url: FakeResponse(status=200, text=WILMETTE_HOMEPAGE_HTML, url=homepage_url)
+        homepage_url: FakeResponse(
+            status=200, text=WILMETTE_HOMEPAGE_HTML, url=homepage_url
+        )
     }
     with mock_session(routes):
         import aiohttp
@@ -235,13 +237,17 @@ async def test_homepage_link_to_vimeo_is_no_longer_civicclerk_only():
     # Westfield MA: real, confirmed-live 2026-09-23.
     homepage_url = "https://cityofwestfield.org/"
     routes = {
-        homepage_url: FakeResponse(status=200, text=WESTFIELD_HOMEPAGE_HTML, url=homepage_url)
+        homepage_url: FakeResponse(
+            status=200, text=WESTFIELD_HOMEPAGE_HTML, url=homepage_url
+        )
     }
     with mock_session(routes):
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            url, reason = await homepage_civicclerk_fallback(session, "cityofwestfield.org")
+            url, reason = await homepage_civicclerk_fallback(
+                session, "cityofwestfield.org"
+            )
     assert reason == ""
     assert url == "https://vimeo.com/1223827501"
 
@@ -253,7 +259,9 @@ async def test_youtube_playlist_preferred_over_earlier_bare_channel_link():
     # because it comes first.
     homepage_url = "https://chicopeema.gov/"
     routes = {
-        homepage_url: FakeResponse(status=200, text=CHICOPEE_HOMEPAGE_HTML, url=homepage_url)
+        homepage_url: FakeResponse(
+            status=200, text=CHICOPEE_HOMEPAGE_HTML, url=homepage_url
+        )
     }
     with mock_session(routes):
         import aiohttp
@@ -261,7 +269,10 @@ async def test_youtube_playlist_preferred_over_earlier_bare_channel_link():
         async with aiohttp.ClientSession() as session:
             url, reason = await homepage_civicclerk_fallback(session, "chicopeema.gov")
     assert reason == ""
-    assert url == "https://www.youtube.com/playlist?list=PLXVcK5ta3tzbboUfj7rIkbKNWf0T3Cj42"
+    assert (
+        url
+        == "https://www.youtube.com/playlist?list=PLXVcK5ta3tzbboUfj7rIkbKNWf0T3Cj42"
+    )
 
 
 async def test_bare_youtube_channel_used_only_as_last_resort():
@@ -270,7 +281,9 @@ async def test_bare_youtube_channel_used_only_as_last_resort():
     # the second (no-channel-refusal) pass rather than the first.
     homepage_url = "https://pasadenatx.gov/"
     routes = {
-        homepage_url: FakeResponse(status=200, text=PASADENA_HOMEPAGE_HTML, url=homepage_url)
+        homepage_url: FakeResponse(
+            status=200, text=PASADENA_HOMEPAGE_HTML, url=homepage_url
+        )
     }
     with mock_session(routes):
         import aiohttp
@@ -346,7 +359,13 @@ async def test_walker_candidate_with_real_video_is_used_directly():
     import adhoc_civicplus_pipeline as pipeline
 
     async def fake_walker(hub_url):
-        return [{"title": "Council Meeting", "date": "2026-09-01", "url": "https://example.gov/video/1"}]
+        return [
+            {
+                "title": "Council Meeting",
+                "date": "2026-09-01",
+                "url": "https://example.gov/video/1",
+            }
+        ]
 
     async def fake_resolve(url):
         return _FakeResolvedMeeting(video_url="https://example.gov/video/1.mp4")
@@ -358,7 +377,9 @@ async def test_walker_candidate_with_real_video_is_used_directly():
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            url, reason = await pipeline.homepage_civicclerk_fallback(session, "example.gov")
+            url, reason = await pipeline.homepage_civicclerk_fallback(
+                session, "example.gov"
+            )
 
     assert reason == ""
     assert url == "https://example.gov/video/1"
@@ -375,7 +396,13 @@ async def test_falls_through_to_homepage_scan_when_walker_candidates_have_no_vid
     import adhoc_civicplus_pipeline as pipeline
 
     async def fake_walker(hub_url):
-        return [{"title": "Agenda only", "date": "2026-09-01", "url": "https://example.gov/agenda/1"}]
+        return [
+            {
+                "title": "Agenda only",
+                "date": "2026-09-01",
+                "url": "https://example.gov/agenda/1",
+            }
+        ]
 
     async def fake_resolve(url):
         return _FakeResolvedMeeting(video_url=None)
@@ -394,7 +421,9 @@ async def test_falls_through_to_homepage_scan_when_walker_candidates_have_no_vid
             import aiohttp
 
             async with aiohttp.ClientSession() as session:
-                url, reason = await pipeline.homepage_civicclerk_fallback(session, "example.gov")
+                url, reason = await pipeline.homepage_civicclerk_fallback(
+                    session, "example.gov"
+                )
 
     # The homepage scan was really attempted (not short-circuited) --
     # NO_VIDEO_HOMEPAGE_HTML has no usable link either, so this correctly

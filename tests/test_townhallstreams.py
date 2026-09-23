@@ -302,10 +302,12 @@ TOWN_LISTING_HTML = """
 </body></html>
 """
 
-NEWEST_NO_VIDEO_HTML = "<html><body>Meeting page with no video posted yet.</body></html>"
+NEWEST_NO_VIDEO_HTML = (
+    "<html><body>Meeting page with no video posted yet.</body></html>"
+)
 
 OLDER_WITH_VIDEO_HTML = (
-    '<script>var originalFile = '
+    "<script>var originalFile = "
     '"https://cdn.townhallstreams.com/vod/_definst_/mp4:testville_me/'
     '2020-01-08_555_Planning_Board.mp4/playlist.m3u8";</script>'
 )
@@ -313,9 +315,15 @@ OLDER_WITH_VIDEO_HTML = (
 
 async def test_resolve_town_listing_delegates_to_newest_candidate():
     routes = {
-        TOWN_LISTING_URL: FakeResponse(status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL),
-        NEWEST_STREAM_URL: FakeResponse(status=200, text=OLDER_WITH_VIDEO_HTML, url=NEWEST_STREAM_URL),
-        NEWEST_TRANSCRIPT_URL: FakeResponse(status=200, text="", url=NEWEST_TRANSCRIPT_URL),
+        TOWN_LISTING_URL: FakeResponse(
+            status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL
+        ),
+        NEWEST_STREAM_URL: FakeResponse(
+            status=200, text=OLDER_WITH_VIDEO_HTML, url=NEWEST_STREAM_URL
+        ),
+        NEWEST_TRANSCRIPT_URL: FakeResponse(
+            status=200, text="", url=NEWEST_TRANSCRIPT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -332,10 +340,18 @@ async def test_resolve_town_listing_tries_next_candidate_when_newest_has_no_vide
     # the single newest and stopping there would wrongly report "no
     # video" for a town that genuinely has one.
     routes = {
-        TOWN_LISTING_URL: FakeResponse(status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL),
-        NEWEST_STREAM_URL: FakeResponse(status=200, text=NEWEST_NO_VIDEO_HTML, url=NEWEST_STREAM_URL),
-        OLDER_STREAM_URL: FakeResponse(status=200, text=OLDER_WITH_VIDEO_HTML, url=OLDER_STREAM_URL),
-        OLDER_TRANSCRIPT_URL: FakeResponse(status=200, text="", url=OLDER_TRANSCRIPT_URL),
+        TOWN_LISTING_URL: FakeResponse(
+            status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL
+        ),
+        NEWEST_STREAM_URL: FakeResponse(
+            status=200, text=NEWEST_NO_VIDEO_HTML, url=NEWEST_STREAM_URL
+        ),
+        OLDER_STREAM_URL: FakeResponse(
+            status=200, text=OLDER_WITH_VIDEO_HTML, url=OLDER_STREAM_URL
+        ),
+        OLDER_TRANSCRIPT_URL: FakeResponse(
+            status=200, text="", url=OLDER_TRANSCRIPT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -348,7 +364,9 @@ async def test_resolve_town_listing_tries_next_candidate_when_newest_has_no_vide
 async def test_resolve_town_listing_reports_cleanly_when_nothing_found():
     routes = {
         TOWN_LISTING_URL: FakeResponse(
-            status=200, text="<html><body>No meetings.</body></html>", url=TOWN_LISTING_URL
+            status=200,
+            text="<html><body>No meetings.</body></html>",
+            url=TOWN_LISTING_URL,
         ),
     }
 
