@@ -98,6 +98,7 @@ from app.platforms.base import (  # noqa: E402
     get_finder,
 )
 from app.platforms.media_probe import binary_versions, probe_duration  # noqa: E402
+from app.platforms.queue_probe import parse_queue_line  # noqa: E402
 
 load_dotenv()
 
@@ -179,22 +180,26 @@ def hms(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
-def queue_lines() -> list[tuple[str, str, str | None]]:
-    """(raw line, url, source_url_override) -- the feed's own line parse,
-    since queue lines have carried an optional TAB source field since the
-    2026-09 sweeps (see feed_tier3_auto_transcription._parse_queue_line)."""
+def queue_lines() -> list[tuple[str, str, str | None, str | None]]:
+    """(raw line, url, source_url_override, gov_id) -- delegates to the
+    shared app.platforms.queue_probe.parse_queue_line() (WO-1016) rather
+    than this file's own `line.partition("\\t")` (which glued a 3rd
+    tab-separated field wholesale onto source_url), so this reader and
+    the feeder can never drift on what the queue line's columns mean.
+    `gov_id` is the queue line's optional 3rd field, added WO-1016 --
+    None on every line queued before that."""
     out = []
     for raw in QUEUE_FILE.read_text().splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        url, _, src = line.partition("\t")
-        out.append((line, url.strip(), src.strip() or None))
+        url, src, gov_id = parse_queue_line(line)
+        out.append((line, url, src, gov_id))
     return out
 
 
 def queue_urls() -> list[str]:
-    return [url for _, url, _ in queue_lines()]
+    return [url for _, url, _, _ in queue_lines()]
 
 
 def tenant_of(url: str) -> str:
@@ -1625,7 +1630,7 @@ def long_queue_rows(
     sidecar = load_probe_sidecar()
     old = _load_rows(DURATIONS_CSV, "queue_url")
     out = []
-    for _, url, src in queue_lines():
+    for _, url, src, _gov_id in queue_lines():
         try:
             platform = detect_platform(url)
         except UnsupportedPlatformError:

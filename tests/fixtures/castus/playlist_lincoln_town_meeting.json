@@ -1,0 +1,44 @@
+{
+ "response": {
+  "success": true,
+  "payload": [
+   {
+    "_id": "69cbe826f23ec40002de421d",
+    "metadata": {
+     "title": "Annual Town Meeting  03.28.26",
+     "filename": "Annual Town Meeting  03.28.26"
+    },
+    "date": "2026-03-31T15:23:31.773Z",
+    "transcoded": true,
+    "captioned": false,
+    "sort": 0,
+    "user": "6336406dfd70fd0009ad76f4"
+   },
+   {
+    "_id": "690a10f539faec000203de86",
+    "metadata": {
+     "title": "State of the Town 2025 Town Meeting Study Committee Breakout Sessions",
+     "filename": "State of the Town 2025 Town Meeting Study Committee Breakout Sessions",
+     "description": "State of the Town 2025 Town Meeting Study Committee Breakout Sessions"
+    },
+    "date": "2025-11-04T14:43:00.586Z",
+    "transcoded": true,
+    "captioned": false,
+    "sort": 1,
+    "user": "6336406dfd70fd0009ad76f4"
+   },
+   {
+    "_id": "6924d8df10217800025a73e0",
+    "metadata": {
+     "title": "State of the Town Dark Skies Committee Breakout Session 2025",
+     "filename": "State of the Town Dark Skies Committee Breakout Session 2025"
+    },
+    "date": "2025-11-24T22:14:54.562Z",
+    "transcoded": true,
+    "captioned": false,
+    "sort": 2,
+    "user": "6336406dfd70fd0009ad76f4"
+   }
+  ]
+ }
+}
