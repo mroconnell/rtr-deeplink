@@ -257,7 +257,17 @@ services, so nothing here is blocked on a Render deploy either.
 | Before the fix | 11 failed |
 | After the fix | 11 passed |
 
-**Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
+**Re-run of the crash placeholders (2026-09-23).** The 2026-09-22 run saved none of its 49 crashes. It and two later runs switched Wayback off instead. The only real placeholders on disk were 27 records in two 2026-09-15 folders in `rtr-business/research/`: 12 in `osm_passive_sweep_2026-09-15/` and 15 in `yesgov_2026-09-15/passive_v2_local/`. None of the 27 had ever had real Wayback data. All 27 were re-run on fixed `main`, with results kept in a scratch folder, not written to `research/`.
+
+| Result | Count of 27 |
+|---|---|
+| Ran with no crash | 27 |
+| Wayback answered (6 needed one retry after a 10-second timeout) | 26 |
+| Wayback still timed out (St. Joseph County IN) | 1 |
+| Wayback was the deciding evidence | 3 |
+| `jurisdiction_coverage.csv` row needs a data change | 0 |
+
+In all 3 Wayback-decided cases, the research row already held the same fact. Anna Maria FL's agenda page is already the row's agenda URL. Safford AZ's row is already off-mission. Allen County IN's `allencounty.in.gov` is already an alternate domain. The "How RTR works" session added dated "fixed in WO-1020" notes to three rtr-business runner scripts that had forced Wayback off because of this bug (`run_full.py`, `run_half.py`, `wayback_recheck.py`).
 
 ## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
 
