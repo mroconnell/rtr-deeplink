@@ -37,6 +37,228 @@ The #1275 wiring changes 50 of 1,298 rows: 28 `none`→`medium`, 13 `low`→`med
 
 **Not deployed.** This is a pure Python-script refactor under `scripts/`/`tests/` with no `app/`/`archive/`/`worker/` changes — no deploy needed or requested.
 
+## WO-1015 part A: one shared, network-free host-recognition helper for discovery stages; stage 2/3 sweep scripts now check for platforms at all [Done 2026-09-23]
+
+**Issue.** `detect_platform()` (`app/platforms/base.py`) is the one real,
+maintained registry of every platform this repo has an adapter for, and
+almost every part of this app already asks it. Two discovery stages in
+`rtr-business/research/dns_ctlog_sweep_2026-09-17/` didn't: stage 2
+(`elastic_sweep_script.py`, the DNS/CNAME sweep) matched each CNAME hop
+against its own hand-typed `VENDOR_SUFFIXES` list, which mixed real
+adapter-backed platforms with vendors that have no adapter at all
+(`novusagenda.com`, `clerkshq.com`'s sibling `diligentoneplatform.com`,
+etc — some of those DO have adapters, the list just couldn't say so).
+Stage 3 (`cc_seek_script.py`, the Common Crawl seek) never checked for a
+platform at all — only a plain keyword guess (`HUB_KEYWORDS`).
+
+**Fix.** Added `app/platforms/host_recognition.py`: `platform_for_host()`
+answers `(platform, supported)` for a bare hostname by calling
+`detect_platform()` on a synthetic `https://<host>/` URL first, then a
+short, explicitly-sourced fallback list (`_HOST_ONLY_PLATFORMS`) for six
+real, adapter-backed platforms whose `detect_platform()` branch needs a
+path/query a bare host never has (Cablecast, BoxCast, BoardDocs,
+Invintus, Castus, Hyland — plus Wistia/Vimeo, recognized via their own
+existing host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is
+the one seeded, sourced list of known vendors with NO adapter (currently
+just `novusagenda.com`). Seattle Channel is the one adapter-backed
+platform deliberately NOT recognized by host alone (host is a general
+broadcast site, not single-purpose — documented in the module's own
+docstring).
+
+Hyland (`hylandcloud.com`) needed a conductor-review correction
+(2026-09-23): the first pass dropped it entirely, reasoning that
+`detect_platform()`'s own Hyland branch has no netloc check at all and
+its 3 known real tenants share no common host suffix
+(`tucsonaz.hylandcloud.com`, `mccobagenda.databankcloud.com`,
+`agendanet.saccounty.gov`). True, but beside the point: `hylandcloud.com`
+isn't NECESSARY to identify a Hyland tenant, but it IS SUFFICIENT — every
+real `*.hylandcloud.com` host seen so far (plus 8
+`tenant_overrides.csv` pins onto `hylandcloud.com` hosts) is a genuine
+Hyland customer, and the old stage-2 `VENDOR_SUFFIXES` list already
+matched on it. Restored as `("hylandcloud.com", "hyland")` in
+`_HOST_ONLY_PLATFORMS`; a Hyland tenant on any OTHER domain is still
+correctly unrecognized by host alone (no signal to lose there — it never
+had one).
+
+`granicusgovaccess.net` got its own decision from Ryan (2026-09-23,
+verbatim): "granicusgovaccess.net is a hint/signature for granicus
+platform sometimes but it is in fact a web host." So it's neither a
+platform nor an unsupported vendor — it's a third category,
+`VENDOR_WEB_HOST_HINTS`, for a host that's a vendor's own general-purpose
+WEBSITE hosting, not its meeting platform. `platform_for_host()`
+deliberately never returns it as a platform match (a web host is not a
+platform confirmation); a new `web_host_hint_for_host()` answers it
+separately (`"granicus"`), for a caller to use as a reason to go look for
+a real Granicus tenant elsewhere, never as a hit on its own. Matches by
+substring (same semantics the old `VENDOR_SUFFIXES` list already used for
+this entry), confirmed necessary live: a real Akamai `edgekey.net` CNAME
+target can carry `granicusgovaccess.net` as a middle label
+(`san-h2.granicusgovaccess.net.edgekey.net`, from a real Alameda, CA
+CNAME chain), not just as the host's own suffix.
+
+12 tests in `tests/test_host_recognition.py`, all against real hostnames
+already recorded elsewhere in this repo (module docstrings, README,
+existing fixtures).
+
+`elastic_sweep_script.py` and `cc_seek_script.py` (main rtr-business
+checkout, uncommitted per that repo's "agents never commit there" rule)
+now call this helper per CNAME hop / per Common Crawl record URL and add
+new `platform_hits` and `web_host_hints` fields (the latter clearly
+labelled `"note": "web-host hint only, NOT a platform match"` in the
+output). Existing fields (`vendor_match`, `platform_cname_hits`,
+`all_records`, `hub_hits`) are completely unchanged — nothing old is
+replaced or discarded, the new fields only add information. Both scripts
+import via the same `sys.path` trick
+`queue_pipeline.py`'s own `cmd_feed()` already uses to reach
+`~/Documents/rtr-deeplink`, guarded so either script still runs (with
+empty `platform_hits`/`web_host_hints`) if that checkout doesn't have the
+module yet
+(true today, since this PR is unmerged).
+
+**Replay against real data.** Stage 2: replayed offline against the 900
+existing entries in `raw_results.json` (91 with real DNS resolutions).
+The OLD list only ever matched `granicusgovaccess.net` in this dataset (6
+hits, all real). After Ryan's web-host-hint decision above, all 6 are now
+correctly labelled a "granicus" web-host hint (not a platform match) —
+0 same, 0 no-longer, 6 hinted; `vendor_match` itself is untouched either
+way. The new helper additionally found 4 real hits the old list
+completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
+(a third real CivicPlus CDN domain, matched via `detect_platform()`'s own
+bare `"civicplus"` substring branch) and `www.holyoke.org` (a ProudCity
+customer, matched via `detect_platform()`'s curated
+`PROUDCITY_KNOWN_DOMAINS` set) — `civicplus.io` is intentionally left as
+a plain platform match, not decided/changed in this pass. Re-ran this
+replay after the Hyland correction: zero `hylandcloud.com` hops appear
+anywhere in this particular 900-record dataset, so that fix has no
+visible effect on THIS dataset, only on any future sweep that actually
+hits a `hylandcloud.com` host. No existing stage-3 (`cc_seek_script.py`)
+output was found on disk to replay against (the files under `seek_results/`
+are from an unrelated legistar/granicus-family script); verified the new
+`classify_record_platform()` function directly instead against 5
+representative real URLs (Granicus, CivicClerk, Cablecast, Vimeo, one
+non-matching agenda PDF), all correct.
+
+**Not done (part B, left for a later WO):** stage 1's own hand-copied
+vendor alias list (`_PLATFORM_ALIASES` in `scripts/wo273_recon.py`) and
+its hand-typed first-party meeting-path list
+(`scripts/wo273_classify.py`) — out of scope for part A per the brief
+(another WO was moving those files into the WO-282 scripts concurrently).
+Whoever picks up part B should also check whether `scripts/wo273_classify.py`
+reading `app/utils/jurisdiction_data/first_party_meeting_paths.csv`
+should route through this same helper.
+
+**Also found, not acted on:** a real ClerkBase CNAME target,
+`dns.clerkbase.com`, distinct from the `clerkshq.com` domain the actual
+tenant sites use — seen in `raw_results.json`'s Sedgwick County, KS entry
+but not in the old `VENDOR_SUFFIXES` list either. Not added to
+`host_recognition.py` since it's an infra hop, not a confirmed real
+tenant-serving host on its own — flagged here for a future pass.
+
+## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` removed [Done 2026-09-23]
+
+**Issue.** Ryan asked for four cleanups to the research file's
+`reject_reason` taxonomy in `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §23: drop `cablecast-no-vod` (0 rows use it),
+convert `rejected_by_probe` to `rejected-by-probe` everywhere it's
+written, document three in-use-but-undocumented values
+(`blocked-waf-akamai`, `deferred-french-vocab`, `shared-gov-exception`),
+and point the doc's top-part "record the outcome" guidance at §23.
+
+**`cablecast-no-vod`: removed (after a conductor re-check).** The first
+pass grepped both repos and found `rtr-deeplink/scripts/
+coverage_alternates.py` still listing it in `CONTENT_REASONS`,
+`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, with
+`tests/test_coverage_alternates.py` asserting all three memberships —
+live, tested code, not just a doc mention — so it was left in place on
+the first PR revision, flagged for Ryan. The conductor's review of that
+PR confirmed those classification-list memberships and their test
+assertions were the ONLY code references anywhere: nothing writes the
+value, and 0 research rows carry it, so removing it changes no runtime
+behavior. Removed from both `frozenset`s in `coverage_alternates.py`
+and from the test (each left a one-line comment: "approved 2026-09-14,
+never used, removed 2026-09-23 per Ryan"); the §23 addendum in
+`ENUMERATION_METHODS.md` updated from "NOT removed" to "removed" the
+same way (locked, re-read, atomic replace).
+
+**`rejected_by_probe` → `rejected-by-probe`.** `scripts/
+wo134_confirmed_hits_ingest.py` now defines
+`REJECT_REASON_REJECTED_BY_PROBE = "rejected-by-probe"`; `scripts/
+wo147_access_ladder_sweep.py` (the still-current access-ladder code —
+confirmed via `docs/COVERAGE_HANDOVER.md`'s §270/§274 pointers and by
+counting importers: ~50 newer sweep/classify scripts import it, versus
+0 importers for the ~14 other `wo1NN_*`/`wo2NN_*` ladder-sweep scripts
+that also wrote the underscore literal) now writes that constant into
+its `reject_reason` cell instead of a fresh literal. The internal
+`RowResult.outcome`/`ProbeRejected` code string
+(`"rejected_by_probe"`, matched with `==`, asserted by
+`tests/test_wo169_probe_loop_and_granicus_rss.py`) is unchanged on
+purpose — never written to the CSV directly, only compared in-process.
+The ~14 older, zero-importer one-off sweep/finish scripts
+(`wo150_muni_ladder_sweep.py`, `wo183/187/191/216/217/225/259_*`,
+`wo147_finish_tier3_queue.py`, `wo150_finish_tier3.py`,
+`wo168_gated_tenant_guess.py`, `wo196_wo190_followups.py`,
+`wo175_find_and_queue_video.py`, `wo230_agendacenter_followup.py`) and
+~26 one-shot `*_apply_to_jc.py` scripts in rtr-business were left
+alone, per this file's "leave historical one-off scripts alone" rule —
+none is imported by anything else, none is rerun. The 10 rows already
+on disk with the old spelling were rewritten by a new, dry-run-verified
+apply script (`wo1017_apply_to_jc.py`, run for real by the conductor),
+following ENUMERATION_METHODS.md's §158 protocol but doing a true
+line-based byte swap (both spellings are 18 characters) rather than a
+`csv.DictWriter` round-trip, so no other row's formatting could shift.
+
+**Three values added to §23** (new 2026-09-23 addendum, with class,
+meaning, source and live count): `blocked-waf-akamai` (access class —
+the govAccess/Akamai CNAME block, 40 rows), `deferred-french-vocab`
+(a new, distinct "parked for retry" class, not access or content — a
+Quebec government's targeted-fetch phase was deliberately skipped
+because the shared hop-link vocabulary is English-only, 201 rows), and
+`shared-gov-exception` (other/administrative — already fully defined in
+§317, just missing from §23's own table; the non-canonical row of a
+consolidated city-county pair, 33 rows).
+
+**Classification lists checked.** `blocked-waf-akamai` added to
+`scripts/coverage_alternates.py`'s `ACCESS_REASONS` (rtr-deeplink, with
+a new unit test) and to `wo226_apply_to_jc.py`'s `ACCESS_REJECT_REASONS`
+(rtr-business, uncommitted per this repo's "agents never commit in
+rtr-business" rule — left for the conductor). `coverage_registry.py`
+only tallies raw `reject_reason` strings, no access/content bucketing to
+update. `refresh_transcribed_flag.py`'s `VALUE_TYPE_REJECT_REASONS`
+already correctly includes `shared-gov-exception` and correctly excludes
+the other three; not touched (owned by a concurrent WO this session).
+Per Ryan's instruction, `rejected-by-probe`/`deferred-french-vocab`/
+`shared-gov-exception` were NOT added to any ACCESS/CONTENT/NEVER_RETRY
+list — classifying them changes real sweep retry behavior, so that's
+flagged in the doc for a human decision rather than done here.
+
+**Top-part pointer.** The "What to do when a stage finds something"
+section's "Nothing." bullet now points to §23 as the canonical
+`reject_reason` list, so a future session doesn't reinvent a value under
+a new spelling.
+
+**Not deployed** — docs and `research/`-directory scripts never needed
+a deploy and still don't; `scripts/coverage_alternates.py` and
+`scripts/wo134_confirmed_hits_ingest.py`/`wo147_access_ladder_sweep.py`
+are offline research/sweep tooling, not part of the resolver or worker
+services, so nothing here is blocked on a Render deploy either.
+
+## WO-1020: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
+
+**What was wrong.** `wo273_recon.fetch_wayback_domain_index()` asks the Wayback Machine which pages of a government's site it has saved. On 2026-09-14 (WO-366) its output field `narrow_urls` was renamed `top_urls`. The 11 per-WO recon scripts that call it (`wo282`, `wo283`, `wo320`–`wo325`, `wo331`, `wo337`, `wo338`) were never updated. Each one still copied `wayback_index["narrow_urls"]` into its record.
+
+**Why it mattered.** That line raised a `KeyError` (Python's error for a missing dict key) for every government, but only when the Wayback health check passed. `cmd_sweep()` catches the error, so the sweep kept running. It wrote an `access_mode: "error"` stub in place of the real record. A real production run on 2026-09-22 hit it 49 times, and Wayback was switched off for the rest of that run (see `rtr-business/research/dns_ctlog_sweep_2026-09-17/production_run_2026-09-22/wayback_recheck.py`'s docstring).
+
+**The fix.** All 11 scripts now read and write `top_urls`. That is also the key the downstream classifier reads (`wo273_classify.all_urls_from_record()`, which `wo282_classify.py` imports). So Wayback URLs now reach classification, where before they never could. Two stale test fixtures in `tests/test_wo273_passive_discovery.py` were also switched to `top_urls`.
+
+**Verification.** New test `tests/test_wo282_recon_wayback_index.py` runs `process_government_v2()` on each of the 11 scripts with the health check forced on. It stubs every network call except the Wayback function itself, which runs for real against a stubbed CDX reply.
+
+| Code under test | Result (of 11 scripts) |
+|---|---|
+| Before the fix | 11 failed |
+| After the fix | 11 passed |
+
+**Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
+
 ## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
 
 **Issue.** `scripts/tier3_auto_transcription_queue.txt` lines were `URL`

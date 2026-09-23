@@ -596,7 +596,7 @@ def process_government_v2(row: dict) -> dict:
         "reachable": False,
         "broad_row_count": 0,
         "narrow_row_count": 0,
-        "narrow_urls": [],
+        "top_urls": [],
         "error": "skipped-unhealthy",
     }
     if cdx_healthy:
@@ -607,7 +607,7 @@ def process_government_v2(row: dict) -> dict:
         "reachable": wayback_index["reachable"],
         "broad_row_count": wayback_index["broad_row_count"],
         "narrow_row_count": wayback_index["narrow_row_count"],
-        "narrow_urls": wayback_index["narrow_urls"],
+        "top_urls": wayback_index["top_urls"],
         "error": wayback_index["error"],
     }
 

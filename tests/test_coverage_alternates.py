@@ -914,12 +914,17 @@ def test_unverified_meeting_without_video_is_the_same_finding():
     assert not is_retry_worthy("meeting-without-video-unverified", trigger="no-meeting")
 
 
-def test_cablecast_no_vod_is_meeting_found_no_video():
-    # 2026-09-14 (Topeka KS spot-check): a real Cablecast tenant whose API
-    # returns an empty `vods` field on every show for a month is a
-    # "meeting found, no video" finding -- content class, alternate hop
-    # fires, never retried under the no-meeting trigger.
-    assert "cablecast-no-vod" in MEETING_FOUND_NO_VIDEO_REASONS
-    assert "cablecast-no-vod" in CONTENT_REASONS
-    assert "cablecast-no-vod" in NEVER_RETRY_REASONS
-    assert not is_retry_worthy("cablecast-no-vod", trigger="no-meeting")
+# test_cablecast_no_vod_is_meeting_found_no_video: "cablecast-no-vod" was
+# approved 2026-09-14, never used (0 rows), and removed 2026-09-23 per
+# Ryan (WO-1017) -- this test went with it.
+
+
+def test_blocked_waf_akamai_is_access_class():
+    # WO-1017 (2026-09-23): the govAccess/Akamai CNAME block is an
+    # access-class reason (we never attempted a fetch at all) -- worth
+    # retrying under both trigger policies, including against an
+    # alternate domain.
+    assert "blocked-waf-akamai" in ACCESS_REASONS
+    assert "blocked-waf-akamai" not in CONTENT_REASONS
+    assert is_retry_worthy("blocked-waf-akamai", trigger="access")
+    assert is_retry_worthy("blocked-waf-akamai", trigger="no-meeting")
