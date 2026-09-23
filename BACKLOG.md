@@ -454,7 +454,8 @@ Trust, safety & data quality  (26)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (31)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
+  `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -6341,6 +6342,14 @@ transcription crawler) grows in a **separate app** ("the Archive"), not
 this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
+
+### `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe from a domain or URL to a resolved meeting (WO-1023 design)
+
+- **Issue**: Finding a first meeting for a new government is spread across stage 1 (`scripts/wo282_*`), the access ladder (`scripts/wo147_access_ladder_sweep.py`), the hub walk (`resolve_seed()` and its per-sweep copies), alternate-domain retries and hand reading. Each sweep uses a different mix.
+- **Impact**: Governments get different treatment depending on which sweep reached them, and failures land in one-off WO scripts rather than named queues. The 696 `wildcard_http_sweep_2` pins (name-only matches) cannot be audited without it.
+- **Next action**: Build in the order in `docs/MEETING_FINDER.md` ("Suggested build order"), starting with the Verdict row and Resolve, then List, first used to audit the 696 wildcard-sweep pins in audit mode.
+- **Constraint**: Read-only by default; never fetches YouTube (`scripts/youtube_fetch_guard.py`); slug guessing only in the separate guess-ladder queue, never inline. Code lives in `app/platforms/meeting_finder/` beside the adapters (Ryan, 2026-09-23).
+- **History**: Design agreed with Ryan 2026-09-23: `docs/MEETING_FINDER.md`.
 
 ### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
 
