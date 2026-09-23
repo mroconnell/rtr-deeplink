@@ -474,6 +474,72 @@ async def test_missing_previously_matched_meeting_requires_recheck_in_read_model
 
 
 @pytest.mark.asyncio
+async def test_editorial_link_follows_current_social_key_after_entry_retarget():
+    candidate_key = "instagram:DdF8tEDMtZs"
+    other_key = "youtube:zJKrMk-uuSw"
+    await _remove_candidates(candidate_key, other_key)
+    async with async_session() as session:
+        await session.execute(
+            delete(ContextEntry).where(
+                ContextEntry.social_url_key.in_({candidate_key, other_key})
+            )
+        )
+        original = ContextEntry(
+            social_url="https://www.instagram.com/reel/DdF8tEDMtZs/",
+            social_url_key=candidate_key,
+            network="instagram",
+            summary="Original editorial record.",
+            status="draft",
+        )
+        session.add(original)
+        await session.commit()
+        await session.refresh(original)
+        original_id = original.id
+
+    normalized = importer.normalize_row(
+        {
+            "social_url": "https://www.instagram.com/reel/DdF8tEDMtZs/",
+            "source_record_key": "editorial-retarget-history",
+        },
+        provider="editorial-retarget-synthetic",
+    )
+    stored = await store.store_observation(normalized)
+
+    async with async_session() as session:
+        original = await session.get(ContextEntry, original_id)
+        original.social_url = SAN_DIEGO_SOCIAL
+        original.social_url_key = other_key
+        original.network = "youtube"
+        await session.flush()
+        replacement = ContextEntry(
+            social_url="https://www.instagram.com/reel/DdF8tEDMtZs/",
+            social_url_key=candidate_key,
+            network="instagram",
+            summary="Replacement editorial record for the original post.",
+            status="published",
+        )
+        session.add(replacement)
+        await session.commit()
+        await session.refresh(replacement)
+        replacement_id = replacement.id
+
+    detail = await store.get_candidate(stored["candidate_id"])
+    listing = await store.list_candidates()
+    listed = next(
+        item for item in listing["candidates"] if item["id"] == stored["candidate_id"]
+    )
+
+    assert detail["context_entry_id"] == replacement_id
+    assert detail["existing_entry"] == {
+        "id": replacement_id,
+        "status": "published",
+        "url": f"/context/{replacement_id}",
+    }
+    assert listed["existing_entry"]["id"] == replacement_id
+    assert detail["existing_entry"]["id"] != original_id
+
+
+@pytest.mark.asyncio
 async def test_stale_recheck_cannot_overwrite_newer_import(monkeypatch):
     await _remove_candidates("youtube:zJKrMk-uuSw")
     normalized = importer.normalize_row(

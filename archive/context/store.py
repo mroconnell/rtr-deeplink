@@ -544,8 +544,13 @@ async def list_candidates(*, page: int = 1, next_action: str | None = None) -> d
             _candidate_dict(
                 row,
                 meetings.get(row.meeting_page_id),
-                entries_by_id.get(row.context_entry_id)
-                or entries_by_key.get(row.social_url_key),
+                (
+                    entries_by_id.get(row.context_entry_id)
+                    if entries_by_id.get(row.context_entry_id) is not None
+                    and entries_by_id[row.context_entry_id].social_url_key
+                    == row.social_url_key
+                    else entries_by_key.get(row.social_url_key)
+                ),
             )
             for row in candidates
         ],
@@ -570,6 +575,8 @@ async def get_candidate(candidate_id: int) -> dict | None:
         entry = None
         if candidate.context_entry_id:
             entry = await session.get(ContextEntry, candidate.context_entry_id)
+            if entry is not None and entry.social_url_key != candidate.social_url_key:
+                entry = None
         if entry is None:
             entry = (
                 await session.execute(
