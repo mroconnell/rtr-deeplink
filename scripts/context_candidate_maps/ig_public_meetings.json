@@ -1,0 +1,18 @@
+{
+  "social_url": "Reel URL",
+  "jurisdiction": "City",
+  "state": "State",
+  "meeting_date": "Date",
+  "meeting_body": "Meeting body",
+  "recording_url": "Video URL",
+  "title": "Title",
+  "summary": "Summary",
+  "source_label": "Who Posted It",
+  "rtr_link": "RTR Meeting Link",
+  "proposed_match": "Match",
+  "source_timestamp": "Proposed Timestamp",
+  "t_seconds": "Timestamp Seconds",
+  "notes": "Research Notes",
+  "source_notes": "Sources",
+  "source_ingest_claim": "Needs RTR Ingest"
+}

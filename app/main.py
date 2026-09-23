@@ -11,7 +11,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
@@ -1381,6 +1381,78 @@ async def api_context_set_status(request: Request, req: ContextSetStatusApiReque
     return _context_api_response(result)
 
 
+class ContextCandidatesRecheckApiRequest(BaseModel):
+    # Keep this transport schema local to the resolver service.
+    ids: list[Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]] = Field(
+        min_length=1, max_length=25
+    )
+
+
+class ContextCandidateSaveApiRequest(BaseModel):
+    id: Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]
+    expected_version: Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]
+    fields: dict
+    clear_conflicts: list[str] = Field(default_factory=list, max_length=13)
+
+
+@app.post("/api/context/candidates/save")
+@limiter.limit("20/minute")
+async def api_context_candidate_save(
+    request: Request, req: ContextCandidateSaveApiRequest
+):
+    editor_id = get_clerk_user_id(request)
+    if editor_id is None:
+        response = JSONResponse(
+            {"error": "not_logged_in", "message": "Sign in to save candidate changes."},
+            status_code=401,
+        )
+    else:
+        result = await archive_client.context_candidate_save(
+            editor_id, req.model_dump()
+        )
+        if (
+            result is not None
+            and result[0] == 404
+            and result[1].get("error") == "not_editor"
+        ):
+            response = JSONResponse({"detail": "Not Found"}, status_code=404)
+        elif (
+            result is not None
+            and result[0] == 404
+            and result[1].get("outcome") == "not_found"
+        ):
+            response = JSONResponse(result[1], status_code=404)
+        else:
+            response = _context_api_response(result)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
+
+
+@app.post("/api/context/candidates/recheck")
+@limiter.limit("20/minute")
+async def api_context_candidates_recheck(
+    request: Request, req: ContextCandidatesRecheckApiRequest
+):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        response = JSONResponse(
+            {"error": "not_logged_in", "message": "Sign in to recheck candidates."},
+            status_code=401,
+        )
+    else:
+        result = await archive_client.context_candidates_recheck(
+            clerk_user_id, list(dict.fromkeys(req.ids))
+        )
+        if result is not None and result[1].get("error") == "not_editor":
+            response = JSONResponse({"detail": "Not Found"}, status_code=404)
+        else:
+            response = _context_api_response(result)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
+
+
 # On-demand transcription -------------------------------------------------
 #
 # Checkpoint granularity for the worker service, not an external API's
@@ -1964,6 +2036,40 @@ async def archive_context_new(request: Request):
     return await _proxy_to_archive(
         "context/new", str(request.query_params), request.headers.get("cookie")
     )
+
+
+@app.get("/context/candidates")
+@app.get("/context/candidates/{candidate_id}")
+async def archive_context_candidates(
+    request: Request, candidate_id: Optional[str] = None
+):
+    path = "context/candidates"
+    if candidate_id is not None:
+        if (
+            len(candidate_id) > 10
+            or not candidate_id.isascii()
+            or not candidate_id.isdecimal()
+            or not 0 < int(candidate_id) <= 2_147_483_647
+        ):
+            return JSONResponse(
+                {"detail": "Not Found"},
+                status_code=404,
+                headers={
+                    "Cache-Control": "private, no-store",
+                    "X-Robots-Tag": "noindex",
+                },
+            )
+        path += f"/{candidate_id}"
+    response = await _proxy_to_archive(
+        path,
+        str(request.query_params),
+        request.headers.get("cookie"),
+        allow_redirects=False,
+    )
+    # Even an upstream outage must not cache a private research response.
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
 
 
 # Same shape archive/main.py's own context_entry_page() route validates

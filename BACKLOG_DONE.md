@@ -99,6 +99,68 @@ CI: all five gates green (`ruff check`, `ruff format --check`, `pytest`
 export fixture) / 16 skipped / 4 xfailed, `alembic check` x2, the
 BACKLOG_DONE heading check).
 
+## WO-1014: private Context candidate intake and exact-meeting review queue [Done 2026-09-23]
+
+**What and why.** Ryan approved Milestone 1 after review of the Context handover,
+live pages and current repository. CSV/JSON research now becomes private
+candidates with preserved observations, an exact-recording lookup and an explained
+next action. Archive owns `archive/context/`; the resolver exposes explicit editor
+proxies. The existing public Context editor and publication states are reused.
+
+**Result.** One candidate per canonical social post. Changed research retains old
+observations and invalidates stale checks. Source identity locks, database
+uniqueness and version checks protect concurrent imports/rechecks. Conflicting
+research does not become a guessed association. Exact lookup uses existing slugs,
+stored URL aliases, normalized source URLs and fixture-verified platform IDs with
+tenant namespaces. Government/date suggestions never count as exact matches.
+Deleted meetings require recheck; edited editorial entries cannot leave a candidate
+pointing to another post. Import/recheck does not ingest, transcribe or publish.
+
+**Real source check.** The read-only Sheet export had 31 rows and 29 distinct posts.
+A local apply accepted 27 rows / 27 candidates, rejected four differing rows for
+two duplicate posts (Dallas and Santa Clarita), and had zero row errors. Replay
+created zero candidates or observations, with all 27 accepted observations unchanged.
+The database still had zero meetings, Context entries and transcription jobs.
+The 13 ingest-review, 10 recording-research and four unresolved outcomes are from
+an empty local Archive, not a production coverage claim. The 16 source columns
+have an explicit mapping; original rows remain intact. No Sheet or production
+write occurred.
+
+**Review extension.** After frontend review, Ryan approved editable candidate facts,
+immutable saved reviews and a saved-only handoff to `/context/new`. The matched
+recording now has a separate proposed-moment link. Saved edits preserve imported
+source rows; conflicting fields require an explicit choice, and new research
+requires another review. Version checks prevent stale saves. Detail and editor
+prefill read one coherent review even during concurrent saves. Opening the editor
+does not create or publish an entry. The timestamp remains proposed until verified.
+
+**Verification.** All 391 Context Python tests and 92 JavaScript tests passed.
+After merging current main, full pytest completed with 5,208 passed, 16 skipped, four expected failures and two
+failures in already-documented local-export checks (`test_repair_wrong_pages`
+and `test_wrong_page_screen`; see BACKLOG's existing local-export entry). The
+initial sandbox run also reproduced six DNS-dependent failures on unchanged
+baseline code; they passed with normal DNS. Ruff lint/format, both SQLite Alembic
+upgrade/checks, backlog TOC and heading integrity passed. Disposable PostgreSQL
+migration plus concurrent duplicate and source-retarget checks passed. Unfiltered
+PostgreSQL autogenerate reports only its four intentionally unmapped baseline
+search objects, as documented by the CI workflow; no Context schema drift.
+Chrome verified queue layout, pagination/filtering, preserved research, successful
+recheck, retryable upstream outage, edit/save and saved-value editor prefilling
+through two localhost services. The matched-recording walkthrough uses a clearly
+marked local fake meeting with no video/transcript; no public entry was created.
+PostgreSQL concurrent review saves produced one saved and one stale result, with
+one immutable revision. Concurrent detail reads remained coherent. Native OS accessibility remained off.
+
+**Delivery and limits.** A lead integrated isolated concurrent import/storage,
+lookup/state and queue workers, then an independent review challenged identity,
+concurrency and publication boundaries. `README.md`, `docs/CONTEXT_PIPELINE_PLAN.md`
+and `docs/CONTEXT_CANDIDATES.md` now describe delivered behavior; the worker
+contract records the approved extension. Two additive Archive migrations,
+`9f20cd299f30` and `1816f75c1098`, add three tables without a backfill.
+Deploy Archive before resolver; this work is not live until that manual release.
+Old-slug resolution, unknown mirror associations, ingestion and automatic moment
+matching remain outside this approved scope.
+
 ## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
 
 **What.** Tier-3 queue writers that know the government now add its
