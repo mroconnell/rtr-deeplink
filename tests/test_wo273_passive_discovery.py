@@ -219,7 +219,7 @@ def test_classify_record_finds_vendor_host_platform():
         "domain": "example.gov",
         "state": "Ohio",
         "sitemap_urls": ["https://cityoftest.granicus.com/ViewPublisher.php?view_id=1"],
-        "wayback_index": {"narrow_urls": []},
+        "wayback_index": {"top_urls": []},
         "common_crawl": {"urls": []},
         "dns": {},
     }
@@ -233,7 +233,7 @@ def test_classify_record_none_when_nothing_flagged():
         "domain": "example.gov",
         "state": "Ohio",
         "sitemap_urls": ["https://example.gov/about-us", "https://example.gov/parks"],
-        "wayback_index": {"narrow_urls": []},
+        "wayback_index": {"top_urls": []},
         "common_crawl": {"urls": []},
         "dns": {},
     }
