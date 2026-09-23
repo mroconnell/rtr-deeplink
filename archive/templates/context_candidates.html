@@ -1,0 +1,70 @@
+{# Private Context candidate queue. All source text is rendered through
+   Jinja autoescape; JSON uses Jinja's HTML-safe tojson filter. #}
+{% extends "base.html" %}
+{% block title %}Context research queue | Red Tape Recordings{% endblock %}
+{% block meta %}<meta name="robots" content="noindex,nofollow">{% endblock %}
+{% block head_extra %}
+<style>
+  .candidate-toolbar, .candidate-actions { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+  .candidate-card { border:1px solid var(--border, #d8d8d8); border-radius:.5rem; padding:1rem; margin:1rem 0; }
+  .candidate-grid { display:grid; grid-template-columns:minmax(9rem, 14rem) 1fr; gap:.35rem 1rem; margin:.75rem 0; }
+  .candidate-grid dt { color:var(--muted, #666); }
+  .candidate-grid dd { margin:0; overflow-wrap:anywhere; }
+  .candidate-badge { display:inline-block; padding:.15rem .5rem; border-radius:999px; background:var(--pill-bg, #eee); }
+  .candidate-alert { padding:.75rem; margin:1rem 0; background:var(--error-bg, #fee); }
+  .candidate-json { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.82rem; }
+  .candidate-pagination { display:flex; gap:1rem; margin-top:1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<main class="meeting-list-page context-editor-page" data-context-candidate-page>
+  {% if not_found %}
+    <h1>Page not found</h1>
+  {% elif unavailable %}
+    <h1>Context research queue</h1>
+    <p class="candidate-alert" role="alert">The research queue is temporarily unavailable. No candidate result was changed.</p>
+  {% elif candidate %}
+    <p><a href="/context/candidates">&larr; Research queue</a></p>
+    <h1>Candidate #{{ candidate.id }}</h1>
+    <div class="candidate-actions">
+      <span class="candidate-badge">{{ next_action_labels.get(candidate.next_action, candidate.next_action | replace('_', ' ') | title) }}</span>
+      <button type="button" class="cassette-btn-outline" data-recheck-one="{{ candidate.id }}">Recheck candidate</button>
+      <span data-recheck-status role="status"></span>
+    </div>
+
+    {% set reason = candidate.lookup_result.reason if candidate.lookup_result and candidate.lookup_result.reason else none %}
+    {% if reason %}<p><strong>Why this action:</strong> {{ reason }}</p>{% endif %}
+    <dl class="candidate-grid">
+      <dt>Source post</dt><dd>{% set social_href = safe_http_url(candidate.social_url) %}{% if social_href %}<a href="{{ social_href }}" rel="noopener noreferrer">{{ candidate.social_url }}</a>{% else %}{{ candidate.social_url }}{% endif %}</dd>
+      <dt>Network</dt><dd>{{ candidate.network or 'Unknown' }}</dd>
+      <dt>Last checked</dt><dd>{{ candidate.checked_at or 'Not checked' }}</dd>
+      {% if candidate.meeting %}<dt>Matched recording</dt><dd>{% set meeting_href = safe_archive_url(candidate.meeting.url) %}{% if meeting_href %}<a href="{{ meeting_href }}">{{ candidate.meeting.title or candidate.meeting.slug or 'Open meeting' }}</a>{% else %}{{ candidate.meeting.title or candidate.meeting.slug }}{% endif %}</dd>{% endif %}
+      {% if candidate.existing_entry %}<dt>Existing entry</dt><dd>{% set entry_href = safe_archive_url(candidate.existing_entry.url) %}{% if entry_href %}<a href="{{ entry_href }}">Entry #{{ candidate.existing_entry.id }}</a>{% else %}Entry #{{ candidate.existing_entry.id }}{% endif %} &middot; {{ candidate.existing_entry.status }}</dd>{% endif %}
+    </dl>
+
+    <h2>Proposed meeting facts</h2>
+    {% if candidate.claims %}<dl class="candidate-grid">{% for field, value in candidate.claims | dictsort %}<dt>{{ field | replace('_', ' ') | title }}</dt><dd>{% if field in ['social_url', 'recording_url'] %}{% set claim_href = safe_http_url(value) %}{% if claim_href %}<a href="{{ claim_href }}" rel="noopener noreferrer">{{ value }}</a>{% else %}{{ value }}{% endif %}{% elif field == 'rtr_link' %}{% set claim_href = safe_archive_url(value) %}{% if claim_href %}<a href="{{ claim_href }}">{{ value }}</a>{% else %}{{ value }}{% endif %}{% elif value is mapping or value is sequence and value is not string %}<span class="candidate-json">{{ value | tojson(indent=2) }}</span>{% else %}{{ value }}{% endif %}</dd>{% endfor %}</dl>{% else %}<p>No agreed facts were supplied.</p>{% endif %}
+
+    {% if candidate.source_conflicts %}<h2>Conflicting research</h2>{% for conflict in candidate.source_conflicts %}<section class="candidate-card"><h3>{{ conflict.field | replace('_', ' ') | title }}</h3>{% for option in conflict.values %}<p>{{ option.value }}</p><ul>{% for source in option.sources %}<li>{{ source.provider }} / {{ source.source_record_key }}</li>{% endfor %}</ul>{% endfor %}</section>{% endfor %}{% endif %}
+
+    {% if candidate.lookup_result and candidate.lookup_result.possible_pages %}<h2>Possible recordings</h2><ul>{% for page in candidate.lookup_result.possible_pages %}<li>{% set possible_href = safe_archive_url(page.url) %}{% if possible_href %}<a href="{{ possible_href }}">{{ page.title or page.slug or ('Meeting #' ~ page.id) }}</a>{% else %}{{ page.title or page.slug or ('Meeting #' ~ page.id) }}{% endif %}{% if page.reason %} &mdash; {{ page.reason }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% if candidate.lookup_result and candidate.lookup_result.evidence %}<h2>Lookup evidence</h2><div class="candidate-json">{{ candidate.lookup_result.evidence | tojson(indent=2) }}</div>{% endif %}
+
+    <h2>Research observations</h2>
+    {% for observation in candidate.observations %}<details class="candidate-card"{% if loop.first %} open{% endif %}><summary>{{ observation.provider }} / {{ observation.source_record_key }}{% if observation.active %} &middot; active{% endif %}</summary><p>Received {{ observation.received_at }}</p>{% if observation.source_location %}<p>Source: {% set location_href = safe_http_url(observation.source_location) %}{% if location_href %}<a href="{{ location_href }}" rel="noopener noreferrer">{{ observation.source_location }}</a>{% else %}{{ observation.source_location }}{% endif %}</p>{% endif %}<h3>Normalized</h3><pre class="candidate-json">{{ observation.normalized_payload | tojson(indent=2) }}</pre><h3>Original</h3><pre class="candidate-json">{{ observation.raw_payload | tojson(indent=2) }}</pre></details>{% else %}<p>No observations are available.</p>{% endfor %}
+  {% else %}
+    <div class="candidate-toolbar"><h1>Context research queue</h1><a href="/context/new">Open entry editor</a></div>
+    <p>Research suggestions stay private until an editor reviews and publishes an entry.</p>
+    <form method="get" class="candidate-toolbar">
+      <label for="nextActionFilter">Next action</label>
+      <select id="nextActionFilter" name="next_action"><option value="">All</option>{% for action, label in next_action_labels.items() %}<option value="{{ action }}"{% if selected_action == action %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <button type="submit" class="cassette-btn-outline">Filter</button>
+    </form>
+    <div class="candidate-actions"><button type="button" class="cassette-btn-outline" data-recheck-selected disabled>Recheck selected</button><span data-recheck-status role="status"></span></div>
+    {% if queue.counts %}<p>{% for action, count in queue.counts.items() %}{{ next_action_labels.get(action, action | replace('_', ' ') | title) }}: {{ count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</p>{% endif %}
+    {% for item in queue.candidates %}<article class="candidate-card"><div class="candidate-actions"><input type="checkbox" aria-label="Select candidate {{ item.id }}" data-candidate-id="{{ item.id }}"><span class="candidate-badge">{{ next_action_labels.get(item.next_action, item.next_action | replace('_', ' ') | title) }}</span><a href="/context/candidates/{{ item.id }}">Candidate #{{ item.id }}</a></div>{% if item.lookup_result and item.lookup_result.reason %}<p>{{ item.lookup_result.reason }}</p>{% endif %}<dl class="candidate-grid"><dt>Source post</dt><dd>{% set social_href = safe_http_url(item.social_url) %}{% if social_href %}<a href="{{ social_href }}" rel="noopener noreferrer">{{ item.social_url }}</a>{% else %}{{ item.social_url }}{% endif %}</dd><dt>Proposed meeting</dt><dd>{{ item.claims.jurisdiction or 'Unknown government' }}{% if item.claims.meeting_date %} &middot; {{ item.claims.meeting_date }}{% endif %}{% if item.claims.meeting_body %} &middot; {{ item.claims.meeting_body }}{% endif %}</dd>{% if item.meeting %}<dt>Matched recording</dt><dd>{% set meeting_href = safe_archive_url(item.meeting.url) %}{% if meeting_href %}<a href="{{ meeting_href }}">{{ item.meeting.title or item.meeting.slug }}</a>{% else %}{{ item.meeting.title or item.meeting.slug }}{% endif %}</dd>{% endif %}{% if item.existing_entry %}<dt>Existing entry</dt><dd>{{ item.existing_entry.status }} &middot; <a href="/context/candidates/{{ item.id }}">view details</a></dd>{% endif %}<dt>Last checked</dt><dd>{{ item.checked_at or 'Not checked' }}</dd></dl></article>{% else %}<p>No candidates match this filter.</p>{% endfor %}
+    {% if queue.total_pages > 1 %}<nav class="candidate-pagination" aria-label="Candidate pages">{% if queue.page > 1 %}<a href="?page={{ queue.page - 1 }}{% if selected_action %}&amp;next_action={{ selected_action }}{% endif %}">&larr; Previous</a>{% endif %}<span>Page {{ queue.page }} of {{ queue.total_pages }}</span>{% if queue.page < queue.total_pages %}<a href="?page={{ queue.page + 1 }}{% if selected_action %}&amp;next_action={{ selected_action }}{% endif %}">Next &rarr;</a>{% endif %}</nav>{% endif %}
+  {% endif %}
+</main>
+{% endblock %}
+{% block scripts %}<script src="/archive-static/context_candidates.js"></script>{% endblock %}
