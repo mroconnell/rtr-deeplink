@@ -58,6 +58,7 @@ import gzip
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -81,6 +82,53 @@ RECON_JSONL = RESEARCH_DIR / "wo282_recon.jsonl"
 CLASSIFIED_CSV = RESEARCH_DIR / "wo282_classified.csv"
 
 CATCHALL_PREFLAG_LINK_FLOOR = 5
+
+# A government's own hub/listing page can only ever live on its own domain
+# or a recognized meeting-platform vendor -- never on a general-purpose
+# video/social host. Confirmed live 2026-09-23 (Ryan): 11+ real phase-3
+# fetches wasted on things like vimeo.com/search?q=Ward%20County%20
+# Commissioners and vimeo.com/rockdalegov, both scored as a real "hub"
+# candidate (kind="hub") because detect_platform() only recognizes a
+# specific VIDEO url shape on these hosts (a numeric id or known embed
+# path), not a channel/search/profile page -- so a link `find_hop_links()`
+# ranked on one of these hosts fell through this function's "not a known
+# platform -> must be a hub" assumption, and the URL's own path text
+# (a search query, a channel slug) happened to contain real hub/meeting
+# keywords, scoring it high enough to fetch. These hosts are excluded
+# from candidate consideration entirely here, not reclassified as
+# "platform" -- a search/profile page isn't a resolvable meeting either,
+# so there is nothing useful to keep for it.
+_THIRD_PARTY_HOST_APEXES = frozenset(
+    {
+        "youtube.com",
+        "youtu.be",
+        "vimeo.com",
+        "facebook.com",
+        "twitter.com",
+        "x.com",
+        "instagram.com",
+        "tiktok.com",
+        "linkedin.com",
+    }
+)
+
+
+def _host_apex(url: str) -> str:
+    host = (urlparse(url).netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    parts = host.split(".")
+    return ".".join(parts[-2:]) if len(parts) >= 2 else host
+
+
+def is_unresolvable_third_party_host(url: str) -> bool:
+    """True when `url` sits on a general-purpose video/social host AND
+    isn't a URL shape `detect_platform()` can actually resolve (a specific
+    video/embed). Never true for a URL `detect_platform()` already
+    recognizes -- that case is real signal (`kind="platform"`), not noise."""
+    if _host_apex(url) not in _THIRD_PARTY_HOST_APEXES:
+        return False
+    return detect_platform(url) == "unknown"
 
 
 def log(msg: str) -> None:
@@ -143,6 +191,8 @@ def homepage_candidates(rec: dict) -> tuple[list[dict], str]:
 
     ranked = w147.find_hop_links(html, final_url)
     for i, url in enumerate(ranked):
+        if is_unresolvable_third_party_host(url):
+            continue
         # find_hop_links doesn't expose its own numeric score; rank
         # position (best-first) stands in as a monotonic score here so
         # this list still sorts correctly alongside sitemap/DNS
@@ -217,6 +267,13 @@ def classify_record(rec: dict) -> dict:
     all_candidates: dict[str, dict] = {}
 
     for u in urls:
+        # Defense in depth: sitemap/Wayback/Common Crawl URLs are already
+        # domain-scoped and structurally can't be on a third-party host,
+        # but a malformed sitemap could still list one -- same skip as
+        # homepage_candidates()'s, so a stray external link never scores
+        # as a real hub/meeting candidate here either.
+        if is_unresolvable_third_party_host(u):
+            continue
         hs = hub_score(u)
         ms = meeting_score(u)
         best = max(hs, ms)
