@@ -1,5 +1,22 @@
 # Backlog — done
 
+## WO-1020: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
+
+**What was wrong.** `wo273_recon.fetch_wayback_domain_index()` asks the Wayback Machine which pages of a government's site it has saved. On 2026-09-14 (WO-366) its output field `narrow_urls` was renamed `top_urls`. The 11 per-WO recon scripts that call it (`wo282`, `wo283`, `wo320`–`wo325`, `wo331`, `wo337`, `wo338`) were never updated. Each one still copied `wayback_index["narrow_urls"]` into its record.
+
+**Why it mattered.** That line raised a `KeyError` (Python's error for a missing dict key) for every government, but only when the Wayback health check passed. `cmd_sweep()` catches the error, so the sweep kept running. It wrote an `access_mode: "error"` stub in place of the real record. A real production run on 2026-09-22 hit it 49 times, and Wayback was switched off for the rest of that run (see `rtr-business/research/dns_ctlog_sweep_2026-09-17/production_run_2026-09-22/wayback_recheck.py`'s docstring).
+
+**The fix.** All 11 scripts now read and write `top_urls`. That is also the key the downstream classifier reads (`wo273_classify.all_urls_from_record()`, which `wo282_classify.py` imports). So Wayback URLs now reach classification, where before they never could. Two stale test fixtures in `tests/test_wo273_passive_discovery.py` were also switched to `top_urls`.
+
+**Verification.** New test `tests/test_wo282_recon_wayback_index.py` runs `process_government_v2()` on each of the 11 scripts with the health check forced on. It stubs every network call except the Wayback function itself, which runs for real against a stubbed CDX reply.
+
+| Code under test | Result (of 11 scripts) |
+|---|---|
+| Before the fix | 11 failed |
+| After the fix | 11 passed |
+
+**Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
+
 ## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
 
 **Issue.** `scripts/tier3_auto_transcription_queue.txt` lines were `URL`
