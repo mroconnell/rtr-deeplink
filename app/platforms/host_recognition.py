@@ -70,6 +70,16 @@ not silently missing:
 
 See `UNSUPPORTED_PLATFORMS` below for known vendor domains with NO
 rtr-deeplink adapter at all -- a different thing from either list above.
+
+A third, separate thing: `VENDOR_WEB_HOST_HINTS` (Ryan's decision,
+2026-09-23 -- see that constant's own comment for the verbatim quote) is
+for a host that's a meeting VENDOR's own general-purpose WEBSITE hosting
+-- not a meeting platform, and not proof one exists either. Recognizing
+a host as this kind of hint is deliberately NOT part of
+`platform_for_host()`'s return value (a web host is not a platform
+confirmation) -- use `web_host_hint_for_host()` instead, and treat its
+answer as a reason to go looking for that vendor's real platform tenant,
+never as a match on its own.
 """
 
 from typing import Optional, Tuple
@@ -142,15 +152,20 @@ UNSUPPORTED_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     ("novusagenda.com", "novusagenda"),
 )
 
-# A single host that this WO's brief explicitly says NOT to decide --
-# `granicusgovaccess.net` is called "website-CMS hosting noise, not a
-# meeting platform" by one write-up, but that hasn't been confirmed
-# against real data, and Ryan's framing here is "ask once with the
-# trade-off stated," not "guess." Kept OUT of both lists above on
-# purpose so `platform_for_host()` returns the honest "don't know"
-# rather than silently picking a side either way. See the WO-1015
-# report/PR for the question as put to Ryan.
-AMBIGUOUS_HOSTS: Tuple[str, ...] = ("granicusgovaccess.net",)
+# ---------------------------------------------------------------------
+# Ryan's decision, 2026-09-23, verbatim: "granicusgovaccess.net is a
+# hint/signature for granicus platform sometimes but it is in fact a web
+# host." So this is neither a platform (`_HOST_ONLY_PLATFORMS`) nor an
+# unsupported vendor (`UNSUPPORTED_PLATFORMS`) -- it's a THIRD kind of
+# thing, a vendor's own general-purpose website hosting, which only ever
+# HINTS that a Granicus tenant might be nearby, never confirms one.
+# `platform_for_host()` deliberately does NOT return this as a platform
+# match (a web host is not a platform confirmation) -- see
+# `web_host_hint_for_host()` below, which a caller uses as a reason to
+# go looking for a real Granicus tenant, not as a hit on its own.
+VENDOR_WEB_HOST_HINTS: Tuple[Tuple[str, str], ...] = (
+    ("granicusgovaccess.net", "granicus"),
+)
 
 
 def platform_for_host(host: str) -> Tuple[Optional[str], Optional[bool]]:
@@ -164,13 +179,14 @@ def platform_for_host(host: str) -> Tuple[Optional[str], Optional[bool]]:
       `_HOST_ONLY_PLATFORMS` / the Wistia/Vimeo host predicates.
     - `(name, False)` -- a known vendor domain with NO rtr-deeplink
       adapter (see `UNSUPPORTED_PLATFORMS`).
-    - `(None, None)` -- unrecognized, OR one of the explicitly-flagged
-      `AMBIGUOUS_HOSTS` this WO declines to classify either way.
+    - `(None, None)` -- unrecognized. This is also the answer for a host
+      in `VENDOR_WEB_HOST_HINTS` (e.g. `granicusgovaccess.net`) --
+      deliberately: a vendor's own website hosting is not a platform
+      confirmation, only a hint (see `web_host_hint_for_host()`), so it
+      must never come back from this function as if it were a match.
     """
     host = host.strip().lower().rstrip(".")
     if not host:
-        return None, None
-    if host in AMBIGUOUS_HOSTS:
         return None, None
 
     synthetic_url = f"https://{host}/"
@@ -192,6 +208,35 @@ def platform_for_host(host: str) -> Tuple[Optional[str], Optional[bool]]:
             return platform, False
 
     return None, None
+
+
+def web_host_hint_for_host(host: str) -> Optional[str]:
+    """A vendor name if `host` is known to be that vendor's own general-
+    purpose WEBSITE hosting (`VENDOR_WEB_HOST_HINTS`) -- e.g.
+    `granicusgovaccess.net` hints "granicus". This is NOT a platform
+    match: Ryan's decision (2026-09-23, verbatim) is "granicusgovaccess.net
+    is a hint/signature for granicus platform sometimes but it is in fact
+    a web host." A caller should treat a non-None return as a reason to
+    go look for a real tenant of that platform elsewhere (another CNAME
+    hop, another record), never as a hit to report on its own -- see
+    `platform_for_host()`, which never returns a `VENDOR_WEB_HOST_HINTS`
+    entry as a platform.
+
+    Matches by plain substring, not just suffix -- confirmed live
+    (2026-09-23 replay) that a real Akamai `edgekey.net` CNAME target can
+    carry the vendor's hint domain as a MIDDLE label
+    (`san-h2.granicusgovaccess.net.edgekey.net`, from a real Alameda, CA
+    CNAME chain), not just as the host's own suffix. That's the same
+    substring semantics the old stage-2 `VENDOR_SUFFIXES` list already
+    used for this exact entry -- kept here so this hint doesn't quietly
+    become narrower than what was already being caught."""
+    host = host.strip().lower().rstrip(".")
+    if not host:
+        return None
+    for suffix, vendor in VENDOR_WEB_HOST_HINTS:
+        if suffix in host:
+            return vendor
+    return None
 
 
 def platform_for_url(url: str) -> Tuple[Optional[str], Optional[bool]]:

@@ -199,7 +199,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (200)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (201)
+  [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
   [NEEDS-AUDIT] Local-export tests depend on an inventory that changes…
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
@@ -2221,6 +2222,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web host? Not decided — defaulting to platform pending real data.**
+  - **Issue**: `app/platforms/host_recognition.py`'s WO-1015 replay (2026-09-23) found `civicplus.io` CDN hosts (`pt-west-001.civicplus.io`, `guardian.civicplus.io`) via `detect_platform()`'s own bare `"civicplus"` substring branch (`app/platforms/base.py`). That branch was written for `civicplus.com` tenants; whether `civicplus.io` is the same kind of real per-government tenant host, or CivicPlus's own general-purpose website hosting (the same shape Ryan ruled `granicusgovaccess.net` to be on 2026-09-23 — see `BACKLOG_DONE.md`'s WO-1015 entry — "a hint/signature ... sometimes but it is in fact a web host") has not been checked against real data either way.
+  - **Impact**: every `civicplus.io` host currently counts as a confirmed CivicPlus platform match, both in `detect_platform()` and in `host_recognition.py`'s stage-2/3 discovery helpers — an unverified default, not a confirmed classification, in either direction.
+  - **Next action**: Ryan's call (2026-09-23, verbatim): "we need to base the civicplus.io decision on real examples and data - can you default to keeping it for now but note in the backlog that we should look for signs of civicplus.io in our research file and archive, and see if we would benefit from thinking about it as a different platform." Concretely: count governments in `rtr-business/research/jurisdiction_coverage.csv` and the stage-2 DNS/CNAME sweep results whose domain CNAMEs to or links a `civicplus.io` host, and count Archive pages whose `source_url`/`platform` is CivicPlus; then compare how many of those actually have a real AgendaCenter with video vs. agenda-only vs. nothing, the same way `civicplus.com`'s own real tenant behavior is already characterized (`civicplus.py`'s own module docstring). Decide from that whether `civicplus.io` should move to `VENDOR_WEB_HOST_HINTS` (a hint, not a platform match, mirroring `granicusgovaccess.net`) or stay a confirmed platform host.
+  - **Constraint**: keep it classified as `"civicplus"` (no code change) until that data exists — do not guess either way.
+  - **History**: `BACKLOG_DONE.md`'s WO-1015 entry (the replay that surfaced this); `app/platforms/base.py`'s civicplus branch carries a one-line comment pointing back here.
 
 - **[NEEDS-AUDIT] Local-export tests depend on an inventory that changes after repairs.**
   - **Issue**: `test_every_row_matches_the_local_export_it_was_built_from` and `test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages` fail with the current `/tmp/rtr_meeting_inventory/meeting_inventory.csv`: page 2504 has no government id, and page 3643 is no longer flagged.

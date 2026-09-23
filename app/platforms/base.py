@@ -401,6 +401,14 @@ def detect_platform(url: str) -> str:
         # CivicPlus's own corporate/marketing hosts (connect.civicplus.com
         # etc.) already returned "unknown" above, via _ALL_CORPORATE_HOSTS
         # -- this branch is only reached for a real per-government tenant.
+        # The bare "civicplus" substring also catches civicplus.io (found
+        # live 2026-09-23, WO-1015's host_recognition.py replay) -- Ryan's
+        # call on that domain (2026-09-23, verbatim): "we need to base the
+        # civicplus.io decision on real examples and data - can you
+        # default to keeping it for now" -- i.e. this is a DEFAULT pending
+        # real data, not a confirmed decision like granicusgovaccess.net's
+        # (see BACKLOG.md's "civicplus.io: platform or CivicPlus web host"
+        # entry).
         return "civicplus"
     if "primegov.com" in netloc:
         return "primegov"

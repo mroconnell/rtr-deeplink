@@ -23,10 +23,7 @@ path/query a bare host never has (Cablecast, BoxCast, BoardDocs,
 Invintus, Castus, Hyland — plus Wistia/Vimeo, recognized via their own
 existing host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is
 the one seeded, sourced list of known vendors with NO adapter (currently
-just `novusagenda.com`). `AMBIGUOUS_HOSTS` deliberately leaves
-`granicusgovaccess.net` unclassified — flagged as a live question for
-Ryan (one write-up calls it website-CMS hosting noise, not confirmed),
-not guessed at either way. Seattle Channel is the one adapter-backed
+just `novusagenda.com`). Seattle Channel is the one adapter-backed
 platform deliberately NOT recognized by host alone (host is a general
 broadcast site, not single-purpose — documented in the module's own
 docstring).
@@ -46,38 +43,58 @@ matched on it. Restored as `("hylandcloud.com", "hyland")` in
 correctly unrecognized by host alone (no signal to lose there — it never
 had one).
 
-11 tests in `tests/test_host_recognition.py`, all against real hostnames
+`granicusgovaccess.net` got its own decision from Ryan (2026-09-23,
+verbatim): "granicusgovaccess.net is a hint/signature for granicus
+platform sometimes but it is in fact a web host." So it's neither a
+platform nor an unsupported vendor — it's a third category,
+`VENDOR_WEB_HOST_HINTS`, for a host that's a vendor's own general-purpose
+WEBSITE hosting, not its meeting platform. `platform_for_host()`
+deliberately never returns it as a platform match (a web host is not a
+platform confirmation); a new `web_host_hint_for_host()` answers it
+separately (`"granicus"`), for a caller to use as a reason to go look for
+a real Granicus tenant elsewhere, never as a hit on its own. Matches by
+substring (same semantics the old `VENDOR_SUFFIXES` list already used for
+this entry), confirmed necessary live: a real Akamai `edgekey.net` CNAME
+target can carry `granicusgovaccess.net` as a middle label
+(`san-h2.granicusgovaccess.net.edgekey.net`, from a real Alameda, CA
+CNAME chain), not just as the host's own suffix.
+
+12 tests in `tests/test_host_recognition.py`, all against real hostnames
 already recorded elsewhere in this repo (module docstrings, README,
 existing fixtures).
 
 `elastic_sweep_script.py` and `cc_seek_script.py` (main rtr-business
 checkout, uncommitted per that repo's "agents never commit there" rule)
 now call this helper per CNAME hop / per Common Crawl record URL and add
-a new `platform_hits` field. Existing fields (`vendor_match`,
-`platform_cname_hits`, `all_records`, `hub_hits`) are completely
-unchanged — nothing old is replaced or discarded, `platform_hits` only
-adds information. Both scripts import via the same `sys.path` trick
+new `platform_hits` and `web_host_hints` fields (the latter clearly
+labelled `"note": "web-host hint only, NOT a platform match"` in the
+output). Existing fields (`vendor_match`, `platform_cname_hits`,
+`all_records`, `hub_hits`) are completely unchanged — nothing old is
+replaced or discarded, the new fields only add information. Both scripts
+import via the same `sys.path` trick
 `queue_pipeline.py`'s own `cmd_feed()` already uses to reach
 `~/Documents/rtr-deeplink`, guarded so either script still runs (with
-empty `platform_hits`) if that checkout doesn't have the module yet
+empty `platform_hits`/`web_host_hints`) if that checkout doesn't have the
+module yet
 (true today, since this PR is unmerged).
 
 **Replay against real data.** Stage 2: replayed offline against the 900
 existing entries in `raw_results.json` (91 with real DNS resolutions).
 The OLD list only ever matched `granicusgovaccess.net` in this dataset (6
-hits, all real) — the new helper doesn't classify that host either way
-(by design, see above), but `vendor_match` itself is untouched so nothing
-is actually lost. The new helper additionally found 4 real hits the old
-list completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
+hits, all real). After Ryan's web-host-hint decision above, all 6 are now
+correctly labelled a "granicus" web-host hint (not a platform match) —
+0 same, 0 no-longer, 6 hinted; `vendor_match` itself is untouched either
+way. The new helper additionally found 4 real hits the old list
+completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
 (a third real CivicPlus CDN domain, matched via `detect_platform()`'s own
 bare `"civicplus"` substring branch) and `www.holyoke.org` (a ProudCity
 customer, matched via `detect_platform()`'s curated
-`PROUDCITY_KNOWN_DOMAINS` set). Re-ran this replay after the Hyland
-correction above: zero `hylandcloud.com` hops appear anywhere in this
-particular 900-record dataset, so the same/no-longer/newly counts are
-unchanged (0/6/4) — the fix has no visible effect on THIS dataset, only
-on any future sweep that actually hits a `hylandcloud.com` host. No
-existing stage-3 (`cc_seek_script.py`)
+`PROUDCITY_KNOWN_DOMAINS` set) — `civicplus.io` is intentionally left as
+a plain platform match, not decided/changed in this pass. Re-ran this
+replay after the Hyland correction: zero `hylandcloud.com` hops appear
+anywhere in this particular 900-record dataset, so that fix has no
+visible effect on THIS dataset, only on any future sweep that actually
+hits a `hylandcloud.com` host. No existing stage-3 (`cc_seek_script.py`)
 output was found on disk to replay against (the files under `seek_results/`
 are from an unrelated legistar/granicus-family script); verified the new
 `classify_record_platform()` function directly instead against 5

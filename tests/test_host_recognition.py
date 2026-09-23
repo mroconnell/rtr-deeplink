@@ -9,9 +9,10 @@ confirmed real.
 
 from app.platforms.host_recognition import (
     UNSUPPORTED_PLATFORMS,
-    AMBIGUOUS_HOSTS,
+    VENDOR_WEB_HOST_HINTS,
     platform_for_host,
     platform_for_url,
+    web_host_hint_for_host,
 )
 
 
@@ -115,12 +116,28 @@ def test_unsupported_vendor_returns_supported_false():
     assert ("novusagenda.com", "novusagenda") in UNSUPPORTED_PLATFORMS
 
 
-def test_granicusgovaccess_is_explicitly_left_ambiguous():
-    # WO-1015's brief: don't decide this one, ask Ryan, keep current
-    # (matched-but-unclassified) behavior. Must not silently land in
-    # either the supported or unsupported bucket.
-    assert "granicusgovaccess.net" in AMBIGUOUS_HOSTS
+def test_granicusgovaccess_is_a_web_host_hint_not_a_platform_match():
+    # Ryan's decision, 2026-09-23, verbatim: "granicusgovaccess.net is a
+    # hint/signature for granicus platform sometimes but it is in fact a
+    # web host." platform_for_host() must NOT return it as a match --
+    # only web_host_hint_for_host() may, and it names "granicus".
     assert platform_for_host("granicusgovaccess.net") == (None, None)
+    assert web_host_hint_for_host("granicusgovaccess.net") == "granicus"
+    assert ("granicusgovaccess.net", "granicus") in VENDOR_WEB_HOST_HINTS
+    # A real Akamai edgekey CNAME target still hints correctly even though
+    # granicusgovaccess.net sits as a MIDDLE label, not the host's own
+    # suffix -- confirmed live in a real Alameda, CA CNAME chain (see
+    # BACKLOG_DONE.md's WO-1015 entry). Matched by substring, same
+    # semantics the old VENDOR_SUFFIXES list already used for this entry.
+    assert web_host_hint_for_host("san-h2.granicusgovaccess.net.edgekey.net") == (
+        "granicus"
+    )
+    assert web_host_hint_for_host("foo.granicusgovaccess.net") == "granicus"
+
+
+def test_web_host_hint_is_none_for_unrelated_hosts():
+    assert web_host_hint_for_host("cityoftacoma.granicus.com") is None
+    assert web_host_hint_for_host("") is None
 
 
 def test_seattle_channel_is_deliberately_not_recognized_by_host():
