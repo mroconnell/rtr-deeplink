@@ -17,21 +17,36 @@ platform at all — only a plain keyword guess (`HUB_KEYWORDS`).
 **Fix.** Added `app/platforms/host_recognition.py`: `platform_for_host()`
 answers `(platform, supported)` for a bare hostname by calling
 `detect_platform()` on a synthetic `https://<host>/` URL first, then a
-short, explicitly-sourced fallback list (`_HOST_ONLY_PLATFORMS`) for five
+short, explicitly-sourced fallback list (`_HOST_ONLY_PLATFORMS`) for six
 real, adapter-backed platforms whose `detect_platform()` branch needs a
 path/query a bare host never has (Cablecast, BoxCast, BoardDocs,
-Invintus, Castus — plus Wistia/Vimeo, recognized via their own existing
-host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is the one
-seeded, sourced list of known vendors with NO adapter (currently just
-`novusagenda.com`). `AMBIGUOUS_HOSTS` deliberately leaves
+Invintus, Castus, Hyland — plus Wistia/Vimeo, recognized via their own
+existing host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is
+the one seeded, sourced list of known vendors with NO adapter (currently
+just `novusagenda.com`). `AMBIGUOUS_HOSTS` deliberately leaves
 `granicusgovaccess.net` unclassified — flagged as a live question for
 Ryan (one write-up calls it website-CMS hosting noise, not confirmed),
-not guessed at either way. Two adapter-backed platforms are deliberately
-NOT recognized by host alone and documented as such in the module's own
-docstring: Seattle Channel (host is a general broadcast site, not
-single-purpose) and Hyland (its real tenants share no common host suffix
-at all — `detect_platform()`'s own branch is path-only, no netloc check).
-10 tests in `tests/test_host_recognition.py`, all against real hostnames
+not guessed at either way. Seattle Channel is the one adapter-backed
+platform deliberately NOT recognized by host alone (host is a general
+broadcast site, not single-purpose — documented in the module's own
+docstring).
+
+Hyland (`hylandcloud.com`) needed a conductor-review correction
+(2026-09-23): the first pass dropped it entirely, reasoning that
+`detect_platform()`'s own Hyland branch has no netloc check at all and
+its 3 known real tenants share no common host suffix
+(`tucsonaz.hylandcloud.com`, `mccobagenda.databankcloud.com`,
+`agendanet.saccounty.gov`). True, but beside the point: `hylandcloud.com`
+isn't NECESSARY to identify a Hyland tenant, but it IS SUFFICIENT — every
+real `*.hylandcloud.com` host seen so far (plus 8
+`tenant_overrides.csv` pins onto `hylandcloud.com` hosts) is a genuine
+Hyland customer, and the old stage-2 `VENDOR_SUFFIXES` list already
+matched on it. Restored as `("hylandcloud.com", "hyland")` in
+`_HOST_ONLY_PLATFORMS`; a Hyland tenant on any OTHER domain is still
+correctly unrecognized by host alone (no signal to lose there — it never
+had one).
+
+11 tests in `tests/test_host_recognition.py`, all against real hostnames
 already recorded elsewhere in this repo (module docstrings, README,
 existing fixtures).
 
@@ -57,7 +72,12 @@ list completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
 (a third real CivicPlus CDN domain, matched via `detect_platform()`'s own
 bare `"civicplus"` substring branch) and `www.holyoke.org` (a ProudCity
 customer, matched via `detect_platform()`'s curated
-`PROUDCITY_KNOWN_DOMAINS` set). No existing stage-3 (`cc_seek_script.py`)
+`PROUDCITY_KNOWN_DOMAINS` set). Re-ran this replay after the Hyland
+correction above: zero `hylandcloud.com` hops appear anywhere in this
+particular 900-record dataset, so the same/no-longer/newly counts are
+unchanged (0/6/4) — the fix has no visible effect on THIS dataset, only
+on any future sweep that actually hits a `hylandcloud.com` host. No
+existing stage-3 (`cc_seek_script.py`)
 output was found on disk to replay against (the files under `seek_results/`
 are from an unrelated legistar/granicus-family script); verified the new
 `classify_record_platform()` function directly instead against 5

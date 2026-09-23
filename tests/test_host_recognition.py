@@ -87,6 +87,13 @@ def test_recognizes_path_dependent_adapters_by_host_alone():
     assert platform_for_host("player.invintus.com") == ("invintus", True)
     # cloud.castus.tv -- Billings, MT, castus.py's own docstring.
     assert platform_for_host("cloud.castus.tv") == ("castus", True)
+    # tucsonaz.hylandcloud.com -- Tucson AZ, base.py's own docstring.
+    # hylandcloud.com is not NECESSARY to identify a Hyland tenant (two of
+    # three known real tenants live on other domains -- see the next
+    # test), but every real *.hylandcloud.com host seen so far IS a
+    # genuine Hyland customer, so it's a safe SUFFICIENT host signal
+    # (conductor review, 2026-09-23).
+    assert platform_for_host("tucsonaz.hylandcloud.com") == ("hyland", True)
 
 
 def test_recognizes_wistia_and_vimeo_via_their_own_host_predicates():
@@ -116,16 +123,21 @@ def test_granicusgovaccess_is_explicitly_left_ambiguous():
     assert platform_for_host("granicusgovaccess.net") == (None, None)
 
 
-def test_seattle_channel_and_hyland_are_deliberately_not_recognized_by_host():
+def test_seattle_channel_is_deliberately_not_recognized_by_host():
     # Seattle Channel: the host is a general broadcast site, not a
     # single-purpose vendor domain (seattlechannel.py's own docstring
     # scopes the real check to /videos?videoid= for this reason).
     assert platform_for_host("seattlechannel.org") == (None, None)
-    # Hyland: detect_platform()'s own branch has no netloc check at all --
-    # confirmed real tenants share no common host suffix
-    # (tucsonaz.hylandcloud.com, mccobagenda.databankcloud.com,
-    # agendanet.saccounty.gov).
-    assert platform_for_host("tucsonaz.hylandcloud.com") == (None, None)
+
+
+def test_hyland_on_a_non_hylandcloud_domain_is_not_recognized_by_host():
+    # detect_platform()'s own Hyland branch matches on the
+    # /Meetings/ViewMeeting path alone, no netloc check at all -- real
+    # confirmed tenants on domains OTHER than hylandcloud.com
+    # (mccobagenda.databankcloud.com, agendanet.saccounty.gov, base.py's
+    # own docstring) have no host signal a hostname-only helper can use.
+    assert platform_for_host("mccobagenda.databankcloud.com") == (None, None)
+    assert platform_for_host("agendanet.saccounty.gov") == (None, None)
 
 
 def test_bare_civiclive_and_boarddocs_apex_are_not_real_tenant_hosts():

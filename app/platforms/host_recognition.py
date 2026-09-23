@@ -26,21 +26,40 @@ Two tiers, in order:
    adapter-backed platforms whose `detect_platform()` branch needs a real
    path or query to confirm a SPECIFIC page (a `/show/{id}`, a real
    `clientID`+`eventID`, a `/medias/{id}`) -- Cablecast, BoxCast,
-   BoardDocs, Invintus, Castus -- so a bare `https://<host>/` correctly,
-   deliberately, comes back "unknown" from tier 1. A hostname-only sweep
-   never had a path to begin with, so "is this platform's host at all"
-   is the only question it can ever answer -- these hosts are single-
-   purpose vendor domains (not general-content sites), so recognizing
-   the host alone as "this platform, page unconfirmed" is a safe call.
-   Wistia and Vimeo don't need an entry here: both already expose a
-   real, host-only predicate (`is_wistia_account_host()`,
+   BoardDocs, Invintus, Castus, Hyland -- so a bare `https://<host>/`
+   correctly, deliberately, comes back "unknown" from tier 1. A hostname-
+   only sweep never had a path to begin with, so "is this platform's host
+   at all" is the only question it can ever answer -- these hosts are
+   single-purpose vendor domains (not general-content sites), so
+   recognizing the host alone as "this platform, page unconfirmed" is a
+   safe call. Wistia and Vimeo don't need an entry here: both already
+   expose a real, host-only predicate (`is_wistia_account_host()`,
    `is_vimeo_host()`) that this module reuses directly rather than
    re-deriving anything.
 
-Two platforms are deliberately left unrecognized by this module even
-though they have real rtr-deeplink adapters -- both are "dropped" in the
-WO-1015 sense (see the PR/BACKLOG_DONE entry for the full no-signal-lost
-table), not silently missing:
+Hyland is a special case worth calling out explicitly (caught in
+conductor review, 2026-09-23): `detect_platform()`'s own Hyland branch
+matches on the `/Meetings/ViewMeeting` path ALONE, with no netloc check
+at all -- confirmed live across three real customer domains that don't
+even share a common suffix (`tucsonaz.hylandcloud.com`,
+`mccobagenda.databankcloud.com`, `agendanet.saccounty.gov`). So
+`hylandcloud.com` is NOT NECESSARY to identify a Hyland tenant (two of
+the three known real tenants aren't even on it) -- but it IS SUFFICIENT:
+every real `*.hylandcloud.com` host seen so far (including
+`tenant_overrides.csv`'s own 8 pins onto `hylandcloud.com` hosts) is a
+genuine Hyland customer, and the old stage-2 `VENDOR_SUFFIXES` list
+already matched on it. "Not the only host" and "not a reliable host at
+all" are different claims -- only the first is true here, so
+`hylandcloud.com` IS in `_HOST_ONLY_PLATFORMS` below. What's still
+correctly unrecognized by host: a Hyland customer on `databankcloud.com`,
+`saccounty.gov`, or any other domain that isn't `hylandcloud.com` itself
+-- those need the real `/Meetings/ViewMeeting` path, which a hostname-
+only caller never has.
+
+One platform is deliberately left unrecognized by this module even
+though it has a real rtr-deeplink adapter -- "dropped" in the WO-1015
+sense (see the PR/BACKLOG_DONE entry for the full no-signal-lost table),
+not silently missing:
 
 - Seattle Channel (`seattlechannel.org`): the host is a general city
   broadcast site (news, sports, many non-meeting pages), not a single-
@@ -48,14 +67,6 @@ table), not silently missing:
   explicit that only the narrow `/videos?videoid=` shape is claimed, on
   purpose, for exactly this reason. Recognizing the bare host would be a
   materially different (much weaker) signal than every other entry here.
-- Hyland "OnBase Agenda Online" (`hylandcloud.com`): `detect_platform()`'s
-  own Hyland branch matches on the `/Meetings/ViewMeeting` path ALONE,
-  with no netloc check at all -- confirmed live across three real
-  customer domains that don't even share a common suffix
-  (`tucsonaz.hylandcloud.com`, `mccobagenda.databankcloud.com`,
-  `agendanet.saccounty.gov`). There is no reliable *host* signal for this
-  platform at all, so a host-only helper has nothing correct to say about
-  it either way.
 
 See `UNSUPPORTED_PLATFORMS` below for known vendor domains with NO
 rtr-deeplink adapter at all -- a different thing from either list above.
@@ -75,9 +86,9 @@ from .wistia import is_wistia_account_host
 # SAME host string already checked inside that platform's own module (or
 # base.py's own branch for it) -- copied here as a plain string, not as
 # re-derived matching logic, since a bare-suffix check has no "logic" to
-# duplicate. See this module's own docstring above for why these five are
+# duplicate. See this module's own docstring above for why these are
 # safe to recognize by host alone (single-purpose vendor domains) where
-# Seattle Channel and Hyland are not.
+# Seattle Channel is not.
 _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     # Cablecast -- base.py's own cablecast branch checks "cablecast.tv"
     # in netloc (plus a `/show/{id}`-shaped path); real tenant example:
@@ -101,6 +112,19 @@ _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     # Castus -- base.py's own castus branch checks "castus.tv" in netloc
     # (plus "/vod/" in path); real tenant: cloud.castus.tv (Billings, MT).
     ("castus.tv", "castus"),
+    # Hyland "OnBase Agenda Online" -- base.py's own Hyland branch matches
+    # on the `/Meetings/ViewMeeting` path alone, no netloc check at all,
+    # because real tenants also live on `databankcloud.com`/`saccounty.gov`
+    # (not just this domain). But `hylandcloud.com` itself IS a reliable,
+    # SUFFICIENT signal even without a path -- every real
+    # `*.hylandcloud.com` host seen so far (real tenant:
+    # tucsonaz.hylandcloud.com, Tucson AZ; also 8 tenant_overrides.csv
+    # pins) is a genuine Hyland customer, and the old stage-2
+    # VENDOR_SUFFIXES list already matched on it (conductor review,
+    # 2026-09-23 -- see this module's own docstring for the fuller
+    # necessary-vs-sufficient reasoning). A Hyland tenant on any OTHER
+    # domain still can't be recognized by host alone.
+    ("hylandcloud.com", "hyland"),
 )
 
 # ---------------------------------------------------------------------
