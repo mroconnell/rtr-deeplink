@@ -1,5 +1,102 @@
 # Backlog — done
 
+## WO-1028: Meeting Finder's List phase [Done 2026-09-23]
+
+**What.** `app/platforms/meeting_finder/listing.py`'s `list_account
+(platform, account_url, fetcher, *, limit=15, platform_params=None) ->
+ListResult` -- docs/MEETING_FINDER.md's List phase, wave 2. Five listers,
+tried in order, stopping at the first with candidates: (a) `passive_
+verify.py`'s registered listing walkers, called directly rather than
+through `verify_hub()` (which also resolves/judges each candidate; List
+only wants the raw listing); (b) rtr-discovery's `list_tenant()`
+(`discovery/list_one.py`, WO-1026, PR #41) for a platform passive_verify
+has no walker for; (c) an adapter's own `CalendarPageError` pick-list
+(legistar, municode_meetings, vimeo, wistia, tampa); (d) an adapter that
+walks its own hub straight to one meeting (castus, cablecast,
+townhallstreams); (e) `passive_verify._generic_link_scan_walker()`. No
+lister found anything: `no-meeting-nor-video`. No adapter/walker/
+enumerator at all for the platform: `unsupported-platform-no-adapter`.
+List never resolves a candidate itself (Resolve, already merged, is the
+one place that runs) except where listers (c)/(d) necessarily call
+`resolve()` because that's how their adapter distinguishes a pick-list
+or a single hub meeting from anything else.
+
+**Fetch injection, without touching any existing caller.**
+`passive_verify.py` gained `fetch_override()`: a task-local
+(`contextvars.ContextVar`) override of its private `_fetch()`, same
+mechanism `identity.py`'s `tenant_pin_switched_off()` already uses for
+the identical "must not corrupt a concurrent caller" reason. The real
+body moved to `_fetch_default()`; `_fetch()` now checks the ContextVar
+first and falls through to `_fetch_default()` when nothing is set --
+every existing caller (`verify_hub()`, every `wo3xx_resolve_diagnostic.py`
+sweep script) never sets it, so behavior is byte-for-byte unchanged.
+Confirmed: the full, unmodified `tests/test_passive_verify*.py` suite
+(83 tests, all of which mock at the `aiohttp.ClientSession` layer, not
+`_fetch` itself) still passes. `listing.py` sets the override only for
+the duration of its own call into a registered walker or the generic
+scan, wrapping Meeting Finder's `Fetcher` (`fetch.py`, WO-1025 -- not
+edited by this WO) in the `(html, final_url, error)` shape `_fetch()`
+expects.
+
+**Agenda-only fallback (added after conductor review of the first PR
+revision).** `_civicplus_walker()`'s step 1 only adds a candidate when a
+listing row's own `url` field is set. Cass County, MN
+(`mn-casscounty.civicplus.com/AgendaCenter`) is a real, live, genuinely
+agenda-only AgendaCenter tenant -- confirmed 2026-09-23: `_find_
+candidate_rows()` itself returns 37 real rows (title, date,
+agenda_link, packet_link all populated), but every row's `url` is
+`None`, so the walker's own `if row.get("url"): _add(...)` line never
+fires and it returns `[]`, indistinguishable from a tenant with zero
+meetings. Fixed for List (not for `_civicplus_walker()`/`verify_hub()`
+itself, left untouched -- see below): `listing._civicplus_agenda_only_
+fallback()` re-parses the page with `CivicPlusAssetFinder()._find_
+candidate_rows()` directly and, tried only after every other lister
+returns nothing for a `civicplus` account, returns the video-less rows
+as `Candidate`s (`lister="civicplus_agenda_only"`, `has_video_hint=
+False`). Confirmed live: Cass County now returns 5 real candidates
+(`has_video_hint=False`) instead of `no-meeting-nor-video`. Checked every
+other registered walker for the same filter -- CivicWeb/Legistar/
+eScribe/IQM2/CivicClerk/Townhallstreams/Cablecast/Invintus don't have it
+(see `listing.py`'s own docstring for the per-platform reasoning).
+`municode_meetings.py` has the identical pre-2026-09-07 CivicPlus shape
+(`resolve()` still calls the never-renamed `_find_video_rows()`) but
+wasn't given a fallback here (different adapter file; rtr-discovery's
+enumerator already answers most real accounts first). `verify_hub()`'s
+own CivicPlus path keeps today's limit -- both left as `BACKLOG.md`
+entries (`verify_hub()`'s own CivicPlus path, and municode_meetings.py`)
+rather than fixed here.
+
+**Live check (real accounts, `limit=5`, no YouTube), rerun 2026-09-23
+after the conductor fast-forwarded `~/Documents/rtr-discovery` to
+`origin/main` (`ba422a8`, includes `discovery/list_one.py`):**
+
+| Platform | Account | Lister used | Result | Candidates | Newest date |
+|---|---|---|---|---|---|
+| civicclerk | antiochca.portal.civicclerk.com | passive_verify:civicclerk | ok | 5 | 2026-09-22 |
+| granicus | sandiego.granicus.com (view_id=3) | passive_verify:granicus | ok | 5 | 2026-09-23 |
+| legistar | boston.legistar.com/Calendar.aspx | passive_verify:legistar | ok | 5 | 2026-09-22 |
+| castus | cloud.castus.tv/vod/lincoln/ | adapter_hub | ok | 1 | (not in listing row) |
+| civicplus | mn-casscounty.civicplus.com/AgendaCenter | civicplus_agenda_only | ok (agenda-only, no video) | 5 | 2026-09-15 |
+| municode_meetings | bristol-ri.municodemeetings.com | discovery:municode_meetings | ok | 4 | 2026-09-16 |
+| primegov | lacity.primegov.com | discovery:primegov | ok | 5 | 2026-09-22 |
+| swagit | webbcountytx.swagit.com | generic_link_scan | ok (rtr-discovery's own Swagit enumerator returned `not-enumerable`/param discovery found nothing for this tenant -- a real rtr-discovery limit, not a listing.py bug; List correctly fell through to lister e) | 5 | -- |
+
+municode_meetings now resolves via rtr-discovery (lister b) rather than
+its own `CalendarPageError` (lister c), since rtr-discovery's checkout is
+current -- lister ordering worked exactly as designed (b tried before c,
+first with candidates wins).
+
+**Verify.** Five CI gates: `ruff check`, `ruff format --check`, `pytest`
+(5,264 passed, 16 skipped, 4 xfailed, 2 failed -- both pre-existing,
+unrelated to this change: `test_repair_wrong_pages.py`/
+`test_wrong_page_screen.py`'s stale-local-export failures), both
+`alembic check`s (no schema change, `app/db/` and `archive/db/`
+unaffected). New tests: `tests/test_wo1028_meeting_finder_listing.py`
+(14 tests, synthetic per CLAUDE.md's rule -- listing.py is orchestration
+over already real-verified pieces, not a new adapter; two of the 14 use
+the real `tests/fixtures/civicplus/ks_desoto_agendacenter.html` fixture
+for the agenda-only fallback rather than hand-built markup).
+
 ## WO-1029: Meeting Finder's Scan and Hop phases (`app/platforms/meeting_finder/scan.py`, `hop.py`) [Done 2026-09-23]
 
 **What.** The next wave-2 slice of Meeting Finder (`docs/MEETING_
