@@ -1,7 +1,9 @@
 # Context research queue
 
 WO-1014 implements Milestone 1: import research, check existing recordings, and
-show an editor the next action. Publication remains in the existing Context
+show an editor the next action. Ryan also approved saving candidate reviews and
+opening the existing editor with their saved values after trying the preview.
+Publication remains in the existing Context
 editor. A meeting match does not verify a proposed timestamp or a speaker's claim.
 
 ## Import an export
@@ -70,8 +72,29 @@ recheck for up to 25 selected candidates. After recheck, use **Refresh queue**.
 
 Existing Context entries appear separately with their current publication state.
 Imports and rechecks never edit them. Titles, summaries, timestamps and match
-labels remain research suggestions. Use the ordinary entry editor for editorial
-work; automatic editor prefilling is a later milestone.
+labels remain research suggestions. **Watch proposed moment** opens the matched
+recording at the proposed time, including `0:00`. A proposed **Exact** label is
+not a verification performed by the meeting lookup.
+
+Use **Edit candidate**, then **Save changes**. You can edit the proposed meeting,
+recording/RTR links, timestamp, headline, summary, poster, match label and notes.
+The source post identity stays fixed. Blank fields clear a reviewed fact; if
+sources disagree on a field, explicitly choose a value or choose to leave it
+unknown. Saving notes alone must not erase that disagreement. Each save retains
+a new review revision and reruns the meeting check. A stale browser tab cannot
+overwrite a newer review or import. Original source observations stay intact.
+
+**Open in Context editor** becomes available after saving and checking. It opens
+`/context/new` using that saved revision, with no entry created yet. Unsaved
+changes disable the button. New imported research, conflicting meeting evidence,
+or a failed check requires review before opening. A draft can still be prepared
+without a matched recording, but no guessed meeting link or match label is
+carried over. The normal editor keeps its **Save draft** and **Publish** controls.
+Long research text is preserved and flagged for shortening in the public editor.
+
+Later imports do not overwrite your saved review. A notice asks you to review
+new source observations and save again before opening the editor. Prior saved
+revisions remain visible on the candidate page.
 
 Lookup reads current slugs, stored URL aliases, normalized source URLs and
 fixture-verified platform identifiers. Tenant namespaces are retained. Government and
@@ -83,8 +106,8 @@ them. Transcript availability is informational and does not establish a moment.
 
 ## Storage, access and release
 
-Archive owns `archive/context/` and two new tables: `context_candidates` and
-`context_candidate_observations`. Research and lookup results are separate.
+Archive owns `archive/context/` and three new tables: `context_candidates`,
+`context_candidate_observations`, and `context_candidate_revisions`. Research and lookup results are separate.
 Immutable observations retain their provider and original payload. A newer import
 invalidates old lookup results; a version check prevents a stale recheck from
 overwriting newer research. PostgreSQL source locks and candidate row locks protect
@@ -93,12 +116,14 @@ concurrent imports; SQLite takes its write reservation before reading ownership.
 Machine import uses Archive's existing bearer token at
 `POST /internal/context/candidates/import`. Editor rechecks use the verified Clerk
 session through `/api/context/candidates/recheck`; a browser cannot choose a user
-ID. Queue responses are private/no-store and noindex. Candidate rows do not enter
+ID. Editor saves follow the same path at `/api/context/candidates/save`.
+Queue responses are private/no-store and noindex. Candidate rows do not enter
 public feeds, search, excerpts or sitemaps. Import performs no remote resolution,
 social fetching, ingestion, transcription, or publication.
 
 Deploy Archive first, then resolver. Archive's normal pre-deploy migration adds
-the two tables at revision `9f20cd299f30`; it has no meeting backfill. An unavailable
+the research tables at revision `9f20cd299f30` and immutable reviews at
+`1816f75c1098`; neither has a meeting backfill. An unavailable
 candidate schema fails only the private queue. Roll back application code while
 retaining these additive tables if needed. Merging this change does not deploy it.
 
@@ -129,10 +154,12 @@ expected for this deliberately empty local Archive, not claims about RTR live.
 Database inspection confirmed zero meetings, public entries and transcription
 jobs after both imports.
 
-All 353 Context Python tests and 85 JavaScript tests passed. Tests cover exact
+All 391 Context Python tests and 92 JavaScript tests passed. Tests cover exact
 alias matches, tenant separation, conflicting identifiers, query failures,
 source updates, stale rechecks, editor authorization, escaped text and public
-exclusion. PostgreSQL migration and simultaneous duplicate/retarget imports
+exclusion. Review tests cover stale saves, explicit conflict clearing, timestamp
+normalization, unchanged source evidence, and saved-only editor prefilling.
+PostgreSQL migration and simultaneous duplicate/retarget imports
 passed in a disposable Docker container. Both standard SQLite Alembic checks
 passed. PostgreSQL's unfiltered check reports only the four pre-existing,
 intentionally unmapped search objects documented in the CI workflow; none belongs
@@ -140,7 +167,13 @@ to Context, and no drop operation was accepted.
 
 Chrome browser checks covered the rendered queue, pagination, filtering, original
 research, successful batch recheck, an unavailable Archive error, and navigation
-to the existing editor. Two localhost services used a disposable authentication
+to the existing editor. The approved review extension was also driven in Chrome:
+edit and save a demo review, open the proposed timestamp link, and open the editor
+with the saved title, summary and timestamp. The editor still showed zero entries.
+A clearly marked fake archived meeting was added only to the local demo for this
+matched-recording walkthrough; it has no playable video or transcript.
+Concurrent review saves and coherent reads passed against disposable PostgreSQL.
+Two localhost services used a disposable authentication
 harness; real authorization gates are covered by route tests. OS accessibility
 was not enabled. No production data was changed.
 

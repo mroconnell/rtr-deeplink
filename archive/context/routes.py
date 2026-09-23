@@ -15,7 +15,12 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
-from .schemas import ImportRequest, InternalRecheckRequest, NextAction
+from .schemas import (
+    ImportRequest,
+    InternalCandidateSaveRequest,
+    InternalRecheckRequest,
+    NextAction,
+)
 from ..utils.context_editors import is_context_editor
 
 _MAX_REQUEST_BYTES = 1_000_000
@@ -300,5 +305,44 @@ def build_router(*, templates, token_ok, clerk_user_id) -> APIRouter:
                 {"error": "candidate_service_unavailable"}, status_code=503
             )
         return _private_json({"results": results})
+
+    @router.post("/internal/context/candidates/save")
+    async def save_candidate(
+        request: Request, authorization: str | None = Header(default=None)
+    ):
+        if not await _token_allowed(token_ok, authorization):
+            return _private_json({"detail": "Not Found"}, status_code=404)
+        try:
+            req = await _validated_body(request, InternalCandidateSaveRequest)
+        except (ValueError, RuntimeError):
+            return _private_json(
+                {
+                    "error": "invalid_request",
+                    "message": "Check the candidate fields and try again.",
+                },
+                status_code=422,
+            )
+        if not is_context_editor(req.clerk_user_id):
+            return _private_json({"error": "not_editor"}, status_code=404)
+        try:
+            result = await _store_module().save_candidate_review(
+                req.id,
+                expected_version=req.expected_version,
+                fields=req.fields.model_dump(),
+                clear_conflicts=req.clear_conflicts,
+                clerk_user_id=req.clerk_user_id,
+            )
+        except Exception:
+            return _private_json(
+                {
+                    "error": "candidate_service_unavailable",
+                    "message": "The save could not be confirmed. Reload the candidate before retrying.",
+                },
+                status_code=503,
+            )
+        status = {"saved": 200, "stale": 409, "not_found": 404, "invalid": 422}.get(
+            result.get("outcome"), 503
+        )
+        return _private_json(result, status_code=status)
 
     return router

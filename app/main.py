@@ -1388,6 +1388,47 @@ class ContextCandidatesRecheckApiRequest(BaseModel):
     )
 
 
+class ContextCandidateSaveApiRequest(BaseModel):
+    id: Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]
+    expected_version: Annotated[int, Field(strict=True, gt=0, le=2_147_483_647)]
+    fields: dict
+    clear_conflicts: list[str] = Field(default_factory=list, max_length=13)
+
+
+@app.post("/api/context/candidates/save")
+@limiter.limit("20/minute")
+async def api_context_candidate_save(
+    request: Request, req: ContextCandidateSaveApiRequest
+):
+    editor_id = get_clerk_user_id(request)
+    if editor_id is None:
+        response = JSONResponse(
+            {"error": "not_logged_in", "message": "Sign in to save candidate changes."},
+            status_code=401,
+        )
+    else:
+        result = await archive_client.context_candidate_save(
+            editor_id, req.model_dump()
+        )
+        if (
+            result is not None
+            and result[0] == 404
+            and result[1].get("error") == "not_editor"
+        ):
+            response = JSONResponse({"detail": "Not Found"}, status_code=404)
+        elif (
+            result is not None
+            and result[0] == 404
+            and result[1].get("outcome") == "not_found"
+        ):
+            response = JSONResponse(result[1], status_code=404)
+        else:
+            response = _context_api_response(result)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
+
+
 @app.post("/api/context/candidates/recheck")
 @limiter.limit("20/minute")
 async def api_context_candidates_recheck(

@@ -1,6 +1,10 @@
 # Context pipeline implementation plan
 
-Prepared September 23, 2026. Approved by Ryan and implemented as WO-1014. See `CONTEXT_CANDIDATES.md` for the delivered workflow and verification. The sections below preserve the design and agent work split.
+Prepared September 23, 2026. Approved by Ryan and implemented as WO-1014. See `CONTEXT_CANDIDATES.md` for the delivered workflow and verification. The sections below preserve the original design and agent work split. After
+trying the frontend, Ryan approved an extension on September 23: proposed-time
+links, immutable saved candidate reviews, and opening the existing Context editor
+with saved values. That extension is now part of WO-1014; ingestion, automatic
+moment verification and automatic publication remain out of scope.
 
 I reviewed the September 22 handover in `rtr-business/research/RTR_Context_Pipeline_Fable_Handover_2026-09-22(1).docx`, the live Context feed and a published entry, and freshly fetched `origin/main` at `338e745`. The open working branch predates Context and contains unrelated edits. Implementation must start from current main in isolated worktrees.
 
@@ -72,7 +76,7 @@ The importer accepts one documented input shape from CSV or JSON. A small source
 
 Validate row sizes, types, HTTP(S) URLs, date precision, and timestamps before applying. Report malformed rows with source references. Ambiguous dates remain unresolved. Never silently trim research into the public title/summary limits; show editorial-length issues separately. Treat all imported text as data and escape it in HTML. Do not render arbitrary source HTML or fetch supplied URLs during import.
 
-Preview reports intended additions, changes, duplicates, and rejected rows. Apply commits per candidate and uses database uniqueness constraints to survive retry or concurrent imports. Changed source claims preserve the old observation, invalidate stale lookup results, and trigger re-evaluation. Keep the latest observation from each source active. Different providers supplying contradictory meeting claims force conflict review; import order must never decide which claim wins. Prior observations remain available. Existing editorial associations are untouched. A manual candidate-confirmation action is deferred beyond Milestone 1. Use optimistic concurrency: a stale recheck cannot overwrite a newer import.
+Preview reports intended additions, changes, duplicates, and rejected rows. Apply commits per candidate and uses database uniqueness constraints to survive retry or concurrent imports. Changed source claims preserve the old observation, invalidate stale lookup results, and trigger re-evaluation. Keep the latest observation from each source active. Different providers supplying contradictory meeting claims force conflict review; import order must never decide which claim wins. Prior observations remain available. Existing editorial associations are untouched. The approved September 23 extension now supplies manual candidate confirmation through saved review revisions. Use optimistic concurrency: a stale recheck cannot overwrite a newer import.
 
 **Exact meeting lookup.**
 
@@ -152,6 +156,7 @@ The change needs one additive Archive migration, with small-table indexes and no
 
 Milestone 2 adds an operator-approved bridge to existing ingestion and tracks the returned meeting/job result. It must preserve government ownership checks, video-only ingest rules, and the dedicated YouTube drip restriction. Recording available, transcript pending and transcription failed are distinct outcomes; a video-only page may still be editorially useful.
 
-Milestone 3 validates the proposed moment and prefills the existing editor. Use the transcript and recording first. Support another camera angle, approximate timing and recording cutoff as real outcomes. Keep uncertain allegations attributed to the speaker. Preserve enough evidence to explain the proposed label and the surrounding context. Reuse normal editor save/publish behavior, with no automatic publication. A custom matcher earns a separate proposal only if a measured sample shows that manual/Muse-assisted validation is the bottleneck.
+The approved September 23 extension already prefills the existing editor from a
+saved review. Milestone 3 still validates the proposed moment. Use the transcript and recording first. Support another camera angle, approximate timing and recording cutoff as real outcomes. Keep uncertain allegations attributed to the speaker. Preserve enough evidence to explain the proposed label and the surrounding context. Reuse normal editor save/publish behavior, with no automatic publication. A custom matcher earns a separate proposal only if a measured sample shows that manual/Muse-assisted validation is the bottleneck.
 
 **Source found during implementation.** The connected Drive contains the populated “IG Public Meetings - City, State, Date, Recording” Sheet (`1EdsnR7iE8mLyVV0Cv31LEJNjckeM12FmhYeoC7223fE`, `Sheet1`). Its 16 columns now have an explicit export mapping in `scripts/context_candidate_maps/ig_public_meetings.json`. The source was read only. No Muse API capabilities are assumed. Research claims live in JSON on the candidate and in immutable observations, rather than a separate database column per proposed fact.

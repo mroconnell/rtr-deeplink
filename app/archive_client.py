@@ -530,6 +530,28 @@ async def context_candidates_recheck(
         return None
 
 
+async def context_candidate_save(
+    clerk_user_id: str, payload: dict
+) -> Optional[tuple[int, dict]]:
+    """Save private candidate research using the verified editor identity."""
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/context/candidates/save",
+                json={**payload, "clerk_user_id": clerk_user_id},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                body = await response.json()
+                return (response.status, body) if isinstance(body, dict) else None
+    except Exception:
+        logger.exception("Archive candidate-save request failed.")
+        return None
+
+
 async def proxy_get(
     path: str,
     query_string: str,

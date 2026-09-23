@@ -27,8 +27,16 @@ an empty local Archive, not a production coverage claim. The 16 source columns
 have an explicit mapping; original rows remain intact. No Sheet or production
 write occurred.
 
-**Verification.** All 353 Context Python tests and 85 JavaScript tests passed.
-Full pytest completed with 5,115 passed, 16 skipped, four expected failures and two
+**Review extension.** After frontend review, Ryan approved editable candidate facts,
+immutable saved reviews and a saved-only handoff to `/context/new`. The matched
+recording now has a separate proposed-moment link. Saved edits preserve imported
+source rows; conflicting fields require an explicit choice, and new research
+requires another review. Version checks prevent stale saves. Detail and editor
+prefill read one coherent review even during concurrent saves. Opening the editor
+does not create or publish an entry. The timestamp remains proposed until verified.
+
+**Verification.** All 391 Context Python tests and 92 JavaScript tests passed.
+Full pytest completed with 5,153 passed, 16 skipped, four expected failures and two
 failures in already-documented local-export checks (`test_repair_wrong_pages`
 and `test_wrong_page_screen`; see BACKLOG's existing local-export entry). The
 initial sandbox run also reproduced six DNS-dependent failures on unchanged
@@ -38,17 +46,21 @@ migration plus concurrent duplicate and source-retarget checks passed. Unfiltere
 PostgreSQL autogenerate reports only its four intentionally unmapped baseline
 search objects, as documented by the CI workflow; no Context schema drift.
 Chrome verified queue layout, pagination/filtering, preserved research, successful
-recheck, retryable upstream outage and the existing editor through two localhost
-services. Native OS accessibility remained off.
+recheck, retryable upstream outage, edit/save and saved-value editor prefilling
+through two localhost services. The matched-recording walkthrough uses a clearly
+marked local fake meeting with no video/transcript; no public entry was created.
+PostgreSQL concurrent review saves produced one saved and one stale result, with
+one immutable revision. Concurrent detail reads remained coherent. Native OS accessibility remained off.
 
 **Delivery and limits.** A lead integrated isolated concurrent import/storage,
 lookup/state and queue workers, then an independent review challenged identity,
 concurrency and publication boundaries. `README.md`, `docs/CONTEXT_PIPELINE_PLAN.md`
-and `docs/CONTEXT_CANDIDATES.md` now describe delivered behavior. One additive
-Archive migration, revision `9f20cd299f30`, adds two tables without a backfill.
+and `docs/CONTEXT_CANDIDATES.md` now describe delivered behavior; the worker
+contract records the approved extension. Two additive Archive migrations,
+`9f20cd299f30` and `1816f75c1098`, add three tables without a backfill.
 Deploy Archive before resolver; this work is not live until that manual release.
-Old-slug resolution, unknown mirror associations, ingestion and moment/editor
-prefilling remain outside this approved milestone.
+Old-slug resolution, unknown mirror associations, ingestion and automatic moment
+matching remain outside this approved scope.
 
 ## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
 
