@@ -1,8 +1,14 @@
-"""Meeting Finder (WO-1023/WO-1025+). See docs/MEETING_FINDER.md.
+"""Meeting Finder (WO-1023/WO-1024): one pipe every government goes
+through to find one real meeting with video, or say plainly why not.
 
-Minimal package marker only -- WO-1024 (built in parallel) owns the rest
-of this package (Start/Identify/List/Scan/Hop/Resolve/Verdict). WO-1025
-owns only `fetch.py` and its tests. If WO-1024 lands its own
-`__init__.py` first, the conductor reconciles the two; this file adds no
-imports of its own so a merge is a no-op either way.
+See docs/MEETING_FINDER.md for the design. This package holds the
+shared data shapes (`models.py`), the one picking rule (`pick.py`),
+Resolve (`resolve.py`), the identity check (`identity.py`), and Verdict
+(`verdict.py`). `runner.py` wires them together for
+`scripts/meeting_finder.py`.
+
+WO-1024 built the core (models, pick, resolve, identity, verdict,
+runner, CLI) at entry `resolve` only. WO-1025 owns `fetch.py` (the one
+fetch helper for Start/Identify/Scan/Hop). Wave 2 builds List, Identify,
+Scan, Hop and Start on top of this.
 """
