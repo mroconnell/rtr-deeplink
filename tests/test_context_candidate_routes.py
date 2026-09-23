@@ -219,6 +219,46 @@ def test_detail_rejects_huge_numeric_id_before_calling_store(monkeypatch):
     _assert_private(response)
 
 
+def test_deleted_meeting_recheck_reason_appears_in_list_and_detail(monkeypatch):
+    message = "The linked meeting was deleted. Recheck this candidate. <not markup>"
+    candidate = _candidate()
+    candidate.update(
+        meeting=None,
+        lookup_outcome=None,
+        lookup_result=None,
+        next_action="new",
+        needs_recheck=True,
+        recheck_reason=message,
+    )
+
+    class Store:
+        async def list_candidates(self, **kwargs):
+            list_item = {
+                key: value for key, value in candidate.items() if key != "observations"
+            }
+            return {
+                "candidates": [list_item],
+                "total": 1,
+                "page": 1,
+                "page_size": 25,
+                "total_pages": 1,
+                "counts": {"new": 1},
+            }
+
+        async def get_candidate(self, candidate_id):
+            return candidate
+
+    client = _client(monkeypatch, store=Store())
+    for path in ("/context/candidates", "/context/candidates/7"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert (
+            "The linked meeting was deleted. Recheck this candidate." in response.text
+        )
+        assert "&lt;not markup&gt;" in response.text
+        assert "<not markup>" not in response.text
+
+
 def test_missing_candidate_and_store_error_are_distinct(monkeypatch):
     class MissingStore:
         async def get_candidate(self, candidate_id):
