@@ -121,6 +121,24 @@ folds that buffer into the tracked file once, right here, then empties
 it. **After this lands, `git pull` on this Mac once more; every pull
 after that is clean.**
 
+**WO-1016 (2026-09-23): the queue file's line format.** A line is
+`URL`, `URL<TAB>SOURCE_URL`, or, as of this WO, `URL<TAB>SOURCE_URL
+<TAB>GOV_ID` (SOURCE_URL may be blank when only GOV_ID is known:
+`URL\t\tGOV_ID`). `app.platforms.queue_probe.parse_queue_line()` is the
+one place this shape is parsed — `scripts/feed_tier3_auto_
+transcription.py`'s `_parse_queue_line()` and this script's own three
+call sites of that name all delegate to it. **No 3-field line exists in
+the tracked queue yet** — writing one is gated behind
+`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` (`False` today) specifically
+because this Mac runs its own separate checkout and only gets
+`parse_queue_line()`'s tolerance on its own `git pull` — a writer
+flipped on before that pull lands here would hand this Mac a line shape
+its old code can't read. **Run `git pull` here at least once after
+WO-1016 merges, before anyone flips that flag on `main`** — after that
+pull, this Mac's three call sites already tolerate the 3rd field (see
+`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES`'s own comment for the full
+rollout order).
+
 ## Backfill sweeps (occasional, not part of the drip loop)
 
 `scripts/backfill_archived_pages.py --platform youtube --missing-channel-only`

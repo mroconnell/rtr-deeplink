@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (50)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+  Flip `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` on once the drip Mac…
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -887,6 +888,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Flip `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` on once the drip Mac has pulled WO-1016 `[JUST-DO-IT]`
+
+- **Issue:** WO-1016 (2026-09-23) let a tier-3 queue line carry an optional 3rd `gov_id` field and made every live reader (the feeder, `find_tier3_short_meeting_substitutes.py`, `probe_tier3_queue.py`, and `scripts/youtube_drip.py`'s three call sites) tolerate it, but left the one shared writer (`queue_probe.append_queue_line()`/`finish_candidate()`, which every `wo1XX_finish_tier3*.py` sweep script routes through) gated off by `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES = False` — flipping it on in the same PR as the readers would risk a 3-field line reaching the drip Mac's own separate checkout before it had pulled the tolerant readers.
+- **Impact:** Until this flips, a sweep that already knows a government (because it found the meeting by looking at that government's own site) still can't record that gov_id on the queue line itself — it only reaches ingest via `has_owner()`'s `tenant_overrides.csv` pin, which returns no gov_id at all on a single-tenant vendor host (731 of today's 1,038 queue lines, per WO-1016's read-only count).
+- **Next action:** Confirm the drip Mac (`scripts/youtube_drip.py`'s own checkout) has `git pull`ed a commit that includes WO-1016's `parse_queue_line()` (its three `_parse_queue_line()` call sites already unpack a 3-tuple once pulled — see that script's own WO-1016 comment next to `QUEUE_FILE`), then flip `EMIT_GOV_ID_IN_QUEUE_LINES` to `True` in a small follow-up PR.
+- **Constraint:** Don't flip it before that confirmation — there's no automated way to check the drip Mac's checkout state from here; ask Ryan or check with whoever runs it.
+- **History:** [BACKLOG_DONE.md](BACKLOG_DONE.md) WO-1016 entry (2026-09-23).
 
 ### State legislatures: small residual fixes remain after today's push — a `.vtt` sibling-caption lookup, Vimeo's event-id extraction, and 7 states needing one more hop `[JUST-DO-IT]`
 
