@@ -262,3 +262,116 @@ async def test_resolve_missing_video_config_returns_warning_not_crash():
     assert result.video_warnings == [
         "Could not find Town Hall Streams' video configuration on this page."
     ]
+
+
+# --- Town listing pages (2026-09-23) ------------------------------------
+#
+# A `/towns/{slug}` listing page is not one meeting -- resolve() used to
+# fail on it outright. Found hand-checking CivicPlus governments whose
+# homepage links to a separate video platform (Hollis/Chichester/
+# Moultonborough NH). Reuses the existing `_townhallstreams_walker()`
+# (app/platforms/passive_verify.py, WO-344) rather than a second,
+# hand-rolled listing parser -- that walker already has its own test
+# coverage for parsing correctness; these tests cover only the NEW
+# integration: resolve() delegating to it and trying more than one
+# candidate when the newest doesn't pan out.
+#
+# Dates deliberately fixed in the safely-distant past (2020) rather than
+# reusing a "recent" fixture -- a date-sensitive fixture broke live
+# 2026-09-23 (see `_resolve_town_listing()`'s own docstring): a listing
+# page's "newest" candidate can be a same-day meeting with no video
+# posted yet, which is exactly the bounded-retry behavior the second test
+# below exercises on purpose, not something to avoid triggering by
+# accident here.
+TOWN_LISTING_URL = "https://townhallstreams.com/towns/testville_me"
+NEWEST_STREAM_URL = "https://townhallstreams.com/stream.php?location_id=200&id=900"
+NEWEST_TRANSCRIPT_URL = (
+    "https://townhallstreams.com/stream.php?full=1&location_id=200&id=900"
+    "&action=get_transcriptions"
+)
+OLDER_STREAM_URL = "https://townhallstreams.com/stream.php?location_id=200&id=899"
+OLDER_TRANSCRIPT_URL = (
+    "https://townhallstreams.com/stream.php?full=1&location_id=200&id=899"
+    "&action=get_transcriptions"
+)
+
+TOWN_LISTING_HTML = """
+<html><body>
+<a href="/stream.php?location_id=200&id=900">Select Board January 15, 2020 - 06:00 pm to 09:00 pm (EST)</a>
+<a href="/stream.php?location_id=200&id=899">Planning Board January 8, 2020 - 07:00 pm to 09:00 pm (EST)</a>
+</body></html>
+"""
+
+NEWEST_NO_VIDEO_HTML = (
+    "<html><body>Meeting page with no video posted yet.</body></html>"
+)
+
+OLDER_WITH_VIDEO_HTML = (
+    "<script>var originalFile = "
+    '"https://cdn.townhallstreams.com/vod/_definst_/mp4:testville_me/'
+    '2020-01-08_555_Planning_Board.mp4/playlist.m3u8";</script>'
+)
+
+
+async def test_resolve_town_listing_delegates_to_newest_candidate():
+    routes = {
+        TOWN_LISTING_URL: FakeResponse(
+            status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL
+        ),
+        NEWEST_STREAM_URL: FakeResponse(
+            status=200, text=OLDER_WITH_VIDEO_HTML, url=NEWEST_STREAM_URL
+        ),
+        NEWEST_TRANSCRIPT_URL: FakeResponse(
+            status=200, text="", url=NEWEST_TRANSCRIPT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await TownHallStreamsAssetFinder().resolve(TOWN_LISTING_URL)
+
+    assert result.video_url is not None
+    assert result.source_url == NEWEST_STREAM_URL
+
+
+async def test_resolve_town_listing_tries_next_candidate_when_newest_has_no_video():
+    # Real gap found live 2026-09-23 on Moultonborough NH: the listing's
+    # own newest-dated candidate (a same-day meeting) had no video posted
+    # yet, while the next candidate right behind it did -- picking only
+    # the single newest and stopping there would wrongly report "no
+    # video" for a town that genuinely has one.
+    routes = {
+        TOWN_LISTING_URL: FakeResponse(
+            status=200, text=TOWN_LISTING_HTML, url=TOWN_LISTING_URL
+        ),
+        NEWEST_STREAM_URL: FakeResponse(
+            status=200, text=NEWEST_NO_VIDEO_HTML, url=NEWEST_STREAM_URL
+        ),
+        OLDER_STREAM_URL: FakeResponse(
+            status=200, text=OLDER_WITH_VIDEO_HTML, url=OLDER_STREAM_URL
+        ),
+        OLDER_TRANSCRIPT_URL: FakeResponse(
+            status=200, text="", url=OLDER_TRANSCRIPT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await TownHallStreamsAssetFinder().resolve(TOWN_LISTING_URL)
+
+    assert result.video_url is not None
+    assert result.source_url == OLDER_STREAM_URL
+
+
+async def test_resolve_town_listing_reports_cleanly_when_nothing_found():
+    routes = {
+        TOWN_LISTING_URL: FakeResponse(
+            status=200,
+            text="<html><body>No meetings.</body></html>",
+            url=TOWN_LISTING_URL,
+        ),
+    }
+
+    with mock_session(routes):
+        result = await TownHallStreamsAssetFinder().resolve(TOWN_LISTING_URL)
+
+    assert result.video_url is None
+    assert "no past meeting found" in result.video_warnings[0].lower()

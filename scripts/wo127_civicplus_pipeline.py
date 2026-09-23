@@ -97,6 +97,7 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
     CalendarPageError,
     NoVideoCandidateFound,
+    detect_platform,
     resolve_via_platform,
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
@@ -451,9 +452,11 @@ async def process_candidate(session, finder, candidate, report):
         if fallback_url:
             try:
                 result = await resolve_via_platform(fallback_url)
+                # No-op for a non-CivicClerk fallback_url -- see this
+                # helper's own docstring.
                 meeting_url = _canonical_civicclerk_event_url(fallback_url)
                 row_out["detail"] = (
-                    "found via homepage CivicClerk link "
+                    f"found via homepage link to {detect_platform(fallback_url)} "
                     f"(bare AgendaCenter had {e.candidates_checked} candidate row(s), "
                     "none with video)"
                 )

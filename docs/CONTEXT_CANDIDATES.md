@@ -76,9 +76,10 @@ labels remain research suggestions. **Watch proposed moment** opens the matched
 recording at the proposed time, including `0:00`. A proposed **Exact** label is
 not a verification performed by the meeting lookup.
 
-Use **Edit candidate**, then **Save changes**. You can edit the proposed meeting,
+Use **Edit reviewed facts**, then **Save review**. You can edit the proposed meeting,
 recording/RTR links, timestamp, headline, summary, poster, match label and notes.
-The source post identity stays fixed. Blank fields clear a reviewed fact; if
+The source post identity stays fixed. The timestamp field sets the time used in
+the meeting link; leave it blank to link to the whole meeting. Blank fields clear a reviewed fact; if
 sources disagree on a field, explicitly choose a value or choose to leave it
 unknown. Saving notes alone must not erase that disagreement. Each save retains
 a new review revision and reruns the meeting check. A stale browser tab cannot

@@ -43,7 +43,7 @@ from bs4 import BeautifulSoup
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-import wo273_recon as w273  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 POPULATION_CSV = RESEARCH_DIR / "passive_neither_3-us-muni-twp-under-5k.csv"
@@ -606,7 +606,7 @@ def process_government_v2(row: dict) -> dict:
         "reachable": False,
         "broad_row_count": 0,
         "narrow_row_count": 0,
-        "narrow_urls": [],
+        "top_urls": [],
         "error": "skipped-unhealthy",
     }
     if cdx_healthy:
@@ -617,7 +617,7 @@ def process_government_v2(row: dict) -> dict:
         "reachable": wayback_index["reachable"],
         "broad_row_count": wayback_index["broad_row_count"],
         "narrow_row_count": wayback_index["narrow_row_count"],
-        "narrow_urls": wayback_index["narrow_urls"],
+        "top_urls": wayback_index["top_urls"],
         "error": wayback_index["error"],
     }
 
