@@ -132,12 +132,24 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
     CalendarPageError,
     NoVideoCandidateFound,
+    detect_platform,
     find_platform_link,
     resolve_via_platform,
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
+from app.platforms.passive_verify import _civicplus_walker  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
-from app.utils.video_hand_check import looks_like_real_meeting  # noqa: E402
+from app.utils.video_hand_check import (  # noqa: E402
+    looks_like_real_meeting,
+    prescreen_homepage_link,
+)
+from app.platforms.youtube_ids import extract_video_id  # noqa: E402
+
+# Same MAX_TRIED-style bounded-retry reasoning as scripts/
+# resolve_phase3_confirmed.py -- see homepage_civicclerk_fallback()'s own
+# docstring for why a single _civicplus_walker() candidate can't be
+# trusted blindly.
+_CIVICPLUS_FALLBACK_MAX_TRIED = 6
 
 DEFAULT_CANDIDATES_CSV = (
     Path(__file__).resolve().parent
@@ -306,27 +318,105 @@ async def civicclerk_latest_event_url(session, tenant_url: str):
     return f"https://{subdomain}.portal.civicclerk.com/event/{event_id}/media", ""
 
 
+def _is_youtube_channel_link(url: str) -> bool:
+    """True for a bare YouTube channel/user/@handle link -- no single video
+    id and no playlist id, so there is nothing a video resolver can act on
+    directly. False for a specific video (`extract_video_id()` succeeds)
+    or a playlist (`list=` param): both point at real, on-mission meeting
+    content when a government links one from its own homepage, the same
+    as Chicopee MA's `/playlist?list=...` and Pasadena TX's channel-labeled
+    "Council Meetings" link turned out to be (2026-09-23, hand-checked by
+    Ryan). Channel links are the weaker signal WO-933's own measurement
+    already flagged this function's predecessor for excluding outright
+    (Aurora, CO's plain "Watch Us on YouTube" footer icon, no relation to
+    meetings) -- still allowed here, but only as `homepage_civicclerk_
+    fallback()`'s last resort, after every other platform and every
+    video/playlist-shaped YouTube link has already come up empty."""
+    if extract_video_id(url):
+        return False
+    return "list=" not in url
+
+
 async def homepage_civicclerk_fallback(session, domain: str):
-    """Real, repeatable pattern found live 2026-09-09 (WO-137) across 3 of
-    a 30-government sample of CivicPlus `NoVideoCandidateFound` verdicts
-    (Arvada CO, Westfield IN, St. Joseph MO): the AgendaCenter module
-    itself is empty or has no video-bearing row, but the government's own
-    homepage links directly to a CivicClerk portal for meeting video --
-    a platform this app already fully supports, one click away from the
-    exact page the sweep already checked. Scoped to CivicClerk
-    specifically (not "any known platform found on the homepage") because
-    it's the one confirmed pattern with a real, non-headless resolution
-    path all the way through (`find_platform_link()` for discovery,
-    `civicclerk_latest_event_url()`'s tenant Events API for a bare portal
-    root). Two other new platforms found the same night
-    (spectrumstream.com, 12milesout.com) are deliberately NOT handled
-    here -- see this module's own docstring and BACKLOG.md: one confirmed
-    live sample each is not enough to build an adapter from per CLAUDE.md.
+    """Real, repeatable pattern found live 2026-09-09 (WO-137): the
+    AgendaCenter module itself is empty or has no video-bearing row, but
+    the government's own site links directly to a separate platform for
+    meeting video -- a platform this app already fully supports, one
+    click away from the exact page the sweep already checked.
+
+    Reconciled 2026-09-23 (Ryan: "how did you not check for a walker
+    before?") with a real, more thorough duplicate found the same day:
+    `app/platforms/passive_verify.py`'s `_civicplus_walker()` (also
+    WO-something, pre-existing) already does steps 1-3 below, built for
+    the sweep-script verification path, never wired into this adapter
+    path. Tried FIRST now, in full:
+      1. AgendaCenter's own category subpages (not just its root page --
+         a real source this adapter's own bare-root `NoVideoCandidateFound`
+         check never reaches).
+      2. Nav links whose text/href suggest a dedicated video hub page,
+         scanned with `find_platform_link()`.
+      3. CivicPlus's own `Calendar.aspx?EID=` module, newest first.
+    Every candidate the walker returns is tried through `resolve_via_
+    platform()`, newest/highest-fidelity first, same bounded-retry
+    reasoning as everywhere else in this project (up to
+    `_CIVICPLUS_FALLBACK_MAX_TRIED`) -- a step-1 candidate isn't
+    pre-confirmed to have video the way steps 2/3's already are, so this
+    can't just trust the first one blindly.
+
+    Whenever the walker's own candidates don't pan out (zero found, or
+    none resolve to real video) this ALSO tries its own homepage scan --
+    kept specifically because the walker's own step 2 hard-excludes
+    YouTube (`exclude=frozenset({"youtube", "civicplus"})`, unchanged as
+    of this reconciliation), and a real YouTube recovery from a bare
+    homepage scan is independently confirmed (Upper Saddle River NJ /
+    usrtoday.org, 2026-09-23, from a separate 642-government batch this
+    same fallback ran against). Correction to an earlier version of this
+    docstring: Chicopee MA's and Pasadena TX's real YouTube finds (Ryan's
+    own hand-browsing, 2026-09-23) are NOT actually reachable from either
+    government's bare homepage HTML -- confirmed live re-checking this
+    reconciliation: chicopeema.gov's homepage has no "youtube" text
+    anywhere, and pasadenatx.gov's own link is a same-domain vanity
+    redirect (`href="/youtube"`) Ryan explicitly said not to follow. This
+    homepage scan's own YouTube handling: `accept=` runs WO-933's shared
+    reject-only screen (`prescreen_homepage_link()`), and a bare channel/
+    user/@handle link is tried only as a last resort after a specific
+    video/playlist link (or any other platform) has already come up
+    empty -- same "avoid a generic footer icon shadowing a real meetings
+    link" reasoning WO-933's own measurement gave for excluding YouTube
+    outright in the first place, just narrower than a blanket exclusion.
+
+    Two other real platform gaps found the original WO-137 night are
+    still deliberately NOT handled anywhere in this reconciled path, per
+    CLAUDE.md's own never-build-from-one-sample rule: `spectrumstream.com`
+    (Alhambra, CA) and `12milesout.com` -- though the latter now has a
+    SECOND live, independent sample (Colton CA, 2026-09-23, a different
+    CivicPlus government than the original Escondido CA sample) and so
+    likely clears that bar; see BACKLOG.md.
 
     Returns (url, "") on success, (None, reason) otherwise -- never
-    raises; a homepage fetch failing, or having no CivicClerk link at all,
-    is a normal, expected outcome for most tenants, not an error.
+    raises; finding no usable link at all is a normal, expected outcome
+    for most tenants, not an error.
     """
+    walker_candidates = await _civicplus_walker(f"https://{domain}/AgendaCenter")
+    for candidate in walker_candidates[:_CIVICPLUS_FALLBACK_MAX_TRIED]:
+        candidate_url = candidate.get("url")
+        if not candidate_url:
+            continue
+        try:
+            result = await resolve_via_platform(candidate_url)
+        except Exception:
+            continue
+        if result.video_url:
+            return candidate_url, ""
+    # Real bug caught live 2026-09-23 testing this against Wilmette IL:
+    # the walker found 17 real AgendaCenter-category candidates, none
+    # with video -- an early `return None` right here (this repo's first
+    # version of this reconciliation) wrongly gave up before ever trying
+    # the homepage scan below, which is what actually has Wilmette's real
+    # Cablecast link. Falling through unconditionally instead: finding
+    # SOME candidates that don't pan out is not evidence the homepage
+    # scan below would also fail.
+
     homepage_url = f"https://{domain}/"
     try:
         async with session.get(
@@ -339,16 +429,47 @@ async def homepage_civicclerk_fallback(session, domain: str):
     except Exception as e:
         return None, f"homepage fetch failed: {e}"
 
-    match = find_platform_link(html, final_url, exclude=frozenset({"youtube"}))
-    if not match:
-        return None, "no known-platform link found on homepage"
-    link, platform = match
-    if platform != "civicclerk":
-        return None, f"homepage links to {platform}, not civicclerk (not handled yet)"
+    # CivicPlus itself is excluded from every candidate below: the whole
+    # reason this fallback runs is that CivicPlus's own AgendaCenter for
+    # this exact domain was already checked and came back with no video
+    # (NoVideoCandidateFound) -- almost every CivicPlus government's own
+    # homepage links back to that same AgendaCenter page from its nav,
+    # and without this exclusion that self-referential nav link matches
+    # `find_platform_link()` as a "known platform" before it ever reaches
+    # a real video link further down the page. Confirmed live 2026-09-23:
+    # all 41 of a real batch matched their own AgendaCenter link first,
+    # every one of them wrongly, before this exclusion was added.
+    _NO_CIVICPLUS = frozenset({"civicplus"})
 
-    if _is_specific_civicclerk_event_url(link):
-        return link, ""
-    return await civicclerk_latest_event_url(session, link)
+    def screen(candidate_url: str, candidate_platform: str) -> bool:
+        return prescreen_homepage_link(html, final_url, candidate_url) is None
+
+    def screen_no_bare_channel(candidate_url: str, candidate_platform: str) -> bool:
+        if candidate_platform == "youtube" and _is_youtube_channel_link(candidate_url):
+            return False
+        return screen(candidate_url, candidate_platform)
+
+    match = find_platform_link(
+        html, final_url, exclude=_NO_CIVICPLUS, accept=screen_no_bare_channel
+    )
+    reason = "no known-platform video/playlist link found on homepage"
+    if not match:
+        # Last resort: allow a bare YouTube channel link now that nothing
+        # better -- any other platform, or a specific YouTube video/
+        # playlist -- was found anywhere on the page.
+        match = find_platform_link(
+            html, final_url, exclude=_NO_CIVICPLUS, accept=screen
+        )
+        reason = "no known-platform link found on homepage (including bare channels)"
+    if not match:
+        return None, reason
+    link, platform = match
+
+    if platform == "civicclerk":
+        if _is_specific_civicclerk_event_url(link):
+            return link, ""
+        return await civicclerk_latest_event_url(session, link)
+    return link, ""
 
 
 def _is_specific_civicclerk_event_url(url: str) -> bool:
@@ -508,13 +629,13 @@ async def process_candidate(session, finder, candidate, report):
                 result = await resolve_via_platform(fallback_url)
                 meeting_url = fallback_url
                 row_out["detail"] = (
-                    "found via homepage CivicClerk link "
+                    f"found via homepage link to {detect_platform(fallback_url)} "
                     f"(bare AgendaCenter had {e.candidates_checked} candidate row(s), "
                     "none with video)"
                 )
             except Exception as e2:
                 fallback_url = None
-                fallback_reason = f"homepage CivicClerk link raised: {e2}"
+                fallback_reason = f"homepage fallback link raised: {e2}"
         if not fallback_url:
             row_out.update(
                 outcome="no-video-found",
