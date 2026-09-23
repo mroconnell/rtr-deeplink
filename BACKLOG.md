@@ -458,8 +458,9 @@ Trust, safety & data quality  (26)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (32)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
+  `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -6388,6 +6389,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Next action**: Build in the order in `docs/MEETING_FINDER.md` ("Suggested build order"), starting with the Verdict row and Resolve, then List, first used to audit the 696 wildcard-sweep pins in audit mode.
 - **Constraint**: Read-only by default; never fetches YouTube (`scripts/youtube_fetch_guard.py`); slug guessing only in the separate guess-ladder queue, never inline. Code lives in `app/platforms/meeting_finder/` beside the adapters (Ryan, 2026-09-23).
 - **History**: Design agreed with Ryan 2026-09-23: `docs/MEETING_FINDER.md`.
+
+### `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect Verdict to the slow queues and back
+
+- **Issue:** Meeting Finder (`docs/MEETING_FINDER.md`) ends at a read-only Verdict row. Nothing yet connects those rows to its follow-up queues, or brings their finds back: `queue_pipeline.py`'s `feed` (rtr-business `research/dns_ctlog_sweep_2026-09-17/`) still reads stage 1's `wo282_recon.jsonl`; `drain2` (certificate log + CNAME/A) and `drain3` (Common Crawl scoped to one subdomain) write results a person reads by hand; the guess ladder does not exist yet; YouTube leads are not written in the drip's format.
+- **Impact:** Governments where Meeting Finder finds nothing never reach the certificate-log and Common Crawl lookups, and subdomains those find (e.g. `live.pomonaca.gov`) never re-enter Meeting Finder as starting points.
+- **Next action:** After Meeting Finder's phases are wired (WO-1030): (1) Verdict writes its own follow-up files — "nothing found" rows in `queue_pipeline`'s input format, `account-not-found` rows for the guess ladder, YouTube leads in `youtube_channel_leads.csv`'s format; (2) teach `queue_pipeline.py feed` to read them; (3) a converter that turns `drain2`/`drain3` finds into Meeting Finder input rows (entry Start or Identify, `url_source=own-site`, so identity carries over); (4) build the guess-ladder queue per the design doc.
+- **Constraint:** Meeting Finder stays read-only toward shared files; it writes only its own output files, and a separate step appends to shared queues. Deferred by Ryan 2026-09-23 (not part of WO-1030).
+- **History:** Raised while building Meeting Finder wave 2, 2026-09-23.
 
 ### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
 

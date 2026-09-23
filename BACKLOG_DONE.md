@@ -97,6 +97,96 @@ over already real-verified pieces, not a new adapter; two of the 14 use
 the real `tests/fixtures/civicplus/ks_desoto_agendacenter.html` fixture
 for the agenda-only fallback rather than hand-built markup).
 
+## WO-1027: Meeting Finder's Identify phase [Done 2026-09-23]
+
+**What.** `app/platforms/meeting_finder/identify.py`, built in parallel
+with WO-1028 (List) and WO-1029 (Scan+Hop) against WO-1024's contracts;
+not yet wired into `runner.py` (a later WO does that). `identify(url,
+fetcher, *, platform_hint=None, page=None)` says which platform a page is
+on and which account, per `docs/MEETING_FINDER.md`'s Identify section and
+Ryan's ranking (2026-09-23): (1) meeting-platform vendor links, (2) direct
+media files, (3) links to a specific meeting page on the government's own
+site, (4) other general-purpose video hosts (Vimeo/Wistia/BoxCast), (5) a
+YouTube meeting list (2+ distinct videos), last any other YouTube link --
+a drip lead, never the answer. Checks the URL/host first with no fetch
+(`detect_platform()`/`host_recognition.py`), re-checks the same way on
+the FINAL url after a redirect (real case: `publicrecords.
+cityofsanrafael.org` -> Laserfiche Cloud), then reads raw HTML including
+`<iframe src>`/`<embed>`/`<script src>` and ranks every signal found.
+Reuses `find_platform_link`'s corporate-host exclusion pattern (inlined,
+since that function only returns the first match and Identify needs every
+distinct platform), `scripts/platform_fingerprints.fingerprint()`,
+`video_hand_check.prescreen_homepage_link()`, and the pure (no `yt_dlp`)
+`youtube_ids.extract_video_id()`.
+
+**Two real bugs found and fixed by the live check, both before merge.**
+(1) `platform_signatures.csv`'s `vendor_hostname`-kind rows are a plain
+"vendor domain anywhere in the page" text search with no corporate-host
+exclusion -- Lake Helen, FL's real Granicus "GovAccess" CMS footer credit
+("Created By <a href="//www.granicus.com/">Granicus</a>") contains the
+literal text "granicus.com" and fired the `granicus-vendor-host` signal
+as if it were a real tenant link, when the CORRECT answer for that page
+is "web-host hint only, no confirmed account." Fixed by trusting only
+`first_party_path`-kind rows from that CSV. (2) When a link scan AND a
+fingerprint match landed on the same platform at the same rank, the
+fingerprint entry (no real URL, just the page's own URL) could win the
+tie by list order and downgrade `account_url` from a real tenant link to
+the page's own base URL -- confirmed live on Vacaville's eScribe iframe.
+Fixed by running the link scan first and excluding any platform it
+already found from the fingerprint pass.
+
+**CivicLive on a city's own domain, measured not guessed.** The brief
+asked for a real measurement before adding anything to
+`platform_signatures.csv`. Found and confirmed live 2026-09-23: two
+independent real first-party-domain CivicLive tenants -- Piedmont, CA
+(`piedmont.ca.gov`) and Williams, AZ (`williamsaz.gov`, found via
+rtr-business `research/wo282_recon.jsonl`) -- carry byte-identical footer
+credit text (`... Powered by <a href="https://www.civiclive.com" />
+CivicLive</a> ...`). Two tenants and no negative sample is short of
+WO-267's own 10-per-platform bar, so this was NOT added to
+`platform_signatures.csv` -- it's a narrow, sourced heuristic inside
+`identify.py` instead (`_civiclive_first_party_signal()`), with a note in
+`docs/MEETING_FINDER.md` for a later WO to do the full measurement.
+
+**A known, not-yet-fixed false-positive risk, flagged for wave 2.** The
+rank-5 "YouTube meeting list" signal (2+ distinct video ids) fires on
+ANY 2+ ids, with no check they're real meeting recordings -- confirmed
+live on Piedmont, CA's own homepage, where 6 promotional-video ids
+(parks/rec content) triggered it. Harmless today (a real vendor link
+always outranks it when one exists, and this module never hands YouTube
+back as `platform` anyway), but a page with only a promo carousel and no
+vendor link would misreport a meeting list. Left for List/Scan (wave 2)
+to tighten with real per-item date/title context.
+
+**Live check (6 real inputs, no YouTube fetched, all via the real
+`Fetcher`):**
+
+| Input | Final URL | Platform | Supported | Outcome |
+|---|---|---|---|---|
+| `publicrecords.cityofsanrafael.org` | redirects to `portal.laserfiche.com/...` | `laserfiche_cloud` | No | `unsupported-platform-no-adapter` |
+| `piedmont.ca.gov` | same | `civiclive` | Yes | none (real `hosted.civiclive.com` link found; 6 unrelated YouTube leads recorded, not the answer) |
+| `cityofvacaville.gov/government/agendas-and-minutes` | same | `escribe` | Yes | none (found via the page's own `<iframe>`) |
+| `lakehelen.org` | same | `granicus` | Yes | `account-not-found` (web-host hint only, guess-ladder row filed) |
+| `live.pomonaca.gov` | redirects to `/internetchannel/` | `cablecast` | Yes | none (bare listing page; found via its own `/internetchannel/show/…` links) |
+| `adamscounty.primegov.com` | same | `primegov` | Yes | none (URL-only match, no fetch needed) |
+
+**Tests.** `tests/test_wo1027_meeting_finder_identify.py`, 17 tests: real
+fixtures (`tests/fixtures/civiclive/escalon_city_council_agendas.html`,
+already in the repo, plus a new `tests/fixtures/civiclive/
+piedmont_ca_gov_footer_excerpt.html` -- a real, verbatim excerpt fetched
+live 2026-09-23) for the CivicLive cases, synthetic-but-real-shape HTML
+(commented as such) for every ranking/branch case, and the two bugs above
+each got a regression test. Five CI gates green (`ruff check`, `ruff
+format --check`, `pytest` -- 5,269 passed, the 2 known stale-export
+failures pre-existing, `alembic check` x2, the BACKLOG_DONE headings
+check).
+
+**For the wiring WO:** `identify()`'s public contract is stable
+(`IdentifyResult`/`Signal`, both in `identify.py`, not `models.py` per
+this wave's "don't edit shared files" rule) and its own module docstring
+has the full reuse/ranking rationale. It never fetches YouTube and never
+returns `"youtube"` as `platform`.
+
 ## WO-1024: Meeting Finder core -- models, pick, Resolve, identity check, Verdict, CLI [Done 2026-09-23]
 
 **What.** The first buildable slice of Meeting Finder (`docs/MEETING_
