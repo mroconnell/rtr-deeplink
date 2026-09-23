@@ -8,9 +8,11 @@ confirmed real.
 """
 
 from app.platforms.host_recognition import (
+    FIRST_PARTY_PROBE_PATHS,
     UNSUPPORTED_PLATFORMS,
     VENDOR_WEB_HOST_HINTS,
     platform_for_host,
+    platform_for_path,
     platform_for_url,
     web_host_hint_for_host,
 )
@@ -180,3 +182,91 @@ def test_platform_for_host_is_case_and_trailing_dot_insensitive():
 def test_empty_host_is_unrecognized():
     assert platform_for_host("") == (None, None)
     assert platform_for_host("   ") == (None, None)
+
+
+def test_sliq_harmony_recognized_by_host_alone():
+    # WO-1021, 2026-09-23. sg001-harmony.sliq.net -- sliq_harmony.py's
+    # own module docstring:
+    # the one shared real host found by the vendor scan. is_sliq_harmony_
+    # url() itself needs a real `/{tenant}/Harmony/...` path to confirm a
+    # tenant (a hostname-only caller never has one), but the host is a
+    # single-purpose vendor domain, same reasoning as Hyland's
+    # hylandcloud.com above.
+    assert platform_for_host("sg001-harmony.sliq.net") == ("sliq_harmony", True)
+    # sg002-harmony.sliq.net / sg004-harmony.sliq.net -- sliq_harmony.py's
+    # own docstring: confirmed live to be full mirrors of the same host,
+    # not separate tenant pools (WO-1006).
+    assert platform_for_host("sg002-harmony.sliq.net") == ("sliq_harmony", True)
+    assert platform_for_host("sg004-harmony.sliq.net") == ("sliq_harmony", True)
+    # A MEDIA host (sg002-live.sliq.net) has no "harmony" in the name and
+    # is deliberately not matched -- sliq_harmony.py's own `_HOST_RE`
+    # comment.
+    assert platform_for_host("sg002-live.sliq.net") == (None, None)
+
+
+def test_wo1018_unsupported_platforms_synced():
+    # rtr-business's research/UNSUPPORTED_PLATFORMS.md (WO-1018,
+    # 2026-09-23) reported these five host domains as known vendors with
+    # no rtr-deeplink adapter -- confirmed (WO-1021) that none of the
+    # five has an app/platforms/ adapter file.
+    assert platform_for_host("simbli.eboardsolutions.com") == ("simbli", False)
+    assert platform_for_host("novusagenda.com") == ("novusagenda", False)
+    assert platform_for_host("agendasuite.org") == ("agendasuite", False)
+    assert platform_for_host("video.ibm.com") == ("ibm_video_streaming", False)
+    assert platform_for_host("portal.laserfiche.com") == (
+        "laserfiche_cloud",
+        False,
+    )
+    for host in (
+        "simbli.eboardsolutions.com",
+        "novusagenda.com",
+        "agendasuite.org",
+        "video.ibm.com",
+        "portal.laserfiche.com",
+    ):
+        assert any(h == host for h, _p in UNSUPPORTED_PLATFORMS)
+
+
+def test_platform_for_path_covers_detect_platform_native_branches():
+    # CivicPlus AgendaCenter and Hyland AgendaOnline are already netloc-
+    # independent branches inside detect_platform() (base.py) --
+    # platform_for_path() picks them up via a neutral placeholder host,
+    # rather than re-deriving the match. Real self-hosted examples cited
+    # in base.py's own comments: welcometoatmore.com/AgendaCenter,
+    # tucsonaz.hylandcloud.com-shaped /Meetings/ViewMeeting paths.
+    assert platform_for_path("/AgendaCenter") == "civicplus"
+    assert platform_for_path("/AgendaCenter/ViewFile/Minutes/_1") == "civicplus"
+    assert platform_for_path("/BoardofSupervisors/Meetings/ViewMeeting") == "hyland"
+    assert platform_for_path("/Meetings/ViewMeeting?id=1") == "hyland"
+
+
+def test_platform_for_path_explicit_signatures():
+    # The four path shapes base.py's detect_platform() does NOT (yet)
+    # recognize without a netloc match -- moved verbatim from
+    # wo282_recon.py's old _PATH_SHAPE_PLATFORMS (WO-1021).
+    assert platform_for_path("/Citizens/SplitView.aspx?Mode=Video") == "iqm2"
+    assert (
+        platform_for_path("/Portal/MeetingInformation.aspx?Org=Cal&Id=1")
+        == "civicclerk"
+    )
+    assert platform_for_path("/Archive.aspx?AMID=12345") == "legistar"
+    assert platform_for_path("/ViewPublisher.php?view_id=2") == "granicus"
+    assert platform_for_path("/MediaPlayer.php?meeting_id=3") == "granicus"
+
+
+def test_platform_for_path_unrecognized():
+    assert platform_for_path("/some/random/path") is None
+    assert platform_for_path("") is None
+
+
+def test_first_party_probe_paths_are_the_two_native_path_only_shapes():
+    # wo282_targeted.py's fallback-ladder rung 3 blindly probes these --
+    # they must stay exactly the two detect_platform()-native path-only
+    # shapes (see platform_for_path's own test above), not the four
+    # explicit-signature-only entries (those are never worth blind-
+    # probing, only confirming a URL already in hand -- see
+    # FIRST_PARTY_PROBE_PATHS's own comment in host_recognition.py).
+    assert FIRST_PARTY_PROBE_PATHS == (
+        "/AgendaCenter",
+        "/AgendaOnline/Meetings/ViewMeeting",
+    )

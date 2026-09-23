@@ -92,16 +92,20 @@ from sweep_deadline import run_with_deadline  # noqa: E402
 import wo147_access_ladder_sweep as w147  # noqa: E402
 import platform_fingerprints  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
+from app.platforms.host_recognition import (  # noqa: E402
+    FIRST_PARTY_PROBE_PATHS,
+)
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 CLASSIFIED_CSV = RESEARCH_DIR / "wo282_classified.csv"
 TARGETED_CSV = RESEARCH_DIR / "wo282_targeted.csv"
 
 BODY_FLOOR_BYTES = 800
-FIRST_PARTY_PROBE_PATHS = [
-    "/AgendaCenter",
-    "/AgendaOnline/Meetings/ViewMeeting",
-]
+# FIRST_PARTY_PROBE_PATHS moved to app.platforms.host_recognition
+# (WO-1021, 2026-09-23) -- imported above -- so this script's rung-3
+# fallback-ladder probe paths stay in sync with the same shared source
+# wo282_recon.py/wo282_classify.py now use, instead of its own hand-
+# copied `["/AgendaCenter", "/AgendaOnline/Meetings/ViewMeeting"]` list.
 
 _write_lock = threading.Lock()
 

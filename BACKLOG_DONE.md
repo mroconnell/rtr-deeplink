@@ -1,5 +1,176 @@
 # Backlog — done
 
+## WO-1021: stage 1 of enumeration (wo282_recon/classify/targeted.py) now recognizes platforms from the same shared source as stages 2/3; unsupported-platform list synced with rtr-business's WO-1018 findings [Done 2026-09-23]
+
+**Issue.** WO-1015 part A gave stages 2/3 of discovery
+(`app/platforms/host_recognition.py`) one maintained source for "what
+platform is this host/URL." Stage 1 (`scripts/wo282_recon.py`,
+`wo282_classify.py`, `wo282_targeted.py`) still carried its own
+hand-copied `_PLATFORM_ALIASES` host dict and `_PATH_SHAPE_PLATFORMS`
+path-regex list (both traced back to `wo147_access_ladder_sweep.py`/
+wo268, via WO-1019's move) — the exact kind of drifting local copy
+WO-1015 was built to retire. `wo282_targeted.py` separately hand-copied
+two of those same path shapes as its own `FIRST_PARTY_PROBE_PATHS`
+blind-probe list.
+
+**Checked first: is importing `host_recognition` from `wo282_recon.py`
+safe?** The old alias dict's own comment said it was "kept as a local
+copy, not an import, so this stays a pure-HTTP/DNS script." Confirmed
+live (this WO): `import app.platforms.host_recognition` opens no
+database connection, calls no `dotenv`, and makes no network request at
+import time (checked via `sys.modules`/env-var diffing before and after
+import) — it does pull in `aiohttp`/`yt-dlp`/`playwright` transitively
+(none of them touched, just imported), costing ~0.6s one-time import
+time, negligible against a run doing real per-government HTTP/DNS
+fetches. Clean enough to import directly, per the WO's own instruction.
+
+**What moved to `app/platforms/host_recognition.py`.**
+- `platform_for_host()`/`web_host_hint_for_host()` (already existed,
+  WO-1015) now back `wo282_recon.py`'s `vendor_family_for_url()` — used
+  ONLY for the shared per-vendor rate limiter (`wo281_homepage_hop.py`/
+  `wo284_listing_hop.py`/`wo337_targeted.py`/`wo282_targeted.py` all call
+  it), and `wo282_classify.py`'s `vendor_platform_for_url()`/
+  `dns_platform()` — real platform-classification signals
+  (`kind="platform"`, `confidence="high"`), so these two only ever return
+  an ADAPTER-BACKED match (`supported=True`), never one of
+  `UNSUPPORTED_PLATFORMS`'s known-no-adapter vendors or a
+  `VENDOR_WEB_HOST_HINTS` hint (e.g. `granicusgovaccess.net`) — matching
+  the old alias dict's own behavior, which never listed either kind
+  either.
+- New `platform_for_path(path)`: checks `detect_platform()` against a
+  neutral placeholder host first (this already recognizes CivicPlus
+  AgendaCenter and Hyland AgendaOnline path-only, with no netloc check at
+  all — `platform_for_path()` reuses that instead of re-deriving it),
+  then a new `_PATH_ONLY_PLATFORMS` table for the four signatures
+  `detect_platform()` doesn't (yet) recognize without a real netloc match
+  (IQM2 `/citizens/`, CivicClerk `/portal/meetinginformation.aspx`,
+  Legistar `/archive.aspx?amid=`, Granicus `/viewpublisher.php` /
+  `/mediaplayer.php`) — moved verbatim from `wo282_recon.py`'s old
+  `_PATH_SHAPE_PLATFORMS`.
+- New `FIRST_PARTY_PROBE_PATHS` constant (`/AgendaCenter`,
+  `/AgendaOnline/Meetings/ViewMeeting`) — the two blindly-probeable,
+  `detect_platform()`-native path-only shapes, now the ONE source for
+  `wo282_targeted.py`'s fallback-ladder rung 3 (previously its own
+  hand-copied list of the same two strings). The four
+  `_PATH_ONLY_PLATFORMS` entries are deliberately NOT probe targets —
+  they only ever confirm a platform on a URL already in hand, never a
+  path worth guessing blind.
+- New `sliq_harmony`-by-host recognition: real hosts
+  (`sg001-harmony.sliq.net`, and confirmed mirrors `sg002-harmony.sliq.
+  net`/`sg004-harmony.sliq.net`, WO-1006) don't fit
+  `_HOST_ONLY_PLATFORMS`'s plain-suffix shape (a numbered-server PREFIX
+  hyphenated onto "harmony", not a dotted subdomain) — reused
+  `sliq_harmony.py`'s own `_HOST_RE` directly (same pattern this module
+  already uses for BoardDocs's `_HOST`) rather than re-deriving it. A
+  MEDIA host (`sg002-live.sliq.net`) has no "harmony" in the name and is
+  correctly still unmatched.
+- `UNSUPPORTED_PLATFORMS` gained the five hosts
+  `~/Documents/rtr-business/research/UNSUPPORTED_PLATFORMS.md` (WO-1018)
+  reported, confirmed to have no `app/platforms/` adapter file (checked
+  by `ls`, not assumed): `simbli.eboardsolutions.com` (Simbli, "Confirmed
+  dead end" — 39 governments, agenda-only), `novusagenda.com` (already
+  present), `agendasuite.org` (AgendaSuite, "Unconfirmed candidate"),
+  `video.ibm.com` (IBM Video Streaming, "Confirmed real, not yet built" —
+  1 government), `portal.laserfiche.com` (Laserfiche Cloud, "Confirmed
+  real, not yet built (deferred)" — 1 real video example out of 20
+  repositories). The self-hosted Laserfiche WebLink variant has no fixed
+  host, so it's deliberately not listed.
+
+**No-signal-lost table** (every old `_PLATFORM_ALIASES`/
+`_PATH_SHAPE_PLATFORMS` entry, checked against the new shared source with
+a real or realistic example):
+
+| Old alias/path | New `host_recognition` answer | Verdict |
+|---|---|---|
+| `granicus.com` | bare apex now `(None, None)` (corporate host); `cityname.granicus.com` → `("granicus", True)` | Kept for every real subdomain form; bare-apex case is a FIX (old code misclassified the vendor's own marketing host as a customer tenant) |
+| `legistar.com` | same pattern as granicus.com | Kept, same fix |
+| `civicweb.net` | same pattern | Kept, same fix |
+| `escribemeetings` (no dot) | redundant with `escribemeetings.com` below (every real host containing it also contains the `.com` form) | Dropped, no signal lost |
+| `escribemeetings.com` | `cityname.escribemeetings.com` → `("escribe", True)` | Kept |
+| `civicclerk.com` | bare apex → `("civicclerk", True)` (base.py checks substring, not corporate-excluded); subdomain also matches | Kept exactly |
+| `civicplus.com` | same pattern as granicus.com | Kept, same fix |
+| `primegov.com` | same pattern | Kept, same fix |
+| `swagit.com` | same pattern | Kept, same fix |
+| `iqm2.com` | same pattern | Kept, same fix |
+| `cablecast.tv` | `("cablecast", True)` via `_HOST_ONLY_PLATFORMS` | Kept exactly |
+| `telvue.com` | same pattern as granicus.com | Kept, same fix |
+| `champds.com` | same pattern | Kept, same fix |
+| `clerkshq.com` | bare apex → `("clerkbase", True)`; subdomain also matches | Kept exactly |
+| `municodemeetings.com` | `("municode_meetings", True)` | Kept exactly |
+| `meetings.municode.com` → `municode_meetings` | **Dropped, with reason.** `docs/investigations/url_shape_mining.md` already documents this as a DIFFERENT Municode product (`PublishPage`/`AdaHtmlDocument`/`MeetingsPage`), n=1-2, that the real `municode_meetings.py` adapter doesn't handle — the old alias entry was mislabeling it as the supported adapter. Real signal isn't lost (it's on file in that doc); the wrong label is |
+| `boarddocs.com` | bare apex → `(None, None)`; real host `go.boarddocs.com` → `("boarddocs", True)` | Kept for the real host (BoardDocs's own house rule: every tenant lives on `go.boarddocs.com`, never bare `boarddocs.com`) |
+| `eboardsolutions.com` (generic) | narrowed to the confirmed real host `simbli.eboardsolutions.com` (now in `UNSUPPORTED_PLATFORMS`, see above) | Narrowed, not lost — WO-292's own comment confirms no other `eboardsolutions.com` product/subdomain has ever been found; a hypothetical one on the bare parent domain would no longer match |
+| `vimeo.com` / `youtube.com` / `youtu.be` / `wistia.com` (bare + subdomain) | all `True` via `detect_platform()`/host predicates | Kept exactly |
+| `/agendacenter` (path) | `platform_for_path()` → `"civicplus"` via `detect_platform()`'s own native branch | Kept exactly (now via the native branch instead of a second, redundant regex) |
+| `agendaonline/meetings/viewmeeting` (path) | `platform_for_path()` → `"hyland"` via `detect_platform()`'s own native branch | Kept exactly, same reason |
+| `/citizens/` (path) | `platform_for_path()` → `"iqm2"` via `_PATH_ONLY_PLATFORMS` | Kept exactly |
+| `/portal/meetinginformation.aspx` (path) | → `"civicclerk"` | Kept exactly |
+| `/archive.aspx?amid=` (path) | → `"legistar"` | Kept exactly |
+| `/viewpublisher.php` / `/mediaplayer.php` (path) | → `"granicus"` | Kept exactly |
+
+**`first_party_meeting_paths.csv` vs. the named platform-path
+signatures — two different things, both real.**
+`app/utils/jurisdiction_data/first_party_meeting_paths.csv` holds 9
+GENERIC government paths (`/City-Council`, `/meetings`, …) with measured
+yields, read only by `scripts/wo272_summarize_probe.py` — it says nothing
+about which VENDOR a path belongs to. The path→platform signatures this
+WO consolidated (now `_PATH_ONLY_PLATFORMS`/`platform_for_path()` in
+`host_recognition.py`) identify a specific VENDOR by its path shape
+(`/AgendaCenter` = CivicPlus, `/Citizens/` = IQM2, …), regardless of
+domain. Not the same file, not interchangeable.
+
+**Replay: offline, over the real 1,298-row `wo282_recon.jsonl`, before
+vs. after.** Ran `wo282_classify.py`'s `main()` unmodified (only its
+output path redirected to scratch) against `origin/main` (before) and
+this branch (after):
+
+| Run | Confidence split (none / medium / low / high) | Governments with no candidate | Platforms found |
+|---|---|---|---|
+| Before | 820 / 184 / 282 / 12 | 667 | civicplus: 1, civicweb: 10, primegov: 1 |
+| After | 820 / 184 / 282 / 12 | 667 | civicplus: 1, civicweb: 10, primegov: 1 |
+
+**Byte-identical CSV output, all 1,298 rows** (`diff` on the two output
+files returns nothing). None of the real, on-file governments happen to
+exercise the edge cases the table above calls out (bare vendor apex,
+`meetings.municode.com`, generic `eboardsolutions.com`), so this real
+dataset can't itself prove those cases — the table above is the
+verification for them. Recon's own JSONL record format is unchanged:
+`vendor_family_for_url()` (the only recon-side consumer of the old
+alias dict) is used purely for rate-limiter bucketing by other scripts,
+never written into a recon record, so existing recon files classify
+identically both before and after.
+
+**Tests.** `tests/test_host_recognition.py` gained: Sliq Harmony
+host-only recognition (including the negative case, a media host with no
+"harmony" in the name), the five new `UNSUPPORTED_PLATFORMS` entries
+matched against `UNSUPPORTED_PLATFORMS` itself, `platform_for_path()`
+coverage for both the `detect_platform()`-native branches and the four
+explicit signatures (plus an unrecognized-path case), and
+`FIRST_PARTY_PROBE_PATHS`'s exact expected value. All pre-existing
+`wo282_recon`/`wo282_classify`/`wo282_targeted`-adjacent tests
+(`test_wo282_passive_discovery.py`, `test_wo282_recon_wayback_index.py`,
+`test_wo282_classify_third_party_hosts.py`, `test_wo939_sweep_
+robustness.py`, `test_challenge_markers.py`) pass unchanged.
+
+**CI gates.** All five green: `ruff check` (`app/ archive/ worker/
+scripts/ tests/`), `ruff format --check` (same paths, all already
+formatted), `python -m pytest` (5,075 passed, 16 skipped, 4 xfailed; the
+2 failures — `test_repair_wrong_pages.py`/`test_wrong_page_screen.py` —
+are the pre-existing, unrelated stale-local-export failures named in
+this WO's own brief), `alembic check` in both `app/` and `archive/`
+against a fresh migration-built SQLite (both report "No new upgrade
+operations detected"), `scripts/check_backlog_done_headings.py`.
+
+**Not deployed.** Pure `scripts/`/`app/platforms/`/`tests/` change with
+no `archive/`/`worker/` touch, but `app/platforms/host_recognition.py`
+IS under `app/` — flagging per CLAUDE.md's deploy-gap rule: this lands on
+`main` but is not live until a deploy runs. `host_recognition.py` itself
+is a pure-function module with no route/behavior change to
+`/api/resolve` or anything else `app/main.py` serves at runtime (nothing
+new calls it in request-serving code — only the offline `scripts/`
+discovery pipeline does), so there is no live-regression risk sitting
+undeployed; not requesting a deploy for this alone.
+
 ## WO-1019: retired the superseded wo273_recon/classify/targeted.py scripts, folding their shared library code into wo282_recon/classify/targeted.py, and wired PR #1275's A-record-only DNS-subdomain rule into wo282_classify.py [Done 2026-09-23]
 
 **Why this ran.** WO-282's passive-discovery-v2 scripts (`wo282_recon.py`/`wo282_classify.py`/`wo282_targeted.py`) still imported their shared DNS/archive/robots/sitemap/Wayback/Common-Crawl helpers, hub/meeting URL scoring, and fetch/catch-all-guard plumbing from `wo273_recon.py`/`wo273_classify.py`/`wo273_targeted.py` — the superseded v1 scripts, kept around purely as a library. About 65 files across `rtr-deeplink/scripts`, `tests`, and `rtr-business/research` (every per-WO clone from WO-283 through WO-338, plus one-off scripts and the DNS/CT-log sweep's queue feeder) imported one of the three wo273 modules. Retiring wo273's own scripts required moving that shared code somewhere it would keep living, not just deleting it.

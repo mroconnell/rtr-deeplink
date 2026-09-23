@@ -47,8 +47,14 @@ Storage: one JSON-lines record per government in `wo282_recon.jsonl`
 homepage HTML saved to this agent's scratch directory (path recorded in
 the JSON record, not the HTML itself -- keeps the JSONL file readable).
 
-This script still imports no `app.*`/`archive.*` code and opens no
-database connection -- pure DNS + HTTP against public endpoints.
+This script opens no database connection and makes no request itself
+beyond plain DNS + HTTP against public endpoints. As of WO-1021
+(2026-09-23) it does import one piece of `app.*` code --
+`app.platforms.host_recognition`, for vendor-host recognition -- checked
+live to open no DB connection, call no dotenv, and make no network
+request at import time; see that import's own comment below for why this
+replaced the previous "imports no app.*/archive.* code" local-copy
+approach.
 
 Usage (from the rtr-deeplink repo root, shared venv):
     .venv/bin/python scripts/wo282_recon.py --limit 50 --concurrency 32
@@ -78,6 +84,8 @@ from bs4 import BeautifulSoup
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
+REPO_ROOT = SCRIPTS_DIR.parent
+sys.path.insert(0, str(REPO_ROOT))
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 POPULATION_CSV = RESEARCH_DIR / "wo282_population.csv"
@@ -158,52 +166,31 @@ from challenge_markers import CHALLENGE_MARKERS  # noqa: E402
 # failure to them, not a distinct case), so it's not imported by name.
 from sweep_deadline import run_with_deadline  # noqa: E402
 
-# Vendor host aliases, copied from scripts/wo147_access_ladder_sweep.py's
-# _PLATFORM_ALIASES (as wo268 also did) plus the extra hosts WO-267/
-# platform_signatures.csv confirmed since. Kept as a local copy, not an
-# import, so this stays a pure-HTTP/DNS script (see module docstring).
-_PLATFORM_ALIASES = {
-    "granicus.com": "granicus",
-    "legistar.com": "legistar",
-    "civicweb.net": "civicweb",
-    "escribemeetings": "escribe",
-    "escribemeetings.com": "escribe",
-    "civicclerk.com": "civicclerk",
-    "civicplus.com": "civicplus",
-    "primegov.com": "primegov",
-    "swagit.com": "swagit",
-    "iqm2.com": "iqm2",
-    "cablecast.tv": "cablecast",
-    "telvue.com": "telvue",
-    "champds.com": "champds",
-    "clerkshq.com": "clerkbase",
-    "municodemeetings.com": "municode_meetings",
-    "meetings.municode.com": "municode_meetings",
-    "boarddocs.com": "boarddocs",
-    "eboardsolutions.com": "eboardsolutions",
-    "vimeo.com": "vimeo",
-    "youtube.com": "youtube",
-    "youtu.be": "youtube",
-    "wistia.com": "wistia",
-}
-
-# Named first-party path shapes from this WO's brief (WO-272's own
-# template file had not landed on main as of this run -- checked, see the
-# investigation doc).
-_PATH_SHAPE_PLATFORMS = [
-    (re.compile(r"/agendacenter", re.I), "civicplus"),
-    # Hyland/OnBase's AgendaOnline product, not IQM2 -- corrected after
-    # phase 3 found WO-267's own measured platform_signatures.csv entry
-    # (`hyland-agendaonline-path`, hit_rate 1.00) disagreed with this
-    # script's earlier guess; see the investigation doc's "known
-    # discrepancy" note.
-    (re.compile(r"agendaonline/meetings/viewmeeting", re.I), "hyland"),
-    (re.compile(r"/citizens/", re.I), "iqm2"),
-    (re.compile(r"/portal/meetinginformation\.aspx", re.I), "civicclerk"),
-    (re.compile(r"/archive\.aspx\?amid=", re.I), "legistar"),
-    (re.compile(r"/viewpublisher\.php", re.I), "granicus"),
-    (re.compile(r"/mediaplayer\.php", re.I), "granicus"),
-]
+# WO-1021 (2026-09-23): vendor-host recognition now comes from
+# app/platforms/host_recognition.py -- the ONE maintained source stages 2
+# (wo282_classify.py) and 3 (wo282_targeted.py) already use as of
+# WO-1015 part A -- instead of this file's own hand-copied
+# `_PLATFORM_ALIASES` dict (drifted in from wo147_access_ladder_sweep.py/
+# wo268, plus extra hosts WO-267/platform_signatures.csv confirmed since)
+# and its own `_PATH_SHAPE_PLATFORMS` regex list. Checked before doing
+# this (module docstring used to say "kept as a local copy, not an
+# import, so this stays a pure-HTTP/DNS script"): `import app.platforms.
+# host_recognition` opens no database connection, calls no dotenv, and
+# makes no network request at import time (confirmed live, WO-1021) --
+# it costs ~0.6s of one-time import time (it transitively pulls in
+# aiohttp/yt-dlp/playwright, none of them touched at import), which is
+# negligible next to a run doing real per-government HTTP/DNS fetches.
+# See that module's own `platform_for_host()`/`platform_for_path()`/
+# `web_host_hint_for_host()`/`UNSUPPORTED_PLATFORMS` docstrings, and this
+# WO's PR/BACKLOG_DONE entry for the full no-signal-lost table (one real
+# behavior change: `meetings.municode.com` is deliberately DROPPED, not
+# carried forward -- it was already documented, in docs/investigations/
+# url_shape_mining.md, as a different, unsupported Municode product the
+# old alias entry mislabeled as the real `municode_meetings` adapter).
+from app.platforms.host_recognition import (  # noqa: E402
+    platform_for_host,
+    web_host_hint_for_host,
+)
 
 VENDOR_SUBDOMAIN_GUESSES = [
     "agenda",
@@ -393,10 +380,23 @@ def is_challenge(text: str) -> bool:
 
 
 def vendor_family_for_url(url: str) -> str:
+    """Group a URL by vendor for the shared per-vendor rate limiter --
+    NOT a platform-classification call (see `dns_platform()`/
+    `vendor_platform_for_url()` in wo282_classify.py for that). Groups
+    even an UNSUPPORTED vendor (`platform_for_host()`'s `(name, False)`)
+    or a web-host HINT (`web_host_hint_for_host()`, e.g.
+    `granicusgovaccess.net`) under its real vendor name -- for rate
+    limiting, being polite to a vendor host is the goal regardless of
+    whether this repo has an adapter for it, unlike platform
+    classification where an unsupported/hinted host must never be
+    reported as a platform match."""
     host = urlparse(url).netloc.lower()
-    for alias, platform in _PLATFORM_ALIASES.items():
-        if alias in host:
-            return platform
+    platform, _supported = platform_for_host(host)
+    if platform:
+        return platform
+    hint = web_host_hint_for_host(host)
+    if hint:
+        return hint
     return host  # not a known vendor -- rate-limit by its own host
 
 
