@@ -4,19 +4,70 @@
 (2026-09-23) built the core: `app/platforms/meeting_finder/` (`models.py`,
 `pick.py`, `resolve.py`, `identity.py`, `verdict.py`, `runner.py`) and the
 CLI, `scripts/meeting_finder.py`. WO-1025 (2026-09-23) added `fetch.py`,
-the one fetch helper Start/Identify/Scan/Hop all use. WO-1029 (2026-09-23)
-added `scan.py` (`scan_page()`) and `hop.py` (`rank_hops()`/
-`is_document_hub()`/`calendar_entry_links()`) -- see this doc's own Scan
-and Hop sections below, now current. **Entries `resolve`/`scan`/`hop` are
-built; `start`/`identify`/`list` are accepted by the CLI/`FinderInput`
-but still return the outcome `phase-not-built`, and nothing is wired
-into `runner.py`/the CLI yet** -- a later WO does the wiring, including
-`max_hops`/`max_forks`/`max_fetches` enforcement. See that package's own
+the one fetch helper Start/Identify/Scan/Hop all use. WO-1027 (2026-09-23)
+built **Identify** (`identify.py`), and WO-1029 (2026-09-23) built **Scan**
+(`scan.py`, `scan_page()`) and **Hop** (`hop.py`, `rank_hops()`/
+`is_document_hub()`/`calendar_entry_links()`) -- see this doc's Identify,
+Scan and Hop sections below, now current. These are standalone modules,
+**not yet wired into `runner.py`**: `resolve` is still the only entry
+`runner.py` drives end to end, and `start`/`identify`/`list`/`scan` are
+accepted by the CLI/`FinderInput` but return the outcome
+`phase-not-built` until the wiring WO lands (including
+`max_hops`/`max_forks`/`max_fetches` enforcement). See that package's own
 module docstrings for the reasoning behind each piece; this section
-records the interface details WO-1024 had to settle that this design doc
-didn't spell out, and how Meeting Finder relates to
+records the interface details WO-1024/WO-1027 had to settle that this
+design doc didn't spell out, and how Meeting Finder relates to
 `app/platforms/passive_verify.py`, an existing module this design doc
 missed on first pass.
+
+**Identify's ranking implementation (WO-1027)**, on top of this doc's own
+ranking table below:
+
+- The link scan (rank 1-4 vendor/media/other-video-host links) always
+  runs BEFORE `scripts/platform_fingerprints.fingerprint()`, and a
+  platform the link scan already found is excluded from the fingerprint
+  pass -- a link gives a real, specific account URL; a bare fingerprint
+  hit on the same page is `url`-less and would otherwise win a rank tie
+  by list order and silently downgrade `account_url` to the page's own
+  base URL. See `identify.py`'s `_fingerprint_signals()`.
+- Only `platform_signatures.csv`'s `first_party_path`-kind rows are
+  trusted, never its `vendor_hostname` rows -- those are a plain "vendor
+  domain anywhere in the page" text search with no corporate-host
+  exclusion, and a real false positive surfaced building this WO: Lake
+  Helen, FL's real Granicus "GovAccess" CMS footer credit ("Created By
+  Granicus") contains the literal text "granicus.com" and fired the
+  `granicus-vendor-host` signal as if it were a real tenant link. See
+  `identify.py`'s `_FINGERPRINT_KIND_BY_SIGNAL_ID` comment.
+- CivicLive on a city's OWN domain (not `*.hosted.civiclive.com`, which
+  `detect_platform()` already recognizes by host) is NOT a
+  `platform_signatures.csv` row -- per this WO's brief, that needs a
+  real, measured signature first, not a guess. Measured live 2026-09-23
+  against two real, independent first-party-domain tenants (Piedmont, CA
+  and Williams, AZ -- byte-identical footer credit: `... Powered by
+  <a href="https://www.civiclive.com" />CivicLive</a> ...`) and
+  implemented as a narrow, sourced heuristic inside `identify.py`
+  (`_civiclive_first_party_signal()`) rather than added to the CSV --
+  two tenants and no negative sample is short of WO-267's own 10-per-
+  platform measurement bar. A later WO should do the full measurement
+  and move this into `platform_signatures.csv` properly.
+- A **known false-positive risk, not yet fixed**: the rank-5 "YouTube
+  meeting list" signal fires on any 2+ distinct YouTube video ids found
+  on a page, with no check that they're actually meeting recordings --
+  confirmed live on Piedmont, CA's own homepage, where 6 distinct
+  promotional-video ids (parks/rec content, not council meetings)
+  triggered it. Harmless today only because a real vendor link (rank 1)
+  always outranks it when one exists; a page with ONLY a promotional
+  video carousel and no vendor link would misreport a meeting list.
+  Worth tightening in List/Scan (wave 2) with real per-item date/title
+  context, the way `pick.py`'s own title filter already does for
+  non-YouTube candidates.
+- Identify never hands back `"youtube"` (or a YouTube channel) as
+  `platform`/`account_url` -- even the rank-5 meeting-list case stays a
+  `signals` entry plus `youtube_leads` URLs, for List to pick up on its
+  own terms (e.g. via `app/platforms/youtube_channel.py`'s flat-channel-
+  listing adapter). Confirmed live: no test or live-check input in this
+  WO ever caused a real YouTube fetch -- every YouTube URL Identify
+  reports came from parsing HTML already in hand.
 
 ## How Meeting Finder relates to `passive_verify.py`
 
