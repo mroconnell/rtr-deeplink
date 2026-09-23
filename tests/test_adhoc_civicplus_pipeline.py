@@ -89,6 +89,48 @@ NO_VIDEO_HOMEPAGE_HTML = """
 </body></html>
 """
 
+# Real hrefs hand-found by Ryan 2026-09-23 on 4 of the 42 CivicPlus
+# `NoVideoCandidateFound` governments from the 2026-09-22 production run
+# (rtr-business research/ENUMERATION_METHODS.md, homepage_civicclerk_
+# fallback()'s own 2026-09-23 widening note) -- everything outside the
+# one <a> tag is made-up filler, same convention as the fixtures above.
+WILMETTE_HOMEPAGE_HTML = """
+<html><body>
+<nav><a href="/158/Village-Board">Village Board</a></nav>
+<a href="https://wctv.wilmette.com/internetchannel/show/887?site=1">Watch Meetings</a>
+</body></html>
+"""
+
+WESTFIELD_HOMEPAGE_HTML = """
+<html><body>
+<nav><a href="/206/City-Council">City Council</a></nav>
+<a href="https://vimeo.com/1223827501">Latest Council Meeting</a>
+</body></html>
+"""
+
+# Both a bare channel link (weak signal) and a playlist link (strong,
+# on-mission signal) on the same page -- the playlist must win even
+# though the channel link appears first in document order.
+CHICOPEE_HOMEPAGE_HTML = """
+<html><body>
+<nav>
+  <a href="https://www.youtube.com/user/ChicopeeTV">Chicopee TV on YouTube</a>
+</nav>
+<a href="https://www.youtube.com/playlist?list=PLXVcK5ta3tzbboUfj7rIkbKNWf0T3Cj42">
+  City Council Meetings Playlist
+</a>
+</body></html>
+"""
+
+# Only a bare channel link -- nothing else on the page -- so it must
+# still be used, as the documented last resort.
+PASADENA_HOMEPAGE_HTML = """
+<html><body>
+<nav><a href="/230/City-Council">City Council</a></nav>
+<a href="https://www.youtube.com/channel/UChfkDrnz1Vc8FnzcXHTF8bQ">Council Meetings</a>
+</body></html>
+"""
+
 
 def test_specific_event_url_detected_without_api_call():
     assert _is_specific_civicclerk_event_url(
@@ -171,6 +213,72 @@ async def test_no_civicclerk_link_on_homepage_declines_cleanly():
             url, reason = await homepage_civicclerk_fallback(session, "apexnc.gov")
     assert url is None
     assert "no known-platform link" in reason
+
+
+async def test_homepage_link_to_cablecast_is_no_longer_civicclerk_only():
+    # Wilmette IL: real, confirmed-live 2026-09-23 -- widening this
+    # fallback beyond CivicClerk is the whole point of that change.
+    homepage_url = "https://wilmette.gov/"
+    routes = {
+        homepage_url: FakeResponse(status=200, text=WILMETTE_HOMEPAGE_HTML, url=homepage_url)
+    }
+    with mock_session(routes):
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            url, reason = await homepage_civicclerk_fallback(session, "wilmette.gov")
+    assert reason == ""
+    assert url == "https://wctv.wilmette.com/internetchannel/show/887?site=1"
+
+
+async def test_homepage_link_to_vimeo_is_no_longer_civicclerk_only():
+    # Westfield MA: real, confirmed-live 2026-09-23.
+    homepage_url = "https://cityofwestfield.org/"
+    routes = {
+        homepage_url: FakeResponse(status=200, text=WESTFIELD_HOMEPAGE_HTML, url=homepage_url)
+    }
+    with mock_session(routes):
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            url, reason = await homepage_civicclerk_fallback(session, "cityofwestfield.org")
+    assert reason == ""
+    assert url == "https://vimeo.com/1223827501"
+
+
+async def test_youtube_playlist_preferred_over_earlier_bare_channel_link():
+    # Chicopee MA: real, confirmed-live 2026-09-23 -- a bare channel link
+    # sits earlier in document order than the real meetings playlist; the
+    # channel must be skipped in favor of the playlist, not returned just
+    # because it comes first.
+    homepage_url = "https://chicopeema.gov/"
+    routes = {
+        homepage_url: FakeResponse(status=200, text=CHICOPEE_HOMEPAGE_HTML, url=homepage_url)
+    }
+    with mock_session(routes):
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            url, reason = await homepage_civicclerk_fallback(session, "chicopeema.gov")
+    assert reason == ""
+    assert url == "https://www.youtube.com/playlist?list=PLXVcK5ta3tzbboUfj7rIkbKNWf0T3Cj42"
+
+
+async def test_bare_youtube_channel_used_only_as_last_resort():
+    # Pasadena TX: real, confirmed-live 2026-09-23 -- nothing else on the
+    # page, so the bare channel link is still the right answer, just via
+    # the second (no-channel-refusal) pass rather than the first.
+    homepage_url = "https://pasadenatx.gov/"
+    routes = {
+        homepage_url: FakeResponse(status=200, text=PASADENA_HOMEPAGE_HTML, url=homepage_url)
+    }
+    with mock_session(routes):
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            url, reason = await homepage_civicclerk_fallback(session, "pasadenatx.gov")
+    assert reason == ""
+    assert url == "https://www.youtube.com/channel/UChfkDrnz1Vc8FnzcXHTF8bQ"
 
 
 @pytest.mark.parametrize(
