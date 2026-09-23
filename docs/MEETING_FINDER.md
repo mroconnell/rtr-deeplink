@@ -3,14 +3,18 @@
 **Status:** design agreed with Ryan on 2026-09-23 (WO-1023). WO-1024
 (2026-09-23) built the core: `app/platforms/meeting_finder/` (`models.py`,
 `pick.py`, `resolve.py`, `identity.py`, `verdict.py`, `runner.py`) and the
-CLI, `scripts/meeting_finder.py`. **Only entry `resolve` is built** --
-`start`/`identify`/`list`/`scan` are accepted by the CLI/`FinderInput`
-but return the outcome `phase-not-built`; wave 2 builds them. See that
-package's own module docstrings for the reasoning behind each piece;
-this section records the interface details WO-1024 had to settle that
-this design doc didn't spell out, and how Meeting Finder relates to
-`app/platforms/passive_verify.py`, an existing module this design doc
-missed on first pass.
+CLI, `scripts/meeting_finder.py`. WO-1028 (2026-09-23) added the **List**
+phase (`app/platforms/meeting_finder/listing.py`'s `list_account()`) --
+see this doc's own List section below for the five listers and the order
+they're tried in. **`start`/`identify`/`scan` are still not built** --
+they're accepted by the CLI/`FinderInput` and return the outcome
+`phase-not-built`; a later wave builds them and wires List/Identify/
+Scan/Hop/Resolve/Verdict together in `runner.py` (WO-1028 does not touch
+`runner.py`). See that package's own module docstrings for the reasoning
+behind each piece; this section records the interface details WO-1024
+had to settle that this design doc didn't spell out, and how Meeting
+Finder relates to `app/platforms/passive_verify.py`, an existing module
+this design doc missed on first pass.
 
 ## How Meeting Finder relates to `passive_verify.py`
 
@@ -219,18 +223,53 @@ government on the guess-ladder queue (see Follow-ups).
 
 ### List
 
-A known account becomes a list of candidate meetings. Try, in order:
+**Built, WO-1028.** `app/platforms/meeting_finder/listing.py`'s
+`list_account(platform, account_url, fetcher, *, limit=15,
+platform_params=None) -> ListResult` turns a known account into a list of
+candidate meetings, newest-first. It only lists -- Resolve is still the
+only place an adapter's `resolve()` runs to pick and confirm one. Five
+listers, tried in order, stopping at the first that returns candidates:
 
 | | Lister | Example |
 |---|---|---|
-| a | rtr-discovery's walker for the platform (`discovery/enumerators/*.py`, 14 platforms) | CivicClerk events API for `antiochca.portal.civicclerk.com` |
-| b | `resolve_seed()`'s readers | `granicus_fetch_rss_candidates()` for `sandiego.granicus.com/ViewPublisher.php?view_id=3` |
+| a | `app/platforms/passive_verify.py`'s registered listing walkers (granicus, champds, civicweb, legistar, escribe, civicclerk, civicplus, iqm2, townhallstreams, cablecast, invintus) | CivicClerk events API for `antiochca.portal.civicclerk.com` |
+| b | rtr-discovery's `list_tenant()` (`discovery/list_one.py`, WO-1026), for a platform passive_verify has no walker for -- primegov, swagit, municode_meetings, proudcity, hyland | `lacity.primegov.com`'s PrimeGov enumerator |
 | c | The adapter's own meeting list: some adapters answer a listing page with its meetings (`CalendarPageError`) | Legistar `boston.legistar.com/Calendar.aspx` |
-| d | Generic: links on the page that `detect_platform()` puts on the same platform and that look like one meeting | a TelVue or Castus listing page |
+| d | Adapters that walk a hub themselves and resolve straight to ONE meeting | Castus's own `_pick_newest`, a Cablecast gallery, a townhallstreams town page |
+| e | Generic: `passive_verify._generic_link_scan_walker()` on links that look like one meeting | a TelVue listing page with no bespoke walker |
 
-If the platform has no adapter at all, the Verdict is
+If the platform has no adapter at all (no passive_verify walker, no
+rtr-discovery enumerator, no registered `AssetFinder`), the outcome is
 `unsupported-platform-no-adapter` and the platform is recorded per
-rtr-business `research/UNSUPPORTED_PLATFORMS.md`.
+rtr-business `research/UNSUPPORTED_PLATFORMS.md`. Otherwise, nothing
+found is `no-meeting-nor-video`.
+
+**Fetch injection (WO-1028).** Listers (a) and (e) call straight into
+`passive_verify.py`'s own walker functions, which fetch pages through
+that module's private `_fetch()`. So those walkers use Meeting Finder's
+own `Fetcher` (the ladder + `max_fetches` budget from `fetch.py`) instead
+of a bare `aiohttp` GET, `passive_verify.py` gained `fetch_override()`:
+a task-local (`contextvars`) override of `_fetch()`, the same mechanism
+`identity.py`'s `tenant_pin_switched_off()` already uses for an identical
+reason. Set only for the duration of `listing.list_account()`'s own
+walker call; every other existing caller of `_fetch()` (`verify_hub()`,
+every `wo3xx_resolve_diagnostic.py` sweep script) never sets it and sees
+identical behavior to before this WO -- confirmed by the full, unmodified
+`tests/test_passive_verify*.py` suite still passing.
+
+**A real limit found while live-testing this** (not fixed here, out of
+scope for List): `_civicplus_walker()`'s step 1 only adds a candidate
+when a listing row's own parsed `url` field is set -- an AgendaCenter
+tenant that is genuinely agenda-only (posts agendas/minutes but no video
+link on the row itself, e.g. Cass County, MN,
+`mn-casscounty.civicplus.com/AgendaCenter`, confirmed live 2026-09-23:
+37 real rows, every one missing a video `url`) comes back with zero
+candidates from List, the same as a tenant with no meetings at all --
+List can't currently tell "real meetings, no video" apart from "nothing
+found" for this one path, since the walker itself only ever surfaces a
+URL when it found one. `verify_hub()` (the older, resolve-and-judge
+caller of the same walker) has this same limit today. Logged as a
+residual List/Resolve gap, not reworked here.
 
 ### Scan
 

@@ -55,6 +55,8 @@ rule every WO-3xx script already follows. Never downloads a media file.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import datetime as _dt
 import json
 import logging
@@ -286,10 +288,12 @@ _YouTubeResolveBlocked = YouTubeResolveBlocked
 _youtube_resolve_guard = youtube_resolve_guard
 
 
-async def _fetch(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
-    """Returns (html, final_url, error) -- error is None on success. Never
-    raises; a fetch failure is just one more thing `verify_hub()` reports
-    honestly rather than crashing on."""
+async def _fetch_default(
+    url: str,
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """The original, unconditional `_fetch()` body -- one plain `aiohttp`
+    GET. Kept as its own function so `_fetch()` can consult an optional
+    override below without touching this behavior at all."""
     try:
         async with aiohttp.ClientSession(headers=_HEADERS) as session:
             async with session.get(
@@ -301,6 +305,65 @@ async def _fetch(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]
                 return html, str(response.url), None
     except Exception as e:  # noqa: BLE001
         return None, None, f"{type(e).__name__}: {e}"
+
+
+# WO-1028 (Meeting Finder's List phase): task-local (asyncio) override of
+# how `_fetch()` actually fetches a page, so Meeting Finder's own fetch
+# ladder (`app/platforms/meeting_finder/fetch.py`'s `Fetcher` -- plain,
+# then browser headers, then headless, then Wayback, with a per-government
+# `max_fetches` budget) can drive these SAME registered listing walkers
+# instead of duplicating them. Same mechanism `identity.py`'s
+# `tenant_pin_switched_off()` already uses for the identical reason
+# (task-local under `asyncio`, so two concurrent walks -- one plain, one
+# through a Fetcher -- never see each other's override): a `ContextVar`
+# holding an optional async callable, consulted by `_fetch()` on every
+# call, defaulting to `_fetch_default()` above when nothing is set.
+#
+# Every EXISTING caller of `_fetch()` (`verify_hub()` and every
+# `wo3xx_resolve_diagnostic.py` sweep script) never sets this override, so
+# `_fetch()` falls straight through to `_fetch_default()` -- identical
+# behavior to before this WO, including every existing test that patches
+# `aiohttp.ClientSession` at the `mock_session`/`aiohttp_mock` layer
+# rather than `_fetch` itself (see `tests/test_passive_verify.py`'s own
+# module docstring), since `_fetch_default()` still opens a real
+# `aiohttp.ClientSession` exactly where `_fetch()` used to.
+_FETCH_OVERRIDE: "contextvars.ContextVar[Optional[Callable[[str], Awaitable[tuple[Optional[str], Optional[str], Optional[str]]]]]]" = contextvars.ContextVar(
+    "passive_verify_fetch_override", default=None
+)
+
+
+@contextlib.contextmanager
+def fetch_override(
+    fetch_fn: Callable[
+        [str], Awaitable[tuple[Optional[str], Optional[str], Optional[str]]]
+    ],
+):
+    """Scoped for the duration of one call: while active, every `_fetch()`
+    call made by this task (and any walker it calls into) goes through
+    `fetch_fn(url) -> (html, final_url, error)` instead of the plain
+    `aiohttp` GET. Restored on exit -- a `ContextVar` is task-local under
+    asyncio, so a concurrent caller (e.g. `runner.py`'s own
+    `--concurrency` fan-out, or a plain `verify_hub()` call running
+    alongside a Meeting Finder List walk) never sees this override."""
+    token = _FETCH_OVERRIDE.set(fetch_fn)
+    try:
+        yield
+    finally:
+        _FETCH_OVERRIDE.reset(token)
+
+
+async def _fetch(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Returns (html, final_url, error) -- error is None on success. Never
+    raises; a fetch failure is just one more thing `verify_hub()` reports
+    honestly rather than crashing on.
+
+    Consults `_FETCH_OVERRIDE` first (see `fetch_override()` above); falls
+    back to `_fetch_default()`'s plain `aiohttp` GET when nothing is set,
+    which is every existing caller's behavior, unchanged."""
+    override = _FETCH_OVERRIDE.get()
+    if override is not None:
+        return await override(url)
+    return await _fetch_default(url)
 
 
 # --- Per-platform listing walkers -------------------------------------

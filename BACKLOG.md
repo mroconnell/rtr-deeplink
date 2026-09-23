@@ -180,7 +180,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
+  [HUMAN] This session's local `~/Documents/rtr-discovery` checkout's…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
@@ -202,7 +203,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (202)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (203)
+  [NEEDS-AUDIT] CivicPlus's own listing walker can't tell an…
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
   [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
   [NEEDS-AUDIT] Local-export tests depend on an inventory that changes…
@@ -1950,6 +1952,13 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
+- **[HUMAN] This session's local `~/Documents/rtr-discovery` checkout's `main` is stale -- missing a real, merged PR.**
+  - **Issue**: WO-1028 (2026-09-23) needed rtr-discovery's `discovery/list_one.py` (WO-1026, PR #41, `list_tenant()`). It exists on `origin/main` (commit `ba422a8`) but not in this session's local checkout's `main` branch -- `git -C ~/Documents/rtr-discovery merge-base --is-ancestor ba422a8 <local main>` returned false, i.e. the local branch and `origin/main` have diverged, not just fallen behind by a fast-forward.
+  - **Impact**: any rtr-deeplink session that imports rtr-discovery via `RTR_DISCOVERY_PATH` (default `~/Documents/rtr-discovery`) for Meeting Finder's List phase (b) silently degrades to the next lister instead of using rtr-discovery, with no visible error beyond a note in `ListResult`.
+  - **Next action**: someone with a clean moment in `~/Documents/rtr-discovery` should `git fetch && git status` and reconcile local `main` with `origin/main` (likely just a `git pull --rebase` per CLAUDE.md's multi-session bullet, unless local `main` carries real uncommitted/unpushed work worth checking first).
+  - **Constraint**: not fixed by this WO -- CLAUDE.md's multi-session caution says don't force-move another repo's checkout out from under a possibly-active session there.
+  - **History**: `BACKLOG_DONE.md`'s WO-1028 entry.
+
 - **[HUMAN] Decide which hidden transcript versions to promote (WO-928 measured; WO-927's "7 pages clearly worse" was wrong).**
   - **Issue**: WO-927 (2026-09-20) counted cues and words, which favours our own pre-voice-filter Whisper text (it invents text over silence). WO-928 (2026-09-21) redid it from the text. Of the 5 pages WO-927 called "clearly worse" (1254, 1500, 1624, 2000, 3086), none needs a promotion: 1254's shown version is the clean one (the hidden one is Welsh text and one phrase x93), 2000's hidden version is 45 huge caption blocks, 1624 and 1500 show a fine version now (the roll-up caption on 1624 is hidden, and 1500's hidden version is a single cue), 3086 is two clean sourced versions. What is real: category A (shown is pre-filter Whisper with a defect, a clean post-filter Whisper is hidden) = 2 pages, 1225 and 1353. Category B (shown has a defect, a hidden version has none) = 8 pages fully read, 6 hand-confirmed: 1018, 1022, 1225, 1353 (loops) and 1967, 1990 (shown is 45 or 16 huge all-caps caption blocks that cannot be deep-linked); 725 is low priority, 1658 should stay as is. A random sample of 78 of the 1,042 multi-version pages not fully read found 0 more (upper bound about 40).
   - **Impact**: about 6 pages show a clearly worse text than a hidden version. Small. In the random sample of 78 pairs the hidden version was the defective one in 34, both were clean in 41, and both defective in 3.
@@ -2254,6 +2263,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] CivicPlus's own listing walker can't tell an agenda-only tenant apart from an empty one.**
+  - **Issue**: `passive_verify._civicplus_walker()`'s step 1 only calls `_add(title, date, url)` when a listing row's own `url` field is set (`if row.get("url"): _add(...)`). Confirmed live 2026-09-23 on Cass County, MN (`mn-casscounty.civicplus.com/AgendaCenter`): `civicplus.py`'s own `_find_candidate_rows()` returns 37 real rows (title, date, `agenda_link`, `packet_link` all populated), but every one has `url=None` (no video link on the row itself) -- a genuinely agenda-only tenant, not a fetch failure or a parsing miss. The walker returns `[]`, identical to what a tenant with zero real meetings would return.
+  - **Impact**: Meeting Finder's List phase (WO-1028) and `verify_hub()` (the older caller of the same walker) both see "agenda-only, real meetings exist" and "nothing here at all" as the same empty result -- a real "meeting-without-video" (tier 4) case gets reported as `no-meeting-nor-video` instead.
+  - **Next action**: have `_find_candidate_rows()`'s rows (or a lighter row shape) flow through even when `url` is `None`, tagged as agenda-only, so a caller can distinguish the two outcomes -- likely a `has_video_hint=False` candidate rather than no candidate at all, mirroring how CivicClerk's own walker already carries a `hasMedia` signal per event.
+  - **Constraint**: touches `_civicplus_walker()`, which `verify_hub()` and now `listing.list_account()` both call -- check both callers' own tests before changing its return shape.
+  - **History**: `BACKLOG_DONE.md`'s WO-1028 entry (found live-testing List's CivicPlus path).
 
 - **[NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web host? Not decided — defaulting to platform pending real data.**
   - **Issue**: `app/platforms/host_recognition.py`'s WO-1015 replay (2026-09-23) found `civicplus.io` CDN hosts (`pt-west-001.civicplus.io`, `guardian.civicplus.io`) via `detect_platform()`'s own bare `"civicplus"` substring branch (`app/platforms/base.py`). That branch was written for `civicplus.com` tenants; whether `civicplus.io` is the same kind of real per-government tenant host, or CivicPlus's own general-purpose website hosting (the same shape Ryan ruled `granicusgovaccess.net` to be on 2026-09-23 — see `BACKLOG_DONE.md`'s WO-1015 entry — "a hint/signature ... sometimes but it is in fact a web host") has not been checked against real data either way.

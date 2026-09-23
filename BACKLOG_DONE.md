@@ -1,5 +1,94 @@
 # Backlog — done
 
+## WO-1028: Meeting Finder's List phase [Done 2026-09-23]
+
+**What.** `app/platforms/meeting_finder/listing.py`'s `list_account
+(platform, account_url, fetcher, *, limit=15, platform_params=None) ->
+ListResult` -- docs/MEETING_FINDER.md's List phase, wave 2. Five listers,
+tried in order, stopping at the first with candidates: (a) `passive_
+verify.py`'s registered listing walkers, called directly rather than
+through `verify_hub()` (which also resolves/judges each candidate; List
+only wants the raw listing); (b) rtr-discovery's `list_tenant()`
+(`discovery/list_one.py`, WO-1026, PR #41) for a platform passive_verify
+has no walker for; (c) an adapter's own `CalendarPageError` pick-list
+(legistar, municode_meetings, vimeo, wistia, tampa); (d) an adapter that
+walks its own hub straight to one meeting (castus, cablecast,
+townhallstreams); (e) `passive_verify._generic_link_scan_walker()`. No
+lister found anything: `no-meeting-nor-video`. No adapter/walker/
+enumerator at all for the platform: `unsupported-platform-no-adapter`.
+List never resolves a candidate itself (Resolve, already merged, is the
+one place that runs) except where listers (c)/(d) necessarily call
+`resolve()` because that's how their adapter distinguishes a pick-list
+or a single hub meeting from anything else.
+
+**Fetch injection, without touching any existing caller.**
+`passive_verify.py` gained `fetch_override()`: a task-local
+(`contextvars.ContextVar`) override of its private `_fetch()`, same
+mechanism `identity.py`'s `tenant_pin_switched_off()` already uses for
+the identical "must not corrupt a concurrent caller" reason. The real
+body moved to `_fetch_default()`; `_fetch()` now checks the ContextVar
+first and falls through to `_fetch_default()` when nothing is set --
+every existing caller (`verify_hub()`, every `wo3xx_resolve_diagnostic.py`
+sweep script) never sets it, so behavior is byte-for-byte unchanged.
+Confirmed: the full, unmodified `tests/test_passive_verify*.py` suite
+(83 tests, all of which mock at the `aiohttp.ClientSession` layer, not
+`_fetch` itself) still passes. `listing.py` sets the override only for
+the duration of its own call into a registered walker or the generic
+scan, wrapping Meeting Finder's `Fetcher` (`fetch.py`, WO-1025 -- not
+edited by this WO) in the `(html, final_url, error)` shape `_fetch()`
+expects.
+
+**A real limit found live-testing, not fixed here.**
+`_civicplus_walker()`'s step 1 only adds a candidate when a listing
+row's own `url` field is set. Cass County, MN
+(`mn-casscounty.civicplus.com/AgendaCenter`) is a real, live, genuinely
+agenda-only AgendaCenter tenant -- confirmed 2026-09-23: `_find_
+candidate_rows()` itself returns 37 real rows (title, date,
+agenda_link, packet_link all populated), but every row's `url` is
+`None`, so the walker's own `if row.get("url"): _add(...)` line never
+fires and it returns `[]`. From List's own vantage point this is
+indistinguishable from "this tenant has zero meetings at all" --
+`verify_hub()` (the older, resolve-and-judge caller of the same walker)
+has this exact same blind spot today, since it's the walker's own
+return value both callers share. Not reworked here -- flagged as an
+open BACKLOG.md item instead (see "CivicPlus's own listing walker can't
+tell agenda-only from empty").
+
+**Live check (real accounts, `limit=5`, no YouTube):**
+
+| Platform | Account | Lister used | Result | Candidates | Newest date |
+|---|---|---|---|---|---|
+| civicclerk | antiochca.portal.civicclerk.com | passive_verify:civicclerk | ok | 5 | 2026-09-22 |
+| granicus | sandiego.granicus.com (view_id=3) | passive_verify:granicus | ok | 5 | 2026-09-23 |
+| legistar | boston.legistar.com/Calendar.aspx | passive_verify:legistar | ok | 5 | 2026-09-22 |
+| castus | cloud.castus.tv/vod/lincoln/ | adapter_hub | ok | 1 | (not in listing row) |
+| civicplus | mn-casscounty.civicplus.com/AgendaCenter | -- | no-meeting-nor-video | 0 | -- (agenda-only tenant, see above) |
+| municode_meetings | bristol-ri.municodemeetings.com | adapter_list | ok | 4 | 2026-09-16 |
+
+rtr-discovery's `list_tenant()` (lister b, PrimeGov `lacity.primegov.com`)
+was verified against rtr-discovery's own unit tests
+(`tests/test_list_one.py`, 11 tests, all pass) and a synthetic
+integration test here (`test_lister_b_used_when_no_passive_verify_walker`)
+rather than a live call from this session -- **this session's local
+`~/Documents/rtr-discovery` checkout's `main` branch is stale**: it does
+not contain `discovery/list_one.py` even though that file is real and
+merged on `origin/main` (commit `ba422a8`, PR #41) -- confirmed via
+`git -C ~/Documents/rtr-discovery merge-base --is-ancestor ba422a8
+<local main tip>` returning false. Flagged as a `BACKLOG.md` entry
+(a stale local checkout of a sibling repo, not a code bug) rather than
+worked around by checking out `origin/main` over the shared clone
+(CLAUDE.md's multi-session caution -- another session may be using that
+checkout).
+
+**Verify.** Five CI gates: `ruff check`, `ruff format --check`, `pytest`
+(5,264 passed, 16 skipped, 4 xfailed, 2 failed -- both pre-existing,
+unrelated to this change: `test_repair_wrong_pages.py`/
+`test_wrong_page_screen.py`'s stale-local-export failures), both
+`alembic check`s (no schema change, `app/db/` and `archive/db/`
+unaffected). New tests: `tests/test_wo1028_meeting_finder_listing.py`
+(12 tests, synthetic per CLAUDE.md's rule -- listing.py is orchestration
+over already real-verified pieces, not a new adapter).
+
 ## WO-1024: Meeting Finder core -- models, pick, Resolve, identity check, Verdict, CLI [Done 2026-09-23]
 
 **What.** The first buildable slice of Meeting Finder (`docs/MEETING_
