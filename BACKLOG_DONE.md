@@ -1,5 +1,25 @@
 # Backlog — done
 
+## Full Context feed search metadata and collection schema [Done 2026-09-22]
+
+The live `/context` feed now has five published entries. Fresh HTTP checks
+confirmed it has no `noindex` tag and the sitemap already contains the
+feed and all five entry permalinks. Kept the existing five-entry indexing
+threshold, canonical links, and page-2+ noindex policy.
+
+Updated the feed title to “Public Meeting Clips in Full Context | Red Tape
+Recordings” and clarified its search/share description. Added safely
+JSON-encoded `CollectionPage` / `ItemList` metadata for the visible entries
+on the indexable first page. It links to their canonical permalinks in
+display order; it makes no rich-result eligibility claim. The entry pages
+already have their own titles, descriptions, and structured data.
+
+Validation: 134 context-page, context-data, and sitemap tests passed,
+including the four/five-entry indexing boundary and collection JSON-LD
+escaping/order. Updated README's Full Context SEO section. These template
+changes require an Archive deployment; the live indexing threshold has
+already been met without this change.
+
 ## WO-1064: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
 
 **What was found.** Asked to resolve and merge #1421, an automated "advance the tier-3 queue" PR. All 12 of its rejections were YouTube answering "Sign in to confirm you're not a bot" to the GitHub runner, not dead meetings. The feed log showed the same across four days:
