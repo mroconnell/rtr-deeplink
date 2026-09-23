@@ -63,6 +63,7 @@ def test_parse_queue_line_bare_url_has_no_override():
     assert _parse_queue_line("https://example.com/videos/1") == (
         "https://example.com/videos/1",
         None,
+        None,
     )
 
 
@@ -71,6 +72,7 @@ def test_parse_queue_line_splits_on_tab():
     assert _parse_queue_line(line) == (
         "https://youtube.com/watch?v=abc123",
         "https://example.gov/agenda/42",
+        None,
     )
 
 
@@ -79,6 +81,7 @@ def test_parse_queue_line_trims_whitespace_around_both_fields():
     assert _parse_queue_line(line) == (
         "https://youtube.com/watch?v=abc123",
         "https://example.gov/agenda/42",
+        None,
     )
 
 
@@ -86,6 +89,41 @@ def test_parse_queue_line_trailing_tab_with_no_second_field_has_no_override():
     assert _parse_queue_line("https://example.com/videos/1\t") == (
         "https://example.com/videos/1",
         None,
+        None,
+    )
+
+
+def test_parse_queue_line_three_fields_reads_gov_id():
+    """WO-1016: the queue line's optional 3rd field."""
+    line = "https://youtube.com/watch?v=abc123\thttps://example.gov/agenda/42\tus:place:0000009"
+    assert _parse_queue_line(line) == (
+        "https://youtube.com/watch?v=abc123",
+        "https://example.gov/agenda/42",
+        "us:place:0000009",
+    )
+
+
+def test_parse_queue_line_gov_id_with_blank_source_field():
+    """A line can carry a gov_id with no source_url override at all
+    (`URL\\t\\tGOV_ID`) -- the same blank-middle-field shape
+    tier3_long_meetings_deferred.txt already allows."""
+    line = "https://example.granicus.com/player/clip/1\t\tus:place:0000009"
+    assert _parse_queue_line(line) == (
+        "https://example.granicus.com/player/clip/1",
+        None,
+        "us:place:0000009",
+    )
+
+
+def test_parse_queue_line_tolerates_six_fields():
+    """A deferred-file-shaped line (url/source_url/gov_id/jurisdiction/
+    duration/title) still parses correctly -- only the first three
+    columns are read, the rest are ignored, not an error."""
+    line = "https://a.granicus.com/clip/1\thttps://gov.example/p\tus:place:1\tExample City\t1:40:00\tCouncil Meeting"
+    assert _parse_queue_line(line) == (
+        "https://a.granicus.com/clip/1",
+        "https://gov.example/p",
+        "us:place:1",
     )
 
 
@@ -334,6 +372,129 @@ async def test_push_if_has_video_sends_the_pins_gov_id_straight_through(monkeypa
     assert captured["payload"]["gov_id"] == "us:place:0000009"
 
 
+async def test_push_if_has_video_sends_the_lines_own_gov_id_when_no_pin(monkeypatch):
+    """WO-1016: a queue line's own 3rd-field gov_id (e.g. a single-tenant
+    host has_owner() can't derive a pin gov_id for at all -- the
+    `(True, None, "")` case) still reaches the ingest payload."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://example.granicus.com/player/clip/77"
+    result = _FakeResolvedMeeting(
+        video_url="https://example.com/v.m3u8", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "granicus")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(mod, "has_owner", lambda source_url: (True, None, ""))
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/example-page-5"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(
+        session=None,
+        url=url,
+        source_url_override=None,
+        line_gov_id="us:place:0000042",
+    )
+
+    assert "[OK]" in outcome
+    assert captured["payload"]["gov_id"] == "us:place:0000042"
+
+
+async def test_push_if_has_video_lines_gov_id_wins_when_agreeing_with_pin(monkeypatch):
+    """WO-1016: when the line's gov_id and has_owner()'s pin gov_id
+    agree, ingest proceeds normally with that shared gov_id."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://www.youtube.com/watch?v=agreeing1"
+    result = _FakeResolvedMeeting(
+        video_url="https://www.youtube.com/embed/agreeing1", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "youtube")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(
+        mod, "has_owner", lambda source_url: (True, "us:place:0000009", "")
+    )
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/example-page-6"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(
+        session=None,
+        url=url,
+        source_url_override=None,
+        line_gov_id="us:place:0000009",
+    )
+
+    assert "[OK]" in outcome
+    assert captured["payload"]["gov_id"] == "us:place:0000009"
+
+
+async def test_push_if_has_video_skips_on_gov_id_disagreement(monkeypatch):
+    """WO-1016: a line's own gov_id disagreeing with has_owner()'s pin
+    gov_id is a real, unresolved conflict -- CLAUDE.md's "reports report,
+    they never guess" standard means the feeder refuses to pick a side,
+    skips the line (dropped like any other [SKIP], not put back in the
+    queue like [NO-OWNER]), and never calls ingest."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://www.youtube.com/watch?v=disagree1"
+    result = _FakeResolvedMeeting(
+        video_url="https://www.youtube.com/embed/disagree1", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "youtube")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+    monkeypatch.setattr(
+        mod, "has_owner", lambda source_url: (True, "us:place:0000009", "")
+    )
+
+    ingest_called = False
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        nonlocal ingest_called
+        ingest_called = True
+        return {"url": "/m/should-not-happen-2"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(
+        session=None,
+        url=url,
+        source_url_override=None,
+        line_gov_id="us:place:9999999",
+    )
+
+    assert not ingest_called
+    assert outcome.startswith("[SKIP]")
+    assert "disagreement" in outcome
+    assert "us:place:9999999" in outcome
+    assert "us:place:0000009" in outcome
+
+
 async def test_lmc_pending_lines_keep_exact_owner_through_feeder(monkeypatch):
     """The LMC producer page is evidence, not a source-url override:
     the feeder must check each Swagit video's own pin before ingest."""
@@ -353,7 +514,7 @@ async def test_lmc_pending_lines_keep_exact_owner_through_feeder(monkeypatch):
     monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
 
     for row in rows:
-        url, override = _parse_queue_line(row["queue_line"])
+        url, override, _gov_id = _parse_queue_line(row["queue_line"])
         assert url == row["meeting_url"]
         assert override is None
         assert row["first_party_evidence_url"].startswith("https://lmcmedia.org/")
