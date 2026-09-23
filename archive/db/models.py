@@ -919,6 +919,33 @@ class ContextCandidate(Base):
     )
 
 
+class ContextCandidateRevision(Base):
+    """An immutable editor review, separate from imported source observations."""
+
+    __tablename__ = "context_candidate_revisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_id", "candidate_version", name="uq_candidate_revision_version"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(
+        ForeignKey("context_candidates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    candidate_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Highest imported observation seen by this review, not a foreign key:
+    # the observation audit trail belongs to the candidate independently.
+    source_observation_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    fields: Mapped[dict] = mapped_column(JSON, nullable=False)
+    clerk_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ContextCandidateObservation(Base):
     """Immutable research versions; latest per provider/record key is active."""
 
