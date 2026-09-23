@@ -62,6 +62,24 @@ Deploy Archive before resolver; this work is not live until that manual release.
 Old-slug resolution, unknown mirror associations, ingestion and automatic moment
 matching remain outside this approved scope.
 
+## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
+
+**What.** Tier-3 queue writers that know the government now add its
+`gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES
+= True`). The feeder puts that `gov_id` in the ingest payload.
+
+**Why now.** WO-1016 merged the tolerant readers first and left writers
+off, because the drip Mac runs its own checkout. On 2026-09-23 Ol
+McClaude confirmed it brought its drip worktree (`~/rtr-deeplink-drip-worktree`,
+branch `drip-local`, previously 136 commits behind) to a `main` commit that
+includes WO-1016, restarted the drip, and the first line after restart fed
+a real meeting. Nothing it runs imports the retired `wo273_*` scripts.
+
+**Also recorded** in `docs/YOUTUBE_DRIP_RUNBOOK.md`: the drip runs from
+that worktree, not the main checkout, so pulling `main` alone does not
+update it; and SIGINT did not stop the drip that day (SIGTERM did), no
+diagnosis yet.
+
 ## WO-1021: stage 1 of enumeration (wo282_recon/classify/targeted.py) now recognizes platforms from the same shared source as stages 2/3; unsupported-platform list synced with rtr-business's WO-1018 findings [Done 2026-09-23]
 
 **Issue.** WO-1015 part A gave stages 2/3 of discovery
@@ -490,7 +508,17 @@ services, so nothing here is blocked on a Render deploy either.
 | Before the fix | 11 failed |
 | After the fix | 11 passed |
 
-**Caution.** Records already written by affected sweeps are `access_mode: "error"` stubs for those governments. They need a re-run to get real data; this fix does not repair them.
+**Re-run of the crash placeholders (2026-09-23).** The 2026-09-22 run saved none of its 49 crashes. It and two later runs switched Wayback off instead. The only real placeholders on disk were 27 records in two 2026-09-15 folders in `rtr-business/research/`: 12 in `osm_passive_sweep_2026-09-15/` and 15 in `yesgov_2026-09-15/passive_v2_local/`. None of the 27 had ever had real Wayback data. All 27 were re-run on fixed `main`, with results kept in a scratch folder, not written to `research/`.
+
+| Result | Count of 27 |
+|---|---|
+| Ran with no crash | 27 |
+| Wayback answered (6 needed one retry after a 10-second timeout) | 26 |
+| Wayback still timed out (St. Joseph County IN) | 1 |
+| Wayback was the deciding evidence | 3 |
+| `jurisdiction_coverage.csv` row needs a data change | 0 |
+
+In all 3 Wayback-decided cases, the research row already held the same fact. Anna Maria FL's agenda page is already the row's agenda URL. Safford AZ's row is already off-mission. Allen County IN's `allencounty.in.gov` is already an alternate domain. The "How RTR works" session added dated "fixed in WO-1020" notes to three rtr-business runner scripts that had forced Wayback off because of this bug (`run_full.py`, `run_half.py`, `wayback_recheck.py`).
 
 ## WO-1016: tier-3 queue lines can now carry a gov_id, tolerated by every live reader, writers gated off [Done 2026-09-23]
 
@@ -61422,3 +61450,14 @@ Original finding and investigation history (preserved from BACKLOG.md):
   - **Next action**: add `video_format=getattr(result, "video_format", None)` to the `probe_queue_entry(...)` call in `_real_probe_hook()` (`scripts/wo169_probe_rejected_rerun.py:119-123`) — a one-line change, same shape `queue_probe.probe_queue_entry()`'s own docstring already documents as the fix for this exact gap.
   - **Constraint**: none known — `probe_queue_entry()`'s `video_format` parameter already exists and already prefers a caller-supplied value over its own internal resolve, so this needs no other change.
   - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (found while live-verifying WO-166's own 7 confirmed governments through this exact hook).
+
+
+## [Done 2026-09-22] Gov Coverage 54-row reconciliation
+
+Audited the 54 research rows marked transcribed with no exact production government ID match. None was a recorded consolidated alias. Results: 29 research rows pointed to 28 pages with blank IDs (both Hamilton NJ rows shared a page), 10 pointed to a different ID, 3 URLs were absent and 12 rows lacked a meeting URL.
+
+After Ryan authorized making the clear corrections, applied 32 page-specific HTTP overrides for 31 governments: the 28 blank-ID pages (Hamilton to Mercer, not Atlantic), two North Bay pages, Collierville and Dover. All 32 were verified in a fresh full export with manual_override protection. Corrected the local Hamilton per-video pin; that local change is not yet deployed. No pages deleted or re-ingested.
+
+Cleared unsupported transcribed flags on the remaining 23 audit rows, marked 16 wrong research associations, restored 28 shared-gov-exception labels, and cleared 3 noncanonical flags. Research writes used flock, a fresh read, HEAD-derived 99% row-count floor, atomic replace, and LF. No row removal. Rebuilt the dashboard with 5,783 covered governments; every row page count matches the post-correction production export.
+
+Evidence and before/after records: `../rtr-business/research/coverage_join_audit_2026-09-22/README.md`, `rows.csv`, `research_changes.csv`, `override_dry_run.json`, `override_applied.json`, `production_after.csv`. The hosted artifact still needs republishing from `../rtr-business/research/coverage_registry/coverage_registry_hosted.html`; no Claude artifact publisher is available in this session. Residual unidentified pages remain in BACKLOG.md.

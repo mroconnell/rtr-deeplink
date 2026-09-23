@@ -88,10 +88,10 @@ QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 # runs its OWN checkout (CLAUDE.md's "YouTube is fetched only by the
 # drip Mac"), so this tolerance only takes effect here once this file's
 # `git pull` picks up this change -- see docs/YOUTUBE_DRIP_RUNBOOK.md and
-# BACKLOG.md's WO-1016 entry for the rollout order. Nothing here WRITES
-# a 3-field line yet (queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES is still
-# False) -- this is read-tolerance only, landed ahead of that flag on
-# purpose.
+# BACKLOG_DONE.md's WO-1016 entries for the rollout order. Writers that
+# know a gov_id emit the 3rd field since 2026-09-23
+# (queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES = True, flipped after this
+# Mac confirmed it runs the tolerant readers).
 # WO-248: the feed lane used to append every probe straight to the
 # tracked DEFAULT_SIDECAR_PATH (app/platforms/queue_probe.py), live,
 # while the drip ran for hours between the one daily `git pull` +
