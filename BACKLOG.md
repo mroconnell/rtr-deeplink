@@ -199,7 +199,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (200)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (201)
+  [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
   [NEEDS-AUDIT] Local-export tests depend on an inventory that changes…
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
@@ -2221,6 +2222,12 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and unsupported research associations.**
+  - **Issue:** The September 22 targeted repair fixed 32 pages for 31 governments; the fresh export still has 217 blank-ID pages and 351 unresolved placeholders, outside this completed 54-row audit.
+  - **Next action:** Review the remaining unidentified pages by source; review the 23 audited research rows now cleared of unsupported transcription flags before claiming new coverage.
+  - **Constraint:** School boards, towns versus villages, and shared hosts must not be folded into another government's row to make a join succeed.
+  - **History:** See `BACKLOG_DONE.md`'s “Gov Coverage 54-row reconciliation” entry and `rtr-business/research/coverage_join_audit_2026-09-22/` for the row-level evidence and applied changes.
 
 - **[NEEDS-AUDIT] Local-export tests depend on an inventory that changes after repairs.**
   - **Issue**: `test_every_row_matches_the_local_export_it_was_built_from` and `test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages` fail with the current `/tmp/rtr_meeting_inventory/meeting_inventory.csv`: page 2504 has no government id, and page 3643 is no longer flagged.
