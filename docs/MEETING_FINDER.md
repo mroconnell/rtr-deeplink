@@ -7,20 +7,21 @@ CLI, `scripts/meeting_finder.py`. WO-1025 (2026-09-23) added `fetch.py`,
 the one fetch helper Start/Identify/Scan/Hop all use. WO-1027 (2026-09-23)
 built **Identify** (`identify.py`); WO-1028 (2026-09-23) built **List**
 (`listing.py`'s `list_account()` -- see this doc's List section below for
-the five listers and the order they're tried in); and WO-1029
-(2026-09-23) built **Scan** (`scan.py`, `scan_page()`) and **Hop**
-(`hop.py`, `rank_hops()`/`is_document_hub()`/`calendar_entry_links()`) --
-see this doc's Identify, List, Scan and Hop sections below, now current.
-These are standalone modules, **not yet wired into `runner.py`**:
-`resolve` is still the only entry `runner.py` drives end to end, and
-`start`/`identify`/`list`/`scan` are accepted by the CLI/`FinderInput`
-but return the outcome `phase-not-built` until the wiring WO (WO-1030)
-lands, including `max_hops`/`max_forks`/`max_fetches` enforcement. See
-that package's own module docstrings for the reasoning behind each
-piece; this section records the interface details WO-1024/WO-1027/
-WO-1028 had to settle that this design doc didn't spell out, and how
-Meeting Finder relates to `app/platforms/passive_verify.py`, an existing
-module this design doc missed on first pass.
+the five listers and the order they're tried in); WO-1029 (2026-09-23)
+built **Scan** (`scan.py`, `scan_page()`) and **Hop** (`hop.py`,
+`rank_hops()`/`is_document_hub()`/`calendar_entry_links()`); and WO-1030
+(2026-09-23) **wired every phase together** in `runner.py` and built
+**Start** (`start.py`) -- see this doc's Identify, List, Scan, Hop and
+Start sections below, now current, and the "The phase loop (WO-1030)"
+section further down for how the wiring itself works.
+**Every entry point (`start`/`identify`/`list`/`scan`/`resolve`) is now
+live end to end**, with `max_hops`/`max_forks`/`max_fetches` enforced --
+`phase-not-built` no longer applies to any entry. See that package's own
+module docstrings for the reasoning behind each piece; this section
+records the interface details WO-1024/WO-1027/WO-1028/WO-1030 had to
+settle that this design doc didn't spell out, and how Meeting Finder
+relates to `app/platforms/passive_verify.py`, an existing module this
+design doc missed on first pass.
 
 **Identify's ranking implementation (WO-1027)**, on top of this doc's own
 ranking table below:
@@ -240,15 +241,29 @@ audit mode (see rtr-business `research/LINK_FIRST_MATCHING.md`).
 
 ### Start
 
+**Built, WO-1030.** `app/platforms/meeting_finder/start.py`'s
+`start(domain_or_url, fetcher, *, alternates=None, guess_subdomains=True)
+-> StartResult(starting_points, outcome, note)`.
+
 - **DNS gate first.** If neither the domain nor `www.` resolves, stop with
-  `dns-unresolvable`, then try the research row's alternate domains.
+  `dns-unresolvable`, then try the research row's alternate domains
+  (passed in via `alternates` -- Start itself never reads rtr-business).
 - **Homepage:** `https://domain/`, then `https://www.domain/`, then `http://`.
 - **Cheap extra starting points,** reusing stage 1's functions in
   `scripts/wo282_recon.py` (`dns_lookup()`, the robots and sitemap
-  readers, Wayback): guessed subdomains (`agenda.`, `meetings.`, `live.`,
-  `video.`, `granicus.`, `legistar.`…) and meeting or vendor URLs found in
-  sitemaps.
-- Every starting point becomes its own fork.
+  readers): guessed subdomains that actually resolved (`agenda.`,
+  `meetings.`, `live.`, `video.`, `granicus.`, `legistar.`…, minus any
+  that's really just the apex domain's own DNS wildcard), a guessed
+  CivicWeb/PrimeGov tenant-label host that resolved, and sitemap URLs
+  that `detect_platform()`/`host_recognition` recognizes as a known
+  platform or that look like one specific meeting page (Identify's own
+  rank-3 shape, reused verbatim). The DNS/robots/sitemap reads are their
+  own small budget -- like `fetch.py`'s Wayback lookup, they never spend
+  any of `Fetcher.max_fetches`. A robots.txt `Crawl-delay` found here is
+  handed to `fetcher.note_crawl_delay()` before the phase loop's own
+  Identify/Scan/Hop calls start spending that budget.
+- Every starting point becomes its own fork (see "The phase loop"
+  below for how forks/hops are budgeted).
 
 ### Identify
 
@@ -402,18 +417,82 @@ directly).
   calendar, `find_calendar_entry_links()` opens its first dated entries.
 - **Jev test (later):** score the same 180 real homepages the weights were
   measured on, and keep whichever finds the real hub more often.
-- No `max_hops`/`max_forks`/`max_fetches` enforcement here -- the wiring
-  WO applies these limits around `rank_hops()`'s own ranked output.
+- No limits logic inside `hop.py` itself -- `runner.py` (WO-1030) applies
+  `max_hops`/`max_forks`/`max_fetches` around `rank_hops()`'s own ranked
+  output (see "The phase loop" below). `rank_hops()` only takes the
+  single best not-yet-seen link per level; a rejected/already-seen link
+  isn't retried at that same depth.
 
-**Limits (settings):**
+**Limits (settings, enforced by `runner.py` since WO-1030):**
 
 | Setting | Meaning | Default |
 |---|---|---|
 | `max_hops` | Depth of one path | 2 (one more from a homepage) |
 | `max_forks` | Next-best links from the start page tried as new paths | 3 |
-| `max_fetches` | Hard cap on page fetches per government | 12 |
+| `max_fetches` | Hard cap on page fetches per government (one shared `Fetcher`) | 12 |
 
 Repeat Identify → List / Scan → Hop on each landing page within those limits.
+
+### The phase loop (WO-1030)
+
+`app/platforms/meeting_finder/runner.py`'s `run_one()`/`_run_phase_loop()`
+wire every phase above into the pipe docs/MEETING_FINDER.md opens with.
+One `Fetcher` per government (`FinderInput`) -- every fork and hop for
+that input shares its `max_fetches` budget and its per-host politeness
+spacing. A `seen` URL set, also shared across the whole walk, means a URL
+is never fetched twice no matter which fork or hop reaches it.
+
+- **Entry dispatch:** `entry="resolve"` is unchanged from WO-1024 -- the
+  input URL goes straight to Resolve, no Identify/List/Scan/Hop.
+  `entry="list"` requires `platform_hint` and goes straight to
+  `list_account()` then Resolve. `entry="scan"` fetches the one input URL
+  and runs `scan_page()` then Resolve. `entry="identify"` treats the
+  input URL as the sole starting point and runs the full Identify ->
+  List/Scan -> Hop loop on it (no Start, no forks beyond what Hop finds).
+  `entry="start"` runs `start()` first; a DNS-dead domain reports
+  `dns-unresolvable` immediately; otherwise each of `start()`'s own
+  starting points becomes a fork.
+- **One fork's own path:** Identify, then (if a platform+account was
+  found) List, then (if nothing resolved yet) Scan on the same page, then
+  (if still nothing and hops remain) Hop's single best next link,
+  recursing with `hops_left - 1`. The walk stops the instant Resolve
+  succeeds.
+- **Forks vs hops:** a fork is one of Start's own starting points tried
+  as an independent path (`max_forks` bounds how many past the first);
+  a hop is Hop's own best-next-link choice made *within* one fork's path
+  (`max_hops` bounds how deep one fork goes, with one extra hop for the
+  very first/homepage fork -- "one more from a homepage").
+- **Budget exhaustion:** a `BudgetExceeded` from any phase's own fetch
+  ends that government's walk cleanly (never crashes the run) -- Verdict
+  reports whatever outcome was already collected, or a plain "budget
+  exhausted" note.
+- **Verdict's outcome choice** ("the most informative of the phases'
+  outcomes"): `_pick_outcome()` ranks every outcome collected along the
+  way and keeps the highest -- a real `meeting-without-video` beats
+  `account-not-found`, which beats `unsupported-platform-no-adapter`,
+  which beats a generic access block (a challenge/WAF block, then a
+  plain `blocked-*`, then `timeout`/`dns-unresolvable`), which beats
+  reporting nothing at all (`no-meeting-nor-video`, the floor).
+- **Politeness across governments sharing a vendor host:** `fetch.py`'s
+  own per-`Fetcher` spacing only paces one government's own requests: two
+  DIFFERENT `Fetcher`s (two governments running concurrently under
+  `--concurrency`) could otherwise both hit the same shared host (many
+  tenants on `*.granicus.com`, for instance) at once. WO-1030 added a
+  small process-wide, host-keyed pacer in `fetch.py`
+  (`_global_wait_for_host()`) that every `Fetcher` instance consults in
+  addition to its own bookkeeping, so this can't happen.
+- **Two known wave-2 gaps closed by WO-1030:** (1) Identify's rank-5
+  "YouTube meeting list" signal used to fire on any page with 2+ distinct
+  YouTube video links, including a plain promotional carousel (confirmed
+  live on Piedmont, CA's own homepage: 6 unrelated parks/rec videos). It
+  now only counts a video whose own link sits in a per-item dated
+  row/section (reusing `scan.py`'s own date-detection helpers) -- Piedmont
+  no longer reports a false `youtube_meeting_list` signal. (2) A List
+  candidate with `has_video_hint=False` (e.g. `civicplus_agenda_only`'s
+  real agenda rows) already flowed through Resolve's existing
+  `agenda_items`/`agenda_link` fallback into `meeting-without-video`
+  without any further change needed -- confirmed by this WO's own test
+  (`test_meeting_without_video_outcome_surfaces_from_list`).
 
 ### Resolve
 

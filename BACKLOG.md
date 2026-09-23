@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
+  Meeting Finder's CivicPlus agenda-only fallback can be starved of…
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -895,6 +896,43 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Meeting Finder's CivicPlus agenda-only fallback can be starved of fetch budget by an earlier lister on the same government `[JUST-DO-IT]`
+
+- **Issue:** WO-1030's live smoke test (Cass County, MN,
+  `mn-casscounty.civicplus.com`, CivicPlus) confirmed List's own
+  agenda-only fallback (`listing.py`'s `_civicplus_agenda_only_fallback()`,
+  WO-1028 -- built specifically so an agenda-only tenant reports real
+  rows instead of looking empty) works correctly when called directly
+  with its own fresh fetch budget: 15 real rows, `has_video_hint=False`.
+  But inside `list_account()`'s real ordered pipeline, lister (a)
+  (`passive_verify`'s own `_civicplus_walker()`) used 9 of the
+  government's shared 10-fetch budget by itself walking every row
+  looking for video, lister (e) (generic scan) used the 10th, and the
+  agenda-only fallback (f) then had 0 fetches left and silently returned
+  nothing -- Verdict reported `no-meeting-nor-video` instead of the real,
+  more informative `meeting-without-video`.
+- **Impact:** every CivicPlus government that is genuinely agenda-only
+  (no video posted) and has enough agenda rows to make lister (a) walk a
+  while reports as flatly empty instead of "meetings exist, no video yet"
+  -- a real information loss for Verdict/a human reading it, on exactly
+  the population this fallback was built for.
+- **Next action:** give the agenda-only fallback a reserved minimum
+  slice of the government's fetch budget (e.g. run it before, or with a
+  ring-fenced allowance ahead of, listers (a)/(e) when the platform is
+  CivicPlus), or cap how many fetches `_civicplus_walker()`'s own
+  per-row video search is allowed to spend before giving up and letting
+  a later lister run. Either fix belongs in `listing.py`, not the phase
+  loop (`runner.py`) itself -- `list_account()` is the one place that
+  already knows all five listers' relative fetch cost.
+- **Constraint:** don't just raise the government's overall
+  `max_fetches` -- that hides the starvation on a small government
+  without fixing it on a larger one; the real fix is budget allocation
+  *within* `list_account()`.
+- **History:** found live 2026-09-23 building WO-1030 (Meeting Finder's
+  phase-loop wiring) -- see that WO's own PR description for the full
+  repro (`_list_via_passive_verify_walker`/`_list_via_agenda_only_fallback`
+  fetch counts against the real tenant).
 
 ### State legislatures: small residual fixes remain after today's push — a `.vtt` sibling-caption lookup, Vimeo's event-id extraction, and 7 states needing one more hop `[JUST-DO-IT]`
 
