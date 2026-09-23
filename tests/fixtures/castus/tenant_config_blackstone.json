@@ -1,0 +1,31 @@
+{
+ "frontPage": [
+  "live",
+  "recent",
+  "playlists",
+  "featured",
+  "popular",
+  "subscriptions"
+ ],
+ "user": "662ab8f7462d1041bed8203e",
+ "company": [
+  {
+   "name": "blackstone",
+   "_id": "662ab975462d1041bed8204a"
+  }
+ ],
+ "title": "Blackstone",
+ "tabs": [
+  "Home",
+  "Playlists",
+  "Live",
+  "Recent"
+ ],
+ "playlistOrder": [
+  "Finance",
+  "Finance",
+  "Finance",
+  "Selectmen",
+  "Conservation"
+ ]
+}
