@@ -98,7 +98,7 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 
 import wo134_confirmed_hits_ingest as w134  # noqa: E402
-from wo273_targeted import try_wayback_archived_body  # noqa: E402
+from wo282_targeted import try_wayback_archived_body  # noqa: E402
 
 sys.path.insert(0, str(Path.home() / "Documents" / "rtr-business" / "research"))
 import wo133_headless_recheck_scan as wo133  # noqa: E402
@@ -273,7 +273,7 @@ async def locate_via_page(
     if detect_platform(hit_url) == platform:
         return hit_url, ""
 
-    # Archive-first (this repo's standard rung, `wo273_targeted.
+    # Archive-first (this repo's standard rung, `wo282_targeted.
     # try_wayback_archived_body()`, reused not reimplemented) -- a real,
     # confirmed need building this WO: a large share of these municipal
     # .gov domains sit behind a static Akamai/WAF "Access Denied" 403 that

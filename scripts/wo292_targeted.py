@@ -84,8 +84,8 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-import wo273_targeted as w273t  # noqa: E402
-import wo273_recon as w273  # noqa: E402
+import wo282_targeted as w273t  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 import wo147_access_ladder_sweep as w147  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 

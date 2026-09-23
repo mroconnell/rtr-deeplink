@@ -2,12 +2,15 @@
 fetches of phase 2's top-5 candidates per government, plus the
 fallback ladder for a government phase 2 found NO candidate for.
 
-Reuses `wo273_targeted.py`'s fetch machinery directly (imported, not
-duplicated): `fetch_and_score()` (HEAD then GET, archive body first via
-a short single-attempt exact-URL CDX lookup, `platform_fingerprints.
-fingerprint()` + `detect_platform()` over the fetched page, `name_
-matches()` requiring the page to name this government's own city AND
-state), the same per-host/per-vendor-family `RATE_LIMITER`.
+Reuses WO-273's own fetch machinery directly -- moved into this file
+verbatim (WO-1019, 2026-09-23; see the "Moved here from
+wo273_targeted.py" banner below) now that WO-273's own scripts are
+retired: `try_wayback_archived_body()` + `polite_fetch()` (HEAD then GET,
+archive body first via a short single-attempt exact-URL CDX lookup),
+`platform_fingerprints.fingerprint()` + `detect_platform()` over the
+fetched page, `name_matches()` requiring the page to name this
+government's own city AND state, the same per-host/per-vendor-family
+`RATE_LIMITER`.
 
 Adds what WO-273's phase 3 got wrong (WO-278's real finding: 76 of 147
 "confirmed" were a catch-all template answering any path) and what this
@@ -60,6 +63,7 @@ import gzip
 import hashlib
 import json
 import random
+import re
 import string
 import sys
 import threading
@@ -68,14 +72,25 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import requests
+
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-import wo273_targeted as w273t  # noqa: E402
-import wo273_recon as w273  # noqa: E402
+from wo282_recon import (  # noqa: E402
+    HEADERS,
+    STALE_DAYS,
+    _ARCHIVE_SEMA,
+    RATE_LIMITER,
+    capture_age_days,
+    is_challenge,
+    vendor_family_for_url,
+)
+from sweep_deadline import run_with_deadline  # noqa: E402
 import wo147_access_ladder_sweep as w147  # noqa: E402
+import platform_fingerprints  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
@@ -95,6 +110,331 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
+# --------------------------------------------------------------------------
+# Moved here from wo273_targeted.py (WO-1019, 2026-09-23): WO-273's own
+# scripts are retired, but this fetch/scoring plumbing -- the shared
+# per-host/per-vendor-family polite_fetch(), the archive-first exact-URL
+# CDX lookup, the streamed-body/redirect helpers, the WO-278 catch-all
+# guard (fetch_domain_reference()/is_catch_all_response()/is_same_domain()),
+# and name_matches() -- is real, shared library code other scripts (and
+# this file's own fetch_and_score_v2()) still call. Moved verbatim, not
+# rewritten. WO-273's own fetch_and_score()/top_flagged_urls()/
+# process_government_targeted()/cmd_sweep()/affected_domains()/main() were
+# NOT moved: nothing outside wo273_targeted.py's own CLI ever called them
+# (this file has its own fetch_and_score_v2()/process_with_candidates()/
+# process_fallback_ladder()/cmd_sweep(), reading a differently-shaped
+# wo282_classified.csv candidates_json column rather than wo273's
+# per-kind best_hub_url/best_meeting_url columns).
+# --------------------------------------------------------------------------
+
+GOV_TIMEOUT = 10  # 3s connect target / 10s read, one retry at most (brief)
+CDX_EXACT_TIMEOUT = 6  # short, single attempt -- see module docstring
+
+# WO-939: real wall-clock cap on top of GOV_TIMEOUT's per-read bound, same
+# gap and same fix as wo282_recon.py's own GOV_REQUEST_WALL_CLOCK_DEADLINE
+# (see that constant's own comment, and scripts/sweep_deadline.py's
+# module docstring) -- confirmed live by the same WO-322 incident this
+# entry's siblings cite. `wo337_targeted.py`'s own `capped_polite_fetch()`
+# already worked around this in ITS OWN copy (a byte-cap + hand-rolled
+# streaming wall-clock loop) rather than editing this shared module,
+# since other WOs were running against it concurrently at the time --
+# this is the real, shared-module fix that comment said still belonged
+# here.
+GOV_REQUEST_WALL_CLOCK_DEADLINE = 25
+
+# WO-278 catch-all guard.
+MIN_CONFIRM_BODY_BYTES = 800  # same floor url_shape_mining.md's Stage 2 uses
+CATCH_ALL_SIZE_TOLERANCE = 0.05  # "a few percent" per this WO's brief
+NONSENSE_LABEL_LEN = 10
+
+
+def try_wayback_archived_body(url: str) -> tuple:
+    """One short, single-attempt exact-URL CDX lookup (see module
+    docstring on why this is deliberately not retried the way phase 1's
+    per-government calls are). Returns (body_bytes_or_None, used_archive:
+    bool)."""
+    if non_page_url(url):
+        return None, False
+    cdx_url = (
+        "https://web.archive.org/cdx/search/cdx"
+        f"?url={url}&filter=statuscode:200&collapse=urlkey"
+        "&limit=-3&fl=original,timestamp&output=json"
+    )
+    with _ARCHIVE_SEMA:
+        try:
+            resp, skip = bounded_redirect_fetch(
+                cdx_url,
+                lambda next_url: requests.get(
+                    next_url,
+                    headers=HEADERS,
+                    timeout=CDX_EXACT_TIMEOUT,
+                    stream=True,
+                    allow_redirects=False,
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            return None, False
+        if skip or resp is None:
+            return None, False
+        try:
+            if resp.status_code != 200:
+                return None, False
+            cdx_body = bytearray()
+            for chunk in resp.iter_content(chunk_size=16384):
+                if len(cdx_body) + len(chunk) > 65536:
+                    return None, False
+                cdx_body.extend(chunk)
+            rows = json.loads(cdx_body)[1:]
+        except Exception:  # noqa: BLE001
+            return None, False
+        finally:
+            resp.close()
+    if not rows:
+        return None, False
+    orig, ts = max(rows, key=lambda r: r[1] if len(r) > 1 else "")
+    if capture_age_days(ts) > STALE_DAYS:
+        return None, False
+    id_url = f"https://web.archive.org/web/{ts}id_/{orig}"
+    with _ARCHIVE_SEMA:
+        try:
+            resp, skip = bounded_redirect_fetch(
+                id_url,
+                lambda next_url: requests.get(
+                    next_url,
+                    headers=HEADERS,
+                    timeout=CDX_EXACT_TIMEOUT,
+                    stream=True,
+                    allow_redirects=False,
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            return None, False
+        if skip or resp is None:
+            return None, False
+        try:
+            if resp.status_code == 200:
+                body, reason = bounded_page_body(resp)
+                if not reason:
+                    return body, True
+        except Exception:  # noqa: BLE001
+            return None, False
+        finally:
+            resp.close()
+    return None, False
+
+
+def polite_fetch(url: str, method: str = "GET", **kwargs):
+    key = vendor_family_for_url(url)
+    allow_redirects = kwargs.pop("allow_redirects", True)
+    # WO-939: run_with_deadline() wraps requests.request() itself, inside
+    # wait_and_request()'s per-vendor-family lock -- so a hung response
+    # releases that lock after GOV_REQUEST_WALL_CLOCK_DEADLINE instead of
+    # holding it (wedging every OTHER candidate sharing that vendor
+    # family) forever. See GOV_REQUEST_WALL_CLOCK_DEADLINE's own comment.
+    return RATE_LIMITER.wait_and_request(
+        key,
+        run_with_deadline,
+        requests.request,
+        method,
+        url,
+        headers=HEADERS,
+        timeout=GOV_TIMEOUT,
+        allow_redirects=allow_redirects,
+        deadline_seconds=GOV_REQUEST_WALL_CLOCK_DEADLINE,
+        **kwargs,
+    )
+
+
+PAGE_BODY_LIMIT = 2 * 1024 * 1024
+_NON_PAGE_SUFFIXES = (
+    ".mp4",
+    ".mov",
+    ".m4v",
+    ".webm",
+    ".avi",
+    ".mp3",
+    ".wav",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".zip",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+)
+
+
+def non_page_url(url: str) -> bool:
+    return urlparse(url).path.lower().endswith(_NON_PAGE_SUFFIXES)
+
+
+def page_url_skip(url: str, redirected: bool = False) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return "skipped-non-http-redirect"
+    host = parsed.netloc.lower().split(":", 1)[0]
+    if host in ("youtube.com", "youtu.be", "www.youtube.com") or host.endswith(
+        ".youtube.com"
+    ):
+        return "skipped-youtube-redirect" if redirected else "skipped-youtube-url"
+    return "skipped-media-url" if non_page_url(url) else ""
+
+
+def bounded_redirect_fetch(url: str, request_fn) -> tuple[object | None, str]:
+    """Follow page redirects without consuming redirect response bodies."""
+    for hop in range(6):
+        skip = page_url_skip(url, redirected=hop > 0)
+        if skip:
+            return None, skip
+        resp = request_fn(url)
+        if resp.status_code not in (301, 302, 303, 307, 308):
+            return resp, ""
+        location = resp.headers.get("Location", "")
+        next_url = urljoin(resp.url or url, location) if location else ""
+        resp.close()
+        if not next_url:
+            return None, "skipped-broken-redirect"
+        url = next_url
+    return None, "skipped-redirect-loop"
+
+
+def polite_page_fetch(url: str, method: str = "GET"):
+    return bounded_redirect_fetch(
+        url,
+        lambda next_url: polite_fetch(
+            next_url, method=method, stream=True, allow_redirects=False
+        ),
+    )
+
+
+def bounded_page_body(resp) -> tuple[bytes | None, str]:
+    """Read at most one small HTML page from a streamed response."""
+    skip = page_url_skip(resp.url or "", redirected=True)
+    if skip:
+        return None, skip
+    content_type = resp.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+    if content_type and content_type not in (
+        "text/html",
+        "application/xhtml+xml",
+        "text/plain",
+    ):
+        return None, "skipped-non-html"
+    try:
+        declared = int(resp.headers.get("Content-Length", "0"))
+    except ValueError:
+        declared = 0
+    if declared > PAGE_BODY_LIMIT:
+        return None, "skipped-oversize"
+    body = bytearray()
+    for chunk in resp.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        if len(body) + len(chunk) > PAGE_BODY_LIMIT:
+            return None, "skipped-oversize"
+        body.extend(chunk)
+        if len(body) <= len(chunk):
+            sample = chunk[:512]
+            if (
+                b"\x00" in sample
+                or sample.startswith((b"%PDF", b"\x89PNG", b"PK\x03\x04"))
+                or sample[4:8] == b"ftyp"
+                or (
+                    not content_type
+                    and sample
+                    and sum(c in b"\t\n\r" or 32 <= c <= 126 for c in sample)
+                    < len(sample) * 0.8
+                )
+            ):
+                return None, "skipped-non-html"
+    return bytes(body), ""
+
+
+def _body_fingerprint(body: bytes) -> tuple:
+    return len(body), hashlib.sha256(body).hexdigest()
+
+
+def _sizes_close(a: int, b: int, tolerance: float = CATCH_ALL_SIZE_TOLERANCE) -> bool:
+    if a <= 0 or b <= 0:
+        return False
+    return abs(a - b) / max(a, b) <= tolerance
+
+
+def is_same_domain(host: str, domain: str) -> bool:
+    """True when `host` (a fetched response's own netloc) is the
+    government's own domain or a subdomain of it -- the "probed URL's own
+    path" case this WO's fix disqualifies as evidence. False when the
+    request actually landed on a different host (a real redirect or
+    delegation to a vendor's own infrastructure), which is genuine page
+    evidence rather than a guessed path."""
+    host = (host or "").lower()
+    domain = (domain or "").lower()
+    if not host or not domain:
+        return True
+    return host == domain or host.endswith("." + domain)
+
+
+def is_catch_all_response(body: bytes, refs: dict) -> bool:
+    """WO-278: compares one probed response's body against the domain's
+    own nonsense-path and homepage references (see
+    `fetch_domain_reference()`). A match on size or hash against EITHER
+    reference means this host answers an unrelated path with (close to)
+    the same body it gave for a made-up path or its own homepage -- the
+    exact catch-all shape WO-260/268/272 already documented."""
+    if not body:
+        return False
+    size, digest = _body_fingerprint(body)
+    for ref in refs.values():
+        if ref is None:
+            continue
+        ref_size, ref_digest = ref
+        if digest == ref_digest or _sizes_close(size, ref_size):
+            return True
+    return False
+
+
+def fetch_domain_reference(domain: str) -> dict:
+    """Fetches one nonsense path and the homepage ONCE per government,
+    used only to detect a catch-all host (WO-278's fix). A fetch failure
+    is recorded as None rather than raising -- a domain with no usable
+    reference simply never catches anything via this guard; the 800-byte
+    floor and content-only matching in `fetch_and_score()` are the
+    primary defenses, this is the second one, so it fails open rather
+    than blocking the whole domain on a transient error."""
+    label = "".join(
+        random.choices(string.ascii_lowercase + string.digits, k=NONSENSE_LABEL_LEN)
+    )
+    nonsense_url = f"https://{domain}/rtr-probe-{label}"
+    homepage_url = f"https://{domain}/"
+    refs = {}
+    for kind, url in (("nonsense", nonsense_url), ("homepage", homepage_url)):
+        try:
+            resp = polite_fetch(url, method="GET")
+            refs[kind] = (
+                _body_fingerprint(resp.content)
+                if resp.status_code == 200 and resp.content
+                else None
+            )
+        except Exception:  # noqa: BLE001
+            refs[kind] = None
+    return refs
+
+
+def name_matches(html: str, city_name: str, state: str) -> bool:
+    if not html or not city_name:
+        return False
+    text = html.lower()
+    city_tokens = re.findall(r"[a-z]+", city_name.lower())
+    city_hit = any(len(t) > 2 and t in text for t in city_tokens)
+    state_hit = bool(state) and state.lower() in text
+    return city_hit and state_hit
+
+
 def body_hash(body: bytes) -> str:
     return hashlib.sha1(body[:4000]).hexdigest() if body else ""
 
@@ -110,7 +450,7 @@ def catchall_signature(domain: str) -> dict:
     catch-all template answering every path the same way."""
     url = f"https://{domain}{nonsense_path()}"
     try:
-        resp = w273t.polite_fetch(url, method="GET")
+        resp = polite_fetch(url, method="GET")
         body = resp.content or b""
         return {
             "status": resp.status_code,
@@ -244,7 +584,7 @@ def fetch_and_score_v2(
         "error": "",
         "timing_ms": 0,
     }
-    body, used_archive = w273t.try_wayback_archived_body(url)
+    body, used_archive = try_wayback_archived_body(url)
     html = ""
     if body is not None:
         out["fetch_method"] = "archived_id_"
@@ -257,7 +597,7 @@ def fetch_and_score_v2(
     else:
         head_status = None
         try:
-            head_resp = w273t.polite_fetch(url, method="HEAD")
+            head_resp = polite_fetch(url, method="HEAD")
             head_status = head_resp.status_code
             alive = head_status < 400
         except Exception:  # noqa: BLE001
@@ -270,12 +610,12 @@ def fetch_and_score_v2(
             return out
         out["fetch_method"] = "live"
         try:
-            resp = w273t.polite_fetch(url, method="GET")
+            resp = polite_fetch(url, method="GET")
             out["http_status"] = resp.status_code
             body = resp.content or b""
             out["body_len"] = len(body)
             if resp.status_code == 200 and resp.text:
-                if w273.is_challenge(resp.text):
+                if is_challenge(resp.text):
                     out["error"] = "challenge-gate"
                 else:
                     html = resp.text
@@ -290,8 +630,8 @@ def fetch_and_score_v2(
         out["catchall_confirmed"] = True
 
     if html and not out["catchall_confirmed"] and out["body_len"] >= BODY_FLOOR_BYTES:
-        out["name_match"] = w273t.name_matches(html, name, state)
-        signals = w273t.platform_fingerprints.fingerprint(html, url=url)
+        out["name_match"] = name_matches(html, name, state)
+        signals = platform_fingerprints.fingerprint(html, url=url)
         if signals:
             best = max(signals, key=lambda s: s[2])
             out["platform_signal"] = f"{best[0]}:{best[1]}({best[2]:.2f})"

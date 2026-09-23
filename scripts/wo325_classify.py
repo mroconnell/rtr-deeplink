@@ -64,7 +64,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from wo273_classify import (  # noqa: E402
+from wo282_classify import (  # noqa: E402
     all_urls_from_record,
     dns_platform,
     hub_score,

@@ -60,7 +60,7 @@ def test_challenge_markers_is_immutable():
         "wo268_passive_discovery",
         "wo270_wordpress_pilot",
         "wo272_probe_first_party_paths",
-        "wo273_recon",
+        "wo282_recon",
     ],
 )
 def test_every_consolidated_script_shares_the_canonical_list(module_name):
@@ -70,7 +70,7 @@ def test_every_consolidated_script_shares_the_canonical_list(module_name):
     the shared constant instead -- this pins that they all see the exact
     same, current (Radware-inclusive) list, not just "a" list.
 
-    Value equality, not `is`: three of the nine (wo268/wo270/wo273) import
+    Value equality, not `is`: three of the nine (wo268/wo270/wo282) import
     it bare (`from challenge_markers import ...`, not `scripts.challenge_
     markers`, since they don't otherwise add the repo root to sys.path --
     see each one's own WO-939 comment), which loads the same file under a

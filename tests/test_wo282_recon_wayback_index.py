@@ -62,7 +62,10 @@ def _homepage_stub(domain):
 @pytest.mark.parametrize("module_name", RECON_MODULES)
 def test_process_government_v2_records_wayback_top_urls(monkeypatch, module_name):
     mod = importlib.import_module(f"scripts.{module_name}")
-    w273 = mod.w273
+    # WO-1019 folded wo273_recon's helpers into wo282_recon itself, so
+    # wo282_recon has no `w273` alias; the clones still reach the helpers
+    # through one. Patch whichever module actually holds them.
+    w273 = getattr(mod, "w273", mod)
 
     monkeypatch.setattr(mod, "maybe_refresh_cdx_health", lambda: True)
     monkeypatch.setattr(mod, "dns_has_any_answer", lambda _info: True)

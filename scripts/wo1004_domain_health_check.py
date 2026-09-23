@@ -1,6 +1,6 @@
 """WO-1004 (2026-09-22): give the registry's `domain` field an automatic
 health check, by reusing the passive-discovery pipeline's own fetch and
-identity-check machinery (`scripts/wo273_targeted.py`, imported
+identity-check machinery (`scripts/wo282_targeted.py`, imported
 unchanged: `polite_page_fetch`/`bounded_page_body` for the fetch,
 `is_catch_all_response`/`_body_fingerprint` for the parked-domain guard,
 `name_matches` for the identity check) against every government that
@@ -33,7 +33,7 @@ around it -- the fetch, the catch-all guard, the identity check, the
 per-host rate limiter, the wall-clock deadline, and the refusal to ever
 follow a redirect onto a youtube.com/youtu.be host (already wired into
 `bounded_page_body`'s own `page_url_skip()`) -- is imported unchanged
-from `wo273_targeted.py`. This is deliberately a thin driver, not a new
+from `wo282_targeted.py`. This is deliberately a thin driver, not a new
 ladder, the same shape WO-152's own docstring describes for its reuse of
 `wo147_access_ladder_sweep.py`.
 
@@ -100,7 +100,7 @@ from threading import Lock
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from wo273_targeted import (  # noqa: E402
+from wo282_targeted import (  # noqa: E402
     NONSENSE_LABEL_LEN,
     _body_fingerprint,
     bounded_page_body,

@@ -47,7 +47,7 @@ from bs4 import BeautifulSoup
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-import wo273_recon as w273  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 POPULATION_CSV = RESEARCH_DIR / "wo321_population.csv"

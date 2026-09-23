@@ -56,7 +56,7 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.passive_verify import verify_hub  # noqa: E402
 
 import scripts.wo147_access_ladder_sweep as ladder  # noqa: E402
-import scripts.wo273_recon as w273  # noqa: E402
+import scripts.wo282_recon as w273  # noqa: E402
 import scripts.wo283_recon as w283  # noqa: E402
 
 register_all_finders()

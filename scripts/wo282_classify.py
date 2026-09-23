@@ -1,10 +1,13 @@
 """WO-282 (2026-09-12): passive discovery v2, phase 2 -- offline
 classification over phase 1's raw recon file (`wo282_recon.jsonl`).
 
-Builds on `wo273_classify.py`'s scoring (imported, not duplicated):
+Builds on WO-273's own scoring, moved in verbatim (WO-1019, 2026-09-23,
+now that WO-273's own scripts are retired) rather than duplicated:
 vendor-host/DNS platform detection, the measured HUB/MEETING flag-word
-lift tables, and the named first-party path shapes. Adds what WO-273's
-phase 2 could not do because WO-273's phase 1 never fetched a homepage:
+lift tables (imported from `wo282_recon.py`, which is where the flag-word
+tables themselves live), and the named first-party path shapes. Adds what
+WO-273's phase 2 could not do because WO-273's phase 1 never fetched a
+homepage:
 
   - Every homepage link phase 1 cached (recon record's `homepage.links`,
     each with href/anchor text/`nav`|`footer`|`menu`|`body` position) is
@@ -65,12 +68,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from wo273_classify import (  # noqa: E402
-    all_urls_from_record,
-    dns_platform,
+from wo282_recon import (  # noqa: E402
+    _PATH_SHAPE_PLATFORMS,
+    _PLATFORM_ALIASES,
     hub_score,
     meeting_score,
-    vendor_platform_for_url,
 )
 
 from app.platforms.base import detect_platform  # noqa: E402
@@ -133,6 +135,139 @@ def is_unresolvable_third_party_host(url: str) -> bool:
 
 def log(msg: str) -> None:
     print(msg, flush=True)
+
+
+# --------------------------------------------------------------------------
+# Moved here from wo273_classify.py (WO-1019, 2026-09-23): WO-273's own
+# scripts are retired, but this vendor-host/DNS platform scoring is real,
+# shared logic this file (and every other wo282_classify.py-style import
+# of it) still calls. Moved verbatim, not rewritten. `dns_subdomain_
+# candidates()`/`DNS_VIDEO_LABELS`/`DNS_HUB_LABELS`/`DNS_HUB_SCORE`/
+# `DNS_MEETING_SCORE` -- WO-273's own A-record-only guessed-subdomain
+# rule (#1275, 2026-09-21) -- are intentionally NOT part of this move;
+# see the separate block below this one for that addition, wired into
+# `classify_record()`'s own candidate building.
+# --------------------------------------------------------------------------
+
+
+def vendor_platform_for_url(url: str) -> str:
+    host = urlparse(url).netloc.lower()
+    for alias, platform in _PLATFORM_ALIASES.items():
+        if alias in host:
+            return platform
+    path = urlparse(url).path
+    for rx, platform in _PATH_SHAPE_PLATFORMS:
+        if rx.search(path):
+            return platform
+    return ""
+
+
+def all_urls_from_record(rec: dict) -> list:
+    """Every URL phase 1 saw for this government, from every source it
+    recorded -- deduplicated, order preserved (sitemap first, since it's
+    the government's own stated navigation; then the Wayback CDX top-N
+    scored URLs -- `top_urls`; then Common Crawl)."""
+    urls = []
+    seen = set()
+
+    def add_many(lst):
+        for u in lst or []:
+            if u and u not in seen:
+                seen.add(u)
+                urls.append(u)
+
+    add_many(rec.get("sitemap_urls"))
+    add_many((rec.get("wayback_index") or {}).get("top_urls"))
+    add_many((rec.get("common_crawl") or {}).get("urls"))
+    return urls
+
+
+def dns_platform(rec: dict) -> tuple:
+    """Returns (platform, evidence) from DNS, or ("", "") if none.
+    Mirrors wo282_recon.py's own dns_lookup()/process_government_v2()
+    logic (not imported, since that lives with the DNS-fetch code, not
+    the scoring code -- duplicated here deliberately, small enough to
+    keep in sync by inspection)."""
+    dns = rec.get("dns") or {}
+    for sub in dns.get("resolving_subdomains", []):
+        if sub.get("likely_own_domain_wildcard"):
+            continue
+        cname = (sub.get("cname") or "").lower()
+        for alias, platform in _PLATFORM_ALIASES.items():
+            if alias in cname:
+                return platform, f"{sub['host']} CNAME -> {sub['cname']}"
+    for vl in dns.get("resolving_vendor_labels", []):
+        return vl["platform"], f"guessed tenant host resolves: {vl['host']}"
+    return "", ""
+
+
+# --------------------------------------------------------------------------
+# WO-273 addendum, PR #1275 (2026-09-21): A-record-only guessed
+# subdomains (live.pomonaca.gov -- Cablecast, an A record with no CNAME
+# to any known vendor, the shape the CNAME-only vendor-alias match above
+# can never see). Folded into wo282_classify.py's own candidate building
+# (WO-1019, 2026-09-23) as a `source="dns-subdomain"` entry in
+# `classify_record()`'s `all_candidates`, rather than as separate
+# best_hub_url/best_meeting_url fields the way WO-273's own
+# classify_record() tracked them -- this file's candidate model is a
+# single ranked list, not per-kind best-of, so both DNS-subdomain kinds
+# score at this file's own medium-confidence floor (20.0) instead of
+# WO-273's original 20.0 (hub) / 8.0 (meeting) split; a real sitemap/
+# Wayback URL that also reaches that score still wins ties, since
+# `all_candidates` is built from sitemap/Wayback/homepage URLs first and
+# DNS-subdomain candidates are only added afterward (Python dicts keep
+# insertion order, and `sorted()` is stable).
+# --------------------------------------------------------------------------
+
+DNS_VIDEO_LABELS = {"video", "live", "stream", "media", "mediasite"}
+DNS_HUB_LABELS = {
+    "agenda",
+    "agendas",
+    "meetings",
+    "events",
+    "docs",
+    "weblink",
+    "laserfiche",
+    "onbase",
+    "granicus",
+    "legistar",
+    "civicweb",
+    "boarddocs",
+}
+DNS_SUBDOMAIN_CANDIDATE_SCORE = 20.0
+
+
+def dns_subdomain_candidates(rec: dict) -> list[dict]:
+    """[{url, source, score, kind}] for each resolving, non-wildcard
+    guessed subdomain -- kind is "meeting-detail" or "hub". Pure, no
+    network."""
+    out = []
+    for sub in (rec.get("dns") or {}).get("resolving_subdomains", []):
+        if sub.get("likely_own_domain_wildcard"):
+            continue
+        label = (sub.get("subdomain") or "").lower()
+        host = sub.get("host")
+        if not host:
+            continue
+        if label in DNS_VIDEO_LABELS:
+            out.append(
+                {
+                    "url": f"https://{host}/",
+                    "source": "dns-subdomain",
+                    "score": DNS_SUBDOMAIN_CANDIDATE_SCORE,
+                    "kind": "meeting-detail",
+                }
+            )
+        elif label in DNS_HUB_LABELS:
+            out.append(
+                {
+                    "url": f"https://{host}/",
+                    "source": "dns-subdomain",
+                    "score": DNS_SUBDOMAIN_CANDIDATE_SCORE,
+                    "kind": "hub",
+                }
+            )
+    return out
 
 
 def load_records() -> list:
@@ -289,6 +424,17 @@ def classify_record(rec: dict) -> dict:
 
     hp_candidates, site_builder = homepage_candidates(rec)
     for c in hp_candidates:
+        existing = all_candidates.get(c["url"])
+        if existing is None or c["score"] > existing["score"]:
+            all_candidates[c["url"]] = c
+
+    # #1275 addendum (see dns_subdomain_candidates()'s own comment):
+    # added last, so a real sitemap/Wayback/homepage URL already in
+    # all_candidates at an equal or higher score keeps its earlier
+    # (better) rank -- `all_candidates` is a dict keyed by URL, and a
+    # DNS-subdomain guess is a weaker signal than an independently
+    # found URL of the same score.
+    for c in dns_subdomain_candidates(rec):
         existing = all_candidates.get(c["url"])
         if existing is None or c["score"] > existing["score"]:
             all_candidates[c["url"]] = c

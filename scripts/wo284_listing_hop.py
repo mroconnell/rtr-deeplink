@@ -37,15 +37,15 @@ three groups that leaves:
       with the widened WO-285 scanner before giving up a second time.
 
 Reuses, not reimplements: `wo281_homepage_hop.fetch_with_ladder/
-extract_links/fetch_and_confirm/link_kind_for_url`, `wo273_recon`'s
-HEADERS/RATE_LIMITER/is_challenge/vendor_family_for_url, `wo273_targeted.
+extract_links/fetch_and_confirm/link_kind_for_url`, `wo282_recon`'s
+HEADERS/RATE_LIMITER/is_challenge/vendor_family_for_url, `wo282_targeted.
 try_wayback_archived_body/name_matches`, `wo147_access_ladder_sweep.
 find_hop_links`, `wo264_overnight_sweep.find_video_candidates`,
 `wo235_channel_pilot.find_youtube_links/classify_youtube_url`,
 `app.platforms.base.detect_platform`.
 
 Politeness: concurrency 32 governments in flight (--concurrency), one
-request per host >=2.5s apart (`wo273_recon.RATE_LIMITER`, imported not
+request per host >=2.5s apart (`wo282_recon.RATE_LIMITER`, imported not
 reimplemented), archive-first fetch, browser headers only after a 403 or
 a dropped connection, stop cold at a human-verification gate.
 
@@ -76,7 +76,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from wo273_recon import (  # noqa: E402
+from wo282_recon import (  # noqa: E402
     vendor_family_for_url,
 )
 import wo281_homepage_hop as h1  # noqa: E402
