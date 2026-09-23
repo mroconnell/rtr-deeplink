@@ -148,6 +148,43 @@ _FILE_PATH_RE = re.compile(
     r"mp4:(?P<slug>[^/]+)/(?P<date>\d{4}-\d{2}-\d{2})_(?P<num_id>\d+)_(?P<title>[^/]+?)\.mp4"
 )
 
+# A town's own listing page (`/towns/{slug}`, an alias confirmed
+# byte-identical to `town.php?id={location_id}` -- see BACKLOG.md's
+# original 2026-08-20 enumeration writeup) is not one meeting -- `resolve()`
+# used to fail on it outright ("Could not find Town Hall Streams' video
+# configuration on this page", since there's no jwplayer setup on a
+# listing page at all). Found live 2026-09-23 (Ryan, hand-checking
+# CivicPlus governments whose homepage links out to a separate video
+# platform): Hollis NH's town page alone lists 116 real past meetings.
+#
+# Real duplication caught the same day, before this shipped: a listing
+# walker for this exact page shape already existed --
+# `app/platforms/passive_verify.py`'s `_townhallstreams_walker()` (WO-344,
+# 2026-09-13) -- built for the sweep-script verification path
+# (`verify_hub()`), not this adapter's own `resolve()`, which is why
+# giving it a `/towns/{slug}` URL directly still failed until now. Ryan
+# caught the duplication ("how did you not check for a walker before?")
+# before a second, hand-rolled regex parser shipped alongside it. Reusing
+# that walker here instead: it's more robust (BeautifulSoup-based, reads
+# an anchor's own visible text rather than assuming an exact `<h5>`/`<p>`
+# markup shape) and already handles the real "Upcoming Events" vs
+# "Previous Events" ambiguity (both sections render the same card shape;
+# it filters by date <= today rather than relying on either section's
+# heading text).
+#
+# A town's own listing page -- either the friendly `/towns/{slug}` alias
+# or the underlying `town.php?id={location_id}` page it's byte-identical
+# to (BACKLOG.md, 2026-08-20). Checked as a whole-path match, not just a
+# substring, so it can never accidentally also match `stream.php`. Only
+# the `/towns/{slug}` shape is confirmed live; `town.php?id=` is a known
+# equivalent (per BACKLOG.md) but not separately tested here.
+_TOWN_LISTING_RE = re.compile(r"^/towns/[^/]+/?$")
+
+# Same value/reasoning as `scripts/resolve_phase3_confirmed.py`'s own
+# `MAX_TRIED` -- see `_resolve_town_listing()`'s own docstring for the
+# real gap this bounded retry closes.
+_LISTING_MAX_TRIED = 6
+
 # Same scope/source as GranicusAssetFinder.US_STATE_ABBREVIATIONS -- not
 # imported from there since no real Canadian townhallstreams customer is
 # confirmed yet to justify reaching for the wider (US+Canada) private sets
@@ -224,6 +261,9 @@ class TownHallStreamsAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if _TOWN_LISTING_RE.match(urlparse(url).path):
+            return await self._resolve_town_listing(url)
+
         location_id, meeting_id = self._extract_ids(url)
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
@@ -278,6 +318,44 @@ class TownHallStreamsAssetFinder(AssetFinder):
             segments=[],
             transcript_warnings=transcript_warnings,
         )
+
+    async def _resolve_town_listing(self, url: str) -> ResolvedMeeting:
+        """A `/towns/{slug}` listing page -- finds real past meetings via
+        the shared `_townhallstreams_walker()` (see this module's own
+        docstring above for why that one, not a new one here), then
+        re-resolves through each candidate's own canonical `stream.php?
+        location_id=..&id=..` URL, newest first, reusing `resolve()`'s
+        own already-correct single-meeting path (video, jurisdiction,
+        caption check) rather than duplicating it.
+
+        Tries up to `_LISTING_MAX_TRIED` candidates, not just the single
+        newest -- real gap found live 2026-09-23 on Moultonborough NH:
+        the walker's own newest-dated result was a same-day meeting
+        ("Community AI presentation," dated today) whose own `stream.php`
+        page genuinely has no video configuration yet -- presumably
+        recorded but not yet processed/uploaded -- while 670 older real
+        meetings right behind it do. Same `MAX_TRIED`-style bounded retry
+        this repo already uses elsewhere (e.g. `scripts/
+        resolve_phase3_confirmed.py`'s `CalendarPageError` handling) for
+        the same reason: the single newest candidate on a listing isn't
+        always the right one to trust blindly."""
+        from .passive_verify import _townhallstreams_walker
+
+        candidates = await _townhallstreams_walker(url)
+        if not candidates:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "No past meeting found in this town's listing page."
+                ],
+            )
+        last_result: Optional[ResolvedMeeting] = None
+        for candidate in candidates[:_LISTING_MAX_TRIED]:
+            last_result = await self.resolve(candidate["url"])
+            if last_result.video_url:
+                return last_result
+        return last_result
 
     @staticmethod
     def _find_video_url(html: str) -> Optional[str]:
