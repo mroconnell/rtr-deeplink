@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` kept (code still uses it) [Done 2026-09-23]
+## WO-1017: `reject_reason` taxonomy cleanup — `rejected-by-probe` spelling fix, three undocumented values added to §23, `cablecast-no-vod` removed [Done 2026-09-23]
 
 **Issue.** Ryan asked for four cleanups to the research file's
 `reject_reason` taxonomy in `~/Documents/rtr-business/research/
@@ -10,17 +10,21 @@ written, document three in-use-but-undocumented values
 (`blocked-waf-akamai`, `deferred-french-vocab`, `shared-gov-exception`),
 and point the doc's top-part "record the outcome" guidance at §23.
 
-**`cablecast-no-vod`: not removed.** Grepped both repos first, per this
-file's own "verify before acting" rule. `rtr-deeplink/scripts/
-coverage_alternates.py` still lists it in `CONTENT_REASONS`,
-`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, and
-`tests/test_coverage_alternates.py` asserts all three memberships —
-live, tested code, not just a doc mention. Removing the doc entry would
-leave the taxonomy and the code disagreeing about a value the code
-still actively classifies (the alternate-domain-hop trigger for it is
-real, working logic, just not exercised by any current row). Left the
-addendum in place with a 2026-09-23 note explaining why, flagged for
-Ryan to decide whether to also retire the code path.
+**`cablecast-no-vod`: removed (after a conductor re-check).** The first
+pass grepped both repos and found `rtr-deeplink/scripts/
+coverage_alternates.py` still listing it in `CONTENT_REASONS`,
+`MEETING_FOUND_NO_VIDEO_REASONS` and `NEVER_RETRY_REASONS`, with
+`tests/test_coverage_alternates.py` asserting all three memberships —
+live, tested code, not just a doc mention — so it was left in place on
+the first PR revision, flagged for Ryan. The conductor's review of that
+PR confirmed those classification-list memberships and their test
+assertions were the ONLY code references anywhere: nothing writes the
+value, and 0 research rows carry it, so removing it changes no runtime
+behavior. Removed from both `frozenset`s in `coverage_alternates.py`
+and from the test (each left a one-line comment: "approved 2026-09-14,
+never used, removed 2026-09-23 per Ryan"); the §23 addendum in
+`ENUMERATION_METHODS.md` updated from "NOT removed" to "removed" the
+same way (locked, re-read, atomic replace).
 
 **`rejected_by_probe` → `rejected-by-probe`.** `scripts/
 wo134_confirmed_hits_ingest.py` now defines
