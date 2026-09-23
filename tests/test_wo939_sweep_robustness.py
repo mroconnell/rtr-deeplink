@@ -5,10 +5,11 @@ already have their own dedicated test file --
 - wo191_access_ladder_sweep.py's init_headless_budget() (was two manual
   steps a reusing WO had to remember; forgetting the second silently
   inherited a stale cumulative count -- the real WO-218 incident).
-- wo273_recon.py's/wo273_targeted.py's polite_request()/polite_fetch()/
-  cdx_get()/wayback_id_read() now wrap their requests.request()/
-  requests.get() calls in run_with_deadline(), the shared fix for the
-  real WO-322 slow-trickling-response hang.
+- wo282_recon.py's/wo282_targeted.py's polite_request()/polite_fetch()/
+  cdx_get()/wayback_id_read() (moved verbatim from the now-retired
+  wo273_recon.py/wo273_targeted.py, WO-1019 2026-09-23) wrap their
+  requests.request()/requests.get() calls in run_with_deadline(), the
+  shared fix for the real WO-322 slow-trickling-response hang.
 
 (scripts/sweep_deadline.py and scripts/challenge_markers.py have their own
 test files; app/platforms/base.py's youtube_resolve_guard()/
@@ -111,31 +112,33 @@ def test_wo218_ladder_sweep_uses_init_headless_budget_not_the_old_two_step_dance
     assert "wo191._headless_used = wo191._load_headless_used()" not in source
 
 
-def test_wo273_recon_polite_request_and_cdx_calls_use_run_with_deadline():
-    # wo273_recon.py imports run_with_deadline bare (`from sweep_deadline
+def test_wo282_recon_polite_request_and_cdx_calls_use_run_with_deadline():
+    # wo282_recon.py imports run_with_deadline bare (`from sweep_deadline
     # import ...`, not `scripts.sweep_deadline` -- see its own WO-939
-    # comment), so it's re-imported the same way here rather than via
-    # tests.sweep_deadline's own `scripts.sweep_deadline` path -- same
-    # dual-import-path note as test_challenge_markers.py.
-    w273 = _import_script("wo273_recon")
+    # comment, carried over verbatim from the retired wo273_recon.py), so
+    # it's re-imported the same way here rather than via tests.sweep_
+    # deadline's own `scripts.sweep_deadline` path -- same dual-import-path
+    # note as test_challenge_markers.py.
+    w282 = _import_script("wo282_recon")
     bare_deadline_module = _import_script("sweep_deadline")
-    source = Path("scripts/wo273_recon.py").read_text()
+    source = Path("scripts/wo282_recon.py").read_text()
 
-    assert w273.run_with_deadline is bare_deadline_module.run_with_deadline
+    assert w282.run_with_deadline is bare_deadline_module.run_with_deadline
     # All three real hang sites identified while re-deriving this entry
     # (polite_request()'s live robots.txt/sitemap fetch, cdx_get()'s and
     # wayback_id_read()'s archive calls) now route through it.
     assert source.count("run_with_deadline(") >= 3
 
 
-def test_wo273_targeted_polite_fetch_uses_run_with_deadline():
-    # wo273_targeted.py is the "phase 3" sibling of wo273_recon.py, with
-    # its own separate polite_fetch() carrying the identical WO-322 gap
+def test_wo282_targeted_polite_fetch_uses_run_with_deadline():
+    # wo282_targeted.py is the "phase 3" sibling of wo282_recon.py, with
+    # its own separate polite_fetch() (moved verbatim from the retired
+    # wo273_targeted.py, WO-1019) carrying the identical WO-322 gap
     # (confirmed live: wo337_targeted.py's own capped_polite_fetch() was
     # already built as a workaround in ITS OWN copy specifically because
     # this shared module still needed the real fix -- see that file's own
     # comment). Fixed here at the shared-module level instead.
-    w273t = _import_script("wo273_targeted")
+    w282t = _import_script("wo282_targeted")
     bare_deadline_module = _import_script("sweep_deadline")
-    assert w273t.run_with_deadline is bare_deadline_module.run_with_deadline
-    assert "run_with_deadline" in Path("scripts/wo273_targeted.py").read_text()
+    assert w282t.run_with_deadline is bare_deadline_module.run_with_deadline
+    assert "run_with_deadline" in Path("scripts/wo282_targeted.py").read_text()
