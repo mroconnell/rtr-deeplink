@@ -61370,3 +61370,14 @@ Original finding and investigation history (preserved from BACKLOG.md):
   - **Next action**: add `video_format=getattr(result, "video_format", None)` to the `probe_queue_entry(...)` call in `_real_probe_hook()` (`scripts/wo169_probe_rejected_rerun.py:119-123`) — a one-line change, same shape `queue_probe.probe_queue_entry()`'s own docstring already documents as the fix for this exact gap.
   - **Constraint**: none known — `probe_queue_entry()`'s `video_format` parameter already exists and already prefers a caller-supplied value over its own internal resolve, so this needs no other change.
   - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (found while live-verifying WO-166's own 7 confirmed governments through this exact hook).
+
+
+## [Done 2026-09-22] Gov Coverage 54-row reconciliation
+
+Audited the 54 research rows marked transcribed with no exact production government ID match. None was a recorded consolidated alias. Results: 29 research rows pointed to 28 pages with blank IDs (both Hamilton NJ rows shared a page), 10 pointed to a different ID, 3 URLs were absent and 12 rows lacked a meeting URL.
+
+After Ryan authorized making the clear corrections, applied 32 page-specific HTTP overrides for 31 governments: the 28 blank-ID pages (Hamilton to Mercer, not Atlantic), two North Bay pages, Collierville and Dover. All 32 were verified in a fresh full export with manual_override protection. Corrected the local Hamilton per-video pin; that local change is not yet deployed. No pages deleted or re-ingested.
+
+Cleared unsupported transcribed flags on the remaining 23 audit rows, marked 16 wrong research associations, restored 28 shared-gov-exception labels, and cleared 3 noncanonical flags. Research writes used flock, a fresh read, HEAD-derived 99% row-count floor, atomic replace, and LF. No row removal. Rebuilt the dashboard with 5,783 covered governments; every row page count matches the post-correction production export.
+
+Evidence and before/after records: `../rtr-business/research/coverage_join_audit_2026-09-22/README.md`, `rows.csv`, `research_changes.csv`, `override_dry_run.json`, `override_applied.json`, `production_after.csv`. The hosted artifact still needs republishing from `../rtr-business/research/coverage_registry/coverage_registry_hosted.html`; no Claude artifact publisher is available in this session. Residual unidentified pages remain in BACKLOG.md.

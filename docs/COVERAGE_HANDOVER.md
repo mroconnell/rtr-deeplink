@@ -74,6 +74,49 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
 
 ### Gov Coverage (the coverage registry: per government, all of North America)
 
+#### Required refresh and publication procedure
+
+Only this command is sanctioned for a Gov Coverage dashboard refresh
+(Ryan, 2026-09-22):
+
+```bash
+cd ~/Documents/rtr-business && ./research/refresh_coverage_registry.sh
+```
+
+It exports the current Archive meeting inventory from production over
+HTTP through `rtr-deeplink/scripts/export_meeting_inventory.py` (read-only),
+then rebuilds `research/coverage_registry/coverage_registry.csv`,
+`coverage_registry.html`, `COVERAGE_REGISTRY_SUMMARY.md`,
+`coverage_registry_summary.json`, `minted_orphans.csv`, and the
+publisher-safe `coverage_registry_hosted.html`. It joins that fresh export
+to the current research file, discovery ledger, and upcoming roster.
+Do not substitute a direct `coverage_registry.py` run against an old export.
+
+Publish to the existing [Gov Coverage artifact](https://claude.ai/code/artifact/ef70f539-fe0e-469b-bc61-01662ed81a98):
+
+1. Read the existing artifact with the `Artifact` tool, `action: read`,
+   using that URL.
+2. Review the freshly generated summary and refresh timestamp. Publish
+   `research/coverage_registry/coverage_registry_hosted.html` with `url`
+   set to the same artifact URL, so it updates in place. Do not publish
+   `coverage_registry.html`: its source/video URL columns are rejected by
+   the publisher.
+3. Open the published artifact and verify its refresh timestamp and
+   counts against this run's output.
+4. For the refresh commit, stage only `research/coverage_registry/`.
+   The CSV, Markdown, JSON, and `minted_orphans.csv` are tracked; the HTML
+   files are gitignored. Do not include unrelated research edits.
+
+After identity corrections in production, or label/flag corrections in
+the research file, hand off this procedure, not prebuilt HTML. The next
+run picks up those corrected inputs automatically. The publishing agent
+must rerun the source-of-truth pipeline and review its output rather than
+trust another session's claims about production writes. Research repairs
+are separate from the read-only production export; this refresh does not
+itself change production or repair `jurisdiction_coverage.csv`.
+
+#### Sources and interpretation
+
 - Code: `rtr-business/research/coverage_registry.py`, run by
   `rtr-business/research/refresh_coverage_registry.sh` (which first runs
   the inventory export in this repo). Outputs in
@@ -121,12 +164,13 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
   the Archive" down by reject reason.
 - A scheduled task ("Daily coverage registry refresh", 7:09 local, runs
   while the desktop app is open) refreshes it, republishes the hosted
-  page, and commits the outputs. Re-running by hand is the one script
-  above. **`jurisdiction_coverage.csv`'s own `transcribed` column drifts
+  page, and commits the outputs. Both scheduled and manual refreshes follow
+  the required procedure above. **`jurisdiction_coverage.csv`'s own `transcribed` column drifts
   from the Archive** (pages get deleted or re-keyed, and nothing else
   writes it back) — `research/refresh_transcribed_flag.py` (WO-301,
   2026-09-12) corrects it against a fresh archive-inventory export and
-  should run before this refresh; see that script's own docstring and
+  is a separate research repair, not an extra required refresh command;
+  see that script's own docstring and
   `ENUMERATION_METHODS.md` §311 for the join rules and the caution on
   its `queued`/`parked` columns undercounting shared-host queue lines.
 
