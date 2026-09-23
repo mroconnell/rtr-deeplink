@@ -201,6 +201,75 @@ def dns_platform(rec: dict) -> tuple:
     return "", ""
 
 
+# --------------------------------------------------------------------------
+# WO-273 addendum, PR #1275 (2026-09-21): A-record-only guessed
+# subdomains (live.pomonaca.gov -- Cablecast, an A record with no CNAME
+# to any known vendor, the shape the CNAME-only vendor-alias match above
+# can never see). Folded into wo282_classify.py's own candidate building
+# (WO-1019, 2026-09-23) as a `source="dns-subdomain"` entry in
+# `classify_record()`'s `all_candidates`, rather than as separate
+# best_hub_url/best_meeting_url fields the way WO-273's own
+# classify_record() tracked them -- this file's candidate model is a
+# single ranked list, not per-kind best-of, so both DNS-subdomain kinds
+# score at this file's own medium-confidence floor (20.0) instead of
+# WO-273's original 20.0 (hub) / 8.0 (meeting) split; a real sitemap/
+# Wayback URL that also reaches that score still wins ties, since
+# `all_candidates` is built from sitemap/Wayback/homepage URLs first and
+# DNS-subdomain candidates are only added afterward (Python dicts keep
+# insertion order, and `sorted()` is stable).
+# --------------------------------------------------------------------------
+
+DNS_VIDEO_LABELS = {"video", "live", "stream", "media", "mediasite"}
+DNS_HUB_LABELS = {
+    "agenda",
+    "agendas",
+    "meetings",
+    "events",
+    "docs",
+    "weblink",
+    "laserfiche",
+    "onbase",
+    "granicus",
+    "legistar",
+    "civicweb",
+    "boarddocs",
+}
+DNS_SUBDOMAIN_CANDIDATE_SCORE = 20.0
+
+
+def dns_subdomain_candidates(rec: dict) -> list[dict]:
+    """[{url, source, score, kind}] for each resolving, non-wildcard
+    guessed subdomain -- kind is "meeting-detail" or "hub". Pure, no
+    network."""
+    out = []
+    for sub in (rec.get("dns") or {}).get("resolving_subdomains", []):
+        if sub.get("likely_own_domain_wildcard"):
+            continue
+        label = (sub.get("subdomain") or "").lower()
+        host = sub.get("host")
+        if not host:
+            continue
+        if label in DNS_VIDEO_LABELS:
+            out.append(
+                {
+                    "url": f"https://{host}/",
+                    "source": "dns-subdomain",
+                    "score": DNS_SUBDOMAIN_CANDIDATE_SCORE,
+                    "kind": "meeting-detail",
+                }
+            )
+        elif label in DNS_HUB_LABELS:
+            out.append(
+                {
+                    "url": f"https://{host}/",
+                    "source": "dns-subdomain",
+                    "score": DNS_SUBDOMAIN_CANDIDATE_SCORE,
+                    "kind": "hub",
+                }
+            )
+    return out
+
+
 def load_records() -> list:
     records = []
     if not RECON_JSONL.exists():
@@ -355,6 +424,17 @@ def classify_record(rec: dict) -> dict:
 
     hp_candidates, site_builder = homepage_candidates(rec)
     for c in hp_candidates:
+        existing = all_candidates.get(c["url"])
+        if existing is None or c["score"] > existing["score"]:
+            all_candidates[c["url"]] = c
+
+    # #1275 addendum (see dns_subdomain_candidates()'s own comment):
+    # added last, so a real sitemap/Wayback/homepage URL already in
+    # all_candidates at an equal or higher score keeps its earlier
+    # (better) rank -- `all_candidates` is a dict keyed by URL, and a
+    # DNS-subdomain guess is a weaker signal than an independently
+    # found URL of the same score.
+    for c in dns_subdomain_candidates(rec):
         existing = all_candidates.get(c["url"])
         if existing is None or c["score"] > existing["score"]:
             all_candidates[c["url"]] = c
