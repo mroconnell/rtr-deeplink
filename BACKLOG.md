@@ -123,7 +123,7 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (52)
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -176,6 +176,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
     [JUST-DO-IT] `archive_client.send_search_alerts()` has no retry, so…
     [JUST-DO-IT] `list_all_page_slugs()` doesn't exclude…
     [JUST-DO-IT] WO-1004 built a domain-health check for the registry's…
+  Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
@@ -1914,6 +1915,18 @@ WO-932 and WO-913.
   - **Next action**: run `python3 scripts/wo1004_domain_health_check.py` from a machine with `~/Documents/rtr-business` checked out (resumable — `--limit`/`--concurrency` flags, skips any `gov_id` already in its output on a rerun). It reuses `wo273_targeted.py`'s own fetch and identity-check machinery, adding one new outcome — `domain_mismatch` (page fetches fine but doesn't name the right government) — alongside `domain_confirmed`/`domain_catch_all`/`domain_challenge_gate`/`domain_unreachable`, written to `research/wo1004_domain_health.csv`. Once it's run, hand-confirm every `domain_mismatch`/`domain_catch_all` row before moving a replacement to `alternate_domains`.
   - **Constraint**: never blank or overwrite `domain` outright (`CLAUDE.md`'s standing rule) — a confirmed replacement goes to `alternate_domains`/`alternate_urls`, the original stays. Never auto-write the registry from this outcome — same hand-confirm bar WO-347 and WO-145 both used. This session built and unit-tested the tool but cannot run it itself — `rtr-business` is off-limits to it per `CLAUDE.md`'s standing rule.
   - **History**: `BACKLOG_DONE.md`'s WO-1004 entry (the build, 2026-09-22), WO-347 (2026-09-13, `research/wo347_wrong_domain_findings.csv`), and WO-145 (2026-09-10). See also this file's "coverage registry's `domain` field maps a small government..." entry (Open bugs) for the still-open shared-helper half of WO-145's finding that WO-1004 doesn't cover.
+
+### Five platform URL-shape findings from rtr-upcoming, not yet verified here `[EXAMPLE]`
+
+- **Issue:** rtr-upcoming reported these from real pages on 2026-09-23. None is recorded or handled in rtr-deeplink yet:
+  1. **Municode Meetings has a monthly calendar** at `/calendar/YYYY-MM`, listing meetings even before an agenda exists, with machine-readable dates (e.g. `content="2026-10-06T19:00:00-07:00"`). The homepage table `municode_meetings.py` reads shows only the latest 25.
+  2. **Cancelling a Municode meeting changes its address:** "CANCELLED" is added to the title and the slug is rebuilt from it (`.../development-review-committee-cancelled-78`), so a stored URL can stop matching.
+  3. **Laserfiche Cloud can sit behind a city's own address:** `publicrecords.cityofsanrafael.org` redirects to `portal.laserfiche.com/Portal/Welcome.aspx?repo=r-40198117`. A host check before following redirects misses it.
+  4. **Laserfiche Cloud folders are readable without a browser or login:** `FolderListingService.aspx/GetFolderListing2` returns a folder's contents as JSON; the top folder's id is the Browse page's `"rootFolder"` value.
+  5. **CivicLive can run on a city's own domain** (`piedmont.ca.gov`), which the `.hosted.civiclive.com` host check can't see. The page shows it: a "Powered by CivicLive" footer, and documents under `/UserFiles/Servers/Server_<n>/` on `{tenant}.hosted.civiclive.com`. `platform_signatures.csv` has no CivicLive signature.
+- **Impact:** Municode listing depth (1); stale Municode URLs (2); missed platform identification on custom domains (3, 5); a cheap way to list Laserfiche Cloud if it's ever built (4).
+- **Next action:** Verify each on its real example first. Then: add the calendar as a Municode listing source; note the cancellation shape in `municode_meetings.py`; make Meeting Finder's Identify run host checks on the final URL after redirects; add a measured CivicLive page signature to `platform_signatures.csv`; add 3 and 4 to rtr-business `research/UNSUPPORTED_PLATFORMS.md`'s Laserfiche row.
+- **History:** rtr-upcoming session reviewing rtr-deeplink's adapters, relayed by Ryan 2026-09-23.
 
 ### CivicPlus hub walking only reaches sweep scripts, not `/api/resolve` `[JUST-DO-IT]`
 
