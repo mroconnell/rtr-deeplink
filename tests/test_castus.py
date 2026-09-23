@@ -127,7 +127,9 @@ PLAYLIST_API_URL = (
     "https://imd0mxanj2.execute-api.us-west-2.amazonaws.com/playlist/lincoln/"
     "Town%20Meeting"
 )
-BLACKSTONE_CONFIG_URL = "https://837sc3bew0.execute-api.us-west-2.amazonaws.com/blackstone"
+BLACKSTONE_CONFIG_URL = (
+    "https://837sc3bew0.execute-api.us-west-2.amazonaws.com/blackstone"
+)
 BLACKSTONE_RECENT_URL = (
     "https://2kbyogxrg4.execute-api.us-west-2.amazonaws.com/"
     "662ab8f7462d1041bed8203e/home/recent"

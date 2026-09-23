@@ -536,9 +536,7 @@ class CastusAssetFinder(AssetFinder):
         return [v for v in recent if isinstance(v, dict)], None
 
     @staticmethod
-    def _pick_newest(
-        videos: List[dict], *, require_allowlist: bool
-    ) -> Optional[dict]:
+    def _pick_newest(videos: List[dict], *, require_allowlist: bool) -> Optional[dict]:
         """Newest finished, non-premiere, meeting-shaped video (module
         docstring's "Newest" and "Why a PLAYLIST URL" notes): ordered by
         upload `date` descending, then the playlist's own `sort`
