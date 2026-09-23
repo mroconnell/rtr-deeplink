@@ -17,6 +17,7 @@ from archive.db.engine import async_session
 from archive.db.models import (
     ContextCandidate,
     ContextCandidateObservation,
+    ContextCandidateRevision,
     ContextEntry,
     MeetingPage,
 )
@@ -25,6 +26,22 @@ from archive.utils.context_links import context_permalink
 from .schemas import PAGE_SIZE, NextAction, NormalizedCandidate
 
 _WRITE_RETRIES = 4
+_REVIEW_FIELDS = (
+    "jurisdiction",
+    "state",
+    "gov_id",
+    "meeting_date",
+    "meeting_body",
+    "recording_url",
+    "rtr_link",
+    "t_seconds",
+    "title",
+    "summary",
+    "source_label",
+    "proposed_match",
+    "notes",
+)
+_MATCH_KINDS = {"exact", "approximate", "related"}
 _source_locks: dict[str, asyncio.Lock] = {}
 _source_locks_guard = asyncio.Lock()
 
@@ -57,6 +74,30 @@ async def _cross_process_source_lock(session, provider: str, source_key: str) ->
     )
 
 
+async def _begin_write_transaction(session) -> None:
+    """Begin before the first read, with SQLite's only useful write lock."""
+
+    if session.bind.dialect.name == "sqlite":
+        await session.execute(text("BEGIN IMMEDIATE"))
+    else:
+        await session.begin()
+
+
+async def _locked_candidate_for_read(session, candidate_id: int):
+    """Anchor a coherent candidate/review/observation read transaction."""
+
+    if session.bind.dialect.name == "sqlite":
+        # SQLite's deferred transaction takes its snapshot on the first read
+        # and holds it through every related query below.
+        await session.execute(text("BEGIN"))
+    query = select(ContextCandidate).where(ContextCandidate.id == candidate_id)
+    if session.bind.dialect.name == "postgresql":
+        # Saves and imports update the candidate row in the same transaction as
+        # their child rows. A shared lock keeps those facts in one read view.
+        query = query.with_for_update(read=True)
+    return (await session.execute(query)).scalar_one_or_none()
+
+
 def _active_observation_stmt(candidate_id: int):
     latest = (
         select(func.max(ContextCandidateObservation.id).label("id"))
@@ -78,6 +119,43 @@ async def _active_observations(session, candidate_id: int) -> list:
     return list(
         (await session.execute(_active_observation_stmt(candidate_id))).scalars()
     )
+
+
+async def _latest_revision(session, candidate_id: int):
+    return (
+        await session.execute(
+            select(ContextCandidateRevision)
+            .where(ContextCandidateRevision.candidate_id == candidate_id)
+            .order_by(ContextCandidateRevision.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+async def _latest_observation_id(session, candidate_id: int) -> int:
+    value = await session.scalar(
+        select(func.max(ContextCandidateObservation.id)).where(
+            ContextCandidateObservation.candidate_id == candidate_id
+        )
+    )
+    return int(value or 0)
+
+
+def _source_review_defaults(claims: dict | None) -> dict[str, Any]:
+    claims = claims or {}
+    fields = {field: claims.get(field) for field in _REVIEW_FIELDS}
+    proposed = fields.get("proposed_match")
+    if isinstance(proposed, str) and proposed.lower() in _MATCH_KINDS:
+        fields["proposed_match"] = proposed.lower()
+    else:
+        fields["proposed_match"] = None
+    return fields
+
+
+def _overlay_review(claims: dict, revision) -> dict:
+    if revision is None:
+        return claims
+    return {**claims, **{field: revision.fields.get(field) for field in _REVIEW_FIELDS}}
 
 
 def _aggregate_claims(observations: Iterable) -> tuple[dict, list]:
@@ -141,10 +219,7 @@ async def _store_observation_once(normalized: NormalizedCandidate) -> dict[str, 
         # cannot both observe an unclaimed (provider, source_record_key) and
         # attach it to different posts. PostgreSQL uses the narrower advisory
         # transaction lock below.
-        if session.bind.dialect.name == "sqlite":
-            await session.execute(text("BEGIN IMMEDIATE"))
-        else:
-            await session.begin()
+        await _begin_write_transaction(session)
         try:
             await _cross_process_source_lock(
                 session, normalized.provider, normalized.source_record_key
@@ -212,7 +287,9 @@ async def _store_observation_once(normalized: NormalizedCandidate) -> dict[str, 
 
             observations = await _active_observations(session, candidate.id)
             claims, conflicts = _aggregate_claims(observations)
-            candidate.claims = claims
+            candidate.claims = _overlay_review(
+                claims, await _latest_revision(session, candidate.id)
+            )
             candidate.source_conflicts = conflicts
             candidate.social_url = normalized.social_url
             candidate.network = normalized.network
@@ -405,7 +482,36 @@ def _dt(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
 
-def _candidate_dict(candidate, meeting, entry, *, observations=None) -> dict:
+def _format_moment(seconds: int) -> str:
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes}:{seconds:02d}"
+
+
+def _editor_handoff_ready(
+    candidate, meeting, *, has_review: bool, research_changed: bool
+) -> bool:
+    """Only a completed, current lookup can seed the separate Context editor."""
+
+    if not has_review or research_changed or candidate.checked_at is None:
+        return False
+    if candidate.lookup_outcome == "matched":
+        return meeting is not None
+    return candidate.lookup_outcome in {"not_found", "ambiguous"}
+
+
+def _candidate_dict(
+    candidate,
+    meeting,
+    entry,
+    *,
+    observations=None,
+    review=None,
+    review_history=None,
+    latest_observation_id: int = 0,
+) -> dict:
     meeting_dict = None
     if meeting is not None:
         meeting_dict = {
@@ -427,6 +533,35 @@ def _candidate_dict(candidate, meeting, entry, *, observations=None) -> dict:
             ),
         }
     missing_matched_page = candidate.lookup_outcome == "matched" and meeting is None
+    review_fields = (
+        {field: review.fields.get(field) for field in _REVIEW_FIELDS}
+        if review is not None
+        else _source_review_defaults(candidate.claims)
+    )
+    research_changed = bool(
+        review is not None and latest_observation_id > review.source_observation_id
+    )
+    reviewed_seconds = review_fields.get("t_seconds")
+    has_valid_seconds = (
+        isinstance(reviewed_seconds, int)
+        and not isinstance(reviewed_seconds, bool)
+        and 0 <= reviewed_seconds <= 86400
+    )
+    proposed_moment_url = None
+    proposed_moment_label = None
+    if (
+        meeting is not None
+        and candidate.lookup_outcome == "matched"
+        and has_valid_seconds
+    ):
+        proposed_moment_url = f"/m/{meeting.slug}?t={reviewed_seconds}"
+        proposed_moment_label = _format_moment(reviewed_seconds)
+    handoff_ready = _editor_handoff_ready(
+        candidate,
+        meeting,
+        has_review=review is not None,
+        research_changed=research_changed,
+    )
     result = {
         "id": candidate.id,
         "social_url": candidate.social_url,
@@ -453,6 +588,18 @@ def _candidate_dict(candidate, meeting, entry, *, observations=None) -> dict:
             if missing_matched_page
             else None
         ),
+        "review_fields": review_fields,
+        "has_saved_review": review is not None,
+        "review_id": review.id if review is not None else None,
+        "research_changed_since_review": research_changed,
+        "review_history": review_history or [],
+        "editor_url": (
+            f"/context/new?candidate={candidate.id}&review={review.id}"
+            if handoff_ready
+            else None
+        ),
+        "proposed_moment_url": proposed_moment_url,
+        "proposed_moment_label": proposed_moment_label,
     }
     if observations is not None:
         result["observations"] = observations
@@ -564,7 +711,7 @@ async def list_candidates(*, page: int = 1, next_action: str | None = None) -> d
 
 async def get_candidate(candidate_id: int) -> dict | None:
     async with async_session() as session:
-        candidate = await session.get(ContextCandidate, candidate_id)
+        candidate = await _locked_candidate_for_read(session, candidate_id)
         if candidate is None:
             return None
         meeting = (
@@ -612,7 +759,37 @@ async def get_candidate(candidate_id: int) -> dict | None:
             }
             for observation in all_observations
         ]
-        return _candidate_dict(candidate, meeting, entry, observations=observations)
+        revisions = list(
+            (
+                await session.execute(
+                    select(ContextCandidateRevision)
+                    .where(ContextCandidateRevision.candidate_id == candidate.id)
+                    .order_by(ContextCandidateRevision.id.desc())
+                )
+            ).scalars()
+        )
+        latest_revision = revisions[0] if revisions else None
+        review_history = [
+            {
+                "id": revision.id,
+                "created_at": _dt(revision.created_at),
+                "clerk_user_id": revision.clerk_user_id,
+                "fields": revision.fields,
+            }
+            for revision in revisions
+        ]
+        latest_observation_id = max(
+            (observation.id for observation in all_observations), default=0
+        )
+        return _candidate_dict(
+            candidate,
+            meeting,
+            entry,
+            observations=observations,
+            review=latest_revision,
+            review_history=review_history,
+            latest_observation_id=latest_observation_id,
+        )
 
 
 async def _mark_check_failed(candidate_id: int, read_version: int, reason: str) -> dict:
@@ -681,9 +858,10 @@ async def recheck_candidate(
                 "reason": "The candidate changed before its lookup started.",
             }
         observations = await _active_observations(session, candidate_id)
+        revision = await _latest_revision(session, candidate_id)
         claims = [
             {
-                **(observation.normalized_payload or {}),
+                **_overlay_review(observation.normalized_payload or {}, revision),
                 "social_url": candidate.social_url,
                 "social_url_key": candidate.social_url_key,
                 "network": candidate.network,
@@ -735,3 +913,30 @@ async def recheck_candidate(
         "next_action": evaluation.next_action,
         "reason": evaluation.reason,
     }
+
+
+async def save_candidate_review(
+    candidate_id: int,
+    *,
+    expected_version: int,
+    fields: dict,
+    clerk_user_id: str,
+    clear_conflicts: list[str] | None = None,
+) -> dict:
+    """Deferred facade used by routes without creating an import cycle."""
+
+    from .review import save_candidate_review as save
+
+    return await save(
+        candidate_id,
+        expected_version=expected_version,
+        fields=fields,
+        clerk_user_id=clerk_user_id,
+        clear_conflicts=clear_conflicts,
+    )
+
+
+async def get_candidate_prefill(candidate_id: int, review_id: int) -> dict:
+    from .review import get_candidate_prefill as get_prefill
+
+    return await get_prefill(candidate_id, review_id)
