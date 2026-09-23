@@ -471,8 +471,10 @@ async def import_rows(
         }
         unchanged_ids = {
             result.get("candidate_id")
-            for result in preview
-            if result["outcome"] == "unchanged" and result.get("candidate_id")
+            for (_, normalized), result in zip(normalized_rows, preview)
+            if result["outcome"] == "unchanged"
+            and result.get("candidate_id")
+            and normalized.social_url_key not in changed_keys
         }
         actions = await store.candidate_actions(unchanged_ids)
         action_counts = Counter(actions)

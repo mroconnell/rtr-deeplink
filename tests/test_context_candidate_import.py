@@ -196,6 +196,23 @@ async def test_apply_report_is_idempotent(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_preview_counts_changed_candidate_once_when_another_row_is_unchanged():
+    await _remove_candidates("youtube:zJKrMk-uuSw")
+    existing = _synthetic_row(source_record_key="preview-existing")
+    normalized = importer.normalize_row(existing, provider="preview-mixed-synthetic")
+    await store.store_observation(normalized)
+
+    report = await importer.import_rows(
+        [existing, _synthetic_row(source_record_key="preview-new-source")],
+        provider="preview-mixed-synthetic",
+    )
+
+    assert [row["outcome"] for row in report["rows"]] == ["unchanged", "updated"]
+    assert report["unique_candidates"] == 1
+    assert report["next_actions"] == {"new": 1}
+
+
+@pytest.mark.asyncio
 async def test_real_duplicate_research_group_is_rejected_without_ordering_it():
     rows = json.loads(FIXTURE.read_text(encoding="utf-8"))[1:]
     mapped = [
