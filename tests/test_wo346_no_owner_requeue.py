@@ -25,7 +25,7 @@ async def test_main_requeues_a_no_owner_line_instead_of_dropping_it(
     # redirect it, or this test writes to the real tracked CSV.
     monkeypatch.setattr(mod, "FEED_LOG_CSV", tmp_path / "feed_log.csv")
 
-    async def _fake_push(session, url, source_url_override, **kwargs):
+    async def _fake_push(session, url, source_url_override, line_gov_id=None, **kwargs):
         if "noownerid1" in url:
             return f"[NO-OWNER] {url} has no owner"
         return f"[OK] {url} -> /m/fake"
@@ -59,7 +59,7 @@ async def test_main_leaves_the_queue_untouched_when_nothing_is_ownerless(
     monkeypatch.setattr(mod, "register_all_finders", lambda: None)
     monkeypatch.setattr(mod, "FEED_LOG_CSV", tmp_path / "feed_log.csv")
 
-    async def _fake_push(session, url, source_url_override, **kwargs):
+    async def _fake_push(session, url, source_url_override, line_gov_id=None, **kwargs):
         return f"[OK] {url} -> /m/fake"
 
     monkeypatch.setattr(mod, "_push_if_has_video", _fake_push)

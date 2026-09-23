@@ -123,6 +123,7 @@ from app.platforms.queue_probe import (  # noqa: E402
     DEFAULT_SIDECAR_PATH,
     append_probe_row,
     has_owner,
+    parse_queue_line,
     probe_queue_entry,
 )
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -177,23 +178,40 @@ def _append_feed_log_row(url: str, result: str) -> None:
         )
 
 
-def _parse_queue_line(line: str) -> Tuple[str, Optional[str]]:
-    """A queue line is a bare URL, or `URL<TAB>SOURCE_URL` when the queued
+def _parse_queue_line(line: str) -> Tuple[str, Optional[str], Optional[str]]:
+    """A queue line is a bare URL, `URL<TAB>SOURCE_URL` when the queued
     URL is itself a bare video link discovered via a *different* page
-    (see BACKLOG_DONE.md's tier3 source_url-override entry). The second
-    field, when present, overrides what gets recorded as the meeting's
-    source_url -- otherwise a bare YouTube/Vimeo link would be ingested
-    under its own URL as source_url, the exact bug already fixed for
-    direct ingests (a reader's "View original source" link should point
-    at the government page the video was found on, not the video host)."""
-    url, _, source_url = line.partition("\t")
-    return url.strip(), (source_url.strip() or None)
+    (see BACKLOG_DONE.md's tier3 source_url-override entry), or, as of
+    WO-1016, `URL<TAB>SOURCE_URL<TAB>GOV_ID` when the sweep that queued
+    this line already knew the government. The second field, when
+    present, overrides what gets recorded as the meeting's source_url --
+    otherwise a bare YouTube/Vimeo link would be ingested under its own
+    URL as source_url, the exact bug already fixed for direct ingests (a
+    reader's "View original source" link should point at the government
+    page the video was found on, not the video host). The third field, a
+    gov_id, is handled by `_push_if_has_video()`'s own precedence rule
+    against `has_owner()`'s pin -- see that function's docstring.
+
+    This is now a thin wrapper over `app.platforms.queue_probe.
+    parse_queue_line()` (WO-1016) -- kept as a module-level name here,
+    rather than inlined at every call site, because `scripts/youtube_
+    drip.py` and `scripts/probe_tier3_queue.py` already import this exact
+    name (`from scripts.feed_tier3_auto_transcription import
+    _parse_queue_line`); moving the real parsing logic into queue_probe.py
+    (already the shared home for queue-line decisions via
+    `finish_candidate()`) means every reader tolerates a 3rd field
+    identically instead of drifting. Was a 2-tuple (url, source_url)
+    before WO-1016; every existing caller was updated in the same change
+    to unpack the new 3rd `gov_id` element (see BACKLOG_DONE.md's
+    WO-1016 entry for the full list)."""
+    return parse_queue_line(line)
 
 
 async def _push_if_has_video(
     session: aiohttp.ClientSession,
     url: str,
     source_url_override: Optional[str] = None,
+    line_gov_id: Optional[str] = None,
     *,
     probe_sidecar_path: Path = DEFAULT_SIDECAR_PATH,
 ) -> str:
@@ -268,6 +286,28 @@ async def _push_if_has_video(
     if not owned:
         return f"[NO-OWNER] {reason} ({url})"
 
+    # WO-1016: a queue line can now carry its OWN gov_id (a research
+    # sweep that already knew the government, filed as the line's 3rd
+    # tab field -- see _parse_queue_line()'s own docstring), separate
+    # from `owner_gov_id` above (a tenant_overrides.csv pin has_owner()
+    # found on a SHARED host). The line's gov_id wins when both exist and
+    # agree -- it's the more specific, per-sweep fact. When both exist
+    # and DISAGREE, don't guess which one is right (CLAUDE.md's "reports
+    # report, they never guess" standard applies just as much to a
+    # feeder's own ingest decision as to a written report) -- skip this
+    # line with a clear reason instead of ingesting under either gov_id.
+    # A line with no gov_id of its own keeps today's behavior unchanged
+    # (owner_gov_id, or None on a single-tenant host).
+    final_gov_id = owner_gov_id
+    if line_gov_id:
+        if owner_gov_id and owner_gov_id != line_gov_id:
+            return (
+                f"[SKIP] gov_id disagreement: queue line says {line_gov_id}, "
+                f"tenant_overrides.csv pin says {owner_gov_id} -- not "
+                f"ingesting under either without a human check ({url})"
+            )
+        final_gov_id = line_gov_id
+
     normalized = normalize_url(url)
     try:
         # already_probed=True: the probe just above ran on this exact
@@ -282,20 +322,22 @@ async def _push_if_has_video(
         # already happened, and so nothing changes here if segments ever
         # do show up on a future tier-3 payload.
         #
-        # gov_id (WO-346): when has_owner() found the gov_id from a
-        # tenant_overrides.csv pin, send it straight through -- CLAUDE.md's
-        # "send the government's id in every ingest payload" rule, so this
-        # page keys correctly the moment it ingests even if the Archive
-        # service's own deployed copy of tenant_overrides.csv hasn't
-        # picked up this WO's new pins yet. None for a single-tenant host
-        # (has_owner() doesn't run the full ladder to derive one) -- the
-        # Archive's own server-side resolve still handles that case fine.
-        # _ingest() itself has no gov_id parameter (see bulk_ingest.py's
+        # gov_id (WO-346, extended WO-1016): send whichever gov_id this
+        # line resolved to above (`final_gov_id` -- the line's own gov_id
+        # when it had one, else has_owner()'s tenant_overrides.csv pin) --
+        # CLAUDE.md's "send the government's id in every ingest payload"
+        # rule, so this page keys correctly the moment it ingests even if
+        # the Archive service's own deployed copy of tenant_overrides.csv
+        # hasn't picked up this WO's new pins yet. None for a
+        # single-tenant host with no line gov_id either (has_owner()
+        # doesn't run the full ladder to derive one) -- the Archive's own
+        # server-side resolve still handles that case fine. _ingest()
+        # itself has no gov_id parameter (see bulk_ingest.py's
         # process_one(), the pattern this follows) -- it rides in the
         # payload dict instead.
         payload = result.model_dump()
-        if owner_gov_id:
-            payload["gov_id"] = owner_gov_id
+        if final_gov_id:
+            payload["gov_id"] = final_gov_id
         response = await _ingest(
             session,
             payload,
@@ -335,8 +377,10 @@ async def main() -> None:
     no_owner_lines: list[str] = []
     async with aiohttp.ClientSession() as session:
         for i, line in enumerate(batch):
-            url, source_url_override = _parse_queue_line(line)
-            result = await _push_if_has_video(session, url, source_url_override)
+            url, source_url_override, line_gov_id = _parse_queue_line(line)
+            result = await _push_if_has_video(
+                session, url, source_url_override, line_gov_id
+            )
             print(result)
             _append_feed_log_row(url, result)
             if result.startswith("[NO-OWNER]"):
