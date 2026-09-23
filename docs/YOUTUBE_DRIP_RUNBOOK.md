@@ -127,17 +127,18 @@ after that is clean.**
 `URL\t\tGOV_ID`). `app.platforms.queue_probe.parse_queue_line()` is the
 one place this shape is parsed — `scripts/feed_tier3_auto_
 transcription.py`'s `_parse_queue_line()` and this script's own three
-call sites of that name all delegate to it. **No 3-field line exists in
-the tracked queue yet** — writing one is gated behind
-`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` (`False` today) specifically
-because this Mac runs its own separate checkout and only gets
-`parse_queue_line()`'s tolerance on its own `git pull` — a writer
-flipped on before that pull lands here would hand this Mac a line shape
-its old code can't read. **Run `git pull` here at least once after
-WO-1016 merges, before anyone flips that flag on `main`** — after that
-pull, this Mac's three call sites already tolerate the 3rd field (see
-`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES`'s own comment for the full
-rollout order).
+call sites of that name all delegate to it. Writers that know a
+government emit the 3rd field since 2026-09-23
+(`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES = True`), flipped only after
+this Mac confirmed it runs the tolerant readers.
+
+**This Mac runs the drip from its own worktree, not its main checkout:
+`~/rtr-deeplink-drip-worktree`, branch `drip-local` (confirmed
+2026-09-23).** Pulling `main` in the main checkout does not update the
+drip. To update the drip, bring that worktree to the current `main`
+commit, then restart the drip. On 2026-09-23 it was 136 commits behind,
+and Ctrl-C (SIGINT) did not stop the drip; SIGTERM did. No diagnosis yet
+— note it if it happens again.
 
 ## Backfill sweeps (occasional, not part of the drip loop)
 

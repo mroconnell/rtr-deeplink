@@ -1,5 +1,23 @@
 # Backlog — done
 
+## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
+
+**What.** Tier-3 queue writers that know the government now add its
+`gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES
+= True`). The feeder puts that `gov_id` in the ingest payload.
+
+**Why now.** WO-1016 merged the tolerant readers first and left writers
+off, because the drip Mac runs its own checkout. On 2026-09-23 Ol
+McClaude confirmed it brought its drip worktree (`~/rtr-deeplink-drip-worktree`,
+branch `drip-local`, previously 136 commits behind) to a `main` commit that
+includes WO-1016, restarted the drip, and the first line after restart fed
+a real meeting. Nothing it runs imports the retired `wo273_*` scripts.
+
+**Also recorded** in `docs/YOUTUBE_DRIP_RUNBOOK.md`: the drip runs from
+that worktree, not the main checkout, so pulling `main` alone does not
+update it; and SIGINT did not stop the drip that day (SIGTERM did), no
+diagnosis yet.
+
 ## WO-1021: stage 1 of enumeration (wo282_recon/classify/targeted.py) now recognizes platforms from the same shared source as stages 2/3; unsupported-platform list synced with rtr-business's WO-1018 findings [Done 2026-09-23]
 
 **Issue.** WO-1015 part A gave stages 2/3 of discovery
