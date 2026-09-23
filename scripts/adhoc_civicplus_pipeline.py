@@ -391,6 +391,18 @@ async def homepage_civicclerk_fallback(session, domain: str):
     except Exception as e:
         return None, f"homepage fetch failed: {e}"
 
+    # CivicPlus itself is excluded from every candidate below: the whole
+    # reason this fallback runs is that CivicPlus's own AgendaCenter for
+    # this exact domain was already checked and came back with no video
+    # (NoVideoCandidateFound) -- almost every CivicPlus government's own
+    # homepage links back to that same AgendaCenter page from its nav,
+    # and without this exclusion that self-referential nav link matches
+    # `find_platform_link()` as a "known platform" before it ever reaches
+    # a real video link further down the page. Confirmed live 2026-09-23:
+    # all 41 of a real batch matched their own AgendaCenter link first,
+    # every one of them wrongly, before this exclusion was added.
+    _NO_CIVICPLUS = frozenset({"civicplus"})
+
     def screen(candidate_url: str, candidate_platform: str) -> bool:
         return prescreen_homepage_link(html, final_url, candidate_url) is None
 
@@ -399,13 +411,15 @@ async def homepage_civicclerk_fallback(session, domain: str):
             return False
         return screen(candidate_url, candidate_platform)
 
-    match = find_platform_link(html, final_url, accept=screen_no_bare_channel)
+    match = find_platform_link(
+        html, final_url, exclude=_NO_CIVICPLUS, accept=screen_no_bare_channel
+    )
     reason = "no known-platform video/playlist link found on homepage"
     if not match:
         # Last resort: allow a bare YouTube channel link now that nothing
         # better -- any other platform, or a specific YouTube video/
         # playlist -- was found anywhere on the page.
-        match = find_platform_link(html, final_url, accept=screen)
+        match = find_platform_link(html, final_url, exclude=_NO_CIVICPLUS, accept=screen)
         reason = "no known-platform link found on homepage (including bare channels)"
     if not match:
         return None, reason
