@@ -6,7 +6,7 @@ per the launch instructions' literal no-YouTube-calls rule.
 
 Scans, for every government in `wo323_recon.jsonl`: `all_urls_from_record()`
 (sitemap/Wayback/Common Crawl URLs, same helper `wo323_classify.py` imports
-from `wo273_classify.py`) plus every raw homepage link
+from `wo282_classify.py`) plus every raw homepage link
 (`homepage.links[].href`) phase 1 cached -- both scanned as plain strings,
 no network call. Any `youtube.com`/`youtu.be` URL found is classified
 channel (`/channel/`, `/c/`, `/@`, `/user/`) or single_video (`/watch`,
@@ -36,7 +36,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from wo273_classify import all_urls_from_record  # noqa: E402
+from wo282_classify import all_urls_from_record  # noqa: E402
 
 RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 RECON_JSONL = RESEARCH_DIR / "wo323_recon.jsonl"

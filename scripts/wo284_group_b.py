@@ -47,7 +47,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from wo273_recon import HEADERS  # noqa: E402
+from wo282_recon import HEADERS  # noqa: E402
 import wo281_homepage_hop as h1  # noqa: E402
 import wo264_overnight_sweep as overnight  # noqa: E402
 import wo235_channel_pilot as ytscan  # noqa: E402

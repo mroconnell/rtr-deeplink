@@ -15,7 +15,7 @@ makes that one cheap, additional DNS query per affected government
 (2 vendor templates x 2 record types = 4 `dig` calls, no HTTP fetch) and
 patches ONLY the `dns.resolving_vendor_labels` field of the affected
 rows in memory before re-running phase 2/3, exactly the two rung
-`wo273_recon.dns_lookup()` itself would have run under the fixed code.
+`wo282_recon.dns_lookup()` itself would have run under the fixed code.
 
 Input: the RAW phase-1 recon.jsonl (`find_polluted_domains()` reads
 `dns.resolving_vendor_labels` directly -- NOT a prior reclassified CSV,
@@ -48,7 +48,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import wo273_recon as w273  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 import wo323_targeted as w323t  # noqa: E402
 from wo327_rerun_quebec_phases import (  # noqa: E402
     CLASSIFIED_FIELDS,
@@ -62,7 +62,7 @@ RESEARCH_DIR = Path.home() / "Documents" / "rtr-business" / "research"
 
 
 def refresh_vendor_labels(domain: str) -> list[dict]:
-    """Redoes ONLY the vendor-tenant-label half of wo273_recon.dns_lookup()
+    """Redoes ONLY the vendor-tenant-label half of wo282_recon.dns_lookup()
     for one domain, using the FIXED registrable_label()/label_is_guessable()
     (WO-328). Cheap: at most 2 templates x 2 dig() calls."""
     label = w273.registrable_label(domain)

@@ -14,7 +14,7 @@ videos that might actually be on mission."
 
 Per government, in order:
   1. govAccess/Akamai CNAME check (`scripts.wo283_recon.govaccess_cname_
-     match` via `scripts.wo273_recon.dns_lookup`) -- if the www or apex
+     match` via `scripts.wo282_recon.dns_lookup`) -- if the www or apex
      CNAME ends in granicusgovaccess.net or opencities.com, this
      machine's IP is WAF-blocked there; record `blocked-waf-akamai` with
      the CNAME as evidence and skip outright (no fetch attempted).
@@ -79,7 +79,7 @@ from app.platforms.passive_verify import (  # noqa: E402
 )
 
 import scripts.wo147_access_ladder_sweep as ladder  # noqa: E402
-import scripts.wo273_recon as w273  # noqa: E402
+import scripts.wo282_recon as w273  # noqa: E402
 import scripts.wo283_recon as w283  # noqa: E402
 
 register_all_finders()

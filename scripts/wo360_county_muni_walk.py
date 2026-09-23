@@ -15,11 +15,11 @@ short list of guessable paths (`/Municipalities`, `/Directory.aspx`,
 same shape as the guessable-path probes elsewhere in this WO wave.
 
 Never fetches youtube.com/youtu.be. Honest UA, `polite_request()` from
-`wo273_recon.py` (2.5s per-host delay, not relevant here since each
+`wo282_recon.py` (2.5s per-host delay, not relevant here since each
 county is its own host; 6s connect timeout). Response bodies are capped
 at 3 MB via `iter_content`, and each single HTTP call is bounded to 20s
 end to end by wrapping `polite_request` in a thread with a hard timeout,
-per the WO-360 brief's per-fetch budget (stricter than wo273's own
+per the WO-360 brief's per-fetch budget (stricter than wo282_recon's own
 GOV_REQUEST_TIMEOUT=6s connect-only figure).
 
 Usage (from the rtr-deeplink repo root, shared venv):
@@ -46,7 +46,7 @@ import requests
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, str(Path(__file__).parent))
-import wo273_recon as w273  # noqa: E402
+import wo282_recon as w273  # noqa: E402
 
 RTR_BUSINESS = Path("/Users/mroconnell/Documents/rtr-business")
 JC_CSV = RTR_BUSINESS / "research" / "jurisdiction_coverage.csv"
@@ -117,7 +117,7 @@ def is_state_portal_host(host: str) -> bool:
 
 def bounded_get(url: str):
     """One HTTP GET, hard-bounded to PER_FETCH_TIMEOUT wall time and
-    MAX_BYTES of body, via wo273_recon's polite_request + streaming."""
+    MAX_BYTES of body, via wo282_recon's polite_request + streaming."""
 
     def _do():
         resp = w273.RATE_LIMITER.wait_and_request(

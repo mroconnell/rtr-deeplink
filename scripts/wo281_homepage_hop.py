@@ -19,12 +19,12 @@ Two phases, same shape as WO-273's phase1/phase3 split (so the slow part
 is driven by output the scoring can rerun without refetching):
 
   --phase homepage   One fetch per government's own homepage. Archive-first
-                      (`wo273_targeted.try_wayback_archived_body()`, `id_`
+                      (`wo282_targeted.try_wayback_archived_body()`, `id_`
                       raw form, capture <=18 months -- reused, not
                       reimplemented), live plain-HTTP fallback, browser
                       headers ONLY after a 403 or a dropped connection
                       (never after a 404), human-verification-gate
-                      detection that stops cold (`wo273_recon.is_challenge`).
+                      detection that stops cold (`wo282_recon.is_challenge`).
                       Extracts every `<a href>` with its anchor text and
                       page position (nav/header, footer, menu `<ul>`/`<ol>`,
                       or plain body -- via `wo147_access_ladder_sweep.
@@ -35,7 +35,7 @@ is driven by output the scoring can rerun without refetching):
                       the AgendaCenter/Hyland path rules), classifies each
                       link as hub-shaped or meeting/video-shaped via
                       WO-274's own measured vocabulary
-                      (`wo273_recon.HUB_WORD_LIFT`/`MEETING_WORD_HIT`), then
+                      (`wo282_recon.HUB_WORD_LIFT`/`MEETING_WORD_HIT`), then
                       calls `wo147_access_ladder_sweep.find_hop_links()` --
                       the real WO-274 measured scorer, called, not
                       reimplemented -- and keeps its top 5 by score.
@@ -66,9 +66,9 @@ is driven by output the scoring can rerun without refetching):
 
 Politeness (Ryan, 2026-09-12, same shape as WO-273's phase 3):
 concurrency 32 governments in flight, ONE request in flight per host
-(`wo273_recon.HostRateLimiter`, >=2.5s between requests to the SAME host),
+(`wo282_recon.HostRateLimiter`, >=2.5s between requests to the SAME host),
 a vendor-host hit is rate-limited under its VENDOR FAMILY name
-(`wo273_recon.vendor_family_for_url`) so many governments that happen to
+(`wo282_recon.vendor_family_for_url`) so many governments that happen to
 flag the same vendor don't pile onto it at once, honest User-Agent, browser
 headers only after a 403 or a dropped connection, never past a
 human-verification challenge page.
@@ -105,7 +105,7 @@ import requests
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from wo273_recon import (  # noqa: E402
+from wo282_recon import (  # noqa: E402
     HEADERS,
     HUB_WORD_LIFT,
     MEETING_WORD_HIT,
@@ -113,7 +113,7 @@ from wo273_recon import (  # noqa: E402
     is_challenge,
     vendor_family_for_url,
 )
-from wo273_targeted import name_matches, try_wayback_archived_body  # noqa: E402
+from wo282_targeted import name_matches, try_wayback_archived_body  # noqa: E402
 
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -144,7 +144,7 @@ GOV_TIMEOUT = (3, 10)  # (connect, read) -- brief's own numbers
 BODY_FLOOR_BYTES = 800
 
 # WO-274's measured meeting-vendor vocabulary (app/utils/jurisdiction_data/
-# hop_link_weights.csv's meeting_vendor rows, via wo273_recon.MEETING_WORD_HIT)
+# hop_link_weights.csv's meeting_vendor rows, via wo282_recon.MEETING_WORD_HIT)
 # is the vocabulary used to flag a link as a meeting DETAIL page rather than
 # a hub -- reused, not a new guessed list.
 _MEETING_DETAIL_RE = re.compile(
@@ -172,7 +172,7 @@ def position_label(tag) -> str:
 
 def link_kind_for_url(full_url: str) -> str:
     """hub | meeting | other, from WO-274's own measured vocabulary
-    (wo273_recon.HUB_WORD_LIFT / MEETING_WORD_HIT) -- a link whose path
+    (wo282_recon.HUB_WORD_LIFT / MEETING_WORD_HIT) -- a link whose path
     contains a meeting-vendor-shaped token (clip, mediaplayer, watch...)
     is flagged as a likely meeting DETAIL page; one with a hub word
     (agendas, council, minutes...) and no meeting word is a likely hub;
