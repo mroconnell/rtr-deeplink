@@ -882,6 +882,73 @@ class ContextEntry(Base):
     )
 
 
+class ContextCandidate(Base):
+    """Private research, separate from reader-facing ContextEntry content."""
+
+    __tablename__ = "context_candidates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    social_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    social_url_key: Mapped[str] = mapped_column(
+        String(2048), unique=True, nullable=False
+    )
+    network: Mapped[str] = mapped_column(String(30), nullable=False)
+    claims: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    source_conflicts: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    meeting_page_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("meeting_pages.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    context_entry_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("context_entries.id", ondelete="SET NULL"), nullable=True
+    )
+    lookup_outcome: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    next_action: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="new", index=True
+    )
+    lookup_result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class ContextCandidateObservation(Base):
+    """Immutable research versions; latest per provider/record key is active."""
+
+    __tablename__ = "context_candidate_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "source_record_key",
+            "content_hash",
+            name="uq_context_observation_source_hash",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(
+        ForeignKey("context_candidates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_record_key: Mapped[str] = mapped_column(String(2048), nullable=False)
+    source_location: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    normalized_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class SearchVocabulary(Base):
     """Distinct real words seen anywhere in the archive's search_corpus,
     globally deduped -- no page association, unlike MeetingPage/
