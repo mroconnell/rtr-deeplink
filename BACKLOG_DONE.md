@@ -1,5 +1,104 @@
 # Backlog — done
 
+## WO-1025: Meeting Finder's fetch helper (`app/platforms/meeting_finder/fetch.py`) [Done 2026-09-23]
+
+**What.** The one fetch helper `docs/MEETING_FINDER.md` says every phase
+(Start, Identify, Scan, Hop) shares: an async `Fetcher` with a single
+`fetch(url, need_links=True) -> FetchResult` method that runs the ladder
+that doc's "How every page is fetched" section describes -- plain
+request, browser headers only after a 403 or a dropped connection (never
+a 404), headless only when a page loaded but shows no `<a href>` links,
+and Wayback's latest capture (links only, via the `id_` raw form) only
+after a real human-verification challenge. YouTube is refused outright,
+before any request. `max_fetches`/`BudgetExceeded` caps real fetches per
+`Fetcher` instance; per-host politeness spacing defaults to 2.5s and a
+caller-known robots.txt `Crawl-delay` can be layered on via
+`note_crawl_delay()`. WO-1024 built the rest of the package
+(`Start`/`Identify`/`List`/`Scan`/`Hop`/`Resolve`/`Verdict`) in parallel;
+this WO owned only `fetch.py` and its tests.
+
+**Two corrections to the WO's own brief, found while building, folded
+into the code's docstring rather than silently worked around.**
+(1) It named `app/platforms/headless_browser.py` as `fetch_headless_sync()`'s
+home; that module only has the async Playwright path the LIMS/SLC finders
+use. The real function -- sync, blocks YouTube requests made by the
+browser itself -- lives in `scripts/wo147_access_ladder_sweep.py`, and is
+imported from there. (2) It said to reuse `scripts/wo282_recon.py`'s
+`cdx_get()`/`wayback_id_read()`/challenge markers "rather than
+re-implementing," with a fallback of moving the pure helper into
+`app/platforms/meeting_finder/` if a direct import proved awkward. A
+direct import worked fine (that script already puts `scripts/` on
+`sys.path` at its own module level, opens no DB connection and makes no
+network call at import time -- confirmed by WO-1021, and
+`tests/test_wo282_recon_wayback_index.py` already imports it the same
+way), so nothing was moved -- lower blast radius than editing a file
+under heavy, concurrent, multi-WO iteration for a helper an import already
+reaches cleanly.
+
+**One instruction folded in mid-build, from the conductor relaying
+rtr-upcoming's `UPCOMING_AGENDAS_FIELD_GUIDE.md` "Blocked hosts" section
+(re-measured there 2026-08-26 across 108 real hosts) after the first
+draft was already using a browser header set by default:** default to an
+honest, identifying User-Agent, not a Chrome header set (a real
+Cloudflare host there 403'd a Chrome UA whose TLS fingerprint didn't
+match its claim, while serving the honest UA 200); escalate to browser
+headers on a 403 **or** a connection-level refusal (a `RemoteDisconnected`-
+shaped reset with no status line -- confirmed there against Municode),
+never a 404; remember which header set worked **per host** for the rest
+of the run, since bot policy is applied at the edge and covers every page
+on that host, not just the one that got 403'd; and never call a bare 403
+a challenge -- only a real marker earns `cloudflare-challenge-blocked`/
+`blocked-waf-akamai`. Building the Akamai/Cloudflare split caught its own
+bug before merge: an early version imported
+`app/platforms/generic_fallback.py`'s whole `_CHALLENGE_MARKERS` tuple as
+"the Akamai markers," but that tuple bundles three markers for two
+different WAFs (`errors.edgesuite.net`/`access denied` are Akamai;
+`just a moment` is Cloudflare's own interstitial, per that module's own
+comment) -- a test asserting a Cloudflare "Just a moment..." page resolved
+to `cloudflare-challenge-blocked` caught it resolving to
+`blocked-waf-akamai` instead, before it shipped.
+
+**Verified.** 16 unit tests (`tests/test_meeting_finder_fetch.py`):
+real-loopback-server coverage of the ladder itself (plain success, the
+404-never-escalates rule, 403-then-browser-headers with per-host header
+memory confirmed on a second call, a bare-403-is-not-a-challenge case,
+the Akamai fixture from `tests/fixtures/generic_fallback/
+wayne_akamai_403.html`, the no-links -> headless trigger and its
+`need_links=False` bypass, budget exhaustion), plus a couple of
+synthetic branch tests (real aiohttp exception classes injected via a
+fake session) for DNS-unresolvable and dropped-connection classification,
+which no host in this suite reproduces on demand.
+
+Small live check, 8 real government pages, one `Fetcher` per URL:
+
+| What it covers | URL | `access_mode` | `outcome` | links found | wayback timestamp |
+|---|---|---|---|---|---|
+| Normal homepage (Swagit sample) | dublin.ca.gov | plain | none | 91 | -- |
+| 403 -> browser headers (rtr-upcoming field guide's own Municode example) | losgatos-ca.municodemeetings.com | browser-headers | none | 172 | -- |
+| SharePoint shell (generic_fallback.py's own comment) | discover.pbc.gov/countycommissioners/Pages/bcc-meeting-videos.aspx | plain | timeout | 0 | -- |
+| Known live Cloudflare JS challenge (headless_browser.py's own docstring) | lims.minneapolismn.gov/MarkedAgenda/CI/6133 | browser-headers | cloudflare-challenge-blocked | 0 | none found |
+| `cloudflare-challenge-blocked` row, jurisdiction_coverage.csv | town-of-addison.com | wayback | cloudflare-challenge-blocked | 14 | 20251119155402 |
+| `cloudflare-challenge-blocked` row, jurisdiction_coverage.csv | childersburg.org | wayback | cloudflare-challenge-blocked | 29 | 20260517010548 |
+| Normal homepage (Legistar sample) | boston.legistar.com/Calendar.aspx | plain | none | 275 | -- |
+| Normal homepage (eScribe sample) | pub-peelregion.escribemeetings.com | plain | none | 19 | -- |
+
+Every branch the WO asked to confirm live actually fired: a real 403 ->
+browser-headers recovery, a real Cloudflare challenge correctly told
+apart from a plain block and degraded to Wayback links-only (with two
+real captures actually read), and ordinary homepages passing straight
+through. The Palm Beach County SharePoint page timed out on the plain
+rung within this Fetcher's 15s per-attempt timeout rather than
+demonstrating the headless trigger -- an honest result, not a
+demonstration failure: nothing in this small check reproduces the
+"loads 200 with zero links" shape live; `tests/test_meeting_finder_fetch.py`
+covers that branch with a real local server instead.
+
+CI: all five gates green (`ruff check`, `ruff format --check`, `pytest`
+-- full suite 5091 passed / 2 pre-existing failures unrelated to this WO
+(`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, both a stale
+export fixture) / 16 skipped / 4 xfailed, `alembic check` x2, the
+BACKLOG_DONE heading check).
+
 ## WO-1014: private Context candidate intake and exact-meeting review queue [Done 2026-09-23]
 
 **What and why.** Ryan approved Milestone 1 after review of the Context handover,
@@ -63,6 +162,22 @@ Old-slug resolution, unknown mirror associations, ingestion and automatic moment
 matching remain outside this approved scope.
 
 ## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
+
+**What.** Tier-3 queue writers that know the government now add its
+`gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES
+= True`). The feeder puts that `gov_id` in the ingest payload.
+
+**Why now.** WO-1016 merged the tolerant readers first and left writers
+off, because the drip Mac runs its own checkout. On 2026-09-23 Ol
+McClaude confirmed it brought its drip worktree (`~/rtr-deeplink-drip-worktree`,
+branch `drip-local`, previously 136 commits behind) to a `main` commit that
+includes WO-1016, restarted the drip, and the first line after restart fed
+a real meeting. Nothing it runs imports the retired `wo273_*` scripts.
+
+**Also recorded** in `docs/YOUTUBE_DRIP_RUNBOOK.md`: the drip runs from
+that worktree, not the main checkout, so pulling `main` alone does not
+update it; and SIGINT did not stop the drip that day (SIGTERM did), no
+diagnosis yet.
 
 **What.** Tier-3 queue writers that know the government now add its
 `gov_id` as the 3rd tab-separated field (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES
