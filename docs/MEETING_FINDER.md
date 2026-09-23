@@ -3,18 +3,22 @@
 **Status:** design agreed with Ryan on 2026-09-23 (WO-1023). WO-1024
 (2026-09-23) built the core: `app/platforms/meeting_finder/` (`models.py`,
 `pick.py`, `resolve.py`, `identity.py`, `verdict.py`, `runner.py`) and the
-CLI, `scripts/meeting_finder.py`. WO-1027 (2026-09-23) built **Identify**
-(`app/platforms/meeting_finder/identify.py`) as a standalone module, not
-yet wired into `runner.py` -- a later WO plugs it (and List/Scan/Hop/
-Start, built in the same wave by other agents) into the pipeline.
-**`resolve` is still the only entry `runner.py` itself drives end to
-end** -- `start`/`identify`/`list`/`scan` are accepted by the CLI/
-`FinderInput` but return the outcome `phase-not-built` until that wiring
-WO lands. See that package's own module docstrings for the reasoning
-behind each piece; this section records the interface details WO-1024/
-WO-1027 had to settle that this design doc didn't spell out, and how
-Meeting Finder relates to `app/platforms/passive_verify.py`, an existing
-module this design doc missed on first pass.
+CLI, `scripts/meeting_finder.py`. WO-1025 (2026-09-23) added `fetch.py`,
+the one fetch helper Start/Identify/Scan/Hop all use. WO-1027 (2026-09-23)
+built **Identify** (`identify.py`), and WO-1029 (2026-09-23) built **Scan**
+(`scan.py`, `scan_page()`) and **Hop** (`hop.py`, `rank_hops()`/
+`is_document_hub()`/`calendar_entry_links()`) -- see this doc's Identify,
+Scan and Hop sections below, now current. These are standalone modules,
+**not yet wired into `runner.py`**: `resolve` is still the only entry
+`runner.py` drives end to end, and `start`/`identify`/`list`/`scan` are
+accepted by the CLI/`FinderInput` but return the outcome
+`phase-not-built` until the wiring WO lands (including
+`max_hops`/`max_forks`/`max_fetches` enforcement). See that package's own
+module docstrings for the reasoning behind each piece; this section
+records the interface details WO-1024/WO-1027 had to settle that this
+design doc didn't spell out, and how Meeting Finder relates to
+`app/platforms/passive_verify.py`, an existing module this design doc
+missed on first pass.
 
 **Identify's ranking implementation (WO-1027)**, on top of this doc's own
 ranking table below:
@@ -287,23 +291,67 @@ rtr-business `research/UNSUPPORTED_PLATFORMS.md`.
 
 ### Scan
 
-Uses `app/platforms/media_scan.py`.
+Built WO-1029: `app/platforms/meeting_finder/scan.py`'s
+`scan_page(page, fetcher, *, max_meeting_pages=6) -> ScanResult`, where
+`page` is a `fetch.py` `FetchResult` already in hand. Uses
+`app/platforms/media_scan.py` for the direct-file scan, plus
+`app/platforms/base.py`'s `detect_platform()` and
+`app/platforms/direct_file.py`'s `is_direct_file_url()` for the anchor/
+iframe-based Vimeo/Google Drive/CivicWeb cases those regexes miss.
 
 - **Media links:** `.mp4`, `.m3u8`, Vimeo, Google Drive, CivicWeb.
-  YouTube becomes a drip lead.
+  YouTube becomes a drip lead (`ScanResult.youtube_leads`), never a media
+  candidate -- `youtube_ids.extract_video_id()`, pure regex, no network.
 - **Meeting-page links:** dated agenda pages, `?EID=123`, `/event/123/`,
-  `/meetings/2026-09-08-council`. Open the newest few and scan each.
-  Embedded video is often only visible one click down.
+  `/meetings/2026-09-08-council`, a Municode-style `/page/town-council-
+  meeting-278`. Detected by rtr-upcoming's `UPCOMING_AGENDAS_FIELD_
+  GUIDE.md` three rules (link text, then table column header, then href
+  shape), its minutes/subscribe/calendar guard (checked on link text, not
+  href -- a real government page can serve both an agenda and its minutes
+  from the same `/agendas-and-minutes/...`-shaped path, so an href-based
+  guard would exclude both), and its ancestor date walk that skips a bare
+  year heading. `ScanResult.meeting_page_links` lists every one found
+  (newest first); `scan_page()` opens the newest `max_meeting_pages` of
+  them through `fetcher` and scans each for media too -- one level only,
+  since embedded video is often only visible one click down (confirmed on
+  Municode's own "View Details" links and on a real CivicPlus tenant's
+  Granicus player-page links alike). A link `scan_media_urls()`/
+  `detect_platform()` already recognizes as direct media, or that
+  `extract_video_id()` recognizes as YouTube, is never also offered as a
+  page to open. A page fetched from Wayback (`FetchResult.links_only`)
+  may still yield real meeting-page links, never media candidates.
 
 ### Hop
 
-- `find_hop_links()` (`scripts/wo147_access_ladder_sweep.py`) with the
-  measured `app/utils/jurisdiction_data/hop_link_weights.csv` (school and
-  French versions exist).
+Built WO-1029: `app/platforms/meeting_finder/hop.py`'s
+`rank_hops(page, *, prefer_vendor=None, school=False, french=False,
+limit=8) -> List[HopLink]`, `is_document_hub(page) -> bool` and
+`calendar_entry_links(page, limit=2) -> List[str]` -- thin wrappers
+reusing `find_hop_links()`/`looks_like_document_hub()`/
+`find_calendar_entry_links()` (`scripts/wo147_access_ladder_sweep.py`)
+directly rather than moved into `app/` (see `hop.py`'s own module
+docstring and `BACKLOG_DONE.md`'s WO-1029 entry for the reasoning --
+`fetch.py`'s own precedent for reusing this same script's functions
+directly).
+
+- `find_hop_links()` with the measured
+  `app/utils/jurisdiction_data/hop_link_weights.csv` (`school=True`/
+  `french=True` select the school/French merges the same way
+  `find_hop_links()`'s own `gov_id` parameter already does; `french=True`
+  only takes effect when the page itself measures as French,
+  `looks_french()`).
+- **`prefer_vendor`** (new): once Identify already suspects a platform but
+  not which account (the "platform known, account unknown" case above),
+  a link `detect_platform()` resolves to that same platform gets an extra
+  bonus on top of `find_hop_links()`'s own shared vendor-host bonus, so
+  the known vendor's own host outranks a merely vendor-shaped link to
+  some other platform.
 - `looks_like_document_hub()` checks a landing page; on a plain events
   calendar, `find_calendar_entry_links()` opens its first dated entries.
 - **Jev test (later):** score the same 180 real homepages the weights were
   measured on, and keep whichever finds the real hub more often.
+- No `max_hops`/`max_forks`/`max_fetches` enforcement here -- the wiring
+  WO applies these limits around `rank_hops()`'s own ranked output.
 
 **Limits (settings):**
 

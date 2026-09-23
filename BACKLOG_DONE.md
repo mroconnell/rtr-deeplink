@@ -1,5 +1,132 @@
 # Backlog — done
 
+## WO-1029: Meeting Finder's Scan and Hop phases (`app/platforms/meeting_finder/scan.py`, `hop.py`) [Done 2026-09-23]
+
+**What.** The next wave-2 slice of Meeting Finder (`docs/MEETING_
+FINDER.md`): `scan.py` (`scan_page()`, finding media candidates,
+meeting-page links and YouTube leads on a fetched page, then opening the
+newest few meeting-page links one hop further) and `hop.py`
+(`rank_hops()`/`is_document_hub()`/`calendar_entry_links()`, ranking a
+page's own links as candidate next hops). Built in parallel with
+WO-1027 (Identify) and WO-1028 (List); a later WO wires all the phases
+into `runner.py`. Neither `max_hops`/`max_forks`/`max_fetches` logic
+lives here -- that budget is the wiring WO's job; these two modules only
+find and rank.
+
+**`hop.py` reuses `scripts/wo147_access_ladder_sweep.py`'s
+`find_hop_links()`/`looks_like_document_hub()`/`find_calendar_entry_
+links()` directly, NOT moved into `app/` (a deliberate deviation from
+the WO-1029 brief's "move the pure ones into app/" instruction).**
+`fetch.py` (WO-1025) already established the precedent this follows: its
+own docstring explains at length why it imports straight from this same
+2,478-line, actively-iterated script rather than moving code out from
+under it, and says "move it and have the script import it back" is "kept
+in reserve for a case where a direct import genuinely doesn't work" -- a
+direct import already proven to work there. `hop.py`'s own module
+docstring records this reasoning in full for whoever wants the move done
+properly later (its own PR, its own before/after run of wo147's real
+test suite -- `tests/test_hop_scorer_weighted.py`, `tests/
+test_hub_link_ranking.py`, `tests/test_hop_scorer_french.py`,
+`tests/test_wo905_agendacenter_hop_sweep.py`, `tests/
+test_wo904_access_ladder_decorative_climb.py`,
+`tests/test_wo939_sweep_robustness.py`, `tests/
+test_coverage_alternates.py`). Flagged for the wiring WO/conductor to
+weigh in on; `find_hop_links()`'s own signature and every existing
+caller are untouched either way.
+
+**`prefer_vendor` is new**, for Identify's "platform known, account
+unknown" case: a second, smaller bonus on top of `find_hop_links()`'s
+own shared vendor bonus, applied only to a link `app.platforms.base.
+detect_platform()` resolves to the SAME platform name as `prefer_vendor`
+-- so once Identify already suspects a Granicus tenant but not which
+one, a real Granicus link on the page outranks a merely vendor-shaped
+link to some other platform. `school`/`french` select the existing
+`hop_link_weights_school.csv`/`hop_link_weights_fr.csv` merges
+`find_hop_links()` already supports via a fake `gov_id`
+(`us:sd:__meeting_finder_school__`/`ca:__meeting_finder_french__`) --
+`french=True` still only takes effect when the page itself measures as
+French (`looks_french()`), matching every other `ca:` caller.
+
+**`scan.py`'s meeting-page-link detection follows rtr-upcoming's
+`UPCOMING_AGENDAS_FIELD_GUIDE.md`** ("Detection: three rules" plus "the
+guard that matters more than the rules"): link text, then table column
+header (Municode's own `data-th` attribute, or the table's `<th>` text),
+then href shape; dates from link text, else the row's own date column,
+else an ancestor date walk that skips a bare-year heading; the minutes/
+subscribe/calendar guard checked on link TEXT (not href -- see below);
+test/demo-tenant titles dropped via `pick._is_test_or_demo_title`,
+imported directly rather than duplicated.
+
+**Two real bugs found and fixed live building this, both against real
+pages, neither in the original design:**
+- **A minutes/agenda-document column's icon-only link (empty anchor
+  text) was initially caught by the rule-2 column-header check just
+  because its column was labelled "Agenda"** -- Municode's own icon-only
+  `adaHtmlDocument`/`adaHtmlDocument` agenda links matched before this
+  was narrowed. Fixed by excluding any column labelled agenda/packet/
+  minutes/document outright (these are document columns, never a
+  meeting-detail page with an embedded player), and by narrowing rule 2's
+  own word list to meeting/view/details.
+- **The minutes/subscribe/calendar guard, if checked against the HREF as
+  well as the text, wrongly excluded real agenda links too** -- the field
+  guide's own Menlo Park finding, reproduced live: every document on a
+  real government site can share a path like `/agendas-and-minutes/...`,
+  so an href-based guard there would exclude both the real minutes AND
+  the real agenda sharing that path. The guard now checks link TEXT
+  only, per a synthetic regression test built from that exact shape
+  (`tests/test_wo1029_meeting_finder_scan.py::
+  test_minutes_guard_applies_even_on_an_agenda_shaped_page`).
+- **A CivicPlus AgendaCenter's `ViewFile/Agenda/...` link serves a PDF
+  with no `.pdf` anywhere in its URL** -- confirmed live against Jackson
+  County AL's real, current AgendaCenter page, whose `td.media` YouTube
+  links were also initially mis-classified as meeting pages to open
+  (rule 1 matched the anchor text "Video"). Both fixed: any href
+  `extract_video_id()` or `detect_platform()` already recognizes as
+  direct media is excluded from `meeting_page_links` (it's already
+  covered by Scan's own media-candidate/YouTube-lead detection), and a
+  small fixed list of known document-serving href shapes
+  (`viewfile`/`documentcenter`/`fileopen.aspx`/`showpublisheddocument`/
+  `/document/N` -- the same shapes rtr-upcoming's own field guide names)
+  is excluded too, since these carry no extension for the extension-based
+  check to catch.
+
+**`ScanResult.meeting_page_links` reports every link found (up to a
+generous internal cap), not just the ones `max_meeting_pages` actually
+opens** -- `max_meeting_pages` only bounds how many get fetched and
+re-scanned for media; a caller that wants exactly what Scan opened can
+slice `meeting_page_links[:max_meeting_pages]` itself (both are newest-
+first). Keeping the full list lets other phases/reporting see what else
+was found even when the open budget ran out.
+
+**Live-verified, both phases, real pages, no YouTube fetched (per
+CLAUDE.md's YouTube-drip rule -- `youtube_ids.extract_video_id()` is
+pure regex, no network, used only to spot a YouTube URL as a lead):**
+
+| Page | Top-ranked hop / what Scan found |
+|---|---|
+| `www.pomonaca.gov/` (needed the browser-headers rung -- plain headers 403'd) | Hop: "Agendas, Minutes, etc." (26.55) and the real `pomona.legistar.com/Calendar.aspx` link (26.44), both clearly above the rest |
+| `www.mcpsva.org/` (school, `school=True`) | Hop's own top real (non-YouTube) result: PowerSchool Parent Portal -- a real, honest "nothing better on this page" finding, not a false positive |
+| `www.ville.quebec.qc.ca/` (Quebec, `french=True`, page confirmed French) | Hop's top real result: "Conseil municipal" -- Les séances du conseil municipal (council meeting sessions) |
+| `bristol-ri.municodemeetings.com/` and `hamburg-mi.municodemeetings.com/` homepages | Scan found the real "View Details"/meeting-detail pages, newest first, no document/pagination noise |
+| `jacksoncountyal.gov/AgendaCenter` (real CivicPlus tenant) | Scan found 0 meeting pages (all real links are either YouTube video links -> 17 real leads, or `ViewFile` agenda documents -> correctly excluded) |
+| `nc-durham.civicplus.com/AgendaCenter/City-Council-4` (real CivicPlus tenant) | Scan found the real Granicus player-page links (`durham.granicus.com/player/clip/N`) plus 1 YouTube lead; opening one confirms the real stream one hop down, same shape as Municode's own case |
+
+**Verification.** 21 new tests (`tests/test_wo1029_meeting_finder_scan.py`,
+`tests/test_wo1029_meeting_finder_hop.py`), real fixtures reused from
+`tests/fixtures/municode_meetings/`, `tests/fixtures/civicplus/` and
+`tests/fixtures/wo228_hub_ranking/` (no new fixture files -- see the
+scan/hop test files' own docstrings for exactly which real pages each
+test reuses and why), plus a handful of documented synthetic snippets
+for the two bug fixes above. All five CI gates green (`ruff check`,
+`ruff format --check`, `pytest` -- full suite, 5273 passed / 2 pre-
+existing unrelated failures per this WO's own brief / 16 skipped / 4
+xfailed --, both `alembic check` runs clean with no schema change, the
+BACKLOG_DONE.md heading-loss guard clean).
+
+**Not built here (wave 2/wiring WO's job):** Start, Identify, List,
+`max_hops`/`max_forks`/`max_fetches` enforcement, and wiring Scan/Hop
+into `runner.py`/the CLI.
+
 ## WO-1027: Meeting Finder's Identify phase [Done 2026-09-23]
 
 **What.** `app/platforms/meeting_finder/identify.py`, built in parallel
