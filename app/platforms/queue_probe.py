@@ -1401,10 +1401,11 @@ def parse_queue_line(line: str) -> tuple[str, Optional[str], Optional[str]]:
 # different machine and only updates on its own `git pull`). Recommended
 # rollout (see BACKLOG.md's WO-1016 entry / docs/YOUTUBE_DRIP_RUNBOOK.md):
 # (1) merge this PR's readers, (2) confirm the drip Mac has pulled it,
-# (3) flip this to True. Left False here on purpose -- do NOT flip it in
-# the same PR that adds the readers, since nothing here can confirm the
-# drip Mac has pulled yet.
-EMIT_GOV_ID_IN_QUEUE_LINES = False
+# (3) flip this to True. Done 2026-09-23: the drip Mac (Ol McClaude)
+# confirmed its drip worktree (~/rtr-deeplink-drip-worktree, branch
+# drip-local) was brought to a main commit that includes WO-1016's
+# readers, and the drip restarted cleanly on it.
+EMIT_GOV_ID_IN_QUEUE_LINES = True
 
 
 def canonical_video_key(url: str) -> Optional[str]:
