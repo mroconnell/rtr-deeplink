@@ -347,6 +347,131 @@ seen), 0 pruned.
 
 ---
 
+## 2026-09-23
+
+154 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(paged through 3 batches, back to 2026-09-11), 15 new after the ledger
+filter — everything older than 2026-09-22 13:32 UTC was already covered by
+prior runs. (Did not page further back than 2026-09-11: the filter had
+already returned only messages from 2026-09-22/23 by that point, and every
+prior run's ledger already covers back past 30 days, so paging further would
+only re-confirm already-seen IDs.)
+
+**Out of scope / informational, no write-up**: 9 GitHub Actions notices for
+`mroconnell/rtr-upcoming` (5 "PR run failed: Tests" tied to individual
+feature branches, 2 "Run failed: Tests - master", 1 tied to a
+`worktree-agent-*` branch) — a different repository/product from this one,
+same already-flagged-and-not-re-investigated open question from the
+2026-09-20/21 runs about whether this Routine's scope should widen to
+include it. 1 GitHub "sudo email verification code" (account-level 2FA
+action, not an operational alert about this repo's code). 1 transcription
+worker daily report.
+
+**Duplicates, no new write-up** (verified against real code/logs, not just
+assumed): Transcription job 4142 failed (Moulton Borough NH, "School
+Board", `townhallstreams.com/stream.php?id=76131` — the identical source
+URL as jobs 3727/3900, and the identical error signature as jobs
+3727/3900/3987, "ffmpeg reported success but the output file isn't
+decodable (likely truncated/corrupt)," 2026-09-23 08:41-08:46 UTC) — the
+fourth occurrence in four days of the already-open `[JUST-DO-IT]`
+"`slice_cached_audio()` skips the corrupt-chunk decodability guard" entry.
+"YouTube transcripts: none new today" (15 individual video failures, read
+in full) — all 15 are either `VideoUnplayable: ... This live event will
+begin` or `NoTranscriptFound: ... No transcripts were found for any of the
+requested language codes: ('en',)`, both already-established known per-video
+outcomes for this feed (see every run since 2026-09-21). GitHub Actions
+"Adapter health canary" failed on `main` (run `35768181284`, 2026-09-22
+18:37 UTC) — pulled the real job log: `FAIL legistar[1]: ClientResponseError:
+410 ... phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the same
+already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is a
+genuinely dead meeting" entry — but this run also had two *additional*
+failures not covered by that entry, written up below.
+
+- **Confirmed** (event) / **Unconfirmed** (root cause, unchanged from
+  2026-09-22) — the daily RTR feed drop failed for a **second consecutive
+  day** (2026-09-22, alert timestamp 13:32 UTC), with the **identical**
+  failure signature as the 2026-09-21 failure already recorded in the
+  2026-09-22 section: `discover.py`'s `resolve` stage exits with
+  `RuntimeError: GET https://redtaperecordings.com/internal/export/pages ->
+  HTTP 404 (a 404 can mean a bad ARCHIVE_INGEST_TOKEN, or an Archive without
+  WO-93 deployed)`. The 2026-09-22 entry left this as an open question
+  between "a stale/rotated token" and "a one-off Archive availability
+  blip"; this second, identical occurrence weighs the answer toward the
+  token explanation — a transient blip recurring with the exact same error
+  string two days running, at a similar time of day, is a much less likely
+  coincidence than a token that's simply been wrong since 2026-09-21.
+  Re-checked the route this repo owns for anything that changed: `git log
+  -S internal_export_pages -- archive/main.py` shows no code change to
+  `archive/main.py:600`'s `/internal/export/pages` handler or its
+  `_token_ok()` gate since it was added (WO-93) — the route, its
+  docstring, and its 404-not-401 posture are all unchanged, which rules out
+  a code regression in this repo as the cause. Also checked for a
+  concurrent Render `rtr-deeplink-archive` outage at the 13:32 UTC request
+  time: the nearest Render "server failure" alert for that service on
+  2026-09-22 was at 11:18 UTC, over two hours earlier — no outage alert
+  overlaps the actual failure window either day, which further weakens the
+  "transient Archive blip" half of the original either/or.
+  - **Impact**: two full days (2026-09-21, 2026-09-22) with zero manifest
+    output from the feed drop — a two-day gap, growing daily, in whatever
+    pipeline reads those drops downstream, versus the single-day gap
+    reported yesterday.
+  - **Open question** (escalated from 2026-09-22, now with a leaning): does
+    the `rtr-discovery`/`rtr-business` script's own `ARCHIVE_INGEST_TOKEN`
+    need rotating/checking? That script's environment lives outside this
+    repo, so this Routine can't inspect or fix it directly, but the
+    evidence above (two identical failures, no code change, no overlapping
+    Archive outage) now points there more than at a one-off blip.
+
+- **Confirmed** — the 2026-09-22 18:37 UTC adapter health canary run
+  (`35768181284`) failed **two platforms beyond** the already-tracked
+  Phoenix Legistar entry: `tvw` (`ClientResponseError: 403, Forbidden` on
+  `https://tvw.org/video/senate-housing-2026091165/`) and `seattle_channel`
+  (`TimeoutError` on `https://www.seattlechannel.org/videos?videoid=x184865`).
+  Both traced against real code, with different conclusions:
+  - **`tvw` — likely real bug, not flakiness.** `app/platforms/tvw.py` (WO-1010,
+    shipped the *same day* as this failure, 2026-09-22) was this canary
+    sample's very first scheduled run. Read `TVWAssetFinder.resolve()`
+    (`app/platforms/tvw.py:78-84`): it fetches the page with a bare
+    `aiohttp.ClientSession().get(url, ...)` — no `User-Agent`, no headers
+    at all. Compared against `app/platforms/granicus.py`, which sets a
+    realistic browser `User-Agent` on every request and retries once with
+    additional browser-shaped headers specifically on a 403 (see its own
+    comment: "empty User-Agent, a `python-requests/...` UA... all returned
+    200" for the *headers* that do work) — the exact "politely" convention
+    `CLAUDE.md` documents this repo already knows and applies elsewhere.
+    `tvw.py`'s module docstring says the adapter was "confirmed live
+    against three real, distinct TVW pages" during WO-1010's own
+    investigation, so the page itself isn't gated in general — this reads
+    as tvw.org's WAF/CDN specifically flagging a headerless request (which
+    a GitHub Actions runner's default aiohttp UA would present as), not a
+    genuinely dead or newly-protected sample.
+    - **Impact**: 1 platform, added today — no production traffic depends
+      on the canary passing, but every future scheduled canary run will
+      keep failing on this platform until fixed, which will mask a real
+      future `tvw` regression underneath a permanent false-positive.
+    - **Next action**: add a realistic `User-Agent` header to
+      `TVWAssetFinder.resolve()`'s request, matching the pattern already
+      used in `granicus.py`. Small, well-scoped, low-risk fix.
+  - **`seattle_channel` — likely flake, but worth a second look next time.**
+    This exact platform/sample previously failed on 2026-09-09 through
+    2026-09-11, was investigated and confirmed *not* to recur after
+    2026-09-11, and was closed as a one-off flake (`BACKLOG_DONE.md`'s
+    "Adapter canary `townhallstreams`/`seattle_channel` flake" entry,
+    confirmed closed 2026-09-13). This is the **first recurrence since**,
+    over a week later. One data point isn't enough to reopen that closed
+    finding, but it's no longer zero occurrences since closure either.
+    - **Impact**: none observed yet beyond the canary's own false-positive
+      failure (1 of 42 platforms, timeout not a content-shape failure).
+    - **Open question**: leaving as "watch for a second recurrence" per the
+      original close-out's own standard, rather than reopening on a single
+      data point — but whoever next reviews the canary's real-time state
+      should check whether this becomes 2-of-2.
+
+Ledger: 15 message IDs reviewed and recorded this run (15 new, 469 already
+seen), 0 pruned.
+
+---
+
 ## Open item
 
 **Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,
