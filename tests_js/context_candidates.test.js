@@ -94,7 +94,7 @@ test('recheck summary does not call stale or missing candidates complete', () =>
   assert.equal(candidateRecheckSummary([{ id: 7, outcome: 'checked' }]), 'Recheck complete.');
 });
 
-test('edit and dirty state gate recheck and editor handoff; cancel restores both', () => {
+test('edit mode gates recheck and editor handoff; cancel restores both', () => {
   const { dom, root } = reviewDom();
   initCandidateReview(root, async () => { throw new Error('not called'); }, () => {});
   const form = root.querySelector('form');
@@ -103,7 +103,7 @@ test('edit and dirty state gate recheck and editor handoff; cancel restores both
   const handoff = root.querySelector('[data-editor-handoff]');
   root.querySelector('[data-review-edit]').click();
   assert.equal(form.hidden, false);
-  assert.equal(save.disabled, true);
+  assert.equal(save.disabled, false);
   assert.equal(recheck.disabled, true);
   assert.equal(handoff.hasAttribute('href'), false);
   assert.equal(
@@ -118,6 +118,31 @@ test('edit and dirty state gate recheck and editor handoff; cancel restores both
   assert.equal(form.elements.namedItem('title').value, 'Original title');
   assert.equal(recheck.disabled, false);
   assert.equal(handoff.getAttribute('href'), '/context/new?candidate=7&review=3');
+});
+
+test('unchanged values can confirm a first review or acknowledge new research', async () => {
+  for (const editorUrl of ['/context/new?candidate=7&review=3', '']) {
+    const { dom, root } = reviewDom({ editorUrl });
+    let payload;
+    let reloads = 0;
+    const fetchImpl = async (_url, options) => {
+      payload = JSON.parse(options.body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ outcome: 'saved', candidate: {} }),
+      };
+    };
+    initCandidateReview(root, fetchImpl, () => { reloads += 1; });
+    const form = root.querySelector('form');
+    root.querySelector('[data-review-edit]').click();
+    assert.equal(root.querySelector('[data-review-save]').disabled, false);
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    assert.equal(payload.fields.title, 'Original title');
+    assert.equal(payload.expected_version, 12);
+    assert.equal(reloads, 1);
+  }
 });
 
 test('save posts a complete snapshot, disables controls in flight, then reloads', async () => {

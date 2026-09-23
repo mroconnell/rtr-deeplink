@@ -71,11 +71,6 @@ function reviewClearConflicts(form, fields) {
   ).filter((field) => REVIEW_FIELDS.includes(field) && fields[field] === null);
 }
 
-function reviewSnapshot(form) {
-  const fields = reviewFields(form);
-  return JSON.stringify({ fields, clear_conflicts: reviewClearConflicts(form, fields) });
-}
-
 function unresolvedConflictFields(form, fields) {
   return Array.from(form.querySelectorAll('[data-review-clear-conflict]'))
     .filter((checkbox) => fields[checkbox.value] === null && !checkbox.checked)
@@ -114,7 +109,6 @@ function initCandidateReview(root, fetchImpl, reloadImpl) {
   const status = form.querySelector('[data-review-status]');
   const recheckButton = root.querySelector('[data-recheck-one]');
   const handoff = root.querySelector('[data-editor-handoff]');
-  let initialSnapshot = reviewSnapshot(form);
   let editing = false;
   let saving = false;
 
@@ -130,8 +124,10 @@ function initCandidateReview(root, fetchImpl, reloadImpl) {
     });
   };
   const updateGates = () => {
-    const dirty = reviewSnapshot(form) !== initialSnapshot;
-    saveButton.disabled = saving || !dirty;
+    // Saving is also an explicit review acknowledgement. An editor must be
+    // able to accept imported values unchanged, or acknowledge new research
+    // that does not alter the values they previously chose.
+    saveButton.disabled = saving || !editing;
     cancelButton.disabled = saving;
     editButton.disabled = saving || editing;
     if (recheckButton) recheckButton.disabled = saving || editing;
@@ -140,7 +136,6 @@ function initCandidateReview(root, fetchImpl, reloadImpl) {
     });
     updateConflictControls();
     setHandoffEnabled(handoff, !saving && !editing);
-    return dirty;
   };
 
   editButton.addEventListener('click', () => {
@@ -171,10 +166,6 @@ function initCandidateReview(root, fetchImpl, reloadImpl) {
   }
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (reviewSnapshot(form) === initialSnapshot) {
-      showStatus('No review changes to save.');
-      return;
-    }
     const fields = reviewFields(form);
     const unresolved = unresolvedConflictFields(form, fields);
     if (unresolved.length) {
@@ -191,7 +182,6 @@ function initCandidateReview(root, fetchImpl, reloadImpl) {
         fields,
         clear_conflicts: reviewClearConflicts(form, fields),
       }, fetchImpl);
-      initialSnapshot = reviewSnapshot(form);
       showStatus('Review saved. Refreshing…');
       reloadImpl();
     } catch (error) {
