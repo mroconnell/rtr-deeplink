@@ -82,11 +82,13 @@ answer as a reason to go looking for that vendor's real platform tenant,
 never as a match on its own.
 """
 
+import re
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 
 from .base import detect_platform
 from .boarddocs import _HOST as _BOARDDOCS_HOST
+from .sliq_harmony import _HOST_RE as _SLIQ_HARMONY_HOST_RE
 from .vimeo import is_vimeo_host
 from .wistia import is_wistia_account_host
 
@@ -137,6 +139,21 @@ _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     ("hylandcloud.com", "hyland"),
 )
 
+# Sliq Harmony -- not a plain suffix like the entries above: real hosts
+# are `sg001-harmony.sliq.net`/`sg002-harmony.sliq.net`/etc. (a numbered-
+# server PREFIX joined to "harmony" with a hyphen, not a dotted
+# subdomain), so a `str.endswith("." + suffix)` check can never match it.
+# `sliq_harmony.py` already owns the real regex for this
+# (`_HOST_RE`, imported above) -- reused directly rather than
+# re-derived, same pattern as this module already uses for Vimeo/Wistia's
+# own host predicates just below. WO-1021 (2026-09-23): confirmed this is
+# a single-purpose vendor host (every real tenant is a path segment on
+# one of these numbered hosts -- see that module's own docstring), so a
+# bare-host match is a safe "this platform, page unconfirmed" answer,
+# same reasoning as Hyland above (`is_sliq_harmony_url()`'s own path
+# check needs a real `/{tenant}/Harmony/...` path a hostname-only caller
+# never has).
+
 # ---------------------------------------------------------------------
 # Known vendor/meeting-platform domains with NO rtr-deeplink adapter --
 # seeded from the dns_ctlog_sweep_2026-09-17 VENDOR_SUFFIXES list's
@@ -145,11 +162,36 @@ _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
 # ever actually checked.
 UNSUPPORTED_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     # NovusAGENDA -- named explicitly in CLAUDE.md's WO-1015 brief as a
-    # known vendor with no rtr-deeplink adapter; not in
-    # docs/../UNSUPPORTED_PLATFORMS.md as of 2026-09-23 (that file is a
-    # dead-end/candidate log, not an exhaustive registry) -- flagged here
-    # as a gap in that doc, not acted on further (out of this WO's scope).
+    # known vendor with no rtr-deeplink adapter; also confirmed in
+    # ~/Documents/rtr-business/research/UNSUPPORTED_PLATFORMS.md
+    # (`{tenant}.novusagenda.com`, "Confirmed dead end (thin sample)":
+    # 2 real agenda-only tenants, no video) as of WO-1021 (2026-09-23).
     ("novusagenda.com", "novusagenda"),
+    # Simbli (eBoardSolutions) -- rtr-business's UNSUPPORTED_PLATFORMS.md,
+    # "Confirmed dead end": ENUMERATION_METHODS.md §312 (WO-291,
+    # 2026-09-12) found 39 real governments on Simbli, zero with any video
+    # field (agenda-only). WO-1018 (2026-09-23).
+    ("simbli.eboardsolutions.com", "simbli"),
+    # AgendaSuite -- rtr-business's UNSUPPORTED_PLATFORMS.md, "Unconfirmed
+    # candidate": real path-based-tenancy domain (2 governments tagged in
+    # jurisdiction_coverage.csv), video capability unconfirmed either way,
+    # no rtr-deeplink adapter exists. WO-1018 (2026-09-23).
+    ("agendasuite.org", "agendasuite"),
+    # IBM Video Streaming -- rtr-business's UNSUPPORTED_PLATFORMS.md,
+    # "Confirmed real, not yet built": live 2026-09-18 against Lafayette
+    # Consolidated Government LA (real enumerable channel + a real
+    # `.m3u8`), one government so far -- not built pending a 2nd tenant.
+    # WO-1018 (2026-09-23).
+    ("video.ibm.com", "ibm_video_streaming"),
+    # Laserfiche Cloud -- rtr-business's UNSUPPORTED_PLATFORMS.md,
+    # "Laserfiche WebLink (incl. Laserfiche Cloud)", "Confirmed real, not
+    # yet built (deferred)": 1 real video example (Jefferson County WA,
+    # Zoom MP4 + WebVTT) out of 20 repositories opened; deferred since
+    # every other studied government already has its real video
+    # elsewhere. `portal.laserfiche.com` is the Cloud-hosted variant's
+    # shared host (the self-hosted WebLink variant has no fixed host, so
+    # it isn't listed here). WO-1018 (2026-09-23).
+    ("portal.laserfiche.com", "laserfiche_cloud"),
 )
 
 # ---------------------------------------------------------------------
@@ -166,6 +208,75 @@ UNSUPPORTED_PLATFORMS: Tuple[Tuple[str, str], ...] = (
 VENDOR_WEB_HOST_HINTS: Tuple[Tuple[str, str], ...] = (
     ("granicusgovaccess.net", "granicus"),
 )
+
+
+# ---------------------------------------------------------------------
+# Path-only platform signatures (WO-1021, 2026-09-23): a URL PATH shape
+# that identifies a platform regardless of which domain it lives on --
+# confirms a self-hosted, first-party-government-domain tenant of a
+# vendor whose other detection is normally host-based (base.py's own
+# `detect_platform()` netloc checks don't fire for these, since the
+# domain is the government's own, not the vendor's).
+#
+# Two of `detect_platform()`'s own branches are ALREADY netloc-
+# independent path checks -- CivicPlus AgendaCenter (`path.startswith
+# ("/agendacenter")`) and Hyland "OnBase Agenda Online"
+# (`"/meetings/viewmeeting" in path`) -- so `platform_for_path()` below
+# calls `detect_platform()` on a neutral placeholder host first and picks
+# those two up for free, rather than re-deriving them a second time. The
+# four entries below are the ones base.py does NOT (yet) recognize
+# without a real netloc match -- moved here verbatim (not re-derived)
+# from wo282_recon.py's old `_PATH_SHAPE_PLATFORMS` (itself copied from
+# wo147_access_ladder_sweep.py/wo268, per that script's own history), the
+# same source that fed wo282_classify.py's `vendor_platform_for_url()`.
+_PATH_ONLY_PLATFORMS: Tuple[Tuple["re.Pattern[str]", str], ...] = (
+    (re.compile(r"/citizens/", re.I), "iqm2"),
+    (re.compile(r"/portal/meetinginformation\.aspx", re.I), "civicclerk"),
+    (re.compile(r"/archive\.aspx\?amid=", re.I), "legistar"),
+    (re.compile(r"/viewpublisher\.php", re.I), "granicus"),
+    (re.compile(r"/mediaplayer\.php", re.I), "granicus"),
+)
+
+# Canonical first-party probe paths for wo282_targeted.py's fallback
+# ladder (rung 3): one concrete, blindly-fetchable example path per
+# `detect_platform()`-native path-only branch (CivicPlus AgendaCenter,
+# Hyland AgendaOnline) -- these are the only two signatures in this
+# module worth blind-probing on an arbitrary first-party domain, since
+# they're confirmed real, common self-hosted shapes (see base.py's own
+# comments on each). The four `_PATH_ONLY_PLATFORMS` entries above are
+# NOT probe targets -- they only ever confirm a platform on a URL this
+# repo already has in hand (a sitemap/archive/homepage-link URL), never a
+# path worth guessing blind. Moved here verbatim from wo282_targeted.py's
+# own hand-copied `FIRST_PARTY_PROBE_PATHS` (WO-1021, 2026-09-23).
+FIRST_PARTY_PROBE_PATHS: Tuple[str, ...] = (
+    "/AgendaCenter",
+    "/AgendaOnline/Meetings/ViewMeeting",
+)
+
+
+def platform_for_path(path: str) -> Optional[str]:
+    """Classify a URL PATH alone (no real host in hand) by platform --
+    for a first-party-domain tenant of a vendor whose adapter/base.py
+    detection is normally host-based. Checks `detect_platform()` against
+    a neutral placeholder host first (covers CivicPlus AgendaCenter and
+    Hyland AgendaOnline, whose base.py branches are already netloc-
+    independent), then `_PATH_ONLY_PLATFORMS` for the signatures base.py
+    doesn't yet check without a real netloc match. Returns `None` if
+    nothing matches -- this function never distinguishes "no adapter"
+    from "unrecognized" the way `platform_for_host()` does, since a path
+    shape alone was never checked against `UNSUPPORTED_PLATFORMS`."""
+    if not path:
+        return None
+    if not path.startswith("/"):
+        path = "/" + path
+    neutral_url = f"https://first-party-government-domain.invalid{path}"
+    detected = detect_platform(neutral_url)
+    if detected != "unknown":
+        return detected
+    for rx, platform in _PATH_ONLY_PLATFORMS:
+        if rx.search(path):
+            return platform
+    return None
 
 
 def platform_for_host(host: str) -> Tuple[Optional[str], Optional[bool]]:
@@ -197,6 +308,9 @@ def platform_for_host(host: str) -> Tuple[Optional[str], Optional[bool]]:
     for suffix, platform in _HOST_ONLY_PLATFORMS:
         if host == suffix or host.endswith("." + suffix):
             return platform, True
+
+    if _SLIQ_HARMONY_HOST_RE.match(host):
+        return "sliq_harmony", True
 
     if is_vimeo_host(host):
         return "vimeo", True

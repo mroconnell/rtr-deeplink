@@ -69,13 +69,15 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from wo282_recon import (  # noqa: E402
-    _PATH_SHAPE_PLATFORMS,
-    _PLATFORM_ALIASES,
     hub_score,
     meeting_score,
 )
 
 from app.platforms.base import detect_platform  # noqa: E402
+from app.platforms.host_recognition import (  # noqa: E402
+    platform_for_host,
+    platform_for_path,
+)
 import wo147_access_ladder_sweep as w147  # noqa: E402
 from platform_fingerprints import classify_site_builder  # noqa: E402
 
@@ -151,14 +153,24 @@ def log(msg: str) -> None:
 
 
 def vendor_platform_for_url(url: str) -> str:
+    """A real, ADAPTER-BACKED platform name for `url`, or "" -- this is a
+    `kind="platform"`/`confidence="high"` classification signal, so
+    (WO-1021, 2026-09-23) it only ever returns a platform
+    `host_recognition.platform_for_host()`/`platform_for_path()` reports
+    as adapter-backed (`supported=True`/a non-None `platform_for_path()`
+    result), never one of `UNSUPPORTED_PLATFORMS`'s known-no-adapter
+    vendors or a `VENDOR_WEB_HOST_HINTS` hint -- matching this function's
+    old behavior under its own hand-copied `_PLATFORM_ALIASES`/
+    `_PATH_SHAPE_PLATFORMS` tables, which never listed an unsupported
+    vendor or a hint host either."""
     host = urlparse(url).netloc.lower()
-    for alias, platform in _PLATFORM_ALIASES.items():
-        if alias in host:
-            return platform
+    platform, supported = platform_for_host(host)
+    if platform and supported:
+        return platform
     path = urlparse(url).path
-    for rx, platform in _PATH_SHAPE_PLATFORMS:
-        if rx.search(path):
-            return platform
+    path_platform = platform_for_path(path)
+    if path_platform:
+        return path_platform
     return ""
 
 
@@ -187,15 +199,24 @@ def dns_platform(rec: dict) -> tuple:
     Mirrors wo282_recon.py's own dns_lookup()/process_government_v2()
     logic (not imported, since that lives with the DNS-fetch code, not
     the scoring code -- duplicated here deliberately, small enough to
-    keep in sync by inspection)."""
+    keep in sync by inspection). A CNAME target is a real HOST -- WO-1021
+    (2026-09-23) checks it with `platform_for_host()` (suffix-based,
+    correct for a real subdomain) rather than the old substring `alias in
+    cname` check; only an adapter-backed match (`supported=True`) counts,
+    same "platform confirmation, not a hint" rule as
+    `vendor_platform_for_url()` above -- a `VENDOR_WEB_HOST_HINTS` hit
+    (e.g. a CNAME landing on `granicusgovaccess.net`) is deliberately NOT
+    returned as a platform here either."""
     dns = rec.get("dns") or {}
     for sub in dns.get("resolving_subdomains", []):
         if sub.get("likely_own_domain_wildcard"):
             continue
-        cname = (sub.get("cname") or "").lower()
-        for alias, platform in _PLATFORM_ALIASES.items():
-            if alias in cname:
-                return platform, f"{sub['host']} CNAME -> {sub['cname']}"
+        cname = (sub.get("cname") or "").lower().rstrip(".")
+        if not cname:
+            continue
+        platform, supported = platform_for_host(cname)
+        if platform and supported:
+            return platform, f"{sub['host']} CNAME -> {sub['cname']}"
     for vl in dns.get("resolving_vendor_labels", []):
         return vl["platform"], f"guessed tenant host resolves: {vl['host']}"
     return "", ""
