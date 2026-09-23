@@ -1,5 +1,85 @@
 # Backlog — done
 
+## WO-1015 part A: one shared, network-free host-recognition helper for discovery stages; stage 2/3 sweep scripts now check for platforms at all [Done 2026-09-23]
+
+**Issue.** `detect_platform()` (`app/platforms/base.py`) is the one real,
+maintained registry of every platform this repo has an adapter for, and
+almost every part of this app already asks it. Two discovery stages in
+`rtr-business/research/dns_ctlog_sweep_2026-09-17/` didn't: stage 2
+(`elastic_sweep_script.py`, the DNS/CNAME sweep) matched each CNAME hop
+against its own hand-typed `VENDOR_SUFFIXES` list, which mixed real
+adapter-backed platforms with vendors that have no adapter at all
+(`novusagenda.com`, `clerkshq.com`'s sibling `diligentoneplatform.com`,
+etc — some of those DO have adapters, the list just couldn't say so).
+Stage 3 (`cc_seek_script.py`, the Common Crawl seek) never checked for a
+platform at all — only a plain keyword guess (`HUB_KEYWORDS`).
+
+**Fix.** Added `app/platforms/host_recognition.py`: `platform_for_host()`
+answers `(platform, supported)` for a bare hostname by calling
+`detect_platform()` on a synthetic `https://<host>/` URL first, then a
+short, explicitly-sourced fallback list (`_HOST_ONLY_PLATFORMS`) for five
+real, adapter-backed platforms whose `detect_platform()` branch needs a
+path/query a bare host never has (Cablecast, BoxCast, BoardDocs,
+Invintus, Castus — plus Wistia/Vimeo, recognized via their own existing
+host-only predicates, no new logic). `UNSUPPORTED_PLATFORMS` is the one
+seeded, sourced list of known vendors with NO adapter (currently just
+`novusagenda.com`). `AMBIGUOUS_HOSTS` deliberately leaves
+`granicusgovaccess.net` unclassified — flagged as a live question for
+Ryan (one write-up calls it website-CMS hosting noise, not confirmed),
+not guessed at either way. Two adapter-backed platforms are deliberately
+NOT recognized by host alone and documented as such in the module's own
+docstring: Seattle Channel (host is a general broadcast site, not
+single-purpose) and Hyland (its real tenants share no common host suffix
+at all — `detect_platform()`'s own branch is path-only, no netloc check).
+10 tests in `tests/test_host_recognition.py`, all against real hostnames
+already recorded elsewhere in this repo (module docstrings, README,
+existing fixtures).
+
+`elastic_sweep_script.py` and `cc_seek_script.py` (main rtr-business
+checkout, uncommitted per that repo's "agents never commit there" rule)
+now call this helper per CNAME hop / per Common Crawl record URL and add
+a new `platform_hits` field. Existing fields (`vendor_match`,
+`platform_cname_hits`, `all_records`, `hub_hits`) are completely
+unchanged — nothing old is replaced or discarded, `platform_hits` only
+adds information. Both scripts import via the same `sys.path` trick
+`queue_pipeline.py`'s own `cmd_feed()` already uses to reach
+`~/Documents/rtr-deeplink`, guarded so either script still runs (with
+empty `platform_hits`) if that checkout doesn't have the module yet
+(true today, since this PR is unmerged).
+
+**Replay against real data.** Stage 2: replayed offline against the 900
+existing entries in `raw_results.json` (91 with real DNS resolutions).
+The OLD list only ever matched `granicusgovaccess.net` in this dataset (6
+hits, all real) — the new helper doesn't classify that host either way
+(by design, see above), but `vendor_match` itself is untouched so nothing
+is actually lost. The new helper additionally found 4 real hits the old
+list completely missed: `pt-west-001.civicplus.io` / `guardian.civicplus.io`
+(a third real CivicPlus CDN domain, matched via `detect_platform()`'s own
+bare `"civicplus"` substring branch) and `www.holyoke.org` (a ProudCity
+customer, matched via `detect_platform()`'s curated
+`PROUDCITY_KNOWN_DOMAINS` set). No existing stage-3 (`cc_seek_script.py`)
+output was found on disk to replay against (the files under `seek_results/`
+are from an unrelated legistar/granicus-family script); verified the new
+`classify_record_platform()` function directly instead against 5
+representative real URLs (Granicus, CivicClerk, Cablecast, Vimeo, one
+non-matching agenda PDF), all correct.
+
+**Not done (part B, left for a later WO):** stage 1's own hand-copied
+vendor alias list (`_PLATFORM_ALIASES` in `scripts/wo273_recon.py`) and
+its hand-typed first-party meeting-path list
+(`scripts/wo273_classify.py`) — out of scope for part A per the brief
+(another WO was moving those files into the WO-282 scripts concurrently).
+Whoever picks up part B should also check whether `scripts/wo273_classify.py`
+reading `app/utils/jurisdiction_data/first_party_meeting_paths.csv`
+should route through this same helper.
+
+**Also found, not acted on:** a real ClerkBase CNAME target,
+`dns.clerkbase.com`, distinct from the `clerkshq.com` domain the actual
+tenant sites use — seen in `raw_results.json`'s Sedgwick County, KS entry
+but not in the old `VENDOR_SUFFIXES` list either. Not added to
+`host_recognition.py` since it's an infra hop, not a confirmed real
+tenant-serving host on its own — flagged here for a future pass.
+
 ## WO-1012: state legislature breadth push — Sliq Harmony/Invintus depth, Washington/TVW adapter built, SC/TN/NV fixed, all 49 "nothing found" chambers hand-checked [Done 2026-09-22]
 
 **Why this ran.** WO-919 (2026-09-20) checked all 99 state-legislature chamber rows and found 91 with no page. Ryan asked to keep pushing on it across a single day (2026-09-22): fix the research file so Gov Coverage counted it correctly, then work through the platforms and chambers still open.
