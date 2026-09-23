@@ -1755,7 +1755,7 @@ www.youtube.com,DdPXsEY8A5Q,us:place:2632980,fallback,wo171_localview,"Goodrich 
 www.youtube.com,DgvPOFTI3c0,us:county:22063,fallback,wo149_county_ladder_sweep,"Livingston Parish, LA -- WO-134 confirmed hit, gov_id=us:county:22063"
 www.youtube.com,DjTDUSPl7hk,us:place:3927706,fallback,wo171_localview,"Forest Park city, OH -- WO-171 LocalView, title: 'Forest Park City Council Meeting of March 2, 2026'"
 www.youtube.com,DkCP8ls8rxY,us:county:35007,fallback,wo149_county_ladder_sweep,"Colfax County, NM -- WO-134 confirmed hit, gov_id=us:county:35007"
-www.youtube.com,DlyesU9apFY,us:cousub:3400129280,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:3400129280 (Hamilton township, NJ); hub ; meeting found via youtube at https://youtu.be/DlyesU9apFY"
+www.youtube.com,DlyesU9apFY,us:cousub:3402129310,fallback,coverage_join_audit_20260922,"Page 7302 title names TOWNSHIP OF HAMILTON MERCER COUNCIL MEETING; Mercer research row shares this exact video. Corrected Atlantic County collision; production manual override applied 2026-09-22."
 www.youtube.com,Dp5zkf8BL_A,us:county:21021,fallback,wo174_agendacenter_probe,"coverage registry row us:county:21021 (Boyle County, KY); hub http://boyleky.com/AgendaCenter; meeting found via youtube at https://youtube.com/live/Dp5zkf8BL_A?feature=share"
 www.youtube.com,Dw5b5fu8LmQ,us:county:27019,fallback,wo149_county_ladder_sweep,"Carver County, MN -- WO-134 confirmed hit, gov_id=us:county:27019"
 www.youtube.com,E0tRQTczeNQ,us:county:30027,fallback,wo149_county_ladder_sweep,"Fergus County, MT -- WO-134 confirmed hit, gov_id=us:county:30027"

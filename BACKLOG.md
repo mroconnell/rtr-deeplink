@@ -192,7 +192,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
+  [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
   [NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] `scripts/wo147_access_ladder_sweep.py`'s…
@@ -2348,6 +2349,12 @@ of human step they need.
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and unsupported research associations.**
+  - **Issue:** The September 22 targeted repair fixed 32 pages for 31 governments; the fresh export still has 217 blank-ID pages and 351 unresolved placeholders, outside this completed 54-row audit.
+  - **Next action:** Review the remaining unidentified pages by source; review the 23 audited research rows now cleared of unsupported transcription flags before claiming new coverage.
+  - **Constraint:** School boards, towns versus villages, and shared hosts must not be folded into another government's row to make a join succeed.
+  - **History:** See `BACKLOG_DONE.md`'s “Gov Coverage 54-row reconciliation” entry and `rtr-business/research/coverage_join_audit_2026-09-22/` for the row-level evidence and applied changes.
 
 - **[NEEDS-AUDIT] `[EASY]` A `vimeo.com` pin shaped `vimeo:<id>` in `tenant_overrides.csv` never actually matches any real Vimeo URL — 8 committed rows are silently dead.**
   - **Issue**: found live 2026-09-13 (WO-356), while pinning Easton town CT's real, queued Vimeo meeting. `app/utils/gov_registry/resolver.py`'s `_match_override()` treats a row's `match` value as a literal substring of the URL's path (`needle in haystack`); a real `vimeo.com/<id>/...` URL's path is just `/697711522/...`, which never contains the literal text `vimeo:`. So the `vimeo:<id>` shape some rows use (e.g. `vimeo.com,vimeo:1199438213,us:cousub:2500750390,...` for Oak Bluffs town, MA, WO-145) can never match — the pin silently never applies, and the government falls through to whatever the rest of the identity ladder finds instead. The other, working shape is a bare numeric id with no prefix (e.g. `vimeo.com,1219072948,us:place:3657023,...` for Pelham Manor village, NY). 8 of the file's Vimeo rows currently use the broken `vimeo:` prefix (`grep -c '^vimeo.com,vimeo:'`).
