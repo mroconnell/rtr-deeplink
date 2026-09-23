@@ -35,6 +35,7 @@ FIXTURE = (
 )
 SAN_DIEGO_SOCIAL = "https://www.youtube.com/shorts/zJKrMk-uuSw"
 PHILADELPHIA_SOCIAL = "https://www.youtube.com/shorts/5LZqoNDRMYk"
+TEST_EDITOR_ID = "context-import-storage-test"
 SAN_DIEGO_RTR = (
     "https://redtaperecordings.com/m/"
     "city-of-san-diego-ca-2026-08-19-public-safety-and-livable-neighborhoods-committe"
@@ -62,6 +63,26 @@ async def _remove_candidates(*social_keys: str) -> None:
             await session.execute(
                 delete(ContextCandidate).where(ContextCandidate.id.in_(candidate_ids))
             )
+        await session.commit()
+
+
+@pytest.fixture(autouse=True)
+async def _clean_import_test_rows():
+    """Keep the suite's shared SQLite session clean for later route tests."""
+
+    yield
+    keys = (
+        "youtube:zJKrMk-uuSw",
+        "youtube:5LZqoNDRMYk",
+        "instagram:DdF8tEDMtZs",
+    )
+    await _remove_candidates(*keys)
+    async with async_session() as session:
+        await session.execute(
+            delete(ContextEntry).where(
+                ContextEntry.created_by_clerk_user_id == TEST_EDITOR_ID
+            )
+        )
         await session.commit()
 
 
@@ -387,6 +408,7 @@ async def test_changed_claim_invalidates_lookup_without_editing_context_entry():
             summary="Existing editorial summary.",
             title="Existing editorial title",
             status="draft",
+            created_by_clerk_user_id=TEST_EDITOR_ID,
         )
         session.add(entry)
         await session.commit()
@@ -490,6 +512,7 @@ async def test_editorial_link_follows_current_social_key_after_entry_retarget():
             network="instagram",
             summary="Original editorial record.",
             status="draft",
+            created_by_clerk_user_id=TEST_EDITOR_ID,
         )
         session.add(original)
         await session.commit()
@@ -517,6 +540,7 @@ async def test_editorial_link_follows_current_social_key_after_entry_retarget():
             network="instagram",
             summary="Replacement editorial record for the original post.",
             status="published",
+            created_by_clerk_user_id=TEST_EDITOR_ID,
         )
         session.add(replacement)
         await session.commit()
