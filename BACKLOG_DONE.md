@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1018: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
+## WO-1020: recon sweeps crashed on every government whenever Wayback was healthy — fixed a renamed key in 11 recon scripts [Done 2026-09-23]
 
 **What was wrong.** `wo273_recon.fetch_wayback_domain_index()` asks the Wayback Machine which pages of a government's site it has saved. On 2026-09-14 (WO-366) its output field `narrow_urls` was renamed `top_urls`. The 11 per-WO recon scripts that call it (`wo282`, `wo283`, `wo320`–`wo325`, `wo331`, `wo337`, `wo338`) were never updated. Each one still copied `wayback_index["narrow_urls"]` into its record.
 
