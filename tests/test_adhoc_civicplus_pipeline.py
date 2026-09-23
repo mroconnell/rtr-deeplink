@@ -322,3 +322,82 @@ async def test_civicclerk_latest_event_url_skips_deleted_and_no_media_rows():
     # Not id 4005 (isDeleted=true) even though it's chronologically most
     # recent in the fixture; not id 4019 (hasMedia=false either).
     assert url == "https://exampletenant.portal.civicclerk.com/event/4021/media"
+
+
+# --- _civicplus_walker reconciliation (2026-09-23) -----------------------
+#
+# Real duplication caught before this shipped (Ryan: "how did you not
+# check for a walker before?"): app/platforms/passive_verify.py already
+# has a more thorough CivicPlus listing walker (_civicplus_walker,
+# AgendaCenter category pages + video nav links + Calendar.aspx), built
+# for the sweep-script path only. homepage_civicclerk_fallback() now
+# tries it first, then falls back to its own (YouTube-aware) homepage
+# scan only when the walker's candidates don't pan out.
+
+
+class _FakeResolvedMeeting:
+    def __init__(self, video_url):
+        self.video_url = video_url
+
+
+async def test_walker_candidate_with_real_video_is_used_directly():
+    from unittest import mock
+
+    import adhoc_civicplus_pipeline as pipeline
+
+    async def fake_walker(hub_url):
+        return [{"title": "Council Meeting", "date": "2026-09-01", "url": "https://example.gov/video/1"}]
+
+    async def fake_resolve(url):
+        return _FakeResolvedMeeting(video_url="https://example.gov/video/1.mp4")
+
+    with (
+        mock.patch("adhoc_civicplus_pipeline._civicplus_walker", fake_walker),
+        mock.patch("adhoc_civicplus_pipeline.resolve_via_platform", fake_resolve),
+    ):
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            url, reason = await pipeline.homepage_civicclerk_fallback(session, "example.gov")
+
+    assert reason == ""
+    assert url == "https://example.gov/video/1"
+
+
+async def test_falls_through_to_homepage_scan_when_walker_candidates_have_no_video():
+    # Real bug caught live 2026-09-23 on Wilmette IL: the walker found 17
+    # real candidates, none with video -- an early version of this
+    # reconciliation gave up right there instead of still trying the
+    # homepage scan below, which is what actually has Wilmette's real
+    # Cablecast link.
+    from unittest import mock
+
+    import adhoc_civicplus_pipeline as pipeline
+
+    async def fake_walker(hub_url):
+        return [{"title": "Agenda only", "date": "2026-09-01", "url": "https://example.gov/agenda/1"}]
+
+    async def fake_resolve(url):
+        return _FakeResolvedMeeting(video_url=None)
+
+    with (
+        mock.patch("adhoc_civicplus_pipeline._civicplus_walker", fake_walker),
+        mock.patch("adhoc_civicplus_pipeline.resolve_via_platform", fake_resolve),
+    ):
+        with mock_session(
+            {
+                "https://example.gov/": FakeResponse(
+                    status=200, text=NO_VIDEO_HOMEPAGE_HTML, url="https://example.gov/"
+                )
+            }
+        ):
+            import aiohttp
+
+            async with aiohttp.ClientSession() as session:
+                url, reason = await pipeline.homepage_civicclerk_fallback(session, "example.gov")
+
+    # The homepage scan was really attempted (not short-circuited) --
+    # NO_VIDEO_HOMEPAGE_HTML has no usable link either, so this correctly
+    # reports the homepage-scan failure message, not the walker's.
+    assert url is None
+    assert "no known-platform link" in reason
