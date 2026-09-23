@@ -1,0 +1,29 @@
+[
+  {
+    "Reel URL": "https://www.instagram.com/reel/DdF8tEDMtZs/",
+    "State": "IN",
+    "Date": "2026-09-09",
+    "Meeting body": "Public Safety and Criminal Justice Committee, Indianapolis-Marion County City-County Council",
+    "Video URL": "https://indianapolis.granicus.com/player/clip/26230?view_id=14&redirect=true",
+    "Proposed Timestamp": "1:05:26",
+    "Timestamp Seconds": "3926",
+    "Sources": "Primary: https://indianapolis.granicus.com/player/clip/26230?view_id=14&redirect=true ; IG reel https://www.instagram.com/reel/DdF8tEDMtZs/ (caption by WTHR reporter Alex Almanza, cites Marion County Sheriff's Office statement).",
+    "Needs RTR Ingest": "YES"
+  },
+  {
+    "Reel URL": "https://www.instagram.com/reel/Dc2A0_GFFiV/",
+    "State": "TX",
+    "Date": "2026-09-02",
+    "Meeting body": "City Council",
+    "Video URL": "https://dallastx.new.swagit.com/videos/399840",
+    "Summary": "Dallas, TX City Council meeting on 2026-09-02. Comedian Alex Stein used open mic public comment to pitch a fictional 'Flock Daddy 9900' helmet camera, claiming it was developed with Netanyahu and Elon Musk. Council members interrupted with points of order over personal remarks about Mayor Eric Johnson. Details beyond the reel are unverified."
+  },
+  {
+    "Reel URL": "https://www.instagram.com/reel/Dc2A0_GFFiV/",
+    "State": "TX",
+    "Date": "2026-09-02",
+    "Meeting body": "Dallas City Council (open microphone / public comment)",
+    "Video URL": "",
+    "Summary": "On Sept 2, 2026, comedian Alex Stein spoke during the open-microphone public comment period of a Dallas City Council meeting wearing a helmet rigged with phones and cameras. He sang a parody song, then pitched his fictional 'Flock Daddy 9900' mobile surveillance helmet, claimed it was developed with Netanyahu and Elon Musk, joked about policing women's bathrooms and classrooms, and offered a 'hometown discount.' Council members interrupted with points of order over personal remarks about Mayor Eric Johnson."
+  }
+]
