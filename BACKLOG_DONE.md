@@ -1,5 +1,130 @@
 # Backlog — done
 
+## WO-1024: Meeting Finder core -- models, pick, Resolve, identity check, Verdict, CLI [Done 2026-09-23]
+
+**What.** The first buildable slice of Meeting Finder (`docs/MEETING_
+FINDER.md`, WO-1023): `app/platforms/meeting_finder/` (`models.py`'s
+frozen dataclasses -- `FinderInput`/`Candidate`/`ResolveResult`/
+`IdentityCheck`/`VerdictRow`, plus the named `OUTCOME_*` constants;
+`pick.py`; `resolve.py`; `identity.py`; `verdict.py`; `runner.py`) and
+the CLI, `scripts/meeting_finder.py`. Only entry `resolve` is built --
+`start`/`identify`/`list`/`scan` return `phase-not-built` for wave 2 to
+fill in. Built in parallel with WO-1025 (`fetch.py`, not created here)
+and WO-1026 (rtr-discovery's lister); this WO's own contracts (`models.py`)
+are what those two build against.
+
+**Course corrections during the build (two rounds, both from the
+conductor after reading `app/platforms/passive_verify.py` and
+rtr-upcoming's `UPCOMING_AGENDAS_FIELD_GUIDE.md`).** The original design
+doc missed that `passive_verify.py` (WO-333/355/933, ~2,850 lines)
+already does real, production-exercised hub-walking, video gating and a
+YouTube guard. The final build: Resolve does NOT call `passive_verify.
+verify_hub()` (that's a hub-walker for List/Scan, wave 2's job -- Resolve's
+input is already a specific candidate URL); it DOES reuse, directly,
+`passive_verify`'s meeting-video gate (`video_hand_check.assess_video_
+candidate()`), its audio-only check (`_confirm_not_audio_only()`), and
+the shared YouTube guard (`base.youtube_resolve_guard()`, the same
+function `passive_verify.py` itself aliases). What Resolve adds on top,
+confirmed absent from `passive_verify.py` by reading it end to end: the
+tier-3 duration probe (`queue_probe.probe_queue_entry()` +
+`select_best_probe_result()`, the same functions `resolve_seed()` already
+uses for "prefer an in-window length, else the shortest plausible one").
+`docs/MEETING_FINDER.md`'s new "How Meeting Finder relates to
+`passive_verify.py`" section records the full division of labor for wave 2.
+
+**`pick.py`, moved not copied.** `scripts/wo134_confirmed_hits_ingest.py`'s
+`pick_calendar_candidates()`/`_parse_candidate_date()` moved into
+`app/platforms/meeting_finder/pick.py` (renamed `parse_candidate_date`,
+public); wo134 now imports both back (`mf_pick.pick_calendar_candidates`/
+`mf_pick.parse_candidate_date`) so there is exactly one copy. A real
+latent bug was found and fixed in the move: the "ambiguous" fallback's
+`top_titles` line called `.get("title")` directly on a `(datetime, dict)`
+tuple from `dated[:5]`, which would have raised `AttributeError` the
+moment that branch ran with a non-empty `dated` list -- never caught by a
+test before this WO's own `test_declines_rather_than_guessing_when_
+nothing_looks_clean` (`tests/test_wo1024_meeting_finder_pick.py`) hit it.
+wo134's existing test suite (96 tests across `test_wo169_probe_loop_and_
+granicus_rss.py`, `test_wo932_identity_gate.py`, `test_wo222_gov_id_
+ingest_payload.py`, `test_wo285_boxcast_tenant_override.py`,
+`test_wo187_meeting_title_filter.py`, `test_wo170_probe_selection.py`)
+stayed green through the move.
+
+**pick.py additions (conductor feedback, citing rtr-upcoming's field
+guide, real confirmed titles).** A test/demo/"do not use" title marker
+(Fremont's Granicus demo tenant's real "TEST - CC - Livemeeting demo"
+rows; Marin County PrimeGov's real "DO NOT USE - Cathy Test Meeting" --
+narrower than a bare "test" word, so "Test City Council Meeting", an
+existing fixture title used across this repo's tests, still passes); a
+"minutes link" filter (a title that says "minutes" is a document, not a
+meeting recording); a governing-body preference (reusing `granicus.py`'s
+own `GOVERNING_BODY_KEYWORDS`, not copied) that only breaks a tie between
+two candidates dated the SAME day -- citing Tiburon's higher-volume
+"Heritage & Arts Only" listing view outranking its own Town Council view
+by item count alone.
+
+**Identity (`identity.py`).** `check_identity()` derives "what the
+meeting itself says" identically in pin and audit mode: both switch off
+the specific tenant's own `tenant_overrides.csv` pin
+(`tenant_pin_switched_off()`, a scoped monkeypatch of
+`resolver._override_rows_for_host()`, restored on exit -- same idiom
+`youtube_resolve_guard()` already uses) before calling `resolve_
+government()`, so the answer always comes from the page's own content,
+never an echo of the pin that produced `gov_id` in the first place. Real,
+live-verified with `lincoln.escribemeetings.com` (`tenant_overrides.csv`'s
+`wildcard_http_sweep_2` row, pinned to `ca:csd:3526057` -- Lincoln,
+Ontario; "Lincoln" is also a common US place name): with the pin switched
+off and no real jurisdiction text to derive from, the resolver correctly
+lands on a blank/`silent` tier instead of quietly returning the pinned
+id back (`tests/test_wo1024_meeting_finder_identity.py`'s
+`test_audit_mode_switches_off_a_real_tenant_overrides_pin`). A live CLI
+run against this specific host wasn't done -- its root redirects to an
+ADFS SSO login wall, and no public specific-meeting URL was found within
+this WO's time budget; the pytest coverage exercises the real resolver
+ladder and the real CSV row, just not through the CLI's own network path.
+
+**Live check (2026-09-23, `DATABASE_URL`/`ARCHIVE_BASE_URL` set to inert
+values, no production touched, no YouTube fetched):** 5 real meeting
+URLs through `scripts/meeting_finder.py --entry resolve`.
+
+| Input | Platform | Tier | Duration (s) | Resolved gov_id |
+|---|---|---|---|---|
+| `cityoftacoma.granicus.com/player/clip/7460` | granicus | 1 | 8171 | `us:place:5370000` (Tacoma, WA) |
+| `jaxcityc.granicus.com/player/clip/7447` | granicus | 1 | 4557 | `us:place:1235000` (Jacksonville, FL) |
+| `antiochca.portal.civicclerk.com/event/18/media` | civicclerk | 1 | 27268 | `us:place:0602252` (Antioch, CA) |
+| `pub-peelregion.escribemeetings.com/Meeting.aspx?Id=c129beef-...` | escribe | 1 | 9022 | `ca:cd:3521` (Peel Region, ON) |
+| `whitehalloh.portal.civicclerk.com/event/325/media` | civicclerk | 3 | 9106 | `us:place:3984742` (Whitehall, OH) |
+
+All 5 resolved a real government correctly (checked against each
+platform's own real page content, no `gov_id` was supplied so
+`identity_verdict` is honestly `not-checked` for all 5 -- pin mode has
+nothing to compare against without one). The Whitehall row is real,
+useful new information: CLAUDE.md's 2026-08-08 sample-sheet note calls
+that tenant "agenda-only," but it now posts video on every recent
+meeting (confirmed via its own Events API, 10/10 recent meetings show
+`hasMedia: true`) -- flagged as its own `BACKLOG.md` entry to fix the
+stale note, not treated as a code bug.
+
+**Gates.** All five CI gates green (`.venv` Python 3.13, not the pinned
+3.12 -- the shared worktree venv; noted as a residual gap, not fixed
+here): `ruff check`/`ruff format --check` clean on every touched file
+and repo-wide; full `pytest` run: 5100 passed, 16 skipped, 4 xfailed, 2
+failed -- both are the pre-existing, known-stale
+`test_repair_wrong_pages.py`/`test_wrong_page_screen.py` failures named
+in this WO's own brief, unrelated to this change; both `alembic check`
+runs (archive, app) report "No new upgrade operations detected" (no
+schema touched); `scripts/check_backlog_done_headings.py` passes.
+
+**Left for wave 2.** Start, Identify, List, Scan, Hop -- all currently
+`phase-not-built`. `docs/MEETING_FINDER.md`'s new comparison table names
+exactly what to reuse from `passive_verify.py` (the walker registry, the
+generic link scan, the first-party-agenda probe) versus what still needs
+building (the real fetch ladder via WO-1025's `fetch.py` made injectable
+into `passive_verify._fetch()`, Start's DNS-gate-first sequence, Hop's
+ranked-signal table and `max_hops`/`max_forks`/`max_fetches` budget,
+Identify's account-unknown/guess-ladder handling). Also open: unifying
+`pick.py`'s pre-fetch title rule with `passive_verify.py`'s own
+newest-first walker ordering into one rule, noted but not attempted.
+
 ## WO-1016 follow-up: `EMIT_GOV_ID_IN_QUEUE_LINES` switched on [Done 2026-09-23]
 
 **What.** Tier-3 queue writers that know the government now add its

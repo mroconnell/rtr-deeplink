@@ -1,8 +1,90 @@
 # Meeting Finder — design
 
-**Status:** design agreed with Ryan on 2026-09-23 (WO-1023). Not built yet.
-Code will live beside the adapters, in `app/platforms/meeting_finder/`,
-with a command-line runner in `scripts/meeting_finder.py`.
+**Status:** design agreed with Ryan on 2026-09-23 (WO-1023). WO-1024
+(2026-09-23) built the core: `app/platforms/meeting_finder/` (`models.py`,
+`pick.py`, `resolve.py`, `identity.py`, `verdict.py`, `runner.py`) and the
+CLI, `scripts/meeting_finder.py`. **Only entry `resolve` is built** --
+`start`/`identify`/`list`/`scan` are accepted by the CLI/`FinderInput`
+but return the outcome `phase-not-built`; wave 2 builds them. See that
+package's own module docstrings for the reasoning behind each piece;
+this section records the interface details WO-1024 had to settle that
+this design doc didn't spell out, and how Meeting Finder relates to
+`app/platforms/passive_verify.py`, an existing module this design doc
+missed on first pass.
+
+## How Meeting Finder relates to `passive_verify.py`
+
+`app/platforms/passive_verify.py` (WO-333, extended WO-355/933,
+~2,850 lines) already does real, production-exercised work that
+overlaps with several of this doc's phases. It was missed when this
+design was written and corrected into the build mid-WO-1024
+(2026-09-23). The division of labor, settled for wave 2 to build against:
+
+| Capability | `passive_verify.py` has it | Meeting Finder (this design) |
+|---|---|---|
+| Walk a hub/listing URL to a real meeting | Yes -- `verify_hub()`, 11 registered listing walkers (granicus, champds, civicweb, legistar, escribe, civicclerk, civicplus, iqm2, townhallstreams, cablecast, invintus) + a generic listing-link scan + a first-party-agenda-page probe | List/Scan (wave 2) reuses this registry and scan directly, rather than rebuilding it |
+| Fetch ladder (plain -> browser headers -> headless -> Wayback) | No -- one plain `aiohttp` GET (`_fetch()`), non-200 is a bare `fetch_failed` | WO-1025's `fetch.py` is the real ladder; wave 2 makes `passive_verify._fetch()` injectable so its walkers can use it instead of duplicating the ladder |
+| Start (turn a domain into starting points; DNS gate) | No | wave 2, reusing stage 1's `wo282_recon.py` functions per this doc's Start section |
+| Hop (ranked link-following, forks/budget) | A narrower one-hop "look deeper" search (`_deeper_hop_search()`), not the ranked signal table or `max_hops`/`max_forks`/`max_fetches` budget this doc's Hop section describes | wave 2 builds the real Hop, reusing `find_hop_links()`/the hop-weight tables already named in this doc |
+| Account-unknown handling (`account-not-found`, guess-ladder) | No | Identify (wave 2) |
+| The meeting-video gate | Yes -- `app/utils/video_hand_check.py`'s `assess_video_candidate()`/`classify_video_hand_check()`, plus the audio-only check (`_confirm_not_audio_only()`) | Resolve (WO-1024) reuses both directly rather than re-deriving them (see `resolve.py`'s own docstring) |
+| YouTube guard | Yes -- `app/platforms/base.py`'s `youtube_resolve_guard()` (`passive_verify.py` aliases it `_youtube_resolve_guard`) | Resolve (WO-1024) uses the same guard via `resolve_via_platform(allow_youtube=False)` -- no second mechanism |
+| Duration probe / tier-3 length preference | No -- confirmed by reading the whole file, no `queue_probe` import anywhere in it | Resolve (WO-1024) adds this: `app/platforms/queue_probe.py`'s `probe_queue_entry()` + `select_best_probe_result()` |
+| Identity check (does the page agree with a believed government?) | No | `identity.py` (WO-1024) |
+| A structured, resumable Verdict row | No -- `VerifyResult` is a return value, not a file | `verdict.py` (WO-1024) |
+
+**One picking rule, used where each module needs it.** `pick.py` (moved
+from `scripts/wo134_confirmed_hits_ingest.py` this WO, per the design's
+"one picking rule" framing) filters candidates by date and title
+cleanliness -- including, since 2026-09-23, a test/demo/"do not use"
+title marker, a "minutes link" filter, and a governing-body preference
+on a same-day tie (real examples: Fremont's Granicus demo tenant's "TEST
+- CC - Livemeeting demo" rows, Marin County PrimeGov's "DO NOT USE -
+Cathy Test Meeting", Tiburon's higher-volume "Heritage & Arts Only" view
+outranking its own Town Council view by count alone -- see
+`pick.py`'s own module docstring) -- *before* ever fetching a candidate.
+`passive_verify.py`'s own walkers use a different rule (newest-first, no
+pre-fetch title filter, judging each candidate only after resolving it
+via the shared video gate). Resolve (WO-1024) applies `pick.py`'s rule
+on top of whatever order a candidate list arrives in, regardless of
+which lister produced it -- this is the "one rule" decision, not a third
+implementation. `passive_verify.py`'s walkers keep their own ordering
+for their existing callers; unifying the two is a real, open follow-up
+for a later wave, not attempted here.
+
+## Interface details WO-1024 settled
+
+- **Identity derives "what the meeting itself says" the same way in pin
+  and audit mode**: both switch off the specific tenant's own
+  `tenant_overrides.csv` pin (`identity.tenant_pin_switched_off()`, a
+  scoped monkeypatch of `resolver._override_rows_for_host()` for the
+  duration of one call -- same idiom `app/platforms/base.py`'s
+  `youtube_resolve_guard()` already uses) before calling
+  `resolve_government()`. The doc's own warning ("without switching the
+  pin off, the resolver would just echo the pin back") applies to pin
+  mode too, not only audit -- a host that already carries a whole-tenant
+  pin would otherwise always "agree" with itself regardless of what the
+  specific page actually said. The two modes differ only in bookkeeping
+  (which `mode` a `VerdictRow` records); `expected_gov_id` is
+  `FinderInput.gov_id` in both.
+- **Resolve does not call `verify_hub()`** (a course correction during
+  WO-1024's own build, see git history) -- Resolve's input is already a
+  specific candidate URL, not a hub to walk; hub-walking stays List/
+  Scan's job for wave 2. What Resolve reuses from `passive_verify.py` is
+  the video gate, the audio-only check and the YouTube guard, not the
+  walker.
+- **`ResolveResult` (the public contract) never carries a raw
+  `ResolvedMeeting`** -- `identity.check_identity()` needs the full
+  object (raw jurisdiction text, tenant host, page hints), so
+  `resolve.py` exposes a private `_resolve_candidates_with_meeting()`
+  twin that `runner.py` calls instead of widening the small, typed
+  public dataclass.
+- **A live check found Whitehall, OH's CivicClerk tenant is no longer
+  agenda-only** (CLAUDE.md's 2026-08-08 sample-sheet note) -- every real
+  meeting from 2026-07-28 through 2026-09-22 now carries `hasMedia: true`
+  via that tenant's own Events API, confirmed live 2026-09-23. Flagged in
+  `BACKLOG.md` as a stale sample-sheet note to correct, not acted on
+  further here.
 
 ## What it is and why
 

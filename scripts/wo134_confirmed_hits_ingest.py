@@ -140,6 +140,7 @@ from app.platforms.base import (  # noqa: E402
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.platforms import granicus_channel  # noqa: E402
 from app.platforms import queue_probe  # noqa: E402
+from app.platforms.meeting_finder import pick as mf_pick  # noqa: E402
 from app.platforms.youtube_channel import is_publishable  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -565,60 +566,16 @@ async def youtube_oembed_title(
         return None
 
 
-def _parse_candidate_date(date_str: str) -> Optional[datetime]:
-    if not date_str:
-        return None
-    date_str = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%b %d, %Y", "%B %d, %Y", "%m/%d/%Y"):
-        try:
-            return datetime.strptime(
-                date_str[:10] if fmt == "%Y-%m-%d" else date_str, fmt
-            )
-        except ValueError:
-            continue
-    return None
-
-
-def pick_calendar_candidates(
-    candidates: List[dict], limit: int = MAX_CANDIDATES_TRIED
-) -> List[dict]:
-    """Like nationwide_2404_ingest.py's pick_calendar_candidate(), but
-    returns an ORDERED LIST of up to `limit` title-clean candidates
-    (most recent first) instead of a single pick -- this is the "go deep
-    enough to find a meeting with video, not just the newest one" change
-    Ryan asked for. The caller resolves each in turn and keeps the first
-    with real video; a tenant whose newest meeting has no video but
-    whose 3rd-most-recent does is exactly the case this exists for.
-
-    Same "decline rather than guess" behavior when nothing recent looks
-    like a real meeting: returns an empty list plus a reason, not a
-    forced pick.
-    """
-    if not candidates:
-        return [], "no candidates"
-
-    today = datetime.now(timezone.utc).replace(tzinfo=None)
-    dated = []
-    for c in candidates:
-        dt = _parse_candidate_date(c.get("date") or "")
-        if dt is not None and dt <= today:
-            dated.append((dt, c))
-    dated.sort(key=lambda pair: pair[0], reverse=True)
-
-    picked = [c for _, c in dated if _looks_like_real_meeting(c.get("title") or "")]
-    if picked:
-        return picked[:limit], ""
-
-    # No dated candidate looked clean. A single real per-meeting agenda
-    # row (unparseable date) still gets one try if its title is clean --
-    # same carve-out as the original single-pick version.
-    if len(candidates) == 1 and _looks_like_real_meeting(
-        candidates[0].get("title") or ""
-    ):
-        return [candidates[0]], ""
-
-    top_titles = [c.get("title") for c in (dated[:5] or candidates[:5])]
-    return [], f"ambiguous: no clean recent candidate among {top_titles!r}"
+# _parse_candidate_date/pick_calendar_candidates moved to
+# app/platforms/meeting_finder/pick.py (WO-1024) -- per
+# docs/MEETING_FINDER.md's "one picking rule" design, this script now
+# imports them back rather than keeping its own copy. See that module's
+# docstring for why the dict-based (not `Candidate`-based) signature
+# stayed: this script's candidate dicts carry extra keys
+# (`agenda_link`, `packet_link`, the original CivicClerk event) that
+# callers below read back off the picked item.
+_parse_candidate_date = mf_pick.parse_candidate_date
+pick_calendar_candidates = mf_pick.pick_calendar_candidates
 
 
 def _has_video(result) -> bool:
