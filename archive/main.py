@@ -41,6 +41,7 @@ def _init_sentry() -> None:
 _init_sentry()
 
 from .db import crud
+from .context.routes import build_router as build_context_candidate_router
 from .db.engine import init_models
 from .topics import TOPICS
 from .utils import email as email_utils
@@ -3599,6 +3600,47 @@ async def context_new(request: Request, id: Optional[int] = None):
         return templates.TemplateResponse(
             request, "not_found.html", {}, status_code=404
         )
+    prefill = None
+    prefill_error = None
+    prefill_warnings = []
+    candidate_id = None
+    response_status = 200
+    candidate_ref = request.query_params.get("candidate")
+    review_ref = request.query_params.get("review")
+    if candidate_ref is not None or review_ref is not None:
+
+        def valid_ref(value):
+            return (
+                isinstance(value, str)
+                and 0 < len(value) <= 10
+                and value.isascii()
+                and value.isdecimal()
+                and 0 < int(value) <= 2_147_483_647
+            )
+
+        if id is not None or not valid_ref(candidate_ref) or not valid_ref(review_ref):
+            prefill_error = "This candidate review link is invalid. Open the candidate and save your review again."
+            response_status = 400
+        else:
+            candidate_id = int(candidate_ref)
+            try:
+                from .context.store import get_candidate_prefill
+
+                result = await get_candidate_prefill(candidate_id, int(review_ref))
+            except Exception:
+                result = {"outcome": "unavailable"}
+            if result["outcome"] == "ready":
+                prefill = result["prefill"]
+                prefill_warnings = result.get("warnings", [])
+            else:
+                response_status = {"not_found": 404, "unavailable": 503}.get(
+                    result["outcome"], 409
+                )
+                prefill_error = (
+                    "The candidate review is temporarily unavailable. Try again shortly."
+                    if result["outcome"] == "unavailable"
+                    else "This saved review is no longer ready to open. Return to the candidate, check its latest research, and save again."
+                )
     # public=False, a generous page_size: at one-editor scale the whole
     # queue fits on one page, so paginating the editor's own list isn't
     # worth building yet (see list_context_entries()'s own docstring for
@@ -3613,16 +3655,31 @@ async def context_new(request: Request, id: Optional[int] = None):
         {
             "entries": editor_entries["entries"],
             "editing": editing,
+            "prefill": prefill,
+            "prefill_error": prefill_error,
+            "prefill_warnings": prefill_warnings,
+            "candidate_id": candidate_id,
             "match_kinds": MATCH_KINDS,
             "summary_max": CONTEXT_SUMMARY_MAX,
             "title_max": CONTEXT_TITLE_MAX,
             "active_account": get_clerk_user_id(request),
         },
+        status_code=response_status,
     )
     # This form and list carry unpublished drafts -- never cached, by a
     # shared proxy or the browser alike.
     response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
     return response
+
+
+app.include_router(
+    build_context_candidate_router(
+        templates=templates,
+        token_ok=lambda authorization: _token_ok(authorization),
+        clerk_user_id=lambda request: get_clerk_user_id(request),
+    )
+)
 
 
 # WO-946: "/context/{id}" or "/context/{id}-{slug}" -- the id is a plain

@@ -1,0 +1,124 @@
+"""add context candidate research queue
+
+Revision ID: 9f20cd299f30
+Revises: 8695ecf4fe2d
+Create Date: 2026-09-23 06:36:56.954327
+
+WO-1014: additive private research tables. No meeting or editorial rows are
+modified. Old application code ignores these tables; candidate routes fail
+closed with 503 until the migration is available.
+
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = "9f20cd299f30"
+down_revision: Union[str, Sequence[str], None] = "8695ecf4fe2d"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """Upgrade schema."""
+    op.create_table(
+        "context_candidates",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("social_url", sa.String(length=2048), nullable=False),
+        sa.Column("social_url_key", sa.String(length=2048), nullable=False),
+        sa.Column("network", sa.String(length=30), nullable=False),
+        sa.Column("claims", sa.JSON(), nullable=False),
+        sa.Column("source_conflicts", sa.JSON(), nullable=False),
+        sa.Column("version", sa.Integer(), nullable=False),
+        sa.Column("meeting_page_id", sa.Integer(), nullable=True),
+        sa.Column("context_entry_id", sa.Integer(), nullable=True),
+        sa.Column("lookup_outcome", sa.String(length=20), nullable=True),
+        sa.Column("next_action", sa.String(length=30), nullable=False),
+        sa.Column("lookup_result", sa.JSON(), nullable=True),
+        sa.Column("checked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["context_entry_id"], ["context_entries.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["meeting_page_id"], ["meeting_pages.id"], ondelete="SET NULL"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("social_url_key"),
+    )
+    op.create_index(
+        op.f("ix_context_candidates_meeting_page_id"),
+        "context_candidates",
+        ["meeting_page_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_context_candidates_next_action"),
+        "context_candidates",
+        ["next_action"],
+        unique=False,
+    )
+    op.create_table(
+        "context_candidate_observations",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("candidate_id", sa.Integer(), nullable=False),
+        sa.Column("provider", sa.String(length=100), nullable=False),
+        sa.Column("source_record_key", sa.String(length=2048), nullable=False),
+        sa.Column("source_location", sa.String(length=2048), nullable=True),
+        sa.Column("content_hash", sa.String(length=64), nullable=False),
+        sa.Column("raw_payload", sa.JSON(), nullable=False),
+        sa.Column("normalized_payload", sa.JSON(), nullable=False),
+        sa.Column(
+            "received_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["candidate_id"], ["context_candidates.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "provider",
+            "source_record_key",
+            "content_hash",
+            name="uq_context_observation_source_hash",
+        ),
+    )
+    op.create_index(
+        op.f("ix_context_candidate_observations_candidate_id"),
+        "context_candidate_observations",
+        ["candidate_id"],
+        unique=False,
+    )
+
+
+def downgrade() -> None:
+    """Downgrade schema."""
+    op.drop_index(
+        op.f("ix_context_candidate_observations_candidate_id"),
+        table_name="context_candidate_observations",
+    )
+    op.drop_table("context_candidate_observations")
+    op.drop_index(
+        op.f("ix_context_candidates_next_action"), table_name="context_candidates"
+    )
+    op.drop_index(
+        op.f("ix_context_candidates_meeting_page_id"), table_name="context_candidates"
+    )
+    op.drop_table("context_candidates")

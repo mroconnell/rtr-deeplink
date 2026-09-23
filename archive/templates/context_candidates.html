@@ -1,0 +1,131 @@
+{# Private Context candidate queue. All source text is rendered through
+   Jinja autoescape; JSON uses Jinja's HTML-safe tojson filter. #}
+{% extends "base.html" %}
+{% block title %}Context research queue | Red Tape Recordings{% endblock %}
+{% block meta %}<meta name="robots" content="noindex,nofollow">{% endblock %}
+{% block head_extra %}
+<style>
+  .candidate-toolbar, .candidate-actions { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+  .candidate-card { border:1px solid var(--border, #d8d8d8); border-radius:.5rem; padding:1rem; margin:1rem 0; }
+  .candidate-grid { display:grid; grid-template-columns:minmax(9rem, 14rem) 1fr; gap:.35rem 1rem; margin:.75rem 0; }
+  .candidate-grid dt { color:var(--muted, #666); }
+  .candidate-grid dd { margin:0; overflow-wrap:anywhere; }
+  .candidate-badge { display:inline-block; padding:.15rem .5rem; border-radius:999px; background:var(--pill-bg, #eee); }
+  .candidate-alert { padding:.75rem; margin:1rem 0; background:var(--error-bg, #fee); }
+  .candidate-json { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.82rem; }
+  .candidate-pagination { display:flex; gap:1rem; margin-top:1rem; }
+  .candidate-review-form { max-width:none; }
+  .candidate-review-fields { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1rem; }
+  .candidate-review-fields .candidate-review-wide { grid-column:1 / -1; }
+  .candidate-review-history { margin:1rem 0; }
+  .candidate-disabled-link { opacity:.55; cursor:not-allowed; text-decoration:none; }
+  @media (max-width:680px) {
+    .candidate-grid, .candidate-review-fields { grid-template-columns:1fr; }
+    .candidate-review-fields .candidate-review-wide { grid-column:auto; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<main class="meeting-list-page context-editor-page" data-context-candidate-page>
+  {% if not_found %}
+    <h1>Page not found</h1>
+  {% elif unavailable %}
+    <h1>Context research queue</h1>
+    <p class="candidate-alert" role="alert">The research queue is temporarily unavailable. No candidate result was changed.</p>
+  {% elif candidate %}
+    <p><a href="/context/candidates">&larr; Research queue</a></p>
+    <h1>Candidate #{{ candidate.id }}</h1>
+    {% set editor_href = safe_archive_url(candidate.editor_url) %}
+    <div class="candidate-actions">
+      <span class="candidate-badge">{{ next_action_labels.get(candidate.next_action, candidate.next_action | replace('_', ' ') | title) }}</span>
+      <button type="button" class="cassette-btn-outline" data-recheck-one="{{ candidate.id }}">Recheck candidate</button>
+      <button type="button" class="cassette-btn-outline" data-review-edit>Edit reviewed facts</button>
+      <a class="cassette-btn{% if not editor_href %} candidate-disabled-link{% endif %}" data-editor-handoff data-editor-url="{{ editor_href or '' }}"{% if editor_href %} href="{{ editor_href }}" aria-disabled="false"{% else %} aria-disabled="true"{% endif %}>Open in Context editor</a>
+      <span data-recheck-status role="status"></span>
+      <a href="" data-refresh-queue hidden>Refresh queue</a>
+    </div>
+
+    {% if candidate.research_changed_since_review %}
+    <p class="candidate-alert" role="alert">New source research arrived after the saved review. Review and save the facts again before opening this candidate in the Context editor.</p>
+    {% elif not candidate.has_saved_review %}
+    <p class="context-field-help">Save a review before opening this candidate in the Context editor.</p>
+    {% elif not editor_href %}
+    <p class="candidate-alert">Resolve the meeting check before opening this candidate in the Context editor.</p>
+    {% endif %}
+
+    {% set reason = candidate.lookup_result.reason if candidate.lookup_result and candidate.lookup_result.reason else none %}
+    {% if candidate.needs_recheck and candidate.recheck_reason %}<p><strong>Why this action:</strong> {{ candidate.recheck_reason }}</p>{% elif reason %}<p><strong>Why this action:</strong> {{ reason }}</p>{% endif %}
+    <dl class="candidate-grid">
+      <dt>Source post</dt><dd>{% set social_href = safe_http_url(candidate.social_url) %}{% if social_href %}<a href="{{ social_href }}" rel="noopener noreferrer">{{ candidate.social_url }}</a>{% else %}{{ candidate.social_url }}{% endif %}</dd>
+      <dt>Network</dt><dd>{{ candidate.network or 'Unknown' }}</dd>
+      <dt>Last checked</dt><dd>{{ candidate.checked_at or 'Not checked' }}</dd>
+      {% if candidate.meeting %}<dt>Matched recording</dt><dd>{% set meeting_href = safe_archive_url(candidate.meeting.url) %}{% if meeting_href %}<a href="{{ meeting_href }}">Full recording{% if candidate.meeting.title %}: {{ candidate.meeting.title }}{% endif %}</a>{% else %}{{ candidate.meeting.title or candidate.meeting.slug }}{% endif %}{% set moment_href = safe_archive_url(candidate.proposed_moment_url) %}{% if moment_href and candidate.proposed_moment_label %}<br><a href="{{ moment_href }}">Watch proposed moment &middot; {{ candidate.proposed_moment_label }}</a>{% endif %}</dd>{% endif %}
+      {% if candidate.existing_entry %}<dt>Existing entry</dt><dd>{% set entry_href = safe_archive_url(candidate.existing_entry.url) %}{% if entry_href %}<a href="{{ entry_href }}">Entry #{{ candidate.existing_entry.id }}</a>{% else %}Entry #{{ candidate.existing_entry.id }}{% endif %} &middot; {{ candidate.existing_entry.status }}</dd>{% endif %}
+    </dl>
+
+    {% set review = candidate.review_fields or {} %}
+    <form class="context-entry-form candidate-review-form" data-candidate-review-form data-candidate-id="{{ candidate.id }}" data-candidate-version="{{ candidate.version }}" hidden>
+      <div class="context-form-alert" data-review-status role="alert" hidden></div>
+      {% set editable_fields = ['jurisdiction', 'state', 'gov_id', 'meeting_date', 'meeting_body', 'recording_url', 'rtr_link', 't_seconds', 'title', 'summary', 'source_label', 'proposed_match', 'notes'] %}
+      {% set review_conflicts = namespace(opened=false) %}
+      {% for conflict in candidate.source_conflicts if conflict.field in editable_fields %}
+        {% if not review_conflicts.opened %}<fieldset class="candidate-card"><legend>Conflicting source facts</legend><p class="context-field-help">Enter the reviewed value below. To keep a conflicting fact blank, explicitly mark it unknown.</p>{% set review_conflicts.opened = true %}{% endif %}
+        <label><input type="checkbox" value="{{ conflict.field }}" data-review-clear-conflict> Leave {{ conflict.field | replace('_', ' ') }} unknown</label><br>
+      {% endfor %}
+      {% if review_conflicts.opened %}</fieldset>{% endif %}
+      <div class="candidate-review-fields">
+        <label class="context-field">Jurisdiction<input type="text" name="jurisdiction" value="{{ review.jurisdiction or '' }}"></label>
+        <label class="context-field">State or province<input type="text" name="state" value="{{ review.state or '' }}"></label>
+        <label class="context-field">Government ID<input type="text" name="gov_id" value="{{ review.gov_id or '' }}"></label>
+        <label class="context-field">Meeting date<input type="date" name="meeting_date" value="{{ review.meeting_date or '' }}"></label>
+        <label class="context-field candidate-review-wide">Meeting body<input type="text" name="meeting_body" value="{{ review.meeting_body or '' }}"></label>
+        <label class="context-field candidate-review-wide">Full recording URL<input type="url" name="recording_url" value="{{ review.recording_url or '' }}"></label>
+        <label class="context-field candidate-review-wide">RTR meeting link<input type="text" name="rtr_link" value="{{ review.rtr_link or '' }}"><span class="context-field-help">A saved review records this proposed association. It does not verify the source match.</span></label>
+        <label class="context-field">Proposed timestamp<input type="text" name="t_seconds" inputmode="numeric" value="{{ review.t_seconds if review.t_seconds is not none else '' }}" placeholder="Seconds or HH:MM:SS"><span class="context-field-help">This timestamp sets the time used in the meeting link. Leave blank to link to the whole meeting.</span></label>
+        <label class="context-field">Proposed match<select name="proposed_match"><option value=""{% if not review.proposed_match %} selected{% endif %}>Not decided</option><option value="exact"{% if review.proposed_match == 'exact' %} selected{% endif %}>Exact moment</option><option value="approximate"{% if review.proposed_match == 'approximate' %} selected{% endif %}>Approximate moment</option><option value="related"{% if review.proposed_match == 'related' %} selected{% endif %}>Related meeting</option></select></label>
+        <label class="context-field candidate-review-wide">Title<input type="text" name="title" value="{{ review.title or '' }}"></label>
+        <label class="context-field candidate-review-wide">Summary<textarea name="summary" rows="4">{{ review.summary or '' }}</textarea></label>
+        <label class="context-field">Who posted it<input type="text" name="source_label" value="{{ review.source_label or '' }}"></label>
+        <label class="context-field candidate-review-wide">Review notes<textarea name="notes" rows="3">{{ review.notes or '' }}</textarea></label>
+      </div>
+      <div class="context-form-actions">
+        <button type="submit" class="cassette-btn" data-review-save disabled>Save review</button>
+        <button type="button" class="cassette-btn-outline" data-review-cancel>Cancel</button>
+      </div>
+    </form>
+
+    {% if candidate.has_saved_review %}
+    <section class="candidate-review-history">
+      <h2>Saved review</h2>
+      <p>Latest saved review #{{ candidate.review_id }}.</p>
+      {% if candidate.review_history %}<details><summary>Review history ({{ candidate.review_history | length }})</summary><ol>{% for revision in candidate.review_history %}<li><strong>Review #{{ revision.id }}</strong> &middot; {{ revision.created_at }} &middot; {{ revision.clerk_user_id }}<pre class="candidate-json">{{ revision.fields | tojson(indent=2) }}</pre></li>{% endfor %}</ol></details>{% endif %}
+    </section>
+    {% endif %}
+
+    <h2>Proposed meeting facts</h2>
+    <p class="context-field-help">These facts combine imported research with your latest saved edits. Original source rows are preserved below. The timestamp and match are proposed until you verify them.</p>
+    {% if candidate.claims %}<dl class="candidate-grid">{% for field, value in candidate.claims | dictsort %}<dt>{{ field | replace('_', ' ') | title }}</dt><dd>{% if value is none %}Not supplied{% elif field in ['social_url', 'recording_url'] %}{% set claim_href = safe_http_url(value) %}{% if claim_href %}<a href="{{ claim_href }}" rel="noopener noreferrer">{{ value }}</a>{% else %}{{ value }}{% endif %}{% elif field == 'rtr_link' %}{% set claim_href = safe_archive_url(value) %}{% if claim_href %}<a href="{{ claim_href }}">{{ value }}</a>{% else %}{{ value }}{% endif %}{% elif value is mapping or value is sequence and value is not string %}<span class="candidate-json">{{ value | tojson(indent=2) }}</span>{% else %}{{ value }}{% endif %}</dd>{% endfor %}</dl>{% else %}<p>No agreed facts were supplied.</p>{% endif %}
+
+    {% if candidate.source_conflicts %}<h2>Conflicting research</h2>{% for conflict in candidate.source_conflicts %}<section class="candidate-card"><h3>{{ conflict.field | replace('_', ' ') | title }}</h3>{% for option in conflict['values'] %}<p>{{ option.value }}</p><ul>{% for source in option.sources %}<li>{{ source.provider }} / {{ source.source_record_key }}</li>{% endfor %}</ul>{% endfor %}</section>{% endfor %}{% endif %}
+
+    {% if candidate.lookup_result and candidate.lookup_result.possible_pages %}<h2>Possible recordings</h2><ul>{% for page in candidate.lookup_result.possible_pages %}<li>{% set possible_href = safe_archive_url(page.url) %}{% if possible_href %}<a href="{{ possible_href }}">{{ page.title or page.slug or ('Meeting #' ~ page.id) }}</a>{% else %}{{ page.title or page.slug or ('Meeting #' ~ page.id) }}{% endif %}{% if page.reason %} &mdash; {{ page.reason }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% if candidate.lookup_result and candidate.lookup_result.evidence %}<h2>Lookup evidence</h2><div class="candidate-json">{{ candidate.lookup_result.evidence | tojson(indent=2) }}</div>{% endif %}
+
+    <h2>Research observations</h2>
+    {% for observation in candidate.observations %}<details class="candidate-card"{% if loop.first %} open{% endif %}><summary>{{ observation.provider }} / {{ observation.source_record_key }}{% if observation.active %} &middot; active{% endif %}</summary><p>Received {{ observation.received_at }}</p>{% if observation.source_location %}<p>Source: {% set location_href = safe_http_url(observation.source_location) %}{% if location_href %}<a href="{{ location_href }}" rel="noopener noreferrer">{{ observation.source_location }}</a>{% else %}{{ observation.source_location }}{% endif %}</p>{% endif %}<h3>Normalized source research</h3><pre class="candidate-json">{{ observation.normalized_payload | tojson(indent=2) }}</pre><h3>Original source row</h3><pre class="candidate-json">{{ observation.raw_payload | tojson(indent=2) }}</pre></details>{% else %}<p>No observations are available.</p>{% endfor %}
+  {% else %}
+    <div class="candidate-toolbar"><h1>Context research queue</h1><a href="/context/new">Open entry editor</a></div>
+    <p>Research suggestions stay private until an editor reviews and publishes an entry.</p>
+    <form method="get" class="candidate-toolbar">
+      <label for="nextActionFilter">Next action</label>
+      <select id="nextActionFilter" name="next_action"><option value="">All</option>{% for action, label in next_action_labels.items() %}<option value="{{ action }}"{% if selected_action == action %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <button type="submit" class="cassette-btn-outline">Filter</button>
+    </form>
+    <div class="candidate-actions"><button type="button" class="cassette-btn-outline" data-recheck-selected disabled>Recheck selected</button><span data-recheck-status role="status"></span><a href="" data-refresh-queue hidden>Refresh queue</a></div>
+    {% if queue.counts %}<p>{% for action, count in queue.counts.items() %}{{ next_action_labels.get(action, action | replace('_', ' ') | title) }}: {{ count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</p>{% endif %}
+    {% for item in queue.candidates %}<article class="candidate-card"><div class="candidate-actions"><input type="checkbox" aria-label="Select candidate {{ item.id }}" data-candidate-id="{{ item.id }}"><span class="candidate-badge">{{ next_action_labels.get(item.next_action, item.next_action | replace('_', ' ') | title) }}</span><a href="/context/candidates/{{ item.id }}">Candidate #{{ item.id }}</a></div>{% if item.needs_recheck and item.recheck_reason %}<p>{{ item.recheck_reason }}</p>{% elif item.lookup_result and item.lookup_result.reason %}<p>{{ item.lookup_result.reason }}</p>{% endif %}<dl class="candidate-grid"><dt>Source post</dt><dd>{% set social_href = safe_http_url(item.social_url) %}{% if social_href %}<a href="{{ social_href }}" rel="noopener noreferrer">{{ item.social_url }}</a>{% else %}{{ item.social_url }}{% endif %}</dd><dt>Proposed meeting</dt><dd>{{ item.claims.jurisdiction or 'Unknown government' }}{% if item.claims.meeting_date %} &middot; {{ item.claims.meeting_date }}{% endif %}{% if item.claims.meeting_body %} &middot; {{ item.claims.meeting_body }}{% endif %}</dd>{% if item.meeting %}<dt>Matched recording</dt><dd>{% set meeting_href = safe_archive_url(item.meeting.url) %}{% if meeting_href %}<a href="{{ meeting_href }}">{{ item.meeting.title or item.meeting.slug }}</a>{% else %}{{ item.meeting.title or item.meeting.slug }}{% endif %}</dd>{% endif %}{% if item.existing_entry %}<dt>Existing entry</dt><dd>{{ item.existing_entry.status }} &middot; <a href="/context/candidates/{{ item.id }}">view details</a></dd>{% endif %}<dt>Last checked</dt><dd>{{ item.checked_at or 'Not checked' }}</dd></dl></article>{% else %}<p>No candidates match this filter.</p>{% endfor %}
+    {% if queue.total_pages > 1 %}<nav class="candidate-pagination" aria-label="Candidate pages">{% if queue.page > 1 %}<a href="?page={{ queue.page - 1 }}{% if selected_action %}&amp;next_action={{ selected_action }}{% endif %}">&larr; Previous</a>{% endif %}<span>Page {{ queue.page }} of {{ queue.total_pages }}</span>{% if queue.page < queue.total_pages %}<a href="?page={{ queue.page + 1 }}{% if selected_action %}&amp;next_action={{ selected_action }}{% endif %}">Next &rarr;</a>{% endif %}</nav>{% endif %}
+  {% endif %}
+</main>
+{% endblock %}
+{% block scripts %}<script src="/archive-static/context_candidates.js"></script>{% endblock %}
