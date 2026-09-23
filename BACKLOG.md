@@ -123,8 +123,9 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (51)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (52)
   Flip `queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES` on once the drip Mac…
+  Two wrong-page tests fail locally because they read whatever export…
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -897,6 +898,13 @@ WO-932 and WO-913.
 - **Next action:** Confirm the drip Mac (`scripts/youtube_drip.py`'s own checkout) has `git pull`ed a commit that includes WO-1016's `parse_queue_line()` (its three `_parse_queue_line()` call sites already unpack a 3-tuple once pulled — see that script's own WO-1016 comment next to `QUEUE_FILE`), then flip `EMIT_GOV_ID_IN_QUEUE_LINES` to `True` in a small follow-up PR.
 - **Constraint:** Don't flip it before that confirmation — there's no automated way to check the drip Mac's checkout state from here; ask Ryan or check with whoever runs it.
 - **History:** [BACKLOG_DONE.md](BACKLOG_DONE.md) WO-1016 entry (2026-09-23).
+
+### Two wrong-page tests fail locally because they read whatever export sits in `/tmp` `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `tests/test_repair_wrong_pages.py::test_every_row_matches_the_local_export_it_was_built_from` and `tests/test_wrong_page_screen.py::test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages` read `/tmp/rtr_meeting_inventory/meeting_inventory.csv` and skip only when it is absent. They were written against the 2026-09-21 export, but the daily coverage refresh rewrites that same path (last rewritten 2026-09-23 07:08). Against today's copy, page 2504 (Minnesota Public Utilities Commission) has no `gov_id` where the worklist expects `us:county:27007`, and page 2234 is no longer in the export.
+- **Impact:** Both fail on any Mac that has run the dashboard refresh since 2026-09-21, so every local `pytest` run shows 2 failures unrelated to the change being tested (seen on every WO-1015/1016/1017/1019 branch, 2026-09-23). CI skips them (no export there), so CI stays green.
+- **Next action:** Make both tests read a dated snapshot the refresh never overwrites (e.g. skip unless a file such as `/tmp/rtr_meeting_inventory/meeting_inventory_2026-09-21.csv` exists), or check the export's own date and skip when it is not 2026-09-21. Separately, confirm whether page 2504 losing its `gov_id` and page 2234 disappearing are the wrong-page repairs landing as intended (`scripts/repair_wrong_pages.py`), not something else.
+- **Constraint:** Do not "fix" the worklist to match today's export; it is a record of what was checked on 2026-09-21.
 
 ### State legislatures: small residual fixes remain after today's push — a `.vtt` sibling-caption lookup, Vimeo's event-id extraction, and 7 states needing one more hop `[JUST-DO-IT]`
 
