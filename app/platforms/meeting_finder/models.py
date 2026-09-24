@@ -192,6 +192,18 @@ class VerdictRow:
     path: List[str] = field(default_factory=list)
     phase_reached: str = "resolve"
     result_url: Optional[str] = None
+    # WO-1042: the actual meeting page/candidate URL Resolve was called
+    # with -- `ResolveResult.candidate.url` -- kept separate from
+    # `result_url` (the resolved VIDEO/media URL, e.g. a Granicus
+    # `archive-stream...playlist.m3u8` or a Vimeo player link) because
+    # neither an ingest wrapper nor a human reviewing the queue can get
+    # back to the real meeting page from the media URL alone: several
+    # platforms (Granicus, Swagit, Cablecast, TelVue) hand back a raw
+    # stream/CDN URL with no path back to the page that named the
+    # meeting. `meeting_title` is the candidate's own title when Resolve
+    # had one (a List/Scan hit), `None` for a bare input URL.
+    meeting_url: Optional[str] = None
+    meeting_title: Optional[str] = None
     platform: Optional[str] = None
     tier: Optional[int] = None
     duration_seconds: Optional[float] = None

@@ -30,6 +30,8 @@ CSV_FIELDS = [
     "path",
     "phase_reached",
     "result_url",
+    "meeting_url",
+    "meeting_title",
     "platform",
     "tier",
     "duration_seconds",
@@ -101,6 +103,8 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "path": " -> ".join(row.path),
                 "phase_reached": row.phase_reached,
                 "result_url": row.result_url or "",
+                "meeting_url": row.meeting_url or "",
+                "meeting_title": row.meeting_title or "",
                 "platform": row.platform or "",
                 "tier": row.tier if row.tier is not None else "",
                 "duration_seconds": (

@@ -92,3 +92,37 @@ def test_append_is_idempotent_free_and_flushes_each_row(tmp_path):
     lines = out.read_text(encoding="utf-8").splitlines()
     assert lines[0].startswith("run_id,")
     assert len(lines) == 3
+
+
+def test_meeting_url_and_title_round_trip_through_csv_and_jsonl(tmp_path):
+    """WO-1042: the real meeting/candidate page URL Resolve was called
+    with, plus its title when known, both survive the flat CSV and the
+    JSONL twin."""
+    out = tmp_path / "verdicts.csv"
+    row = _row(
+        "https://granicus.example.gov/",
+        meeting_url="https://granicus.example.gov/MediaPlayer.php?view_id=1&clip_id=42",
+        meeting_title="City Council -- 2026-09-08",
+    )
+    append_verdict(out, row)
+
+    csv_text = out.read_text(encoding="utf-8")
+    assert "MediaPlayer.php?view_id=1&clip_id=42" in csv_text
+    assert "City Council -- 2026-09-08" in csv_text
+
+    jsonl_path = out.with_suffix(out.suffix + ".jsonl")
+    payload = json.loads(jsonl_path.read_text(encoding="utf-8").splitlines()[0])
+    assert (
+        payload["meeting_url"]
+        == "https://granicus.example.gov/MediaPlayer.php?view_id=1&clip_id=42"
+    )
+    assert payload["meeting_title"] == "City Council -- 2026-09-08"
+
+
+def test_meeting_url_and_title_default_to_blank(tmp_path):
+    out = tmp_path / "verdicts.csv"
+    append_verdict(out, _row("https://a.example/1"))
+    csv_text = out.read_text(encoding="utf-8")
+    header = csv_text.splitlines()[0].split(",")
+    assert "meeting_url" in header
+    assert "meeting_title" in header

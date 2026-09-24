@@ -34,7 +34,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import os
 import sys
+import threading
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -88,6 +90,34 @@ def _print_summary(rows) -> None:
     print("Result | Count")
     for key, count in sorted(by_outcome.items()):
         print(f"{key} | {count}")
+
+
+def _join_lingering_threads(*, timeout: float = 2.0) -> int:
+    """WO-1042: give every non-main thread still alive a short grace
+    period to finish, then report how many are still running.
+
+    Real incident: the overnight batch-1 run wrote all 3,300 rows and
+    never returned control to the shell. `--gov-timeout-minutes` abandons
+    (rather than cleanly cancels -- see `_run_one_with_timeout()`'s own
+    docstring) a government whose walk hangs past the wall-clock cap, and
+    `fetch.py`'s sync headless-browser helper runs inside
+    `asyncio.to_thread()`, i.e. on a worker thread of the asyncio default
+    executor. `concurrent.futures`' own `atexit` hook joins EVERY thread
+    that executor has ever created before the interpreter is allowed to
+    exit -- so one abandoned, still-hung synchronous fetch keeps the
+    whole process alive forever, long after every row is written and the
+    summary is printed.
+
+    This function is the split-out, testable half of the fix: it never
+    calls `os._exit()` itself, so a test can spin up a real lingering
+    thread and check the count this returns without killing the test
+    process. `main()` calls this, logs the count if nonzero, and then
+    exits via `os._exit()` regardless -- see that call site's own
+    comment for why a plain return from `main()` isn't enough."""
+    remaining = [t for t in threading.enumerate() if t is not threading.main_thread()]
+    for t in remaining:
+        t.join(timeout=timeout)
+    return sum(1 for t in remaining if t.is_alive())
 
 
 def main() -> None:
@@ -175,6 +205,24 @@ def main() -> None:
     )
     _print_summary(rows)
     print(f"Verdicts written to {args.out} (and {args.out}.jsonl).")
+
+    # WO-1042: every row is written at this point -- join what we can,
+    # then exit unconditionally. `os._exit()` (not `sys.exit()`/a plain
+    # return) skips Python's normal interpreter shutdown sequence, which
+    # is exactly the part that hangs: `sys.exit()` still runs `atexit`
+    # callbacks, including `concurrent.futures.thread`'s own hook that
+    # joins every worker thread `asyncio.to_thread()` has ever created --
+    # unboundedly, if one of them (an abandoned government's hung sync
+    # fetch) never finishes. See `_join_lingering_threads()`'s own
+    # docstring for the real incident this fixes.
+    still_alive = _join_lingering_threads()
+    if still_alive:
+        print(
+            f"meeting_finder: {still_alive} background thread(s) still running "
+            "(likely an internal-timeout-abandoned government's hung fetch) -- "
+            "exiting anyway now that every row is written."
+        )
+    os._exit(0)
 
 
 if __name__ == "__main__":

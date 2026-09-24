@@ -73,6 +73,14 @@ DRIVE_DOWNLOAD_URL = (
     f"https://drive.usercontent.google.com/download?id={DRIVE_FILE_ID}"
     "&export=download&confirm=t"
 )
+# WO-1042: the same real Kemmerer file id, through its other two
+# recognized shapes -- see direct_file.py's own `_drive_file_id()`
+# comment. `DRIVE_DOWNLOAD_URL` above is a real, confirmed-live URL
+# (martin.k12.mn.us, us:sd:2718960, confirmed 2026-09-24 -- see
+# scripts/meeting_finder_followups.py's docstring); `DRIVE_UC_URL` is
+# Drive's own other documented direct-download alias, not yet seen on a
+# real government site.
+DRIVE_UC_URL = f"https://drive.google.com/uc?id={DRIVE_FILE_ID}"
 
 # Jefferson County, WA's real September 8, 2026 Board of County
 # Commissioners meeting -- video docid 10559483, caption docid 10559482
@@ -149,6 +157,10 @@ RAMSEY_MP3_MAGIC_BYTES = (
         (CAYUGA_HEIGHTS_URL, True),
         (DROPBOX_URL, True),
         (DRIVE_VIEW_URL, True),
+        # WO-1042: the two other real shapes the same Drive file shows up
+        # under -- see _drive_file_id()'s own comment.
+        (DRIVE_DOWNLOAD_URL, True),
+        (DRIVE_UC_URL, True),
         (JEFFERSON_VIDEO_URL, True),
         (JEFFERSON_CAPTION_URL, True),
         # WO-317: both real audio-only shapes are recognized too.
@@ -204,6 +216,18 @@ def test_resolve_direct_media_url_rewrites_a_drive_view_link():
     assert _resolve_direct_media_url(DRIVE_VIEW_URL) == DRIVE_DOWNLOAD_URL
 
 
+def test_resolve_direct_media_url_leaves_an_already_rewritten_download_url_alone():
+    """WO-1042: a government whose site links straight to the already-
+    rewritten download URL (12 real rows confirmed live 2026-09-24, see
+    scripts/meeting_finder_followups.py's docstring) shouldn't get
+    rewritten a second time."""
+    assert _resolve_direct_media_url(DRIVE_DOWNLOAD_URL) == DRIVE_DOWNLOAD_URL
+
+
+def test_resolve_direct_media_url_rewrites_the_uc_alias_too():
+    assert _resolve_direct_media_url(DRIVE_UC_URL) == DRIVE_DOWNLOAD_URL
+
+
 def test_resolve_direct_media_url_appends_dl_1_to_a_dropbox_link():
     assert _resolve_direct_media_url(DROPBOX_URL) == DROPBOX_URL + "?dl=1"
 
@@ -240,6 +264,22 @@ async def test_resolve_rewrites_and_confirms_a_drive_file():
     with mock_session({}, head_routes=routes):
         result = await finder.resolve(DRIVE_VIEW_URL)
     assert result.source_url == DRIVE_VIEW_URL
+    assert result.video_url == DRIVE_DOWNLOAD_URL
+
+
+async def test_resolve_confirms_an_already_rewritten_drive_download_url():
+    """WO-1042: Meeting Finder (and a government site directly) can hand
+    this adapter the already-rewritten download URL instead of the
+    classic share link -- confirm it resolves the same way, unrewritten."""
+    finder = DirectFileAssetFinder()
+    routes = {
+        DRIVE_DOWNLOAD_URL: FakeResponse(
+            status=200, headers={"Content-Type": "video/mp4"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await finder.resolve(DRIVE_DOWNLOAD_URL)
+    assert result.source_url == DRIVE_DOWNLOAD_URL
     assert result.video_url == DRIVE_DOWNLOAD_URL
 
 
