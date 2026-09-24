@@ -49,7 +49,7 @@ async def test_resolve_real_alhambra_meeting_with_captions():
     assert result.date == "2026-08-24"
     assert result.jurisdiction == "Alhambra, CA"
     assert result.video_url == (
-        "https://spectrum_streaming.s3.amazonaws.com/alhambra/alhambra_2026_08_24.mp4"
+        "https://s3.amazonaws.com/spectrum_streaming/alhambra/alhambra_2026_08_24.mp4"
     )
     assert result.video_format == "mp4"
     assert result.transcript_language == "en"
@@ -79,7 +79,7 @@ async def test_resolve_real_gusd_meeting_empty_captions_file():
     assert result.date == "2024-10-08"
     assert result.jurisdiction == "Glendale Unified School District, CA"
     assert result.video_url == (
-        "https://spectrum_streaming.s3.amazonaws.com/gusd/gusd_2024_10_08.mp4"
+        "https://s3.amazonaws.com/spectrum_streaming/gusd/gusd_2024_10_08.mp4"
     )
     assert result.segments == []
     assert result.transcript_warnings == ["No captions found for this video."]
@@ -121,7 +121,7 @@ async def test_resolve_real_bgpaa_meeting_joint_powers_authority():
     assert result.date == "2026-09-21"
     assert result.jurisdiction == "Burbank-Glendale-Pasadena Airport Authority, CA"
     assert result.video_url == (
-        "https://spectrum_streaming.s3.amazonaws.com/bgpaa/2026_09_21.mp4"
+        "https://s3.amazonaws.com/spectrum_streaming/bgpaa/2026_09_21.mp4"
     )
 
 
@@ -254,3 +254,20 @@ async def test_resolve_listing_root_delegates_to_walker():
     assert result.jurisdiction == "Glendale Unified School District, CA"
     assert result.video_url is not None
     assert result.source_url == newest_url
+
+
+def test_underscore_bucket_uses_path_style_s3_url():
+    # Real shape (Glendale USD, 2026-09-24): the virtual-hosted address fails
+    # TLS hostname checks because the bucket name has an underscore.
+    from app.platforms.spectrumstream import _path_style_s3
+
+    assert (
+        _path_style_s3(
+            "https://spectrum_streaming.s3.amazonaws.com/gusd/gusd_2026_09_08.mp4"
+        )
+        == "https://s3.amazonaws.com/spectrum_streaming/gusd/gusd_2026_09_08.mp4"
+    )
+    assert (
+        _path_style_s3("https://cdn.example.com/a.mp4")
+        == "https://cdn.example.com/a.mp4"
+    )
