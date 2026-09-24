@@ -2,7 +2,6 @@ https://asdb.diligent.community/Portal/MeetingInformation.aspx?Id=430	https://as
 https://columbiatwp.civicweb.net/Portal/MeetingInformation.aspx?Id=1394	https://columbiatwp.com/	us:cousub:2615917440
 https://lw210.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=178	https://lw210.community.diligentoneplatform.com/document/48ac8b20-eaa4-489f-bedb-1eb82a9d173b/?modified=2026-03-31T15:30:49.943	us:sd:1723070
 https://ccsdut.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1298	https://ccsdut.org/	us:sd:4900120
-https://nelson.civicweb.net/Portal/MeetingInformation.aspx?Id=2083	https://nelson.civicweb.net/	us:sd:5102580
 https://bedford-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=509	https://bedford.k12.va.us/	us:sd:5100360
 https://lbusd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=294	https://lbusd.community.diligentoneplatform.com/portal/	us:sd:0620370
 https://estesschools.diligent.community/Portal/MeetingInformation.aspx?Id=192	https://estesschools.diligent.community/Portal/	us:sd:0803810
