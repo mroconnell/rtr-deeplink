@@ -13,6 +13,78 @@
 
 **Verified.** New/updated tests: `tests/test_wo1024_meeting_finder_pick.py` (date-never-eliminates, title-date extraction, weak-title-kept, ambiguous-only-when-nothing-survives), `tests/test_wo1024_meeting_finder_resolve.py` (gate-reject/too-short/unmeasurable kept-despite, audio-only counted as a find, priority ordering among kept-despite candidates), `tests/test_wo1035_meeting_finder_keep_and_backtrack.py` (sibling-hop backtracking, vendor-tie preference, per-government List/Resolve dedupe). Full suite green except the two pre-existing stale-export failures unrelated to this change. Live before/after verification: see PR description.
 
+## WO-1037: Meeting Finder Hop/Scan/Fetch fixes from the Cablecast/Swagit calibration miss review [Done 2026-09-23]
+
+**What.** Eight diagnosis agents traced 37 real Cablecast/Swagit
+calibration misses to root causes in `hop.py`, `scan.py` and `fetch.py`.
+This WO fixes eight of them:
+
+1. **TV/cable vocabulary + one-brand-token label rescue** (`hop.py`
+   `_NAV_HUB_WORD_RE`/`_looks_like_nav_hub_label`): a real Cablecast
+   homepage names its own channel ("King County TV (KCTV)", "Watch
+   TVCTV", "McFarland Cable"), not "meetings" -- added tv/cable/channel/
+   broadcast/television/recordings/access to the vocabulary, and the
+   label rescue now tolerates exactly one non-vocabulary word as the
+   label's own brand/place name (a locality word like "County"/"City" is
+   a joiner, not the brand; a parenthetical acronym like "(KCTV)" is
+   exempt entirely).
+2. **`rank_hops()` scans `<iframe>`/`<embed>`/`<video>`/`<source>`/
+   `<script>` src too**, not just `<a href>` (reusing Identify's own
+   `_SCAN_TAGS` list) -- a video-only iframe embed (real Fontana USD CA
+   Swagit embed) is now itself a hop candidate.
+3. **A video-naming nav label ("Meeting Video", "Watch Meetings",
+   "Meeting Recordings") gets the hub bonus even when the weighted
+   scorer already scored something** -- Johnson County TX's real
+   "Meeting Video" link scored ~8 from ordinary path vocabulary and lost
+   to a generic agendas/minutes link scoring higher.
+4. **Per-date agenda pages crowd Hop's top ranks like calendar entries**
+   (`/Agendas-and-Minutes/2026/City-Council/11-02-2026-City-Council-
+   Meeting`, real Des Plaines IL shape) -- same penalty/cap treatment a
+   calendar widget's own day entries already got.
+5. **`rank_hops()` falls back to `host_recognition.platform_for_url()`**
+   when `detect_platform()` says "unknown" -- a bare vendor tenant root
+   with no show/gallery path yet (`desplainesil.cablecast.tv/?site=6`,
+   `reflect-niagarafallsosc.cablecast.tv/CablecastPublicSite/?channel=1`)
+   is real vendor evidence even before the path itself proves it.
+6. **`scan.py`'s `find_meeting_page_links()` only opens the government's
+   own site or a recognized meeting vendor** -- James Island SC's real
+   homepage nav sits next to Facebook permalinks that also carry
+   meeting-shaped anchor text, and Cecil County PS MD's page also links
+   `usgbc.org`; neither is a meeting page.
+7. **`fetch.py`'s headless gate widens beyond "zero links"**
+   (`_has_no_useful_link_evidence()`): a JS-hydrated nav (Aiken County SD
+   SC, Sherwood AR, a shared Thrillshare/Apptegy CMS) can carry ~150
+   ordinary utility `<a href>` links while its real nav sits only in a
+   JSON hydration blob -- now also goes headless when the raw markup
+   shows an HTML-escaped anchor or names a known video-vendor host that
+   never shows up as a real parsed href/src. Montgomery AL's Angular-
+   rendered widget names no vendor hostname anywhere in its raw markup at
+   all, so this generic fix does not reach it -- flagged as a residual
+   gap, not silently claimed fixed.
+8. **An off-site link naming a TV/cable/community-television/public-
+   access station is a valid one-hop candidate** ("Tualatin Valley
+   Community Television" -> tvctv.org, real Lake Oswego OR link), even
+   with none of the ordinary hub vocabulary a government's own link
+   would carry. `rank_hops()` also takes an optional `gov_name` (unused
+   by `runner.py` today, same as the pre-existing `school`/`french`
+   params) so a shared multi-government hub can prefer a link naming
+   THIS government (real Bismarck ND case, a Dakota Media Access hub
+   that ranked a "Lincoln City Council" sibling link first) -- wiring
+   `gov_name` through from `runner.py` is WO-1035's file, not this one's.
+
+**Verified.** `tests/test_wo1037_meeting_finder_hop_scan_fetch.py` (20
+new tests, one or more per item, each built from a real confirmed anchor
+text/href -- "King County TV (KCTV)" re-fetched live from
+`kingcounty.gov/council` while building the fix). Live re-run of King
+County WA (`kingcountyhazwastewa.gov`) confirms Hop now reaches the real
+`king-county-tv.cablecast.tv` Cablecast tenant root it never reached
+before (was stuck on a `KingCountyTV` YouTube channel lead); Identify/
+List (`app/platforms/meeting_finder/identify.py`/`listing.py`, WO-1036's
+files) still need their own host-recognition fallback to actually list
+that tenant's videos once Hop lands there -- reaching the vendor host is
+this WO's job, listing it is WO-1036's. See the PR description for the
+full before/after table across all 16 named target governments.
+
 ## WO-1034: Meeting Finder fixes from calibration run A (no lost rows, Brotli, CSV fields) [Done 2026-09-23]
 
 **What.** Calibration run A (200 known-answer governments, 2026-09-23) found three bugs: (1) **34 of 200 governments left no Verdict row** -- an unhandled `ClientResponseError` escaped `run_one()`; now any unexpected exception becomes a row with outcome `error`, the message in `note`, and a `try_next`. (2) **Brotli**: Meeting Finder's Fetcher reused the shared browser header set (`accept-encoding: gzip, deflate, br`), and aiohttp can't decode `br` without the optional Brotli package (Oxnard, CA); Fetcher's copy no longer offers `br` (the shared set in `wo147_access_ladder_sweep.py` is unchanged). (3) `try_next` and `requests_total` were computed but never written to the CSV (the writer lists fields by hand).
