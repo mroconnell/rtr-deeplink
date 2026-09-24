@@ -203,7 +203,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+  [NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never…
   [NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on…
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
@@ -2299,6 +2300,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never recognizes a Vimeo "Event" (livestream) URL, so Meeting Finder can reach a real Vimeo video and still not resolve it.**
+  - **Issue**: WO-1044 (2026-09-24) fixed Meeting Finder's Hop phase so it now correctly follows Suffolk County NY's homepage to its Legislature's own site (`scnylegislature.us`) and reaches its real video hub page — confirmed live, `rank_hops()` ranks the page's real `<iframe src="https://vimeo.com/event/4795861/embed">` #1. But Meeting Finder still can't resolve a meeting there: `app/platforms/vimeo.py`'s `parse_vimeo_video()` explicitly, by design, never matches a `/event/{id}` URL ("a different id space that `player.vimeo.com/video/{id}` does not accept" — its own docstring), and `is_vimeo_listing()` doesn't match it either, so `detect_platform()` returns `"unknown"` for it. `scan.py`'s `_anchor_media_candidates()` uses that same `detect_platform()` call to decide whether an iframe is a real media candidate, so the Vimeo Event embed is silently skipped there too — it never becomes a `Candidate` at all, real or otherwise.
+  - **Impact**: at least one real government (Suffolk County NY, `us:county:36103`) has a real, live meeting video that Meeting Finder can see on the page but has no code path to resolve — it currently reports `youtube-lead-only`/`no-meeting-nor-video` instead. Likely affects any other government whose recordings run through Vimeo's live-event product rather than an ordinary Vimeo video.
+  - **Next action**: confirm what a Vimeo Event page's own HTML/API actually offers (a live embed URL, a VOD replay link, or both) on 2-3 real examples before writing any parsing — the "test against a real URL first" rule applies here same as any new platform shape. Suffolk County's own `https://www.scnylegislature.us/1737/Video-Broadcast-and-Gallery` (embeds `vimeo.com/event/4795861/embed`) is one confirmed real starting point.
+  - **Constraint**: out of scope for WO-1044 (owned only `app/platforms/meeting_finder/hop.py`/`scan.py`/`hop_link_weights*.csv`) — this is a resolver-level (`app/platforms/vimeo.py`/`base.py`) gap, not a Hop link-ranking bug.
+  - **History**: found live while verifying WO-1044's before/after fix on Suffolk County NY; see `BACKLOG_DONE.md`'s WO-1044 entry.
 
 - **[NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on `*.new.swagit.com`; rtr-discovery's own bulk Swagit corpus may be under-listed.**
   - **Issue**: WO-1036 (2026-09-23) confirmed live across several real tenants (Wise County TX, Ferndale SD WA, Hamilton Southeastern IN, Baltimore County PS MD) that a Swagit tab-slug page (e.g. `/commissioners-court`) renders an EMPTY `#video-table` on `*.new.swagit.com`, even fetched headless — only a numeric `/views/{id}` page (a tenant's own listing) is server-rendered and populated (9 real rows confirmed on `wisecountytx.new.swagit.com/views/908/` vs. 0 on its own `/commissioners-court`). rtr-discovery's `SwagitEnumerator` (`discovery/enumerators/swagit.py`) still discovers/walks TAB SLUGS for its own bulk corpus sweeps — it has no way to know a tenant's `/views/{id}` ahead of time unless a caller already supplies one.

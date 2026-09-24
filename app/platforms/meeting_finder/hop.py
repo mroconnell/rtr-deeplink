@@ -152,6 +152,61 @@ being crowded out by a homepage's own calendar widget.
    `EID`/`CID` (the real identity of a calendar item) distinct -- exposed
    for `runner.py` (WO-1031) to use as its own `seen`-set key; nothing in
    this module calls it itself.
+
+## WO-1044: Suffolk County NY hop dead-ends (Ryan's own recipe, applied to a
+real 12-fetch calibration miss)
+
+Real evidence (conductor, 2026-09-24): Meeting Finder on suffolkcountyny.gov
+(`us:county:36103`) spent its whole fetch budget on the homepage (x3), four
+`/Events/ArtMID/585/ArticleID/...` news articles, an EasyDNNNews
+`DocumentDownload.ashx` PDF, `/Site-Feedback`, `/county-executive`, and
+`https://www.googletagmanager.com/ns.html` -- and never followed the
+homepage's own `<a href="https://www.scnylegislature.us/"
+target="_blank">Legislature</a>`. `rank_hops()` on the Legislature's OWN
+homepage separately ranked its real video hub
+(`/1737/Video-Broadcast-and-Gallery`) below two CivicPlus calendar-hub links
+(`calendar.aspx?CID=...`) and a jQuery UI script asset
+(`.../Common/Controls/jquery-ui-1.14.2/jquery-ui.min.js`).
+
+1. **A CivicPlus calendar HUB (not one dated entry on it) is a dead end**
+   -- Ryan: "virtually NEVER has video". `calendar.aspx` with a `CID=`
+   category filter and no `EID=`, or a bare `/calendar.aspx` with no query
+   at all, now gets `_CALENDAR_HUB_DEAD_END_PENALTY`, strong enough to sink
+   below any ordinary nav-position bonus. The two learned CSV rows that
+   used to score plain "calendar" vocabulary positively
+   (`hub_firstparty,calendar` and `hub_firstparty_bigram,calendar-aspx` in
+   `hop_link_weights.csv`) are removed for the same reason -- see that
+   file's own comment row. `find_calendar_entry_links()`'s existing
+   fallback role (one hop into a calendar's own dated entries when nothing
+   else is on the page) is untouched; this is purely about `rank_hops()`'s
+   own ranking.
+2. **A non-page resource is never offered as a hop candidate at all** --
+   `.js`/`.css`/image/font/`.json` assets, a tracking/analytics host
+   (`googletagmanager.com`, `google-analytics.com`, `doubleclick.net`,
+   `facebook.net`...), and a first-party asset path
+   (`/Common/Controls/`, `/Assets/Scripts/`). WO-1037's own `<script src>`
+   scan still runs -- a script URL can still be *detected* as a real
+   vendor player embed -- but a script that ISN'T a recognized
+   meeting-platform link is never itself a candidate.
+3. **A link naming the government's own legislative/governing body**
+   ("Legislature", "Board of Legislators", "Board of Supervisors",
+   "Commissioners Court", "Board of Commissioners", "City Council", "Town
+   Board", "Select Board", "Board of Education"...) ranks near the top of
+   the returned candidates, and may be followed OFF-SITE one step --
+   Suffolk County's own Legislature lives at a completely different
+   domain (`scnylegislature.us`), the same way a governing body's own
+   site routinely does. Guarded by the same vendor-marketing-apex check
+   every other rescue uses, and excluded for a social-lead platform (never
+   actually expected to match this anchor text, but consistent with every
+   other rescue here).
+4. **News/event articles and site chrome are ranked down, not excluded**
+   -- a CivicPlus news article (`/Events/ArtMID/.../ArticleID/...`), a
+   `CivicAlerts.aspx?AID=...` press release, an EasyDNNNews
+   `DocumentDownload.ashx` file, `/Site-Feedback`, and a
+   `QuickLinks.aspx?CID=...` widget link all get
+   `_SITE_CHROME_PENALTY` -- enough to fall behind a real hub link, not
+   enough to remove them outright (a genuinely document-shaped page
+   should still be reachable as a last resort).
 """
 
 from __future__ import annotations
@@ -296,6 +351,67 @@ _JUNK_LINK_HREF_RE = re.compile(
     re.IGNORECASE,
 )
 _JUNK_LINK_PENALTY = -25.0
+
+# --- WO-1044 item 1: a CivicPlus calendar HUB (not one dated entry on
+# it) -- Ryan: "virtually NEVER has video". Distinct from
+# `_is_calendar_entry_link()`'s own EID/view=list shape (one dated entry
+# among many, already penalized/capped above): this is a bare
+# `/calendar.aspx` or one filtered only by a `CID=` category, the
+# calendar WIDGET itself. Real Suffolk County NY shape:
+# `calendar.aspx?CID=138,123,...` (no EID at all).
+_CALENDAR_HUB_HREF_RE = re.compile(r"/calendar\.aspx", re.IGNORECASE)
+_CALENDAR_HUB_DEAD_END_PENALTY = -30.0
+
+# --- WO-1044 item 2: a non-page resource is never a real hop target --
+# a stylesheet/script/image/font/data asset, a tracking/analytics host, or
+# a first-party asset path. Real Suffolk County Legislature homepage
+# shapes: `.../Common/Controls/jquery-ui-1.14.2/jquery-ui.min.js`,
+# `.../Areas/Calendar/Assets/Scripts/Calendar.js`,
+# `https://www.googletagmanager.com/ns.html`.
+_NON_PAGE_ASSET_EXTENSION_RE = re.compile(
+    r"\.(?:js|css|png|jpe?g|gif|svg|ico|woff2?|ttf|eot|json)(?:[?#].*)?$",
+    re.IGNORECASE,
+)
+_TRACKING_ANALYTICS_HOST_RE = re.compile(
+    r"(?:^|\.)(?:googletagmanager\.com|google-analytics\.com|analytics\.google\.com"
+    r"|googleadservices\.com|googlesyndication\.com|doubleclick\.net"
+    r"|facebook\.net|connect\.facebook\.net|hotjar\.com)$",
+    re.IGNORECASE,
+)
+_NON_PAGE_ASSET_PATH_RE = re.compile(
+    r"/common/controls/|/assets/scripts/", re.IGNORECASE
+)
+
+# --- WO-1044 item 3: a link naming the government's own legislative/
+# governing body -- worth a hop even off-site (a governing body routinely
+# lives on its own separate domain, e.g. Suffolk County NY's own
+# Legislature at scnylegislature.us).
+_GOVERNING_BODY_TEXT_RE = re.compile(
+    r"\blegislature\b|\bboard\s+of\s+legislators\b|\bboard\s+of\s+supervisors\b"
+    r"|\bcommissioners\s+court\b|\bboard\s+of\s+commissioners\b|\bcity\s+council\b"
+    r"|\btown\s+board\b|\bselect\s+board\b|\bboard\s+of\s+education\b",
+    re.IGNORECASE,
+)
+_GOVERNING_BODY_BONUS = 26.0
+
+# --- WO-1044 item 4: news/event articles and site chrome -- ranked down,
+# not excluded (below a real hub link, still reachable as a last resort).
+# Real Suffolk County NY shapes: `/Events/ArtMID/585/ArticleID/...`,
+# an EasyDNNNews `DocumentDownload.ashx`, `/Site-Feedback`.
+_SITE_CHROME_HREF_RE = re.compile(
+    r"/events?/artmid/\d+/articleid/\d+"
+    r"|civicalerts\.aspx\?[^#]*\baid=\d+"
+    r"|documentdownload\.ashx"
+    r"|/site-feedback\b"
+    r"|quicklinks\.aspx\?[^#]*\bcid=",
+    re.IGNORECASE,
+)
+# Large enough to overcome even a `_NAV_HUB_LABEL_BONUS` (22.0) rescue --
+# real shape this guards against: an EasyDNNNews `DocumentDownload.ashx`
+# link whose own anchor text is a short "Agenda PDF"-style label (word
+# "Agenda" alone clears `_looks_like_nav_hub_label()`'s own vocabulary
+# bar) would otherwise still outrank a real, lower-scoring hub link.
+_SITE_CHROME_PENALTY = -25.0
 
 # WO-1037 item 5: `detect_platform()` requires a real show/gallery-shaped
 # PATH before it recognizes Cablecast/Swagit/etc -- a bare vendor tenant
@@ -564,6 +680,59 @@ def _rescue_tv_station_link_score(
     return _TV_STATION_BONUS + _nav_position_bonus(tag)
 
 
+def _is_calendar_hub_dead_end(url: str) -> bool:
+    """WO-1044 item 1: True for a CivicPlus calendar HUB -- a bare
+    `/calendar.aspx`, or one filtered only by a `CID=` category -- as
+    opposed to `_is_calendar_entry_link()`'s own one-dated-entry shape
+    (`EID=`/`view=list`). Ryan: this hub "virtually NEVER has video"."""
+    parsed = urlparse(url)
+    if not _CALENDAR_HUB_HREF_RE.search(parsed.path):
+        return False
+    qs = {k.lower() for k, _v in parse_qsl(parsed.query, keep_blank_values=True)}
+    return "eid" not in qs
+
+
+def _is_non_page_resource(url: str) -> bool:
+    """WO-1044 item 2: True for a stylesheet/script/image/font/data asset,
+    a tracking/analytics host, or a first-party asset path -- never a real
+    hop target on its own (see this module's own `_NON_PAGE_ASSET_
+    EXTENSION_RE`/`_TRACKING_ANALYTICS_HOST_RE`/`_NON_PAGE_ASSET_PATH_RE`
+    comments for the real Suffolk County NY shapes this catches)."""
+    parsed = urlparse(url)
+    if _NON_PAGE_ASSET_EXTENSION_RE.search(parsed.path):
+        return True
+    if _TRACKING_ANALYTICS_HOST_RE.search(parsed.netloc.lower()):
+        return True
+    if _NON_PAGE_ASSET_PATH_RE.search(parsed.path.lower()):
+        return True
+    return False
+
+
+def _rescue_governing_body_link_score(
+    text: str,
+    full_url: str,
+    base_netloc: str,
+    tag,
+    resolved_platform: Optional[str],
+) -> Optional[float]:
+    """WO-1044 item 3: a link whose own anchor TEXT names the government's
+    legislative/governing body ranks near the top of Hop's candidates,
+    even off-site -- see `_GOVERNING_BODY_TEXT_RE`'s own comment for the
+    real Suffolk County NY case (`scnylegislature.us`) this rescues.
+    Guarded by the same vendor-marketing-apex check every other rescue
+    uses, and skipped for a social-lead platform (never actually expected
+    to match this text, kept for consistency with every other rescue
+    here)."""
+    if resolved_platform in _SOCIAL_LEAD_PLATFORMS:
+        return None
+    netloc = urlparse(full_url).netloc.lower()
+    if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+    if not _GOVERNING_BODY_TEXT_RE.search(text or ""):
+        return None
+    return _GOVERNING_BODY_BONUS + _nav_position_bonus(tag)
+
+
 def _gov_name_tokens(gov_name: Optional[str]) -> frozenset:
     """Lowercased words (>=3 letters) from a government's own name, minus
     generic jurisdiction-type words -- used only for the small `prefer
@@ -691,9 +860,6 @@ def rank_hops(
             continue
         if _is_same_site_social_redirect(full, base_netloc):
             continue
-        score = _score_hop_candidate_weighted(
-            text, href, full, base_netloc, tag, gov_id=gov_id, html_text=html
-        )
         resolved_platform, is_host_fallback = _resolved_platform_for(full)
         # WO-1038: a link to a real, known meeting/video platform -- per
         # Ryan's principle, everything except a social/YouTube lead (see
@@ -701,10 +867,26 @@ def rank_hops(
         is_known_platform_link = bool(
             resolved_platform and resolved_platform not in _SOCIAL_LEAD_PLATFORMS
         )
+        if not is_known_platform_link:
+            # WO-1044 item 2: a script URL is only ever a candidate when
+            # it's a recognized meeting-platform link (detection above
+            # still ran on it) -- and a non-page asset/tracking-host link
+            # is never a candidate at all.
+            if tag.name == "script":
+                continue
+            if _is_non_page_resource(full):
+                continue
+        score = _score_hop_candidate_weighted(
+            text, href, full, base_netloc, tag, gov_id=gov_id, html_text=html
+        )
         if score is None:
             score = _rescue_nav_hub_label_score(text, href, full, base_netloc, tag)
         if score is None:
             score = _rescue_tv_station_link_score(text, full, base_netloc, tag)
+        if score is None:
+            score = _rescue_governing_body_link_score(
+                text, full, base_netloc, tag, resolved_platform
+            )
         if score is None and is_known_platform_link:
             # WO-1037 item 5 / WO-1038 fix: applies to a DIRECT
             # `detect_platform()` match too, not just the (weaker)
@@ -752,6 +934,14 @@ def rank_hops(
                 score += _GOV_NAME_MATCH_BONUS
         if _is_calendar_entry_link(full):
             score += _CALENDAR_ENTRY_PENALTY
+        if not is_known_platform_link and _is_calendar_hub_dead_end(full):
+            # WO-1044 item 1: the calendar HUB itself, not one dated
+            # entry on it -- Ryan: "virtually NEVER has video".
+            score += _CALENDAR_HUB_DEAD_END_PENALTY
+        if not is_known_platform_link and _SITE_CHROME_HREF_RE.search(full):
+            # WO-1044 item 4: a news article or site-chrome link -- ranked
+            # down, not excluded.
+            score += _SITE_CHROME_PENALTY
         seen.add(full)
         scored.append((score, doc_order, full, text, resolved_platform))
         doc_order += 1
@@ -774,6 +964,8 @@ def rank_hops(
             reason = "calendar entry/day-view (de-prioritized)"
         elif platform:
             reason = f"vendor-host link ({platform})"
+        elif _GOVERNING_BODY_TEXT_RE.search(anchor or ""):
+            reason = "governing-body link"
         else:
             reason = "path/anchor vocabulary match"
         out.append(HopLink(url=url, score=score, anchor=anchor, reason=reason))
