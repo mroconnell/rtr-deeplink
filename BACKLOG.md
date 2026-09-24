@@ -203,7 +203,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
   [NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never…
   [NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on…
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
@@ -356,7 +356,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (58)
+  Adapter & platform gaps  (55)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -387,8 +387,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
     [LATER] `[EXAMPLE]` Granicus's `captions.vtt` caps at exactly 36,000…
     [LATER] YouTube Whisper fallback for videos with no captions at all…
     [IMPROVEMENT-ROUND] Cablecast, TelVue, Swagit, and YouTube still…
-    [NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no…
-    [NEEDS-AUDIT] ChampDS's `MediaInfo.Captions` is no longer…
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
     [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
@@ -396,7 +394,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
     [NEEDS-AUDIT] A resolve that delegates to a generic video host…
     [NEEDS-AUDIT] `wo134_confirmed_hits_ingest.py`'s Granicus fallback…
     [NEEDS-AUDIT] `[EXAMPLE]` A newer CivicPlus product generation…
-    [NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found…
     [NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows…
     [NEEDS-AUDIT] Guessing a fixed meetings-page path only works for…
     [EXAMPLE] Streamline Website Solutions has no confirmed real example…
@@ -434,7 +431,8 @@ Reliability, ops & cost  (11)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (26)
+Trust, safety & data quality  (27)
+  ChampDS jurisdiction text comes out wrong for customer names that…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
   The partial-transcript check reaches only some YouTube pages, and the…
@@ -5361,60 +5359,26 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-38's original 2026-08-21 audit and
     the full superseded-number history through 2026-08-30).
 
-- **[NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no playable video.**
-  - **Issue**: confirmed live against 6 real customers when `champds.py`
-    was built (2026-08-13): VOD2's HLS URL (4 of 6 customers, no
-    `DownloadURL` at all) sits behind a strict
-    `Referer: https://play.champds.com/` check this app's own
-    server-side requests can't satisfy (confirmed via `curl` with several
-    referers, all rejected).
-  - **Impact**: VOD2 customers get full metadata + agenda link but an
-    honest "no video found"; only the direct-MP4 `DownloadURL` case (2 of
-    6) plays. Confirmed at much larger scale 2026-09-06 (CDX
-    enumeration, 48 fresh tenants never seen before): 39/48 (81%) came
-    back empty for exactly this reason — this is the dominant yield
-    limiter for ChampDS specifically, well above every other platform
-    scanned the same day (Granicus 35% dead-tenant rate, IQM2/eScribe's
-    discovery-step misses).
-  - **Next action**: build a real streaming reverse-proxy (fetch
-    server-side with the right `Referer`, rewrite segment URLs) — the fix
-    is understood and scoped, not attempted.
+- **ChampDS's VOD2 stream (majority of customers) can be transcribed but still can't play on our pages.**
+  - **Issue**: VOD2's HLS stream (`securestream10.champds.com`) answers
+    only requests carrying `Referer: https://play.champds.com/`; with
+    no referer or ours, every request gets HTTP 406. Our server can send
+    that header, so since WO-1045 (2026-09-24) the adapter returns the
+    stream as `server_media_url` and every transcription path uses it.
+    A reader's browser cannot send it, so the page still has no player.
+    `MediaInfo.MediaPath` (`.mp4`) is not a way round it: 404 on every
+    host tried.
+  - **Impact**: VOD2-only meetings (39 of 48 fresh tenants in the
+    2026-09-06 CDX scan; Cobb and Gwinnett County GA, 2026-09-24) now
+    get a transcript but show "ChampDS only streams it inside its own
+    player" instead of a player, so transcript timestamps can't seek.
+  - **Next action**: a streaming reverse-proxy — fetch server-side with
+    the ChampDS Referer and rewrite the playlist's segment URLs to route
+    back through us. Understood and scoped, not attempted.
   - **Constraint**: weigh the bandwidth cost against the same caution
-    already attached to the Granicus/azureedge video-proxy idea — ChampDS
-    volume would be smaller than Granicus, but the cost shape is the
-    same.
-  - **History**: `BACKLOG_DONE.md` (video-indexing investigation); moved
-    out of Dormant 2026-08-30.
-
-- **[NEEDS-AUDIT] ChampDS's `MediaInfo.Captions` is no longer confirmed-always-empty — a real, populated example exists.**
-  - **Issue**: `champds.py`'s own docstring and `BACKLOG_DONE.md` both say
-    `MediaInfo.Captions` was empty on every one of the 6 real customers
-    checked when the adapter was built (2026-08-13), so it's
-    deliberately never read. WO-308 (2026-09-12) found a real,
-    populated counterexample while capturing listing-step fixtures:
-    Atlanta GA event 1077 (`playapi.champds.com/atlantaga/event/1077`)
-    returns `"Captions": [{"LanguageName": "English", "LanguageID":
-    "en", "MediaPath": "/2026-03/eaec74850c81b8ef2877faa746c28b61dc836fb4.vtt"}]`.
-    Not chased further — out of scope for a listing-step PR.
-  - **Impact**: an unknown number of ChampDS meetings may have real,
-    fetchable VTT captions this adapter currently reports as "No
-    captions found" for. Given champds.py's own already-documented VOD2
-    referer-lock issue blocks the majority of customers from having a
-    playable video at all (see the entry directly above), the practical
-    reach of a caption fix is capped by that — likely biggest for the
-    minority (`DownloadURL`) customers.
-  - **Next action**: fetch that exact `.vtt` path (unconfirmed which
-    host serves it — try `play.champds.com{MediaPath}` first, the same
-    pattern `DownloadURL` uses) against Atlanta event 1077 to confirm
-    it's a real, parseable, non-garbled transcript before wiring it into
-    `resolve()`; check a couple more customers for a second positive
-    example before trusting the field generally (this repo's "don't
-    claim a data path works without a positive example" convention).
-  - **Constraint**: don't assume every customer's Captions array is
-    populated just because one is — the 6-customer sample WO-308 didn't
-    re-check might still be representative of most.
-  - **History**: `BACKLOG_DONE.md`'s WO-308 entry (the listing step this
-    was found while building).
+    already attached to the Granicus/azureedge video-proxy idea.
+  - **History**: `BACKLOG_DONE.md` (video-indexing investigation; WO-1045
+    for the live re-check and the transcription path).
 
 - **[NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates correctly; the real video is still unreachable behind client-side JS.**
   - **Issue**: escalation itself is fixed (a SharePoint-specific
@@ -5472,13 +5436,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: still find 2-3 more confirmed HCMS tenants before building anything (per this project's own "test against a real, live URL first" rule) — but the next thing to check on a new candidate is its site's own navigation for a human-readable "agendas/minutes" page (the way El Mirage's resolved), not the `content.civicplus.com` contents API first; that API may not be where the real listing lives at all for a given tenant, only where the CMS's generic content blocks and image assets live.
   - **Constraint**: `[EXAMPLE]` — needs more real samples before any adapter work, not just El Mirage alone.
   - **History**: WO-134, 2026-09-09. WO-261, 2026-09-11 (`rtr-business/research/ENUMERATION_METHODS.md` §287).
-
-- **[NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found live sitting one click from a CivicPlus AgendaCenter page that `adhoc_civicplus_pipeline.py` marked `no-video-found` — `spectrumstream.com` (in the AgendaCenter row itself) and `12milesout.com` (on the government's own homepage nav).**
-  - **Issue**: resolving the WO-127/WO-128 "no video" contradiction (WO-137, 2026-09-09 — see `BACKLOG_DONE.md`) turned up two new video platforms, confirmed live, one sample each. (1) Alhambra, CA (`alhambraca.gov/AgendaCenter`) has real, recent (within days) per-meeting `td.media` links to `spectrumstream.com/streaming/alhambra/meeting_{date}.cfm` — well within `_RETRY_LIMIT`, so `_find_candidate_rows()` reads them fine, but `detect_platform()` doesn't recognize `spectrumstream.com` at all, so `_is_real_video_link()` rejects every one and the page reads as having zero video candidates. The page itself is a real "Video Player" wrapping a JW-Player-style `file:` pointing at a real S3-hosted MP4 (`spectrum_streaming.s3.amazonaws.com/alhambra/alhambra_2026_07_27.mp4`) — confirmed by fetching one directly. (2) Escondido, CA's AgendaCenter module is genuinely empty (zero `catAgendaRow`s, zero configured categories — not a JS-hidden case), but its homepage links to "City Council Meeting Broadcasts" → `escondido.12milesout.com`, a real, plain-HTTP, server-rendered per-meeting video archive (`/Video/Meeting/{uuid}` links, real recent dates through 9/2/2026) that no code in this repo recognizes.
-  - **Impact**: both governments are currently counted among the 521 CivicPlus `no-video-found` verdicts; both actually have real, resolvable video. Unknown how many of the other 519 share either shape — this was found via a 30-government live sample, not a targeted search for either domain.
-  - **Next action**: per this project's own "test against a real, live URL first" rule, find 2-3 more confirmed samples of each domain before building either adapter (`external_hosts.txt` in `rtr-business/research` already has 2 unexamined `spectrumstream.com` hits from an earlier crawl — check those first). Once confirmed on multiple tenants: `spectrumstream.com` needs a `detect_platform()` entry plus a small adapter (the `.cfm` page's embedded JW-Player `file:` URL is the direct MP4, per Alhambra); `12milesout.com` needs the same plus per-meeting date/title matching against its `/Video/Meeting/{uuid}` listing.
-  - **Constraint**: `[EXAMPLE]` — one confirmed live sample each is not enough to build an adapter from; don't generalize the page shape from a single tenant.
-  - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows render "newest-first" across the whole page — real, confirmed false for multi-category tenants; rows are newest-first *within* each category, with categories concatenated, not globally date-sorted.**
   - **Issue**: confirmed live 2026-09-09 (WO-137) on lowellma.gov/AgendaCenter (330 rows): each `tr.catAgendaRow` sits inside a `<div id="category-panel-{N}">` wrapper (City Council rows 0-28, then several unrelated boards, then the Lowell License Commission's own rows starting at index 199) — each category's own rows are newest-first, but the categories themselves are concatenated in some category-ID order, not merged by date. `_find_candidate_rows()`'s and `resolve()`'s `_RETRY_LIMIT`-bounded walk (both `civicplus.py` and `adhoc_civicplus_pipeline.py`) assumes the first 5 DOM rows are the 5 most recent meetings on the whole page; for a tenant whose first-rendered category doesn't happen to have a recent video-bearing row, this can never reach a genuinely more-recent video sitting in a later category, no matter how small or large `_RETRY_LIMIT` is.
@@ -5916,6 +5873,22 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### ChampDS jurisdiction text comes out wrong for customer names that aren't "City ST" `[EASY]`
+
+- **Issue**: `champds.py`'s `_extract_jurisdiction()` only rewrites a
+  `CustomerName` shaped "{place} {2-letter state}". Found live 2026-09-24
+  (WO-1045): "Cobb Co GA" becomes "Cobb Co, GA" (abbreviation kept), and
+  "ElPaso County Colorado" passes through unchanged (no space in
+  "ElPaso", full state name, no comma). "Gwinnett County GA" is fine.
+- **Impact**: the jurisdiction text shown on these pages reads oddly.
+  Identity is unaffected: it comes from `gov_id`, not this text.
+- **Next action**: count how many ChampDS `CustomerName` values fall
+  outside the "City ST" shape (the CDX tenant list in rtr-business has
+  them), then decide the rule from real names, not these two.
+- **Constraint**: don't guess an expansion ("Co" -> "County") from one
+  example; check several customers first.
+- **History**: none yet.
 
 ### Own transcription: a warning for a transcript that stops early needs a tail-silence check built with it; held by Ryan's decision `[NEEDS-AUDIT]`
 

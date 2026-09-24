@@ -1,0 +1,179 @@
+{
+ "Event": {
+  "EventTitle": "BOC Business Session 9.15.26",
+  "EventDateTimeCustomerLocal": "2026-09-15 14:00:00"
+ },
+ "Customer": {
+  "CustomerName": "Gwinnett County GA"
+ },
+ "Board": {
+  "BoardName": "Board of Commissioners"
+ },
+ "Agenda": {
+  "Attachments": []
+ },
+ "MediaInfo": {
+  "MediaType": "VOD",
+  "MediaID": 387,
+  "MediaPath": "/2026-09/c856b26edacc8a6e79bc4d4c05a8e0aa4c4e334a.mp4",
+  "VOD2": "/VOD/event/GwinnettCoGA/356/1789498072000/MJOFEzzY9p_9uNdXuCNheA/master.m3u8",
+  "Captions": [],
+  "AudioDescriptions": []
+ },
+ "ServicesAndMachineInfo": {
+  "4": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "GwinnettCoGA OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 4,
+   "URLBase": "rtmp://144.168.37.20/GwinnettCoGAOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "256": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "GwinnettCoGA OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 256,
+   "URLBase": "https://securestream7.champds.com/GwinnettCoGAOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%/medialist.smil?PLAY"
+  },
+  "0": [
+   {
+    "CustomerServiceID": 1,
+    "ServiceNickName": "GwinnettCoGA OD",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/GwinnettCoGAOD/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 2,
+    "ServiceNickName": "GwinnettCoGA ATT",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/GwinnettCoGAATT/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 3,
+    "ServiceNickName": "GwinnettCoGA WEBMEDIA",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/GwinnettCoGAWEBMEDIA/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "GwinnettCoGA LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/GwinnettCoGALIVE/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 6,
+    "ServiceNickName": "GwinnettCoGALIVE PUSH",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/GwinnettCoGALIVEPUSH/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   }
+  ],
+  "8": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "GwinnettCoGA OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 8,
+   "URLBase": "https://securestream10.champds.com",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "16": {
+   "CustomerServiceID": 2,
+   "ServiceNickName": "GwinnettCoGA ATT",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 16,
+   "URLBase": "https://http://play.champds.com/webmedia/att/GwinnettCoGAATT",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "32": {
+   "CustomerServiceID": 3,
+   "ServiceNickName": "GwinnettCoGA WEBMEDIA",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 32,
+   "URLBase": "http://http://play.champds.com/GwinnettCoGAWEBMEDIA",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "1": [
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "GwinnettCoGA LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 1,
+    "URLBase": "rtmp://144.168.37.20/GwinnettCoGALIVE/_definst_",
+    "URLFilename": "%MEDIA_PATH%?PLAY"
+   },
+   {
+    "CustomerServiceID": 6,
+    "ServiceNickName": "GwinnettCoGALIVE PUSH",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 1,
+    "URLBase": "rtmp://144.168.37.20/GwinnettCoGALIVEPUSH/_definst_",
+    "URLFilename": "%MEDIA_PATH%?PLAY"
+   }
+  ],
+  "2": [
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "GwinnettCoGA LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 2,
+    "URLBase": "http://144.168.37.20/GwinnettCoGALIVE/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 6,
+    "ServiceNickName": "GwinnettCoGALIVE PUSH",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 2,
+    "URLBase": "http://144.168.37.20/GwinnettCoGALIVEPUSH/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   }
+  ],
+  "64": [
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "GwinnettCoGA LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 64,
+    "URLBase": "http://144.168.37.20/GwinnettCoGALIVE/_definst_",
+    "URLFilename": "amlst:streams.smil/medialist.smil?PLAY"
+   },
+   {
+    "CustomerServiceID": 6,
+    "ServiceNickName": "GwinnettCoGALIVE PUSH",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 64,
+    "URLBase": "http://144.168.37.20/GwinnettCoGALIVEPUSH/_definst_",
+    "URLFilename": "amlst:streams.smil/medialist.smil?PLAY"
+   }
+  ],
+  "128": [
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "GwinnettCoGA LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 128,
+    "URLBase": "https://securestream9.champds.com/LIVE/GwinnettCoGALIVE",
+    "URLFilename": "%CUSTOMER_SERVICE_NAME%.m3u8?PLAY&v=new"
+   },
+   {
+    "CustomerServiceID": 6,
+    "ServiceNickName": "GwinnettCoGALIVE PUSH",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 128,
+    "URLBase": "https://securestream9.champds.com/LIVE/GwinnettCoGALIVEPUSH",
+    "URLFilename": "%CUSTOMER_SERVICE_NAME%.m3u8?PLAY&v=new"
+   }
+  ]
+ }
+}

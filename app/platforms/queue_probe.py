@@ -1061,7 +1061,9 @@ async def probe_queue_entry(
                 url, resolved_platform, "resolve", start, f"resolve raised: {e}"
             )
 
-        video_url = result.video_url
+        # WO-1045: falls back to a server-only stream (ChampDS VOD2), which
+        # _probe_hls() below reads with the source page's Referer.
+        video_url = media_probe.transcription_media_url(result)
         external_id = getattr(result, "external_id", None)
         video_format = video_format or getattr(result, "video_format", None)
         if not source_page_url:
