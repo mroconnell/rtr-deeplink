@@ -31,6 +31,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp
 import pytest
@@ -279,14 +280,155 @@ async def test_403_on_both_header_sets_is_blocked_browser_headers_not_a_challeng
 
     server = await _make_server({"/nope": always_403})
     try:
-        fetcher = Fetcher()
+        # WO-1032: a hard block now also tries Wayback for links (see
+        # test_hard_block_falls_back_to_wayback_links_only below) --
+        # allow_wayback=False here keeps this test about the
+        # 403-is-not-a-challenge classification only, with no real
+        # archive.org call.
+        fetcher = Fetcher(allow_wayback=False)
         result = await fetcher.fetch(str(server.make_url("/nope")))
         # rtr-upcoming field guide point 4: a bare 403 is not a challenge
         # page by itself.
         assert result.outcome == "blocked-browser-headers"
         assert not result.challenge
         assert result.access_mode == "browser-headers"
+        assert result.wayback_timestamp is None
     finally:
+        await fetcher.aclose()
+        await server.close()
+
+
+# ---------------------------------------------------------------------------
+# WO-1032: a hard block (403/dropped, no challenge marker) also falls back
+# to Wayback for links -- previously only a real challenge did. Prompted by
+# a conductor trace of Essex, ON's `calendar.essex.ca/meetings`, which
+# returned a plain 403 (`blocked-browser-headers`) and got no Wayback
+# fallback at all.
+# ---------------------------------------------------------------------------
+
+
+async def test_hard_block_falls_back_to_wayback_links_only():
+    async def always_403(request):
+        return web.Response(status=403, text="<html>forbidden, plain and simple</html>")
+
+    server = await _make_server({"/nope": always_403})
+
+    canned_cdx = json.dumps(
+        [
+            ["original", "timestamp"],
+            ["https://example.gov/nope", "20260202000000"],
+        ]
+    ).encode()
+
+    class _FakeCdxResponse:
+        text = canned_cdx.decode()
+
+    def fake_cdx_get(url):
+        assert "web.archive.org/cdx/search/cdx" in url
+        return _FakeCdxResponse()
+
+    def fake_wayback_id_read(url, timestamp):
+        assert timestamp == "20260202000000"
+        return (
+            b'<html><body><a href="/archived-meetings">old meetings</a></body></html>'
+        )
+
+    import scripts.wo282_recon as wo282_recon
+
+    orig_cdx_get = wo282_recon.cdx_get
+    orig_wayback_id_read = wo282_recon.wayback_id_read
+    try:
+        fetch_module.cdx_get = fake_cdx_get
+        fetch_module.wayback_id_read = fake_wayback_id_read
+
+        fetcher = Fetcher()
+        result = await fetcher.fetch(str(server.make_url("/nope")))
+        # The outcome stays the block -- Wayback supplying links doesn't
+        # turn a block into a success, and it is NOT reclassified as a
+        # challenge (it never showed a challenge marker).
+        assert result.outcome == "blocked-browser-headers"
+        assert result.challenge is False
+        assert result.access_mode == "wayback"
+        assert result.links_only is True
+        assert result.wayback_timestamp == "20260202000000"
+        assert "archived-meetings" in (result.html or "")
+    finally:
+        fetch_module.cdx_get = orig_cdx_get
+        fetch_module.wayback_id_read = orig_wayback_id_read
+        await fetcher.aclose()
+        await server.close()
+
+
+async def test_hard_block_when_host_already_known_browser_headers_also_falls_back():
+    """Same fallback, via the OTHER hard-block return site: a host this
+    Fetcher already learned needs browser headers (`_host_header_mode`
+    memory) that still 403s on a later fetch()."""
+
+    async def always_403(request):
+        return web.Response(status=403, text="<html>forbidden, plain and simple</html>")
+
+    server = await _make_server({"/still-nope": always_403})
+
+    canned_cdx = json.dumps(
+        [
+            ["original", "timestamp"],
+            ["https://example.gov/still-nope", "20260303000000"],
+        ]
+    ).encode()
+
+    class _FakeCdxResponse:
+        text = canned_cdx.decode()
+
+    def fake_cdx_get(url):
+        return _FakeCdxResponse()
+
+    def fake_wayback_id_read(url, timestamp):
+        return b'<html><body><a href="/archived">old</a></body></html>'
+
+    import scripts.wo282_recon as wo282_recon
+
+    orig_cdx_get = wo282_recon.cdx_get
+    orig_wayback_id_read = wo282_recon.wayback_id_read
+    try:
+        fetch_module.cdx_get = fake_cdx_get
+        fetch_module.wayback_id_read = fake_wayback_id_read
+
+        fetcher = Fetcher()
+        host = urlparse(str(server.make_url("/still-nope"))).hostname
+        fetcher._host_header_mode[host] = "browser"
+        result = await fetcher.fetch(str(server.make_url("/still-nope")))
+        assert result.outcome == "blocked-browser-headers"
+        assert result.challenge is False
+        assert result.access_mode == "wayback"
+        assert result.wayback_timestamp == "20260303000000"
+    finally:
+        fetch_module.cdx_get = orig_cdx_get
+        fetch_module.wayback_id_read = orig_wayback_id_read
+        await fetcher.aclose()
+        await server.close()
+
+
+async def test_hard_block_without_wayback_allowed_makes_no_cdx_call():
+    async def always_403(request):
+        return web.Response(status=403, text="nope")
+
+    server = await _make_server({"/nope": always_403})
+
+    def fail_cdx_get(url):
+        raise AssertionError("should not call Wayback when allow_wayback=False")
+
+    import scripts.wo282_recon as wo282_recon
+
+    orig_cdx_get = wo282_recon.cdx_get
+    try:
+        fetch_module.cdx_get = fail_cdx_get
+        fetcher = Fetcher(allow_wayback=False)
+        result = await fetcher.fetch(str(server.make_url("/nope")))
+        assert result.outcome == "blocked-browser-headers"
+        assert result.wayback_timestamp is None
+        assert result.html is None
+    finally:
+        fetch_module.cdx_get = orig_cdx_get
         await fetcher.aclose()
         await server.close()
 
@@ -533,7 +675,11 @@ async def test_dns_unresolvable_is_classified_from_a_real_aiohttp_exception():
 async def test_dropped_connection_retries_with_browser_headers():
     # rtr-upcoming field guide: a RemoteDisconnected-shaped reset (no
     # status line) must retry with browser headers, same as a 403.
-    fetcher = Fetcher()
+    # allow_wayback=False: this test is about the dropped-connection
+    # classification, not WO-1032's Wayback fallback (covered by its own
+    # tests above) -- without it, the resulting hard block would make a
+    # real, unmocked archive.org CDX call for "example.invalid".
+    fetcher = Fetcher(allow_wayback=False)
     fetcher._session = _RaisingSession(aiohttp.ServerDisconnectedError())
     result = await fetcher.fetch("https://example.invalid/")
     assert result.access_mode == "browser-headers"

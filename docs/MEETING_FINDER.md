@@ -628,14 +628,15 @@ steps, after the hand-read.
 
 ## How every page is fetched
 
-Not a phase: one fetch helper used by Start, Identify, Scan and Hop.
+Not a phase: one fetch helper (`app/platforms/meeting_finder/fetch.py`)
+used by Start, Identify, Scan and Hop.
 
 | Rung | When |
 |---|---|
 | Plain request | Always first |
 | Browser headers | Only after a 403 or a dropped connection |
 | Headless browser | Only when a page loaded but shows no links |
-| Wayback's latest copy | After a human-verification challenge. **For links only**, recorded with the snapshot date. Never the government's own media |
+| Wayback's latest copy | After a human-verification challenge, **or after the ladder ends in an ordinary hard block with no challenge marker** (a 403/dropped connection that persists through the browser-headers rung -- WO-1032). **For links only**, recorded with the snapshot date. Never the government's own media. The outcome string itself doesn't change; `FetchResult.wayback_timestamp` being set is the flag that Wayback links were used |
 
 We never try to get past a site's challenge. Per-host politeness spacing
 and robots.txt apply as in stage 1.
@@ -643,6 +644,28 @@ and robots.txt apply as in stage 1.
 **YouTube:** Meeting Finder never fetches YouTube. It installs
 `scripts/youtube_fetch_guard.py` first; YouTube finds become drip leads
 in rtr-business `research/youtube_channel_leads.csv`.
+
+**Pacing and counting cover the WHOLE walk, not just `fetch.py`'s own
+budgeted fetches (WO-1032).** `max_fetches` (12 by default) only ever
+counted `Fetcher`'s own requests of the target site. A conductor trace of
+`dublin.ca.gov` found 55 real HTTP requests for one government, only 12
+of them counted -- the other 43 came from adapters opening their own
+`aiohttp` sessions (`app/platforms/granicus.py`'s caption/agenda/channel
+fetches, `app/platforms/queue_probe.py`'s HLS probe), which skipped
+`Fetcher`'s per-host pacer entirely. `app/platforms/meeting_finder/
+pacing.py`'s `pace_all_requests(fetcher)` is a context manager the runner
+activates around one government's whole walk: while active, EVERY real
+`aiohttp` request process-wide -- not just `fetcher`'s own -- is paced
+against the same per-host pacer (robots.txt `Crawl-delay` included where
+`fetcher` already knows it) and counted into a `RequestStats`
+(`requests_total`, `requests_by_host`), reported *alongside*
+`fetcher.fetches_used`, never folded into it (folding it in would let one
+Granicus caption fetch's several requests starve the walk's real
+`max_fetches` budget before Resolve got a turn). See that module's own
+docstring for why `fetcher`'s own requests are counted but not
+re-paced (avoids doubling the wait for its own already-paced fetches),
+and for the `contextvars` mechanics that keep two concurrent governments'
+counts from mixing.
 
 ## Follow-ups (slow queues, their own paced runs)
 
