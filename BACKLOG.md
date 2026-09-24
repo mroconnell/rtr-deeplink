@@ -124,7 +124,7 @@ Standing decisions — do NOT re-raise  (15)
   A single job still makes N consecutive pulls to the same host — WO-40…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
-  WO-1038 TelVue fixes cut for time: off-site TV-station domains, a…
+  Winchester, MA reaches the right TelVue page now but still doesn't…
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -901,54 +901,43 @@ WO-932 and WO-913.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### WO-1038 TelVue fixes cut for time: off-site TV-station domains, a Pass-1 budget floor, ranking down forms/images/news `[JUST-DO-IT]`
+### Winchester, MA reaches the right TelVue page now but still doesn't resolve — sibling-hop/fetch budget crowds it out `[JUST-DO-IT]`
 
-- **Issue:** WO-1038's TelVue diagnosis (8 agents, 37 Cablecast/Swagit
-  misses plus 5 TelVue groups, 38 misses) named 7 fixes; Ryan cut scope
-  mid-build to ship an overnight run sooner. Shipped in PR (see History):
-  Scan/Hop treat a specific TelVue/Cablecast link as a real media
-  candidate, a TelVue lister for `/home`/`/videos`, `telvue.
-  account_url_for()` (recovers the real per-org-token URL Identify's
-  generic reduction throws away), a "direct link to a known platform
-  ranks high" bonus in `hop.rank_hops()` (fixes the `is_host_fallback`
-  gate too), fused "...TV" station names, and trying that platform link
-  before Scan's own `meeting_page_links`. Dropped, still open: (1)
-  **off-site TV-station domains** — WO-1037's own-site-or-vendor Scan
-  filter (`_is_own_site_or_recognized_vendor()`) blocks a town's own TV
-  station domain when it's a different host than the government's
-  (Winchester, MA: `wincam.org`, real page saved at
-  `<scratchpad>/telvue/g2/wincam.html`/`wincam_watch_gov.html`). (2) **A
-  Pass-1 budget floor** — `_run_phase_loop()`'s breadth pass
-  (Identify->List->Resolve across every fork) can spend the WHOLE
-  government budget before Scan/Hop ever run on any fork (Ashland, OR:
-  CivicPlus AgendaCenter ate all 12 fetches, `hops=0` the whole run).
-  (3) **Ranking down contact/mail forms, print views, and raw image/
-  asset links below a same-page platform link** — Bellefonte, PA
-  (`/email/Default.aspx?action=sendemailtous`) and Montclair SD, NJ hop
-  candidates.
-- **Impact:** without (1), any TelVue/Cablecast government whose real
-  video lives on a separate community-access-TV domain still won't be
-  reached (at least Winchester MA confirmed; likely more, same shape as
-  the eventual off-site pattern WO-1037 already handles for an on-site
-  link). Without (2), a government whose homepage happens to be a
-  CivicPlus/agenda-heavy site can still exhaust its budget before Hop
-  gets a turn (confirmed: Ashland OR). Without (3), a low-value link can
-  still occasionally outrank a real platform link on a page that also
-  has other noise.
-- **Next action:** build the three fixes named above, in the files
-  WO-1038's own brief named (`scan.py`'s `_is_own_site_or_recognized_
-  vendor()` for (1), `runner.py`'s `_run_phase_loop()` Pass-1/Pass-2
-  split for (2), `hop.py`'s scoring for (3)), then re-run the full
-  target list from WO-1038's brief (Auburn Hills MI, Irondequoit NY,
-  Exeter NH, Yarmouth ME, Medina City SD OH, Medina city OH, Halfmoon
-  twp PA, Luverne MN, Everett MA, Bellefonte PA, Montclair SD NJ,
-  Winchester MA, Ashland OR) before/after to confirm.
-- **Constraint:** verify each fix against the real saved pages in
-  `<scratchpad>/telvue/g*/` (or re-fetch live) before building — per
-  CLAUDE.md, a backlog entry is a lead, not a spec.
-- **History:** this PR (WO-1038); diagnosis reports are the 8 agents'
-  final messages referenced in `<scratchpad>/ccsw/BUILD_COMMON.md` and
-  `<scratchpad>/telvue/WO1038.md` (not committed to this repo).
+- **Issue:** WO-1039 fixed the off-site-station gap WO-1038 left open
+  (Scan/Hop now follow Winchester, MA's own homepage link to its
+  community-access station, `wincam.org`, even though it's a different
+  registrable domain — confirmed live 2026-09-24). The walk now reaches
+  `wincam.org` and, via wincam.org's own "Watch Now" sibling links,
+  `wincam.org/watch/government` — the exact page whose real, live
+  `<iframe>` embeds the government's TelVue channel
+  (`videoplayer.telvue.com/player/7qWlRaZ6.../stream/245`) and scores it
+  as the clear #1 hop candidate (60.6 vs. the next-best 23.0) once
+  fetched. But the walk never actually fetches that iframe URL: the
+  default 12-fetch budget (and even an 18-fetch retest) is spent
+  wandering wincam.org's other near-identical "Watch Now" links (public/
+  education/hd), Winchester's own AgendaCenter pages, and the
+  https/www/http homepage-variant forks before a fetch is left to spend
+  on the one link that matters.
+- **Impact:** Winchester, MA (and likely any other town sharing this
+  "one station site, several identically-labeled sub-channel pages"
+  shape) still comes back `meeting-without-video` even after the
+  off-site-station fix, purely on a budget/ordering technicality, not a
+  detection gap.
+- **Next action:** either (a) let `_deep_step()`'s early "known platform"
+  hop check run BEFORE trying sibling hops with equal scores (so a page
+  that already resolves to a specific known-platform iframe is preferred
+  over trying more untried siblings first), or (b) break the score tie
+  among wincam.org's identical "Watch Now" links using the government's
+  own name/type ("government" vs. "public"/"education"/"hd") the way
+  `hop.py`'s existing `_GOV_NAME_MATCH_BONUS` already does for a shared
+  multi-government hub — either would likely let Winchester resolve
+  inside the existing default budget rather than needing a bigger one.
+- **Constraint:** re-verify against `wincam.org` live (still fetchable,
+  confirmed 2026-09-24) rather than the group's saved `wincam.html`/
+  `wincam_watch_gov.html` snapshots, which may drift.
+- **History:** `BACKLOG_DONE.md` (WO-1039, 2026-09-24) — the off-site-
+  station fix itself, and the live before/after that found this residual
+  gap.
 
 ### State legislatures: small residual fixes remain after today's push — a `.vtt` sibling-caption lookup, Vimeo's event-id extraction, and 7 states needing one more hop `[JUST-DO-IT]`
 
