@@ -126,6 +126,7 @@ from app.platforms.queue_probe import (  # noqa: E402
     parse_queue_line,
     probe_queue_entry,
 )
+from app.platforms.media_probe import transcription_media_url  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import (  # noqa: E402
     _base_url,
@@ -236,7 +237,9 @@ async def _push_if_has_video(
     except Exception as e:
         return f"[SKIP] resolve raised: {url} ({e})"
 
-    if not result.video_url:
+    # WO-1045: a server-only stream (ChampDS VOD2) is transcribable too.
+    media_url = transcription_media_url(result)
+    if not media_url:
         return f"[SKIP] no video found on re-resolve: {url}"
 
     # WO-144: probe the resolved video before it becomes a real Archive
@@ -248,7 +251,7 @@ async def _push_if_has_video(
     # to, so a row from either path tells the same story.
     probe = await probe_queue_entry(
         url,
-        video_url=result.video_url,
+        video_url=media_url,
         source_page_url=result.source_url,
         platform=platform,
         # WO-937: without this, a direct-file candidate whose URL itself

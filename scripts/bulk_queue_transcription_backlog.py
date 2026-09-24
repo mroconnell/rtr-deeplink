@@ -135,6 +135,7 @@ from app.platforms.media_probe import (  # noqa: E402
     chunk_size_seconds_for_platform,
     probe_duration_and_chunk_plan,
     is_plausible_meeting_duration,
+    transcription_media_url,
 )
 
 # Same "flushes immediately even when piped to a log file" reasoning as
@@ -382,7 +383,8 @@ async def _check_feasible(page: dict) -> dict:
             "reason": f"re-resolve failed: {type(e).__name__}: {str(e)[:200]}",
         }
 
-    if not result.video_url:
+    # WO-1045: a server-only stream (ChampDS VOD2) counts too.
+    if not transcription_media_url(result):
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
     # WO-98: probe_duration(result.video_url) alone was a real bug here --
@@ -464,7 +466,7 @@ async def _process_candidate(
             payload=result.model_dump(),
             source_url=page["source_url_normalized"],
             requester_email=requester_email,
-            media_url=result.video_url,
+            media_url=transcription_media_url(result),
             media_kind=_auto_media_kind(result.video_format),
             duration=feasible["duration"],
             chunk_plan=feasible.get("chunk_plan"),

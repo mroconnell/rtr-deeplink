@@ -18,7 +18,7 @@ logger = logging.getLogger("rtr_deeplink.spectrumstream")
 # streaming/{tenant}/{filename}.cfm` page. Confirmed live 2026-09-24
 # against 5 real tenants (alhambra, arcadia, south_pasadena, gusd, bgpaa
 # -- LA-area CA cities/school district/joint powers authority, discovered
-# via Wayback CDX by the WO-1045 conductor) before writing any parsing
+# via Wayback CDX by the WO-1047 conductor) before writing any parsing
 # code, per this repo's "test against a real URL first" rule.
 #
 # **Tenancy is PATH-based on one DNS-wildcarded domain, unlike
@@ -27,7 +27,7 @@ logger = logging.getLogger("rtr_deeplink.spectrumstream")
 # the `/streaming/{tenant}/` path segment, never the host --
 # `parse_spectrumstream_tenant()` below is the one place that extracts
 # it, excluding the shared static-asset folder (`_jwplayer`) and the
-# non-government tenants the WO-1045 discovery notes name explicitly
+# non-government tenants the WO-1047 discovery notes name explicitly
 # (`gef`, `lef`, any `*_grad` graduation-ceremony tenant).
 #
 # **Every real per-meeting page shares one legacy ColdFusion template**
@@ -84,7 +84,7 @@ TENANT_JURISDICTIONS: Dict[str, str] = {
     "arcadia": "Arcadia, CA",
     "south_pasadena": "South Pasadena, CA",
     # South Pasadena's own committees/commissions -- real path segments
-    # named in the WO-1045 discovery notes, sharing the same city.
+    # named in the WO-1047 discovery notes, sharing the same city.
     "south_pasadena_pc": "South Pasadena, CA",
     "south_pasadena_chc": "South Pasadena, CA",
     "south_pasadena_psc": "South Pasadena, CA",
@@ -103,7 +103,7 @@ TENANT_JURISDICTIONS: Dict[str, str] = {
     "bgpaa": "Burbank-Glendale-Pasadena Airport Authority, CA",
 }
 
-# Confirmed non-government tenants (WO-1045 discovery notes) -- a
+# Confirmed non-government tenants (WO-1047 discovery notes) -- a
 # graduation-ceremony webcast or an unrelated foundation, never a real
 # government meeting archive.
 _NON_GOV_TENANTS = frozenset({"gef", "lef"})

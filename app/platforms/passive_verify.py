@@ -1198,7 +1198,7 @@ def _parse_twelvemilesout_date(text: Optional[str]) -> Optional[str]:
 
 
 async def _twelvemilesout_walker(hub_url: str) -> List[dict]:
-    """12milesout.com's real per-tenant listing (WO-1045, 2026-09-24).
+    """12milesout.com's real per-tenant listing (WO-1047, 2026-09-24).
     Two real, confirmed listing themes coexist across tenants (the per-
     meeting PAGE shape is identical either way -- see twelvemilesout.py's
     own module docstring): a Vue-rendered table backed by a real
@@ -1329,7 +1329,7 @@ def _parse_spectrumstream_date(value: str, label: str) -> Optional[str]:
 
 
 async def _spectrumstream_walker(hub_url: str) -> List[dict]:
-    """spectrumstream.com's real per-tenant listing (WO-1045, 2026-09-24).
+    """spectrumstream.com's real per-tenant listing (WO-1047, 2026-09-24).
     A tenant's bare root (`/streaming/{tenant}/`) is, on every real
     tenant checked, a truncated/malformed fragment carrying only the
     single NEWEST meeting filename (`<option value="{file}.cfm">`, no

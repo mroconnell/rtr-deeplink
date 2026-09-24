@@ -140,7 +140,7 @@ _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     # Spectrum Stream -- base.py's own branch needs a real
     # `/streaming/{tenant}/` path (the host itself is DNS-wildcarded, so
     # a bare hostname never confirms a tenant on its own -- see
-    # spectrumstream.py's own module docstring, WO-1045, 2026-09-24).
+    # spectrumstream.py's own module docstring, WO-1047, 2026-09-24).
     # Real tenants confirmed live: `spectrumstream.com` itself (not just
     # a subdomain).
     ("spectrumstream.com", "spectrumstream"),

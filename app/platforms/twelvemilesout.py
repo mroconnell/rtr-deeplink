@@ -21,7 +21,7 @@ logger = logging.getLogger("rtr_deeplink.twelvemilesout")
 # casing/shape varies by tenant -- see below). Confirmed live 2026-09-24
 # against 6 real tenants (escondido, coronado, colton, covina, bigbearlake,
 # solanabeach -- all San Diego/Inland Empire, CA cities, discovered via
-# Wayback CDX + DNS by the WO-1045 conductor) before writing any parsing
+# Wayback CDX + DNS by the WO-1047 conductor) before writing any parsing
 # code, per this repo's "test against a real URL first" rule.
 #
 # **Tenancy is per-subdomain, not per-path** (each tenant is its own real
@@ -31,7 +31,7 @@ logger = logging.getLogger("rtr_deeplink.twelvemilesout")
 # distinguishes a real tenant subdomain from the vendor's own bare/`www`
 # marketing host and a small number of confirmed non-government subdomains
 # (a radio station demo, the vendor's own CDN/media infra) that also
-# resolve under `*.12milesout.com` per the WO-1045 DNS sweep.
+# resolve under `*.12milesout.com` per the WO-1047 DNS sweep.
 #
 # **Two real, distinct listing/template "themes" coexist across tenants,
 # but the per-MEETING page shape is identical either way** (confirmed
@@ -52,7 +52,7 @@ logger = logging.getLogger("rtr_deeplink.twelvemilesout")
 # plain, direct, unauthenticated file -- confirmed fetchable on every
 # tenant checked), not the JW Player `file:`/HLS smil URL also present on
 # the page (`https://lax-vod.12milesout.com/vod-cache/...smil:...` --
-# `lax-vod` has no live DNS per the WO-1045 sweep, and the smil/HLS path
+# `lax-vod` has no live DNS per the WO-1047 sweep, and the smil/HLS path
 # would need an extra manifest fetch this vendor's own plain MP4 download
 # link makes unnecessary).
 #
@@ -84,11 +84,11 @@ logger = logging.getLogger("rtr_deeplink.twelvemilesout")
 # guess, rather than an invented one.
 TARGET_LANGUAGE = "en"
 
-# Curated, confirmed-live tenant -> jurisdiction map (2026-09-24, WO-1045
+# Curated, confirmed-live tenant -> jurisdiction map (2026-09-24, WO-1047
 # discovery). Every one of these is a real DNS CNAME resolving today, per
 # the conductor's Wayback CDX + DNS sweep -- all San Diego/Inland Empire,
 # CA cities. `sdcwa` (San Diego County Water Authority) is a real,
-# resolving tenant too, but the WO-1045 discovery notes flag it as
+# resolving tenant too, but the WO-1047 discovery notes flag it as
 # "live only" (no confirmed video archive) -- deliberately left out of
 # this map rather than guessed at.
 TENANT_JURISDICTIONS: Dict[str, str] = {
@@ -101,7 +101,7 @@ TENANT_JURISDICTIONS: Dict[str, str] = {
     "solanabeach": "Solana Beach, CA",
 }
 
-# Subdomains confirmed by the WO-1045 DNS sweep to resolve under
+# Subdomains confirmed by the WO-1047 DNS sweep to resolve under
 # `*.12milesout.com` but NOT be a per-government meeting archive: the
 # vendor's own bare marketing host (`www`), its CDN/media infrastructure
 # (`lax-vod`, `media-h264`), and radio-station demo content (`radio`,

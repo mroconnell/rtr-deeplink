@@ -186,6 +186,7 @@ from app.platforms.media_probe import (
     probe_multi_clip_chunk_plan,
     should_cache_whole_audio,
     slice_cached_audio,
+    transcription_media_url,
 )  # noqa: E402
 from app.utils.retry import retry_async  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -1103,7 +1104,10 @@ async def transcribe_meeting(
             f"{type(e).__name__}: {str(e)[:200]}",
         }
 
-    if not result.video_url:
+    # WO-1045: the playable video_url, or a server-only stream (ChampDS
+    # VOD2) -- same helper as worker/main.py, so the two paths agree.
+    source_media_url = transcription_media_url(result)
+    if not source_media_url:
         # A resolve that *succeeded* and found no video is a real answer
         # about this meeting, not a transient failure -- no retry.
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
@@ -1236,8 +1240,8 @@ async def transcribe_meeting(
 
     if duration is None:
         duration = await retry_async(
-            lambda: probe_duration(result.video_url, source_page_url=source_url),
-            label=f"ffprobe of {result.video_url}",
+            lambda: probe_duration(source_media_url, source_page_url=source_url),
+            label=f"ffprobe of {source_media_url}",
             attempts=MEDIA_ATTEMPTS,
             base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
             max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
@@ -1350,7 +1354,7 @@ async def transcribe_meeting(
     # own is_hls()/multi-chunk gate (meaningless against a youtube.com/
     # embed/ URL) is bypassed rather than consulted.
     use_whole_audio_cache = youtube_audio_path is not None or (
-        (not chunk_plan) and should_cache_whole_audio(result.video_url, total_chunks)
+        (not chunk_plan) and should_cache_whole_audio(source_media_url, total_chunks)
     )
     whole_audio_cache_failed = False
 
@@ -1474,7 +1478,7 @@ async def transcribe_meeting(
                         dur = entry["duration"]
                         meeting_offset = entry["start"]
                     else:
-                        chunk_media_url = result.video_url
+                        chunk_media_url = source_media_url
                         start = chunk_start(idx, chunk_size_seconds)
                         dur = chunk_duration(idx, chunk_size_seconds, duration)
                         meeting_offset = start

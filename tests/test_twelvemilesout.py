@@ -7,7 +7,7 @@ from app.platforms.passive_verify import _twelvemilesout_walker
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
-# Every fixture below was fetched live 2026-09-24 (WO-1045) against real,
+# Every fixture below was fetched live 2026-09-24 (WO-1047) against real,
 # current tenants -- confirmed against 4 real tenants, 2 real listing
 # themes (see twelvemilesout.py's own module docstring): coronado/colton
 # (Vue-rendered, backed by a real `/api/meetings/list` JSON endpoint) and

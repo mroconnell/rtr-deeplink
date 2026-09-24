@@ -8,7 +8,7 @@ from app.platforms.passive_verify import _spectrumstream_walker
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
-# Every fixture below was fetched live 2026-09-24 (WO-1045) against real,
+# Every fixture below was fetched live 2026-09-24 (WO-1047) against real,
 # current tenants -- confirmed against 5 real tenants (alhambra, arcadia,
 # south_pasadena, gusd, bgpaa), all sharing one legacy ColdFusion template
 # (see spectrumstream.py's own module docstring).
@@ -157,7 +157,7 @@ def test_parse_spectrumstream_tenant():
         )
         is None
     )
-    # Confirmed non-government tenants (WO-1045 discovery notes).
+    # Confirmed non-government tenants (WO-1047 discovery notes).
     assert (
         parse_spectrumstream_tenant("https://spectrumstream.com/streaming/gef/x.cfm")
         is None

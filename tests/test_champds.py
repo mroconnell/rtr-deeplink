@@ -10,7 +10,8 @@ one pulled from a real customer's actual API response, not invented.
 import json
 
 from app.platforms.base import detect_platform
-from app.platforms.champds import ChampDSAssetFinder
+from app.platforms.champds import _STREAM_ONLY_WARNING, ChampDSAssetFinder
+from app.platforms.media_probe import transcription_media_url
 
 from aiohttp_mock import FakeResponse, mock_session
 
@@ -97,13 +98,15 @@ async def test_resolve_uses_direct_download_url_when_present():
     assert result.video_warnings == []
 
 
-async def test_resolve_does_not_use_vod2_even_when_present():
+async def test_resolve_keeps_vod2_out_of_the_player():
     # Real, confirmed-live blocker: securestream10.champds.com enforces a
     # strict Referer: https://play.champds.com/ check on the VOD2 HLS
     # playlist and its segments -- embedding it directly in this site's
     # own <video>/hls.js would 406 in the browser (this site's referer,
     # not champds.com's own, would be sent). Metadata/agenda still comes
-    # through; only the (currently unusable) video link is withheld.
+    # through. WO-1045: the stream goes to `server_media_url` (for the
+    # transcription paths only) and the reader gets the stream-only
+    # warning rather than "No video found".
     routes = {
         MARLBOROUGH_API_URL: FakeResponse(
             status=200, text=MARLBOROUGH_JSON, url=MARLBOROUGH_API_URL
@@ -115,7 +118,11 @@ async def test_resolve_does_not_use_vod2_even_when_present():
 
     assert result.video_url is None
     assert result.video_format is None
-    assert result.video_warnings == ["No video found for this ChampDS meeting."]
+    assert result.server_media_url == (
+        "https://securestream10.champds.com/VOD/event/MarlboroughMA/806/"
+        "1718783802000/D33VeG9r-BDw8BsuIwReeA/master.m3u8"
+    )
+    assert result.video_warnings == [_STREAM_ONLY_WARNING]
     assert result.title == "City Council"
     assert result.jurisdiction == "Marlborough, MA"
     assert result.date == "2024-06-17"
@@ -138,11 +145,10 @@ async def test_resolve_extracts_agenda_link_from_real_attachment():
     )
 
 
-async def test_resolve_reports_no_transcript_since_captions_are_unconfirmed():
-    # MediaInfo.Captions was empty on every one of the 6 real customers
-    # checked -- no positive example of a populated one, so its real
-    # shape is deliberately unattempted (same convention as CivicClerk/
-    # eScribe -- see BACKLOG.md).
+async def test_resolve_reports_no_transcript_when_captions_list_is_empty():
+    # An empty MediaInfo.Captions -- the usual case, and all 6 customers
+    # checked in 2026-08 -- means no caption request is made at all (an
+    # unmocked one would fail this test).
     routes = {
         ATLANTA_API_URL: FakeResponse(
             status=200, text=ATLANTA_JSON, url=ATLANTA_API_URL
@@ -450,3 +456,147 @@ async def test_list_archive_events_respects_limit():
     assert len(items) == 2
     assert items[0]["event_id"] == 1261
     assert items[1]["event_id"] == 1260
+
+
+# WO-1045 (2026-09-24): the two gaps found live that day. Fixtures are the
+# real playapi.champds.com responses for these three meetings, trimmed to
+# the fields the adapter reads (Event title/date, CustomerName, BoardName,
+# Agenda.Attachments, MediaInfo and ServicesAndMachineInfo whole). The
+# caption fixture is the first 40 cues of El Paso's real 101 KB VTT file,
+# fetched from the /CAPTION/ path the adapter builds.
+COBB_URL = "https://play.champds.com/cobbcoga/event/155"
+GWINNETT_URL = "https://play.champds.com/gwinnettcoga/event/356"
+EL_PASO_URL = "https://play.champds.com/elpasococo/event/164"
+EL_PASO_CAPTION_URL = (
+    "https://play.champds.com/CAPTION/elpasococo/2026-09/"
+    "e6ceecf86eb48b6c349cb46adb72b3fd73862d46.vtt"
+)
+
+
+def _api_route(customer: str, event_id: int, fixture: str) -> dict:
+    api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
+    return {
+        api_url: FakeResponse(
+            status=200, text=_load_champds_fixture(fixture), url=api_url
+        )
+    }
+
+
+async def test_download_disabled_customer_gets_stream_for_transcription_only():
+    # Cobb County GA: no DownloadURL, only VOD2 + an .mp4 MediaPath. The
+    # MediaPath 404s on every host tried; VOD2 plays server-side with
+    # ChampDS's own Referer (ffprobe read 6,197 s live). So: nothing in
+    # the player, the stream in server_media_url, and a warning that says
+    # the video exists.
+    with mock_session(_api_route("cobbcoga", 155, "cobbcoga_event_155.json")):
+        result = await ChampDSAssetFinder().resolve(COBB_URL)
+
+    assert result.video_url is None
+    assert result.video_format is None
+    assert result.server_media_url == (
+        "https://securestream10.champds.com/VOD/event/CobbCoGA/155/"
+        "1788977097000/1o3BB_6OF2yCFDiWWL9CXA/master.m3u8"
+    )
+    assert result.video_warnings == [_STREAM_ONLY_WARNING]
+    assert "No video found" not in " ".join(result.video_warnings)
+    assert result.title == "Board of Commissioners"
+    assert result.date == "2026-09-08"
+    # The transcription paths pick the stream up through the shared helper.
+    assert transcription_media_url(result) == result.server_media_url
+
+
+async def test_second_download_disabled_customer_same_shape():
+    # Gwinnett County GA: an independent second real customer with the
+    # same shape, so the rule isn't fitted to one tenant.
+    with mock_session(_api_route("gwinnettcoga", 356, "gwinnettcoga_event_356.json")):
+        result = await ChampDSAssetFinder().resolve(GWINNETT_URL)
+
+    assert result.video_url is None
+    assert result.server_media_url == (
+        "https://securestream10.champds.com/VOD/event/GwinnettCoGA/356/"
+        "1789498072000/MJOFEzzY9p_9uNdXuCNheA/master.m3u8"
+    )
+    assert result.video_warnings == [_STREAM_ONLY_WARNING]
+
+
+async def test_vod2_without_a_stream_host_is_still_no_video():
+    # Synthetic, built on the real Cobb response: with ServicesAndMachine
+    # Info removed there is no URLBase to join VOD2 to. No host is
+    # guessed, so this stays an honest "No video found". No real customer
+    # missing that block has been seen.
+    raw = json.loads(_load_champds_fixture("cobbcoga_event_155.json"))
+    del raw["ServicesAndMachineInfo"]
+    api_url = "https://playapi.champds.com/cobbcoga/event/155"
+    routes = {api_url: FakeResponse(status=200, text=json.dumps(raw), url=api_url)}
+
+    with mock_session(routes):
+        result = await ChampDSAssetFinder().resolve(COBB_URL)
+
+    assert result.server_media_url is None
+    assert result.video_warnings == ["No video found for this ChampDS meeting."]
+    assert transcription_media_url(result) is None
+
+
+async def test_populated_captions_become_transcript_segments():
+    # El Paso County CO: MediaInfo.Captions lists one English VTT. It
+    # used to be ignored (0 segments); it is now read.
+    routes = _api_route("elpasococo", 164, "elpasococo_event_164.json")
+    routes[EL_PASO_CAPTION_URL] = FakeResponse(
+        status=200,
+        text=_load_champds_fixture("elpasococo_event_164_captions_first40.vtt"),
+        url=EL_PASO_CAPTION_URL,
+    )
+
+    with mock_session(routes):
+        result = await ChampDSAssetFinder().resolve(EL_PASO_URL)
+
+    assert len(result.segments) == 40
+    first = result.segments[0]
+    assert first.start == 358.099
+    assert first.end == 362.355
+    assert first.text.startswith("Good morning and welcome to the Board of")
+    assert result.transcript_language == "en"
+    assert result.transcript_warnings == []
+    # El Paso also has a DownloadURL, so the player gets the plain MP4 and
+    # no server-only stream is set.
+    assert result.video_url == (
+        "https://play.champds.com/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
+    )
+    assert result.server_media_url is None
+    assert transcription_media_url(result) == result.video_url
+
+
+async def test_a_failed_caption_fetch_keeps_the_video_and_says_so():
+    # Synthetic failure on the real El Paso response: the caption file
+    # 404s. The video must still come through, and the warning must say
+    # captions exist but couldn't be read -- not "No captions found".
+    routes = _api_route("elpasococo", 164, "elpasococo_event_164.json")
+    routes[EL_PASO_CAPTION_URL] = FakeResponse(
+        status=404, text="Not Found", url=EL_PASO_CAPTION_URL
+    )
+
+    with mock_session(routes):
+        result = await ChampDSAssetFinder().resolve(EL_PASO_URL)
+
+    assert result.segments == []
+    assert result.video_url is not None
+    assert result.transcript_warnings == [
+        "ChampDS lists captions for this meeting, but we couldn't read them."
+    ]
+
+
+def test_caption_url_prefers_english_when_several_are_listed():
+    # Synthetic: no real customer with two caption languages has been
+    # seen. Shape copied from El Paso's real single-entry list.
+    data = {
+        "MediaInfo": {
+            "Captions": [
+                {"LanguageID": "es", "MediaPath": "/2026-09/es.vtt"},
+                {"LanguageID": "en", "MediaPath": "/2026-09/en.vtt"},
+            ]
+        }
+    }
+    assert (
+        ChampDSAssetFinder._caption_url(data, "elpasococo")
+        == "https://play.champds.com/CAPTION/elpasococo/2026-09/en.vtt"
+    )

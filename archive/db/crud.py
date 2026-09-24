@@ -5554,10 +5554,10 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "townhallstreams": "Town Hall Streams",
     # 12milesout.com (Fisher Integrated, Inc.) -- a real, multi-tenant
     # government video vendor, one product many jurisdictions buy, same
-    # shape as Town Hall Streams/SuiteOne above. WO-1045, 2026-09-24.
+    # shape as Town Hall Streams/SuiteOne above. WO-1047, 2026-09-24.
     "twelvemilesout": "12milesout.com",
     # spectrumstream.com (Studio Spectrum) -- same shape, a different
-    # real multi-tenant vendor. WO-1045, 2026-09-24.
+    # real multi-tenant vendor. WO-1047, 2026-09-24.
     "spectrumstream": "Spectrum Stream",
     # Destiny Software's AgendaQuick (public.destinyhosted.com) -- an
     # agenda/minutes CMS across 61 confirmed real tenants, not a video

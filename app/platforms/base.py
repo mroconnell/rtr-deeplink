@@ -740,7 +740,7 @@ def detect_platform(url: str) -> str:
     if is_twelvemilesout_tenant_host(netloc):
         # 12milesout.com (Fisher Integrated, Inc.) -- a small, real,
         # multi-tenant government video vendor, confirmed live 2026-09-24
-        # (WO-1045) against 6 real San Diego/Inland Empire, CA tenants
+        # (WO-1047) against 6 real San Diego/Inland Empire, CA tenants
         # (escondido, coronado, colton, covina, bigbearlake, solanabeach).
         # Tenancy is per-subdomain -- see twelvemilesout.py's own module
         # docstring for the real page structure and why the bare/`www`
@@ -750,7 +750,7 @@ def detect_platform(url: str) -> str:
     if parse_spectrumstream_tenant(url) is not None:
         # spectrumstream.com (Studio Spectrum) -- a small, real, multi-
         # tenant government video vendor, confirmed live 2026-09-24
-        # (WO-1045) against 5 real LA-area CA tenants (alhambra, arcadia,
+        # (WO-1047) against 5 real LA-area CA tenants (alhambra, arcadia,
         # south_pasadena, gusd, bgpaa). Tenancy is PATH-based on one DNS-
         # wildcarded domain (unlike 12milesout.com above) -- see
         # spectrumstream.py's own module docstring for the real page

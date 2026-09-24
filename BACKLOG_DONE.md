@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1045: 12milesout.com and spectrumstream.com adapters [Done 2026-09-24]
+## WO-1047: 12milesout.com and spectrumstream.com adapters [Done 2026-09-24]
 
 **What.** Closed the WO-137 "two real, unsupported video platforms" entry (Alhambra CA's AgendaCenter linking to `spectrumstream.com`, Escondido CA's homepage linking to `12milesout.com`) by building both adapters, per this project's "test against a real, live URL first" rule — confirmed live on 6 tenants for 12milesout.com and 5 for spectrumstream.com before writing any parsing code (real discovery via Wayback CDX + DNS, done by the conductor beforehand — crt.sh was down).
 
@@ -31,6 +31,43 @@ Original finding preserved from `BACKLOG.md`:
   - **Next action**: per this project's own "test against a real, live URL first" rule, find 2-3 more confirmed samples of each domain before building either adapter (`external_hosts.txt` in `rtr-business/research` already has 2 unexamined `spectrumstream.com` hits from an earlier crawl — check those first). Once confirmed on multiple tenants: `spectrumstream.com` needs a `detect_platform()` entry plus a small adapter (the `.cfm` page's embedded JW-Player `file:` URL is the direct MP4, per Alhambra); `12milesout.com` needs the same plus per-meeting date/title matching against its `/Video/Meeting/{uuid}` listing.
   - **Constraint**: `[EXAMPLE]` — one confirmed live sample each is not enough to build an adapter from; don't generalize the page shape from a single tenant.
   - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
+
+## WO-1045: ChampDS reads its caption files, and download-disabled meetings can be transcribed [Done 2026-09-24]
+
+**What was found.** Two ChampDS gaps, both found live on 2026-09-24.
+
+1. Some customers turn downloads off, so their API response has no `MediaInfo.DownloadURL`. The adapter only ever used `DownloadURL`, so these meetings said "No video found," even though a video exists. Seen on Cobb County GA (`play.champds.com/cobbcoga/event/155`) and Gwinnett County GA (`gwinnettcoga/event/356`).
+2. `MediaInfo.Captions` was never read. El Paso County CO (`elpasococo/event/164`) lists a real English caption file and resolved with 0 transcript segments. This closes the old `BACKLOG.md` entry "ChampDS's `MediaInfo.Captions` is no longer confirmed-always-empty", which had Atlanta GA event 1077 as its one positive example.
+
+**What was tested, live.** Every row below was requested with `curl`, first with no Referer, then with `Referer: https://play.champds.com/` (ChampDS's own site).
+
+| URL tried | No Referer | ChampDS Referer |
+|---|---|---|
+| `play.champds.com/CAPTION/{customer}{Captions[].MediaPath}` | 200, real WEBVTT | 200 |
+| `securestream10.champds.com{VOD2}` (HLS master) | 406 | 302 to `/VOD/version/{token}/master.m3u8`, then 200 |
+| that stream's variant playlist and a `.ts` segment | 406 | 200 |
+| `securestream10.champds.com{MediaPath}` (`.mp4`) | 404 | 404 |
+| `play.champds.com{MediaPath}` and `play.champds.com/{customer}{MediaPath}` | 404 | 404 |
+| `play.champds.com/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{id}` | 403 | not tried |
+
+Where the URLs came from: ChampDS's own player script, `_COMMON/players/vjs2026/embed.js`. Its `loadPlayer()` builds the VOD2 URL from the ServiceTypeID-2048 (else 8) entry's `URLBase`. A commented-out block in its `localEmbed()` builds caption URLs as `/CAPTION/{customer}{MediaPath}`.
+
+**Result.**
+
+- **Captions**: read from `MediaInfo.Captions` (English preferred), fetched from `/CAPTION/`, and parsed through the shared `vtt_parser` pipeline. El Paso now resolves with 1,110 segments, language `en`, no warnings. Atlanta 1077 resolves with 1,770.
+- **Video for readers**: unchanged. VOD2 still can't go in `video_url`, because a reader's browser can't send ChampDS's Referer. The reader now sees a different warning: "This meeting has a video, but ChampDS only streams it inside its own player..." So "no video" and "video we can't play here" are now told apart.
+- **Video for transcription**: new `ResolvedMeeting.server_media_url` field. It holds a URL only our server can read, and is set only when `video_url` is empty. `media_probe.transcription_media_url(result)` returns `video_url`, or else `server_media_url`. All six job-creation callers use it: the resolver's check-feasibility and submit routes, `worker/main.py` (auto-generation and the per-chunk re-resolve), `scripts/transcribe_backlog_locally.py`, `scripts/bulk_queue_transcription_backlog.py`, `scripts/feed_tier3_auto_transcription.py`, and `queue_probe.probe_queue_entry()`. No header code changed: `media_probe` and `queue_probe` already send `Referer: {source page origin}/`, and for a ChampDS page that is exactly `https://play.champds.com/`.
+
+Verified end to end on this Mac, through the real code paths:
+
+| Meeting | Queue probe | Duration probe | 30 s audio chunk |
+|---|---|---|---|
+| Cobb County GA, event 155 | accept | 6,197 s | extracted, real speech ("Our team is honored to accept this proclamation...") |
+| Gwinnett County GA, event 356 | accept | 2,230 s | extracted, real speech |
+
+**Caution.** These meetings still have no player on our pages, so transcript timestamps can't seek. The open `BACKLOG.md` entry "ChampDS's VOD2 stream ... can be transcribed but still can't play on our pages" carries the reverse-proxy work that would fix that. Its old claim that our server "can't satisfy" the Referer check was wrong and has been corrected there.
+
+**Tests.** `tests/test_champds.py`: new fixtures from the real API responses for all three meetings (trimmed to the fields the adapter reads), plus the first 40 cues of El Paso's real caption file. Tests cover both download-disabled customers, the caption shape, a 404 on the caption file, and two synthetic edge cases (no stream host, several caption languages). All 29 ChampDS tests pass.
 
 ## WO-1044: Hop link-ranking fixes from Ryan's Suffolk County notes [Done 2026-09-24]
 
