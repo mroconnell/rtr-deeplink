@@ -1,5 +1,29 @@
 # Backlog — done
 
+## WO-1049: the queue probe reads Dropbox files, and Claycomo/Collier rules in the registry [Done 2026-09-24]
+
+**What and why.** Two loose ends left by WO-1048.
+
+**1. The tier-3 queue probe called a real Dropbox video dead** (`app/platforms/queue_probe.py`). WO-1048 fixed the resolver, but the queue probe is separate code. It still started with a HEAD request, and Dropbox's download server answers HEAD with a body the HTTP client can't read ("Bad status line"). The probe treated that error as a dead file. A Dropbox link now skips HEAD and uses the same ranged GET the probe already uses for Laserfiche. Checked live on Ingham County, MI's `9.22.26-BOC.mp4`:
+
+| Probe step | Result |
+|---|---|
+| Ranged GET | 206, total size 259,815,205 bytes |
+| ffprobe duration | 3,424 seconds (57 minutes) |
+
+Jefferson County, TX needed no change here: the probe already falls back to a ranged GET when HEAD answers 405.
+
+**2. Two registry rules** (`app/utils/jurisdiction_data/tenant_overrides.csv`). On 2026-09-24 Ryan approved moving three live pages with `POST /internal/jurisdiction/override`: pages 2090 and 2541 from the village of Claycomo, MO to Clay County, MO (`us:county:29047`), and page 11067 from no government to Collier County, FL (`us:county:12021`). The override only fixes those pages. These rules make future pages from the same sites land correctly too:
+
+| Site | Government | Strength | Why that strength |
+|---|---|---|---|
+| `claycomo.portal.civicclerk.com` | Clay County, MO | authoritative | The slug spells a real, different government, so a plausible wrong name must not win |
+| `reflect-collier-countyboc.cablecast.tv` | Collier County, FL | fallback | The adapter extracts no name here, so fallback is enough |
+
+Checked with `resolve_government()`: "Claycomo, MO" from the Claycomo site now resolves to Clay County, MO, and a blank name from the Collier site resolves to Collier County, FL.
+
+**Tests.** `tests/test_queue_probe.py`: a Dropbox probe with no HEAD route registered, so any HEAD fails the test; the headers and duration are the real ones captured live.
+
 ## WO-1048: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
 
 **What and why.** Walking county meeting pages on 2026-09-24 turned up four places where the resolver gave up on a real video or gave the wrong name or date. Each was re-checked live before any code changed.

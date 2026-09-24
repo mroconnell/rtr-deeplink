@@ -80,7 +80,7 @@ from .base import (
     get_finder,
     is_multi_gov_host,
 )
-from .direct_file import is_laserfiche_url
+from .direct_file import is_dropbox_url, is_laserfiche_url
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
 from .viebit import ViebitAssetFinder
@@ -906,15 +906,26 @@ async def _probe_direct_file(
     install: it gzip-encodes a small ranged response on its own (aiohttp
     sends `Accept-Encoding: gzip` by default), producing a truncated
     stream -- the same fix `direct_file.py`'s own
-    `_laserfiche_classify_media()` already applies."""
+    `_laserfiche_classify_media()` already applies.
+
+    A Dropbox link (WO-1049, 2026-09-24) skips HEAD for a different
+    reason: it never answers one usably. The `dl=1` link 302s to a
+    `*.dl.dropboxusercontent.com` host whose HEAD sends a gzip body after
+    the headers, and aiohttp raises "Bad status line" -- which this probe
+    used to report as a dead file. Confirmed live on Ingham County, MI's
+    `9.22.26-BOC.mp4`: the same ranged GET answers 206 with a real
+    `Content-Range: bytes 0-1023/259815205`, and ffprobe reads a real
+    3,424-second duration. See `direct_file.py`'s "HEAD refused, or
+    unusable" section, which fixed the resolver half of this (WO-1048)."""
     method = "head+ffprobe"
     size_bytes = None
     date = None
     headers = _aiohttp_headers(source_page_url)
     laserfiche = is_laserfiche_url(video_url)
+    skip_head = laserfiche or is_dropbox_url(video_url)
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            if laserfiche:
+            if skip_head:
                 method = "ranged-get+ffprobe"
                 async with session.get(
                     video_url,
