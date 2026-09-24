@@ -39,6 +39,12 @@ OUTCOME_TIMEOUT = "timeout"
 # sections -- new spellings, not reused from elsewhere, since neither
 # situation had a name before this WO.
 OUTCOME_ACCOUNT_NOT_FOUND = "account-not-found"
+# Nothing resolved, but a YouTube channel or video tied to this government
+# was found along the way (WO-1031, 2026-09-23). A real find -- video very
+# likely exists -- routed to the drip as a lead, since this Mac never
+# fetches YouTube. First seen on Essex, ON (`youtube.com/user/EssexOntario`),
+# which Verdict had reported as a bare access block.
+OUTCOME_YOUTUBE_LEAD_ONLY = "youtube-lead-only"
 # An entry point wave 2 hasn't built yet (List, Identify, Scan, Hop,
 # Start) was asked for. Never a real finding -- a placeholder so the CLI
 # accepts every `--entry` value from day one and wave 2 can fill each
@@ -166,5 +172,11 @@ class VerdictRow:
     hops: int = 0
     forks: int = 0
     fetches: int = 0
+    # WO-1031: every HTTP request the walk made, adapters' own included
+    # (pacing.py's RequestStats). `fetches` counts only the 12-fetch budget.
+    requests_total: int = 0
     note: str = ""
+    # WO-1031 (Ryan, 2026-09-23): every failure says what to try next, so
+    # misses are easy to revisit. Empty when something resolved.
+    try_next: str = ""
     finished_at: str = ""

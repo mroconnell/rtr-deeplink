@@ -42,7 +42,9 @@ CSV_FIELDS = [
     "hops",
     "forks",
     "fetches",
+    "requests_total",
     "note",
+    "try_next",
     "finished_at",
 ]
 

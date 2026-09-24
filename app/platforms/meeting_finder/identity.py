@@ -195,7 +195,12 @@ def check_identity(
             origin_host=resolved_meeting.origin_host,
         )
 
-    resolved_gov_id = None if match.tier == TIER_BLANK else match.gov_id
+    # WO-1031: an empty gov_id (a name the ladder couldn't key) is "the page
+    # says nothing we can match", not a disagreement -- Pomona and Piedmont
+    # reported "disagrees" with no government at all before this fix.
+    resolved_gov_id = (
+        None if match.tier == TIER_BLANK or not match.gov_id else match.gov_id
+    )
 
     if expected is None:
         verdict = "not-checked"

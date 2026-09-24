@@ -204,6 +204,12 @@ for a later wave, not attempted here.
   `BACKLOG.md` as a stale sample-sheet note to correct, not acted on
   further here.
 
+## Back-pressure and "try next" (WO-1031, 2026-09-23)
+
+- `--concurrency N` is the **intake**: governments in the cheap phases at once. Resolve takes a slot from a small pool (`--resolve-slots`, default N // 4). While more than `--max-waiting` (default 2 x slots) governments wait for Resolve, no new government is admitted; intake reopens as they convert. `--lanes-log FILE` records the counts over time.
+- Every failure's Verdict row has a `try_next` label (e.g. "blocked: try another network, or Wayback by hand", "YouTube only: send to the drip", "budget ran out: hand-check the site nav (Meetings / Agendas & Minutes)").
+- `youtube-lead-only` ranks above access blocks and below meeting-without-video.
+
 ## What it is and why
 
 Meeting Finder takes a government and a domain (or any URL) and finds

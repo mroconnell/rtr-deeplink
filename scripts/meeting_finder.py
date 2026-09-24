@@ -109,7 +109,32 @@ def main() -> None:
         default=12,
         help="Real page fetches allowed PER GOVERNMENT (default: 12)",
     )
-    parser.add_argument("--concurrency", type=int, default=1)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Governments in flight at once (the INTAKE). Above 1, back-pressure "
+        "applies: see --resolve-slots / --max-waiting (WO-1031).",
+    )
+    parser.add_argument(
+        "--resolve-slots",
+        type=int,
+        default=None,
+        help="Governments allowed in the expensive Resolve phase at once "
+        "(default: concurrency // 4, min 1)",
+    )
+    parser.add_argument(
+        "--max-waiting",
+        type=int,
+        default=None,
+        help="Stop admitting new governments while more than this many wait "
+        "for a Resolve slot (default: 2 x resolve-slots)",
+    )
+    parser.add_argument(
+        "--lanes-log",
+        default=None,
+        help="Append intake/resolve lane counts over time to this file",
+    )
     args = parser.parse_args()
 
     register_all_finders()
@@ -128,6 +153,9 @@ def main() -> None:
             max_forks=args.max_forks,
             max_fetches=args.max_fetches,
             concurrency=args.concurrency,
+            resolve_slots=args.resolve_slots,
+            max_waiting=args.max_waiting,
+            lanes_log=args.lanes_log,
         )
     )
     _print_summary(rows)

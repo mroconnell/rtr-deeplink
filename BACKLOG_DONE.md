@@ -1,5 +1,13 @@
 # Backlog — done
 
+## WO-1031: Meeting Finder back-pressure, "try next" labels, YouTube-lead outcome [Done 2026-09-23]
+
+**What.** (1) **Back-pressure intake** (Ryan's design): `--concurrency` is now the intake (governments in flight); the expensive Resolve phase takes a slot from a small shared pool (`--resolve-slots`, default concurrency // 4); no new government is admitted while more than `--max-waiting` (default 2 x slots) wait for a Resolve slot, so the top of the funnel eases off as leads pile up and opens again as they convert. `--lanes-log` records the lane counts over time for calibration. (2) **"Try next"**: every failed Verdict row now carries a `try_next` label (Ryan: "a good discovery rate and some well-marked failures which we will return to"). (3) New outcome `youtube-lead-only`, ranked above access blocks but below meeting-without-video (footer YouTube icons are everywhere) -- fixes Essex, ON, which found `youtube.com/user/EssexOntario` and reported a bare block. (4) Identity: an empty resolved gov_id is "silent", not "disagrees" (Pomona, Piedmont). (5) The runner's already-visited set collapses calendar URLs that differ only in display parameters (Emporia opened `Calendar.aspx?EID=2662` three ways), but only for calendar-shaped addresses, so year-filtered archives stay distinct.
+
+**Why.** From the conductor's own 17-government review of PR #1387 and Ryan's hand-checked ground truth (Dublin, Emporia, Essex, Pomona, Piedmont), 2026-09-23.
+
+**Verified.** New tests (`tests/test_wo1031_meeting_finder_backpressure.py`), including a back-pressure test where fast-failing governments free intake slots while two queue for Resolve and no further governments are admitted. Still to wire (WO-1034, after #1390): WO-1032's all-request pacing hook, and following watch/video links (`rank_hops(prefer_video=True)`) when a platform had meetings but no video.
+
 ## WO-1032: Meeting Finder fetch-layer fixes -- process-wide pacing/counting, Wayback-for-links on a hard block [Done 2026-09-23]
 
 **What.** Two fixes to `app/platforms/meeting_finder/fetch.py`, from a
