@@ -1477,6 +1477,63 @@ async def test_cablecast_walker_non_cablecast_host_returns_empty():
     assert await _cablecast_walker("https://example.gov/meetings") == []
 
 
+# --- WO-1036: Cablecast's Remix template puts the date in the title too,
+# in shapes other than ISO -- confirmed live 2026-09-23 on Redlands, CA
+# ("City Council Special Meeting September 21, 2026"), Champaign, IL
+# ("...- 9/22/26") and Glendora, CA (same shapes). Before this fix, only
+# the ISO shape was tried, so every one of these came back `date=None`.
+
+
+async def test_cablecast_walker_reads_month_name_date_from_title():
+    root_url = "https://cityofredlands.cablecast.tv/"
+    root_html = (
+        '<html><body><a href="/show/538">'
+        "City Council Special Meeting September 21, 2026</a></body></html>"
+    )
+    routes = {root_url: FakeResponse(status=200, text=root_html, url=root_url)}
+    with mock_session(routes):
+        candidates = await _cablecast_walker(root_url)
+    assert candidates[0]["date"] == "2026-09-21"
+
+
+async def test_cablecast_walker_reads_slash_date_from_title():
+    root_url = "https://champaign-cablecast.cablecast.tv/"
+    root_html = (
+        '<html><body><a href="/show/4">City Council - 07/07/2026</a></body></html>'
+    )
+    routes = {root_url: FakeResponse(status=200, text=root_html, url=root_url)}
+    with mock_session(routes):
+        candidates = await _cablecast_walker(root_url)
+    assert candidates[0]["date"] == "2026-07-07"
+
+
+async def test_cablecast_walker_reads_two_digit_year_slash_date_from_title():
+    root_url = "https://glendora.cablecast.tv/"
+    root_html = '<html><body><a href="/show/9">City Council - 9/22/26</a></body></html>'
+    routes = {root_url: FakeResponse(status=200, text=root_html, url=root_url)}
+    with mock_session(routes):
+        candidates = await _cablecast_walker(root_url)
+    assert candidates[0]["date"] == "2026-09-22"
+
+
+def test_parse_cablecast_title_date_returns_none_for_no_date():
+    from app.platforms.passive_verify import _parse_cablecast_title_date
+
+    assert _parse_cablecast_title_date("City Council Meeting") is None
+
+
+def test_parse_cablecast_title_date_prefers_iso_when_present():
+    from app.platforms.passive_verify import _parse_cablecast_title_date
+
+    # An (unrealistic but defensive) title with both an ISO date and a
+    # slash-shaped number -- ISO wins since it's checked first and is
+    # unambiguous.
+    assert (
+        _parse_cablecast_title_date("Meeting 2026-09-08 (posted 1/2/26)")
+        == "2026-09-08"
+    )
+
+
 async def test_real_dyersville_cablecast_hub_walks_to_video_and_captions():
     # End-to-end, real fixtures: a bare tenant root URL has no show id at
     # all (`_extract_show_id()` returns None immediately) -- confirms the

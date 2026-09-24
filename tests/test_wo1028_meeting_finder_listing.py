@@ -534,3 +534,184 @@ async def test_list_account_falls_back_to_agenda_only_when_civicplus_walker_find
     assert result.outcome is None
     assert len(result.candidates) == 5
     assert all(c.has_video_hint is False for c in result.candidates)
+
+
+# --- WO-1036: Swagit /views/{id} listed directly, not via bare-host discovery
+
+
+@pytest.mark.asyncio
+async def test_swagit_views_page_listed_directly(fetcher):
+    # Real shape (rtr-discovery's SwagitEnumerator, confirmed live): a
+    # /views/{id} page's own #video-table is server-rendered, unlike the
+    # tab-slug pages (empty JS shells on *.new.swagit.com).
+    from app.platforms.meeting_finder.fetch import FetchResult
+
+    html = (
+        '<table id="video-table">'
+        '<tr><td><a href="/videos/1001">Commissioners Court<br>Sep 24, 2026</a></td></tr>'
+        '<tr><td><a href="/videos/1000">Commissioners Court<br>Sep 10, 2026</a></td></tr>'
+        "</table>"
+    )
+
+    async def fake_fetch(url: str, *, need_links: bool = True):
+        assert url == "https://wisecountytx.new.swagit.com/views/908/"
+        return FetchResult(
+            requested_url=url,
+            final_url=url,
+            status=200,
+            html=html,
+            access_mode="plain",
+            outcome=None,
+            challenge=False,
+            wayback_timestamp=None,
+            links_only=False,
+            elapsed_ms=1,
+        )
+
+    with patch.object(fetcher, "fetch", side_effect=fake_fetch):
+        result = await listing.list_account(
+            "swagit",
+            "https://wisecountytx.new.swagit.com/views/908/",
+            fetcher,
+        )
+
+    assert result.lister == "swagit_views_page"
+    assert [c.url for c in result.candidates] == [
+        "https://wisecountytx.new.swagit.com/videos/1001",
+        "https://wisecountytx.new.swagit.com/videos/1000",
+    ]
+    assert result.candidates[0].date == "2026-09-24"
+    assert all(c.has_video_hint for c in result.candidates)
+
+
+@pytest.mark.asyncio
+async def test_swagit_videos_url_is_its_own_single_candidate(fetcher):
+    # A /videos/{id} URL is itself a specific video -- nothing to list.
+
+    async def fail_if_called(*args, **kwargs):  # pragma: no cover
+        raise AssertionError("should not fetch a bare /videos/{id} URL to list it")
+
+    with patch.object(fetcher, "fetch", side_effect=fail_if_called):
+        result = await listing.list_account(
+            "swagit",
+            "https://ferndalesd.new.swagit.com/videos/12",
+            fetcher,
+        )
+
+    assert result.lister == "swagit_views_page"
+    assert len(result.candidates) == 1
+    assert result.candidates[0].url == "https://ferndalesd.new.swagit.com/videos/12"
+    assert result.candidates[0].has_video_hint is True
+
+
+@pytest.mark.asyncio
+async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monkeypatch):
+    # No /views|videos/{id} path -- lister (a2) declines, falls through to
+    # lister (b) (rtr-discovery), same as before this WO.
+    called = {}
+
+    class _FakeCandidate:
+        def __init__(self, url):
+            self.url = url
+            self.title = "Meeting"
+            self.date = "2026-09-01"
+            self.platform = "swagit"
+            self.has_video_hint = True
+
+    class _FakeResult:
+        status = "ok"
+        reason = None
+        candidates = [_FakeCandidate("https://wisecountytx.new.swagit.com/videos/1")]
+        params = None
+
+    class _FakeModule:
+        STATUS_OK = "ok"
+
+        @staticmethod
+        async def list_tenant(platform, netloc, *, limit, params):
+            called["netloc"] = netloc
+            return _FakeResult()
+
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: _FakeModule())
+
+    result = await listing.list_account(
+        "swagit", "https://wisecountytx.new.swagit.com/", fetcher
+    )
+    assert called["netloc"] == "wisecountytx.new.swagit.com"
+    assert result.lister == "discovery:swagit"
+
+
+# --- WO-1036 (Ryan confirmed): Cablecast gallery listed directly, before
+# the tenant-root walker
+
+
+@pytest.mark.asyncio
+async def test_cablecast_gallery_listed_directly_before_tenant_root_walker(fetcher):
+    # Real fixture (Old Saybrook's gallery/22, see test_cablecast.py's own
+    # gallery tests) -- proves the gallery-scoped lister runs BEFORE
+    # passive_verify's own tenant-root `_cablecast_walker`, which would
+    # otherwise be tried first (lister a) and never see the gallery's own
+    # scoping at all.
+    from tests.conftest import load_fixture
+
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+
+    async def fail_if_called(hub_url: str):  # pragma: no cover
+        raise AssertionError(
+            "tenant-root _cablecast_walker should not run when the gallery "
+            "lister already found candidates"
+        )
+
+    passive_verify.register_listing_walker("cablecast", fail_if_called)
+
+    async def fake_fetch(url: str, *, need_links: bool = True):
+        from app.platforms.meeting_finder.fetch import FetchResult
+
+        assert (
+            url == "http://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+        )
+        return FetchResult(
+            requested_url=url,
+            final_url=url,
+            status=200,
+            html=gallery_html,
+            access_mode="plain",
+            outcome=None,
+            challenge=False,
+            wayback_timestamp=None,
+            links_only=False,
+            elapsed_ms=1,
+        )
+
+    with patch.object(fetcher, "fetch", side_effect=fake_fetch):
+        result = await listing.list_account(
+            "cablecast",
+            "https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1",
+            fetcher,
+        )
+
+    assert result.lister == "cablecast_gallery"
+    assert len(result.candidates) == 4
+    assert all(c.has_video_hint for c in result.candidates)
+    assert result.candidates[0].date == "2026-08-19"
+
+
+@pytest.mark.asyncio
+async def test_cablecast_non_gallery_url_falls_through_to_tenant_root_walker(fetcher):
+    # A bare tenant URL (no /gallery/{id}) -- the new lister declines,
+    # lister (a)'s own tenant-root walker still runs as before.
+    async def fake_walker(hub_url: str):
+        return [
+            {
+                "title": "City Council",
+                "date": "2026-09-08",
+                "url": "https://example.cablecast.tv/show/1",
+            }
+        ]
+
+    passive_verify.register_listing_walker("cablecast", fake_walker)
+
+    result = await listing.list_account(
+        "cablecast", "https://example.cablecast.tv/", fetcher
+    )
+    assert result.lister == "passive_verify:cablecast"
