@@ -118,7 +118,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable, List, Optional
+from typing import Awaitable, Callable, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -912,26 +912,79 @@ _GRANICUS_VIEW_ID_RE = re.compile(r"[?&]view_id=\d+", re.IGNORECASE)
 _GRANICUS_VIEW_ID_PROBE_MAX = 6
 
 
+_RSS_CHANNEL_TITLE_RE = re.compile(
+    r"<channel>.*?<title>(.*?)</title>", re.IGNORECASE | re.DOTALL
+)
+
+# WO-1041's own name-overlap rule (`app.utils.video_hand_check`'s
+# `_NAME_STOPWORDS`) isn't imported here to avoid a cross-module private
+# dependency for one small word list -- kept in sync by hand; both lists
+# exist to strip the same generic government-name words ("city", "county",
+# "town"...) before comparing two names for a distinctive overlap.
+_GRANICUS_NAME_STOPWORDS = frozenset(
+    {
+        "the", "and", "city", "town", "village", "county", "township",
+        "borough", "parish", "municipality", "municipal", "government",
+        "district", "school", "schools", "regional", "state", "board",
+        "department", "authority", "commission", "council", "unified",
+        "independent", "metropolitan", "utility", "utilities", "public",
+        "of", "for",
+    }
+)  # fmt: skip
+
+
+def _distinctive_words(name: Optional[str]) -> frozenset:
+    words = re.findall(r"[a-z0-9]+", (name or "").lower())
+    return frozenset(
+        w for w in words if len(w) >= 3 and w not in _GRANICUS_NAME_STOPWORDS
+    )
+
+
 async def _granicus_discover_view_id(
-    account_url: str, fetcher: Fetcher
+    account_url: str, fetcher: Fetcher, *, gov_name: Optional[str] = None
 ) -> Optional[str]:
     """Probes `ViewPublisherRSS.php?view_id=1..6&mode=video` on
     `account_url`'s own host, cheapest (RSS, not the HTML table) first,
-    same range `granicus_locate_listing()` uses. Returns the first
-    populated `ViewPublisher.php?view_id=N` URL found, or `None`."""
+    same range `granicus_locate_listing()` uses.
+
+    WO-1041 (Grass Valley/Nevada City/Nevada County case, all three real
+    governing bodies sharing one `nevco.granicus.com` account under
+    different `view_id`s): a shared Granicus account can list more than
+    one government's own body. Rather than stopping at the first populated
+    `view_id` (the old behavior -- silently correct only when an account
+    happens to carry a single government), this now reads every populated
+    `view_id` in the probe range and, when `gov_name` is given, picks the
+    one whose own RSS channel title shares a distinctive word with it
+    (`nevco.granicus.com`'s real channel titles name the body itself, e.g.
+    "Grass Valley City Council" for `view_id=4`). Falls back to the FIRST
+    populated `view_id` -- the original behavior, still correct for the
+    (much more common) single-government account -- when `gov_name` is
+    absent or matches none of the populated channels' titles.
+    """
     netloc = urlparse(account_url).netloc
     if not netloc:
         return None
+    name_words = _distinctive_words(gov_name)
+    populated: List[Tuple[int, str]] = []
     for view_id in range(1, _GRANICUS_VIEW_ID_PROBE_MAX + 1):
         rss_url = f"https://{netloc}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
         try:
             result = await fetcher.fetch(rss_url, need_links=False)
         except BudgetExceeded:
-            return None
+            break
         html = result.html or ""
         if "<item>" in html and "(No Video)" not in html:
-            return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
-    return None
+            title_match = _RSS_CHANNEL_TITLE_RE.search(html)
+            channel_title = title_match.group(1).strip() if title_match else ""
+            populated.append((view_id, channel_title))
+    if not populated:
+        return None
+    if name_words:
+        for view_id, channel_title in populated:
+            if _distinctive_words(channel_title) & name_words:
+                return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
+    view_id, _ = populated[0]
+    return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
 
 
 def _has_any_adapter(platform: str) -> bool:
@@ -956,6 +1009,7 @@ async def list_account(
     *,
     limit: int = 15,
     platform_params: Optional[dict] = None,
+    gov_name: Optional[str] = None,
 ) -> ListResult:
     """Turn a known account (`platform` + `account_url`) into a list of
     candidate meetings, newest-first. See this module's docstring for the
@@ -969,11 +1023,17 @@ async def list_account(
     the one meeting" apart from anything else -- neither actually
     confirms a specific CANDIDATE the way Resolve's own video-gate/
     duration-probe pass does.
+
+    `gov_name` (WO-1041, optional): only used to pick among several real
+    bodies sharing one Granicus account (see `_granicus_discover_view_id()`
+    above) -- absent, this behaves exactly as before.
     """
     notes: List[str] = []
 
     if platform == "granicus" and not _GRANICUS_VIEW_ID_RE.search(account_url):
-        discovered = await _granicus_discover_view_id(account_url, fetcher)
+        discovered = await _granicus_discover_view_id(
+            account_url, fetcher, gov_name=gov_name
+        )
         if discovered is None:
             return ListResult(
                 candidates=[],
