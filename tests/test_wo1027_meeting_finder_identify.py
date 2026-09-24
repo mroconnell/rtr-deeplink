@@ -352,3 +352,131 @@ async def test_no_html_propagates_fetch_outcome():
     assert result.platform is None
     assert result.outcome == "dns-unresolvable"
     assert result.page is page
+
+
+# --- WO-1036: Swagit specific /views|videos/{id} URLs aren't collapsed --
+
+
+async def test_swagit_views_url_kept_specific_not_collapsed_to_tenant_root():
+    # Real bug (Ferndale SD WA, Hamilton Southeastern IN, Baltimore County
+    # PS MD): a real `/views/{id}` Swagit URL, found directly via
+    # detect_platform() (rule 1, no fetch needed), used to be collapsed to
+    # the bare tenant root -- which then landed on an empty tab-slug page
+    # (see listing.py's own WO-1036 comment). It must now stay specific.
+    result = await identify(
+        "https://ferndalesd.new.swagit.com/views/44", fetcher=None, page=None
+    )
+    assert result.platform == "swagit"
+    assert result.account_url == "https://ferndalesd.new.swagit.com/views/44"
+
+
+async def test_swagit_videos_url_kept_specific_not_collapsed_to_tenant_root():
+    result = await identify(
+        "https://bcps.new.swagit.com/videos/12345", fetcher=None, page=None
+    )
+    assert result.platform == "swagit"
+    assert result.account_url == "https://bcps.new.swagit.com/videos/12345"
+
+
+async def test_swagit_tenant_root_url_still_collapses_normally():
+    # A bare Swagit tenant URL (no /views|videos/{id} path) has nothing
+    # specific to keep -- still collapses to the bare host, same as any
+    # other platform.
+    result = await identify(
+        "https://wisecountytx.new.swagit.com/159/Commissioners-Court",
+        fetcher=None,
+        page=None,
+    )
+    assert result.platform == "swagit"
+    assert result.account_url == "https://wisecountytx.new.swagit.com/"
+
+
+# --- WO-1036: own-site meeting page shape: numeric id + meeting/video/watch
+
+
+async def test_own_site_meeting_page_accepts_numeric_id_plus_video_slug():
+    # Real case: Jurupa Valley, CA's `/422/Meeting-Videos` (only reachable
+    # via the sitemap -- the site's own mega-menu is JS-only).
+    html = '<html><body><a href="/422/Meeting-Videos">Meeting Videos</a></body></html>'
+    page = _page(html, final_url="https://www.jurupavalley.org/")
+    result = await identify("https://www.jurupavalley.org/", fetcher=None, page=page)
+    assert any(s.kind == "own_site_meeting_page" for s in result.signals)
+
+
+async def test_own_site_meeting_page_rejects_numeric_id_with_no_video_word():
+    html = '<html><body><a href="/422/Budget-FY26">Budget</a></body></html>'
+    page = _page(html, final_url="https://www.jurupavalley.org/")
+    result = await identify("https://www.jurupavalley.org/", fetcher=None, page=page)
+    assert not any(s.kind == "own_site_meeting_page" for s in result.signals)
+
+
+# --- WO-1036: tie-break prefers a video-capable vendor over agenda-only --
+
+
+async def test_tie_break_prefers_video_vendor_over_boarddocs_on_rank_tie():
+    # Real cases: Calvert County PS MD, Wilson County Schools TN -- a
+    # BoardDocs link (agenda-only, never hosts video itself) appeared
+    # BEFORE a real Swagit iframe in document order; the old tie-break
+    # (document order) picked BoardDocs. Both are rank-1 vendor links.
+    html = (
+        "<html><body>"
+        '<a href="https://go.boarddocs.com/xx/example/Board.nsf/Public">Agenda</a>'
+        '<iframe src="https://example.new.swagit.com/views/44"></iframe>'
+        "</body></html>"
+    )
+    page = _page(html, final_url="https://example-schools.org/board")
+    result = await identify(
+        "https://example-schools.org/board", fetcher=None, page=page
+    )
+    assert result.platform == "swagit"
+
+
+async def test_cablecast_bare_gallery_url_kept_specific_not_collapsed():
+    # Real case (Champaign, IL, Ryan confirmed 2026-09-23):
+    # champaign-cablecast.cablecast.tv/gallery/4, no "/internetchannel/"
+    # prefix -- must not collapse to the bare tenant root, same reasoning
+    # as the Swagit /views|videos/{id} case above.
+    result = await identify(
+        "https://champaign-cablecast.cablecast.tv/gallery/4", fetcher=None, page=None
+    )
+    assert result.platform == "cablecast"
+    assert result.account_url == "https://champaign-cablecast.cablecast.tv/gallery/4"
+
+
+async def test_cablecast_prefixed_gallery_url_kept_specific_not_collapsed():
+    result = await identify(
+        "https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1",
+        fetcher=None,
+        page=None,
+    )
+    assert result.platform == "cablecast"
+    assert result.account_url == (
+        "https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1"
+    )
+
+
+async def test_cablecast_bare_tenant_url_still_collapses_normally():
+    result = await identify(
+        "https://champaign-cablecast.cablecast.tv/watch-now?site=1",
+        fetcher=None,
+        page=None,
+    )
+    assert result.platform == "cablecast"
+    assert result.account_url == "https://champaign-cablecast.cablecast.tv/"
+
+
+async def test_tie_break_prefers_video_vendor_over_civicweb_on_rank_tie():
+    # Real case: Fontana USD CA -- CivicWeb (agenda-only) tied for rank 1
+    # with a real Swagit iframe on the same page; document order used to
+    # pick CivicWeb.
+    html = (
+        "<html><body>"
+        '<a href="https://fontanausdca.civicweb.net/portal/">Agendas</a>'
+        '<iframe src="https://fontanausdca.new.swagit.com/views/602"></iframe>'
+        "</body></html>"
+    )
+    page = _page(html, final_url="https://www.fontanausd.org/live-board-meeting")
+    result = await identify(
+        "https://www.fontanausd.org/live-board-meeting", fetcher=None, page=page
+    )
+    assert result.platform == "swagit"

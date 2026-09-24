@@ -509,6 +509,29 @@ def detect_platform(url: str) -> str:
         or "/internetchannel/show/" in path
         or "/internetchannel/gallery/" in path
         or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())
+        # WO-1036 (2026-09-23, Ryan confirmed): a prefix-dropped bare
+        # `/gallery/{id}` -- Champaign, IL's real City Council hub,
+        # `champaign-cablecast.cablecast.tv/gallery/4`. Scoped to
+        # `cablecast.tv` netlocs, same reasoning as the bare `/show/{id}`
+        # form above -- too weak a signal on its own against an arbitrary
+        # government domain. See `cablecast.py`'s own `_GALLERY_ID_RE`
+        # module note.
+        or ("cablecast.tv" in netloc and re.search(r"/gallery/\d+", path) is not None)
+        # WO-1036 (2026-09-23): "Cablecast Connect", the WordPress plugin a
+        # nonprofit PEG-access org's own site uses to embed a Cablecast
+        # tenant's player (real hosts confirmed live: `reflect-tst-mn.
+        # cablecast.tv/watch-vod-embed?showId=5964&site=8` -- Mendota
+        # Heights, MN's real real video, wrapped via townsquare.tv -- and
+        # the same shape on `reflect-dakotamediaaccess.cablecast.tv` for
+        # Bismarck, ND). Scoped to `cablecast.tv` netlocs, same as the bare
+        # `/show/{id}` form above -- this is the plugin's own iframe `src`
+        # shape, not a page a human ever navigates to directly, so a
+        # `showId` query param is always present when it's real.
+        or (
+            "cablecast.tv" in netloc
+            and path.rstrip("/").endswith("/watch-vod-embed")
+            and "showid=" in urlparse(url).query.lower()
+        )
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why

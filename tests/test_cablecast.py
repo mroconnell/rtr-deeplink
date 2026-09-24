@@ -13,7 +13,7 @@ only found once a second real customer was checked.
 import json
 
 from app.platforms.base import detect_platform
-from app.platforms.cablecast import CablecastAssetFinder
+from app.platforms.cablecast import CablecastAssetFinder, list_gallery_shows
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -1149,8 +1149,178 @@ GALLERY_FETCH_URL = (
 GALLERY_SHOW_URL = "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
 
 
+# --- WO-1036: "Cablecast Connect" WordPress plugin's /watch-vod-embed ---
+
+
+def test_detect_platform_recognizes_watch_vod_embed_url():
+    # Real hosts confirmed live (WO-1036, 2026-09-23): reflect-tst-mn.
+    # cablecast.tv (Mendota Heights, MN) and reflect-dakotamediaaccess.
+    # cablecast.tv (Bismarck, ND).
+    assert (
+        detect_platform(
+            "https://reflect-tst-mn.cablecast.tv/watch-vod-embed?showId=5964&site=8"
+        )
+        == "cablecast"
+    )
+
+
+def test_detect_platform_declines_watch_vod_embed_without_showid():
+    assert (
+        detect_platform("https://reflect-tst-mn.cablecast.tv/watch-vod-embed")
+        == "unknown"
+    )
+
+
+def test_detect_platform_declines_watch_vod_embed_off_cablecast_tv():
+    assert (
+        detect_platform("https://example.org/watch-vod-embed?showId=5964") == "unknown"
+    )
+
+
+async def test_resolve_watch_vod_embed_reuses_the_fastboot_embed_path():
+    # The plugin's iframe URL carries showId/site directly -- no separate
+    # /show/{id} page to derive them from. Reuses the real, confirmed
+    # `dyersville_embed_vod_3660.html` fixture's own `window.TRMS`/
+    # `<source>` shape (see the real Dyersville FastBoot test above) --
+    # the HOST/URL here is synthetic (no live Mendota Heights fixture
+    # captured yet), but the embed page's own shape is the same real
+    # template already confirmed live.
+    url = "https://reflect-tst-mn.cablecast.tv/watch-vod-embed?showId=5964&site=8"
+    routes = {
+        "https://reflect-tst-mn.cablecast.tv/embed/vod?show=5964&site=8": (
+            FakeResponse(
+                status=200,
+                text=load_fixture("cablecast", "dyersville_embed_vod_3660.html"),
+            )
+        ),
+        # The reused fixture's own <source> tag is an ABSOLUTE URL back to
+        # the real Dyersville host it was captured from -- mocked here too
+        # so this test stays fully offline; captions aren't the point of
+        # this test (real caption fetching is already covered by the
+        # Dyersville FastBoot test above), so a 404 (no captions found) is
+        # fine.
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/vod.m3u8"
+        ): FakeResponse(status=404, text=""),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    # source_url stays the REAL given URL (the plugin's own iframe src),
+    # not a synthesized /show/{id} URL this app never actually resolved --
+    # see _resolve_watch_vod_embed()'s own docstring for why this matters
+    # for Archive dedup.
+    assert result.source_url == url
+    assert result.title == "City Council Meeting 2026-09-08"
+    assert result.external_id == "cablecast:reflect-tst-mn.cablecast.tv:5964"
+
+
+async def test_resolve_watch_vod_embed_defaults_site_to_one():
+    url = "https://reflect-tst-mn.cablecast.tv/watch-vod-embed?showId=5964"
+    routes = {
+        "https://reflect-tst-mn.cablecast.tv/embed/vod?show=5964&site=1": (
+            FakeResponse(
+                status=200,
+                text=load_fixture("cablecast", "dyersville_embed_vod_3660.html"),
+            )
+        ),
+        (
+            "https://city-dyersville-ia.cablecast.tv/vod/"
+            "3660-City-Council-Meeting-2026-09-08-v2/vod.m3u8"
+        ): FakeResponse(status=404, text=""),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+    assert result.platform == "cablecast"
+    assert result.video_url is not None
+
+
+async def test_resolve_watch_vod_embed_falls_through_without_a_showid():
+    # No showId at all -- resolve() falls through to its own generic
+    # _extract_show_id() handling (which also finds nothing here) rather
+    # than this branch inventing a warning for an unconfirmed shape.
+    url = "https://reflect-tst-mn.cablecast.tv/watch-vod-embed"
+    result = await CablecastAssetFinder().resolve(url)
+    assert result.video_warnings == ["Could not find a show id in this Cablecast URL."]
+
+
 def test_detect_platform_recognizes_cablecast_gallery_url():
     assert detect_platform(GALLERY_URL) == "cablecast"
+
+
+# --- WO-1036 (2026-09-23, Ryan confirmed): the bare, prefix-dropped
+# `/gallery/{id}` shape -- Champaign, IL's real City Council hub,
+# `champaign-cablecast.cablecast.tv/gallery/4`.
+
+BARE_GALLERY_URL = "https://champaign-cablecast.cablecast.tv/gallery/4"
+
+
+def test_detect_platform_recognizes_bare_gallery_url_without_internetchannel_prefix():
+    assert detect_platform(BARE_GALLERY_URL) == "cablecast"
+
+
+def test_detect_platform_declines_bare_gallery_path_off_cablecast_tv():
+    assert detect_platform("https://example.org/gallery/4") == "unknown"
+
+
+def test_gallery_id_re_matches_both_shapes():
+    from app.platforms.cablecast import _GALLERY_ID_RE
+
+    assert _GALLERY_ID_RE.search("/gallery/4").group(1) == "4"
+    assert _GALLERY_ID_RE.search("/internetchannel/gallery/22").group(1) == "22"
+
+
+async def test_resolve_bare_gallery_url_delegates_the_same_way_as_the_prefixed_form():
+    # Reuses the real Old Saybrook gallery/show fixtures -- only the
+    # REQUEST URL's shape (bare vs. /internetchannel/-prefixed) differs
+    # from test_resolve_gallery_picks_newest_ready_show_and_delegates_...
+    # above; the underlying Remix data and resolve behavior are identical.
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+    show_html = load_fixture("cablecast", "oldsaybrook_show_7480.html")
+    bare_url = "https://reflect-vsctv.cablecast.tv/gallery/22?site=1"
+    routes = {
+        "http://reflect-vsctv.cablecast.tv/gallery/22?site=1": FakeResponse(
+            status=200, text=gallery_html
+        ),
+        GALLERY_SHOW_URL: FakeResponse(status=200, text=show_html),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(bare_url)
+    assert result.video_url is not None
+    assert result.date == "2026-08-19"
+
+
+# --- WO-1036: list_gallery_shows() -- every video-ready show in a
+# gallery, not just the newest.
+
+
+def test_list_gallery_shows_returns_every_video_ready_show_newest_first():
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+    rows = list_gallery_shows(GALLERY_URL, gallery_html)
+    assert len(rows) == 4
+    assert rows[0]["url"] == GALLERY_SHOW_URL.replace("http://", "https://")
+    assert rows[0]["date"] == "2026-08-19"
+    assert rows[0]["has_video_hint"] is True
+    # newest-first
+    dates = [r["date"] for r in rows]
+    assert dates == sorted(dates, reverse=True)
+
+
+def test_list_gallery_shows_returns_empty_for_a_non_gallery_url():
+    assert (
+        list_gallery_shows("https://example.cablecast.tv/show/1", "<html></html>") == []
+    )
+
+
+def test_list_gallery_shows_returns_empty_when_gallery_not_found_in_page():
+    assert (
+        list_gallery_shows(
+            GALLERY_URL, "<html><body>no remix context here</body></html>"
+        )
+        == []
+    )
 
 
 async def test_resolve_gallery_picks_newest_ready_show_and_delegates_to_its_own_page():

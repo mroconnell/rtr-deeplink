@@ -1187,6 +1187,83 @@ _CABLECAST_FASTBOOT_SHOW_LINK_RE = re.compile(r'/show/\d+(?:\?[^"\'\s]*)?')
 # cablecast.py's own regex module-level just to use one pattern).
 _FASTBOOT_TITLE_DATE_RE_MIRROR = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 
+# WO-1036 (2026-09-23): the Remix template (a DIFFERENT real Cablecast
+# template from the FastBoot one this walker was originally built
+# against -- see this walker's own docstring) puts a title's date in one
+# of three other real shapes, confirmed live: "September 21, 2026"
+# (Redlands, CA, `cityofredlands.cablecast.tv`, "City Council Special
+# Meeting September 21, 2026"), "07/07/2026" and "9/22/26" (Champaign, IL
+# and Glendora, CA). Before this fix, only the ISO
+# `_FASTBOOT_TITLE_DATE_RE_MIRROR` shape was tried, so every Remix-
+# template row came back with `date=None` -- and since this walker lists
+# newest-first by DOCUMENT order already (see its own docstring), pick.py
+# (a different WO's file) had nothing but `None` to sort by and, per its
+# "ambiguous: no clean recent candidate" rule, discarded every real row.
+_CABLECAST_TITLE_MONTHS = {
+    name: i + 1
+    for i, name in enumerate(
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+    )
+}
+_CABLECAST_TITLE_MONTH_NAME_DATE_RE = re.compile(
+    r"\b(January|February|March|April|May|June|July|August|September|October|"
+    r"November|December)\s+(\d{1,2}),?\s+(\d{4})\b"
+)
+# M/D/YYYY or M/D/YY, e.g. "07/07/2026" or "9/22/26" -- checked AFTER the
+# ISO and month-name shapes above so a 4-digit year (07/07/2026) is never
+# mistaken for the 2-digit form.
+_CABLECAST_TITLE_SLASH_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\b")
+
+
+def _parse_cablecast_title_date(text: str) -> Optional[str]:
+    """Real title date shapes confirmed across two Cablecast templates --
+    see this module's own comments on `_FASTBOOT_TITLE_DATE_RE_MIRROR` and
+    `_CABLECAST_TITLE_MONTH_NAME_DATE_RE` for where each was found live.
+    Returns an ISO `YYYY-MM-DD` string (the same shape every other walker
+    in this module already returns), or `None` if nothing matched."""
+    iso_match = _FASTBOOT_TITLE_DATE_RE_MIRROR.search(text)
+    if iso_match:
+        try:
+            return _dt.date(*(int(g) for g in iso_match.groups())).isoformat()
+        except ValueError:
+            pass
+    month_match = _CABLECAST_TITLE_MONTH_NAME_DATE_RE.search(text)
+    if month_match:
+        month_name, day, year = month_match.groups()
+        try:
+            return _dt.date(
+                int(year), _CABLECAST_TITLE_MONTHS[month_name], int(day)
+            ).isoformat()
+        except ValueError:
+            pass
+    slash_match = _CABLECAST_TITLE_SLASH_DATE_RE.search(text)
+    if slash_match:
+        month, day, year = slash_match.groups()
+        year_int = int(year)
+        if len(year) == 2:
+            # Real examples only ever carry a current/recent-year 2-digit
+            # form ("9/22/26") -- pin to 2000s, same convention pick.py's
+            # own date shapes use elsewhere in this repo.
+            year_int += 2000
+        try:
+            return _dt.date(year_int, int(month), int(day)).isoformat()
+        except ValueError:
+            pass
+    return None
+
 
 async def _cablecast_walker(hub_url: str) -> List[dict]:
     """WO-344: a listing walker for Cablecast's third real template (the
@@ -1249,11 +1326,10 @@ async def _cablecast_walker(hub_url: str) -> List[dict]:
         if full_url in seen:
             continue
         seen.add(full_url)
-        date_match = _FASTBOOT_TITLE_DATE_RE_MIRROR.search(text)
         out.append(
             {
                 "title": text,
-                "date": date_match.group(0) if date_match else None,
+                "date": _parse_cablecast_title_date(text),
                 "url": full_url,
             }
         )
