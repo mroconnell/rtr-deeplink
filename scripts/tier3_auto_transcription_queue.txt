@@ -1,15 +1,3 @@
-https://cu.diligent.community/Portal/MeetingInformation.aspx?Id=648		rtr:us:co:university-of-colorado-board-of-regents
-https://youtu.be/NK02Iq9US48		us:cousub:3602760905
-https://dhcd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=285		rtr:us:ca:desert-healthcare-district
-https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2270		us:place:4869800
-https://mono.civicweb.net/Portal/MeetingInformation.aspx?Id=1214		us:sd:5400930
-https://aguafria.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=345		us:sd:0400450
-https://youtu.be/0bB_nTvN1Mw		us:cousub:2300761840
-https://okaloosaschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=861		us:sd:1201380
-https://zeballos.diligent.community/Portal/MeetingInformation.aspx?Id=271		ca:csd:5924029
-https://avdistrict.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=397		us:sd:0602820
-https://youtu.be/Ri6kQUZfvl8		us:cousub:3607156185
-https://d11.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1132		us:sd:0803060
 https://www.youtube.com/watch?v=gde00r0sXXA&t=5s		us:cousub:4212955128
 https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697		us:cousub:4200157472
 https://www.youtube.com/live/ffgRc-07yUw?si=OB29-NWm2pMAn4WJ		us:cousub:3910978456
