@@ -6,7 +6,8 @@ hub_firstparty,commissioners,path,34,92,11.327,2.427
 hub_firstparty,supervisors,path,12,40,9.374,2.238
 hub_firstparty,council,path,116,426,8.296,2.116
 hub_firstparty,mayor,path,24,102,7.259,1.982
-hub_firstparty,calendar,path,83,439,5.77,1.753
+"# WO-1044 (2026-09-24): the ""calendar""/""calendar-aspx"" weights below were CUT from their measured lift (1.753->1.0, 2.352->1.2) -- Ryan: a CivicPlus calendar HUB ""virtually NEVER has video"", and app/platforms/meeting_finder/hop.py's own _CALENDAR_HUB_DEAD_END_PENALTY (-30) now separately sinks that exact shape (bare /calendar.aspx, or CID= with no EID) well below any generic nav link regardless of this weight. NOT cut to zero: this same token also scores a real dated calendar ENTRY (Calendar.aspx?EID=...), and tests/test_hop_scorer_weighted.py::test_madison_county_tn_prefers_dated_entries_over_bare_calendar_list -- a real, previously-fixed regression in the SHARED scripts/wo147_access_ladder_sweep.py scorer this WO does not own -- pins those entries ranking above unrelated admin pages (Jobs.aspx, Bids.aspx); zeroing the token broke that pinned real-page test. A row with a non-numeric weight is skipped by _load_hop_weights() (float() raises ValueError, caught) -- this row is a comment, not scored data.",,,,,,
+hub_firstparty,calendar,path,83,439,5.77,1.0
 hub_firstparty,boards,path,45,246,5.606,1.724
 hub_firstparty,minutes,path,104,603,5.259,1.66
 hub_firstparty,commission,path,25,160,4.825,1.574
@@ -38,7 +39,8 @@ hub_firstparty_bigram,agendas-and,path,12,23,16.155,2.782
 hub_firstparty_bigram,city-council,path,73,144,15.448,2.737
 hub_firstparty_bigram,government-board,path,18,42,13.22,2.582
 hub_firstparty_bigram,and-minutes,path,11,32,10.747,2.375
-hub_firstparty_bigram,calendar-aspx,path,27,79,10.506,2.352
+"# WO-1044: ""calendar-aspx"" cut here too -- same reason as the ""calendar"" row above.",,,,,,
+hub_firstparty_bigram,calendar-aspx,path,27,79,10.506,1.2
 hub_firstparty_bigram,minutes-php,path,12,39,9.611,2.263
 hub_firstparty_bigram,government-city,path,34,141,7.405,2.002
 hub_firstparty_bigram,boards-commissions,path,20,97,6.386,1.854

@@ -1,5 +1,26 @@
 # Backlog — done
 
+## WO-1044: Hop link-ranking fixes from Ryan's Suffolk County notes [Done 2026-09-24]
+
+**What.** The conductor traced a real 12-fetch Meeting Finder miss on Suffolk County NY (`us:county:36103`, `suffolkcountyny.gov`): it spent every fetch on news articles, a PDF, `/Site-Feedback`, `/county-executive` and a Google tracking-tag page, and never followed the homepage's own `<a href="https://www.scnylegislature.us/" target="_blank">Legislature</a>` link. Four fixes to `app/platforms/meeting_finder/hop.py`'s `rank_hops()`:
+
+1. **A CivicPlus calendar HUB (not one dated entry on it) now gets a strong penalty** (`_CALENDAR_HUB_DEAD_END_PENALTY = -30.0`) — Ryan: it "virtually NEVER has video". Applies to a bare `/calendar.aspx` or one filtered only by `CID=` (no `EID=`); `_is_calendar_entry_link()`'s own EID/view=list shape (an actual dated entry) is untouched. The learned CSV bonus for the "calendar"/"calendar-aspx" tokens (`app/utils/jurisdiction_data/hop_link_weights.csv`) was cut, not zeroed — a full removal broke a real, previously-fixed regression test in the SHARED `scripts/wo147_access_ladder_sweep.py` scorer (`test_madison_county_tn_prefers_dated_entries_over_bare_calendar_list`), which pins a real dated calendar ENTRY ranking above unrelated admin pages on that same token. Cut from 1.753/2.352 to 1.0/1.2 — enough that the HUB shape's own dedicated penalty dominates it completely, while the ENTRY shape (which still needs some of that word's weight, since the scorer can't tell hub from entry by vocabulary alone) keeps its real-page-pinned behavior. See the CSV's own comment rows for the full reasoning.
+2. **A non-page resource (`.js`/`.css`/image/font/`.json`, a tracking/analytics host, or a `/Common/Controls/`/`/Assets/Scripts/` asset path) is never offered as a hop candidate.** WO-1037's own `<script src>` scan still runs (a script CAN be a real vendor player embed), but a script that isn't a recognized meeting-platform link is skipped outright, not scored.
+3. **A link naming the government's own legislative/governing body** ("Legislature", "Board of Supervisors", "City Council", "Board of Education"...) now ranks near the top, off-site included — Suffolk County's own Legislature lives at a completely different domain.
+4. **News articles and site chrome are ranked down, not excluded** — a CivicPlus `/Events/ArtMID/.../ArticleID/...` article, `CivicAlerts.aspx?AID=...`, an EasyDNNNews `DocumentDownload.ashx` file, `/Site-Feedback`, `QuickLinks.aspx?CID=...`.
+
+**Verified live** (`DATABASE_URL=sqlite+aiosqlite:///<scratch>/x.db ARCHIVE_BASE_URL="" python scripts/meeting_finder.py --input one.csv --out out.csv --entry start --mode pin --concurrency 1`, one row: `https://www.suffolkcountyny.gov`, `us:county:36103`):
+
+| | Before | After |
+|---|---|---|
+| Path | homepage x3 -> 3 news articles -> a PDF -> `/Site-Feedback` -> `/county-executive` -> `googletagmanager.com` | homepage -> 2 news articles -> **`www.scnylegislature.us/` (the real Legislature site)** -> `/149/Meeting-Information` -> **`/1737/Video-Broadcast-and-Gallery` (the real video hub)** -> a PDF -> `list.aspx` x2 |
+| Outcome | `youtube-lead-only` (never found the Legislature at all) | `youtube-lead-only` (reached the real video hub, but still didn't resolve a meeting) |
+| Fetches / requests | 12 / 11 | 12 / 18 |
+
+The fix does reach Suffolk County's real Legislature site and its real video hub page — confirmed the page embeds a real `<iframe src="https://vimeo.com/event/4795861/embed">`, and `rank_hops()` on that page correctly ranks it #1 (score 56.5, next-best 54.2). It still doesn't resolve to a playable meeting: `app/platforms/vimeo.py`'s `parse_vimeo_video()` deliberately never matches a Vimeo "Event" (livestream) URL shape, so `detect_platform()`/`scan.py`'s own media-candidate scan both treat it as unrecognized — a resolver-level gap outside this WO's owned files (`hop.py`/`scan.py`/CSV only), filed as its own `BACKLOG.md` entry (`## Open bugs`) rather than fixed here.
+
+**No-regression** (`python -m pytest`, full suite): 5495 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). New fixture-backed tests: `tests/test_wo1044_hop_dead_ends.py` (one test per item above, real Suffolk County NY homepage/Legislature-homepage fixtures under `tests/fixtures/wo1044/`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes). Live-verified no regression on redlands.gov, champaignil.gov, Halfmoon Twp PA (TelVue) and a CivicPlus-style calibration win — see this PR's description for the full before/after table.
+
 ## WO-1042: Meeting Finder keeps the meeting page URL, Google Drive download links resolve, and the CLI exits cleanly [Done 2026-09-24]
 
 **What.** Three fixes, all found live building WO-1040's followups script the day before:
