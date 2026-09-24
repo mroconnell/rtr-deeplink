@@ -1,0 +1,122 @@
+{
+ "Event": {
+  "EventTitle": "BOCC Regular Meeting",
+  "EventDateTimeCustomerLocal": "2026-09-08 09:00:00"
+ },
+ "Customer": {
+  "CustomerName": "ElPaso County Colorado"
+ },
+ "Board": {
+  "BoardName": "Board of County Commissioners"
+ },
+ "Agenda": {
+  "Attachments": []
+ },
+ "MediaInfo": {
+  "MediaType": "VOD",
+  "MediaID": 500,
+  "MediaPath": "/2026-09/2dd98e3b473126bb637912bee1be9b9f97e071d3.mp4",
+  "VOD2": "/VOD/event/ElPasoCoCO/164/1788958150000/lhBzs0m7J9FLd934RPV9Rg/master.m3u8",
+  "Captions": [
+   {
+    "LanguageName": "English",
+    "LanguageID": "en",
+    "MediaPath": "/2026-09/e6ceecf86eb48b6c349cb46adb72b3fd73862d46.vtt"
+   }
+  ],
+  "AudioDescriptions": [],
+  "DownloadURL": "/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
+ },
+ "ServicesAndMachineInfo": {
+  "4": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "ElPasoCoCO OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 4,
+   "URLBase": "rtmp://144.168.37.20/ElPasoCoCOOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "256": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "ElPasoCoCO OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 256,
+   "URLBase": "https://securestream7.champds.com/ElPasoCoCOOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%/medialist.smil?PLAY"
+  },
+  "0": [
+   {
+    "CustomerServiceID": 1,
+    "ServiceNickName": "ElPasoCoCO OD",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/ElPasoCoCOOD/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 2,
+    "ServiceNickName": "ElPasoCoCO ATT",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/ElPasoCoCOATT/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "ElPasoCoCO LIVE",
+    "ServicePlaybackMask": 16,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/ElPasoCoCOLIVE/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   }
+  ],
+  "8": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "ElPasoCoCO OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 8,
+   "URLBase": "https://securestream10.champds.com",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "16": {
+   "CustomerServiceID": 2,
+   "ServiceNickName": "ElPasoCoCO ATT",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 16,
+   "URLBase": "https://http://play.champds.com/webmedia/att/ElPasoCoCOATT",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "1": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "ElPasoCoCO LIVE",
+   "ServicePlaybackMask": 16,
+   "ServiceTypeID": 1,
+   "URLBase": "rtmp://144.168.37.20/ElPasoCoCOLIVE/_definst_",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "2": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "ElPasoCoCO LIVE",
+   "ServicePlaybackMask": 16,
+   "ServiceTypeID": 2,
+   "URLBase": "http://144.168.37.20/ElPasoCoCOLIVE/_definst_",
+   "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+  },
+  "64": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "ElPasoCoCO LIVE",
+   "ServicePlaybackMask": 16,
+   "ServiceTypeID": 64,
+   "URLBase": "http://144.168.37.20/ElPasoCoCOLIVE/_definst_",
+   "URLFilename": "amlst:streams.smil/medialist.smil?PLAY"
+  },
+  "128": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "ElPasoCoCO LIVE",
+   "ServicePlaybackMask": 16,
+   "ServiceTypeID": 128,
+   "URLBase": "https://securestream9.champds.com/LIVE/ElPasoCoCOLIVE",
+   "URLFilename": "%CUSTOMER_SERVICE_NAME%.m3u8?PLAY&v=new"
+  }
+ }
+}
