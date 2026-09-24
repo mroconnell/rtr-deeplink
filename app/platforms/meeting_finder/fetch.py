@@ -165,6 +165,55 @@ from scripts.youtube_fetch_guard import is_youtube_host  # noqa: E402
 
 _LINK_RE = re.compile(r"<a\b[^>]*\bhref\s*=", re.IGNORECASE)
 
+# WO-1037 item 7: real, confirmed shape found diagnosing Aiken County SD
+# SC, Sherwood AR and Chesterfield County PS VA (a shared Thrillshare/
+# Apptegy CMS) -- the page's real navigation, including its Swagit
+# link, is only present inside a JSON hydration blob, rendered as HTML
+# markup ONLY after a JS framework runs. The ORIGINAL `_has_links()` gate
+# never fires because the page also carries ~150+ ordinary utility
+# `<a href>` links (site chrome, footer, skip-links) that ARE real parsed
+# anchors -- so "the page has links" is true even though none of them are
+# useful. The two real signs a JSON blob is hiding the real nav: an
+# HTML-escaped anchor tag (`&lt;a `, since the real markup is itself a
+# JSON-STRING-encoded HTML fragment) or a named video-vendor hostname
+# that appears in the raw text but never as an actual parsed href/src.
+_ESCAPED_ANCHOR_RE = re.compile(r"&lt;a[\s>]", re.IGNORECASE)
+_UNPARSED_VENDOR_HOST_HINTS = ("swagit.com", "cablecast.tv")
+_HREF_OR_SRC_ATTR_RE = re.compile(
+    r'(?:href|src)\s*=\s*["\']([^"\']*)["\']', re.IGNORECASE
+)
+
+
+def _real_link_targets(html: str) -> str:
+    """Every value that actually sits inside a real, parsed `href=`/
+    `src=` attribute -- used only to tell a vendor hostname that's merely
+    named somewhere in the raw markup (a JSON blob, an escaped fragment)
+    apart from one that's already a genuine link `_has_links()` would
+    have found anyway."""
+    return " ".join(_HREF_OR_SRC_ATTR_RE.findall(html)).lower()
+
+
+def _has_no_useful_link_evidence(html: str | None) -> bool:
+    """True when `html` offers nothing worth Hop/Scan following: no
+    `<a href>` at all (the original gate), or the raw markup shows an
+    HTML-escaped anchor or names a known video-vendor host that never
+    actually shows up as a real parsed href/src -- both real, confirmed
+    JS-hydrated-nav shapes where the zero-links gate alone never fires
+    (see this module's own comment above `_ESCAPED_ANCHOR_RE`)."""
+    if not html:
+        return True
+    if not _has_links(html):
+        return True
+    if _ESCAPED_ANCHOR_RE.search(html):
+        return True
+    lower = html.lower()
+    real_targets = _real_link_targets(html)
+    return any(
+        hint in lower and hint not in real_targets
+        for hint in _UNPARSED_VENDOR_HOST_HINTS
+    )
+
+
 # --- Cross-Fetcher-instance per-host pacing (WO-1030) -----------------
 #
 # `Fetcher._wait_for_host()` alone only paces requests made by ONE
@@ -640,13 +689,18 @@ class Fetcher:
         if _looks_like_challenge(text):
             return await self._challenge_result(url, access_mode, text, start)
 
-        # Rung 3: headless -- only when the page loaded but shows no
-        # links, and the caller actually needs links.
+        # Rung 3: headless -- only when the page loaded but shows no real
+        # link evidence worth following (WO-1037 item 7: zero links, OR a
+        # JS-hydrated nav whose real content never shows up as a parsed
+        # href/src -- see `_has_no_useful_link_evidence()`), and the
+        # caller actually needs links. Still one headless render per
+        # fetch() call at most -- this only widens WHEN it fires, not how
+        # often.
         if (
             status == 200
             and need_links
             and self.allow_headless
-            and not _has_links(text)
+            and _has_no_useful_link_evidence(text)
         ):
             hl_html, hl_final_url, hl_err = await self._headless(url)
             if hl_html:
