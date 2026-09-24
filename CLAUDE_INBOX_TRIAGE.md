@@ -472,6 +472,90 @@ seen), 0 pruned.
 
 ---
 
+## 2026-09-24
+
+Paged `label:rtr-claude newer_than:30d` through 7 batches back to
+2026-08-28 (the full window); 13 new after the ledger filter — everything
+older than 2026-09-23 13:32 UTC was already covered by prior runs.
+
+**Out of scope / informational, no write-up**: 6 GitHub Actions "PR run
+failed: Test" notices tied to individual feature branches on
+`mroconnell/rtr-deeplink` (not `main`, no separate safety net needed —
+see this Routine's own scope rules). 1 transcription worker daily report.
+1 "YouTube transcripts: none new today" report (15 individual video
+failures, read in full) — all 15 are either `VideoUnplayable: ... This
+live event will begin` or `NoTranscriptFound: ... No transcripts were
+found for any of the requested language codes: ('en',)`, both
+already-established known per-video outcomes for this feed (see every
+run since 2026-09-21).
+
+**Duplicates, no new write-up, but two carry a real update** (verified
+against real code/logs, not just assumed):
+
+- GitHub Actions "Adapter health canary" failed on `main` (run
+  `35905674750`, 2026-09-23 18:54 UTC) — pulled the real job log: 40/42
+  platforms OK. `FAIL legistar[1]: ClientResponseError: 410 ...
+  phoenix.legistar.com/MeetingDetail.aspx?ID=1425831` is the same
+  already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample
+  is a genuinely dead meeting" entry seen in every recent run — no new
+  write-up. `FAIL tvw: ClientResponseError: 403, Forbidden,
+  url='https://tvw.org/video/senate-housing-2026091165/'` is the
+  **second occurrence** of the `tvw` finding written up in the
+  2026-09-23 section (same exact URL, same 403), which that section
+  already sized as "likely real bug, not flakiness" with a concrete next
+  action (add a realistic `User-Agent` header to
+  `TVWAssetFinder.resolve()` in `app/platforms/tvw.py`, matching
+  `granicus.py`'s existing pattern) — not re-writing that entry, just
+  noting the recurrence for whoever promotes it: this is now confirmed
+  on 2 consecutive scheduled runs, not a one-off. `seattle_channel`,
+  which also failed alongside `tvw` on 2026-09-22, did **not** fail this
+  run — consistent with the 2026-09-23 section's read of that one as a
+  likely flake, not a second data point toward reopening it.
+  - **Impact**: unchanged from the 2026-09-23 write-up (1 platform, no
+    production traffic depends on the canary, but the false failure will
+    keep masking a real future `tvw` regression until fixed).
+
+- The daily RTR feed drop failed again on 2026-09-23 (alert timestamp
+  13:32 UTC) with the **identical** three-day-running failure signature
+  already recorded in the 2026-09-22 and 2026-09-23 sections:
+  `discover.py`'s `resolve` stage exits with `RuntimeError: GET
+  https://redtaperecordings.com/internal/export/pages -> HTTP 404`. **New
+  this run**: a second "RTR feed drop for 2026-09-23" message arrived the
+  same day at 23:21 UTC reporting a normal, successful run — 242 meetings
+  written, 461.61 hours, errors: none. This is the first same-day recovery
+  in the three-day run of this failure (2026-09-21 and 2026-09-22 both
+  stayed failed with no later success message that day, per the
+  2026-09-23 section's own "two full days... zero manifest output"
+  wording). Checked for a code explanation: `git log -- archive/main.py`
+  shows one merge to `main` between the two runs (`20c2614`, WO-1014,
+  2026-09-23 21:27 UTC) — read its diff against `_token_ok()`/`GET
+  /internal/export/pages`; it only adds one new caller of the existing
+  `_token_ok()` helper via a lambda, no change to the route or the token
+  check itself, and (per `CLAUDE.md`'s "Deploys are manual" convention)
+  merging to `main` doesn't deploy production on its own regardless.
+  - **Impact**: same-day recovery this time, versus a full lost day each
+    of the prior two — a smaller impact than the escalating trend the
+    2026-09-22/23 sections tracked, but still a `resolve`-stage outage
+    every day for three consecutive days.
+  - **Open question** (updated, not resolved): a same-day self-recovery
+    with no corresponding code change in this repo argues *against* the
+    2026-09-23 section's leaning toward "the token has simply been wrong
+    since 2026-09-21" (a genuinely broken token wouldn't fix itself
+    mid-day without an external token rotation or Archive redeploy, and
+    no matching Render deploy/restart record is visible from inside this
+    repo) — this could equally be an external, out-of-repo action (Ryan
+    or another session rotating the token / redeploying the Archive
+    service by hand) that this Routine has no visibility into. Still
+    outside what this Routine can inspect or fix directly (the
+    `rtr-discovery`/`rtr-business` script's environment lives outside
+    this repo); leaving the promotion call, and whether to keep watching
+    for a 4th occurrence, to whoever next reviews this.
+
+Ledger: 13 message IDs reviewed and recorded this run (13 new, 484
+already seen), 0 pruned.
+
+---
+
 ## Open item
 
 **Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,

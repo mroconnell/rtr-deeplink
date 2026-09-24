@@ -887,3 +887,257 @@ def assess_video_candidate(
         if flag is not None:
             return flag
     return result
+
+
+# ===========================================================================
+# WO-1041 (2026-09-24): "meeting evidence" for a found video -- additive to
+# the WO-933 gate above, not a replacement. Built from real spot-check
+# evidence gathered for WO-1041 (see BACKLOG_DONE.md's WO-1041 entry): 10
+# real Cablecast/Swagit-calibration-run direct-file titles (0/10 were real
+# meetings unless the file was long or titled), 12 real Vimeo hand-check
+# verdicts (3/12 were real meetings, and every one of those 3 had a
+# governing-body/meeting word or a date in its title), and a 10,381-title
+# corpus of real Archive titles for the meeting-word list itself. Nothing
+# above this point in the file is touched -- this section only adds names.
+#
+# `assess_video_candidate()` above already asks "is this a meeting video at
+# all" for a handful of high-risk platforms (YouTube, Vimeo, Cablecast,
+# Swagit) via its own narrower `MEETING_ALLOWLIST`. This section is a
+# SEPARATE, wider check meeting_finder's own resolve.py applies specifically
+# to `direct_file`/`vimeo` finds and to any candidate picked by pick.py's
+# weakest bucket ("picked by: undated, lister order") -- sources with no
+# per-meeting listing to vouch for them at all, where the WO-1041 spot-check
+# found the true miss rate (Vimeo 9/12, direct files 10/10) sat.
+# ===========================================================================
+
+# The wider meeting-word list (superset of MEETING_ALLOWLIST above): every
+# word cited in the WO-1041 brief, drawn from a 10,381-title Archive corpus.
+# Multi-word phrases are checked as substrings after their component words
+# are also checked individually via `contains_word()`, so "select board" and
+# "selectboard" both match regardless of spacing.
+MEETING_EVIDENCE_WORDS = (
+    "meeting",
+    "meetings",
+    "council",
+    "board",
+    "regular",
+    "commission",
+    "commissioner",
+    "commissioners",
+    "committee",
+    "planning",
+    "special",
+    "session",
+    "public",
+    "supervisors",
+    "zoning",
+    "hearing",
+    "budget",
+    "workshop",
+    "agenda",
+    "trustees",
+    "advisory",
+    "court",
+    "authority",
+    "directors",
+    "review",
+    "joint",
+    "appeals",
+    "finance",
+    "work session",
+    "select board",
+    "selectboard",
+    "town meeting",
+    "school committee",
+)
+
+# Abbreviations from real recorder/title shapes, matched as whole (case-
+# sensitive) tokens only -- a lowercase "cc" or "sb" is ordinary English,
+# never evidence of a meeting; only the ALL-CAPS token means anything here.
+MEETING_EVIDENCE_ABBREVIATIONS = (
+    "TB",
+    "BOT",
+    "BOS",
+    "BOE",
+    "SC",
+    "SB",
+    "SHAC",
+    "ZHB",
+    "Mtg",
+    "CC",
+)
+
+_MEETING_EVIDENCE_ABBR_RE = re.compile(
+    r"\b(" + "|".join(re.escape(a) for a in MEETING_EVIDENCE_ABBREVIATIONS) + r")\b"
+)
+
+# Date/time shapes that count as evidence on their own (WO-1041 brief):
+# month names/abbreviations, numeric dates in a few common orderings, ISO
+# dates, a recorder filename's YYMMDD_HHMM stamp, and am/pm times.
+_MEETING_EVIDENCE_MONTH_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b",
+    re.IGNORECASE,
+)
+_MEETING_EVIDENCE_NUMERIC_DATE_RE = re.compile(r"\b\d{1,2}[-./]\d{1,2}[-./]\d{2,4}\b")
+_MEETING_EVIDENCE_ISO_DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+_MEETING_EVIDENCE_RECORDER_DATE_RE = re.compile(r"(?<!\d)\d{6}_\d{3,4}(?!\d)")
+_MEETING_EVIDENCE_AMPM_RE = re.compile(
+    r"\b\d{1,2}(:\d{2})?\s*[ap]\.?m\.?\b", re.IGNORECASE
+)
+
+
+def contains_date_evidence(text: Optional[str]) -> bool:
+    """True when `text` carries a date or time shape (WO-1041) -- a month
+    name, a numeric or ISO date, a recorder's YYMMDD_HHMM stamp, or an
+    am/pm time. Dates never eliminate a candidate anywhere in this repo
+    (CLAUDE.md's "date orders, it never eliminates" rule); here a date is
+    only ever used as positive evidence toward, never against, a find."""
+    t = text or ""
+    return bool(
+        _MEETING_EVIDENCE_MONTH_RE.search(t)
+        or _MEETING_EVIDENCE_NUMERIC_DATE_RE.search(t)
+        or _MEETING_EVIDENCE_ISO_DATE_RE.search(t)
+        or _MEETING_EVIDENCE_RECORDER_DATE_RE.search(t)
+        or _MEETING_EVIDENCE_AMPM_RE.search(t)
+    )
+
+
+# Non-meeting signs (WO-1041 spot-check): filename/title words that
+# positively say "this is not a meeting recording" -- a decorative/hero
+# clip, an unrelated school or community-access program, a ceremony or a
+# sports broadcast. Word-boundary matched via `contains_word()`, same as
+# MEETING_ALLOWLIST/PROMO_BLOCKLIST above.
+NON_MEETING_SIGNS = (
+    "banner",
+    "hero",
+    "homepage",
+    "drone",
+    "doodle",
+    "overview",
+    "welcome",
+    "promo",
+    "tour",
+    "compilation",
+    "reel",
+    "podcast",
+    "episode",
+    "training",
+    "webinar",
+    "title ix",
+    "graduation",
+    "commencement",
+    "concert",
+    "band",
+    "choir",
+    "theater",
+    "theatre",
+    "musical",
+    "game",
+    "football",
+    "basketball",
+    "athletics",
+    "sports",
+    "homecoming",
+    "parade",
+    "ceremony",
+)
+
+# A short (<10 min) video whose title is nothing but a presentation/intro/
+# explainer word is a weak lead, not a meeting, even with no other
+# non-meeting sign present -- WO-1041 spot-check: these are typically a
+# single agenda-item clip or an orientation video, not the meeting itself.
+_SHORT_WEAK_LEAD_WORDS = ("presentation", "intro", "explainer")
+
+# The HTML5 `<video>` fallback text, seen next to a decorative homepage
+# clip's markup (usually paired with autoplay/muted/loop -- see
+# `decorative_url_reason()` above for the query-parameter half of this same
+# real shape).
+_HTML5_FALLBACK_TEXT_RE = re.compile(r"does not support the video tag", re.IGNORECASE)
+
+
+def has_non_meeting_sign(text: Optional[str]) -> Optional[str]:
+    """The first `NON_MEETING_SIGNS` word found in `text` (word-boundary),
+    or None."""
+    t = (text or "").lower()
+    for word in NON_MEETING_SIGNS:
+        if contains_word(t, word):
+            return word
+    return None
+
+
+def has_meeting_evidence_word(text: Optional[str]) -> Optional[str]:
+    """The first `MEETING_EVIDENCE_WORDS` word, or `MEETING_EVIDENCE_
+    ABBREVIATIONS` token, found in `text`, or None. Wider than
+    `allowlisted_word()` above -- see this section's module comment for
+    why the two lists are kept separate rather than merged."""
+    t = text or ""
+    low = t.lower()
+    for word in MEETING_EVIDENCE_WORDS:
+        if contains_word(low, word):
+            return word
+    m = _MEETING_EVIDENCE_ABBR_RE.search(t)
+    if m:
+        return m.group(1)
+    return None
+
+
+@dataclass(frozen=True)
+class MeetingEvidence:
+    """WO-1041's verdict on one found video: is there real, positive
+    evidence it's a meeting recording? `has_evidence=False` is a finding
+    (a blank), never a guess -- same posture as `GateVerdict.undecided`
+    above, just without a three-way split since the caller (resolve.py)
+    only ever needs a yes/no to decide whether to keep the find as a
+    clean success or demote it to `OUTCOME_VIDEO_LOW_CONFIDENCE`."""
+
+    has_evidence: bool
+    reason: str = ""
+    non_meeting_sign: Optional[str] = None
+
+
+def assess_meeting_evidence(
+    *texts: Optional[str],
+    duration_seconds: Optional[float] = None,
+    is_direct_file: bool = False,
+) -> MeetingEvidence:
+    """WO-1041: read whatever text the caller has about a found video --
+    its title, its filename, a Google Drive file's own page title, the
+    link's anchor text, the linking page's title -- and decide whether
+    there is real evidence it's a meeting recording.
+
+    Order, per the WO-1041 brief: (1) a non-meeting sign anywhere in the
+    combined text is decisive -- REJECT regardless of length or any
+    meeting word also present; (2) a meeting word/abbreviation -- ACCEPT;
+    (3) a date/time shape -- ACCEPT; (4) `is_direct_file` and
+    `duration_seconds` >= 45 minutes -- ACCEPT (a long official recording
+    on the government's own site, even with a bare filename); (5)
+    otherwise, no evidence -- REJECT. A short (<10 min) presentation/
+    intro/explainer-titled video never accepts on word/date evidence alone
+    (WO-1041: "weak lead"), even though "presentation" itself isn't a
+    `NON_MEETING_SIGNS` word (a real committee "budget presentation" is
+    common inside an actual meeting) -- it only downgrades a SHORT one.
+    """
+    combined = " ".join(t for t in texts if t)
+
+    non_meeting = has_non_meeting_sign(combined)
+    if non_meeting:
+        return MeetingEvidence(False, non_meeting_sign=non_meeting)
+    if _HTML5_FALLBACK_TEXT_RE.search(combined):
+        return MeetingEvidence(False, non_meeting_sign="html5_fallback_text")
+
+    short_weak_lead = (
+        duration_seconds is not None
+        and duration_seconds < 10 * 60
+        and any(contains_word(combined.lower(), w) for w in _SHORT_WEAK_LEAD_WORDS)
+    )
+    if short_weak_lead:
+        return MeetingEvidence(False, non_meeting_sign="short_presentation_or_intro")
+
+    word = has_meeting_evidence_word(combined)
+    if word:
+        return MeetingEvidence(True, reason=f"meeting_word:{word}")
+    if contains_date_evidence(combined):
+        return MeetingEvidence(True, reason="date")
+    if is_direct_file and duration_seconds is not None and duration_seconds >= 45 * 60:
+        return MeetingEvidence(True, reason="long_direct_file(>=45min)")
+    return MeetingEvidence(False)

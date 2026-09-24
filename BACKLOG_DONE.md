@@ -16,6 +16,52 @@ Full suite: 5495 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelate
 
 **Not done**: task 4 of this WO (re-running Meeting Finder on the governments behind the held/raw-stream queue lines from WO-1040's dry run, to backfill `queue_recovered.txt` with real `meeting_url`s) — see this PR's description for what ran and what's still outstanding.
 
+## WO-1041: Meeting Finder "meeting evidence" rule + a regrade script for the overnight runs [Done 2026-09-24]
+
+**What.** A spot-check of the overnight/overnight2 calibration runs found that direct-file and Vimeo finds — sources with no per-meeting listing behind them — were wrong far more often than any other source Resolve accepts: 0/10 real direct-file finds and 3/12 real Vimeo finds, with every real Vimeo one carrying a governing-body/meeting word or a date in its title. The same pattern held for any candidate `pick.py` picked from its weakest bucket ("picked by: undated, lister order"), regardless of platform. Built and wired in:
+
+1. **`app/utils/video_hand_check.py`'s `assess_meeting_evidence()`** (additive — nothing existing in that file was touched): reads a found video's title/filename/Google Drive title/link text/linking-page URL and decides whether there is real evidence it's a meeting — a wider meeting-word list (`MEETING_EVIDENCE_WORDS`, built from a 10,381-title Archive corpus: budget/workshop/agenda/trustees/zoning/... plus abbreviations TB/BOT/BOS/BOE/SC/SB/SHAC/ZHB/Mtg/CC as whole tokens), a date/time shape (`contains_date_evidence()` — month names, numeric/ISO dates, a recorder's YYMMDD_HHMM stamp, am/pm times), and a non-meeting-sign list (`NON_MEETING_SIGNS` — banner/hero/homepage/drone/graduation/football/podcast/...). A non-meeting sign always wins over any other signal. A direct file `>= 45` minutes counts as found even with a bare filename (unless a non-meeting sign is present); a short (`< 10` min) presentation/intro/explainer-titled clip is a weak lead even with a meeting word or date present.
+2. **`resolve.py`** applies the check to a direct_file/Vimeo find, or any find picked from the "undated, lister order" bucket: with no evidence, it's demoted to `OUTCOME_VIDEO_LOW_CONFIDENCE` (reason "no meeting evidence") — a new last-resort rank (`_KEPT_DESPITE_NO_MEETING_EVIDENCE`, tried only after every other kept-despite fallback), never a clean find, per Ryan's "date orders, it never eliminates" / "keep at least one" rules. A Google Drive video link's own page title is read (one cached GET) before grading, since a Drive link carries no title of its own on the candidate/adapter side.
+3. **`listing.py`'s Granicus shared-account discovery** now reads every populated `view_id` (not just the first) and, given a government name, picks the one whose own RSS channel title shares a distinctive word with it — the real Grass Valley/Nevada City/Nevada County case (`nevco.granicus.com`, view_id 4/2/3). Falls back to the first populated `view_id` (the old behavior) when no name is given, so every existing caller is unaffected.
+4. **`identify.py`** gained an optional destination check (`gov_name`/`gov_domain`, both default `None`): when an off-site vendor/video-host link is found, `same_organization_flag()` (already used elsewhere in this repo for the same host/name-overlap check) is applied to the link's own destination, and a mismatch is recorded as `IdentifyResult.destination_mismatch` — catches the real wrong-government hops named in the brief (Gresham SD WI -> Gresham OR's PrimeGov, Auburn SD -> Hooksett NH's Granicus, Laclede Co MO -> Lebanon MO, Muskegon SD -> a city's CivicClerk). **Not yet reaching production**: `runner.py` (WO-1042's file) doesn't pass `gov_name`/`gov_domain` into `identify()` or `gov_name` into `list_account()` yet — both are additive, backward-compatible parameters, wired and tested, waiting on that call-site change.
+5. **`scripts/meeting_finder_regrade.py`** (new): re-labels an existing `verdicts.csv.jsonl` under the new rule without re-running Meeting Finder, using only what's already in the verdict row plus a cheap, cached, YouTube-free Vimeo-oEmbed/Google-Drive-title lookup. Outputs a row-level CSV, a per-stratum old-vs-new summary with `strata.csv`'s `pool_size` projected nationwide, and (given `--handcheck-dir`) an agreement table against a human hand-check.
+
+**Not fixed here** (belongs to a file this WO doesn't own, noted in the report instead of touched): the identity-`disagrees` -> a first-class `needs-hand-check` `OUTCOME_*` constant needs `models.py`/`runner.py` (WO-1042's files) — the regrade script applies the equivalent relabeling itself, but the live resolve/runner path does not yet. Wiring `gov_name` from `FinderInput`/the government registry into `identify()`/`list_account()`'s new optional parameters is the same kind of residual call-site gap.
+
+**Verified.** New tests: `tests/test_wo1041_meeting_evidence.py` (21 cases — `assess_meeting_evidence()`'s own rules, the direct_file/Vimeo resolve.py demotion and its granicus/other-platform non-gating contrast case, the Grass Valley Granicus view_id selection with/without a government name, and the identify.py destination check's flagged/not-flagged/no-gov-name-given cases). Full suite: 5481 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes).
+
+**Regrade results, run against the real `overnight`/`overnight2` calibration data** (4,995 verdict rows; see this PR's description for the full per-stratum table): of 307 rows the old rule counted as a clean find, 219 (71%) were demoted under the new rule — 88 remain. Checked against the 95 real hand-check verdicts (`followup/hc*_result.csv`, all 95 matched): agreement with the human verdict (excluding the 8 "cant-tell" rows) rose from **34/87 (39%)** under the old rule to **75/87 (86%)** under the new one. Caveat, reported rather than hidden: 8 of the 34 real hand-check "approve" rows were lost — 3 to the automatic identity check's own false "disagrees" (a pre-existing limitation of that check, not this WO's rule) and 5 because the regrade script (unlike the live `resolve.py` path) has no adapter-returned title to read for a non-Vimeo/direct_file "undated, lister order" pick (Swagit/Castus/Suiteone platforms have no cheap oEmbed-style title endpoint this script fetches) — those 5 are judged on URL/filename alone and lose real, correctly-shaped meetings that simply have no meeting word in their URL.
+
+## WO-1043: send Meeting Finder's unfinished governments to the drains, and bring the drains' finds back [Done 2026-09-24]
+
+**What.** Meeting Finder finds nothing for a lot of governments — no meeting, no video, or the site blocked us. Until now those results just sat in a file. Nobody sent them anywhere else to keep looking. This closes part of BACKLOG.md's "Meeting Finder follow-up plumbing" entry: a new script, `scripts/meeting_finder_to_drains.py`, moves work in both directions between Meeting Finder and the certificate-log/Common Crawl drains (`queue_pipeline.py`, in rtr-business).
+
+1. **`to-drains`.** Reads Meeting Finder's verdict files. Picks every row whose outcome means "nothing left to try": no meeting or video found, the site's domain doesn't resolve, it timed out, or it blocked us (Cloudflare, browser-header check, Akamai, headless). Writes one row per government, in the exact format `queue_pipeline.py`'s own `feed` command already reads. Checked this is real, not assumed: ran the real classifier `queue_pipeline.py` calls (`wo282_classify.classify_record()`) against every row this script wrote, and all of them come back as a real failure, exactly what `feed` needs to queue them.
+2. **`from-drains`.** Reads what the drains found (a certificate-log subdomain, or a real page Common Crawl found) and writes Meeting Finder input rows for the new starting points. A confirmed vendor account (a CNAME match, or a known platform) starts at Identify; anything else starts at Start.
+
+**Result.** Dry-run on the two most recent overnight batches (`overnight/verdicts.csv.jsonl`, `overnight2/verdicts.csv.jsonl`, 4,995 rows total).
+
+| Outcome | Count of matching rows |
+| --- | --- |
+| no-meeting-nor-video | 1,269 |
+| blocked-headless | 585 |
+| blocked-browser-headers | 432 |
+| dns-unresolvable | 239 |
+| cloudflare-challenge-blocked | 156 |
+| timeout | 151 |
+| blocked-waf-akamai | 63 |
+| internal-timeout | 22 |
+| account-not-found | 5 |
+| **Total matching rows** | **2,922** |
+
+2,916 governments were written after deduping by domain (6 governments appeared in both overnight batches).
+
+**Caution.** `from-drains` has no real drain2/drain3 result file to test against yet — the drains haven't been pointed at this script's output. Its tests use a synthetic file built from `queue_pipeline.py`'s own code and docstrings (real field shapes, hand-built rows), not a live result. Verify against a real drain2/drain3 run before trusting its counts.
+
+**Recommendation.** Run, on the machine with the rtr-business checkout: `python queue_pipeline.py feed --recon <to-drains output>`, then `drain2 --wait-for-feeder`, then `drain3 --wait-for-stage2`. Once those finish, run `from-drains` on the real result files and feed the output back into Meeting Finder.
+
+**Verified.** New tests: `tests/test_meeting_finder_to_drains.py` (31 tests). Full suite: 5,512 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes). PR #1406, not merged — awaiting the conductor's review.
+
 ## WO-1039: TelVue/link-ranking follow-ups from WO-1038 (off-site stations, Pass-1 budget floor, junk-link ranking, aiohttp header-size fix) [Done 2026-09-24]
 
 **What.** The four items WO-1038 cut for time (BACKLOG.md's own entry for the gap, closed by this PR):
