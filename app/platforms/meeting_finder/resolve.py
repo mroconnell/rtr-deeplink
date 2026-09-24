@@ -179,7 +179,10 @@ async def _resolve_candidates_with_meeting(
     # one -- the concrete form of "over 90 minutes, keep looking for a
     # shorter one" the design doc describes).
     probed: List[Tuple[Candidate, ResolvedMeeting, "queue_probe.ProbeResult"]] = []
-    best_no_video: Optional[Tuple[Candidate, ResolvedMeeting]] = None
+    # `ResolvedMeeting` is `None` specifically for the "lister already
+    # confirmed this is a real no-video row" case above (no adapter
+    # `resolve()` call ever succeeded for it).
+    best_no_video: Optional[Tuple[Candidate, Optional[ResolvedMeeting]]] = None
     reasons: List[str] = [pick_reason] if pick_reason else []
 
     queue: List[Candidate] = list(picked)
@@ -234,6 +237,24 @@ async def _resolve_candidates_with_meeting(
             queue[i:i] = more
             continue
         except (ResolveError, NoVideoCandidateFound) as e:
+            # A candidate a LISTER already marked `has_video_hint=False`
+            # (e.g. `listing.py`'s CivicPlus agenda-only fallback) is
+            # already confirmed to be a real meeting row -- the lister
+            # read the government's own listing page and found a real
+            # title/date/agenda link, just no video. The adapter's own
+            # `resolve()` raising here (rather than returning a
+            # `ResolvedMeeting` with `agenda_items`/`agenda_link` set, the
+            # path the check below normally takes) doesn't change that
+            # fact -- confirmed live on Cass County, MN (conductor review,
+            # 2026-09-23): `CivicPlusAssetFinder.resolve()` on one
+            # specific `ViewFile/Agenda` URL raises `NoVideoCandidateFound`
+            # outright rather than returning agenda info. Trust the
+            # lister's own finding instead of losing it here -- this is
+            # the only place `best_no_video`'s own `ResolvedMeeting` can
+            # be `None` (see the `if best_no_video:` branch below, which
+            # already tolerates that).
+            if cand.has_video_hint is False and best_no_video is None:
+                best_no_video = (cand, None)
             reasons.append(f"{cand.url}: {e}")
             continue
         except Exception as e:  # noqa: BLE001
@@ -326,7 +347,12 @@ async def _resolve_candidates_with_meeting(
             ResolveResult(
                 candidate=cand,
                 tier=None,
-                platform=result.platform,
+                # `result` is `None` for a lister-confirmed no-video row
+                # whose own `resolve()` call raised rather than returning
+                # a `ResolvedMeeting` -- fall back to the candidate's own
+                # `platform` (set by `listing.py`) so Verdict still names
+                # the real platform in that case.
+                platform=result.platform if result is not None else cand.platform,
                 video_url=None,
                 has_segments=False,
                 duration_seconds=None,

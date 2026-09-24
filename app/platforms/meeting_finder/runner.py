@@ -45,10 +45,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
+from urllib.parse import urlparse
+
+from app.platforms.base import detect_platform
+from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher
 from .hop import rank_hops
-from .identify import identify
+from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
 from .listing import list_account
 from .models import (
@@ -96,6 +100,17 @@ _OUTCOME_PRIORITY: Dict[str, int] = {
 _UNKNOWN_OUTCOME_PRIORITY = 6
 _FLOOR_PRIORITY = 0
 
+# See the call site's own comment: `rank_hops()`'s ranked list is
+# filtered AFTER the fact (YouTube, already-known-platform links), so it
+# needs to hand back more than its own small default limit or a real
+# candidate further down the list never gets a chance.
+_HOP_CANDIDATE_LIMIT = 25
+
+# How many of Scan's own found (not opened) meeting-page links get a
+# full Identify+List pass in `_deep_step()`, per fork. Small on purpose
+# -- each one costs a real fetch, and this runs on every fork.
+_SCAN_LINK_FOLLOW_LIMIT = 3
+
 
 def _pick_outcome(outcomes: List[str]) -> str:
     if not outcomes:
@@ -138,6 +153,21 @@ class _WalkState:
         return self.result is not None or self.budget_exhausted
 
 
+def _norm_url(url: str) -> str:
+    """Trailing-slash and fragment normalization for the `seen` set only
+    (display/reporting always uses the raw url). Confirmed live necessary
+    on Piedmont, CA (conductor review, 2026-09-23): `rank_hops()` ranked
+    a page's own canonical self-link (identical URL, trailing slash
+    added) above the real next hop -- without this, that self-link isn't
+    recognized as already visited, and a hop budget slot is wasted
+    re-fetching a page already in hand."""
+    parsed = urlparse(url)
+    path = parsed.path
+    if len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    return parsed._replace(path=path, fragment="").geturl()
+
+
 def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]]:
     return [{"kind": "youtube", "url": u, "found_at": found_at} for u in urls]
 
@@ -165,33 +195,56 @@ async def _try_resolve(
     return False
 
 
-async def _walk_from(
+async def _shallow_step(
     url: str,
     fetcher: Fetcher,
     finder_input: FinderInput,
     state: _WalkState,
     *,
-    hops_left: int,
     seen: Set[str],
     max_tries: int,
-    prefer_vendor: Optional[str] = None,
-) -> None:
-    """One fork's own path: Identify -> List/Scan -> Hop, recursing into
-    Hop's own best next link while `hops_left` allows and nothing has
-    resolved yet. Mutates `state` in place; never raises `BudgetExceeded`
-    -- caught here and turned into `state.budget_exhausted = True` so the
-    caller's fork/hop loops stop cleanly."""
-    if state.done or url in seen:
-        return
-    seen.add(url)
+) -> Optional[IdentifyResult]:
+    """Identify, then List (if a platform+account was found), then
+    Resolve on whatever List handed back. Cheap relative to Scan/Hop --
+    usually 1-3 fetches. Returns the `IdentifyResult` (its own fetched
+    `page` reused by a later `_deep_step()` call), or `None` when the
+    walk is already done (resolved, or budget exhausted) or `url` was
+    already seen.
+
+    **Why this is split from Scan/Hop (conductor review, WO-1030,
+    2026-09-23):** the phase loop used to run Identify->List->Scan->Hop
+    on ONE starting point all the way through before trying the next
+    fork. Confirmed live on Pomona, CA (`pomonaca.gov`): the homepage
+    fork found a real Legistar account (correctly resolved to zero video
+    -- Pomona's Legistar tenant genuinely has none in its newest
+    meetings) and then Scan (which opens several meeting-page links,
+    itself several fetches) plus a Hop chain spent the ENTIRE 12-fetch
+    government budget before `live.pomonaca.gov` -- Start's own guessed-
+    subdomain starting point, a real Cablecast account with a real video
+    one fetch away -- ever got a turn. `_run_phase_loop()` now runs this
+    cheap shallow step across every fork FIRST (see its own docstring),
+    and only spends the more expensive Scan/Hop budget once none of them
+    resolved on their own."""
+    if state.done or _norm_url(url) in seen:
+        return None
+    seen.add(_norm_url(url))
     state.path.append(url)
 
     try:
         ident = await identify(url, fetcher, platform_hint=finder_input.platform_hint)
     except BudgetExceeded:
         state.budget_exhausted = True
-        return
+        return None
     state.reach("identify")
+    # A later fork/hop landing on the SAME final page (e.g. a plain-http
+    # homepage variant that just redirects to the https one already
+    # tried) is marked seen too, so it's skipped before spending a fetch
+    # on a page already in hand -- real, confirmed savings on Piedmont,
+    # CA (`http://piedmont.ca.gov/` redirects straight to
+    # `https://piedmont.ca.gov/`, itself already tried as the first
+    # fork).
+    if ident.final_url:
+        seen.add(_norm_url(ident.final_url))
     state.leads.extend(_youtube_leads(ident.youtube_leads, found_at=url))
     if ident.guess_queue_row:
         row = dict(ident.guess_queue_row)
@@ -201,15 +254,12 @@ async def _walk_from(
     if ident.outcome:
         state.outcomes.append(ident.outcome)
 
-    page = ident.page
-    prefer_vendor = ident.web_host_hint or ident.platform or prefer_vendor
-
     if ident.platform and ident.account_url and ident.supported is not False:
         try:
             list_result = await list_account(ident.platform, ident.account_url, fetcher)
         except BudgetExceeded:
             state.budget_exhausted = True
-            return
+            return None
         state.reach("list")
         if list_result.outcome:
             state.outcomes.append(list_result.outcome)
@@ -217,11 +267,68 @@ async def _walk_from(
             if await _try_resolve(
                 list_result.candidates, finder_input, state, max_tries=max_tries
             ):
-                return
+                return None  # resolved -- no deep pass needed for this fork
 
-    if not state.done and page is not None and page.html:
+    return ident
+
+
+async def _deep_step(
+    url: str,
+    ident: IdentifyResult,
+    fetcher: Fetcher,
+    finder_input: FinderInput,
+    state: _WalkState,
+    *,
+    hops_left: int,
+    seen: Set[str],
+    max_tries: int,
+    prefer_vendor: Optional[str] = None,
+) -> None:
+    """Scan, then Hop (recursing into Hop's own best next link -- via
+    `_walk_from()`, shallow+deep together -- while `hops_left` allows and
+    nothing has resolved yet). Mutates `state` in place; never raises
+    `BudgetExceeded`."""
+    if state.done:
+        return
+    page = ident.page
+    # `ident.platform` only belongs here as a hop preference in
+    # docs/MEETING_FINDER.md's "platform known, account unknown" case
+    # (`ident.account_url is None`) -- weighting Hop toward MORE of a
+    # platform we already have a real account for is never useful and,
+    # confirmed live on Piedmont, CA (conductor review, 2026-09-23),
+    # actively harmful: Identify found `civiclive` (the city's own
+    # website CMS, not a meeting platform) with a real account, and the
+    # old blanket `prefer_vendor = ... or ident.platform or ...` pushed
+    # Hop even harder toward more CivicLive navigation pages instead of
+    # the real Granicus meeting-video hub two hops away.
+    known_platform = ident.platform if ident.account_url is None else None
+    prefer_vendor = ident.web_host_hint or known_platform or prefer_vendor
+
+    if page is not None and page.html:
         try:
-            scan_result = await scan_page(page, fetcher)
+            # `max_meeting_pages` capped at 3, not `scan_page()`'s own
+            # default of 6 -- conductor review, 2026-09-23, found live on
+            # Piedmont, CA: opening 6 meeting-page links against one
+            # fork's own government budget left too little for Hop to
+            # ever reach a real vendor found 2 hops deep (Granicus,
+            # `view_id=9`, behind a `meeting_videos` nav page). Breadth
+            # across forks/hops matters more here than one fork's own
+            # deep meeting-page scan -- this module's own docstring calls
+            # that out as the whole reason for the two-pass shallow/deep
+            # split.
+            # `max_meeting_pages=0`: find meeting-page links (a free scan
+            # of html already in hand -- see this call's own `note`
+            # below), but don't have Scan open them itself. Its own
+            # `_anchor_media_candidates()` only recognizes vimeo/civicweb/
+            # direct-file media on an opened sub-page -- confirmed live on
+            # Piedmont, CA (conductor review, 2026-09-23) that this misses
+            # a real Granicus tenant embedded on `/government/
+            # meeting_videos`: Scan opened it, found no *media* by its own
+            # narrow definition, and the fetch was wasted. Running the
+            # full `identify()`/`list_account()` pass below on the SAME
+            # links instead catches a vendor PLATFORM one click down, not
+            # just a bare media file -- the more common real shape.
+            scan_result = await scan_page(page, fetcher, max_meeting_pages=0)
         except BudgetExceeded:
             state.budget_exhausted = True
             return
@@ -235,11 +342,56 @@ async def _walk_from(
             ):
                 return
 
+        for link in scan_result.meeting_page_links[:_SCAN_LINK_FOLLOW_LIMIT]:
+            if state.done:
+                return
+            await _shallow_step(
+                link, fetcher, finder_input, state, seen=seen, max_tries=max_tries
+            )
+
     if not state.done and hops_left > 0 and page is not None and page.html:
-        hops = rank_hops(page, prefer_vendor=prefer_vendor)
+        # `limit` well above `rank_hops()`'s own default (8): this loop
+        # below excludes YouTube and already-known-platform links AFTER
+        # ranking, and both can legitimately fill most or all of the top
+        # 8 (confirmed live on Piedmont, CA, conductor review 2026-09-23
+        # -- 3 CivicLive CMS nav links + 6 YouTube links outrank the real
+        # own-site meeting-agendas page, which would never even appear in
+        # the returned list at the default limit, let alone survive the
+        # exclusion filter below).
+        hops = rank_hops(page, prefer_vendor=prefer_vendor, limit=_HOP_CANDIDATE_LIMIT)
         state.reach("hop")
         for hop in hops:
-            if hop.url in seen:
+            if _norm_url(hop.url) in seen:
+                continue
+            if is_youtube_host(urlparse(hop.url).hostname or ""):
+                # Conductor review (2026-09-23), found live on Boston,
+                # MA: `rank_hops()` (a generic link scorer, not YouTube-
+                # aware) can rank a homepage's own YouTube channel/video
+                # link above a real Legistar link -- Meeting Finder never
+                # fetches YouTube (fetch.py's own guard would just refuse
+                # it anyway), so a hop here would silently burn a hop slot
+                # on a dead end. Record it as a lead instead and keep
+                # looking at the next-ranked hop, without spending
+                # `hops_left` or `state.hops` on it.
+                seen.add(_norm_url(hop.url))
+                state.leads.append(
+                    {"kind": "youtube", "url": hop.url, "found_at": "hop"}
+                )
+                continue
+            if (
+                ident.platform
+                and ident.account_url is not None
+                and detect_platform(hop.url) == ident.platform
+            ):
+                # Conductor review (2026-09-23), found live on Piedmont,
+                # CA: we already have a real account for `ident.platform`
+                # (List already tried it, above) -- another link to the
+                # SAME platform (CivicLive's own generic CMS navigation
+                # pages, all scoring above the real Granicus meeting-video
+                # hub two hops away) adds nothing new and only burns hop
+                # budget re-exploring a platform Resolve already looked
+                # at. Skip it, without spending `hops_left`/`state.hops`.
+                seen.add(_norm_url(hop.url))
                 continue
             state.hops += 1
             await _walk_from(
@@ -252,10 +404,46 @@ async def _walk_from(
                 max_tries=max_tries,
                 prefer_vendor=prefer_vendor,
             )
-            # Only the single best not-yet-seen hop per level (docs/
-            # MEETING_FINDER.md's Hop: "Pick the best next page to
-            # open" -- singular).
+            # Only the single best not-yet-seen, non-YouTube hop per
+            # level (docs/MEETING_FINDER.md's Hop: "Pick the best next
+            # page to open" -- singular).
             break
+
+
+async def _walk_from(
+    url: str,
+    fetcher: Fetcher,
+    finder_input: FinderInput,
+    state: _WalkState,
+    *,
+    hops_left: int,
+    seen: Set[str],
+    max_tries: int,
+    prefer_vendor: Optional[str] = None,
+) -> None:
+    """Shallow then deep, immediately, for ONE url -- used for a Hop
+    target (a hop is a sequential "next thing to try", not a fork
+    competing with siblings for budget, so it gets the full
+    Identify->List->Scan->Hop treatment in one go). The top-level fork
+    loop in `_run_phase_loop()` calls `_shallow_step()`/`_deep_step()`
+    directly instead, in two separate passes across every fork -- see
+    `_shallow_step()`'s own docstring for why."""
+    ident = await _shallow_step(
+        url, fetcher, finder_input, state, seen=seen, max_tries=max_tries
+    )
+    if ident is None:
+        return
+    await _deep_step(
+        url,
+        ident,
+        fetcher,
+        finder_input,
+        state,
+        hops_left=hops_left,
+        seen=seen,
+        max_tries=max_tries,
+        prefer_vendor=prefer_vendor,
+    )
 
 
 async def _run_phase_loop(
@@ -315,43 +503,79 @@ async def _run_phase_loop(
         return state
 
     if finder_input.entry == "start":
-        try:
-            start_result = await run_start(finder_input.url, fetcher)
-        except BudgetExceeded:
-            state.budget_exhausted = True
-            return state
-        state.reach("start")
-        if start_result.outcome:
-            state.outcomes.append(start_result.outcome)
-            return state
-        starting_points = start_result.starting_points or [finder_input.url]
-        # "one more [hop] from a homepage" -- Start's own first starting
-        # point (its own homepage variant) gets one extra hop of depth.
-        first_hops_budget = max_hops + 1
+        # Conductor review (2026-09-23): a vendor account URL entered at
+        # `start` (e.g. `cityoftacoma.granicus.com`, already a real
+        # Granicus tenant host) must not be treated as a government
+        # domain to DNS-guess homepages around -- `_classify_url()` is
+        # the same rule-1 "URL/host match, no fetch" check `identify()`
+        # itself runs first; if it already recognizes a platform, skip
+        # `start()` entirely and go straight to the shallow (Identify->
+        # List) step on the URL as given, exactly like `entry=identify`.
+        normalized = finder_input.url
+        if "://" not in normalized:
+            normalized = f"https://{normalized}"
+        direct_platform, _ = _classify_url(normalized)
+        if direct_platform is not None:
+            starting_points = [normalized]
+            first_hops_budget = max_hops
+        else:
+            try:
+                start_result = await run_start(finder_input.url, fetcher)
+            except BudgetExceeded:
+                state.budget_exhausted = True
+                return state
+            state.reach("start")
+            if start_result.outcome:
+                state.outcomes.append(start_result.outcome)
+                return state
+            starting_points = start_result.starting_points or [finder_input.url]
+            # "one more [hop] from a homepage" -- Start's own first
+            # starting point (its own homepage variant) gets one extra
+            # hop of depth.
+            first_hops_budget = max_hops + 1
     else:  # "identify" -- a single page URL, no Start, no forks.
         starting_points = [finder_input.url]
         first_hops_budget = max_hops
 
+    # Pass 1 (breadth, cheap): Identify -> List -> Resolve on every fork
+    # BEFORE any fork spends budget on Scan/Hop -- see `_shallow_step()`'s
+    # own docstring for the real government (Pomona, CA) this fixes.
     forks_tried = 0
+    pending_deep: List[tuple[str, IdentifyResult, int]] = []
     for i, point in enumerate(starting_points):
         if state.done:
             break
-        if point in seen:
+        if _norm_url(point) in seen:
             continue
         if i > 0:
             if forks_tried >= max_forks:
                 break
             forks_tried += 1
             state.forks += 1
-        await _walk_from(
-            point,
-            fetcher,
-            finder_input,
-            state,
-            hops_left=first_hops_budget if i == 0 else max_hops,
-            seen=seen,
-            max_tries=max_tries,
+        hops_budget = first_hops_budget if i == 0 else max_hops
+        ident = await _shallow_step(
+            point, fetcher, finder_input, state, seen=seen, max_tries=max_tries
         )
+        if ident is not None:
+            pending_deep.append((point, ident, hops_budget))
+
+    # Pass 2 (depth): Scan + Hop, fork by fork in the same order, only
+    # for forks that didn't already resolve in pass 1 -- stops at the
+    # first success or when the shared fetch budget runs out.
+    if not state.done:
+        for point, ident, hops_budget in pending_deep:
+            if state.done:
+                break
+            await _deep_step(
+                point,
+                ident,
+                fetcher,
+                finder_input,
+                state,
+                hops_left=hops_budget,
+                seen=seen,
+                max_tries=max_tries,
+            )
 
     return state
 

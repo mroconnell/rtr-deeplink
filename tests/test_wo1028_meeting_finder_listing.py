@@ -120,10 +120,18 @@ async def test_lister_a_routes_through_meeting_finder_fetcher(fetcher):
 
     passive_verify.register_listing_walker("granicus", walker_using_fetch)
     with patch.object(fetcher, "fetch", side_effect=fake_fetch_via_fetcher):
+        # `?view_id=1` -- WO-1030 added a Granicus-specific pre-step
+        # (`_granicus_discover_view_id()`) that probes for a populated
+        # view_id when the account URL doesn't already carry one (a real
+        # Granicus hub root has no listing without it); a URL that
+        # already has `view_id` skips that probe, so this test stays
+        # focused on what it actually tests -- that lister (a) routes
+        # through Meeting Finder's own Fetcher, not a real Granicus
+        # semantics test.
         result = await listing.list_account(
-            "granicus", "https://example.granicus.com/hub", fetcher
+            "granicus", "https://example.granicus.com/hub?view_id=1", fetcher
         )
-    assert calls == ["https://example.granicus.com/hub"]
+    assert calls == ["https://example.granicus.com/hub?view_id=1"]
     assert result.candidates
 
 
