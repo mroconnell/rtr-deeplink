@@ -1096,3 +1096,5 @@ https://drive.usercontent.google.com/download?id=1Dk06Gdq5l-h_B4Q5ZBUOhtXzErF-cw
 https://drive.usercontent.google.com/download?id=1e4cQm5QoiqMAFZhg-3GAWWUX1oLKPjxe&export=download&confirm=t	https://schodack.k12.ny.us/	us:sd:3626070
 https://cloud.castus.tv/vod/kltv/video/6aa8a85969c0dd0002f149b3?page=HOME	https://cityofrainier.com/	us:place:4160850
 https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1047620	https://www.wellesleyma.gov/	us:cousub:2502174175
+https://play.champds.com/elpasococo/event/166	https://clerkandrecorder.elpasoco.com/clerk-to-the-board/meeting-video-archives/	us:county:08041
+https://shelby.granicus.com/ASX.php?clip_id=2869&sn=shelby.granicus.com&view_id=4	https://www.shelbycountytn.gov/1218/Archived-Meeting-Audio	us:county:47157
