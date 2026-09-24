@@ -143,7 +143,7 @@ Caption-sibling lookup (`_laserfiche_sibling_caption_url()`) is skipped
 entirely for the edoc shape -- it has no known Zoom-sibling-docid
 convention, and neither government's file is a Zoom cloud recording.
 
-**HEAD refused, or unusable (WO-1045, 2026-09-24)** -- two real hosts
+**HEAD refused, or unusable (WO-1048, 2026-09-24)** -- two real hosts
 found walking county meeting pages, each confirmed live:
 
 1. **Jefferson County, TX** (`jeffersoncountytx.gov/blobs/agenda/video_pl/
@@ -196,13 +196,13 @@ _UA = (
 
 _HEAD_TIMEOUT_SECONDS = 20
 
-# WO-1045: HEAD statuses that mean "this host won't answer HEAD", not "this
+# WO-1048: HEAD statuses that mean "this host won't answer HEAD", not "this
 # file isn't there" -- Jefferson County, TX's IIS answers 405 (see module
 # docstring). 403 and 501 are the other two ways a server refuses a method
 # it doesn't allow; each costs one extra small ranged GET, never a guess.
 _HEAD_REFUSED_STATUSES = (403, 405, 501)
 
-# How much of the file the ranged-GET fallback reads (WO-1045). Enough
+# How much of the file the ranged-GET fallback reads (WO-1048). Enough
 # for any container signature `_classify_laserfiche_media()` checks.
 _PROBE_BYTES = 1024
 
@@ -372,7 +372,7 @@ def _media_format(media_url: str, content_type: Optional[str]) -> str:
 
 def _is_dropbox_url(url: str) -> bool:
     """True for a Dropbox share link -- see module docstring's "HEAD
-    refused, or unusable" section (WO-1045) for why these skip HEAD."""
+    refused, or unusable" section (WO-1048) for why these skip HEAD."""
     netloc = urlparse(url).netloc.lower()
     return netloc == "dropbox.com" or netloc.endswith(".dropbox.com")
 
@@ -479,7 +479,7 @@ def _resolve_direct_media_url(url: str) -> str:
         # for the one real fixture this couldn't fully verify. `raw=1` is
         # Dropbox's other documented flag for the same file; it is
         # dropped so a pasted `raw=1` link lands on the one form the
-        # ranged-GET check was confirmed against (WO-1045).
+        # ranged-GET check was confirmed against (WO-1048).
         query_pairs = [
             (k, v) for k, v in parse_qsl(parsed.query) if k not in ("dl", "raw")
         ]
@@ -513,7 +513,7 @@ class DirectFileAssetFinder(AssetFinder):
             content_type == _OCTET_STREAM_CONTENT_TYPE
             and media_type(media_url) in ("video", "audio")
         )
-        # WO-1045: when the ranged-GET fallback ran, a real container
+        # WO-1048: when the ranged-GET fallback ran, a real container
         # signature in the first bytes counts even under a generic
         # Content-Type (Dropbox's `application/binary`).
         if not (is_media_content_type or is_octet_stream_media_file or media_kind):

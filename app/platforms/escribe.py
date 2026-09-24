@@ -61,7 +61,7 @@ _SUBDOMAIN_RE = re.compile(r"pub-([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAIN_RE = re.compile(r"([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAINS = {"tcdsbpublishing"}
 
-# WO-1045 (2026-09-24): a tenant whose subdomain says "County of X" --
+# WO-1048 (2026-09-24): a tenant whose subdomain says "County of X" --
 # McHenry County, IL's `pub-countyofmchenry`. See
 # `_county_of_tenant_name()` for the two inconsistent names it used to
 # get depending on which meeting was open.
@@ -518,7 +518,7 @@ class EscribeAssetFinder(AssetFinder):
         the steps above have settled the state; else `jurisdiction`
         unchanged.
 
-        Real case (WO-1045, 2026-09-24), McHenry County, IL: a County
+        Real case (WO-1048, 2026-09-24), McHenry County, IL: a County
         Board meeting's page text says "County of McHenry", giving
         "County of McHenry, IL"; a Mental Health Board meeting's page
         doesn't, so the subdomain tier gave "Mchenry, IL" -- which is

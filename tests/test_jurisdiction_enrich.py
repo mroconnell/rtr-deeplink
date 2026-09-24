@@ -3240,7 +3240,7 @@ def test_raw_text_explained_by_subdomain_hint_accepts_pure_boilerplate():
 
 
 def test_county_display_in_state_names_a_county_only_within_one_state():
-    # WO-1045. Both counties are real and both names are ambiguous
+    # WO-1048. Both counties are real and both names are ambiguous
     # nationally (Clay County is in 18 states; McHenry County in IL and
     # ND), so only a state-scoped lookup can name them. A slug fragment
     # that isn't a county in that state gets None, not a guess --

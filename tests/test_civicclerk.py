@@ -722,7 +722,7 @@ async def test_resolve_county_subdomain_signal_needs_zip_agreement():
     )
 
 
-# --- WO-1045 (2026-09-24): a county slug that also spells a city -----------
+# --- WO-1048 (2026-09-24): a county slug that also spells a city -----------
 # `claycomo.portal.civicclerk.com` is Clay County, MO ("clay"+"co"+"mo").
 # The real event below (fetched live 2026-09-24) has no venue address, no
 # organization id, and the tenant's portal name is blank -- so the

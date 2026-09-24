@@ -347,7 +347,7 @@ def _load_county_display_names(filename: str) -> Dict[Tuple[str, str], Optional[
     as the CSV spells it ("McHenry County"), or None when two different
     rows in one state share the key. Keyed letters-only so a URL slug
     fragment ("mchenry", "stcroix") can look it up directly -- see
-    `county_display_in_state()` (WO-1045)."""
+    `county_display_in_state()` (WO-1048)."""
     table: Dict[Tuple[str, str], Optional[str]] = {}
     path = _DATA_DIR / filename
     if not path.exists():
@@ -376,7 +376,7 @@ def county_display_in_state(name: str, state_code: str) -> Optional[str]:
     exists in 18 states and "McHenry County" in two (IL, ND), so a
     national lookup refuses both, but a caller that already holds an
     independent state signal (a slug's own state code, a page's resolved
-    state) can still name the county exactly. Added for WO-1045
+    state) can still name the county exactly. Added for WO-1048
     (CivicClerk's `claycomo` tenant, eScribe's `countyofmchenry`)."""
     key = re.sub(r"[^a-z]", "", (name or "").lower())
     if not key or not state_code:
@@ -3973,7 +3973,7 @@ def _county_retype_from_page_text(candidate: str, page_text: str) -> str:
 def is_us_state_code(code: str) -> bool:
     """True for a 2-letter US state code (not a Canadian province) --
     lets a caller keep a US-only rule from touching a Canadian tenant
-    (WO-1045, eScribe's `_county_of_tenant_name()`)."""
+    (WO-1048, eScribe's `_county_of_tenant_name()`)."""
     return (code or "").strip().lower() in _STATE_ABBREVIATIONS_LOWER
 
 

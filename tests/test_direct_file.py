@@ -294,7 +294,7 @@ async def test_resolve_degrades_gracefully_when_content_type_is_not_video():
             status=200, headers={"Content-Type": "text/html"}
         )
     }
-    # WO-1045: a Dropbox link is checked by ranged GET, never HEAD --
+    # WO-1048: a Dropbox link is checked by ranged GET, never HEAD --
     # an empty `head_routes` fails the test if a HEAD is attempted.
     with mock_session(routes, head_routes={}):
         result = await finder.resolve(DROPBOX_URL)
@@ -540,7 +540,7 @@ async def test_resolve_still_degrades_gracefully_for_non_media_content_type():
             status=200, headers={"Content-Type": "text/html"}
         )
     }
-    # WO-1045: a Dropbox link is checked by ranged GET, never HEAD --
+    # WO-1048: a Dropbox link is checked by ranged GET, never HEAD --
     # an empty `head_routes` fails the test if a HEAD is attempted.
     with mock_session(routes, head_routes={}):
         result = await finder.resolve(DROPBOX_URL)
@@ -548,7 +548,7 @@ async def test_resolve_still_degrades_gracefully_for_non_media_content_type():
     assert "playable video or audio" in result.video_warnings[0]
 
 
-# --- WO-1045 (2026-09-24): HEAD refused, or unusable ---------------------
+# --- WO-1048 (2026-09-24): HEAD refused, or unusable ---------------------
 # Both hosts below were found walking county meeting pages and confirmed
 # live the same day; the headers and first bytes are the real ones
 # captured with curl (see direct_file.py's module docstring).

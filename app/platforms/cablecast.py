@@ -1320,7 +1320,7 @@ class CablecastAssetFinder(AssetFinder):
         """The meeting date: the full date written in the show's own
         title when it has one, else `eventDate`.
 
-        WO-1045 (2026-09-24). Collier County, FL's show 2277 is titled
+        WO-1048 (2026-09-24). Collier County, FL's show 2277 is titled
         "County Commission - Sept. 22, 2026" and its video file is
         `BCC-9-22-2026`, but its `eventDate` is `2026-09-21T04:00:00Z`.
         That is not a time-zone slip: 04:00Z is midnight Eastern, the way

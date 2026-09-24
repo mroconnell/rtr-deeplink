@@ -1439,7 +1439,7 @@ def test_parse_gallery_event_date_handles_both_real_formats():
     assert CablecastAssetFinder._parse_gallery_event_date("not a date") is None
 
 
-# --- WO-1045 (2026-09-24): title date beats a wrong eventDate ------------
+# --- WO-1048 (2026-09-24): title date beats a wrong eventDate ------------
 # Collier County, FL (reflect-collier-countyboc.cablecast.tv), fetched
 # live 2026-09-24. The show page itself answers 202 with an empty body
 # (the WAF shape the root fallback exists for); the site root's Remix

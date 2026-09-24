@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1045: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
+## WO-1048: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
 
 **What and why.** Walking county meeting pages on 2026-09-24 turned up four places where the resolver gave up on a real video or gave the wrong name or date. Each was re-checked live before any code changed.
 

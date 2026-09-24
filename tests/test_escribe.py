@@ -693,7 +693,7 @@ async def test_resolve_bare_tenant_root_raises_when_no_video_meeting_found():
             await EscribeAssetFinder().resolve(tenant_url)
 
 
-# --- WO-1045 (2026-09-24): one county tenant, one name -------------------
+# --- WO-1048 (2026-09-24): one county tenant, one name -------------------
 # Both pages are real, fetched live 2026-09-24 from McHenry County, IL's
 # tenant. Before this fix the County Board page (whose text says "County
 # of McHenry") gave "County of McHenry, IL", and the Staff Plat Review

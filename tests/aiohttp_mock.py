@@ -17,7 +17,7 @@ import aiohttp
 
 class _FakeStream:
     """`response.content` -- just the `read(n)` direct_file.py's ranged-GET
-    probe uses (WO-1045) to cap how much of a file it reads."""
+    probe uses (WO-1048) to cap how much of a file it reads."""
 
     def __init__(self, raw: bytes):
         self._raw = raw

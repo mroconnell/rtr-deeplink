@@ -55,7 +55,7 @@ _COUNTY_SUBDOMAIN_RE = re.compile(
 # Supervisors" (sccwi -- St. Croix County, WI, whose subdomain encodes
 # nothing parseable), "Board of County Commissioners - ..."
 # (churchillconv).
-# WO-1045 (2026-09-24): "Board of County Commission" (no "-ers") is the
+# WO-1048 (2026-09-24): "Board of County Commission" (no "-ers") is the
 # third real shape -- Clay County, MO's own categoryName on its
 # `claycomo` tenant, confirmed live.
 _COUNTY_BODY_EVENT_RE = re.compile(
@@ -209,7 +209,7 @@ class CivicClerkAssetFinder(AssetFinder):
             )
             if county_jurisdiction:
                 jurisdiction = county_jurisdiction
-            # WO-1045: with no venue at all, the chain below reads the
+            # WO-1048: with no venue at all, the chain below reads the
             # subdomain as a place name -- and a county-shaped slug can
             # also spell a real city ("claycomo" is both Clay County, MO
             # and the village of Claycomo, MO). Settle that from the
@@ -578,7 +578,7 @@ class CivicClerkAssetFinder(AssetFinder):
     ) -> Tuple[Optional[str], bool]:
         """`(county, ambiguous)` for a tenant with no venue address.
 
-        Real case (WO-1045, 2026-09-24): `claycomo.portal.civicclerk.com`
+        Real case (WO-1048, 2026-09-24): `claycomo.portal.civicclerk.com`
         is Clay County, MO -- its only meeting category is "Board of
         County Commission" on every county body -- but the event carries
         no venue, no organization name (`organizationId` is null), and a
