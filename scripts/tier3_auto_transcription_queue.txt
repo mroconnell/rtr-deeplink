@@ -1,5 +1,5 @@
-https://play.champds.com/cobbcoga/event/155		us:county:13067
-https://play.champds.com/gwinnettcoga/event/356		us:county:13135
+https://play.champds.com/cobbcoga/event/155	https://www.cobbcounty.gov/communications/cobbtv	us:county:13067
+https://play.champds.com/gwinnettcoga/event/356	https://www.gwinnettcounty.com/government/departments/communications/tv-gwinnett/videos/commission-meetings	us:county:13135
 https://www.youtube.com/watch?v=gde00r0sXXA&t=5s		us:cousub:4212955128
 https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697		us:cousub:4200157472
 https://www.youtube.com/live/ffgRc-07yUw?si=OB29-NWm2pMAn4WJ		us:cousub:3910978456
@@ -1121,7 +1121,6 @@ https://drive.usercontent.google.com/download?id=1Dk06Gdq5l-h_B4Q5ZBUOhtXzErF-cw
 https://drive.usercontent.google.com/download?id=1e4cQm5QoiqMAFZhg-3GAWWUX1oLKPjxe&export=download&confirm=t	https://schodack.k12.ny.us/	us:sd:3626070
 https://cloud.castus.tv/vod/kltv/video/6aa8a85969c0dd0002f149b3?page=HOME	https://cityofrainier.com/	us:place:4160850
 https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1047620	https://www.wellesleyma.gov/	us:cousub:2502174175
-https://play.champds.com/elpasococo/event/166	https://clerkandrecorder.elpasoco.com/clerk-to-the-board/meeting-video-archives/	us:county:08041
 https://shelby.granicus.com/ASX.php?clip_id=2869&sn=shelby.granicus.com&view_id=4	https://www.shelbycountytn.gov/1218/Archived-Meeting-Audio	us:county:47157
 https://borough-ketchikan.granicus.com/MediaPlayer.php?view_id=2&clip_id=2359	https://www.kgbak.us/	us:county:02130
 https://reflect-collier-countyboc.cablecast.tv/show/2277	https://reflect-collier-countyboc.cablecast.tv/	us:county:12021
@@ -1199,6 +1198,4 @@ https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Boroug
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
-https://play.champds.com/cobbcoga/event/155	https://www.cobbcounty.gov/communications/cobbtv	us:county:13067
-https://play.champds.com/gwinnettcoga/event/356	https://www.gwinnettcounty.com/government/departments/communications/tv-gwinnett/videos/commission-meetings	us:county:13135
 https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
