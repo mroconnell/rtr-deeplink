@@ -16,6 +16,36 @@
 
 **Regrade results, run against the real `overnight`/`overnight2` calibration data** (4,995 verdict rows; see this PR's description for the full per-stratum table): of 307 rows the old rule counted as a clean find, 219 (71%) were demoted under the new rule — 88 remain. Checked against the 95 real hand-check verdicts (`followup/hc*_result.csv`, all 95 matched): agreement with the human verdict (excluding the 8 "cant-tell" rows) rose from **34/87 (39%)** under the old rule to **75/87 (86%)** under the new one. Caveat, reported rather than hidden: 8 of the 34 real hand-check "approve" rows were lost — 3 to the automatic identity check's own false "disagrees" (a pre-existing limitation of that check, not this WO's rule) and 5 because the regrade script (unlike the live `resolve.py` path) has no adapter-returned title to read for a non-Vimeo/direct_file "undated, lister order" pick (Swagit/Castus/Suiteone platforms have no cheap oEmbed-style title endpoint this script fetches) — those 5 are judged on URL/filename alone and lose real, correctly-shaped meetings that simply have no meeting word in their URL.
 
+## WO-1043: send Meeting Finder's unfinished governments to the drains, and bring the drains' finds back [Done 2026-09-24]
+
+**What.** Meeting Finder finds nothing for a lot of governments — no meeting, no video, or the site blocked us. Until now those results just sat in a file. Nobody sent them anywhere else to keep looking. This closes part of BACKLOG.md's "Meeting Finder follow-up plumbing" entry: a new script, `scripts/meeting_finder_to_drains.py`, moves work in both directions between Meeting Finder and the certificate-log/Common Crawl drains (`queue_pipeline.py`, in rtr-business).
+
+1. **`to-drains`.** Reads Meeting Finder's verdict files. Picks every row whose outcome means "nothing left to try": no meeting or video found, the site's domain doesn't resolve, it timed out, or it blocked us (Cloudflare, browser-header check, Akamai, headless). Writes one row per government, in the exact format `queue_pipeline.py`'s own `feed` command already reads. Checked this is real, not assumed: ran the real classifier `queue_pipeline.py` calls (`wo282_classify.classify_record()`) against every row this script wrote, and all of them come back as a real failure, exactly what `feed` needs to queue them.
+2. **`from-drains`.** Reads what the drains found (a certificate-log subdomain, or a real page Common Crawl found) and writes Meeting Finder input rows for the new starting points. A confirmed vendor account (a CNAME match, or a known platform) starts at Identify; anything else starts at Start.
+
+**Result.** Dry-run on the two most recent overnight batches (`overnight/verdicts.csv.jsonl`, `overnight2/verdicts.csv.jsonl`, 4,995 rows total).
+
+| Outcome | Count of matching rows |
+| --- | --- |
+| no-meeting-nor-video | 1,269 |
+| blocked-headless | 585 |
+| blocked-browser-headers | 432 |
+| dns-unresolvable | 239 |
+| cloudflare-challenge-blocked | 156 |
+| timeout | 151 |
+| blocked-waf-akamai | 63 |
+| internal-timeout | 22 |
+| account-not-found | 5 |
+| **Total matching rows** | **2,922** |
+
+2,916 governments were written after deduping by domain (6 governments appeared in both overnight batches).
+
+**Caution.** `from-drains` has no real drain2/drain3 result file to test against yet — the drains haven't been pointed at this script's output. Its tests use a synthetic file built from `queue_pipeline.py`'s own code and docstrings (real field shapes, hand-built rows), not a live result. Verify against a real drain2/drain3 run before trusting its counts.
+
+**Recommendation.** Run, on the machine with the rtr-business checkout: `python queue_pipeline.py feed --recon <to-drains output>`, then `drain2 --wait-for-feeder`, then `drain3 --wait-for-stage2`. Once those finish, run `from-drains` on the real result files and feed the output back into Meeting Finder.
+
+**Verified.** New tests: `tests/test_meeting_finder_to_drains.py` (31 tests). Full suite: 5,512 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes). PR #1406, not merged — awaiting the conductor's review.
+
 ## WO-1039: TelVue/link-ranking follow-ups from WO-1038 (off-site stations, Pass-1 budget floor, junk-link ranking, aiohttp header-size fix) [Done 2026-09-24]
 
 **What.** The four items WO-1038 cut for time (BACKLOG.md's own entry for the gap, closed by this PR):
