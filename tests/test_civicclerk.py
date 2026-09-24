@@ -720,3 +720,75 @@ async def test_resolve_county_subdomain_signal_needs_zip_agreement():
         )
         is None
     )
+
+
+# --- WO-1048 (2026-09-24): a county slug that also spells a city -----------
+# `claycomo.portal.civicclerk.com` is Clay County, MO ("clay"+"co"+"mo").
+# The real event below (fetched live 2026-09-24) has no venue address, no
+# organization id, and the tenant's portal name is blank -- so the
+# subdomain chain used to read "claycomo" as the village of Claycomo, MO,
+# a separate real government inside the county.
+CLAYCOMO_URL = "https://claycomo.portal.civicclerk.com/event/4967/media"
+CLAYCOMO_API = "https://claycomo.api.civicclerk.com/v1"
+CLAYCOMO_AGENDA_TEXT_URL = (
+    f"{CLAYCOMO_API}/Meetings/GetMeetingFile(fileId=11367,plainText=true)"
+)
+
+
+def _claycomo_routes(event_json: str, categories_json: str = None) -> dict:
+    routes = {
+        f"{CLAYCOMO_API}/Events/4967": FakeResponse(status=200, text=event_json),
+        f"{CLAYCOMO_API}/EventsMedia/4967": FakeResponse(
+            status=200, text=load_fixture("civicclerk", "claycomo_media4967.json")
+        ),
+        CLAYCOMO_AGENDA_TEXT_URL: FakeResponse(status=404),
+    }
+    if categories_json is not None:
+        routes[f"{CLAYCOMO_API}/EventCategories"] = FakeResponse(
+            status=200, text=categories_json
+        )
+    return routes
+
+
+def _claycomo_event_renamed(body: str) -> str:
+    # Synthetic edit of the real event: the same tenant and payload, with
+    # a non-county body name -- the shape a Park Board meeting on this
+    # tenant would have. Only the three name fields change.
+    event = json.loads(load_fixture("civicclerk", "claycomo_event4967.json"))
+    for field in ("eventName", "agendaName", "categoryName", "eventCategoryName"):
+        event[field] = body
+    return json.dumps(event)
+
+
+async def test_resolve_county_slug_with_county_body_names_the_county():
+    # The real event's own categoryName is "Board of County Commission".
+    # No EventCategories route: the event alone settles it.
+    routes = _claycomo_routes(load_fixture("civicclerk", "claycomo_event4967.json"))
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(CLAYCOMO_URL)
+    assert result.jurisdiction == "Clay County, MO"
+    assert result.meeting_body == "Board of County Commission"
+
+
+async def test_resolve_county_slug_falls_back_to_the_tenants_own_categories():
+    # Real EventCategories response: "Board of County Commission" is the
+    # tenant's first category, so a Park Board event is still the county's.
+    routes = _claycomo_routes(
+        _claycomo_event_renamed("Park Board Meeting"),
+        load_fixture("civicclerk", "claycomo_eventcategories.json"),
+    )
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(CLAYCOMO_URL)
+    assert result.jurisdiction == "Clay County, MO"
+
+
+async def test_resolve_county_slug_with_no_county_signal_names_no_place():
+    # Synthetic categories with no county body at all: the slug could be
+    # either government, so it must not name one -- a blank, not "Claycomo".
+    categories = json.dumps(
+        {"value": [{"id": 1, "categoryDesc": "Park Board Meeting"}]}
+    )
+    routes = _claycomo_routes(_claycomo_event_renamed("Park Board Meeting"), categories)
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(CLAYCOMO_URL)
+    assert result.jurisdiction is None

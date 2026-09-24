@@ -3237,3 +3237,20 @@ def test_raw_text_explained_by_subdomain_hint_accepts_pure_boilerplate():
     # over once they're stripped, and no risk of masking a different real
     # place (there wasn't one to begin with).
     assert je._raw_text_explained_by_subdomain_hint("Municode Portal", "Kingsport")
+
+
+def test_county_display_in_state_names_a_county_only_within_one_state():
+    # WO-1048. Both counties are real and both names are ambiguous
+    # nationally (Clay County is in 18 states; McHenry County in IL and
+    # ND), so only a state-scoped lookup can name them. A slug fragment
+    # that isn't a county in that state gets None, not a guess --
+    # "chi"+CA is the chicoca false-positive civicclerk.py guards against.
+    from app.utils.jurisdiction_enrich import county_display_in_state
+
+    assert county_display_in_state("clay", "MO") == "Clay County"
+    assert county_display_in_state("mchenry", "IL") == "McHenry County"
+    assert county_display_in_state("stcroix", "WI") == "St. Croix County"
+    assert county_display_in_state("orleans", "LA") == "Orleans Parish"
+    assert county_display_in_state("clay", "CA") is None
+    assert county_display_in_state("chi", "CA") is None
+    assert county_display_in_state("", "MO") is None

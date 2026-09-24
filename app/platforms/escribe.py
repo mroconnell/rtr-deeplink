@@ -61,6 +61,13 @@ _SUBDOMAIN_RE = re.compile(r"pub-([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAIN_RE = re.compile(r"([a-z0-9-]+)\.escribemeetings\.com")
 _NO_PREFIX_SUBDOMAINS = {"tcdsbpublishing"}
 
+# WO-1048 (2026-09-24): a tenant whose subdomain says "County of X" --
+# McHenry County, IL's `pub-countyofmchenry`. See
+# `_county_of_tenant_name()` for the two inconsistent names it used to
+# get depending on which meeting was open.
+_COUNTY_OF_LABEL_RE = re.compile(r"^countyof(?P<name>[a-z]+)$")
+_STATE_SUFFIX_RE = re.compile(r",\s*(?P<st>[A-Z]{2})$")
+
 # A bare eScribe tenant root (no path at all, or anything else that
 # isn't one of these two real per-meeting page shapes) used to "resolve
 # successfully" with zero content -- see module docstring's real page
@@ -501,8 +508,38 @@ class EscribeAssetFinder(AssetFinder):
         jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
             jurisdiction, netloc=urlparse(url).netloc, page_text=page_text
         )
+        jurisdiction = EscribeAssetFinder._county_of_tenant_name(url, jurisdiction)
 
         return title, date, jurisdiction
+
+    @staticmethod
+    def _county_of_tenant_name(url: str, jurisdiction: Optional[str]) -> Optional[str]:
+        """ "{Name} County, {ST}" for a `pub-countyof{name}` tenant, once
+        the steps above have settled the state; else `jurisdiction`
+        unchanged.
+
+        Real case (WO-1048, 2026-09-24), McHenry County, IL: a County
+        Board meeting's page text says "County of McHenry", giving
+        "County of McHenry, IL"; a Mental Health Board meeting's page
+        doesn't, so the subdomain tier gave "Mchenry, IL" -- which is
+        also the name of a separate real city, McHenry, IL. One tenant,
+        two names, one of them the wrong government. The subdomain names
+        the county outright, so it decides the name; the page only
+        supplies the state (needed because McHenry County exists in both
+        IL and ND). US states only: the county table also holds Ontario
+        counties, and no Canadian "countyof..." tenant has been checked,
+        so one is left as it was."""
+        match = _SUBDOMAIN_RE.search(urlparse(url).netloc.lower())
+        label = _COUNTY_OF_LABEL_RE.match(match.group(1)) if match else None
+        state = _STATE_SUFFIX_RE.search(jurisdiction or "")
+        if not (
+            label and state and jurisdiction_enrich.is_us_state_code(state.group("st"))
+        ):
+            return jurisdiction
+        county = jurisdiction_enrich.county_display_in_state(
+            label.group("name"), state.group("st")
+        )
+        return f"{county}, {state.group('st')}" if county else jurisdiction
 
     @staticmethod
     def _jurisdiction_from_subdomain(url: str) -> Optional[str]:

@@ -294,7 +294,9 @@ async def test_resolve_degrades_gracefully_when_content_type_is_not_video():
             status=200, headers={"Content-Type": "text/html"}
         )
     }
-    with mock_session({}, head_routes=routes):
+    # WO-1048: a Dropbox link is checked by ranged GET, never HEAD --
+    # an empty `head_routes` fails the test if a HEAD is attempted.
+    with mock_session(routes, head_routes={}):
         result = await finder.resolve(DROPBOX_URL)
     assert result.video_url is None
     assert result.video_warnings
@@ -538,7 +540,110 @@ async def test_resolve_still_degrades_gracefully_for_non_media_content_type():
             status=200, headers={"Content-Type": "text/html"}
         )
     }
-    with mock_session({}, head_routes=routes):
+    # WO-1048: a Dropbox link is checked by ranged GET, never HEAD --
+    # an empty `head_routes` fails the test if a HEAD is attempted.
+    with mock_session(routes, head_routes={}):
         result = await finder.resolve(DROPBOX_URL)
     assert result.video_url is None
     assert "playable video or audio" in result.video_warnings[0]
+
+
+# --- WO-1048 (2026-09-24): HEAD refused, or unusable ---------------------
+# Both hosts below were found walking county meeting pages and confirmed
+# live the same day; the headers and first bytes are the real ones
+# captured with curl (see direct_file.py's module docstring).
+
+# Jefferson County, TX: the MP4 behind
+# `jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226`. IIS
+# answers HEAD with 405 / `Allow: GET` and no Content-Type.
+JEFFERSON_TX_URL = "https://jeffersoncountytx.gov/blobs/agenda/video_pl/JCCC092226.mp4"
+# The real first 32 bytes of that file's 206 ranged response.
+JEFFERSON_TX_FIRST_BYTES = bytes.fromhex(
+    "000000206674797069736f6d0000020069736f6d69736f32617663316d703431"
+)
+
+# Ingham County, MI: a Board of Commissioners recording shared on Dropbox.
+INGHAM_DROPBOX_URL = (
+    "https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4"
+    "?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0"
+)
+INGHAM_DROPBOX_DL_URL = (
+    "https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4"
+    "?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=1"
+)
+# The real first 16 bytes of its 206 ranged response (`ftypmp42`).
+INGHAM_FIRST_BYTES = bytes.fromhex("00000018667479706d70343200000000")
+
+
+async def test_resolve_falls_back_to_a_ranged_get_when_head_is_405():
+    finder = DirectFileAssetFinder()
+    head_routes = {
+        JEFFERSON_TX_URL: FakeResponse(
+            status=405, headers={"Allow": "GET", "Server": "Microsoft-IIS/10.0"}
+        )
+    }
+    routes = {
+        JEFFERSON_TX_URL: FakeResponse(
+            status=206,
+            raw=JEFFERSON_TX_FIRST_BYTES,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": "bytes 0-1023/1131384015",
+            },
+        )
+    }
+    with mock_session(routes, head_routes=head_routes):
+        result = await finder.resolve(JEFFERSON_TX_URL)
+    assert result.video_url == JEFFERSON_TX_URL
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []
+
+
+async def test_resolve_still_warns_when_head_is_405_and_the_get_is_html():
+    # The fallback is one more test, not a looser one: an HTML answer
+    # to the ranged GET is still refused.
+    finder = DirectFileAssetFinder()
+    head_routes = {JEFFERSON_TX_URL: FakeResponse(status=405)}
+    routes = {
+        JEFFERSON_TX_URL: FakeResponse(
+            status=200,
+            raw=b"<!DOCTYPE html><html><body>Not found</body></html>",
+            headers={"Content-Type": "text/html"},
+        )
+    }
+    with mock_session(routes, head_routes=head_routes):
+        result = await finder.resolve(JEFFERSON_TX_URL)
+    assert result.video_url is None
+    assert "text/html" in result.video_warnings[0]
+
+
+def test_resolve_direct_media_url_turns_a_dropbox_dl_0_link_into_dl_1():
+    assert _resolve_direct_media_url(INGHAM_DROPBOX_URL) == INGHAM_DROPBOX_DL_URL
+
+
+def test_resolve_direct_media_url_turns_a_dropbox_raw_1_link_into_dl_1():
+    raw_form = INGHAM_DROPBOX_URL.replace("&dl=0", "&raw=1")
+    assert _resolve_direct_media_url(raw_form) == INGHAM_DROPBOX_DL_URL
+
+
+async def test_resolve_confirms_a_dropbox_mp4_by_ranged_get_not_head():
+    # Dropbox's download host answers HEAD with `application/json` and a
+    # body aiohttp can't parse; its ranged GET answers the generic
+    # `application/binary` -- so the MP4 signature is what confirms it.
+    finder = DirectFileAssetFinder()
+    routes = {
+        INGHAM_DROPBOX_DL_URL: FakeResponse(
+            status=206,
+            raw=INGHAM_FIRST_BYTES,
+            headers={
+                "Content-Type": "application/binary",
+                "Content-Range": "bytes 0-1023/259815205",
+            },
+        )
+    }
+    with mock_session(routes, head_routes={}):
+        result = await finder.resolve(INGHAM_DROPBOX_URL)
+    assert result.source_url == INGHAM_DROPBOX_URL
+    assert result.video_url == INGHAM_DROPBOX_DL_URL
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []

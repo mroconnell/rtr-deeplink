@@ -142,6 +142,31 @@ or playback code is needed, only the confirmation + classification here.
 Caption-sibling lookup (`_laserfiche_sibling_caption_url()`) is skipped
 entirely for the edoc shape -- it has no known Zoom-sibling-docid
 convention, and neither government's file is a Zoom cloud recording.
+
+**HEAD refused, or unusable (WO-1048, 2026-09-24)** -- two real hosts
+found walking county meeting pages, each confirmed live:
+
+1. **Jefferson County, TX** (`jeffersoncountytx.gov/blobs/agenda/video_pl/
+   JCCC092226.mp4`, the file behind its `jcagenda/CourtVideo.aspx?f=...`
+   player page). IIS answers HEAD with `405` and `Allow: GET` -- no
+   Content-Type at all, so the old HEAD-only check gave up. A ranged GET
+   (`Range: bytes=0-1023`) answers `206`, `Content-Type: video/mp4`, a
+   real `Content-Range: bytes 0-1023/1131384015`, and `ftypisom` at
+   byte 4. So a HEAD that answers 403/405/501 now falls back to one
+   ranged GET.
+2. **Dropbox** (Ingham County, MI's `9.22.26-BOC.mp4` share link). The
+   `dl=1` link 302s to a `*.dl.dropboxusercontent.com` host whose HEAD
+   answers `Content-Type: application/json` and, over aiohttp's HTTP/1.1,
+   sends a gzip body after the HEAD response -- aiohttp fails with "Bad
+   status line". A ranged GET on the same link answers `206`,
+   `Content-Type: application/binary`, and `ftypmp42` at byte 4. So a
+   Dropbox link skips HEAD entirely and uses the ranged GET.
+
+Neither host sends a useful Content-Type on every path, so the ranged
+GET also reads the first bytes and accepts a real container signature
+(the same `_classify_laserfiche_media()` check Laserfiche already uses).
+Only the first 1 KB is ever read, even if a host ignores `Range` and
+starts sending the whole file.
 """
 
 import re
@@ -170,6 +195,16 @@ _UA = (
 )
 
 _HEAD_TIMEOUT_SECONDS = 20
+
+# WO-1048: HEAD statuses that mean "this host won't answer HEAD", not "this
+# file isn't there" -- Jefferson County, TX's IIS answers 405 (see module
+# docstring). 403 and 501 are the other two ways a server refuses a method
+# it doesn't allow; each costs one extra small ranged GET, never a guess.
+_HEAD_REFUSED_STATUSES = (403, 405, 501)
+
+# How much of the file the ranged-GET fallback reads (WO-1048). Enough
+# for any container signature `_classify_laserfiche_media()` checks.
+_PROBE_BYTES = 1024
 
 # A Google Drive single-file "view" link -- `drive.google.com/file/d/<id>/
 # view...` -- confirmed real shape against both of Kemmerer, WY's files.
@@ -335,6 +370,13 @@ def _media_format(media_url: str, content_type: Optional[str]) -> str:
     return "mp4"
 
 
+def _is_dropbox_url(url: str) -> bool:
+    """True for a Dropbox share link -- see module docstring's "HEAD
+    refused, or unusable" section (WO-1048) for why these skip HEAD."""
+    netloc = urlparse(url).netloc.lower()
+    return netloc == "dropbox.com" or netloc.endswith(".dropbox.com")
+
+
 def is_direct_file_url(url: str) -> bool:
     """True for a bare first-party/file-sharing video URL this adapter
     can resolve -- called from `detect_platform()` as the LAST check,
@@ -429,13 +471,18 @@ def _resolve_direct_media_url(url: str) -> str:
             f"?id={file_id}&export=download&confirm=t"
         )
     parsed = urlparse(url)
-    if "dropbox.com" in parsed.netloc:
+    if _is_dropbox_url(url):
         # Dropbox's own documented direct-download flag -- confirmed live
         # 2026-09-12 to change a share page's response from its ordinary
         # HTML preview to a real download when the rest of the link
         # (notably `rlkey=`) is present. See module docstring's caution
-        # for the one real fixture this couldn't fully verify.
-        query_pairs = [(k, v) for k, v in parse_qsl(parsed.query) if k != "dl"]
+        # for the one real fixture this couldn't fully verify. `raw=1` is
+        # Dropbox's other documented flag for the same file; it is
+        # dropped so a pasted `raw=1` link lands on the one form the
+        # ranged-GET check was confirmed against (WO-1048).
+        query_pairs = [
+            (k, v) for k, v in parse_qsl(parsed.query) if k not in ("dl", "raw")
+        ]
         query_pairs.append(("dl", "1"))
         return urlunparse(parsed._replace(query=urlencode(query_pairs)))
     return url
@@ -451,7 +498,7 @@ class DirectFileAssetFinder(AssetFinder):
             # host answers HEAD with a redirect and GET with a generic
             # Content-Type, neither of which the check below can use.
             return await self._resolve_laserfiche(url, media_url)
-        content_type = await self._head_content_type(media_url)
+        content_type, media_kind = await self._probe_media(media_url)
         is_media_content_type = bool(
             content_type and content_type.startswith(("video/", "audio/"))
         )
@@ -466,7 +513,10 @@ class DirectFileAssetFinder(AssetFinder):
             content_type == _OCTET_STREAM_CONTENT_TYPE
             and media_type(media_url) in ("video", "audio")
         )
-        if not (is_media_content_type or is_octet_stream_media_file):
+        # WO-1048: when the ranged-GET fallback ran, a real container
+        # signature in the first bytes counts even under a generic
+        # Content-Type (Dropbox's `application/binary`).
+        if not (is_media_content_type or is_octet_stream_media_file or media_kind):
             # Graceful degradation, not a raised error -- same convention
             # as every other adapter's "found something video-shaped but
             # couldn't confirm it" path (CLAUDE.md's "politely" bullet):
@@ -483,18 +533,65 @@ class DirectFileAssetFinder(AssetFinder):
             platform=self.platform_name,
             source_url=url,
             video_url=media_url,
-            video_format=_media_format(media_url, content_type),
+            video_format=(
+                media_kind
+                if media_kind in ("mp3", "m4a")
+                else _media_format(media_url, content_type)
+            ),
         )
 
     @staticmethod
-    async def _head_content_type(media_url: str) -> Optional[str]:
-        async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
-            async with session.head(
-                media_url,
-                allow_redirects=True,
-                timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
-            ) as resp:
-                return resp.headers.get("Content-Type")
+    async def _probe_media(media_url: str) -> Tuple[Optional[str], Optional[str]]:
+        """`(content_type, media_kind)` for `media_url`. HEAD first, as
+        before; `media_kind` is only ever set by the ranged-GET fallback
+        (see module docstring's "HEAD refused, or unusable" section), which
+        runs for a Dropbox link, a HEAD answering 403/405/501, or a HEAD
+        the client can't even parse."""
+        if not _is_dropbox_url(media_url):
+            try:
+                async with aiohttp.ClientSession(
+                    headers={"User-Agent": _UA}
+                ) as session:
+                    async with session.head(
+                        media_url,
+                        allow_redirects=True,
+                        timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
+                    ) as resp:
+                        if resp.status not in _HEAD_REFUSED_STATUSES:
+                            return resp.headers.get("Content-Type"), None
+            except aiohttp.ClientResponseError:
+                # A malformed HEAD response (Dropbox's shape, see module
+                # docstring) -- the ranged GET below is the same test.
+                pass
+        return await DirectFileAssetFinder._ranged_get_probe(media_url)
+
+    @staticmethod
+    async def _ranged_get_probe(
+        media_url: str,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """`(content_type, media_kind)` from one small ranged GET. Reads
+        at most `_PROBE_BYTES` from the stream, so a host that ignores
+        `Range` and answers 200 with the whole file never gets downloaded.
+        `Accept-Encoding: identity` for the same reason as
+        `_laserfiche_classify_media()`: a compressed byte range is a real
+        server bug on some hosts."""
+        try:
+            async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+                async with session.get(
+                    media_url,
+                    headers={
+                        "Range": f"bytes=0-{_PROBE_BYTES - 1}",
+                        "Accept-Encoding": "identity",
+                    },
+                    timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
+                ) as resp:
+                    content_type = resp.headers.get("Content-Type")
+                    if resp.status not in (200, 206):
+                        return content_type, None
+                    chunk = await resp.content.read(_PROBE_BYTES)
+        except (aiohttp.ClientError, TimeoutError):
+            return None, None
+        return content_type, _classify_laserfiche_media(chunk)
 
     async def _resolve_laserfiche(self, url: str, media_url: str) -> ResolvedMeeting:
         media_kind = await self._laserfiche_classify_media(media_url)

@@ -1,5 +1,52 @@
 # Backlog — done
 
+## WO-1048: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
+
+**What and why.** Walking county meeting pages on 2026-09-24 turned up four places where the resolver gave up on a real video or gave the wrong name or date. Each was re-checked live before any code changed.
+
+**1. Direct video files (`app/platforms/direct_file.py`).** Two real files could not be confirmed as video.
+
+- Jefferson County, TX (`jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226`) plays a plain MP4. Its server refuses a HEAD request (405, "GET only"), so no content type came back. Now a HEAD answering 403, 405 or 501 falls back to one small ranged GET (the first 1 KB). That GET answers 206, `video/mp4`, and real MP4 bytes.
+- Ingham County, MI shares recordings as Dropbox links. Dropbox's download server answers HEAD with a wrong type (`application/json`) and a body the HTTP client can't read ("Bad status line"). Dropbox links now skip HEAD and use the ranged GET. It answers `application/binary`, so the check reads the first bytes for the MP4 signature instead. A `raw=1` link is rewritten to `dl=1`, like `dl=0` already was.
+
+The fallback never reads more than 1 KB, even from a server that ignores the range.
+
+**2. Clay County, MO filed as the village of Claycomo (`app/platforms/civicclerk.py`).** The tenant slug `claycomo` is "clay" + "co" + "mo", the known county-slug shape. It also spells Claycomo, a separate real village inside the county. The event has no venue, no organization id, and the portal's own name is blank, so the adapter read the slug as the village. Using the API's own organization name was checked first: this tenant has none.
+
+The fix: a county-shaped slug names the county only when (a) the name is a real county in the slug's own state, and (b) a second signal says "county government" — the event's own body name, or else any of the tenant's own meeting categories (one extra request, made only for a county-shaped slug). If the slug is a real county but nothing confirms it, no place name is emitted at all, rather than picking one. "Board of County Commission" (Clay County's category) was added to the county-body wording.
+
+**3. Collier County, FL dated a day early (`app/platforms/cablecast.py`).** The report guessed a time-zone shift. It is not one. Collier stores every date as local midnight (`T04:00Z` in summer, `T05:00Z` in winter), so the stored date for show 2277 really says Sept 21. The title ("County Commission - Sept. 22, 2026") and the video file (`BCC-9-22-2026`) both say Sept 22. The source data is wrong.
+
+Collier's whole catalog was checked:
+
+| Collier shows | Count |
+|---|---|
+| Shows whose title has a full date | 404 |
+| Title date and stored date disagree | 11 |
+| Disagreements that are a time-zone shift | 0 |
+
+The gaps run from 1 day to 2 months (show 2033: title Apr. 11, 2025; stored date Feb 14). The title is what the government wrote for readers, so a full date in the title now wins; a title with no full date keeps the stored date.
+
+**4. McHenry County, IL got two different names (`app/platforms/escribe.py`).** On tenant `pub-countyofmchenry`, a County Board page said "County of McHenry, IL" (from its page text). A Staff Plat Review page said "Mchenry, IL" (from the subdomain) — which is also the name of a separate real city. A `pub-countyof{name}` tenant now always names "{Name} County, {ST}", taking only the state from the page (McHenry County exists in both IL and ND). US states only: the county table also holds Ontario counties, and no Canadian `countyof` tenant has been checked.
+
+Items 2 and 4 share a new helper, `jurisdiction_enrich.county_display_in_state()`: a county's proper spelling within one state ("clay" + MO -> "Clay County"), or nothing.
+
+**Verified live** (real network, the resolver's own adapters):
+
+| URL | Before | After |
+|---|---|---|
+| Jefferson County TX `CourtVideo.aspx?f=JCCC092226` | no video ("could not confirm") | MP4 found |
+| Ingham County MI Dropbox `9.22.26-BOC.mp4` | crash ("Bad status line") | MP4 found |
+| `claycomo.portal.civicclerk.com/event/4967` | Claycomo, MO | Clay County, MO |
+| `reflect-collier-countyboc.cablecast.tv/show/2277` | 2026-09-21 | 2026-09-22 |
+| McHenry County Board meeting | County of McHenry, IL | McHenry County, IL |
+| McHenry Staff Plat Review meeting | Mchenry, IL | McHenry County, IL |
+| McHenry calendar root | Mchenry, IL | McHenry County, IL |
+
+**Tests.** Real response shapes throughout: the real Jefferson/Dropbox headers and first bytes (`tests/test_direct_file.py`); the real Clay County event, media and category JSON (`tests/fixtures/civicclerk/claycomo_*`); the real Collier show record (`tests/test_cablecast.py`); the two real McHenry pages (`tests/fixtures/escribe/mchenry_*`). Two synthetic edits are labeled as such: a Clay County event renamed to "Park Board Meeting", and a category list with no county body.
+
+**Caution.** Pages already in the Archive under the old names or dates are not changed by this; a re-ingest would correct them. The `{name}county` eScribe tenants (`pub-bouldercounty`, `pub-salinecounty` and others) were not touched or checked.
+
 ## WO-1046: Vimeo showcases + live-stream embeds; Suffolk County NY resolves (with a caveat) [Done 2026-09-24]
 
 **What.** WO-1044 got Meeting Finder to Suffolk County NY's real Legislature
