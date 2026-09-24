@@ -119,6 +119,23 @@ _JWPLAYER_FILE_RE = re.compile(
     re.IGNORECASE,
 )
 _TRACKS_FILE_RE = re.compile(r'tracks:\s*\[\s*\{\s*file:\s*"([^"]*)"', re.IGNORECASE)
+
+# The bucket name has an underscore (`spectrum_streaming`), and a
+# virtual-hosted S3 address (`spectrum_streaming.s3.amazonaws.com`) fails
+# TLS hostname verification for any client that checks certificates
+# (confirmed live 2026-09-24: Glendale USD's ingest probe failed with
+# "Hostname mismatch"). The path-style address serves the same object.
+_VHOST_S3_RE = re.compile(
+    r"^https?://([^./]+_[^./]*)\.s3\.amazonaws\.com/", re.IGNORECASE
+)
+
+
+def _path_style_s3(url: str) -> str:
+    """Rewrite `https://<bucket_with_underscore>.s3.amazonaws.com/key` to
+    `https://s3.amazonaws.com/<bucket>/key`; any other URL is unchanged."""
+    return _VHOST_S3_RE.sub(lambda m: f"https://s3.amazonaws.com/{m.group(1)}/", url)
+
+
 _SEEK_RE = re.compile(r"jwplayer\(\)\.seek\((\d+)\)")
 
 _HEADER_DATE_RE = re.compile(
@@ -322,7 +339,7 @@ class SpectrumStreamAssetFinder(AssetFinder):
     @staticmethod
     def _extract_video_url(html: str) -> Optional[str]:
         match = _JWPLAYER_FILE_RE.search(html)
-        return match.group(1) if match else None
+        return _path_style_s3(match.group(1)) if match else None
 
     @staticmethod
     def _extract_caption_url(html: str) -> Optional[str]:
