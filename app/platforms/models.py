@@ -182,6 +182,17 @@ class ResolvedMeeting(BaseModel):
     # so proceed with caution").
     video_link: Optional[str] = None
     video_link_recognized: bool = False
+    # WO-1045: a media URL our SERVER can read but a reader's browser
+    # cannot play, so it must never go in `video_url`. Only set when
+    # `video_url` is empty. First (and so far only) case: ChampDS's VOD2
+    # HLS stream, which answers only requests carrying
+    # `Referer: https://play.champds.com/` -- ffmpeg and aiohttp can send
+    # that header (media_probe/queue_probe already derive it from the
+    # source page), a browser on this site cannot. The transcription
+    # paths read it through `media_probe.transcription_media_url()`; the
+    # reader page ignores it. The Archive's ingest model drops unknown
+    # fields, so no Archive schema change is involved.
+    server_media_url: Optional[str] = None
     # Populated only when an adapter found more than one real video file
     # that together make up the WHOLE meeting, in meeting-relative order,
     # with no single combined recording available at the source (WO-79;

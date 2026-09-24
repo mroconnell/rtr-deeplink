@@ -70,6 +70,7 @@ from .platforms.media_probe import (
     chunk_size_seconds_for_platform,
     is_plausible_meeting_duration,
     probe_duration_and_chunk_plan,
+    transcription_media_url,
 )
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
@@ -1620,7 +1621,7 @@ async def transcription_check_feasibility(
     except Exception as e:
         return {"ok": False, "message": f"Couldn't resolve this meeting: {e}"}
 
-    if not result.video_url:
+    if not transcription_media_url(result):
         return {
             "ok": False,
             "message": "No usable audio or video source was found for this meeting.",
@@ -1687,7 +1688,7 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
             {"error": "resolve_failed", "message": str(e)}, status_code=400
         )
 
-    if not result.video_url:
+    if not transcription_media_url(result):
         return JSONResponse(
             {
                 "error": "no_media",
@@ -1713,7 +1714,7 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         payload=result.model_dump(),
         input_url_normalized=normalized,
         requester_email=email,
-        media_url=result.video_url,
+        media_url=transcription_media_url(result),
         media_kind=_media_kind(result.video_format),
         probed_duration_seconds=duration,
         chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),

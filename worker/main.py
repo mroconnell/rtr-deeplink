@@ -62,6 +62,7 @@ from app.platforms.media_probe import (
     probe_multi_clip_chunk_plan,
     should_cache_whole_audio,
     slice_cached_audio,
+    transcription_media_url,
 )
 from app.utils.retry import retry_async
 from archive.db import crud
@@ -198,7 +199,9 @@ async def maybe_generate_auto_job() -> bool:
         await _fail(f"Re-resolve failed: {e}")
         return True
 
-    if not result.video_url:
+    # WO-1045: the playable video_url, or a server-only stream (ChampDS VOD2).
+    media_url = transcription_media_url(result)
+    if not media_url:
         # A resolve that succeeded and found no media is a real answer
         # about this page, not a transient failure -- recorded immediately,
         # no retry, exactly as before.
@@ -239,8 +242,8 @@ async def maybe_generate_auto_job() -> bool:
 
     if duration is None:
         duration = await retry_async(
-            lambda: probe_duration(result.video_url, source_page_url=source_url),
-            label=f"auto-generation ffprobe of {result.video_url}",
+            lambda: probe_duration(media_url, source_page_url=source_url),
+            label=f"auto-generation ffprobe of {media_url}",
             attempts=AUTO_GENERATION_ATTEMPTS,
             base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
             max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
@@ -262,7 +265,7 @@ async def maybe_generate_auto_job() -> bool:
         payload=result.model_dump(),
         input_url_normalized=source_url,
         requester_email=AUTO_TRANSCRIPTION_REQUESTER_EMAIL,
-        media_url=result.video_url,
+        media_url=media_url,
         media_kind=_auto_media_kind(result.video_format),
         probed_duration_seconds=duration,
         chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),
@@ -520,8 +523,8 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         try:
             finder = get_finder(platform)
             result = await finder.resolve(source_url)
-            if result.video_url:
-                media_url = result.video_url
+            if transcription_media_url(result):
+                media_url = transcription_media_url(result)
         except UnsupportedPlatformError:
             pass
         except Exception:
