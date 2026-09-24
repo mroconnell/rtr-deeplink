@@ -1197,3 +1197,6 @@ https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Boroug
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
+https://play.champds.com/cobbcoga/event/155	https://www.cobbcounty.gov/communications/cobbtv	us:county:13067
+https://play.champds.com/gwinnettcoga/event/356	https://www.gwinnettcounty.com/government/departments/communications/tv-gwinnett/videos/commission-meetings	us:county:13135
+https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
