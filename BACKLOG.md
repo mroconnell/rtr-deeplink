@@ -372,7 +372,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (203)
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Anchorage AK's original "bot-blocked YouTube…
-    [NEEDS-AUDIT] Vimeo captions and Whisper-fallback audio are blocked…
+    [NEEDS-AUDIT] Vimeo Whisper-fallback audio: unverified whether the…
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have no time…
     [NEEDS-AUDIT] ProudCity: Holyoke MA's YouTube 429 recovery status is…
     [NEEDS-AUDIT] ProudCity: two tenants remain unpushed (undiscovered…
@@ -5104,25 +5104,24 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     (`hyland.py`'s `video_warnings` copy-through made bot-block warnings
     visible).
 
-- **[NEEDS-AUDIT] Vimeo captions and Whisper-fallback audio are blocked by the same signed-config 403.**
-  - **Issue**: real, populated English WebVTT genuinely exists (Salisbury
-    NC, confirmed via a real browser) but isn't reachable server-side —
-    the signed caption URL and the real progressive media file both live
-    only inside `player.vimeo.com/video/{id}/config`, which 403s every
-    non-browser client; `vimeo.com/{id}` also sometimes serves a real
-    Cloudflare challenge.
-  - **Impact**: Vimeo-hosted meetings (WO-29) ship video-only with a
-    warning pointing at the player's own CC button — no transcript and no
-    on-demand Whisper fallback possible today.
-  - **Next action**: try the real-headless-browser approach
-    `headless_browser.py` already uses for Minneapolis LIMS/SLC —
-    untried on Vimeo, not guaranteed to work if the Cloudflare challenge
-    is probabilistic.
+- **[NEEDS-AUDIT] Vimeo Whisper-fallback audio: unverified whether the headless route reaches the media file.**
+  - **Issue**: The captions half of this entry is solved: since 2026-08-31
+    (PR #643) `app/platforms/vimeo.py` reads the signed caption URL from
+    the player page in the headless browser (re-confirmed 2026-09-23:
+    Salisbury NC `player.vimeo.com/video/1223368476`, 1,336 caption
+    segments). What is not known is whether a Vimeo video WITHOUT
+    captions can get an on-demand Whisper transcript: the real progressive
+    media file sits in `player.vimeo.com/video/{id}/config`, which 403s
+    plain clients, and nobody has checked whether the headless route (or a
+    `.m3u8` from the player) gives the worker usable audio.
+  - **Impact**: Vimeo meetings with no captions stay video-only, with the
+    existing reader-facing warning.
+  - **Next action**: find a real captionless Vimeo meeting and try the
+    headless route for its media URL, then `media_probe.py`'s extraction.
   - **Constraint**: never attempt to auto-solve a Cloudflare challenge
-    (see Standing decisions). The Player SDK's `getTextTracks()`/
-    `cuechange` isn't a shortcut — it doesn't yield a whole transcript
-    without playing the entire video.
-  - **History**: `BACKLOG_DONE.md` (residual of WO-29).
+    (see Standing decisions).
+  - **History**: `BACKLOG_DONE.md` (residual of WO-29); captions half
+    closed by PR #643 (2026-08-31); entry narrowed 2026-09-23.
 
 - **[NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have no time offsets to link to video.**
   - **Issue**: `agenda.groups[].items[]` is genuinely rich (matter title,

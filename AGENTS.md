@@ -104,15 +104,19 @@ under everything else. This repo extracts and fixes just that part.
   2026-08-30, real coherent transcript already live on
   redtaperecordings.com) — both already handled by
   `app/platforms/civicclerk.py`'s existing fallback chain with no code
-  change needed. Vimeo (added 2026-08-21, WO-29) is
-  a deliberate, documented exception to "find a real caption sample
-  first": its video half was built against 8 real jurisdictions, but
-  captions genuinely cannot be fetched server-side at all — the signed
-  config that holds them 403s every non-browser client — so that adapter
-  ships video-only and says so, rather than waiting on a sample that a
-  plain HTTP client will never be able to reach. Good starting samples:
-  Salisbury NC (`vimeo.com/1212025580`, real captions visible in the
-  player), Chicago IL (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
+  change needed. Vimeo (added 2026-08-21, WO-29) was built video-first:
+  its signed caption config 403s every plain HTTP client. **Captions do
+  work now, and have since 2026-08-31 (PR #643):** `app/platforms/vimeo.py`
+  renders the player page in the headless browser, reads the signed
+  `captions.vimeo.com/...vtt` URL from its `<track>` element, and parses
+  it through the shared `vtt_parser`; if that fails it falls back to
+  video-only with a reader-facing warning. Re-confirmed live 2026-09-23:
+  Salisbury NC's 9/01/2026 City Council meeting
+  (`player.vimeo.com/video/1223368476`) resolved with 1,336 real caption
+  segments. (This note said "video-only" until 2026-09-23; it was three
+  weeks stale.) Good starting samples: Salisbury NC
+  (`vimeo.com/1212025580`), Chicago IL
+  (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
   DF5C52EA-0D6B-F111-A823-001DD8019941`).
 - **The same rule applies to a *caption-shape* fix, not just a new
   adapter — and one platform's real file is not enough.** WO-34
@@ -400,9 +404,9 @@ under everything else. This repo extracts and fixes just that part.
   a certain way, not refusing to serve one, and we give it exactly that.
   The line we don't cross is a host's *explicit* human-verification
   gate — a Cloudflare "Verify you are human" challenge (hit live on
-  Spokane WA building the Vimeo adapter, WO-29; that adapter ships
-  video-only rather than going near it, see `BACKLOG.md`'s Standing
-  decisions) — because that's the host saying no automated client gets
+  Spokane WA building the Vimeo adapter, WO-29; that adapter never goes
+  near that gate — its captions come from Vimeo's own player page, not
+  the government's — see `BACKLOG.md`'s Standing decisions) — because that's the host saying no automated client gets
   through at all, not asking for a particular request shape. If a page
   is gated behind one, degrade gracefully — skip it and surface a plain
   warning to the *reader* on the page (the existing `transcript_warnings`
