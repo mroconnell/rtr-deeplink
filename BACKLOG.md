@@ -202,7 +202,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (205)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
   [NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on…
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
@@ -324,7 +324,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (205)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (28)
+  Jurisdiction extraction & backfill  (29)
     `[NEEDS-AUDIT]` A real, live Archive page for the Town of Franklin,…
     `[NEEDS-AUDIT]` ~1,056 of the ~1,099 governments of 5,000+ whose…
     `[NEEDS-AUDIT]` Two governments have a `jurisdiction_coverage.csv`…
@@ -345,6 +345,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (205)
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
+    `[NEEDS-AUDIT]` A Swagit video opened through another government's
     `[NEEDS-AUDIT]` Lloydminster (AB/SK border city) needs a product
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
@@ -460,9 +461,10 @@ Trust, safety & data quality  (26)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (34)
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
+  `[IMPROVEMENT-ROUND]` Blocked governments: find their vendor account…
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -4394,6 +4396,42 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     "no national table for non-Census entities" problem as the
     50-largest-cities audit entry.
 
+- **`[NEEDS-AUDIT]` A Swagit video opened through another government's
+  Swagit host is filed under the host's government, not its own.**
+  - **Issue**: Swagit's `/videos/<id>` numbers are shared across every
+    customer, so any customer's host serves any customer's video.
+    Confirmed live 2026-09-23: `dublinca.new.swagit.com/videos/401655`
+    is titled "Sep 21, 2026 City Council Meeting - Carmel, IN", and its
+    stream path reads `swagitVideo/carmelin/`. The reverse also works:
+    `sccoe.new.swagit.com/videos/401121` serves a Dublin, CA meeting.
+    `finalize_jurisdiction()`'s subdomain cross-check then prefers the
+    host over the page title. `resolve_government("Carmel, IN",
+    tenant_host="dublinca.new.swagit.com")` returns Dublin
+    (`us:place:0620018`, evidence "us_places.csv Dublin city").
+  - **Impact**: none found yet. All 6 pages on `/j/dublin-ca` are real
+    Dublin meetings (checked 2026-09-23; each Swagit one streams from
+    `swagitVideo/dublinca/`). A cross-host URL only arises if someone
+    pastes or discovers one, because each customer's own listing
+    (`/views/<n>`, e.g. Dublin's `/views/876`) lists only its own
+    videos. When it does arise, the page is filed under the wrong
+    government with no warning.
+  - **Next action**: in `app/platforms/swagit.py`, read the
+    `swagitVideo/<slug>/` segment of the stream URL. When it differs
+    from the host's subdomain, pick one fix: pass the owning host
+    (`<slug>.new.swagit.com`) as `origin_host` for identity, or rewrite
+    `source_url` to the owning host before ingest. Then audit every
+    Archive page on a `*.new.swagit.com` host for the same mismatch.
+  - **Constraint**: do not remove the `dublinca.new.swagit.com` pin in
+    `tenant_overrides.csv`. It is correct: that host's own archive is
+    Dublin's. A pin (or subdomain) is right for a host's own videos and
+    wrong only for a borrowed one.
+  - **History**: found during WO-1032's live check of the fetch pacing
+    hook (2026-09-23). That session also reported a "Carmel City
+    Council" heading and a link to video 401655 on Dublin's Swagit
+    homepage. Not reproduced the same day: the homepage redirects to
+    `/recycle-bin/`, a leftover admin template ("SwagitAdmin", "NCTCOG
+    Live" placeholder links) that listed no videos at all.
+
 - **`[NEEDS-AUDIT]` Lloydminster (AB/SK border city) needs a product
   decision.**
   - **Issue**: `pub-lloydminster.escribemeetings.com` is a real, active
@@ -6412,6 +6450,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Next action:** After Meeting Finder's phases are wired (WO-1030): (1) Verdict writes its own follow-up files — "nothing found" rows in `queue_pipeline`'s input format, `account-not-found` rows for the guess ladder, YouTube leads in `youtube_channel_leads.csv`'s format; (2) teach `queue_pipeline.py feed` to read them; (3) a converter that turns `drain2`/`drain3` finds into Meeting Finder input rows (entry Start or Identify, `url_source=own-site`, so identity carries over); (4) build the guess-ladder queue per the design doc.
 - **Constraint:** Meeting Finder stays read-only toward shared files; it writes only its own output files, and a separate step appends to shared queues. Deferred by Ryan 2026-09-23 (not part of WO-1030).
 - **History:** Raised while building Meeting Finder wave 2, 2026-09-23.
+
+### `[IMPROVEMENT-ROUND]` Blocked governments: find their vendor account without touching their own site (drains first, then the guess ladder)
+
+- **Issue:** When a government's own site blocks us (Cloudflare check, 403 even with browser headers, blocked headless, Akamai), Meeting Finder's fetch ladder has nothing left to try, and the row ends "blocked: try another network". But the government's Granicus, Swagit, CivicClerk, Cablecast or TelVue account usually lives on the vendor's own servers, which don't block us. The guess ladder in `docs/MEETING_FINDER.md` (Follow-ups; build step 7) would find it and is not built. As designed it is fed only by `account-not-found`.
+- **Impact:** About 3,654 governments in `jurisdiction_coverage.csv` carry an access-failure reject reason. Meeting Finder calibration run B (2026-09-23) ended 87 of 799 known-video governments (11%) as blocked: Cloudflare 55, browser-headers 19, headless 11, Akamai 2.
+- **Next action:** Build it as its own paced run, after the TelVue fixes (Ryan, 2026-09-23). Input: every research-file row whose reject reason is a blocked one (`cloudflare-challenge-blocked`, `blocked-browser-headers`, `blocked-headless`, `blocked-waf-akamai`), plus Meeting Finder's blocked and `account-not-found` rows. **First rung: the drains we already have** (Ryan, 2026-09-23): DNS A/CNAME (a CNAME to `*.granicus.com` names the account outright), certificate log (crt.sh) and Common Crawl -- `queue_pipeline.py`'s `drain2`/`drain3` in rtr-business `research/dns_ctlog_sweep_2026-09-17/`. None touch the blocked site. Their finds enter Meeting Finder at Identify/List. **Second rung, only if the drains find nothing:** slug guessing per vendor: learn the catch-all response for a made-up slug once; try slug shapes built from the government's name and state, ordered by past hit rate; send every answering slug to Meeting Finder's List/Resolve in audit mode.
+- **Constraint:** A guessed account is a candidate, never a pin, until a real meeting from it passes the identity check. Read the Standing entry "Guessing a bare tenant name for a small government is unsafe..." first: in WO-168, 8 of the first 14 "confirmed" guesses were a bigger same-named government, so an existing-pin check and an own-state match are required. Never try to get past a human-verification page; the guess ladder never touches the blocked site at all.
+- **History:** Raised 2026-09-23 after run B; Ryan asked for it to be backlogged behind TelVue and fed from the research file's blocked reject reasons. WO-168 (`BACKLOG_DONE.md`) is the earlier gated-site guess run.
 
 ### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
 

@@ -45,6 +45,8 @@ CSV_FIELDS = [
     "requests_total",
     "note",
     "try_next",
+    "low_confidence_reason",
+    "audio_only",
     "finished_at",
 ]
 
@@ -116,6 +118,8 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "requests_total": row.requests_total,
                 "note": row.note,
                 "try_next": row.try_next,
+                "low_confidence_reason": row.low_confidence_reason,
+                "audio_only": row.audio_only,
                 "finished_at": row.finished_at,
             }
         )

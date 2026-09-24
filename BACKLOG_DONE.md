@@ -8,6 +8,92 @@
 
 **Verified.** New/updated tests in `tests/test_wo1027_meeting_finder_identify.py`, `tests/test_wo1028_meeting_finder_listing.py`, `tests/test_cablecast.py`, `tests/test_passive_verify.py`. Full suite: 5383 passed (5391 after the gallery follow-up), 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py` -- both depend on a local export snapshot, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean on touched files; both `alembic check`s pass (no schema changes). Live before/after check on 7 real governments (`DATABASE_URL=sqlite+aiosqlite:///...`, `ARCHIVE_BASE_URL=""`, `--entry start --mode pin --concurrency 1`, default 12-fetch budget): `ferndalesd.org`, `redlands.gov` and `champaignil.gov` moved from `youtube-lead-only` to a real resolved video (tier 1/3, identity `agrees` where checked); `mctx.org` unchanged (`no-meeting-nor-video` -- needs the companion rtr-discovery fix below, not merged into this run's checkout) and `wisecountytx.gov` unchanged (`meeting-without-video` -- Hop now reaches the real `/views/908/` page, per the trace, but the 12-fetch default budget ran out before Resolve confirmed it; likely succeeds with a bigger `--max-fetches`, not re-tested here); `fusd.net`/`jurupavalley.gov` unchanged (`youtube-lead-only` -- both hit real gaps outside this WO's files, a Vimeo showcase page and an Instagram-heavy Hop walk). Companion rtr-discovery PR #42 fixes the enumerator's own redirect-host bug and adds a `views_id` override -- see this file's own residual-gap entry in `BACKLOG.md` ("Swagit's tab-slug listing pages are empty JS shells... rtr-discovery's own bulk Swagit corpus may be under-listed") for what that PR does NOT close (rtr-discovery's unattended bulk sweeps, which never have a known `/views/{id}` to hand in).
 
+## WO-1035: Meeting Finder never throws away a meeting, never repeats work [Done 2026-09-23]
+
+**What.** Ryan's rule after calibration run A: a step that would otherwise reject every candidate must keep the best one instead, and the same work must never be done twice for one government. Changes to `pick.py`, `resolve.py` and `runner.py`:
+
+1. **Date orders picks, it never eliminates them (`pick.py`).** Before this, a candidate with no parseable date was dropped outright — real Cablecast/Remix tenants (Champaign IL, Glendora CA) carry the date only as free text inside the title, or in the date field as `9/22/26`, so every real candidate was getting dropped and the walk reported "ambiguous" while a real video sat one click away. Now: dated-in-the-past (newest first) beats undated (kept in lister order) beats dated-in-the-future — nothing is ever dropped for its date. `parse_candidate_date()` learned `%m/%d/%y`, and a new title-scanning step reads a date out of the title text itself when the date field is blank. A weak-looking title (not a real government's own meeting) is now demoted to the back of its group instead of dropped; only a confirmed test/demo-tenant title (e.g. "TEST - CC - Livemeeting demo") is still excluded outright.
+2. **Resolve keeps a low-confidence video rather than losing it (`resolve.py`).** A video the quality gate rejected (promo/hero/test-shaped title), a probed video under the 60-second floor, and a video whose length couldn't be measured at all are no longer silently dropped when nothing else works out — they're kept as a last-resort find (`ResolveResult.low_confidence_reason`, note "kept despite: ..."), tried in the order: known-too-short first, gate-rejected second, unmeasurable-length last. Audio-only recordings are no longer a reject at all — they're a real find, labelled `audio_only=True`. A YouTube candidate is picked over the FULL candidate list before the `max_tries` cap is applied, so a run of YouTube leads can no longer crowd a real video candidate out of the try budget.
+   **Follow-up fix, same day (conductor live check on this PR):** the first version of this returned a "kept despite" pick with `outcome=None`, which `runner.py` reads as a clean success and stops the whole government's walk on the spot. Confirmed live on `champaignil.gov`: a 12-second homepage banner `.mp4` (gate-rejected on title, too-short on probe) won and stopped the walk before it ever reached the real Cablecast council-meeting account (`champaign-cablecast.cablecast.tv/gallery/4`). Fixed two ways: (a) a "kept despite" `ResolveResult` now carries `outcome=OUTCOME_VIDEO_LOW_CONFIDENCE`, never `None`; (b) `runner.py`'s `_try_resolve()` recognizes that outcome and stashes it on `_WalkState.low_confidence` (best-ranked one wins) instead of ending the walk, so every other fork/hop still gets tried; the fallback is only used as the FINAL result, and only if nothing clean ever resolved anywhere. Re-verified live: `champaignil.gov` now returns a real Cablecast City Council meeting (tier 1, real captions, `.../vod/6013-City-Council-9-22-26-v3/`) instead of the banner; `redlands.gov` still returns its real tier-1 meeting (Cablecast show 538) unchanged.
+3. **Runner never repeats a fetch or a resolve for the same government (`runner.py`).** The same account (platform + URL) is now listed at most once per government, even when two different forks/hops land on it (Des Plaines IL's ChampDS account was listed twice before this). The same meeting (platform + id parsed from the URL, else the normalized URL) is resolved at most once, even when List/Scan find it more than once (Upper Providence PA's CivicClerk event was fetched three times before this). Resolve's own per-candidate rejection detail (which real video it looked at and why) is now folded into the final Verdict note instead of being discarded down to a bare outcome code — tracing Greenburgh NY and Upper Providence PA (both "resolve found real video, reported nothing") found the detail was always there, just never surfaced.
+4. **Hop backtracks instead of committing to one link per page.** When the top-ranked hop dead-ends (nothing resolved, budget remains), the runner now tries up to two more sibling hops on the same page before moving on — real governments this fixes: Des Plaines IL, Niagara Falls SD NY, James Island SC, Johnson County TX all had the real vendor link ranked below an agenda/minutes page that led nowhere. A recognized video-vendor link within 5 points of the top-ranked hop's own score is tried first, regardless of which one scored higher, since `rank_hops()`'s scoring has no notion of "is this actually a video platform."
+
+**Why.** Diagnosis from 8 parallel agents tracing 37 real Cablecast/Swagit calibration misses (2026-09-23) — see `docs/COVERAGE_HANDOVER.md`-adjacent scratch reports for the per-government breakdown. Ryan's own standing rules: never return "no meeting" while a video exists; keep the best of what a step would otherwise reject; don't re-try the same thing twice.
+
+**Verified.** New/updated tests: `tests/test_wo1024_meeting_finder_pick.py` (date-never-eliminates, title-date extraction, weak-title-kept, ambiguous-only-when-nothing-survives), `tests/test_wo1024_meeting_finder_resolve.py` (gate-reject/too-short/unmeasurable kept-despite now returns `OUTCOME_VIDEO_LOW_CONFIDENCE`, audio-only counted as a real find, priority ordering among kept-despite candidates), `tests/test_wo1035_meeting_finder_keep_and_backtrack.py` (sibling-hop backtracking, vendor-tie preference, per-government List/Resolve dedupe, and the follow-up fix's own two tests: a low-confidence keep doesn't stop the walk, and it becomes the final result -- flagged, not clean -- only when nothing else resolves anywhere). Full suite green except the two pre-existing stale-export failures unrelated to this change. Live before/after verification: see PR description; the follow-up fix was re-verified live against `champaignil.gov`/`redlands.gov` (see above).
+
+## WO-1037: Meeting Finder Hop/Scan/Fetch fixes from the Cablecast/Swagit calibration miss review [Done 2026-09-23]
+
+**What.** Eight diagnosis agents traced 37 real Cablecast/Swagit
+calibration misses to root causes in `hop.py`, `scan.py` and `fetch.py`.
+This WO fixes eight of them:
+
+1. **TV/cable vocabulary + one-brand-token label rescue** (`hop.py`
+   `_NAV_HUB_WORD_RE`/`_looks_like_nav_hub_label`): a real Cablecast
+   homepage names its own channel ("King County TV (KCTV)", "Watch
+   TVCTV", "McFarland Cable"), not "meetings" -- added tv/cable/channel/
+   broadcast/television/recordings/access to the vocabulary, and the
+   label rescue now tolerates exactly one non-vocabulary word as the
+   label's own brand/place name (a locality word like "County"/"City" is
+   a joiner, not the brand; a parenthetical acronym like "(KCTV)" is
+   exempt entirely).
+2. **`rank_hops()` scans `<iframe>`/`<embed>`/`<video>`/`<source>`/
+   `<script>` src too**, not just `<a href>` (reusing Identify's own
+   `_SCAN_TAGS` list) -- a video-only iframe embed (real Fontana USD CA
+   Swagit embed) is now itself a hop candidate.
+3. **A video-naming nav label ("Meeting Video", "Watch Meetings",
+   "Meeting Recordings") gets the hub bonus even when the weighted
+   scorer already scored something** -- Johnson County TX's real
+   "Meeting Video" link scored ~8 from ordinary path vocabulary and lost
+   to a generic agendas/minutes link scoring higher.
+4. **Per-date agenda pages crowd Hop's top ranks like calendar entries**
+   (`/Agendas-and-Minutes/2026/City-Council/11-02-2026-City-Council-
+   Meeting`, real Des Plaines IL shape) -- same penalty/cap treatment a
+   calendar widget's own day entries already got.
+5. **`rank_hops()` falls back to `host_recognition.platform_for_url()`**
+   when `detect_platform()` says "unknown" -- a bare vendor tenant root
+   with no show/gallery path yet (`desplainesil.cablecast.tv/?site=6`,
+   `reflect-niagarafallsosc.cablecast.tv/CablecastPublicSite/?channel=1`)
+   is real vendor evidence even before the path itself proves it.
+6. **`scan.py`'s `find_meeting_page_links()` only opens the government's
+   own site or a recognized meeting vendor** -- James Island SC's real
+   homepage nav sits next to Facebook permalinks that also carry
+   meeting-shaped anchor text, and Cecil County PS MD's page also links
+   `usgbc.org`; neither is a meeting page.
+7. **`fetch.py`'s headless gate widens beyond "zero links"**
+   (`_has_no_useful_link_evidence()`): a JS-hydrated nav (Aiken County SD
+   SC, Sherwood AR, a shared Thrillshare/Apptegy CMS) can carry ~150
+   ordinary utility `<a href>` links while its real nav sits only in a
+   JSON hydration blob -- now also goes headless when the raw markup
+   shows an HTML-escaped anchor or names a known video-vendor host that
+   never shows up as a real parsed href/src. Montgomery AL's Angular-
+   rendered widget names no vendor hostname anywhere in its raw markup at
+   all, so this generic fix does not reach it -- flagged as a residual
+   gap, not silently claimed fixed.
+8. **An off-site link naming a TV/cable/community-television/public-
+   access station is a valid one-hop candidate** ("Tualatin Valley
+   Community Television" -> tvctv.org, real Lake Oswego OR link), even
+   with none of the ordinary hub vocabulary a government's own link
+   would carry. `rank_hops()` also takes an optional `gov_name` (unused
+   by `runner.py` today, same as the pre-existing `school`/`french`
+   params) so a shared multi-government hub can prefer a link naming
+   THIS government (real Bismarck ND case, a Dakota Media Access hub
+   that ranked a "Lincoln City Council" sibling link first) -- wiring
+   `gov_name` through from `runner.py` is WO-1035's file, not this one's.
+
+**Verified.** `tests/test_wo1037_meeting_finder_hop_scan_fetch.py` (20
+new tests, one or more per item, each built from a real confirmed anchor
+text/href -- "King County TV (KCTV)" re-fetched live from
+`kingcounty.gov/council` while building the fix). Live re-run of King
+County WA (`kingcountyhazwastewa.gov`) confirms Hop now reaches the real
+`king-county-tv.cablecast.tv` Cablecast tenant root it never reached
+before (was stuck on a `KingCountyTV` YouTube channel lead); Identify/
+List (`app/platforms/meeting_finder/identify.py`/`listing.py`, WO-1036's
+files) still need their own host-recognition fallback to actually list
+that tenant's videos once Hop lands there -- reaching the vendor host is
+this WO's job, listing it is WO-1036's. See the PR description for the
+full before/after table across all 16 named target governments.
+
 ## WO-1034: Meeting Finder fixes from calibration run A (no lost rows, Brotli, CSV fields) [Done 2026-09-23]
 
 **What.** Calibration run A (200 known-answer governments, 2026-09-23) found three bugs: (1) **34 of 200 governments left no Verdict row** -- an unhandled `ClientResponseError` escaped `run_one()`; now any unexpected exception becomes a row with outcome `error`, the message in `note`, and a `try_next`. (2) **Brotli**: Meeting Finder's Fetcher reused the shared browser header set (`accept-encoding: gzip, deflate, br`), and aiohttp can't decode `br` without the optional Brotli package (Oxnard, CA); Fetcher's copy no longer offers `br` (the shared set in `wo147_access_ladder_sweep.py` is unchanged). (3) `try_next` and `requests_total` were computed but never written to the CSV (the writer lists fields by hand).

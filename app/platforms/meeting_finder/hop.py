@@ -161,6 +161,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from urllib.parse import parse_qsl, urljoin, urlparse
 
+from app.platforms import host_recognition
 from app.platforms.base import detect_platform
 
 from scripts.wo147_access_ladder_sweep import (  # noqa: E402
@@ -176,6 +177,7 @@ from scripts.wo147_access_ladder_sweep import (  # noqa: E402
 )
 
 from .fetch import FetchResult
+from .identify import _SCAN_TAGS
 
 # Smaller than `_TARGET_SHAPE_BONUS` (20.0, in wo147's own module) so a
 # preferred-vendor link doesn't out-rank a `_NAMED_FIRSTPARTY_PATH_RE`
@@ -198,16 +200,60 @@ _VIDEO_SEEKING_BONUS = 10.0
 # docstring for the real Emporia/Dublin shapes this rescues. Deliberately
 # excludes "calendar" -- a bare "Calendar" nav label should NOT get this
 # rescue (see item 2's own de-prioritization of calendar-shaped links).
-_NAV_HUB_WORD_RE = re.compile(r"\b(?:meetings?|agendas?|minutes|watch|videos?)\b", re.I)
+#
+# WO-1037 item 1: real Cablecast homepages name their own TV/cable channel
+# rather than "meetings" at all -- King County WA's own council-page nav
+# link reads "King County TV (KCTV)" (confirmed live,
+# href=/en/independents/about-king-county/king-county-tv), Tigard OR's
+# reads "Watch TVCTV", McFarland WI's reads "McFarland Cable". Added
+# tv/cable/channel/broadcast/television/recordings/access so these clear
+# the vocabulary bar (`recordings`/`access` also cover Johnson County
+# TX's "Meeting Recordings" and a bare "Public Access" label -- see item 3
+# and item 8 below).
+_NAV_HUB_WORD_RE = re.compile(
+    r"\b(?:meetings?|agendas?|minutes|watch|videos?|recordings?|tv|cable|channel"
+    r"|broadcast|television|access)\b",
+    re.I,
+)
 _NAV_HUB_JOINERS = frozenset(
     {"&", "and", "on", "of", "demand", "for", "to", "the", "-", ",", "a"}
 )
+# WO-1037 item 1: a locality-type word ("County", "City", "Town"...) is a
+# generic descriptor, not a brand -- treated as a joiner so a real
+# two-word place name ("King County") only spends the single-brand-token
+# allowance below on the actual brand word ("King"), not on the locality
+# word too.
+_NAV_HUB_LOCALITY_JOINERS = frozenset(
+    {"county", "city", "town", "township", "borough", "village", "parish"}
+)
 _NAV_HUB_MAX_WORDS = 8
+# WO-1037 item 1: a parenthetical acronym that just re-names the same
+# brand in short form ("(KCTV)" alongside "King County TV") never spends
+# the one-brand-token allowance below -- it's the same station named
+# twice, not a second unrelated word.
+_NAV_HUB_PAREN_ACRONYM_RE = re.compile(r"^\([A-Za-z]{2,8}\)$")
+# WO-1037 item 1: tolerate exactly one non-vocabulary, non-joiner word --
+# the government/station's own brand or place name ("King", "McFarland",
+# "TVCTV") -- rather than requiring the WHOLE label to be built from hub
+# vocabulary. More than one such word is still rejected (the Dublin/
+# Emporia false-positive guard this rescue was built against, "City
+# Council Meeting Rescheduled for Next Week", has five).
+_NAV_HUB_BRAND_TOKEN_ALLOWANCE = 1
 # Clears wo147's own `_TARGET_SHAPE_BONUS` (20.0) alone, but not a real
 # vendor-host hit stacked with a nav-position bonus -- this rescue is for
 # a link wo147's own scorer rejected outright (no path/target evidence at
 # all), not a replacement for a genuine vendor signal.
 _NAV_HUB_LABEL_BONUS = 22.0
+
+# WO-1037 item 3: a nav label that specifically names VIDEO ("Meeting
+# Video", "Watch Meetings", "Meeting Recordings") gets the same hub bonus
+# even when the weighted scorer already found some real path/anchor
+# evidence -- Johnson County TX's real "Meeting Video" nav link
+# (/commissioners-court/public-information/meeting-video) scores ~8 from
+# ordinary path vocabulary ("commissioners", "meeting") and loses to
+# generic agenda/minutes links scoring 11-18, even though a link that
+# names video specifically is exactly what Meeting Finder is looking for.
+_VIDEO_HUB_LABEL_RE = re.compile(r"\b(?:video|watch|recordings?)\b", re.I)
 
 # --- WO-1033 item 2: calendar-event/day-view links, ranked below real
 # hub links and capped in the returned top candidates. ---
@@ -217,8 +263,58 @@ _CALENDAR_ENTRY_HREF_RE = re.compile(
     r"|calendar\.aspx\?[^#]*\bview=list\b",
     re.IGNORECASE,
 )
+# WO-1037 item 4: a per-date agenda/minutes page (real Des Plaines IL
+# shape: `/Agendas-and-Minutes/2026/City-Council/11-02-2026-City-Council-
+# Meeting`) crowds Hop's top ranks the same way a calendar widget's own
+# per-day entries do -- one page per meeting date, usually many more of
+# them than there are real hub links. Same penalty/cap treatment as a
+# calendar entry, not a separate bucket.
+_PER_DATE_AGENDA_HREF_RE = re.compile(
+    r"/agendas?(?:-and-minutes)?/.*\d{1,2}-\d{1,2}-\d{4}"
+    r"|/minutes/.*\d{1,2}-\d{1,2}-\d{4}",
+    re.IGNORECASE,
+)
 _CALENDAR_ENTRY_PENALTY = -6.0
 _MAX_CALENDAR_ENTRIES_IN_TOP = 2
+
+# WO-1037 item 5: `detect_platform()` requires a real show/gallery-shaped
+# PATH before it recognizes Cablecast/Swagit/etc -- a bare vendor tenant
+# root with no path evidence yet (real: `desplainesil.cablecast.tv/
+# ?site=6`, `reflect-niagarafallsosc.cablecast.tv/CablecastPublicSite/
+# ?channel=1`) comes back "unknown" and scores nothing.
+# `host_recognition.platform_for_url()` already knows these HOSTS
+# regardless of path shape (built for exactly this "no adapter-path match
+# yet" case elsewhere) -- used here as a fallback bonus, roughly the same
+# size as wo147's own `_TARGET_SHAPE_BONUS` (20.0) for a link that
+# clears its OWN vendor-host bar, so a bare recognized tenant root isn't
+# left permanently unscored just because its path carries no words yet.
+_HOST_FALLBACK_VENDOR_BONUS = 20.0
+
+# WO-1037 item 8: an off-site link whose own anchor TEXT names a TV/
+# cable/community-television/public-access station (a PEG nonprofit's own
+# proper name, e.g. "Tualatin Valley Community Television" -> tvctv.org,
+# real Lake Oswego OR link) is worth one hop even though it carries none
+# of the ordinary hub vocabulary a government's OWN meeting-hub link
+# would -- a station's proper name never could. Smaller than
+# `_NAV_HUB_LABEL_BONUS` since this is a weaker, off-site signal.
+_TV_STATION_ORG_TEXT_RE = re.compile(
+    r"\btelevision\b|\bcable\s*access\b|\bpublic\s*access\b|\bcommunity\s+access\b",
+    re.IGNORECASE,
+)
+_TV_STATION_BONUS = 18.0
+
+# WO-1037 item 8: on a shared multi-government hub (one PEG org serving
+# several nearby cities/towns off the same host), a link whose anchor
+# text names THIS government gets a small bonus over a sibling link
+# naming a different one (real Bismarck ND case: a shared Dakota Media
+# Access hub ranked a "Lincoln City Council" link ahead of Bismarck's
+# own). Small and additive only -- a link that names no place at all
+# (the common case) is never penalized for it.
+_GOV_NAME_MATCH_BONUS = 6.0
+_GOV_NAME_STOPWORDS = frozenset(
+    {"city", "town", "county", "township", "village", "borough", "of", "the", "and"}
+)
+_GOV_NAME_TOKEN_RE = re.compile(r"[a-zA-Z]+")
 
 # --- WO-1033 item 4: a same-site redirect to a social platform
 # (CivicPlus's own "/youtube", "/facebook", ...) -- never a real hop
@@ -261,27 +357,39 @@ def _gov_id_for(*, school: bool, french: bool) -> str:
 
 
 def _looks_like_nav_hub_label(text: str) -> bool:
-    """True for a short label built only from meeting-hub vocabulary plus
-    ordinary joiners -- "Agendas & Minutes", "Watch Meetings",
-    "Meetings, Agendas, Minutes & Video on Demand" -- as opposed to a
-    prose sentence that happens to contain one of the same words ("City
-    Council Meeting Rescheduled for Next Week", a real CivicAlerts.aspx
-    headline wo147's own scorer already guards against). Every word must
-    be hub vocabulary, a joiner, or punctuation; a single non-vocabulary
-    content word (a place name, "Council", "Rescheduled"...) disqualifies
-    the whole label."""
+    """True for a short label built almost entirely from meeting-hub
+    vocabulary plus ordinary joiners -- "Agendas & Minutes", "Watch
+    Meetings", "Meetings, Agendas, Minutes & Video on Demand" -- as
+    opposed to a prose sentence that happens to contain one of the same
+    words ("City Council Meeting Rescheduled for Next Week", a real
+    CivicAlerts.aspx headline wo147's own scorer already guards against,
+    five non-vocabulary words). Every word must be hub vocabulary, a
+    joiner/locality-descriptor, or punctuation, WITH ONE EXCEPTION
+    (WO-1037 item 1): a single non-vocabulary, non-joiner word is
+    tolerated as the label's own brand/place name ("King County TV
+    (KCTV)", "Watch TVCTV", "McFarland Cable" -- all real, confirmed
+    Cablecast homepage nav labels; a parenthetical acronym like "(KCTV)"
+    is exempt from that allowance entirely, since it just re-names the
+    same brand already spent on "King"). More than one such word still
+    disqualifies the whole label."""
     words = (text or "").strip().split()
     if not words or len(words) > _NAV_HUB_MAX_WORDS:
         return False
     if not _NAV_HUB_WORD_RE.search(text):
         return False
+    brand_tokens_used = 0
     for word in words:
+        if _NAV_HUB_PAREN_ACRONYM_RE.match(word):
+            continue
         core = word.strip(",&-").lower()
         if not core:
             continue
-        if core in _NAV_HUB_JOINERS:
+        if core in _NAV_HUB_JOINERS or core in _NAV_HUB_LOCALITY_JOINERS:
             continue
-        if not _NAV_HUB_WORD_RE.fullmatch(core):
+        if _NAV_HUB_WORD_RE.fullmatch(core):
+            continue
+        brand_tokens_used += 1
+        if brand_tokens_used > _NAV_HUB_BRAND_TOKEN_ALLOWANCE:
             return False
     return True
 
@@ -308,10 +416,43 @@ def _rescue_nav_hub_label_score(
 
 
 def _is_calendar_entry_link(url: str) -> bool:
-    """True for a calendar-event or calendar-day/list-view URL (item 2) --
-    a real dated entry or a date-navigation view, as opposed to a hub
-    page about meetings/agendas/minutes/video generally."""
-    return bool(_CALENDAR_ENTRY_HREF_RE.search(url))
+    """True for a calendar-event or calendar-day/list-view URL (item 2),
+    OR a per-date agenda/minutes page (WO-1037 item 4: `/Agendas-and-
+    Minutes/2026/City-Council/11-02-2026-City-Council-Meeting`) -- both
+    are one dated entry among many, as opposed to a hub page about
+    meetings/agendas/minutes/video generally."""
+    return bool(
+        _CALENDAR_ENTRY_HREF_RE.search(url) or _PER_DATE_AGENDA_HREF_RE.search(url)
+    )
+
+
+def _rescue_tv_station_link_score(
+    text: str, full_url: str, base_netloc: str, tag
+) -> Optional[float]:
+    """WO-1037 item 8: an off-site link naming a TV/cable/community-
+    television/public-access station is worth one hop even with none of
+    the ordinary hub vocabulary -- see `_TV_STATION_ORG_TEXT_RE`'s own
+    comment for the real Lake Oswego OR case this rescues. Guarded by the
+    same vendor-marketing-apex check `_rescue_nav_hub_label_score()` uses,
+    so this can't rescue a link to a vendor's own bare marketing homepage
+    either."""
+    netloc = urlparse(full_url).netloc.lower()
+    if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+    if not _TV_STATION_ORG_TEXT_RE.search(text or ""):
+        return None
+    return _TV_STATION_BONUS + _nav_position_bonus(tag)
+
+
+def _gov_name_tokens(gov_name: Optional[str]) -> frozenset:
+    """Lowercased words (>=3 letters) from a government's own name, minus
+    generic jurisdiction-type words -- used only for the small `prefer
+    links naming THIS government` bonus on a shared multi-government hub
+    (WO-1037 item 8, real Bismarck ND case)."""
+    if not gov_name:
+        return frozenset()
+    words = _GOV_NAME_TOKEN_RE.findall(gov_name.lower())
+    return frozenset(w for w in words if len(w) >= 3 and w not in _GOV_NAME_STOPWORDS)
 
 
 def _is_same_site_social_redirect(url: str, base_netloc: str) -> bool:
@@ -348,6 +489,25 @@ def canonical_page_key(url: str) -> str:
     return key
 
 
+def _resolved_platform_for(full_url: str) -> tuple[Optional[str], bool]:
+    """`detect_platform(full_url)` when it recognizes the URL; otherwise
+    (WO-1037 item 5) falls back to `host_recognition.platform_for_url()`,
+    which already knows a vendor HOST (`cablecast.tv`, `swagit.com`...)
+    regardless of whether the path itself carries a recognizable show/
+    gallery shape yet -- a bare tenant root (`desplainesil.cablecast.tv/
+    ?site=6`) is real vendor evidence even with no path evidence at all.
+    Returns `(platform_or_None, is_host_fallback)`; the second value tells
+    the caller whether this came from the (weaker) host-only fallback, so
+    it can apply its own smaller/larger bonus accordingly."""
+    detected = detect_platform(full_url)
+    if detected and detected != "unknown":
+        return detected, False
+    host_platform, host_supported = host_recognition.platform_for_url(full_url)
+    if host_platform and host_supported:
+        return host_platform, True
+    return None, False
+
+
 def rank_hops(
     page: FetchResult,
     *,
@@ -355,17 +515,29 @@ def rank_hops(
     prefer_video: bool = False,
     school: bool = False,
     french: bool = False,
+    gov_name: Optional[str] = None,
     limit: int = 8,
 ) -> List[HopLink]:
     """Ranks `page`'s own links as candidate next hops, best first. See
     this module's docstring for `prefer_vendor`/`prefer_video`/`school`/
-    `french` and the WO-1033 items each addresses.
+    `french` and the WO-1033 items each addresses. `gov_name` (WO-1037
+    item 8) is optional and additive only -- when given, a link naming
+    this government gets a small bonus on a shared multi-government hub;
+    omitting it changes nothing.
 
-    A calendar-event/day-view-shaped link (item 2) is penalized and
-    capped at `_MAX_CALENDAR_ENTRIES_IN_TOP` in the returned list, so a
-    homepage's own calendar widget can't crowd out real hub links even
-    when it out-scores them individually. A same-site social redirect
-    (`/youtube`, `/facebook`, item 4) is never offered at all.
+    Candidates come from every `<a href>`, `<iframe src>`, `<embed src>`,
+    `<video src>`, `<source src>` and `<script src>` on the page (WO-1037
+    item 2, the same `_SCAN_TAGS` Identify's own link scan already uses)
+    -- a video-only iframe embed is itself a real hop/video-follow
+    candidate, not just an `<a href>`.
+
+    A calendar-event/day-view-shaped link, OR a per-date agenda/minutes
+    page (item 2 / WO-1037 item 4), is penalized and capped at
+    `_MAX_CALENDAR_ENTRIES_IN_TOP` in the returned list, so a homepage's
+    own calendar widget or per-date agenda listing can't crowd out real
+    hub links even when it out-scores them individually. A same-site
+    social redirect (`/youtube`, `/facebook`, item 4) is never offered at
+    all.
 
     Returns `[]` for a page with no HTML (a dead fetch, a Wayback capture
     that returned nothing, or a real 4xx/5xx) rather than raising --
@@ -376,18 +548,22 @@ def rank_hops(
         return []
     final_url = page.final_url or page.requested_url
     gov_id = _gov_id_for(school=school, french=french)
+    gov_tokens = _gov_name_tokens(gov_name)
 
     soup = _safe_soup(html)
     if soup is None:
         return []
     base_netloc = urlparse(final_url).netloc.lower()
 
-    scored: List[tuple[float, int, str, str]] = []  # (score, doc_order, url, anchor)
+    # (score, doc_order, url, anchor, resolved_platform)
+    scored: List[tuple[float, int, str, str, Optional[str]]] = []
     seen = set()
     doc_order = 0
-    for a in soup.find_all("a", href=True):
-        text = (a.get_text() or "").strip()
-        href = a["href"]
+    for tag in soup.find_all(_SCAN_TAGS):
+        href = tag.get("href") or tag.get("src")
+        if not href:
+            continue
+        text = (tag.get_text() or "").strip() if tag.name == "a" else ""
         if href.startswith(("javascript:", "mailto:", "tel:", "#")):
             continue
         full = urljoin(final_url, href)
@@ -396,27 +572,53 @@ def rank_hops(
         if _is_same_site_social_redirect(full, base_netloc):
             continue
         score = _score_hop_candidate_weighted(
-            text, href, full, base_netloc, a, gov_id=gov_id, html_text=html
+            text, href, full, base_netloc, tag, gov_id=gov_id, html_text=html
         )
+        resolved_platform, is_host_fallback = _resolved_platform_for(full)
         if score is None:
-            score = _rescue_nav_hub_label_score(text, href, full, base_netloc, a)
-            if score is None:
-                continue
-        if prefer_vendor and detect_platform(full) == prefer_vendor:
+            score = _rescue_nav_hub_label_score(text, href, full, base_netloc, tag)
+        if score is None:
+            score = _rescue_tv_station_link_score(text, full, base_netloc, tag)
+        if score is None and resolved_platform and is_host_fallback:
+            # WO-1037 item 5: a bare vendor tenant root wo147's own
+            # scorer never saw any path/target evidence for at all.
+            score = _HOST_FALLBACK_VENDOR_BONUS + _nav_position_bonus(tag)
+        if score is None:
+            continue
+        elif (
+            resolved_platform is None
+            and _VIDEO_HUB_LABEL_RE.search(text)
+            and _looks_like_nav_hub_label(text)
+        ):
+            # WO-1037 item 3: a video-naming nav label ("Meeting Video",
+            # "Watch Meetings", "Meeting Recordings") gets the hub bonus
+            # ON TOP of a real weighted score too, not only as a rescue
+            # when the weighted scorer found nothing -- see this
+            # function's own docstring/`_VIDEO_HUB_LABEL_RE` comment for
+            # the real Johnson County TX case this fixes. Skipped when a
+            # vendor platform is already resolved -- that link already
+            # gets `_TARGET_SHAPE_BONUS`/`_HOST_FALLBACK_VENDOR_BONUS`,
+            # which is the stronger, more specific signal.
+            score += _NAV_HUB_LABEL_BONUS
+        if prefer_vendor and resolved_platform == prefer_vendor:
             score += _PREFER_VENDOR_BONUS
         if prefer_video and _VIDEO_SEEKING_RE.search(f"{text} {href}"):
             score += _VIDEO_SEEKING_BONUS
+        if gov_tokens:
+            hay_tokens = set(_GOV_NAME_TOKEN_RE.findall(f"{text} {href}".lower()))
+            if hay_tokens & gov_tokens:
+                score += _GOV_NAME_MATCH_BONUS
         if _is_calendar_entry_link(full):
             score += _CALENDAR_ENTRY_PENALTY
         seen.add(full)
-        scored.append((score, doc_order, full, text))
+        scored.append((score, doc_order, full, text, resolved_platform))
         doc_order += 1
 
     scored.sort(key=lambda t: (-t[0], t[1]))
 
     out: List[HopLink] = []
     calendar_count = 0
-    for score, _order, url, anchor in scored:
+    for score, _order, url, anchor, platform in scored:
         if len(out) >= limit:
             break
         is_calendar = _is_calendar_entry_link(url)
@@ -424,12 +626,11 @@ def rank_hops(
             if calendar_count >= _MAX_CALENDAR_ENTRIES_IN_TOP:
                 continue
             calendar_count += 1
-        platform = detect_platform(url)
         if prefer_vendor and platform == prefer_vendor:
             reason = f"preferred vendor ({prefer_vendor}) host match"
         elif is_calendar:
             reason = "calendar entry/day-view (de-prioritized)"
-        elif platform and platform != "unknown":
+        elif platform:
             reason = f"vendor-host link ({platform})"
         else:
             reason = "path/anchor vocabulary match"
