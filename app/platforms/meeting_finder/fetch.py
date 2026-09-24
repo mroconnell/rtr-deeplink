@@ -251,12 +251,50 @@ async def _global_wait_for_host(host: str, delay: float) -> None:
 # rung (or the next fork) rather than stall the whole walk.
 DEFAULT_TIMEOUT = aiohttp.ClientTimeout(total=15)
 
+# WO-1039 item 4: aiohttp's own default (8190 bytes, matching most other
+# HTTP clients' conventional limit) is too small for some real sites --
+# confirmed live, `nortoncityschools.org` (2026-09-23):
+# `ClientResponseError: 400, message='Got more than 8190 bytes when
+# reading Header value is too long.'` on an ordinary plain GET, well
+# before this Fetcher ever got to see a status code or body. aiohttp
+# exposes both limits directly on `ClientSession.__init__` (added
+# upstream for exactly this shape of failure) -- raised generously (8x)
+# here rather than to some exact value tuned to one site's own header,
+# since the failure mode (a hard exception instead of a normal response)
+# is the same whatever pushed a real site over the old default. Adapters
+# that build their OWN `aiohttp.ClientSession` (outside this Fetcher) are
+# NOT covered by this -- see CLAUDE.md/this WO's own note for which ones
+# may need the identical fix if this same error shows up against one of
+# them.
+_MAX_HEADER_SIZE = 65536
+
 
 class BudgetExceeded(RuntimeError):
     """Raised by `Fetcher.fetch()` when performing the fetch would push
     `fetches_used` past `max_fetches`. Raised before the request is made,
     so the caller's own loop (Start/Identify/Scan/Hop) can stop cleanly
     and record how much budget was actually used."""
+
+
+class SoftBudgetExceeded(BudgetExceeded):
+    """WO-1039 item 2: raised instead of the plain `BudgetExceeded` above
+    when a caller has asked this Fetcher to keep a few fetches in RESERVE
+    (`Fetcher.reserve()`) for a later phase, even though the real
+    `max_fetches` ceiling hasn't actually been reached yet. A SUBCLASS of
+    `BudgetExceeded` on purpose: every existing `except BudgetExceeded`
+    site across `identify.py`/`listing.py` already treats hitting the
+    ceiling as "this one fetch failed, stop gracefully and return
+    whatever's already been found" -- exactly the behavior wanted here
+    too, so none of those call sites need to change. Only `runner.py`'s
+    own Pass-1/Pass-2 split (the one thing that actually calls
+    `reserve()`/`release_reserve()`) needs to tell the two apart, via
+    `isinstance(exc, SoftBudgetExceeded)`, so a reserved-budget stop
+    during cheap Pass 1 (Identify/List) never gets recorded as real
+    government-wide budget exhaustion the way a genuine `BudgetExceeded`
+    does -- see `runner.py`'s own docstring for the real Ashland, OR case
+    this fixes (a CivicPlus AgendaCenter listing walk alone used all 12
+    fetches, `hops=0` the entire run -- Hop never got a single real fetch
+    to spend)."""
 
 
 @dataclass(frozen=True)
@@ -339,6 +377,18 @@ class Fetcher:
         self._last_fetch_at: dict[str, float] = {}
         self._host_header_mode: dict[str, str] = {}
         self._session: aiohttp.ClientSession | None = None
+        # WO-1039 item 2: see `SoftBudgetExceeded`'s own docstring.
+        self._reserved_fetches = 0
+
+    def reserve(self, n: int) -> None:
+        """Keep `n` fetches back: any further real fetch that would push
+        `fetches_used` past `max_fetches - n` raises `SoftBudgetExceeded`
+        instead of performing the request, until `release_reserve()` is
+        called. A no-op (clamped to 0) for a negative `n`."""
+        self._reserved_fetches = max(0, n)
+
+    def release_reserve(self) -> None:
+        self._reserved_fetches = 0
 
     def note_crawl_delay(self, host: str, seconds: float) -> None:
         """Record a robots.txt `Crawl-delay` a caller already read for
@@ -375,7 +425,11 @@ class Fetcher:
 
     async def _session_for(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(timeout=DEFAULT_TIMEOUT)
+            self._session = aiohttp.ClientSession(
+                timeout=DEFAULT_TIMEOUT,
+                max_line_size=_MAX_HEADER_SIZE,
+                max_field_size=_MAX_HEADER_SIZE,
+            )
         return self._session
 
     async def _wait_for_host(self, host: str) -> None:
@@ -400,6 +454,17 @@ class Fetcher:
             raise BudgetExceeded(
                 f"max_fetches ({self.max_fetches}) reached; refusing one more "
                 "real fetch"
+            )
+        if (
+            self._reserved_fetches
+            and self.fetches_used >= self.max_fetches - self._reserved_fetches
+        ):
+            # WO-1039 item 2: the hard ceiling hasn't been hit, but this
+            # fetch would eat into the fetches `reserve()` is holding back
+            # for a later phase.
+            raise SoftBudgetExceeded(
+                f"{self._reserved_fetches} fetch(es) reserved for a later "
+                "phase; refusing one more real fetch during this one"
             )
         self.fetches_used += 1
 

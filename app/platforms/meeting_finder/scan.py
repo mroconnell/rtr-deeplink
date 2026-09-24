@@ -270,6 +270,32 @@ _MEETING_BODY_OR_WORD_RE = re.compile(
     r"\b(?:" + "|".join(GOVERNING_BODY_KEYWORDS) + r"|meeting)\b", re.IGNORECASE
 )
 
+# WO-1039 item 3: shapes that are never a meeting page, whatever anchor
+# text sits on them -- a print view, a contact/mail form, or a raw image/
+# asset link. Real, confirmed shapes: Montclair SD, NJ's own Infinite
+# Campus "Send Email" form (`/email/Default.aspx?action=
+# sendemailtous`), Bellefonte, PA's own WordPress news feed, whose every
+# post links a `.../print/` view and embeds real uploaded images
+# (`wp-content/uploads/.../*.png`/`.jpg`) -- `hop.py`'s own
+# `_JUNK_LINK_HREF_RE` covers the identical shapes for Hop's own ranking
+# (re-declared, not imported, same convention this module already
+# follows elsewhere for a `hop.py` pattern).
+_JUNK_HREF_RE = re.compile(
+    r"/print/?(?:[?#].*)?$"
+    r"|/email/default\.aspx\?[^#]*\baction=sendemailtous\b"
+    r"|\.(?:png|jpe?g|gif|svg)(?:[?#].*)?$",
+    re.IGNORECASE,
+)
+# WO-1039 item 3: an ordinary CMS/blog news post whose own headline
+# announces an office closure/holiday hours -- never a meeting, even
+# though it carries a real date (real Bellefonte, PA case: "Borough
+# Office Closed-Monday, September 7, 2026"). Narrow on purpose (a real
+# meeting is never itself an office-closure announcement).
+_CLOSURE_NEWS_TEXT_RE = re.compile(
+    r"\boffice\s+closed\b|\bclosed\s+\w+day\b|\bholiday\s+(?:hours|closure)\b",
+    re.IGNORECASE,
+)
+
 # WO-1033 item 4: a same-site redirect to a social platform (CivicPlus's
 # own quick-link-widget shape: `<a href="/youtube" aria-label="YouTube">
 # <img alt="YouTube"></a>`, no visible anchor text at all, confirmed live
@@ -316,6 +342,63 @@ def _is_own_site_or_recognized_vendor(url: str, base_netloc: str) -> bool:
         return True
     host_platform, _supported = host_recognition.platform_for_host(netloc)
     return host_platform is not None
+
+
+# WO-1039 item 1: the same "off-site link naming a TV/cable/community-
+# access station" rescue `hop.py`'s own `_rescue_tv_station_link_score()`
+# uses for Hop's ranking (see that module's docstring for the full real
+# examples this fixes: Winchester MA's "WinCAM"/wincam.org, Tigard/Lake
+# Oswego OR's "tvctv.org", Bismarck ND's "dakotamediaaccess.org", Mendota
+# Heights MN's "townsquare.tv") -- re-declared here rather than imported,
+# same convention this module already follows for
+# `_SAME_SITE_SOCIAL_REDIRECT_RE` (see this module's own docstring for
+# why it doesn't otherwise depend on `hop.py`). Without this,
+# `_is_own_site_or_recognized_vendor()` above blocks the town's own
+# station domain outright (a different registrable domain than the
+# government's, and not a recognized meeting VENDOR host), so the real
+# video -- one or two hops further into the station's own site -- is
+# never reached at all; `hop.py`'s own ranking is what actually walks
+# those further hops once this gate lets the station's homepage through
+# as a meeting-page link worth opening.
+_TV_STATION_TEXT_RE = re.compile(
+    r"\btelevision\b|\bcable\s*access\b|\bpublic\s*access\b|\bcommunity\s+access\b"
+    r"|\bmedia\s+access\b|\bcommunity\s+media\b",
+    re.IGNORECASE,
+)
+_TV_STATION_BRAND_WORD_RE = re.compile(r"^[A-Za-z]{2,}(?:tv|cam)$", re.IGNORECASE)
+_TV_STATION_BRAND_STOPLIST = frozenset(
+    {"hdtv", "iptv", "cctv", "smarttv", "appletv", "webcam", "dashcam", "gocam"}
+)
+_TV_VANITY_TLD_RE = re.compile(r"\.tv$", re.IGNORECASE)
+# Never rescued for a social/unrelated host, whatever its anchor text
+# happens to say -- CLAUDE.md's "keep Facebook/social/unrelated sites
+# out" for this WO's item 1.
+_SOCIAL_HOST_HINTS = (
+    "facebook.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    "tiktok.com",
+    "youtube.com",
+    "youtu.be",
+)
+
+
+def _is_off_site_tv_station_link(text: str, url: str) -> bool:
+    netloc = urlparse(url).netloc.lower()
+    if any(hint in netloc for hint in _SOCIAL_HOST_HINTS):
+        return False
+    if _TV_STATION_TEXT_RE.search(text or ""):
+        return True
+    words = (text or "").strip().split()
+    if len(words) == 1:
+        word = words[0].strip(",&-()").lower()
+        if (
+            _TV_STATION_BRAND_WORD_RE.match(word)
+            and word not in _TV_STATION_BRAND_STOPLIST
+        ):
+            return True
+    return bool(_TV_VANITY_TLD_RE.search(netloc))
 
 
 _DATE_TEXT_RE = re.compile(
@@ -467,6 +550,20 @@ def find_meeting_page_links(
         # false positives this guards against).
         if _NEWS_ITEM_HREF_RE.search(href) or _SIGNUP_PAGE_RE.search(hay):
             continue
+        # WO-1039 item 3: a print view, a contact/mail form, or a raw
+        # image/asset link is never a meeting page, whatever date or
+        # vocabulary its own anchor text (or a sibling's) carries -- see
+        # `_JUNK_HREF_RE`'s own comment for the real Bellefonte PA/
+        # Montclair SD NJ shapes this guards against.
+        if _JUNK_HREF_RE.search(href):
+            continue
+        # WO-1039 item 3: a news post is never a meeting page just because
+        # its own headline carries a real date (rule1_text's bar below) --
+        # the generic version of WO-1033 item 1's CivicAlerts.aspx-specific
+        # guard, for an ordinary CMS/blog "office closed" post that isn't
+        # on that one platform's own URL shape (real Bellefonte, PA case).
+        if _CLOSURE_NEWS_TEXT_RE.search(text):
+            continue
         full = urljoin(final_url, href)
         parsed = urlparse(full)
         if parsed.scheme not in ("http", "https"):
@@ -475,8 +572,15 @@ def find_meeting_page_links(
         # meeting vendor -- see this module's own
         # `_is_own_site_or_recognized_vendor()` docstring for the real
         # Facebook-permalink/usgbc.org false positives this guards
-        # against.
-        if not _is_own_site_or_recognized_vendor(full, base_netloc):
+        # against. WO-1039 item 1: OR an off-site link naming a TV/cable/
+        # community-access station, worth opening for one step even
+        # though it fails that check -- see `_is_off_site_tv_station_link()`
+        # 's own comment.
+        is_own_or_vendor = _is_own_site_or_recognized_vendor(full, base_netloc)
+        is_tv_station_offsite = not is_own_or_vendor and _is_off_site_tv_station_link(
+            text, full
+        )
+        if not is_own_or_vendor and not is_tv_station_offsite:
             continue
         if any(parsed.path.lower().endswith(ext) for ext in _DOCUMENT_EXTENSIONS):
             continue
@@ -518,7 +622,11 @@ def find_meeting_page_links(
         if not date_text:
             date_text = _walk_up_for_date(a)
 
-        rule1_text = bool(_MEETING_TEXT_RE.search(text)) or bool(date_text)
+        rule1_text = (
+            bool(_MEETING_TEXT_RE.search(text))
+            or bool(date_text)
+            or is_tv_station_offsite
+        )
         # Deliberately NOT "agenda"/"video" here -- those name a document
         # column (guarded above) or a direct-media column (Scan's own
         # media-candidate detection already covers a real video link),
