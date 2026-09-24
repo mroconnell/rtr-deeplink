@@ -126,9 +126,18 @@ _SCAN_TAGS = ("a", "iframe", "embed", "video", "source", "script")
 # elsewhere in this repo (CivicPlus's own `?EID=`, a dated `/event/{id}/`
 # or `/meetings/YYYY-MM-DD-...` page, generic `/agendacenter`-style
 # calendars) rather than "any link on the same host".
+# WO-1030 conductor review, 2026-09-23, found live on Piedmont, CA's own
+# sitemap: `\d+` with no trailing boundary matched the LEADING digit of a
+# non-numeric slug -- `/news/events/4th-of-july-parade` matched
+# `/events/\d+` (on "4" alone, "th-of-july-parade" just along for the
+# ride), so `start.py`'s sitemap starting-point filter picked it as a
+# real meeting page. `\d+\b` requires the digits to actually end the
+# numeric id (end of string, or a non-word character like `/` or `?`
+# right after) -- `/events/12345` and `/events/12345/details` still
+# match; `/events/4th-of-july-parade` no longer does.
 _OWN_SITE_MEETING_PAGE_RE = re.compile(
-    r"(\?eid=\d+|/event/\d+|/events/\d+|/meetings?/\d{4}-\d{1,2}-\d{1,2}"
-    r"|/agendacenter\b|/agenda-center\b|/calendar\.aspx\?eid=\d+)",
+    r"(\?eid=\d+\b|/event/\d+\b|/events/\d+\b|/meetings?/\d{4}-\d{1,2}-\d{1,2}"
+    r"|/agendacenter\b|/agenda-center\b|/calendar\.aspx\?eid=\d+\b)",
     re.I,
 )
 

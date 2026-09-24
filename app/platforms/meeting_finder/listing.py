@@ -113,6 +113,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -530,19 +531,18 @@ async def _list_via_generic_scan(
 _AGENDA_ONLY_FALLBACK_PLATFORMS = frozenset({"civicplus"})
 
 
-async def _civicplus_agenda_only_fallback(
-    account_url: str, fetcher: Fetcher, limit: int
-) -> List[dict]:
-    """Re-parses `account_url` (and, if that has no rows, the canonical
-    `/AgendaCenter` guess) with `CivicPlusAssetFinder()._find_candidate_
-    rows()` directly -- NOT `passive_verify._civicplus_walker()`, whose
-    own behavior stays exactly as it is today for `verify_hub()` and every
-    other existing caller (see module docstring). Returns every real
-    (title+date) row that has an `agenda_link`/`packet_link` but no video
-    `url`, newest-first (the page's own render order, same as
-    `_civicplus_walker()` step 1 already assumes) -- a row with neither
-    link is worthless as a Candidate and is skipped.
-    """
+async def _civicplus_rows(
+    account_url: str, fetcher: Fetcher
+) -> tuple[List[dict], Optional[str]]:
+    """One fetch to `account_url` (falling back to the canonical
+    `/AgendaCenter` guess only if that first page has no rows at all) --
+    `CivicPlusAssetFinder()._find_candidate_rows()` directly, NOT
+    `passive_verify._civicplus_walker()`, whose own behavior stays
+    exactly as it is today for `verify_hub()` and every other existing
+    caller (see module docstring). Returns every real (title+date) row
+    found, video-bearing or not -- shared by both the light check (a0)
+    and the agenda-only fallback (after lister e) below, so a real
+    account only ever needs ONE fetch to answer both questions."""
     from bs4 import BeautifulSoup
 
     from app.platforms.civicplus import CivicPlusAssetFinder
@@ -565,15 +565,73 @@ async def _civicplus_agenda_only_fallback(
         base = f"{urlparse(final_url or account_url).scheme}://{urlparse(final_url or account_url).netloc}"
         guess = f"{base}/AgendaCenter"
         if guess.rstrip("/") != (final_url or account_url).rstrip("/"):
-            rows, _ = await _rows_for(guess)
+            rows, final_url = await _rows_for(guess)
+    return rows, final_url
 
+
+async def _list_via_civicplus_light_check(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    """Conductor review (2026-09-23), Cass County, MN: `_civicplus_
+    walker()` (lister a, below) can spend up to ~8 real fetches (4
+    AgendaCenter category pages + 3 video-nav links) confirming a real
+    agenda-only tenant has no video anywhere, leaving nothing in the
+    government's shared fetch budget for the agenda-only fallback that
+    would otherwise report it correctly as `meeting-without-video`. This
+    light, CivicPlus-specific check runs FIRST (before the heavy walker),
+    on the ONE page most real CivicPlus tenants' current meeting list
+    already lives on (`account_url`, or the canonical `/AgendaCenter`
+    guess) -- one real fetch, occasionally two. If that page already has
+    video-bearing rows, they're returned directly (the heavy walker's own
+    multi-category crawl is redundant for the common case where the
+    tenant's current category already has video). If it only has
+    agenda-only rows, those are returned instead (`has_video_hint=False`)
+    -- the real, budget-starved case this WO's own smoke test found live.
+    Only when this ONE page has no rows at all does this return `None`,
+    letting the heavier listers check other categories/nav links this
+    light check doesn't."""
+    if platform != "civicplus":
+        return None
+    rows, _ = await _civicplus_rows(account_url, fetcher)
+    if not rows:
+        return None
+    video_rows = [r for r in rows if r.get("url")]
+    if video_rows:
+        candidates = _candidates_from_dicts(
+            video_rows[:limit],
+            platform=platform,
+            account_url=account_url,
+            lister="civicplus_light_check",
+        )
+        if candidates:
+            return ListResult(
+                candidates=candidates, lister="civicplus_light_check", outcome=None
+            )
+    agenda_rows = _civicplus_agenda_only_rows(rows, limit)
+    if agenda_rows:
+        candidates = _candidates_from_dicts(
+            agenda_rows,
+            platform=platform,
+            account_url=account_url,
+            lister="civicplus_agenda_only",
+        )
+        if candidates:
+            return ListResult(
+                candidates=candidates,
+                lister="civicplus_agenda_only",
+                outcome=None,
+                note="real meeting rows found with no video link -- has_video_hint=False",
+            )
+    return None
+
+
+def _civicplus_agenda_only_rows(rows: List[dict], limit: int) -> List[dict]:
+    """Every real row with an `agenda_link`/`packet_link` but no video
+    `url`, newest-first (the page's own render order) -- a row with
+    neither link is worthless as a Candidate and is skipped."""
     out: List[dict] = []
     for row in rows:
         if row.get("url"):
-            # A real video-bearing row -- every earlier lister already
-            # tried and failed to use this, which only happens if
-            # resolving it didn't pan out (a dead link, an unreachable
-            # vendor). Not this fallback's job to retry it.
             continue
         link = row.get("agenda_link") or row.get("packet_link")
         if not link:
@@ -589,6 +647,21 @@ async def _civicplus_agenda_only_fallback(
         if len(out) >= limit:
             break
     return out
+
+
+async def _civicplus_agenda_only_fallback(
+    account_url: str, fetcher: Fetcher, limit: int
+) -> List[dict]:
+    """Safety net, tried after every other lister (see `list_account()`'s
+    own ordering): re-fetches `account_url` (see `_civicplus_rows()`)
+    and returns its agenda-only rows. Reached only when
+    `_list_via_civicplus_light_check()` (a0, tried FIRST) found no rows
+    at all on that one page but a LATER lister's own, different page
+    (e.g. `_civicplus_walker()`'s own other AgendaCenter categories or
+    `Calendar.aspx`) came back empty too -- worth one more real look at
+    the primary page before giving up entirely."""
+    rows, _ = await _civicplus_rows(account_url, fetcher)
+    return _civicplus_agenda_only_rows(rows, limit)
 
 
 async def _list_via_agenda_only_fallback(
@@ -624,6 +697,57 @@ async def _list_via_agenda_only_fallback(
         outcome=None,
         note="real meeting rows found with no video link -- has_video_hint=False",
     )
+
+
+# --- Granicus bare-hub view_id discovery (WO-1030, conductor review) ---
+#
+# `app/platforms/granicus.py`'s `list_recent_video_meetings()` (what
+# lister (a)'s `_granicus_walker()` calls) REQUIRES the URL it's given to
+# already carry a `view_id` query param -- confirmed by reading it: it
+# parses `view_id` out of the URL and returns `[]` outright when there is
+# none. Identify's own rule-1 URL match (`detect_platform()`) recognizes
+# `https://cityoftacoma.granicus.com/` as `granicus` from the host alone,
+# with no `view_id` -- a real, confirmed live gap (WO-1030's own smoke
+# test on Tacoma, WA): every lister came back empty for a real Granicus
+# tenant that has real, current video (`.../player/clip/7460`), because
+# nothing ever discovered WHICH `view_id` this tenant's video listing
+# lives under.
+#
+# `scripts/wo134_confirmed_hits_ingest.py`'s `granicus_locate_listing()`
+# already solves exactly this (RSS-first, `view_id=1..5`, its own comment
+# citing WO-169's cheap-RSS-before-expensive-HTML-table ordering) -- not
+# reused directly here because it opens its own `aiohttp.ClientSession`
+# (`fetch_html()`), which would bypass Meeting Finder's own `Fetcher`
+# entirely (no `max_fetches` budget, no per-host politeness, no YouTube
+# guard). Same algorithm, ported to call `fetcher.fetch()` instead, so a
+# real Granicus tenant with a real view_id further out than the probe
+# range (rare -- WO-134's own range of 1..5 was chosen from real
+# tenants) degrades to `no-meeting-nor-video` rather than spending
+# unbounded budget on it.
+_GRANICUS_VIEW_ID_RE = re.compile(r"[?&]view_id=\d+", re.IGNORECASE)
+_GRANICUS_VIEW_ID_PROBE_MAX = 6
+
+
+async def _granicus_discover_view_id(
+    account_url: str, fetcher: Fetcher
+) -> Optional[str]:
+    """Probes `ViewPublisherRSS.php?view_id=1..6&mode=video` on
+    `account_url`'s own host, cheapest (RSS, not the HTML table) first,
+    same range `granicus_locate_listing()` uses. Returns the first
+    populated `ViewPublisher.php?view_id=N` URL found, or `None`."""
+    netloc = urlparse(account_url).netloc
+    if not netloc:
+        return None
+    for view_id in range(1, _GRANICUS_VIEW_ID_PROBE_MAX + 1):
+        rss_url = f"https://{netloc}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
+        try:
+            result = await fetcher.fetch(rss_url, need_links=False)
+        except BudgetExceeded:
+            return None
+        html = result.html or ""
+        if "<item>" in html and "(No Video)" not in html:
+            return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
+    return None
 
 
 def _has_any_adapter(platform: str) -> bool:
@@ -663,6 +787,24 @@ async def list_account(
     duration-probe pass does.
     """
     notes: List[str] = []
+
+    if platform == "granicus" and not _GRANICUS_VIEW_ID_RE.search(account_url):
+        discovered = await _granicus_discover_view_id(account_url, fetcher)
+        if discovered is None:
+            return ListResult(
+                candidates=[],
+                lister=None,
+                outcome=OUTCOME_NO_MEETING_NOR_VIDEO,
+                note=(
+                    f"no populated Granicus ViewPublisher view_id found in "
+                    f"1..{_GRANICUS_VIEW_ID_PROBE_MAX} on {urlparse(account_url).netloc}"
+                ),
+            )
+        account_url = discovered
+
+    a0 = await _list_via_civicplus_light_check(platform, account_url, fetcher, limit)
+    if a0 is not None and a0.candidates:
+        return a0
 
     a = await _list_via_passive_verify_walker(platform, account_url, fetcher, limit)
     if a is not None:

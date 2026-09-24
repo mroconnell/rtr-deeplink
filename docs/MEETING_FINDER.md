@@ -23,6 +23,41 @@ settle that this design doc didn't spell out, and how Meeting Finder
 relates to `app/platforms/passive_verify.py`, an existing module this
 design doc missed on first pass.
 
+**The first WO-1030 smoke test missed every one of 4 real, known-video
+governments it was tried against** (conductor review, 2026-09-23) --
+`cityoftacoma.granicus.com`, `pomonaca.gov`, `boston.gov` and
+`piedmont.ca.gov` all came back with nothing found, despite each having
+a real, confirmed video the design should have reached. A second pass
+(WO-1030 follow-up, same day) traced each one against the real page and
+found five separate real bugs, all fixed and reverified live -- see "The
+phase loop" section below for the fixes themselves:
+
+1. A vendor account URL entered at `start` (Tacoma: `cityoftacoma.
+   granicus.com` is already a Granicus tenant host) was treated as a
+   government domain to DNS-guess homepages around, instead of going
+   straight to Identify -> List.
+2. Granicus's own `list_recent_video_meetings()` needs a URL that already
+   carries a `view_id` -- nothing discovered one for a bare Granicus hub
+   root, so List always came back empty for exactly this shape.
+3. One fork (Start's own first starting point) could spend the ENTIRE
+   government fetch budget on its own Scan/Hop chain before any other
+   starting point Start found -- including a real, one-fetch-away answer
+   -- ever got tried (Pomona: `live.pomonaca.gov`, a real Cablecast
+   account, never reached).
+4. `rank_hops()` (a generic link scorer) ranked a homepage's own YouTube
+   channel/video links, and a known platform's OWN further navigation
+   pages, above the real next hop -- both fixed at the wiring layer
+   (Boston, Piedmont).
+5. `_civicplus_walker()` (List's lister a) could spend most of a
+   government's fetch budget confirming a real agenda-only CivicPlus
+   tenant has no video, starving the agenda-only fallback that exists
+   specifically to report that case correctly (Cass County, MN).
+
+All four governments, plus Whitehall, OH (re-run against its real
+CivicClerk tenant domain instead of a guessed one) and Cass County, MN,
+now resolve correctly -- see the WO-1030 follow-up PR's own smoke-test
+table for the full per-government numbers.
+
 **Identify's ranking implementation (WO-1027)**, on top of this doc's own
 ranking table below:
 
@@ -489,10 +524,80 @@ is never fetched twice no matter which fork or hop reaches it.
   row/section (reusing `scan.py`'s own date-detection helpers) -- Piedmont
   no longer reports a false `youtube_meeting_list` signal. (2) A List
   candidate with `has_video_hint=False` (e.g. `civicplus_agenda_only`'s
-  real agenda rows) already flowed through Resolve's existing
-  `agenda_items`/`agenda_link` fallback into `meeting-without-video`
-  without any further change needed -- confirmed by this WO's own test
-  (`test_meeting_without_video_outcome_surfaces_from_list`).
+  real agenda rows) needed one more fix (see "Follow-up fixes" below --
+  the adapter's own `resolve()` call raises rather than returning
+  `agenda_items` for this shape) before it actually reached
+  `meeting-without-video`; it does now, confirmed by
+  `test_meeting_without_video_outcome_surfaces_from_list`.
+
+#### Follow-up fixes (WO-1030 follow-up, same day)
+
+The first smoke test above missed real, known-video governments -- see
+this doc's Status section for the summary. Real root causes, each
+confirmed fixed against the live government afterward:
+
+- **A vendor account URL entered at `start` skips `start()` entirely.**
+  `runner.py` now checks the input against the same rule-1 URL/host match
+  `identify()` itself uses first; if it already recognizes a platform
+  (Tacoma: `cityoftacoma.granicus.com`), the walk goes straight to
+  Identify -> List on that URL, never treating it as a domain to
+  DNS-guess homepages around.
+- **Granicus bare-hub `view_id` discovery.** `list_recent_video_meetings()`
+  (what List's Granicus walker calls) requires a URL that already carries
+  a `view_id` -- a bare hub root has none. `listing.py`'s
+  `_granicus_discover_view_id()` probes `ViewPublisherRSS.php?view_id=
+  1..6` (RSS first, cheapest -- same range and ordering
+  `scripts/wo134_confirmed_hits_ingest.py`'s own
+  `granicus_locate_listing()` already uses, ported to Meeting Finder's own
+  `Fetcher` so it respects the budget/politeness) and hands the real
+  `ViewPublisher.php?view_id=N` URL to every other lister.
+- **Breadth before depth, for real.** The phase loop now runs a cheap
+  "shallow" pass (Identify -> List -> Resolve) across every fork FIRST,
+  and only spends the more expensive Scan/Hop budget on a fork once none
+  of them resolved on their own (`runner.py`'s `_shallow_step()`/
+  `_deep_step()` split) -- confirmed necessary on Pomona, CA: the
+  homepage fork's own Scan+Hop chain used to burn the entire government
+  budget before `live.pomonaca.gov` (Start's own guessed subdomain, a
+  real one-fetch Cablecast answer) ever got a turn.
+- **Hop ranking fixes, three of them, all found on Boston/Piedmont:**
+  (1) a homepage's own YouTube channel/video links are excluded from Hop
+  entirely (recorded as leads instead) -- Meeting Finder never fetches
+  YouTube anyway, so ranking one as the best hop just burns a hop slot on
+  a guaranteed dead end. (2) A link to a platform Identify ALREADY has a
+  real account for (Piedmont: CivicLive, the city's own website CMS, kept
+  ranking its own further navigation pages above the real Granicus hub
+  two hops away) is excluded too -- List already tried that account,
+  another link to it adds nothing. (3) `rank_hops()`'s own small default
+  result limit (8) meant a real candidate further down the ranked list
+  never even got a chance once (1) and (2) filtered out everything ahead
+  of it -- the call site now asks for a much larger candidate list before
+  filtering. A URL-normalization fix (trailing slash/fragment) also
+  stops a page's own canonical self-link from being mistaken for a new,
+  unvisited hop.
+- **Scan's own sub-page opening only recognizes vimeo/civicweb/direct-file
+  media** -- a real vendor PLATFORM (Granicus) embedded on a page Scan
+  opened (Piedmont's `/government/meeting_videos`) was invisible to
+  Scan's own narrow media check, and the fetch was wasted. `_deep_step()`
+  now asks Scan only to FIND meeting-page links (`max_meeting_pages=0`,
+  no extra fetch cost), then runs the full Identify/List pass on a
+  bounded number of them itself -- catching a vendor platform one click
+  down, not just a bare media file.
+- **CivicPlus's own listing walker can spend most of a government's
+  budget confirming a real agenda-only tenant has no video** (Cass
+  County, MN: up to ~8 fetches across 4 AgendaCenter category pages plus
+  3 video-nav links), leaving nothing for the agenda-only fallback that
+  exists specifically to report that case as `meeting-without-video`
+  rather than empty. `listing.py`'s `_list_via_civicplus_light_check()`
+  now runs FIRST, one real fetch to the account/AgendaCenter page (two if
+  it has to fall back to the canonical `/AgendaCenter` guess), answering
+  both "is there video" and "is there a real agenda-only meeting" from
+  the SAME page before the heavier walker ever runs. `resolve.py` also
+  needed a companion fix: CivicPlus's own adapter `resolve()` raises
+  `NoVideoCandidateFound` for a single `ViewFile/Agenda` URL rather than
+  returning `agenda_items`, so a lister-confirmed `has_video_hint=False`
+  candidate now counts as a real `meeting-without-video` finding even
+  when the adapter itself never returns a `ResolvedMeeting` to read
+  `agenda_items` off of.
 
 ### Resolve
 
