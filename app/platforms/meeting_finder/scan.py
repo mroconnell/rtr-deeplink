@@ -122,6 +122,7 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from app.platforms import host_recognition
 from app.platforms.base import detect_platform
 from app.platforms.direct_file import is_direct_file_url
 from app.platforms.granicus import GOVERNING_BODY_KEYWORDS
@@ -284,6 +285,39 @@ _SAME_SITE_SOCIAL_REDIRECT_RE = re.compile(r"^/(?:youtube|facebook)/?$", re.IGNO
 # ancestors.
 _BARE_YEAR_RE = re.compile(r"^\s*\d{4}\s*$")
 
+
+# WO-1037 item 6: a "meeting page" is only worth opening when it's on the
+# government's OWN site or a recognized meeting vendor -- real false
+# positives caught live: James Island SC's homepage "LIVESTREAM TOWN
+# MEETINGS" nav sits next to Facebook permalinks that also carry
+# meeting-shaped anchor text, and Cecil County PS MD's own "Board Meeting
+# Live Feed and Recordings" iframe sits on a page that also links
+# usgbc.org (a green-building certification badge, unrelated). Neither is
+# a meeting page to open. A crude last-two-labels domain-family compare
+# (same one `scripts/wo908_headless_pilot.py`'s `_registrable_domain()`
+# already uses for the same "same government's own site" question --
+# not a general public-suffix-list implementation, just good enough to
+# tell `www.james-island.sc.gov` from `facebook.com`).
+def _registrable_domain(host: str) -> str:
+    parts = [p for p in (host or "").lower().split(".") if p]
+    return ".".join(parts[-2:]) if len(parts) >= 2 else (host or "").lower()
+
+
+def _is_own_site_or_recognized_vendor(url: str, base_netloc: str) -> bool:
+    netloc = urlparse(url).netloc.lower()
+    if not netloc:
+        return False
+    if netloc == base_netloc or _registrable_domain(netloc) == _registrable_domain(
+        base_netloc
+    ):
+        return True
+    platform = detect_platform(url)
+    if platform and platform != "unknown":
+        return True
+    host_platform, _supported = host_recognition.platform_for_host(netloc)
+    return host_platform is not None
+
+
 _DATE_TEXT_RE = re.compile(
     r"\d{1,2}/\d{1,2}/\d{4}"
     r"|\d{4}-\d{1,2}-\d{1,2}"
@@ -415,6 +449,7 @@ def find_meeting_page_links(
     soup = BeautifulSoup(html or "", "html.parser")
     page_text = _page_title_text(soup)
     page_says_agendas = bool(_PAGE_LEVEL_AGENDA_RE.search(page_text))
+    base_netloc = urlparse(final_url).netloc.lower()
 
     found: List[Tuple[Optional[datetime], str, Optional[str], Optional[str]]] = []
     seen = set()
@@ -435,6 +470,13 @@ def find_meeting_page_links(
         full = urljoin(final_url, href)
         parsed = urlparse(full)
         if parsed.scheme not in ("http", "https"):
+            continue
+        # WO-1037 item 6: only the government's own site or a recognized
+        # meeting vendor -- see this module's own
+        # `_is_own_site_or_recognized_vendor()` docstring for the real
+        # Facebook-permalink/usgbc.org false positives this guards
+        # against.
+        if not _is_own_site_or_recognized_vendor(full, base_netloc):
             continue
         if any(parsed.path.lower().endswith(ext) for ext in _DOCUMENT_EXTENSIONS):
             continue
