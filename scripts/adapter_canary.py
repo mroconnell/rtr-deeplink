@@ -231,6 +231,23 @@ CANARY_URLS: dict[str, list[str]] = {
     "townhallstreams": [
         "https://townhallstreams.com/stream.php?location_id=94&id=75799"
     ],
+    # 12milesout.com, WO-1045 (2026-09-24) -- Coronado, CA City Council,
+    # real captions confirmed live (1,874 cues). Every real meeting page
+    # checked on this vendor stays archived indefinitely (real samples
+    # dating back years still resolve), so this specific dated URL should
+    # keep working; if it ever ages off, swap in any recent
+    # `/meeting/council/{m}-{d}-{yyyy}` (or `/Video/Meeting/{guid}`) page
+    # from `https://coronado.12milesout.com/`.
+    "twelvemilesout": ["https://coronado.12milesout.com/meeting/council/9-15-2026"],
+    # spectrumstream.com, WO-1045 (2026-09-24) -- Alhambra, CA City
+    # Council, real captions confirmed live. Real meeting pages on this
+    # vendor stay archived indefinitely too (real samples from 2017-2018
+    # still resolve); if this ages off, swap in any recent
+    # `meeting_{yyyy}_{mm}_{dd}.cfm` page from
+    # `https://spectrumstream.com/streaming/alhambra/`.
+    "spectrumstream": [
+        "https://spectrumstream.com/streaming/alhambra/meeting_2026_08_24.cfm"
+    ],
     # Washington State Legislature (tvw.org), WO-1010 (2026-09-22) -- a
     # real Senate Housing committee meeting, real coherent captions
     # confirmed live. tvw.py delegates to InvintusAssetFinder; if this

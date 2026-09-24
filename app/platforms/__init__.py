@@ -44,6 +44,8 @@ def register_all_finders() -> None:
     from .tampa import TampaAssetFinder
     from .telvue import TelvueAssetFinder
     from .townhallstreams import TownHallStreamsAssetFinder
+    from .twelvemilesout import TwelveMilesOutAssetFinder
+    from .spectrumstream import SpectrumStreamAssetFinder
     from .tvw import TVWAssetFinder
     from .utah_pmn import UtahPMNAssetFinder
     from .viebit import ViebitAssetFinder
@@ -78,6 +80,8 @@ def register_all_finders() -> None:
     register(TelvueAssetFinder())
     register(HylandAssetFinder())
     register(TownHallStreamsAssetFinder())
+    register(TwelveMilesOutAssetFinder())
+    register(SpectrumStreamAssetFinder())
     register(OpenMediaAssetFinder())
     register(CastusAssetFinder())
     register(SuiteOneAssetFinder())

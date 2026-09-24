@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>GUSD - Video Player</title>
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<style type="text/css">
+	body {
+	background-color : #fff;
+	background-image:url(images/bg.jpg);
+	background-repeat:repeat-x;
+	color : #fff;
+	font-family : Arial, Helvetica, sans-serif;
+	margin : 0px auto 0px auto;
+	font-size : 12px;
+	}
+	td {
+	background-color : #fff;
+	color : black;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	}
+	td.logo {
+	color : black;
+	background-color: #0050b5;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	line-height : 160%;
+	text-align:left;
+	}
+	tr.logo {
+	color : black;
+	background-color: #0050b5;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	line-height : 160%;
+	text-align:left;
+	}
+	a.logo {
+	background-color : #0050b5;
+	color : #060;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	
+	a.logo:link {
+	background-color : #0050b5;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	a.logo:visited {
+	background-color : #0050b5;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	a.logo:hover {
+	background-color : #0050b5;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	text-decoration : underline;
+	}
+	td.agenda {
+	background-color : #FFF;
+	color : black;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	line-height : 160%;
+	text-align:left;
+	}
+	td.instructions {
+	background-color:#fff;
+	color : black;
+	font-family : Arial, Helvetica, sans-serif;
+	border-right : thick solid White;
+	font-size : 12px;
+	}
+	table {
+	background-color : #fff;
+	color : black;
+	font-family : Arial, Helvetica, sans-serif;
+	margin : 0px auto;
+	font-size : 12px;
+	border:thick #003;
+	}
+	a {
+	background-color : #fff;
+	color : #060;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	
+	a:link {
+	background-color : #fff;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	a:visited {
+	background-color : #fff;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	text-decoration : none;
+	font-size : 12px;
+	}
+	a:hover {
+	background-color : #fff;
+	color : #009;
+	font-family : Arial, Helvetica, sans-serif;
+	font-size : 12px;
+	text-decoration : underline;
+	}
+	
+	
+li {
+	line-height: 140%;
+	margin-bottom: 10px;
+	
+}
+
+span {
+	background-color: #0050b5;	
+}
+</style><script type="text/javascript" src="https://cdn.jwplayer.com/libraries/fc2G19Dk.js"></script>
+
+
+<script type="text/javascript" language="javascript">
+<!--
+function goToPage(page) {
+	window.location = page;
+}
+//-->
+</script>
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-24801428-1']);
+  _gaq.push(['_setDomainName', 'none']);
+  _gaq.push(['_setAllowLinker', true]);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+</head>
+<body leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">
+<br /><br /><br />
+<table width="1000px" border="0" align="center" cellpadding="0" cellspacing="0" >
+  <tr class="logo">
+    <td width="1000px"  align="left" class="logo"><a href="https://www.gusd.net/8451_3" target="_blank" class="logo"><img src="images/logo.jpg" width="700" height="136">  </a></td>
+  </tr>
+<tr>
+    <td width="650px"  valign="top" align="center" class="instructions"><br>
+
+ 		<strong>Glendale Unified School District - Board of Education Meeting<br>
+
+
+
+		October 8, 2024, 5:00 p.m.<br><br></strong>
+
+<table border="0" cellpadding="5" cellspacing="5">
+<tr>
+<td width="650" valign="top">
+
+
+
+
+
+<div id="myElement">Loading the player...</div>
+
+ <script type="text/javascript">
+/*U might need to add other non-MP4 native browsers*/
+if (navigator.userAgent.indexOf('Firefox'||'Chrome')!= -1) {
+	       jwplayer("myElement").setup({
+        file: "https://spectrum_streaming.s3.amazonaws.com/gusd/gusd_2024_10_08.mp4",
+        title: "October 8, 2024, 5:00 p.m.",
+		fallback: "true",
+		primary: "html5",
+		width: "95%",
+        aspectratio: "16:9",
+		smoothing: true,
+		buffer: 1,
+		image: "https://www.spectrumstream.com/streaming/gusd/images/preview.jpg",
+	   	tracks: [{
+			file: "https://www.spectrumstream.com/streaming/gusd/meeting_captions/",
+			label: "English",
+			kind: "captions",
+			"default": true
+		}],
+		stretching: 'uniform'
+
+    });
+
+}
+else{
+    jwplayer("myElement").setup({
+        file: "https://spectrum_streaming.s3.amazonaws.com/gusd/gusd_2024_10_08.mp4",
+        title: "October 8, 2024, 5:00 p.m.",
+		width: "95%",
+     	aspectratio: "16:9",
+		smoothing: true,
+		buffer: 1,
+		image: "https://www.spectrumstream.com/streaming/gusd/images/preview.jpg",
+	   	tracks: [{
+			file: "https://www.spectrumstream.com/streaming/gusd/meeting_captions/",
+			label: "English",
+			kind: "captions",
+			"default": true
+		}],
+		stretching: 'uniform'
+    });
+}
+</script>
+
+
+   
+</td>
+
+<td width="350">
+<div style="overflow:auto; height:380px; width:340px">
+
+	
+ 
+ 
+<h2>Agenda</h2><br><br>
+
+<strong>Board of Education Meeting</strong><br><br>  
+
+<strong>Tuesday, October 8, 2024<br> 5:00 p. m.</strong><br><br> 
+
+<strong>A.	OPENING</strong>
+<br><br>
+
+1.	Call to Order and Roll Call	
+<br><br>
+
+<a href="#"  onclick="jwplayer().seek(48);">2.	Pledge of Allegiance</a> 	
+<br><br>
+				
+3.	Certification of Compliance
+<br><br>
+
+4.	Approval of Agenda Order	
+<br><br>
+
+<strong>B.	PRESENTATIONS</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(217);">1.	Filipino American History Month</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(780);">2.	National Principals Month and Week of the School Administrator</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(984);">3.	FCMAT Fiscal Health and Risk Analysis Report</a>
+<br>
+<br>
+	
+<strong>C.  STUDENT BOARD MEMBER REPORT</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(4879);">1.	Student Board Member Lily Tanossian will report on activities and events happening at the schools around the District.</a>
+<br>
+<br>
+	
+<strong>D.  COMMUNICATION FROM ORGANIZATIONAL PARTNERS</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(5032);">1.	Glendale Teachers Association</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(5363);">2.	Glendale Schools Management Association</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(5528);">3.	Glendale Council PTA</a>
+<br>
+<br>
+	
+<strong>E.  COMMUNICATIONS FROM THE PUBLIC</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(5943);">1.	Public Communications</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(7132);"><strong>F.  CLOSED SESSION</strong></a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(14905);"><strong>G.  RETURN TO REGULAR MEETING-8:00 P.M.</strong></a>
+<br>
+<br>
+	
+<strong>H.  PUBLIC HEARING</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(14910);">1.	Public Hearing for the Determination of Sufficient Textbooks and Instructional Materials for Fiscal Year 2024-2025, Resolution No. 1 - (Refer to Action Report No. 2).</a>
+<br>
+<br>
+	
+<strong>I.  INFORMATION</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(14986);">1.	Monthly Cashflow Information for 2024-2025</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(15588);">2.	Enrollment Update for 2024-2025 (as of September 13, 2024)</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(17714);">3.	Mental Health Update</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(20900);">4.	Revisions to Board Bylaw 9010 - Public Statements and Board Bylaw 9012-Board Member Electronic Communications</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(21318);">5.	Acknowledgements of Service</a>
+<br>
+<br>
+	
+<strong>J.  ACTION</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(21330);">1.	Approval to Revert Back to a Six-Period Schedule at Secondary Schools Starting with the 2025-2026 School Year</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25678);">2.	Adoption of Resolution No. 1 - Determination of Sufficient Textbooks and Instructional Materials for Fiscal Year 2024-2025</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25702);">3.	Memorandum of Understanding (MOU) between Glendale Unified School District and Colgate Bright Smiles Bright Futures (BSBF)</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25770);">4.	Memorandum of Understanding (MOU) between Glendale Unified School District and Comprehensive Community Health Centers, Inc. (CCHC)</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25785);">5.	Approval of Proposed Basic Textbook for Use in Middle Schools in the Area of World Languages and Cultures</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25800);">6.	Approval to Grant Physical Education Exemptions to High School Students</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25815);">7.	Approval of Amendment No. 1 to Agreement with Arrow Restaurant Equipment for Serving Line Equipment for Nutrition Services</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25832);">8.	Approval of Amendment No. 1 to Agreement with Arrow Restaurant Equipment for Commercial Kitchen Equipment for Nutrition Services</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25847);">9.	Award of RFP No. 006-24/25 for Tree Services Districtwide</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25863);">10.	Ratification of Change Order No. 4 to Bid No. 218-21/22 with Chalmers Construction Services, Inc., for the Monte Vista Elementary School New Building Foundation and Sitework Project</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25884);">11.	Agreement with the City of Glendale and the Glendale Unified School District for School Liaison Officer Services 2024-2026 School Year</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25960);"><strong>K.  CONSENT CALENDAR</strong></a>
+<br>
+<br>
+
+1.	Minutes
+<br>
+<br>
+	
+2.	Certificated Personnel Report No. 5
+<br>
+<br>
+	
+3.	Classified Personnel Report No. 5
+<br>
+<br>
+	
+4.	Warrants
+<br>
+<br>
+	
+5.	Purchase Orders
+<br>
+<br>
+	
+6.	Appropriation Transfer and Budget Revision Report
+<br>
+<br>
+	
+7.	Approval of Notice of Completion for Bid No. 263-23/24 with Elevators Etc. for the Modernization of One (1) Hydraulic Elevator Bldg. B at the District Office
+<br>
+<br>
+	
+8.	Approval of Notice of Completion for Bid No. 268-23/24 with Perfection Painting Corp. for the Painting Project at La Crescenta Elementary School
+<br>
+<br>
+	
+9.	Quarterly Uniform Complaint Report Summary, Williams Settlement Legislation
+<br>
+<br>
+	
+10.	Acceptance of Memorandum of Understanding Between Glendale Unified School District and California Native Plant Society for John Muir Elementary School
+<br>
+<br>
+	
+11.	Acceptance of Memorandum of Understanding Between Glendale Unified School District and Taking the Reins for John Muir Elementary School
+<br>
+<br>
+	
+12.	Approval of Licensing Agreement between Glendale Unified School District and Transfr
+<br>
+<br>
+	
+13.	Acceptance of Grant from Los Angeles County Department of Arts and Culture
+<br>
+<br>
+	
+14.	Acceptance of 2023-24 Annual Budget Report for Proposition 28
+<br>
+<br>
+	
+15.	Intent to Administer 2024-2025 California Healthy Kids Survey and California School Staff Survey
+<br>
+<br>
+	
+16.	Acceptance of Gifts
+<br>
+<br>
+
+<strong>L.  REPORTS AND CORRESPONDENCE</strong>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(25970);">1.	Board</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(26928);">2.	Superintendent</a>
+<br>
+<br>
+
+<a href="#"  onclick="jwplayer().seek(27089);"><strong>M.  ADJOURNMENT</strong></a>
+<br>
+<br>
+
+
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+<a href="#"  onclick="jwplayer().seek(0);"></a><br><br>
+
+
+
+    _
+</div>
+</td>
+</tr>
+</table><br>
+
+<strong><a href=https://www.gusd.net/boardmeeting target="_blank">Full Agenda Packet may be downloaded here.</a></strong><br> 	<br /><br />
+<br /><br />	
+
+
+<strong>Watch Previous Meetings Online</strong>
+<form name="form1">
+<select name="list1" id="list1" onChange="javascript:goToPage(options[selectedIndex].value)">
+<option value="">Select another video </option>
+<option value=""></option>
+
+<option value="live.cfm">Live Broadcast - BOE</option>
+<option value=""></option>
+
+<option value=""><strong>---2026---</strong></option>
+
+	
+	
+
+<option value="2026_09_08.cfm">September 8, 2026</option>
+<option value="2026_08_11.cfm">August 11, 2026</option>
+<option value="2026_07_14.cfm">July 14, 2026</option>
+<option value="2026_06_23.cfm">June 23, 2026</option>
+<option value="2026_06_09.cfm">June 9, 2026</option>
+<option value="2026_05_19.cfm">May 19, 2026</option>
+<option value="2026_05_12.cfm">May 12, 2026</option>
+<option value="2026_05_05.cfm">May 5, 2026</option>
+<option value="2026_04_21.cfm">April 21, 2026</option>
+<option value="2026_04_07.cfm">April 7, 2026</option>
+<option value="2026_03_17.cfm">March 17, 2026 - Student Voice Panel</option>
+<option value="2026_03_10.cfm">March 10, 2026</option>	
+<option value="2026_02_17.cfm">February 17, 2026</option>
+<option value="2026_02_03.cfm">February 3, 2026</option>
+<option value="2026_01_20.cfm">January 20, 2026</option>
+<option value="2026_01_07.cfm">January 7, 2026</option>
+<option value=""></option>
+	
+	
+<option value=""><strong>---2025---</strong></option>
+<option value="2025_12_09.cfm">December 9, 2025</option>
+<option value="2025_11_18.cfm">November 18, 2025</option>
+<option value="2025_11_04.cfm">November 4, 2025</option>
+<option value="2025_10_21.cfm">October 21, 2025 - Student Voice Panel</option>
+<option value="2025_10_14.cfm">October 14, 2025</option>
+<option value="2025_09_30.cfm">September 30, 2025</option>
+<option value="2025_09_09.cfm">September 9, 2025</option>
+<option value="2025_08_12.cfm">August 12, 2025</option>
+<option value="2025_07_16.cfm">July 16, 2025</option>
+<option value="2025_07_15.cfm">July 15, 2025</option>
+<option value="2025_06_24.cfm">June 24, 2025</option>
+<option value="2025_06_10.cfm">June 10, 2025</option>
+<option value="2025_06_04.cfm">June 4, 2025</option>
+<option value="2025_05_27.cfm">May 27, 2025</option>
+<option value="2025_05_06.cfm">May 6, 2025</option>
+<option value="2025_04_08.cfm">April 8, 2025</option>
+<option value="2025_04_03.cfm">April 3, 2025</option>
+<option value="2025_03_11.cfm">March 11, 2025</option>
+<option value="2025_03_06.cfm">March 6, 2025</option>
+<option value="2025_02_27.cfm">February 27, 2025 - Student Voice Panel</option>
+<option value="2025_02_11.cfm">February 11, 2025</option>
+<option value="2025_02_05.cfm">February 5, 2025</option>
+<option value="2025_01_21.cfm">January 21, 2025</option>
+<option value="2025_01_13.cfm">January 13, 2025</option>
+<option value=""></option>
+	
+	
+<option value=""><strong>---2024---</strong></option>
+<option value="2024_12_10.cfm">December 10, 2024</option>
+<option value="2024_11_26.cfm">November 26, 2024</option>
+<option value="2024_11_12.cfm">November 12, 2024</option>
+<option value="2024_11_06.cfm">November 6, 2024</option>
+<option value="2024_10_08.cfm">October 8, 2024</option>
+<option value="2024_09_24.cfm">September 24, 2024</option>
+<option value="2024_09_10.cfm">September 10, 2024</option>
+<option value="2024_08_13.cfm">August 13, 2024</option>
+<option value="2024_07_09.cfm">July 9, 2024</option>
+<option value="2024_06_25.cfm">June 25, 2024</option>
+<option value="2024_06_11.cfm">June 11, 2024</option>
+<option value="2024_05_28.cfm">May 28, 2024</option>
+<option value="2024_05_07.cfm">May 7, 2024</option>
+<option value="2024_04_29.cfm">April 29, 2024</option>
+<option value="2024_04_09.cfm">April 9, 2024</option>
+<option value="2024_03_12.cfm">March 12, 2024</option>
+<option value="2024_02_27.cfm">February 27, 2024 - Student Voice Panel</option>
+<option value="2024_02_13.cfm">February 13, 2024</option>
+<option value="2024_01_16.cfm">January 16, 2024</option>
+<option value=""></option>
+	
+	
+<option value=""><strong>---2023---</strong></option>
+<option value="2023_12_12.cfm">December 12, 2023 - BOE</option>>
+<option value="2023_11_14.cfm">November 14, 2023 - BOE</option>>
+<option value="2023_10_24.cfm">October 24, 2023 - Student Voice Panel</option>>
+<option value="2023_10_10.cfm">October 10, 2023 - BOE</option>>
+<option value="2023_09_26.cfm">September 26, 2023 - BOE</option>>
+<option value="2023_09_12.cfm">September 12, 2023 - BOE</option>>
+<option value="2023_08_08.cfm">August 8, 2023 - BOE</option>>
+<option value="2023_07_11.cfm">July 11, 2023 - BOE</option>>
+<option value="2023_06_20.cfm">June 20, 2023 - BOE</option>>
+<option value="2023_06_06.cfm">June 6, 2023 - BOE</option>>
+<option value="2023_05_23.cfm">May 23, 2023 - BOE</option>>
+<option value="2023_05_16.cfm">May 16, 2023 - BOE</option>>
+<option value="2023_05_02.cfm">May 2, 2023 - BOE</option>>
+<option value="2023_04_18.cfm">April 18, 2023 - BOE</option>>
+<option value="2023_04_04.cfm">April 4, 2023 - BOE</option>>
+<option value="2023_03_28.cfm">March 28, 2023 - Student Voice Panel</option>>
+<option value="2023_03_07.cfm">March 7, 2023 - BOE</option>>
+<option value="2023_02_21.cfm">February 21, 2023 - BOE</option>>
+<option value="2023_02_07.cfm">February 7, 2023 - BOE</option>>
+<option value="2023_01_17.cfm">January 17, 2023 - BOE</option>>
+
+<option value=""></option>
+<option value=""><strong>---2022---</strong></option>
+	
+<option value="2022_12_13.cfm">December 13, 2022 - BOE</option>>
+<option value="2022_11_15.cfm">November 15, 2022 - BOE</option>>
+<option value="2022_10_18.cfm">October 18, 2022 - Student Voice Panel</option>>
+<option value="2022_10_11.cfm">October 11, 2022 - BOE</option>
+<option value="2022_09_20.cfm">September 20, 2022 - BOE</option>
+<option value="2022_09_13.cfm">September 13, 2022 - BOE</option>
+<option value="2022_08_30.cfm">August 30, 2022 - BOE</option>
+<option value="2022_08_09.cfm">August 9, 2022 - BOE</option>
+<option value="2022_07_12.cfm">July 12, 2022 - BOE</option>
+<option value="2022_06_21.cfm">June 21, 2022 - BOE</option>
+<option value="2022_06_14.cfm">June 14, 2022 - BOE</option>
+<option value="2022_05_31.cfm">May 31, 2022 - BOE</option>
+<option value="2022_05_17.cfm">May 17, 2022 - BOE</option>
+<option value="2022_05_03.cfm">May 3, 2022 - BOE</option>
+<option value="2022_04_19.cfm">April 19, 2022 - BOE</option>
+<option value="2022_04_05.cfm">April 5, 2022 - BOE</option>
+<option value="2022_03_08.cfm">March 8, 2022 - BOE</option>
+<option value="2022_02_15.cfm">February 15, 2022 - BOE</option>
+<option value="2022_02_01.cfm">February 1, 2022 - BOE</option>
+<option value="2022_01_18.cfm">January 18, 2022 - BOE</option>
+<option value="2022_01_04.cfm">January 4, 2022 - BOE</option>
+
+<option value=""></option>
+<option value=""><strong>---2021---</strong></option>
+
+<option value="2021_12_14.cfm">December 14, 2021 - BOE</option>
+<option value="2021_11_16.cfm">November 16, 2021 - BOE</option>
+<option value="2021_11_02.cfm">November 2, 2021 - BOE</option>
+<option value="2021_10_12.cfm">October 12, 2021 - BOE</option>
+<option value="2021_09_28.cfm">September 28, 2021 - BOE</option>
+<option value="2021_09_14.cfm">September 14, 2021 - BOE</option>
+<option value="2021_08_31.cfm">August 31, 2021 - BOE</option>
+<option value="2021_08_10.cfm">August 10, 2021 - BOE</option>
+<option value="2021_07_13.cfm">July 13, 2021 - BOE</option>
+<option value="2021_06_15.cfm">June 15, 2021 - BOE</option>
+<option value="2021_06_01.cfm">June 1, 2021 - BOE</option>
+<option value="2021_05_25.cfm">May 25, 2021 - BOE</option>
+<option value="2021_05_18.cfm">May 18, 2021 - BOE</option>
+<option value="2021_05_04.cfm">May 4, 2021 - BOE</option>
+<option value="2021_04_20.cfm">April 20, 2021 - BOE</option>
+<option value="2021_04_06.cfm">April 6, 2021 - BOE</option>
+<option value="2021_03_23.cfm">March 23, 2021 - BOE</option>
+<option value="2021_03_09.cfm">March 9, 2021 - BOE</option>
+<option value="2021_02_16.cfm">February 16, 2021 - BOE</option>
+<option value="2021_02_02.cfm">February 2, 2021 - BOE</option>
+<option value="2021_01_19.cfm">January 19, 2021 - BOE</option>
+
+<option value=""></option>
+<option value=""><strong>---2020---</strong></option>
+
+<option value="2020_12_15.cfm">December 15, 2020 - BOE</option>
+<option value="2020_11_17.cfm">November 17, 2020 - BOE</option>
+<option value="2020_11_02.cfm">November 2, 2020 - BOE</option>
+<option value="2020_10_06.cfm">October 6, 2020 - BOE</option>
+<option value="2020_09_15.cfm">September 15, 2020 - BOE</option>
+<option value="2020_09_01.cfm">September 1, 2020 - BOE</option>
+<option value="2020_08_11.cfm">August 11, 2020 - BOE</option>
+<option value="2020_07_14.cfm">July 14, 2020 - BOE</option>
+<option value="2020_07_08.cfm">July 8, 2020 - BOE</option>
+<option value="2020_06_16.cfm">June 16, 2020 - BOE</option>
+<option value="2020_06_02.cfm">June 2, 2020 - BOE</option>
+<option value="2020_05_26.cfm">May 26, 2020 - BOE</option>
+<option value="2020_05_19.cfm">May 19, 2020 - BOE</option>
+<option value="2020_05_12.cfm">May 12, 2020 - BOE</option>
+<option value="2020_05_05.cfm">May 5, 2020 - BOE</option>
+<option value="2020_04_21.cfm">April 21, 2020 - BOE</option>
+<option value="2020_04_07.cfm">April 7, 2020 - BOE</option>
+<option value="2020_03_10.cfm">March 10, 2020 - BOE</option>
+<option value="2020_03_02.cfm">March 2, 2020 - LCAP</option>
+<option value="2020_02_18.cfm">February 18, 2020 - BOE</option>
+<option value="2020_02_04.cfm">February 4, 2020 - BOE</option>
+<option value="2020_01_14.cfm">January 14, 2020 - BOE</option>
+<option value="2020_01_13.cfm">January 13, 2020 - LCAP</option>
+
+<option value=""></option>
+<option value=""><strong>---2019---</strong></option>
+
+<option value="2019_12_17.cfm">December 17, 2019 - BOE</option>
+<option value="2019_12_02.cfm">December 2, 2019 - LCAP</option>
+<option value="2019_11_19.cfm">November 19, 2019 - BOE</option>
+<option value="2019_11_05.cfm">November 5, 2019 - BOE</option>
+<option value="2019_10_22.cfm">October 22, 2019 - BOE</option>
+<option value="2019_10_07.cfm">October 7, 2019 - BOE</option>
+<option value="2019_09_17.cfm">September 17, 2019 - BOE</option>
+<option value="2019_09_10.cfm">September 10, 2019 - BOE</option>
+<option value="2019_09_03.cfm">September 3, 2019 - BOE</option>
+<option value="2019_08_27.cfm">August 27, 2019 - BOE</option>
+<option value="2019_08_13.cfm">August 13, 2019 - BOE</option>
+<option value="2019_07_16.cfm">July 16, 2019 - BOE</option>
+<option value="2019_06_18.cfm">June 18, 2019 - BOE</option>
+<option value="2019_06_04.cfm">June 4, 2019 - BOE</option>
+<option value="2019_05_28.cfm">May 28, 2019 - BOE</option>
+<option value="2019_05_21.cfm">May 21, 2019 - BOE</option>
+<option value="2019_05_13.cfm">May 13, 2019 - LCAP</option>
+<option value="2019_05_07.cfm">May 7, 2019 - BOE</option>
+<option value="2019_04_16.cfm">April 16, 2019 - BOE</option>
+<option value="2019_04_02.cfm">April 2, 2019 - BOE</option>
+<option value="2019_03_26.cfm">March 26, 2019 - BOE</option>
+<option value="2019_03_12.cfm">March 12, 2019 - BOE</option>
+<option value="2019_03_04.cfm">March 4, 2019 - LCAP</option>
+<option value="2019_02_26.cfm">February 26, 2019 - BOE</option>
+<option value="2019_02_19.cfm">February 19, 2019 - BOE</option>
+<option value="2019_02_05.cfm">February 5, 2019 - BOE</option>
+<option value="2019_01_22.cfm">January 22, 2019 - BOE</option>
+<option value="2019_01_15.cfm">January 15, 2019 - BOE</option>
+<option value="2019_01_14.cfm">January 14, 2019 - LCAP</option>
+
+<option value=""></option>
+<option value=""><strong>---2018---</strong></option>
+
+<option value="2018_12_13.cfm">December 13, 2018 - LCAP</option>
+<option value="2018_12_11.cfm">December 11, 2018 - BOE</option>
+<option value="2018_11_26.cfm">November 26, 2018 - BOE</option>
+<option value="2018_11_05.cfm">November 5, 2018 - BOE</option>
+<option value="2018_10_22.cfm">October 22, 2018 - LCAP</option>
+<option value="2018_10_16.cfm">October 16, 2018 - BOE</option>
+<option value="2018_10_02.cfm">October 2, 2018 - BOE</option>
+<option value="2018_09_25.cfm">September 25, 2018 - BOE</option>
+<option value="2018_09_17.cfm">September 17, 2018 - BOE</option>
+<option value="2018_09_04.cfm">September 4, 2018 - BOE</option>
+<option value="2018_08_14.cfm">August 14, 2018 - BOE</option>
+<option value="2018_07_17.cfm">July 17, 2018 - BOE</option>
+<option value="2018_06_19.cfm">June 19, 2018 - BOE</option>
+<option value="2018_06_04.cfm">June 4, 2018 - BOE</option>
+
+</select>
+</form>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+    <br /><br />
+	If you are having trouble viewing the video,<br /> please email <a href="mailto:streaming@studiospectrum.com">streaming@studiospectrum.com</a> or call 818-290-8438 for support<br>
+
+
+ 
+
+
+	</td>
+	
+  </tr>
+ 
+</table>
+
+</body>
+</html> 

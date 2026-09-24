@@ -1180,6 +1180,218 @@ async def _townhallstreams_walker(hub_url: str) -> List[dict]:
     return [candidate for _, candidate in parsed]
 
 
+_TWELVEMILESOUT_API_ROWS = 12
+_TWELVEMILESOUT_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+
+
+def _parse_twelvemilesout_date(text: Optional[str]) -> Optional[str]:
+    if not text:
+        return None
+    match = _TWELVEMILESOUT_DATE_RE.match(text.strip())
+    if not match:
+        return None
+    month, day, year = (int(g) for g in match.groups())
+    try:
+        return _dt.date(year, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+async def _twelvemilesout_walker(hub_url: str) -> List[dict]:
+    """12milesout.com's real per-tenant listing (WO-1045, 2026-09-24).
+    Two real, confirmed listing themes coexist across tenants (the per-
+    meeting PAGE shape is identical either way -- see twelvemilesout.py's
+    own module docstring): a Vue-rendered table backed by a real
+    `/api/meetings/list/{page}/{pageSize}` JSON endpoint (confirmed live:
+    coronado, colton, bigbearlake, solanabeach), and a server-rendered
+    static `<table>` with no JS needed at all (confirmed live: escondido,
+    covina). Tries the JSON API first (cheaper, no HTML parsing needed),
+    falls back to scraping the plain table -- covers every real tenant
+    checked. Both themes already list newest-first, confirmed live, so no
+    extra sort is applied here."""
+    from .twelvemilesout import is_twelvemilesout_tenant_host
+
+    parsed = urlparse(hub_url)
+    if not is_twelvemilesout_tenant_host(parsed.netloc):
+        return []
+    origin = f"{parsed.scheme or 'https'}://{parsed.netloc}"
+
+    api_html, _final, err = await _fetch(
+        f"{origin}/api/meetings/list/1/{_TWELVEMILESOUT_API_ROWS}"
+    )
+    if not err and api_html:
+        try:
+            payload = json.loads(api_html)
+        except (json.JSONDecodeError, TypeError):
+            payload = None
+        if isinstance(payload, dict) and isinstance(payload.get("data"), list):
+            candidates = []
+            for row in payload["data"]:
+                row_url = row.get("url")
+                if not row_url:
+                    continue
+                candidates.append(
+                    {
+                        "title": row.get("title") or row.get("typeName"),
+                        "date": _parse_twelvemilesout_date(row.get("meetingDate")),
+                        "url": urljoin(origin, row_url),
+                    }
+                )
+            if candidates:
+                return candidates
+
+    # Fall back to the static server-rendered table (escondido, covina).
+    home_html, final_url, err = await _fetch(origin + "/")
+    if err or not home_html:
+        return []
+    soup = BeautifulSoup(home_html, "html.parser")
+    candidates = []
+    for row in soup.find_all("tr"):
+        link = row.find("a", href=True)
+        if not link:
+            continue
+        href = link["href"]
+        if not re.search(r"/[Vv]ideo/[Mm]eeting/|/meeting/", href):
+            continue
+        cells = row.find_all("td")
+        if len(cells) < 3:
+            continue
+        type_name = cells[1].get_text(strip=True)
+        date_text = cells[2].get_text(strip=True)
+        candidates.append(
+            {
+                "title": type_name or None,
+                "date": _parse_twelvemilesout_date(date_text),
+                "url": urljoin(final_url, href),
+            }
+        )
+    return candidates
+
+
+# South Pasadena's own tenant ROOT page has been replaced (confirmed live
+# 2026-09-24) with a live-only Castr embed, its entire old past-meetings
+# `<select>` HTML-commented out -- see spectrumstream.py's own module
+# docstring. This walker falls back to one KNOWN-real, still-resolving
+# meeting page to bootstrap from instead: every meeting page on this
+# vendor embeds the SAME full, current past-meetings `<select>`, so the
+# seeded page's own date doesn't matter, only that it still resolves.
+_SPECTRUMSTREAM_LISTING_SEED = {
+    "south_pasadena": "https://spectrumstream.com/streaming/south_pasadena/2026_01_14.cfm",
+}
+
+_SPECTRUMSTREAM_ROOT_OPTION_RE = re.compile(r'option\s+value="([^"]+\.cfm)"', re.I)
+_SPECTRUMSTREAM_FILENAME_DATE_RE = re.compile(r"(\d{4})_(\d{2})_(\d{2})")
+_SPECTRUMSTREAM_MONTHS = {
+    name: i + 1
+    for i, name in enumerate(
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+    )
+}
+_SPECTRUMSTREAM_LABEL_DATE_RE = re.compile(r"([A-Z][a-z]+)\s+(\d{1,2}),?\s*(\d{4})")
+
+
+def _parse_spectrumstream_date(value: str, label: str) -> Optional[str]:
+    """Prefers the meeting FILENAME's own `{yyyy}_{mm}_{dd}` shape
+    (confirmed on every real tenant checked) over the option's visible
+    label text, which is occasionally annotated ("May 26, 2026 - Town
+    Hall") in a way that still carries a real date but isn't the
+    filename itself."""
+    match = _SPECTRUMSTREAM_FILENAME_DATE_RE.search(value)
+    if match:
+        year, month, day = (int(g) for g in match.groups())
+        try:
+            return _dt.date(year, month, day).isoformat()
+        except ValueError:
+            pass
+    label_match = _SPECTRUMSTREAM_LABEL_DATE_RE.search(label)
+    if label_match:
+        month_name, day, year = label_match.groups()
+        month = _SPECTRUMSTREAM_MONTHS.get(month_name)
+        if month:
+            try:
+                return _dt.date(int(year), month, int(day)).isoformat()
+            except ValueError:
+                pass
+    return None
+
+
+async def _spectrumstream_walker(hub_url: str) -> List[dict]:
+    """spectrumstream.com's real per-tenant listing (WO-1045, 2026-09-24).
+    A tenant's bare root (`/streaming/{tenant}/`) is, on every real
+    tenant checked, a truncated/malformed fragment carrying only the
+    single NEWEST meeting filename (`<option value="{file}.cfm">`, no
+    closing tag, no label) -- not a real listing. This walker reads that
+    fragment to find the newest meeting, then fetches THAT meeting's own
+    page, which (on every tenant checked) embeds the full, real
+    past-meetings `<select name="list1">` with every other candidate and
+    its real date label. When a tenant's root carries no such fragment at
+    all (South Pasadena -- see `_SPECTRUMSTREAM_LISTING_SEED` above),
+    falls back to a known-real seed page instead. Options are returned in
+    the SAME order the source lists them -- confirmed live newest-first
+    on every tenant checked, so no extra sort is applied here."""
+    from .spectrumstream import parse_spectrumstream_tenant
+
+    tenant = parse_spectrumstream_tenant(hub_url)
+    if not tenant:
+        return []
+    parsed_hub = urlparse(hub_url)
+    origin = f"{parsed_hub.scheme or 'https'}://{parsed_hub.netloc}"
+    base = f"{origin}/streaming/{tenant}/"
+
+    meeting_url = None
+    root_html, _final, err = await _fetch(base)
+    if not err and root_html:
+        match = _SPECTRUMSTREAM_ROOT_OPTION_RE.search(root_html)
+        if match and match.group(1).lower() != "live.cfm":
+            meeting_url = urljoin(base, match.group(1))
+
+    if meeting_url is None:
+        meeting_url = _SPECTRUMSTREAM_LISTING_SEED.get(tenant)
+    if meeting_url is None:
+        return []
+
+    meeting_html, final_meeting_url, err = await _fetch(meeting_url)
+    if err or not meeting_html:
+        return []
+
+    soup = BeautifulSoup(meeting_html, "html.parser")
+    select = soup.find("select", attrs={"name": "list1"}) or soup.find(
+        "select", id="list1"
+    )
+    if not select:
+        return []
+
+    candidates = []
+    seen = set()
+    for option in select.find_all("option"):
+        value = (option.get("value") or "").strip()
+        if not value or value.lower() == "live.cfm" or value in seen:
+            continue
+        seen.add(value)
+        label = option.get_text(strip=True)
+        candidates.append(
+            {
+                "title": label or None,
+                "date": _parse_spectrumstream_date(value, label),
+                "url": urljoin(final_meeting_url or base, value),
+            }
+        )
+    return candidates
+
+
 _CABLECAST_FASTBOOT_SHOW_LINK_RE = re.compile(r'/show/\d+(?:\?[^"\'\s]*)?')
 # Mirrors cablecast.py's own `_FASTBOOT_TITLE_DATE_RE` (kept as a
 # separate compiled copy rather than importing it, since this module
@@ -1480,6 +1692,8 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("civicplus", _civicplus_walker)
     register_listing_walker("iqm2", _iqm2_walker)
     register_listing_walker("townhallstreams", _townhallstreams_walker)
+    register_listing_walker("twelvemilesout", _twelvemilesout_walker)
+    register_listing_walker("spectrumstream", _spectrumstream_walker)
     register_listing_walker("cablecast", _cablecast_walker)
     register_listing_walker("invintus", _invintus_walker)
     register_listing_walker("telvue", _telvue_walker)
