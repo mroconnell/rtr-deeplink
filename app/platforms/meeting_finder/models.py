@@ -58,6 +58,21 @@ OUTCOME_ERROR = "error"
 # rule it was kept despite; this constant exists only so a report can
 # count how often that fallback fired, separately from a clean find.
 OUTCOME_VIDEO_LOW_CONFIDENCE = "video-low-confidence"
+# WO-1046 (Ryan, 2026-09-24): a real meeting video was found -- a dated,
+# titled row off a Vimeo showcase/channel listing, confirmed by Vimeo's
+# own oEmbed response -- but its owner's Vimeo privacy setting restricts
+# playback to specific domains (the government's own site) and Vimeo's
+# oEmbed/player refuse to serve it anywhere else. Confirmed live on
+# Suffolk County NY's Legislature (`scnylegislature.us`): the real oEmbed
+# `domain_status_code` comes back non-200 and `player.vimeo.com` itself
+# 403s. This is NOT worked around with a spoofed `Referer`/`domain_hint`
+# -- CLAUDE.md's "we query sites politely" rule treats an owner's
+# explicit access restriction the same as a human-verification gate, not
+# something to route around even when the true embedding domain is known.
+# A stronger, more confirmed finding than OUTCOME_VIDEO_LOW_CONFIDENCE (we
+# KNOW this is a real meeting; we just can't play or transcribe it here)
+# -- see resolve.py's `_KEPT_DESPITE_EMBED_RESTRICTED`.
+OUTCOME_EMBED_RESTRICTED = "embed-restricted"
 # An entry point wave 2 hasn't built yet (List, Identify, Scan, Hop,
 # Start) was asked for. Never a real finding -- a placeholder so the CLI
 # accepts every `--entry` value from day one and wave 2 can fill each
