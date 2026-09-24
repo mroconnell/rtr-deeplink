@@ -12,10 +12,19 @@ page is fetched" section for the ladder this implements:
     3. Headless browser -- only when a page loaded (200) but shows no
        `<a href>` links and the caller asked for links.
     4. Wayback's latest capture, read via the `id_` raw form, after a
-       genuine human-verification challenge. Links only, never media --
-       this is the one rung this module will never try to get past
-       (CLAUDE.md, and docs/MEETING_FINDER.md's own line: "We never try
-       to get past a site's challenge").
+       genuine human-verification challenge -- OR after the ladder ends
+       in an ordinary hard block with no challenge marker at all (a 403
+       or dropped connection that persists through the browser-headers
+       rung; WO-1032, prompted by Essex, ON's `calendar.essex.ca/meetings`
+       returning a plain 403 with no Wayback fallback). Links only, never
+       media -- this is the one rung this module will never try to get
+       past (CLAUDE.md, and docs/MEETING_FINDER.md's own line: "We never
+       try to get past a site's challenge"). The outcome string itself
+       (`cloudflare-challenge-blocked`/`blocked-waf-akamai`/
+       `blocked-browser-headers`) never changes when Wayback supplies
+       links -- `FetchResult.wayback_timestamp` being set is the flag
+       that it did, and `FetchResult.challenge` says whether this was a
+       real challenge or an ordinary block.
 
 YouTube is refused outright, before any request: Meeting Finder never
 fetches YouTube (docs/MEETING_FINDER.md; CLAUDE.md's YouTube-drip rule).
@@ -104,7 +113,10 @@ read, which only ever run after live fetching has already stopped for
 that URL. That mirrors `wo282_recon.py`'s own design: CDX/Wayback calls
 run under their own separate concurrency limit
 (`ARCHIVE_CONCURRENCY`/`_ARCHIVE_SEMA`), not a government's per-request
-budget.
+budget. This budget only ever counted THIS Fetcher's own requests to the
+target site -- see `.pacing`'s `pace_all_requests()` (WO-1032) for the
+separate, process-wide count of every real request a government's whole
+walk makes, adapters' own aiohttp sessions included.
 """
 
 from __future__ import annotations
@@ -444,22 +456,56 @@ class Fetcher:
             elapsed_ms=int((time.monotonic() - start) * 1000),
         )
 
-    async def _challenge_result(
-        self, url: str, access_mode: str, body: str | None, start: float
+    async def _wayback_fallback_result(
+        self,
+        url: str,
+        *,
+        access_mode: str,
+        outcome: str,
+        challenge: bool,
+        status: int | None = None,
+        final_url: str | None = None,
+        start: float,
     ) -> FetchResult:
-        outcome = _challenge_outcome(body)
+        """Shared by both ladder endings that give up on live access to
+        `url`: a genuine human-verification challenge (`challenge=True`,
+        via `_challenge_result()`) and a hard block that never showed a
+        challenge marker -- a 403/dropped connection that persisted
+        through the browser-headers rung (`challenge=False`, WO-1032).
+        Both try Wayback's latest capture for LINKS ONLY (never media --
+        `links_only` says so on the result), same as the docstring's own
+        "How every page is fetched" table. The outcome string itself
+        (`outcome`) is never changed by a successful Wayback read -- a
+        caller who only reads `outcome` still sees "this was blocked";
+        `wayback_timestamp` not being `None` is the flag that Wayback
+        links were used to get past it, and `challenge` says which kind
+        of block this was.
+        """
         wayback_html = None
         wayback_ts = None
         if self.allow_wayback:
             wayback_html, wayback_ts = await self._wayback_latest(url)
         return self._result(
             requested_url=url,
+            final_url=final_url,
+            status=status,
             html=wayback_html,
             access_mode="wayback" if wayback_html else access_mode,
             outcome=outcome,
-            challenge=True,
+            challenge=challenge,
             wayback_timestamp=wayback_ts,
             links_only=bool(wayback_html),
+            start=start,
+        )
+
+    async def _challenge_result(
+        self, url: str, access_mode: str, body: str | None, start: float
+    ) -> FetchResult:
+        return await self._wayback_fallback_result(
+            url,
+            access_mode=access_mode,
+            outcome=_challenge_outcome(body),
+            challenge=True,
             start=start,
         )
 
@@ -541,12 +587,20 @@ class Fetcher:
                 self._host_header_mode[host] = "browser"
                 if _looks_like_challenge(body):
                     return await self._challenge_result(url, access_mode, body, start)
-                return self._result(
-                    requested_url=url,
-                    final_url=final_url2,
-                    status=status2,
+                # WO-1032: the browser-headers rung also ended in a hard
+                # block (a 403 or dropped connection, no challenge marker
+                # in the body) -- fall back to Wayback for links, same as
+                # a real challenge would, per docs/MEETING_FINDER.md's
+                # "How every page is fetched" table and CLAUDE.md's
+                # Essex, ON finding (a plain 403 with no challenge marker
+                # got no Wayback fallback before this).
+                return await self._wayback_fallback_result(
+                    url,
                     access_mode=access_mode,
                     outcome="blocked-browser-headers",
+                    challenge=False,
+                    status=status2,
+                    final_url=final_url2,
                     start=start,
                 )
             status, final_url, text = status2, final_url2, text2
@@ -555,12 +609,16 @@ class Fetcher:
             body = text
             if _looks_like_challenge(body):
                 return await self._challenge_result(url, access_mode, body, start)
-            return self._result(
-                requested_url=url,
-                final_url=final_url,
-                status=status,
+            # WO-1032: same hard-block Wayback fallback as above, for the
+            # case where this Fetcher already knew the host needed
+            # browser headers and started there directly.
+            return await self._wayback_fallback_result(
+                url,
                 access_mode=access_mode,
                 outcome="blocked-browser-headers",
+                challenge=False,
+                status=status,
+                final_url=final_url,
                 start=start,
             )
         elif not start_with_browser_headers:

@@ -1,5 +1,106 @@
 # Backlog — done
 
+## WO-1032: Meeting Finder fetch-layer fixes -- process-wide pacing/counting, Wayback-for-links on a hard block [Done 2026-09-23]
+
+**What.** Two fixes to `app/platforms/meeting_finder/fetch.py`, from a
+conductor trace of `dublin.ca.gov` and a live check of
+`calendar.essex.ca/meetings`.
+
+**A. Process-wide request pacing and counting
+(`app/platforms/meeting_finder/pacing.py`, new).** Tracing
+`dublin.ca.gov` through `runner.run_one()` (with `aiohttp.ClientSession
+._request` wrapped) found 55 real HTTP requests for one government, but
+`Fetcher`'s own `max_fetches` budget only counted 12 -- the rest came
+from adapters (`granicus.py`'s `_fetch_page`/`_fetch_channel_info`/
+`_fetch_caption_file`/`_fetch_agenda_html`, `queue_probe.py`'s
+`_probe_hls`) opening their own `aiohttp.ClientSession`s, which skip
+`Fetcher`'s per-host pacer and any robots.txt `Crawl-delay` it already
+knows. `pace_all_requests(fetcher)` is a context manager the runner
+activates around one government's whole walk: while active, EVERY real
+`aiohttp` request process-wide is paced against the same per-host pacer
+(`fetch._global_wait_for_host`) and counted into a `RequestStats`
+(`requests_total`, `requests_by_host`) -- reported *alongside*
+`fetcher.fetches_used`, never folded into it (folding it in would let a
+single Granicus caption fetch's several requests starve the walk's real
+12-fetch budget before Resolve got a turn). `fetcher`'s own session is
+recognized (`self is ctx.fetcher._session`) and counted but not re-paced,
+since `Fetcher` already paces its own requests -- re-pacing them again
+would silently double the wait reserved for every later request to that
+host. Concurrency-safe across simultaneous governments via `contextvars`
+(same pattern as `identity.py`'s `tenant_pin_switched_off()`); the hook
+is a permanent, idempotent wrapper that is a true no-op outside an active
+`pace_all_requests()` block, so nothing changes for any other caller of
+aiohttp in the process.
+
+**B. Wayback-for-links on a hard block, not only a real challenge
+(`fetch.py`).** `calendar.essex.ca/meetings` returned a plain 403
+(`blocked-browser-headers`, no challenge marker) and got no Wayback
+fallback at all, even though the exact same fallback already existed for
+a real human-verification challenge. `fetch.py`'s two hard-block return
+sites now also try Wayback's latest capture for links only, via a new
+shared `_wayback_fallback_result()` (the existing `_challenge_result()`
+now calls it too, instead of duplicating the CDX/`id_`-read logic). The
+outcome string never changes (`blocked-browser-headers` stays
+`blocked-browser-headers`) -- `FetchResult.wayback_timestamp` being set
+is the flag that Wayback links were used, and `FetchResult.challenge`
+still says whether it was a real challenge or an ordinary block. Never
+used for media, per CLAUDE.md's "we never try to get past a site's
+challenge."
+
+**Interface for `runner.py` (WO-1031, not built here):**
+
+```python
+with pace_all_requests(fetcher) as stats:
+    ...  # the whole government walk
+verdict_row.requests_total = stats.requests_total
+verdict_row.requests_by_host = dict(stats.requests_by_host)
+```
+
+**Verification.** New `tests/test_wo1032_meeting_finder_pacing.py` (real
+`aiohttp.test_utils.TestServer`): an adapter's own session gets paced and
+counted the same as `Fetcher`'s own request; two concurrent governments
+sharing a host still take turns, each keeping its own stats; the hook is
+a no-op outside a `pace_all_requests()` block; YouTube is still refused
+for an adapter's own session. `tests/test_meeting_finder_fetch.py`
+extended: both hard-block return sites now fall back to Wayback (mocked
+CDX/`id_` read); no CDX call when `allow_wayback=False`; three existing
+tests that ended in a hard block updated to pass `allow_wayback=False`
+(or mock the CDX call) so they don't make a real, unmocked
+`archive.org` request.
+
+**Live check.** Traced `dublin.ca.gov` through `runner.run_one()` (a
+verification script wrapping `runner.Fetcher` to activate
+`pace_all_requests()`, since `runner.py` isn't wired to call it yet --
+that wiring is WO-1031's). This run's own result: outcome
+`no-meeting-nor-video`, 3 forks tried, 0 hops, all 12 budgeted fetches
+used, `requests_total` also 12 (all against `dublin.ca.gov`/
+`www.dublin.ca.gov`, all through `Fetcher` itself) -- no separate
+adapter-session requests occurred in THIS run, because the walk never
+resolved a candidate far enough to reach Granicus/Swagit's own caption
+fetching. This is a different, and honestly weaker, live demonstration
+of the counting gap than the original 55-vs-12 trace that motivated the
+build (that trace is not reproduced here bit-for-bit; it depended on the
+walk actually resolving a real video, which this run did not). The
+counting mechanism itself is proven directly by the real-server unit
+tests instead. Separately, fetching `calendar.essex.ca/meetings` directly
+reproduced the exact hard block CLAUDE.md's finding named (403,
+`blocked-browser-headers`, `challenge=False`) but the Wayback CDX lookup
+returned nothing -- confirmed live via a direct `curl` to
+`web.archive.org` that the Internet Archive itself was reporting
+"Temporarily Offline" at check time, an external outage, not a bug in
+this code (the CDX call fails closed, per `cdx_get()`'s own
+3-attempt-then-`None` design, and `fetch.py`'s outcome/challenge fields
+were unaffected).
+
+**Residual/out of scope:** while finding a real Dublin, CA meeting URL
+for the live check, `https://dublinca.new.swagit.com/videos/401655` (a
+real link on that tenant's own homepage) loaded a page titled "Sep 21,
+2026 City Council Meeting - Carmel, IN" -- Carmel, Indiana, not Dublin,
+CA, despite `tenant_overrides.csv`/`tenant_hints.csv` pinning that host
+to Dublin, CA from a 2026-09-03 landing-page read. Not investigated
+further here (out of scope for this WO) -- flagged as a background task
+suggestion for a follow-up session to verify and, if confirmed, correct.
+
 ## WO-1033: link-quality fixes in Meeting Finder's Hop and Scan phases [Done 2026-09-23]
 
 **What.** Ryan hand-checked two real governments (Dublin, CA and
