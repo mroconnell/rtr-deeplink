@@ -172,6 +172,9 @@ class VerdictRow:
     hops: int = 0
     forks: int = 0
     fetches: int = 0
+    # WO-1031: every HTTP request the walk made, adapters' own included
+    # (pacing.py's RequestStats). `fetches` counts only the 12-fetch budget.
+    requests_total: int = 0
     note: str = ""
     # WO-1031 (Ryan, 2026-09-23): every failure says what to try next, so
     # misses are easy to revisit. Empty when something resolved.

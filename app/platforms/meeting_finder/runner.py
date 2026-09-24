@@ -58,6 +58,7 @@ from .hop import canonical_page_key, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
 from .listing import list_account
+from .pacing import pace_all_requests
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
     OUTCOME_YOUTUBE_LEAD_ONLY,
@@ -118,6 +119,13 @@ _HOP_CANDIDATE_LIMIT = 25
 # full Identify+List pass in `_deep_step()`, per fork. Small on purpose
 # -- each one costs a real fetch, and this runs on every fork.
 _SCAN_LINK_FOLLOW_LIMIT = 3
+
+# WO-1031: watch/video links followed from a page whose platform had
+# meetings but no video (see `_shallow_step()`).
+_VIDEO_FOLLOW_LIMIT = 2
+_VIDEO_WORDS_RE = re.compile(
+    r"watch|video|stream|on[- ]demand|livestream|broadcast", re.I
+)
 
 
 # WO-1031 (Ryan, 2026-09-23): "a good discovery rate and some well-marked
@@ -299,6 +307,7 @@ async def _shallow_step(
     *,
     seen: Set[str],
     max_tries: int,
+    follow_video: bool = True,
 ) -> Optional[IdentifyResult]:
     """Identify, then List (if a platform+account was found), then
     Resolve on whatever List handed back. Cheap relative to Scan/Hop --
@@ -364,6 +373,41 @@ async def _shallow_step(
                 list_result.candidates, finder_input, state, max_tries=max_tries
             ):
                 return None  # resolved -- no deep pass needed for this fork
+
+    # WO-1031: a platform with meetings but no video is often an agenda
+    # system, with the video somewhere else linked from the same page.
+    # Real case (Ryan's ground truth, 2026-09-23): Dublin, CA's
+    # `/1604/Meetings-Agendas-Minutes-Video-on-Demand` led to Granicus
+    # agendas with no playable video, while the same page links
+    # `/2875/Watch-Meetings` -> Swagit. Follow up to 2 watch/video links
+    # from this page (ranked with `prefer_video`) before giving up here.
+    if (
+        follow_video
+        and not state.done
+        and ident.page is not None
+        and OUTCOME_MEETING_WITHOUT_VIDEO in state.outcomes
+    ):
+        followed = 0
+        for hop in rank_hops(ident.page, prefer_video=True, limit=_HOP_CANDIDATE_LIMIT):
+            if followed >= _VIDEO_FOLLOW_LIMIT or state.done:
+                break
+            if not _VIDEO_WORDS_RE.search(f"{hop.anchor} {hop.url}"):
+                continue
+            if is_youtube_host(urlparse(hop.url).hostname or ""):
+                continue
+            if _norm_url(hop.url) in seen:
+                continue
+            followed += 1
+            state.hops += 1
+            await _shallow_step(
+                hop.url,
+                fetcher,
+                finder_input,
+                state,
+                seen=seen,
+                max_tries=max_tries,
+                follow_video=False,
+            )
 
     return ident
 
@@ -728,13 +772,17 @@ async def run_one(
 
     fetcher = Fetcher(max_fetches=max_fetches)
     try:
-        state = await _run_phase_loop(
-            finder_input,
-            fetcher,
-            max_tries=max_tries,
-            max_hops=max_hops,
-            max_forks=max_forks,
-        )
+        # WO-1032/1031: pace and count EVERY request this government's walk
+        # makes, adapters' own sessions included (Dublin made 55 requests
+        # against a 12-fetch budget before this).
+        with pace_all_requests(fetcher) as request_stats:
+            state = await _run_phase_loop(
+                finder_input,
+                fetcher,
+                max_tries=max_tries,
+                max_hops=max_hops,
+                max_forks=max_forks,
+            )
     finally:
         await fetcher.aclose()
 
@@ -783,6 +831,7 @@ async def run_one(
         hops=state.hops,
         forks=state.forks,
         fetches=fetcher.fetches_used,
+        requests_total=request_stats.requests_total,
         note=note,
         try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
