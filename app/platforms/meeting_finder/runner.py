@@ -67,6 +67,7 @@ from .models import (
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_OFF_MISSION,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
+    OUTCOME_VIDEO_LOW_CONFIDENCE,
     Candidate,
     FinderInput,
     VerdictRow,
@@ -91,6 +92,13 @@ _PHASE_INDEX = {name: i for i, name in enumerate(_PHASE_ORDER)}
 # "nothing found".
 _OUTCOME_PRIORITY: Dict[str, int] = {
     OUTCOME_MEETING_WITHOUT_VIDEO: 100,
+    # WO-1035 follow-up: defensive only -- `run_one()` always handles a
+    # `state.low_confidence` fallback directly, before `_pick_outcome()`
+    # is ever consulted, so this priority normally never matters. Kept
+    # here so a future caller of `_pick_outcome()` on a raw outcome list
+    # still ranks a real (if low-confidence) video above a bare access
+    # block or "nothing found".
+    OUTCOME_VIDEO_LOW_CONFIDENCE: 95,
     OUTCOME_ACCOUNT_NOT_FOUND: 90,
     # WO-1031: a YouTube lead beats an access block (Essex, ON) but never a
     # real meeting-without-video finding -- almost every government site has
@@ -161,6 +169,10 @@ _TRY_NEXT: Dict[str, str] = {
         "platform has no adapter: record in UNSUPPORTED_PLATFORMS.md"
     ),
     OUTCOME_OFF_MISSION: "video found but not a meeting: hand-check 3+ videos deeper",
+    OUTCOME_VIDEO_LOW_CONFIDENCE: (
+        "video found but low confidence (see note): hand-check it, or look for a "
+        "cleaner candidate on the same account"
+    ),
     "cloudflare-challenge-blocked": "blocked: try another network, or Wayback by hand",
     "blocked-waf-akamai": "blocked: try another network, or Wayback by hand",
     "blocked-browser-headers": "blocked: try another network, or Wayback by hand",
@@ -207,6 +219,18 @@ class _WalkState:
     meeting: Optional[Any] = None  # ResolvedMeeting behind `result`
     phase_reached_index: int = -1
     budget_exhausted: bool = False
+    # WO-1035 follow-up (conductor live check, 2026-09-23): a "kept
+    # despite" (OUTCOME_VIDEO_LOW_CONFIDENCE) pick from ANY resolve call
+    # in this government's walk, held here rather than ending the walk --
+    # see `_try_resolve()`'s own comment for the real bug this fixes
+    # (champaignil.gov: a 12s homepage banner .mp4 stopped the whole walk
+    # before it ever reached the real Cablecast council-meeting account).
+    # (rank, ResolveResult, ResolvedMeeting-or-None); only the best-ranked
+    # one seen across the whole walk is kept (lower rank wins, first-found
+    # breaks a tie -- same order resolve.py itself already applies within
+    # one call). Used as the FINAL result only if nothing clean ever
+    # resolves anywhere in the walk (see run_one()).
+    low_confidence: Optional[tuple] = None
     # WO-1035 item 5: per-government "don't re-try the same thing" caches.
     # `listed_accounts` keys are (platform, normalized account url) --
     # List is never run twice for the same account across forks/hops
@@ -404,6 +428,20 @@ async def _try_resolve(
         state.result = result
         state.meeting = meeting
         return True
+    # WO-1035 follow-up (conductor live check, 2026-09-23): a "kept
+    # despite" pick (OUTCOME_VIDEO_LOW_CONFIDENCE) is real evidence, but
+    # NOT a clean success -- it must not end the walk (the original bug:
+    # a 12s homepage banner .mp4 on champaignil.gov stopped the walk
+    # before it ever reached the real Cablecast council-meeting account).
+    # Stash it as a per-government fallback (best rank wins, first-found
+    # breaks a tie) and keep walking every other fork/hop; `run_one()`
+    # only reaches for it if nothing clean ever resolves anywhere.
+    if result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE:
+        rank = (
+            result.low_confidence_rank if result.low_confidence_rank is not None else 99
+        )
+        if state.low_confidence is None or rank < state.low_confidence[0]:
+            state.low_confidence = (rank, result, meeting)
     state.outcomes.append(result.outcome)
     if result.note:
         state.resolve_notes.append(result.note)
@@ -907,6 +945,8 @@ async def run_one(
             forks=0,
             fetches=1,
             note=result.note,
+            low_confidence_reason=result.low_confidence_reason or "",
+            audio_only=result.audio_only,
             finished_at=_now_iso(),
         )
 
@@ -926,9 +966,24 @@ async def run_one(
     finally:
         await fetcher.aclose()
 
-    identity = check_identity(state.meeting, finder_input)
     result = state.result
 
+    # WO-1035 follow-up (conductor live check, 2026-09-23): only reach for
+    # the per-government low-confidence fallback once nothing clean ever
+    # resolved anywhere in the walk -- a clean `state.result` always wins.
+    low_confidence_meeting = None
+    if result is None and state.low_confidence is not None:
+        _rank, lc_result, lc_meeting = state.low_confidence
+        low_confidence_meeting = lc_meeting
+    else:
+        lc_result = None
+
+    identity = check_identity(
+        state.meeting if result is not None else low_confidence_meeting, finder_input
+    )
+
+    low_confidence_reason = ""
+    audio_only = False
     if result is not None:
         outcome = None
         result_url = result.video_url
@@ -936,8 +991,22 @@ async def run_one(
         tier = result.tier
         duration_seconds = result.duration_seconds
         note = result.note
+        audio_only = result.audio_only
         if result.tier == 2 and result.candidate is not None:
             state.leads.append({"kind": "youtube", "url": result.candidate.url})
+    elif lc_result is not None:
+        # A real video was found somewhere in the walk, but every one of
+        # them was a "keep at least one" fallback (a rejected title, a
+        # too-short probe, an unmeasurable length) -- report it, but as
+        # OUTCOME_VIDEO_LOW_CONFIDENCE, never as a clean find, so it is
+        # never confused with a real tier-1/tier-3 success downstream.
+        outcome = OUTCOME_VIDEO_LOW_CONFIDENCE
+        result_url = lc_result.video_url
+        platform = lc_result.platform
+        tier = lc_result.tier
+        duration_seconds = lc_result.duration_seconds
+        note = lc_result.note or "kept despite: low confidence"
+        low_confidence_reason = lc_result.low_confidence_reason or ""
     else:
         if any(lead.get("kind") == "youtube" for lead in state.leads):
             state.outcomes.append(OUTCOME_YOUTUBE_LEAD_ONLY)
@@ -981,6 +1050,8 @@ async def run_one(
         fetches=fetcher.fetches_used,
         requests_total=request_stats.requests_total,
         note=note,
+        low_confidence_reason=low_confidence_reason,
+        audio_only=audio_only,
         try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
     )

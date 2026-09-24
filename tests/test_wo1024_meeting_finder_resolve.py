@@ -7,7 +7,11 @@ synthetic-test rules)."""
 
 import pytest
 
-from app.platforms.meeting_finder.models import Candidate, FinderInput
+from app.platforms.meeting_finder.models import (
+    OUTCOME_VIDEO_LOW_CONFIDENCE,
+    Candidate,
+    FinderInput,
+)
 from app.platforms.meeting_finder.resolve import resolve_candidates
 from app.platforms.models import ResolvedMeeting
 
@@ -150,7 +154,12 @@ async def test_video_gate_rejection_is_kept_as_a_last_resort(monkeypatch):
         )
     ]
     result = await resolve_candidates(candidates, _finder_input(meeting.source_url))
-    assert result.outcome is None
+    # WO-1035 follow-up (conductor live check, 2026-09-23): this must NOT
+    # look like a clean success -- a bare `outcome is None` here is
+    # exactly the bug that let a homepage banner .mp4 stop a whole
+    # government's walk (champaignil.gov) before it ever reached the real
+    # meeting account.
+    assert result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE
     assert result.candidate is not None
     assert result.video_url == meeting.video_url
     assert result.low_confidence_reason
@@ -210,7 +219,7 @@ async def test_too_short_video_is_kept_as_a_last_resort(monkeypatch):
         )
     ]
     result = await resolve_candidates(candidates, _finder_input(meeting.source_url))
-    assert result.outcome is None
+    assert result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE
     assert result.video_url == meeting.video_url
     assert result.duration_seconds == 12.0
     assert "too short" in result.low_confidence_reason
@@ -298,7 +307,7 @@ async def test_unmeasurable_video_is_kept_last_after_a_known_length_one(monkeypa
     result = await resolve_candidates(
         candidates, _finder_input(unmeasurable_meeting.source_url), max_tries=6
     )
-    assert result.outcome is None
+    assert result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE
     # The known-duration (too-short) candidate wins over the unmeasurable
     # one, even though the unmeasurable one was listed first (newer date).
     assert result.video_url == short_meeting.video_url

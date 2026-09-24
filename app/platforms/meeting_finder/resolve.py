@@ -91,6 +91,7 @@ from .models import (
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
+    OUTCOME_VIDEO_LOW_CONFIDENCE,
     Candidate,
     FinderInput,
     ResolveResult,
@@ -433,6 +434,19 @@ async def _resolve_candidates_with_meeting(
     # best-ranked one (see the module-level `_KEPT_DESPITE_*` order)
     # rather than falling through to "meeting without video" or "nothing
     # found" while a real video sits right there.
+    #
+    # WO-1035 follow-up (conductor live check, 2026-09-23): this is NOT a
+    # clean find -- `outcome` must be OUTCOME_VIDEO_LOW_CONFIDENCE, never
+    # `None`. Returning `None` here (the original bug) made runner.py's
+    # `_try_resolve()` treat a "kept despite" pick from ONE candidate list
+    # (e.g. a homepage banner .mp4) exactly like a real success and stop
+    # the whole government walk immediately -- confirmed live on
+    # champaignil.gov: a 12-second banner clip on the homepage won before
+    # the walk ever reached the real Cablecast council-meeting account.
+    # `runner.py` now holds this as a per-government FALLBACK (see
+    # `_WalkState.low_confidence`) and keeps walking every other fork/hop;
+    # only if NOTHING clean turns up anywhere is this fallback used as the
+    # final result, with this same outcome and rank intact.
     for rank in (
         _KEPT_DESPITE_TOO_SHORT,
         _KEPT_DESPITE_GATE_REJECTED,
@@ -448,9 +462,10 @@ async def _resolve_candidates_with_meeting(
                     video_url=result.video_url,
                     has_segments=False,
                     duration_seconds=duration,
-                    outcome=None,
+                    outcome=OUTCOME_VIDEO_LOW_CONFIDENCE,
                     note=_note(f"kept despite: {rule}"),
                     low_confidence_reason=rule,
+                    low_confidence_rank=rank,
                 ),
                 result,
             )

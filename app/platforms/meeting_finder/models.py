@@ -146,6 +146,15 @@ class ResolveResult:
     # "too short (42s, floor is 60s)", "video length couldn't be
     # measured (...)"). `None` for a clean find.
     low_confidence_reason: Optional[str] = None
+    # WO-1035 follow-up (conductor live check, 2026-09-23): the rank a
+    # "kept despite" pick was chosen at (0 = known-too-short, 1 =
+    # gate-rejected, 2 = length-unknown -- see resolve.py's own
+    # `_KEPT_DESPITE_*` constants). `None` for a clean find. Exposed so
+    # `runner.py` can compare low-confidence fallbacks found across
+    # DIFFERENT Resolve calls (different forks/hops) for the same
+    # government and keep only the best-ranked one, the same rule
+    # resolve.py already applies within one call.
+    low_confidence_rank: Optional[int] = None
     # WO-1035 item 3: a resolved video that failed the audio-only check is
     # no longer a reject -- it's a real find, just labelled. `False` for
     # an ordinary video (or when `video_url` is None).
