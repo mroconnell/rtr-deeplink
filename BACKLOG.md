@@ -203,7 +203,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
+  [NEEDS-AUDIT] The government registry creates duplicate ids and…
+  [NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is…
   [NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never…
   [NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on…
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
@@ -461,9 +463,10 @@ Trust, safety & data quality  (27)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (34)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (35)
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
+  `[IMPROVEMENT-ROUND]` A list of regional TV hubs and the governments…
   `[IMPROVEMENT-ROUND]` Blocked governments: find their vendor account…
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
@@ -2298,6 +2301,20 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] The government registry creates duplicate ids and matches the wrong place for some real governments (Meeting Finder calibration run B, 2026-09-24).**
+  - **Issue**: Meeting Finder's identity check disagreed on 11 of 272 real finds in calibration run B. Most were registry problems, not wrong finds: (1) a duplicate `rtr:` id was created for a government that already has a real id: Leduc County AB, Cape Elizabeth ME, Ogunquit ME, Wappinger NY, Teaneck NJ, Prince William County VA (and Wake County NC -> `rtr:us:nc:wake-county-north-carolina` in run A); (2) a name matched the wrong place: Newmarket NH -> Newmarket, Ontario (`ca:csd:3519048`); "Stephentown" -> `rtr:us:ny:stephen`; Petersburgh NY -> `rtr:us:ny:petersburg`. Evidence: rtr-deeplink Meeting Finder scratch output `calB/verdicts.csv` (identity_verdict = disagrees, identity_points_to).
+  - **Impact**: a pin or ingest resolved through the registry can file a page under a duplicate or a different government; coverage counts double or miss. Identity "disagrees" is also noisy, which is why Meeting Finder now sends it to a person (WO-1041).
+  - **Next action**: reproduce each case with `app/utils/gov_registry/resolver.py` (name + state -> id) and find why a new `rtr:` id is minted when a real one exists (likely a name-normalisation miss: "town", "township", county suffixes, "-north-carolina" style slugs) and why a cross-border/prefix match wins (Newmarket, Stephen/Stephentown). Fix the matcher, then merge the minted duplicates into the real ids.
+  - **Constraint**: never rebuild the registry or the research file through a gov_id-keyed dict (duplicate/blank ids exist); read `docs/COVERAGE_HANDOVER.md` §3 (identity) first.
+  - **History**: found 2026-09-23/24 by Meeting Finder calibration runs A and B (conductor session 93b5f9ae).
+
+- **[NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is slightly strict: it demoted 8 of 34 hand-approved real meetings.**
+  - **Issue**: re-grading batches 1 and 2 against 95 hand-checked finds: agreement rose from 39% to 86%, but 8 real approvals were demoted: 3 because the identity check wrongly said "disagrees" (e.g. Robbinsdale ISD's id written a different way), 5 because the re-grade script has no title for non-Vimeo, non-direct-file "undated, lister order" picks (live `resolve.py` reads the adapter's title, so live runs should do better).
+  - **Impact**: some real finds land as weak leads (`video-low-confidence` / needs-hand-check) and wait for a person instead of flowing to ingest or the queue.
+  - **Next action**: measure on the resumed run (scratchpad `overnight3/`): hand-check a sample of `video-low-confidence` rows that are on real meeting platforms; if most are real meetings, relax the rule for meeting-platform finds (keep it strict for direct files and Vimeo, where the promos were).
+  - **Constraint**: Ryan's rules stand: dates order, never eliminate; every filter keeps at least one as a labelled weak lead.
+  - **History**: WO-1041 (#1408) regrade, 2026-09-24; `BACKLOG_DONE.md`'s WO-1041 entry.
 
 - **[NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never recognizes a Vimeo "Event" (livestream) URL — never resolvable today, by design, not just unbuilt.**
   - **Issue**: `app/platforms/vimeo.py`'s `parse_vimeo_video()` explicitly, by design, never matches a `/event/{id}` URL ("a different id space that `player.vimeo.com/video/{id}` does not accept" — its own docstring), and `is_vimeo_listing()` doesn't match it either, so `detect_platform()` returns `"unknown"` for it. That's correct for a LIVE stream (it's either live right now or it's nothing — WO-1046, 2026-09-24, made this explicit: Hop no longer even offers one as a hop candidate). The open question is narrower than the original framing here suggested: does a Vimeo Event page also expose a VOD replay link/API worth resolving once the event ends?
@@ -6470,6 +6487,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Next action:** After Meeting Finder's phases are wired (WO-1030): (1) Verdict writes its own follow-up files — "nothing found" rows in `queue_pipeline`'s input format, `account-not-found` rows for the guess ladder, YouTube leads in `youtube_channel_leads.csv`'s format; (2) teach `queue_pipeline.py feed` to read them; (3) a converter that turns `drain2`/`drain3` finds into Meeting Finder input rows (entry Start or Identify, `url_source=own-site`, so identity carries over); (4) build the guess-ladder queue per the design doc.
 - **Constraint:** Meeting Finder stays read-only toward shared files; it writes only its own output files, and a separate step appends to shared queues. Deferred by Ryan 2026-09-23 (not part of WO-1030).
 - **History:** Raised while building Meeting Finder wave 2, 2026-09-23.
+
+### `[IMPROVEMENT-ROUND]` A list of regional TV hubs and the governments each one carries, so Meeting Finder files a hub's meetings under the right government
+
+- **Issue:** shared regional TV channels carry several governments' meetings on one site or channel, and Meeting Finder either misses them or files a video under the wrong government. Confirmed 2026-09-24: Pierce County TV (piercecountytv.org, YouTube channel `piercecountytv`: DuPont, Fife, Orting, Pierce County Council, Port of Tacoma, Puyallup, Sumner, University Place, Tacoma-Pierce County Health Dept); TVCTV (Tigard, Lake Oswego OR, via tv.tvctv.org Cablecast); Town Square TV (Mendota Heights MN, via townsquare.tv, Cablecast Connect); Harbor Media (Hingham MA); Dakota Media Access (Bismarck ND); earlier CTV Community Television (East China Township MI), Mesabi Community TV (Chisholm MN), TV Gwinnett (Gwinnett County GA). WO-1041 handled only the Granicus shape (one account, one view per body: Nevada County's `nevco` for Grass Valley and Nevada City).
+- **Impact:** governments whose meetings exist only on a regional hub read as "no video" (four Pierce County TV cities were marked no-video or off-mission until 2026-09-24's `hosted-on-regional-site` fix); a hub video can land under a neighbour.
+- **Next action:** a small data file (e.g. `app/utils/jurisdiction_data/regional_tv_hubs.csv`: hub host/channel, platform, and per-government playlist/category/body names -> gov_id). Hop treats a hub link as a governing-body link; List picks the government's own playlist/category by name. Seed it from the cases above and `tenant_overrides.csv` (WO-336 already maps some).
+- **Constraint:** YouTube-hosted hubs (Pierce County TV) are drip-only: record them as leads with per-government pins, never fetch YouTube off the drip Mac.
+- **History:** Meeting Finder overnight run follow-ups, 2026-09-24 (conductor session 93b5f9ae); research-file reason `hosted-on-regional-site` (ENUMERATION_METHODS.md §23).
 
 ### `[IMPROVEMENT-ROUND]` Blocked governments: find their vendor account without touching their own site (drains first, then the guess ladder)
 
