@@ -128,12 +128,32 @@ _REMIX_CONTEXT_RE = re.compile(
 # (see `_SHOW_ID_SHORT_RE`'s own module note above) -- 234 distinct real
 # shows for Old Saybrook's gallery/22 alone, each already carrying a real
 # `title`, `eventDate` and (when ready) `vodUrl` with no extra fetch
-# needed to know WHICH show is newest. Only the bare `/internetchannel/
-# gallery/{id}` shape is confirmed -- unlike `_SHOW_ID_SHORT_RE`, no
-# customer has been seen serving a gallery at a prefix-dropped bare
-# `/gallery/{id}` path, so that shape is deliberately not matched here
-# rather than guessed.
-_GALLERY_ID_RE = re.compile(r"/internetchannel/gallery/(\d+)")
+# needed to know WHICH show is newest.
+#
+# WO-1036 (2026-09-23, Ryan confirmed): the prefix-dropped bare
+# `/gallery/{id}` shape IS real after all -- Champaign, IL's real City
+# Council hub is `champaign-cablecast.cablecast.tv/gallery/4`, linked
+# from `champaignil.gov`'s own homepage nav as "Meeting Recordings". Same
+# underlying Remix gallery mechanism as the `/internetchannel/gallery/`
+# form above (the optional `(?:/internetchannel)?` prefix is the only
+# difference) -- `_resolve_gallery()`'s own re-resolve through a show's
+# canonical `/internetchannel/show/{id}` URL doesn't depend on which
+# gallery-path shape was used to reach it, so no other change was needed
+# there.
+_GALLERY_ID_RE = re.compile(r"(?:/internetchannel)?/gallery/(\d+)")
+
+# "Cablecast Connect" -- a WordPress plugin some PEG-access nonprofits use
+# to embed a Cablecast tenant's player on their own site (WO-1036,
+# 2026-09-23). Real hosts confirmed live: `reflect-tst-mn.cablecast.tv/
+# watch-vod-embed?showId=5964&site=8` (Mendota Heights, MN's real video,
+# wrapped via townsquare.tv) and the same shape on
+# `reflect-dakotamediaaccess.cablecast.tv` (Bismarck, ND). The plugin's
+# iframe `src` already carries `showId`/`site` directly -- no separate
+# `/show/{id}` page exists to derive them from -- so this is resolved
+# through the same FastBoot `/embed/vod?show=&site=` endpoint
+# `_resolve_fastboot_embed()` already knows how to read, not a new
+# scraping path.
+_WATCH_VOD_EMBED_PATH_RE = re.compile(r"/watch-vod-embed\b", re.I)
 
 # The SAME show's `eventDate` is formatted completely differently between
 # a gallery listing and that show's own dedicated page -- confirmed live
@@ -393,6 +413,11 @@ class CablecastAssetFinder(AssetFinder):
         if gallery_match:
             return await self._resolve_gallery(url)
 
+        if _WATCH_VOD_EMBED_PATH_RE.search(urlparse(url).path):
+            watch_vod_result = await self._resolve_watch_vod_embed(url)
+            if watch_vod_result is not None:
+                return watch_vod_result
+
         show_id = self._extract_show_id(url)
         if show_id is None:
             return ResolvedMeeting(
@@ -634,9 +659,47 @@ class CablecastAssetFinder(AssetFinder):
             transcript_warnings=["No transcript found for this event."],
         )
 
+    async def _resolve_watch_vod_embed(self, url: str) -> Optional[ResolvedMeeting]:
+        """WO-1036 (2026-09-23): the "Cablecast Connect" WordPress plugin's
+        own `/watch-vod-embed?showId=&site=` shape -- see
+        `_WATCH_VOD_EMBED_PATH_RE`'s own comment. `showId` is required;
+        `site` defaults to "1" the same way `_resolve_fastboot_embed()`'s
+        own bare-`/show/` path already does. Returns `None` (not a
+        video-less `ResolvedMeeting`) for a URL that matches the path but
+        carries no usable `showId` -- lets `resolve()`'s caller fall
+        through to `_extract_show_id()`'s own generic handling rather than
+        this function inventing a warning for a shape it never actually
+        confirmed."""
+        parsed = urlparse(url)
+        query = {k.lower(): v for k, v in parse_qs(parsed.query).items()}
+        show_id_values = query.get("showid")
+        if not show_id_values or not show_id_values[0].isdigit():
+            return None
+        show_id = int(show_id_values[0])
+        site = (query.get("site") or ["1"])[0]
+
+        jurisdiction = None
+        known = jurisdiction_enrich.lookup_by_domain(parsed.netloc.lower())
+        if known:
+            jurisdiction = f"{known.name}, {known.state}"
+
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        return await self._resolve_fastboot_embed(
+            f"{origin}/show/{show_id}",
+            show_id,
+            jurisdiction,
+            record_url=url,
+            site_override=site,
+        )
+
     @staticmethod
     async def _resolve_fastboot_embed(
-        fetch_url: str, show_id: int, jurisdiction: Optional[str]
+        fetch_url: str,
+        show_id: int,
+        jurisdiction: Optional[str],
+        *,
+        record_url: Optional[str] = None,
+        site_override: Optional[str] = None,
     ) -> Optional[ResolvedMeeting]:
         """WO-344: the third real Cablecast template's own resolve path --
         see `_FASTBOOT_EMBED_SHOW_TITLE_RE`'s module docstring for the
@@ -647,10 +710,20 @@ class CablecastAssetFinder(AssetFinder):
         rather than this function inventing one -- this only returns a
         real `ResolvedMeeting` once it has confirmed this tenant really is
         this template.
-        """
+
+        `record_url`/`site_override` (WO-1036, 2026-09-23): the "Cablecast
+        Connect" WordPress plugin's own `/watch-vod-embed?showId=&site=`
+        iframe URL already carries a real `showId`/`site` pair directly --
+        there's no separate `/show/{id}` page to derive them from the way
+        the bare-`/show/` caller below has. `record_url` keeps the ORIGINAL
+        URL as `source_url` (the plugin's iframe URL, not a synthesized
+        `/show/{id}` one this app never actually resolved) so Archive
+        dedup keys off the real URL a caller gave; `site_override` supplies
+        `site` directly instead of parsing it out of `fetch_url`'s own
+        query (which a synthesized `/show/{id}` URL might not carry)."""
         parsed = urlparse(fetch_url)
         origin = f"{parsed.scheme}://{parsed.netloc}"
-        site = (parse_qs(parsed.query).get("site") or ["1"])[0]
+        site = site_override or (parse_qs(parsed.query).get("site") or ["1"])[0]
         embed_url = f"{origin}/embed/vod?show={show_id}&site={site}"
         embed_html = await CablecastAssetFinder._fetch_html(embed_url)
         if embed_html is None:
@@ -710,7 +783,7 @@ class CablecastAssetFinder(AssetFinder):
 
         return ResolvedMeeting(
             platform=CablecastAssetFinder.platform_name,
-            source_url=fetch_url,
+            source_url=record_url or fetch_url,
             # Same host-namespaced external_id shape as the Remix/
             # PublicSite paths above -- see their own comments for the
             # real duplicate-page bug this avoids.
@@ -1249,3 +1322,60 @@ class CablecastAssetFinder(AssetFinder):
             return datetime.fromisoformat(event_date).strftime("%Y-%m-%d")
         except ValueError:
             return None
+
+
+def list_gallery_shows(url: str, html: str) -> List[dict]:
+    """WO-1036 (2026-09-23, Ryan confirmed): given a Cablecast gallery URL
+    (`_GALLERY_ID_RE`) and its already-fetched HTML, return EVERY video-
+    ready show in THIS gallery, newest first, as plain dict rows
+    (`title`/`date`/`url`/`has_video_hint`) --
+    `app/platforms/meeting_finder/listing.py`'s own Cablecast gallery
+    lister uses this to list a known specific gallery before falling back
+    to the whole tenant root. A gallery is one governing body's own list;
+    the tenant root mixes in unrelated programming (confirmed live,
+    Virginia Beach VA's tenant root mixes a live-stream embed with
+    unrelated PEG content). Reuses the exact same real Remix-tree gallery
+    lookup `CablecastAssetFinder._resolve_gallery()` uses to pick ONE
+    show, just returning every ready one instead of only the newest --
+    each row's `url` is already the show's own canonical
+    `/internetchannel/show/{id}` URL, the same one `_resolve_gallery()`
+    re-resolves through, so a caller of this function still gets a real,
+    directly-resolvable meeting URL per row, not the gallery URL itself.
+    Returns `[]` when the URL isn't a gallery shape, the gallery can't be
+    found in the page, or it has no video-ready show yet."""
+    gallery_match = _GALLERY_ID_RE.search(urlparse(url).path)
+    if not gallery_match:
+        return []
+    gallery_id = int(gallery_match.group(1))
+    remix_data = CablecastAssetFinder._extract_remix_context(html)
+    shows = (
+        CablecastAssetFinder._find_gallery_shows(remix_data, gallery_id)
+        if remix_data
+        else None
+    )
+    if not shows:
+        return []
+    parsed = urlparse(url)
+    rows: List[dict] = []
+    for show in shows:
+        if not show.get("vodUrl"):
+            continue
+        show_id = show.get("showId")
+        if show_id is None:
+            continue
+        canonical = f"{parsed.scheme}://{parsed.netloc}/internetchannel/show/{show_id}"
+        if parsed.query:
+            canonical = f"{canonical}?{parsed.query}"
+        event_date = CablecastAssetFinder._parse_gallery_event_date(
+            show.get("eventDate")
+        )
+        rows.append(
+            {
+                "title": show.get("title"),
+                "date": event_date.strftime("%Y-%m-%d") if event_date else None,
+                "url": canonical,
+                "has_video_hint": True,
+            }
+        )
+    rows.sort(key=lambda r: r["date"] or "", reverse=True)
+    return rows

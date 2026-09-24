@@ -140,9 +140,17 @@ _SCAN_TAGS = ("a", "iframe", "embed", "video", "source", "script")
 # numeric id (end of string, or a non-word character like `/` or `?`
 # right after) -- `/events/12345` and `/events/12345/details` still
 # match; `/events/4th-of-july-parade` no longer does.
+# WO-1036 (2026-09-23): added a fourth shape, a numeric CivicPlus-style
+# page id followed by a meeting/video/watch slug -- e.g. Jurupa Valley,
+# CA's real `/422/Meeting-Videos` (only reachable via `/sitemap`/
+# `sitemap.xml`; the site's own mega-menu is JS-only, so this sitemap-
+# derived shape is the only way `start.py`'s `_sitemap_starting_points()`
+# ever sees it). The slug must actually CONTAIN one of the three words,
+# not just start with a digit -- `/422/Budget-FY26` must not match.
 _OWN_SITE_MEETING_PAGE_RE = re.compile(
     r"(\?eid=\d+\b|/event/\d+\b|/events/\d+\b|/meetings?/\d{4}-\d{1,2}-\d{1,2}"
-    r"|/agendacenter\b|/agenda-center\b|/calendar\.aspx\?eid=\d+\b)",
+    r"|/agendacenter\b|/agenda-center\b|/calendar\.aspx\?eid=\d+\b"
+    r"|/\d+/[\w-]*(?:meeting|video|watch)[\w-]*\b)",
     re.I,
 )
 
@@ -288,6 +296,43 @@ def _classify_url(url: str) -> Tuple[Optional[str], Optional[bool]]:
 def _account_base_url(url: str) -> str:
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}/"
+
+
+# WO-1036 (2026-09-23): Swagit's tab-slug listing pages (`/commissioners-
+# court`, `/study-session-archive`, ...) are empty JS-filled shells on
+# `*.new.swagit.com` -- confirmed live across multiple tenants (Wise
+# County TX, Ferndale SD WA, Hamilton Southeastern IN, Baltimore County PS
+# MD, ...), even fetched headless. Only a numeric `/views/{id}` (a
+# tenant's server-rendered listing page) or `/videos/{id}` (a single
+# video) path is actually usable. Collapsing either one back to the bare
+# tenant root (what `_account_base_url()` always did before this WO) threw
+# away the only URL Listing could use and sent it straight to the empty
+# tab-slug default instead.
+_SWAGIT_SPECIFIC_PATH_RE = re.compile(r"/(?:views|videos)/\d+\b", re.I)
+
+# WO-1036 (2026-09-23, Ryan confirmed): the Cablecast version of the same
+# rule -- a specific `/gallery/{id}` (with or without the older
+# `/internetchannel/` prefix; see `cablecast.py`'s own `_GALLERY_ID_RE`
+# comment) is one governing body's own scoped show list. Collapsing it to
+# the bare tenant root would mix in unrelated programming the way
+# Virginia Beach, VA's own tenant root does (a live-stream embed plus
+# unrelated PEG content) -- the opposite of Swagit's problem (an empty
+# page) but the same fix: keep the specific URL, don't collapse it.
+_CABLECAST_GALLERY_PATH_RE = re.compile(r"/gallery/\d+\b", re.I)
+
+
+def _account_url_for_platform(platform: Optional[str], final_url: str) -> str:
+    """The account URL to hand to List for `platform`/`final_url` --
+    normally the bare host, except when `final_url` already carries a
+    platform-specific path that must not be collapsed away. See
+    `_SWAGIT_SPECIFIC_PATH_RE`'s and `_CABLECAST_GALLERY_PATH_RE`'s own
+    comments for why Swagit and Cablecast each need this."""
+    path = urlparse(final_url).path
+    if platform == "swagit" and _SWAGIT_SPECIFIC_PATH_RE.search(path):
+        return final_url
+    if platform == "cablecast" and _CABLECAST_GALLERY_PATH_RE.search(path):
+        return final_url
+    return _account_base_url(final_url)
 
 
 def _classify_platform_kind(platform: str) -> Tuple[int, str]:
@@ -573,10 +618,45 @@ def _youtube_signal_and_leads(
     return None, list(youtube_urls)
 
 
+# WO-1036 (2026-09-23), Ryan's tie-break rule: on a rank-1 tie between a
+# real video-meeting vendor and a pure agenda/minutes CMS that merely
+# LINKS to whatever video platform a tenant happens to use (never hosting
+# video itself), the video-capable one should win instead of whichever
+# link happened to appear first in the page's document order. Each name
+# below is confirmed, in its own module's docstring, to be an agenda/
+# minutes CMS with no video of its own (BoardDocs, CivicWeb, DestinyHosted
+# "AgendaQuick", IQM2, Hyland "OnBase Agenda Online", Municode Meetings
+# "MCC Portal", ClerkBase) or to delegate to a DIFFERENT real vendor via
+# `resolve_via_platform()` per CLAUDE.md's "platform turns out to be a
+# wrapper" convention (Legistar, CivicPlus -- both just link out to
+# Granicus). Real cases this fixes: Calvert County PS MD and Wilson
+# County Schools TN (a BoardDocs link ranked ahead of a real Swagit
+# iframe by document order alone) and Fontana USD CA (CivicWeb ahead of a
+# real Swagit iframe on the same page).
+_AGENDA_ONLY_VENDOR_PLATFORMS: FrozenSet[str] = frozenset(
+    {
+        "boarddocs",
+        "civicweb",
+        "destinyhosted",
+        "iqm2",
+        "hyland",
+        "municode_meetings",
+        "clerkbase",
+        "legistar",
+        "civicplus",
+    }
+)
+
+
 def _pick_winner(signals: List[Signal]) -> Optional[Signal]:
     """The lowest-ranked (best) signal whose platform is a real answer --
     never a `youtube_meeting_list`/`youtube_lead` signal (this module's
-    own docstring: Identify never hands back YouTube as `platform`)."""
+    own docstring: Identify never hands back YouTube as `platform`). On a
+    tie for the best rank, a signal carrying real video/embed evidence
+    (`_SCAN_TAGS`'s iframe/embed/video/source, not a plain `<a href>`) or
+    a platform this module knows is video-capable beats an agenda-only
+    vendor -- see `_AGENDA_ONLY_VENDOR_PLATFORMS`'s own comment. Document
+    order (the previous tie-break) is the last resort, not the first."""
     candidates = [
         s
         for s in signals
@@ -585,7 +665,12 @@ def _pick_winner(signals: List[Signal]) -> Optional[Signal]:
     ]
     if not candidates:
         return None
-    return min(candidates, key=lambda s: s.rank)
+    best_rank = min(s.rank for s in candidates)
+    tied = [s for s in candidates if s.rank == best_rank]
+    if len(tied) == 1:
+        return tied[0]
+    video_capable = [s for s in tied if s.platform not in _AGENDA_ONLY_VENDOR_PLATFORMS]
+    return video_capable[0] if video_capable else tied[0]
 
 
 async def identify(
@@ -667,7 +752,9 @@ async def identify(
 
     if winner is not None:
         supported = _supported_flag(winner.platform)
-        account_url = winner.url or _account_base_url(final_url)
+        account_url = winner.url or _account_url_for_platform(
+            winner.platform, final_url
+        )
         outcome = (
             OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER if supported is False else None
         )
@@ -741,7 +828,7 @@ def _direct_result(
     page: Optional[FetchResult],
     evidence: Optional[str] = None,
 ) -> IdentifyResult:
-    account_url = _account_base_url(final_url)
+    account_url = _account_url_for_platform(platform, final_url)
     rank, _ = _classify_platform_kind(platform)
     signal = Signal(
         kind=kind,

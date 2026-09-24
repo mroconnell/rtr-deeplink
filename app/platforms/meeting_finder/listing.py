@@ -116,9 +116,12 @@ import os
 import re
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Awaitable, Callable, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+
+from bs4 import BeautifulSoup
 
 from app.platforms import passive_verify
 from app.platforms.base import (
@@ -126,6 +129,11 @@ from app.platforms.base import (
     UnsupportedPlatformError,
     YouTubeResolveBlocked,
     get_finder,
+)
+from app.platforms.cablecast import (
+    _GALLERY_ID_RE,
+    CablecastAssetFinder,
+    list_gallery_shows,
 )
 
 from .fetch import BudgetExceeded, Fetcher
@@ -288,6 +296,182 @@ async def _list_via_passive_verify_walker(
         return None
     return ListResult(
         candidates=candidates, lister=f"passive_verify:{platform}", outcome=None
+    )
+
+
+# --- Lister (a-1): a known Cablecast gallery URL, listed directly -----
+#
+# WO-1036 (2026-09-23, Ryan confirmed): a specific `/gallery/{id}` URL
+# (with or without the older `/internetchannel/` prefix -- see
+# `cablecast.py`'s own `_GALLERY_ID_RE` comment) is one governing body's
+# own scoped show list -- e.g. Champaign, IL's real City Council hub,
+# `champaign-cablecast.cablecast.tv/gallery/4`, linked from
+# `champaignil.gov`'s own homepage nav as "Meeting Recordings". Tried
+# BEFORE lister (a)'s own `_cablecast_walker` (registered for the bare
+# platform name "cablecast" in `passive_verify._LISTING_WALKERS`, and
+# always lists the whole TENANT ROOT regardless of `account_url`'s own
+# path -- see that walker's own docstring): the tenant root mixes in
+# unrelated programming (confirmed live, Virginia Beach VA, whose root
+# mixes a live-stream embed with unrelated PEG content), so a known
+# gallery should win when it has real candidates. Declines for a
+# non-gallery Cablecast `account_url` (or on any failure), so lister (a)
+# still runs as the fallback either way.
+
+
+async def _list_via_cablecast_gallery(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    if platform != "cablecast" or not _GALLERY_ID_RE.search(urlparse(account_url).path):
+        return None
+    # Some Cablecast portal domains hang indefinitely over HTTPS (see
+    # cablecast.py's own module docstring, the Detroit finding) --
+    # `resolve()`'s own gallery/show paths always force HTTP first for
+    # exactly this reason; this lister does the same for consistency.
+    fetch_url = CablecastAssetFinder._force_http(account_url)
+    try:
+        result = await fetcher.fetch(fetch_url, need_links=False)
+    except BudgetExceeded as e:
+        return ListResult(
+            candidates=[], lister="cablecast_gallery", outcome=None, note=str(e)
+        )
+    html = result.html if (result.status == 200 or result.links_only) else None
+    if not html:
+        return ListResult(
+            candidates=[],
+            lister="cablecast_gallery",
+            outcome=None,
+            note=f"could not fetch {fetch_url} ({result.outcome or result.status})",
+        )
+    rows = list_gallery_shows(result.final_url or fetch_url, html)
+    if not rows:
+        return None
+    candidates = _candidates_from_dicts(
+        rows[:limit],
+        platform=platform,
+        account_url=account_url,
+        lister="cablecast_gallery",
+    )
+    if not candidates:
+        return None
+    return ListResult(candidates=candidates, lister="cablecast_gallery", outcome=None)
+
+
+# --- Lister (a2): a known Swagit /views/{id} page, listed directly ---
+#
+# WO-1036 (2026-09-23): Swagit's tab-slug listing pages (e.g.
+# `/commissioners-court`) are empty JS-filled shells on `*.new.swagit.com`
+# -- confirmed live across multiple tenants, even fetched headless. Only
+# a numeric `/views/{id}` page's own `#video-table` is server-rendered
+# and full (9 real rows confirmed live on Wise County, TX's
+# `wisecountytx.new.swagit.com/views/908/`, vs. 0 on its own
+# `/commissioners-court` tab-slug page). rtr-discovery's own
+# `SwagitEnumerator` already parses this exact `table#video-table` shape
+# for its tab-slug pages -- the row parsing below is copied from there
+# (same real shape, not re-derived), just pointed at a `/views/{id}` URL
+# lister (b) never reaches with the specific path intact (see
+# `_list_via_discovery()`'s own docstring: it passes only the account
+# URL's `netloc` to `list_tenant()`, discarding the path). Tried before
+# lister (b) so a known-good `/views/{id}` URL is used directly rather
+# than falling through to a bare-host tenant walk that lands back on an
+# empty tab-slug default. A bare `/videos/{id}` URL is itself a single
+# real candidate -- no listing page to fetch at all.
+_SWAGIT_VIEWS_URL_RE = re.compile(r"/views/(\d+)\b", re.I)
+_SWAGIT_VIDEO_URL_RE = re.compile(r"/videos/(\d+)\b", re.I)
+_SWAGIT_ROW_DATE_FORMATS = (
+    "%b %d, %Y",
+)  # "Sep 24, 2014" -- confirmed on every row seen
+
+
+def _parse_swagit_video_table(html: str, base_url: str) -> List[Candidate]:
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find(id="video-table")
+    if table is None:
+        return []
+    candidates: List[Candidate] = []
+    for tr in table.find_all("tr"):
+        a = tr.find("a", href=True)
+        if a is None:
+            continue
+        m = _SWAGIT_VIDEO_URL_RE.search(a["href"])
+        if not m:
+            continue
+        td = tr.find("td")
+        lines = (
+            [line.strip() for line in td.get_text("\n").split("\n") if line.strip()]
+            if td is not None
+            else []
+        )
+        title = lines[0] if lines else None
+        date = None
+        if len(lines) > 1:
+            for fmt in _SWAGIT_ROW_DATE_FORMATS:
+                try:
+                    date = datetime.strptime(lines[-1], fmt).strftime("%Y-%m-%d")
+                    break
+                except ValueError:
+                    continue
+        candidates.append(
+            Candidate(
+                url=urljoin(base_url, f"/videos/{m.group(1)}"),
+                title=title,
+                date=date,
+                platform="swagit",
+                source_phase="list",
+                lister="swagit_views_page",
+                source_url=base_url,
+                has_video_hint=True,
+            )
+        )
+    return candidates
+
+
+async def _list_via_swagit_views_page(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    if platform != "swagit":
+        return None
+    parsed = urlparse(account_url)
+    video_match = _SWAGIT_VIDEO_URL_RE.search(parsed.path)
+    if video_match:
+        # Already a specific video URL -- nothing to list, it's the one
+        # candidate.
+        return ListResult(
+            candidates=[
+                Candidate(
+                    url=account_url,
+                    title=None,
+                    date=None,
+                    platform=platform,
+                    source_phase="list",
+                    lister="swagit_views_page",
+                    source_url=account_url,
+                    has_video_hint=True,
+                )
+            ],
+            lister="swagit_views_page",
+            outcome=None,
+        )
+    if not _SWAGIT_VIEWS_URL_RE.search(parsed.path):
+        return None
+    try:
+        result = await fetcher.fetch(account_url, need_links=True)
+    except BudgetExceeded as e:
+        return ListResult(
+            candidates=[], lister="swagit_views_page", outcome=None, note=str(e)
+        )
+    html = result.html if (result.status == 200 or result.links_only) else None
+    if not html:
+        return ListResult(
+            candidates=[],
+            lister="swagit_views_page",
+            outcome=None,
+            note=f"could not fetch {account_url} ({result.outcome or result.status})",
+        )
+    candidates = _parse_swagit_video_table(html, result.final_url or account_url)
+    if not candidates:
+        return None
+    return ListResult(
+        candidates=candidates[:limit], lister="swagit_views_page", outcome=None
     )
 
 
@@ -802,6 +986,13 @@ async def list_account(
             )
         account_url = discovered
 
+    a_minus_1 = await _list_via_cablecast_gallery(platform, account_url, fetcher, limit)
+    if a_minus_1 is not None:
+        if a_minus_1.candidates:
+            return a_minus_1
+        if a_minus_1.note:
+            notes.append(a_minus_1.note)
+
     a0 = await _list_via_civicplus_light_check(platform, account_url, fetcher, limit)
     if a0 is not None and a0.candidates:
         return a0
@@ -812,6 +1003,13 @@ async def list_account(
             return a
         if a.note:
             notes.append(a.note)
+
+    a2 = await _list_via_swagit_views_page(platform, account_url, fetcher, limit)
+    if a2 is not None:
+        if a2.candidates:
+            return a2
+        if a2.note:
+            notes.append(a2.note)
 
     b = await _list_via_discovery(platform, account_url, limit, platform_params)
     if b is not None:
