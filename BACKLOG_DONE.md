@@ -1,5 +1,85 @@
 # Backlog — done
 
+## WO-1033: link-quality fixes in Meeting Finder's Hop and Scan phases [Done 2026-09-23]
+
+**What.** Ryan hand-checked two real governments (Dublin, CA and
+Emporia, KS) against Meeting Finder's Hop/Scan output and found five
+real link-quality bugs, all in `app/platforms/meeting_finder/hop.py`/
+`scan.py`. Ryan's framing: a pipeline that programmatically finds video
+off a domain link for half of all governments is a huge win, so the fix
+had to be general (real vocabulary/shape rules), not a Dublin/Emporia
+special case.
+
+**The five bugs, each confirmed on a real fixture
+(`tests/fixtures/wo1033_hop_scan/`, that directory's own README has the
+sources):**
+
+1. **A word-less nav link scored nothing at all.** Emporia's real
+   meetings hub is a CivicPlus "graphic links" quick-link button,
+   `<a href="/1300">` with nested `<span class="text">Agendas &amp;
+   Minutes</span>` -- no words in the URL at all. Wo147's own scorer
+   requires real path/target-shape evidence before it will even look at
+   anchor text (a deliberate guard against a real false positive of its
+   own: a CivicAlerts.aspx press release scoring high on prose alone), so
+   this link was rejected outright and didn't appear even in the top 60
+   candidates. `hop.py`'s new `_looks_like_nav_hub_label()` rescues a
+   SHORT anchor text built only from meeting-hub vocabulary ("Agendas &
+   Minutes", "Watch Meetings") -- re-deriving wo147's own vendor-apex/
+   boilerplate guards first, so it only rescues the "no evidence at all"
+   rejection, not the other two. After: `/1300` ranks #1 on Emporia's
+   real homepage (was: not in the top 60).
+2. **Calendar events crowded out hub links.** Both governments' homepages
+   fill the naive score-sorted top ranks with individual calendar-day
+   entries and day/list views -- Dublin's top 10 included three
+   non-meeting community events ("Night Market at St. Pat's Row",
+   "Senior Info Fair", "Medical Mistakes..."); Emporia's top 10 was
+   entirely `Calendar.aspx?EID=`/`view=list` links. `rank_hops()` now
+   penalizes a calendar-event/day-view-shaped URL and caps it at 2 in the
+   returned top candidates -- `find_calendar_entry_links()`'s own
+   one-hop-into-a-calendar role is untouched.
+3. **`prefer_video`** (new, opt-in): a link whose text/path says watch/
+   video/video-on-demand/live-stream/meeting-video gets a real boost.
+   Confirmed on Dublin's real `/1604` page: `/2875/Watch-Meetings` moves
+   from rank 5 (score 12.41) to rank 3 (22.41), a real 10-point boost, not
+   a rounding nudge.
+4. **A same-site social redirect (CivicPlus's own `/youtube`,
+   `/facebook`) is never a hop candidate.** Confirmed live on Emporia:
+   `<a href="/youtube" aria-label="YouTube"><img alt="YouTube"></a>`, no
+   visible anchor text at all -- Meeting Finder never fetches YouTube, so
+   ranking this wastes a hop slot on a guaranteed dead end. Both
+   `hop.py`'s `rank_hops()` and `scan.py`'s meeting-page-link scan now
+   exclude it; `scan.py`'s `_youtube_leads()` and `identify.py`'s own
+   link scan instead report it as a YouTube lead (`video_id=None`),
+   never followed or fetched.
+5. **Same page, different parameters.** A real Emporia event (`EID=
+   2662`) is linked three ways on the same site
+   (`Calendar.aspx?EID=2662`, `calendar.aspx?PREVIEW=YES&EID=2662`,
+   `Calendar.aspx?EID=2662&month=9&year=2026&day=23&calType=0`) --
+   `hop.py`'s new `canonical_page_key(url)` collapses volatile display
+   params (`PREVIEW`, `month`, `year`, `day`, `calType`, `view`) while
+   keeping `EID`/`CID` distinct, exposed for `runner.py` (WO-1031)'s own
+   `seen`-set; nothing in `hop.py`/`scan.py` calls it itself.
+
+**Scan's own meeting-page-link false positives, same investigation:** a
+CivicAlerts.aspx news item, a GovDelivery/`.../subscribers/...`
+email-signup page, and an ordinary calendar event with no governing-body/
+meeting word in its own title (a bare date alone no longer qualifies a
+calendar-event permalink) were all being opened as candidate meeting
+pages. Fixed by excluding the news/signup shapes outright and requiring
+`GOVERNING_BODY_KEYWORDS` (`app/platforms/granicus.py`) or "meeting" in
+the title for a bare calendar-event permalink -- a meeting-worded href
+shape that isn't a bare calendar permalink (`/meetings/2026-09-08-
+council`) is unaffected.
+
+**Verify.** `tests/test_wo1033_meeting_finder_hop_scan.py` (23 tests, all
+against the real Dublin/Emporia fixtures plus a few documented-synthetic
+branch checks) plus the existing WO-1029/WO-1027 suites, unchanged and
+still green. All five CI gates green; the two pre-existing failures named
+in this WO's brief (`test_repair_wrong_pages`, `test_wrong_page_screen`)
+are unrelated and unchanged. `docs/MEETING_FINDER.md`'s Hop/Scan sections
+updated with the new `prefer_video`/`canonical_page_key` interfaces for
+WO-1031 (runner.py) to call.
+
 ## WO-1030 follow-up: fix Meeting Finder misses on known-video governments [Done 2026-09-23]
 
 **What.** The original WO-1030 PR (#1386, merged) shipped Meeting

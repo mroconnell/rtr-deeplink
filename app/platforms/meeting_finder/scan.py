@@ -64,6 +64,52 @@ yield real meeting-page links (they're just anchor text/hrefs on an old
 snapshot), but never media candidates -- `fetch.py`'s own docstring says
 why: a Wayback capture is for finding links, never treated as a source of
 the government's own media.
+
+## WO-1033: three real false-positive shapes, found against real pages
+
+Real, live-observed on Dublin CA's and Emporia KS's own homepages
+(`tests/fixtures/wo1033_hop_scan/`): a news item, an email-signup page,
+and an ordinary community calendar event (no meeting/body words in its
+own title) were each being treated as a meeting page worth opening.
+
+1. **News items (`CivicAlerts.aspx`)** are never a meeting page, no
+   matter what their own headline says -- a real false positive this
+   fixes: a CivicAlerts headline like "City Council Responds to Special
+   Election Call" scores as meeting-shaped on link text alone (real
+   council/commission words), but the page itself is a press release,
+   not a meeting.
+2. **Email-signup/subscription pages** (GovDelivery's own
+   `.../subscribers/...` URL, a `/list.aspx` subscribe page, or a link
+   whose own text says "Stay Informed"/"Notify Me") are a feed sign-up,
+   not a meeting page.
+3. **A calendar-event permalink** (`/calendar/event/detail/<n>`,
+   `Calendar.aspx?EID=<n>`) is only a real meeting page when its own
+   title names a governing body or a meeting -- reusing
+   `app.platforms.granicus.GOVERNING_BODY_KEYWORDS` (council, commission,
+   board, committee, hearing) plus "meeting" itself, the same vocabulary
+   `pick.py`'s own title filters already lean on elsewhere. Without this,
+   an ordinary town calendar event ("Night Market", "Senior Info Fair")
+   qualifies just because it carries a date, the same way a real meeting
+   entry does -- a bare date is not by itself evidence of a *meeting*. A
+   meeting-worded href shape that ISN'T a bare calendar permalink
+   (`/meetings/2026-09-08-council`, a Municode `/page/...-meeting-278`)
+   is unaffected -- this gate only applies to the generic calendar/event
+   permalink shape, which carries no meeting-specific vocabulary of its
+   own.
+
+**Item 4 (same WO): a same-site YouTube redirect is a YouTube lead.**
+CivicPlus's own quick-link widget (real Emporia KS example:
+`<a href="/youtube" aria-label="YouTube"><img alt="YouTube" ...></a>`,
+no visible anchor text at all) redirects to the government's YouTube
+channel via a path on the GOVERNMENT'S OWN site, not a `youtube.com`
+URL -- `youtube_ids.extract_video_id()` never recognizes it, so it used
+to vanish silently instead of becoming a lead. `_youtube_leads()` now
+also recognizes this same-site-redirect shape (the same pattern
+`hop.py`'s own `_SAME_SITE_SOCIAL_REDIRECT_RE` uses, re-declared here
+rather than imported -- this module doesn't otherwise depend on
+`hop.py`, and the pattern is a two-line regex) and reports it as a lead
+with `video_id=None`; it is never followed or fetched, same as every
+other YouTube lead.
 """
 
 from __future__ import annotations
@@ -78,6 +124,7 @@ from bs4 import BeautifulSoup
 
 from app.platforms.base import detect_platform
 from app.platforms.direct_file import is_direct_file_url
+from app.platforms.granicus import GOVERNING_BODY_KEYWORDS
 from app.platforms.media_scan import media_type, scan_media_urls
 from app.platforms.youtube_ids import extract_video_id
 
@@ -179,6 +226,57 @@ _PAGINATION_TEXT_RE = re.compile(
 # own text is what actually distinguishes them (confirmed by this
 # module's own synthetic regression test built from that exact shape).
 _MINUTES_GUARD_RE = re.compile(r"\bminutes\b|\bsubscribe\b|\bcalendar\b", re.IGNORECASE)
+
+# WO-1033 item 1: a news item is never a meeting page, whatever its own
+# headline says (real false positive: a CivicAlerts.aspx press release
+# headlined "City Council Responds to Special Election Call" scores as
+# meeting-shaped on link text alone). Checked against the raw href, not
+# `hay`, since a news item's own anchor text is exactly what makes it
+# look meeting-shaped in the first place.
+_NEWS_ITEM_HREF_RE = re.compile(r"civicalerts\.aspx", re.IGNORECASE)
+
+# WO-1033 item 1: an email-signup/subscription page (a feed sign-up, not
+# a meeting page) -- real GovDelivery shape
+# (`public.govdelivery.com/accounts/<code>/subscribers/...`) plus the
+# more general CivicPlus `/list.aspx` subscribe page and "Stay
+# Informed"/"Notify Me" link text.
+_SIGNUP_PAGE_RE = re.compile(
+    r"govdelivery\.com/accounts/[^/]+/subscribers"
+    r"|/list\.aspx"
+    r"|\bstay\s+informed\b"
+    r"|\bnotify\s*me\b",
+    re.IGNORECASE,
+)
+
+# WO-1033 item 1: a bare calendar-event permalink -- a real meeting page
+# only when its own title names a governing body or a meeting (checked
+# separately, against `GOVERNING_BODY_KEYWORDS` -- see this module's own
+# docstring). Deliberately narrower than `_MEETING_PAGE_HREF_RE`'s own
+# `/event/\d+/?`/`/events/\d+/?` shapes (which already require a rule-1/
+# rule-2/rule-page-level hit to qualify at all) -- this is specifically
+# the CivicPlus/CivicEngage calendar-widget shape confirmed live on
+# Dublin CA (`/m/calendar/event/detail/<n>`) and Emporia KS
+# (`Calendar.aspx?EID=<n>`).
+_CALENDAR_EVENT_PERMALINK_RE = re.compile(
+    r"/calendar/event/detail/\d+|calendar\.aspx\?[^#]*\beid=\d+", re.IGNORECASE
+)
+
+# WO-1033 item 1: the vocabulary that makes a calendar event a real
+# MEETING (as opposed to "Night Market"/"Senior Info Fair") -- Granicus's
+# own governing-body word list plus "meeting" itself, same words
+# `pick.py`'s own title filters already lean on elsewhere.
+_MEETING_BODY_OR_WORD_RE = re.compile(
+    r"\b(?:" + "|".join(GOVERNING_BODY_KEYWORDS) + r"|meeting)\b", re.IGNORECASE
+)
+
+# WO-1033 item 4: a same-site redirect to a social platform (CivicPlus's
+# own quick-link-widget shape: `<a href="/youtube" aria-label="YouTube">
+# <img alt="YouTube"></a>`, no visible anchor text at all, confirmed live
+# on Emporia KS's real homepage) -- a YouTube lead, never a page to open.
+# Same pattern as `hop.py`'s own `_SAME_SITE_SOCIAL_REDIRECT_RE`,
+# re-declared here (see this module's own docstring for why) rather than
+# imported.
+_SAME_SITE_SOCIAL_REDIRECT_RE = re.compile(r"^/(?:youtube|facebook)/?$", re.IGNORECASE)
 
 # A bare year heading ("2026") that groups a whole year's worth of
 # meetings -- the field guide's own instruction to skip past this rather
@@ -328,6 +426,12 @@ def find_meeting_page_links(
         hay = f"{text} {href}"
         if _MINUTES_GUARD_RE.search(text) or _PAGINATION_TEXT_RE.search(hay):
             continue
+        # WO-1033 item 1: a news item or an email-signup page is never a
+        # meeting page, whatever its own link text says (see this
+        # module's docstring for the real CivicAlerts.aspx/GovDelivery
+        # false positives this guards against).
+        if _NEWS_ITEM_HREF_RE.search(href) or _SIGNUP_PAGE_RE.search(hay):
+            continue
         full = urljoin(final_url, href)
         parsed = urlparse(full)
         if parsed.scheme not in ("http", "https"):
@@ -374,6 +478,20 @@ def find_meeting_page_links(
         rule_page_level = page_says_agendas and bool(date_text)
 
         if not (rule1_text or rule2_header or rule3_href or rule_page_level):
+            continue
+
+        # WO-1033 item 1: a bare calendar-event permalink only counts as a
+        # real meeting page when its own title names a governing body or
+        # a meeting -- otherwise a plain date (which alone already
+        # satisfies rule1_text above) makes an ordinary community event
+        # ("Night Market", "Senior Info Fair") indistinguishable from a
+        # real meeting. Meeting-worded href shapes that aren't a bare
+        # calendar permalink (`/meetings/2026-09-08-council`, a Municode
+        # `/page/...-meeting-278`) already carry their own meeting
+        # vocabulary in the URL and are unaffected.
+        if _CALENDAR_EVENT_PERMALINK_RE.search(href) and not (
+            _MEETING_BODY_OR_WORD_RE.search(text)
+        ):
             continue
 
         title = row_map.get("meeting") or row_map.get("title") or text or None
@@ -466,25 +584,53 @@ def _direct_media_candidates(
 
 def _youtube_leads(html: str, final_url: str) -> List[dict]:
     soup = BeautifulSoup(html or "", "html.parser")
+    base_netloc = urlparse(final_url).netloc.lower()
     leads: List[dict] = []
     seen_ids = set()
+    seen_redirects = set()
     for tag in soup.find_all(("a", "iframe")):
         raw = tag.get("href") or tag.get("src")
         if not raw:
             continue
         full = urljoin(final_url, raw.strip())
         video_id = extract_video_id(full)
-        if not video_id or video_id in seen_ids:
+        if video_id:
+            if video_id in seen_ids:
+                continue
+            seen_ids.add(video_id)
+            leads.append(
+                {
+                    "url": full,
+                    "video_id": video_id,
+                    "anchor_text": (
+                        tag.get_text(" ", strip=True) if tag.name == "a" else ""
+                    ),
+                    "source_url": final_url,
+                }
+            )
             continue
-        seen_ids.add(video_id)
-        leads.append(
-            {
-                "url": full,
-                "video_id": video_id,
-                "anchor_text": tag.get_text(" ", strip=True) if tag.name == "a" else "",
-                "source_url": final_url,
-            }
-        )
+        # WO-1033 item 4: a same-site redirect (CivicPlus's own
+        # "/youtube" quick-link button) -- see this module's docstring.
+        # Only for <a> (an <iframe src="/youtube"> isn't a real shape),
+        # only on the SAME host as the page itself (a link to some other
+        # site's own "/youtube" path is not this government's channel).
+        parsed = urlparse(full)
+        if (
+            tag.name == "a"
+            and parsed.netloc.lower() == base_netloc
+            and _SAME_SITE_SOCIAL_REDIRECT_RE.match(parsed.path or "/")
+            and "youtube" in parsed.path.lower()
+            and full not in seen_redirects
+        ):
+            seen_redirects.add(full)
+            leads.append(
+                {
+                    "url": full,
+                    "video_id": None,
+                    "anchor_text": tag.get_text(" ", strip=True),
+                    "source_url": final_url,
+                }
+            )
     return leads
 
 

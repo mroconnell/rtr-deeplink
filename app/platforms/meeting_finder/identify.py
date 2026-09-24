@@ -86,7 +86,12 @@ from scripts.platform_fingerprints import fingerprint, load_signatures
 
 from .fetch import FetchResult, Fetcher
 from .models import OUTCOME_ACCOUNT_NOT_FOUND, OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER
-from .scan import _extract_date_text, _row_context, _walk_up_for_date
+from .scan import (
+    _SAME_SITE_SOCIAL_REDIRECT_RE,
+    _extract_date_text,
+    _row_context,
+    _walk_up_for_date,
+)
 
 # --- Ranking (Ryan, 2026-09-23; docs/MEETING_FINDER.md's Identify table) --
 
@@ -463,6 +468,28 @@ def _scan_links(
             if _youtube_link_has_meeting_context(tag):
                 dated_youtube_urls.add(candidate)
             continue
+
+        # WO-1033: a same-site redirect to the government's own YouTube
+        # channel (CivicPlus's own quick-link-widget shape, confirmed
+        # live on Emporia KS's real homepage: `<a href="/youtube"
+        # aria-label="YouTube"><img alt="YouTube"></a>`, no visible
+        # anchor text) -- `detect_platform()` never recognizes this as
+        # "youtube" since the URL itself is on the government's own host,
+        # but it's the same kind of lead. See `scan.py`'s own docstring
+        # for the same shape handled there.
+        if (
+            platform == "unknown"
+            and candidate_host == urlparse(final_url).netloc.lower()
+        ):
+            candidate_path = urlparse(candidate).path or "/"
+            if (
+                _SAME_SITE_SOCIAL_REDIRECT_RE.match(candidate_path)
+                and "youtube" in candidate_path.lower()
+            ):
+                if candidate not in seen_youtube:
+                    seen_youtube.add(candidate)
+                    youtube_urls.append(candidate)
+                continue
 
         if platform == "unknown":
             if candidate_host == urlparse(final_url).netloc.lower() and (
