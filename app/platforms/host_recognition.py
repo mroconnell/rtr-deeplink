@@ -137,6 +137,13 @@ _HOST_ONLY_PLATFORMS: Tuple[Tuple[str, str], ...] = (
     # necessary-vs-sufficient reasoning). A Hyland tenant on any OTHER
     # domain still can't be recognized by host alone.
     ("hylandcloud.com", "hyland"),
+    # Spectrum Stream -- base.py's own branch needs a real
+    # `/streaming/{tenant}/` path (the host itself is DNS-wildcarded, so
+    # a bare hostname never confirms a tenant on its own -- see
+    # spectrumstream.py's own module docstring, WO-1047, 2026-09-24).
+    # Real tenants confirmed live: `spectrumstream.com` itself (not just
+    # a subdomain).
+    ("spectrumstream.com", "spectrumstream"),
 )
 
 # Sliq Harmony -- not a plain suffix like the entries above: real hosts
