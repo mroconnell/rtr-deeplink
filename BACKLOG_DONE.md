@@ -1,5 +1,26 @@
 # Backlog — done
 
+## WO-1049: meeting-evidence check misses filenames and Drive titles; length-unknown finds demoted [Done 2026-09-24]
+
+**What and why.** Two real governments were being missed (or demoted to a weak lead) by Resolve even though a real meeting recording was right there. Ryan's rule (2026-09-23): a video is a real find whenever there's real evidence it's a meeting, even without a measured length.
+
+**1. A video's own filename was checked raw, so word matching missed it.** `_meeting_evidence_texts()` in `app/platforms/meeting_finder/resolve.py` passed a candidate's URL (and the resolved video URL) as-is. A percent-encoded filename like `%282026-09-22%29%20City%20Council%20Special%20Meeting.mp4` fails the word check on "council" — the `0` left over from `%20` sits right against `C`, and both count as letters, so there's no word boundary between them. A new helper, `decode_filename_text()` in `app/utils/video_hand_check.py`, decodes the URL and turns `_-.+` into spaces before the check runs. This also protects the (already-working) case of a hyphen-joined filename like Bound Brook's, and would fix an underscore-joined one the same way if one ever shows up.
+
+**2. A Google Drive video's title was only looked up for one of the three real link shapes.** `drive.google.com/file/d/<id>/view` was recognized; a download link (`drive.usercontent.google.com/download?id=<id>`) and the older `uc?id=<id>` form were not, so Drive's own title (the only evidence available for a bare Drive link) was never read. `_extract_drive_file_id()` now pulls the file id out of any of the three shapes and always looks the title up at the one canonical `drive.google.com/file/d/<id>/view` page. Real case: Bellerive Acres, MO, file id `1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB`, title "(2026-09-22) City Council Special Meeting".
+
+**3. A video whose length couldn't be measured was always demoted, even with real evidence.** `reject-dead` (ffprobe/HEAD couldn't read the media at all) used to always fall to `OUTCOME_VIDEO_LOW_CONFIDENCE`. Now it checks meeting evidence first (skipped for a platform that doesn't need it, e.g. a real per-meeting listing already vouches for the video): if there's evidence, it's a clean tier-3 find with duration left blank, still tried after any candidate that DID measure a real, accepted duration. Only "no evidence, and the platform needed some" still falls back to a weak lead. Real case: Bound Brook, NJ — a `.mp3` reorganization-meeting recording whose file blocks ranged GETs (HTTP 403), so ffprobe can never read it.
+
+**Verified live** (real network, the resolver's own adapters):
+
+| Government / URL | Before | After |
+|---|---|---|
+| Bellerive Acres, MO (`drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB`) | `video-low-confidence` — "no meeting evidence (nothing found)" | Clean tier-3 find, 1710s |
+| Bound Brook, NJ (`.../1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3`) | `video-low-confidence` — "video length couldn't be measured (HTTP 403)" | Clean tier-3 find, audio only, duration blank |
+
+**Tests.** `tests/test_wo1049_evidence_filename.py`: the two decode/extract helpers directly (percent-encoding, underscore-joining, the three Drive URL shapes), the two real cases end-to-end, the "no evidence anywhere" contrast case (stays a weak lead), the "measured still wins" case, and two no-regression checks that a promo/decorative filename (`homepage_video_600.mp4`, a "Doodle" title) still demotes. `tests/test_wo1024_meeting_finder_resolve.py`'s pre-existing `test_unmeasurable_video_is_kept_last_after_a_known_length_one` asserted the OLD (bug) behavior — updated to assert the new one, since that test's whole premise is what changed here.
+
+**Caution.** `_needs_meeting_evidence()`'s existing platform list (`direct_file`, `vimeo`, plus an "undated, lister order" pick) is unchanged — a length-unknown video from any other platform is treated as evidence-free by default, same as it already was for a measured one.
+
 ## WO-1048: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
 
 **What and why.** Walking county meeting pages on 2026-09-24 turned up four places where the resolver gave up on a real video or gave the wrong name or date. Each was re-checked live before any code changed.

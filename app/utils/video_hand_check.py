@@ -348,6 +348,43 @@ def contains_word(text: str, phrase: str) -> bool:
     return re.search(r"\b" + re.escape(phrase) + r"\b", text) is not None
 
 
+def decode_filename_text(url: Optional[str]) -> Optional[str]:
+    """A URL's filename/path, turned into space-separated words so
+    `contains_word()`'s `\\b` matching can actually see them (WO-1049).
+
+    Two real, confirmed gaps this closes, both from `assess_meeting_
+    evidence()` reading a raw URL as one of its evidence texts:
+
+    (1) A percent-encoded URL still has its OWN literal characters glued
+    together after encoding -- `unquote()` alone isn't enough. Real case:
+    "...%282026-09-22%29%20City%20Council%20Special%20Meeting.mp4"
+    decodes to "...(2026-09-22) City Council Special Meeting.mp4", but the
+    `0` in what was "%20" sits directly against "Council" with no `\\b`
+    between them (both are `\\w` characters) -- `contains_word()` never
+    matches "council" there.
+
+    (2) An underscore-joined filename has the same problem with no
+    percent-encoding involved at all -- an underscore counts as a `\\w`
+    character in Python's `re` module, so e.g.
+    "2025_01_07_Reorganization_Meeting_1.mp3" glues "Reorganization" and
+    "Meeting" to their neighboring digits with no boundary either (no
+    confirmed real example of this shape yet; a hyphen-joined filename
+    like Bound Brook NJ's real
+    "1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3" already
+    matches without decoding, since a hyphen is not a `\\w` character).
+
+    Replacing `_-.+` with spaces after `unquote()` fixes both, and leaves
+    an already-matching hyphenated name matching just the same: the
+    decoded text becomes "( 2026 09 22) City Council Special Meeting mp4"
+    / "1 7 2025 Bound Brook Borough Reorganization Meeting 1 mp3", and
+    "council"/"meeting" sit on real word boundaries either way."""
+    if not url:
+        return None
+    from urllib.parse import unquote
+
+    return re.sub(r"[_\-.+]", " ", unquote(url))
+
+
 def blocklisted_word(title: Optional[str]) -> Optional[str]:
     t = (title or "").lower()
     for word in PROMO_BLOCKLIST:

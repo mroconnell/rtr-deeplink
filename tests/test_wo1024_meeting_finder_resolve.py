@@ -227,10 +227,18 @@ async def test_too_short_video_is_kept_as_a_last_resort(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_unmeasurable_video_is_kept_last_after_a_known_length_one(monkeypatch):
-    """WO-1035: "a video whose length can't be measured is kept as 'video,
-    length unknown', tried after measured ones" -- given both a too-short
-    (known duration) candidate and an unmeasurable one, the known-duration
-    one wins."""
+    """WO-1035 as amended by WO-1049 (Ryan's rule, 2026-09-23): a video
+    whose length can't be measured is a REAL find (not a weak lead) when
+    there's meeting evidence for it or the platform doesn't need any --
+    here neither platform (civicclerk/viebit) needs evidence, so the
+    unmeasurable one is a clean tier-3 find, and it's tried in
+    `pick.py`'s preferred (newest-first) order same as any other candidate
+    -- it does NOT lose to the too-short one just because that one has a
+    known duration. (Before WO-1049, EVERY unmeasurable video was demoted
+    to a weak lead outright, which is what this test used to assert --
+    see `tests/test_wo1049_evidence_filename.py` for the fix's own
+    dedicated coverage, including the "still ordered after measured
+    [accepted] ones" case this test's docstring originally described.)"""
     from app.utils.video_hand_check import PASS, GateVerdict
     from app.platforms import queue_probe
 
@@ -307,11 +315,13 @@ async def test_unmeasurable_video_is_kept_last_after_a_known_length_one(monkeypa
     result = await resolve_candidates(
         candidates, _finder_input(unmeasurable_meeting.source_url), max_tries=6
     )
-    assert result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE
-    # The known-duration (too-short) candidate wins over the unmeasurable
-    # one, even though the unmeasurable one was listed first (newer date).
-    assert result.video_url == short_meeting.video_url
-    assert "too short" in result.low_confidence_reason
+    # WO-1049: the unmeasurable video is a clean find, not a weak lead --
+    # it wins over the too-short one (a weak lead is only ever the
+    # fallback of last resort, tried after every clean find).
+    assert result.outcome is None
+    assert result.tier == 3
+    assert result.video_url == unmeasurable_meeting.video_url
+    assert result.duration_seconds is None
 
 
 @pytest.mark.asyncio
