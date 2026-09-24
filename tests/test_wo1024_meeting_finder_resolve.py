@@ -7,7 +7,6 @@ synthetic-test rules)."""
 
 import pytest
 
-from app.platforms import meeting_finder as mf
 from app.platforms.meeting_finder.models import Candidate, FinderInput
 from app.platforms.meeting_finder.resolve import resolve_candidates
 from app.platforms.models import ResolvedMeeting
@@ -117,9 +116,13 @@ async def test_tier1_returned_immediately_when_segments_present(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_video_gate_rejection_is_not_credited_as_a_meeting(monkeypatch):
-    """A resolved video that the shared gate rejects (a promo/decorative
-    link) must not be accepted, even with a video_url present."""
+async def test_video_gate_rejection_is_kept_as_a_last_resort(monkeypatch):
+    """WO-1035 (Ryan's rule): a resolved video the shared gate rejects (a
+    promo/decorative link) is no longer thrown away outright -- with
+    nothing else to try, it's kept as a last-resort find (never a clean
+    tier-1/tier-3 pick, and always distinguishable via
+    `low_confidence_reason`), rather than reporting "no meeting" while a
+    real video URL sits right there."""
     from app.utils.video_hand_check import GateVerdict, REJECT
 
     meeting = ResolvedMeeting(
@@ -147,5 +150,215 @@ async def test_video_gate_rejection_is_not_credited_as_a_meeting(monkeypatch):
         )
     ]
     result = await resolve_candidates(candidates, _finder_input(meeting.source_url))
-    assert result.tier is None
-    assert result.outcome == mf.models.OUTCOME_NO_MEETING_NOR_VIDEO
+    assert result.outcome is None
+    assert result.candidate is not None
+    assert result.video_url == meeting.video_url
+    assert result.low_confidence_reason
+    assert "kept despite" in result.note
+
+
+@pytest.mark.asyncio
+async def test_too_short_video_is_kept_as_a_last_resort(monkeypatch):
+    """WO-1035: a probed video below the 60s meeting-plausibility floor is
+    kept as a last-resort find (not silently dropped)."""
+    from app.utils.video_hand_check import PASS, GateVerdict
+    from app.platforms import queue_probe
+
+    meeting = ResolvedMeeting(
+        platform="civicclerk",
+        source_url="https://x.portal.civicclerk.com/event/1/media",
+        title="City Council Meeting",
+        video_url="https://x.portal.civicclerk.com/media/1.mp4",
+    )
+
+    async def _fake_resolve_via_platform(url, *, allow_youtube=True):
+        return meeting
+
+    async def _fake_probe(*args, **kwargs):
+        return queue_probe.ProbeResult(
+            url=meeting.source_url,
+            platform="civicclerk",
+            probe_method="ffprobe",
+            duration_seconds=12.0,
+            date=None,
+            size_bytes=None,
+            verdict="reject-short",
+            reason="duration 12.0s is below the 60s meeting-plausibility floor",
+            probe_seconds=0.1,
+        )
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.resolve_via_platform",
+        _fake_resolve_via_platform,
+    )
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.assess_video_candidate",
+        lambda **kwargs: GateVerdict(PASS, "ok"),
+    )
+    monkeypatch.setattr(queue_probe, "probe_queue_entry", _fake_probe)
+
+    async def _audio_ok(url):
+        return True
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve._confirm_not_audio_only", _audio_ok
+    )
+
+    candidates = [
+        Candidate(
+            url=meeting.source_url, date="2026-09-08", title="City Council Meeting"
+        )
+    ]
+    result = await resolve_candidates(candidates, _finder_input(meeting.source_url))
+    assert result.outcome is None
+    assert result.video_url == meeting.video_url
+    assert result.duration_seconds == 12.0
+    assert "too short" in result.low_confidence_reason
+
+
+@pytest.mark.asyncio
+async def test_unmeasurable_video_is_kept_last_after_a_known_length_one(monkeypatch):
+    """WO-1035: "a video whose length can't be measured is kept as 'video,
+    length unknown', tried after measured ones" -- given both a too-short
+    (known duration) candidate and an unmeasurable one, the known-duration
+    one wins."""
+    from app.utils.video_hand_check import PASS, GateVerdict
+    from app.platforms import queue_probe
+
+    short_meeting = ResolvedMeeting(
+        platform="civicclerk",
+        source_url="https://x.portal.civicclerk.com/event/1/media",
+        title="City Council Meeting",
+        video_url="https://x.portal.civicclerk.com/media/1.mp4",
+    )
+    unmeasurable_meeting = ResolvedMeeting(
+        platform="viebit",
+        source_url="https://x.viebit.com/event/2/media",
+        title="City Council Meeting",
+        video_url="https://x.viebit.com/media/2.m3u8",
+    )
+
+    async def _fake_resolve_via_platform(url, *, allow_youtube=True):
+        return unmeasurable_meeting if "viebit" in url else short_meeting
+
+    async def _fake_probe(url, **kwargs):
+        if "viebit" in url:
+            return queue_probe.ProbeResult(
+                url=url,
+                platform="viebit",
+                probe_method="ffprobe",
+                duration_seconds=None,
+                date=None,
+                size_bytes=None,
+                verdict="reject-dead",
+                reason="ffprobe couldn't read the media",
+                probe_seconds=0.1,
+            )
+        return queue_probe.ProbeResult(
+            url=url,
+            platform="civicclerk",
+            probe_method="ffprobe",
+            duration_seconds=12.0,
+            date=None,
+            size_bytes=None,
+            verdict="reject-short",
+            reason="duration 12.0s is below the 60s meeting-plausibility floor",
+            probe_seconds=0.1,
+        )
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.resolve_via_platform",
+        _fake_resolve_via_platform,
+    )
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.assess_video_candidate",
+        lambda **kwargs: GateVerdict(PASS, "ok"),
+    )
+    monkeypatch.setattr(queue_probe, "probe_queue_entry", _fake_probe)
+
+    async def _audio_ok(url):
+        return True
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve._confirm_not_audio_only", _audio_ok
+    )
+
+    candidates = [
+        Candidate(
+            url=unmeasurable_meeting.source_url,
+            date="2026-09-09",
+            title="City Council Meeting",
+        ),
+        Candidate(
+            url=short_meeting.source_url,
+            date="2026-09-08",
+            title="City Council Meeting",
+        ),
+    ]
+    result = await resolve_candidates(
+        candidates, _finder_input(unmeasurable_meeting.source_url), max_tries=6
+    )
+    assert result.outcome is None
+    # The known-duration (too-short) candidate wins over the unmeasurable
+    # one, even though the unmeasurable one was listed first (newer date).
+    assert result.video_url == short_meeting.video_url
+    assert "too short" in result.low_confidence_reason
+
+
+@pytest.mark.asyncio
+async def test_audio_only_video_counts_as_a_real_find(monkeypatch):
+    """WO-1035 item 3: audio-only recordings are GOOD -- they count as
+    finds, labelled "audio only", not rejected."""
+    from app.utils.video_hand_check import PASS, GateVerdict
+    from app.platforms import queue_probe
+
+    meeting = ResolvedMeeting(
+        platform="civicclerk",
+        source_url="https://x.portal.civicclerk.com/event/1/media",
+        title="City Council Meeting",
+        video_url="https://x.portal.civicclerk.com/media/1.mp3",
+    )
+
+    async def _fake_resolve_via_platform(url, *, allow_youtube=True):
+        return meeting
+
+    async def _fake_probe(*args, **kwargs):
+        return queue_probe.ProbeResult(
+            url=meeting.source_url,
+            platform="civicclerk",
+            probe_method="ffprobe",
+            duration_seconds=1800.0,
+            date=None,
+            size_bytes=None,
+            verdict="accept",
+            reason=None,
+            probe_seconds=0.1,
+        )
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.resolve_via_platform",
+        _fake_resolve_via_platform,
+    )
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve.assess_video_candidate",
+        lambda **kwargs: GateVerdict(PASS, "ok"),
+    )
+    monkeypatch.setattr(queue_probe, "probe_queue_entry", _fake_probe)
+
+    async def _audio_only(url):
+        return False  # "not confirmed as audio-only" == False means IS audio-only
+
+    monkeypatch.setattr(
+        "app.platforms.meeting_finder.resolve._confirm_not_audio_only", _audio_only
+    )
+
+    candidates = [
+        Candidate(
+            url=meeting.source_url, date="2026-09-08", title="City Council Meeting"
+        )
+    ]
+    result = await resolve_candidates(candidates, _finder_input(meeting.source_url))
+    assert result.outcome is None
+    assert result.tier == 3
+    assert result.audio_only is True
+    assert "audio only" in result.note

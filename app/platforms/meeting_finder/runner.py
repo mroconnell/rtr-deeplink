@@ -47,7 +47,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 from app.platforms.base import detect_platform
@@ -57,7 +57,7 @@ from .fetch import BudgetExceeded, Fetcher
 from .hop import canonical_page_key, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
-from .listing import list_account
+from .listing import ListResult, list_account
 from .pacing import pace_all_requests
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
@@ -120,6 +120,23 @@ _HOP_CANDIDATE_LIMIT = 25
 # full Identify+List pass in `_deep_step()`, per fork. Small on purpose
 # -- each one costs a real fetch, and this runs on every fork.
 _SCAN_LINK_FOLLOW_LIMIT = 3
+
+# WO-1035 item 7: backtrack within one page's own hop ranking instead of
+# committing to a single best-ranked link and moving on for good. Real
+# governments this fixes (cablecast3/swagit1/swagit2 reports, 2026-09-23):
+# Des Plaines IL, Niagara Falls SD NY, James Island SC, Johnson County TX
+# all had the REAL vendor link ranked 2nd-6th on a page whose top-ranked
+# link dead-ended (an agenda/minutes page with no video). Bounded small --
+# this is a safety net for when the top pick doesn't pan out, not a
+# license to explore every hop on every page.
+_MAX_SIBLING_HOPS_PER_PAGE = 3
+# A recognized video-vendor link (`detect_platform()` resolves it) within
+# this many points of the top-ranked hop's own score is followed FIRST,
+# even when it isn't the literal top score -- `rank_hops()`'s own path/
+# anchor-vocabulary scoring has no idea which links are actual video
+# platforms, so a near-tied vendor link is strictly better evidence than a
+# marginally higher-scoring agenda/minutes page.
+_VENDOR_TIE_MARGIN = 5.0
 
 # WO-1031: watch/video links followed from a page whose platform had
 # meetings but no video (see `_shallow_step()`).
@@ -190,6 +207,28 @@ class _WalkState:
     meeting: Optional[Any] = None  # ResolvedMeeting behind `result`
     phase_reached_index: int = -1
     budget_exhausted: bool = False
+    # WO-1035 item 5: per-government "don't re-try the same thing" caches.
+    # `listed_accounts` keys are (platform, normalized account url) --
+    # List is never run twice for the same account across forks/hops
+    # (real case: Des Plaines IL's ChampDS account, listed once per fork
+    # before this). `tried_meeting_keys` holds `_meeting_key()` for every
+    # candidate ever handed to `_try_resolve()`, so the same meeting
+    # (however it was found) is never resolved twice.
+    listed_accounts: Dict[Tuple[str, str], ListResult] = field(default_factory=dict)
+    tried_meeting_keys: Set[str] = field(default_factory=set)
+    # WO-1035 item 6: a failed Resolve call's own `ResolveResult.note`
+    # (the real per-candidate reasons, e.g. "https://.../videos/399892:
+    # reject_dead -- ...") used to be dropped on the floor here -- only
+    # `result.outcome` (a short code like "no-meeting-nor-video") was kept
+    # on `state.outcomes`, so a government where Resolve genuinely found
+    # and rejected real candidates read identically to one where nothing
+    # was ever found at all (the real bug behind the Greenburgh NY /
+    # Upper Providence PA reports: "resolve found real videos but
+    # returned nothing", traced to exactly this -- the detail was there,
+    # just never surfaced). Collected here and folded into the final
+    # VerdictRow.note (see run_one()) whenever the walk ends without a
+    # clean success.
+    resolve_notes: List[str] = field(default_factory=list)
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -208,6 +247,24 @@ class _WalkState:
 
 
 _CALENDAR_PATH_RE = re.compile(r"calendar\.aspx|/calendar/|/events?/", re.I)
+
+# WO-1035 item 5 (Ryan's rule: "don't re-try the same thing"). A real
+# meeting id, when the URL carries one -- CivicClerk/ChampDS's `event/<id>`,
+# an `EventId=`/`eventID=` query param, Cablecast's `/show/<id>`, Swagit's
+# `/views/<id>`/`/videos/<id>`, Granicus's `clip_id=`/`MediaID=`. Checked in
+# order; the first match wins. Falls back to the normalized URL
+# (`_norm_url()`, below) when nothing matches -- still "tried once", just
+# keyed on the whole address rather than a parsed id.
+_MEETING_ID_PATTERNS = (
+    re.compile(r"/event/(\d+)", re.I),
+    re.compile(r"[?&]eventid=(\d+)", re.I),
+    re.compile(r"/show/(\d+)", re.I),
+    re.compile(r"/views?/(\d+)", re.I),
+    re.compile(r"/videos/(\d+)", re.I),
+    re.compile(r"[?&]clip_?id=(\d+)", re.I),
+    re.compile(r"[?&]mediaid=(\d+)", re.I),
+    re.compile(r"[?&]meetingid=([0-9a-f-]+)", re.I),
+)
 
 
 def _norm_url(url: str) -> str:
@@ -236,6 +293,38 @@ def _norm_url(url: str) -> str:
 
 def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]]:
     return [{"kind": "youtube", "url": u, "found_at": found_at} for u in urls]
+
+
+async def _cached_list_account(
+    platform: str, account_url: str, fetcher: Fetcher, state: _WalkState
+) -> ListResult:
+    """WO-1035 item 5: "accounts listed once" -- `_shallow_step()` runs on
+    every fork AND every hop, and more than one of those can land on the
+    same real account (Des Plaines IL's ChampDS account, listed once per
+    fork before this fix -- cablecast3 report, 2026-09-23). Caches by
+    (platform, normalized account url) for the life of one government's
+    walk; a `BudgetExceeded` is never cached (it isn't a real answer)."""
+    key = (platform, _norm_url(account_url))
+    cached = state.listed_accounts.get(key)
+    if cached is not None:
+        return cached
+    result = await list_account(platform, account_url, fetcher)
+    state.listed_accounts[key] = result
+    return result
+
+
+def _meeting_key(url: str) -> str:
+    """WO-1035 item 5: "each meeting is tried once (same platform meeting
+    id = same meeting)". `platform + id` when the URL carries a
+    recognizable one (see `_MEETING_ID_PATTERNS`), else `platform +
+    normalized URL` -- either way, two different candidate rows that both
+    point at the same real meeting collapse to the same key."""
+    platform = detect_platform(url) or ""
+    for pattern in _MEETING_ID_PATTERNS:
+        m = pattern.search(url)
+        if m:
+            return f"{platform}:{m.group(1).lower()}"
+    return f"{platform}:{_norm_url(url)}"
 
 
 @dataclass
@@ -272,7 +361,25 @@ async def _try_resolve(
     """Runs Resolve on `candidates`; on success, records the winner on
     `state` and returns True. On failure, records the outcome and
     returns False so the caller keeps looking (Scan/Hop, or the next
-    fork)."""
+    fork).
+
+    WO-1035 item 5: filters out any candidate whose `_meeting_key()` has
+    already been offered to Resolve earlier in THIS government's walk
+    (from an earlier fork/hop) before doing anything else -- "each
+    meeting is tried once". If everything here has already been tried,
+    this is a no-op (no fetch, no outcome recorded) rather than a wasted
+    Resolve call."""
+    fresh: List[Candidate] = []
+    for cand in candidates:
+        key = _meeting_key(cand.url)
+        if key in state.tried_meeting_keys:
+            continue
+        state.tried_meeting_keys.add(key)
+        fresh.append(cand)
+    if not fresh:
+        return False
+    candidates = fresh
+
     lanes = _LANES.get()
     if lanes is None:
         result, meeting = await _resolve_candidates_with_meeting(
@@ -298,6 +405,8 @@ async def _try_resolve(
         state.meeting = meeting
         return True
     state.outcomes.append(result.outcome)
+    if result.note:
+        state.resolve_notes.append(result.note)
     return False
 
 
@@ -363,7 +472,9 @@ async def _shallow_step(
 
     if ident.platform and ident.account_url and ident.supported is not False:
         try:
-            list_result = await list_account(ident.platform, ident.account_url, fetcher)
+            list_result = await _cached_list_account(
+                ident.platform, ident.account_url, fetcher, state
+            )
         except BudgetExceeded:
             state.budget_exhausted = True
             return None
@@ -502,6 +613,25 @@ async def _deep_step(
         # exclusion filter below).
         hops = rank_hops(page, prefer_vendor=prefer_vendor, limit=_HOP_CANDIDATE_LIMIT)
         state.reach("hop")
+
+        # WO-1035 item 7: a recognized video-vendor link within a small
+        # margin of the top-ranked hop is followed FIRST -- `rank_hops()`
+        # scores path/anchor vocabulary, not "is this actually a video
+        # platform", so a near-tied vendor link is stronger evidence than
+        # a marginally higher-scoring agenda/minutes page. Only reorders
+        # when there IS a top hop to compare against and the vendor link
+        # isn't already it.
+        if hops:
+            top_score = hops[0].score
+            for idx, hop in enumerate(hops[1:], start=1):
+                if top_score - hop.score > _VENDOR_TIE_MARGIN:
+                    break  # hops are score-sorted; nothing further ties
+                platform = detect_platform(hop.url)
+                if platform and platform != "unknown":
+                    hops.insert(0, hops.pop(idx))
+                    break
+
+        siblings_tried = 0
         for hop in hops:
             if _norm_url(hop.url) in seen:
                 continue
@@ -536,6 +666,7 @@ async def _deep_step(
                 seen.add(_norm_url(hop.url))
                 continue
             state.hops += 1
+            siblings_tried += 1
             await _walk_from(
                 hop.url,
                 fetcher,
@@ -546,10 +677,17 @@ async def _deep_step(
                 max_tries=max_tries,
                 prefer_vendor=prefer_vendor,
             )
-            # Only the single best not-yet-seen, non-YouTube hop per
-            # level (docs/MEETING_FINDER.md's Hop: "Pick the best next
-            # page to open" -- singular).
-            break
+            # WO-1035 item 7: if the best-ranked hop dead-ended (nothing
+            # resolved, budget not exhausted), try the next sibling hop on
+            # THIS page before giving up on it -- real governments this
+            # fixes (Des Plaines IL, Niagara Falls SD NY, James Island SC,
+            # Johnson County TX) had the real vendor link ranked 2nd-6th
+            # behind an agenda/minutes page that scored higher but led
+            # nowhere. Bounded by `_MAX_SIBLING_HOPS_PER_PAGE` and by
+            # `hops_left` (each sibling still spends one hop of budget) so
+            # this stays a safety net, not unbounded exploration.
+            if state.done or siblings_tried >= _MAX_SIBLING_HOPS_PER_PAGE:
+                break
 
 
 async def _walk_from(
@@ -808,7 +946,15 @@ async def run_one(
         platform = None
         tier = None
         duration_seconds = None
-        note = "; ".join(dict.fromkeys(state.outcomes)) or (
+        # WO-1035 item 6: surface Resolve's own per-candidate detail (real
+        # videos it actually looked at and why each was rejected), not
+        # just the short outcome code -- see `_WalkState.resolve_notes`'s
+        # own comment for the real Greenburgh NY / Upper Providence PA
+        # reports this fixes.
+        note_parts = list(dict.fromkeys(state.outcomes)) + list(
+            dict.fromkeys(state.resolve_notes)
+        )
+        note = "; ".join(note_parts) or (
             "budget exhausted before anything resolved"
             if state.budget_exhausted
             else "nothing found"
