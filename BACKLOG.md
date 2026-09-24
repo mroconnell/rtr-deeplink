@@ -202,7 +202,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (205)
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
   [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
@@ -323,7 +323,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (28)
+  Jurisdiction extraction & backfill  (29)
     `[NEEDS-AUDIT]` A real, live Archive page for the Town of Franklin,…
     `[NEEDS-AUDIT]` ~1,056 of the ~1,099 governments of 5,000+ whose…
     `[NEEDS-AUDIT]` Two governments have a `jurisdiction_coverage.csv`…
@@ -344,6 +344,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (204)
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
+    `[NEEDS-AUDIT]` A Swagit video opened through another government's
     `[NEEDS-AUDIT]` Lloydminster (AB/SK border city) needs a product
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
@@ -4385,6 +4386,42 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     re-verification detail (URLs used, exact outcomes). Same structural
     "no national table for non-Census entities" problem as the
     50-largest-cities audit entry.
+
+- **`[NEEDS-AUDIT]` A Swagit video opened through another government's
+  Swagit host is filed under the host's government, not its own.**
+  - **Issue**: Swagit's `/videos/<id>` numbers are shared across every
+    customer, so any customer's host serves any customer's video.
+    Confirmed live 2026-09-23: `dublinca.new.swagit.com/videos/401655`
+    is titled "Sep 21, 2026 City Council Meeting - Carmel, IN", and its
+    stream path reads `swagitVideo/carmelin/`. The reverse also works:
+    `sccoe.new.swagit.com/videos/401121` serves a Dublin, CA meeting.
+    `finalize_jurisdiction()`'s subdomain cross-check then prefers the
+    host over the page title. `resolve_government("Carmel, IN",
+    tenant_host="dublinca.new.swagit.com")` returns Dublin
+    (`us:place:0620018`, evidence "us_places.csv Dublin city").
+  - **Impact**: none found yet. All 6 pages on `/j/dublin-ca` are real
+    Dublin meetings (checked 2026-09-23; each Swagit one streams from
+    `swagitVideo/dublinca/`). A cross-host URL only arises if someone
+    pastes or discovers one, because each customer's own listing
+    (`/views/<n>`, e.g. Dublin's `/views/876`) lists only its own
+    videos. When it does arise, the page is filed under the wrong
+    government with no warning.
+  - **Next action**: in `app/platforms/swagit.py`, read the
+    `swagitVideo/<slug>/` segment of the stream URL. When it differs
+    from the host's subdomain, pick one fix: pass the owning host
+    (`<slug>.new.swagit.com`) as `origin_host` for identity, or rewrite
+    `source_url` to the owning host before ingest. Then audit every
+    Archive page on a `*.new.swagit.com` host for the same mismatch.
+  - **Constraint**: do not remove the `dublinca.new.swagit.com` pin in
+    `tenant_overrides.csv`. It is correct: that host's own archive is
+    Dublin's. A pin (or subdomain) is right for a host's own videos and
+    wrong only for a borrowed one.
+  - **History**: found during WO-1032's live check of the fetch pacing
+    hook (2026-09-23). That session also reported a "Carmel City
+    Council" heading and a link to video 401655 on Dublin's Swagit
+    homepage. Not reproduced the same day: the homepage redirects to
+    `/recycle-bin/`, a leftover admin template ("SwagitAdmin", "NCTCOG
+    Live" placeholder links) that listed no videos at all.
 
 - **`[NEEDS-AUDIT]` Lloydminster (AB/SK border city) needs a product
   decision.**
