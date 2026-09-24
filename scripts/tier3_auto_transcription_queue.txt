@@ -1,3 +1,38 @@
+https://cu.diligent.community/Portal/MeetingInformation.aspx?Id=648		rtr:us:co:university-of-colorado-board-of-regents
+https://youtu.be/NK02Iq9US48		us:cousub:3602760905
+https://dhcd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=285		rtr:us:ca:desert-healthcare-district
+https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2270		us:place:4869800
+https://mono.civicweb.net/Portal/MeetingInformation.aspx?Id=1214		us:sd:5400930
+https://aguafria.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=345		us:sd:0400450
+https://youtu.be/0bB_nTvN1Mw		us:cousub:2300761840
+https://okaloosaschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=861		us:sd:1201380
+https://zeballos.diligent.community/Portal/MeetingInformation.aspx?Id=271		ca:csd:5924029
+https://avdistrict.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=397		us:sd:0602820
+https://youtu.be/Ri6kQUZfvl8		us:cousub:3607156185
+https://d11.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1132		us:sd:0803060
+https://www.youtube.com/watch?v=gde00r0sXXA&t=5s		us:cousub:4212955128
+https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697		us:cousub:4200157472
+https://www.youtube.com/live/ffgRc-07yUw?si=OB29-NWm2pMAn4WJ		us:cousub:3910978456
+https://nscsd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=537		us:sd:3621210
+https://olemissk12.diligent.community/Portal/MeetingInformation.aspx?Id=148		us:sd:1806870
+https://youtu.be/r977bdgqmC4?si=ySWeg70JnYsCS7KY		us:sd:2505130
+https://klamath-falls.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=253		us:place:4139700
+https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
+https://walton.civicweb.net/Portal/MeetingInformation.aspx?Id=7347		us:sd:1201980
+https://waverly.civicweb.net/Portal/MeetingInformation.aspx?Id=18914		us:sd:3904914
+https://wcs-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=713		us:sd:5103900
+https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=946		us:sd:3904467
+https://greenwich-schools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=543		us:sd:0901710
+https://northfieldschools.org/about/school-board/meetings/		us:sd:2723880
+https://thompsonschools.diligent.community/Portal/MeetingInformation.aspx?Id=484		us:sd:0805400
+https://cityoftemple.primegov.com/Portal/Meeting?meetingTemplateId=13721		us:place:4872176
+https://sunnyside.primegov.com/Portal/Meeting?meetingTemplateId=6604		us:place:5368750
+https://husd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=340		us:sd:0403780
+https://www.youtube.com/watch?v=feSCD02-Iao		us:cousub:2301955565
+https://esuhsd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=769		us:sd:0611820
+https://www.youtube.com/watch?v=lHLFxufylYM		us:place:2953650
+https://metcom.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=62		rtr:us:md:st-marys-county-metropolitan-commission
+https://patrickk12va.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=132		us:sd:5102880
 https://asdb.diligent.community/Portal/MeetingInformation.aspx?Id=430	https://asdb.az.gov/	rtr:us:az:arizona-schools-for-the-deaf-and-the-blind
 https://columbiatwp.civicweb.net/Portal/MeetingInformation.aspx?Id=1394	https://columbiatwp.com/	us:cousub:2615917440
 https://lw210.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=178	https://lw210.community.diligentoneplatform.com/document/48ac8b20-eaa4-489f-bedb-1eb82a9d173b/?modified=2026-03-31T15:30:49.943	us:sd:1723070
@@ -1111,3 +1146,66 @@ https://escondido.12milesout.com/Video/Meeting/5118e256-6968-4318-83a2-be76bce62
 https://colton.12milesout.com/video/meeting/f05e0cf7-b4b1-4447-ad51-96b4a73f3453	https://colton.12milesout.com/	us:place:0614890
 https://covina.12milesout.com/meeting/79bed72e-ca6d-4ad0-ad18-7b275caac901	https://covina.12milesout.com/	us:place:0616742
 https://spectrumstream.com/streaming/south_pasadena/2026_09_22.cfm	https://spectrumstream.com/streaming/south_pasadena/	us:place:0673220
+https://drive.usercontent.google.com/download?id=1te2fJqf4xPckmFv_wfweG-BbV9CHk4fS&export=download&confirm=t	https://arundel.ca/en/publications/agenda-and-minutes/	ca:csd:2478060
+https://files.smartsites.parentsquare.com/9059/regular_school_board_meeting_09-15-25.mp3	https://files.smartsites.parentsquare.com/9059/regular_school_board_meeting_09-15-25.mp3	us:sd:4820760
+https://peruvt.org/wp-content/uploads/2026/09/09.16.2026-SB-mtg-part-1.m4a	https://peruvt.org/wp-content/uploads/2026/09/09.16.2026-SB-mtg-part-1.m4a	us:cousub:5000355000
+http://bethlehemga.org/assets/Feb. 2, 2026 meeting audio.mp3	http://bethlehemga.org/assets/Feb. 2, 2026 meeting audio.mp3	us:place:1307612
+https://drive.usercontent.google.com/download?id=1iR1qnejaMvrJu0pZ4aWPBygFDGLTyojh&export=download&confirm=t	https://drive.google.com/file/d/1iR1qnejaMvrJu0pZ4aWPBygFDGLTyojh/view?usp=sharing	us:cousub:5000941425
+https://drive.usercontent.google.com/download?id=1affodoIsgIKb2aFlQZoQFJXI0Z2eORTb&export=download&confirm=t	https://drive.google.com/file/d/1affodoIsgIKb2aFlQZoQFJXI0Z2eORTb/view?usp=sharing	us:place:0812900
+https://drive.usercontent.google.com/download?id=1ZXRHwzEFlorhxVH-KurMLXIRgKaPZTxG&export=download&confirm=t	https://drive.google.com/file/d/1ZXRHwzEFlorhxVH-KurMLXIRgKaPZTxG/view?usp=sharing	us:sd:5513800
+https://easthelenamt.us/AgendaMinutes/20260303.m4a	https://easthelenamt.us/AgendaMinutes/20260303.m4a	us:place:3023125
+https://boe.nutleyschools.org/sites/default/files/boeagendas/2017-10-30-audio-show_9813061_2017_03_03_17_03_05.mp3	https://boe.nutleyschools.org/sites/default/files/boeagendas/2017-10-30-audio-show_9813061_2017_03_03_17_03_05.mp3	us:sd:3411880
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3675/Wls/8b869eb2-7c47-40de-8332-c2708532138d/Audio_12_07_2019.mp3?disposition=inline	https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3675/Wls/8b869eb2-7c47-40de-8332-c2708532138d/Audio_12_07_2019.mp3?disposition=inline	us:sd:3904823
+http://village.longview.ab.ca/wordpress/wp-content/uploads/2025/02/01-30-2025-Special-Closed-Council-Meeting-audio-.mp3?_=3	http://village.longview.ab.ca/wordpress/wp-content/uploads/2025/02/01-30-2025-Special-Closed-Council-Meeting-audio-.mp3?_=3	ca:csd:4806008
+https://reservetwp.com/wp-content/uploads/2026/09/GMT20260902-225543_Recording.cutfile.20260903142711208_640x360.mp4	https://reservetwp.com/wp-content/uploads/2026/09/GMT20260902-225543_Recording.cutfile.20260903142711208_640x360.mp4	us:cousub:4200364240
+https://ferdinandindiana.org/wp-content/uploads/2026/09/New-Recording-137-TOF-to-post.m4a	https://ferdinandindiana.org/wp-content/uploads/2026/09/New-Recording-137-TOF-to-post.m4a	us:place:1822990
+https://amherstva.gov/wp-content/uploads/general/2026-Aug-12_TC-MEETING.mp3	https://amherstva.gov/wp-content/uploads/general/2026-Aug-12_TC-MEETING.mp3	us:place:5101672
+https://www.townofcolumbus.com/wp-content/uploads/2024/01/1-2-24.mp3	https://www.townofcolumbus.com/wp-content/uploads/2024/01/1-2-24.mp3	us:place:3016825
+https://www.dundeecity.org/vertical/sites/%7BE14ACB8D-5C5F-45F7-9F7A-A518EB570F6B%7D/uploads/05.27.2026_Special_CC_Mtg_Recording.m4a	https://www.dundeecity.org/vertical/sites/%7BE14ACB8D-5C5F-45F7-9F7A-A518EB570F6B%7D/uploads/05.27.2026_Special_CC_Mtg_Recording.m4a	us:place:4121050
+https://drive.usercontent.google.com/download?id=1J1KHJzNL_KLV5WHShkwamzYJb_dM1Avu&export=download&confirm=t	https://drive.google.com/file/d/1J1KHJzNL_KLV5WHShkwamzYJb_dM1Avu/view?usp=sharing	us:place:5182320
+https://municipal-documents.s3.amazonaws.com/uploads/canaan-falls-village-ct/recreation-commission/documents/minutes/159233/GMT20260603-225104_Recording.m4a	https://municipal-documents.s3.amazonaws.com/uploads/canaan-falls-village-ct/recreation-commission/documents/minutes/159233/GMT20260603-225104_Recording.m4a	us:cousub:0916010940
+https://media.sd70.bc.ca/media/Default/medialib/special-public-board-meeting-20250624-153353-meeting-recording_website.564f5210384.mp4	https://media.sd70.bc.ca/media/Default/medialib/special-public-board-meeting-20250624-153353-meeting-recording_website.564f5210384.mp4	rtr:ca:bc:school-district-70-pacific-rim
+https://files.smartsites.parentsquare.com/13818/boe_mtg_082720_gallery.mp4	https://files.smartsites.parentsquare.com/13818/boe_mtg_082720_gallery.mp4	us:sd:3603810
+https://drive.usercontent.google.com/download?id=1GL08zj-FwbIKva77y0rHzs7q8xN1SUTY&export=download&confirm=t	https://drive.google.com/file/d/1GL08zj-FwbIKva77y0rHzs7q8xN1SUTY/view	us:sd:0900720
+https://irp.cdn-website.com/7cf15fcf/files/uploaded/1-21-25_Brd._Work_Mtg..MP3	https://irp.cdn-website.com/7cf15fcf/files/uploaded/1-21-25_Brd._Work_Mtg..MP3	us:sd:4900570
+https://drive.usercontent.google.com/download?id=1OWAWdBszw_7vGzmSDnNjcslk2i6icJAg&export=download&confirm=t	https://drive.google.com/file/d/1OWAWdBszw_7vGzmSDnNjcslk2i6icJAg/view?usp=sharing	us:sd:3406270
+https://www.municipalityofshelburne.ca/wp-content/uploads/2026/06/2026.06.10_Recording.mp3	https://www.municipalityofshelburne.ca/wp-content/uploads/2026/06/2026.06.10_Recording.mp3	ca:csd:1201006
+https://files.smartsites.parentsquare.com/4331/brdmeet_2025_oct6.mp3	https://files.smartsites.parentsquare.com/4331/brdmeet_2025_oct6.mp3	us:sd:4815480
+https://klondike.esc17.net/upload/common/Bd%20Meeting%20Pt1.mp3	https://klondike.esc17.net/upload/common/Bd%20Meeting%20Pt1.mp3	us:sd:4825790
+https://files.smartsites.parentsquare.com/10108/audio09212026.mp3	https://files.smartsites.parentsquare.com/10108/audio09212026.mp3	us:sd:3631290
+https://drive.usercontent.google.com/download?id=1CVeRVpK9I06fHc_x2z0qLfyBa9dtRw0C&export=download&confirm=t	https://drive.google.com/file/d/1CVeRVpK9I06fHc_x2z0qLfyBa9dtRw0C/view?usp=sharing	us:sd:2703870
+https://dennistwp.org/wp-content/audio/Committee/2026/1.6.26%20ReOrg.mp3?_=1	https://dennistwp.org/wp-content/audio/Committee/2026/1.6.26%20ReOrg.mp3?_=1	us:cousub:3400917560
+https://resources.finalsite.net/videos/t_video_mp4_480/v1747850136/esd20org/b8jthy7b7ultajiluyc6/15MAY2025BOARDOFEDUCATIONREGULARMEETINGPart2.mp4	https://resources.finalsite.net/videos/t_video_mp4_480/v1747850136/esd20org/b8jthy7b7ultajiluyc6/15MAY2025BOARDOFEDUCATIONREGULARMEETINGPart2.mp4	us:sd:1720880
+https://drive.usercontent.google.com/download?id=116ru3koIoZQylHqODVdVoQmBj16tj1vi&export=download&confirm=t	https://drive.google.com/file/d/116ru3koIoZQylHqODVdVoQmBj16tj1vi/view?usp=sharing	us:cousub:0911006260
+https://chathamborough.granicus.com/MediaPlayer.php?view_id=1&clip_id=554		us:place:3412100
+https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77		us:place:2232930
+https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4		us:county:22109
+https://wintergardenfl.portal.civicclerk.com/event/516/media		us:place:1278250
+https://videoplayer.telvue.com/player/DPyuEDJjWk7UkJ6KIJCC97gq5-5RKKsb/media/1044687?showtabssearch=true&fullscreen=false		us:place:3464620
+https://townhallstreams.com/stream.php?location_id=108&id=76489		us:cousub:3301150740
+https://townofcanandaiguany.portal.civicclerk.com/event/189/media		us:cousub:3606912155
+https://pub-oliver.escribemeetings.com/Meeting.aspx?Id=cd8c9657-543e-4291-9deb-c42d3c684b78		us:county:38065
+https://cityofkm.granicus.com/MediaPlayer.php?view_id=1&clip_id=129		us:place:3735880
+https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=f22822c4-1b08-4d14-a3eb-85ea68f6063c		ca:csd:5937014
+https://vimeo.com/1215957780/e421c4fb81		us:sd:3624630
+https://play.champds.com/augustaga/event/669		us:place:1304204
+https://vimeo.com/946425462/b95b8652b3		us:place:2283405
+https://garlandisdtx.new.swagit.com/videos/400264		us:sd:4820340
+https://videoplayer.telvue.com/player/Ba_iz22BDdj-q51Xx8u--VZN0oq18h1i/media/1038987?showtabssearch=true&fullscreen=false		us:sd:3407830
+https://trms.northmetrotv.com/internetchannel/show/34123?site=8		us:place:2736836
+https://pelhampublicschoolsny.new.swagit.com/videos/400529		us:sd:3622680
+https://cityofgahanna.granicus.com/player/clip/630?view_id=1&redirect=true		us:place:3929106
+https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
+http://96.39.48.70:10264/internetchannel/show/602?channel=1		us:cousub:2500334340
+https://play.champds.com/collegedaletn/event/154		us:place:4716300
+https://talladegaal.new.swagit.com/videos/391832		us:place:0174592
+https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
+https://cityofcommerce.legistar.com/MeetingDetail.aspx?LEGID=3020&GID=447&G=EBC39E45-32C8-4032-8846-EC49B850A476		us:place:0614974
+http://vod.mvcc.video:8080/internetchannel/show/20245?channel=2		us:place:3929932
+https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
+https://bellflowerusd.new.swagit.com/videos/400652		us:sd:0604440
+https://drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB&export=download&confirm=t	https://drive.google.com/file/d/1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB/view?usp=drive_link	us:place:2904248
+https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3	https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3	us:place:3406790
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
+https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
+https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
