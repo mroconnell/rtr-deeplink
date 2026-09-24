@@ -16,12 +16,20 @@ Start sections below, now current, and the "The phase loop (WO-1030)"
 section further down for how the wiring itself works.
 **Every entry point (`start`/`identify`/`list`/`scan`/`resolve`) is now
 live end to end**, with `max_hops`/`max_forks`/`max_fetches` enforced --
-`phase-not-built` no longer applies to any entry. See that package's own
-module docstrings for the reasoning behind each piece; this section
-records the interface details WO-1024/WO-1027/WO-1028/WO-1030 had to
-settle that this design doc didn't spell out, and how Meeting Finder
-relates to `app/platforms/passive_verify.py`, an existing module this
-design doc missed on first pass.
+`phase-not-built` no longer applies to any entry. WO-1033 (2026-09-23)
+then fixed five real link-quality bugs in **Hop** and **Scan**, found by
+Ryan hand-checking Dublin, CA and Emporia, KS: a word-less nav link
+scoring nothing, calendar events crowding out hub links, a new
+`prefer_video` ranking boost, a same-site social redirect (`/youtube`)
+never treated as a hop or a meeting page, and a `canonical_page_key()`
+helper for `runner.py`'s own de-duplication -- see this doc's Hop/Scan
+sections below and `BACKLOG_DONE.md`'s WO-1033 entry for the full
+write-up. See that package's own module docstrings for the reasoning
+behind each piece; this section records the interface details WO-1024/
+WO-1027/WO-1028/WO-1030/WO-1033 had to settle that this design doc didn't
+spell out, and how Meeting Finder relates to
+`app/platforms/passive_verify.py`, an existing module this design doc
+missed on first pass.
 
 **The first WO-1030 smoke test missed every one of 4 real, known-video
 governments it was tried against** (conductor review, 2026-09-23) --
@@ -422,19 +430,36 @@ iframe-based Vimeo/Google Drive/CivicWeb cases those regexes miss.
   `extract_video_id()` recognizes as YouTube, is never also offered as a
   page to open. A page fetched from Wayback (`FetchResult.links_only`)
   may still yield real meeting-page links, never media candidates.
+- **False-positive shapes excluded (WO-1033, found live on Dublin CA/
+  Emporia KS's own homepages):** a `CivicAlerts.aspx` news item (a real
+  council/commission headline still isn't a meeting page); an email-
+  signup page (GovDelivery's own `.../subscribers/...`, `/list.aspx`,
+  "Stay Informed"/"Notify Me"); and a bare calendar-event permalink
+  (`/calendar/event/detail/<n>`, `Calendar.aspx?EID=<n>`) whose own title
+  names no governing body or meeting (`GOVERNING_BODY_KEYWORDS`,
+  `app/platforms/granicus.py`, plus "meeting" itself) -- an ordinary
+  community event ("Night Market", "Senior Info Fair") otherwise
+  qualified on a bare date alone, same as a real meeting entry.
+- **A same-site social redirect is a YouTube lead, not a page or a
+  media candidate (WO-1033).** CivicPlus's own quick-link-widget shape,
+  confirmed live on Emporia KS: `<a href="/youtube" aria-label="YouTube">
+  <img alt="YouTube"></a>`, no visible anchor text at all --
+  `extract_video_id()` never recognizes a same-site path, so this used to
+  vanish silently. `_youtube_leads()` now also reports this shape
+  (`video_id=None`); `identify.py`'s own link scan does the same.
 
 ### Hop
 
 Built WO-1029: `app/platforms/meeting_finder/hop.py`'s
-`rank_hops(page, *, prefer_vendor=None, school=False, french=False,
-limit=8) -> List[HopLink]`, `is_document_hub(page) -> bool` and
-`calendar_entry_links(page, limit=2) -> List[str]` -- thin wrappers
-reusing `find_hop_links()`/`looks_like_document_hub()`/
-`find_calendar_entry_links()` (`scripts/wo147_access_ladder_sweep.py`)
-directly rather than moved into `app/` (see `hop.py`'s own module
-docstring and `BACKLOG_DONE.md`'s WO-1029 entry for the reasoning --
-`fetch.py`'s own precedent for reusing this same script's functions
-directly).
+`rank_hops(page, *, prefer_vendor=None, prefer_video=False, school=False,
+french=False, limit=8) -> List[HopLink]`, `is_document_hub(page) -> bool`,
+`calendar_entry_links(page, limit=2) -> List[str]` and (WO-1033)
+`canonical_page_key(url) -> str` -- thin wrappers reusing
+`find_hop_links()`/`looks_like_document_hub()`/`find_calendar_entry_
+links()` (`scripts/wo147_access_ladder_sweep.py`) directly rather than
+moved into `app/` (see `hop.py`'s own module docstring and
+`BACKLOG_DONE.md`'s WO-1029 entry for the reasoning -- `fetch.py`'s own
+precedent for reusing this same script's functions directly).
 
 - `find_hop_links()` with the measured
   `app/utils/jurisdiction_data/hop_link_weights.csv` (`school=True`/
@@ -448,6 +473,43 @@ directly).
   bonus on top of `find_hop_links()`'s own shared vendor-host bonus, so
   the known vendor's own host outranks a merely vendor-shaped link to
   some other platform.
+- **A word-less nav link is rescued, not rejected (WO-1033).** wo147's own
+  scorer requires real path/target-shape evidence before it looks at
+  anchor text at all (a guard against a real false positive: a
+  CivicAlerts.aspx press release scoring high on prose alone) -- so a
+  link with real hub vocabulary but a bare numeric-slug path (Emporia
+  KS's real meetings hub: `<a href="/1300">Agendas & Minutes</a>`, a
+  CivicPlus quick-link button) used to score nothing and not even appear
+  in the top 60 candidates. `_looks_like_nav_hub_label()` recognizes a
+  SHORT anchor text built only from meeting-hub vocabulary ("Agendas &
+  Minutes", "Watch Meetings", as opposed to a prose sentence that merely
+  contains one of the same words) and rescues it, after re-deriving
+  wo147's own vendor-apex/boilerplate guards -- confirmed live: `/1300`
+  now ranks #1 on Emporia's real homepage.
+- **Calendar events are penalized and capped, not left to a plain score
+  sort (WO-1033).** A homepage's own calendar widget (individual
+  `Calendar.aspx?EID=`/`/calendar/event/detail/<n>` entries, `view=list`
+  day views) can otherwise fill most of the top candidates just by
+  outnumbering the real hub links -- confirmed live on both Dublin CA and
+  Emporia KS. `rank_hops()` never returns more than 2 calendar-shaped
+  links in its output, regardless of their individual score.
+- **`prefer_video`** (new, WO-1033): once a page is known to have
+  meetings but no video (the "meetings without video" case), a link
+  whose text/path says watch/video/video-on-demand/live-stream/meeting-
+  video gets a real boost -- confirmed on a real Dublin CA page,
+  `/2875/Watch-Meetings` moves from rank 5 to rank 3 (a real 10-point
+  boost). Off by default.
+- **A same-site social redirect is never a hop (WO-1033).** CivicPlus's
+  own `/youtube`/`/facebook` quick-link-button redirects are excluded
+  outright -- Meeting Finder never fetches these hosts anyway, so ranking
+  one only wastes a hop slot; `scan.py`'s `_youtube_leads()` reports the
+  YouTube one as a lead instead (see Scan's own section above).
+- **`canonical_page_key(url)`** (new, WO-1033): collapses a calendar URL
+  that differs only in a volatile display parameter (`PREVIEW`, `month`,
+  `year`, `day`, `calType`, `view`) to one key, while keeping `EID`/`CID`
+  distinct -- confirmed live on Emporia KS, where the same real event is
+  linked three different ways on the same page. For `runner.py`'s (WO-
+  1031) own `seen`-set to use; `hop.py` doesn't call it itself.
 - `looks_like_document_hub()` checks a landing page; on a plain events
   calendar, `find_calendar_entry_links()` opens its first dated entries.
 - **Jev test (later):** score the same 180 real homepages the weights were
