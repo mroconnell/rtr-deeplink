@@ -1,3 +1,28 @@
+https://asdb.diligent.community/Portal/MeetingInformation.aspx?Id=430	https://asdb.az.gov/	rtr:us:az:arizona-schools-for-the-deaf-and-the-blind
+https://columbiatwp.civicweb.net/Portal/MeetingInformation.aspx?Id=1394	https://columbiatwp.com/	us:cousub:2615917440
+https://lw210.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=178	https://lw210.community.diligentoneplatform.com/document/48ac8b20-eaa4-489f-bedb-1eb82a9d173b/?modified=2026-03-31T15:30:49.943	us:sd:1723070
+https://ccsdut.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1298	https://ccsdut.org/	us:sd:4900120
+https://bedford-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=509	https://bedford.k12.va.us/	us:sd:5100360
+https://lbusd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=294	https://lbusd.community.diligentoneplatform.com/portal/	us:sd:0620370
+https://estesschools.diligent.community/Portal/MeetingInformation.aspx?Id=192	https://estesschools.diligent.community/Portal/	us:sd:0803810
+https://jusd-k12-ca.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=331	https://jurupausd.org/	us:sd:0619260
+https://glendora-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=137	https://glendora-k12.community.diligentoneplatform.com/Portal/	us:sd:0615270
+https://winpark.diligent.community/Portal/MeetingInformation.aspx?Id=188	https://winpark.org/	rtr:us:il:winnetka-park-district
+https://andersonunionhighschooldistrict.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=76	https://auhsd.net/	us:sd:0602700
+https://qathetrd.civicweb.net/Portal/MeetingInformation.aspx?Id=2088	https://qathet.ca/	ca:cd:5927
+https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659	https://www.akronschools.com/district/board-of-education	us:sd:3904348
+https://loudonville-oh.diligent.community/Portal/MeetingInformation.aspx?Id=549	https://loudonville-oh.us/planning-commission-meeting-agendas/	us:place:3945066
+https://oceansideschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=99	https://www.oceansideschools.org/board-of-education/about-our-board	us:sd:3621570
+https://www.youtube.com/watch?v=w9wwAdrnzIc	https://waynecountyny.gov/	us:county:36117
+https://www.youtube.com/watch?v=rv9EcaATvgY&list=PLNM1bWmAVpoXCmRq84JIgnG84VBR9neCF&index=1	https://hudsonwi.gov/list.aspx?Mode=Subscribe#calendar	us:place:5536250
+https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=2002	https://niagarafalls.civicweb.net	us:place:3651055
+https://www.youtube.com/watch?v=em1HM4Ft4FU	https://hopewellboroughnj.gov/	us:place:3433150
+https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
+https://garrettcountyschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=314	https://garrettcountyschools.org/	us:sd:2400360
+https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1231	https://events.leeds1000islands.ca/	ca:csd:3507021
+https://youtu.be/baOM15QBojM	https://miamitownship.com/	us:cousub:3911349392
+https://worcester-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=288	https://worcester-k12.community.highbond.com/Portal/	us:sd:2400720
+https://sd308.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=539	https://www.sd308.org/Board-of-Education/index.html	us:sd:1730270
 https://www.youtube.com/watch?v=kgYIFPMDdQs
 https://www.youtube.com/watch?v=VWYFzVzf3qU
 https://www.youtube.com/watch?v=WiKikPXqlHk
@@ -1016,3 +1041,26 @@ https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1	Clinton CT (
 https://townhallstreams.com/towns/chichester_nh	https://chichesternh.org/
 https://townhallstreams.com/towns/moultonborough_nh	https://moultonboroughnh.gov/
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
+https://player.vimeo.com/video/1183202055	https://www.cbsd.org/school-board/board-meeting-streams/board-meeting-stream-archiver	us:sd:4205310
+https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-council/	us:place:0546970
+https://player.vimeo.com/video/1046555783?h=e7e369fca2	https://antioch34.com/	us:sd:1703840
+https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
+https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
+https://www.puc.pa.gov/media/1844/pm031022-audio.mp3		rtr:us:pa:pennsylvania-public-utility-commission
+https://www.kenedyisd.com/UserFiles/Servers/Server_55723/Media/School Board Audio/Kenedy ISD Board Meeting 4-1-2020.mp3		us:sd:4825440
+http://villageofparish-ny.us/wp-content/uploads/2025/01/Parish-village-board-meeting-Wednesday-January-15-2025-audio.mp3		us:place:3656341
+https://www.montagueisd.org/vimages/shared/vnews/stories/684733c1eb2e9/Board%20Mtg%209-15-25%20%281%29.mp3		us:sd:4831200
+https://appleton.maine.gov/vertical/sites/%7B5CBE9B20-93F0-4ECA-B07C-188D88398A31%7D/uploads/250318_004.MP3		us:cousub:2301301465
+https://mwtown.gov/wp-content/uploads/2026/08/August-13-2026-TB-Meeting.mp3		us:cousub:5512548462
+https://resources.finalsite.net/videos/v1785243717/hersheyk12paus/ovw20gjiunk9zvstatzv/07282026-BoardMeeting.m4a		us:sd:4207590
+https://villageofnewhempstead.gov/wp-content/uploads/2026/03/BOT-3-24-2026-3.mp3		us:place:3650353
+https://files.smartsites.parentsquare.com/10055/260811_1800.mp3		us:sd:4822140
+https://townofkimball.com/audio/boma/2021/01072021.mp3		us:place:4739400
+https://www.mckellar.civikit.com/en/township-services/resources/08-31-21-August-31-2021-Special-Council-Meeting-Audio-Part-1.mp3		ca:csd:3549028
+https://rmwhitemouth.com/vertical/sites/%7BFB3226E4-3AD8-4680-8D53-E086B57111E0%7D/uploads/Regular_Council_Meeting_Sept_8_2026.mp3		ca:csd:4601046
+https://www.cityofgaston.com/vertical/sites/%7BA0E7BB59-BA39-470A-B0F2-FDC9E9A25A45%7D/uploads/GMT20210318-004941_March-17--.m4a		us:place:4128100
+https://northbonneville.net/wp-content/uploads/PlanningMeeting05.03.22.m4a		us:place:5349555
+https://albertonmontana.com/wp-content/uploads/2026/09/260915_1900.mp3		us:place:3000700
+https://www.derrytownship.org/wp-content/uploads/2024/10/ZHB-10-15-24-mtg-audio.mp3		us:cousub:4204318936
+https://nevco.granicus.com/MediaPlayer.php?view_id=2&clip_id=8371	https://nevco.granicus.com/ViewPublisher.php?view_id=2	us:place:0650874
+https://nevco.granicus.com/MediaPlayer.php?view_id=4&clip_id=7853	https://nevco.granicus.com/ViewPublisher.php?view_id=4	us:place:0630798
