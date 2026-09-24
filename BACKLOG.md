@@ -460,9 +460,10 @@ Trust, safety & data quality  (26)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (33)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (34)
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
+  `[IMPROVEMENT-ROUND]` Build the guess ladder for blocked governments:…
   `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -6441,6 +6442,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Next action:** After Meeting Finder's phases are wired (WO-1030): (1) Verdict writes its own follow-up files — "nothing found" rows in `queue_pipeline`'s input format, `account-not-found` rows for the guess ladder, YouTube leads in `youtube_channel_leads.csv`'s format; (2) teach `queue_pipeline.py feed` to read them; (3) a converter that turns `drain2`/`drain3` finds into Meeting Finder input rows (entry Start or Identify, `url_source=own-site`, so identity carries over); (4) build the guess-ladder queue per the design doc.
 - **Constraint:** Meeting Finder stays read-only toward shared files; it writes only its own output files, and a separate step appends to shared queues. Deferred by Ryan 2026-09-23 (not part of WO-1030).
 - **History:** Raised while building Meeting Finder wave 2, 2026-09-23.
+
+### `[IMPROVEMENT-ROUND]` Build the guess ladder for blocked governments: find their vendor account without touching their own site
+
+- **Issue:** When a government's own site blocks us (Cloudflare check, 403 even with browser headers, blocked headless, Akamai), Meeting Finder's fetch ladder has nothing left to try, and the row ends "blocked: try another network". But the government's Granicus, Swagit, CivicClerk, Cablecast or TelVue account usually lives on the vendor's own servers, which don't block us. The guess ladder in `docs/MEETING_FINDER.md` (Follow-ups; build step 7) would find it and is not built. As designed it is fed only by `account-not-found`.
+- **Impact:** About 3,654 governments in `jurisdiction_coverage.csv` carry an access-failure reject reason. Meeting Finder calibration run B (2026-09-23) ended 87 of 799 known-video governments (11%) as blocked: Cloudflare 55, browser-headers 19, headless 11, Akamai 2.
+- **Next action:** Build it as its own paced run, after the TelVue fixes (Ryan, 2026-09-23). Input: every research-file row whose reject reason is a blocked one (`cloudflare-challenge-blocked`, `blocked-browser-headers`, `blocked-headless`, `blocked-waf-akamai`), plus Meeting Finder's blocked and `account-not-found` rows. Per vendor: learn the catch-all response for a made-up slug once; try slug shapes built from the government's name and state, ordered by past hit rate; send every answering slug to Meeting Finder's List/Resolve in audit mode.
+- **Constraint:** A guessed account is a candidate, never a pin, until a real meeting from it passes the identity check. Read the Standing entry "Guessing a bare tenant name for a small government is unsafe..." first: in WO-168, 8 of the first 14 "confirmed" guesses were a bigger same-named government, so an existing-pin check and an own-state match are required. Never try to get past a human-verification page; the guess ladder never touches the blocked site at all.
+- **History:** Raised 2026-09-23 after run B; Ryan asked for it to be backlogged behind TelVue and fed from the research file's blocked reject reasons. WO-168 (`BACKLOG_DONE.md`) is the earlier gated-site guess run.
 
 ### `[IMPROVEMENT-ROUND]` The AgendaCenter hop sweep generalizes past AgendaCenter -- a 129-government test of other bare/generic hub shapes found MORE video than the AgendaCenter population itself (added 2026-09-20)
 
