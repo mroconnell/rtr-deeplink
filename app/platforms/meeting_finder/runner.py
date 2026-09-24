@@ -541,9 +541,7 @@ async def _shallow_step(
             # actually landed on (`ident.final_url`, falling back to the
             # input `url` for the rule-1 no-fetch case where `final_url`
             # is just the input url itself).
-            account_url = (
-                telvue_account_url_for(ident.final_url or url) or account_url
-            )
+            account_url = telvue_account_url_for(ident.final_url or url) or account_url
         try:
             list_result = await _cached_list_account(
                 ident.platform, account_url, fetcher, state
@@ -692,7 +690,12 @@ async def _deep_step(
                     or platform in _SOCIAL_LEAD_PLATFORMS
                 ):
                     continue
-                seen.add(_norm_url(hop.url))
+                # Not pre-marked `seen` here (unlike the youtube-lead/
+                # already-known-platform skip cases elsewhere in this
+                # function) -- `_shallow_step()` itself marks a url seen
+                # only once it actually visits it; pre-marking it here
+                # would make `_shallow_step()`'s own `already seen` guard
+                # bail out before ever calling `identify()`.
                 state.hops += 1
                 await _walk_from(
                     hop.url,
@@ -1162,7 +1165,8 @@ def _timeout_verdict_row(
     phase_reached = state.phase_reached if state is not None else ""
     fetches = fetcher.fetches_used if fetcher is not None else 0
     minutes_text = (
-        f"{gov_timeout_minutes:g}" if gov_timeout_minutes == int(gov_timeout_minutes)
+        f"{gov_timeout_minutes:g}"
+        if gov_timeout_minutes == int(gov_timeout_minutes)
         else f"{gov_timeout_minutes:.1f}"
     )
     return VerdictRow(

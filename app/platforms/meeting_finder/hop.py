@@ -327,6 +327,7 @@ def _is_fused_tv_station_name(word: str) -> bool:
         return False
     return word.lower() not in _FUSED_TV_NAME_STOPLIST
 
+
 # WO-1037 item 8: an off-site link whose own anchor TEXT names a TV/
 # cable/community-television/public-access station (a PEG nonprofit's own
 # proper name, e.g. "Tualatin Valley Community Television" -> tvctv.org,

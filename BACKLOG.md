@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (53)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
+  WO-1038 TelVue fixes cut for time: off-site TV-station domains, a…
   State legislatures: small residual fixes remain after today's push —…
   97 of the 257 Diligent Community "no video" tenants link their own…
   Measure `hop_link_weights.csv` lift for two Apptegy/Thrillshare path…
@@ -899,6 +900,55 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### WO-1038 TelVue fixes cut for time: off-site TV-station domains, a Pass-1 budget floor, ranking down forms/images/news `[JUST-DO-IT]`
+
+- **Issue:** WO-1038's TelVue diagnosis (8 agents, 37 Cablecast/Swagit
+  misses plus 5 TelVue groups, 38 misses) named 7 fixes; Ryan cut scope
+  mid-build to ship an overnight run sooner. Shipped in PR (see History):
+  Scan/Hop treat a specific TelVue/Cablecast link as a real media
+  candidate, a TelVue lister for `/home`/`/videos`, `telvue.
+  account_url_for()` (recovers the real per-org-token URL Identify's
+  generic reduction throws away), a "direct link to a known platform
+  ranks high" bonus in `hop.rank_hops()` (fixes the `is_host_fallback`
+  gate too), fused "...TV" station names, and trying that platform link
+  before Scan's own `meeting_page_links`. Dropped, still open: (1)
+  **off-site TV-station domains** — WO-1037's own-site-or-vendor Scan
+  filter (`_is_own_site_or_recognized_vendor()`) blocks a town's own TV
+  station domain when it's a different host than the government's
+  (Winchester, MA: `wincam.org`, real page saved at
+  `<scratchpad>/telvue/g2/wincam.html`/`wincam_watch_gov.html`). (2) **A
+  Pass-1 budget floor** — `_run_phase_loop()`'s breadth pass
+  (Identify->List->Resolve across every fork) can spend the WHOLE
+  government budget before Scan/Hop ever run on any fork (Ashland, OR:
+  CivicPlus AgendaCenter ate all 12 fetches, `hops=0` the whole run).
+  (3) **Ranking down contact/mail forms, print views, and raw image/
+  asset links below a same-page platform link** — Bellefonte, PA
+  (`/email/Default.aspx?action=sendemailtous`) and Montclair SD, NJ hop
+  candidates.
+- **Impact:** without (1), any TelVue/Cablecast government whose real
+  video lives on a separate community-access-TV domain still won't be
+  reached (at least Winchester MA confirmed; likely more, same shape as
+  the eventual off-site pattern WO-1037 already handles for an on-site
+  link). Without (2), a government whose homepage happens to be a
+  CivicPlus/agenda-heavy site can still exhaust its budget before Hop
+  gets a turn (confirmed: Ashland OR). Without (3), a low-value link can
+  still occasionally outrank a real platform link on a page that also
+  has other noise.
+- **Next action:** build the three fixes named above, in the files
+  WO-1038's own brief named (`scan.py`'s `_is_own_site_or_recognized_
+  vendor()` for (1), `runner.py`'s `_run_phase_loop()` Pass-1/Pass-2
+  split for (2), `hop.py`'s scoring for (3)), then re-run the full
+  target list from WO-1038's brief (Auburn Hills MI, Irondequoit NY,
+  Exeter NH, Yarmouth ME, Medina City SD OH, Medina city OH, Halfmoon
+  twp PA, Luverne MN, Everett MA, Bellefonte PA, Montclair SD NJ,
+  Winchester MA, Ashland OR) before/after to confirm.
+- **Constraint:** verify each fix against the real saved pages in
+  `<scratchpad>/telvue/g*/` (or re-fetch live) before building — per
+  CLAUDE.md, a backlog entry is a lead, not a spec.
+- **History:** this PR (WO-1038); diagnosis reports are the 8 agents'
+  final messages referenced in `<scratchpad>/ccsw/BUILD_COMMON.md` and
+  `<scratchpad>/telvue/WO1038.md` (not committed to this repo).
 
 ### State legislatures: small residual fixes remain after today's push — a `.vtt` sibling-caption lookup, Vimeo's event-id extraction, and 7 states needing one more hop `[JUST-DO-IT]`
 

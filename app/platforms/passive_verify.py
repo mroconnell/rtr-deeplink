@@ -1512,11 +1512,20 @@ def _ensure_walkers_registered() -> None:
 # `/videos/{id}/transcript` or `/videos/{id}/agenda` sibling link still
 # matches too (harmless: `_walk_candidates()` just spends one extra,
 # cheap resolve() call on it before moving to the next real candidate).
+#
+# WO-1038: `/player/{token}/media/\d` added -- TelVue's own per-video URL
+# shape (`videoplayer.telvue.com/player/{token}/media/{id}`, with or
+# without a `/playlists/{n}/`/`/categories/{n}/` prefix). A registered
+# `_telvue_walker` (see below) is tried first for a real TelVue URL, same
+# as any other bespoke walker, but this hint still matters for the
+# generic scan when a non-TelVue page happens to LINK a TelVue video
+# directly (the same reason `show/\d` and `/videos/\d` are here for
+# Cablecast/Swagit).
 _MEETING_DETAIL_HINTS = re.compile(
     r"(MeetingDetail|meeting-detail|MeetingInformation|Meeting\.aspx|"
     r"ViewMeeting|/meeting/|/meetings/|/event/|/events/|clip_id|player/clip|"
     r"MediaPlayer\.php|AgendaViewer\.php|show/\d|/vod/|AgendaViewer|"
-    r"agenda-and-minutes|page/[a-z0-9-]+-\d+$|/videos/\d)",
+    r"agenda-and-minutes|page/[a-z0-9-]+-\d+$|/videos/\d|/player/[^/]+/media/\d)",
     re.IGNORECASE,
 )
 
