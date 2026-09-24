@@ -1,5 +1,11 @@
 # Backlog — done
 
+## WO-1034: Meeting Finder fixes from calibration run A (no lost rows, Brotli, CSV fields) [Done 2026-09-23]
+
+**What.** Calibration run A (200 known-answer governments, 2026-09-23) found three bugs: (1) **34 of 200 governments left no Verdict row** -- an unhandled `ClientResponseError` escaped `run_one()`; now any unexpected exception becomes a row with outcome `error`, the message in `note`, and a `try_next`. (2) **Brotli**: Meeting Finder's Fetcher reused the shared browser header set (`accept-encoding: gzip, deflate, br`), and aiohttp can't decode `br` without the optional Brotli package (Oxnard, CA); Fetcher's copy no longer offers `br` (the shared set in `wo147_access_ladder_sweep.py` is unchanged). (3) `try_next` and `requests_total` were computed but never written to the CSV (the writer lists fields by hand).
+
+**Verified.** `tests/test_wo1034_meeting_finder_calibration_fixes.py` checks the CSV file itself, an error becoming a row under concurrency, and the headers.
+
 ## WO-1031: Meeting Finder back-pressure, "try next" labels, YouTube-lead outcome [Done 2026-09-23]
 
 **What.** (1) **Back-pressure intake** (Ryan's design): `--concurrency` is now the intake (governments in flight); the expensive Resolve phase takes a slot from a small shared pool (`--resolve-slots`, default concurrency // 4); no new government is admitted while more than `--max-waiting` (default 2 x slots) wait for a Resolve slot, so the top of the funnel eases off as leads pile up and opens again as they convert. `--lanes-log` records the lane counts over time for calibration. (2) **"Try next"**: every failed Verdict row now carries a `try_next` label (Ryan: "a good discovery rate and some well-marked failures which we will return to"). (3) New outcome `youtube-lead-only`, ranked above access blocks but below meeting-without-video (footer YouTube icons are everywhere) -- fixes Essex, ON, which found `youtube.com/user/EssexOntario` and reported a bare block. (4) Identity: an empty resolved gov_id is "silent", not "disagrees" (Pomona, Piedmont). (5) The runner's already-visited set collapses calendar URLs that differ only in display parameters (Emporia opened `Calendar.aspx?EID=2662` three ways), but only for calendar-shaped addresses, so year-filtered archives stay distinct.

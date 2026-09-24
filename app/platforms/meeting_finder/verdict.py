@@ -113,7 +113,9 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "hops": row.hops,
                 "forks": row.forks,
                 "fetches": row.fetches,
+                "requests_total": row.requests_total,
                 "note": row.note,
+                "try_next": row.try_next,
                 "finished_at": row.finished_at,
             }
         )
