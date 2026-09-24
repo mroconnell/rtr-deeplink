@@ -66,7 +66,9 @@ callers -- unify only if a later wave finds a real reason to.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import List, Optional, Sequence, Tuple
+from urllib.parse import parse_qs, urlparse
 
 from app.platforms import queue_probe
 from app.platforms.base import (
@@ -86,7 +88,11 @@ from app.platforms.models import ResolvedMeeting
 # reaches Resolve automatically instead of two copies drifting apart.
 from app.platforms.passive_verify import _confirm_not_audio_only
 from app.platforms.vimeo import EMBED_DOMAIN_RESTRICTED_WARNING
-from app.utils.video_hand_check import assess_meeting_evidence, assess_video_candidate
+from app.utils.video_hand_check import (
+    assess_meeting_evidence,
+    assess_video_candidate,
+    decode_filename_text,
+)
 
 from .models import (
     OUTCOME_EMBED_RESTRICTED,
@@ -105,10 +111,20 @@ from .pick import pick_candidates
 # nothing clean resolved -- rank 0 (a measured-but-too-short video) beats
 # rank 1 (a video the quality gate rejected on title alone -- no duration
 # evidence either way) beats rank 2 (a video whose length couldn't be
-# measured at all: "video, length unknown", tried only after every
-# candidate with SOME known-length evidence). Lower rank wins.
+# measured at all AND has no real meeting evidence -- see WO-1049 below).
+# Lower rank wins.
 _KEPT_DESPITE_TOO_SHORT = 0
 _KEPT_DESPITE_GATE_REJECTED = 1
+# WO-1049 fix 3 (Ryan's rule, 2026-09-23): this rank is now reached ONLY
+# when a length-unknown video also has no real meeting evidence (and
+# needed some) -- see `_needs_meeting_evidence()`. When there IS evidence
+# (or the platform doesn't need any), the same "reject-dead" probe result
+# is instead a clean tier-3 find, via the separate `length_unknown_finds`
+# list in `_resolve_candidates_with_meeting()` -- checked right after the
+# `probed` (real, accepted duration) candidates and BEFORE this whole
+# `kept_despite` fallback ladder, since a length-unknown video with real
+# evidence it's a meeting is a stronger, more confirmed signal than any
+# of these ranks (a too-short clip or a title the gate rejected).
 _KEPT_DESPITE_LENGTH_UNKNOWN = 2
 # WO-1041: a direct-file/Vimeo/"undated, lister order" find with no real
 # meeting evidence (see `_needs_meeting_evidence()`/`_meeting_evidence()`
@@ -177,26 +193,49 @@ def _needs_meeting_evidence(platform: Optional[str], pick_reason: str) -> bool:
 # single HEAD request) stands on its own; this is the same shape of cheap,
 # one-off, side-effect-free lookup, never retried and never escalated past
 # a plain request.
-_DRIVE_HOSTS = frozenset({"drive.google.com"})
+#
+# WO-1049: `drive.google.com` alone missed the two other real Drive URL
+# shapes a government actually links -- a download link
+# (`drive.usercontent.google.com/download?id=<id>`) and the legacy
+# `drive.google.com/uc?id=<id>` form. All three carry the same file id,
+# just in a different place (a path segment or a query param); the title
+# always lives at the same `drive.google.com/file/d/<id>/view` page
+# regardless of which shape was linked, so every shape is normalized to
+# that one lookup URL. Real case: Bellerive Acres MO, id
+# 1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB, title "(2026-09-22) City Council
+# Special Meeting".
+_DRIVE_HOSTS = frozenset({"drive.google.com", "drive.usercontent.google.com"})
+_DRIVE_FILE_ID_PATH_RE = re.compile(r"/file/d/([\w-]+)")
 _drive_title_cache: dict[str, Optional[str]] = {}
 
 
-def _is_google_drive_url(url: Optional[str]) -> bool:
+def _extract_drive_file_id(url: Optional[str]) -> Optional[str]:
+    """The file id out of any real Drive URL shape (see the block comment
+    above): `drive.google.com/file/d/<id>/view`, `drive.google.com/uc?
+    id=<id>` (and the older `/open?id=<id>`), or `drive.usercontent.
+    google.com/download?id=<id>`. `None` for anything not a Drive host or
+    with no recognizable id."""
+    if not url:
+        return None
     try:
-        from urllib.parse import urlparse
-
-        return (urlparse(url or "").hostname or "").lower() in _DRIVE_HOSTS
+        parsed = urlparse(url)
     except ValueError:
-        return False
+        return None
+    if (parsed.hostname or "").lower() not in _DRIVE_HOSTS:
+        return None
+    match = _DRIVE_FILE_ID_PATH_RE.search(parsed.path)
+    if match:
+        return match.group(1)
+    ids = parse_qs(parsed.query).get("id")
+    return ids[0] if ids else None
 
 
-async def _fetch_drive_title(url: str) -> Optional[str]:
-    if url in _drive_title_cache:
-        return _drive_title_cache[url]
+async def _fetch_drive_title(file_id: str) -> Optional[str]:
+    if file_id in _drive_title_cache:
+        return _drive_title_cache[file_id]
     title: Optional[str] = None
+    url = f"https://drive.google.com/file/d/{file_id}/view"
     try:
-        import re as _re
-
         import aiohttp
 
         timeout = aiohttp.ClientTimeout(total=8)
@@ -204,8 +243,8 @@ async def _fetch_drive_title(url: str) -> Optional[str]:
             async with session.get(url) as resp:
                 if resp.status == 200:
                     body = await resp.text(errors="ignore")
-                    match = _re.search(
-                        r"<title[^>]*>([^<]*)</title>", body, _re.IGNORECASE
+                    match = re.search(
+                        r"<title[^>]*>([^<]*)</title>", body, re.IGNORECASE
                     )
                     if match:
                         # Drive's own page title is "<file title> - Google
@@ -213,7 +252,7 @@ async def _fetch_drive_title(url: str) -> Optional[str]:
                         title = match.group(1).rsplit(" - Google Drive", 1)[0].strip()
     except Exception:  # noqa: BLE001 -- a Drive read failing is "no title", not a crash
         title = None
-    _drive_title_cache[url] = title
+    _drive_title_cache[file_id] = title
     return title
 
 
@@ -223,11 +262,27 @@ async def _meeting_evidence_texts(
     """Every text WO-1041's brief names as evidence source: the resolved
     title, the candidate's own (pre-resolve) title, the candidate URL's
     filename/path, the linking page's URL (`cand.source_url`), and, for a
-    Google Drive link, the file's own page title."""
+    Google Drive link, the file's own page title.
+
+    WO-1049 adds two more: the DECODED filename/path of `cand.url` and of
+    `result.video_url` (the adapter's own final file may differ from the
+    candidate it was found from -- e.g. a listing row pointing at a Drive
+    share link whose resolved `video_url` is the direct download). A raw
+    URL's word-boundary matching silently fails on both percent-encoding
+    and hyphen/underscore-joined filenames -- see `decode_filename_text()`
+    for the two confirmed-real cases (Bellerive Acres MO, Bound Brook NJ)
+    this closes.
+    """
     texts: List[Optional[str]] = [result.title, cand.title, cand.url, cand.source_url]
+    texts.append(decode_filename_text(cand.url))
+    if result.video_url:
+        texts.append(decode_filename_text(result.video_url))
     video_url = result.video_url or cand.url
-    if _is_google_drive_url(video_url):
-        texts.append(await _fetch_drive_title(video_url))
+    drive_file_id = _extract_drive_file_id(video_url) or _extract_drive_file_id(
+        cand.source_url
+    )
+    if drive_file_id:
+        texts.append(await _fetch_drive_title(drive_file_id))
     return texts
 
 
@@ -349,6 +404,20 @@ async def _resolve_candidates_with_meeting(
     kept_despite: dict[
         int, Tuple[Candidate, ResolvedMeeting, Optional[float], str]
     ] = {}
+
+    # WO-1049 fix 3 (Ryan's rule, 2026-09-23): a video whose length
+    # couldn't be measured at all ("reject-dead") is a REAL find, not a
+    # weak lead, as long as there's real meeting evidence for it (or the
+    # platform doesn't need any -- see `_needs_meeting_evidence()`). Real
+    # case: Bound Brook NJ's `.mp3` (ffprobe can't read the media, but the
+    # URL itself names "Reorganization Meeting"). Collected here rather
+    # than returned immediately, so a candidate that DOES probe with a
+    # real, accepted duration (`probed` above) still wins -- "still
+    # ordered after measured ones" per the brief. Only when neither
+    # evidence exists (and the platform needs it) does a length-unknown
+    # video stay a `_KEPT_DESPITE_LENGTH_UNKNOWN` weak lead, unchanged
+    # from before this fix. (Candidate, ResolvedMeeting, audio_only).
+    length_unknown_finds: List[Tuple[Candidate, ResolvedMeeting, bool]] = []
 
     queue: List[Candidate] = list(picked)
     tries_used = 0
@@ -582,14 +651,35 @@ async def _resolve_candidates_with_meeting(
                         rule,
                     )
             elif probe.verdict == "reject-dead":
-                rule = f"video length couldn't be measured ({probe.reason})"
-                if _KEPT_DESPITE_LENGTH_UNKNOWN not in kept_despite:
-                    kept_despite[_KEPT_DESPITE_LENGTH_UNKNOWN] = (
-                        cand,
-                        result,
-                        None,
-                        rule,
+                # WO-1049 fix 3: check for real meeting evidence before
+                # demoting this to a weak lead -- a length-unknown video
+                # is a clean tier-3 find when there's evidence it's a
+                # meeting (or the platform doesn't need any), and only a
+                # `_KEPT_DESPITE_LENGTH_UNKNOWN` weak lead when it needs
+                # evidence and has none.
+                needs_evidence = _needs_meeting_evidence(result.platform, pick_reason)
+                evidence_ok = True
+                non_meeting_sign = None
+                if needs_evidence:
+                    evidence = await _meeting_evidence(cand, result, None)
+                    evidence_ok = evidence.has_evidence
+                    non_meeting_sign = evidence.non_meeting_sign
+                if evidence_ok:
+                    length_unknown_finds.append((cand, result, audio_only))
+                else:
+                    rule = (
+                        f"video length couldn't be measured ({probe.reason}); "
+                        f"no meeting evidence "
+                        f"({non_meeting_sign or 'nothing found'})"
                     )
+                    reasons.append(f"{cand.url}: {rule}")
+                    if _KEPT_DESPITE_LENGTH_UNKNOWN not in kept_despite:
+                        kept_despite[_KEPT_DESPITE_LENGTH_UNKNOWN] = (
+                            cand,
+                            result,
+                            None,
+                            rule,
+                        )
             continue
 
         if best_no_video is None and (result.agenda_items or result.agenda_link):
@@ -623,6 +713,30 @@ async def _resolve_candidates_with_meeting(
                         ),
                         result,
                     )
+
+    # WO-1049 fix 3 (Ryan's rule, 2026-09-23): no candidate probed with a
+    # real, accepted duration -- but at least one length-unknown video has
+    # real meeting evidence (or didn't need any). That's a clean tier-3
+    # find, "ranked after measured ones" (the `probed` check just above
+    # already had first pick), NOT a weak lead -- the first one here is
+    # the highest-ranked (`pick.py`'s own preferred order already tried
+    # candidates in that order).
+    if length_unknown_finds:
+        cand, result, audio_only = length_unknown_finds[0]
+        return (
+            ResolveResult(
+                candidate=cand,
+                tier=3,
+                platform=result.platform,
+                video_url=result.video_url,
+                has_segments=False,
+                duration_seconds=None,
+                outcome=None,
+                note=_note("audio only" if audio_only else ""),
+                audio_only=audio_only,
+            ),
+            result,
+        )
 
     # WO-1035 item 2 (Ryan's rule): nothing resolved cleanly, but a video
     # was found and then would otherwise have been thrown away -- keep the
