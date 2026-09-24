@@ -55,7 +55,7 @@ from app.platforms.base import detect_platform
 from app.platforms.telvue import account_url_for as telvue_account_url_for
 from scripts.youtube_fetch_guard import is_youtube_host
 
-from .fetch import BudgetExceeded, Fetcher
+from .fetch import BudgetExceeded, Fetcher, SoftBudgetExceeded
 from .hop import _SOCIAL_LEAD_PLATFORMS, canonical_page_key, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
@@ -170,6 +170,17 @@ _VIDEO_FOLLOW_LIMIT = 2
 _VIDEO_WORDS_RE = re.compile(
     r"watch|video|stream|on[- ]demand|livestream|broadcast", re.I
 )
+
+# WO-1039 item 2: fetches held back from Pass 1 (Identify->List->Resolve,
+# across every fork) for Pass 2 (Scan/Hop) -- real, confirmed problem:
+# Ashland, OR's own CivicPlus AgendaCenter listing walk alone used the
+# WHOLE 12-fetch government budget in Pass 1, so Hop never got a single
+# real fetch to spend (`hops=0` the entire run, per the calibration
+# case). Small on purpose -- this is a floor under Pass 2, not a cap
+# meant to starve Pass 1's own (usually cheap) work; see `Fetcher.
+# reserve()`/`SoftBudgetExceeded` for how it's enforced without marking
+# the whole government's walk as budget-exhausted.
+_PASS1_BUDGET_RESERVE = 3
 
 
 # WO-1031 (Ryan, 2026-09-23): "a good discovery rate and some well-marked
@@ -504,6 +515,12 @@ async def _shallow_step(
 
     try:
         ident = await identify(url, fetcher, platform_hint=finder_input.platform_hint)
+    except SoftBudgetExceeded:
+        # WO-1039 item 2: a RESERVED-budget stop during Pass 1, not real
+        # exhaustion -- see `SoftBudgetExceeded`'s own docstring. Never
+        # sets `state.budget_exhausted`, so Pass 2 (Scan/Hop) still gets
+        # its turn with the reserved fetches once Pass 1 finishes.
+        return None
     except BudgetExceeded:
         state.budget_exhausted = True
         return None
@@ -546,6 +563,9 @@ async def _shallow_step(
             list_result = await _cached_list_account(
                 ident.platform, account_url, fetcher, state
             )
+        except SoftBudgetExceeded:
+            # WO-1039 item 2: see the identical comment above.
+            return None
         except BudgetExceeded:
             state.budget_exhausted = True
             return None
@@ -941,24 +961,41 @@ async def _run_phase_loop(
     # Pass 1 (breadth, cheap): Identify -> List -> Resolve on every fork
     # BEFORE any fork spends budget on Scan/Hop -- see `_shallow_step()`'s
     # own docstring for the real government (Pomona, CA) this fixes.
+    #
+    # WO-1039 item 2: a few fetches are held in reserve for Pass 2 for the
+    # DURATION of this whole pass (see `_PASS1_BUDGET_RESERVE`'s own
+    # comment) -- released again right before Pass 2 starts, so Pass 2
+    # gets the full remaining budget, reserve included. Skipped for a
+    # small `max_fetches` (an explicit small budget, e.g. a test, should
+    # behave exactly as it always has -- reserving fetches out of an
+    # already-tiny budget would only ever hurt, never help).
+    reserve = (
+        _PASS1_BUDGET_RESERVE if fetcher.max_fetches > 2 * _PASS1_BUDGET_RESERVE else 0
+    )
+    if reserve:
+        fetcher.reserve(reserve)
     forks_tried = 0
     pending_deep: List[tuple[str, IdentifyResult, int]] = []
-    for i, point in enumerate(starting_points):
-        if state.done:
-            break
-        if _norm_url(point) in seen:
-            continue
-        if i > 0:
-            if forks_tried >= max_forks:
+    try:
+        for i, point in enumerate(starting_points):
+            if state.done:
                 break
-            forks_tried += 1
-            state.forks += 1
-        hops_budget = first_hops_budget if i == 0 else max_hops
-        ident = await _shallow_step(
-            point, fetcher, finder_input, state, seen=seen, max_tries=max_tries
-        )
-        if ident is not None:
-            pending_deep.append((point, ident, hops_budget))
+            if _norm_url(point) in seen:
+                continue
+            if i > 0:
+                if forks_tried >= max_forks:
+                    break
+                forks_tried += 1
+                state.forks += 1
+            hops_budget = first_hops_budget if i == 0 else max_hops
+            ident = await _shallow_step(
+                point, fetcher, finder_input, state, seen=seen, max_tries=max_tries
+            )
+            if ident is not None:
+                pending_deep.append((point, ident, hops_budget))
+    finally:
+        if reserve:
+            fetcher.release_reserve()
 
     # Pass 2 (depth): Scan + Hop, fork by fork in the same order, only
     # for forks that didn't already resolve in pass 1 -- stops at the

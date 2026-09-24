@@ -277,6 +277,26 @@ _PER_DATE_AGENDA_HREF_RE = re.compile(
 _CALENDAR_ENTRY_PENALTY = -6.0
 _MAX_CALENDAR_ENTRIES_IN_TOP = 2
 
+# WO-1039 item 3: a link shape that is never a real next hop -- a contact/
+# mail form, a print view, or a raw image/asset link -- ranked well below
+# a same-page known-platform link (`_KNOWN_PLATFORM_BONUS`) or an
+# ordinary hub link, the same way a calendar entry already is above. Real,
+# confirmed shapes: Montclair SD, NJ's own Infinite Campus "Send Email"
+# contact form (`/email/Default.aspx?action=sendemailtous`, real anchor
+# text "Send Email"), and Bellefonte, PA's own WordPress news feed, whose
+# every post links a `.../print/` view and embeds real uploaded images
+# (`wp-content/uploads/.../*.png`/`.jpg`) -- all real candidate hops
+# `rank_hops()` scored well enough (a `print`/`email` path token, or an
+# image whose surrounding page carries real meeting-page vocabulary) to
+# crowd out Bellefonte's real government-domain links entirely.
+_JUNK_LINK_HREF_RE = re.compile(
+    r"/print/?(?:[?#].*)?$"
+    r"|/email/default\.aspx\?[^#]*\baction=sendemailtous\b"
+    r"|\.(?:png|jpe?g|gif|svg)(?:[?#].*)?$",
+    re.IGNORECASE,
+)
+_JUNK_LINK_PENALTY = -25.0
+
 # WO-1037 item 5: `detect_platform()` requires a real show/gallery-shaped
 # PATH before it recognizes Cablecast/Swagit/etc -- a bare vendor tenant
 # root with no path evidence yet (real: `desplainesil.cablecast.tv/
@@ -335,11 +355,48 @@ def _is_fused_tv_station_name(word: str) -> bool:
 # of the ordinary hub vocabulary a government's OWN meeting-hub link
 # would -- a station's proper name never could. Smaller than
 # `_NAV_HUB_LABEL_BONUS` since this is a weaker, off-site signal.
+#
+# WO-1039 item 1: added "media access"/"community media" -- real Bismarck
+# ND link ("Dakota Media Access", dakotamediaaccess.org) names neither
+# "television" nor any of the three "* access" phrases already here.
 _TV_STATION_ORG_TEXT_RE = re.compile(
-    r"\btelevision\b|\bcable\s*access\b|\bpublic\s*access\b|\bcommunity\s+access\b",
+    r"\btelevision\b|\bcable\s*access\b|\bpublic\s*access\b|\bcommunity\s+access\b"
+    r"|\bmedia\s+access\b|\bcommunity\s+media\b",
     re.IGNORECASE,
 )
 _TV_STATION_BONUS = 18.0
+# WO-1039 item 1: a station whose own brand name is a short, fused
+# acronym-style word carrying NONE of `_TV_STATION_ORG_TEXT_RE`'s own
+# vocabulary -- real, confirmed shape: Winchester, MA's own homepage
+# links its town's community-access station as bare anchor text "WinCAM"
+# (`wincam.org`), not a sentence naming "television"/"access" at all.
+# Same idea as `_is_fused_tv_station_name()`'s own "...tv" acronym check
+# above (a separate, small function -- not reused directly -- since that
+# one is scoped to `_looks_like_nav_hub_label()`'s own "one brand-token
+# allowance inside an otherwise-vocabulary label" rule, a different job
+# than this rescue's "is this whole anchor text just a station brand"
+# question), widened to also cover "...cam" (a common PEG-station suffix
+# -- "Community Access Media"/"Community Access TV" stations are
+# frequently named "<Town>CAM": Acton, Burlington, Newton MA all real
+# examples), guarded by the same kind of stoplist for an ordinary word
+# that also ends in "cam" ("webcam") but is never a station brand.
+_TV_STATION_BRAND_WORD_RE = re.compile(r"^[A-Za-z]{2,}(?:tv|cam)$", re.IGNORECASE)
+_TV_STATION_BRAND_STOPLIST = frozenset(
+    {"hdtv", "iptv", "cctv", "smarttv", "appletv", "webcam", "dashcam", "gocam"}
+)
+# A dedicated ".tv" vanity domain (real Mendota Heights, MN link:
+# townsquare.tv) is itself real evidence of a broadcast/station site --
+# the TLD is the signal here, not the anchor text, which may say nothing
+# station-like at all ("Watch Meetings" already scores via the ordinary
+# nav-hub rescue; this is for the case where it doesn't).
+_TV_VANITY_TLD_RE = re.compile(r"\.tv$", re.IGNORECASE)
+
+
+def _is_tv_station_brand_word(word: str) -> bool:
+    if not _TV_STATION_BRAND_WORD_RE.match(word):
+        return False
+    return word.lower() not in _TV_STATION_BRAND_STOPLIST
+
 
 # WO-1037 item 8: on a shared multi-government hub (one PEG org serving
 # several nearby cities/towns off the same host), a link whose anchor
@@ -484,11 +541,25 @@ def _rescue_tv_station_link_score(
     comment for the real Lake Oswego OR case this rescues. Guarded by the
     same vendor-marketing-apex check `_rescue_nav_hub_label_score()` uses,
     so this can't rescue a link to a vendor's own bare marketing homepage
-    either."""
+    either.
+
+    WO-1039 item 1: also rescues (a) a short, fused station-brand anchor
+    text carrying none of that vocabulary at all (Winchester, MA's real
+    "WinCAM" link -- see `_TV_STATION_BRAND_WORD_RE`'s own comment), and
+    (b) a link whose HOST is a dedicated ".tv" vanity domain (Mendota
+    Heights, MN's real `townsquare.tv` link) regardless of its anchor
+    text."""
     netloc = urlparse(full_url).netloc.lower()
     if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
         return None
-    if not _TV_STATION_ORG_TEXT_RE.search(text or ""):
+    words = (text or "").strip().split()
+    is_brand_word = len(words) == 1 and _is_tv_station_brand_word(
+        words[0].strip(",&-()")
+    )
+    is_vanity_tv_host = bool(_TV_VANITY_TLD_RE.search(netloc)) and netloc != base_netloc
+    if not (
+        _TV_STATION_ORG_TEXT_RE.search(text or "") or is_brand_word or is_vanity_tv_host
+    ):
         return None
     return _TV_STATION_BONUS + _nav_position_bonus(tag)
 
@@ -645,6 +716,11 @@ def rank_hops(
             score = _HOST_FALLBACK_VENDOR_BONUS + _nav_position_bonus(tag)
         if score is None:
             continue
+        if not is_known_platform_link and _JUNK_LINK_HREF_RE.search(full):
+            # WO-1039 item 3: never applied to a real known-platform link
+            # (a genuine video URL should never coincidentally match one
+            # of these junk shapes, but the guard costs nothing).
+            score += _JUNK_LINK_PENALTY
         if is_known_platform_link:
             # WO-1038: added on top of whatever score the link already
             # has (including one just set above) -- a real platform link
