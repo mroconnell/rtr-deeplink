@@ -43,6 +43,7 @@ CSV_FIELDS = [
     "forks",
     "fetches",
     "note",
+    "try_next",
     "finished_at",
 ]
 

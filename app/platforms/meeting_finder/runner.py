@@ -40,6 +40,9 @@ order.
 from __future__ import annotations
 
 import asyncio
+import contextvars
+import re
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -51,12 +54,13 @@ from app.platforms.base import detect_platform
 from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher
-from .hop import rank_hops
+from .hop import canonical_page_key, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
 from .listing import list_account
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
+    OUTCOME_YOUTUBE_LEAD_ONLY,
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_OFF_MISSION,
@@ -86,6 +90,10 @@ _PHASE_INDEX = {name: i for i, name in enumerate(_PHASE_ORDER)}
 _OUTCOME_PRIORITY: Dict[str, int] = {
     OUTCOME_MEETING_WITHOUT_VIDEO: 100,
     OUTCOME_ACCOUNT_NOT_FOUND: 90,
+    # WO-1031: a YouTube lead beats an access block (Essex, ON) but never a
+    # real meeting-without-video finding -- almost every government site has
+    # a YouTube icon in its footer, so ranking it higher would hide findings.
+    OUTCOME_YOUTUBE_LEAD_ONLY: 85,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER: 80,
     OUTCOME_OFF_MISSION: 75,
     "cloudflare-challenge-blocked": 60,
@@ -110,6 +118,42 @@ _HOP_CANDIDATE_LIMIT = 25
 # full Identify+List pass in `_deep_step()`, per fork. Small on purpose
 # -- each one costs a real fetch, and this runs on every fork.
 _SCAN_LINK_FOLLOW_LIMIT = 3
+
+
+# WO-1031 (Ryan, 2026-09-23): "a good discovery rate and some well-marked
+# failures which we will return to". Each failure outcome maps to the next
+# thing a person (or a later pass) should try. Plain words, one line each.
+_TRY_NEXT: Dict[str, str] = {
+    OUTCOME_MEETING_WITHOUT_VIDEO: (
+        "meetings found but no video: follow the meetings page's watch/video "
+        "links, or check another video host by hand"
+    ),
+    OUTCOME_ACCOUNT_NOT_FOUND: "vendor known, account not found: guess-ladder queue",
+    OUTCOME_YOUTUBE_LEAD_ONLY: "YouTube only: send to the drip",
+    OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER: (
+        "platform has no adapter: record in UNSUPPORTED_PLATFORMS.md"
+    ),
+    OUTCOME_OFF_MISSION: "video found but not a meeting: hand-check 3+ videos deeper",
+    "cloudflare-challenge-blocked": "blocked: try another network, or Wayback by hand",
+    "blocked-waf-akamai": "blocked: try another network, or Wayback by hand",
+    "blocked-browser-headers": "blocked: try another network, or Wayback by hand",
+    "blocked-headless": "blocked: try another network, or Wayback by hand",
+    "timeout": "site timed out: retry later",
+    "dns-unresolvable": "domain dead: find the current website (alternate domains)",
+}
+
+
+def _try_next(outcome: Optional[str], budget_exhausted: bool) -> str:
+    if outcome is None:
+        return ""
+    if outcome in _TRY_NEXT:
+        return _TRY_NEXT[outcome]
+    if budget_exhausted:
+        return (
+            "budget ran out: hand-check the site nav (Meetings / Agendas & "
+            "Minutes), or rerun with a bigger budget"
+        )
+    return "nothing found: hand-check the site nav (Meetings / Agendas & Minutes)"
 
 
 def _pick_outcome(outcomes: List[str]) -> str:
@@ -153,6 +197,9 @@ class _WalkState:
         return self.result is not None or self.budget_exhausted
 
 
+_CALENDAR_PATH_RE = re.compile(r"calendar\.aspx|/calendar/|/events?/", re.I)
+
+
 def _norm_url(url: str) -> str:
     """Trailing-slash and fragment normalization for the `seen` set only
     (display/reporting always uses the raw url). Confirmed live necessary
@@ -162,6 +209,15 @@ def _norm_url(url: str) -> str:
     recognized as already visited, and a hop budget slot is wasted
     re-fetching a page already in hand."""
     parsed = urlparse(url)
+    # WO-1031: a calendar page fetched with different display parameters
+    # (`Calendar.aspx?EID=2662`, `?PREVIEW=YES&EID=2662`,
+    # `?EID=2662&month=9&year=2026&day=23&calType=0` -- Emporia, KS, all
+    # opened in one run) is ONE page. Only calendar-shaped addresses are
+    # collapsed: `hop.canonical_page_key()` drops month/year/view from every
+    # URL, and a meeting archive filtered by `?year=2024` vs `?year=2025`
+    # is a genuinely different list.
+    if _CALENDAR_PATH_RE.search(parsed.path):
+        return canonical_page_key(url)
     path = parsed.path
     if len(path) > 1 and path.endswith("/"):
         path = path[:-1]
@@ -170,6 +226,30 @@ def _norm_url(url: str) -> str:
 
 def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]]:
     return [{"kind": "youtube", "url": u, "found_at": found_at} for u in urls]
+
+
+@dataclass
+class _Lanes:
+    """WO-1031 back-pressure (Ryan, 2026-09-23): many governments run the
+    cheap phases (Start/Identify/Scan/Hop) at once, but Resolve -- the
+    expensive phase (adapters, length probe, sometimes a headless
+    browser) -- takes a slot from a small shared pool. `waiting` counts
+    governments queued for a Resolve slot; run_inputs() stops admitting new
+    governments while it is above `max_waiting`, so the top of the funnel
+    eases off as leads pile up in the slow part and opens again as they
+    convert."""
+
+    resolve_slots: asyncio.Semaphore
+    max_waiting: int
+    waiting: int = 0
+    resolving: int = 0
+
+
+# Task-local (each government's asyncio task inherits the run's lanes);
+# None outside run_inputs(), so a bare run_one() call is unaffected.
+_LANES: "contextvars.ContextVar[Optional[_Lanes]]" = contextvars.ContextVar(
+    "meeting_finder_lanes", default=None
+)
 
 
 async def _try_resolve(
@@ -183,9 +263,25 @@ async def _try_resolve(
     `state` and returns True. On failure, records the outcome and
     returns False so the caller keeps looking (Scan/Hop, or the next
     fork)."""
-    result, meeting = await _resolve_candidates_with_meeting(
-        candidates, finder_input, max_tries=max_tries
-    )
+    lanes = _LANES.get()
+    if lanes is None:
+        result, meeting = await _resolve_candidates_with_meeting(
+            candidates, finder_input, max_tries=max_tries
+        )
+    else:
+        lanes.waiting += 1
+        try:
+            await lanes.resolve_slots.acquire()
+        finally:
+            lanes.waiting -= 1
+        lanes.resolving += 1
+        try:
+            result, meeting = await _resolve_candidates_with_meeting(
+                candidates, finder_input, max_tries=max_tries
+            )
+        finally:
+            lanes.resolving -= 1
+            lanes.resolve_slots.release()
     state.reach("resolve")
     if result.outcome is None:
         state.result = result
@@ -655,6 +751,8 @@ async def run_one(
         if result.tier == 2 and result.candidate is not None:
             state.leads.append({"kind": "youtube", "url": result.candidate.url})
     else:
+        if any(lead.get("kind") == "youtube" for lead in state.leads):
+            state.outcomes.append(OUTCOME_YOUTUBE_LEAD_ONLY)
         outcome = _pick_outcome(state.outcomes)
         result_url = None
         platform = None
@@ -686,6 +784,7 @@ async def run_one(
         forks=state.forks,
         fetches=fetcher.fetches_used,
         note=note,
+        try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
     )
 
@@ -700,6 +799,9 @@ async def run_inputs(
     max_fetches: int = 12,
     concurrency: int = 1,
     run_id: Optional[str] = None,
+    resolve_slots: Optional[int] = None,
+    max_waiting: Optional[int] = None,
+    lanes_log: Optional[Path] = None,
 ) -> List[VerdictRow]:
     """Drive every input in `inputs`, appending a `VerdictRow` to
     `out_path` (+ its JSONL twin) as each one finishes so a rerun resumes
@@ -716,25 +818,70 @@ async def run_inputs(
     todo = [i for i in inputs if i.url not in done]
 
     rows: List[VerdictRow] = []
-    sem = asyncio.Semaphore(max(1, concurrency))
 
-    async def _one(finder_input: FinderInput) -> None:
-        async with sem:
-            row = await run_one(
-                finder_input,
-                run_id=run_id,
-                max_tries=max_tries,
-                max_hops=max_hops,
-                max_forks=max_forks,
-                max_fetches=max_fetches,
-            )
-            append_verdict(out_path, row)
-            rows.append(row)
+    async def _run(finder_input: FinderInput) -> None:
+        row = await run_one(
+            finder_input,
+            run_id=run_id,
+            max_tries=max_tries,
+            max_hops=max_hops,
+            max_forks=max_forks,
+            max_fetches=max_fetches,
+        )
+        append_verdict(out_path, row)
+        rows.append(row)
 
     if concurrency <= 1:
         for finder_input in todo:
-            await _one(finder_input)
-    else:
-        await asyncio.gather(*(_one(fi) for fi in todo))
+            await _run(finder_input)
+        return rows
 
+    # WO-1031 back-pressure: `concurrency` is the INTAKE (governments in
+    # flight at once); `resolve_slots` bounds the expensive Resolve phase;
+    # no new government is admitted while more than `max_waiting` are
+    # queued for a Resolve slot. Defaults keep Resolve at a quarter of
+    # intake (min 1) and let the queue hold two rounds of slots.
+    slots = resolve_slots or max(1, concurrency // 4)
+    lanes = _Lanes(
+        resolve_slots=asyncio.Semaphore(slots),
+        max_waiting=max_waiting if max_waiting is not None else 2 * slots,
+    )
+    token = _LANES.set(lanes)
+    intake = asyncio.Semaphore(concurrency)
+    active = 0
+    finished = 0
+    started_at = time.monotonic()
+
+    def _log(event: str) -> None:
+        if lanes_log is None:
+            return
+        with Path(lanes_log).open("a", encoding="utf-8") as f:
+            f.write(
+                f"{time.monotonic() - started_at:.1f}\t{event}\tactive={active}"
+                f"\twaiting={lanes.waiting}\tresolving={lanes.resolving}"
+                f"\tfinished={finished}/{len(todo)}\n"
+            )
+
+    async def _admitted(finder_input: FinderInput) -> None:
+        nonlocal active, finished
+        try:
+            await _run(finder_input)
+        finally:
+            active -= 1
+            finished += 1
+            intake.release()
+            _log("done")
+
+    tasks = []
+    try:
+        for finder_input in todo:
+            await intake.acquire()
+            while lanes.waiting > lanes.max_waiting:
+                await asyncio.sleep(0.5)
+            active += 1
+            _log("admit")
+            tasks.append(asyncio.create_task(_admitted(finder_input)))
+        await asyncio.gather(*tasks)
+    finally:
+        _LANES.reset(token)
     return rows
