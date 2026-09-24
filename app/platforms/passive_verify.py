@@ -1292,6 +1292,104 @@ async def _invintus_walker(hub_url: str) -> List[dict]:
     return await list_recent_events(client_id)
 
 
+# WO-1038: a listing walker for a TelVue tenant's own `/home` or `/videos`
+# page -- plain, unauthenticated HTML (confirmed live: Irondequoit NY's real
+# `/home` carries 54 real `/player/{token}/.../media/{id}` links; Ashland
+# OR's real `/videos` carries 25+). Each card is one `<a href="/player/
+# {token}/.../media/{id}">...</a>` block with its own real title in a
+# sibling `<span class="h4 title block">` -- same convention `telvue.py`'s
+# own `list_playlist_items()` already reads for a `/playlists/{n}/
+# playlist_items` fragment, reused here rather than re-derived. Real dates
+# aren't available on this page (only a relative "Added N days ago"), so
+# `date` is always `None` -- `_walk_candidates()`'s own `resolve()` call on
+# each candidate reads the real date from the per-video page itself.
+_TELVUE_MEDIA_ANCHOR_RE = re.compile(
+    r'<a[^>]+href="(/player/([^/"]+)/(?:[^"]*?/)?media/(\d+)[^"]*)"[^>]*>(.*?)</a>',
+    re.DOTALL,
+)
+_TELVUE_TITLE_RE = re.compile(r'<span class="h4 title block">([^<]*)</span>')
+
+
+async def _telvue_walker(hub_url: str) -> List[dict]:
+    """`hub_url` can be any real TelVue URL for the tenant (a `/home`,
+    `/videos`, `/stream/{n}`, or even a single `/media/{id}` page) --
+    `telvue.account_url_for()` (this WO, see its own docstring) reduces it
+    to the tenant's canonical `/player/{token}/home` listing entry point
+    first, INCLUDING for a `/stream/{n}` live-stream link, per Ryan's
+    brief ("go to the same token's /home or /videos to list VOD").
+    Scoped to the SAME org token as `hub_url` -- a page can name more than
+    one TelVue channel (Medina, OH's real site links both the city's own
+    channel and the school district's), and only the government's own
+    channel's videos should ever come back from this walker; picking
+    which token IS the government's own channel is the caller's job
+    (`hop.py`/`runner.py`), not this walker's."""
+    from .telvue import _org_token_from_url, account_url_for
+
+    org_token = _org_token_from_url(hub_url)
+    if not org_token:
+        return []
+    netloc = urlparse(hub_url).netloc.lower()
+    if "telvue.com" not in netloc and not netloc.endswith("peg.tv"):
+        return []
+    list_url = account_url_for(hub_url) or hub_url
+    html, final_url, err = await _fetch(list_url)
+    if err or html is None:
+        return []
+    # WO-1038, real bug found against Exeter, NH's own `/home`: each real
+    # card renders TWO anchors to the SAME href -- one wrapping the
+    # thumbnail (no title inside it) and a second, separate one wrapping
+    # just the `<span class="h4 title block">` -- same "two anchors, one
+    # empty" shape `_cablecast_walker()`'s own comment already documents
+    # for a different platform. Deduping on first-seen href (as that
+    # walker does) would keep whichever anchor happens to come first,
+    # which for Exeter's real "Select Board"/"Planning Board" cards is
+    # the title-LESS thumbnail anchor -- silently losing every real
+    # meeting's own title. Collect every match for a url instead and keep
+    # the first non-empty title found for it, in first-seen url order.
+    order: List[str] = []
+    titles: Dict[str, Optional[str]] = {}
+    for match in _TELVUE_MEDIA_ANCHOR_RE.finditer(html):
+        _href, token, media_id, inner = match.groups()
+        if token != org_token:
+            continue
+        # Canonicalized to the plain `/player/{token}/media/{id}` shape
+        # (dropping any `/series/{n}/`/`/playlists/{n}/`/query-string
+        # noise the page's own href carries) -- the smallest, most robust
+        # URL to hand List/dedup, matching `list_playlist_items()`'s own
+        # convention; `resolve()` accepts this shape directly.
+        media_url = (
+            f"https://videoplayer.telvue.com/player/{org_token}/media/{media_id}"
+        )
+        if media_url not in titles:
+            order.append(media_url)
+            titles[media_url] = None
+        if not titles[media_url]:
+            title_match = _TELVUE_TITLE_RE.search(inner)
+            if title_match:
+                titles[media_url] = title_match.group(1).strip()
+    out: List[dict] = [
+        {"url": url, "title": titles[url], "date": None} for url in order
+    ]
+    # WO-1038: a TelVue channel is a full community-TV lineup, not just
+    # meetings -- Exeter, NH's real `/home` lists 68 videos, and the
+    # first ~20 (document order) are its own "Biweekly Report" news
+    # magazine, with real "Select Board"/"Planning Board"/"Zoning Board"
+    # meetings further down. `max_tries` (a handful of Resolve attempts)
+    # would exhaust itself on the news show before ever reaching a real
+    # meeting. `GOVERNING_BODY_KEYWORDS` (the same governing-body-name
+    # vocabulary `granicus.py` already uses to judge a title) sorts a
+    # meeting-shaped title to the front, stable within each group so
+    # newest-first document order still holds inside it.
+    from .granicus import GOVERNING_BODY_KEYWORDS
+
+    def _is_meeting_shaped(row: dict) -> int:
+        title = (row.get("title") or "").lower()
+        return 0 if any(kw in title for kw in GOVERNING_BODY_KEYWORDS) else 1
+
+    out.sort(key=_is_meeting_shaped)
+    return out
+
+
 def _ensure_walkers_registered() -> None:
     global _walkers_registered
     if _walkers_registered:
@@ -1308,6 +1406,7 @@ def _ensure_walkers_registered() -> None:
     register_listing_walker("townhallstreams", _townhallstreams_walker)
     register_listing_walker("cablecast", _cablecast_walker)
     register_listing_walker("invintus", _invintus_walker)
+    register_listing_walker("telvue", _telvue_walker)
 
 
 # Any link on a listing/hub page whose href or visible anchor text looks
