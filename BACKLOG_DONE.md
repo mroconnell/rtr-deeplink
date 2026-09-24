@@ -1,5 +1,131 @@
 # Backlog — done
 
+## WO-1046: Vimeo showcases + live-stream embeds; Suffolk County NY resolves (with a caveat) [Done 2026-09-24]
+
+**What.** WO-1044 got Meeting Finder to Suffolk County NY's real Legislature
+video hub (`.../1737/Video-Broadcast-and-Gallery`) but left it unresolved: the
+page embeds one Vimeo LIVE EVENT (`vimeo.com/event/4795861/embed`,
+single-quoted `src`) and 14 real `vimeo.com/showcase/{id}/embed` meeting
+archives, and neither `detect_platform()`'s Vimeo Event shape nor the
+resolve-time source-url tracking for a showcase found via Identify's
+rule-1 URL match worked correctly yet.
+
+**Trace first (Ryan asked for this specifically).** Live-reproduced the
+exact "before" state: `youtube-lead-only`, nothing resolved, 12 fetches, the
+walk reaching the real video hub page and then hopping past it to a PDF and
+two `list.aspx` pages. Root-caused with real network calls at every step
+(see this PR's description for the full trace):
+
+1. `app/platforms/meeting_finder/scan.py`'s `_anchor_media_candidates()`
+   already found all 14 showcases correctly and skipped the live event
+   correctly (`detect_platform()` returns `"unknown"` for `/event/{id}`,
+   which was already true before this WO — WO-1044's own entry above
+   already noted this).
+2. The showcase, resolved through `VimeoAssetFinder`, raises
+   `CalendarPageError` with 10 real, dated, titled candidates (confirmed
+   live: "09/09/2026 General Meeting of the Legislature" newest-first) —
+   already working.
+3. Every one of those individual videos is domain-restricted: Vimeo's own
+   oEmbed response comes back with a non-200 `domain_status_code`, and
+   `player.vimeo.com` 403s. Confirmed live it is a REAL domain allowlist,
+   not a broken video: passing the true embedding domain
+   (`domain_hint="scnylegislature.us"`) as the oEmbed fetch's `Referer`
+   recovers a playable `video_url`; a false domain does not. **Not used as
+   a workaround** — Ryan, mid-build: an owner's Vimeo "embed only on my own
+   domain" restriction is the same kind of explicit access control
+   CLAUDE.md's "we query sites politely" rule already treats a
+   human-verification gate as (never route around it, even with a true
+   value, because using it from a backend fetch rather than a real browser
+   on that domain isn't what the restriction is granting).
+4. `identify()`'s rule-1 URL-host match resolves the showcase link
+   DIRECTLY when Meeting Finder's own Hop reaches it as a link (no page
+   fetch at all in that path) — so the Candidate `list_account()` built
+   from its `CalendarPageError` expansion had no real page to attribute the
+   find to, and `source_url` fell back to the bare showcase link itself.
+   Separately, the SAME showcase reachable via Scan (with the real page in
+   hand) got a second, independent resolve — and since both produced the
+   same "kept despite" rank, the runner's own cross-fork "first found
+   wins" tie-break (WO-1035) let the worse, page-less one win.
+
+**Fixes**, each owned by this WO's files:
+
+1. **A new outcome, `embed-restricted`** (`models.py`): a CONFIRMED real
+   meeting (a dated, titled row off a real showcase listing) that Vimeo
+   itself refuses to serve outside the government's own site — ranked
+   above `video-low-confidence` (we KNOW it's a meeting, we just can't play
+   or transcribe it) and below a clean find. `resolve.py` detects it by
+   exact-matching a new shared constant,
+   `vimeo.EMBED_DOMAIN_RESTRICTED_WARNING` (previously an inline string,
+   now the one source of truth for that wording), and keeps it as the
+   strongest "kept despite" fallback (`_KEPT_DESPITE_EMBED_RESTRICTED`,
+   ranked ahead of the four existing ranks) — Ryan's "date orders, never
+   eliminates" rule still applies: a later, cleanly-playable candidate
+   still wins over an embed-restricted one found earlier. `runner.py`'s
+   `try_next` for it: "video plays only on the government's own site: link
+   out, can't embed or transcribe" — and the verdict's `meeting_url` points
+   at the real government page (see #3), so "link out" actually leads
+   somewhere.
+2. **Vimeo showcase candidates now carry the real page they were found
+   on** (`listing.py`'s `list_account()`/`_candidate_from_dict()` gained an
+   optional `page_url`, threaded from `_shallow_step()`'s own `ident.
+   final_url` — additive, every other `_CALENDAR_PAGE_ERROR_PLATFORMS`
+   member's `account_url` is already a real, useful page, so this is
+   narrowed to vimeo specifically) instead of falling back to the bare
+   Vimeo listing link.
+3. **The runner's Hop no longer re-walks a link Scan already tried on the
+   SAME page** (`runner.py`, both hop loops in `_deep_step()`): checks
+   `_meeting_key(hop.url) in state.tried_meeting_keys` before spending a
+   hop on it — this is what actually fixes the "worse duplicate wins the
+   tie-break" bug (item 4 above), independent of the Vimeo-specific fixes.
+4. **`vimeo.is_vimeo_event_url()`** (new): `vimeo.com/event/{id}` is a
+   different id space than a real video/showcase (confirmed: `parse_
+   vimeo_video()` never matches it, by design) — used by `hop.py`'s
+   `rank_hops()` to exclude a live event from ever being offered as a hop
+   candidate at all, on top of it already never becoming a Scan media
+   candidate or consuming a Resolve try.
+
+**Also checked, per this WO's brief**: Natomas Unified SD (`natomasunified.
+org`), which an earlier report said was blocked by a Vimeo showcase. Live
+re-check (`--entry start`, current `origin/main`): it already resolves
+cleanly via Swagit (`us:sd:0600036`, tier 1, "Board Meetings",
+`natomasusd.new.swagit.com`) — a prior wave's Swagit fixes (WO-1036) already
+closed this independently; no Vimeo showcase involved. That earlier report
+was stale.
+
+**Verified live** (`DATABASE_URL=sqlite+aiosqlite:///<scratch>/x.db
+ARCHIVE_BASE_URL="" python scripts/meeting_finder.py --input one.csv --out
+out.csv --entry start --mode pin --concurrency 1`):
+
+| | Before | After |
+|---|---|---|
+| Suffolk County NY (`us:county:36103`) outcome | `youtube-lead-only` | `embed-restricted` |
+| `meeting_url` | (none) | `https://www.scnylegislature.us/1737/Video-Broadcast-and-Gallery` (the real government page) |
+| `meeting_title` | (none) | "09/09/2026 General Meeting of the Legislature" |
+| `try_next` | "YouTube only: send to the drip" | "video plays only on the government's own site: link out, can't embed or transcribe" |
+
+No regression (`--entry start`, fresh run): redlands.gov (Cablecast, tier
+1, unchanged), lakelandgov.net (Vimeo, tier 1, unchanged), bensalemsd.org
+(Vimeo, tier 1, unchanged).
+
+New tests: `tests/test_wo1046_vimeo_showcase_embed_restricted.py` (Scan
+finds all 14 real showcases and skips the live event, using a real,
+unmodified fixture capture of the exact Suffolk page —
+`tests/fixtures/vimeo/suffolk_video_broadcast.html`; resolve.py's
+embed-restricted detection and its "a later clean find still wins" rule;
+listing.py's `page_url` preference for vimeo only; an end-to-end runner
+test reproducing the exact dedup bug and asserting the showcase is never
+re-Identified as its own hop). `tests/test_vimeo.py` gained
+`test_is_vimeo_event_url_matches_live_events_only` and an exact-match
+assertion on `EMBED_DOMAIN_RESTRICTED_WARNING` (previously only a loose
+substring check) so a future wording drift there fails loudly instead of
+silently breaking resolve.py's detection.
+
+Full suite: 5571 passed, 16 skipped, 4 xfailed, 2 pre-existing failures
+unrelated to this change (`test_repair_wrong_pages.py`,
+`test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff
+check`/`ruff format --check` clean; both `alembic check`s pass (no schema
+changes).
+
 ## WO-1047: 12milesout.com and spectrumstream.com adapters [Done 2026-09-24]
 
 **What.** Closed the WO-137 "two real, unsupported video platforms" entry (Alhambra CA's AgendaCenter linking to `spectrumstream.com`, Escondido CA's homepage linking to `12milesout.com`) by building both adapters, per this project's "test against a real, live URL first" rule — confirmed live on 6 tenants for 12milesout.com and 5 for spectrumstream.com before writing any parsing code (real discovery via Wayback CDX + DNS, done by the conductor beforehand — crt.sh was down).

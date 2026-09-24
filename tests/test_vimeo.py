@@ -66,8 +66,10 @@ import pytest
 from app.platforms.base import CalendarPageError, detect_platform
 from app.platforms.headless_browser import HeadlessBrowserUnavailable
 from app.platforms.vimeo import (
+    EMBED_DOMAIN_RESTRICTED_WARNING,
     VimeoAssetFinder,
     embed_url,
+    is_vimeo_event_url,
     is_vimeo_listing,
     parse_vimeo_video,
 )
@@ -309,6 +311,28 @@ async def test_resolve_declines_a_domain_privacy_blocked_video():
     assert result.title is None
     assert result.jurisdiction is None
     assert any("privacy settings" in w for w in result.video_warnings)
+    # WO-1046: Meeting Finder's resolve.py detects this exact case by
+    # exact-matching this shared constant -- a regression here (wording
+    # drift, or a differently-worded warning taking its place) would
+    # silently break that detection without any test failing in
+    # resolve.py's own suite, since resolve.py's tests use a fake
+    # ResolvedMeeting and never call the real adapter.
+    assert result.video_warnings == [EMBED_DOMAIN_RESTRICTED_WARNING]
+
+
+def test_is_vimeo_event_url_matches_live_events_only():
+    # WO-1046: confirmed live on Suffolk County NY's Legislature homepage
+    # -- `vimeo.com/event/4795861/embed` (a LIVE stream, a different id
+    # space than a real video) sits alongside 14 real
+    # `vimeo.com/showcase/{id}/embed` archives on the same page. Meeting
+    # Finder's Hop must recognize the event shape specifically so it never
+    # spends a hop/fetch on it, while leaving every other real Vimeo shape
+    # alone.
+    assert is_vimeo_event_url("https://vimeo.com/event/4795861/embed")
+    assert is_vimeo_event_url("https://vimeo.com/event/4795861")
+    assert not is_vimeo_event_url("https://vimeo.com/showcase/12045632/embed")
+    assert not is_vimeo_event_url("https://vimeo.com/1225746580/979e0c1d46")
+    assert not is_vimeo_event_url("https://example.com/event/123")
 
 
 async def test_resolve_video_id_sends_domain_hint_as_referer_header():

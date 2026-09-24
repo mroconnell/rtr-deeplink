@@ -85,9 +85,11 @@ from app.platforms.models import ResolvedMeeting
 # importing it directly is safe; a future fix in passive_verify.py
 # reaches Resolve automatically instead of two copies drifting apart.
 from app.platforms.passive_verify import _confirm_not_audio_only
+from app.platforms.vimeo import EMBED_DOMAIN_RESTRICTED_WARNING
 from app.utils.video_hand_check import assess_meeting_evidence, assess_video_candidate
 
 from .models import (
+    OUTCOME_EMBED_RESTRICTED,
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
@@ -115,6 +117,15 @@ _KEPT_DESPITE_LENGTH_UNKNOWN = 2
 # purely "nothing said it WAS a meeting", tried only when nothing else
 # turned up anywhere.
 _KEPT_DESPITE_NO_MEETING_EVIDENCE = 3
+# WO-1046: a CONFIRMED real meeting video (a dated, titled row off a
+# Vimeo showcase/channel listing) that Vimeo itself refuses to serve
+# outside the government's own domain -- see `models.OUTCOME_EMBED_
+# RESTRICTED`'s own comment. Ranked BEFORE (stronger than) the four
+# ranks above: those are all genuine uncertainty about whether a video is
+# even a real meeting; this one we already know is a real meeting, we
+# just can't play or transcribe it here. A negative rank keeps it
+# strictly ahead of 0-3 without renumbering them.
+_KEPT_DESPITE_EMBED_RESTRICTED = -1
 
 # Same politeness spacing `scripts/wo134_confirmed_hits_ingest.py` uses
 # between depth-search attempts on the same tenant (its own
@@ -125,6 +136,15 @@ CANDIDATE_DELAY_SECONDS = 0.75
 
 def _is_youtube_candidate(url: str) -> bool:
     return detect_platform(url) == "youtube"
+
+
+def _is_embed_restricted(result: ResolvedMeeting) -> bool:
+    """True for the exact "Vimeo owner restricted this to specific
+    domains" case `vimeo.py`'s `resolve_video_id()` reports (see
+    `EMBED_DOMAIN_RESTRICTED_WARNING`'s own comment) -- never for an
+    ordinary "no video found"/"couldn't read details" warning, which
+    aren't a confirmed real meeting the way this one is."""
+    return EMBED_DOMAIN_RESTRICTED_WARNING in (result.video_warnings or [])
 
 
 # WO-1041 spot-check (BACKLOG_DONE.md's WO-1041 entry): direct files and
@@ -369,7 +389,20 @@ async def _resolve_candidates_with_meeting(
                 continue
             more, more_reason = pick_candidates(
                 [
-                    _to_candidate(c, lister="adapter_list", source_url=cand.url)
+                    # WO-1046: prefer the ORIGINAL page this listing was
+                    # found embedded on (`cand.source_url`) over the
+                    # listing URL itself (`cand.url`, e.g. a Vimeo
+                    # showcase) -- so a downstream "link out to the
+                    # meeting page" (e.g. OUTCOME_EMBED_RESTRICTED) points
+                    # at a real government page, not a bare Vimeo listing
+                    # link. Falls back to `cand.url` when there's no
+                    # source (e.g. a listing given directly as Resolve's
+                    # own input candidate).
+                    _to_candidate(
+                        c,
+                        lister="adapter_list",
+                        source_url=cand.source_url or cand.url,
+                    )
                     for c in e.candidates
                 ],
                 limit=remaining,
@@ -436,6 +469,30 @@ async def _resolve_candidates_with_meeting(
                 continue
             if not await _confirm_not_audio_only(result.video_url):
                 audio_only = True
+        elif _is_embed_restricted(result):
+            # WO-1046: no `video_url` at all -- Vimeo's own oEmbed refused
+            # to serve this video outside the government's own site (see
+            # `_is_embed_restricted()`'s own comment). This is a real,
+            # confirmed meeting (the candidate came off a dated showcase/
+            # channel listing row) that we simply can't play or
+            # transcribe here -- never worked around with a spoofed
+            # domain/Referer (CLAUDE.md: an owner's explicit access
+            # restriction is treated the same as a human-verification
+            # gate). Kept as the strongest "kept despite" fallback rather
+            # than silently dropped -- see `_KEPT_DESPITE_EMBED_RESTRICTED`.
+            rule = (
+                "Vimeo restricts this video's embedding/playback to the "
+                "government's own site"
+            )
+            reasons.append(f"{cand.url}: {rule}")
+            if _KEPT_DESPITE_EMBED_RESTRICTED not in kept_despite:
+                kept_despite[_KEPT_DESPITE_EMBED_RESTRICTED] = (
+                    cand,
+                    result,
+                    None,
+                    rule,
+                )
+            continue
 
         if result.segments:
             if _needs_meeting_evidence(result.platform, pick_reason):
@@ -586,6 +643,7 @@ async def _resolve_candidates_with_meeting(
     # only if NOTHING clean turns up anywhere is this fallback used as the
     # final result, with this same outcome and rank intact.
     for rank in (
+        _KEPT_DESPITE_EMBED_RESTRICTED,
         _KEPT_DESPITE_TOO_SHORT,
         _KEPT_DESPITE_GATE_REJECTED,
         _KEPT_DESPITE_LENGTH_UNKNOWN,
@@ -593,15 +651,26 @@ async def _resolve_candidates_with_meeting(
     ):
         if rank in kept_despite:
             cand, result, duration, rule = kept_despite[rank]
+            # WO-1046: embed-restricted has no `video_url` at all (Vimeo
+            # refused it), so it isn't a "video, no captions" tier-3 find
+            # like the other kept-despite ranks -- and it gets its own
+            # outcome (`OUTCOME_EMBED_RESTRICTED`), not the generic
+            # `OUTCOME_VIDEO_LOW_CONFIDENCE`, since we KNOW this is a real
+            # meeting rather than merely suspecting one.
+            embed_restricted = rank == _KEPT_DESPITE_EMBED_RESTRICTED
             return (
                 ResolveResult(
                     candidate=cand,
-                    tier=3,
+                    tier=None if embed_restricted else 3,
                     platform=result.platform,
                     video_url=result.video_url,
                     has_segments=False,
                     duration_seconds=duration,
-                    outcome=OUTCOME_VIDEO_LOW_CONFIDENCE,
+                    outcome=(
+                        OUTCOME_EMBED_RESTRICTED
+                        if embed_restricted
+                        else OUTCOME_VIDEO_LOW_CONFIDENCE
+                    ),
                     note=_note(f"kept despite: {rule}"),
                     low_confidence_reason=rule,
                     low_confidence_rank=rank,
