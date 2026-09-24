@@ -691,3 +691,66 @@ async def test_resolve_bare_tenant_root_raises_when_no_video_meeting_found():
     with mock_session({}, post_routes=post_routes):
         with pytest.raises(NoVideoCandidateFound):
             await EscribeAssetFinder().resolve(tenant_url)
+
+
+# --- WO-1045 (2026-09-24): one county tenant, one name -------------------
+# Both pages are real, fetched live 2026-09-24 from McHenry County, IL's
+# tenant. Before this fix the County Board page (whose text says "County
+# of McHenry") gave "County of McHenry, IL", and the Staff Plat Review
+# page (which doesn't) fell back to the subdomain and gave "Mchenry, IL"
+# -- the name of a separate real city, McHenry, IL.
+MCHENRY_BASE = (
+    "https://pub-countyofmchenry.escribemeetings.com/Meeting.aspx"
+    "?Agenda=Agenda&lang=English&Id="
+)
+
+
+@pytest.mark.parametrize(
+    "fixture_name, meeting_id",
+    [
+        (
+            "mchenry_county_board_2026-09-15.html",
+            "6c0b14f1-de9b-4e42-969f-05e359fd5a56",
+        ),
+        (
+            "mchenry_staff_plat_review_2026-03-18.html",
+            "ff14891d-8792-4210-9ae0-4d45544d76f8",
+        ),
+    ],
+)
+def test_county_of_tenant_gets_one_county_name_on_every_page(fixture_name, meeting_id):
+    from bs4 import BeautifulSoup
+
+    html = load_fixture("escribe", fixture_name)
+    soup = BeautifulSoup(html, "html.parser")
+    _title, _date, jurisdiction = EscribeAssetFinder._extract_metadata(
+        soup, MCHENRY_BASE + meeting_id, html
+    )
+    assert jurisdiction == "McHenry County, IL"
+
+
+def test_county_of_tenant_name_leaves_other_tenants_alone():
+    # A city tenant, and a Canadian "County of" tenant (the county table
+    # knows Simcoe County, ON, but the rule is US-only until a Canadian
+    # tenant is checked), both pass through unchanged.
+    assert (
+        EscribeAssetFinder._county_of_tenant_name(
+            "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?Id=x",
+            "Bakersfield, CA",
+        )
+        == "Bakersfield, CA"
+    )
+    assert (
+        EscribeAssetFinder._county_of_tenant_name(
+            "https://pub-countyofsimcoe.escribemeetings.com/Meeting.aspx?Id=x",
+            "County of Simcoe, ON",
+        )
+        == "County of Simcoe, ON"
+    )
+    # No state settled yet: nothing to scope the county lookup by.
+    assert (
+        EscribeAssetFinder._county_of_tenant_name(
+            MCHENRY_BASE + "x", "County of McHenry"
+        )
+        == "County of McHenry"
+    )

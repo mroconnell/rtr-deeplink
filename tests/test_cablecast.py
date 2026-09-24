@@ -1437,3 +1437,79 @@ def test_parse_gallery_event_date_handles_both_real_formats():
     ) == datetime(2024, 7, 10)
     assert CablecastAssetFinder._parse_gallery_event_date(None) is None
     assert CablecastAssetFinder._parse_gallery_event_date("not a date") is None
+
+
+# --- WO-1045 (2026-09-24): title date beats a wrong eventDate ------------
+# Collier County, FL (reflect-collier-countyboc.cablecast.tv), fetched
+# live 2026-09-24. The show page itself answers 202 with an empty body
+# (the WAF shape the root fallback exists for); the site root's Remix
+# tree carries the show. Fields below are copied from that real record,
+# trimmed to the ones the adapter reads.
+COLLIER_HOST = "reflect-collier-countyboc.cablecast.tv"
+COLLIER_SHOW_2277 = {
+    "showId": "2277",
+    "title": "County Commission - Sept. 22, 2026",
+    "eventDate": "2026-09-21T04:00:00Z",
+    "vodUrl": f"https://{COLLIER_HOST}/vod/2277-BCC-9-22-2026-v2/vod.m3u8",
+}
+COLLIER_SITE = {
+    "siteId": "1",
+    "host": COLLIER_HOST,
+    "title": "Collier Television",
+    "pageDescription": (
+        "Collier Television is a service provided by the Collier County "
+        "Board of County Commissioners"
+    ),
+}
+
+
+async def test_resolve_prefers_the_titles_date_over_a_wrong_event_date():
+    # eventDate 04:00Z is midnight Eastern -- this tenant's storage
+    # convention for every show -- so the stored value really says
+    # Sept 21. Not a time-zone shift; the title and the VOD file name
+    # (BCC-9-22-2026) both say Sept 22.
+    tree = {"shows": [COLLIER_SHOW_2277], "site": COLLIER_SITE}
+    root_html = (
+        "<html><body><script>window.__remixContext = "
+        + json.dumps(tree)
+        + ";</script></body></html>"
+    )
+    show_url = f"http://{COLLIER_HOST}/show/2277"
+    root_url = f"http://{COLLIER_HOST}/"
+    routes = {
+        show_url: FakeResponse(status=202, text=""),
+        root_url: FakeResponse(status=200, text=root_html),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(
+            f"https://{COLLIER_HOST}/show/2277"
+        )
+
+    assert result.title == "County Commission - Sept. 22, 2026"
+    assert result.date == "2026-09-22"
+    assert result.video_url == COLLIER_SHOW_2277["vodUrl"]
+
+
+def test_show_date_keeps_event_date_when_the_title_has_no_full_date():
+    # Real Collier show 2265: "Sept. 3. 2026" (a period, not a comma)
+    # doesn't parse as a full date, so its eventDate -- which agrees --
+    # stands. And a title with no date at all is unaffected.
+    assert (
+        CablecastAssetFinder._show_date(
+            {
+                "title": "BCC Budget Hearing - Sept. 3. 2026",
+                "eventDate": "2026-09-03T04:00:00Z",
+            }
+        )
+        == "2026-09-03"
+    )
+    assert (
+        CablecastAssetFinder._show_date(
+            {
+                "title": "Council Member YOUNG    Brush Park Manor Council Corner",
+                "eventDate": "2026-08-29T06:04:03-04:00",
+            }
+        )
+        == "2026-08-29"
+    )

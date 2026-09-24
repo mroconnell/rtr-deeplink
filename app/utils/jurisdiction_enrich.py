@@ -342,6 +342,48 @@ def _county_type_suffix(hint: str, state_code: str) -> str:
     return f" {word}" if word else ""
 
 
+def _load_county_display_names(filename: str) -> Dict[Tuple[str, str], Optional[str]]:
+    """(letters-only bare name, state) -> the county's own display name
+    as the CSV spells it ("McHenry County"), or None when two different
+    rows in one state share the key. Keyed letters-only so a URL slug
+    fragment ("mchenry", "stcroix") can look it up directly -- see
+    `county_display_in_state()` (WO-1045)."""
+    table: Dict[Tuple[str, str], Optional[str]] = {}
+    path = _DATA_DIR / filename
+    if not path.exists():
+        return table
+    with open(path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            name = row["name"].strip()
+            bare = _TRAILING_TYPE_RE.sub("", name)
+            key = (re.sub(r"[^a-z]", "", bare.lower()), row["state"])
+            if key in table and table[key] != name:
+                table[key] = None
+            else:
+                table[key] = name
+    return table
+
+
+_COUNTY_DISPLAY_NAMES = _load_county_display_names("counties.csv")
+
+
+def county_display_in_state(name: str, state_code: str) -> Optional[str]:
+    """The real county's display name ("McHenry County", "Clay County")
+    when `name` -- a bare county name or a URL slug fragment, compared
+    letters-only -- is exactly one real county in `state_code`, else None.
+
+    State-scoped on purpose, unlike `lookup_county_state()`: "Clay County"
+    exists in 18 states and "McHenry County" in two (IL, ND), so a
+    national lookup refuses both, but a caller that already holds an
+    independent state signal (a slug's own state code, a page's resolved
+    state) can still name the county exactly. Added for WO-1045
+    (CivicClerk's `claycomo` tenant, eScribe's `countyofmchenry`)."""
+    key = re.sub(r"[^a-z]", "", (name or "").lower())
+    if not key or not state_code:
+        return None
+    return _COUNTY_DISPLAY_NAMES.get((key, state_code.strip().upper()))
+
+
 _PLACE_STATES = _load_name_state_table("places.csv")
 # WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions (Upper
 # Providence PA, Greenburgh NY, Upper Dublin PA -- all confirmed real,
@@ -3926,6 +3968,13 @@ def _county_retype_from_page_text(candidate: str, page_text: str) -> str:
         if _COUNTY_STATES.get(norm):
             return retyped
     return candidate
+
+
+def is_us_state_code(code: str) -> bool:
+    """True for a 2-letter US state code (not a Canadian province) --
+    lets a caller keep a US-only rule from touching a Canadian tenant
+    (WO-1045, eScribe's `_county_of_tenant_name()`)."""
+    return (code or "").strip().lower() in _STATE_ABBREVIATIONS_LOWER
 
 
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:

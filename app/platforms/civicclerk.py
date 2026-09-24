@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
@@ -55,9 +55,12 @@ _COUNTY_SUBDOMAIN_RE = re.compile(
 # Supervisors" (sccwi -- St. Croix County, WI, whose subdomain encodes
 # nothing parseable), "Board of County Commissioners - ..."
 # (churchillconv).
+# WO-1045 (2026-09-24): "Board of County Commission" (no "-ers") is the
+# third real shape -- Clay County, MO's own categoryName on its
+# `claycomo` tenant, confirmed live.
 _COUNTY_BODY_EVENT_RE = re.compile(
     r"^\s*(?:county\s+(?:board|council|commission)\b"
-    r"|board\s+of\s+county\s+commissioners\b)",
+    r"|board\s+of\s+county\s+commission(?:ers)?\b)",
     re.IGNORECASE,
 )
 
@@ -206,6 +209,21 @@ class CivicClerkAssetFinder(AssetFinder):
             )
             if county_jurisdiction:
                 jurisdiction = county_jurisdiction
+            # WO-1045: with no venue at all, the chain below reads the
+            # subdomain as a place name -- and a county-shaped slug can
+            # also spell a real city ("claycomo" is both Clay County, MO
+            # and the village of Claycomo, MO). Settle that from the
+            # tenant's own meeting bodies first; if they don't settle it,
+            # don't let the slug name a place at all.
+            slug_url = url
+            if not jurisdiction:
+                slug_county, slug_is_ambiguous = await self._slug_county(
+                    session, api_base, subdomain, event
+                )
+                if slug_county:
+                    jurisdiction = slug_county
+                elif slug_is_ambiguous:
+                    slug_url = ""
             if not jurisdiction:
                 # eventLocation is sometimes entirely empty (city AND
                 # state both null, not just a missing state) -- confirmed
@@ -214,7 +232,7 @@ class CivicClerkAssetFinder(AssetFinder):
                 # correctly with zero extra network calls, no page_text/
                 # html needed.
                 jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
-                    page_text="", html="", url=url
+                    page_text="", html="", url=slug_url
                 )
             if not jurisdiction:
                 # Richer, costlier fallback: CivicClerk's own agenda file
@@ -229,7 +247,7 @@ class CivicClerkAssetFinder(AssetFinder):
                 agenda_text = await self._fetch_agenda_text(session, event)
                 if agenda_text:
                     jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
-                        page_text=agenda_text, html="", url=url
+                        page_text=agenda_text, html="", url=slug_url
                     )
 
             video_url = media.get("videoUrl") or _reconstruct_cdn_stream_url(
@@ -553,6 +571,57 @@ class CivicClerkAssetFinder(AssetFinder):
             if _COUNTY_BODY_EVENT_RE.match(event.get(field) or ""):
                 return result
         return None
+
+    @staticmethod
+    async def _slug_county(
+        session: aiohttp.ClientSession, api_base: str, subdomain: str, event: dict
+    ) -> Tuple[Optional[str], bool]:
+        """`(county, ambiguous)` for a tenant with no venue address.
+
+        Real case (WO-1045, 2026-09-24): `claycomo.portal.civicclerk.com`
+        is Clay County, MO -- its only meeting category is "Board of
+        County Commission" on every county body -- but the event carries
+        no venue, no organization name (`organizationId` is null), and a
+        blank portal name, so the subdomain chain read "claycomo" as the
+        village of Claycomo, MO, a separate real government inside the
+        county.
+
+        The slug is read with `_COUNTY_SUBDOMAIN_RE` ("clay"+"co"+"mo")
+        and must name a real county in the slug's own state. That alone
+        is not enough -- it is the same letters as a city name -- so a
+        second, independent signal must say "county government": the
+        event's own county-body name, or else any of the tenant's own
+        `EventCategories` (one extra request, made only for a
+        county-shaped slug). Returns `(None, True)` when the slug names a
+        real county but nothing confirms it: the caller then stops the
+        slug from naming any place, rather than pick one of the two."""
+        m = _COUNTY_SUBDOMAIN_RE.match(subdomain)
+        if not m:
+            return None, False
+        state = m.group("st").upper()
+        county = jurisdiction_enrich.county_display_in_state(m.group("name"), state)
+        if not county:
+            return None, False
+        result = f"{county}, {state}"
+        for field in ("eventName", "categoryName", "agendaName"):
+            if _COUNTY_BODY_EVENT_RE.match(event.get(field) or ""):
+                return result, False
+        try:
+            async with session.get(
+                f"{api_base}/EventCategories",
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as response:
+                categories = (
+                    (await response.json(content_type=None)).get("value") or []
+                    if response.status == 200
+                    else []
+                )
+        except (aiohttp.ClientError, TimeoutError, ValueError):
+            categories = []
+        for category in categories:
+            if _COUNTY_BODY_EVENT_RE.match(category.get("categoryDesc") or ""):
+                return result, False
+        return None, True
 
     @staticmethod
     async def _fetch_captions(session: aiohttp.ClientSession, caption_url: str):

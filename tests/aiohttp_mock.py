@@ -15,6 +15,17 @@ from unittest import mock
 import aiohttp
 
 
+class _FakeStream:
+    """`response.content` -- just the `read(n)` direct_file.py's ranged-GET
+    probe uses (WO-1045) to cap how much of a file it reads."""
+
+    def __init__(self, raw: bytes):
+        self._raw = raw
+
+    async def read(self, n: int = -1) -> bytes:
+        return self._raw if n < 0 else self._raw[:n]
+
+
 class FakeResponse:
     def __init__(
         self,
@@ -44,6 +55,7 @@ class FakeResponse:
         # (Location on a redirect, Content-Length for url_guard.py's size
         # cap) -- exact-case lookups only, unlike the real CIMultiDict.
         self.headers = headers if headers is not None else {}
+        self.content = _FakeStream(self._raw)
 
     async def __aenter__(self):
         return self

@@ -10,6 +10,7 @@ import aiohttp
 
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
+from .youtube_channel import parse_title_date
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
@@ -488,7 +489,7 @@ class CablecastAssetFinder(AssetFinder):
                     else None
                 ),
                 title=show.get("title") if show else None,
-                date=self._format_date(show.get("eventDate")) if show else None,
+                date=self._show_date(show) if show else None,
                 jurisdiction=jurisdiction,
                 video_warnings=["No video found for this meeting."],
             )
@@ -564,7 +565,7 @@ class CablecastAssetFinder(AssetFinder):
             # domain-alias table entry.
             external_id=f"cablecast:{urlparse(fetch_url).netloc.lower()}:{show_id}",
             title=show.get("title"),
-            date=self._format_date(show.get("eventDate")),
+            date=self._show_date(show),
             jurisdiction=jurisdiction,
             video_url=show["vodUrl"],
             video_format="m3u8",
@@ -637,7 +638,7 @@ class CablecastAssetFinder(AssetFinder):
                 source_url=url,
                 external_id=f"cablecast:{netloc.lower()}:{show_id}",
                 title=show.get("title"),
-                date=CablecastAssetFinder._format_date(show.get("eventDate")),
+                date=CablecastAssetFinder._show_date(show),
                 jurisdiction=jurisdiction,
                 video_warnings=["No video found for this meeting."],
             )
@@ -650,7 +651,7 @@ class CablecastAssetFinder(AssetFinder):
             # closes.
             external_id=f"cablecast:{netloc.lower()}:{show_id}",
             title=show.get("title"),
-            date=CablecastAssetFinder._format_date(show.get("eventDate")),
+            date=CablecastAssetFinder._show_date(show),
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
@@ -1313,6 +1314,27 @@ class CablecastAssetFinder(AssetFinder):
             end = raw_cues[idx + 1][0] if idx + 1 < len(raw_cues) else start
             cues.append({"start": start, "end": max(end, start), "text": text})
         return cues
+
+    @staticmethod
+    def _show_date(show: dict) -> Optional[str]:
+        """The meeting date: the full date written in the show's own
+        title when it has one, else `eventDate`.
+
+        WO-1045 (2026-09-24). Collier County, FL's show 2277 is titled
+        "County Commission - Sept. 22, 2026" and its video file is
+        `BCC-9-22-2026`, but its `eventDate` is `2026-09-21T04:00:00Z`.
+        That is not a time-zone slip: 04:00Z is midnight Eastern, the way
+        this tenant stores every date (268 shows at T04:00Z in summer, 127
+        at T05:00Z in winter), so the stored value itself says Sept 21. Of
+        Collier's 404 shows whose title carries a full date, 11 disagree
+        with `eventDate` -- by 1 day up to 2 months (show 2033:
+        "Metropolitan Planning Org. - Apr. 11, 2025", `eventDate`
+        Feb 14). The title is what the government typed for the reader,
+        so it wins; a title with no full date keeps `eventDate`."""
+        title_date = parse_title_date(show.get("title") or "")
+        if title_date:
+            return title_date.isoformat()
+        return CablecastAssetFinder._format_date(show.get("eventDate"))
 
     @staticmethod
     def _format_date(event_date: Optional[str]) -> Optional[str]:
