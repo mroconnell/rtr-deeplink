@@ -61,6 +61,7 @@ from .listing import list_account
 from .pacing import pace_all_requests
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
+    OUTCOME_ERROR,
     OUTCOME_YOUTUBE_LEAD_ONLY,
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
@@ -132,6 +133,7 @@ _VIDEO_WORDS_RE = re.compile(
 # failures which we will return to". Each failure outcome maps to the next
 # thing a person (or a later pass) should try. Plain words, one line each.
 _TRY_NEXT: Dict[str, str] = {
+    OUTCOME_ERROR: "unexpected error (see note): fix the cause and rerun",
     OUTCOME_MEETING_WITHOUT_VIDEO: (
         "meetings found but no video: follow the meetings page's watch/video "
         "links, or check another video host by hand"
@@ -869,14 +871,31 @@ async def run_inputs(
     rows: List[VerdictRow] = []
 
     async def _run(finder_input: FinderInput) -> None:
-        row = await run_one(
-            finder_input,
-            run_id=run_id,
-            max_tries=max_tries,
-            max_hops=max_hops,
-            max_forks=max_forks,
-            max_fetches=max_fetches,
-        )
+        try:
+            row = await run_one(
+                finder_input,
+                run_id=run_id,
+                max_tries=max_tries,
+                max_hops=max_hops,
+                max_forks=max_forks,
+                max_fetches=max_fetches,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # WO-1034: a government must never vanish from the results.
+            # Calibration run A (2026-09-23) lost 34 of 200 rows to one
+            # unhandled error (Brotli-encoded responses). Record it as a
+            # named outcome with the error text, so it's counted and
+            # revisited, and keep going.
+            row = VerdictRow(
+                run_id=run_id,
+                input_url=finder_input.url,
+                entry_phase=finder_input.entry,
+                outcome=OUTCOME_ERROR,
+                identity_expected_gov_id=finder_input.gov_id,
+                note=f"{type(exc).__name__}: {exc}"[:500],
+                try_next=_TRY_NEXT[OUTCOME_ERROR],
+                finished_at=_now_iso(),
+            )
         append_verdict(out_path, row)
         rows.append(row)
 

@@ -312,6 +312,14 @@ class Fetcher:
 
     def _headers(self, *, browser: bool) -> dict:
         base = dict(BROWSER_HEADERS if browser else HONEST_HEADERS)
+        # WO-1034: never offer Brotli. The shared browser header set says
+        # `gzip, deflate, br`, but aiohttp can't decode `br` without the
+        # optional Brotli package, and a site that honours it (Oxnard, CA,
+        # calibration run A 2026-09-23) raised ClientResponseError and lost
+        # that government's row. Only this copy changes, not wo147's.
+        for key in list(base):
+            if key.lower() == "accept-encoding":
+                base[key] = "gzip, deflate"
         if self._user_agent:
             base["user-agent"] = self._user_agent
         return base

@@ -45,6 +45,9 @@ OUTCOME_ACCOUNT_NOT_FOUND = "account-not-found"
 # fetches YouTube. First seen on Essex, ON (`youtube.com/user/EssexOntario`),
 # which Verdict had reported as a bare access block.
 OUTCOME_YOUTUBE_LEAD_ONLY = "youtube-lead-only"
+# WO-1034: an unexpected exception while walking one government. Written
+# as a row (with the error in `note`) so no government ever goes missing.
+OUTCOME_ERROR = "error"
 # An entry point wave 2 hasn't built yet (List, Identify, Scan, Hop,
 # Start) was asked for. Never a real finding -- a placeholder so the CLI
 # accepts every `--entry` value from day one and wave 2 can fill each
