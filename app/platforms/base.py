@@ -363,6 +363,8 @@ def detect_platform(url: str) -> str:
     from .boarddocs import is_boarddocs_tenant_url
     from .sliq_harmony import is_sliq_harmony_url
     from .tvw import is_tvw_video_url
+    from .twelvemilesout import is_twelvemilesout_tenant_host
+    from .spectrumstream import parse_spectrumstream_tenant
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -735,6 +737,26 @@ def detect_platform(url: str) -> str:
         # townhallstreams.py's own module docstring and BACKLOG.md for the
         # investigation.
         return "townhallstreams"
+    if is_twelvemilesout_tenant_host(netloc):
+        # 12milesout.com (Fisher Integrated, Inc.) -- a small, real,
+        # multi-tenant government video vendor, confirmed live 2026-09-24
+        # (WO-1047) against 6 real San Diego/Inland Empire, CA tenants
+        # (escondido, coronado, colton, covina, bigbearlake, solanabeach).
+        # Tenancy is per-subdomain -- see twelvemilesout.py's own module
+        # docstring for the real page structure and why the bare/`www`
+        # host and a handful of confirmed non-government subdomains are
+        # excluded by `is_twelvemilesout_tenant_host()` itself.
+        return "twelvemilesout"
+    if parse_spectrumstream_tenant(url) is not None:
+        # spectrumstream.com (Studio Spectrum) -- a small, real, multi-
+        # tenant government video vendor, confirmed live 2026-09-24
+        # (WO-1047) against 5 real LA-area CA tenants (alhambra, arcadia,
+        # south_pasadena, gusd, bgpaa). Tenancy is PATH-based on one DNS-
+        # wildcarded domain (unlike 12milesout.com above) -- see
+        # spectrumstream.py's own module docstring for the real page
+        # structure and why this needs a real `/streaming/{tenant}/`
+        # path, not just a netloc check.
+        return "spectrumstream"
     if netloc.endswith("open.media") or netloc.endswith("ompnetwork.org"):
         # `ompnetwork.org` is the same product on a second vendor domain,
         # not a different platform -- added 2026-08-23 (WO-46) after Ryan

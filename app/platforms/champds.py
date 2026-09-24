@@ -7,8 +7,15 @@ from urllib.parse import quote, urlparse
 import aiohttp
 
 from .base import AssetFinder
-from .models import ResolvedMeeting
+from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+from ..utils.url_guard import read_capped_bytes
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    is_likely_garbled,
+    parse_captions_by_extension,
+)
 
 # CHAMP/ChampDS -- confirmed live 2026-08-13 against 6 independent real
 # customers (Atlanta GA, Auburn NY, Gillette WY, Marlborough MA, Saco ME,
@@ -26,6 +33,15 @@ from ..utils import jurisdiction_enrich
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
 
 logger = logging.getLogger("rtr_deeplink.champds")
+
+# WO-1045: shown when the only video is VOD2 (see ChampDSAssetFinder's
+# docstring). Distinct from "No video found" on purpose -- the video
+# exists, it just only plays inside ChampDS's own player.
+_STREAM_ONLY_WARNING = (
+    "This meeting has a video, but ChampDS only streams it inside its own "
+    "player, so we can't play it here. Watch it on ChampDS's page for this "
+    "meeting."
+)
 
 # WO-308 (2026-09-12): the missing "list what's on this customer" step.
 # `ChampDSAssetFinder.resolve()` only ever handles one already-known
@@ -188,6 +204,31 @@ class ChampDSAssetFinder(AssetFinder):
       our own proxy) -- real, scoped infrastructure work, not a quick
       fix, and not attempted in this pass. See BACKLOG.md.
 
+      **WO-1045 (2026-09-24): VOD2 is returned as `server_media_url`
+      instead** -- a URL for our own transcription paths, never the
+      reader's player. Re-checked live on Cobb County GA event 155 and
+      Gwinnett County GA event 356 (both VOD2-only, no `DownloadURL`):
+      with `Referer: https://play.champds.com/` the master playlist
+      answers 302 to a `/VOD/version/{token}/master.m3u8` URL, the
+      variant playlist and a real `.ts` segment answer 200, and `ffprobe`
+      with that header read Cobb's full 6,197-second duration. With no
+      referer, or this site's referer, every one of those answers 406.
+      `media_probe`/`queue_probe` already send `Referer: {source page
+      origin}/`, and a ChampDS source page's origin is exactly
+      `https://play.champds.com`, so no new header code was needed. The
+      reader instead gets a warning saying the video exists but is
+      stream-only, so "no video" and "video we can't play here" read
+      differently.
+    - `MediaInfo.MediaPath` (an `.mp4` path such as
+      `/2026-09/0007a1ff....mp4`) is present on every customer checked,
+      but no URL built from it was found to work (WO-1045, same two
+      meetings): `securestream10.champds.com{MediaPath}` -- what
+      `embed.js`'s non-VOD2 branch builds from ServiceTypeID 8 -- is a
+      404 with or without the ChampDS referer, as are
+      `play.champds.com{MediaPath}` and
+      `play.champds.com/{customer}{MediaPath}`. `DOWNLOAD-MEDIA/...`
+      is a 403 on both. So it is not used.
+
     Real agenda items exist in `Agenda.AgendaItems` (confirmed live,
     e.g. Gillette's "A. Call to Order") but carry no per-item time
     offset, only ordering -- same shape mismatch as Legistar's own
@@ -197,11 +238,18 @@ class ChampDSAssetFinder(AssetFinder):
     single-link `agenda_link` field instead, and is exactly what this
     adapter uses.
 
-    `MediaInfo.Captions` was empty on every one of the 6 real customers
-    checked -- no positive example of a populated one, so its real shape
-    is unconfirmed and deliberately not attempted here (same "don't
-    claim a caption path works without a positive example" convention as
-    CivicClerk/eScribe -- see BACKLOG.md).
+    `MediaInfo.Captions` was empty on all 6 customers checked when this
+    adapter was built, so it was not read until WO-1045 (2026-09-24).
+    Two real populated examples now exist: El Paso County CO event 164
+    and Atlanta GA event 1077, each `[{"LanguageName": "English",
+    "LanguageID": "en", "MediaPath": "/2026-09/....vtt"}]`. The file is
+    served at `https://play.champds.com/CAPTION/{customer}{MediaPath}` --
+    the path in a commented-out block of ChampDS's own player script
+    (`_COMMON/players/vjs2026/embed.js`, `localEmbed()`); fetched with
+    plain `curl` and no referer, both returned a real WEBVTT file (El
+    Paso's: 101 KB, a coherent Board of County Commissioners transcript).
+    A bare `MediaPath` on `play.champds.com` is not tried -- only the
+    `/CAPTION/` path was confirmed.
     """
 
     platform_name = "champds"
@@ -229,6 +277,10 @@ class ChampDSAssetFinder(AssetFinder):
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
             data, failure_reason = await self._fetch_json(session, api_url)
+            caption_url = self._caption_url(data or {}, customer)
+            caption_bytes = (
+                await self._fetch_bytes(session, caption_url) if caption_url else None
+            )
 
         if not data:
             # The reader-facing sentence stays deliberately generic -- a
@@ -251,10 +303,18 @@ class ChampDSAssetFinder(AssetFinder):
             (data.get("Customer") or {}).get("CustomerName"), url
         )
         video_url, video_format = self._extract_video(data)
+        server_media_url = None if video_url else self._extract_vod2_stream(data)
         agenda_link = self._extract_agenda_link(data.get("Agenda") or {}, customer)
 
-        video_warnings = (
-            [] if video_url else ["No video found for this ChampDS meeting."]
+        if video_url:
+            video_warnings = []
+        elif server_media_url:
+            video_warnings = [_STREAM_ONLY_WARNING]
+        else:
+            video_warnings = ["No video found for this ChampDS meeting."]
+
+        segments, language, transcript_warnings = self._parse_captions(
+            caption_url, caption_bytes
         )
 
         return ResolvedMeeting(
@@ -265,10 +325,62 @@ class ChampDSAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
+            server_media_url=server_media_url,
+            segments=segments,
+            transcript_language=language,
             agenda_link=agenda_link,
             video_warnings=video_warnings,
-            transcript_warnings=["No captions found for this ChampDS meeting."],
+            transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _caption_url(data: dict, customer: str) -> Optional[str]:
+        """The `/CAPTION/` URL for this meeting's caption track (see the
+        class docstring), preferring English when several are listed.
+        None when `MediaInfo.Captions` is empty -- the usual case."""
+        captions = [
+            c
+            for c in (data.get("MediaInfo") or {}).get("Captions") or []
+            if isinstance(c, dict) and c.get("MediaPath")
+        ]
+        if not captions:
+            return None
+        chosen = next(
+            (c for c in captions if (c.get("LanguageID") or "").lower() == "en"),
+            captions[0],
+        )
+        path = chosen["MediaPath"]
+        if not path.startswith("/"):
+            path = "/" + path
+        return f"https://play.champds.com/CAPTION/{customer}{path}"
+
+    @staticmethod
+    def _parse_captions(caption_url: Optional[str], raw: Optional[bytes]):
+        """(segments, language, transcript_warnings) from a fetched caption
+        file, through the same shared `vtt_parser` pipeline every other
+        adapter uses (roll-up dedupe, language detection, garbled check)."""
+        if not caption_url:
+            return [], None, ["No captions found for this ChampDS meeting."]
+        cues = []
+        if raw:
+            cues, _fallback_text = parse_captions_by_extension(
+                caption_url, decode_vtt_bytes(raw)
+            )
+        if not cues:
+            logger.warning("ChampDS caption file unreadable or empty: %s", caption_url)
+            return (
+                [],
+                None,
+                ["ChampDS lists captions for this meeting, but we couldn't read them."],
+            )
+        language = detect_language_from_texts(c.get("text") for c in cues)
+        warnings = []
+        if is_likely_garbled(cues, lang=language):
+            warnings.append(
+                "This transcript looks garbled at the source (not a parsing "
+                "bug on our end) -- treat it as approximate."
+            )
+        return [TranscriptSegment(**cue) for cue in cues], language, warnings
 
     @staticmethod
     def _extract_date(customer_local: Optional[str]) -> Optional[str]:
@@ -299,12 +411,34 @@ class ChampDSAssetFinder(AssetFinder):
         # docstring for why MediaInfo.VOD2's HLS URL is deliberately not
         # returned here even when present (a confirmed-live referer
         # check on securestream10.champds.com would 406 in this site's
-        # own browser context).
+        # own browser context). It goes to `server_media_url` instead,
+        # via _extract_vod2_stream() below (WO-1045).
         media_info = data.get("MediaInfo") or {}
         download_url = media_info.get("DownloadURL")
         if download_url:
             return f"https://play.champds.com{download_url}", "mp4"
         return None, None
+
+    @staticmethod
+    def _extract_vod2_stream(data: dict) -> Optional[str]:
+        """The VOD2 HLS master URL, for `server_media_url` only (see the
+        class docstring, WO-1045). Built the way ChampDS's own
+        `embed.js` `loadPlayer()` builds it: the ServiceTypeID-2048 entry's
+        `URLBase` when one exists, else ServiceTypeID 8's, plus `VOD2`.
+        None when either piece is missing -- no host is guessed."""
+        vod2 = (data.get("MediaInfo") or {}).get("VOD2")
+        if not vod2:
+            return None
+        services = data.get("ServicesAndMachineInfo") or {}
+        for key in ("2048", "8"):
+            svc = services.get(key)
+            if isinstance(svc, list):
+                svc = svc[0] if svc else None
+            base = (svc or {}).get("URLBase") if isinstance(svc, dict) else None
+            if base and base.startswith("https://"):
+                path = vod2 if vod2.startswith("/") else "/" + vod2
+                return base.rstrip("/") + path
+        return None
 
     @staticmethod
     def _extract_agenda_link(agenda: dict, customer: str) -> Optional[str]:
@@ -332,6 +466,29 @@ class ChampDSAssetFinder(AssetFinder):
         # `/ATT/{customer}/...` shape sits right next to it in the same
         # file, but this is the one still actually called.
         return f"https://play.champds.com/ATT/{customer}/{location}/{name}"
+
+    @staticmethod
+    async def _fetch_bytes(session: aiohttp.ClientSession, url: str) -> Optional[bytes]:
+        """Raw body of a caption file, or None on any failure (logged).
+        Never raises: a caption failure must not lose the video/agenda."""
+        try:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        "ChampDS caption fetch got HTTP %s for %s", response.status, url
+                    )
+                    return None
+                return await read_capped_bytes(response)
+        except Exception as e:
+            logger.warning(
+                "ChampDS caption fetch failed for %s -- %s: %s",
+                url,
+                type(e).__name__,
+                e,
+            )
+            return None
 
     @staticmethod
     async def _fetch_json(

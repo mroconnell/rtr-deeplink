@@ -126,6 +126,75 @@ unrelated to this change (`test_repair_wrong_pages.py`,
 check`/`ruff format --check` clean; both `alembic check`s pass (no schema
 changes).
 
+## WO-1047: 12milesout.com and spectrumstream.com adapters [Done 2026-09-24]
+
+**What.** Closed the WO-137 "two real, unsupported video platforms" entry (Alhambra CA's AgendaCenter linking to `spectrumstream.com`, Escondido CA's homepage linking to `12milesout.com`) by building both adapters, per this project's "test against a real, live URL first" rule — confirmed live on 6 tenants for 12milesout.com and 5 for spectrumstream.com before writing any parsing code (real discovery via Wayback CDX + DNS, done by the conductor beforehand — crt.sh was down).
+
+1. **`app/platforms/twelvemilesout.py`** — one meeting per `{tenant}.12milesout.com/.../{id}` page, tenancy per-subdomain. Confirmed live: Escondido, Coronado, Colton, Covina, Big Bear Lake, Solana Beach (all San Diego/Inland Empire, CA). Video is a direct, unauthenticated CloudFront MP4 download link (not the JW Player/HLS `smil:` URL also present — that CDN host, `lax-vod`, has no live DNS). Real `#agenda-list` chapter markers (`data-start`/`data-duration`) present on every tenant regardless of captions. Two real listing themes coexist (same per-meeting page shape either way): a Vue-rendered table backed by a real `/api/meetings/list/{page}/{size}` JSON endpoint (Coronado, Colton, Big Bear Lake, Solana Beach), and a server-rendered static `<table>` needing no JS (Escondido, Covina) — `passive_verify._twelvemilesout_walker()` tries the API first, falls back to the table scrape. Captions: a hidden, base64-encoded `_su` field (mirrors the vendor's own `parseEmbedded()` JS) plus the `<video>` tag's `data-captions="{codes}"` attribute drive a plain GET to `/api/captions/{fileId}/{code}/0/{durationMs}` — confirmed live returning 1,874 real cues (Coronado); empty/absent `data-captions` (Covina/Escondido) is a real "no captions" shape, not an error.
+2. **`app/platforms/spectrumstream.py`** — one meeting per `spectrumstream.com/streaming/{tenant}/{filename}.cfm` page; tenancy is PATH-based on one DNS-wildcarded domain (unlike 12milesout.com's per-subdomain shape). Confirmed live: Alhambra, Arcadia, South Pasadena (+ its committees), Glendale USD, Burbank-Glendale-Pasadena Airport Authority. Every tenant shares one legacy ColdFusion template: a `jwplayer("myElement").setup({file: "https://spectrum_streaming.s3.amazonaws.com/{tenant}/..."})` inline script (a direct S3 mp4, confirmed fetchable even with the non-DNS-valid underscore in that hostname) and a `<a onclick="jwplayer().seek({s})">` agenda list (one real Alhambra recording concatenates a 5pm special session and a 6pm regular session back to back — both sets of agenda items resolve correctly against the one video). Captions, when present, are a real `.vtt` at `tracks[].file` (confirmed live, Alhambra). Two real "no captions" shapes, both non-errors: `tracks` present with an empty `file` string (Glendale USD) and no `tracks` key at all (South Pasadena, BGPAA). A tenant's bare root is a truncated fragment carrying only the newest meeting's filename, not a real listing — `passive_verify._spectrumstream_walker()` bootstraps from it, fetching that meeting's own page for its real, full past-meetings `<select>`; South Pasadena's own root has been replaced by a live-only Castr embed with that select entirely HTML-commented out, so its walker falls back to one known-real seed meeting page instead (its real per-meeting archive pages are otherwise unaffected).
+3. **Registration**: both platforms added to `detect_platform()`/`register_all_finders()` (`app/platforms/base.py`, `__init__.py`), `scripts/adapter_canary.py` (one live URL each), and `archive/db/crud.py`'s `DIRECT_PLATFORMS` (a shared multi-tenant vendor product, same bucket as Town Hall Streams/SuiteOne). `host_recognition.py` gained a `spectrumstream.com` entry in `_HOST_ONLY_PLATFORMS` (its host alone doesn't confirm a tenant, needs a real path) — 12milesout.com needs no such entry since its subdomain alone already confirms a tenant via `detect_platform()`.
+
+**Verified.** New tests: `tests/test_twelvemilesout.py` (7 cases — both listing themes' happy path with/without captions, the static-theme walker fallback, the JSON-API walker, tenant-host recognition, and a full listing-root resolve delegation) and `tests/test_spectrumstream.py` (10 cases — both real "no captions" shapes, the joint-powers-authority jurisdiction entry, the `live.cfm` non-meeting case, tenant/non-gov-tenant parsing, the broken-root-bootstrap walker, the seed-fallback walker, and a full listing-root resolve delegation), all against real fixture HTML/JSON/VTT fetched live 2026-09-24 under `tests/fixtures/twelvemilesout/` and `tests/fixtures/spectrumstream/`. Full suite: 5582 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean across the whole repo; both `alembic check`s pass (no schema changes — `ResolvedMeeting`'s existing fields cover everything both adapters populate).
+
+**Dry-run ingest plan** (no ingestion performed by this WO — see `README.md`/`CLAUDE.md`'s "run a backfill/bulk sweep from the Render shell, never from an interactive session against production" convention; this used `scripts/bulk_ingest.py --dry-run`, which never contacts the Archive at all): resolved the newest real meeting for each of the 6 governments named in the WO-137 entry, with `scripts/youtube_fetch_guard.install()` installed first (moot here — neither platform touches YouTube — but done per convention).
+
+| Government | gov_id | Platform | Newest meeting | Segments (captions) |
+|---|---|---|---|---|
+| Escondido, CA | `us:place:0622804` | twelvemilesout | 2026-09-16 | 0 |
+| Colton, CA | `us:place:0614890` | twelvemilesout | 2026-09-15 | 0 |
+| Coronado, CA | `us:place:0616378` | twelvemilesout | 2026-09-15 | 1,874 |
+| Covina, CA | `us:place:0616742` | twelvemilesout | 2026-09-15 | 0 |
+| South Pasadena, CA | `us:place:0673220` | spectrumstream | 2026-09-22 | 0 |
+| Glendale Unified School District, CA | `us:sd:0615240` | spectrumstream | 2026-09-08 | 9,166 |
+
+Full plan (url, gov_id, title, segments) written to the conductor's scratchpad at `followup/wo1045_ingest_plan.csv` for the conductor to ingest tier 1 (Coronado, Glendale USD — real captions already) and queue the other 4 (video-only, no captions yet) as tier 3.
+
+Original finding preserved from `BACKLOG.md`:
+
+- **[NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found live sitting one click from a CivicPlus AgendaCenter page that `adhoc_civicplus_pipeline.py` marked `no-video-found` — `spectrumstream.com` (in the AgendaCenter row itself) and `12milesout.com` (on the government's own homepage nav).**
+  - **Issue**: resolving the WO-127/WO-128 "no video" contradiction (WO-137, 2026-09-09 — see `BACKLOG_DONE.md`) turned up two new video platforms, confirmed live, one sample each. (1) Alhambra, CA (`alhambraca.gov/AgendaCenter`) has real, recent (within days) per-meeting `td.media` links to `spectrumstream.com/streaming/alhambra/meeting_{date}.cfm` — well within `_RETRY_LIMIT`, so `_find_candidate_rows()` reads them fine, but `detect_platform()` doesn't recognize `spectrumstream.com` at all, so `_is_real_video_link()` rejects every one and the page reads as having zero video candidates. The page itself is a real "Video Player" wrapping a JW-Player-style `file:` pointing at a real S3-hosted MP4 (`spectrum_streaming.s3.amazonaws.com/alhambra/alhambra_2026_07_27.mp4`) — confirmed by fetching one directly. (2) Escondido, CA's AgendaCenter module is genuinely empty (zero `catAgendaRow`s, zero configured categories — not a JS-hidden case), but its homepage links to "City Council Meeting Broadcasts" → `escondido.12milesout.com`, a real, plain-HTTP, server-rendered per-meeting video archive (`/Video/Meeting/{uuid}` links, real recent dates through 9/2/2026) that no code in this repo recognizes.
+  - **Impact**: both governments are currently counted among the 521 CivicPlus `no-video-found` verdicts; both actually have real, resolvable video. Unknown how many of the other 519 share either shape — this was found via a 30-government live sample, not a targeted search for either domain.
+  - **Next action**: per this project's own "test against a real, live URL first" rule, find 2-3 more confirmed samples of each domain before building either adapter (`external_hosts.txt` in `rtr-business/research` already has 2 unexamined `spectrumstream.com` hits from an earlier crawl — check those first). Once confirmed on multiple tenants: `spectrumstream.com` needs a `detect_platform()` entry plus a small adapter (the `.cfm` page's embedded JW-Player `file:` URL is the direct MP4, per Alhambra); `12milesout.com` needs the same plus per-meeting date/title matching against its `/Video/Meeting/{uuid}` listing.
+  - **Constraint**: `[EXAMPLE]` — one confirmed live sample each is not enough to build an adapter from; don't generalize the page shape from a single tenant.
+  - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
+
+## WO-1045: ChampDS reads its caption files, and download-disabled meetings can be transcribed [Done 2026-09-24]
+
+**What was found.** Two ChampDS gaps, both found live on 2026-09-24.
+
+1. Some customers turn downloads off, so their API response has no `MediaInfo.DownloadURL`. The adapter only ever used `DownloadURL`, so these meetings said "No video found," even though a video exists. Seen on Cobb County GA (`play.champds.com/cobbcoga/event/155`) and Gwinnett County GA (`gwinnettcoga/event/356`).
+2. `MediaInfo.Captions` was never read. El Paso County CO (`elpasococo/event/164`) lists a real English caption file and resolved with 0 transcript segments. This closes the old `BACKLOG.md` entry "ChampDS's `MediaInfo.Captions` is no longer confirmed-always-empty", which had Atlanta GA event 1077 as its one positive example.
+
+**What was tested, live.** Every row below was requested with `curl`, first with no Referer, then with `Referer: https://play.champds.com/` (ChampDS's own site).
+
+| URL tried | No Referer | ChampDS Referer |
+|---|---|---|
+| `play.champds.com/CAPTION/{customer}{Captions[].MediaPath}` | 200, real WEBVTT | 200 |
+| `securestream10.champds.com{VOD2}` (HLS master) | 406 | 302 to `/VOD/version/{token}/master.m3u8`, then 200 |
+| that stream's variant playlist and a `.ts` segment | 406 | 200 |
+| `securestream10.champds.com{MediaPath}` (`.mp4`) | 404 | 404 |
+| `play.champds.com{MediaPath}` and `play.champds.com/{customer}{MediaPath}` | 404 | 404 |
+| `play.champds.com/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{id}` | 403 | not tried |
+
+Where the URLs came from: ChampDS's own player script, `_COMMON/players/vjs2026/embed.js`. Its `loadPlayer()` builds the VOD2 URL from the ServiceTypeID-2048 (else 8) entry's `URLBase`. A commented-out block in its `localEmbed()` builds caption URLs as `/CAPTION/{customer}{MediaPath}`.
+
+**Result.**
+
+- **Captions**: read from `MediaInfo.Captions` (English preferred), fetched from `/CAPTION/`, and parsed through the shared `vtt_parser` pipeline. El Paso now resolves with 1,110 segments, language `en`, no warnings. Atlanta 1077 resolves with 1,770.
+- **Video for readers**: unchanged. VOD2 still can't go in `video_url`, because a reader's browser can't send ChampDS's Referer. The reader now sees a different warning: "This meeting has a video, but ChampDS only streams it inside its own player..." So "no video" and "video we can't play here" are now told apart.
+- **Video for transcription**: new `ResolvedMeeting.server_media_url` field. It holds a URL only our server can read, and is set only when `video_url` is empty. `media_probe.transcription_media_url(result)` returns `video_url`, or else `server_media_url`. All six job-creation callers use it: the resolver's check-feasibility and submit routes, `worker/main.py` (auto-generation and the per-chunk re-resolve), `scripts/transcribe_backlog_locally.py`, `scripts/bulk_queue_transcription_backlog.py`, `scripts/feed_tier3_auto_transcription.py`, and `queue_probe.probe_queue_entry()`. No header code changed: `media_probe` and `queue_probe` already send `Referer: {source page origin}/`, and for a ChampDS page that is exactly `https://play.champds.com/`.
+
+Verified end to end on this Mac, through the real code paths:
+
+| Meeting | Queue probe | Duration probe | 30 s audio chunk |
+|---|---|---|---|
+| Cobb County GA, event 155 | accept | 6,197 s | extracted, real speech ("Our team is honored to accept this proclamation...") |
+| Gwinnett County GA, event 356 | accept | 2,230 s | extracted, real speech |
+
+**Caution.** These meetings still have no player on our pages, so transcript timestamps can't seek. The open `BACKLOG.md` entry "ChampDS's VOD2 stream ... can be transcribed but still can't play on our pages" carries the reverse-proxy work that would fix that. Its old claim that our server "can't satisfy" the Referer check was wrong and has been corrected there.
+
+**Tests.** `tests/test_champds.py`: new fixtures from the real API responses for all three meetings (trimmed to the fields the adapter reads), plus the first 40 cues of El Paso's real caption file. Tests cover both download-disabled customers, the caption shape, a 404 on the caption file, and two synthetic edge cases (no stream host, several caption languages). All 29 ChampDS tests pass.
+
 ## WO-1044: Hop link-ranking fixes from Ryan's Suffolk County notes [Done 2026-09-24]
 
 **What.** The conductor traced a real 12-fetch Meeting Finder miss on Suffolk County NY (`us:county:36103`, `suffolkcountyny.gov`): it spent every fetch on news articles, a PDF, `/Site-Feedback`, `/county-executive` and a Google tracking-tag page, and never followed the homepage's own `<a href="https://www.scnylegislature.us/" target="_blank">Legislature</a>` link. Four fixes to `app/platforms/meeting_finder/hop.py`'s `rank_hops()`:
