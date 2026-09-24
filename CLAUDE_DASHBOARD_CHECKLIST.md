@@ -1,10 +1,11 @@
-# Dashboard checklist — 2026-09-23
+# Dashboard checklist — 2026-09-24
 
-One item today. Everything else in BACKLOG.md's "Needs a human" section
-(and the other places this routine checks: Search Console/SEO subsection,
-Trust/Roadmap `[HUMAN]` items) needs either a production script run, a
-judgment call, or research — not a quick dashboard glance — so it's left
-off this list on purpose. See BACKLOG.md for those.
+One item today, same as the last few days. Everything else in
+BACKLOG.md's "Needs a human" section (plus the other places this
+routine checks: Search Console/SEO subsection, Trust/Roadmap `[HUMAN]`
+items) needs either a production script run, a judgment call, or
+research — not a quick dashboard glance — so it's left off this list on
+purpose. See BACKLOG.md for those.
 
 ## 1. Render bandwidth cap — size the overage cost
 
@@ -22,9 +23,10 @@ should take").
 (`ARCHIVE_BASE_URL` routing the public site through the Archive over the
 public internet) was fixed 2026-08-30 by moving it to Render's private
 network, and an even older version of this same alert type turned out to
-have a wrong stated limit (5 GB claimed vs. 25 GB real). Checked both
-against BACKLOG_DONE.md and git log 2026-09-23 — no entry closes this
-2026-09-13 occurrence, so it's still open.
+have a wrong stated limit (5 GB claimed vs. 25 GB real). Re-checked both
+`BACKLOG_DONE.md` and `git log` today (2026-09-24) — still no entry
+closes this 2026-09-13 occurrence, so it's still open. This is the
+fourth day running this item has survived the filter unchanged.
 
 **Step 1 — Render → Workspace → Billing → Included Usage**
 Go to `https://dashboard.render.com/w/tea-d21a0h24d50c739htil0/billing`.
@@ -40,6 +42,9 @@ check used). Note the total GB used and how far past 25 GB it is.
   fine) and this is organic public traffic, not a regression — the
   question becomes whether normal traffic has just grown past 25 GB and
   the plan needs a bigger included allowance.
+- If the cycle has reset and usage is back under 25 GB: nothing is
+  accruing right now — note the reset date so this entry can finally be
+  closed out in `BACKLOG.md` (moved to `BACKLOG_DONE.md`).
 
 **Step 2 — same page → look for a cost/overage figure**
 Look for a billed or projected overage dollar amount for this cycle
@@ -47,8 +52,9 @@ Look for a billed or projected overage dollar amount for this cycle
 GB-over-25 × $15/100GB). Write down: GB over cap, and the resulting $.
 
 **What each answer means**: a small overage (a few GB, a few dollars) —
-note it and let the cycle reset; no action needed. A large or accelerating
-overage — worth deciding whether to upsize the Render plan's included
-bandwidth or dig into what's driving the extra traffic. Either way, the
-next step is recorded in BACKLOG.md under this entry once the real
-numbers are in hand — update that entry with what the dashboard shows.
+note it and let the cycle reset; no action needed. A large or
+accelerating overage — worth deciding whether to upsize the Render
+plan's included bandwidth or dig into what's driving the extra traffic.
+Either way, the next step is recorded in BACKLOG.md under this entry
+once the real numbers are in hand — update that entry with what the
+dashboard shows.
