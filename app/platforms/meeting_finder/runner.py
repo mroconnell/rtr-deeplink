@@ -1060,6 +1060,8 @@ async def run_one(
             ),
             phase_reached="resolve",
             result_url=result.video_url,
+            meeting_url=result.candidate.url if result.candidate else None,
+            meeting_title=result.candidate.title if result.candidate else None,
             platform=result.platform,
             tier=result.tier,
             duration_seconds=result.duration_seconds,
@@ -1117,6 +1119,8 @@ async def run_one(
 
     low_confidence_reason = ""
     audio_only = False
+    meeting_url: Optional[str] = None
+    meeting_title: Optional[str] = None
     if result is not None:
         outcome = None
         result_url = result.video_url
@@ -1125,6 +1129,9 @@ async def run_one(
         duration_seconds = result.duration_seconds
         note = result.note
         audio_only = result.audio_only
+        if result.candidate is not None:
+            meeting_url = result.candidate.url
+            meeting_title = result.candidate.title
         if result.tier == 2 and result.candidate is not None:
             state.leads.append({"kind": "youtube", "url": result.candidate.url})
     elif lc_result is not None:
@@ -1140,6 +1147,9 @@ async def run_one(
         duration_seconds = lc_result.duration_seconds
         note = lc_result.note or "kept despite: low confidence"
         low_confidence_reason = lc_result.low_confidence_reason or ""
+        if lc_result.candidate is not None:
+            meeting_url = lc_result.candidate.url
+            meeting_title = lc_result.candidate.title
     else:
         if any(lead.get("kind") == "youtube" for lead in state.leads):
             state.outcomes.append(OUTCOME_YOUTUBE_LEAD_ONLY)
@@ -1169,6 +1179,8 @@ async def run_one(
         path=state.path,
         phase_reached=state.phase_reached,
         result_url=result_url,
+        meeting_url=meeting_url,
+        meeting_title=meeting_title,
         platform=platform,
         tier=tier,
         duration_seconds=duration_seconds,

@@ -54,23 +54,39 @@ confident/approved rows:
     result.video_url`) then reports this as a plain "skipped" with no
     indication that the URL was even the wrong shape.
 
-Net effect: this script's ingest/queue candidates are real and worth
-acting on, but for every platform except Vimeo (and, coincidentally,
-whatever a bare CDN mp4/mp3 URL happens to fall through to `direct_file`
-as), a resolve attempt against `result_url` alone is not expected to
-produce a real transcript -- see this module's own `--live-check` output
-and BACKLOG.md's "Meeting Finder verdicts don't keep the candidate page
-URL, only the final video URL" entry (filed alongside this WO) for the
-recommended fix (add a `candidate_url` field to `VerdictRow`).
+Net effect (as of the original WO-1040 build): this script's ingest/queue
+candidates were real and worth acting on, but for every platform except
+Vimeo (and, coincidentally, whatever a bare CDN mp4/mp3 URL happened to
+fall through to `direct_file` as), a resolve attempt against `result_url`
+alone was not expected to produce a real transcript.
 
-Never guesses a page URL to work around this: `ingest_plan.csv` records
-exactly what a real `--live-check` resolve attempt against `result_url`
-found (or, without `--live-check`, marks it "not checked"), and
-`queue_lines.txt` queues the real `result_url` anyway for tier-3 rows --
-Ryan's rule (feed_tier3_auto_transcription.py's own docstring) is that a
-stale/wrong-shaped queue candidate just fails cleanly at pickup time
-rather than corrupting anything, so queuing it is safe even when today's
-check says it won't resolve.
+**WO-1042 fix: `VerdictRow` now carries `meeting_url`/`meeting_title`**
+(`app/platforms/meeting_finder/models.py`) -- the real Candidate URL
+Resolve was actually called with, e.g. a Granicus `MediaPlayer.php` page
+or a Swagit/Cablecast/TelVue meeting page, not just the raw stream/CDN
+URL `result_url` records. This script now queues/ingests
+`meeting_url or result_url` (see `queue_url()` below) instead of
+`result_url` alone, so a Granicus/Swagit/Cablecast/TelVue find gets
+handed to its real adapter against the real page it was found on --
+letting that adapter pull real captions when the page has them -- rather
+than falling through to a raw, caption-less stream. `finds.json` rows
+built before this fix simply have no `meeting_url` field, so `queue_url()`
+falls back to `result_url` for those automatically; no backfill needed.
+`ingest_plan.csv`/`queue_lines.txt` still record exactly what a real
+`--live-check` resolve attempt found (or, without `--live-check`, marks
+it "not checked"), and `queue_lines.txt` still queues tier-3 rows
+regardless -- Ryan's rule (feed_tier3_auto_transcription.py's own
+docstring) is that a stale/wrong-shaped queue candidate just fails
+cleanly at pickup time rather than corrupting anything, so queuing it is
+safe even when today's check says it won't resolve.
+
+Also WO-1042: the Google Drive download-URL gap this module used to flag
+via `is_known_unresolvable_today()` (a `drive.usercontent.google.com/
+download?id=...` URL that `direct_file.py` didn't recognize as the same
+file as the classic `drive.google.com/file/d/<id>` share link) is fixed
+directly in `app/platforms/direct_file.py` -- see that module's own
+comment. `is_known_unresolvable_today()` flags nothing today; kept as a
+named hook for the next confirmed-live gap.
 
 Inputs (all read-only, all local files -- nothing here talks to
 rtr-business over the network and nothing here mutates it):
@@ -198,44 +214,32 @@ DEFAULT_LEAD_SOURCE = "meeting-finder-2026-09-24"
 
 _YOUTUBE_CHANNEL_PATH_MARKERS = ("/channel/", "/c/", "/@", "/user/")
 
-# Confirmed live 2026-09-24 (see this module's docstring): `app.platforms.
-# direct_file.is_direct_file_url()`'s own Google Drive check
-# (`_DRIVE_FILE_ID_RE = re.compile(r"drive\.google\.com/file/d/([\w-]+)")`)
-# only matches Drive's classic VIEWER share-link shape
-# (`drive.google.com/file/d/<id>/view`), which that same module's resolve
-# path then REWRITES into the real download URL
-# (`drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`).
-# It does not also recognize that already-rewritten download URL as
-# input. `detect_platform()` therefore returns "unknown" for a
-# `drive.usercontent.google.com/download?id=...` URL passed in directly
-# (no extension in the URL either, so the generic media_type() fallback
-# doesn't catch it), and `get_finder()` raises `UnsupportedPlatformError`
-# -- confirmed live against a real approved_direct.csv row (Martin County
-# School District, MN, us:sd:2718960). Several `approved_direct.csv` rows
-# (WO-1040) carry exactly this already-rewritten shape (whoever hand-
-# verified them followed the link to its real download URL and recorded
-# that, not the original share link) -- this constant flags them so the
-# dry-run summary calls this out explicitly rather than silently queuing
-# something that can never resolve as the adapter is coded today. See
-# BACKLOG.md's matching entry (filed alongside this WO) for the
-# recommended fix: teach `is_direct_file_url()`/the Drive rewrite in
-# `app/platforms/direct_file.py` to also recognize
-# `usercontent.google.com/download` URLs directly, not just the classic
-# `drive.google.com/file/d/` share link.
+# WO-1042 update: this WAS a confirmed-live gap (see git history for the
+# original long comment) -- `app.platforms.direct_file.is_direct_file_url()`
+# only recognized Drive's classic `drive.google.com/file/d/<id>` viewer
+# share link, not the already-rewritten download URL
+# (`drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`)
+# that same module's own resolve path rewrites INTO. WO-1042 taught
+# `direct_file.py` to recognize the download shape (and the `drive.google.
+# com/uc?id=...` alias) directly -- confirmed live 2026-09-24 against the
+# same real row this constant used to flag (Martin County School
+# District, MN, `us:sd:2718960`): it now resolves with a real
+# `ResolvedMeeting`, platform `direct_file`. Kept as a named hook (always
+# "" today) rather than deleted outright, since a *different* structural
+# gap belongs in exactly this spot the next time one is confirmed live --
+# see this module's docstring for the update note.
 _DRIVE_DOWNLOAD_URL_MARKER = "drive.usercontent.google.com/download"
 
 
 def is_known_unresolvable_today(url: str) -> str:
     """Returns a plain-language reason string when `url` is a known,
-    already-confirmed-live gap in the current adapters (not a guess --
-    see `_DRIVE_DOWNLOAD_URL_MARKER`'s own comment), or "" otherwise."""
-    if _DRIVE_DOWNLOAD_URL_MARKER in url:
-        return (
-            "Google Drive download URL (drive.usercontent.google.com/download?id=...) -- "
-            "app/platforms/direct_file.py's is_direct_file_url() only recognizes the classic "
-            "drive.google.com/file/d/<id> share link, not this already-rewritten download URL "
-            "(confirmed live 2026-09-24); detect_platform() returns 'unknown' for it today"
-        )
+    already-confirmed-live gap in the current adapters, or "" otherwise.
+    No gap is currently flagged here (the Google Drive download-URL gap
+    this used to flag was fixed in WO-1042) -- this function is kept as
+    the hook a future confirmed-live gap plugs into, per this module's
+    own convention of never guessing a resolve outcome without a real
+    check behind it."""
+    del url  # no known gap today -- see docstring
     return ""
 
 
@@ -259,6 +263,24 @@ class Candidate:
     group: str
     approved: bool
     approval_reason: str = ""
+    # WO-1042: the real meeting/candidate PAGE url Resolve was called
+    # with (VerdictRow.meeting_url), when finds.json carries one -- "" for
+    # a row built before this field existed, or one that only ever had a
+    # bare result_url (e.g. Vimeo, where result_url already IS the real
+    # resolve input). See queue_url() below for how this and result_url
+    # combine.
+    meeting_url: str = ""
+
+
+def queue_url(candidate: "Candidate") -> str:
+    """The URL this script actually ingests/queues for `candidate`: its
+    real meeting page (`meeting_url`) when known, else its resolved video/
+    media URL (`result_url`) -- see this module's docstring's WO-1042
+    update for why preferring the page matters (a real adapter, real
+    captions) and why the fallback is safe (older finds.json rows, or a
+    platform like Vimeo where the video URL already IS the resolve
+    input)."""
+    return candidate.meeting_url or candidate.result_url
 
 
 def load_finds(path: Path) -> List[dict]:
@@ -302,6 +324,7 @@ def load_approved_direct(path: Optional[Path]) -> List[Candidate]:
                     platform=row.get("platform", "direct_file").strip()
                     or "direct_file",
                     result_url=(row.get("result_url") or "").strip(),
+                    meeting_url=(row.get("meeting_url") or "").strip(),
                     path="",
                     note=row.get("evidence") or "",
                     group="approved-direct",
@@ -349,6 +372,7 @@ def classify(
                         tier=row["tier"],
                         platform=row["platform"],
                         result_url=row["result_url"] or "",
+                        meeting_url=row.get("meeting_url") or "",
                         path=row["path"],
                         note=row["note"],
                         group=group,
@@ -367,6 +391,7 @@ def classify(
                         tier=row["tier"],
                         platform=row["platform"],
                         result_url=row["result_url"] or "",
+                        meeting_url=row.get("meeting_url") or "",
                         path=row["path"],
                         note=row["note"],
                         group=group,
@@ -388,6 +413,7 @@ def classify(
                         tier=row["tier"],
                         platform=row["platform"],
                         result_url=row["result_url"] or "",
+                        meeting_url=row.get("meeting_url") or "",
                         path=row["path"],
                         note=row["note"],
                         group=group,
@@ -404,6 +430,7 @@ def classify(
             tier=row["tier"],
             platform=row["platform"],
             result_url=row["result_url"] or "",
+            meeting_url=row.get("meeting_url") or "",
             path=row["path"],
             note=row["note"],
             group=group,
@@ -427,6 +454,7 @@ def classify(
                     tier=row["tier"],
                     platform=row["platform"],
                     result_url=row["result_url"] or "",
+                    meeting_url=row.get("meeting_url") or "",
                     path=row["path"],
                     note=row["note"],
                     group=group,
@@ -655,7 +683,8 @@ async def plan_tier1(
 ) -> List[PlanRow]:
     rows: List[PlanRow] = []
     for cand in candidates:
-        archived, archived_reason = await already_archived(session, cand.result_url)
+        url = queue_url(cand)
+        archived, archived_reason = await already_archived(session, url)
         if archived:
             rows.append(PlanRow(cand, "already-archived", archived_reason))
             continue
@@ -664,9 +693,7 @@ async def plan_tier1(
                 PlanRow(cand, "not-checked", "pass --live-check to resolve for real")
             )
             continue
-        result = await process_one(
-            session, cand.result_url, dry_run=True, gov_id=cand.gov_id
-        )
+        result = await process_one(session, url, dry_run=True, gov_id=cand.gov_id)
         detail = result["detail"]
         if detail.startswith("[dry-run] would ingest"):
             rows.append(PlanRow(cand, "would-ingest", detail))
@@ -685,31 +712,36 @@ async def plan_tier3(
 ) -> List[PlanRow]:
     rows: List[PlanRow] = []
     for cand in candidates:
-        if is_queued(cand.result_url):
+        url = queue_url(cand)
+        if is_queued(url):
             rows.append(PlanRow(cand, "already-queued"))
             continue
-        archived, archived_reason = await already_archived(session, cand.result_url)
+        archived, archived_reason = await already_archived(session, url)
         if archived:
             rows.append(PlanRow(cand, "already-archived", archived_reason))
             continue
+        # The reader-facing "source" field always compares against
+        # result_url (the raw video/media URL), never queue_url()'s
+        # meeting_url -- source_url_from_path()'s whole point is finding
+        # the government's own page in the pre-resolve hop trail, and
+        # that hop is often the SAME page meeting_url now records, which
+        # would make the comparison (and so the field) go blank.
         source_url = source_url_from_path(cand.path, cand.result_url)
 
-        # A structural, already-confirmed-live gap (e.g. the Google Drive
-        # download-URL shape -- see is_known_unresolvable_today()'s own
-        # comment) is worth flagging even without --live-check, since it
+        # A structural, already-confirmed-live gap (see
+        # is_known_unresolvable_today()'s own comment -- none flagged
+        # today) is worth flagging even without --live-check, since it
         # needs no network call to know. Ryan's rule (WO-1040.md) still
         # applies: queue it anyway rather than dropping it silently --
         # a future adapter fix (see BACKLOG.md) then picks it up on its
         # own the next time the feed script tries it.
-        known_gap = is_known_unresolvable_today(cand.result_url)
+        known_gap = is_known_unresolvable_today(url)
 
         if not live_check:
             detail = known_gap or "not checked -- pass --live-check to resolve for real"
             rows.append(PlanRow(cand, "would-queue", detail, source_url))
             continue
-        result = await process_one(
-            session, cand.result_url, dry_run=True, gov_id=cand.gov_id
-        )
+        result = await process_one(session, url, dry_run=True, gov_id=cand.gov_id)
         detail = result["detail"]
         if known_gap:
             detail = f"{known_gap} (live check: {detail})"
@@ -788,6 +820,7 @@ def write_ingest_plan(path: Path, rows: List[PlanRow]) -> None:
                 "government",
                 "platform",
                 "result_url",
+                "meeting_url",
                 "action",
                 "approval_reason",
                 "detail",
@@ -802,6 +835,7 @@ def write_ingest_plan(path: Path, rows: List[PlanRow]) -> None:
                     c.government,
                     c.platform,
                     c.result_url,
+                    c.meeting_url,
                     row.action,
                     c.approval_reason,
                     row.detail,
@@ -819,7 +853,7 @@ def write_queue_lines(path: Path, rows: List[PlanRow]) -> None:
             if row.action != "would-queue":
                 continue
             c = row.candidate
-            f.write(f"{c.result_url}\t{row.source_url}\t{c.gov_id}\n")
+            f.write(f"{queue_url(c)}\t{row.source_url}\t{c.gov_id}\n")
 
 
 def write_drip_leads(path: Path, leads: List[DripLead], source: str) -> None:
@@ -903,7 +937,7 @@ def write_summary(
         r
         for r in tier3_rows
         if r.action == "would-queue"
-        and is_known_unresolvable_today(r.candidate.result_url)
+        and is_known_unresolvable_today(queue_url(r.candidate))
     ]
     if known_gap_rows:
         lines.append(
@@ -917,7 +951,7 @@ def write_summary(
         lines.append("|---|---|---|")
         for row in known_gap_rows:
             c = row.candidate
-            reason = is_known_unresolvable_today(c.result_url)
+            reason = is_known_unresolvable_today(queue_url(c))
             lines.append(f"| {c.domain} | {c.gov_id} | {reason} |")
         lines.append("")
 
@@ -985,7 +1019,7 @@ async def async_main(args: argparse.Namespace) -> None:
                     continue
                 c = row.candidate
                 result = await process_one(
-                    session, c.result_url, dry_run=False, gov_id=c.gov_id
+                    session, queue_url(c), dry_run=False, gov_id=c.gov_id
                 )
                 print(
                     f"[APPLY-INGEST][{result['status'].upper()}] {c.domain}: {result['detail']}"
@@ -997,7 +1031,7 @@ async def async_main(args: argparse.Namespace) -> None:
                 continue
             c = row.candidate
             queued = append_queue_line(
-                c.result_url,
+                queue_url(c),
                 row.source_url,
                 gov_id=c.gov_id,
                 queue_path=TIER3_QUEUE_FILE,

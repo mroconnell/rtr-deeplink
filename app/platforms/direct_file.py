@@ -178,6 +178,41 @@ _HEAD_TIMEOUT_SECONDS = 20
 # (not seen live yet).
 _DRIVE_FILE_ID_RE = re.compile(r"drive\.google\.com/file/d/([\w-]+)")
 
+# WO-1042: the other two real shapes the SAME Drive file shows up under.
+# `drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`
+# is what `_resolve_direct_media_url()` below already REWRITES a
+# `file/d/<id>` link into -- so it's the exact URL Meeting Finder's own
+# Resolve step hands back as `video_url`/`meeting_url` for a Drive find,
+# and a government whose site links straight to a `...usercontent...`
+# download URL (12 real rows confirmed live 2026-09-24 in WO-1040's
+# dry-run summary -- martin.k12.mn.us, peacham.net, alamosacounty.org and
+# nine more, all school/town sites that paste the already-rewritten
+# download link rather than the `/file/d/` share page) hit exactly the
+# same "detect_platform() returns 'unknown'" gap. `drive.google.com/uc?
+# id=<id>` is Drive's other long-standing direct-download alias for the
+# same file (not yet seen live on a real government site, but the same
+# shape Drive itself documents and the shape `gdown`/other tooling
+# produces) -- recognized here too so a pasted link in that form doesn't
+# hit the same gap the moment one turns up.
+_DRIVE_DOWNLOAD_ID_RE = re.compile(
+    r"drive\.usercontent\.google\.com/download\?[^\s\"'<>]*\bid=([\w-]+)"
+)
+_DRIVE_UC_ID_RE = re.compile(r"drive\.google\.com/uc\?[^\s\"'<>]*\bid=([\w-]+)")
+
+
+def _drive_file_id(url: str) -> Optional[str]:
+    """The Drive file id behind any of the three recognized share/download
+    shapes, or `None` when `url` isn't a Google Drive link at all. A
+    single choke point so `is_direct_file_url()` and
+    `_resolve_direct_media_url()` can't drift out of sync on which shapes
+    count as "the same file" (WO-1042)."""
+    for pattern in (_DRIVE_FILE_ID_RE, _DRIVE_DOWNLOAD_ID_RE, _DRIVE_UC_ID_RE):
+        match = pattern.search(url)
+        if match:
+            return match.group(1)
+    return None
+
+
 # Laserfiche WebLink's own document-download endpoint -- confirmed real
 # shape live 2026-09-12 against `test.co.jefferson.wa.us/WeblinkExternal/`
 # (see module docstring). Captures the numeric docid so
@@ -305,7 +340,7 @@ def is_direct_file_url(url: str) -> bool:
     can resolve -- called from `detect_platform()` as the LAST check,
     after every known vendor platform, so a video URL that's actually
     served BY a recognized platform never reaches here."""
-    if _DRIVE_FILE_ID_RE.search(url):
+    if _drive_file_id(url) is not None:
         return True
     if is_laserfiche_url(url):
         return True
@@ -387,9 +422,8 @@ def _classify_laserfiche_media(chunk: bytes) -> Optional[str]:
 def _resolve_direct_media_url(url: str) -> str:
     """The real, fetchable media URL behind a share link, or the URL
     itself when it's already a bare, playable first-party file."""
-    drive_match = _DRIVE_FILE_ID_RE.search(url)
-    if drive_match:
-        file_id = drive_match.group(1)
+    file_id = _drive_file_id(url)
+    if file_id is not None:
         return (
             "https://drive.usercontent.google.com/download"
             f"?id={file_id}&export=download&confirm=t"

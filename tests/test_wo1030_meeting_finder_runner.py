@@ -131,6 +131,42 @@ async def test_entry_resolve_unchanged(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_entry_resolve_populates_meeting_url_from_candidate(monkeypatch):
+    """WO-1042: VerdictRow.meeting_url/meeting_title carry the real
+    Candidate Resolve was called with -- separate from result_url (the
+    resolved VIDEO url), since several platforms (Granicus/Swagit/
+    Cablecast/TelVue) hand back a raw stream URL with no path back to the
+    meeting page itself."""
+    candidate_url = "https://example.gov/MediaPlayer.php?view_id=1&clip_id=42"
+
+    async def fake_resolve(candidates, finder_input, *, max_tries):
+        return (
+            ResolveResult(
+                candidate=Candidate(
+                    url=candidate_url, title="City Council", source_phase="list"
+                ),
+                tier=1,
+                platform="granicus",
+                video_url="https://archive-stream.granicus.com/x/playlist.m3u8",
+                has_segments=True,
+                duration_seconds=1800,
+                outcome=None,
+                note="",
+            ),
+            None,
+        )
+
+    monkeypatch.setattr(runner, "_resolve_candidates_with_meeting", fake_resolve)
+
+    fi = FinderInput(url="https://example.gov/watch", entry="resolve")
+    row = await runner.run_one(fi, run_id="r1")
+
+    assert row.meeting_url == candidate_url
+    assert row.meeting_title == "City Council"
+    assert row.result_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
+
+
+@pytest.mark.asyncio
 async def test_entry_identify_walks_to_list_then_resolve(monkeypatch):
     fi = FinderInput(url="https://example.gov/watch", entry="identify")
 
@@ -172,6 +208,10 @@ async def test_entry_identify_walks_to_list_then_resolve(monkeypatch):
     assert row.tier == 1
     assert row.outcome is None
     assert fi.url in row.path
+    # WO-1042: the walk-based path (Identify -> List -> Resolve) also
+    # populates meeting_url from the winning Candidate, same as the bare
+    # entry="resolve" path above.
+    assert row.meeting_url == "https://city.granicus.com/clip/1"
 
 
 @pytest.mark.asyncio

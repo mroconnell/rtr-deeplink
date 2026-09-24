@@ -25,6 +25,7 @@ from scripts.meeting_finder_followups import (
     load_approved,
     load_approved_direct,
     load_existing_lead_urls,
+    queue_url,
     source_url_from_path,
 )
 
@@ -213,11 +214,12 @@ def test_load_approved_direct_skips_non_approve_rows(tmp_path):
     assert load_approved_direct(csv_path) == []
 
 
-def test_known_gdrive_download_url_is_flagged_unresolvable():
+def test_gdrive_download_url_no_longer_flagged_unresolvable():
+    """WO-1042: direct_file.py now recognizes this already-rewritten
+    download shape directly (confirmed live against a real martin.k12.mn.us
+    row), so this used-to-be-a-gap URL is no longer flagged."""
     url = "https://drive.usercontent.google.com/download?id=1abc&export=download&confirm=t"
-    reason = is_known_unresolvable_today(url)
-    assert reason
-    assert "drive.usercontent.google.com" in reason
+    assert is_known_unresolvable_today(url) == ""
 
 
 def test_ordinary_mp3_url_is_not_flagged():
@@ -225,9 +227,8 @@ def test_ordinary_mp3_url_is_not_flagged():
 
 
 def test_classic_drive_share_link_is_not_flagged():
-    """The OLD drive.google.com/file/d/<id> shape IS handled by
-    direct_file.py's own rewrite -- only the already-rewritten download
-    URL is the confirmed gap."""
+    """The classic drive.google.com/file/d/<id> shape has always been
+    handled by direct_file.py's own rewrite."""
     assert (
         is_known_unresolvable_today("https://drive.google.com/file/d/abc123/view") == ""
     )
@@ -253,6 +254,44 @@ def test_source_url_from_path_blank_when_same_as_result_url():
 
 def test_source_url_from_path_blank_when_no_path():
     assert source_url_from_path("", "https://cdn.example/video.mp4") == ""
+
+
+# ---------------------------------------------------------------------------
+# queue_url() -- WO-1042
+# ---------------------------------------------------------------------------
+
+
+def test_queue_url_prefers_meeting_url_when_set():
+    finds = [
+        _find_row(
+            group="confident",
+            tier="3",
+            result_url="https://archive-stream.granicus.com/x/playlist.m3u8",
+            meeting_url="https://city.granicus.com/MediaPlayer.php?view_id=1&clip_id=42",
+        )
+    ]
+    _tier1, tier3, _held, _pending = classify(finds, {})
+    assert len(tier3) == 1
+    assert (
+        queue_url(tier3[0])
+        == "https://city.granicus.com/MediaPlayer.php?view_id=1&clip_id=42"
+    )
+
+
+def test_queue_url_falls_back_to_result_url_when_meeting_url_is_blank():
+    """Older finds.json rows (built before WO-1042) carry no meeting_url
+    at all, and a platform like Vimeo never had one to begin with --
+    result_url already IS the real resolve input there."""
+    finds = [
+        _find_row(
+            group="confident",
+            tier="3",
+            result_url="https://player.vimeo.com/video/1212025580",
+        )
+    ]
+    _tier1, tier3, _held, _pending = classify(finds, {})
+    assert len(tier3) == 1
+    assert queue_url(tier3[0]) == "https://player.vimeo.com/video/1212025580"
 
 
 # ---------------------------------------------------------------------------
