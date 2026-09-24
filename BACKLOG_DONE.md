@@ -28,7 +28,7 @@
 
 **Recommendation.** Run, on the machine with the rtr-business checkout: `python queue_pipeline.py feed --recon <to-drains output>`, then `drain2 --wait-for-feeder`, then `drain3 --wait-for-stage2`. Once those finish, run `from-drains` on the real result files and feed the output back into Meeting Finder.
 
-**Verified.** New tests: `tests/test_meeting_finder_to_drains.py` (31 tests). Full suite: 5,512 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes). PR #TBD, not merged — awaiting the conductor's review.
+**Verified.** New tests: `tests/test_meeting_finder_to_drains.py` (31 tests). Full suite: 5,512 passed, 16 skipped, 4 xfailed, 2 pre-existing failures unrelated to this change (`test_repair_wrong_pages.py`, `test_wrong_page_screen.py`, already tracked in `BACKLOG.md`). `ruff check`/`ruff format --check` clean; both `alembic check`s pass (no schema changes). PR #1406, not merged — awaiting the conductor's review.
 
 ## WO-1039: TelVue/link-ranking follow-ups from WO-1038 (off-site stations, Pass-1 budget floor, junk-link ranking, aiohttp header-size fix) [Done 2026-09-24]
 
