@@ -63,6 +63,7 @@ from .listing import ListResult, list_account
 from .pacing import pace_all_requests
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
+    OUTCOME_EMBED_RESTRICTED,
     OUTCOME_ERROR,
     OUTCOME_YOUTUBE_LEAD_ONLY,
     OUTCOME_MEETING_WITHOUT_VIDEO,
@@ -116,6 +117,12 @@ _OUTCOME_PRIORITY: Dict[str, int] = {
     # here so a future caller of `_pick_outcome()` on a raw outcome list
     # still ranks a real (if low-confidence) video above a bare access
     # block or "nothing found".
+    # WO-1046: a CONFIRMED real meeting, just access-restricted by its
+    # owner -- see `models.OUTCOME_EMBED_RESTRICTED`'s own comment. Same
+    # defensive-only note as OUTCOME_VIDEO_LOW_CONFIDENCE above applies:
+    # `run_one()` handles `state.low_confidence` directly. Ranked one above
+    # it (we KNOW this is a real meeting, not just suspect one).
+    OUTCOME_EMBED_RESTRICTED: 96,
     OUTCOME_VIDEO_LOW_CONFIDENCE: 95,
     OUTCOME_ACCOUNT_NOT_FOUND: 90,
     # WO-1031: a YouTube lead beats an access block (Essex, ON) but never a
@@ -201,6 +208,11 @@ _TRY_NEXT: Dict[str, str] = {
     OUTCOME_VIDEO_LOW_CONFIDENCE: (
         "video found but low confidence (see note): hand-check it, or look for a "
         "cleaner candidate on the same account"
+    ),
+    # WO-1046 (Ryan, 2026-09-24): exact wording asked for.
+    OUTCOME_EMBED_RESTRICTED: (
+        "video plays only on the government's own site: link out, can't "
+        "embed or transcribe"
     ),
     "cloudflare-challenge-blocked": "blocked: try another network, or Wayback by hand",
     "blocked-waf-akamai": "blocked: try another network, or Wayback by hand",
@@ -349,19 +361,30 @@ def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]
 
 
 async def _cached_list_account(
-    platform: str, account_url: str, fetcher: Fetcher, state: _WalkState
+    platform: str,
+    account_url: str,
+    fetcher: Fetcher,
+    state: _WalkState,
+    *,
+    page_url: Optional[str] = None,
 ) -> ListResult:
     """WO-1035 item 5: "accounts listed once" -- `_shallow_step()` runs on
     every fork AND every hop, and more than one of those can land on the
     same real account (Des Plaines IL's ChampDS account, listed once per
     fork before this fix -- cablecast3 report, 2026-09-23). Caches by
     (platform, normalized account url) for the life of one government's
-    walk; a `BudgetExceeded` is never cached (it isn't a real answer)."""
+    walk; a `BudgetExceeded` is never cached (it isn't a real answer).
+
+    `page_url` (WO-1046): forwarded to `list_account()`, not part of the
+    cache key -- it's decorative context for Vimeo's candidate
+    `source_url` (see `listing.py`'s own docstring), not a different
+    account, so the first page that reaches a given account "wins" that
+    context for the life of this government's walk."""
     key = (platform, _norm_url(account_url))
     cached = state.listed_accounts.get(key)
     if cached is not None:
         return cached
-    result = await list_account(platform, account_url, fetcher)
+    result = await list_account(platform, account_url, fetcher, page_url=page_url)
     state.listed_accounts[key] = result
     return result
 
@@ -465,7 +488,13 @@ async def _try_resolve(
     # Stash it as a per-government fallback (best rank wins, first-found
     # breaks a tie) and keep walking every other fork/hop; `run_one()`
     # only reaches for it if nothing clean ever resolves anywhere.
-    if result.outcome == OUTCOME_VIDEO_LOW_CONFIDENCE:
+    # WO-1046: OUTCOME_EMBED_RESTRICTED is the same "kept despite"
+    # fallback shape as OUTCOME_VIDEO_LOW_CONFIDENCE (real evidence, not a
+    # clean success) -- its own rank (`_KEPT_DESPITE_EMBED_RESTRICTED`,
+    # negative) already sorts ahead of every video-low-confidence rank, so
+    # sharing this one stash naturally prefers a confirmed-but-restricted
+    # meeting over a merely-uncertain one found elsewhere in the walk.
+    if result.outcome in (OUTCOME_VIDEO_LOW_CONFIDENCE, OUTCOME_EMBED_RESTRICTED):
         rank = (
             result.low_confidence_rank if result.low_confidence_rank is not None else 99
         )
@@ -561,7 +590,11 @@ async def _shallow_step(
             account_url = telvue_account_url_for(ident.final_url or url) or account_url
         try:
             list_result = await _cached_list_account(
-                ident.platform, account_url, fetcher, state
+                ident.platform,
+                account_url,
+                fetcher,
+                state,
+                page_url=ident.final_url or url,
             )
         except SoftBudgetExceeded:
             # WO-1039 item 2: see the identical comment above.
@@ -703,6 +736,22 @@ async def _deep_step(
                     continue
                 if is_youtube_host(urlparse(hop.url).hostname or ""):
                     continue
+                if _meeting_key(hop.url) in state.tried_meeting_keys:
+                    # WO-1046: Scan's own `_try_resolve()` call just above
+                    # already tried this EXACT link (it's one of THIS
+                    # page's media candidates -- a Vimeo/CivicWeb/
+                    # Cablecast/direct-file embed Scan's narrower
+                    # `_anchor_media_candidates()` already recognizes).
+                    # Confirmed live on Suffolk County NY: without this,
+                    # a Vimeo showcase link scored as a "known platform"
+                    # hop got re-Identified/re-Listed as a bare account
+                    # URL with NO page context, producing a worse,
+                    # source-url-less duplicate of the SAME resolve Scan
+                    # already did with the real page in hand -- and since
+                    # `_try_resolve()`'s cross-fork "first found wins" tie-
+                    # break ran on this WORSE duplicate first, it silently
+                    # beat Scan's own better-contextualized attempt.
+                    continue
                 platform = detect_platform(hop.url)
                 if (
                     not platform
@@ -768,6 +817,21 @@ async def _deep_step(
         siblings_tried = 0
         for hop in hops:
             if _norm_url(hop.url) in seen:
+                continue
+            if _meeting_key(hop.url) in state.tried_meeting_keys:
+                # WO-1046: same reasoning as the early-platform-link loop
+                # above -- this exact link is one of THIS page's own media
+                # candidates, and Scan's `_try_resolve()` call already
+                # tried it (with the real page as context) before this
+                # loop ever runs. Confirmed live on Suffolk County NY: a
+                # Vimeo showcase Scan already resolved (embed-restricted)
+                # got re-walked here as a plain "sibling hop" -- via
+                # `_walk_from()`'s own Identify->List path, which has no
+                # page to derive a real source/context from -- producing
+                # a worse duplicate `state.low_confidence` entry that (on
+                # a rank tie) won the "first found" race over Scan's own
+                # better-contextualized one.
+                seen.add(_norm_url(hop.url))
                 continue
             if is_youtube_host(urlparse(hop.url).hostname or ""):
                 # Conductor review (2026-09-23), found live on Boston,
@@ -1137,10 +1201,15 @@ async def run_one(
     elif lc_result is not None:
         # A real video was found somewhere in the walk, but every one of
         # them was a "keep at least one" fallback (a rejected title, a
-        # too-short probe, an unmeasurable length) -- report it, but as
-        # OUTCOME_VIDEO_LOW_CONFIDENCE, never as a clean find, so it is
-        # never confused with a real tier-1/tier-3 success downstream.
-        outcome = OUTCOME_VIDEO_LOW_CONFIDENCE
+        # too-short probe, an unmeasurable length, or -- WO-1046 -- a
+        # confirmed meeting Vimeo refuses to serve outside the
+        # government's own site) -- report it as whatever specific
+        # outcome resolve.py already decided (never as a clean find, so
+        # it is never confused with a real tier-1/tier-3 success
+        # downstream). Falls back to OUTCOME_VIDEO_LOW_CONFIDENCE only if
+        # `lc_result.outcome` is somehow unset, which shouldn't happen --
+        # resolve.py's own kept-despite loop always sets one.
+        outcome = lc_result.outcome or OUTCOME_VIDEO_LOW_CONFIDENCE
         result_url = lc_result.video_url
         platform = lc_result.platform
         tier = lc_result.tier
@@ -1148,7 +1217,15 @@ async def run_one(
         note = lc_result.note or "kept despite: low confidence"
         low_confidence_reason = lc_result.low_confidence_reason or ""
         if lc_result.candidate is not None:
-            meeting_url = lc_result.candidate.url
+            if outcome == OUTCOME_EMBED_RESTRICTED:
+                # WO-1046 (Ryan): the video itself can't play here --
+                # point the verdict at the government's own page that
+                # embeds it (where the video DOES play), not the Vimeo
+                # video URL, so "link out" in the try_next message above
+                # actually leads somewhere useful.
+                meeting_url = lc_result.candidate.source_url or lc_result.candidate.url
+            else:
+                meeting_url = lc_result.candidate.url
             meeting_title = lc_result.candidate.title
     else:
         if any(lead.get("kind") == "youtube" for lead in state.leads):

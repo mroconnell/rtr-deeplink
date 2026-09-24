@@ -196,11 +196,32 @@ class ListResult:
 
 
 def _candidate_from_dict(
-    row: dict, *, platform: str, account_url: str, lister: str
+    row: dict,
+    *,
+    platform: str,
+    account_url: str,
+    lister: str,
+    page_url: Optional[str] = None,
 ) -> Optional[Candidate]:
     url = row.get("url") if isinstance(row, dict) else None
     if not url:
         return None
+    # WO-1046: for Vimeo, `account_url` is itself a video-host listing
+    # link (e.g. a showcase's `vimeo.com/showcase/{id}/embed`), not a
+    # page a reader could usefully be sent to -- prefer `page_url` (the
+    # real government page Identify actually found this account link
+    # embedded on, threaded in from `_shallow_step()`) as `source_url`
+    # when we have one. Confirmed live this matters: Suffolk County NY's
+    # Legislature reaches this path directly (Identify's rule-1 URL-host
+    # match on `vimeo.com/showcase/.../embed`, no page fetch at all, so
+    # there is no OTHER source of page context) -- without this, a
+    # downstream "link out to the meeting page" (OUTCOME_EMBED_RESTRICTED)
+    # pointed at the bare Vimeo showcase link instead of a real page.
+    # Every other `_CALENDAR_PAGE_ERROR_PLATFORMS` member's `account_url`
+    # (Legistar's Calendar.aspx, a Tampa/Wistia/Municode listing) is
+    # already a real, useful page on its own, so this is narrowed to
+    # vimeo specifically rather than applied to all of them.
+    source_url = page_url if (page_url and platform == "vimeo") else account_url
     return Candidate(
         url=url,
         title=(row.get("title") or None) if isinstance(row, dict) else None,
@@ -208,18 +229,27 @@ def _candidate_from_dict(
         platform=platform,
         source_phase="list",
         lister=lister,
-        source_url=account_url,
+        source_url=source_url,
         has_video_hint=row.get("has_video_hint") if isinstance(row, dict) else None,
     )
 
 
 def _candidates_from_dicts(
-    rows: List[dict], *, platform: str, account_url: str, lister: str
+    rows: List[dict],
+    *,
+    platform: str,
+    account_url: str,
+    lister: str,
+    page_url: Optional[str] = None,
 ) -> List[Candidate]:
     out: List[Candidate] = []
     for row in rows:
         candidate = _candidate_from_dict(
-            row, platform=platform, account_url=account_url, lister=lister
+            row,
+            platform=platform,
+            account_url=account_url,
+            lister=lister,
+            page_url=page_url,
         )
         if candidate is not None:
             out.append(candidate)
@@ -600,7 +630,7 @@ async def _list_via_discovery(
 
 
 async def _list_via_calendar_page_error(
-    platform: str, account_url: str, limit: int
+    platform: str, account_url: str, limit: int, *, page_url: Optional[str] = None
 ) -> Optional[ListResult]:
     if platform not in _CALENDAR_PAGE_ERROR_PLATFORMS:
         return None
@@ -613,7 +643,11 @@ async def _list_via_calendar_page_error(
     except CalendarPageError as e:
         rows = [dict(c) for c in e.candidates][:limit]
         candidates = _candidates_from_dicts(
-            rows, platform=platform, account_url=account_url, lister="adapter_list"
+            rows,
+            platform=platform,
+            account_url=account_url,
+            lister="adapter_list",
+            page_url=page_url,
         )
         if not candidates:
             return None
@@ -1010,6 +1044,7 @@ async def list_account(
     limit: int = 15,
     platform_params: Optional[dict] = None,
     gov_name: Optional[str] = None,
+    page_url: Optional[str] = None,
 ) -> ListResult:
     """Turn a known account (`platform` + `account_url`) into a list of
     candidate meetings, newest-first. See this module's docstring for the
@@ -1027,6 +1062,12 @@ async def list_account(
     `gov_name` (WO-1041, optional): only used to pick among several real
     bodies sharing one Granicus account (see `_granicus_discover_view_id()`
     above) -- absent, this behaves exactly as before.
+
+    `page_url` (WO-1046, optional): the real government page Identify
+    found `account_url` embedded on (or linked from) -- forwarded to
+    lister (c) for Vimeo only, where `account_url` is itself a video-host
+    listing link, not a page worth pointing a reader at. Absent, this
+    behaves exactly as before.
     """
     notes: List[str] = []
 
@@ -1078,7 +1119,9 @@ async def list_account(
         if b.note:
             notes.append(b.note)
 
-    c = await _list_via_calendar_page_error(platform, account_url, limit)
+    c = await _list_via_calendar_page_error(
+        platform, account_url, limit, page_url=page_url
+    )
     if c is not None:
         if c.candidates:
             return c

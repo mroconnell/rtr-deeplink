@@ -218,6 +218,7 @@ from urllib.parse import parse_qsl, urljoin, urlparse
 
 from app.platforms import host_recognition
 from app.platforms.base import detect_platform
+from app.platforms.vimeo import is_vimeo_event_url
 
 from scripts.wo147_access_ladder_sweep import (  # noqa: E402
     _BOILERPLATE_PHRASES,
@@ -859,6 +860,14 @@ def rank_hops(
         if full in seen or urlparse(full).scheme not in ("http", "https"):
             continue
         if _is_same_site_social_redirect(full, base_netloc):
+            continue
+        if is_vimeo_event_url(full):
+            # WO-1046: a Vimeo LIVE EVENT embed (confirmed real on
+            # Suffolk County NY's Legislature homepage, alongside 14 real
+            # showcase embeds) -- never a meeting-page answer on its own,
+            # so it's never worth spending a hop/fetch on. The page's
+            # other embeds (its real showcases) and archive links are
+            # scored normally below.
             continue
         resolved_platform, is_host_fallback = _resolved_platform_for(full)
         # WO-1038: a link to a real, known meeting/video platform -- per

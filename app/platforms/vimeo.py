@@ -373,6 +373,38 @@ def is_vimeo_listing(url: str) -> bool:
     return bool(_LISTING_PATH_RE.match(parsed.path))
 
 
+# WO-1046: `vimeo.com/event/{id}` is a Vimeo LIVE EVENT (a different id
+# space than a real video, see `parse_vimeo_video()`'s own docstring) --
+# confirmed live on Suffolk County NY's Legislature homepage
+# (`vimeo.com/event/4795861/embed`, alongside 14 real showcase embeds on
+# the same page). Never a meeting-page answer on its own (there is no
+# "resolve a live event" path -- it's either live right now or it's
+# nothing), so Meeting Finder's Hop must not spend a fetch chasing it as
+# a next hop the way it would a real vendor link.
+_EVENT_PATH_RE = re.compile(r"^/event/\d+(?:/embed)?/?$")
+
+
+def is_vimeo_event_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if not is_vimeo_host(parsed.netloc):
+        return False
+    return bool(_EVENT_PATH_RE.match(parsed.path))
+
+
+# WO-1046: the exact warning `resolve_video_id()` returns when Vimeo's own
+# oEmbed response reports this video's owner restricted embedding/
+# metadata to specific domains (see that method's own comment for the
+# live evidence). A shared constant, not just an inline string, so
+# `meeting_finder/resolve.py` can detect this exact case (and only this
+# case -- an oEmbed fetch that merely FAILED, e.g. a network error, gets a
+# different, milder warning a few lines below) without duplicating the
+# wording or drifting from it.
+EMBED_DOMAIN_RESTRICTED_WARNING = (
+    "This video's privacy settings restrict it to specific "
+    "domains and don't allow it to play here."
+)
+
+
 def embed_url(video_id: str, privacy_hash: Optional[str] = None) -> str:
     """The player URL `app/static/player.js`'s Vimeo branch embeds. Not a
     media file -- like YouTube's `youtube.com/embed/{id}`, this is an
@@ -521,10 +553,7 @@ class VimeoAssetFinder(AssetFinder):
                 platform=cls.platform_name,
                 source_url=source_url or canonical_video_url(video_id, privacy_hash),
                 external_id=f"vimeo:{video_id}",
-                video_warnings=[
-                    "This video's privacy settings restrict it to specific "
-                    "domains and don't allow it to play here."
-                ],
+                video_warnings=[EMBED_DOMAIN_RESTRICTED_WARNING],
             )
 
         title = (oembed or {}).get("title") or None
