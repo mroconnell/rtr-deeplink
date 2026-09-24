@@ -91,11 +91,23 @@ from .models import (
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
+    OUTCOME_VIDEO_LOW_CONFIDENCE,
     Candidate,
     FinderInput,
     ResolveResult,
 )
 from .pick import pick_candidates
+
+# WO-1035 item 2 (Ryan's rule): a "kept despite" fallback candidate, in
+# the priority order they're preferred at the end of the walk when
+# nothing clean resolved -- rank 0 (a measured-but-too-short video) beats
+# rank 1 (a video the quality gate rejected on title alone -- no duration
+# evidence either way) beats rank 2 (a video whose length couldn't be
+# measured at all: "video, length unknown", tried only after every
+# candidate with SOME known-length evidence). Lower rank wins.
+_KEPT_DESPITE_TOO_SHORT = 0
+_KEPT_DESPITE_GATE_REJECTED = 1
+_KEPT_DESPITE_LENGTH_UNKNOWN = 2
 
 # Same politeness spacing `scripts/wo134_confirmed_hits_ingest.py` uses
 # between depth-search attempts on the same tenant (its own
@@ -155,7 +167,26 @@ async def _resolve_candidates_with_meeting(
     candidates than fit in the remaining budget; those are picked over
     with the same rule and only as many as remain get tried.
     """
-    picked, pick_reason = pick_candidates(list(candidates), limit=max_tries)
+    # WO-1035 item 4: pick over the FULL candidate list, not just the top
+    # `max_tries` -- a YouTube candidate never spends a try (see the loop
+    # below, which routes it to `youtube_leads` before `tries_used` is
+    # incremented), so truncating to `max_tries` here, before that split
+    # happens, could silently drop a real non-YouTube candidate ranked
+    # just below a run of YouTube ones. The loop's own `tries_used`
+    # bound is what actually limits real resolve attempts.
+    candidates_list = list(candidates)
+    picked, pick_reason = pick_candidates(
+        candidates_list, limit=max(len(candidates_list), max_tries)
+    )
+
+    def _note(extra: str) -> str:
+        """WO-1035 item 1: "note in the verdict which rule picked" -- a
+        non-empty `pick_reason` (pick.py only sets one for a non-obvious
+        pick: undated/future-dated bucket, or a demoted/weak title kept as
+        a last resort) is carried into whichever `ResolveResult.note`
+        this call ultimately returns, success or failure alike."""
+        return "; ".join(p for p in (pick_reason, extra) if p)
+
     if not picked:
         return (
             ResolveResult(
@@ -178,12 +209,24 @@ async def _resolve_candidates_with_meeting(
     # duration in queue_probe.IN_WINDOW_*, else the shortest plausible
     # one -- the concrete form of "over 90 minutes, keep looking for a
     # shorter one" the design doc describes).
-    probed: List[Tuple[Candidate, ResolvedMeeting, "queue_probe.ProbeResult"]] = []
+    # The trailing `bool` is `audio_only` (WO-1035 item 3).
+    probed: List[
+        Tuple[Candidate, ResolvedMeeting, "queue_probe.ProbeResult", bool]
+    ] = []
     # `ResolvedMeeting` is `None` specifically for the "lister already
     # confirmed this is a real no-video row" case above (no adapter
     # `resolve()` call ever succeeded for it).
     best_no_video: Optional[Tuple[Candidate, Optional[ResolvedMeeting]]] = None
     reasons: List[str] = [pick_reason] if pick_reason else []
+
+    # WO-1035 item 2: the best "kept despite" candidate seen so far, one
+    # slot per rank (see the module-level `_KEPT_DESPITE_*` constants) --
+    # (Candidate, ResolvedMeeting, duration_or_None, rule_text). Only the
+    # first (highest-ranked) real find per rank is kept, since these are
+    # already tried in `pick.py`'s preferred order.
+    kept_despite: dict[
+        int, Tuple[Candidate, ResolvedMeeting, Optional[float], str]
+    ] = {}
 
     queue: List[Candidate] = list(picked)
     tries_used = 0
@@ -264,6 +307,10 @@ async def _resolve_candidates_with_meeting(
             reasons.append(f"{cand.url}: resolve raised {e}")
             continue
 
+        # WO-1035 item 3: audio-only is no longer a reject -- it's a real
+        # find, just labelled. Fall through to the normal tier-1/tier-3
+        # checks below instead of discarding the candidate.
+        audio_only = False
         if result.video_url:
             gate = assess_video_candidate(
                 title=result.title,
@@ -272,11 +319,21 @@ async def _resolve_candidates_with_meeting(
                 structured=True,
             )
             if gate.rejected:
+                # WO-1035 item 2: kept as a last resort instead of lost --
+                # a promo/hero/test-shaped title the gate rejected, but a
+                # real video URL still came back from the adapter.
+                rule = f"video gate rejected it ({gate.tag}: {gate.detail})"
                 reasons.append(f"{cand.url}: {gate.tag} -- {gate.detail}")
+                if _KEPT_DESPITE_GATE_REJECTED not in kept_despite:
+                    kept_despite[_KEPT_DESPITE_GATE_REJECTED] = (
+                        cand,
+                        result,
+                        None,
+                        rule,
+                    )
                 continue
             if not await _confirm_not_audio_only(result.video_url):
-                reasons.append(f"{cand.url}: resolved video is audio-only")
-                continue
+                audio_only = True
 
         if result.segments:
             return (
@@ -288,7 +345,8 @@ async def _resolve_candidates_with_meeting(
                     has_segments=True,
                     duration_seconds=result.video_duration_seconds,
                     outcome=None,
-                    note="",
+                    note=_note("audio only" if audio_only else ""),
+                    audio_only=audio_only,
                 ),
                 result,
             )
@@ -302,7 +360,7 @@ async def _resolve_candidates_with_meeting(
                 video_format=result.video_format,
             )
             if queue_probe.is_plausible(probe):
-                probed.append((cand, result, probe))
+                probed.append((cand, result, probe, audio_only))
                 if (
                     probe.duration_seconds is not None
                     and queue_probe.IN_WINDOW_MIN_SECONDS
@@ -312,16 +370,50 @@ async def _resolve_candidates_with_meeting(
                     break
                 continue
             reasons.append(f"{cand.url}: {probe.reason or 'probe rejected'}")
+            # WO-1035 item 2: keep a too-short or unmeasurable video as a
+            # last resort too. `reject-short` still has a real measured
+            # duration (the strongest of the three kept-despite ranks);
+            # `reject-dead` here means "no probe recipe/timeout/error",
+            # never "the adapter never returned a video_url" (that path
+            # doesn't reach `probe_queue_entry()` at all) -- see this
+            # module's own `_KEPT_DESPITE_*` ranking.
+            if probe.verdict == "reject-short" and probe.duration_seconds is not None:
+                rule = f"too short ({probe.duration_seconds:.0f}s): {probe.reason}"
+                if _KEPT_DESPITE_TOO_SHORT not in kept_despite:
+                    kept_despite[_KEPT_DESPITE_TOO_SHORT] = (
+                        cand,
+                        result,
+                        probe.duration_seconds,
+                        rule,
+                    )
+            elif probe.verdict == "reject-dead":
+                rule = f"video length couldn't be measured ({probe.reason})"
+                if _KEPT_DESPITE_LENGTH_UNKNOWN not in kept_despite:
+                    kept_despite[_KEPT_DESPITE_LENGTH_UNKNOWN] = (
+                        cand,
+                        result,
+                        None,
+                        rule,
+                    )
             continue
 
         if best_no_video is None and (result.agenda_items or result.agenda_link):
             best_no_video = (cand, result)
 
     if probed:
-        chosen_probe = queue_probe.select_best_probe_result([p for (_, _, p) in probed])
+        chosen_probe = queue_probe.select_best_probe_result(
+            [p for (_, _, p, _) in probed]
+        )
         if chosen_probe is not None:
-            for cand, result, probe in probed:
+            for cand, result, probe, audio_only in probed:
                 if probe is chosen_probe:
+                    note = (
+                        "over 90 minutes, no shorter alternative found"
+                        if probe.duration_seconds and probe.duration_seconds > 90 * 60
+                        else ""
+                    )
+                    if audio_only:
+                        note = "; ".join(p for p in (note, "audio only") if p)
                     return (
                         ResolveResult(
                             candidate=cand,
@@ -331,15 +423,52 @@ async def _resolve_candidates_with_meeting(
                             has_segments=False,
                             duration_seconds=probe.duration_seconds,
                             outcome=None,
-                            note=(
-                                "over 90 minutes, no shorter alternative found"
-                                if probe.duration_seconds
-                                and probe.duration_seconds > 90 * 60
-                                else ""
-                            ),
+                            note=_note(note),
+                            audio_only=audio_only,
                         ),
                         result,
                     )
+
+    # WO-1035 item 2 (Ryan's rule): nothing resolved cleanly, but a video
+    # was found and then would otherwise have been thrown away -- keep the
+    # best-ranked one (see the module-level `_KEPT_DESPITE_*` order)
+    # rather than falling through to "meeting without video" or "nothing
+    # found" while a real video sits right there.
+    #
+    # WO-1035 follow-up (conductor live check, 2026-09-23): this is NOT a
+    # clean find -- `outcome` must be OUTCOME_VIDEO_LOW_CONFIDENCE, never
+    # `None`. Returning `None` here (the original bug) made runner.py's
+    # `_try_resolve()` treat a "kept despite" pick from ONE candidate list
+    # (e.g. a homepage banner .mp4) exactly like a real success and stop
+    # the whole government walk immediately -- confirmed live on
+    # champaignil.gov: a 12-second banner clip on the homepage won before
+    # the walk ever reached the real Cablecast council-meeting account.
+    # `runner.py` now holds this as a per-government FALLBACK (see
+    # `_WalkState.low_confidence`) and keeps walking every other fork/hop;
+    # only if NOTHING clean turns up anywhere is this fallback used as the
+    # final result, with this same outcome and rank intact.
+    for rank in (
+        _KEPT_DESPITE_TOO_SHORT,
+        _KEPT_DESPITE_GATE_REJECTED,
+        _KEPT_DESPITE_LENGTH_UNKNOWN,
+    ):
+        if rank in kept_despite:
+            cand, result, duration, rule = kept_despite[rank]
+            return (
+                ResolveResult(
+                    candidate=cand,
+                    tier=3,
+                    platform=result.platform,
+                    video_url=result.video_url,
+                    has_segments=False,
+                    duration_seconds=duration,
+                    outcome=OUTCOME_VIDEO_LOW_CONFIDENCE,
+                    note=_note(f"kept despite: {rule}"),
+                    low_confidence_reason=rule,
+                    low_confidence_rank=rank,
+                ),
+                result,
+            )
 
     if best_no_video:
         cand, result = best_no_video

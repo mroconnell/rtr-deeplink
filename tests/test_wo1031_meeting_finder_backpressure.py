@@ -14,6 +14,7 @@ from app.platforms.meeting_finder.models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_YOUTUBE_LEAD_ONLY,
+    Candidate,
     FinderInput,
     VerdictRow,
 )
@@ -102,8 +103,17 @@ def test_back_pressure_stops_admitting_while_resolve_is_backed_up(
     async def fake_run_one(finder_input, **kwargs):
         started.append(finder_input.url)
         if finder_input.url.startswith("slow"):
+            # WO-1035: `_try_resolve()` now dedupes candidates by meeting
+            # key before touching the Resolve lane at all -- an empty
+            # list here would short-circuit before ever reaching the
+            # (mocked) `_resolve_candidates_with_meeting()`, which is not
+            # what this test means to exercise. A real, non-empty
+            # candidate still occupies the Resolve slot the same way.
             await runner._try_resolve(
-                [], finder_input, runner._WalkState(), max_tries=1
+                [Candidate(url=f"https://{finder_input.url}/meeting/1")],
+                finder_input,
+                runner._WalkState(),
+                max_tries=1,
             )
         else:
             await asyncio.sleep(0)

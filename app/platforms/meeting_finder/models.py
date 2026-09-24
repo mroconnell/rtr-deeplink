@@ -48,6 +48,16 @@ OUTCOME_YOUTUBE_LEAD_ONLY = "youtube-lead-only"
 # WO-1034: an unexpected exception while walking one government. Written
 # as a row (with the error in `note`) so no government ever goes missing.
 OUTCOME_ERROR = "error"
+# WO-1035 (Ryan's rule, 2026-09-23): a video the video-quality gate would
+# have rejected outright (promo/hero/test title), a probed video below
+# the meeting-plausibility floor, or a video whose length couldn't be
+# measured at all -- kept as a last-resort FIND (not a failure: `outcome`
+# on the winning `ResolveResult` stays `None`, same as any other real
+# find) rather than reporting `no-meeting-nor-video` while a real video
+# sits right there. `ResolveResult.low_confidence_reason` names which
+# rule it was kept despite; this constant exists only so a report can
+# count how often that fallback fired, separately from a clean find.
+OUTCOME_VIDEO_LOW_CONFIDENCE = "video-low-confidence"
 # An entry point wave 2 hasn't built yet (List, Identify, Scan, Hop,
 # Start) was asked for. Never a real finding -- a placeholder so the CLI
 # accepts every `--entry` value from day one and wave 2 can fill each
@@ -130,6 +140,25 @@ class ResolveResult:
     duration_seconds: Optional[float]
     outcome: Optional[str]
     note: str = ""
+    # WO-1035: set on a "keep at least one" fallback pick (see
+    # OUTCOME_VIDEO_LOW_CONFIDENCE above) -- plain words naming the rule
+    # this candidate failed ("video gate rejected it (promo_title: ...)",
+    # "too short (42s, floor is 60s)", "video length couldn't be
+    # measured (...)"). `None` for a clean find.
+    low_confidence_reason: Optional[str] = None
+    # WO-1035 follow-up (conductor live check, 2026-09-23): the rank a
+    # "kept despite" pick was chosen at (0 = known-too-short, 1 =
+    # gate-rejected, 2 = length-unknown -- see resolve.py's own
+    # `_KEPT_DESPITE_*` constants). `None` for a clean find. Exposed so
+    # `runner.py` can compare low-confidence fallbacks found across
+    # DIFFERENT Resolve calls (different forks/hops) for the same
+    # government and keep only the best-ranked one, the same rule
+    # resolve.py already applies within one call.
+    low_confidence_rank: Optional[int] = None
+    # WO-1035 item 3: a resolved video that failed the audio-only check is
+    # no longer a reject -- it's a real find, just labelled. `False` for
+    # an ordinary video (or when `video_url` is None).
+    audio_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -182,4 +211,10 @@ class VerdictRow:
     # WO-1031 (Ryan, 2026-09-23): every failure says what to try next, so
     # misses are easy to revisit. Empty when something resolved.
     try_next: str = ""
+    # WO-1035: mirrors ResolveResult's own fields of the same name (see
+    # OUTCOME_VIDEO_LOW_CONFIDENCE above) -- carried into the Verdict row
+    # so a report can count "kept despite"/"audio only" finds separately
+    # from a clean one without re-reading the JSONL's nested detail.
+    low_confidence_reason: str = ""
+    audio_only: bool = False
     finished_at: str = ""
