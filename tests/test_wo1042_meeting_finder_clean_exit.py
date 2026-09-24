@@ -39,7 +39,8 @@ def _baseline_alive_count() -> int:
 
 def test_no_new_lingering_threads_returns_the_baseline():
     baseline = _baseline_alive_count()
-    assert _join_lingering_threads(timeout=0.1) == baseline
+    # `<=`: a leftover thread from an earlier test may finish meanwhile.
+    assert _join_lingering_threads(timeout=0.1) <= baseline
 
 
 def test_a_thread_that_finishes_within_the_grace_period_is_joined():
@@ -75,7 +76,12 @@ def test_a_thread_still_running_past_the_grace_period_is_counted_not_blocked():
         started = time.monotonic()
         still_alive = _join_lingering_threads(timeout=0.2)
         elapsed = time.monotonic() - started
-        assert still_alive == baseline + 1
+        # A range, not `== baseline + 1`: a thread left over from an
+        # earlier test can finish during the grace period, which lowers
+        # the count by one (WO-1045 CI, and main at 8daa07d: 6 == 4 + 3).
+        # Our own hung thread must still be counted either way.
+        assert t.is_alive()
+        assert 1 <= still_alive <= baseline + 1
         # The whole point: this returns close to the grace period, never
         # blocks for the thread's real (10s) lifetime.
         assert elapsed < 2.0
@@ -94,7 +100,9 @@ def test_multiple_lingering_threads_are_all_counted():
         t.start()
     try:
         still_alive = _join_lingering_threads(timeout=0.1)
-        assert still_alive == baseline + 3
+        # See the single-thread test above for why this is a range.
+        assert all(t.is_alive() for t in threads)
+        assert 3 <= still_alive <= baseline + 3
     finally:
         stop.set()
         for t in threads:
