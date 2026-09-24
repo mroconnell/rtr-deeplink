@@ -85,7 +85,7 @@ from app.platforms.models import ResolvedMeeting
 # importing it directly is safe; a future fix in passive_verify.py
 # reaches Resolve automatically instead of two copies drifting apart.
 from app.platforms.passive_verify import _confirm_not_audio_only
-from app.utils.video_hand_check import assess_video_candidate
+from app.utils.video_hand_check import assess_meeting_evidence, assess_video_candidate
 
 from .models import (
     OUTCOME_MEETING_WITHOUT_VIDEO,
@@ -108,6 +108,13 @@ from .pick import pick_candidates
 _KEPT_DESPITE_TOO_SHORT = 0
 _KEPT_DESPITE_GATE_REJECTED = 1
 _KEPT_DESPITE_LENGTH_UNKNOWN = 2
+# WO-1041: a direct-file/Vimeo/"undated, lister order" find with no real
+# meeting evidence (see `_needs_meeting_evidence()`/`_meeting_evidence()`
+# below). Ranked last -- weaker signal than any of the three above, all of
+# which at least come with a measured (or attempted) duration; this one is
+# purely "nothing said it WAS a meeting", tried only when nothing else
+# turned up anywhere.
+_KEPT_DESPITE_NO_MEETING_EVIDENCE = 3
 
 # Same politeness spacing `scripts/wo134_confirmed_hits_ingest.py` uses
 # between depth-search attempts on the same tenant (its own
@@ -118,6 +125,101 @@ CANDIDATE_DELAY_SECONDS = 0.75
 
 def _is_youtube_candidate(url: str) -> bool:
     return detect_platform(url) == "youtube"
+
+
+# WO-1041 spot-check (BACKLOG_DONE.md's WO-1041 entry): direct files and
+# Vimeo finds with no per-meeting listing behind them were wrong far more
+# often than any other source Resolve accepts as a clean find -- 0/10 real
+# direct-file finds and 3/12 real Vimeo finds in the calibration sample,
+# with every real Vimeo one carrying a meeting/body word or a date. A
+# candidate picked by pick.py's weakest bucket ("picked by: undated, lister
+# order") showed the same pattern regardless of platform. These three need
+# a positive "meeting evidence" check (`assess_meeting_evidence()`) on top
+# of the ordinary `assess_video_candidate()` gate above; every other source
+# already carries its own evidence (a per-meeting listing, a dedicated
+# meeting platform).
+_EVIDENCE_REQUIRED_PLATFORMS = frozenset({"direct_file", "vimeo"})
+
+
+def _needs_meeting_evidence(platform: Optional[str], pick_reason: str) -> bool:
+    return (platform or "").lower() in _EVIDENCE_REQUIRED_PLATFORMS or (
+        "picked by: undated, lister order" in (pick_reason or "")
+    )
+
+
+# WO-1041 build step 2: a Google Drive video link carries no title of its
+# own on the candidate/adapter side -- the title lives on Drive's own file
+# page (`drive.google.com/file/d/<id>/view`), so it must be read before
+# grading. One plain GET, short timeout, in-process cache (a government's
+# walk can hit the same Drive id more than once across forks/hops) --
+# deliberately NOT routed through Fetcher's per-government fetch budget or
+# host-pacing state, the same way `_confirm_not_audio_only()` above (a
+# single HEAD request) stands on its own; this is the same shape of cheap,
+# one-off, side-effect-free lookup, never retried and never escalated past
+# a plain request.
+_DRIVE_HOSTS = frozenset({"drive.google.com"})
+_drive_title_cache: dict[str, Optional[str]] = {}
+
+
+def _is_google_drive_url(url: Optional[str]) -> bool:
+    try:
+        from urllib.parse import urlparse
+
+        return (urlparse(url or "").hostname or "").lower() in _DRIVE_HOSTS
+    except ValueError:
+        return False
+
+
+async def _fetch_drive_title(url: str) -> Optional[str]:
+    if url in _drive_title_cache:
+        return _drive_title_cache[url]
+    title: Optional[str] = None
+    try:
+        import re as _re
+
+        import aiohttp
+
+        timeout = aiohttp.ClientTimeout(total=8)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    body = await resp.text(errors="ignore")
+                    match = _re.search(
+                        r"<title[^>]*>([^<]*)</title>", body, _re.IGNORECASE
+                    )
+                    if match:
+                        # Drive's own page title is "<file title> - Google
+                        # Drive" -- strip the fixed suffix.
+                        title = match.group(1).rsplit(" - Google Drive", 1)[0].strip()
+    except Exception:  # noqa: BLE001 -- a Drive read failing is "no title", not a crash
+        title = None
+    _drive_title_cache[url] = title
+    return title
+
+
+async def _meeting_evidence_texts(
+    cand: Candidate, result: ResolvedMeeting
+) -> List[Optional[str]]:
+    """Every text WO-1041's brief names as evidence source: the resolved
+    title, the candidate's own (pre-resolve) title, the candidate URL's
+    filename/path, the linking page's URL (`cand.source_url`), and, for a
+    Google Drive link, the file's own page title."""
+    texts: List[Optional[str]] = [result.title, cand.title, cand.url, cand.source_url]
+    video_url = result.video_url or cand.url
+    if _is_google_drive_url(video_url):
+        texts.append(await _fetch_drive_title(video_url))
+    return texts
+
+
+async def _meeting_evidence(
+    cand: Candidate, result: ResolvedMeeting, duration_seconds: Optional[float]
+):
+    texts = await _meeting_evidence_texts(cand, result)
+    return assess_meeting_evidence(
+        *texts,
+        duration_seconds=duration_seconds,
+        is_direct_file=(result.platform or "").lower() == "direct_file",
+    )
 
 
 def _to_candidate(raw: dict, *, lister: str, source_url: Optional[str]) -> Candidate:
@@ -336,6 +438,24 @@ async def _resolve_candidates_with_meeting(
                 audio_only = True
 
         if result.segments:
+            if _needs_meeting_evidence(result.platform, pick_reason):
+                evidence = await _meeting_evidence(
+                    cand, result, result.video_duration_seconds
+                )
+                if not evidence.has_evidence:
+                    rule = (
+                        f"no meeting evidence "
+                        f"({evidence.non_meeting_sign or 'nothing found'})"
+                    )
+                    reasons.append(f"{cand.url}: {rule}")
+                    if _KEPT_DESPITE_NO_MEETING_EVIDENCE not in kept_despite:
+                        kept_despite[_KEPT_DESPITE_NO_MEETING_EVIDENCE] = (
+                            cand,
+                            result,
+                            result.video_duration_seconds,
+                            rule,
+                        )
+                    continue
             return (
                 ResolveResult(
                     candidate=cand,
@@ -360,6 +480,24 @@ async def _resolve_candidates_with_meeting(
                 video_format=result.video_format,
             )
             if queue_probe.is_plausible(probe):
+                if _needs_meeting_evidence(result.platform, pick_reason):
+                    evidence = await _meeting_evidence(
+                        cand, result, probe.duration_seconds
+                    )
+                    if not evidence.has_evidence:
+                        rule = (
+                            f"no meeting evidence "
+                            f"({evidence.non_meeting_sign or 'nothing found'})"
+                        )
+                        reasons.append(f"{cand.url}: {rule}")
+                        if _KEPT_DESPITE_NO_MEETING_EVIDENCE not in kept_despite:
+                            kept_despite[_KEPT_DESPITE_NO_MEETING_EVIDENCE] = (
+                                cand,
+                                result,
+                                probe.duration_seconds,
+                                rule,
+                            )
+                        continue
                 probed.append((cand, result, probe, audio_only))
                 if (
                     probe.duration_seconds is not None
@@ -451,6 +589,7 @@ async def _resolve_candidates_with_meeting(
         _KEPT_DESPITE_TOO_SHORT,
         _KEPT_DESPITE_GATE_REJECTED,
         _KEPT_DESPITE_LENGTH_UNKNOWN,
+        _KEPT_DESPITE_NO_MEETING_EVIDENCE,
     ):
         if rank in kept_despite:
             cand, result, duration, rule = kept_despite[rank]

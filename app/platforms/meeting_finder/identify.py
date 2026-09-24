@@ -81,7 +81,7 @@ from bs4 import BeautifulSoup
 from app.platforms import host_recognition
 from app.platforms.base import _ALL_CORPORATE_HOSTS, _REGISTRY, detect_platform
 from app.platforms.youtube_ids import extract_video_id
-from app.utils.video_hand_check import prescreen_homepage_link
+from app.utils.video_hand_check import prescreen_homepage_link, same_organization_flag
 from scripts.platform_fingerprints import fingerprint, load_signatures
 
 from .fetch import FetchResult, Fetcher
@@ -245,6 +245,16 @@ class IdentifyResult:
     outcome: Optional[str] = None
     guess_queue_row: Optional[Dict[str, Any]] = None
     page: Optional[FetchResult] = None
+    # WO-1041 ("destination check"): set when `gov_name` was given and an
+    # off-site vendor/video-host link's own destination doesn't name this
+    # government -- see `identify()`'s own `gov_name`/`gov_domain` params
+    # and `same_organization_flag()` (app.utils.video_hand_check). `None`
+    # when no check was possible/needed. Real confirmed cases this catches
+    # (WO-1041 hop-quality follow-up): Gresham SD WI's own site linking a
+    # PrimeGov tenant that turns out to be Gresham, OR's; Auburn SD linking
+    # a Hooksett, NH Granicus tenant; Laclede Co MO linking Lebanon, MO;
+    # Muskegon SD linking a city's CivicClerk tenant.
+    destination_mismatch: Optional[str] = None
 
 
 # Every platform name `host_recognition.UNSUPPORTED_PLATFORMS` knows has
@@ -679,11 +689,27 @@ async def identify(
     *,
     platform_hint: Optional[str] = None,
     page: Optional[FetchResult] = None,
+    gov_name: Optional[str] = None,
+    gov_domain: Optional[str] = None,
 ) -> IdentifyResult:
     """See this module's own docstring for the full ranking/reuse
     rationale. `page`, when given, is an already-fetched `FetchResult` for
     `url` (or whatever `url` redirects to) -- reused instead of
-    refetching, per this WO's brief."""
+    refetching, per this WO's brief.
+
+    `gov_name`/`gov_domain` (WO-1041, both optional, default `None` so
+    every existing caller is unaffected): when given, and the winning
+    signal is an off-site vendor/other-video-host link (`rank` ==
+    `RANK_VENDOR_LINK`/`RANK_OTHER_VIDEO_HOST`), the link's own
+    destination (`account_url`) is checked with `same_organization_flag()`
+    -- the same host/distinctive-name-word check `assess_video_candidate()`
+    already applies to a found VIDEO, applied here one step earlier, to
+    the ACCOUNT a hop found. See `IdentifyResult.destination_mismatch`'s
+    own comment for the real wrong-government hops this catches. Never
+    rejects the platform outright (Ryan's "keep at least one" posture) --
+    it's still returned, with `destination_mismatch` set, so a caller can
+    decide whether to keep walking it or treat it as unconfirmed.
+    """
 
     # Rule 1: URL first, no fetch. `platform_hint` does NOT short-circuit
     # this -- a real URL/host match always beats a caller's belief about
@@ -758,6 +784,17 @@ async def identify(
         outcome = (
             OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER if supported is False else None
         )
+        # WO-1041 destination check: only for an off-site hop (a vendor
+        # tenant or another video host found via a link on the page) --
+        # never for a `url_host`/fingerprint/civiclive signal on the
+        # government's OWN site, which this same check would false-flag
+        # on every plain case (its own domain never shares the account
+        # host by construction).
+        destination_mismatch = None
+        if gov_name and winner.kind in ("vendor_link", "other_video_host"):
+            flag = same_organization_flag(account_url, gov_name, gov_domain=gov_domain)
+            if flag is not None:
+                destination_mismatch = flag.detail
         # A genuine access block found along the way (rule 9's Wayback
         # links-only case) is still worth surfacing even when a platform
         # was found on the recovered links -- but a real answer takes
@@ -774,6 +811,7 @@ async def identify(
             outcome=outcome,
             guess_queue_row=None,
             page=fetched,
+            destination_mismatch=destination_mismatch,
         )
 
     # Rule 7: "platform known, account unknown." A believed vendor --
