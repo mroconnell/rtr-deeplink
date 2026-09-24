@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import logging
 import re
 import time
 import uuid
@@ -51,10 +52,11 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 from app.platforms.base import detect_platform
+from app.platforms.telvue import account_url_for as telvue_account_url_for
 from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher
-from .hop import canonical_page_key, rank_hops
+from .hop import _SOCIAL_LEAD_PLATFORMS, canonical_page_key, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
 from .listing import ListResult, list_account
@@ -77,11 +79,27 @@ from .scan import scan_page
 from .start import start as run_start
 from .verdict import append_verdict, load_done
 
+logger = logging.getLogger("rtr_deeplink.meeting_finder.runner")
+
 # Phase order for VerdictRow.phase_reached -- the furthest phase any fork
 # of this government's walk actually got to, regardless of which fork
 # eventually produced the result (or didn't).
 _PHASE_ORDER = ["start", "identify", "list", "scan", "hop", "resolve"]
 _PHASE_INDEX = {name: i for i, name in enumerate(_PHASE_ORDER)}
+
+# WO-1038 addendum (Ryan, 2026-09-23): a hard per-government wall-clock
+# cap. Real incident: run B had two governments (villageofallouezwi.gov,
+# athenslibrary.org) hang 30+ minutes each -- well past `max_fetches`
+# ever mattering, because the hang sits inside a SYNCHRONOUS call
+# (`fetch.py`'s headless-browser helper, run via `asyncio.to_thread()`),
+# not in an ordinary awaited network request. See
+# `_run_one_with_timeout()`'s own docstring for why this is built on
+# `asyncio.wait(timeout=...)` (which returns the instant the deadline
+# passes, full stop) rather than `asyncio.wait_for()` (whose own
+# cancel-and-wait can itself block past the deadline if the thing it's
+# cancelling swallows -- or simply can't honor -- the `CancelledError`).
+DEFAULT_GOV_TIMEOUT_MINUTES = 15.0
+OUTCOME_INTERNAL_TIMEOUT = "internal-timeout"
 
 # Verdict's "most informative outcome" ranking (docs/MEETING_FINDER.md's
 # Verdict section: "e.g. a real meeting without video beats 'no
@@ -509,9 +527,24 @@ async def _shallow_step(
         state.outcomes.append(ident.outcome)
 
     if ident.platform and ident.account_url and ident.supported is not False:
+        account_url = ident.account_url
+        if ident.platform == "telvue":
+            # WO-1038: `identify.py`'s generic account-url reduction
+            # (`_account_base_url()`/`_account_url_for_platform()`, a file
+            # this WO doesn't own) collapses ANY recognized-platform URL
+            # to its bare `scheme://netloc/` -- for TelVue that throws
+            # away the `/player/{org_token}/` path that's the ONLY thing
+            # identifying which customer's channel this is (every real
+            # TelVue customer shares the same `videoplayer.telvue.com`
+            # host). `telvue.account_url_for()` recovers the real
+            # per-token listing URL from whatever TelVue URL Identify
+            # actually landed on (`ident.final_url`, falling back to the
+            # input `url` for the rule-1 no-fetch case where `final_url`
+            # is just the input url itself).
+            account_url = telvue_account_url_for(ident.final_url or url) or account_url
         try:
             list_result = await _cached_list_account(
-                ident.platform, ident.account_url, fetcher, state
+                ident.platform, account_url, fetcher, state
             )
         except BudgetExceeded:
             state.budget_exhausted = True
@@ -632,6 +665,49 @@ async def _deep_step(
                 scan_result.media_candidates, finder_input, state, max_tries=max_tries
             ):
                 return
+
+        # WO-1038 (Ryan's principle): a direct link to a known meeting/
+        # video platform on THIS page is tried BEFORE Scan's own
+        # `meeting_page_links` -- `rank_hops()` already scores such a
+        # link above a generic nav/agenda/news page (see hop.py's
+        # `_KNOWN_PLATFORM_BONUS`). Real governments this fixes: Yarmouth,
+        # ME's "Meetings on Demand" TelVue link and Medina, SD's "Medina
+        # TV" link were both Hop's own #1 pick but never visited, because
+        # the old order let Scan exhaust its own meeting-page links
+        # first. Only the single best-ranked platform link gets this
+        # early try -- anything else still goes through the ordinary hop
+        # loop below (or the meeting-page-links loop right after this).
+        if not state.done and hops_left > 0:
+            for hop in rank_hops(page, prefer_vendor=prefer_vendor, limit=3):
+                if _norm_url(hop.url) in seen:
+                    continue
+                if is_youtube_host(urlparse(hop.url).hostname or ""):
+                    continue
+                platform = detect_platform(hop.url)
+                if (
+                    not platform
+                    or platform == "unknown"
+                    or platform in _SOCIAL_LEAD_PLATFORMS
+                ):
+                    continue
+                # Not pre-marked `seen` here (unlike the youtube-lead/
+                # already-known-platform skip cases elsewhere in this
+                # function) -- `_shallow_step()` itself marks a url seen
+                # only once it actually visits it; pre-marking it here
+                # would make `_shallow_step()`'s own `already seen` guard
+                # bail out before ever calling `identify()`.
+                state.hops += 1
+                await _walk_from(
+                    hop.url,
+                    fetcher,
+                    finder_input,
+                    state,
+                    hops_left=hops_left - 1,
+                    seen=seen,
+                    max_tries=max_tries,
+                    prefer_vendor=prefer_vendor,
+                )
+                break
 
         for link in scan_result.meeting_page_links[:_SCAN_LINK_FOLLOW_LIMIT]:
             if state.done:
@@ -771,8 +847,15 @@ async def _run_phase_loop(
     max_tries: int,
     max_hops: int,
     max_forks: int,
+    state: Optional[_WalkState] = None,
 ) -> _WalkState:
-    state = _WalkState()
+    # WO-1038 addendum: a caller (`run_one()`, for `_run_one_with_timeout()`'s
+    # benefit) may hand in an already-created `_WalkState` it kept a
+    # reference to, so it can still read `state.path`/`state.phase_reached()`
+    # after abandoning a government that hit the wall-clock cap -- see that
+    # function's own docstring. Every existing caller passes nothing and
+    # gets today's fresh-state behavior, unchanged.
+    state = state if state is not None else _WalkState()
     seen: Set[str] = set()
 
     if finder_input.entry == "list":
@@ -906,11 +989,19 @@ async def run_one(
     max_hops: int = 2,
     max_forks: int = 3,
     max_fetches: int = 12,
+    progress: Optional[Dict[str, Any]] = None,
 ) -> VerdictRow:
     """Runs the whole pipe for one input and returns its `VerdictRow`.
     Never raises for an ordinary resolve/access failure -- those come
     back as a named outcome; a genuinely unexpected exception is left to
-    propagate, since Verdict should never silently swallow a real bug."""
+    propagate, since Verdict should never silently swallow a real bug.
+
+    `progress`, when given (only `_run_one_with_timeout()` passes one),
+    is a plain shared dict this function populates with its own live
+    `state`/`fetcher` objects as soon as they exist -- so a caller that
+    gives up WAITING for this coroutine (the wall-clock cap) can still
+    read `state.path`/`fetcher.fetches_used` for a best-effort report,
+    even though the coroutine itself is never awaited to completion."""
     if finder_input.entry == "resolve":
         candidates = [Candidate(url=finder_input.url, source_phase="input")]
         result, meeting = await _resolve_candidates_with_meeting(
@@ -951,6 +1042,10 @@ async def run_one(
         )
 
     fetcher = Fetcher(max_fetches=max_fetches)
+    walk_state = _WalkState()
+    if progress is not None:
+        progress["state"] = walk_state
+        progress["fetcher"] = fetcher
     try:
         # WO-1032/1031: pace and count EVERY request this government's walk
         # makes, adapters' own sessions included (Dublin made 55 requests
@@ -962,6 +1057,7 @@ async def run_one(
                 max_tries=max_tries,
                 max_hops=max_hops,
                 max_forks=max_forks,
+                state=walk_state,
             )
     finally:
         await fetcher.aclose()
@@ -1057,6 +1153,123 @@ async def run_one(
     )
 
 
+def _timeout_verdict_row(
+    finder_input: FinderInput,
+    run_id: str,
+    progress: Dict[str, Any],
+    gov_timeout_minutes: float,
+) -> VerdictRow:
+    state = progress.get("state")
+    fetcher = progress.get("fetcher")
+    path = list(state.path) if state is not None else [finder_input.url]
+    phase_reached = state.phase_reached if state is not None else ""
+    fetches = fetcher.fetches_used if fetcher is not None else 0
+    minutes_text = (
+        f"{gov_timeout_minutes:g}"
+        if gov_timeout_minutes == int(gov_timeout_minutes)
+        else f"{gov_timeout_minutes:.1f}"
+    )
+    return VerdictRow(
+        run_id=run_id,
+        input_url=finder_input.url,
+        entry_phase=finder_input.entry,
+        path=path,
+        phase_reached=phase_reached,
+        outcome=OUTCOME_INTERNAL_TIMEOUT,
+        identity_expected_gov_id=finder_input.gov_id,
+        fetches=fetches,
+        note=(
+            f"internal-timeout: this government's walk was still running past "
+            f"{minutes_text} minute(s) wall-clock and was abandoned (not "
+            f"cancelled cleanly -- see `_run_one_with_timeout()`'s docstring) "
+            f"so the rest of the batch could finish"
+        ),
+        try_next=f"took over {minutes_text} minutes: rerun alone later",
+        finished_at=_now_iso(),
+    )
+
+
+async def _run_one_with_timeout(
+    finder_input: FinderInput,
+    *,
+    run_id: str,
+    max_tries: int,
+    max_hops: int,
+    max_forks: int,
+    max_fetches: int,
+    gov_timeout_minutes: float,
+) -> VerdictRow:
+    """Runs `run_one()` under a hard wall-clock cap per government (Ryan,
+    2026-09-23 -- see `DEFAULT_GOV_TIMEOUT_MINUTES`'s own comment for the
+    real incident this addresses: two real governments hung 30+ minutes
+    in a batch run, inside a SYNCHRONOUS call (`fetch.py`'s headless-
+    browser helper, dispatched via `asyncio.to_thread()`) that this WO
+    doesn't own and can't fix at the source.
+
+    Deliberately built on `asyncio.wait({task}, timeout=...)`, NOT
+    `asyncio.wait_for()`. `wait_for()`'s own timeout path calls
+    `task.cancel()` and then `await`s the task again to let the
+    cancellation land before raising -- which can itself block past the
+    deadline if whatever is running inside the task can't honor (or
+    somewhere swallows) the resulting `CancelledError`, exactly the
+    failure mode already confirmed live. `asyncio.wait(timeout=...)`
+    carries no such obligation: it returns the instant the deadline
+    passes, full stop, whether or not the task the caller stopped waiting
+    for ever actually finishes. This function still calls `task.cancel()`
+    as a courtesy (it usually does let a merely-slow task unwind and
+    release whatever it's holding -- e.g. `_Lanes.resolve_slots` -- a
+    moment later), but never waits around to find out; a done-callback
+    just logs anything the abandoned task eventually raises, so asyncio
+    never complains about an unretrieved exception.
+
+    The abandoned task keeps running in the background with its own
+    private `Fetcher`/session -- harmless to every OTHER government's
+    walk (CLAUDE.md's "query politely" pacing is per-HOST, not per-task),
+    though see this function's own report if it ever needs tightening
+    (a resolve slot the abandoned task was holding stays held until/unless
+    its own cancellation actually lands)."""
+    progress: Dict[str, Any] = {}
+    task: asyncio.Task = asyncio.ensure_future(
+        run_one(
+            finder_input,
+            run_id=run_id,
+            max_tries=max_tries,
+            max_hops=max_hops,
+            max_forks=max_forks,
+            max_fetches=max_fetches,
+            progress=progress,
+        )
+    )
+    deadline_seconds = max(0.0, gov_timeout_minutes * 60)
+    done, _pending = await asyncio.wait({task}, timeout=deadline_seconds)
+    if task in done:
+        return task.result()
+
+    logger.warning(
+        "meeting_finder: %s exceeded the %.1f minute internal timeout -- "
+        "abandoning its walk and moving on",
+        finder_input.url,
+        gov_timeout_minutes,
+    )
+    task.cancel()
+
+    def _log_abandoned_task_outcome(t: "asyncio.Task") -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logger.warning(
+                "meeting_finder: abandoned (internal-timeout) task for %s "
+                "later raised %s: %s",
+                finder_input.url,
+                type(exc).__name__,
+                exc,
+            )
+
+    task.add_done_callback(_log_abandoned_task_outcome)
+    return _timeout_verdict_row(finder_input, run_id, progress, gov_timeout_minutes)
+
+
 async def run_inputs(
     inputs: Iterable[FinderInput],
     out_path: Path,
@@ -1070,6 +1283,7 @@ async def run_inputs(
     resolve_slots: Optional[int] = None,
     max_waiting: Optional[int] = None,
     lanes_log: Optional[Path] = None,
+    gov_timeout_minutes: float = DEFAULT_GOV_TIMEOUT_MINUTES,
 ) -> List[VerdictRow]:
     """Drive every input in `inputs`, appending a `VerdictRow` to
     `out_path` (+ its JSONL twin) as each one finishes so a rerun resumes
@@ -1080,7 +1294,12 @@ async def run_inputs(
     deliberate opt-in the CLI exposes. Each input gets its own `Fetcher`
     (own `max_fetches` budget), but `fetch.py`'s own process-wide
     per-host pacer (WO-1030) still spaces out two concurrent governments
-    that share a vendor host."""
+    that share a vendor host.
+
+    `gov_timeout_minutes` (default `DEFAULT_GOV_TIMEOUT_MINUTES`) is the
+    hard wall-clock cap per government -- see `_run_one_with_timeout()`'s
+    own docstring for why this exists and how it can give up waiting on a
+    government without needing its walk to actually stop."""
     run_id = run_id or uuid.uuid4().hex[:12]
     done = load_done(out_path)
     todo = [i for i in inputs if i.url not in done]
@@ -1089,13 +1308,14 @@ async def run_inputs(
 
     async def _run(finder_input: FinderInput) -> None:
         try:
-            row = await run_one(
+            row = await _run_one_with_timeout(
                 finder_input,
                 run_id=run_id,
                 max_tries=max_tries,
                 max_hops=max_hops,
                 max_forks=max_forks,
                 max_fetches=max_fetches,
+                gov_timeout_minutes=gov_timeout_minutes,
             )
         except Exception as exc:  # noqa: BLE001
             # WO-1034: a government must never vanish from the results.

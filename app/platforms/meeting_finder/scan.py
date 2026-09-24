@@ -492,7 +492,15 @@ def find_meeting_page_links(
         # their own anchor text).
         if extract_video_id(full) is not None:
             continue
-        if detect_platform(full) in _SCAN_MEDIA_PLATFORMS:
+        _link_platform = detect_platform(full)
+        if _link_platform in _SCAN_MEDIA_PLATFORMS:
+            continue
+        # WO-1038: only a SPECIFIC TelVue video link is excluded here (it's
+        # already handled as a media candidate below) -- a `/home`/`/videos`
+        # listing link must still be offered as a page to visit, exactly as
+        # before this WO (that's how Irondequoit NY/Ashland OR's own TelVue
+        # listing pages get reached today).
+        if _link_platform == "telvue" and _is_specific_telvue_media_url(full):
             continue
 
         column_label = _own_column_label(a)
@@ -565,7 +573,36 @@ def find_meeting_page_links(
 # recognizes (Granicus, CivicClerk, Legistar...) -- those are List's
 # account-level job (a known vendor account, walked properly), not a
 # same-page media find.
-_SCAN_MEDIA_PLATFORMS = ("vimeo", "civicweb", "direct_file")
+#
+# WO-1038: added "cablecast" -- Cablecast's own `detect_platform()`
+# branch only ever matches a URL that already names a SPECIFIC show
+# (`/show/{id}`, `/gallery/{id}`, a bare numeric `cablecast.tv` id, the
+# `/cablecastapi/v1/shows/{id}` API), never a bare tenant root, so it's
+# just as safe a same-page media find as vimeo/civicweb -- real
+# governments this fixes had a Cablecast player embedded directly in an
+# `<iframe>`, which only `_anchor_media_candidates()` below scans (Scan's
+# `<a href>`-only `find_meeting_page_links()` never sees an iframe at
+# all). TelVue is deliberately NOT added here wholesale: its
+# `detect_platform()` branch matches ANY `telvue.com`/`peg.tv` URL,
+# including a `/home`/`/videos` LISTING page (no single video to
+# resolve) -- see `_is_specific_telvue_media_url()` just below for the
+# narrower, shape-aware check `_anchor_media_candidates()` uses instead so
+# a TelVue iframe/link is only ever treated as a video candidate when it
+# actually names one.
+_SCAN_MEDIA_PLATFORMS = ("vimeo", "civicweb", "direct_file", "cablecast")
+
+# WO-1038: a TelVue URL that names one specific video -- `/media/{id}`,
+# with or without a `/playlists/{n}/` or `/categories/{n}/` prefix (see
+# `telvue.py`'s own module docstring for these three real shapes). A
+# `/home`, `/videos` or `/stream/{n}` TelVue URL does NOT match this --
+# those are listing/live-stream pages with no single video to resolve
+# directly (see `passive_verify._telvue_walker()`, which lists them
+# instead).
+_TELVUE_MEDIA_ID_RE = re.compile(r"/media/\d+", re.I)
+
+
+def _is_specific_telvue_media_url(url: str) -> bool:
+    return bool(_TELVUE_MEDIA_ID_RE.search(urlparse(url).path))
 
 
 def _anchor_media_candidates(
@@ -584,7 +621,15 @@ def _anchor_media_candidates(
             continue
         platform = detect_platform(full)
         if platform not in _SCAN_MEDIA_PLATFORMS:
-            if platform == "direct_file" or is_direct_file_url(full):
+            # WO-1038: a TelVue iframe/link naming one specific video
+            # (`/media/{id}`) is a genuine media candidate too -- see
+            # `_is_specific_telvue_media_url()`'s own comment for why
+            # TelVue isn't just added to `_SCAN_MEDIA_PLATFORMS` wholesale
+            # (a `/home`/`/videos` listing page would falsely become a
+            # "media candidate" that can never actually resolve).
+            if platform == "telvue" and _is_specific_telvue_media_url(full):
+                pass
+            elif platform == "direct_file" or is_direct_file_url(full):
                 platform = "direct_file"
             else:
                 continue

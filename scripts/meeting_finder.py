@@ -46,7 +46,10 @@ install_youtube_guard()
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.meeting_finder.models import ENTRY_PHASES, FinderInput  # noqa: E402
-from app.platforms.meeting_finder.runner import run_inputs  # noqa: E402
+from app.platforms.meeting_finder.runner import (  # noqa: E402
+    DEFAULT_GOV_TIMEOUT_MINUTES,
+    run_inputs,
+)
 
 
 def _read_inputs(
@@ -135,6 +138,17 @@ def main() -> None:
         default=None,
         help="Append intake/resolve lane counts over time to this file",
     )
+    parser.add_argument(
+        "--gov-timeout-minutes",
+        type=float,
+        default=DEFAULT_GOV_TIMEOUT_MINUTES,
+        help="Hard wall-clock cap per government (default: "
+        f"{DEFAULT_GOV_TIMEOUT_MINUTES:g}). A government still running past "
+        "this is abandoned (not cancelled cleanly) and gets an "
+        "internal-timeout Verdict row, so the rest of the batch can finish "
+        "(WO-1038, real incident: villageofallouezwi.gov / "
+        "athenslibrary.org hung 30+ minutes each in a real run).",
+    )
     args = parser.parse_args()
 
     register_all_finders()
@@ -156,6 +170,7 @@ def main() -> None:
             resolve_slots=args.resolve_slots,
             max_waiting=args.max_waiting,
             lanes_log=args.lanes_log,
+            gov_timeout_minutes=args.gov_timeout_minutes,
         )
     )
     _print_summary(rows)

@@ -290,6 +290,44 @@ _MAX_CALENDAR_ENTRIES_IN_TOP = 2
 # left permanently unscored just because its path carries no words yet.
 _HOST_FALLBACK_VENDOR_BONUS = 20.0
 
+# WO-1038, Ryan's principle (2026-09-23, verbatim): "When judging links, a
+# direct link to a known platform should get a pretty high priority,
+# except vanity YouTube/Facebook links." Applied to ANY link (`<a>`,
+# `<iframe>`, `<embed>`, image-only or not) whose URL `detect_platform()`
+# OR `host_recognition.platform_for_url()` maps to a supported
+# meeting-video/meeting platform -- higher than `_NAV_HUB_LABEL_BONUS`
+# (22.0) and `_HOST_FALLBACK_VENDOR_BONUS` (20.0), so a real platform link
+# outranks a generic nav/agenda/news page even when that page's own
+# anchor text scores well. Added ON TOP of whatever score the link
+# already has (never a replacement) -- a platform link that ALSO carries
+# real anchor-text evidence should rank higher still, not just tie a bare
+# one. YouTube/Facebook/Instagram/X/Twitter are excluded on purpose (they
+# stay leads, handled separately -- Meeting Finder never fetches them).
+_KNOWN_PLATFORM_BONUS = 30.0
+_SOCIAL_LEAD_PLATFORMS = frozenset(
+    {"youtube", "youtube_channel", "facebook", "instagram", "twitter", "x"}
+)
+
+# WO-1038: a fused "...TV" station name with no separating space
+# ("MedinaTV", "LUVTV", "RVTV", "ECTV" -- all real, confirmed nav-link
+# anchor text) is NOT matched by `_NAV_HUB_WORD_RE`'s own `\btv\b` (a word
+# boundary can't fire in the middle of one continuous token). Guarded
+# against a generic tech/marketing term that also happens to end in "tv"
+# ("HDTV", "IPTV", "CCTV" -- a security-camera term, never a PEG channel)
+# via a small, curated stoplist -- these are real words this repo doesn't
+# want to treat as evidence of a community-TV station, checked against
+# because a small station-name sample can't rule out every possible
+# collision by pattern alone.
+_FUSED_TV_NAME_RE = re.compile(r"^[A-Za-z]{2,}tv$", re.I)
+_FUSED_TV_NAME_STOPLIST = frozenset({"hdtv", "iptv", "cctv", "smarttv", "appletv"})
+
+
+def _is_fused_tv_station_name(word: str) -> bool:
+    if not _FUSED_TV_NAME_RE.match(word):
+        return False
+    return word.lower() not in _FUSED_TV_NAME_STOPLIST
+
+
 # WO-1037 item 8: an off-site link whose own anchor TEXT names a TV/
 # cable/community-television/public-access station (a PEG nonprofit's own
 # proper name, e.g. "Tualatin Valley Community Television" -> tvctv.org,
@@ -375,7 +413,16 @@ def _looks_like_nav_hub_label(text: str) -> bool:
     words = (text or "").strip().split()
     if not words or len(words) > _NAV_HUB_MAX_WORDS:
         return False
-    if not _NAV_HUB_WORD_RE.search(text):
+    # WO-1038: a fused "...TV" station name ("MedinaTV") carries no
+    # `\btv\b` word-boundary match of its own (see `_FUSED_TV_NAME_RE`'s
+    # own comment) -- checked here, alongside the ordinary vocabulary
+    # check, so a label built ENTIRELY of a fused name (e.g. bare
+    # "MedinaTV") still clears this gate instead of failing before the
+    # per-word loop even runs.
+    has_hub_vocab = bool(_NAV_HUB_WORD_RE.search(text)) or any(
+        _is_fused_tv_station_name(w.strip(",&-()")) for w in words
+    )
+    if not has_hub_vocab:
         return False
     brand_tokens_used = 0
     for word in words:
@@ -387,6 +434,8 @@ def _looks_like_nav_hub_label(text: str) -> bool:
         if core in _NAV_HUB_JOINERS or core in _NAV_HUB_LOCALITY_JOINERS:
             continue
         if _NAV_HUB_WORD_RE.fullmatch(core):
+            continue
+        if _is_fused_tv_station_name(core):
             continue
         brand_tokens_used += 1
         if brand_tokens_used > _NAV_HUB_BRAND_TOKEN_ALLOWANCE:
@@ -575,17 +624,34 @@ def rank_hops(
             text, href, full, base_netloc, tag, gov_id=gov_id, html_text=html
         )
         resolved_platform, is_host_fallback = _resolved_platform_for(full)
+        # WO-1038: a link to a real, known meeting/video platform -- per
+        # Ryan's principle, everything except a social/YouTube lead (see
+        # `_KNOWN_PLATFORM_BONUS`'s own comment).
+        is_known_platform_link = bool(
+            resolved_platform and resolved_platform not in _SOCIAL_LEAD_PLATFORMS
+        )
         if score is None:
             score = _rescue_nav_hub_label_score(text, href, full, base_netloc, tag)
         if score is None:
             score = _rescue_tv_station_link_score(text, full, base_netloc, tag)
-        if score is None and resolved_platform and is_host_fallback:
-            # WO-1037 item 5: a bare vendor tenant root wo147's own
-            # scorer never saw any path/target evidence for at all.
+        if score is None and is_known_platform_link:
+            # WO-1037 item 5 / WO-1038 fix: applies to a DIRECT
+            # `detect_platform()` match too, not just the (weaker)
+            # host-only fallback -- the old `and is_host_fallback` gate
+            # meant a DIRECT match with no path/anchor-text evidence of
+            # its own (an image-only link, an opaque per-customer token
+            # path) got no bonus at all and was dropped outright. Real
+            # case this fixes: Halfmoon Twp, PA's image-only TelVue link.
             score = _HOST_FALLBACK_VENDOR_BONUS + _nav_position_bonus(tag)
         if score is None:
             continue
-        elif (
+        if is_known_platform_link:
+            # WO-1038: added on top of whatever score the link already
+            # has (including one just set above) -- a real platform link
+            # outranks a generic nav/agenda/news page even when that
+            # page's own anchor text also scores well.
+            score += _KNOWN_PLATFORM_BONUS
+        if (
             resolved_platform is None
             and _VIDEO_HUB_LABEL_RE.search(text)
             and _looks_like_nav_hub_label(text)

@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from typing import List, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 
@@ -568,6 +568,40 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
 def _org_token_from_url(url: str) -> Optional[str]:
     match = _ORG_TOKEN_RE.search(url)
     return match.group(1) if match else None
+
+
+# WO-1038: TelVue's real "account" is per-org-TOKEN (`/player/{token}/`),
+# not per-host -- every real customer shares the SAME host
+# (videoplayer.telvue.com). Meeting Finder's generic `identify()` rule
+# (`_account_base_url()`) reduces any recognized-platform URL to its bare
+# `scheme://netloc/`, which for TelVue throws away the one thing that
+# actually identifies a customer's channel, collapsing every TelVue link
+# from every government down to the same useless
+# `https://videoplayer.telvue.com/` "account". That generic reduction
+# lives in `identify.py`, a file this WO doesn't own -- worked around
+# here instead: `runner.py`'s `_shallow_step()` calls this function to
+# recover the real per-token listing URL from whatever TelVue URL
+# Identify actually landed on, before handing it to List.
+_TELVUE_LISTING_SHAPE_RE = re.compile(
+    r"/player/[^/]+/(?:home\b|videos\b|stream(?:/|$))", re.I
+)
+
+
+def account_url_for(url: str) -> Optional[str]:
+    """The real TelVue "account" (listing) URL for `url` -- its own
+    `/player/{token}/home` or `/videos` page when it's already one of
+    those, the canonical `/player/{token}/home` entry point for any other
+    per-token URL (a single `/media/{id}` page, a `/playlists/{n}/` or
+    `/categories/{n}/` page, or a `/stream/{n}` live-stream page --
+    Ryan's brief: "A /stream/{n} link is a live stream: go to the same
+    token's /home or /videos to list VOD"). Returns `None` when no org
+    token can be found at all (not a real TelVue player URL)."""
+    org_token = _org_token_from_url(url)
+    if not org_token:
+        return None
+    if _TELVUE_LISTING_SHAPE_RE.search(urlparse(url).path):
+        return url
+    return f"https://videoplayer.telvue.com/player/{org_token}/home"
 
 
 # WO-306 (2026-09-12): a `/player/{org_token}/playlists/{playlist_id}`
