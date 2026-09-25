@@ -508,6 +508,76 @@ _TV_STATION_BRAND_STOPLIST = frozenset(
 # nav-hub rescue; this is for the case where it doesn't).
 _TV_VANITY_TLD_RE = re.compile(r"\.tv$", re.IGNORECASE)
 
+# --- WO-1054 rule 1 (Ryan, 2026-09-24): link CONTEXT, not just link
+# text. Real Lake Oswego, OR case: `ci.oswego.or.us/citycouncil/city-
+# council-meetings` names its cable partner in a PARAGRAPH --
+# "Tualatin Valley Community Television (TVCTV) streams the meetings and
+# airs replays. Check their website" -- whose own link text is generic
+# ("Check their website" -> tvctv.org). Every rescue above only ever
+# reads the anchor's OWN text/href; this one reads the surrounding
+# paragraph/list-item/table-cell instead. "Words near a link... make it
+# a strong hop, including one step off-site" (Ryan's own phrasing) --
+# `_nearby_context_text()` below is the "near a link" part, this regex is
+# the "words" part: "streams the meetings", "airs replays", "broadcast",
+# "Channel 18" (a literal cable-channel number), "watch ... live"/
+# "watch ... replay".
+_LINK_CONTEXT_BLOCK_TAGS = frozenset(
+    {"p", "li", "td", "th", "dd", "dt", "figcaption", "blockquote"}
+)
+_LINK_CONTEXT_MAX_ANCESTOR_DEPTH = 4
+_LINK_CONTEXT_BROADCAST_RE = re.compile(
+    r"streams?\s+the\s+meetings?|airs?\s+replays?|\bbroadcast(?:s|ing)?\b"
+    r"|channel\s+\d+|watch\b[^.\n]{0,40}\b(?:live|replay|replays)\b",
+    re.IGNORECASE,
+)
+# Smaller than `_TV_STATION_BONUS` (18.0) -- a nearby PARAGRAPH mentioning
+# a broadcast is weaker evidence than the link's own text/host directly
+# naming a station, but still real enough to beat an ordinary agenda/nav
+# link with no vendor evidence at all.
+_LINK_CONTEXT_BROADCAST_BONUS = 15.0
+
+
+def _nearby_context_text(tag, *, max_chars: int = 400) -> str:
+    """The text of `tag`'s nearest block-ish ancestor (its own paragraph/
+    list item/table cell) -- the "near a link" half of rule 1 above. Walks
+    up at most `_LINK_CONTEXT_MAX_ANCESTOR_DEPTH` levels looking for a
+    real block tag; falls back to the immediate parent when none is found
+    (a lean page with no real block structure around the link) rather
+    than climbing all the way to `<body>`, which would just match every
+    link on the page against the same broadcast vocabulary."""
+    node = getattr(tag, "parent", None)
+    depth = 0
+    found = None
+    while node is not None and depth < _LINK_CONTEXT_MAX_ANCESTOR_DEPTH:
+        if getattr(node, "name", None) in _LINK_CONTEXT_BLOCK_TAGS:
+            found = node
+            break
+        node = getattr(node, "parent", None)
+        depth += 1
+    target = found if found is not None else getattr(tag, "parent", None)
+    if target is None or not hasattr(target, "get_text"):
+        return tag.get_text(" ", strip=True) if hasattr(tag, "get_text") else ""
+    return target.get_text(" ", strip=True)[:max_chars]
+
+
+def _rescue_link_context_broadcast_score(
+    tag, full_url: str, base_netloc: str
+) -> Optional[float]:
+    """See this module's own `_LINK_CONTEXT_BROADCAST_RE` comment for the
+    real Lake Oswego, OR case this rescues. Guarded by the same vendor-
+    marketing-apex check every other rescue uses, so this can't rescue a
+    link to a vendor's own bare marketing homepage either. `<a>` only --
+    an iframe/embed/script has no meaningful surrounding "paragraph"."""
+    if getattr(tag, "name", None) != "a":
+        return None
+    netloc = urlparse(full_url).netloc.lower()
+    if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+    context = _nearby_context_text(tag)
+    if not _LINK_CONTEXT_BROADCAST_RE.search(context):
+        return None
+    return _LINK_CONTEXT_BROADCAST_BONUS + _nav_position_bonus(tag)
+
 
 def _is_tv_station_brand_word(word: str) -> bool:
     if not _TV_STATION_BRAND_WORD_RE.match(word):
@@ -896,6 +966,8 @@ def rank_hops(
             score = _rescue_governing_body_link_score(
                 text, full, base_netloc, tag, resolved_platform
             )
+        if score is None:
+            score = _rescue_link_context_broadcast_score(tag, full, base_netloc)
         if score is None and is_known_platform_link:
             # WO-1037 item 5 / WO-1038 fix: applies to a DIRECT
             # `detect_platform()` match too, not just the (weaker)

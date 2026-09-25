@@ -86,7 +86,9 @@ from app.platforms.models import ResolvedMeeting
 # module's own docstring. Pure (one HEAD request, no shared state), so
 # importing it directly is safe; a future fix in passive_verify.py
 # reaches Resolve automatically instead of two copies drifting apart.
+from app.platforms import passive_verify
 from app.platforms.passive_verify import _confirm_not_audio_only
+from app.platforms.telvue import _org_token_from_url as _telvue_org_token_from_url
 from app.platforms.vimeo import EMBED_DOMAIN_RESTRICTED_WARNING
 from app.utils.video_hand_check import (
     assess_meeting_evidence,
@@ -312,6 +314,61 @@ def _to_candidate(raw: dict, *, lister: str, source_url: Optional[str]) -> Candi
     )
 
 
+# --- WO-1054 rule 4 (Ryan, 2026-09-24): "broken TelVue playlist -> fall
+# back to the same token's /home or /videos." Real case: College
+# Township, PA's own nav link ("C-Net Meeting Broadcasts") points at
+# `videoplayer.telvue.com/player/{token}/playlists/4807/media/698580`,
+# which 404s -- while the SAME org token's own `/home` page (Centre
+# County C-NET, shared with Bellefonte -- see `pick.filter_candidates_
+# to_government()` for the SEPARATE "shared hub" rule this also needs)
+# lists real, current video. `TelvueAssetFinder.resolve()` itself has no
+# such fallback (a specific `/media/{id}` URL either has a real playlist
+# JSON blob or it doesn't); this tries the listing ONCE, reusing
+# `passive_verify._telvue_walker()` (which already reduces ANY TelVue URL
+# to its own canonical `/home` entry point via `telvue.account_url_for()`
+# -- WO-1038) rather than re-deriving that reduction here.
+async def _telvue_broken_media_fallback(
+    cand: Candidate, tried_orgs: set
+) -> List[Candidate]:
+    """Only fires for a TelVue candidate whose own `resolve()` call
+    raised (any reason -- a 404, a dropped connection, a missing playlist
+    blob) -- `tried_orgs` (one Resolve call's own local `set`) makes sure
+    this only ever happens once per org token per call, even if several
+    broken links from the same channel got queued. Returns fresh
+    `Candidate`s from the SAME channel's real listing, minus `cand.url`
+    itself (never re-offering the exact link that just failed); `[]` when
+    `cand` isn't TelVue, has no recoverable org token, was already tried,
+    or the listing fetch itself comes back empty."""
+    if detect_platform(cand.url) != "telvue":
+        return []
+    org_token = _telvue_org_token_from_url(cand.url)
+    if not org_token or org_token in tried_orgs:
+        return []
+    tried_orgs.add(org_token)
+    try:
+        rows = await passive_verify._telvue_walker(cand.url)
+    except Exception:  # noqa: BLE001
+        return []
+    out: List[Candidate] = []
+    for row in rows:
+        url = row.get("url")
+        if not url or url == cand.url:
+            continue
+        out.append(
+            Candidate(
+                url=url,
+                title=row.get("title"),
+                date=row.get("date"),
+                platform="telvue",
+                source_phase="list",
+                lister="telvue_playlist_fallback",
+                source_url=cand.source_url,
+                has_video_hint=True,
+            )
+        )
+    return out
+
+
 async def resolve_candidates(
     candidates: Sequence[Candidate],
     finder_input: FinderInput,
@@ -422,6 +479,11 @@ async def _resolve_candidates_with_meeting(
     queue: List[Candidate] = list(picked)
     tries_used = 0
     i = 0
+    # WO-1054 rule 4: one org token per Resolve call gets at most one
+    # `/home` listing fallback attempt (see `_telvue_broken_media_
+    # fallback()` below) -- several broken links from the SAME channel
+    # queued as separate candidates must not each re-fetch its listing.
+    telvue_fallback_tried: set = set()
     while i < len(queue) and tries_used < max_tries:
         cand = queue[i]
         i += 1
@@ -505,6 +567,23 @@ async def _resolve_candidates_with_meeting(
             reasons.append(f"{cand.url}: {e}")
             continue
         except Exception as e:  # noqa: BLE001
+            # WO-1054 rule 4: a TelVue link found via Hop can itself be
+            # broken (a stale `/playlists/{n}/media/{m}` link, real
+            # College Township, PA case: 404) while the SAME org token's
+            # own `/home`/`/videos` listing has real, current video --
+            # try that once before giving up on this candidate outright.
+            fallback = await _telvue_broken_media_fallback(cand, telvue_fallback_tried)
+            if fallback:
+                remaining = max_tries - tries_used
+                if remaining > 0:
+                    more, _more_reason = pick_candidates(fallback, limit=remaining)
+                    if more:
+                        queue[i:i] = more
+                        reasons.append(
+                            f"{cand.url}: resolve raised {e} -- falling back to "
+                            "the same TelVue channel's own /home listing"
+                        )
+                        continue
             # One bad candidate shouldn't abort the whole walk -- same
             # posture app/platforms/base.py's resolve_newest_candidate()
             # already takes.
