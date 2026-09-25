@@ -1,5 +1,23 @@
 # Backlog — done
 
+## WO-1066: Invintus Leon County pin and CVTV place prefixes [Done 2026-09-25]
+
+**What was done and why.** rtr-discovery's Invintus dry run on 2026-09-25 left 33 accepted meetings with no government: 7 on Leon County FL's channel (`4853176732`), 25 on CVTV (`2917038973`), 1 on the Pierce County channel (`1872740071`).
+
+**Leon County.** Its categories are folder names ("Board Meetings", "2026 Commission Meetings"), so no place was ever read. A live listing of the last two years showed 74 events, all Leon County's own (County Commission meetings, hearings and workshops, the Citizen Charter Review Committee, the Tourism Development Council), each linking to leoncountyfl.gov. Added a whole-customer pin in `tenant_overrides.csv`: `player.invintus.com, clientID=4853176732 -> us:county:12073`.
+
+**CVTV.** Added `CLIENT_PLACE_PREFIXES` in `invintus.py`: on CVTV, a category starting "Clark County " is Clark County, WA and one starting "Vancouver " is Vancouver, WA. The whole category stays the meeting body. A name with "District", "Authority" or "Port" is skipped, so a special district never lands on the county.
+
+**Result, re-run on the same live meetings.**
+
+| Channel | No government before | No government after |
+| --- | --- | --- |
+| Leon County | 8 | 0 |
+| CVTV | 25 | 14 |
+| Pierce County channel | 1 | 1 |
+
+The 64 meetings that already had a government kept the same one. Left blank on purpose: Port of Vancouver (5), City Council Workshops (7, category and description name no city), C-TRAN (1), Regional Transportation Council (1), Tacoma-Pierce County Board of Health (1). None has a registry id; see `BACKLOG.md`'s "Invintus meetings from a separate government" entry.
+
 ## WO-1065: Invintus captions carried inside the video are read and stored [Done 2026-09-25]
 
 **Why this ran.** Invintus delivers captions two ways. The resolver read only the first, a caption file named in `captionPath`. The second kind sits inside the video stream itself (CEA-608 captions, the broadcast TV kind), with no caption file anywhere. Those meetings showed "No captions found" even though the player shows captions.

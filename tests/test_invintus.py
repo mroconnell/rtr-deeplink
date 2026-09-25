@@ -1,6 +1,7 @@
 import pytest
 
 from app.platforms.invintus import (
+    CLIENT_PLACE_PREFIXES,
     CLIENT_STATES,
     LEGISLATURE_CLIENTS,
     InvintusAssetFinder,
@@ -381,3 +382,88 @@ def test_client_states_never_covers_a_legislature_tenant():
     # WO-922's legislature path owns those tenants; WisconsinEye in
     # particular also carries courts and news conferences.
     assert not set(CLIENT_STATES) & set(LEGISLATURE_CLIENTS)
+
+
+# --- CVTV place prefixes and the Leon County pin (WO-1066, 2026-09-25) ---
+# Real category shapes, read live from CVTV's (2917038973) own
+# Event/getDetailed on 2026-09-25: each is one top entry, no child.
+
+
+def _cvtv(name):
+    return InvintusAssetFinder._extract_categories(
+        [name],
+        [{"ID": "1", "name": name, "childOf": None}],
+        CLIENT_STATES["2917038973"],
+        CLIENT_PLACE_PREFIXES["2917038973"],
+    )
+
+
+@pytest.mark.parametrize(
+    "category, place",
+    [
+        ("Clark County Planning Commission", "Clark County, WA"),
+        ("Clark County Board of Health", "Clark County, WA"),
+        ("Clark County Land Use Hearings", "Clark County, WA"),
+        ("Clark County Veterans Advisory Board", "Clark County, WA"),
+        ("Clark County Commission on Aging", "Clark County, WA"),
+        ("Vancouver Planning Commission", "Vancouver, WA"),
+        ("Vancouver Land Use Hearings", "Vancouver, WA"),
+        # Unchanged by the prefixes: the council rule already placed these.
+        ("Vancouver City Council", "Vancouver, WA"),
+        ("Clark County Council", "Clark County, WA"),
+    ],
+)
+def test_cvtv_body_under_a_place_prefix(category, place):
+    assert _cvtv(category) == (place, category)
+
+
+@pytest.mark.parametrize(
+    "category",
+    [
+        # Their own governments, with no registry id: stay blank.
+        "Port of Vancouver Board of Commissioners",
+        "C-TRAN Board of Directors",
+        "Regional Transportation Council",
+        # Names no city, in its category or its description ("Complete
+        # coverage of the September 21, 2026, City Council workshop
+        # meeting."): stays blank rather than guessed as Vancouver.
+        "City Council Workshops",
+    ],
+)
+def test_cvtv_category_without_a_place_stays_as_is(category):
+    assert _cvtv(category) == (category, None)
+
+
+def test_place_prefix_skips_a_special_district():
+    # Synthetic: no CVTV category names a district or authority yet
+    # (checked 2026-09-25). C-TRAN's legal name is the real one.
+    for name in (
+        "Clark County Public Transportation Benefit Area Authority",
+        "Clark County Fire District 6",
+    ):
+        assert _cvtv(name) == (name, None)
+
+
+def test_place_prefixes_only_for_a_channel_with_a_state():
+    assert set(CLIENT_PLACE_PREFIXES) <= set(CLIENT_STATES)
+
+
+def test_leon_county_channel_is_pinned_to_leon_county():
+    # Leon County's categories are folder names ("Board Meetings"); the
+    # whole-customer pin in tenant_overrides.csv files every event there.
+    from app.utils.gov_registry.resolver import resolve_government
+
+    for raw in ("Board Meetings", "Tourism Development Council Meetings", None):
+        match = resolve_government(
+            raw,
+            tenant_host="player.invintus.com",
+            path="/?clientID=4853176732&eventID=2026091000",
+        )
+        assert match.gov_id == "us:county:12073"
+    # CVTV is a mixed listing and has no whole-customer pin.
+    other = resolve_government(
+        "City Council Workshops",
+        tenant_host="player.invintus.com",
+        path="/?clientID=2917038973&eventID=2026091015",
+    )
+    assert other.gov_id != "us:county:12073"

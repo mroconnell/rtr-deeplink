@@ -71,7 +71,7 @@ def test_the_counts_the_brief_names():
     assert by_key["location_id"] == 34
     assert by_key["id"] == 16
     assert by_key["site"] == 3
-    assert by_key["clientid"] == 3
+    assert by_key["clientid"] == 4  # + Leon County, WO-1066
     assert by_key["external_id"] == 10
     assert by_key["channel"] > 1000
 
