@@ -78,6 +78,17 @@ OUTCOME_EMBED_RESTRICTED = "embed-restricted"
 # accepts every `--entry` value from day one and wave 2 can fill each
 # one in without changing the Verdict schema.
 OUTCOME_PHASE_NOT_BUILT = "phase-not-built"
+# WO-1054 rule 5 (Ryan, 2026-09-24): a real listing account was found and
+# it really does list real meetings -- just not THIS government's own.
+# One TelVue org token or Cablecast tenant root routinely serves several
+# nearby towns off the same account (College Township PA and Bellefonte
+# PA share one C-NET TelVue token; a shared PEG hub can mix in a
+# neighboring town's council the same way). `pick.filter_candidates_to_
+# government()` only ever reports this when EVERY candidate the lister
+# found clearly names a different government's own governing body --
+# never for an ambiguous/untitled row, per Ryan's "keep at least one"
+# posture. New spelling -- nothing else in this repo names this case.
+OUTCOME_HUB_OTHER_GOVERNMENT = "hub-carries-other-governments-not-this-one"
 
 # All valid entry points, in pipe order (docs/MEETING_FINDER.md "The
 # phases"). Only "resolve" is implemented by WO-1024; the rest return

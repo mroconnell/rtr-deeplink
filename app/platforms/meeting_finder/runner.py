@@ -53,6 +53,7 @@ from urllib.parse import urlparse
 
 from app.platforms.base import detect_platform
 from app.platforms.telvue import account_url_for as telvue_account_url_for
+from app.utils.gov_registry.registry import government_for_id
 from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher, SoftBudgetExceeded
@@ -65,6 +66,7 @@ from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
     OUTCOME_EMBED_RESTRICTED,
     OUTCOME_ERROR,
+    OUTCOME_HUB_OTHER_GOVERNMENT,
     OUTCOME_YOUTUBE_LEAD_ONLY,
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
@@ -125,6 +127,12 @@ _OUTCOME_PRIORITY: Dict[str, int] = {
     OUTCOME_EMBED_RESTRICTED: 96,
     OUTCOME_VIDEO_LOW_CONFIDENCE: 95,
     OUTCOME_ACCOUNT_NOT_FOUND: 90,
+    # WO-1054 rule 5: a real account was found and it really does list
+    # real meetings -- just not this government's own (a shared TelVue
+    # org token/Cablecast tenant). As informative as "account not found"
+    # (a human knows exactly what to check next: the SAME vendor, a
+    # different token), so ranked alongside it.
+    OUTCOME_HUB_OTHER_GOVERNMENT: 90,
     # WO-1031: a YouTube lead beats an access block (Essex, ON) but never a
     # real meeting-without-video finding -- almost every government site has
     # a YouTube icon in its footer, so ranking it higher would hide findings.
@@ -200,6 +208,10 @@ _TRY_NEXT: Dict[str, str] = {
         "links, or check another video host by hand"
     ),
     OUTCOME_ACCOUNT_NOT_FOUND: "vendor known, account not found: guess-ladder queue",
+    OUTCOME_HUB_OTHER_GOVERNMENT: (
+        "hub found, but it only lists other governments: look for this "
+        "government's own account/token on the same vendor, or hand-check"
+    ),
     OUTCOME_YOUTUBE_LEAD_ONLY: "YouTube only: send to the drip",
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER: (
         "platform has no adapter: record in UNSUPPORTED_PLATFORMS.md"
@@ -221,6 +233,34 @@ _TRY_NEXT: Dict[str, str] = {
     "timeout": "site timed out: retry later",
     "dns-unresolvable": "domain dead: find the current website (alternate domains)",
 }
+
+
+# WO-1054 rule 5: the government's own plain name, looked up once per
+# `gov_id` and cached for the life of the process -- used only to filter
+# List's candidates on a shared multi-government hub down to this
+# government's own meetings (`pick.filter_candidates_to_government()`).
+# `FinderInput` itself carries only `gov_id` (docs/MEETING_FINDER.md's
+# "Input rows" table); `government_for_id()` derives the real name from
+# the national tables the same way `identity.py`'s own resolver check
+# already does for a different purpose. A `gov_id` with no registry row
+# (or none given at all) just means the filter never fires -- see that
+# function's own "ambiguous -> keep" default -- not an error.
+_GOV_NAME_CACHE: Dict[str, Optional[str]] = {}
+
+
+def _gov_name_for_input(finder_input: FinderInput) -> Optional[str]:
+    gov_id = finder_input.gov_id
+    if not gov_id:
+        return None
+    if gov_id in _GOV_NAME_CACHE:
+        return _GOV_NAME_CACHE[gov_id]
+    try:
+        gov = government_for_id(gov_id)
+    except Exception:  # noqa: BLE001
+        gov = None
+    name = gov.gov_name if gov else None
+    _GOV_NAME_CACHE[gov_id] = name
+    return name
 
 
 def _try_next(outcome: Optional[str], budget_exhausted: bool) -> str:
@@ -367,6 +407,7 @@ async def _cached_list_account(
     state: _WalkState,
     *,
     page_url: Optional[str] = None,
+    gov_name: Optional[str] = None,
 ) -> ListResult:
     """WO-1035 item 5: "accounts listed once" -- `_shallow_step()` runs on
     every fork AND every hop, and more than one of those can land on the
@@ -379,12 +420,19 @@ async def _cached_list_account(
     cache key -- it's decorative context for Vimeo's candidate
     `source_url` (see `listing.py`'s own docstring), not a different
     account, so the first page that reaches a given account "wins" that
-    context for the life of this government's walk."""
+    context for the life of this government's walk.
+
+    `gov_name` (WO-1054 rule 5): also forwarded, also not part of the
+    cache key -- constant for the whole life of one government's walk
+    (one `FinderInput`), so every call for the same account already gets
+    the same value."""
     key = (platform, _norm_url(account_url))
     cached = state.listed_accounts.get(key)
     if cached is not None:
         return cached
-    result = await list_account(platform, account_url, fetcher, page_url=page_url)
+    result = await list_account(
+        platform, account_url, fetcher, page_url=page_url, gov_name=gov_name
+    )
     state.listed_accounts[key] = result
     return result
 
@@ -595,6 +643,7 @@ async def _shallow_step(
                 fetcher,
                 state,
                 page_url=ident.final_url or url,
+                gov_name=_gov_name_for_input(finder_input),
             )
         except SoftBudgetExceeded:
             # WO-1039 item 2: see the identical comment above.
