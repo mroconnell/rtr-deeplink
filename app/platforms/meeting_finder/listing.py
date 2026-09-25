@@ -112,6 +112,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import json
 import os
 import re
 import sys
@@ -128,6 +129,7 @@ from app.platforms.base import (
     CalendarPageError,
     UnsupportedPlatformError,
     YouTubeResolveBlocked,
+    detect_platform,
     get_finder,
 )
 from app.platforms.cablecast import (
@@ -135,6 +137,7 @@ from app.platforms.cablecast import (
     CablecastAssetFinder,
     list_gallery_shows,
 )
+from app.platforms.direct_file import is_direct_file_url
 
 from .fetch import BudgetExceeded, Fetcher
 from .models import Candidate
@@ -146,9 +149,11 @@ from .models import Candidate
 # OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER from `.models` (read-only import,
 # no edit) is exactly as good as defining a third spelling here.
 from .models import (  # noqa: E402
+    OUTCOME_HUB_OTHER_GOVERNMENT,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
 )
+from .pick import filter_candidates_to_government, parse_candidate_date
 
 # --- Platform groupings for the ordered lister pipeline --------------
 
@@ -384,6 +389,315 @@ async def _list_via_cablecast_gallery(
     if not candidates:
         return None
     return ListResult(candidates=candidates, lister="cablecast_gallery", outcome=None)
+
+
+# --- Lister (a-cc): "Cablecast Connect" WordPress plugin, listed
+# directly (WO-1054 rule 3) ---
+#
+# "Cablecast Connect" -- a WordPress plugin some PEG-access nonprofits use
+# to run their whole public site (a different thing from `cablecast.py`'s
+# own `_WATCH_VOD_EMBED_PATH_RE`, WO-1036, which handles a BARE iframe
+# embed dropped into an otherwise-ordinary page -- this is the plugin
+# that IS the site). Confirmed live 2026-09-24 (Ryan's own browsing
+# note): Mendota Heights, MN's real station page
+# (`townsquare.tv/programs/site/mendota-heights-8/`, reached by following
+# the town's own `mendotaheightsmn.gov/280/Watch-a-Public-Meeting-Online`
+# link) already server-renders a real "Recently Added" listing --
+# `<ul class="gc-cc-grid gc-cc-show-grid">` of `.gc-cc-card` items, each
+# with its own `<a href=".../programs/show/{slug}-{site}-{id}/">`,
+# `.gc-cc-card-title` and `.gc-cc-air-date` -- and the SAME markup is
+# also served on demand by a real, unauthenticated WordPress REST route,
+# `GET {origin}/wp-json/cablecast/v1/recent-shows?site_id={n}&limit={n}`
+# (confirmed live: `wp-json`'s own namespace list carries `cablecast/v1`
+# whenever this plugin is active). `identify.py`'s own
+# `_cablecast_connect_signal()` recognizes a page like this directly from
+# its CSS classes and hands back `platform="cablecast_connect"`,
+# `account_url=` the page itself.
+#
+# Each show's actual VIDEO lives one click further, on its own
+# `/programs/show/.../` page -- a real Cablecast `watch-vod-embed` iframe
+# (`reflect-tst-mn.cablecast.tv/watch-vod-embed?showId=...&site=...`,
+# confirmed live, already resolvable by `app/platforms/cablecast.py`'s
+# existing `_resolve_watch_vod_embed()` per that file's own WO-1036 note)
+# -- never the WordPress page's own URL, which `detect_platform()`
+# doesn't recognize at all (Resolve would fail on it directly). This
+# lister fetches up to `_CABLECAST_CONNECT_UNWRAP_LIMIT` of the newest
+# show pages (newest first, the listing's own order) to recover that
+# iframe `src` -- one extra fetch per show, capped well below `limit` so
+# a request for many candidates doesn't spend the whole government's
+# fetch budget unwrapping shows Resolve will likely never try (Resolve
+# tries at most a handful of candidates anyway -- `pick.
+# MAX_CANDIDATES_TRIED`).
+_CABLECAST_CONNECT_SITE_ID_RE = re.compile(r'data-site-id="(\d+)"')
+_CABLECAST_CONNECT_SHOW_URL_RE = re.compile(r"/programs/show/", re.I)
+_CABLECAST_CONNECT_IFRAME_RE = re.compile(
+    r'<iframe[^>]+class="trms-player"[^>]+src="([^"]+)"', re.I
+)
+_CABLECAST_CONNECT_UNWRAP_LIMIT = 5
+
+
+def _parse_cablecast_connect_cards(html: str, base_url: str) -> List[dict]:
+    """Every `.gc-cc-card`/`.gc-cc-show-card` on `html` whose own link is
+    a specific SHOW (`/programs/show/...` -- excludes a "Popular Shows"
+    widget's series/category links, e.g. Mendota Heights' own real
+    `/programs/city-council-8-33/`, which has no single video to
+    resolve), in the page's own newest-first render order."""
+    soup = BeautifulSoup(html or "", "html.parser")
+    out: List[dict] = []
+    seen = set()
+    for card in soup.select(".gc-cc-card, .gc-cc-show-card"):
+        a = card.find("a", href=True)
+        if a is None:
+            continue
+        url = urljoin(base_url, a["href"].strip())
+        if not _CABLECAST_CONNECT_SHOW_URL_RE.search(urlparse(url).path):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        title_el = card.select_one(".gc-cc-card-title")
+        date_el = card.select_one(".gc-cc-air-date")
+        out.append(
+            {
+                "url": url,
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "date_text": date_el.get_text(strip=True) if date_el else None,
+            }
+        )
+    return out
+
+
+async def _cablecast_connect_show_rows(
+    account_url: str, fetcher: Fetcher, limit: int
+) -> Tuple[List[dict], str]:
+    """The town's own real show rows -- straight off `account_url`'s
+    already-fetched page when it has enough, else topped up with one more
+    fetch to the plugin's own `recent-shows` REST route (needs the page's
+    own `data-site-id`, WO-1054's real Mendota Heights confirmation).
+    Returns `(rows, final_url)`."""
+    result = await fetcher.fetch(account_url, need_links=True)
+    html = result.html if (result.status == 200 or result.links_only) else None
+    if not html:
+        return [], result.final_url or account_url
+    final_url = result.final_url or account_url
+    rows = _parse_cablecast_connect_cards(html, final_url)
+    if len(rows) >= limit:
+        return rows, final_url
+    site_id_match = _CABLECAST_CONNECT_SITE_ID_RE.search(html)
+    if not site_id_match:
+        return rows, final_url
+    origin = f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}"
+    api_url = (
+        f"{origin}/wp-json/cablecast/v1/recent-shows"
+        f"?site_id={site_id_match.group(1)}&limit={max(limit, len(rows))}"
+    )
+    try:
+        api_result = await fetcher.fetch(api_url, need_links=False)
+    except BudgetExceeded:
+        return rows, final_url
+    if api_result.status != 200 or not api_result.html:
+        return rows, final_url
+    try:
+        payload = json.loads(api_result.html)
+    except (json.JSONDecodeError, TypeError):
+        return rows, final_url
+    fragment = payload.get("html") if isinstance(payload, dict) else None
+    if not fragment:
+        return rows, final_url
+    api_rows = _parse_cablecast_connect_cards(fragment, final_url)
+    if len(api_rows) > len(rows):
+        return api_rows, final_url
+    return rows, final_url
+
+
+async def _list_via_cablecast_connect(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    if platform != "cablecast_connect":
+        return None
+    try:
+        rows, final_url = await _cablecast_connect_show_rows(
+            account_url, fetcher, limit
+        )
+    except BudgetExceeded as e:
+        return ListResult(
+            candidates=[], lister="cablecast_connect", outcome=None, note=str(e)
+        )
+    if not rows:
+        return None
+    candidates: List[Candidate] = []
+    for row in rows[:_CABLECAST_CONNECT_UNWRAP_LIMIT]:
+        if len(candidates) >= limit:
+            break
+        show_url = row["url"]
+        try:
+            show_result = await fetcher.fetch(show_url, need_links=False)
+        except BudgetExceeded:
+            break
+        show_html = show_result.html if show_result.status == 200 else None
+        if not show_html:
+            continue
+        iframe_match = _CABLECAST_CONNECT_IFRAME_RE.search(show_html)
+        if not iframe_match:
+            continue
+        video_url = urljoin(show_result.final_url or show_url, iframe_match.group(1))
+        date = parse_candidate_date(row.get("date_text") or "")
+        candidates.append(
+            Candidate(
+                url=video_url,
+                title=row.get("title"),
+                date=date.strftime("%Y-%m-%d") if date else None,
+                platform="cablecast",
+                source_phase="list",
+                lister="cablecast_connect",
+                source_url=show_url,
+                has_video_hint=True,
+            )
+        )
+    if not candidates:
+        return ListResult(
+            candidates=[],
+            lister="cablecast_connect",
+            outcome=None,
+            note=(
+                f"found {len(rows)} real show row(s) on {final_url} but none of "
+                f"the first {min(len(rows), _CABLECAST_CONNECT_UNWRAP_LIMIT)} had "
+                "a resolvable watch-vod-embed iframe"
+            ),
+        )
+    return ListResult(candidates=candidates, lister="cablecast_connect", outcome=None)
+
+
+# --- Lister (a-wp): a generic WordPress site's own REST API, listed
+# directly (WO-1054 rule 6) ---
+#
+# Ryan's own brief (2026-09-24): "a WordPress site (generator meta /
+# wp-json present) is a listable account: GET /wp-json/wp/v2/
+# posts?search=meeting (and ?search=video), or /feed/; each post that
+# embeds a recognised video platform or media file is a candidate with
+# its title/date." A LIST method, not a hop -- tried only once Identify
+# already believes the account itself is a plain WordPress site
+# (`platform="wordpress"`, set by `identify.py`'s own `_wordpress_
+# signal()` off the standard `<link rel="https://api.w.org/">` REST
+# discovery tag -- present on every stock WordPress install regardless of
+# which plugin, if any, it's also running). Wilder, KY (`wilderky.gov`)
+# is the brief's own example to try, and may truthfully come back with
+# none -- that's a real, valid finding here (`ListResult.candidates=[]`,
+# falling through to `OUTCOME_NO_MEETING_NOR_VIDEO` the same as any other
+# empty lister), not a bug.
+_WORDPRESS_SEARCH_TERMS = ("meeting", "video")
+_WORDPRESS_POSTS_PER_SEARCH = 10
+
+
+def _wordpress_post_candidate(post: dict, *, platform: str) -> Optional[Candidate]:
+    """One `wp-json/wp/v2/posts` row -> a `Candidate`, only when its own
+    rendered content embeds a video `detect_platform()`/`is_direct_file_
+    url()` recognizes, or a same-site media-library file -- Ryan's own
+    "each post that embeds a recognised video platform or media file"
+    condition. A post that's merely ABOUT a meeting, with no actual video
+    attached, is not a candidate here (List's job is a video lead, not a
+    document search) -- it stays reachable through the ordinary
+    Scan/Hop path on the post's own page instead."""
+    if not isinstance(post, dict):
+        return None
+    link = post.get("link")
+    if not link:
+        return None
+    content_field = post.get("content")
+    content = content_field.get("rendered") if isinstance(content_field, dict) else None
+    if not content:
+        return None
+    soup = BeautifulSoup(content, "html.parser")
+    video_url = None
+    for tag in soup.find_all(("a", "iframe", "video", "source")):
+        raw = tag.get("href") or tag.get("src")
+        if not raw:
+            continue
+        candidate_url = urljoin(link, raw.strip())
+        found_platform = detect_platform(candidate_url)
+        if found_platform not in ("unknown", "wordpress", None):
+            video_url = candidate_url
+            break
+        if is_direct_file_url(candidate_url):
+            video_url = candidate_url
+            break
+    if not video_url:
+        return None
+    title_field = post.get("title")
+    title_html = title_field.get("rendered") if isinstance(title_field, dict) else None
+    title = (
+        BeautifulSoup(title_html, "html.parser").get_text(strip=True)
+        if title_html
+        else None
+    )
+    date = post.get("date")
+    return Candidate(
+        url=video_url,
+        title=title or None,
+        date=date[:10] if date else None,
+        platform=platform,
+        source_phase="list",
+        lister="wordpress_rest",
+        source_url=link,
+        has_video_hint=True,
+    )
+
+
+async def _wordpress_search_posts(
+    origin: str, term: str, fetcher: Fetcher
+) -> List[dict]:
+    url = (
+        f"{origin}/wp-json/wp/v2/posts?search={term}"
+        f"&per_page={_WORDPRESS_POSTS_PER_SEARCH}&_fields=link,title,date,content"
+    )
+    try:
+        result = await fetcher.fetch(url, need_links=False)
+    except BudgetExceeded:
+        return []
+    if result.status != 200 or not result.html:
+        return []
+    try:
+        payload = json.loads(result.html)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return payload if isinstance(payload, list) else []
+
+
+async def _list_via_wordpress(
+    platform: str, account_url: str, fetcher: Fetcher, limit: int
+) -> Optional[ListResult]:
+    if platform != "wordpress":
+        return None
+    origin = f"{urlparse(account_url).scheme}://{urlparse(account_url).netloc}"
+    candidates: List[Candidate] = []
+    seen_urls = set()
+    notes: List[str] = []
+    for term in _WORDPRESS_SEARCH_TERMS:
+        try:
+            posts = await _wordpress_search_posts(origin, term, fetcher)
+        except BudgetExceeded as e:
+            notes.append(str(e))
+            break
+        for post in posts:
+            candidate = _wordpress_post_candidate(post, platform=platform)
+            if candidate is None or candidate.url in seen_urls:
+                continue
+            seen_urls.add(candidate.url)
+            candidates.append(candidate)
+            if len(candidates) >= limit:
+                break
+        if len(candidates) >= limit:
+            break
+    if not candidates:
+        return ListResult(
+            candidates=[],
+            lister="wordpress_rest",
+            outcome=None,
+            note="; ".join(notes)
+            if notes
+            else f"no video-bearing post found on {origin}",
+        )
+    return ListResult(candidates=candidates, lister="wordpress_rest", outcome=None)
 
 
 # --- Lister (a2): a known Swagit /views/{id} page, listed directly ---
@@ -1021,6 +1335,37 @@ async def _granicus_discover_view_id(
     return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
 
 
+# --- WO-1054 rule 5: shared-hub government filter, applied to every
+# lister's own candidates right before `list_account()` returns them. See
+# `pick.filter_candidates_to_government()`'s own docstring for the rule
+# and the real College Township/Bellefonte (shared TelVue org token) and
+# Nashwauk/Cohasset cases it exists for. A no-op when `gov_name` is empty
+# (every existing caller that doesn't pass it) or when nothing was
+# dropped, so this never changes behavior for a caller that hasn't opted
+# in.
+def _apply_gov_filter(result: ListResult, gov_name: Optional[str]) -> ListResult:
+    if not result.candidates or not gov_name:
+        return result
+    kept, drop_note = filter_candidates_to_government(result.candidates, gov_name)
+    if kept:
+        if len(kept) == len(result.candidates):
+            return result
+        return ListResult(
+            candidates=kept,
+            lister=result.lister,
+            outcome=result.outcome,
+            note=result.note,
+            params=result.params,
+        )
+    return ListResult(
+        candidates=[],
+        lister=result.lister,
+        outcome=OUTCOME_HUB_OTHER_GOVERNMENT,
+        note=drop_note or result.note,
+        params=result.params,
+    )
+
+
 def _has_any_adapter(platform: str) -> bool:
     passive_verify._ensure_walkers_registered()
     if platform in passive_verify._LISTING_WALKERS:
@@ -1028,6 +1373,16 @@ def _has_any_adapter(platform: str) -> bool:
     if platform in _DISCOVERY_ONLY_PLATFORMS:
         return True
     if platform in _CALENDAR_PAGE_ERROR_PLATFORMS or platform in _ADAPTER_HUB_PLATFORMS:
+        return True
+    # WO-1054: "cablecast_connect" (rule 3) and "wordpress" (rule 6) are
+    # real, listable platforms this module has its own dedicated lister
+    # for, but neither has -- or needs -- a registered `AssetFinder`
+    # (`_list_via_cablecast_connect()` hands back a real, already-
+    # resolvable `platform="cablecast"` candidate URL; `_list_via_
+    # wordpress()` hands back whatever real platform the embedded video
+    # itself is). An empty result from either is a real "nothing found"
+    # (`OUTCOME_NO_MEETING_NOR_VIDEO`), not "no adapter registered".
+    if platform in ("cablecast_connect", "wordpress"):
         return True
     try:
         get_finder(platform)
@@ -1090,32 +1445,46 @@ async def list_account(
     a_minus_1 = await _list_via_cablecast_gallery(platform, account_url, fetcher, limit)
     if a_minus_1 is not None:
         if a_minus_1.candidates:
-            return a_minus_1
+            return _apply_gov_filter(a_minus_1, gov_name)
         if a_minus_1.note:
             notes.append(a_minus_1.note)
 
     a0 = await _list_via_civicplus_light_check(platform, account_url, fetcher, limit)
     if a0 is not None and a0.candidates:
-        return a0
+        return _apply_gov_filter(a0, gov_name)
+
+    g = await _list_via_cablecast_connect(platform, account_url, fetcher, limit)
+    if g is not None:
+        if g.candidates:
+            return _apply_gov_filter(g, gov_name)
+        if g.note:
+            notes.append(g.note)
+
+    h = await _list_via_wordpress(platform, account_url, fetcher, limit)
+    if h is not None:
+        if h.candidates:
+            return _apply_gov_filter(h, gov_name)
+        if h.note:
+            notes.append(h.note)
 
     a = await _list_via_passive_verify_walker(platform, account_url, fetcher, limit)
     if a is not None:
         if a.candidates:
-            return a
+            return _apply_gov_filter(a, gov_name)
         if a.note:
             notes.append(a.note)
 
     a2 = await _list_via_swagit_views_page(platform, account_url, fetcher, limit)
     if a2 is not None:
         if a2.candidates:
-            return a2
+            return _apply_gov_filter(a2, gov_name)
         if a2.note:
             notes.append(a2.note)
 
     b = await _list_via_discovery(platform, account_url, limit, platform_params)
     if b is not None:
         if b.candidates:
-            return b
+            return _apply_gov_filter(b, gov_name)
         if b.note:
             notes.append(b.note)
 
@@ -1124,28 +1493,28 @@ async def list_account(
     )
     if c is not None:
         if c.candidates:
-            return c
+            return _apply_gov_filter(c, gov_name)
         if c.note:
             notes.append(c.note)
 
     d = await _list_via_adapter_hub(platform, account_url)
     if d is not None:
         if d.candidates:
-            return d
+            return _apply_gov_filter(d, gov_name)
         if d.note:
             notes.append(d.note)
 
     e = await _list_via_generic_scan(platform, account_url, fetcher, limit)
     if e is not None:
         if e.candidates:
-            return e
+            return _apply_gov_filter(e, gov_name)
         if e.note:
             notes.append(e.note)
 
     f = await _list_via_agenda_only_fallback(platform, account_url, fetcher, limit)
     if f is not None:
         if f.candidates:
-            return f
+            return _apply_gov_filter(f, gov_name)
         if f.note:
             notes.append(f.note)
 

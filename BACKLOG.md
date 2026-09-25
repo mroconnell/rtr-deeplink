@@ -204,7 +204,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (206)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+  [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
   [NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is…
   [NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never…
@@ -2309,6 +2310,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s on a real tenant whose own `watch-vod-embed` page already carries the video data directly.**
+  - **Issue**: `_resolve_watch_vod_embed()` (WO-1036) always delegates to `_resolve_fastboot_embed()`'s `{origin}/embed/vod?show={id}&site={site}` endpoint. Confirmed live 2026-09-24 on Mendota Heights, MN's real tenant (`reflect-tst-mn.cablecast.tv`, reached via its Cablecast Connect WordPress plugin site, `townsquare.tv`): `GET .../embed/vod?show=5977&site=8` is a real 404, so `resolve()` falls through to "Could not find a show id in this Cablecast URL." The ORIGINAL `watch-vod-embed?showId=5977&site=8` page itself returns 200 with a large (~2.8MB) body that already contains real `.m3u8` URLs for the tenant's shows (e.g. `.../vod/3598-NG12540-MH-State-of-the-City-v1/vod.m3u8`) — this tenant is a different real template than the FastBoot/Ember one `_resolve_fastboot_embed()` was built for, not a video-less show.
+  - **Impact**: Meeting Finder's new Cablecast Connect lister (WO-1054, `listing.py`'s `_list_via_cablecast_connect()`) correctly finds and unwraps this tenant's real per-meeting `watch-vod-embed` URLs from the WordPress plugin's own listing — confirmed live, 5 real candidates with correct titles/dates — but Resolve can't finish the job for this specific tenant until this adapter gap closes. Any other Cablecast Connect site on the same (non-FastBoot) template hits the same wall.
+  - **Next action**: read `reflect-tst-mn.cablecast.tv`'s own `watch-vod-embed` page (large JS bundle, not the small FastBoot fragment) to find how it maps a `showId` to its own `vod.m3u8` URL — likely an embedded JSON catalog, similar in spirit to the Remix `__remixContext` blob this file already parses elsewhere. Add a resolve path for this shape, tried when `_resolve_fastboot_embed()`'s own `/embed/vod` fetch 404s, before falling through to "no video found."
+  - **Constraint**: `app/platforms/cablecast.py` is not owned by WO-1054 (`app/platforms/meeting_finder/*` only) — filed here rather than fixed in that PR.
+  - **History**: found live verifying WO-1054's Cablecast Connect lister against Mendota Heights, MN, 2026-09-24; see `BACKLOG_DONE.md`'s WO-1054 entry.
 
 - **[NEEDS-AUDIT] The government registry creates duplicate ids and matches the wrong place for some real governments (Meeting Finder calibration run B, 2026-09-24).**
   - **Issue**: Meeting Finder's identity check disagreed on 11 of 272 real finds in calibration run B. Most were registry problems, not wrong finds: (1) a duplicate `rtr:` id was created for a government that already has a real id: Leduc County AB, Cape Elizabeth ME, Ogunquit ME, Wappinger NY, Teaneck NJ, Prince William County VA (and Wake County NC -> `rtr:us:nc:wake-county-north-carolina` in run A); (2) a name matched the wrong place: Newmarket NH -> Newmarket, Ontario (`ca:csd:3519048`); "Stephentown" -> `rtr:us:ny:stephen`; Petersburgh NY -> `rtr:us:ny:petersburg`. Evidence: rtr-deeplink Meeting Finder scratch output `calB/verdicts.csv` (identity_verdict = disagrees, identity_points_to).

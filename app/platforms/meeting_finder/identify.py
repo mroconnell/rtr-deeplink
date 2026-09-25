@@ -100,6 +100,10 @@ RANK_DIRECT_MEDIA = 2
 RANK_OWN_SITE_MEETING_PAGE = 3
 RANK_OTHER_VIDEO_HOST = 4
 RANK_YOUTUBE_MEETING_LIST = 5
+# WO-1054 rule 6: a plain WordPress site with no more specific signal on
+# the page -- see `_wordpress_signal()`'s own comment for why this must
+# rank far below every real vendor/media/own-site-page signal.
+RANK_WORDPRESS_ACCOUNT = 10
 RANK_YOUTUBE_LEAD_ONLY = 99  # "last" -- never the answer
 
 # General-purpose video hosts (rank 4) -- NOT government-meeting-specific
@@ -195,6 +199,35 @@ _CIVICLIVE_FOOTER_RE = re.compile(r"powered\s+by\s*(?:<[^>]+>\s*)?civiclive", re
 _CIVICLIVE_TENANT_HOST_RE = re.compile(
     r"https?://([a-z0-9-]+\.hosted2?\.civiclive\.com)", re.I
 )
+
+# WO-1054 rule 3 (Ryan, 2026-09-24): "Cablecast Connect" -- a WordPress
+# plugin some PEG-access nonprofits use to run their whole public site
+# (a different thing from `app/platforms/cablecast.py`'s own
+# `_WATCH_VOD_EMBED_PATH_RE`, WO-1036, which handles a bare iframe
+# embedded in an otherwise-ordinary page -- this is the plugin that IS
+# the site). Its own real markup -- confirmed live 2026-09-24 on Mendota
+# Heights, MN's real station page
+# (`townsquare.tv/programs/site/mendota-heights-8/`, reached from
+# `mendotaheightsmn.gov/280/Watch-a-Public-Meeting-Online`) -- is a
+# `<ul class="gc-cc-grid gc-cc-show-grid">` of `.gc-cc-card`/`.gc-cc-
+# show-card` items inside a `.gc-cc-recent-shows-section`. Ranked
+# `RANK_VENDOR_LINK` (the page itself is already real, current listing
+# content -- `account_url` is the page's own `final_url`, no derived
+# host needed) -- see `listing.py`'s own `_list_via_cablecast_connect()`
+# for how it's listed.
+_CABLECAST_CONNECT_MARKER_RE = re.compile(r"gc-cc-(?:card|show-card|recent-shows)")
+
+# WO-1054 rule 6 (Ryan, 2026-09-24): a plain WordPress install, recognized
+# by its own standard REST-API discovery link
+# (`<link rel="https://api.w.org/" href=".../wp-json/">`), present on
+# every stock WordPress site regardless of theme/plugin. `RANK_WORDPRESS_
+# ACCOUNT` (far below every real vendor/media/own-site-page signal): a
+# WordPress site that ALSO links a real meeting-video vendor elsewhere on
+# the page must still be identified as THAT vendor first -- this signal
+# only ever wins when nothing more specific was found anywhere on the
+# page. See `listing.py`'s own `_list_via_wordpress()` for how it's
+# listed (`wp-json/wp/v2/posts?search=meeting`/`?search=video`).
+_WORDPRESS_REST_LINK_RE = re.compile(r'rel=["\']https://api\.w\.org/["\']', re.I)
 
 # `platform_signatures.csv`'s own `kind` column (WO-267's docstring):
 # "vendor_hostname" rows are a plain "vendor domain anywhere in the page"
@@ -377,6 +410,44 @@ def _civiclive_first_party_signal(html: str) -> Optional[Signal]:
             '("Powered by ... CivicLive") -- measured live on Piedmont, CA '
             "and Williams, AZ, 2026-09-23; not yet in platform_signatures.csv "
             "(only 2 real tenants checked, no negative sample)"
+        ),
+    )
+
+
+def _cablecast_connect_signal(html: str, final_url: str) -> Optional[Signal]:
+    """See this module's own `_CABLECAST_CONNECT_MARKER_RE` comment for
+    the real Mendota Heights, MN evidence. Returns a rank-1 Signal with
+    the page itself as `url`, or None."""
+    if not _CABLECAST_CONNECT_MARKER_RE.search(html):
+        return None
+    return Signal(
+        kind="cablecast_connect",
+        platform="cablecast_connect",
+        url=final_url,
+        rank=RANK_VENDOR_LINK,
+        evidence=(
+            "page carries Cablecast Connect's own real markup "
+            "(.gc-cc-card/.gc-cc-show-card/.gc-cc-recent-shows-section) -- "
+            "a listable WordPress plugin site, confirmed live on Mendota "
+            "Heights, MN (townsquare.tv), 2026-09-24"
+        ),
+    )
+
+
+def _wordpress_signal(html: str) -> Optional[Signal]:
+    """See this module's own `_WORDPRESS_REST_LINK_RE` comment. Returns a
+    low-ranked (`RANK_WORDPRESS_ACCOUNT`) Signal with no `url` of its own
+    (List derives the account root from `final_url`), or None."""
+    if not _WORDPRESS_REST_LINK_RE.search(html):
+        return None
+    return Signal(
+        kind="wordpress_rest",
+        platform="wordpress",
+        url=None,
+        rank=RANK_WORDPRESS_ACCOUNT,
+        evidence=(
+            "page carries WordPress's own REST discovery link "
+            '(rel="https://api.w.org/") -- a listable wp-json/wp/v2 site'
         ),
     )
 
@@ -765,6 +836,20 @@ async def identify(
         civiclive_signal = _civiclive_first_party_signal(html)
         if civiclive_signal is not None:
             signals.append(civiclive_signal)
+    if "cablecast_connect" not in found_platforms:
+        cablecast_connect_signal = _cablecast_connect_signal(html, final_url)
+        if cablecast_connect_signal is not None:
+            signals.append(cablecast_connect_signal)
+    if not found_platforms:
+        # WO-1054 rule 6: a plain-WordPress fallback signal never even
+        # needs checking once a REAL platform link was already found on
+        # this page -- `RANK_WORDPRESS_ACCOUNT` would lose the ranking
+        # either way, but skipping the check entirely (like the civiclive/
+        # cablecast_connect checks above) avoids scanning every page's
+        # `<head>` for a WordPress REST tag it'll never use.
+        wordpress_signal = _wordpress_signal(html)
+        if wordpress_signal is not None:
+            signals.append(wordpress_signal)
     youtube_signal, youtube_leads = _youtube_signal_and_leads(
         youtube_urls, dated_youtube_urls
     )

@@ -1,5 +1,29 @@
 # Backlog — done
 
+## WO-1054: Meeting Finder — link context, Cablecast Connect, TelVue fallback, shared hubs, WordPress lister [Done 2026-09-24]
+
+**What and why.** Ryan hand-browsed 10 real government sites on 2026-09-24 and wrote down six things Meeting Finder was missing. Each one is now fixed.
+
+**1. A link's own surrounding words count, not just its click text.** Lake Oswego, OR's meetings page says "Tualatin Valley Community Television (TVCTV) streams the meetings and airs replays" — but the actual link text is just "Check their website". `hop.py` now reads the paragraph around a link, not only the link itself, for words like "streams the meetings", "airs replays", "broadcast", or "watch ... live". Checked live: the real Lake Oswego page now scores that link 15 points higher, well above an ordinary page link.
+
+**2. A table of per-meeting YouTube links.** Already worked from an earlier work order — nothing to fix here.
+
+**3. "Cablecast Connect" — a WordPress plugin some public-access stations use to run their whole site.** Confirmed live on Mendota Heights, MN's real station, `townsquare.tv`: the page already lists real meetings, and a plain, public web address (`wp-json/cablecast/v1/recent-shows`) can list even more. Meeting Finder now recognizes this kind of page and reads its list directly.
+
+| Check | Result |
+|---|---|
+| Real meetings found on Mendota Heights' station page | 5, with correct titles and dates |
+
+**4. A broken TelVue link now falls back to the channel's own home page.** College Township, PA's own menu links a video that no longer exists (a 404). The same channel's `/home` page has real, current videos. Meeting Finder now tries that page once before giving up.
+
+**5. A shared channel is filtered down to the right town.** One TV channel often carries several nearby towns' meetings. Before this fix, College Township, PA could get handed a different town's meeting just because both towns' names contain the word "College" (College Township vs. the Borough of State College) — confirmed live, this was a real, current bug, not a hypothetical. The fix compares whole place names, not single shared words, so it kept College Township's own meeting and now drops "Borough of State College" as a different government's meeting. When every meeting on the channel belongs to another town, Meeting Finder now says so plainly ("hub carries other governments, not this one") instead of reporting nothing.
+
+**6. A plain WordPress site's own search can list meetings.** For any WordPress-based government site, Meeting Finder can now search that site's own post list for "meeting" and "video" and use a post that has a real video linked in it. Tried on Wilder, KY as asked — it found no matching post there, which is a real, correct answer (Wilder's meetings are found a different way, through a direct video link on its home page).
+
+**A real gap found while checking rule 3, filed separately (not part of this work order's own files).** Mendota Heights' actual video page (`reflect-tst-mn.cablecast.tv`) returns a real error (404) from the address `app/platforms/cablecast.py` expects for this kind of plugin link, even though the page Meeting Finder was given does have the video. `cablecast.py` isn't part of this work order, so this is left as its own `BACKLOG.md` entry for someone to fix there.
+
+**Tests.** `tests/test_wo1054_meeting_finder_hub_context.py`, 18 cases. The Cablecast Connect fixtures (`tests/fixtures/wo1054/`) are real, trimmed pages fetched live from `townsquare.tv` on 2026-09-24, not hand-built. Every case was also checked against a real live site at least once during this work order (see the PR description for the before/after table).
+
 ## WO-1053: Harris County audit loose ends: METRO, The Harris Center, the Port and MWD minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
 
 **What and why.** The 2026-09-24 large-county audit (rtr-business `research/LARGE_COUNTY_GAP_WALK_2026-09-24.md`) found Harris County, TX pages that belong to other governments, one duplicate page, and a Dropbox meeting the queue probe could not read. A teammate session added the root cause of the Harris misfiling, five more wrong pins of the same kind, and three LA County items. This WO fixes the code and registry. The live page moves wait for a deploy (see `BACKLOG.md`'s WO-1053 `[HUMAN]` entry).
@@ -49,6 +73,7 @@ Two more county entries change text only. `dallascounty.civicweb.net` was alread
 **Dropbox.** Already fixed by WO-1051 (PR #1429) before this WO started. Re-run 2026-09-25 with ffprobe installed: `probe_queue_entry()` accepts the Ingham County, MI 9/22/26 Board of Commissioners file (3,424.5 seconds, 259,815,205 bytes). No new code; the meeting is queued in `scripts/tier3_auto_transcription_queue.txt` under `us:county:26065`.
 
 **Tools.** `scripts/wo1053_prepare_worklist.py` (read-only) builds the worklist for `scripts/repair_wrong_pages.py`. Tests: `tests/test_wo1053_harris_county_loose_ends.py`, `tests/test_url_normalize.py`.
+
 
 ## WO-1052: ChampDS MP4s with their index at the end no longer probe as dead [Done 2026-09-24]
 
