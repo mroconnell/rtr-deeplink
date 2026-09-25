@@ -181,12 +181,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  After WO-1056 deploys, re-resolve archived pages so CMNtv and…
+  Pins the WO-1056 tenant-key test flagged for a decision `[HUMAN]`
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
@@ -2033,6 +2035,22 @@ of human step they need.
   - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
+### After WO-1056 deploys, re-resolve archived pages so CMNtv and DestinyHosted pages get their pinned government `[HUMAN]`
+
+- **Issue**: WO-1056 fixed two pin-matching bugs in `resolver._match_override()`: CMNtv playlist pins now beat the station pin, and DestinyHosted `id=N` pins now reach `/{N}/agenda/...` pages. Archived pages keep the `gov_id` they were given at ingest, so pages ingested before the fix still carry the old answer.
+- **Impact**: existing CMNtv playlist pages (6 cities) still file under Berkley's school district, and existing DestinyHosted meeting pages under `rtr:unknown`. How many pages that is has not been counted.
+- **Next action**: after the deploy, run `python scripts/backfill_gov_id.py` from the Archive service's Render shell. It's a dry run by default and reports which rows would change. Review the report, then rerun with `--apply`.
+- **Constraint**: Render shell only, never a laptop against production (the script's own docstring).
+- **History**: `BACKLOG_DONE.md` WO-1056.
+
+### Pins the WO-1056 tenant-key test flagged for a decision `[HUMAN]`
+
+- **Issue**: four pin problems `tests/test_tenant_key.py` found and lists as known exceptions. (1) TelVue token `GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm` is pinned whole to two governments: Yarmouth, MA (`us:cousub:2500182525`, machine-derived) and `us:cousub:2300587845` (evidence says Yarmouth, ME; that id is not in the registry). The station page lists "Yarmouth History Center Lectures", a Maine institution. (2) Mad River Valley TV's playlists 4259-4261 (Waitsfield, Warren, Fayston) name no org token, and none was found anywhere. (3) Whole-station pins on stations that carry several governments: CMNtv -> Berkley school district, RVTV -> Ashland, OR. Every media URL on those stations without a narrower pin files under that one government. (4) Shared hosts with pins or real traffic that are not in `MULTI_GOV_HOSTS`, so nothing stops a blank-match pin there: `townhallstreams.com`, `public.destinyhosted.com`, `reflect-ccx.cablecast.tv`, `spectrumstream.com`, `securestream10.champds.com`.
+- **Impact**: (1) Yarmouth, MA or ME pages may file under the wrong town. (3) CMNtv and RVTV meetings without a playlist pin file under one government.
+- **Next action**: Ryan picks the right Yarmouth pin and whether the two whole-station pins stay. The MRVTV token needs a real MRVTV TelVue URL. Adding the five hosts to `MULTI_GOV_HOSTS` is a small follow-up once agreed.
+- **Constraint**: remove each item from `KNOWN_UNMAPPED_PINS`/`KNOWN_CONFLICTING_KEYS` in the test when it is fixed; the test fails on stale entries.
+- **History**: `BACKLOG_DONE.md` WO-1056.
 
 ### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
 

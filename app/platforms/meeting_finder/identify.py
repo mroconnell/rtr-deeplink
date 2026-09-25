@@ -80,6 +80,7 @@ from bs4 import BeautifulSoup
 
 from app.platforms import host_recognition
 from app.platforms.base import _ALL_CORPORATE_HOSTS, _REGISTRY, detect_platform
+from app.utils.tenant_key import tenant_key
 from app.platforms.youtube_ids import extract_video_id
 from app.utils.video_hand_check import prescreen_homepage_link, same_organization_flag
 from scripts.platform_fingerprints import fingerprint, load_signatures
@@ -374,6 +375,12 @@ def _account_url_for_platform(platform: Optional[str], final_url: str) -> str:
     if platform == "swagit" and _SWAGIT_SPECIFIC_PATH_RE.search(path):
         return final_url
     if platform == "cablecast" and _CABLECAST_GALLERY_PATH_RE.search(path):
+        return final_url
+    if tenant_key(final_url):
+        # A shared website (ChampDS, Castus, TelVue, BoardDocs, ...): the
+        # bare host names no customer, so collapsing to it throws the
+        # tenant away -- what WO-1038 worked around for TelVue alone in
+        # runner.py. tenant_key.py is the one definition of that slice.
         return final_url
     return _account_base_url(final_url)
 

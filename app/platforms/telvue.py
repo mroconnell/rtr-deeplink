@@ -9,6 +9,7 @@ import aiohttp
 from .base import AssetFinder
 from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils.tenant_key import telvue_org_token
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
 
@@ -129,7 +130,6 @@ _BODY_SUFFIX_RE = re.compile(
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
-_ORG_TOKEN_RE = re.compile(r"/player/([^/]+)/")
 
 # Automated last-resort fallback, added 2026-08-29 after the Irondequoit
 # fix below was found by hand: every TelVue page already carries an
@@ -566,8 +566,9 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
 
 
 def _org_token_from_url(url: str) -> Optional[str]:
-    match = _ORG_TOKEN_RE.search(url)
-    return match.group(1) if match else None
+    # The org token is TelVue's tenant key; tenant_key.py holds the one
+    # definition so rtr-discovery and the pins read it the same way.
+    return telvue_org_token(url)
 
 
 # WO-1038: TelVue's real "account" is per-org-TOKEN (`/player/{token}/`),
