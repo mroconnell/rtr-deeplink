@@ -71,7 +71,11 @@ import aiohttp
 import yt_dlp
 
 from ..utils.gov_registry.registry import match_shape_problem
-from ..utils.gov_registry.resolver import _matched_multi_gov_pin, _tenant_host
+from ..utils.gov_registry.resolver import (
+    _matched_multi_gov_pin,
+    _tenant_host,
+    trusts_shared_tenant_name,
+)
 from . import media_probe
 from .base import (
     CalendarPageError,
@@ -1551,6 +1555,11 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
     if matched:
         gov, _evidence = matched
         return True, gov.gov_id, ""
+    if trusts_shared_tenant_name(host, path):
+        # WO-1057: one government's tenant on a keyed shared host
+        # (tenant_key.py) -- ingest resolves it from its adapter's own
+        # name, the same decision rung 1b makes.
+        return True, None, ""
     return (
         False,
         None,
