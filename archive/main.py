@@ -2786,6 +2786,17 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # 2026-09-21 (WO-942): BART board meeting re-filed from Bart Township, PA
     # to the newly minted San Francisco Bay Area Rapid Transit District.
     "alameda-county-ca-2026-01-22-board-of-directors-on-2026-01-22-9-00-am-the-board": "san-francisco-bay-area-rapid-transit-district-bart-ca-2026-01-22-board-of-direct",
+    # 2026-09-25 (WO-1052): two twin pages, deleted after this redirect
+    # deploys (same redirect-first order as the Leon Valley twin). Each
+    # pair's transcripts were byte-identical when checked. Harris County's
+    # Jun 11 2026 Commissioners Court: page 1171 came from the Swagit URL
+    # with a stray trailing `%5C` (normalize_url() now drops it); page 538
+    # is kept.
+    "harris-county-tx-2026-06-11-jun-11-2026-commissioners-court-12cb68": "harris-county-tx-2026-06-11-jun-11-2026-commissioners-court",
+    # LA County's 2026-08-11 Board of Supervisors (Granicus clip 12325):
+    # one page from `MediaPlayer.php?clip_id=`, one from `player/clip/`;
+    # the `player/clip` page is kept.
+    "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors-fcc9d9": "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors",
 }
 
 

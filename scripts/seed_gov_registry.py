@@ -51,7 +51,10 @@ from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.utils.jurisdiction_enrich import _KNOWN_DOMAINS  # noqa: E402
+from app.utils.jurisdiction_enrich import (  # noqa: E402
+    _KNOWN_DOMAINS,
+    _known_name_with_state,
+)
 from app.utils.gov_registry import registry, resolve_government  # noqa: E402
 
 DATA_DIR = (
@@ -130,13 +133,21 @@ def _architecture_doc_corrections() -> List[Candidate]:
     ]
 
 
+def _known_domain_lookup_name(known) -> str:
+    """The name a `_KNOWN_DOMAINS` entry is looked up by -- the same
+    string `finalize_jurisdiction()` produces for it at ingest. This used
+    to be a bare "Name, ST", which dropped a county entry's type and
+    pinned six county tenants to a same-named city (WO-1052)."""
+    return _known_name_with_state(known)
+
+
 def _known_domains() -> List[Candidate]:
     out = []
     for host, known in _KNOWN_DOMAINS.items():
         out.append(
             Candidate(
                 host=host.lower(),
-                name=f"{known.name}, {known.state}",
+                name=_known_domain_lookup_name(known),
                 strength=known.strength,
                 source="known_domains",
                 evidence="app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS",

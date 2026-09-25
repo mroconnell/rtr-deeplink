@@ -1,3 +1,4 @@
+import re
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 # Deliberate duplicate of app/utils/url_normalize.py's normalize_url -- kept
@@ -5,6 +6,8 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 # deploy-independent (see archive plan notes). If you change one, change
 # both: the resolver and the Archive must agree on what "the same URL"
 # means, or /internal/lookup silently stops matching what the resolver sends.
+
+_TRAILING_BACKSLASH = re.compile(r"(?:\\|%5[cC])+$")
 
 
 def normalize_url(url: str) -> str:
@@ -19,7 +22,14 @@ def normalize_url(url: str) -> str:
     being more aggressive here would create false collisions between
     different meetings.
     """
-    parts = urlsplit(url.strip())
+    # A stray trailing backslash -- literal or percent-encoded -- is a
+    # copy-paste artifact, never part of a real meeting URL. Real case
+    # (WO-1052, 2026-09-25): Harris County's Jun 11 2026 Commissioners
+    # Court was archived twice, once from `.../videos/390829` and once
+    # from `.../videos/390829%5C`; Swagit pages carry no external_id, so
+    # the URL was the only key and the two did not match.
+    url = _TRAILING_BACKSLASH.sub("", url.strip())
+    parts = urlsplit(url)
 
     scheme = parts.scheme.lower()
     netloc = parts.netloc.lower()
