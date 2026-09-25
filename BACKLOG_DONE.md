@@ -38,30 +38,76 @@ came back first instead of picking Nashwauk's own section. This script
 finds both as separate, real sections with separate real videos, and a
 test (`tests/test_hub_harvest.py`) checks they never share a video.
 
-**Counts per hub.**
+**Counts per hub (after Ryan's correction below).**
 
 | Hub | Sections found | Confident matches | Note |
 |---|---|---|---|
-| Iron Range TV Cablecast | 14 | 5 | Nashwauk and Cohasset both confident, both correct now |
-| North Metro TV TRMS Cablecast | 37 | 6 | Real public entry point is `/internetchannel/?site=N`, not the bare host (that 302s to a staff login page) |
+| Iron Range TV Cablecast | 14 | 7 | Nashwauk and Cohasset both confident, both correct now |
+| North Metro TV TRMS Cablecast | 37 | 11 | Real public entry point is `/internetchannel/?site=N`, not the bare host (that 302s to a staff login page) |
 | Centre County C-NET (TelVue) | 44 | 0 | TelVue is a registered shared host — every section needs a human pin, by design (see below) |
-| Campbell County KY Cablecast | 23 | 10 | Wilder confident, plus 9 other Campbell County KY towns |
+| Campbell County KY Cablecast | 23 | 7 | Wilder confident, plus 6 other Campbell County KY towns; its Cable Board and Board of Adjustment rows correctly excluded (see correction) |
 | Town Square TV | 8 | 0 | Real backing tenant is `reflect-tst-mn.cablecast.tv`, not the WordPress wrapper |
 | TVCTV | 6 | 0 | CablecastPublicSite template has no confirmed per-site show API yet — recorded as leads only |
 | Dakota Media Access | 10 | 0 | Same shape as North Metro TV |
 | Miami Valley Communications Council | 1 | 0 | Same shape; only one section resolved this pass |
-| Harbor Media | 32 | 2 | Single-town hub (Hingham, MA) |
+| Harbor Media | 32 | 1 | Single-town hub (Hingham, MA) |
 | Montague Community Television | 1 | 0 | Real platform is Vimeo, not Cablecast — corrects a wrong guess in CLAUDE.md |
 | Pierce County TV | 9 | 0 (confirmed sections, no video) | YouTube-drip-only — never fetched here at all |
 
-18 confident, not-yet-covered matches went into a dry-run
+25 confident, not-yet-covered matches went into a dry-run
 `ingest_queue_plan.csv` with a real caption tier from the actual
-platform adapter's own `resolve()` (read-only, no ingest): 13 tier-1
-(real captions), 3 tier-3 (video only), plus the 2 above. 163 sections
-went to `hand_read.csv` — mostly TelVue's shared-host sections, which
-the resolver correctly refuses to match without a human pin (see
-below), and a few hub shapes (TVCTV, Pierce County TV) this pass could
-list but not fully resolve yet.
+platform adapter's own `resolve()` (read-only, no ingest): 21 tier-1
+(real captions), 4 tier-3 (video only). 159 sections went to
+`hand_read.csv` — mostly TelVue's shared-host sections, which the
+resolver correctly refuses to match without a human pin (see below),
+joint/special bodies (see correction), and a few hub shapes (TVCTV,
+Pierce County TV) this pass could list but not fully resolve yet.
+
+**Correction (Ryan's review of this PR, same day).** The first version
+of this matching logic produced two real wrong "confident" matches —
+exactly the risk named when this WO was assigned: small, similarly
+named places.
+
+1. North Metro TV's "Park Board Meetings" section (Blaine's own parks
+   board) matched "Park Township, MN" — a real, different government —
+   because "Park" from the body's own name ("Park Board") was treated
+   as if it were a place. Fixed two ways: place-descriptor words
+   ("Park Board", "Planning Commission", "Board of Supervisors", a bare
+   trailing "Council"/"Commission"/"Board", and others) are now stripped
+   from a section's own name before any place is extracted from what's
+   left, and a handful of real policy-topic words that are not places
+   even though one of them collides with a real government name (Park,
+   Cable, Communications, Planning, Environmental, Recreation, Zoning,
+   Tree, and others) can never be used as a place on their own. When a
+   section's own name has no place left after that, its newest several
+   real meeting titles are read instead — "Blaine Park Board Meeting
+   ..." names Blaine directly, and that is now the confident match,
+   only when the titles checked agree on one government.
+2. Campbell County KY Cablecast's "Campbell County Cable Board" (the
+   joint body that runs the channel, not the county government) and its
+   "... Board of Adjustment" rows both matched Campbell County itself.
+   Fixed by recognizing a class of joint/special bodies — a cable or
+   communications board/commission, an authority, a board of
+   adjustment, a watershed/regional/council-of-governments body, or a
+   district that isn't a school district — and never auto-matching one
+   of these to the county/town it happens to be named after or hosted
+   by, however clean that name looks. Real examples this closed, all
+   found live: Centre County C-NET's "Centre Area Transportation
+   Authority (CATA)", "Centre Region Council of Governments", "Centre
+   Regional Planning Commission (CRPC)", "Spring Creek Watershed
+   Commission", "University Area Joint Authority"; North Metro TV's own
+   "North Metro Telecommunications Commission" (the same shape as
+   Campbell County's Cable Board — "North Metro" isn't a place at all,
+   and used to wrongly match "North Township, MN").
+
+A real county/township government board still matches correctly —
+"Anoka County Board Meetings" keeps its real type word ("County") and
+still resolves to Anoka County, since only the meeting-descriptor part
+is stripped, never a place-type word. Six new tests
+(`tests/test_hub_harvest.py::TestRyan20260924Review`) cover both real
+cases plus a same-name school-district-vs-city case (Bellefonte Area
+School District, PA vs. the Borough of Bellefonte, PA — two real,
+different governments the resolver already tells apart correctly).
 
 **Two real, reusable bugs found and fixed while building this.**
 
@@ -98,7 +144,7 @@ behind a further JS widget this pass didn't walk — both hubs' sections
 are real and confirmed, but "newest meeting" is left blank rather than
 guessed for either. Neither was pinned or queued.
 
-**Tests.** `tests/test_hub_harvest.py`, 19 tests, real fixtures in
+**Tests.** `tests/test_hub_harvest.py`, 25 tests, real fixtures in
 `tests/fixtures/hub_harvest/` fetched live 2026-09-24 from Iron Range
 TV Cablecast and Centre County C-NET — covers the Nashwauk/Wilder
 match, the "Meeting"-suffix workaround, gallery de-duplication, the
@@ -111,7 +157,7 @@ County TV path never calls its network session at all.
 |---|---|
 | `app/utils/jurisdiction_data/regional_tv_hubs.csv` (new) | 11 hubs, each with a real, live-confirmed URL and notes |
 | `scripts/hub_harvest.py` (new) | the harvester |
-| `tests/test_hub_harvest.py` (new), `tests/fixtures/hub_harvest/` (new) | 19 tests against real fixtures |
+| `tests/test_hub_harvest.py` (new), `tests/fixtures/hub_harvest/` (new) | 25 tests against real fixtures |
 
 Dry run only, per the brief: no ingest, no queue file edited, no
 `rtr-business` file touched. `hub_sections.csv`,

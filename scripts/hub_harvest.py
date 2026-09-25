@@ -162,6 +162,203 @@ def _resolver_candidate_text(text: str) -> str:
     return f"{stripped} Meeting"
 
 
+# --------------------------------------------------------------------
+# Ryan's 2026-09-24 review of this PR (#1434) flagged two real wrong
+# "confident" matches -- exactly the risk he named when this WO was
+# assigned: small, similarly named places. Both are fixed below.
+# --------------------------------------------------------------------
+
+# 1. A JOINT or SPECIAL body is never the county/town it happens to be
+# named after or hosted by -- it is a separate body, sometimes literally
+# run BY several governments together (a cable commission, a council of
+# governments), sometimes a quasi-independent appointed board (a board
+# of adjustment). Real examples this list is built from, all seen live
+# 2026-09-24: Campbell County KY's "Campbell County Cable Board" (the
+# joint body that runs the channel itself, not the county government)
+# and its "... Board of Adjustment" rows; Centre County C-NET's "Centre
+# Area Transportation Authority (CATA)", "Centre Region Council of
+# Governments", "Centre Regional Planning Commission (CRPC)" (a
+# multi-town regional body, unlike an ordinary single-town planning
+# commission), "Spring Creek Watershed Commission", "University Area
+# Joint Authority"; North Metro TV's own "North Metro Telecommunications
+# Commission" (the joint body of its member cities that runs the
+# channel -- the same shape as Campbell County's Cable Board, and the
+# second real wrong match Ryan's review caught: "North Metro" isn't a
+# place at all, but a bare place-fragment extraction still found a real,
+# wrong "North Township, MN" hiding inside it). These are recorded (a
+# human can still read the section and pin it correctly) but NEVER
+# auto-matched to a place name that merely appears in or near their own
+# title.
+_JOINT_OR_SPECIAL_BODY_RE = re.compile(
+    r"\bcable (?:board|commission)\b"
+    r"|\b(?:tele)?communications? (?:board|commission)\b"
+    r"|\bunity council\b"
+    r"|\bboard of adjustments?\b"
+    r"|\bauthority\b"
+    r"|\bjoint powers\b"
+    r"|\bjoint authority\b"
+    r"|\bregional\b.{0,40}\b(?:council|board|commission)\b"
+    r"|\bcouncil of governments\b"
+    r"|\bwatershed commission\b"
+    r"|(?<!school )(?<!school-)\bdistrict\b",
+    re.IGNORECASE,
+)
+
+
+def _is_joint_or_special_body(text: str) -> bool:
+    return bool(_JOINT_OR_SPECIAL_BODY_RE.search(text or ""))
+
+
+# 2. Strip generic meeting/body DESCRIPTOR words before extracting a
+# place name -- but never a real place-TYPE word (County, Township,
+# Borough, Village, City, Town), since the type word is part of the
+# actual place identity ("Anoka County" is the government; "Anoka"
+# alone is a DIFFERENT, real place -- a city inside that county). Every
+# phrase here is a body/meeting descriptor, never a place-type word, so
+# stripping it can only ever remove noise, never truncate a real name.
+_TRAILING_DESCRIPTOR_RE = re.compile(
+    r"[\s\-–,]*\b(?:"
+    r"board of (?:supervisors|commissioners|trustees|adjustments?)"
+    r"|commissioners court"
+    r"|planning(?: and| &) zoning"
+    r"|planning commission"
+    r"|parks?(?: and| &) recreation"
+    r"|park board"
+    r"|environmental board"
+    r"|work sessions?"
+    r"|regular meetings?"
+    r"|special meetings?"
+    r"|school board"
+    r"|board of education"
+    r"|council"
+    r"|commission"
+    r"|board"
+    r"|supervisors"
+    r"|trustees"
+    r"|aldermen"
+    r"|meetings?"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
+_DATE_LIKE_RE = re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b(?:19|20)\d{2}\b")
+
+# Real, confirmed generic policy-area/body-topic words that are NOT a
+# place, even though one of them (Park) happens to collide with a real
+# place name (Park Township, MN) -- confirmed live 2026-09-24 building
+# this fix: North Metro TV's "Park Board Meetings" section, once its
+# trailing "Board Meetings" descriptor is stripped, leaves the bare word
+# "Park" -- and `resolve_government("Park, MN", ...)` genuinely matches
+# a real township by that name, which is wrong here (the section's own
+# newest meeting is a BLAINE Park Board meeting, not a meeting of Park
+# Township's own government). A remainder made ENTIRELY of these words
+# is treated as "no place named", not "the place happens to be called
+# that", and the caller falls back to the section's own meeting titles.
+_GENERIC_NON_PLACE_HEAD_WORDS = frozenset(
+    {
+        "park",
+        "parks",
+        "tree",
+        "planning",
+        "cable",
+        "communications",
+        "telecommunications",
+        "environmental",
+        "recreation",
+        "zoning",
+        "water",
+        "library",
+        "transportation",
+        "adjustment",
+        "adjustments",
+        "work",
+        "session",
+        "sessions",
+    }
+)
+
+
+def _extract_place_fragment(text: str) -> str:
+    """The real place name inside `text`, once generic meeting/body
+    descriptor words are stripped from the end -- or "" when nothing
+    place-shaped is left (see the two module comments above for the
+    real cases this distinguishes: "Anoka County Board Meetings" ->
+    "Anoka County" keeps its real type word; "Park Board Meetings" ->
+    "" because "Park" alone is a policy-area word here, not a place).
+    Never called on a joint/special body -- callers check
+    `_is_joint_or_special_body()` first."""
+    if not text:
+        return ""
+    working = text
+    while True:
+        stripped = _TRAILING_DESCRIPTOR_RE.sub("", working)
+        stripped = _DATE_LIKE_RE.sub(" ", stripped)
+        stripped = re.sub(r"[\s\-–,]+$", "", stripped).strip()
+        if stripped == working:
+            break
+        working = stripped
+    working = re.sub(r"^(?:of|the|and)\b\s*", "", working, flags=re.IGNORECASE).strip()
+    working = re.sub(r"\s+", " ", working)
+    if not working:
+        return ""
+    tokens = re.findall(r"[a-z]+", working.lower())
+    if tokens and all(t in _GENERIC_NON_PLACE_HEAD_WORDS for t in tokens):
+        return ""
+    return working
+
+
+def _match_place_text(
+    place_text: str, region_state: str, tenant_host: str
+) -> "resolver.GovernmentMatch":
+    raw_name = f"{place_text}, {region_state}" if region_state else place_text
+    match = resolver.resolve_government(raw_name, tenant_host=tenant_host)
+    if match.tier not in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+        # Same "Meeting" workaround `_resolver_candidate_text()` documents
+        # -- a bare place+type fragment usually resolves directly (see
+        # this WO's own live tests), but retry with it appended in case
+        # this particular fragment still needs `finalize_jurisdiction()`'s
+        # "...Meeting" repair rule to fire.
+        retried = resolver.resolve_government(
+            f"{_resolver_candidate_text(place_text)}, {region_state}"
+            if region_state
+            else _resolver_candidate_text(place_text),
+            tenant_host=tenant_host,
+        )
+        if retried.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+            return retried
+    return match
+
+
+def _consistent_place_from_titles(
+    titles: List[str], region_state: str, tenant_host: str
+) -> Tuple[str, Optional["resolver.GovernmentMatch"]]:
+    """Ryan's fix (b): when the section's own name has no place in it
+    (e.g. "Park Board Meetings"), read the section's own newest several
+    meeting titles instead -- North Metro TV's real "Park Board
+    Meetings" section's actual videos are named "Blaine Park Board
+    Meeting ...", "Blaine Park Board ...", each naming the real city
+    directly. Only returns a match when every title checked agrees on
+    the same government id -- titles that disagree, or name no place at
+    all, come back empty so the caller falls through to hand_read rather
+    than guess between them."""
+    matches = []
+    for title in titles:
+        if _is_joint_or_special_body(title):
+            continue
+        fragment = _extract_place_fragment(title)
+        if not fragment:
+            continue
+        match = _match_place_text(fragment, region_state, tenant_host)
+        if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+            matches.append(match)
+    if not matches:
+        return "", None
+    gov_ids = {m.gov_id for m in matches}
+    if len(gov_ids) != 1:
+        return "", None
+    return matches[0].gov_name, matches[0]
+
+
 @dataclass
 class HubRow:
     hub: str
@@ -326,13 +523,15 @@ async def _harvest_cablecast_remix(
             galleries.append(gallery)
         site_title = other.get("title") or ""
         if not galleries:
-            sections.append(_build_matched_section(hub, site_title, site_title, None))
+            sections.append(_build_matched_section(hub, site_title, site_title, []))
             continue
         for gallery in galleries:
-            newest = _newest_show(gallery.get("shows") or [])
             sections.append(
                 _build_matched_section(
-                    hub, gallery.get("title") or "", site_title, newest
+                    hub,
+                    gallery.get("title") or "",
+                    site_title,
+                    gallery.get("shows") or [],
                 )
             )
     return sections, None
@@ -347,12 +546,14 @@ def _canonical_cablecast_show_url(hub_url: str, show: dict) -> Optional[str]:
 
 
 def _build_matched_section(
-    hub: HubRow, section_name: str, site_title: str, newest: Optional[dict]
+    hub: HubRow, section_name: str, site_title: str, shows: List[dict]
 ) -> SectionResult:
-    text_for_match = section_name if _looks_like_a_government_body(section_name) else ""
-    if not text_for_match and _looks_like_a_government_body(site_title):
-        text_for_match = site_title
-
+    """Matches one gallery/section to a government -- see the two module
+    comments above `_JOINT_OR_SPECIAL_BODY_RE` and `_extract_place_
+    fragment()` for the two real wrong-match bugs (Ryan, 2026-09-24) this
+    logic exists to avoid, and `_consistent_place_from_titles()`'s own
+    docstring for the meeting-titles fallback (fix b)."""
+    newest = _newest_show(shows) if shows else None
     result = _section(
         hub,
         section=section_name or site_title,
@@ -361,26 +562,75 @@ def _build_matched_section(
         newest_url=(newest or {}).get("vodUrl") or "",
         resolve_url=_canonical_cablecast_show_url(hub.url, newest) if newest else "",
     )
-    if not text_for_match:
+    tenant_host = urlparse(hub.url).netloc
+
+    if _is_joint_or_special_body(section_name) or _is_joint_or_special_body(site_title):
+        result.jurisdiction_text = section_name
+        result.reason = (
+            "joint/special body (cable/communications board, authority, "
+            "watershed/regional/COG body, board of adjustment, or "
+            "non-school district) -- never auto-matched to the county/town "
+            "it is named after or hosted by; needs a human to confirm which "
+            "government, if any, this belongs to"
+        )
+        return result
+
+    if not _looks_like_a_government_body(
+        section_name
+    ) and not _looks_like_a_government_body(site_title):
         result.reason = "section title does not name a governing body"
         return result
 
-    raw_name = (
-        f"{_resolver_candidate_text(text_for_match)}, {hub.region_state}"
-        if hub.region_state
-        else _resolver_candidate_text(text_for_match)
+    body_text = (
+        section_name if _looks_like_a_government_body(section_name) else site_title
     )
-    match = resolver.resolve_government(raw_name, tenant_host=urlparse(hub.url).netloc)
-    result.jurisdiction_text = text_for_match
-    result.body_type = _guessed_body_type(text_for_match)
-    result.matched_gov_id = match.gov_id or ""
-    result.matched_gov_name = match.gov_name or ""
-    if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+    place_fragment = _extract_place_fragment(body_text)
+
+    if place_fragment:
+        match = _match_place_text(place_fragment, hub.region_state, tenant_host)
+        result.jurisdiction_text = place_fragment
+        result.body_type = _guessed_body_type(body_text)
+        result.matched_gov_id = match.gov_id or ""
+        result.matched_gov_name = match.gov_name or ""
+        if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+            result.confidence = "confident"
+            result.reason = f"exact name+state+type match ({match.tier})"
+        else:
+            result.confidence = "hand_read"
+            result.reason = f"resolver tier={match.tier}: {match.evidence}"
+        return result
+
+    # No place in the section's own name (e.g. "Park Board Meetings") --
+    # fix (b): read the section's own newest several meeting titles
+    # instead. Newest-first, capped at 5 -- enough to catch a
+    # consistently-named real place without walking a whole gallery.
+    titles_by_date = sorted(
+        (s for s in shows if s.get("title")),
+        key=lambda s: (
+            _parse_show_date(s.get("eventDate"))
+            or datetime.min.replace(tzinfo=timezone.utc)
+        ),
+        reverse=True,
+    )
+    candidate_titles = [s["title"] for s in titles_by_date[:5]]
+    gov_name, match = _consistent_place_from_titles(
+        candidate_titles, hub.region_state, tenant_host
+    )
+    if match:
+        result.jurisdiction_text = gov_name
+        result.body_type = _guessed_body_type(body_text)
+        result.matched_gov_id = match.gov_id or ""
+        result.matched_gov_name = match.gov_name or ""
         result.confidence = "confident"
-        result.reason = f"exact name+state+type match ({match.tier})"
+        result.reason = (
+            "no place in the section's own title -- matched from its "
+            f"newest meeting titles agreeing on one government ({match.tier})"
+        )
     else:
-        result.confidence = "hand_read"
-        result.reason = f"resolver tier={match.tier}: {match.evidence}"
+        result.reason = (
+            "no place in the section's own title, and its newest meeting "
+            "titles disagree or name none -- needs a human"
+        )
     return result
 
 
@@ -431,25 +681,43 @@ async def _harvest_telvue(
             newest_url=urljoin(origin, path),
             resolve_url=urljoin(origin, path),
         )
-        if not _looks_like_a_government_body(title):
+        if _is_joint_or_special_body(title):
+            section.jurisdiction_text = title
+            section.reason = (
+                "joint/special body (cable/communications board, authority, "
+                "watershed/regional/COG body, board of adjustment, or "
+                "non-school district) -- never auto-matched; needs a human"
+            )
+        elif not _looks_like_a_government_body(title):
             section.reason = "section title does not name a governing body"
         else:
-            raw_name = (
-                f"{_resolver_candidate_text(title)}, {hub.region_state}"
-                if hub.region_state
-                else _resolver_candidate_text(title)
-            )
-            match = resolver.resolve_government(raw_name, tenant_host=parsed.netloc)
-            section.jurisdiction_text = title
-            section.body_type = _guessed_body_type(title)
-            section.matched_gov_id = match.gov_id or ""
-            section.matched_gov_name = match.gov_name or ""
-            if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
-                section.confidence = "confident"
-                section.reason = f"exact name+state+type match ({match.tier})"
+            place_fragment = _extract_place_fragment(title)
+            if not place_fragment:
+                # TelVue's own `/home` page gives one card per playlist
+                # with no other video titles to fall back on (fix (b)'s
+                # multi-title check needs `list_playlist_items()`, an
+                # extra fetch per playlist this pass doesn't make) --
+                # recorded for a human rather than guessed.
+                section.jurisdiction_text = title
+                section.reason = (
+                    "no place in this playlist's own title, and TelVue's "
+                    "/home page doesn't list its other video titles to "
+                    "check -- needs a human"
+                )
             else:
-                section.confidence = "hand_read"
-                section.reason = f"resolver tier={match.tier}: {match.evidence}"
+                match = _match_place_text(
+                    place_fragment, hub.region_state, parsed.netloc
+                )
+                section.jurisdiction_text = place_fragment
+                section.body_type = _guessed_body_type(title)
+                section.matched_gov_id = match.gov_id or ""
+                section.matched_gov_name = match.gov_name or ""
+                if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+                    section.confidence = "confident"
+                    section.reason = f"exact name+state+type match ({match.tier})"
+                else:
+                    section.confidence = "hand_read"
+                    section.reason = f"resolver tier={match.tier}: {match.evidence}"
         sections.append(section)
     return sections, None
 
