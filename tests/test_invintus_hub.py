@@ -119,6 +119,20 @@ def test_wisconsin_chambers_from_real_titles_and_categories():
         assert legislative_chamber(WI, title, cats) == expected, title
 
 
+def test_wisconsin_association_conference_is_not_the_assembly():
+    # Real rows from a live WisconsinEye Search/general capture, 2026-09-25
+    # (rtr-discovery tests/fixtures/invintus/wisconsin_search_p1.json,
+    # rtr-discovery BACKLOG.md FINDING-25). These are Wisconsin Counties
+    # Association conference sessions. The "General Assembly" in the title
+    # used to match the state Assembly.
+    for title in (
+        "2026 WCA Annual Conference - Day 2: General Assembly",
+        "2026 WCA Annual Conference - Day 1: General Assembly",
+    ):
+        cats = ["Conferences", "Presentations"]
+        assert legislative_chamber(WI, title, cats) is None, title
+
+
 def test_tvw_chambers_from_real_titles_and_categories():
     # Real TVW (Washington) titles/categories, 2026-09-22 (WO-1010) --
     # confirmed via a live 50-row/520-total Search/general sample that no

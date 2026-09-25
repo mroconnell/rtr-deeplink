@@ -231,8 +231,8 @@ def legislative_chamber(
     Finance", "Wisconsin State Assembly Floor Session", "2026 Legislative
     Council Study Committee on Cemeteries". Oregon's "News Conferences &
     Non-Legislative Videos" and WisconsinEye's News Conference / Circuit
-    Court / WisPolitics / Campaign / Rewind rows are deliberately not
-    matched."""
+    Court / WisPolitics / Campaign / Rewind / Conferences rows are
+    deliberately not matched."""
     if client_id not in LEGISLATURE_CLIENTS:
         return None
     text = (title or "").strip()
@@ -269,6 +269,13 @@ def legislative_chamber(
         "dane county circuit",
     )
     if lowered.startswith(blocked_prefixes) or "circuit court" in cats:
+        return None
+    # "Conferences" tags outside events WisconsinEye covers, such as the
+    # Wisconsin Counties Association's "2026 WCA Annual Conference - Day 2:
+    # General Assembly" (live capture 2026-09-25). Its "General Assembly"
+    # is the WCA's own session, not the state Assembly. No real committee,
+    # floor session or study committee row carries this category.
+    if "conferences" in cats:
         return None
     if "legislative council" in lowered or "study committee" in cats:
         return "Joint"
