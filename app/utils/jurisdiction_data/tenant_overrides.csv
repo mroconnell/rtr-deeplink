@@ -148,7 +148,8 @@ broomfieldco.cablecast.tv,,us:place:0809280,fallback,auto_derived+known_domains,
 browardmpo.new.swagit.com,,rtr:us:fl:broward-metropolitan-planning-organization,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Broward Metropolitan Planning Organization, FL'"
 buenapark.cablecast.tv,,us:place:0608786,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:0608786; 2 weak page(s) e.g. /m/2026-07-23-bp-planning-commission-july-22-2026
 buffalony.iqm2.com,,us:place:3611000,fallback,identity_join+landing_page,"Buffalo, NY -- us_places.csv Buffalo city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
-burbank.granicus.com,,us:sd:0606450,fallback,visual_confirmed,'Burbank Unified School District' logo on the player (meeting.png); the only NCES district of that name [reports/jurisdiction_screens/burbank.granicus.com/landing.png reports/jurisdiction_screens/burbank.granicus.com/meeting.png] -> nces 0606450 -> registry: us_school_districts.csv Burbank Unified School District (unified)
+burbank.granicus.com,,us:place:0608954,fallback,landing_page+wo1068,"City of Burbank, CA -- the host carries the city (City Council, Burbank Water and Power board, Police Commission; view 6 'Burbank's Web Page') and Burbank Unified School District (view 4). Whole-host default is the city; view_id=4 is pinned to the district separately. Replaces a whole-host pin to the district, read off one view's logo. WO-1068, 2026-09-25."
+burbank.granicus.com,view_id=4,us:sd:0606450,fallback,landing_page+wo1068,"Burbank Unified School District, CA -- view 4's own title is 'Burbank Unified School District' (checked live 2026-09-25); its Board of Education meetings. WO-1068, 2026-09-25."
 burlingameca.granicus.com,,us:place:0609066,fallback,landing_page,"landing page https://burlingameca.granicus.com/ViewPublisher.php?view_id=1 reads ""Burlingame View"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 burlington.escribemeetings.com,,ca:csd:3524002,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Burlington
 burnaby.escribemeetings.com,,ca:csd:5915025,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Burnaby
@@ -264,7 +265,7 @@ cityofsancarlos.primegov.com,,us:place:0665070,fallback,upcoming_roster,upcoming
 cityofstillwater.granicus.com,,us:place:2762824,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2762824; 1 weak page(s) e.g. /m/city-of-stillwater-2024-12-05-12-05-2024-2025-road-projects
 cityoftracy.primegov.com,,ca:csd:1303005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tracy
 cityofventura.granicus.com,,us:place:0665042,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS says Ventura, CA for this host, and the seeding run resolved that string to Ventura COUNTY -- freezing into an authoritative pin the exact bug the curated us:place:0665042 row now fixes (Census names the city San Buenaventura (Ventura) city, so the place table keys no Ventura in CA). The host says cityofventura; ventura.primegov.com is the county and keeps us:county:06111."
-cityofvernon.primegov.com,,ca:csd:5937014,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Vernon
+cityofvernon.primegov.com,,us:place:0682422,fallback,landing_page+wo1068,"Vernon, CA -- meeting agendas give 4305 Santa Fe Ave, Vernon, California (checked live 2026-09-25). Replaces a DNS-sweep name guess to Vernon, BC. WO-1068, 2026-09-25."
 cityofwalnut.granicus.com,,us:place:0683332,fallback,ryan_stated,"Walnut, CA -- us_places.csv Walnut city"
 cityofwayne.com,,us:place:2684940,fallback,ryan_stated,"Wayne, MI -- us_places.csv Wayne city"
 cityofweirton.com,,us:place:5485156,fallback,hub_sweep_wo126,"coverage registry row us:place:5485156 (Weirton city, WV); hub https://cityofweirton.com/AgendaCenter; meeting found via youtube at https://cityofweirton.com/AgendaCenter"
@@ -273,7 +274,7 @@ ciwalkermi.civicweb.net,,us:place:2682960,fallback,ryan_stated,"Walker, MI -- us
 clarencerockland.civicweb.net,,ca:csd:3502036,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Clarence-Rockland
 claresholm.escribemeetings.com,,ca:csd:4803022,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Claresholm
 clarington.escribemeetings.com,,ca:csd:3518017,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Clarington
-clark.granicus.com,,us:county:20025,fallback,wo190_resolve_research_urls,"coverage registry row us:county:20025 (Clark County, KS); hub https://clark.granicus.com/MediaPlayer.php?clip_id=6905&view_id=14; meeting found via granicus at https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true"
+clark.granicus.com,,us:county:32003,fallback,landing_page+wo1068,"Clark County, NV -- the player's own clips are Clark County (Las Vegas, Nevada) Board of Commissioners meetings, checked live 2026-09-25. Replaces a wo190 research-row pin to Clark County, KS, which filed 2 Nevada pages under Kansas. WO-1068, 2026-09-25."
 clarkcounty.escribemeetings.com,,us:county:39023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Clark County
 clawson.granicus.com,,us:place:2616160,fallback,identity_join+landing_page,"Clawson, MI -- us_places.csv Clawson city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 clayton.oh.us,,us:place:3915644,fallback,hub_sweep_wo126,"coverage registry row us:place:3915644 (Clayton city, OH); hub https://clayton.oh.us/AgendaCenter; meeting found via youtube at https://clayton.oh.us/172/Council-Meeting-AgendasMinutes-and-Video"
@@ -363,8 +364,8 @@ docs.medicinehat.ca,,ca:csd:4801006,fallback,known_domains,app/utils/jurisdictio
 docs.santabarbaraca.gov,,us:place:0669070,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Santa Barbara city
 docs.steamboatsprings.net,,us:place:0873825,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Steamboat Springs city
 dodgecountymn.primegov.com,,us:county:27039,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Dodge County
-douglascounty.granicus.com,,us:county:32005,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Douglas County
-douglascounty.legistar.com,,us:county:32005,fallback,wildcard_http_sweep_1,HTTP 200 len=381537 -> registry: us_counties.csv Douglas County
+douglascounty.granicus.com,,us:county:08035,fallback,landing_page+wo1068,"Douglas County, CO -- the view page names Colorado and its clips link the county's Legistar (legistar1.com/douglascounty) Board of County Commissioners agendas (checked live 2026-09-25). Replaces a wildcard-sweep name guess to Douglas County, NV. WO-1068, 2026-09-25."
+douglascounty.legistar.com,,us:county:08035,fallback,landing_page+wo1068,"Douglas County, CO -- the calendar's own title is 'Douglas County, Colorado - Calendar' (checked live 2026-09-25). Replaces a wildcard-sweep name guess to Douglas County, NV. WO-1068, 2026-09-25."
 douglascountyga.portal.civicclerk.com,,us:county:13097,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Douglas County
 douglascountyks.civicweb.net,,us:county:20045,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Douglas County
 douglascountynv.granicus.com,,us:county:32005,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Douglas County
@@ -382,7 +383,7 @@ duncan.civicweb.net,,ca:csd:5919012,fallback,ryan_stated,"Duncan, BC -- ca_csd.c
 dundeevillage.civicweb.net,,us:place:2623380,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Dundee village
 dunwoodyga.hylandcloud.com,,us:place:1324768,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Dunwoody city
 durangogov.hylandcloud.com,,us:place:0822035,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Durango city
-durham.granicus.com,,ca:cd:3518,fallback,wildcard_http_sweep_1,HTTP 404 -> registry: ca_cd.csv Durham
+durham.granicus.com,,us:place:3719000,fallback,landing_page+wo1068,"Durham, NC -- landing page title 'Durham, NC - City of Medicine'; City Council meetings (checked live 2026-09-25). Replaces a wildcard-sweep name guess to Durham Region, ON. WO-1068, 2026-09-25."
 duttondunwich.escribemeetings.com,,ca:csd:3534030,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Dutton/Dunwich
 dysartetal.civicweb.net,,ca:csd:3546024,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Dysart et al
 eaglemountaincity.primegov.com,,us:place:4920810,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Eagle Mountain city
@@ -415,7 +416,7 @@ espanola.escribemeetings.com,,ca:csd:3552026,fallback,wildcard_http_sweep_2,bare
 essexcounty.escribemeetings.com,,us:county:51057,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Essex County
 essexcountynj.primegov.com,,us:county:34013,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Essex County
 estevan.escribemeetings.com,,ca:csd:4701024,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Estevan
-eustis.civicweb.net,,us:cousub:2300724005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_cousubs.csv Eustis town
+eustis.civicweb.net,,us:place:1221350,fallback,landing_page+wo1068,"Eustis, FL -- the portal's own title is 'City of Eustis - Home'; City Commission meetings (checked live 2026-09-25). Replaces a wildcard-sweep name guess to Eustis town, Maine. WO-1068, 2026-09-25."
 evanscounty.civicweb.net,,us:county:13109,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Evans County
 evansville.granicus.com,,us:place:1822000,fallback,ryan_stated,"Evansville, IN -- us_places.csv Evansville city"
 evanturel.civicweb.net,,ca:csd:3554049,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Evanturel
@@ -431,7 +432,7 @@ fcva.granicus.com,,us:county:51069,fallback,auto_derived+known_domains,app/utils
 fentonmo.org,,us:place:2923950,fallback,identity_join+landing_page,"Fenton, MO -- us_places.csv Fenton city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 fernie.civicweb.net,,ca:csd:5901012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Fernie
 finneycounty.granicus.com,,us:county:20055,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Finney County
-fishkilltownny.iqm2.com,,us:place:3625967,fallback,wo145_api_first_sweep,"coverage registry row us:place:3625967 (Fishkill village, NY); hub https://vofishkill.gov/boards-and-committees-village-of-fishkill/; meeting found via iqm2 at https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1904"
+fishkilltownny.iqm2.com,,us:cousub:3602725978,fallback,landing_page+wo1068,"Fishkill (town), NY -- the host is the town's ('fishkilltown'); its pages are Town Board and Planning Board meetings. Replaces a research-row pin to the village of Fishkill. WO-1068, 2026-09-25."
 flagstaffcounty.escribemeetings.com,,ca:csd:4807031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4807031 Flagstaff County matched with spacing ignored
 floydcountyga.portal.civicclerk.com,,us:county:13115,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Floyd County
 folsom.granicus.com,,us:place:0624638,fallback,jurisdiction_overrides, -> registry: us_places.csv Folsom city
@@ -474,7 +475,7 @@ golden.civicweb.net,,ca:csd:5939007,fallback,wildcard_http_sweep_2,DNS resolves 
 goldriver.escribemeetings.com,,ca:csd:5924025,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Gold River
 gorebay.civicweb.net,,ca:csd:3551026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Gore Bay
 grandcountyut.portal.civicclerk.com,,us:county:49019,fallback,wildcard_http_sweep_2,HTTP 200 api-supported-versions present -> registry: us_counties.csv Grand County
-grandrapidscity.primegov.com,,us:place:2725118,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Grand Rapids city
+grandrapidscity.primegov.com,,us:place:2634000,fallback,landing_page+wo1068,"Grand Rapids, MI -- meeting agendas give 300 Monroe Ave NW, Grand Rapids City Hall (checked live 2026-09-25). Replaces a DNS-sweep name guess to Grand Rapids, MN. WO-1068, 2026-09-25."
 grandtraversecounty.civicweb.net,,us:county:26055,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Grand Traverse County
 granisle.civicweb.net,,ca:csd:5951032,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Granisle
 gravenhurst.civicweb.net,,ca:csd:3544002,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Gravenhurst
@@ -728,7 +729,7 @@ mcnabbraeside.civicweb.net,,ca:csd:3547003,fallback,wildcard_http_sweep_2,DNS re
 meadowlake.civicweb.net,,ca:csd:4717052,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Meadow Lake
 meaford.civicweb.net,,ca:csd:3542047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Meaford
 medicinehat.escribemeetings.com,,ca:csd:4801006,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Medicine Hat
-meeting.reddeer.ca,,rtr:ca:ab:red-deer,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Red Deer, AB'"
+meeting.reddeer.ca,,ca:csd:4808011,fallback,landing_page+wo1068,"Red Deer, AB -- the City of Red Deer's own agenda site; the registry id replaces a minted duplicate (rtr:ca:ab:red-deer) from _KNOWN_DOMAINS. WO-1068, 2026-09-25."
 meetings.cob.org,,us:place:5305280,authoritative,manual_override,set by POST /internal/jurisdiction/override on 2026-09-10; example page /m/2026-08-24-committee-of-the-whole
 meetings.muni.org,,us:place:0203000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Anchorage municipality
 meetings.redwoodcity.org,,us:place:0660102,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Redwood City city
@@ -815,7 +816,9 @@ natronacounty-wy.gov,,us:county:56025,fallback,archive_study_2026-09-09,1 solid 
 neguac.escribemeetings.com,,ca:csd:1309038,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Neguac
 nelson.civicweb.net,,ca:csd:5903015,fallback,ryan_stated,"Nelson, BC -- ca_csd.csv Nelson"
 netapps.ocfl.net,,us:county:12095,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Orange County
-nevco.granicus.com,,us:place:0650874,fallback,auto_derived+visual_confirmed,'City of Nevada City Streaming Media Archive'; 'Nevada City Council Meeting' (landing.png) -- the only place of that name [reports/jurisdiction_screens/nevco.granicus.com/landing.png reports/jurisdiction_screens/nevco.granicus.com/meeting.png] -> place 0650874 -> registry: us_places.csv Nevada City city
+nevco.granicus.com,,us:county:06057,fallback,landing_page+wo1068,"Nevada County, CA -- the host carries three governments, each on its own view (checked live 2026-09-25): view 3 'Nevada County - BOS meetings', view 2 'Nevada City', view 4 'Grass Valley' (view 5 is NCTV). Whole-host default is the county (the host is 'nevco'); views 2 and 4 are pinned separately. Replaces a whole-host pin to Nevada City. WO-1068, 2026-09-25."
+nevco.granicus.com,view_id=2,us:place:0650874,fallback,landing_page+wo1068,"Nevada City, CA -- nevco.granicus.com view 2, titled 'Nevada City' (checked live 2026-09-25). WO-1068, 2026-09-25."
+nevco.granicus.com,view_id=4,us:place:0630798,fallback,landing_page+wo1068,"Grass Valley, CA -- nevco.granicus.com view 4, titled 'Grass Valley' (checked live 2026-09-25). WO-1068, 2026-09-25."
 newark.granicus.com,,us:place:3451000,fallback,landing_page,"WRONG PIN (fixed 2026-09-03, rtr-discovery Phase 3 FINDING-9): the upcoming_roster pin below assumed this host was Newark, Alameda County, CA purely by matching the hostname text ""newark"" to the roster jurisdiction name -- the roster never lists newark.granicus.com as Newark, CA's calendar_url (that jurisdiction's real calendar_url is newark.legistar.com). Live-checked https://newark.granicus.com/ViewPublisher.php?view_id=2 -- page reads ""City of Newark, New Jersey - Live Proceedings"" / ""City of Newark, NJ Streaming Media Archive"" -> place 3451000 -> registry: us_places.csv Newark city, NJ. Prior (wrong) pin: gov_id=us:place:0650916, source=ryan_stated+upcoming_roster, evidence=rtr-upcoming roster: Newark, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Newark city"
 newburghny.new.swagit.com,,us:place:3650034,fallback,identity_join+landing_page,"Newburgh (city), NY -- us_places.csv Newburgh city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 newcarlisleohio.gov,,us:place:3954334,fallback,ryan_stated,"New Carlisle, OH -- us_places.csv New Carlisle city"
@@ -1232,7 +1235,7 @@ sidney.civicweb.net,,ca:csd:5917010,fallback,ryan_stated,"Sidney, BC -- ca_csd.c
 silverbeach.civicweb.net,,ca:csd:4811009,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Silver Beach
 silverton.civicweb.net,,ca:csd:5903027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Silverton
 simcoe.civicweb.net,,ca:cd:3543,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Simcoe
-siouxcityschools.new.swagit.com,,us:place:1973335,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:1973335; 1 weak page(s) e.g. /m/jan-24-2022-special-board-meeting-sioux-city-community-school-district
+siouxcityschools.new.swagit.com,,us:sd:1926400,fallback,landing_page+wo1068,"Sioux City Community School District, IA -- the host is the district's own ('siouxcityschools'); its pages are district board meetings. Replaces an archive-study pin to the city of Sioux City. WO-1068, 2026-09-25."
 sitka.granicus.com,,us:place:0270540,fallback,ryan_stated,"Sitka city and borough, AK -- us_places.csv Sitka city and borough"
 slavelake.civicweb.net,,ca:csd:4817029,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Slave Lake
 slavelake.escribemeetings.com,,ca:csd:4817029,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Slave Lake
@@ -1277,7 +1280,7 @@ sthelenaca.portal.civicclerk.com,,us:place:0664140,fallback,ryan_stated+upcoming
 stjohns.escribemeetings.com,,ca:csd:1001519,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv St. John's
 stockton.granicus.com,,us:place:0675000,fallback,ryan_stated,"Stockton, CA -- us_places.csv Stockton city"
 stonemills.civicweb.net,,ca:csd:3511030,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Stone Mills
-stonington-ct.gov,,us:place:0973700,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:0973700 (Stonington borough, CT); hub https://stonington-ct.gov; meeting found via youtube at https://stonington-ct.gov"
+stonington-ct.gov,,us:cousub:0918073770,fallback,landing_page+wo1068,"Stonington (town), CT -- the Town of Stonington's own site; its pages say 'Town of Stonington'. Replaces a research-row pin to the borough of Stonington. WO-1068, 2026-09-25."
 stonyplain.escribemeetings.com,,ca:csd:4811048,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Stony Plain
 stpaul.escribemeetings.com,,ca:csd:4812018,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv St. Paul
 stpaul.granicus.com,,us:place:2758000,fallback,ryan_stated,"St Paul, MN -- us:place:2758000 St. Paul city matched with spacing ignored"
@@ -1387,7 +1390,7 @@ veronawi.gov,,us:place:5582600,fallback,ryan_stated,"Verona, WI -- us_places.csv
 viametrotransit.new.swagit.com,,rtr:us:tx:via-metropolitan-transit,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'VIA Metropolitan Transit, TX'"
 victoria.civicweb.net,,us:place:2767036,authoritative,landing_page,"Victoria, MINNESOTA -- checked because GOVERNMENT_IDENTITY_ARCHITECTURE.md called this a Canadian CivicWeb host resolving to Victoria TX. Both halves of that were wrong. The portal at https://victoria.civicweb.net/Portal/ reads 'City of Victoria' with the tagline 'City of lakes and parks' (Victoria MN's own motto, Carver County) and carries 'MN' six times with no British Columbia or Canada signal anywhere."
 victoria.escribemeetings.com,,ca:csd:5917034,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Victoria
-victoria.granicus.com,,ca:cd:1312,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: ca_cd.csv Victoria
+victoria.granicus.com,,us:place:2767036,fallback,landing_page+wo1068,"Victoria, MN -- the view page's own title is 'Victoria, MN - Victoria's View Page' (checked live 2026-09-25). Replaces a wildcard-sweep name guess to Victoria County, NB. WO-1068, 2026-09-25."
 victorvilleca.primegov.com,,us:place:0682590,fallback,ryan_stated,"Victorville, CA -- us_places.csv Victorville city"
 videoplayer.telvue.com,player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/series/3447/media/1005745,us:county:26077,fallback,wo1060,"Kalamazoo County, MI -- WO-1060: 'Kalamazoo County Board of Commissioners - February 17, 2026' (archive page 11051) on the shared Kalamazoo TelVue station"
 videoplayer.telvue.com,player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/media/1041369,us:place:2642160,fallback,wo1060,"Kalamazoo city, MI -- WO-1060: 'City of Kalamazoo - August 19, 2026 Environmental Concerns Committee' (archive page 3528); replaces the whole-station pin, since this TelVue station also carries Kalamazoo County"
@@ -1561,7 +1564,7 @@ www.sussex.nj.us,,us:county:34037,fallback,ryan_stated,"Sussex County, NJ -- WO-
 www.tangentor.gov,,us:place:4172600,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:4172600 (Tangent city, OR); hub https://tangentor.gov; meeting found via youtube at https://www.tangentor.gov/"
 www.torringtonwy.gov,,us:place:5677530,fallback,hub_sweep_wo126,"coverage registry row us:place:5677530 (Torrington city, WY); hub https://www.torringtonwy.gov/AgendaCenter; meeting found via youtube at https://www.torringtonwy.gov/AgendaCenter"
 www.townofargos.com,,us:place:1802044,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:1802044 (Argos town, IN); hub https://argosin.gov; meeting found via youtube at https://www.townofargos.com/"
-www.townofaurorany.gov,,us:place:3603188,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:3603188 (Aurora village, NY); hub https://townofaurorany.gov; meeting found via youtube at https://www.townofaurorany.gov/meetings-and-minutes/"
+www.townofaurorany.gov,,us:cousub:3602903199,fallback,landing_page+wo1068,"Aurora (town), NY -- the Town of Aurora's own site ('townofaurorany'); its pages say 'Town of Aurora'. Replaces a research-row pin to the village of Aurora. WO-1068, 2026-09-25."
 www.townofchamplain.gov,,us:place:3613739,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:3613739 (Champlain village, NY); hub https://townofchamplain.gov; meeting found via youtube at https://www.townofchamplain.gov/"
 www.townofellicottvilleny.gov,,us:place:3624020,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:3624020 (Ellicottville village, NY); hub https://townofellicottvilleny.gov; meeting found via youtube at https://www.townofellicottvilleny.gov/"
 www.townofgranvilleny.gov,,us:place:3630026,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:3630026 (Granville village, NY); hub https://townofgranvilleny.gov/town-board.html; meeting found via youtube at https://www.townofgranvilleny.gov/agendaminutes.html"

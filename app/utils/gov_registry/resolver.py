@@ -4,7 +4,9 @@ in that order and no other.
     1. pinned authoritative   tenant_overrides.csv, strength=authoritative
     2. repair the string      finalize_jurisdiction() -- called, not copied
     3. classify the TYPE      before any place lookup (this is the LADWP rung)
-    4. national table         exactly one match, or nothing
+    4. national table         exactly one match, or nothing (a person-checked
+                              fallback pin beats a match to a different
+                              place, WO-1068: `_checked_pin_over_name()`)
     5. pinned fallback        tenant_overrides.csv, strength=fallback
     6. mint                   rtr:<country>:<st>:<slug>
     7. blank                  rtr:unknown:<tenant_host>
@@ -2069,6 +2071,108 @@ def trusts_shared_tenant_name(host: Optional[str], path: Optional[str]) -> bool:
     return trusted_tenant_key(f"https://{host}{path or '/'}") is not None
 
 
+# WO-1068: the general-purpose types a checked whole-host pin may override.
+_PLACE_LIKE_TYPES = frozenset(
+    {classify.COUNTY, classify.MUNICIPALITY, classify.TOWNSHIP}
+)
+# Words dropped before comparing two governments' names for WO-1068's
+# namesake test ("Dallas County" and "Dallas city" are both "dallas").
+_NAMESAKE_NOISE_WORDS = frozenset(
+    {
+        "city",
+        "town",
+        "village",
+        "township",
+        "charter",
+        "county",
+        "borough",
+        "parish",
+        "municipality",
+        "of",
+        "the",
+    }
+)
+
+
+def _namesake_key(name: str) -> str:
+    words = [
+        w
+        for w in re.findall(r"[a-z]+", (name or "").lower())
+        if w not in _NAMESAKE_NOISE_WORDS
+    ]
+    return words[0] if words else ""
+
+
+def _checked_pin_over_name(
+    host: str,
+    path: Optional[str],
+    page_hints: Optional[Dict[str, str]],
+    name_gov: Government,
+    raw_type: Optional[str],
+    type_word: str = "",
+) -> Optional[Tuple[Government, str]]:
+    """The host's `fallback` pin, when it should beat a name that matched a
+    DIFFERENT city, town, village, township or county (WO-1068).
+
+    A `fallback` pin normally waits for rung 5, so any name that resolves
+    wins over it. On 2026-09-25, 35 Archive pages on pinned hosts were
+    filed under the wrong government that way: a county's committee under
+    its seat city (Ashland County WI -> Ashland), a same-named place in
+    another state (Jackson County MO -> Jackson County CO), a village
+    instead of the town (Victor NY). See
+    docs/investigations/whole_host_pin_mismatch_2026-09-25.md.
+
+    That is the whole failure: the name found a NAMESAKE of the pin's
+    government. So the pin wins only when all of these hold:
+      - the two share their name ("Jackson County" / "Jackson County",
+        "Dallas" / "Dallas County", "Tampa" / "Tampa Bay Water"). A page
+        naming an unrelated place keeps it: a county's channel does carry
+        other governments' meetings;
+      - the page does not name its own type ("City of Napa, CA" on Napa
+        County's napa.granicus.com is the city's meeting);
+      - a person checked the pin (`registry.HUMAN_PIN_SOURCES`). Name-guess
+        sweeps are not trusted: 12 of the 15 wrong pins found that day
+        were machine-made;
+      - the name matched a general-purpose government. A school district
+        or a special district on a city's site ("AUSD Board of Education"
+        on albanyca.granicus.com) still keeps its own id;
+      - the pin is not a minted id of that same type, which is a
+        department of the government the name found ("Humboldt County
+        Sheriff" is not a reason to move the county's Behavioral Health
+        Board off Humboldt County);
+      - rung 3 does not forbid it (`_fallback_contradicts_type()`).
+    """
+    if not host or type_word or name_gov.gov_type not in _PLACE_LIKE_TYPES:
+        return None
+    for row in _match_override(host, path, page_hints):
+        if row.strength != "fallback":
+            continue
+        pin = registry.government_for_id(row.gov_id)
+        if not pin:
+            continue
+        # The first resolvable fallback row is the one rung 5 would use.
+        if not registry._has_human_source(row.source or ""):
+            return None
+        if pin.gov_id == name_gov.gov_id:
+            return None
+        key = _namesake_key(pin.gov_name)
+        if not key or key != _namesake_key(name_gov.gov_name):
+            return None
+        if pin.gov_id.startswith("rtr:") and pin.gov_type == name_gov.gov_type:
+            return None
+        if _fallback_contradicts_type(pin, raw_type):
+            return None
+        evidence = f"tenant_overrides.csv {host}"
+        if row.match:
+            evidence += f" match={row.match}"
+        evidence += (
+            f" source={row.source}; checked pin beats the name match "
+            f"{name_gov.gov_id} (WO-1068)"
+        )
+        return pin, evidence
+    return None
+
+
 def _resolve_government_ladder(
     raw_name: Optional[str],
     *,
@@ -2387,6 +2491,11 @@ def _resolve_government_ladder(
             )
             if hit:
                 gov, evidence, _t = hit
+                checked = _checked_pin_over_name(
+                    host, path, page_hints, gov, raw_type, type_preference
+                )
+                if checked:
+                    return _match(checked[0], TIER_PINNED, checked[1], meeting_body)
                 state, country = tenant_state, tenant_country
                 if gov.gov_type == classify.STATE:
                     meeting_body = meeting_body or _state_body(name)
@@ -2414,6 +2523,11 @@ def _resolve_government_ladder(
     hit = _national_lookup(name, state, gov_type, country, type_preference)
     if hit:
         gov, evidence, _resolved_type = hit
+        checked = _checked_pin_over_name(
+            host, path, page_hints, gov, raw_type, type_preference
+        )
+        if checked:
+            return _match(checked[0], TIER_PINNED, checked[1], meeting_body)
         if gov.gov_type == classify.STATE:
             meeting_body = meeting_body or _state_body(name)
         return _match(

@@ -14,7 +14,11 @@ The pin itself is wrong on 15 of the 44 hosts. On those hosts the page is usuall
 
 **Why the wrong pages happen.** A whole-host pin has `fallback` strength: it is used only when the page's own name does not resolve. Each wrong page carries a name that resolves to a real registry government, just the wrong one (the county seat's city, a same-named place in another state, a village instead of the town). Re-resolving the stored name today gives the same wrong id for all 35, so re-resolving alone fixes none of them. Ashland County WI's two pages are older than WO-47 (2026-08-23): today's CivicClerk adapter reads that event as "Ashland County, WI", so a fresh resolve of the source would fix those two.
 
-## Proposed fixes (not applied)
+## Outcome (WO-1068, same day)
+
+Ryan approved steps 1-3. 15 pins corrected, 34 pages re-filed (the 33 wrong pages with a clear answer, plus Clark County NV page 208 under the old Kansas pin), Stonington's promo deleted. Wellfleet's video was a real town forum, so it was re-filed as a town hall instead of deleted. M-NCPPC page 361 waits on Ryan's call. The rule shipped narrower than the proposal below: it trusts only `HUMAN_PIN_SOURCES` pins, it fires only when the name matched a namesake of the pin's government and the page does not name its own type, and a minted pin of the same type (a department) never displaces its own government. With the corrected pins it changes 16 of the 10,486 pages, all 16 to the right government. See `BACKLOG_DONE.md` WO-1068.
+
+## Proposed fixes (as written before the outcome)
 
 1. **Correct the 15 wrong pins first** (table below, "Pin right?" = wrong). Two of them are hosts carrying several governments (nevco.granicus.com, burbank.granicus.com): those need `view_id=` pins per government instead of one whole-host pin.
 2. **Re-file the 35 wrong pages** through `POST /internal/jurisdiction/override` (dry run first). 31 go to the host's pin. The rest: Grass Valley's page on nevco goes to Grass Valley; Nevada City's page goes to Nevada City; the two stray videos (stonington-ct.gov "Why Stonington?", Wellfleet "Maurices Community Forum Presentation") are not meetings and are candidates for deletion instead.

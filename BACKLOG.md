@@ -447,7 +447,7 @@ Reliability, ops & cost  (11)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
 Trust, safety & data quality  (30)
-  15 whole-host pins name the wrong government, and 35 pages on pinned…
+  Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
   ChampDS jurisdiction text comes out wrong for customer names that…
@@ -6017,13 +6017,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### 15 whole-host pins name the wrong government, and 35 pages on pinned hosts are filed under the wrong one `[NEEDS-AUDIT]`
+### Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
 
-- **Issue**: rebuilt from the Archive export on 2026-09-25: 66 pages on 44 hosts with a whole-host fallback pin are filed under a different government. 35 are wrong (a county's meeting under its seat city, a same-named place in another state, a village instead of the town), 27 are right (mostly a school district on a city's site), 4 need Ryan's call (LA World Airports, M-NCPPC). On 15 hosts the pin itself is wrong (e.g. `clark.granicus.com` pinned to Clark County KS, but it is Clark County NV; `eustis.civicweb.net` to Eustis, Maine). Per-page table: `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
-- **Impact**: 35 pages sit on the wrong government's hub. A fallback pin never overrides a name that resolves, so re-resolving the stored name fixes none of them.
-- **Next action**: (1) correct the 15 wrong pins, with `view_id=` pins for the two multi-government Granicus hosts (nevco, burbank); (2) after Ryan approves, re-file the 35 through `POST /internal/jurisdiction/override`, dry run first; (3) then decide on a rule: a verified pin beats a name match to a different city/town/village/county, while a school or special-district match still wins (fixes 31 of 35, keeps all 7 right school/special pages, but flips 19 right pages if run before step 1).
-- **Constraint**: report before re-filing any existing page. Two of the wrong pages are stray non-meeting videos (Stonington, Wellfleet): delete rather than re-file.
-- **History**: found by rtr-discovery's Archive scan (it reported 20 hosts); this list, verdicts and live checks from WO-1067, 2026-09-25.
+- **Issue**: WO-1068 fixed 15 wrong pins, re-filed 34 pages and added a rule that a person-checked fallback pin beats a name match to a different place. Two things are left. (1) 4 pages need a decision: LA World Airports (pages 335, 5784, on a minted id while the pin says City of Los Angeles) and M-NCPPC (361 on Montgomery County, 5817 and 10467 on a minted M-NCPPC id, while the pin is a separate minted "Montgomery County Planning Board"). (2) The rule only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
+- **Impact**: 4 pages on a debatable government; future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
+- **Next action**: (1) Ryan picks one id each for LAWA and M-NCPPC, then re-file through `POST /internal/jurisdiction/override`. (2) Re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync, siouxcity under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps.
+- **Constraint**: report before re-filing any existing page. `playback.orionontv.org` page 10402 ("Township Board Meeting" on a city id, pin `WO-322`) is a likely third case, not yet checked.
+- **History**: `BACKLOG_DONE.md` WO-1068; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
 
 ### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
 
