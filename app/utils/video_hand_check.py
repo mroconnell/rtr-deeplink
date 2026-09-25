@@ -1146,13 +1146,20 @@ def assess_meeting_evidence(
     combined text is decisive -- REJECT regardless of length or any
     meeting word also present; (2) a meeting word/abbreviation -- ACCEPT;
     (3) a date/time shape -- ACCEPT; (4) `is_direct_file` and
-    `duration_seconds` >= 45 minutes -- ACCEPT (a long official recording
-    on the government's own site, even with a bare filename); (5)
-    otherwise, no evidence -- REJECT. A short (<10 min) presentation/
-    intro/explainer-titled video never accepts on word/date evidence alone
-    (WO-1041: "weak lead"), even though "presentation" itself isn't a
-    `NON_MEETING_SIGNS` word (a real committee "budget presentation" is
-    common inside an actual meeting) -- it only downgrades a SHORT one.
+    `duration_seconds` >= 15 minutes -- ACCEPT, no upper bound (a long
+    official recording on the government's own site, even with a bare
+    filename); (5) otherwise, no evidence -- REJECT. A short (<10 min)
+    presentation/intro/explainer-titled video never accepts on word/date
+    evidence alone (WO-1041: "weak lead"), even though "presentation"
+    itself isn't a `NON_MEETING_SIGNS` word (a real committee "budget
+    presentation" is common inside an actual meeting) -- it only
+    downgrades a SHORT one.
+
+    WO-1058 (Ryan, 2026-09-25): the threshold was 45 minutes; hand-checks
+    of direct files found 21 of 28 in the 15-45 min range were real
+    meetings, and 7 of 11 over 45 min -- so 45 min was rejecting mostly-
+    real meetings outright. Lowered to 15 minutes, still no upper bound,
+    and the non-meeting-sign veto above still applies first.
     """
     combined = " ".join(t for t in texts if t)
 
@@ -1175,6 +1182,6 @@ def assess_meeting_evidence(
         return MeetingEvidence(True, reason=f"meeting_word:{word}")
     if contains_date_evidence(combined):
         return MeetingEvidence(True, reason="date")
-    if is_direct_file and duration_seconds is not None and duration_seconds >= 45 * 60:
-        return MeetingEvidence(True, reason="long_direct_file(>=45min)")
+    if is_direct_file and duration_seconds is not None and duration_seconds >= 15 * 60:
+        return MeetingEvidence(True, reason="long_direct_file(>=15min)")
     return MeetingEvidence(False)

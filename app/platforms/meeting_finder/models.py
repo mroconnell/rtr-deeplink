@@ -140,6 +140,16 @@ class Candidate:
     lister: Optional[str] = None
     source_url: Optional[str] = None
     has_video_hint: Optional[bool] = None
+    # WO-1058: set only by `listing._apply_gov_filter()`'s "keep at least
+    # one" fallback -- this candidate was the best of a shared-hub
+    # account's OTHER-government-only listing, kept so the government's
+    # own walk never reports pure emptiness. Plain words naming the rule
+    # kept despite ("possibly another government's meeting on a shared
+    # hub: <title>") -- `runner._try_resolve()` reads this to force the
+    # resolve, however clean, into the low-confidence "kept despite"
+    # bucket rather than a same-government clean find. `None` for every
+    # ordinary candidate.
+    foreign_gov_hint: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.source_phase not in ("list", "scan", "input"):
@@ -255,4 +265,21 @@ class VerdictRow:
     # from a clean one without re-reading the JSONL's nested detail.
     low_confidence_reason: str = ""
     audio_only: bool = False
+    # WO-1058 (Ryan, 2026-09-25: "breadth is one-time per domain, go big,
+    # hand-check after the run"): "yes"/"no"/"" -- set only on a weak-lead
+    # row (a "kept despite" low-confidence find; see `OUTCOME_VIDEO_LOW_
+    # CONFIDENCE`/`OUTCOME_HUB_OTHER_GOVERNMENT` above), blank on a clean
+    # find or a genuine failure. "yes" unless the video is under 60s or
+    # its title carries a `NON_MEETING_SIGNS` word -- see runner.py's own
+    # `_handcheck_lead()` for the full rule, including the >= 80 minute
+    # "strong meeting indicator" override.
+    handcheck_lead: str = ""
+    # WO-1058: every candidate the shared-hub filter dropped for naming a
+    # DIFFERENT government (`pick.describe_foreign_candidate()`'s shape --
+    # named_place/body_words/title/date/url, plus `hub_host`), gathered
+    # across this whole walk. A real, free link-first lead for whichever
+    # OTHER government each one names -- fed to
+    # `scripts/meeting_finder_other_gov_leads.py`, never ingested directly
+    # from here (Verdict is read-only, see verdict.py's own docstring).
+    other_gov_leads: List[Dict[str, Any]] = field(default_factory=list)
     finished_at: str = ""

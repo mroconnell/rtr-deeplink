@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import dataclasses
 import logging
 import re
 import time
@@ -54,6 +55,7 @@ from urllib.parse import urlparse
 from app.platforms.base import detect_platform
 from app.platforms.telvue import account_url_for as telvue_account_url_for
 from app.utils.gov_registry.registry import government_for_id
+from app.utils.video_hand_check import has_non_meeting_sign
 from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher, SoftBudgetExceeded
@@ -334,6 +336,12 @@ class _WalkState:
     # VerdictRow.note (see run_one()) whenever the walk ends without a
     # clean success.
     resolve_notes: List[str] = field(default_factory=list)
+    # WO-1058: every foreign-government lead any List call in this walk
+    # turned up (`pick.describe_foreign_candidate()`'s shape, plus
+    # `hub_host`) -- gathered here regardless of whether this government's
+    # OWN walk ever finds a clean result, and folded into the final
+    # `VerdictRow.other_gov_leads`.
+    other_gov_leads: List[Dict[str, Any]] = field(default_factory=list)
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -475,6 +483,58 @@ _LANES: "contextvars.ContextVar[Optional[_Lanes]]" = contextvars.ContextVar(
 )
 
 
+# WO-1058: a "keep at least one" foreign-gov lead (`Candidate.
+# foreign_gov_hint`) is real evidence -- just not proven to be THIS
+# government's meeting -- so it's ranked below every other "kept despite"
+# fallback (see `_KEPT_DESPITE_*` in resolve.py): a genuine same-government
+# low-confidence pick, if the walk finds one anywhere else, always wins.
+_FOREIGN_GOV_LEAD_RANK = 1000
+
+# WO-1058 (Ryan, 2026-09-25): unambiguous decorative-asset words -- no
+# real meeting recording is ever titled with one of these, even a long
+# one, so they're the only `NON_MEETING_SIGNS` that still veto a video at
+# the 80+ minute "strong indicator" length (see `_handcheck_lead()`).
+_STRONG_DURATION_VETO_SIGNS = frozenset(
+    {"banner", "hero", "drone", "doodle", "welcome"}
+)
+_STRONG_DURATION_SECONDS = 80 * 60
+
+
+def _handcheck_lead(
+    title: Optional[str], duration_seconds: Optional[float]
+) -> Tuple[str, Optional[str]]:
+    """WO-1058 ("wider hand-check leads... go big, hand-check after the
+    run"): `("yes"|"no", flag_note_or_None)` for one weak-lead row.
+
+    Base rule (Ryan, 2026-09-25): "yes" unless the video runs under 60
+    seconds or its title carries a `NON_MEETING_SIGNS` word (a banner,
+    hero clip, drone flyover, training, webinar...) -- every video that is
+    >= 10 minutes, carries a meeting word/date, or whose length simply
+    isn't known, is a "yes" under this, so the rule is written as its own
+    "no only when..." rather than listing every case that reads "yes".
+
+    A later addition (Ryan, same day): >= 80 minutes is a STRONG meeting
+    indicator on its own -- hand-checks found every direct file that long
+    (6 of 6) was a real meeting, against three webinars/trainings all
+    under 63 minutes. At that length this always reads "yes" (with a flag
+    note, so a report can sort it first), EXCEPT for the handful of
+    decorative-asset words (`_STRONG_DURATION_VETO_SIGNS`) no real meeting
+    is ever titled with -- length never overrides those. This never turns
+    a video into a clean same-government find on length alone; it only
+    decides whether an already-weak lead is worth a human's time."""
+    combined = title or ""
+    non_meeting = has_non_meeting_sign(combined)
+    if duration_seconds is not None and duration_seconds >= _STRONG_DURATION_SECONDS:
+        if non_meeting in _STRONG_DURATION_VETO_SIGNS:
+            return "no", None
+        return "yes", "80+ min: strong meeting indicator"
+    if non_meeting:
+        return "no", None
+    if duration_seconds is not None and duration_seconds < 60:
+        return "no", None
+    return "yes", None
+
+
 async def _try_resolve(
     candidates: List[Candidate],
     finder_input: FinderInput,
@@ -524,6 +584,22 @@ async def _try_resolve(
             lanes.resolving -= 1
             lanes.resolve_slots.release()
     state.reach("resolve")
+    # WO-1058: a candidate kept only as a "possibly another government's
+    # meeting on a shared hub" lead (`listing._apply_gov_filter()`'s "keep
+    # at least one") must never become THIS government's own clean find,
+    # however cleanly it resolves -- it's real video, just not proven to
+    # belong here. Force it into the same low-confidence "kept despite"
+    # bucket every other fallback uses, ranked last (`_FOREIGN_GOV_LEAD_
+    # RANK`) so a genuine same-government find, clean or low-confidence,
+    # always wins over it.
+    foreign_hint = getattr(result.candidate, "foreign_gov_hint", None)
+    if foreign_hint and result.outcome is None:
+        result = dataclasses.replace(
+            result,
+            outcome=OUTCOME_HUB_OTHER_GOVERNMENT,
+            low_confidence_reason=foreign_hint,
+            low_confidence_rank=_FOREIGN_GOV_LEAD_RANK,
+        )
     if result.outcome is None:
         state.result = result
         state.meeting = meeting
@@ -542,7 +618,13 @@ async def _try_resolve(
     # negative) already sorts ahead of every video-low-confidence rank, so
     # sharing this one stash naturally prefers a confirmed-but-restricted
     # meeting over a merely-uncertain one found elsewhere in the walk.
-    if result.outcome in (OUTCOME_VIDEO_LOW_CONFIDENCE, OUTCOME_EMBED_RESTRICTED):
+    # WO-1058: `OUTCOME_HUB_OTHER_GOVERNMENT` joins this same stash for the
+    # foreign-lead case just above.
+    if result.outcome in (
+        OUTCOME_VIDEO_LOW_CONFIDENCE,
+        OUTCOME_EMBED_RESTRICTED,
+        OUTCOME_HUB_OTHER_GOVERNMENT,
+    ):
         rank = (
             result.low_confidence_rank if result.low_confidence_rank is not None else 99
         )
@@ -654,6 +736,8 @@ async def _shallow_step(
         state.reach("list")
         if list_result.outcome:
             state.outcomes.append(list_result.outcome)
+        if list_result.foreign_leads:
+            state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
             if await _try_resolve(
                 list_result.candidates, finder_input, state, max_tries=max_tries
@@ -1006,6 +1090,8 @@ async def _run_phase_loop(
         state.path.append(finder_input.url)
         if list_result.outcome:
             state.outcomes.append(list_result.outcome)
+        if list_result.foreign_leads:
+            state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
             await _try_resolve(
                 list_result.candidates, finder_input, state, max_tries=max_tries
@@ -1232,6 +1318,7 @@ async def run_one(
 
     low_confidence_reason = ""
     audio_only = False
+    handcheck_lead = ""
     meeting_url: Optional[str] = None
     meeting_title: Optional[str] = None
     if result is not None:
@@ -1276,6 +1363,16 @@ async def run_one(
             else:
                 meeting_url = lc_result.candidate.url
             meeting_title = lc_result.candidate.title
+        # WO-1058 item 3: every weak-lead row gets a hand-check verdict --
+        # see `_handcheck_lead()`'s own docstring for the rule.
+        lead_flag, lead_note = _handcheck_lead(meeting_title, duration_seconds)
+        handcheck_lead = lead_flag
+        if lead_note:
+            low_confidence_reason = (
+                f"{low_confidence_reason}; {lead_note}"
+                if low_confidence_reason
+                else lead_note
+            )
     else:
         if any(lead.get("kind") == "youtube" for lead in state.leads):
             state.outcomes.append(OUTCOME_YOUTUBE_LEAD_ONLY)
@@ -1323,6 +1420,8 @@ async def run_one(
         note=note,
         low_confidence_reason=low_confidence_reason,
         audio_only=audio_only,
+        handcheck_lead=handcheck_lead,
+        other_gov_leads=state.other_gov_leads,
         try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
     )
@@ -1353,6 +1452,7 @@ def _timeout_verdict_row(
         outcome=OUTCOME_INTERNAL_TIMEOUT,
         identity_expected_gov_id=finder_input.gov_id,
         fetches=fetches,
+        other_gov_leads=list(state.other_gov_leads) if state is not None else [],
         note=(
             f"internal-timeout: this government's walk was still running past "
             f"{minutes_text} minute(s) wall-clock and was abandoned (not "

@@ -66,13 +66,24 @@ def test_lowercase_abbreviation_is_not_evidence():
 
 
 def test_long_direct_file_counts_even_with_bare_filename():
-    # WO-1041 brief: direct files >= 45 min count as found even with no
-    # title/meeting word at all.
+    # WO-1058 (was WO-1041, threshold lowered 45 -> 15 min): direct files
+    # >= 15 min count as found even with no title/meeting word at all.
     ev = assess_meeting_evidence(
         "video1516165031.mp4", duration_seconds=50 * 60, is_direct_file=True
     )
     assert ev.has_evidence
-    assert ev.reason == "long_direct_file(>=45min)"
+    assert ev.reason == "long_direct_file(>=15min)"
+
+
+def test_direct_file_in_15_to_45_minute_range_now_counts():
+    # WO-1058 (Ryan, 2026-09-25): hand-checks found 21 of 28 direct files
+    # in the 15-45 min range were real meetings -- the old 45 min floor
+    # rejected these outright.
+    ev = assess_meeting_evidence(
+        "video1516165031.mp4", duration_seconds=20 * 60, is_direct_file=True
+    )
+    assert ev.has_evidence
+    assert ev.reason == "long_direct_file(>=15min)"
 
 
 def test_short_direct_file_with_no_evidence_is_rejected():

@@ -207,7 +207,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (208)
+  [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
   [NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is…
@@ -2337,6 +2338,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name match still misses a government's own meeting when its title abbreviates the place name.**
+  - **Issue**: WO-1058's live re-run (80 governments, 2026-09-25) found one residual false positive: Elizabeth City NC's own Vimeo hub lists a real meeting titled "City of EC Council Sept 14 2026 Part 2" — "EC" is the government's own name abbreviated, but `_place_core()` reduces it to the literal core `"ec"`, which doesn't match `_place_core("Elizabeth City")` -> `"elizabeth"`, so the filter treats it as a different government's meeting.
+  - **Impact**: net still an improvement, not a regression — before WO-1058 this government reported `hub-carries-other-governments-not-this-one` with zero candidates; after, it reports the same outcome but WITH a real candidate kept as a low-confidence lead (`handcheck_lead=yes`, a real video URL), so a human reviewing it will very likely approve it as-is. But it isn't a clean find, and any other government whose own meetings are titled with an initialism/abbreviation of its name hits the same gap.
+  - **Next action**: teach `_place_core()`/`filter_candidates_to_government()` to also accept a title phrase that is a plausible initialism of `gov_name` (e.g. first letters of each word) before treating it as a different place — check a few more real examples first (this WO's own convention) rather than guessing the matching rule from one case.
+  - **Constraint**: don't loosen the match so far that it stops catching a real different government whose name happens to share initials (e.g. "EC" could also be "Essex County") — needs a real second example before deciding how loose to make it.
+  - **History**: found live verifying WO-1058's 80-government re-run, 2026-09-25; see `BACKLOG_DONE.md`'s WO-1058 entry.
 
 - **[NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s on a real tenant whose own `watch-vod-embed` page already carries the video data directly.**
   - **Issue**: `_resolve_watch_vod_embed()` (WO-1036) always delegates to `_resolve_fastboot_embed()`'s `{origin}/embed/vod?show={id}&site={site}` endpoint. Confirmed live 2026-09-24 on Mendota Heights, MN's real tenant (`reflect-tst-mn.cablecast.tv`, reached via its Cablecast Connect WordPress plugin site, `townsquare.tv`): `GET .../embed/vod?show=5977&site=8` is a real 404, so `resolve()` falls through to "Could not find a show id in this Cablecast URL." The ORIGINAL `watch-vod-embed?showId=5977&site=8` page itself returns 200 with a large (~2.8MB) body that already contains real `.m3u8` URLs for the tenant's shows (e.g. `.../vod/3598-NG12540-MH-State-of-the-City-v1/vod.m3u8`) — this tenant is a different real template than the FastBoot/Ember one `_resolve_fastboot_embed()` was built for, not a video-less show.
