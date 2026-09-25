@@ -1,15 +1,3 @@
-https://winpark.diligent.community/Portal/MeetingInformation.aspx?Id=188	https://winpark.org/	rtr:us:il:winnetka-park-district
-https://andersonunionhighschooldistrict.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=76	https://auhsd.net/	us:sd:0602700
-https://qathetrd.civicweb.net/Portal/MeetingInformation.aspx?Id=2088	https://qathet.ca/	ca:cd:5927
-https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659	https://www.akronschools.com/district/board-of-education	us:sd:3904348
-https://loudonville-oh.diligent.community/Portal/MeetingInformation.aspx?Id=549	https://loudonville-oh.us/planning-commission-meeting-agendas/	us:place:3945066
-https://oceansideschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=99	https://www.oceansideschools.org/board-of-education/about-our-board	us:sd:3621570
-https://www.youtube.com/watch?v=w9wwAdrnzIc	https://waynecountyny.gov/	us:county:36117
-https://www.youtube.com/watch?v=rv9EcaATvgY&list=PLNM1bWmAVpoXCmRq84JIgnG84VBR9neCF&index=1	https://hudsonwi.gov/list.aspx?Mode=Subscribe#calendar	us:place:5536250
-https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=2002	https://niagarafalls.civicweb.net	us:place:3651055
-https://www.youtube.com/watch?v=em1HM4Ft4FU	https://hopewellboroughnj.gov/	us:place:3433150
-https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
-https://garrettcountyschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=314	https://garrettcountyschools.org/	us:sd:2400360
 https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1231	https://events.leeds1000islands.ca/	ca:csd:3507021
 https://youtu.be/baOM15QBojM	https://miamitownship.com/	us:cousub:3911349392
 https://worcester-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=288	https://worcester-k12.community.highbond.com/Portal/	us:sd:2400720
