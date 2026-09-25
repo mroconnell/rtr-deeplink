@@ -1,24 +1,26 @@
 # Backlog — done
 
-## WO-1061: Clinton Township and Prince Edward County site pins made authoritative [Done 2026-09-25]
+## WO-1061: Clinton Township's site pin made authoritative; Prince Edward County's portal handled as a shared host [Done 2026-09-25]
 
-**Why.** After WO-1060 (#1448) deployed, the backfill dry run moved two pages to the wrong government. The report showed the cause: both new site pins were `fallback` strength, and the backfill resolves from each page's stored display name. The national table matched that name first.
+**Why.** After WO-1060 (#1448) deployed, the backfill dry run moved two pages to the wrong government. The backfill resolves from each page's stored display name, and the national table matched that name before either `fallback` site pin applied:
 
 | Page | Stored name | Resolved by the table to | Should be |
 |---|---|---|---|
 | 9447 | "Clinton, MI" | Clinton village, MI (`us:place:2616480`) | Clinton charter township (`us:cousub:2609916520`) |
 | 9904 | "Prince Edward County, ON" | Prince Edward census division (`ca:cd:3513`) | Prince Edward County, the municipality (`ca:csd:3513020`) |
 
-**Fix.** `www.clintontownship.com` and `princeedwardcounty.civicweb.net` are now `authoritative`, per Ryan's rule that authoritative pins are his call. Both pages, and the stored names above, now resolve to the right government.
-
-**Checked for other governments first (live, 2026-09-25, at Ryan's request).**
+**Checked both sites for other governments (live, 2026-09-25, at Ryan's request).**
 
 | Site | Bodies it publishes | Other governments |
 |---|---|---|
 | `www.clintontownship.com` (Agenda Center) | Board of Ethics, Civil Service Commission, Planning Commission, Zoning Board of Appeals, Downtown Development Authority | none; no video links to other channels |
 | `princeedwardcounty.civicweb.net` (37 meeting types) | Council, its committees, and the County's own local boards (Library Board, O.P.P. Detachment Board, Picton BIA, Affordable Housing Corporation) | 2 joint bodies with Lennox and Addington County: "Prince Edward - Lennox and Addington Social Services" and its Housing Advisory Committee |
 
-The two joint bodies would be filed under Prince Edward County by this pin. A fallback pin would do the same whenever the table misses, so making the pin authoritative doesn't add that risk. No archived page is from either joint body today (the site's 2 archived pages are Council and Committee of the Whole). CivicWeb meeting URLs carry only `Id=N`, not the meeting type, so no pin can tell them apart. If one is ever archived, give it a per-meeting pin.
+**Fix.**
+- **Clinton:** `www.clintontownship.com` is now `authoritative` (Ryan's call). It is the township's own single-government site.
+- **Prince Edward:** Ryan: the portal is a multi-government host. `princeedwardcounty.civicweb.net` is added to `MULTI_GOV_HOSTS` and classified in `tenant_key.SHARED_SINGLE_LISTING_HOSTS`. CivicWeb meeting URLs carry only `Id=N`, so there is no tenant key. The site-wide pin is replaced by per-meeting pins: `Id=3639` (page 9904) and `Id=2365` (page 6011) -> `ca:csd:3513020`. An unpinned meeting on the portal, such as a joint body's, now resolves to unknown rather than to Prince Edward County.
+
+**Caution.** A future Prince Edward meeting needs its own `Id=` pin before it can be ingested with a government. The tier-3 feeder's owner check refuses unpinned meetings on a shared host, so such lines stay in the queue.
 
 ## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
