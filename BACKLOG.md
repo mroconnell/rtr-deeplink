@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (55)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
+  Very long Cablecast meetings whose audio is split into many files…
   ClerkBase pages name the council without its state, so they stay…
   Winchester, MA reaches the right TelVue page now but still doesn't…
   State legislatures: small residual fixes remain after today's push —…
@@ -911,6 +912,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Very long Cablecast meetings whose audio is split into many files still stop transcribing partway `[NEEDS-AUDIT]`
+
+- **Issue**: WO-1062 fixed Cablecast streams whose separate audio track is one file, but 3 of 10 tenants checked (Burlington/BCIT, Hudson OH, Yarmouth) split that track into hundreds of `.m4s` files. On the worker's ffmpeg (7.1.5), jumping into those streams also writes the 224-byte empty file (Burlington 2 h 30 min in, Yarmouth 3 h 53 min in, 2026-09-25), so they depend on the slow fallback, which runs past its 120 s limit deep into a long meeting.
+- **Impact**: a long enough meeting on these tenants loses its ending, as job 4306 did before WO-1062. How long "long enough" is on these tenants has not been measured.
+- **Next action**: test, on the worker's image, whether ffmpeg reads a chunk correctly from a trimmed copy of the audio playlist that starts at the segment containing the chunk's start (the `#EXT-X-MAP` line plus only the segments covering the window, with absolute URLs). That needs no seek at all, and would cover the one-file shape too.
+- **Constraint**: first measure the fast jump's own cost: on these tenants the failing first attempt took 104-135 s, close to the 120 s limit by itself.
+- **History**: `BACKLOG_DONE.md` WO-1062.
 
 ### ClerkBase pages name the council without its state, so they stay unresolved; the state is in the URL `[JUST-DO-IT]` `[EASY]`
 

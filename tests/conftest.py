@@ -99,6 +99,23 @@ def _no_real_card_extraction(monkeypatch):
     monkeypatch.setattr(video_thumbnail, "extract_and_store", _skip)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_audio_rendition_lookup(monkeypatch):
+    """Keeps WO-1062's separate-audio-file lookup from making real network
+    calls. `extract_chunk_audio()` runs it whenever an HLS chunk's first
+    attempt fails at `start > 0`, which several faked-ffmpeg tests do on
+    purpose with real-looking Cablecast URLs. Same pattern as the fixture
+    above. tests/test_media_probe.py tests the real function by the name
+    it imported before this patch, and opts a test into a found file by
+    patching this attribute itself."""
+    from app.platforms import media_probe
+
+    async def _none(media_url, *, source_page_url):
+        return None
+
+    monkeypatch.setattr(media_probe, "single_file_audio_rendition_url", _none)
+
+
 def load_fixture(*parts: str) -> str:
     """Read a text fixture file relative to tests/fixtures/."""
     return (FIXTURES_DIR.joinpath(*parts)).read_text(encoding="utf-8")
