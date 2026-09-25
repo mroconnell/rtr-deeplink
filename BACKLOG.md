@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (57)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
+  Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
   Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
   ClerkBase pages name the council without its state, so they stay…
@@ -915,6 +916,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `media_probe._DESKTOP_USER_AGENT` (also the tier-3 probe's `_POLITE_UA`, and what ffmpeg sends) is `Chrome/91.0.4472.124`. Checked 2026-09-25: Simpsonville, SC's recording (`simpsonville.com/wp-content/uploads/2026/08/2026-09-08_Business.mp3`, behind Cloudflare) answers 403 to that user-agent and 206 to a current Chrome one. No challenge page is involved, so this is the "look like a normal browser" compliance case in CLAUDE.md, not a human-verification gate.
+- **Impact**: the queue probe rejects such recordings as dead, and the feeder drops the line, so these meetings never reach the Archive. The number of affected hosts is unknown.
+- **Next action**: update the string to a current desktop Chrome in `media_probe.py` (shared by the probe, both transcription paths and ffmpeg). Then re-probe Simpsonville's recording and queue it with `us:place:4566580`.
+- **Constraint**: never extend this to a real Cloudflare "Verify you are human" challenge (CLAUDE.md, Standing decisions).
+- **History**: found while queueing the 2026-09-22 phase-3 run's real finds; the Codington County queue PR.
 
 ### Very long Cablecast meetings whose audio is split into many files still stop transcribing partway `[NEEDS-AUDIT]`
 
