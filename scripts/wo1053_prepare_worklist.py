@@ -1,4 +1,4 @@
-"""WO-1052: build the worklist for the 2026-09-24 large-county audit's page
+"""WO-1053: build the worklist for the 2026-09-24 large-county audit's page
 fixes. READ-ONLY -- it writes nothing to the Archive.
 
 What it does, step by step.
@@ -16,14 +16,14 @@ What it does, step by step.
    must be live, and its default transcript must match the twin's
    (same segment count and content hash). A twin that fails this gets no
    row, and the reason is printed.
-4. Writes `reports/wo1052_worklist.csv` in `repair_wrong_pages.py`'s own
+4. Writes `reports/wo1053_worklist.csv` in `repair_wrong_pages.py`'s own
    format, and prints one line per row.
 
 Then run the real tool on that file, dry run first:
 
-    python scripts/repair_wrong_pages.py check reports/wo1052_worklist.csv
-    python scripts/repair_wrong_pages.py run reports/wo1052_worklist.csv
-    python scripts/repair_wrong_pages.py run reports/wo1052_worklist.csv \\
+    python scripts/repair_wrong_pages.py check reports/wo1053_worklist.csv
+    python scripts/repair_wrong_pages.py run reports/wo1053_worklist.csv
+    python scripts/repair_wrong_pages.py run reports/wo1053_worklist.csv \\
         --apply --allow-deletes
 
 `repair_wrong_pages.py` re-reads every page before acting, refuses a row
@@ -40,7 +40,7 @@ run there, not from a laptop). The token comes from `ARCHIVE_INGEST_TOKEN`
 in the environment and is never printed. The address comes from
 `--base-url`, then `ARCHIVE_BASE_URL`, then `http://127.0.0.1:$PORT`.
 
-    python scripts/wo1052_prepare_worklist.py
+    python scripts/wo1053_prepare_worklist.py
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ from scripts.repair_wrong_pages import (  # noqa: E402
     resolve_base_url,
 )
 
-SOURCE_ENTRY = "WO-1052: 2026-09-24 large-county audit loose ends"
+SOURCE_ENTRY = "WO-1053: 2026-09-24 large-county audit loose ends"
 
 METRO = "rtr:us:tx:metropolitan-transit-authority-of-harris-county"
 HARRIS_CENTER = "rtr:us:tx:the-harris-center-for-mental-health-and-idd"
@@ -119,7 +119,7 @@ HOST_TARGETS: Dict[str, HostTarget] = {
         "mint 2026-09-24.",
     ),
     # Six county hosts the seed script pinned to a same-named city
-    # (see tenant_overrides.csv's WO-1052 evidence for what each page says).
+    # (see tenant_overrides.csv's WO-1053 evidence for what each page says).
     "agendanet.saccounty.gov": HostTarget(
         "us:county:06067", (), False, "", "Sacramento County's own agenda site."
     ),
@@ -314,7 +314,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument("--base-url", help="the Archive's address")
     parser.add_argument(
-        "--out", default="reports/wo1052_worklist.csv", help="worklist to write"
+        "--out", default="reports/wo1053_worklist.csv", help="worklist to write"
     )
     args = parser.parse_args(argv)
 

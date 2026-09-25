@@ -1,8 +1,8 @@
 # Backlog — done
 
-## WO-1052: Harris County audit loose ends: METRO, The Harris Center, the Port and MWD minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
+## WO-1053: Harris County audit loose ends: METRO, The Harris Center, the Port and MWD minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
 
-**What and why.** The 2026-09-24 large-county audit (rtr-business `research/LARGE_COUNTY_GAP_WALK_2026-09-24.md`) found Harris County, TX pages that belong to other governments, one duplicate page, and a Dropbox meeting the queue probe could not read. A teammate session added the root cause of the Harris misfiling, five more wrong pins of the same kind, and three LA County items. This WO fixes the code and registry. The live page moves wait for a deploy (see `BACKLOG.md`'s WO-1052 `[HUMAN]` entry).
+**What and why.** The 2026-09-24 large-county audit (rtr-business `research/LARGE_COUNTY_GAP_WALK_2026-09-24.md`) found Harris County, TX pages that belong to other governments, one duplicate page, and a Dropbox meeting the queue probe could not read. A teammate session added the root cause of the Harris misfiling, five more wrong pins of the same kind, and three LA County items. This WO fixes the code and registry. The live page moves wait for a deploy (see `BACKLOG.md`'s WO-1053 `[HUMAN]` entry).
 
 **Registry.** Four governments added to `curated_governments.csv`:
 
@@ -48,7 +48,58 @@ Two more county entries change text only. `dallascounty.civicweb.net` was alread
 
 **Dropbox.** Already fixed by WO-1051 (PR #1429) before this WO started. Re-run 2026-09-25 with ffprobe installed: `probe_queue_entry()` accepts the Ingham County, MI 9/22/26 Board of Commissioners file (3,424.5 seconds, 259,815,205 bytes). No new code; the meeting is queued in `scripts/tier3_auto_transcription_queue.txt` under `us:county:26065`.
 
-**Tools.** `scripts/wo1052_prepare_worklist.py` (read-only) builds the worklist for `scripts/repair_wrong_pages.py`. Tests: `tests/test_wo1052_harris_county_loose_ends.py`, `tests/test_url_normalize.py`.
+**Tools.** `scripts/wo1053_prepare_worklist.py` (read-only) builds the worklist for `scripts/repair_wrong_pages.py`. Tests: `tests/test_wo1053_harris_county_loose_ends.py`, `tests/test_url_normalize.py`.
+
+## WO-1052: ChampDS MP4s with their index at the end no longer probe as dead [Done 2026-09-24]
+
+**What and why.** The queue probe called real ChampDS meetings `reject-dead: ffprobe could not read a duration from the media file`. That blocked tier-1 ingests with real captions (worked around by hand for El Paso 164, Atlanta 1077 and Oak Hill 317). It would also have dropped Collegedale TN event 154 from the tier-3 queue, and it stopped El Paso County CO event 101 (page 3349) from being re-ingested to key it to its government.
+
+**The cause.** An MP4 keeps an index (the `moov` atom) that ffprobe must read before it can report a duration. Many ChampDS downloads keep it at the end of the file. ChampDS's download server is slow to reach a late byte: the wait before the first byte grows with how far into the file the read starts, about 1 second per 5 MB. A repeat was no faster, so nothing is cached.
+
+| Read | Wait for first byte |
+|---|---|
+| First 64 KB of any file | 0.2 s |
+| Byte 100M of Collegedale (263 MB) | 20 s |
+| Last 4 MB of Collegedale (263 MB) | 52 s |
+| Last 4 MB of El Paso 164 (1 GB) | 206 s |
+
+The probe's timeout is 120 s, so every large file failed. Augusta GA event 669 keeps its index at the start and was never affected. So it is atom order, not size. A second symptom showed up once: four MP4s ffprobed at the same time, and three failed instantly with "moov atom not found". Run alone, the same files read fine. The fix below avoids both.
+
+**The fix.** Every ChampDS event also has a VOD2 stream (HLS: a playlist of short segments). Its playlist gives the duration in about 2 seconds, and a server can read any part of it quickly. The two durations agree:
+
+| Meeting | MP4 duration | MP4 read time | Stream duration | Stream read time |
+|---|---|---|---|---|
+| Collegedale TN 154 | 4,432.133 s | 53 s | 4,432.133 s | 1.1 s |
+| El Paso CO 164 | 5,227.029 s | 209 s | 5,227.021 s | 1.3 s |
+| Atlanta GA 1077 | 6,116.750 s | 166 s | 6,116.750 s | 3.2 s |
+| Augusta GA 669 (index at start) | 678.978 s | 0.8 s | 678.981 s | 1.1 s |
+
+A 300-second audio chunk from 4,800 s into El Paso 164 came off the stream in 11 s through the existing `extract_chunk_audio()`.
+
+Three changes:
+
+1. `champds.py` now sets `server_media_url` to the stream whenever there is one, not only when there is no MP4. The reader's player still gets the MP4.
+2. `media_probe.transcription_media_url()` prefers `server_media_url`. The cloud worker, the local Whisper script, the resolver's transcription request and the queue probe all pick a URL through it. ChampDS is the only adapter that sets both URLs, so no other platform changes.
+3. `queue_probe._probe_direct_file()` handles callers that pass only the stored MP4 URL (`bulk_ingest.py`'s WO-156 gate does). It looks up the same event's stream with the new `champds.vod2_stream_for_download_url()` and reads the duration there. The HEAD request still supplies size and date. If no stream is found or it can't be read, it falls back to ffprobe on the MP4, as before. The new probe method is recorded as `head+champds-vod2`.
+
+**The worker had the same failure.** Its auto-generation step ffprobes `transcription_media_url(result)` with the same 120 s timeout, so any large index-at-end MP4 failed there too. Pulling audio from those MP4s had the same seek cost. Change 2 moves both onto the stream.
+
+**Result on the six reported URLs** (queue probe through the new code, MP4 URL passed directly as `bulk_ingest.py` does):
+
+| Meeting | Result | Duration | Time |
+|---|---|---|---|
+| Collegedale TN 154 | accept | 4,432 s | 1.1 s |
+| El Paso CO 164 | accept | 5,227 s | 1.3 s |
+| Atlanta GA 1077 | accept | 6,117 s | 3.2 s |
+| Oak Hill TN 317 | accept | 14,739 s | 1.2 s |
+| El Paso CO 101 | accept | 21,066 s | 1.4 s |
+| Augusta GA 669 | accept | 679 s | 1.1 s |
+
+**El Paso event 101 re-keyed.** Dry run first, then a real `bulk_ingest.py` run with `gov_id` `us:county:08041` (YouTube guard installed). It updated page 3349 in place (same slug). The live page now reads "El Paso County, CO" and links to `/j/el-paso-county-co`. It used to show "ElPaso County Colorado" with no government.
+
+**Tests.** `tests/test_queue_probe.py`: index at end (ffprobe fails, stream answers), index at start with an unreadable stream (falls back to the MP4), and neither readable (still `reject-dead`). The master playlist is the real one, verbatim. `tests/test_champds.py`: both URLs set when both exist, and the MP4-to-stream lookup (match, other URL shapes, API failure).
+
+**Caution.** The worker and resolver changes need a deploy before production uses them. Scripts run from a checkout (`bulk_ingest.py`, the tier-3 feeder, the local Whisper script) use them now.
 
 ## WO-1051: the queue probe reads Dropbox files, and Claycomo/Collier rules in the registry [Done 2026-09-24]
 

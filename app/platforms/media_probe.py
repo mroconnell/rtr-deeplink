@@ -987,15 +987,20 @@ async def probe_duration_and_chunk_plan(
 
 
 def transcription_media_url(result) -> Optional[str]:
-    """The URL a transcription path should pull audio from: the playable
-    `video_url` when there is one, else `server_media_url` -- media only a
-    server-side request with the source page's Referer can read (WO-1045,
-    ChampDS's VOD2 stream; see models.py). Every job-creation path (the
+    """The URL a transcription path should pull audio from:
+    `server_media_url` when there is one -- media only a server-side
+    request with the source page's Referer can read (WO-1045, ChampDS's
+    VOD2 stream; see models.py) -- else the playable `video_url`.
+
+    The stream wins even when a `video_url` exists (WO-1052): ChampDS is
+    the only adapter that sets both, and its MP4 is often unreadable in
+    our timeouts when the file's index sits at the end (see champds.py's
+    WO-1052 note for the measurements). Every job-creation path (the
     resolver's submit route, the cloud worker, the local script, the
     queue probe) goes through this one function, for the same reason as
     `probe_duration_and_chunk_plan()` above: a second copy of the rule is
     how the two transcription paths drift apart."""
-    return result.video_url or getattr(result, "server_media_url", None)
+    return getattr(result, "server_media_url", None) or result.video_url
 
 
 def is_hls(media_url: str) -> bool:

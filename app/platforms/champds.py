@@ -250,6 +250,25 @@ class ChampDSAssetFinder(AssetFinder):
     Paso's: 101 KB, a coherent Board of County Commissioners transcript).
     A bare `MediaPath` on `play.champds.com` is not tried -- only the
     `/CAPTION/` path was confirmed.
+
+    **WO-1052 (2026-09-24): VOD2 is now returned as `server_media_url`
+    even when a `DownloadURL` exists**, and the transcription paths
+    prefer it. Reason: many DOWNLOAD-MEDIA MP4s keep their index (the
+    `moov` atom) at the END of the file, and ChampDS's download server
+    is slow to reach a late byte. Measured live: a ranged GET for the
+    last 4 MB took 52 s to its first byte on a 263 MB file (Collegedale
+    TN event 154) and 206 s on a 1 GB file (El Paso County CO event
+    164); a repeat was no faster, and a read at byte 100M took 20 s. So
+    time-to-first-byte grows with the offset, about 5 MB per second.
+    ffprobe must read that index before it can report anything, so the
+    shared 120 s timeout killed every large one ("reject-dead: ffprobe
+    could not read a duration"). An MP4 with its index at the start
+    (Augusta GA event 669) was never affected -- it is atom order, not
+    size. The VOD2 stream has no such cost: ffprobe read Collegedale's
+    duration off it in 1.7 s, exactly matching the MP4 (4432.133 s),
+    and a 300 s audio chunk from 4,800 s into El Paso's meeting came
+    back in 11 s. The reader's player still gets the MP4 (`video_url`);
+    only our own server-side reads switch.
     """
 
     platform_name = "champds"
@@ -303,7 +322,9 @@ class ChampDSAssetFinder(AssetFinder):
             (data.get("Customer") or {}).get("CustomerName"), url
         )
         video_url, video_format = self._extract_video(data)
-        server_media_url = None if video_url else self._extract_vod2_stream(data)
+        # WO-1052: set even when a DownloadURL exists -- see the class
+        # docstring's WO-1052 note (moov-at-end MP4s).
+        server_media_url = self._extract_vod2_stream(data)
         agenda_link = self._extract_agenda_link(data.get("Agenda") or {}, customer)
 
         if video_url:
@@ -536,3 +557,45 @@ class ChampDSAssetFinder(AssetFinder):
             return None, f"{type(e).__name__}: {e}"
         except Exception as e:
             return None, f"unexpected {type(e).__name__}: {e}"
+
+
+# WO-1052: `/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{event_id}` -- the
+# DownloadURL shape every ChampDS customer with downloads enabled uses.
+_DOWNLOAD_MEDIA_PATH_RE = re.compile(
+    r"^/DOWNLOAD-MEDIA/([^/]+)/eventmainmedia/(\d+)", re.IGNORECASE
+)
+
+
+async def vod2_stream_for_download_url(download_url: str) -> Optional[str]:
+    """The VOD2 HLS stream for the same event as a ChampDS DOWNLOAD-MEDIA
+    URL, or None (not that URL shape, API unreachable, no VOD2).
+
+    For callers that hold only a stored `video_url` and never resolve --
+    `scripts/bulk_ingest.py`'s WO-156 gate passes the payload's MP4
+    straight to the queue probe. See ChampDSAssetFinder's WO-1052 note
+    for why the stream, not the MP4, is what a server should read.
+    Never raises."""
+    parsed = urlparse(download_url)
+    if parsed.netloc.lower() != "play.champds.com":
+        return None
+    match = _DOWNLOAD_MEDIA_PATH_RE.match(parsed.path)
+    if not match:
+        return None
+    customer, event_id = match.group(1), match.group(2)
+    api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
+    try:
+        async with aiohttp.ClientSession(
+            headers=ChampDSAssetFinder().headers
+        ) as session:
+            data, failure_reason = await ChampDSAssetFinder._fetch_json(
+                session, api_url
+            )
+    except Exception as e:
+        logger.warning("ChampDS VOD2 lookup failed for %s -- %s", api_url, e)
+        return None
+    if not data:
+        logger.warning(
+            "ChampDS VOD2 lookup failed for %s -- %s", api_url, failure_reason
+        )
+        return None
+    return ChampDSAssetFinder._extract_vod2_stream(data)

@@ -137,7 +137,7 @@ def _known_domain_lookup_name(known) -> str:
     """The name a `_KNOWN_DOMAINS` entry is looked up by -- the same
     string `finalize_jurisdiction()` produces for it at ingest. This used
     to be a bare "Name, ST", which dropped a county entry's type and
-    pinned six county tenants to a same-named city (WO-1052)."""
+    pinned six county tenants to a same-named city (WO-1053)."""
     return _known_name_with_state(known)
 
 
