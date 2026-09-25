@@ -225,6 +225,21 @@ CLIENT_PLACE_PREFIXES = {
     "2917038973": ("Clark County", "Vancouver"),
 }
 
+# clientID -> {category: government name} for a body on a mixed channel
+# that is its own government, not a place's. The name must be a curated
+# registry government (`curated_governments.csv`), so "{name}, {state}"
+# resolves to its own id; never a place's. One line per customer, added
+# only after a live check.
+CLIENT_BODY_GOVERNMENTS = {
+    # CVTV (WO-1067, 2026-09-25): two separate governments in Clark
+    # County, each with its own Census of Governments unit. The Regional
+    # Transportation Council has no registry id and stays blank.
+    "2917038973": {
+        "Port of Vancouver Board of Commissioners": "Port of Vancouver",
+        "C-TRAN Board of Directors": "C-TRAN",
+    },
+}
+
 # A body under a place prefix that is its own government, not the
 # place's: "Clark County Fire District 6", "Clark County Public
 # Transportation Benefit Area Authority" (C-TRAN's legal name). Not seen
@@ -494,6 +509,7 @@ class InvintusAssetFinder(AssetFinder):
                 data.get("categoriesDetail"),
                 CLIENT_STATES.get(client_id),
                 CLIENT_PLACE_PREFIXES.get(client_id, ()),
+                CLIENT_BODY_GOVERNMENTS.get(client_id, {}),
             )
             if client_id in LEGISLATURE_CLIENTS and legislative_chamber(
                 client_id, title, data.get("categories")
@@ -687,6 +703,7 @@ class InvintusAssetFinder(AssetFinder):
         categories_detail: Optional[List[dict]] = None,
         state: Optional[str] = None,
         place_prefixes: Tuple[str, ...] = (),
+        body_governments: Optional[dict] = None,
     ) -> Tuple[Optional[str], Optional[str]]:
         """(jurisdiction, meeting_body) from an event's categories.
 
@@ -712,7 +729,10 @@ class InvintusAssetFinder(AssetFinder):
         starts with one of the channel's `place_prefixes` (from
         `CLIENT_PLACE_PREFIXES`: CVTV's "Clark County Planning
         Commission" -> "Clark County"), unless it names a district or
-        authority. Anything else, like
+        authority, or a top entry listed in the channel's
+        `body_governments` (from `CLIENT_BODY_GOVERNMENTS`: CVTV's "Port
+        of Vancouver Board of Commissioners" -> "Port of Vancouver", its
+        own government). Anything else, like
         "Tac-PC Board of Health", is returned as-is with no state,
         because "Tac-PC Board of Health, WA" would mint a fake
         government."""
@@ -747,6 +767,9 @@ class InvintusAssetFinder(AssetFinder):
                 break
         if place is None and child and child.lower().startswith(top.lower() + " "):
             place = top
+        if place is None and top in (body_governments or {}):
+            place = body_governments[top]
+            body_from_top = top
         if place is None and not _SPECIAL_DISTRICT_RE.search(top):
             for prefix in place_prefixes:
                 if top.lower().startswith(prefix.lower() + " "):

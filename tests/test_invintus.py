@@ -1,6 +1,7 @@
 import pytest
 
 from app.platforms.invintus import (
+    CLIENT_BODY_GOVERNMENTS,
     CLIENT_PLACE_PREFIXES,
     CLIENT_STATES,
     LEGISLATURE_CLIENTS,
@@ -395,6 +396,7 @@ def _cvtv(name):
         [{"ID": "1", "name": name, "childOf": None}],
         CLIENT_STATES["2917038973"],
         CLIENT_PLACE_PREFIXES["2917038973"],
+        CLIENT_BODY_GOVERNMENTS["2917038973"],
     )
 
 
@@ -420,9 +422,7 @@ def test_cvtv_body_under_a_place_prefix(category, place):
 @pytest.mark.parametrize(
     "category",
     [
-        # Their own governments, with no registry id: stay blank.
-        "Port of Vancouver Board of Commissioners",
-        "C-TRAN Board of Directors",
+        # Its own government, with no registry id: stays blank.
         "Regional Transportation Council",
         # Names no city, in its category or its description ("Complete
         # coverage of the September 21, 2026, City Council workshop
@@ -467,3 +467,37 @@ def test_leon_county_channel_is_pinned_to_leon_county():
         path="/?clientID=2917038973&eventID=2026091015",
     )
     assert other.gov_id != "us:county:12073"
+
+
+# --- CVTV bodies that are their own governments (WO-1067, 2026-09-25) ---
+# Real CVTV categories, read live 2026-09-25. Each is a Census of
+# Governments unit with a curated registry row (curated_governments.csv).
+
+
+@pytest.mark.parametrize(
+    "category, government, gov_id",
+    [
+        (
+            "Port of Vancouver Board of Commissioners",
+            "Port of Vancouver, WA",
+            "rtr:us:wa:port-of-vancouver",
+        ),
+        ("C-TRAN Board of Directors", "C-TRAN, WA", "rtr:us:wa:c-tran"),
+    ],
+)
+def test_cvtv_body_that_is_its_own_government(category, government, gov_id):
+    from app.utils.gov_registry.resolver import resolve_government
+
+    assert _cvtv(category) == (government, category)
+    match = resolve_government(
+        government,
+        tenant_host="player.invintus.com",
+        path="/?clientID=2917038973&eventID=2026091001",
+    )
+    assert match.gov_id == gov_id
+    # Never the city or the county it sits in.
+    assert match.gov_id not in ("us:place:5374060", "us:county:53011")
+
+
+def test_body_governments_only_for_a_channel_with_a_state():
+    assert set(CLIENT_BODY_GOVERNMENTS) <= set(CLIENT_STATES)

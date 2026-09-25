@@ -1,5 +1,38 @@
 # Backlog — done
 
+## WO-1068: 15 wrong pins fixed, 34 misfiled pages re-filed, a checked pin now beats a wrong place match [Done 2026-09-25]
+
+**What was done and why.** The 2026-09-25 export showed 66 pages on 44 hosts with a whole-host pin filed under another government (`docs/investigations/whole_host_pin_mismatch_2026-09-25.md`). Ryan approved three steps.
+
+1. **15 pins corrected** in `tenant_overrides.csv`, each checked live against the host's own page: clark.granicus.com (KS -> Clark County NV), durham (Durham Region ON -> Durham NC), eustis.civicweb.net (Maine -> FL), douglascounty granicus and legistar (NV -> CO), victoria (NB -> MN), grandrapidscity (MN -> MI), cityofvernon (BC -> CA), siouxcityschools (city -> school district), fishkilltownny and townofaurorany (village -> town), stonington-ct.gov (borough -> town), meeting.reddeer.ca (minted -> registry id). Two hosts carry several governments and now have one pin per `view_id`: nevco.granicus.com (county default; view 2 Nevada City, view 4 Grass Valley) and burbank.granicus.com (city default; view 4 Burbank USD). 12 of the 15 wrong pins were machine-made.
+2. **34 pages re-filed** through `POST /internal/jurisdiction/override` (dry run first, then applied; confirmed in a fresh export): the 33 wrong pages with a clear answer plus Clark County NV page 208, which sat under the old Kansas pin. Wellfleet's "Maurices Community Forum Presentation" turned out to be a real town forum, so it was re-filed to the town as `town_hall` rather than deleted. Stonington's 3-minute "Why Stonington?" promo was deleted (`/internal/admin/delete-pages`).
+3. **Rule** in `resolver.py` (`_checked_pin_over_name()`): a fallback pin a person checked (`HUMAN_PIN_SOURCES`) beats a national-table match to a different county, city or township, but only when that match is a namesake of the pin's government ("Jackson County" CO vs MO, "Dallas" vs "Dallas County") and the page does not name its own type. A school or special district keeps its own id, and a minted pin of the same type (a department, e.g. "Humboldt County Sheriff") never displaces its own government. The first, broader version (no namesake or type-word limit) failed three existing tests: it moved "City of Napa, CA" on Napa County's host to the county, and a "Bronx, NY" name on boston.granicus.com to Boston.
+
+**Result.**
+
+| Measure | Count |
+| --- | --- |
+| Pages re-filed | 34 |
+| Pages deleted | 1 |
+| Pages whose resolved government changes under the new pins and rule, across all 10,486 | 16 |
+| Of those 16, moved to the right government | 16 |
+| Right pages that change | 0 |
+
+Left open (`BACKLOG.md`): 4 pages waiting on Ryan's call (LAWA, M-NCPPC) and pins without a human source.
+
+## WO-1067: Port of Vancouver and C-TRAN get registry ids; CVTV files their meetings under them [Done 2026-09-25]
+
+**What was done and why.** Follow-up to WO-1066: CVTV (`2917038973`) carries meetings of two governments that had no registry id. Both are Census of Governments 2022 units, so both got curated registry rows (`curated_governments.csv`, the same pattern as WO-916's Kitsap Regional Library): `rtr:us:wa:port-of-vancouver` (unit 158826) and `rtr:us:wa:c-tran` (unit 216444, legal name Clark County Public Transportation Benefit Area Authority). `invintus.py`'s new `CLIENT_BODY_GOVERNMENTS` maps CVTV's "Port of Vancouver Board of Commissioners" and "C-TRAN Board of Directors" categories to them. The rule that a Port, District or Authority is never filed under the city or county still holds.
+
+**Result, live on 2026-09-25.**
+
+| Meeting | Government before | Government after |
+| --- | --- | --- |
+| Port of Vancouver Board of Commissioners (5) | none | Port of Vancouver |
+| C-TRAN Board of Directors (1) | none | C-TRAN |
+
+The Regional Transportation Council and the Tacoma-Pierce County Health Department are not Census units and stay blank.
+
 ## WO-1066: Invintus Leon County pin and CVTV place prefixes [Done 2026-09-25]
 
 **What was done and why.** rtr-discovery's Invintus dry run on 2026-09-25 left 33 accepted meetings with no government: 7 on Leon County FL's channel (`4853176732`), 25 on CVTV (`2917038973`), 1 on the Pierce County channel (`1872740071`).
