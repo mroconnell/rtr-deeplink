@@ -9,9 +9,13 @@
 # auto_transcription.py's bulk_ingest.py call directly).
 #
 # Runs on GitHub's own runners for the same reason feed-granicus-
-# transcription.yml does -- none of these platforms have YouTube's
-# cloud-IP caption-fetch blocking, so there's no residential-IP
-# requirement here.
+# transcription.yml does. That only holds for the queue's non-YouTube
+# lines: the queue also holds YouTube lines, which only the drip Mac may
+# fetch (docs/YOUTUBE_DRIP_RUNBOOK.md). WO-1063 (2026-09-25): the script
+# now skips every line the drip claims and refuses any YouTube request
+# (scripts/youtube_fetch_guard.py). Before that it took the front 12
+# lines whatever they were, and dropped 148 real YouTube-backed meetings
+# as "dead" on YouTube's bot check.
 #
 # The queue (scripts/tier3_auto_transcription_queue.txt) is 466 pages
 # confirmed live 2026-08-16 to have a real video_url via a direct

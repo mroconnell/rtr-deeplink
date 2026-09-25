@@ -123,8 +123,9 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (57)
   Very long Cablecast meetings whose audio is split into many files…
+  Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
   ClerkBase pages name the council without its state, so they stay…
   Winchester, MA reaches the right TelVue page now but still doesn't…
   State legislatures: small residual fixes remain after today's push —…
@@ -920,6 +921,13 @@ WO-932 and WO-913.
 - **Next action**: test, on the worker's image, whether ffmpeg reads a chunk correctly from a trimmed copy of the audio playlist that starts at the segment containing the chunk's start (the `#EXT-X-MAP` line plus only the segments covering the window, with absolute URLs). That needs no seek at all, and would cover the one-file shape too.
 - **Constraint**: first measure the fast jump's own cost: on these tenants the failing first attempt took 104-135 s, close to the 120 s limit by itself.
 - **History**: `BACKLOG_DONE.md` WO-1062.
+
+### Some tier-3 lines need YouTube but the drip Mac can't claim them, so they circle the queue `[NEEDS-AUDIT]`
+
+- **Issue**: since WO-1063 the GitHub feed sets aside, instead of dropping, a line that turns out to need YouTube. But the drip only claims lines by URL shape, so two kinds are handled by nobody and go round the queue once a cycle: a page that embeds YouTube indirectly (New Trier Township IL, `newtriertwpil.portal.civicclerk.com/event/233/media`, `us:cousub:1703152909`, one of the 148 restored lines), and two malformed links with a channel or playlist ID where a video ID belongs (`youtube.com/watch?v=UC1UQVyMyybLHYJrI_Ms7pgA`, `youtube.com/watch?v=PLHelQFD49yC0pEwIoNeti336MKWKm46Wk`).
+- **Impact**: 3 lines today. No YouTube requests are made for them, but they never get a page, and each cycle adds a `[YOUTUBE]` row to the feed log.
+- **Next action**: for the two malformed links, find the real meeting video each was meant to be (or remove the line); that is Ryan's call. For the indirect case, decide whether the drip should also take lines the GitHub feed has logged `[YOUTUBE]`.
+- **History**: `BACKLOG_DONE.md` WO-1063.
 
 ### ClerkBase pages name the council without its state, so they stay unresolved; the state is in the URL `[JUST-DO-IT]` `[EASY]`
 

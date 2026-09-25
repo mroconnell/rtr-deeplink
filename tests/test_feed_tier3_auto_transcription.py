@@ -23,6 +23,8 @@ from app.platforms.queue_probe import ProbeResult
 from scripts.feed_tier3_auto_transcription import (
     _parse_queue_line,
     _push_if_has_video,
+    needed_youtube,
+    select_batch,
 )
 
 
@@ -585,3 +587,102 @@ def test_append_feed_log_row_unmocked_no_owner_tag(monkeypatch, tmp_path):
         rows = list(csv.DictReader(f))
 
     assert rows[0]["tag"] == "NO-OWNER"
+
+
+# --- WO-1063: leave YouTube lines for the drip Mac -------------------------
+#
+# Real, 2026-09-22 to 2026-09-25: this GitHub-runner feed took the front 12
+# queue lines whatever they were. With YouTube lines queued at the front,
+# YouTube answered "Sign in to confirm you're not a bot" and the feed
+# logged each as reject-dead and dropped it -- 148 real meetings. The
+# lines below are real queue lines from that set (plus two ordinary
+# Granicus/eScribe lines still queued), one per platform involved.
+
+_YT_LINE = "https://www.youtube.com/watch?v=XYdKJjWRVQM"
+_CIVICWEB_LINE = (
+    "https://cu.diligent.community/Portal/MeetingInformation.aspx?Id=648"
+    "\t\trtr:us:co:university-of-colorado-board-of-regents"
+)
+_PRIMEGOV_LINE = (
+    "https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697"
+    "\t\tus:cousub:4200157472"
+)
+_CIVICCLERK_LINE = (
+    "https://newtriertwpil.portal.civicclerk.com/event/233/media"
+    "\t\tus:cousub:1703152909"
+)
+_GRANICUS_LINE = (
+    "https://franklintwpnj.granicus.com/MediaPlayer.php?view_id=1&clip_id=3752"
+    "\thttps://franklintwpnj.granicus.com/player/clip/3753?view_id=3"
+)
+_ESCRIBE_LINE = (
+    "https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx"
+    "?Id=42c217b8-671f-43a6-a2f9-884e728b2060"
+)
+
+
+def _drip_claims(url):
+    # The drip's own classifier -- the thing that decides which lines its
+    # feed lane takes -- so this test fails if the two ever disagree.
+    from app.platforms import register_all_finders
+    from scripts.youtube_drip import _classify_queue_url
+
+    register_all_finders()
+    return _classify_queue_url(url)[0]
+
+
+def test_select_batch_leaves_every_drip_line_in_place():
+    lines = [
+        _YT_LINE,
+        _CIVICWEB_LINE,
+        _GRANICUS_LINE,
+        _PRIMEGOV_LINE,
+        _CIVICCLERK_LINE,
+        _ESCRIBE_LINE,
+    ]
+
+    batch, remainder = select_batch(lines, _drip_claims, size=12)
+
+    assert batch == [_GRANICUS_LINE, _CIVICCLERK_LINE, _ESCRIBE_LINE]
+    # The drip's lines keep their order, still at the front.
+    assert remainder == [_YT_LINE, _CIVICWEB_LINE, _PRIMEGOV_LINE]
+
+
+def test_select_batch_fills_the_batch_from_past_the_youtube_lines():
+    # 35 YouTube lines at the front (#1423's shape) must not starve the feed.
+    lines = [_YT_LINE] * 35 + [_GRANICUS_LINE, _ESCRIBE_LINE, _CIVICCLERK_LINE]
+
+    batch, remainder = select_batch(lines, _drip_claims, size=2)
+
+    assert batch == [_GRANICUS_LINE, _ESCRIBE_LINE]
+    assert remainder == [_YT_LINE] * 35 + [_CIVICCLERK_LINE]
+
+
+def test_needed_youtube_only_when_the_guard_refused_and_no_page_was_made():
+    skipped = "[SKIP] reject-dead: yt-dlp: ERROR: ... (https://x)"
+    assert needed_youtube(skipped, refused_before=0, refused_now=1) is True
+    # Refused, but the page was still made (video without YouTube captions).
+    assert needed_youtube("[OK] https://x -> /m/y", 0, 1) is False
+    # An ordinary failure with no YouTube involved is still dropped.
+    assert needed_youtube(skipped, refused_before=2, refused_now=2) is False
+
+
+def test_importing_the_feed_does_not_block_youtube_for_the_drip():
+    # The drip Mac imports this module for `_push_if_has_video()`; only
+    # this feed's own main() may switch the guard on. A fresh interpreter,
+    # because other test modules install the guard in this one.
+    import subprocess
+    import sys
+
+    probe = (
+        "import socket, scripts.feed_tier3_auto_transcription;"
+        "print(socket.getaddrinfo.__module__)"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=Path(__file__).resolve().parent.parent,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert out.stdout.strip() == "socket"

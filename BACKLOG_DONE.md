@@ -1,5 +1,40 @@
 # Backlog — done
 
+## WO-1063: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
+
+**What was found.** Asked to resolve and merge #1421, an automated "advance the tier-3 queue" PR. All 12 of its rejections were YouTube answering "Sign in to confirm you're not a bot" to the GitHub runner, not dead meetings. The feed log showed the same across four days:
+
+| Feed log, 2026-09-22 to 2026-09-25 | Count |
+|---|---|
+| Rows in total | 156 |
+| Dropped on YouTube's bot check | 148 |
+| Of those, back in the queue before this fix | 0 |
+
+**The cause.** The queue holds two kinds of line. The drip Mac (`scripts/youtube_drip.py`) claims the YouTube ones: direct YouTube links, and CivicWeb, PrimeGov and BoardDocs pages that embed YouTube. The GitHub feed took the front 12 lines whatever they were. That worked while YouTube lines sat further back; once they were queued at the front (#1423 and later), the GitHub feed reached them first. It also broke the rule that only the drip Mac contacts YouTube (`docs/YOUTUBE_DRIP_RUNBOOK.md` rule 5).
+
+| Platform of the 148 | Count | Drip claims it? |
+|---|---|---|
+| YouTube link | 116 | yes |
+| CivicWeb (Diligent portal) | 28 | yes |
+| PrimeGov | 3 | yes |
+| CivicClerk (YouTube embed) | 1 | no |
+
+**The fix** (`scripts/feed_tier3_auto_transcription.py`):
+
+1. `select_batch()` takes the first 12 lines the drip does *not* claim, using the drip's own `_classify_queue_url()` so the two can't disagree. Claimed lines stay where they are.
+2. `main()` installs `youtube_fetch_guard` first, so no YouTube request can leave the runner, directly or through an adapter. It is installed in `main()`, not at import, because the drip Mac imports this module for `_push_if_has_video()`; a test checks that.
+3. A push the guard stopped, and that made no page, is logged `[YOUTUBE]` and put back at the end of the queue instead of being dropped (`needed_youtube()`), the same way `[NO-OWNER]` lines are kept.
+
+On the current queue (1,173 lines, 815 claimed by the drip), the old rule's next batch was 11 YouTube-type lines and one eScribe. The new one has no line the drip claims; it does still include the two malformed YouTube links in `BACKLOG.md`'s "circle the queue" entry, which the guard now stops.
+
+**Restored.** All 148 original queue lines (40 carrying a `gov_id` or source-page field) were recovered from the queue file's git history and put back at the front, in their original order. None was already queued.
+
+**Closed without merging:** #1421. 9 of its 12 meetings had already been dropped by a later run; merging would have dropped the other 3 and logged all 12 twice.
+
+**Tests.** `tests/test_feed_tier3_auto_transcription.py`: one real queue line per platform involved (plus Granicus and eScribe), checked against the drip's real classifier; 35 YouTube lines at the front don't starve the batch; `needed_youtube()`'s three cases; importing the feed leaves `socket.getaddrinfo` untouched (in a fresh interpreter).
+
+**Docs updated:** `.github/workflows/feed-tier3-transcription.yml`'s header (it said none of these platforms involve YouTube), `docs/YOUTUBE_DRIP_RUNBOOK.md`'s feed-lane row.
+
 ## WO-1062: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
 
 **What and why.** Job 4306 was Collier County FL's County Commission meeting of 2026-09-22 (`reflect-collier-countyboc.cablecast.tv/show/2277`), 11 h 10 min long. It transcribed 77 of 90 chunks, then failed three times on chunk 77, which starts 9 h 37 min in. The last 1 h 33 min had no transcript.

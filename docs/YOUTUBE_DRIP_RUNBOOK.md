@@ -13,7 +13,7 @@ all three jobs, slowly and steadily, so YouTube never sees a burst:
 | Lane | What it works on | What it does | Pace |
 |---|---|---|---|
 | captions | pages on the site waiting for a transcript | asks YouTube for the video's captions and puts them on the page; if the channel disabled captions, marks the page so nobody asks again | one page every 3–4 minutes |
-| feed | the YouTube lines in `scripts/tier3_auto_transcription_queue.txt` | turns each into a site page (same checks as the GitHub feed), then the captions lane fetches its captions next | same budget |
+| feed | the YouTube lines in `scripts/tier3_auto_transcription_queue.txt` (the GitHub feed leaves these alone, WO-1063) | turns each into a site page (same checks as the GitHub feed), then the captions lane fetches its captions next | same budget |
 | audio | pages marked "captions disabled" | downloads the audio and transcribes it with Whisper on this Mac | at most 3 downloads a day (raise only after a week without a block) |
 
 Every YouTube request comes out of one shared budget: about one every

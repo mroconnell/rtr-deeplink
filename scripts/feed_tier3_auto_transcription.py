@@ -88,7 +88,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -355,6 +355,40 @@ async def _push_if_has_video(
     return f"[OK] {url} -> {page_url or '(no url in response)'}"
 
 
+def select_batch(
+    lines: list[str], claimed_by_drip: Callable[[str], bool], size: int = BATCH_SIZE
+) -> tuple[list[str], list[str]]:
+    """(batch, remainder): the first `size` lines the YouTube drip does
+    NOT claim, and everything else in its original order.
+
+    WO-1063 (2026-09-25): this used to be a plain `lines[:BATCH_SIZE]`.
+    The queue also holds YouTube lines, which only the drip Mac may fetch
+    (`docs/YOUTUBE_DRIP_RUNBOOK.md`), and once 35 of them were queued at
+    the front (#1423) this GitHub-runner feed took them first. YouTube
+    answered "Sign in to confirm you're not a bot", the line was logged
+    `reject-dead` and dropped: 148 real meetings between 2026-09-22 and
+    2026-09-25, none of them dead. A claimed line now stays exactly where
+    it is for the drip's feed lane."""
+    batch: list[str] = []
+    remainder: list[str] = []
+    for line in lines:
+        url, _src, _gov_id = _parse_queue_line(line)
+        if len(batch) < size and not claimed_by_drip(url):
+            batch.append(line)
+        else:
+            remainder.append(line)
+    return batch, remainder
+
+
+def needed_youtube(result: str, refused_before: int, refused_now: int) -> bool:
+    """True when a push was stopped by the YouTube guard (a YouTube host
+    was refused during it) and didn't still make a page. Such a line
+    isn't dead -- it embeds YouTube indirectly (e.g. a CivicClerk event
+    whose media is a YouTube video), which the drip's URL check can't
+    see -- so the caller keeps it in the queue instead of dropping it."""
+    return refused_now > refused_before and not result.startswith("[OK]")
+
+
 async def main() -> None:
     if not QUEUE_FILE.exists():
         print("No queue file found -- nothing to do.")
@@ -367,8 +401,22 @@ async def main() -> None:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return
 
-    batch, remainder = lines[:BATCH_SIZE], lines[BATCH_SIZE:]
-    print(f"Feeding {len(batch)} URL(s), {len(remainder)} remaining after this run.")
+    # WO-1063: this process must make no YouTube request at all, direct or
+    # through an adapter (CLAUDE.md; the runbook's rule 5). Installed here,
+    # not at import, because the drip Mac imports this module for
+    # `_push_if_has_video()` and must keep its own YouTube access.
+    from scripts import youtube_fetch_guard
+    from scripts.youtube_drip import _classify_queue_url
+
+    youtube_fetch_guard.install()
+
+    batch, remainder = select_batch(
+        lines, lambda url: _classify_queue_url(url)[0], BATCH_SIZE
+    )
+    print(
+        f"Feeding {len(batch)} URL(s), {len(remainder)} remaining after this run "
+        "(YouTube lines are left for the drip Mac)."
+    )
 
     register_all_finders()
 
@@ -378,12 +426,17 @@ async def main() -> None:
     # the queue regardless of individual outcomes" rule below would
     # otherwise permanently lose it the moment its batch slot comes up.
     no_owner_lines: list[str] = []
+    youtube_lines: list[str] = []
     async with aiohttp.ClientSession() as session:
         for i, line in enumerate(batch):
             url, source_url_override, line_gov_id = _parse_queue_line(line)
+            refused_before = len(youtube_fetch_guard.REFUSED)
             result = await _push_if_has_video(
                 session, url, source_url_override, line_gov_id
             )
+            if needed_youtube(result, refused_before, len(youtube_fetch_guard.REFUSED)):
+                result = f"[YOUTUBE] needs YouTube, left in the queue: {url} ({result})"
+                youtube_lines.append(line)
             print(result)
             _append_feed_log_row(url, result)
             if result.startswith("[NO-OWNER]"):
@@ -398,6 +451,16 @@ async def main() -> None:
             "queue-ownership entry / WO-346)."
         )
         remainder = remainder + no_owner_lines
+
+    if youtube_lines:
+        # WO-1063: same reasoning as [NO-OWNER] -- not a dead link. The
+        # drip Mac can't claim these by URL either (see BACKLOG.md), so
+        # they go to the end rather than blocking the front.
+        print(
+            f"[YOUTUBE] {len(youtube_lines)} line(s) needed YouTube and were left "
+            "in the queue."
+        )
+        remainder = remainder + youtube_lines
 
     # Advance the queue regardless of individual outcomes -- same "don't
     # retry failing commands in a loop" reasoning as
