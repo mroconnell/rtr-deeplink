@@ -1,5 +1,25 @@
 # Backlog — done
 
+## WO-1061: Clinton Township and Prince Edward County site pins made authoritative [Done 2026-09-25]
+
+**Why.** After WO-1060 (#1448) deployed, the backfill dry run moved two pages to the wrong government. The report showed the cause: both new site pins were `fallback` strength, and the backfill resolves from each page's stored display name. The national table matched that name first.
+
+| Page | Stored name | Resolved by the table to | Should be |
+|---|---|---|---|
+| 9447 | "Clinton, MI" | Clinton village, MI (`us:place:2616480`) | Clinton charter township (`us:cousub:2609916520`) |
+| 9904 | "Prince Edward County, ON" | Prince Edward census division (`ca:cd:3513`) | Prince Edward County, the municipality (`ca:csd:3513020`) |
+
+**Fix.** `www.clintontownship.com` and `princeedwardcounty.civicweb.net` are now `authoritative`, per Ryan's rule that authoritative pins are his call. Both pages, and the stored names above, now resolve to the right government.
+
+**Checked for other governments first (live, 2026-09-25, at Ryan's request).**
+
+| Site | Bodies it publishes | Other governments |
+|---|---|---|
+| `www.clintontownship.com` (Agenda Center) | Board of Ethics, Civil Service Commission, Planning Commission, Zoning Board of Appeals, Downtown Development Authority | none; no video links to other channels |
+| `princeedwardcounty.civicweb.net` (37 meeting types) | Council, its committees, and the County's own local boards (Library Board, O.P.P. Detachment Board, Picton BIA, Affordable Housing Corporation) | 2 joint bodies with Lennox and Addington County: "Prince Edward - Lennox and Addington Social Services" and its Housing Advisory Committee |
+
+The two joint bodies would be filed under Prince Edward County by this pin. A fallback pin would do the same whenever the table misses, so making the pin authoritative doesn't add that risk. No archived page is from either joint body today (the site's 2 archived pages are Council and Committee of the Whole). CivicWeb meeting URLs carry only `Id=N`, not the meeting type, so no pin can tell them apart. If one is ever archived, give it a per-meeting pin.
+
 ## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
 **The problem.** WO-1058 built a way to record a real, free lead for another
@@ -116,6 +136,8 @@ all -- that's an existing, unrelated resolver rule (`MULTI_GOV_HOSTS`),
 not something this WO's extraction fix touches.
 
 ## WO-1060: after the backfill -- 14 hub redirects committed, 10 wrong pins fixed, and two orphaned hubs re-joined [Done 2026-09-25]
+
+*Numbering note: two PRs used WO-1060 on 2026-09-25 -- #1447 (other-government lead extraction) and #1448 (this entry). Its follow-up is WO-1061.*
 
 **Why.** The post-deploy `backfill_gov_id.py --apply` (80 pages) retired 25 hub pages and wrote their redirects into a file on the Render instance. That file is not served, and the next deploy erases it. Reviewing those rows showed that about half pointed one government's hub at a different government. Checking the pages behind them showed that the backfill had faithfully applied pins that were already wrong. Ryan: "Just make it correct!"
 

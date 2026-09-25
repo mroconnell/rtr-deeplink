@@ -207,7 +207,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
@@ -316,6 +316,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
   [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
+  Pages filed under a wrong government by a since-removed pin can't be…
   `backfill_gov_id.py --apply` writes hub redirects to a file the live…
   WO-171 LocalView channel pins: at least two named a neighbouring…
   6 `best_effort` YouTube pages archived a promotional/off-topic video…
@@ -3810,6 +3811,14 @@ of human step they need.
     (2026-08-30); this entry compacted 2026-08-31. Albuquerque re-checked
     2026-08-31 and confirmed working correctly on a fresh real example —
     see `BACKLOG_DONE.md`.
+
+### Pages filed under a wrong government by a since-removed pin can't be cleared back to "unknown" `[NEEDS-AUDIT]`
+
+- **Issue**: WO-1060 removed the `@ulctTube` channel pin (Utah League of Cities and Towns, an association) and the Kalamazoo TelVue whole-station pin. The resolver now answers "unknown" for their pages, but `backfill_gov_id.py` never downgrades a real `gov_id` to `rtr:unknown:` on a shared host (WO-215's guard, added after a run nearly blanked 825 YouTube pages), and `/internal/jurisdiction/override` accepts only a real government.
+- **Impact**: 7 pages keep a wrong government: 5 ULCT board meetings and a ULCT training video under Utah County, and a Kalamazoo community-arts video under Kalamazoo city (pages 6577, 6935-6938, 8772, 3356).
+- **Next action**: add an explicit, per-page way to clear a page's government (e.g. `/internal/jurisdiction/override?clear=true&ids=...`, dry run by default), then clear these 7.
+- **Constraint**: keep WO-215's bulk guard; only a named, per-page clear.
+- **History**: `BACKLOG_DONE.md` WO-1060 (#1448) and WO-1061.
 
 ### `backfill_gov_id.py --apply` writes hub redirects to a file the live site never reads, and the next deploy erases it `[NEEDS-AUDIT]`
 
