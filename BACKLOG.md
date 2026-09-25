@@ -924,8 +924,8 @@ WO-932 and WO-913.
 
 ### Some tier-3 lines need YouTube but the drip Mac can't claim them, so they circle the queue `[NEEDS-AUDIT]`
 
-- **Issue**: since WO-1064 the GitHub feed sets aside, instead of dropping, a line that turns out to need YouTube. But the drip only claims lines by URL shape, so two kinds are handled by nobody and go round the queue once a cycle: a page that embeds YouTube indirectly (New Trier Township IL, `newtriertwpil.portal.civicclerk.com/event/233/media`, `us:cousub:1703152909`, one of the 148 restored lines), and two malformed links with a channel or playlist ID where a video ID belongs (`youtube.com/watch?v=UC1UQVyMyybLHYJrI_Ms7pgA`, `youtube.com/watch?v=PLHelQFD49yC0pEwIoNeti336MKWKm46Wk`).
-- **Impact**: 3 lines today. No YouTube requests are made for them, but they never get a page, and each cycle adds a `[YOUTUBE]` row to the feed log.
+- **Issue**: since WO-1064 the GitHub feed sets aside, instead of dropping, a line that turns out to need YouTube. But the drip only claims lines by URL shape, so two kinds are handled by nobody and go round the queue once a cycle: a page that embeds YouTube indirectly (New Trier Township IL's CivicClerk event, `newtriertwpil.portal.civicclerk.com/event/233/media`, and Alfred and Plantagenet ON's eScribe meeting, `pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060`, both among the restored lines), and two malformed links with a channel or playlist ID where a video ID belongs (`youtube.com/watch?v=UC1UQVyMyybLHYJrI_Ms7pgA`, `youtube.com/watch?v=PLHelQFD49yC0pEwIoNeti336MKWKm46Wk`).
+- **Impact**: 4 lines today. No YouTube requests are made for them, but they never get a page, and each cycle adds a `[YOUTUBE]` row to the feed log.
 - **Next action**: for the two malformed links, find the real meeting video each was meant to be (or remove the line); that is Ryan's call. For the indirect case, decide whether the drip should also take lines the GitHub feed has logged `[YOUTUBE]`.
 - **History**: `BACKLOG_DONE.md` WO-1064.
 

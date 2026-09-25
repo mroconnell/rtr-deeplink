@@ -27,13 +27,30 @@
 
 On the current queue (1,173 lines, 815 claimed by the drip), the old rule's next batch was 11 YouTube-type lines and one eScribe. The new one has no line the drip claims; it does still include the two malformed YouTube links in `BACKLOG.md`'s "circle the queue" entry, which the guard now stops.
 
-**Restored.** All 148 original queue lines (40 carrying a `gov_id` or source-page field) were recovered from the queue file's git history and put back at the front, in their original order. None was already queued.
+**Restored.** All 148 original queue lines (40 carrying a `gov_id` or source-page field) were recovered from the queue file's git history and put back at the front, in their original order. None was already queued. One more run under the old code (#1456, 2026-09-25 17:32 UTC) landed while this PR was open and dropped 12 more lines: 11 on the bot check, restored here straight after the 148 (159 in all), and one video YouTube really had removed (Wayne County NY, `w9wwAdrnzIc`), left out.
 
 **Closed without merging:** #1421. 9 of its 12 meetings had already been dropped by a later run; merging would have dropped the other 3 and logged all 12 twice.
 
 **Tests.** `tests/test_feed_tier3_auto_transcription.py`: one real queue line per platform involved (plus Granicus and eScribe), checked against the drip's real classifier; 35 YouTube lines at the front don't starve the batch; `needed_youtube()`'s three cases; importing the feed leaves `socket.getaddrinfo` untouched (in a fresh interpreter).
 
 **Docs updated:** `.github/workflows/feed-tier3-transcription.yml`'s header (it said none of these platforms involve YouTube), `docs/YOUTUBE_DRIP_RUNBOOK.md`'s feed-lane row.
+
+## WO-1063: Prince Edward County's portal is a single-government site after all; one Clinton redirect [Done 2026-09-25]
+
+**Why.** WO-1061 treated `princeedwardcounty.civicweb.net` as a multi-government host, because 2 of its 37 meeting types are joint bodies with Lennox and Addington County. Ryan then drew the useful distinction: a shared host is either **organized** (each customer has its own key in every URL, like ChampDS) or **mixed** (several governments' meetings thrown together, like a shared YouTube channel). The two need different solutions. Checked live:
+
+| Question | Answer |
+|---|---|
+| Does a meeting's URL say which body it belongs to? | No. Every meeting is `MeetingInformation.aspx?Id=N`; the type appears only on the page |
+| Are listings organized by body? | Yes. Each type has its own listing (`?type=8` Regular Council, `?type=18` Committee of the Whole) |
+| How many of the 37 types aren't Prince Edward County's own? | 2: the joint Social Services board and Housing Advisory Committee |
+| Do those 2 have any meetings posted? | No. 0 each, and no listing link |
+
+So it is neither kind. It is one government's own site with two empty entries for boards it shares. WO-1061's per-meeting pins made every new meeting wait for a pin, to guard against a risk with nothing behind it.
+
+**Fix.** Removed the portal from `MULTI_GOV_HOSTS` and `tenant_key.SHARED_SINGLE_LISTING_HOSTS`. Replaced the two `Id=` pins with one `authoritative` site pin to `ca:csd:3513020`. It is authoritative because the national table otherwise matches "Prince Edward County, ON" to the census division (WO-1061). A joint-body meeting, if one is ever archived, gets its own per-meeting pin. Both archived meetings, and a new one (`Id=4000`), resolve to Prince Edward County, and the feeder's owner check now accepts new meetings from the portal.
+
+**Clinton redirect.** Added `/j/clinton-mi` -> `/j/clinton-charter-township-mi`. `clinton-mi` was the hub of `rtr:us:mi:clinton`, a made-up id for the same township, which the backfill re-keyed after WO-1061. The other 5 hubs that run retired were left without redirects, because each would send one real government's hub to another (Richmond village, Armada village, Cape Vincent village, Kalamazoo city, Rappahannock County).
 
 ## WO-1062: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
 

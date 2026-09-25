@@ -152,7 +152,6 @@ https://qathetrd.civicweb.net/Portal/MeetingInformation.aspx?Id=2088	https://qat
 https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659	https://www.akronschools.com/district/board-of-education	us:sd:3904348
 https://loudonville-oh.diligent.community/Portal/MeetingInformation.aspx?Id=549	https://loudonville-oh.us/planning-commission-meeting-agendas/	us:place:3945066
 https://oceansideschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=99	https://www.oceansideschools.org/board-of-education/about-our-board	us:sd:3621570
-https://www.youtube.com/watch?v=w9wwAdrnzIc	https://waynecountyny.gov/	us:county:36117
 https://www.youtube.com/watch?v=rv9EcaATvgY&list=PLNM1bWmAVpoXCmRq84JIgnG84VBR9neCF&index=1	https://hudsonwi.gov/list.aspx?Mode=Subscribe#calendar	us:place:5536250
 https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=2002	https://niagarafalls.civicweb.net	us:place:3651055
 https://www.youtube.com/watch?v=em1HM4Ft4FU	https://hopewellboroughnj.gov/	us:place:3433150
