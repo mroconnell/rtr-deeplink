@@ -1,0 +1,34 @@
+{
+  "errors": {
+    "hasError": false,
+    "message": null
+  },
+  "data": {
+    "eventID": "2026091017",
+    "clientID": "2917038973",
+    "startDateTime": "2026-09-21 18:30:00",
+    "title": "Vancouver City Council (09-21-26)",
+    "categories": [
+      "Vancouver City Council"
+    ],
+    "categoriesDetail": [
+      {
+        "ID": "19",
+        "name": "Vancouver City Council",
+        "displayName": "Vancouver City Council",
+        "childOf": null,
+        "isPublic": true
+      }
+    ],
+    "captionPath": null,
+    "downloadLinks": {
+      "audioDownloadURI": "https://m-download.invintus.com/2917038973/73ab184ac20426a192e0eb4ec7e61d63f5c38033_audio.mp3",
+      "videoDownloadURI": "https://m-download.invintus.com/2917038973/73ab184ac20426a192e0eb4ec7e61d63f5c38033.mp4"
+    },
+    "streamingURIs": {
+      "main": "https://api.v3.invintus.com/StreamURI/hls/2917038973/2026091017/media.m3u8",
+      "backup": null
+    }
+  },
+  "meta": null
+}
