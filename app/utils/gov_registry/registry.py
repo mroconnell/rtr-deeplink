@@ -299,6 +299,25 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # they are the same shared-host shape, so the same rule applies.
         "sg002-harmony.sliq.net",
         "sg004-harmony.sliq.net",
+        # ChampDS (CHAMP) -- every customer shares this one host, the
+        # government a path segment (`/{customer}/event/{id}`; see
+        # app/platforms/champds.py). `tenant_overrides.csv` already pins
+        # 21 different governments here, each `match=/{customer}/` (e.g.
+        # `/atlantaga/` -> Atlanta GA, `/maurycotn/` -> Maury County TN).
+        # Same shape as ClerkBase/Castus/BoardDocs above: a whole-host pin
+        # would key every other customer's meetings to whichever
+        # government got pinned first, so a row here must `match=` a
+        # specific `/{customer}/` path.
+        "play.champds.com",
+        # Invintus Media -- every customer shares this one host, the
+        # government a `clientID=` query parameter
+        # (`/?clientID={N}&eventID={M}`; see app/platforms/invintus.py).
+        # `tenant_overrides.csv` already pins the Oregon and Wisconsin
+        # Legislatures here, each by `clientID=`. A whole-host pin would
+        # key every other client's meetings to whichever government got
+        # pinned first, so a row here must `match=` a specific
+        # `clientID=`.
+        "player.invintus.com",
     }
 )
 

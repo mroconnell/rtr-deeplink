@@ -3312,6 +3312,95 @@ def test_videoplayer_telvue_com_is_a_multi_gov_host():
     assert match.tier == resolver.TIER_BLANK
 
 
+# ChampDS and Invintus: one shared host each, the government a
+# `/{customer}/` path segment (ChampDS) or a `clientID=` query parameter
+# (Invintus). Every committed row for either host is a `match=` row; these
+# guard against a future whole-host pin, the WO-306 (Castus) / WO-316
+# (TelVue) failure.
+@pytest.mark.parametrize(
+    "host,match_row,path",
+    [
+        (
+            "play.champds.com",
+            "/atlantaga/,us:place:1304000",
+            "/atlantaga/event/1227",
+        ),
+        (
+            "player.invintus.com",
+            "clientID=4879615486,us:state:41",
+            "/?clientID=4879615486&eventID=2026011111",
+        ),
+    ],
+)
+def test_loader_rejects_blank_match_row_on_champds_and_invintus(
+    monkeypatch, tmp_path, host, match_row, path
+):
+    """A blank-match row on either host is refused at load time; a
+    `match=` row beside it still loads and still resolves its own page."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        f"{host},,us:place:2501260,fallback,test,blank match -- must never load\n"
+        f"{host},{match_row},fallback,test,match row -- must load\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        assert registry.is_multi_gov_host(host)
+        rows = registry.tenant_overrides()[host]
+        assert [r.match for r in rows] == [match_row.split(",")[0]]
+        rejected = registry.rejected_multi_gov_overrides()
+        assert [(r.tenant_host, r.gov_id) for r in rejected] == [
+            (host, "us:place:2501260")
+        ]
+        pinned = resolver.resolve_government(None, tenant_host=host, path=path)
+        assert pinned.gov_id == match_row.split(",")[1]
+        assert pinned.tier == resolver.TIER_PINNED
+    finally:
+        registry.clear_caches()
+
+
+def test_committed_champds_and_invintus_pins_all_still_load():
+    """Every committed `play.champds.com` / `player.invintus.com` row is a
+    `match=` row the loader accepts: path-prefix rows for ChampDS,
+    `clientID=` query rows for Invintus. Counts are the committed file's
+    own as of this test (21 and 3); a new row raises them, so this checks
+    shape, not an exact count."""
+    with open(DATA_DIR / "tenant_overrides.csv", encoding="utf-8") as fh:
+        committed = [
+            r
+            for r in csv.DictReader(fh)
+            if r["tenant_host"] in ("play.champds.com", "player.invintus.com")
+        ]
+    champds = [r for r in committed if r["tenant_host"] == "play.champds.com"]
+    invintus = [r for r in committed if r["tenant_host"] == "player.invintus.com"]
+    assert len(champds) >= 21
+    assert len(invintus) >= 3
+    assert all(r["match"].startswith("/") and r["match"].endswith("/") for r in champds)
+    assert all(r["match"].startswith("clientID=") for r in invintus)
+
+    loaded = registry.tenant_overrides()
+    assert len(loaded["play.champds.com"]) == len(champds)
+    assert len(loaded["player.invintus.com"]) == len(invintus)
+    assert not [
+        r
+        for r in registry.rejected_multi_gov_overrides()
+        if r.tenant_host in ("play.champds.com", "player.invintus.com")
+    ]
+    # Spot checks, one per shape: a real pinned page still resolves.
+    atlanta = resolver.resolve_government(
+        None, tenant_host="play.champds.com", path="/atlantaga/event/1227"
+    )
+    assert atlanta.gov_id == "us:place:1304000"
+    oregon = resolver.resolve_government(
+        None,
+        tenant_host="player.invintus.com",
+        path="/?clientID=4879615486&eventID=2026011111",
+    )
+    assert oregon.gov_id == "us:state:41"
+
+
 def test_lmc_swagit_shared_tenant_pins_town_and_village_separately():
     assert registry.is_multi_gov_host("lmctvny.new.swagit.com")
     cases = {
