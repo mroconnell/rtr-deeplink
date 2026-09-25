@@ -102,14 +102,10 @@ _AUTH_HEADERS = {
 # below probes a few pieces of that stream before deciding whether to
 # say "no captions" or "captions exist but aren't extracted yet."
 #
-# **Jurisdiction**: `categories`/`categoriesDetail` carries a real
-# `[jurisdiction, governing body]`-shaped list on SOME events (confirmed
-# on University Place: `["University Place", "University Place City
-# Council"]`) but is `null` on others (confirmed on both Des Moines and
-# Leon County samples) -- this is a per-tenant configuration choice on
-# Invintus's own dashboard, not something every client sets. Only ever
-# confirmed populated on one real tenant, so this is used when present
-# and left `None` otherwise rather than guessed at further.
+# **Jurisdiction**: `categories`/`categoriesDetail` is `null` on some
+# tenants (Des Moines and Leon County samples), a per-tenant choice on
+# Invintus's own dashboard. When set, it is a small tree, not an ordered
+# list. See `_extract_categories()` for how it is read.
 TARGET_LANGUAGE = "en"
 
 
@@ -192,6 +188,29 @@ LEGISLATURE_CLIENTS = {
     "2789595964": ("us:state:55", "Wisconsin State Legislature"),
     "9375922947": ("us:state:53", "Washington State Legislature"),
 }
+
+# clientID -> the state every government on that channel sits in, for a
+# local-government tenant (not a legislature). One line per customer,
+# added only after a live check of that channel's own category list.
+# `_extract_categories()` appends it only to a real place name, never to a
+# body name: "DuPont City Council, WA" mints a fake government, where
+# "DuPont, WA" resolves to the registry (checked 2026-09-25).
+CLIENT_STATES = {
+    # Pierce County channel: Pierce County Council, DuPont, Fife, Orting,
+    # Puyallup, Sumner, University Place, Tacoma-Pierce County Board of
+    # Health. 383 events listed 2026-09-25, all in Washington.
+    "1872740071": "WA",
+    # CVTV (Clark/Vancouver Television): Vancouver City Council, Clark
+    # County Council, and regional boards. 283 events listed 2026-09-25,
+    # all in Washington.
+    "2917038973": "WA",
+}
+
+# A governing-body category that names its own place: "DuPont City
+# Council" -> "DuPont", "Pierce County Council" -> "Pierce County". Only
+# the two shapes seen live on real Invintus channels (2026-09-25).
+_CITY_COUNCIL_RE = re.compile(r"^(?P<place>.+?)\s+City Council$", re.IGNORECASE)
+_COUNTY_COUNCIL_RE = re.compile(r"^(?P<place>.+?\s+County)\s+Council$", re.IGNORECASE)
 
 _CLIENT_ID_IN_PAGE_RE = re.compile(r"""["']?clientID["']?\s*[:=]\s*["']?(\d{6,})""")
 _TRAILING_DATE_TIME_RE = re.compile(
@@ -446,7 +465,9 @@ class InvintusAssetFinder(AssetFinder):
             title = data.get("title")
             date = self._parse_date(data.get("startDateTime"))
             jurisdiction, meeting_body = self._extract_categories(
-                data.get("categories")
+                data.get("categories"),
+                data.get("categoriesDetail"),
+                CLIENT_STATES.get(client_id),
             )
             if client_id in LEGISLATURE_CLIENTS and legislative_chamber(
                 client_id, title, data.get("categories")
@@ -637,9 +658,66 @@ class InvintusAssetFinder(AssetFinder):
     @staticmethod
     def _extract_categories(
         categories: Optional[List[str]],
+        categories_detail: Optional[List[dict]] = None,
+        state: Optional[str] = None,
     ) -> Tuple[Optional[str], Optional[str]]:
-        if not categories:
+        """(jurisdiction, meeting_body) from an event's categories.
+
+        `categoriesDetail` is a tree: each entry has an `ID` and a
+        `childOf` (the parent's ID, or null at the top). The top entry
+        holds the place, and a child holds the specific body. The flat
+        `categories` list comes in either order, so `categories[0]` is
+        not the place. Real Pierce County channel events (2026-09-25):
+          ["Fife", "Fife City Council"]            top "Fife"
+          ["Fife City Council", "Fife"]            top "Fife"
+          ["Pierce County Council",
+           "Pierce County Rules Committee"]        top "Pierce County Council"
+          ["DuPont City Council"]                  top, no child
+        Every one of 52 category shapes across two channels had exactly
+        one top entry. Without `categoriesDetail`, the first category is
+        taken as the top, as before.
+
+        A top entry named "X City Council" or "X County Council" is split
+        into place "X" / "X County" and body. `state` (from
+        `CLIENT_STATES`) is appended only to a real place: one split off
+        a council name, or a top entry that a child's name starts with
+        ("Sumner" over "Sumner Study Session"). Anything else, like
+        "Tac-PC Board of Health", is returned as-is with no state,
+        because "Tac-PC Board of Health, WA" would mint a fake
+        government."""
+        names = [c.strip() for c in (categories or []) if c and c.strip()]
+        if not names:
             return None, None
-        jurisdiction = categories[0]
-        meeting_body = categories[-1] if len(categories) > 1 else None
-        return jurisdiction, meeting_body
+        top = names[0]
+        child: Optional[str] = None
+        detail = [d for d in (categories_detail or []) if (d.get("name") or "").strip()]
+        roots = [d for d in detail if not d.get("childOf")]
+        if len(roots) == 1:
+            root = roots[0]
+            top = root["name"].strip()
+            child = next(
+                (
+                    d["name"].strip()
+                    for d in detail
+                    if str(d.get("childOf")) == str(root.get("ID"))
+                ),
+                None,
+            )
+        elif len(names) > 1:
+            child = names[-1]
+
+        place: Optional[str] = None
+        body_from_top: Optional[str] = None
+        for pattern in (_CITY_COUNCIL_RE, _COUNTY_COUNCIL_RE):
+            match = pattern.match(top)
+            if match:
+                place = match.group("place").strip()
+                body_from_top = top
+                break
+        if place is None and child and child.lower().startswith(top.lower() + " "):
+            place = top
+
+        if place is None:
+            return top, child
+        jurisdiction = f"{place}, {state}" if state else place
+        return jurisdiction, child or body_from_top

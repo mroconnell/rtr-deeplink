@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (57)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
+  Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
   Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
   ClerkBase pages name the council without its state, so they stay…
@@ -445,8 +446,9 @@ Reliability, ops & cost  (11)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (28)
+Trust, safety & data quality  (29)
   ChampDS customers that carry a second government need per-meeting…
+  Invintus meetings whose only category is a board or commission still…
   ChampDS jurisdiction text comes out wrong for customer names that…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
@@ -915,6 +917,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `media_probe._DESKTOP_USER_AGENT` (also the tier-3 probe's `_POLITE_UA`, and what ffmpeg sends) is `Chrome/91.0.4472.124`. Checked 2026-09-25: Simpsonville, SC's recording (`simpsonville.com/wp-content/uploads/2026/08/2026-09-08_Business.mp3`, behind Cloudflare) answers 403 to that user-agent and 206 to a current Chrome one. No challenge page is involved, so this is the "look like a normal browser" compliance case in CLAUDE.md, not a human-verification gate.
+- **Impact**: the queue probe rejects such recordings as dead, and the feeder drops the line, so these meetings never reach the Archive. The number of affected hosts is unknown.
+- **Next action**: update the string to a current desktop Chrome in `media_probe.py` (shared by the probe, both transcription paths and ffmpeg). Then re-probe Simpsonville's recording and queue it with `us:place:4566580`.
+- **Constraint**: never extend this to a real Cloudflare "Verify you are human" challenge (CLAUDE.md, Standing decisions).
+- **History**: found while queueing the 2026-09-22 phase-3 run's real finds; the Codington County queue PR.
 
 ### Very long Cablecast meetings whose audio is split into many files still stop transcribing partway `[NEEDS-AUDIT]`
 
@@ -6011,8 +6021,16 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Issue**: 9 ChampDS customers publish a second government's meetings under one `CustomerName` (Gillette WY carries Campbell County; Fond du Lac WI the county board; Falmouth ME, Gorham ME, Isle of Wight Co VA and Provincetown MA a school board; Brookfield CT the Candlewood Lake Authority; Mauston WI joint committees; Yonkers NY school segments). They are now in `MULTI_GOVERNMENT_TENANTS`, so their meetings are unknown until pinned. A pin for one meeting is a substring match, so `/fonddulacwi/event/77` would also claim events 770-779 and 7700+.
 - **Impact**: these customers' meetings get no government. One archived page is known: `/fonddulacwi/event/77`, Fond du Lac County's Board of Supervisors (`us:county:55039`).
 - **Next action**: make a ChampDS `/{customer}/event/{id}` pin match that exact event id (as WO-1059 did for `key=value` pins), then pin real meetings one at a time. Separately, confirm who `alamedacocaschools` ("Alameda Schools CA") is: its name resolves to Alameda City Unified, but the customer id's "co" matches county school customers (`fultoncoschoolsga`), so it may be the Alameda County Office of Education.
-- **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Re-check before listing them.
+- **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Since the same day, `invintus.py` also splits a body-only category ("DuPont City Council") into its place, so fewer land on nothing. Re-check before listing them.
 - **History**: `play.champds.com` joined `MULTI_GOV_HOSTS` in #1432; 29 whole-customer pins in #1450.
+
+### Invintus meetings whose only category is a board or commission still get no government `[NEEDS-AUDIT]`
+
+- **Issue**: `invintus.py` now finds the place in "X City Council" and "X County Council" categories, but a category naming any other body stays as-is and resolves blank. Live on 2026-09-25: Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department); CVTV `2917038973` "Clark County Planning Commission", "Clark County Board of Health", "Clark County Commission on Aging", "Clark County Veterans Advisory Board", "Clark County Land Use Hearings", "Vancouver Planning Commission", "Vancouver Land Use Hearings", "City Council Workshops", "Port of Vancouver Board of Commissioners", "C-TRAN Board of Directors", "Regional Transportation Council" and others.
+- **Impact**: live listing of the last year, 2026-09-25: 220 of CVTV's 283 events stay blank (56 of those are programming, not meetings), and 15 of the Pierce channel's 383 (the Board of Health), plus 4 Pierce events with no categories at all.
+- **Next action**: decide per body. A county or city advisory body ("Clark County Planning Commission", "Vancouver Planning Commission") belongs to that county or city, so a wider split rule could cover it. A separate government ("Port of Vancouver", "C-TRAN", the health department) needs its own registry id, not the city or county. "City Council Workshops" names no place; its titles would need reading.
+- **Constraint**: never add the channel's state to one of these strings. "Tac-PC Board of Health, WA" mints `rtr:us:wa:tac-pc-board-of-health`, which is worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
+- **History**: `BACKLOG_DONE.md` "[Done 2026-09-25] Invintus: find the place in a body-only category".
 
 ### ChampDS jurisdiction text comes out wrong for customer names that aren't "City ST" `[EASY]`
 

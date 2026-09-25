@@ -51,6 +51,26 @@ Caption times sit 6 to 9 seconds after each chapter marker in the event record. 
 
 **Docs updated:** `README.md` (Supported platforms had no Invintus row; added).
 
+## Full Context feed search metadata and collection schema [Done 2026-09-22]
+
+The live `/context` feed now has five published entries. Fresh HTTP checks
+confirmed it has no `noindex` tag and the sitemap already contains the
+feed and all five entry permalinks. Kept the existing five-entry indexing
+threshold, canonical links, and page-2+ noindex policy.
+
+Updated the feed title to “Public Meeting Clips in Full Context | Red Tape
+Recordings” and clarified its search/share description. Added safely
+JSON-encoded `CollectionPage` / `ItemList` metadata for the visible entries
+on the indexable first page. It links to their canonical permalinks in
+display order; it makes no rich-result eligibility claim. The entry pages
+already have their own titles, descriptions, and structured data.
+
+Validation: 134 context-page, context-data, and sitemap tests passed,
+including the four/five-entry indexing boundary and collection JSON-LD
+escaping/order. Updated README's Full Context SEO section. These template
+changes require an Archive deployment; the live indexing threshold has
+already been met without this change.
+
 ## WO-1064: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
 
 **What was found.** Asked to resolve and merge #1421, an automated "advance the tier-3 queue" PR. All 12 of its rejections were YouTube answering "Sign in to confirm you're not a bot" to the GitHub runner, not dead meetings. The feed log showed the same across four days:
@@ -63702,3 +63722,40 @@ After Ryan authorized making the clear corrections, applied 32 page-specific HTT
 Cleared unsupported transcribed flags on the remaining 23 audit rows, marked 16 wrong research associations, restored 28 shared-gov-exception labels, and cleared 3 noncanonical flags. Research writes used flock, a fresh read, HEAD-derived 99% row-count floor, atomic replace, and LF. No row removal. Rebuilt the dashboard with 5,783 covered governments; every row page count matches the post-correction production export.
 
 Evidence and before/after records: `../rtr-business/research/coverage_join_audit_2026-09-22/README.md`, `rows.csv`, `research_changes.csv`, `override_dry_run.json`, `override_applied.json`, `production_after.csv`. The hosted artifact still needs republishing from `../rtr-business/research/coverage_registry/coverage_registry_hosted.html`; no Claude artifact publisher is available in this session. Residual unidentified pages remain in BACKLOG.md.
+
+
+## [Done 2026-09-25] Invintus: find the place in a body-only category
+
+**What was wrong.** `InvintusAssetFinder.resolve()` took the first entry of an event's `categories` as the jurisdiction. Some Invintus channels list only the body ("DuPont City Council"). The resolver cannot find a government from a body name with no state. Adding only the state is worse: "DuPont City Council, WA" mints `rtr:us:wa:dupont-city-council`. Found live from rtr-discovery on 2026-09-25.
+
+**A second problem found while checking.** The flat `categories` list comes in either order. The Pierce County channel sends both `["Fife", "Fife City Council"]` and `["Fife City Council", "Fife"]`, and both `["Pierce County Council", "Pierce County Rules Committee"]` and `["Pierce County COW", "Pierce County Council"]`. So "the first entry" was wrong for many two-category events too.
+
+**The fix.** `categoriesDetail` is a tree: each entry has an `ID` and a `childOf` (the parent's ID, or null at the top). All 52 category shapes across both channels (383 Pierce events, 283 CVTV events, listed live 2026-09-25) had exactly one top entry. `_extract_categories()` now:
+
+1. Reads the place from the top entry, and the body from its child.
+2. Splits "X City Council" into place "X", and "X County Council" into "X County".
+3. Adds the state from a new `CLIENT_STATES` table (one line per customer: `1872740071` Pierce County channel -> WA, `2917038973` CVTV -> WA), but only to a real place: one split off a council name, or a top entry that its child's name starts with ("Sumner" over "Sumner Study Session").
+
+Anything else ("Tac-PC Board of Health") is returned unchanged, with no state. The WO-922 legislature path runs after this and is unchanged; no legislature tenant is in `CLIENT_STATES`.
+
+**Live re-check, 2026-09-25** (`resolve_government(jurisdiction, tenant_host="player.invintus.com", path="/?clientID=..&eventID=..")`):
+
+| Meeting | Before | After |
+|---|---|---|
+| University Place City Council 9/21/2026 | us:place:5373465 | us:place:5373465 |
+| Fife City Council 9/22/2026 | us:place:5323795 | us:place:5323795 |
+| DuPont City Council 9/22/2026 | unresolved | us:place:5318965 |
+| Pierce County Council 9/9/2026 | unresolved | us:county:53053 |
+| Vancouver City Council (09-21-26) | unresolved | us:place:5374060 |
+| Clark County Council (09-15-26) | unresolved | us:county:53011 |
+| Orting City Council 9/9/2026 | unresolved | us:place:5352005 |
+| Sumner City Council / Study Session | unresolved | us:place:5368435 |
+| Fife City Council 6/23/2026 (body listed first) | unresolved | us:place:5323795 |
+| Pierce County committees (Rules, COW, CDC, Perf Audit, Human Services, Public Safety, E&IDC) | unresolved | us:county:53053 |
+| Tac-PC Board of Health | unresolved | unresolved |
+
+No meeting minted an `rtr:us:wa:*` id. One caution: "Flood Control District" events (a child of "Pierce County Council") now file under Pierce County, whose council is that district's board. The bodies still blank are in BACKLOG.md's "Invintus meetings whose only category is a board or commission still get no government".
+
+**Tests.** Real `Event/getDetailed` fixtures, captured 2026-09-25 and trimmed to the fields the adapter reads: DuPont, CVTV Vancouver, Fife (body first) and Tac-PC Board of Health, plus DuPont's first 20 real caption cues. Full suite: 7,425 passed; the one failure (`test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`) fails the same way on unchanged code in this container.
+
+**Caution.** CVTV meetings have no `captionPath`, so a correct government alone does not give them a transcript.

@@ -1,0 +1,42 @@
+{
+  "errors": {
+    "hasError": false,
+    "message": null
+  },
+  "data": {
+    "eventID": "2026061017",
+    "clientID": "1872740071",
+    "startDateTime": "2026-06-23 18:00:00",
+    "title": "Fife City Council 6/23/2026",
+    "categories": [
+      "Fife City Council",
+      "Fife"
+    ],
+    "categoriesDetail": [
+      {
+        "ID": "98",
+        "name": "Fife City Council",
+        "displayName": "Fife City Council",
+        "childOf": "99",
+        "isPublic": true
+      },
+      {
+        "ID": "99",
+        "name": "Fife",
+        "displayName": "Fife",
+        "childOf": null,
+        "isPublic": true
+      }
+    ],
+    "captionPath": "https://m-download.invintus.com/1872740071/689127aeff18db037d2230ab2b993a65d18482b6.vtt",
+    "downloadLinks": {
+      "audioDownloadURI": "https://m-download.invintus.com/1872740071/ae5b3692efa8277d3b6491277ffea3fe94890210_audio.mp3",
+      "videoDownloadURI": "https://m-download.invintus.com/1872740071/ae5b3692efa8277d3b6491277ffea3fe94890210.mp4"
+    },
+    "streamingURIs": {
+      "main": "https://api.v3.invintus.com/StreamURI/hls/1872740071/2026061017/media.m3u8",
+      "backup": null
+    }
+  },
+  "meta": null
+}

@@ -18,6 +18,7 @@ import re
 import uuid
 import xml.etree.ElementTree as ET
 
+import pytest
 from fastapi.testclient import TestClient
 
 import archive.main
@@ -274,6 +275,30 @@ async def test_context_never_shows_drafts_or_hidden_entries(monkeypatch):
     response = client.get("/context")
     assert draft_summary not in response.text
     assert hidden_summary not in response.text
+
+
+@pytest.mark.parametrize("published_count,indexable", [(4, False), (5, True)])
+async def test_context_launch_indexing_boundary(
+    monkeypatch, published_count, indexable
+):
+    """The five-entry launch must unlock feed, permalink and sitemap together."""
+    entry = await _publish_entry(_social_url(), summary="Public meeting context.")
+
+    async def count_published():
+        return published_count
+
+    monkeypatch.setattr(crud, "count_published_context_entries", count_published)
+    feed = client.get("/context")
+    detail = client.get(entry["permalink"])
+    sitemap = client.get("/sitemap.xml")
+    for response in (feed, detail):
+        assert response.status_code == 200
+        assert (
+            '<meta name="robots" content="noindex">' in response.text
+        ) is not indexable
+    assert ("<loc>/context</loc>" in sitemap.text) is indexable
+    assert (f"<loc>{entry['permalink']}</loc>" in sitemap.text) is indexable
+    assert "Public Meeting Clips in Full Context | Red Tape Recordings" in feed.text
 
 
 def test_context_noindex_below_threshold(monkeypatch):
@@ -1464,3 +1489,34 @@ async def test_context_feed_never_loads_transcript_excerpts(monkeypatch):
     )
     response = client.get("/context")
     assert response.status_code == 200
+
+
+async def test_context_collection_schema_matches_visible_entries(monkeypatch):
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 0)
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "public_base_url",
+        "https://redtaperecordings.com",
+    )
+    headline = "Context </script><script>alert(1)</script>"
+    entry = await _publish_entry(
+        _social_url(), summary="Collection test.", title=headline
+    )
+    response = client.get("/context")
+    blocks = _JSON_LD_RE.findall(response.text)
+    assert len(blocks) == 1
+    collection = json.loads(blocks[0])
+    assert collection["@type"] == "CollectionPage"
+    assert collection["url"] == "https://redtaperecordings.com/context"
+    items = collection["mainEntity"]["itemListElement"]
+    visible = await crud.list_context_entries(public=True, page=1)
+    assert [i["url"] for i in items] == [
+        "https://redtaperecordings.com" + e["permalink"] for e in visible["entries"]
+    ]
+    assert [i["position"] for i in items] == list(range(1, len(items) + 1))
+    item = next(i for i in items if i["url"].endswith(entry["permalink"]))
+    assert item["name"] == headline
+    assert "</script><script>alert(1)</script>" not in response.text
+    assert not _JSON_LD_RE.findall(client.get("/context?page=2").text)
+    monkeypatch.setattr(crud, "CONTEXT_MIN_INDEXABLE", 1_000_000)
+    assert not _JSON_LD_RE.findall(client.get("/context").text)
