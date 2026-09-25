@@ -1,15 +1,3 @@
-https://play.champds.com/cobbcoga/event/155		us:county:13067
-https://play.champds.com/gwinnettcoga/event/356		us:county:13135
-https://wcs-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=713		us:sd:5103900
-https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=946		us:sd:3904467
-https://greenwich-schools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=543		us:sd:0901710
-https://northfieldschools.org/about/school-board/meetings/		us:sd:2723880
-https://thompsonschools.diligent.community/Portal/MeetingInformation.aspx?Id=484		us:sd:0805400
-https://cityoftemple.primegov.com/Portal/Meeting?meetingTemplateId=13721		us:place:4872176
-https://sunnyside.primegov.com/Portal/Meeting?meetingTemplateId=6604		us:place:5368750
-https://husd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=340		us:sd:0403780
-https://www.youtube.com/watch?v=feSCD02-Iao		us:cousub:2301955565
-https://esuhsd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=769		us:sd:0611820
 https://www.youtube.com/watch?v=lHLFxufylYM		us:place:2953650
 https://metcom.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=62		rtr:us:md:st-marys-county-metropolitan-commission
 https://patrickk12va.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=132		us:sd:5102880
