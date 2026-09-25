@@ -1,5 +1,27 @@
 # Backlog — done
 
+## WO-1061: Clinton Township's site pin made authoritative; Prince Edward County's portal handled as a shared host [Done 2026-09-25]
+
+**Why.** After WO-1060 (#1448) deployed, the backfill dry run moved two pages to the wrong government. The backfill resolves from each page's stored display name, and the national table matched that name before either `fallback` site pin applied:
+
+| Page | Stored name | Resolved by the table to | Should be |
+|---|---|---|---|
+| 9447 | "Clinton, MI" | Clinton village, MI (`us:place:2616480`) | Clinton charter township (`us:cousub:2609916520`) |
+| 9904 | "Prince Edward County, ON" | Prince Edward census division (`ca:cd:3513`) | Prince Edward County, the municipality (`ca:csd:3513020`) |
+
+**Checked both sites for other governments (live, 2026-09-25, at Ryan's request).**
+
+| Site | Bodies it publishes | Other governments |
+|---|---|---|
+| `www.clintontownship.com` (Agenda Center) | Board of Ethics, Civil Service Commission, Planning Commission, Zoning Board of Appeals, Downtown Development Authority | none; no video links to other channels |
+| `princeedwardcounty.civicweb.net` (37 meeting types) | Council, its committees, and the County's own local boards (Library Board, O.P.P. Detachment Board, Picton BIA, Affordable Housing Corporation) | 2 joint bodies with Lennox and Addington County: "Prince Edward - Lennox and Addington Social Services" and its Housing Advisory Committee |
+
+**Fix.**
+- **Clinton:** `www.clintontownship.com` is now `authoritative` (Ryan's call). It is the township's own single-government site.
+- **Prince Edward:** Ryan: the portal is a multi-government host. `princeedwardcounty.civicweb.net` is added to `MULTI_GOV_HOSTS` and classified in `tenant_key.SHARED_SINGLE_LISTING_HOSTS`. CivicWeb meeting URLs carry only `Id=N`, so there is no tenant key. The site-wide pin is replaced by per-meeting pins: `Id=3639` (page 9904) and `Id=2365` (page 6011) -> `ca:csd:3513020`. An unpinned meeting on the portal, such as a joint body's, now resolves to unknown rather than to Prince Edward County.
+
+**Caution.** A future Prince Edward meeting needs its own `Id=` pin before it can be ingested with a government. The tier-3 feeder's owner check refuses unpinned meetings on a shared host, so such lines stay in the queue.
+
 ## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
 **The problem.** WO-1058 built a way to record a real, free lead for another
@@ -116,6 +138,8 @@ all -- that's an existing, unrelated resolver rule (`MULTI_GOV_HOSTS`),
 not something this WO's extraction fix touches.
 
 ## WO-1060: after the backfill -- 14 hub redirects committed, 10 wrong pins fixed, and two orphaned hubs re-joined [Done 2026-09-25]
+
+*Numbering note: two PRs used WO-1060 on 2026-09-25 -- #1447 (other-government lead extraction) and #1448 (this entry). Its follow-up is WO-1061.*
 
 **Why.** The post-deploy `backfill_gov_id.py --apply` (80 pages) retired 25 hub pages and wrote their redirects into a file on the Render instance. That file is not served, and the next deploy erases it. Reviewing those rows showed that about half pointed one government's hub at a different government. Checking the pages behind them showed that the backfill had faithfully applied pins that were already wrong. Ryan: "Just make it correct!"
 

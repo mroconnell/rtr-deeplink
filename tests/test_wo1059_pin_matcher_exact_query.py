@@ -33,6 +33,9 @@ URL_PARAM_PATHS = {
     "reflect-tst-mn.cablecast.tv": "/watch-vod-embed?showId=5964",
     # tests/test_invintus.py: /?clientID=...&eventID=...
     "player.invintus.com": "/",
+    # Archive page 9904's own source URL: MeetingInformation.aspx?Id=3639
+    # (WO-1061's per-meeting pins on this multi-government portal).
+    "princeedwardcounty.civicweb.net": "/Portal/MeetingInformation.aspx",
 }
 
 
@@ -69,7 +72,7 @@ def test_the_counts_the_brief_names():
     for _h, _r, pairs in KV_ROWS:
         by_key[pairs[0][0]] = by_key.get(pairs[0][0], 0) + 1
     assert by_key["location_id"] == 34
-    assert by_key["id"] == 16
+    assert by_key["id"] == 18  # 16 DestinyHosted + 2 Prince Edward (WO-1061)
     assert by_key["site"] == 3
     assert by_key["clientid"] == 3
     assert by_key["external_id"] == 10
