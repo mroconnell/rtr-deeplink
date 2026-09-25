@@ -1,5 +1,42 @@
 # Backlog — done
 
+## WO-1056: `tenant_key(url)`, one definition of a shared website's tenant, and a test that keeps the pins consistent with it [Done 2026-09-25]
+
+**Why.** rtr-discovery walks meeting listings per tenant. Ryan decided (2026-09-25, rtr-discovery's SHARED_WEBSITE_TENANTS.md) that on a shared website a tenant is one customer's slice, named by a "tenant key" defined once, here, next to the adapters and pins. The reason is rtr-discovery's FINDING-23: Town Square's pins matched `site=N`, the walker built URLs without `site=`, and nothing noticed.
+
+**What was built.** `app/platforms/tenant_key.py` (standard library only): `tenant_key(url)` returns `""` for a single website, the bare key on a shared one, and None when no tenant is defined or the URL does not carry its key. `tenant_name(url)` is the host, or `host#key`. Each rule copies the tenant parsing its adapter already does.
+
+| Platform | Host(s) | Key | Real example -> key |
+|---|---|---|---|
+| ChampDS | play.champds.com (+ playapi, securestream10 VOD) | path customer, lowercased | `/atlantaga/event/1227` -> `atlantaga` |
+| Invintus | player.invintus.com | `clientID` value | `?clientID=4879615486&eventID=…` -> `4879615486` |
+| Cablecast, shared by site | reflect-tst-mn, reflect-ccx | `site=N` | `?showId=5964&site=8` -> `site=8`; no `site=` -> None |
+| Castus | cloud.castus.tv | `/vod/{slug}/` (or `/vod/#/{slug}/`) | `/vod/comm7tv/video/…` -> `comm7tv` |
+| TelVue | videoplayer.telvue.com | org token, case kept | `/player/w9sPs…/media/1040134` -> `w9sPs…` |
+| Sliq Harmony | *-harmony.sliq.net | 5-digit tenant | `/00281/Harmony/…` -> `00281` |
+| BoardDocs | go.boarddocs.com | `{state}/{slug}` | `/az/ccschools/Board.nsf/Public` -> `az/ccschools` |
+| ClerkBase | clerkshq.com | `{place}-{st}`, lowercased | `/YellowSprings-OH?docId=…` -> `yellowsprings-oh` |
+| BoxCast | boxcast.tv | channel id, `/channel/` URLs only | `/view/…` -> None (only the API can tell) |
+| Town Hall Streams | townhallstreams.com | `location_id` (or `town.php?id=`) | `?location_id=94&id=75799` -> `94` |
+| DestinyHosted | public.destinyhosted.com | numeric customer id, path or `?id=` | `/24263/agenda/` -> `24263` |
+| SpectrumStream | spectrumstream.com | `/streaming/{slug}/` | `/streaming/gusd/…` -> `gusd` |
+
+**TelVue: the org token is the tenant, not the playlist.** Checked on real data: 5 tokens are regional stations carrying several governments (RVTV 6, CMNtv 7, Schopeg 8, C-NET, MRVTV), each with per-government playlists. But a `/media/{id}` URL, which is most TelVue URLs, carries no playlist, so only the token can be read from every URL, and it is what `telvue.account_url_for()` lists. Playlist pins are narrower pins inside the station's tenant. Each playlist pin was placed in its station live: it is listed on the station's `/home`, and answers 403 under another token.
+
+**Lined up with Meeting Finder.** `telvue._org_token_from_url()` now calls `tenant_key.telvue_org_token()`, so there is one definition of TelVue's tenant. `meeting_finder/identify.py`'s `_account_url_for_platform()` keeps the URL whenever it carries a tenant key, instead of collapsing a shared host to its bare root. That generalizes WO-1038's TelVue-only workaround in `runner.py`. For example, a ChampDS URL used to become `https://play.champds.com/`, which names no customer.
+
+**Found, not fixed (pin rows and the resolver are out of scope), all in `BACKLOG.md`.**
+
+| Finding | Count |
+|---|---|
+| CMNtv playlist pins resolving to Berkley school district (pins tried alphabetically) | 6 of 23 |
+| DestinyHosted pins that miss the `/{id}/agenda/` meeting-page shape | 16 of 16 |
+| TelVue token pinned whole to two governments (Yarmouth MA / ME) | 1 |
+| MRVTV playlist pins with no findable org token | 3 |
+| Shared hosts with pins or traffic not in `MULTI_GOV_HOSTS` | 5 |
+
+**Tests.** `tests/test_tenant_key.py`, 113 tests plus 2 strict expected failures (one per bug above), all on real URLs.
+
 ## WO-1053: link-first hub harvest -- regional TV hubs to governments (dry run) [Done 2026-09-24]
 
 **What this was for.** Some governments' meetings can never be found by
