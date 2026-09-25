@@ -889,6 +889,9 @@ async def test_probe_queue_entry_dispatches_champds_download_media_by_url_shape(
         return 5432.1
 
     monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+    # WO-1052: no VOD2 stream found, so this stays on the MP4 ffprobe
+    # path it was written for. See the WO-1052 tests below for the stream.
+    monkeypatch.setattr(queue_probe, "vod2_stream_for_download_url", _no_vod2)
 
     with _mock_head(
         {
@@ -911,6 +914,130 @@ async def test_probe_queue_entry_dispatches_champds_download_media_by_url_shape(
     assert result.probe_method == "head+ffprobe"
     assert result.size_bytes == 502134975
     assert result.duration_seconds == 5432.1
+
+
+# --- WO-1052: ChampDS MP4s whose index (`moov` atom) sits at the END of
+# the file. Real, 2026-09-24: ChampDS's download server takes about 1 s
+# per 5 MB of offset to reach a late byte (52 s for the last 4 MB of
+# Collegedale TN event 154's 263 MB file, 206 s for El Paso County CO event
+# 164's 1 GB file), so ffprobe -- which must read that index first --
+# hit its 120 s timeout and every large one probed `reject-dead`. An MP4
+# with its index at the START (Augusta GA event 669) read in 0.8 s. In
+# these tests "index at end" is ffprobe returning None, the real failure
+# mode; "index at start" is ffprobe returning the duration. ---------------
+
+_COLLEGEDALE_PAGE = "https://play.champds.com/collegedaletn/event/154"
+_COLLEGEDALE_MP4 = (
+    "https://play.champds.com/DOWNLOAD-MEDIA/collegedaletn/eventmainmedia/154"
+)
+_COLLEGEDALE_VOD2 = (
+    "https://securestream10.champds.com/VOD/event/CollegedaleTN/154/"
+    "1787664733000/IlwgRlZapINDE6_z9GC8Iw/master.m3u8"
+)
+_COLLEGEDALE_VARIANT = (
+    "https://securestream10.champds.com/VOD/event/CollegedaleTN/154/"
+    "1787664733000/IlwgRlZapINDE6_z9GC8Iw/index-v1-a1.m3u8"
+)
+# Real master playlist, verbatim (fetched live 2026-09-24 with ChampDS's
+# own Referer).
+_CHAMPDS_MASTER = (
+    "#EXTM3U\n"
+    "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=472448,RESOLUTION=960x540,"
+    'FRAME-RATE=30.303,CODECS="avc1.42c01f,mp4a.40.2"\n'
+    "index-v1-a1.m3u8\n"
+    "\n"
+    "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=252296,RESOLUTION=960x540,"
+    'CODECS="avc1.42c01f",URI="iframes-v1-a1.m3u8"\n'
+)
+# Real variant header and last segment; the real file has 555 segments,
+# 554 of 8.000 s plus a final 0.133 s -- 4,432.133 s, exactly the MP4's
+# own duration as ffprobe reads it with no timeout.
+_CHAMPDS_VARIANT = (
+    "#EXTM3U\n#EXT-X-TARGETDURATION:8\n#EXT-X-ALLOW-CACHE:YES\n"
+    "#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:1\n"
+    + "".join(f"#EXTINF:8.000,\nsegment-{i}-v1-a1.ts\n" for i in range(1, 555))
+    + "#EXTINF:0.133,\nsegment-555-v1-a1.ts\n#EXT-X-ENDLIST\n"
+)
+_COLLEGEDALE_HEAD = {
+    _COLLEGEDALE_MP4: FakeResponse(
+        status=200,
+        headers={
+            "Content-Length": "263710879",
+            "Content-Disposition": "attachment; filename=CollegedaleTN_154.mp4",
+        },
+    )
+}
+
+
+async def _no_vod2(download_url):
+    return None
+
+
+async def _collegedale_vod2(download_url):
+    assert download_url == _COLLEGEDALE_MP4
+    return _COLLEGEDALE_VOD2
+
+
+async def test_champds_mp4_with_index_at_end_reads_duration_from_vod2(monkeypatch):
+    async def _ffprobe_times_out(url, *, source_page_url):
+        raise AssertionError("the MP4 must not be ffprobed when VOD2 answers")
+
+    monkeypatch.setattr(media_probe, "probe_duration", _ffprobe_times_out)
+    monkeypatch.setattr(queue_probe, "vod2_stream_for_download_url", _collegedale_vod2)
+    routes = {
+        _COLLEGEDALE_VOD2: FakeResponse(status=200, text=_CHAMPDS_MASTER),
+        _COLLEGEDALE_VARIANT: FakeResponse(status=200, text=_CHAMPDS_VARIANT),
+    }
+
+    with mock_session(routes, head_routes=_COLLEGEDALE_HEAD):
+        result = await probe_queue_entry(
+            _COLLEGEDALE_PAGE, video_url=_COLLEGEDALE_MP4, platform="champds"
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+champds-vod2"
+    assert result.duration_seconds == pytest.approx(4432.133)
+    # Size still comes from the MP4's own HEAD.
+    assert result.size_bytes == 263710879
+
+
+async def test_champds_unreadable_vod2_falls_back_to_the_mp4(monkeypatch):
+    # Index at the start (Augusta GA event 669's shape): if the stream
+    # answers 406 -- what it does without ChampDS's Referer -- the MP4's
+    # own ffprobe still gives the answer.
+    async def _ffprobe_reads_it(url, *, source_page_url):
+        assert url == _COLLEGEDALE_MP4
+        return 678.9783
+
+    monkeypatch.setattr(media_probe, "probe_duration", _ffprobe_reads_it)
+    monkeypatch.setattr(queue_probe, "vod2_stream_for_download_url", _collegedale_vod2)
+    routes = {_COLLEGEDALE_VOD2: FakeResponse(status=406)}
+
+    with mock_session(routes, head_routes=_COLLEGEDALE_HEAD):
+        result = await probe_queue_entry(
+            _COLLEGEDALE_PAGE, video_url=_COLLEGEDALE_MP4, platform="champds"
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 678.9783
+
+
+async def test_champds_index_at_end_and_no_vod2_is_still_reject_dead(monkeypatch):
+    # Nothing readable anywhere: the honest verdict is unchanged.
+    async def _ffprobe_times_out(url, *, source_page_url):
+        return None
+
+    monkeypatch.setattr(media_probe, "probe_duration", _ffprobe_times_out)
+    monkeypatch.setattr(queue_probe, "vod2_stream_for_download_url", _no_vod2)
+
+    with mock_session({}, head_routes=_COLLEGEDALE_HEAD):
+        result = await probe_queue_entry(
+            _COLLEGEDALE_PAGE, video_url=_COLLEGEDALE_MP4, platform="champds"
+        )
+
+    assert result.verdict == "reject-dead"
+    assert result.reason == "ffprobe could not read a duration from the media file"
 
 
 async def test_probe_queue_entry_dispatches_civicplus_documentcenter_by_url_shape(
