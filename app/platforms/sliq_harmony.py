@@ -98,6 +98,13 @@ already covers both chambers. A much older host (`sg001-harmony...
 /00309`, referenced in stale search-indexed URLs as "Montana
 Legislature") 404s today -- Montana has apparently moved off Sliq
 Harmony since those pages were indexed.
+
+WO-1067 (2026-09-25) pinned the seven WO-1006 tenants in
+`tenant_overrides.csv` (until then only WO-921's seven had pins), after
+rtr-discovery's live re-check read each one's site title and found no
+meeting title naming another government. Every tenant in
+`TENANT_JURISDICTIONS` now has a path pin; `tests/test_sliq_harmony.py`
+checks the two lists stay equal.
 """
 
 import json
