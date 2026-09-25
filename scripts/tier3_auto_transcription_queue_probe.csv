@@ -7027,3 +7027,20 @@ https://player.vimeo.com/video/1150699089,vimeo,vimeo-oembed,2236.00,2025-12-31,
 https://player.vimeo.com/video/1229343255,vimeo,vimeo-oembed,3024.00,2026-09-22,,1,accept,,0.09,2026-09-24T12:41:28+00:00,bulk_ingest,0
 https://allouez.s3.amazonaws.com/media/2026/09/16090630/Village-Board-9-15-2026.mp3,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,0.28,2026-09-22T13:50:28+00:00,,0
 https://www.villageofallouezwi.gov/2026/09/september-15-2026/,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,1.26,2026-09-22T13:50:39+00:00,,0
+https://newtriertwpil.portal.civicclerk.com/event/233/media,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] FpAF-JSfSmw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.08,2026-09-25T21:50:04+00:00,,0
+https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] qE0OCqWgWB0: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.07,2026-09-25T21:50:07+00:00,,0
+https://vimeo.com/421632159,vimeo,vimeo-oembed,1601.00,2020-05-22,,1,accept,,0.07,2026-09-25T21:50:25+00:00,,0
+https://vimeo.com/421632159,vimeo,vimeo-oembed,1601.00,2020-05-22,,1,accept,,0.09,2026-09-25T21:50:26+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false,telvue,telvue-page-json,7019.00,,,1,accept,,0.39,2026-09-25T21:50:28+00:00,,0
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false,telvue,telvue-page-json,7019.00,,,1,accept,,0.37,2026-09-25T21:50:29+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/560189851,vimeo,vimeo-oembed,2897.00,2021-06-07,,1,accept,,0.07,2026-09-25T21:50:36+00:00,,0
+https://boxcast.tv/channel/aetaajdf64jalxx20o9a,boxcast,hls-master+variant,2014.62,,,1,accept,,0.34,2026-09-25T21:50:38+00:00,,0
+https://boxcast.tv/channel/aetaajdf64jalxx20o9a,boxcast,hls-master+variant,2014.62,,,1,accept,,0.04,2026-09-25T21:50:39+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/697711522/afbcc0c15d,vimeo,vimeo-oembed,3212.00,2022-04-09,,1,accept,,0.06,2026-09-25T21:50:45+00:00,,0
+https://vimeo.com/697711522/afbcc0c15d,vimeo,vimeo-oembed,3212.00,2022-04-09,,1,accept,,0.08,2026-09-25T21:50:45+00:00,feed_tier3_auto_transcription,0
+https://acpl.viebit.com/watch?hash=dfa24Xn5iWIGttXu,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.32,2026-09-25T21:50:48+00:00,,0
+https://acpl.viebit.com/watch?hash=dfa24Xn5iWIGttXu,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.29,2026-09-25T21:50:48+00:00,feed_tier3_auto_transcription,0
+https://biglake.viebit.com/watch?hash=8pmVSgvoh2IovoNc,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.20,2026-09-25T21:50:50+00:00,,0
+https://biglake.viebit.com/watch?hash=8pmVSgvoh2IovoNc,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.27,2026-09-25T21:50:50+00:00,feed_tier3_auto_transcription,0
+https://briarclifftv.viebit.com/watch?hash=qZINPSng8G8l29Kd,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.21,2026-09-25T21:50:52+00:00,,0
+https://briarclifftv.viebit.com/watch?hash=qZINPSng8G8l29Kd,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.18,2026-09-25T21:50:53+00:00,feed_tier3_auto_transcription,0
