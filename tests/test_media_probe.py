@@ -13,6 +13,13 @@ from app.platforms.media_probe import (
     probe_has_video_stream,
 )
 
+# Bound at import, before conftest's autouse fixture replaces the module
+# attribute, so these tests exercise the real lookup.
+from app.platforms.media_probe import (
+    single_file_audio_rendition_url as _real_audio_rendition_lookup,
+)
+from tests.aiohttp_mock import FakeResponse, mock_session
+
 
 # --- _stderr_tail(): the version banner must not crowd out the error -----
 #
@@ -594,6 +601,208 @@ async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
     )
 
     assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)
+
+
+# --- WO-1061: read a separate audio file instead of seeking the stream -----
+#
+# Real case: Collier County FL's 11 h 10 min County Commission meeting
+# (reflect-collier-countyboc.cablecast.tv/show/2277, job 4306) died at
+# chunk 77, 9 h 37 min in. On the worker's own image (ffmpeg 7.1.5) the
+# input-side seek wrote the 224-byte WO-45 file and the output-side
+# fallback took 178 s, past the 120 s timeout; an input-side seek into the
+# rendition's single `1080p_audio.mp4` took 9 s. Playlist text below is
+# real (fetched 2026-09-25), trimmed to its first segments.
+
+_COLLIER_MASTER_URL = (
+    "https://reflect-collier-countyboc.cablecast.tv/vod/2277-BCC-9-22-2026-v2/vod.m3u8"
+)
+_COLLIER_PAGE = "https://reflect-collier-countyboc.cablecast.tv/show/2277"
+_COLLIER_RENDITION_URL = (
+    "https://reflect-collier-countyboc.cablecast.tv/vod/2277-BCC-9-22-2026-v2/"
+    "1080p_audio.m3u8"
+)
+_COLLIER_AUDIO_FILE = (
+    "https://reflect-collier-countyboc.cablecast.tv/vod/2277-BCC-9-22-2026-v2/"
+    "1080p_audio.mp4"
+)
+_CABLECAST_MASTER = (
+    "#EXTM3U\n#EXT-X-VERSION:3\n"
+    '#EXT-X-MEDIA:NAME="English",TYPE=AUDIO,GROUP-ID="audio",LANGUAGE="en",'
+    'DEFAULT=YES,AUTOSELECT=YES,URI="1080p_audio.m3u8"\n\n'
+    '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,'
+    'FORCED=NO,URI="captions.en.m3u8",LANGUAGE="en"\n\n'
+    "#EXT-X-STREAM-INF:BANDWIDTH=5000000,CLOSED-CAPTIONS=NONE,"
+    'RESOLUTION=1920x1080, SUBTITLES ="subs",AUDIO="audio"\n'
+    "1080p.m3u8?duration=0\n"
+)
+_ONE_FILE_RENDITION = (
+    "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+    "#EXT-X-TARGETDURATION:5\n#EXT-X-MEDIA-SEQUENCE:1\n"
+    "#EXT-X-BYTERANGE:80967@639\n"
+    '#EXT-X-MAP:URI="./1080p_audio.mp4",BYTERANGE="639@0"\n'
+    "#EXTINF:4.992,\n./1080p_audio.mp4?duration=4.992\n"
+    "#EXT-X-BYTERANGE:80958@81606\n"
+    "#EXTINF:4.992,\n./1080p_audio.mp4?duration=4.992\n"
+    "#EXT-X-ENDLIST\n"
+)
+# Real shape from Burlington (reflect-bcit.cablecast.tv, show 54621): the
+# same separate audio track, split into 2,450 `.m4s` files -- no one file.
+_SPLIT_FILES_RENDITION = (
+    "#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+    "#EXT-X-TARGETDURATION:5\n#EXT-X-MEDIA-SEQUENCE:1\n"
+    '#EXT-X-MAP:URI="./1080p_audio.init000.mp4"\n'
+    "#EXTINF:4.992,\n./1080p_audio.00000.m4s?duration=4.992\n"
+    "#EXTINF:4.992,\n./1080p_audio.00001.m4s?duration=4.992\n"
+    "#EXT-X-ENDLIST\n"
+)
+
+
+async def test_audio_rendition_lookup_finds_the_one_file():
+    routes = {
+        _COLLIER_MASTER_URL: FakeResponse(status=200, text=_CABLECAST_MASTER),
+        _COLLIER_RENDITION_URL: FakeResponse(status=200, text=_ONE_FILE_RENDITION),
+    }
+    with mock_session(routes):
+        found = await _real_audio_rendition_lookup(
+            _COLLIER_MASTER_URL, source_page_url=_COLLIER_PAGE
+        )
+    assert found == _COLLIER_AUDIO_FILE
+
+
+async def test_audio_rendition_lookup_skips_audio_split_into_many_files():
+    routes = {
+        _COLLIER_MASTER_URL: FakeResponse(status=200, text=_CABLECAST_MASTER),
+        _COLLIER_RENDITION_URL: FakeResponse(status=200, text=_SPLIT_FILES_RENDITION),
+    }
+    with mock_session(routes):
+        found = await _real_audio_rendition_lookup(
+            _COLLIER_MASTER_URL, source_page_url=_COLLIER_PAGE
+        )
+    assert found is None
+
+
+async def test_audio_rendition_lookup_skips_a_muxed_stream():
+    # Sound and picture together (e.g. Brunswick ME): no TYPE=AUDIO line,
+    # so only the master is fetched.
+    muxed = (
+        "#EXTM3U\n#EXT-X-VERSION:3\n"
+        "#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080\n"
+        "1080p.m3u8\n"
+    )
+    with mock_session({_COLLIER_MASTER_URL: FakeResponse(status=200, text=muxed)}):
+        found = await _real_audio_rendition_lookup(
+            _COLLIER_MASTER_URL, source_page_url=_COLLIER_PAGE
+        )
+    assert found is None
+
+
+async def test_audio_rendition_lookup_survives_an_unreadable_master():
+    with mock_session({_COLLIER_MASTER_URL: FakeResponse(status=503)}):
+        found = await _real_audio_rendition_lookup(
+            _COLLIER_MASTER_URL, source_page_url=_COLLIER_PAGE
+        )
+    assert found is None
+
+
+def _input_url(args) -> str:
+    args = list(args)
+    return args[args.index("-i") + 1]
+
+
+async def test_chunk_deep_in_a_long_meeting_is_read_from_the_audio_file(
+    tmp_path, monkeypatch
+):
+    """Job 4306's chunk 77: the stream seek writes the 224-byte file, and
+    the retry reads the separate audio file with a fast input-side seek,
+    not the slow output-side one."""
+
+    async def _found(media_url, *, source_page_url):
+        assert media_url == _COLLIER_MASTER_URL
+        return _COLLIER_AUDIO_FILE
+
+    monkeypatch.setattr(media_probe, "single_file_audio_rendition_url", _found)
+    out_path = tmp_path / "chunk_77.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+            (b"\xff\xfb" + b"\x00" * 4000, (0, b"", _REAL_VOLUMEDETECT_STDERR)),
+        ],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        _COLLIER_MASTER_URL,
+        start=34650.0,
+        duration=450.0,
+        source_page_url=_COLLIER_PAGE,
+        out_path=out_path,
+    ) == (True, None)
+
+    assert len(calls) == 2
+    assert _input_url(calls[0]) == _COLLIER_MASTER_URL
+    assert _input_url(calls[1]) == _COLLIER_AUDIO_FILE
+    assert _seek_is_input_side(calls[1]) is True
+    assert "34650.0" in calls[1]
+
+
+async def test_a_failed_audio_file_read_is_the_only_retry(tmp_path, monkeypatch):
+    """The audio file replaces the output-side retry rather than adding a
+    third attempt -- two attempts keep a chunk inside the 2 x 120 s budget
+    extract_chunk_audio()'s docstring works out. The original reason is
+    what gets reported."""
+
+    async def _found(media_url, *, source_page_url):
+        return _COLLIER_AUDIO_FILE
+
+    monkeypatch.setattr(media_probe, "single_file_audio_rendition_url", _found)
+    out_path = tmp_path / "chunk_77.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+        ],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        _COLLIER_MASTER_URL,
+        start=34650.0,
+        duration=450.0,
+        source_page_url=_COLLIER_PAGE,
+        out_path=out_path,
+    )
+
+    assert (ok, len(calls)) == (False, 2)
+    assert reason and "decodable" in reason
+
+
+async def test_a_direct_file_never_looks_for_an_audio_rendition(tmp_path, monkeypatch):
+    """Only an HLS playlist can have a separate audio rendition."""
+
+    async def _must_not_run(media_url, *, source_page_url):
+        raise AssertionError("looked up an audio rendition for a plain file")
+
+    monkeypatch.setattr(media_probe, "single_file_audio_rendition_url", _must_not_run)
+    out_path = tmp_path / "chunk_1.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+            (b"\xff\xfb" + b"\x00" * 4000, (0, b"", _REAL_VOLUMEDETECT_STDERR)),
+        ],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        "https://example.org/meeting.mp4",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    ) == (True, None)
+    assert _seek_is_input_side(calls[1]) is False
 
 
 # --- WO-935: slice_cached_audio() and short chunks (2026-09-21) -------------

@@ -27,7 +27,9 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional, Sequence
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+
+import aiohttp
 
 from .models import VideoSegment
 
@@ -1205,6 +1207,80 @@ async def slice_cached_audio(
     return True, None
 
 
+# WO-1061: an HLS master whose audio is a separate rendition stored as ONE
+# file, every segment a byte range of it -- Cablecast's
+# `#EXT-X-MEDIA:TYPE=AUDIO,URI="1080p_audio.m3u8"` whose playlist is
+# `#EXT-X-MAP:URI="./1080p_audio.mp4"` plus `#EXT-X-BYTERANGE` lines that
+# all point back at `./1080p_audio.mp4`. See
+# single_file_audio_rendition_url() for why it matters.
+_HLS_AUDIO_RENDITION_RE = re.compile(
+    r'^#EXT-X-MEDIA:(?=[^\n]*TYPE=AUDIO)[^\n]*URI="([^"]+)"', re.MULTILINE
+)
+_HLS_MAP_URI_RE = re.compile(r'^#EXT-X-MAP:[^\n]*URI="([^"]+)"', re.MULTILINE)
+_PLAYLIST_FETCH_TIMEOUT_SECONDS = 15
+
+
+async def single_file_audio_rendition_url(
+    media_url: str, *, source_page_url: str
+) -> Optional[str]:
+    """The one audio file behind `media_url`'s separate audio rendition,
+    or None when the stream isn't that shape (or a playlist can't be
+    read). Never raises.
+
+    **Why (WO-1061).** On such a stream the worker's ffmpeg (7.1.5)
+    writes an empty 224-byte file for any input-side `-ss` into the
+    playlist (WO-45), and WO-45's output-side fallback reads the stream
+    from the start to reach `start`, which stops fitting the 120 s
+    timeout somewhere past 5-9 hours in. Real case: Collier County FL's
+    11 h 10 min County Commission meeting (job 4306) died at chunk 77,
+    9 h 37 min in; on the worker's own image the fallback took 178 s
+    there. The same audio read straight from the underlying file with an
+    input-side `-ss` took 9 s, at 15 min, 9 h 37 min and 11 h alike.
+
+    Only the one-file shape qualifies: every segment line must name the
+    `#EXT-X-MAP` file itself. Of 10 real Cablecast tenants checked
+    2026-09-25, 4 had this shape (Bedford, Peabody, Salem, TVCTV), 3 had
+    no separate audio at all, and 3 split their audio into hundreds of
+    `.m4s` files -- no single file to read, so those return None and keep
+    the output-side fallback."""
+    page = urlparse(source_page_url)
+    headers = {
+        "User-Agent": _DESKTOP_USER_AGENT,
+        "Referer": f"{page.scheme}://{page.netloc}/",
+    }
+    timeout = aiohttp.ClientTimeout(total=_PLAYLIST_FETCH_TIMEOUT_SECONDS)
+    try:
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+            async with session.get(media_url) as response:
+                if response.status != 200:
+                    return None
+                master = await response.text(errors="replace")
+            rendition = _HLS_AUDIO_RENDITION_RE.search(master)
+            if not rendition:
+                return None
+            rendition_url = urljoin(media_url, rendition.group(1))
+            async with session.get(rendition_url) as response:
+                if response.status != 200:
+                    return None
+                playlist = await response.text(errors="replace")
+    except Exception as e:
+        logger.warning("Couldn't read the audio rendition of %s: %s", media_url, e)
+        return None
+
+    map_uri = _HLS_MAP_URI_RE.search(playlist)
+    if not map_uri:
+        return None
+    audio_file = urljoin(rendition_url, map_uri.group(1))
+    segment_files = {
+        urljoin(rendition_url, line.strip()).split("?")[0]
+        for line in playlist.splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    if segment_files != {audio_file.split("?")[0]}:
+        return None
+    return audio_file
+
+
 async def extract_chunk_audio(
     media_url: str,
     *,
@@ -1277,7 +1353,11 @@ async def extract_chunk_audio(
     _extract_chunk_once()'s own block comment for the measured evidence,
     what it costs, and the cheaper alternatives that were tested and
     don't work. The retry only ever runs on the failure path; a
-    successful extraction is exactly as cheap as it was before.
+    successful extraction is exactly as cheap as it was before. When the
+    stream keeps its audio in one separate file (WO-1061,
+    single_file_audio_rendition_url()), the retry is a fast input-side
+    seek into that file instead -- the output-side seek reads the stream
+    from the start, which runs past the timeout deep into a long meeting.
 
     A stereo source whose left/right channels are (near-)phase-inverted
     is a real, confirmed failure mode of the plain `-ac 1` downmix below
@@ -1339,14 +1419,27 @@ async def extract_chunk_audio(
 
     # `start > 0` because at 0 there is no seek to get wrong -- the
     # fallback would be an identical, slower run of the same command.
+    read_url = media_url
     if not ok and worth_seek_retry and start > 0:
+        # WO-1061: when the audio lives in one separate file, a fast
+        # input-side seek into THAT file replaces the slow output-side
+        # retry (still one retry, so the 2 x 120 s worst case above holds;
+        # the two playlist reads are capped at 15 s each).
+        audio_file = (
+            await single_file_audio_rendition_url(
+                media_url, source_page_url=source_page_url
+            )
+            if is_hls(media_url)
+            else None
+        )
+        retry_url = audio_file or media_url
         retry_ok, retry_reason, _ = await _extract_chunk_once(
-            media_url,
+            retry_url,
             start=start,
             duration=duration,
             source_page_url=source_page_url,
             out_path=out_path,
-            output_side_seek=True,
+            output_side_seek=audio_file is None,
         )
         retry_decodable = False
         retry_short = False
@@ -1363,13 +1456,17 @@ async def extract_chunk_audio(
             )
         if retry_ok and retry_decodable and not retry_short:
             logger.info(
-                "Chunk audio at %ss for %s recovered by an output-side seek after the "
-                "input-side seek returned %s -- see media_probe.py's WO-45 note",
+                "Chunk audio at %ss for %s recovered by %s after the input-side "
+                "seek returned %s -- see media_probe.py's WO-45/WO-1061 notes",
                 start,
                 media_url,
+                f"reading its audio file {audio_file}"
+                if audio_file
+                else "an output-side seek",
                 reason,
             )
             ok, reason, decodable, mean_volume = True, None, True, retry_volume
+            read_url = retry_url
         else:
             # Deliberately keep the ORIGINAL reason, not the retry's. The
             # first attempt is what the normal path does; the retry
@@ -1377,7 +1474,8 @@ async def extract_chunk_audio(
             # detail of the recovery attempt, not a better description of
             # what is wrong with this chunk.
             logger.warning(
-                "Output-side-seek fallback for %s @ %ss did not recover the chunk (%s)",
+                "%s fallback for %s @ %ss did not recover the chunk (%s)",
+                "Audio-file" if audio_file else "Output-side-seek",
                 media_url,
                 start,
                 retry_reason or ("still short" if retry_short else "still undecodable"),
@@ -1402,11 +1500,14 @@ async def extract_chunk_audio(
             returncode2, _stdout2, stderr2 = await _run(
                 "ffmpeg",
                 "-y",
-                *_ffmpeg_input_header_args(source_page_url, media_url),
+                *_ffmpeg_input_header_args(source_page_url, read_url),
                 "-ss",
                 str(start),
                 "-i",
-                media_url,
+                # WO-1061: the URL that actually produced the chunk -- an
+                # input-side seek into the original stream is the thing
+                # that failed on a separate-audio-file stream.
+                read_url,
                 "-t",
                 str(duration),
                 "-vn",
