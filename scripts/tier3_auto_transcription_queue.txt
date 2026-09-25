@@ -1318,3 +1318,4 @@ https://trms.northmetrotv.com/internetchannel/show/33287		us:place:2711494
 https://trms.northmetrotv.com/internetchannel/show/34106		us:place:2726738
 https://reflect-campbellcounty.cablecast.tv/internetchannel/show/61005		us:place:2136604
 https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065
+https://codington.sdcounty.gov/wp-content/uploads/2017/06/20170627-CCJAC-64kbps.mp3		us:county:46029
