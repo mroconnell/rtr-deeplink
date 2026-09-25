@@ -448,7 +448,7 @@ Reliability, ops & cost  (11)
 
 Trust, safety & data quality  (29)
   ChampDS customers that carry a second government need per-meeting…
-  Invintus meetings whose only category is a board or commission still…
+  Invintus meetings from a separate government (port, transit, health…
   ChampDS jurisdiction text comes out wrong for customer names that…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
@@ -6024,13 +6024,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Since the same day, `invintus.py` also splits a body-only category ("DuPont City Council") into its place, so fewer land on nothing. Re-check before listing them.
 - **History**: `play.champds.com` joined `MULTI_GOV_HOSTS` in #1432; 29 whole-customer pins in #1450.
 
-### Invintus meetings whose only category is a board or commission still get no government `[NEEDS-AUDIT]`
+### Invintus meetings from a separate government (port, transit, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
 
-- **Issue**: `invintus.py` now finds the place in "X City Council" and "X County Council" categories, but a category naming any other body stays as-is and resolves blank. Live on 2026-09-25: Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department); CVTV `2917038973` "Clark County Planning Commission", "Clark County Board of Health", "Clark County Commission on Aging", "Clark County Veterans Advisory Board", "Clark County Land Use Hearings", "Vancouver Planning Commission", "Vancouver Land Use Hearings", "City Council Workshops", "Port of Vancouver Board of Commissioners", "C-TRAN Board of Directors", "Regional Transportation Council" and others.
-- **Impact**: live listing of the last year, 2026-09-25: 220 of CVTV's 283 events stay blank (56 of those are programming, not meetings), and 15 of the Pierce channel's 383 (the Board of Health), plus 4 Pierce events with no categories at all.
-- **Next action**: decide per body. A county or city advisory body ("Clark County Planning Commission", "Vancouver Planning Commission") belongs to that county or city, so a wider split rule could cover it. A separate government ("Port of Vancouver", "C-TRAN", the health department) needs its own registry id, not the city or county. "City Council Workshops" names no place; its titles would need reading.
-- **Constraint**: never add the channel's state to one of these strings. "Tac-PC Board of Health, WA" mints `rtr:us:wa:tac-pc-board-of-health`, which is worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
-- **History**: `BACKLOG_DONE.md` "[Done 2026-09-25] Invintus: find the place in a body-only category".
+- **Issue**: on the two mixed Invintus channels, meetings of bodies that are their own governments resolve blank, because the registry has no id to give them: CVTV `2917038973` "Port of Vancouver Board of Commissioners", "C-TRAN Board of Directors", "Regional Transportation Council"; Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department). CVTV's "City Council Workshops" also stays blank: its category and description name no city.
+- **Impact**: in the 2026-09-25 dry run, 14 of CVTV's 36 accepted meetings (Port 5, workshops 7, C-TRAN 1, RTC 1) and 1 Pierce meeting get no government.
+- **Next action**: give each its own registry id before pinning anything. Port of Vancouver (Census of Governments id 158826) and C-TRAN (216444, "Clark County Public Transportation Benefit Area Authority") are in `cog_units.csv`, so a real id can come from there. The Regional Transportation Council and the Tacoma-Pierce County Health Department are not in it. Then add a `CLIENT_PLACE_PREFIXES`-style rule or a per-category mapping in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
+- **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: "Port of Vancouver, WA" mints `rtr:us:wa:port-of-vancouver` from "Vancouver, WA", worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
+- **History**: `BACKLOG_DONE.md` "[Done 2026-09-25] Invintus: find the place in a body-only category" and "WO-1066: Invintus Leon County pin and CVTV place prefixes".
 
 ### ChampDS jurisdiction text comes out wrong for customer names that aren't "City ST" `[EASY]`
 

@@ -206,6 +206,31 @@ CLIENT_STATES = {
     "2917038973": "WA",
 }
 
+# clientID -> place names that open a body-only category on that channel,
+# for a channel whose categories name the body alone ("Clark County
+# Planning Commission"). `_extract_categories()` takes the prefix as the
+# place and the whole category as the body. One line per customer, added
+# only after a live check of that channel's own category list; the state
+# still comes from `CLIENT_STATES`.
+CLIENT_PLACE_PREFIXES = {
+    # CVTV, 90 events listed 2026-06-01..2026-09-25: every "Clark County
+    # ..." category is a Clark County body (Council, Planning Commission,
+    # Board of Health, Land Use Hearings, Veterans Advisory Board,
+    # Commission on Aging) and every "Vancouver ..." one a City of
+    # Vancouver body (City Council, Planning Commission, Land Use
+    # Hearings). "Port of Vancouver ..." does not start with "Vancouver"
+    # and stays blank, as do C-TRAN and the Regional Transportation
+    # Council: none has a registry id. "City Council Workshops" names no
+    # city, in its category or its description, so it stays blank too.
+    "2917038973": ("Clark County", "Vancouver"),
+}
+
+# A body under a place prefix that is its own government, not the
+# place's: "Clark County Fire District 6", "Clark County Public
+# Transportation Benefit Area Authority" (C-TRAN's legal name). Not seen
+# as a CVTV category yet; kept out so one never lands on Clark County.
+_SPECIAL_DISTRICT_RE = re.compile(r"\b(?:District|Authority|Port)\b", re.IGNORECASE)
+
 # A governing-body category that names its own place: "DuPont City
 # Council" -> "DuPont", "Pierce County Council" -> "Pierce County". Only
 # the two shapes seen live on real Invintus channels (2026-09-25).
@@ -468,6 +493,7 @@ class InvintusAssetFinder(AssetFinder):
                 data.get("categories"),
                 data.get("categoriesDetail"),
                 CLIENT_STATES.get(client_id),
+                CLIENT_PLACE_PREFIXES.get(client_id, ()),
             )
             if client_id in LEGISLATURE_CLIENTS and legislative_chamber(
                 client_id, title, data.get("categories")
@@ -660,6 +686,7 @@ class InvintusAssetFinder(AssetFinder):
         categories: Optional[List[str]],
         categories_detail: Optional[List[dict]] = None,
         state: Optional[str] = None,
+        place_prefixes: Tuple[str, ...] = (),
     ) -> Tuple[Optional[str], Optional[str]]:
         """(jurisdiction, meeting_body) from an event's categories.
 
@@ -681,7 +708,11 @@ class InvintusAssetFinder(AssetFinder):
         into place "X" / "X County" and body. `state` (from
         `CLIENT_STATES`) is appended only to a real place: one split off
         a council name, or a top entry that a child's name starts with
-        ("Sumner" over "Sumner Study Session"). Anything else, like
+        ("Sumner" over "Sumner Study Session"), or a top entry that
+        starts with one of the channel's `place_prefixes` (from
+        `CLIENT_PLACE_PREFIXES`: CVTV's "Clark County Planning
+        Commission" -> "Clark County"), unless it names a district or
+        authority. Anything else, like
         "Tac-PC Board of Health", is returned as-is with no state,
         because "Tac-PC Board of Health, WA" would mint a fake
         government."""
@@ -716,6 +747,12 @@ class InvintusAssetFinder(AssetFinder):
                 break
         if place is None and child and child.lower().startswith(top.lower() + " "):
             place = top
+        if place is None and not _SPECIAL_DISTRICT_RE.search(top):
+            for prefix in place_prefixes:
+                if top.lower().startswith(prefix.lower() + " "):
+                    place = prefix
+                    body_from_top = top
+                    break
 
         if place is None:
             return top, child
