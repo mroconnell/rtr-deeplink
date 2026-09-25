@@ -3880,7 +3880,14 @@ actionability sections above.
   - **Issue**: a subdomain shared by two same-named tenants in different
     countries can resolve to the wrong country's place — confirmed once,
     eScribe's `pub-richmond.escribemeetings.com` resolved to "Richmond,
-    CA" when the real customer is Richmond, BC.
+    CA" when the real customer is Richmond, BC. **Corrected 2026-09-24
+    (WO-1050): that one case does not hold.** `pub-richmond`'s own recent
+    meeting pages give "440 Civic Center Plaza Richmond, CA 94804" —
+    Richmond, California's city hall — so "Richmond, CA" was right. The
+    Richmond, BC customer may be the separate bare host
+    `richmond.escribemeetings.com` (per `escribe.py`'s own comment), which
+    is a staff-login page and couldn't be checked. With no confirmed case
+    left, this entry is a candidate to close.
   - **Impact**: wrong jurisdiction label on that one confirmed page; no
     second case found live-checking Granicus's own shared
     `_humanize_subdomain()` (5 candidate names checked, only 2 real
@@ -4285,7 +4292,10 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
   - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
     Canadian and one American: `pub-richmond` is Richmond BC *and*
-    Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
+    Richmond CA (**corrected 2026-09-24, WO-1050: `pub-richmond` is
+    Richmond, CA — its meeting pages give "Richmond, CA 94804"**; WO-1050
+    also fixed the same shape on `pub-langleycity`, pinned to City of
+    Langley, BC), `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
     `pub-courtenay` is Courtenay BC *and* Courtenay ND, `pub-owensound`
     is Owen Sound ON *and* Owen WI. WO-100's cross-border guard does not
     catch these because the STORED string carries a state suffix, so the

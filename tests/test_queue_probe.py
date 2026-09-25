@@ -1812,7 +1812,7 @@ def test_write_pin_row_blank_match_still_refused_on_multi_gov_host(tmp_path):
 async def test_probe_direct_file_dropbox_skips_head_and_uses_ranged_get(
     monkeypatch,
 ):
-    # WO-1049: Ingham County, MI's real Dropbox recording. Dropbox's
+    # WO-1051: Ingham County, MI's real Dropbox recording. Dropbox's
     # download host sends a gzip body after a HEAD response, so aiohttp
     # raised "Bad status line" and this probe called a real file dead. No
     # HEAD route is registered (`mock_session` without head_routes leaves

@@ -908,7 +908,7 @@ async def _probe_direct_file(
     stream -- the same fix `direct_file.py`'s own
     `_laserfiche_classify_media()` already applies.
 
-    A Dropbox link (WO-1049, 2026-09-24) skips HEAD for a different
+    A Dropbox link (WO-1051, 2026-09-24) skips HEAD for a different
     reason: it never answers one usably. The `dl=1` link 302s to a
     `*.dl.dropboxusercontent.com` host whose HEAD sends a gzip body after
     the headers, and aiohttp raises "Bad status line" -- which this probe

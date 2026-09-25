@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1049: the queue probe reads Dropbox files, and Claycomo/Collier rules in the registry [Done 2026-09-24]
+## WO-1051: the queue probe reads Dropbox files, and Claycomo/Collier rules in the registry [Done 2026-09-24]
 
 **What and why.** Two loose ends left by WO-1048.
 
@@ -23,6 +23,63 @@ Jefferson County, TX needed no change here: the probe already falls back to a ra
 Checked with `resolve_government()`: "Claycomo, MO" from the Claycomo site now resolves to Clay County, MO, and a blank name from the Collier site resolves to Collier County, FL.
 
 **Tests.** `tests/test_queue_probe.py`: a Dropbox probe with no HEAD route registered, so any HEAD fails the test; the headers and duration are the real ones captured live.
+
+## WO-1050: eScribe tenant pins that named the wrong government [Done 2026-09-24]
+
+**What and why.** A read-only check of eScribe's county-named tenants (asked for after WO-1048) found registry pins in `tenant_overrides.csv` pointing at the wrong government. Most came from one bulk sweep (`wildcard_http_sweep_2`). It matched each bare eScribe host's slug letters against the national tables: `norfolkcounty` became Norfolk County, **MA**, and `salinecounty` became Saline County, **MO**. Every tenant below was re-checked from its own public meeting pages.
+
+**How the tenants were checked.** Every bare host whose rule disagreed with its `pub-` twin was compared. On eScribe, `pub-{slug}` is the public site and bare `{slug}` is the same tenant's staff login page, which can't be read. So the evidence comes from the `pub-` host's recent meeting pages:
+
+| Tenant | Evidence from its own pages | Was pinned to | Now |
+|---|---|---|---|
+| norfolkcounty | an OPP (Ontario Provincial Police) detachment board | Norfolk County, MA (bare); none (`pub-`) | Norfolk County, ON |
+| salinecounty | "300 W Ash Room 107 Salina, Kansas 67401" | Saline County, MO (bare); none (`pub-`) | Saline County, KS |
+| langleycity | "B.C. - LANGLEY" | Langley, WA (bare); Langley Township, KS (`pub-`) | City of Langley, BC |
+| oxfordcounty | `pub-` already pinned to Oxford County, ON | Oxford County, ME (bare) | Oxford County, ON |
+| halifax | "Halifax Regional Council" | Halifax, VT (bare) | Halifax, NS |
+| hainescity | "FL 33844" | Haines, OR (bare) | Haines City, FL |
+| shelburne | "Dufferin County… Ontario" | Shelburne County, NS (bare) | Shelburne, ON |
+| strathcona | "Travel Alberta" | Strathcona Regional District, BC (bare) | Strathcona County, AB |
+| wellington | "The Corporation of the County of Wellington" | a minted Wellington, PE (bare) | Wellington County, ON |
+
+The three `pub-` rows (Norfolk, Saline, Langley) are `authoritative`, because each name alone also matches a real government elsewhere. The corrected bare rows keep their `fallback` strength.
+
+**Richmond is deliberately untouched.** Its `pub-` meeting pages give "440 Civic Center Plaza Richmond, CA 94804", so the `pub-` pin (Richmond, CA) is right. `escribe.py`'s own comment says the bare `richmond` host is a separate Richmond, BC tenant; that can't be checked from a login page. This also corrects two `BACKLOG.md` entries that said `pub-richmond` is really Richmond, BC.
+
+**Live pages still to move.** Pins only affect future ingests. Seven live pages sit on the wrong government or none, from this morning's Archive export:
+
+| Pages | Now | Should be |
+|---|---|---|
+| 1058 | Langley, WA | City of Langley, BC |
+| 4110 | Langley Township, KS | City of Langley, BC |
+| 1035, 4124 | no government | Norfolk County, ON |
+| 877, 2367 | no government | Saline County, KS |
+| 2331 | no government | Leduc County, AB (its `pub-` pin was already right; the page predates it) |
+
+**Tests.** `tests/test_wo1050_escribe_tenant_overrides.py`: 13 cases through `resolve_government()`, using the name strings the adapter really extracts today. All 13 fail without this change.
+
+**Caution.** The same sweep wrote 290 eScribe rows. This check covered only rows whose bare and `pub-` rules disagree. A wrong bare row with no `pub-` twin would not show up here.
+
+## WO-1049: meeting-evidence check misses filenames and Drive titles; length-unknown finds demoted [Done 2026-09-24]
+
+**What and why.** Two real governments were being missed (or demoted to a weak lead) by Resolve even though a real meeting recording was right there. Ryan's rule (2026-09-23): a video is a real find whenever there's real evidence it's a meeting, even without a measured length.
+
+**1. A video's own filename was checked raw, so word matching missed it.** `_meeting_evidence_texts()` in `app/platforms/meeting_finder/resolve.py` passed a candidate's URL (and the resolved video URL) as-is. A percent-encoded filename like `%282026-09-22%29%20City%20Council%20Special%20Meeting.mp4` fails the word check on "council" — the `0` left over from `%20` sits right against `C`, and both count as letters, so there's no word boundary between them. A new helper, `decode_filename_text()` in `app/utils/video_hand_check.py`, decodes the URL and turns `_-.+` into spaces before the check runs. This also protects the (already-working) case of a hyphen-joined filename like Bound Brook's, and would fix an underscore-joined one the same way if one ever shows up.
+
+**2. A Google Drive video's title was only looked up for one of the three real link shapes.** `drive.google.com/file/d/<id>/view` was recognized; a download link (`drive.usercontent.google.com/download?id=<id>`) and the older `uc?id=<id>` form were not, so Drive's own title (the only evidence available for a bare Drive link) was never read. `_extract_drive_file_id()` now pulls the file id out of any of the three shapes and always looks the title up at the one canonical `drive.google.com/file/d/<id>/view` page. Real case: Bellerive Acres, MO, file id `1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB`, title "(2026-09-22) City Council Special Meeting".
+
+**3. A video whose length couldn't be measured was always demoted, even with real evidence.** `reject-dead` (ffprobe/HEAD couldn't read the media at all) used to always fall to `OUTCOME_VIDEO_LOW_CONFIDENCE`. Now it checks meeting evidence first (skipped for a platform that doesn't need it, e.g. a real per-meeting listing already vouches for the video): if there's evidence, it's a clean tier-3 find with duration left blank, still tried after any candidate that DID measure a real, accepted duration. Only "no evidence, and the platform needed some" still falls back to a weak lead. Real case: Bound Brook, NJ — a `.mp3` reorganization-meeting recording whose file blocks ranged GETs (HTTP 403), so ffprobe can never read it.
+
+**Verified live** (real network, the resolver's own adapters):
+
+| Government / URL | Before | After |
+|---|---|---|
+| Bellerive Acres, MO (`drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB`) | `video-low-confidence` — "no meeting evidence (nothing found)" | Clean tier-3 find, 1710s |
+| Bound Brook, NJ (`.../1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3`) | `video-low-confidence` — "video length couldn't be measured (HTTP 403)" | Clean tier-3 find, audio only, duration blank |
+
+**Tests.** `tests/test_wo1049_evidence_filename.py`: the two decode/extract helpers directly (percent-encoding, underscore-joining, the three Drive URL shapes), the two real cases end-to-end, the "no evidence anywhere" contrast case (stays a weak lead), the "measured still wins" case, and two no-regression checks that a promo/decorative filename (`homepage_video_600.mp4`, a "Doodle" title) still demotes. `tests/test_wo1024_meeting_finder_resolve.py`'s pre-existing `test_unmeasurable_video_is_kept_last_after_a_known_length_one` asserted the OLD (bug) behavior — updated to assert the new one, since that test's whole premise is what changed here.
+
+**Caution.** `_needs_meeting_evidence()`'s existing platform list (`direct_file`, `vimeo`, plus an "undated, lister order" pick) is unchanged — a length-unknown video from any other platform is treated as evidence-free by default, same as it already was for a measured one.
 
 ## WO-1048: four resolver gaps from the 2026-09-24 county walk (direct files, Clay County MO, Collier County dates, McHenry County naming) [Done 2026-09-24]
 

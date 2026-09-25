@@ -496,10 +496,10 @@ guadalupe.granicus.com,,us:county:48187,fallback,wo190_resolve_research_urls,"co
 guelph.escribemeetings.com,,ca:csd:3523008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Guelph
 gulfport.granicus.com,,us:place:1228175,fallback,ryan_stated,"Gulfport, FL -- us_places.csv Gulfport city"
 hacsc.granicus.com,,us:county:06085,fallback,landing_page,"landing page https://hacsc.granicus.com/ reads ""County of Santa Clara Streaming Media Archive"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
-hainescity.escribemeetings.com,,us:place:4131600,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_places.csv Haines city
+hainescity.escribemeetings.com,,us:place:1228400,fallback,wo1050_live_check,"Haines City, FL -- WO-1050: the sweep matched Haines, OR; pub-hainescity's home page gives FL 33844"
 halfmoonbay.granicus.com,,us:place:0631708,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Half Moon Bay, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Half Moon Bay city"
 haliburton.civicweb.net,,ca:cd:3546,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Haliburton
-halifax.escribemeetings.com,,us:cousub:5002531150,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_cousubs.csv Halifax town
+halifax.escribemeetings.com,,ca:csd:1209034,fallback,wo1050_live_check,"Halifax, NS -- WO-1050: the sweep matched Halifax, VT; pub-halifax is 'Halifax Regional Council'"
 haltonhills.escribemeetings.com,,ca:csd:3524015,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Halton Hills
 hamilton.civicweb.net,,ca:cd:3525,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Hamilton
 hamilton.escribemeetings.com,,ca:cd:3525,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_cd.csv Hamilton
@@ -632,7 +632,7 @@ lancaster.granicus.com,,us:place:0640130,fallback,ryan_stated,"Lancaster, CA -- 
 lanecounty.escribemeetings.com,,us:county:41039,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Lane County
 langford.escribemeetings.com,,ca:csd:5917044,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Langford
 langham.civicweb.net,,ca:csd:4711067,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Langham
-langleycity.escribemeetings.com,,us:place:5338355,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_places.csv Langley city
+langleycity.escribemeetings.com,,ca:csd:5915002,fallback,wo1050_live_check,"City of Langley, BC -- WO-1050: the sweep matched Langley, WA; pub-langleycity's agendas read 'B.C. - LANGLEY'"
 lantzville.civicweb.net,,ca:csd:5921008,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lantzville
 lantzville.escribemeetings.com,,ca:csd:5921008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lantzville
 laquinta.cablecast.tv,,us:place:0640354,fallback,ryan_stated,"La Quinta, CA -- us_places.csv La Quinta city"
@@ -825,7 +825,8 @@ newtecumseth.civicweb.net,,ca:csd:3543007,fallback,wildcard_http_sweep_2,DNS res
 newtonkansas.civicweb.net,,us:place:2050475,fallback,ryan_stated,"Newton, KS -- us_places.csv Newton city"
 niagarafalls.civicweb.net,,ca:csd:3526043,fallback,ryan_stated,"Niagara Falls, ON -- single-government tenant, confirmed live 2026-09-04 after deleting and resubmitting 3 pages that had wrongly resolved to Niagara Falls, NY"
 norfolk-va.cablecast.tv,,us:place:5157000,fallback,auto_derived+visual_confirmed,"'Norfolk TV-48 ... Norfolk, Virginia is the most dynamic ... waterfront community' (landing.png) [reports/jurisdiction_screens/norfolk-va.cablecast.tv/landing.png reports/jurisdiction_screens/norfolk-va.cablecast.tv/meeting.png] -> place 5157000 -> registry: us_places.csv Norfolk city"
-norfolkcounty.escribemeetings.com,,us:county:25021,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Norfolk County
+norfolkcounty.escribemeetings.com,,ca:csd:3528052,fallback,wo1050_live_check,"Norfolk County, ON -- WO-1050: the sweep matched Norfolk County, MA; pub-norfolkcounty lists an OPP (Ontario Provincial Police) detachment board"
+pub-norfolkcounty.escribemeetings.com,,ca:csd:3528052,authoritative,wo1050_live_check,"Norfolk County, ON -- WO-1050: OPP (Ontario Provincial Police) detachment board in its meeting list; 'Norfolk County' alone also names Norfolk County, MA, and its pages had no government"
 northbattleford.escribemeetings.com,,rtr:ca:sk:north-battleford,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'North Battleford, SK'"
 northbay.escribemeetings.com,,ca:csd:3548044,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv North Bay
 northchevychase.gov,,us:place:2456400,fallback,wo151_research_url_ladder_sweep,"coverage registry row us:place:2456400 (North Chevy Chase village, MD); hub https://northchevychase.gov; meeting found via youtube at https://northchevychase.gov"
@@ -889,7 +890,7 @@ otonabeesouthmonaghan.civicweb.net,,ca:csd:3515005,fallback,wildcard_http_sweep_
 ottawa.escribemeetings.com,,ca:csd:3506008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Ottawa
 outlook.civicweb.net,,ca:csd:4711027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Outlook
 owensound.escribemeetings.com,,ca:csd:3542059,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Owen Sound
-oxfordcounty.escribemeetings.com,,us:county:23017,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Oxford County
+oxfordcounty.escribemeetings.com,,ca:cd:3532,fallback,wo1050_live_check,"Oxford County, ON -- WO-1050: the sweep matched Oxford County, ME; pub-oxfordcounty is already pinned to ca:cd:3532"
 oxnardsd.granicus.com,,us:sd:0629220,authoritative,ryan_stated,"Oxnard School District (Census: Oxnard Elementary School District) -- the subdomain's 'sd' is the district, not South Dakota. Ryan, 2026-09-10."
 pacificacityca.primegov.com,,us:place:0654806,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Pacifica city
 pacificmo.gov,,us:place:2955910,fallback,hub_sweep_wo126,"coverage registry row us:place:2955910 (Pacific city, MO); hub https://pacificmo.gov/AgendaCenter; meeting found via youtube at https://pacificmo.gov/AgendaCenter"
@@ -1022,7 +1023,7 @@ pub-horrycountyschools.escribemeetings.com,,us:sd:4502490,authoritative,architec
 pub-hpl.escribemeetings.com,,rtr:ca:on:hamilton-public-library,fallback,auto_derived+known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Hamilton Public Library, ON'"
 pub-hpsb.escribemeetings.com,,rtr:ca:on:hamilton-police-services-board,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Hamilton Police Services Board, ON'"
 pub-langford.escribemeetings.com,,ca:csd:5917044,fallback,ryan_stated,"Langford, BC -- ca_csd.csv Langford"
-pub-langleycity.escribemeetings.com,,us:cousub:2005338600,fallback,jurisdiction_overrides, -> registry: us_cousubs.csv Langley township
+pub-langleycity.escribemeetings.com,,ca:csd:5915002,authoritative,wo1050_live_check,"City of Langley, BC (CY, not the Township of Langley) -- WO-1050: agendas read 'B.C. - LANGLEY'; was pinned to Langley Township, KS, and the name 'Langley' alone matched Langley, WA"
 pub-lincoln.escribemeetings.com,,ca:csd:3526057,fallback,ryan_stated,"Lincoln, ON -- ca_csd.csv Lincoln"
 pub-lloydminster.escribemeetings.com,,rtr:ca:ab-sk:lloydminster,authoritative,ryan_stated,"Lloydminster, the AB/SK border city -- an explicit exception so neither province is picked over the other; replaces an empty known_domains placeholder row. Ryan, 2026-09-10."
 pub-london.escribemeetings.com,,ca:csd:3539036,fallback,ryan_stated,"London, ON -- ca_csd.csv London"
@@ -1140,7 +1141,8 @@ sacketsharbor-ny.gov,,us:place:3664408,fallback,wo151_research_url_ladder_sweep,
 sacramento.granicus.com,,us:place:0664000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sacramento city
 saintandrews.escribemeetings.com,,rtr:ca:nb:saint-andrews,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Saint Andrews, NB'"
 saintjohn.escribemeetings.com,,ca:csd:1301006,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Saint John
-salinecounty.escribemeetings.com,,us:county:29195,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Saline County
+salinecounty.escribemeetings.com,,us:county:20169,fallback,wo1050_live_check,"Saline County, KS -- WO-1050: the sweep matched Saline County, MO; pub-salinecounty meets at '300 W Ash Room 107 Salina, Kansas 67401'"
+pub-salinecounty.escribemeetings.com,,us:county:20169,authoritative,wo1050_live_check,"Saline County, KS -- WO-1050: Board of County Commissioners meets at '300 W Ash Room 107 Salina, Kansas 67401'; 'Saline County' exists in 5 states, and its pages had no government"
 salisburynb.escribemeetings.com,,rtr:ca:nb:salisbury,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Salisbury, NB'"
 salmonarm.escribemeetings.com,,ca:csd:5939032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Salmon Arm
 saltlakecounty.portal.civicclerk.com,,us:county:49035,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Salt Lake County
@@ -1190,7 +1192,7 @@ sfwmd.iqm2.com,,rtr:us:fl:south-florida-water-management,fallback,ryan_stated,"S
 sgcityutah.gov,,us:place:4965330,fallback,ryan_stated,"St George, UT -- us:place:4965330 St. George city matched with spacing ignored"
 shastacounty.primegov.com,,us:county:06089,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Shasta County
 shediac.escribemeetings.com,,rtr:ca:nb:shediac,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Shediac, NB'"
-shelburne.escribemeetings.com,,ca:cd:1201,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_cd.csv Shelburne
+shelburne.escribemeetings.com,,ca:csd:3522021,fallback,wo1050_live_check,"Shelburne, ON -- WO-1050: the sweep matched Shelburne County, NS; pub-shelburne's agendas name Dufferin County, Ontario"
 shenandoahcountyva.gov,,us:county:51171,fallback,hub_sweep_wo126,"coverage registry row us:county:51171 (Shenandoah County, VA); hub https://shenandoahcountyva.gov/calendar.aspx?view=list&year=2026&month=8&day=18&CID=14; meeting found via youtube at https://shenandoahcountyva.gov/AgendaCenter"
 shuniah.civicweb.net,,ca:csd:3558028,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Shuniah
 sicamous.civicweb.net,,ca:csd:5939045,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Sicamous
@@ -1250,7 +1252,7 @@ stpaul.granicus.com,,us:place:2758000,fallback,ryan_stated,"St Paul, MN -- us:pl
 stpete.granicus.com,,us:place:1263000,fallback,auto_derived+visual_confirmed,"logo alt text 'City of St. Petersburg, Fl' (landing.png) [reports/jurisdiction_screens/stpete.granicus.com/landing.png reports/jurisdiction_screens/stpete.granicus.com/meeting.png] -> place 1263000 -> registry: us_places.csv St. Petersburg city"
 stratford.civicweb.net,,ca:csd:2430110,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Stratford
 stratford.escribemeetings.com,,ca:csd:2430110,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Stratford
-strathcona.escribemeetings.com,,ca:cd:5924,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_cd.csv Strathcona
+strathcona.escribemeetings.com,,ca:csd:4811052,fallback,wo1050_live_check,"Strathcona County, AB -- WO-1050: the sweep matched Strathcona Regional District, BC; pub-strathcona's agendas name Travel Alberta"
 strathmore.civicweb.net,,ca:csd:4805018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Strathmore
 stream.ci.concord.ca.us,,us:place:0616000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Concord city
 stream2.ci.concord.ca.us,,us:place:0616000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Concord city
@@ -1461,7 +1463,7 @@ wawa.civicweb.net,,ca:csd:3557076,fallback,wildcard_http_sweep_2,DNS resolves ->
 websterny.gov,,us:cousub:3605578971,fallback,wo310,"Webster town, NY -- WO-310, Ryan approved 2026-09-12: landing page title 'Webster, NY - Official Website' and body text say 'Town of Webster' -- replaces hub_sweep_wo126's village pin -- us_cousubs.csv Webster town"
 welland.escribemeetings.com,,ca:csd:3526032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Welland
 wellesley.escribemeetings.com,,ca:csd:3530027,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Wellesley
-wellington.escribemeetings.com,,rtr:ca:pe:wellington,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Wellington, PE'"
+wellington.escribemeetings.com,,ca:cd:3523,fallback,wo1050_live_check,"Wellington County, ON -- WO-1050: the sweep minted Wellington, PE; pub-wellington is 'The Corporation of the County of Wellington'"
 westbrookme.portal.civicclerk.com,,us:place:2382105,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_places.csv Westbrook city
 westelgin.escribemeetings.com,,ca:csd:3534042,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv West Elgin
 westerville.hylandcloud.com,,us:place:3983342,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Westerville city
@@ -6314,5 +6316,5 @@ cloud.castus.tv,vod/tbnk/video/6a99dc635e30e8000213757d,us:place:2128612,fallbac
 www.youtube.com,channel=@cityofgrassvalleyca,us:place:0630798,fallback,ryan-coverage-triage-2026-09-22,"Ryan, 2026-09-22: this channel (Streams tab) is the real video source for grassvalleyca.gov/public-meetings meetings -- the on-file hub is Granicus (ViewPublisher.php?view_id=4), which is real for agenda/meeting details but carries no video. Example https://www.youtube.com/watch?v=IWttQhXiwPw. Meeting titles are ambiguously named -- use the livestream's own streamed date as the real meeting date, not the title. Ryan: all on-mission. No YouTube request made to obtain this (CLAUDE.md: YouTube fetched only by the drip Mac) -- channel and video identity are Ryan's own direct statement."
 tuscaloosaal.suiteonemedia.com,,us:place:0177256,fallback,ryan-coverage-triage-2026-09-22,"Ryan, 2026-09-22: tuscaloosaal.suiteonemedia.com/?embed=1 hub + event/?id=11029 confirmed live via SuiteOneAssetFinder.resolve() -- real video, title City Council Work Session, date 2025-07-29, jurisdiction Tuscaloosa, AL (city, not county -- both have separate gov_ids on file), no captions. Single-tenant host, blank match."
 forestparkga.portal.civicclerk.com,,us:place:1330536,fallback,ryan-coverage-triage-2026-09-22,"Ryan, 2026-09-22: only select meetings have video on this hub. event/1196/media confirmed live via CivicClerkAssetFinder.resolve() -- real video (cpmedia.azureedge.net mp4), title City Council Regular Session, date 2026-07-20, jurisdiction Forest Park, GA, no captions. Single-tenant host, blank match."
-claycomo.portal.civicclerk.com,,us:county:29047,authoritative,manual_override,"Clay County, MO -- the slug is clay+co+mo, not the separate village of Claycomo, MO; every event category is a county body (Board of County Commission). Ryan approved moving pages 2090 and 2541 here 2026-09-24 (WO-1049)."
-reflect-collier-countyboc.cablecast.tv,,us:county:12021,fallback,manual_override,"Collier County, FL -- the site describes itself as 'a service provided by the Collier County Board of County Commissioners'. Ryan approved filing page 11067 here 2026-09-24 (WO-1049)."
+claycomo.portal.civicclerk.com,,us:county:29047,authoritative,manual_override,"Clay County, MO -- the slug is clay+co+mo, not the separate village of Claycomo, MO; every event category is a county body (Board of County Commission). Ryan approved moving pages 2090 and 2541 here 2026-09-24 (WO-1051)."
+reflect-collier-countyboc.cablecast.tv,,us:county:12021,fallback,manual_override,"Collier County, FL -- the site describes itself as 'a service provided by the Collier County Board of County Commissioners'. Ryan approved filing page 11067 here 2026-09-24 (WO-1051)."
