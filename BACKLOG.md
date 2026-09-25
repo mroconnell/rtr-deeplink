@@ -446,9 +446,10 @@ Reliability, ops & cost  (11)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (29)
+Trust, safety & data quality  (30)
+  15 whole-host pins name the wrong government, and 35 pages on pinned…
   ChampDS customers that carry a second government need per-meeting…
-  Invintus meetings from a separate government (port, transit, health…
+  Invintus meetings from a separate government (regional council,…
   ChampDS jurisdiction text comes out wrong for customer names that…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
@@ -6016,6 +6017,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
+### 15 whole-host pins name the wrong government, and 35 pages on pinned hosts are filed under the wrong one `[NEEDS-AUDIT]`
+
+- **Issue**: rebuilt from the Archive export on 2026-09-25: 66 pages on 44 hosts with a whole-host fallback pin are filed under a different government. 35 are wrong (a county's meeting under its seat city, a same-named place in another state, a village instead of the town), 27 are right (mostly a school district on a city's site), 4 need Ryan's call (LA World Airports, M-NCPPC). On 15 hosts the pin itself is wrong (e.g. `clark.granicus.com` pinned to Clark County KS, but it is Clark County NV; `eustis.civicweb.net` to Eustis, Maine). Per-page table: `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
+- **Impact**: 35 pages sit on the wrong government's hub. A fallback pin never overrides a name that resolves, so re-resolving the stored name fixes none of them.
+- **Next action**: (1) correct the 15 wrong pins, with `view_id=` pins for the two multi-government Granicus hosts (nevco, burbank); (2) after Ryan approves, re-file the 35 through `POST /internal/jurisdiction/override`, dry run first; (3) then decide on a rule: a verified pin beats a name match to a different city/town/village/county, while a school or special-district match still wins (fixes 31 of 35, keeps all 7 right school/special pages, but flips 19 right pages if run before step 1).
+- **Constraint**: report before re-filing any existing page. Two of the wrong pages are stray non-meeting videos (Stonington, Wellfleet): delete rather than re-file.
+- **History**: found by rtr-discovery's Archive scan (it reported 20 hosts); this list, verdicts and live checks from WO-1067, 2026-09-25.
+
 ### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
 
 - **Issue**: 9 ChampDS customers publish a second government's meetings under one `CustomerName` (Gillette WY carries Campbell County; Fond du Lac WI the county board; Falmouth ME, Gorham ME, Isle of Wight Co VA and Provincetown MA a school board; Brookfield CT the Candlewood Lake Authority; Mauston WI joint committees; Yonkers NY school segments). They are now in `MULTI_GOVERNMENT_TENANTS`, so their meetings are unknown until pinned. A pin for one meeting is a substring match, so `/fonddulacwi/event/77` would also claim events 770-779 and 7700+.
@@ -6024,13 +6033,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Since the same day, `invintus.py` also splits a body-only category ("DuPont City Council") into its place, so fewer land on nothing. Re-check before listing them.
 - **History**: `play.champds.com` joined `MULTI_GOV_HOSTS` in #1432; 29 whole-customer pins in #1450.
 
-### Invintus meetings from a separate government (port, transit, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
+### Invintus meetings from a separate government (regional council, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
 
-- **Issue**: on the two mixed Invintus channels, meetings of bodies that are their own governments resolve blank, because the registry has no id to give them: CVTV `2917038973` "Port of Vancouver Board of Commissioners", "C-TRAN Board of Directors", "Regional Transportation Council"; Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department). CVTV's "City Council Workshops" also stays blank: its category and description name no city.
-- **Impact**: in the 2026-09-25 dry run, 14 of CVTV's 36 accepted meetings (Port 5, workshops 7, C-TRAN 1, RTC 1) and 1 Pierce meeting get no government.
-- **Next action**: give each its own registry id before pinning anything. Port of Vancouver (Census of Governments id 158826) and C-TRAN (216444, "Clark County Public Transportation Benefit Area Authority") are in `cog_units.csv`, so a real id can come from there. The Regional Transportation Council and the Tacoma-Pierce County Health Department are not in it. Then add a `CLIENT_PLACE_PREFIXES`-style rule or a per-category mapping in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
-- **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: "Port of Vancouver, WA" mints `rtr:us:wa:port-of-vancouver` from "Vancouver, WA", worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
-- **History**: `BACKLOG_DONE.md` "[Done 2026-09-25] Invintus: find the place in a body-only category" and "WO-1066: Invintus Leon County pin and CVTV place prefixes".
+- **Issue**: on the two mixed Invintus channels, two bodies that are their own governments still resolve blank, because the registry has no id to give them: CVTV `2917038973` "Regional Transportation Council"; Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department). CVTV's "City Council Workshops" also stays blank: its category and description name no city.
+- **Impact**: in the 2026-09-25 dry run, 8 of CVTV's 36 accepted meetings (workshops 7, RTC 1) and 1 Pierce meeting get no government.
+- **Next action**: neither body is in `cog_units.csv`, so an id would have to be minted (Ryan's call, as for WO-916). Once one exists, add it to `CLIENT_BODY_GOVERNMENTS` in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
+- **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: that mints an id from the city's name, worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
+- **History**: `BACKLOG_DONE.md` WO-1066 (Leon County pin, CVTV place prefixes) and WO-1067 (Port of Vancouver and C-TRAN registry ids).
 
 ### ChampDS jurisdiction text comes out wrong for customer names that aren't "City ST" `[EASY]`
 

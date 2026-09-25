@@ -1,5 +1,18 @@
 # Backlog — done
 
+## WO-1067: Port of Vancouver and C-TRAN get registry ids; CVTV files their meetings under them [Done 2026-09-25]
+
+**What was done and why.** Follow-up to WO-1066: CVTV (`2917038973`) carries meetings of two governments that had no registry id. Both are Census of Governments 2022 units, so both got curated registry rows (`curated_governments.csv`, the same pattern as WO-916's Kitsap Regional Library): `rtr:us:wa:port-of-vancouver` (unit 158826) and `rtr:us:wa:c-tran` (unit 216444, legal name Clark County Public Transportation Benefit Area Authority). `invintus.py`'s new `CLIENT_BODY_GOVERNMENTS` maps CVTV's "Port of Vancouver Board of Commissioners" and "C-TRAN Board of Directors" categories to them. The rule that a Port, District or Authority is never filed under the city or county still holds.
+
+**Result, live on 2026-09-25.**
+
+| Meeting | Government before | Government after |
+| --- | --- | --- |
+| Port of Vancouver Board of Commissioners (5) | none | Port of Vancouver |
+| C-TRAN Board of Directors (1) | none | C-TRAN |
+
+The Regional Transportation Council and the Tacoma-Pierce County Health Department are not Census units and stay blank.
+
 ## WO-1066: Invintus Leon County pin and CVTV place prefixes [Done 2026-09-25]
 
 **What was done and why.** rtr-discovery's Invintus dry run on 2026-09-25 left 33 accepted meetings with no government: 7 on Leon County FL's channel (`4853176732`), 25 on CVTV (`2917038973`), 1 on the Pierce County channel (`1872740071`).
