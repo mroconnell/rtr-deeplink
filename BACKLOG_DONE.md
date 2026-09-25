@@ -115,6 +115,33 @@ per-customer subdomain) still needs a real per-tenant pin to resolve at
 all -- that's an existing, unrelated resolver rule (`MULTI_GOV_HOSTS`),
 not something this WO's extraction fix touches.
 
+## WO-1060: after the backfill -- 14 hub redirects committed, 10 wrong pins fixed, and two orphaned hubs re-joined [Done 2026-09-25]
+
+**Why.** The post-deploy `backfill_gov_id.py --apply` (80 pages) retired 25 hub pages and wrote their redirects into a file on the Render instance. That file is not served, and the next deploy erases it. Reviewing those rows showed that about half pointed one government's hub at a different government. Checking the pages behind them showed that the backfill had faithfully applied pins that were already wrong. Ryan: "Just make it correct!"
+
+**Redirects (14).** Committed only redirects between two names for the same government: `upper-providence-pa`, `llbc`, `town-of-amherst`, `amherst`, `lexington-fayette-urban-county-government`, `metropolitan-water-district-of-southern-california`, `queen-anne-md`, `cumberland-county`, `port-clinton`, `baltimore-city-md`, `jesup`, `hooper`, `east-baton-rouge-parish-la`, and `prince-edward-on` (below). Removed the stale 2026-09-11 row `baltimore-md` -> `baltimore-city-md`, which formed a loop with today's reverse row. Not committed: 9 rows sending one government to another (Yarmouth MA -> ME, Osage County MO -> KS, Armada Township -> village, Cape Vincent town -> village, Richmond Heights -> Richmond village, Kalamazoo County -> city, Interlaken -> Utah County, Sherborn -> Dover, Claycomo village -> Clay County, Washington VA -> Rappahannock County).
+
+**Pins corrected.** Each was checked against its archived pages' own titles (read over `GET /internal/export/pages`):
+
+| Pin | Was | Now | Pages |
+|---|---|---|---|
+| video `DgrpvbZkNQY` (wo346 bare id) | Armada village | deleted; the WO-134 `youtube:` pin (Armada Township) applies | 1 |
+| video `Xl1SctaMya4` | Cape Vincent village | Cape Vincent town, NY (`us:cousub:3604512364`) | 1 |
+| channel `@cityofrichmondheightsohio6020` and video `B_gH6WN1kgg` | Richmond village, OH | Richmond Heights city, OH (`us:place:3966894`) | 2 |
+| channel `@doversherborncabletv` (shared Dover-Sherborn cable) | Dover | deleted; 2 video pins -> Sherborn town, MA | 2 |
+| channel `@therappahannockrecord9195` (newspaper) | Rappahannock County | deleted; 1 video pin -> Washington town, VA | 1 |
+| channel `@ulctTube` (Utah League of Cities and Towns, an association) | Utah County | deleted; pages now unknown | 5 |
+| video `gOTlj-_6zrU` (ULCT training video) | Interlaken town | deleted; not an Interlaken meeting | 1 |
+| TelVue `player/2bm0g…` (whole station: city + county) | Kalamazoo city | deleted; 2 media pins (city committee; County Board of Commissioners -> `us:county:26077`); station added to `MULTI_GOVERNMENT_TENANTS` | 3 |
+| `princeedwardcounty.civicweb.net` | census division `ca:cd:3513` | the municipality `ca:csd:3513020` | 2 |
+| new: `www.clintontownship.com` | (page minted `rtr:us:mi:clinton`) | Clinton charter township, MI (`us:cousub:2609916520`; site checked live, ZIP 48038) | 1 |
+
+Osage County's channel pin -> Osage County, KS was checked and left alone: it is Ryan's own WO-237 decision.
+
+**Result.** Resolving all 10,423 exported pages with the old pins and the new ones, 18 resolve differently, and every one is intended: 11 to the right government, and 7 from a wrong government to unknown (6 ULCT videos, 1 Kalamazoo community video). Page 6011 (Prince Edward) carries a manual override, which the backfill never changes; the Archive's `/internal/jurisdiction/override` dry run shows the one-page fix.
+
+**Tests.** Full suite: 7,388 passed, plus the 2 known local-only failures (`test_repair_wrong_pages`, `test_wrong_page_screen`).
+
 ## WO-1059: a `key=value` pin matches an exact query parameter, not any text containing it [Done 2026-09-25]
 
 **The bug.** `resolver._match_override()` tested every pin with `needle in haystack` (the page's path and query, lowercased). So a `key=value` pin fired on any longer value, or on any parameter whose name ends the same way. Confirmed at 630a774: `resolve_government(None, tenant_host="reflect-tst-mn.cablecast.tv", path="/show/1?site=80")` returned Mendota Heights (`us:place:2741696`), tier pinned.
