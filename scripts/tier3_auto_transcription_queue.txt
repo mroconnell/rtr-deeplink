@@ -1,15 +1,3 @@
-https://www.youtube.com/watch?v=lHLFxufylYM		us:place:2953650
-https://metcom.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=62		rtr:us:md:st-marys-county-metropolitan-commission
-https://patrickk12va.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=132		us:sd:5102880
-https://asdb.diligent.community/Portal/MeetingInformation.aspx?Id=430	https://asdb.az.gov/	rtr:us:az:arizona-schools-for-the-deaf-and-the-blind
-https://columbiatwp.civicweb.net/Portal/MeetingInformation.aspx?Id=1394	https://columbiatwp.com/	us:cousub:2615917440
-https://lw210.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=178	https://lw210.community.diligentoneplatform.com/document/48ac8b20-eaa4-489f-bedb-1eb82a9d173b/?modified=2026-03-31T15:30:49.943	us:sd:1723070
-https://ccsdut.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=1298	https://ccsdut.org/	us:sd:4900120
-https://bedford-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=509	https://bedford.k12.va.us/	us:sd:5100360
-https://lbusd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=294	https://lbusd.community.diligentoneplatform.com/portal/	us:sd:0620370
-https://estesschools.diligent.community/Portal/MeetingInformation.aspx?Id=192	https://estesschools.diligent.community/Portal/	us:sd:0803810
-https://jusd-k12-ca.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=331	https://jurupausd.org/	us:sd:0619260
-https://glendora-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=137	https://glendora-k12.community.diligentoneplatform.com/Portal/	us:sd:0615270
 https://winpark.diligent.community/Portal/MeetingInformation.aspx?Id=188	https://winpark.org/	rtr:us:il:winnetka-park-district
 https://andersonunionhighschooldistrict.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=76	https://auhsd.net/	us:sd:0602700
 https://qathetrd.civicweb.net/Portal/MeetingInformation.aspx?Id=2088	https://qathet.ca/	ca:cd:5927
