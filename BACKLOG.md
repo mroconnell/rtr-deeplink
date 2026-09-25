@@ -443,7 +443,8 @@ Reliability, ops & cost  (11)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (27)
+Trust, safety & data quality  (28)
+  ChampDS customers that carry a second government need per-meeting…
   ChampDS jurisdiction text comes out wrong for customer names that…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
@@ -2061,7 +2062,7 @@ of human step they need.
 ### After WO-1056 and WO-1057 deploy, re-resolve archived pages so shared-host pages get their government `[HUMAN]`
 
 - **Issue**: WO-1056 fixed pin matching (CMNtv playlist pins now beat the station pin; DestinyHosted `id=N` pins reach `/{N}/agenda/...` pages). WO-1057 removed three pins (Yarmouth MA, and the RVTV and CMNtv whole-station pins) and lets a one-government tenant on a shared host keep its adapter's name. Archived pages keep the `gov_id` they got at ingest.
-- **Impact**: resolved over the 6,410-page 2026-09-09 archive export, WO-1057 alone moves 9 pages: 3 from unknown to the right government (Fond du Lac WI, University Place WA, Leon County FL), 6 from the shared-host unknown bucket to "unresolved", and 0 to a different government. RVTV and CMNtv pages filed under Ashland or Berkley's schools by the removed pins become unknown unless a narrower pin matches.
+- **Impact**: resolved over the 6,410-page 2026-09-09 archive export, WO-1057 moves 8 pages: 2 from unknown to the right government (University Place WA, Leon County FL), 6 from the shared-host unknown bucket to "unresolved", and 0 to a different government. The one Fond du Lac WI page (`/fonddulacwi/event/77`) is a County Board of Supervisors meeting that the name ladder read as Fond du Lac city; `fonddulacwi` is now in `MULTI_GOVERNMENT_TENANTS`, so it stays unknown (see "ChampDS customers that carry a second government" below). RVTV and CMNtv pages filed under Ashland or Berkley's schools by the removed pins become unknown unless a narrower pin matches.
 - **Next action**: after the deploy, run `python scripts/backfill_gov_id.py` from the Archive service's Render shell. It's a dry run by default; review the rows it reports, then rerun with `--apply`.
 - **Constraint**: Render shell only, never a laptop against production (the script's own docstring).
 - **History**: `BACKLOG_DONE.md` WO-1056 and WO-1057.
@@ -5987,6 +5988,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
+
+- **Issue**: 9 ChampDS customers publish a second government's meetings under one `CustomerName` (Gillette WY carries Campbell County; Fond du Lac WI the county board; Falmouth ME, Gorham ME, Isle of Wight Co VA and Provincetown MA a school board; Brookfield CT the Candlewood Lake Authority; Mauston WI joint committees; Yonkers NY school segments). They are now in `MULTI_GOVERNMENT_TENANTS`, so their meetings are unknown until pinned. A pin for one meeting is a substring match, so `/fonddulacwi/event/77` would also claim events 770-779 and 7700+.
+- **Impact**: these customers' meetings get no government. One archived page is known: `/fonddulacwi/event/77`, Fond du Lac County's Board of Supervisors (`us:county:55039`).
+- **Next action**: make a ChampDS `/{customer}/event/{id}` pin match that exact event id (as WO-1059 did for `key=value` pins), then pin real meetings one at a time. Separately, confirm who `alamedacocaschools` ("Alameda Schools CA") is: its name resolves to Alameda City Unified, but the customer id's "co" matches county school customers (`fultoncoschoolsga`), so it may be the Alameda County Office of Education.
+- **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Re-check before listing them.
+- **History**: `play.champds.com` joined `MULTI_GOV_HOSTS` in #1432; 29 whole-customer pins in #1450.
 
 ### ChampDS jurisdiction text comes out wrong for customer names that aren't "City ST" `[EASY]`
 

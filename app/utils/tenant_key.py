@@ -356,6 +356,31 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Kalamazoo, MI's TelVue station: City of Kalamazoo committees and
         # the Kalamazoo County Board of Commissioners (WO-1060).
         ("videoplayer.telvue.com", "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05"),
+        # ChampDS customers whose one CustomerName is applied to every
+        # meeting, but whose own meeting-body list (playapi.champds.com/
+        # {customer}/archive/1, read 2026-09-25) or archive search titles
+        # show a second government. Without this, every meeting resolves
+        # to the named town -- a Campbell County meeting as Gillette city.
+        # Gillette WY: the sample event is the Campbell County Commission.
+        ("play.champds.com", "gillettewy"),
+        # Fond du Lac WI: "City Council" archive, but the sample event is
+        # the County Board of Supervisors.
+        ("play.champds.com", "fonddulacwi"),
+        # Falmouth ME and Gorham ME: Town Council plus School Board/School
+        # Committee meetings (archive search titles).
+        ("play.champds.com", "falmouthme"),
+        ("play.champds.com", "gorhamme"),
+        # Isle of Wight County VA: lists a School Board body.
+        ("play.champds.com", "isleofwightcova"),
+        # Provincetown MA: lists a School Committee body.
+        ("play.champds.com", "provincetownma"),
+        # Brookfield CT: lists the Candlewood Lake Authority (five towns).
+        ("play.champds.com", "brookfieldct"),
+        # Mauston WI: lists joint committees with Lemonweir and New Lisbon.
+        ("play.champds.com", "maustonwi"),
+        # Yonkers NY: city programming mixed with Yonkers Public Schools
+        # segments (archive search titles).
+        ("play.champds.com", "yonkersny"),
         # Castus "tbnk" (Kentucky regional commission): a dozen-plus cities
         # (registry.py's MULTI_GOV_HOSTS comment; per-video pins).
         ("cloud.castus.tv", "tbnk"),
