@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Metropolitan Transit Authority of Harris County (METRO) | `rtr:us:tx:metropolitan-transit-authority-of-harris-county` | 157766 | Ryan: "Mint both" (2026-09-24). |
 | The Harris Center for Mental Health and IDD | `rtr:us:tx:the-harris-center-for-mental-health-and-idd` | none found | Ryan: "Mint both" (2026-09-24). |
-| Port of Corpus Christi Authority | `rtr:us:tx:port-of-corpus-christi` | 158176 | The brief called this id "existing". No committed file held it; the live site shows a "Port of Corpus Christi, TX" hub. Added so page 2659 can move to it. |
+| Port of Corpus Christi Authority | `rtr:us:tx:port-of-corpus-christi` | 158176 | The brief called this id "existing". No committed file held it; the live site shows a "Port of Corpus Christi, TX" hub. Added so page 2659 can move to it; Ryan confirmed keeping it 2026-09-25. |
 | Metropolitan Water District of Southern California (MWD) | `rtr:us:ca:metropolitan-water-district-of-southern-california` | 123317 | Ryan: "yes mint MWD" (2026-09-24, relayed by the Enumeration sprint session). Page 2535 moves to it. |
 
 Each tenant host is pinned `authoritative` (ridemetro.granicus.com, theharriscentertx.new.swagit.com, portofcorpuschristi.granicus.com, mwdh2o.granicus.com). Each serves one body only, and its pages carried a county name, which a `fallback` pin does not override.
