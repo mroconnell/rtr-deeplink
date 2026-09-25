@@ -1,3 +1,5 @@
+https://play.champds.com/cobbcoga/event/155		us:county:13067
+https://play.champds.com/gwinnettcoga/event/356		us:county:13135
 https://wcs-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=713		us:sd:5103900
 https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=946		us:sd:3904467
 https://greenwich-schools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=543		us:sd:0901710
@@ -1187,5 +1189,3 @@ https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:s
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
 https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
-https://play.champds.com/cobbcoga/event/155		us:county:13067
-https://play.champds.com/gwinnettcoga/event/356		us:county:13135
