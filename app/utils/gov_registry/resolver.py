@@ -29,7 +29,7 @@ Nothing here writes anything, touches a database, or performs a fetch.
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, parse_qsl, urlparse
 
 from ..tenant_key import pin_tenant_key, tenant_key, trusted_tenant_key
 from ..jurisdiction_enrich import (
@@ -243,6 +243,19 @@ def _override_rows_for_host(host: str) -> List[TenantOverride]:
     return rows
 
 
+def _key_value_pin_pairs(needle: str) -> Optional[List[Tuple[str, str]]]:
+    """The `(name, value)` pairs of a `key=value` pin (`site=8`,
+    `location_id=94`, `clientid=...&eventid=...`), or None for a pin
+    matched as text: path-shaped (a leading "/", or a "/" before the first
+    "=", e.g. `vod/weston/video/...?page=home`) or a bare token (a YouTube
+    id, a TelVue org token, `castus:tbnk:...`). WO-1059."""
+    if needle.startswith("/") or "=" not in needle:
+        return None
+    if "/" in needle.partition("=")[0]:
+        return None
+    return parse_qsl(needle, keep_blank_values=True)
+
+
 def _match_override(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> List[TenantOverride]:
@@ -259,6 +272,7 @@ def _match_override(
         return []
     haystack = (path or "").lower()
     hints = {k.lower(): (v or "").lower() for k, v in (page_hints or {}).items()}
+    query = parse_qs(haystack.partition("?")[2], keep_blank_values=True)
     # WO-1056: the page's own tenant key on a shared host (tenant_key.py),
     # e.g. `24263` for DestinyHosted's `/24263/agenda/...`.
     page_key = tenant_key(f"https://{host}{path}") if path else None
@@ -268,17 +282,32 @@ def _match_override(
             out.append(row)
             continue
         needle = row.match.lower()
-        if needle in haystack:
-            out.append(row)
-            continue
-        if "=" in needle:
-            key, _, value = needle.partition("=")
-            if hints.get(key) == value:
+        pairs = _key_value_pin_pairs(needle)
+        if pairs is not None:
+            # WO-1059: a `key=value` pin matches an exact query parameter,
+            # never any text that contains it. The substring test used to
+            # let Town Square's `site=8` (Mendota Heights) fire on
+            # `?site=80`, `site=15` on `?site=150`, and DestinyHosted's
+            # `id=24263` on `?clip_id=24263`. Every pair must match (the
+            # two Invintus pins are `clientID=...&eventID=...`).
+            if all(value in query.get(key, ()) for key, value in pairs):
                 out.append(row)
                 continue
-        elif needle in hints.values():
-            out.append(row)
-            continue
+            if len(pairs) == 1 and hints.get(pairs[0][0]) == pairs[0][1]:
+                out.append(row)
+                continue
+        else:
+            if needle in haystack:
+                out.append(row)
+                continue
+            if "=" in needle:
+                key, _, value = needle.partition("=")
+                if hints.get(key) == value:
+                    out.append(row)
+                    continue
+            elif needle in hints.values():
+                out.append(row)
+                continue
         # WO-1056: a pin naming a whole tenant matches every URL of that
         # tenant, whichever shape spells it. DestinyHosted's `id=24263`
         # pins used to reach only `agenda_publish.cfm?id=24263`, never the
