@@ -1,5 +1,5 @@
-https://play.champds.com/cobbcoga/event/155	https://www.cobbcounty.gov/communications/cobbtv	us:county:13067
-https://play.champds.com/gwinnettcoga/event/356	https://www.gwinnettcounty.com/government/departments/communications/tv-gwinnett/videos/commission-meetings	us:county:13135
+https://play.champds.com/cobbcoga/event/155		us:county:13067
+https://play.champds.com/gwinnettcoga/event/356		us:county:13135
 https://www.youtube.com/watch?v=gde00r0sXXA&t=5s		us:cousub:4212955128
 https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697		us:cousub:4200157472
 https://www.youtube.com/live/ffgRc-07yUw?si=OB29-NWm2pMAn4WJ		us:cousub:3910978456
