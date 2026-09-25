@@ -23,8 +23,16 @@ import re
 # both were seen in the 2026-08-22 run. Matching the message rather than
 # a status field is deliberate: these arrive as strings by the time the
 # driver scripts see them.
+#
+# A bare 429 must not be part of an id. Real false positive (rtr-discovery
+# full resolve, 2026-09-25): a plain 404 on
+# `.../MediaPlayer.php?clip_id=429&view_id=1` read as a rate limit and
+# aborted the run after 6 minutes. So URLs are removed before matching
+# (`_URL_RE`), and the lookarounds below also skip a 429 that sits in a
+# query parameter or path without a scheme (`clip_id=429`, `/429/`).
+_URL_RE = re.compile(r"\b[a-z][a-z0-9+.-]*://\S+", re.IGNORECASE)
 _RATE_LIMIT_RE = re.compile(
-    r"(?:\b429\b"
+    r"(?:(?<![=/&?#.-])\b429\b(?![=/&?#])"
     r"|too many requests"
     r"|rate[- ]?limit"
     r"|sign in to confirm(?:.{0,40})?not a bot"
@@ -42,4 +50,4 @@ def looks_rate_limited(message: object) -> bool:
     """
     if message is None:
         return False
-    return bool(_RATE_LIMIT_RE.search(str(message)))
+    return bool(_RATE_LIMIT_RE.search(_URL_RE.sub(" ", str(message))))
