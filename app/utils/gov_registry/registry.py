@@ -318,6 +318,26 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # pinned first, so a row here must `match=` a specific
         # `clientID=`.
         "player.invintus.com",
+        # WO-1057 (2026-09-25): five more shared hosts, each keyed by
+        # app/utils/tenant_key.py. Listed so no pin can ever cover a
+        # whole host. They keep their adapters' names: on a keyed shared
+        # host, a URL that carries its tenant key and whose tenant is one
+        # government's is resolved like that customer's own website (see
+        # rung 1b in resolver.py) -- the "only a pin identifies" rule
+        # below it is for hosts with no tenant key (YouTube, Vimeo) and
+        # for tenants that carry several governments.
+        #   Town Hall Streams: `stream.php?location_id={town}`, 34 pins.
+        "townhallstreams.com",
+        #   DestinyHosted: `/{id}/agenda/...` or `agenda_publish.cfm?id=`,
+        #   16 pins, 61 real tenants (destinyhosted.py).
+        "public.destinyhosted.com",
+        #   CCX Media's Cablecast station: 9 Minnesota cities, one per
+        #   `site=` (cablecast.py's `_CCX_MEDIA_SITES`).
+        "reflect-ccx.cablecast.tv",
+        #   SpectrumStream: `/streaming/{district}/...` (spectrumstream.py).
+        "spectrumstream.com",
+        #   ChampDS's VOD2 stream host: `/VOD/event/{Customer}/...` (WO-1045).
+        "securestream10.champds.com",
     }
 )
 

@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from ..tenant_key import pin_tenant_key, tenant_key
+from ..tenant_key import pin_tenant_key, tenant_key, trusted_tenant_key
 from ..jurisdiction_enrich import (
     _name_validates_in_state,
     _validated_subdomain_hint_with_state,
@@ -2026,6 +2026,20 @@ def page_hints_for(
     return hints
 
 
+def trusts_shared_tenant_name(host: Optional[str], path: Optional[str]) -> bool:
+    """WO-1057: True when `host` is a `MULTI_GOV_HOSTS` host whose URL
+    carries a tenant key naming ONE government's tenant
+    (`tenant_key.trusted_tenant_key()`), so rung 1b lets the name ladder
+    run instead of returning a blank. The one definition: the tier-3
+    feeder's `queue_probe.has_owner()` calls this too, so the owner check
+    and ingest agree. False on YouTube/Vimeo (no tenant key), for a URL
+    missing its key, and for a tenant in `MULTI_GOVERNMENT_TENANTS`.
+    """
+    if not host:
+        return False
+    return trusted_tenant_key(f"https://{host}{path or '/'}") is not None
+
+
 def _resolve_government_ladder(
     raw_name: Optional[str],
     *,
@@ -2156,19 +2170,30 @@ def _resolve_government_ladder(
                 page_hints=None,
                 tenant_gov_id=tenant_gov_id,
             )
-        finalized = finalize_jurisdiction(raw_name, netloc=host or None)
-        reason = (
-            f"{host} is a shared, multi-government host with no matching "
-            "per-video/channel/external-id pin"
-        )
-        gov = Government(
-            gov_id=f"rtr:unknown:{host}",
-            gov_name="",
-            gov_type=classify.OTHER,
-            source="blank",
-            evidence=reason,
-        )
-        return _match(gov, TIER_BLANK, reason, finalized.meeting_body)
+        if trusts_shared_tenant_name(host, path):
+            # WO-1057: a keyed shared host's tenant that is one government's
+            # (ChampDS `/cobbcoga/`, Castus `/vod/blackstone/`, Town Hall
+            # Streams `location_id=200`). Its adapter's name comes from the
+            # vendor's own record for that customer, not from an uploader's
+            # video title, so the rest of the ladder runs exactly as it would
+            # on that customer's own website. The one input that does not
+            # carry over is the same-tenant "dominant government": the Archive
+            # computes it per HOST, which on a shared host is other customers'.
+            tenant_gov_id = None
+        else:
+            finalized = finalize_jurisdiction(raw_name, netloc=host or None)
+            reason = (
+                f"{host} is a shared, multi-government host with no matching "
+                "per-video/channel/external-id pin"
+            )
+            gov = Government(
+                gov_id=f"rtr:unknown:{host}",
+                gov_name="",
+                gov_type=classify.OTHER,
+                source="blank",
+                evidence=reason,
+            )
+            return _match(gov, TIER_BLANK, reason, finalized.meeting_body)
 
     # 1c. Curated government match, by exact name or alias, BEFORE rung
     #     2's name repair ever runs (WO-243). Rung 2's `finalize_

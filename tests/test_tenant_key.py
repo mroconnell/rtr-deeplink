@@ -401,12 +401,9 @@ KNOWN_UNMAPPED_PINS = {
     ("videoplayer.telvue.com", "playlists/4260"),
     ("videoplayer.telvue.com", "playlists/4261"),
 }
-# One TelVue org token pinned whole to two governments: Yarmouth, MA
-# (us:cousub:2500182525, archive_study) and us:cousub:2300587845 (wo309b,
-# evidence says Yarmouth, ME; that id is not in the registry).
-KNOWN_CONFLICTING_KEYS = {
-    ("videoplayer.telvue.com", "GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm"),
-}
+# Tenants pinned whole to two governments. Empty since WO-1057 deleted
+# the Yarmouth, MA pin on Yarmouth, ME's TelVue station.
+KNOWN_CONFLICTING_KEYS: set = set()
 
 # Castus's external-id page hint: `castus:{tenant slug}:{video id}`.
 _CASTUS_HINT_RE = re.compile(r"^castus:([^:]+):")
@@ -554,3 +551,123 @@ def test_tenant_key_imports_only_the_standard_library():
             assert node.level == 0, "no relative imports"
             names.add(node.module.split(".")[0])
     assert names <= set(sys.stdlib_module_names), names
+
+
+# ---------------------------------------------------------------------------
+# 7. WO-1057: a keyed shared host's one-government tenant keeps its
+# adapter's name; hosts without a key and multi-government tenants do not.
+# Names are what each real adapter returned for these URLs (2026-09-25).
+
+TENANT_NAME_CASES = [
+    # Trusted: resolved like the customer's own website.
+    (
+        "https://cloud.castus.tv/vod/blackstone/video/6aab2089c74c3300024832f0?page=HOME",
+        "Blackstone, MA",
+        "us:cousub:2502706015",
+    ),
+    (
+        "https://townhallstreams.com/stream.php?full=1&location_id=200&id=899",
+        "Hollis, NH",
+        "us:cousub:3301137140",
+    ),
+    (
+        "https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986?site=16",
+        "Maple Grove, MN",
+        "us:place:2740166",
+    ),
+    # Not trusted: TelVue at all (its adapter guesses the town from each
+    # meeting's title; Pacifica Coast TV, name from the 2026-09-09 archive
+    # export, also carries Half Moon Bay), a multi-government station
+    # (RVTV), a URL missing its key, and a host with no tenant key.
+    (
+        "https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1042149",
+        "Pacifica, CA",
+        "rtr:unknown:videoplayer.telvue.com",
+    ),
+    (
+        "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047347",
+        "Grants Pass, OR",
+        "rtr:unknown:videoplayer.telvue.com",
+    ),
+    (
+        "https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986",
+        "Maple Grove, MN",
+        "rtr:unknown:reflect-ccx.cablecast.tv",
+    ),
+    (
+        "https://www.youtube.com/watch?v=5LZqoNDRMYk",
+        "Philadelphia, PA",
+        "rtr:unknown:www.youtube.com",
+    ),
+    # Pins still win: the per-meeting Berkley pin, and Yarmouth, ME.
+    (
+        "https://videoplayer.telvue.com/player/Hejq7tDUseFZXc46e8pIxdl8NpmSEupd/media/595215",
+        "Berkley, MI",
+        "us:sd:2605010",
+    ),
+    (
+        "https://videoplayer.telvue.com/player/GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm/media/1044368",
+        "Yarmouth, ME",
+        "us:cousub:2300587845",
+    ),
+]
+
+
+@pytest.mark.parametrize("url,name,expected", TENANT_NAME_CASES)
+def test_shared_host_tenants_keep_their_adapters_name_only_when_trusted(
+    url, name, expected
+):
+    from urllib.parse import urlparse
+
+    from app.utils.gov_registry.resolver import resolve_government
+
+    p = urlparse(url)
+    path = p.path + (f"?{p.query}" if p.query else "")
+    assert (
+        resolve_government(name, tenant_host=p.hostname, path=path).gov_id == expected
+    )
+
+
+def test_a_shared_hosts_dominant_government_is_never_borrowed():
+    """The Archive computes the "dominant government" per HOST; on a shared
+    host that is another customer's, so a trusted tenant must ignore it.
+    Real case: an unresolvable ChampDS name, with Atlanta offered as the
+    host's dominant government."""
+    from app.utils.gov_registry.resolver import resolve_government
+
+    match = resolve_government(
+        "ElPaso County Colorado",
+        tenant_host="play.champds.com",
+        path="/elpasococo/event/164",
+        tenant_gov_id="us:place:1304000",  # Atlanta, GA
+    )
+    assert match.gov_id != "us:place:1304000"
+
+
+@pytest.mark.parametrize(
+    "url,owned",
+    [
+        ("https://townhallstreams.com/stream.php?location_id=200&id=900", True),
+        ("https://play.champds.com/elpasococo/event/164", True),
+        (
+            "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047565",
+            False,
+        ),
+        ("https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986", False),
+        ("https://www.youtube.com/watch?v=5LZqoNDRMYk", False),
+    ],
+)
+def test_the_feeders_owner_check_agrees_with_ingest(url, owned):
+    from app.platforms.queue_probe import has_owner
+
+    assert has_owner(url)[0] is owned
+
+
+def test_every_tenant_whose_pins_name_several_governments_is_listed():
+    by_tenant = defaultdict(set)
+    for host, match, gov in _pins_in_scope():
+        key, _ = _pin_tenant(host, match)
+        if key:
+            by_tenant[(host, key)].add(gov)
+    several = {t for t, govs in by_tenant.items() if len(govs) > 1}
+    assert several <= tk.MULTI_GOVERNMENT_TENANTS, several - tk.MULTI_GOVERNMENT_TENANTS

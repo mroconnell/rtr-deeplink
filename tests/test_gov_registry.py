@@ -3553,13 +3553,25 @@ def test_reflect_tst_mn_cablecast_tv_is_a_multi_gov_host():
     id outside that whole confirmed range so it keeps meaning "unpinned"
     regardless.)"""
     assert registry.is_multi_gov_host("reflect-tst-mn.cablecast.tv")
+    # WO-1057: a site is one government's tenant, and Cablecast's adapter
+    # names it from that site's own record, so an unpinned site resolves
+    # like its own website. site=13 is South St. Paul (the station's own
+    # `window.__remixContext`, WO-336) and has no pin.
     unpinned = resolver.resolve_government(
+        "South St. Paul, MN",
+        tenant_host="reflect-tst-mn.cablecast.tv",
+        path="/internetchannel/show/99999?site=13",
+    )
+    assert unpinned.gov_id == "us:place:2761492"  # South St. Paul city, MN
+    # A show URL with no `site=` still cannot be placed (rtr-discovery's
+    # FINDING-23 shape): nothing, not a name guess.
+    keyless = resolver.resolve_government(
         "Mendota Heights, MN",
         tenant_host="reflect-tst-mn.cablecast.tv",
-        path="/internetchannel/show/99999?site=99",
+        path="/internetchannel/show/99999",
     )
-    assert not unpinned.gov_id or unpinned.gov_id.startswith("rtr:unknown:")
-    assert unpinned.tier == resolver.TIER_BLANK
+    assert not keyless.gov_id or keyless.gov_id.startswith("rtr:unknown:")
+    assert keyless.tier == resolver.TIER_BLANK
 
     pinned = resolver.resolve_government(
         None,

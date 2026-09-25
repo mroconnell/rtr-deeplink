@@ -1,5 +1,28 @@
 # Backlog — done
 
+## WO-1057: shared hosts keep one-government tenants' names; five more hosts protected; three bad pins removed [Done 2026-09-25]
+
+**Why.** `MULTI_GOV_HOSTS` did two things on a shared host: it refused a pin covering the whole host, and it refused to trust the adapter's own town name, so only a pin could identify a government. The second part was written for YouTube and Vimeo, where the name comes from an uploader's video title. On a keyed shared host (ChampDS, Castus, Town Hall Streams, ...), the name comes from the vendor's own record for one customer, so a tenant like `play.champds.com#atlantaga` is as trustworthy as that customer's own website. Ryan asked why the five newly found shared hosts shouldn't use the shared-host solution; the answer was that they should, once its second part became tenant-aware. Ryan agreed. One deviation, found while building it: TelVue keeps the old rule, because its adapter's name is a guess from each meeting's title (see below). `test_gov_registry.py`'s Town Square test now uses a real unpinned site (site=13, South St. Paul) in place of site=99 paired with another town's name.
+
+**What changed.**
+
+1. **Rung 1b of `resolver._resolve_government_ladder()`.** On a shared host with no matching pin, the name ladder now runs when the URL carries a tenant key and that tenant is one government's (`resolver.trusts_shared_tenant_name()`, built on `tenant_key.trusted_tenant_key()`). It stays blank for hosts with no key (YouTube, Vimeo), URLs missing their key, tenants in the new `tenant_key.MULTI_GOVERNMENT_TENANTS` (RVTV, CMNtv, Schopeg, C-NET, Derry and Pacifica Coast TV on TelVue; Castus `tbnk`), and all of TelVue (`NAME_FROM_MEETING_TITLE_HOSTS`): telvue.py guesses the town from each meeting's title first, the same untrustworthy source as a YouTube title, and the source of WO-316's Pittsford mis-filing. Every other keyed adapter reads the customer's own record (ChampDS customer name, Town Hall Streams town slug, BoardDocs organization, ClerkBase slug, a Cablecast site, a Sliq/SpectrumStream tenant table, a BoxCast account, an Invintus client's own event categories). The Archive's per-host "dominant government" is not used on that path, because on a shared host it is another customer's. `queue_probe.has_owner()` calls the same function, so the tier-3 feeder's owner check and ingest agree.
+2. **Five hosts added to `MULTI_GOV_HOSTS`:** townhallstreams.com, public.destinyhosted.com, reflect-ccx.cablecast.tv, spectrumstream.com, securestream10.champds.com. None had a whole-host pin.
+3. **Pins (Ryan's decisions, 2026-09-25).** Deleted `player/GdKmpg…` -> Yarmouth, MA. The station is Yarmouth, ME's: Town Council, Merrill Memorial Library and Yarmouth History Center listings. Deleted the whole-station pins RVTV -> Ashland and CMNtv -> Berkley school district. Ashland is 13 of RVTV's 36 recent meetings; with the pin, Jackson County, Grants Pass and RVTD meetings resolved to Ashland. Added `player/Hejq7…/media/595215` -> Berkley school district, the one page WO-318 fixed (confirmed live: "Berkley School Board Meeting - Oct 19, 2020").
+
+**Result.** Resolved all 6,410 pages in the 2026-09-09 archive export on `main` and on this branch:
+
+| Change | Pages |
+|---|---|
+| From unknown to the right government (Fond du Lac WI, University Place WA, Leon County FL) | 3 |
+| From the shared-host unknown bucket to "unresolved" (name kept, no id): 5 ClerkBase councils named without a state, and El Paso's bad name text | 6 |
+| Filed under a different government | 0 |
+| Pages on the five newly listed hosts that changed (18 DestinyHosted, 6 Town Hall Streams, 2 CCX) | 0 |
+
+**Not changed here.** The plain-text pin matching (`site=8` also matches `site=80`, `site=15` matches `site=150`) is still there; the separate "Fix pin matcher" task covers it.
+
+**Tests.** `tests/test_tenant_key.py`: 137 tests on real URLs, including the tenant-aware rule (and TelVue's exception), the owner check, the dominant-government guard, and a check that every tenant whose pins name several governments is in `MULTI_GOVERNMENT_TENANTS`.
+
 ## WO-1056: `tenant_key(url)`, one definition of a shared website's tenant, and a test that keeps the pins consistent with it [Done 2026-09-25]
 
 **Why.** rtr-discovery walks meeting listings per tenant. Ryan decided (2026-09-25, rtr-discovery's SHARED_WEBSITE_TENANTS.md) that on a shared website a tenant is one customer's slice, named by a "tenant key" defined once, here, next to the adapters and pins. The reason is rtr-discovery's FINDING-23: Town Square's pins matched `site=N`, the walker built URLs without `site=`, and nothing noticed.

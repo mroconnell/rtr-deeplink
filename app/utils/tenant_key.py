@@ -34,7 +34,7 @@ path slug is lowercased here; ids that are case-sensitive at the vendor
 """
 
 import re
-from typing import Callable, Dict, FrozenSet, Optional
+from typing import Callable, Dict, FrozenSet, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 # ---------------------------------------------------------------------------
@@ -318,6 +318,74 @@ def tenant_key(url: str) -> Optional[str]:
     if rule is None:
         return ""
     return rule(url)
+
+
+# --- Tenants that carry several governments (WO-1057).
+#
+# On a keyed shared host a tenant is normally ONE customer, so the name its
+# adapter reads from the vendor's own record ("Cobb Co GA", "City of
+# Chandler", a Town Hall Streams town) is as trustworthy as on that
+# customer's own website, and `resolver` lets the name ladder run for it.
+# These tenants are the exception: one customer (a regional station or
+# commission) publishing several governments' meetings, where the name
+# comes from one meeting's title -- and TelVue's adapter falls back to one
+# town per station, which is how RVTV's Jackson County meetings read as
+# "Ashland". For these, only a pin identifies the government.
+#
+# Every entry is real and evidenced; tests/test_tenant_key.py fails if the
+# pins show another tenant naming more than one government that is not
+# listed here.
+MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
+    {
+        # RVTV (Rogue Valley, OR): Jackson County, Ashland, Grants Pass,
+        # Medford, Eagle Point, Ashland School District, RVTD -- playlist
+        # pins, and its own /home listing (checked 2026-09-25).
+        ("videoplayer.telvue.com", "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP"),
+        # CMNtv (Oakland County, MI): Auburn Hills, Berkley, Madison
+        # Heights, Royal Oak, Troy, Rochester, Berkley School District.
+        ("videoplayer.telvue.com", "Hejq7tDUseFZXc46e8pIxdl8NpmSEupd"),
+        # Schopeg (Schoharie County, NY): 8 governments, playlist pins.
+        ("videoplayer.telvue.com", "lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI"),
+        # C-NET (Centre County, PA): Bellefonte borough, Halfmoon Township.
+        ("videoplayer.telvue.com", "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"),
+        # Derry, NH: the town and Derry Cooperative School District.
+        ("videoplayer.telvue.com", "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l"),
+        # Pacifica Coast TV: Pacifica and Half Moon Bay, CA council
+        # meetings (BACKLOG_DONE.md's Half Moon Bay/Pacifica entry).
+        ("videoplayer.telvue.com", "wuZKb9gwEY7sMACIIsr7VSJglB35kNZA"),
+        # Castus "tbnk" (Kentucky regional commission): a dozen-plus cities
+        # (registry.py's MULTI_GOV_HOSTS comment; per-video pins).
+        ("cloud.castus.tv", "tbnk"),
+    }
+)
+
+
+# Keyed shared hosts whose adapter reads the town from each MEETING'S
+# title rather than from the customer's own record, so the name is exactly
+# as untrustworthy as a YouTube title and only a pin identifies. TelVue:
+# telvue.py's `_guess_jurisdiction(title)` runs first, then a per-station
+# table and the station logo; WO-316's Pittsford mis-filing and RVTV's
+# "Ashland" for Jackson County meetings both came from this path.
+NAME_FROM_MEETING_TITLE_HOSTS: FrozenSet[str] = frozenset({"videoplayer.telvue.com"})
+
+
+def trusted_tenant_key(url: str) -> Optional[str]:
+    """The tenant key when `url` is on a keyed shared host, carries its
+    key, and that tenant is ONE government's -- so its adapter's name can
+    be trusted as on a single website. None otherwise: a single-website
+    host (nothing to decide), an out-of-scope host, a URL missing its key,
+    or a tenant in `MULTI_GOVERNMENT_TENANTS`."""
+    host = _host(url)
+    if not host or _rule_for(host) is None:
+        return None
+    if host in NAME_FROM_MEETING_TITLE_HOSTS:
+        return None
+    key = tenant_key(url)
+    if not key:
+        return None
+    if (host, key) in MULTI_GOVERNMENT_TENANTS:
+        return None
+    return key
 
 
 # --- Pins (tenant_overrides.csv rows) and tenant keys.
