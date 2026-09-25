@@ -63,7 +63,7 @@ async def test_resolve_real_university_place_city_council():
     assert result.transcript_warnings == []
 
 
-async def test_resolve_falls_back_to_hls_when_no_direct_download_link():
+async def test_resolve_falls_back_to_hls_when_no_direct_download_link(monkeypatch):
     # Real shape confirmed live is always `downloadLinks.videoDownloadURI`
     # -- this covers the documented `streamingURIs.main` fallback in case
     # a future tenant's event ever omits it.
@@ -72,6 +72,15 @@ async def test_resolve_falls_back_to_hls_when_no_direct_download_link():
     data = json.loads(load_fixture("invintus", "university_place_getDetailed.json"))
     data["data"]["downloadLinks"] = {}
     data["data"]["captionPath"] = None
+
+    # No captionPath but streamingURIs.main is set (used as the fallback
+    # video URL above), so resolve() would otherwise try a real embedded-
+    # captions probe against it -- irrelevant to what this test covers
+    # (the video URL fallback), so it's stubbed out.
+    async def fake_probe(session, stream_url):
+        return False
+
+    monkeypatch.setattr("app.platforms.invintus.probe_embedded_captions", fake_probe)
 
     post_routes = {
         API_URL: FakeResponse(status=200, text=json.dumps(data), url=API_URL),
@@ -89,7 +98,7 @@ async def test_resolve_falls_back_to_hls_when_no_direct_download_link():
     assert result.transcript_warnings == ["No captions found for this video."]
 
 
-async def test_resolve_degrades_when_categories_and_captions_are_null():
+async def test_resolve_degrades_when_categories_and_captions_are_null(monkeypatch):
     # Real shape confirmed live on Des Moines, WA (a historical, now-
     # churned Invintus customer) and Leon County, FL's Tourism
     # Development Council: `categories`/`captionPath` are `null`, not
@@ -100,6 +109,15 @@ async def test_resolve_degrades_when_categories_and_captions_are_null():
     data["data"]["categories"] = None
     data["data"]["captionPath"] = None
     data["data"]["title"] = "City Council, September 17, 2020"
+
+    # captionPath is null but streamingURIs.main is still set on this
+    # fixture, so resolve() would otherwise run a real embedded-captions
+    # probe -- irrelevant to what this test covers (categories/title),
+    # so it's stubbed to the plain "no captions" branch.
+    async def fake_probe(session, stream_url):
+        return False
+
+    monkeypatch.setattr("app.platforms.invintus.probe_embedded_captions", fake_probe)
 
     post_routes = {
         API_URL: FakeResponse(status=200, text=json.dumps(data), url=API_URL),
@@ -155,3 +173,63 @@ def test_is_invintus_meeting_url_requires_both_ids():
         is False
     )
     assert is_invintus_meeting_url("https://example.gov/agendacenter") is False
+
+
+# WO-1065 (2026-09-25): a real event (Oregon Legislature Joint Emergency
+# Board, clientID 4879615486, eventID 2026091029) that has no captionPath
+# at all, but does have a playable HLS stream (streamingURIs.main) --
+# real shape confirmed live, see embedded_captions.py's module docstring
+# and invintus.py's updated caption comment block.
+OREGON_PAGE_URL = "https://player.invintus.com/?clientID=4879615486&eventID=2026091029"
+OREGON_STREAM_URL = (
+    "https://api.v3.invintus.com/StreamURI/hls/4879615486/2026091029/media.m3u8"
+)
+
+
+async def test_resolve_adds_embedded_captions_warning_when_probe_finds_words(
+    monkeypatch,
+):
+    detail_json = load_fixture(
+        "invintus", "getdetailed_oregon_eb_2026091029_embedded.json"
+    )
+
+    async def fake_probe(session, stream_url):
+        assert stream_url == OREGON_STREAM_URL
+        return True
+
+    monkeypatch.setattr("app.platforms.invintus.probe_embedded_captions", fake_probe)
+
+    post_routes = {
+        API_URL: FakeResponse(status=200, text=detail_json, url=API_URL),
+    }
+    with mock_session({}, post_routes=post_routes):
+        result = await InvintusAssetFinder().resolve(OREGON_PAGE_URL)
+
+    assert result.segments == []
+    assert result.transcript_warnings == [
+        "Captions are embedded in this video but aren't text yet. We'll "
+        "add them to this page once they're extracted."
+    ]
+
+
+@pytest.mark.parametrize("probe_result", [False, None])
+async def test_resolve_keeps_no_captions_warning_when_probe_finds_nothing(
+    monkeypatch, probe_result
+):
+    detail_json = load_fixture(
+        "invintus", "getdetailed_oregon_eb_2026091029_embedded.json"
+    )
+
+    async def fake_probe(session, stream_url):
+        return probe_result
+
+    monkeypatch.setattr("app.platforms.invintus.probe_embedded_captions", fake_probe)
+
+    post_routes = {
+        API_URL: FakeResponse(status=200, text=detail_json, url=API_URL),
+    }
+    with mock_session({}, post_routes=post_routes):
+        result = await InvintusAssetFinder().resolve(OREGON_PAGE_URL)
+
+    assert result.segments == []
+    assert result.transcript_warnings == ["No captions found for this video."]

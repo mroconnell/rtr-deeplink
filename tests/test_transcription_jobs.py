@@ -1467,6 +1467,226 @@ async def test_find_auto_transcription_candidate_skips_page_in_cooldown():
         assert await crud._in_auto_transcription_cooldown(session, page.id) is True
 
 
+# --- WO-1065: embedded-captions candidates sort ahead of oldest-first -----
+
+
+async def test_find_auto_transcription_candidate_prefers_embedded_captions_marker():
+    """A page whose resolve said "captions are embedded" comes back ahead of
+    an older page without that note: extraction is cheap and gives the
+    government's own captions. Goes through the real ingest path, which
+    stores the note on an empty default version (WO-1065)."""
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_WARNING
+    from sqlalchemy import select
+
+    def _payload(platform, url, external_id, date, warnings):
+        return {
+            "platform": platform,
+            "source_url": url,
+            "external_id": external_id,
+            "title": "T",
+            "date": date,
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/stream.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": warnings,
+        }
+
+    older_url = "https://example.granicus.com/player/clip/auto-older-plain"
+    await crud.ingest_resolution(
+        _payload("granicus", older_url, "granicus:auto-older-plain", "2026-01-01", []),
+        older_url,
+    )
+    newer_url = "https://player.invintus.com/?clientID=999&eventID=1001"
+    await crud.ingest_resolution(
+        _payload(
+            "invintus",
+            newer_url,
+            "invintus:999:1001",
+            "2026-01-02",
+            [EMBEDDED_CAPTIONS_WARNING],
+        ),
+        newer_url,
+    )
+    newer_slug = (await crud.lookup_page_for_url(newer_url))["slug"]
+    async with async_session() as session:
+        newer_page_gov_id = (
+            (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.slug == newer_slug)
+                )
+            )
+            .scalars()
+            .first()
+            .gov_id
+        )
+
+    candidate = await crud.find_auto_transcription_candidate()
+    assert candidate is not None
+    assert candidate["slug"] == newer_slug
+    assert candidate["gov_id"] == newer_page_gov_id
+
+
+async def _default_version_for(url):
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+    from sqlalchemy import select
+
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    async with async_session() as session:
+        page_id = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+        return (
+            (
+                await session.execute(
+                    select(TranscriptVersion).where(
+                        TranscriptVersion.meeting_page_id == page_id,
+                        TranscriptVersion.is_default.is_(True),
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+
+def _invintus_payload(url, segments, warnings, language=None):
+    return {
+        "platform": "invintus",
+        "source_url": url,
+        "external_id": "invintus:999:" + url.rsplit("=", 1)[1],
+        "title": "T",
+        "date": "2026-01-04",
+        "jurisdiction": "City of Test",
+        "video_url": "https://example.com/stream.m3u8",
+        "video_format": "m3u8",
+        "segments": segments,
+        "agenda_items": [],
+        "transcript_language": language,
+        "transcript_warnings": warnings,
+    }
+
+
+async def test_embedded_captions_note_never_touches_a_real_transcript():
+    from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_WARNING
+
+    url = "https://player.invintus.com/?clientID=999&eventID=3003"
+    segments = [{"start": 0.0, "end": 2.0, "text": "Call to order."}]
+    await crud.ingest_resolution(_invintus_payload(url, segments, [], "en"), url)
+    await crud.ingest_resolution(
+        _invintus_payload(url, [], [EMBEDDED_CAPTIONS_WARNING]), url
+    )
+    default = await _default_version_for(url)
+    assert default.segments == segments
+    assert not default.transcript_warnings
+
+
+async def test_extracted_captions_replace_the_empty_note_version():
+    from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_WARNING
+
+    url = "https://player.invintus.com/?clientID=999&eventID=3004"
+    await crud.ingest_resolution(
+        _invintus_payload(url, [], [EMBEDDED_CAPTIONS_WARNING]), url
+    )
+    # A second identical push must not add the note twice.
+    await crud.ingest_resolution(
+        _invintus_payload(url, [], [EMBEDDED_CAPTIONS_WARNING]), url
+    )
+    default = await _default_version_for(url)
+    assert default.segments == []
+    assert default.transcript_warnings == [EMBEDDED_CAPTIONS_WARNING]
+
+    segments = [{"start": 0.0, "end": 2.0, "text": "Call to order."}]
+    await crud.ingest_resolution(
+        {**_invintus_payload(url, segments, [], "en"), "source": "sourced"}, url
+    )
+    default = await _default_version_for(url)
+    assert default.segments == segments
+    candidate = await crud.find_auto_transcription_candidate()
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    assert candidate is None or candidate["slug"] != slug
+
+
+async def test_find_auto_transcription_candidate_skips_embedded_captions_page_in_cooldown():
+    """The marker-preference ordering must not bypass the ordinary
+    cooldown filter -- a marker-carrying page that recently failed
+    auto-transcription is skipped exactly like any other candidate."""
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+    from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_WARNING
+    from sqlalchemy import select
+
+    url = "https://player.invintus.com/?clientID=999&eventID=2002"
+    await crud.ingest_resolution(
+        {
+            "platform": "invintus",
+            "source_url": url,
+            "external_id": "invintus:999:2002",
+            "title": "T",
+            "date": "2026-01-03",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/stream.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        session.add(
+            TranscriptVersion(
+                meeting_page_id=page.id,
+                language=None,
+                source="sourced",
+                is_default=True,
+                segments=[],
+                transcript_warnings=[EMBEDDED_CAPTIONS_WARNING],
+                content_hash=crud._EMPTY_CONTENT_HASH,
+            )
+        )
+        await session.commit()
+
+    job = await crud.create_transcription_job(
+        payload=_payload("invintus:999:2002", url),
+        input_url_normalized=url,
+        requester_email="auto@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+        priority=crud.PRIORITY_LOW,
+    )
+    for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        assert claim["job_id"] == job["job_id"]
+        await crud.report_chunk_result(
+            job["job_id"], success=False, error="simulated failure"
+        )
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "failed"
+
+    candidate = await crud.find_auto_transcription_candidate()
+    assert candidate is None or candidate["slug"] != slug
+
+
 async def test_create_failed_auto_transcription_job_is_immediately_failed():
     url = "https://example.granicus.com/player/clip/auto-fail-direct"
     await crud.ingest_resolution(

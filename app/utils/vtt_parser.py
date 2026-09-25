@@ -338,7 +338,16 @@ def parse_captions_by_extension(url: str, content: str):
     return None, None
 
 
-_TAG_RE = re.compile(r"<[^>]+>")
+# Matches both an HTML/WebVTT-style tag (<font>, <v.Male.spk3>, ...) and an
+# ASS/SSA override block ("{\an7}", "{\pos(10,20)}", ...) -- ffmpeg's `subcc`
+# SRT output (production's real source for Invintus/CEA-608 captions, see
+# the roll-up shape-5 note below) writes an alignment override tag at the
+# start of every cue's text. Left unstripped, it silently prefixes whatever
+# word follows ("{\an7}order") and breaks the roll-up merge's word-level
+# overlap match against the same word appearing untagged in an earlier cue
+# -- confirmed live on the real Oregon Legislature and CVTV/Port of
+# Vancouver fixtures below, where every cue after the first carries the tag.
+_TAG_RE = re.compile(r"<[^>]+>|\{\\[^{}]*\}")
 
 # --- Roll-up ("scrolling ticker") caption reconstruction -------------------
 #
@@ -441,6 +450,32 @@ def _rollup_lines(cues: List[Dict[str, Any]]) -> List[tuple]:
         parts = [part.strip() for part in text.split("\n") if part.strip()]
         for index, part in enumerate(parts):
             out.append((cue, part, index == len(parts) - 1))
+    return out
+
+
+def _rollup_cue_units(cues: List[Dict[str, Any]]) -> List[tuple]:
+    """(cue, all-lines-joined, True) once per non-blank cue, tags stripped.
+
+    A companion to _rollup_lines() for the one real shape (Invintus/CEA-608,
+    Oregon Legislature Joint Emergency Board 2026-09-10) whose window is
+    three lines deep rather than two -- see dedupe_rollup_cues's docstring,
+    shape 5. There, a cue's own lines are consecutive speech (no repeat
+    between them), and the repeat is three lines back rather than one, so
+    _rollup_lines()'s line-by-line comparison scores every adjacent pair as
+    "different speech" and _looks_like_rollup() returns False. Joining each
+    cue's lines into one unit before comparing puts the repeat back at
+    "the previous unit" the same way the two-line shapes already have it,
+    without changing anything about how the two-line shapes themselves are
+    detected or merged -- this is only tried when the line-level check
+    already failed (see dedupe_rollup_cues below).
+    """
+    out = []
+    for cue in cues:
+        text = _TAG_RE.sub("", cue.get("text", ""))
+        parts = [part.strip() for part in text.split("\n") if part.strip()]
+        if not parts:
+            continue
+        out.append((cue, " ".join(parts), True))
     return out
 
 
@@ -552,9 +587,45 @@ def dedupe_rollup_cues(cues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
               COUNCIL
            COUNCIL MEETING TO ORDER.
 
+    5. Invintus/CEA-608 (real Oregon Legislature Joint Emergency Board
+       2026-09-10, embedded Invintus player, 484 cues in a 15-minute
+       excerpt -- confirmed live 2026-09-25) is a *three*-line-deep window,
+       not two: each cue repeats the previous cue's last two lines and adds
+       one new one (the first couple of cues grow 1 -> 2 -> 3 lines before
+       the window is full):
+
+           >> There We're on the air. All
+           >> There We're on the air. All
+           right. Good morning. Everyone
+           >> There We're on the air. All
+           right. Good morning. Everyone
+           will call the meeting to
+           right. Good morning. Everyone
+           will call the meeting to
+           order. For the emergency board
+
+       This defeats _looks_like_rollup()'s line-by-line comparison: adjacent
+       lines are always different speech here (the repeat is three lines
+       back), so the line-level ratio measures 0.0 on this fixture, and the
+       whole meeting came out with every line tripled (full meeting: 47,365
+       words vs ~15,795 real).
+       _rollup_cue_units() -- tried only once the line-level check has
+       already said "not roll-up" -- joins each cue's own lines into one
+       unit first, which puts the repeat back where the existing scoring
+       and merge logic already know how to find it, at cue-level rather
+       than line-level, without changing detection for shapes 1-4 at all.
+       The production feed for this vendor is ffmpeg's `subcc` SRT output,
+       which also writes an ASS/SSA alignment override ("{\an7}") at the
+       start of every cue's text -- left unstripped, it silently prefixes
+       whichever word follows ("{\an7}order") and breaks the word-overlap
+       match against the same word appearing untagged elsewhere; _TAG_RE
+       strips it now, the same way it already strips HTML/WebVTT tags.
+
     Real measured effect: Tacoma 21,240 cues -> 1,168 segments (859KB of
     duplicated cue text down to 100KB); Antioch 275KB -> 135KB; Essex 298KB ->
-    216KB; Philadelphia 242KB -> 230KB. Viebit's NYC Council track is
+    216KB; Philadelphia 242KB -> 230KB; Oregon Legislature's 15-minute excerpt
+    484 cues -> 77 segments, 2,039 words against ccextractor's -noru ground
+    truth of 2,047 (0.4% low, ratio 0.98). Viebit's NYC Council track is
     byte-for-byte unchanged from the previous implementation.
 
     Non-roll-up tracks are returned unchanged (tags stripped) rather than
@@ -566,14 +637,26 @@ def dedupe_rollup_cues(cues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return []
 
     if not _looks_like_rollup(lines):
-        return [
-            {
-                "start": cue["start"],
-                "end": cue["end"],
-                "text": _TAG_RE.sub("", cue["text"]),
-            }
-            for cue in cues
-        ]
+        # Line-level comparison missed it -- try the cue-level unit instead
+        # (shape 5, a three-line-deep window where the repeat is three
+        # lines back, not one -- see _rollup_cue_units's docstring). Only
+        # reached when the line-level check already said "not roll-up", so
+        # this can't turn an ordinary multi-line track (the negative
+        # control any of the four shapes above already had to survive) into
+        # a false positive on its own -- it still has to clear the same
+        # _ROLLUP_PAIR_RATIO_MIN gate.
+        cue_units = _rollup_cue_units(cues)
+        if _looks_like_rollup(cue_units):
+            lines = cue_units
+        else:
+            return [
+                {
+                    "start": cue["start"],
+                    "end": cue["end"],
+                    "text": _TAG_RE.sub("", cue["text"]),
+                }
+                for cue in cues
+            ]
 
     result: List[Dict[str, Any]] = []
     open_segment: Optional[Dict[str, Any]] = None

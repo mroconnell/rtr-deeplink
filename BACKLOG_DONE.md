@@ -1,5 +1,56 @@
 # Backlog — done
 
+## WO-1065: Invintus captions carried inside the video are read and stored [Done 2026-09-25]
+
+**Why this ran.** Invintus delivers captions two ways. The resolver read only the first, a caption file named in `captionPath`. The second kind sits inside the video stream itself (CEA-608 captions, the broadcast TV kind), with no caption file anywhere. Those meetings showed "No captions found" even though the player shows captions.
+
+**Step 1: is there an easier source?** No. With the Oregon Joint Emergency Board meeting (4879615486/2026091029) playing, the player made one request the resolver doesn't already make, and it lists documents only. The event record's `transcripts` and `liveCaptions` fields are empty. The stream playlist declares no caption track. The player reads the captions from the video.
+
+**Step 2: do real words come out?** One 6-second piece about 10 minutes in, from the smallest (160p) version of each video:
+
+| Meeting | Caption markers | Real words came out |
+|---|---|---|
+| Oregon /029; CVTV /013, /017, /018; Pierce County Council /030 | Yes | Yes (all 5) |
+| DuPont /009, Sumner /003 (already have a caption file) | No | Not needed |
+| Oregon /050; WisconsinEye /067, /052, /054 | No | No |
+
+The three meetings first listed as "markers only" do have words. Every piece with markers had exactly 180 of them, one per frame, speech or not. So markers prove nothing. Only extracted words count.
+
+**Cost of a whole meeting** (Oregon /029, 1 hr 52 min, one request at a time, no 403 or 429):
+
+| Measure | Result |
+|---|---|
+| Downloaded | 391 MB (about 210 MB per hour) |
+| Download time | 42 s to 4 min, depending on the connection |
+| Reading the captions with ffmpeg | 14 s |
+| For comparison: the audio file a Whisper run uses | 80 MB |
+
+That is too slow for a page request. Ryan chose the background worker (2026-09-25).
+
+**Step 3: a fifth roll-up shape.** The captions scroll. CVTV and Pierce County show 2 lines at a time, which `dedupe_rollup_cues()` already handled. Oregon shows 3 lines at a time: each caption repeats the previous caption's last two lines and adds one. The detector compared each line only with the line before it, so it scored the track "not roll-up" and every line came out three times (47,365 words, about 15,795 real). The fix compares whole captions when the line check fails.
+
+| Full meeting, after the fix | Words | Back-to-back repeated segments |
+|---|---|---|
+| Oregon /029 (3 lines) | 15,793 (ccextractor's one-line-each output: 15,795) | 0 |
+| CVTV /018 (2 lines) | 2,225 (unchanged) | 0 |
+| Pierce County Council /030 (2 lines) | 15,294 | 0 |
+
+Caption times sit 6 to 9 seconds after each chapter marker in the event record. That is the normal live-captioner delay, the same throughout, so the timeline is not shifted.
+
+**What was built:**
+
+1. `app/platforms/embedded_captions.py` (new). The probe reads up to 3 pieces, at 25%, 50% and 75% through the meeting, and stops at the first one with words (Ryan's rule: one piece can land in silence). Extraction reads every piece one at a time and runs ffmpeg's caption reader over the whole file. It uses an honest User-Agent and stops on 403 or 429. A failed download is an error, never "no captions".
+2. `app/platforms/invintus.py`: when `captionPath` is empty, `resolve()` runs the probe. If words come out, the page says "Captions are embedded in this video but aren't text yet. We'll add them to this page once they're extracted." instead of "No captions found for this video." The probe takes under a second.
+3. `app/utils/vtt_parser.py`: the whole-caption roll-up check (shape 5), and stripping of ffmpeg's `{\an7}` position tags.
+4. `archive/db/crud.py`: an ingest with no segments normally stores no transcript record, so the note would be lost. It is now stored on an empty default version, the way `record_youtube_video_status()` stores its notes. It never touches a page that already has captions. `find_auto_transcription_candidate()` puts pages with the note first.
+5. `worker/main.py`: when a re-resolve carries the note, the worker extracts the captions and stores them as `source="sourced"` (the government's own captions, not our AI transcript), with the page's own `gov_id`. On an error it records a failed attempt, so the normal cooldown applies. If the whole stream gives no words, it falls through to an ordinary Whisper job.
+
+**Tests.** Real fixtures in `tests/fixtures/invintus/`: two real video pieces (one with captions, one without), the real master playlist, the real event record, and real ffmpeg and ccextractor output. CI has no ffmpeg, so the two tests that run real ffmpeg skip there, and every other test mocks it. `tests/conftest.py` stubs the probe suite-wide, so no test reaches the network.
+
+**Caution.** Pages ingested before this deploy still say "No captions found". They pick up the note only when re-resolved. See `BACKLOG.md`'s entry "Existing Invintus pages".
+
+**Docs updated:** `README.md` (Supported platforms had no Invintus row; added).
+
 ## WO-1064: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
 
 **What was found.** Asked to resolve and merge #1421, an automated "advance the tier-3 queue" PR. All 12 of its rejections were YouTube answering "Sign in to confirm you're not a bot" to the GitHub runner, not dead meetings. The feed log showed the same across four days:

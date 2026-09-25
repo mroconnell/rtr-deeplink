@@ -116,6 +116,22 @@ def _no_real_audio_rendition_lookup(monkeypatch):
     monkeypatch.setattr(media_probe, "single_file_audio_rendition_url", _none)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_embedded_caption_probe(monkeypatch):
+    """Keeps WO-1065's embedded-caption probe from making real network
+    calls. Invintus resolve() runs it whenever an event has a stream but no
+    `captionPath`, which most real Invintus fixtures do. None ("couldn't
+    decide") keeps the old "No captions found" warning. Tests that need a
+    probe answer patch this attribute themselves; tests/test_embedded_captions.py
+    tests the real function from its own module."""
+    from app.platforms import invintus
+
+    async def _none(session, master_url):
+        return None
+
+    monkeypatch.setattr(invintus, "probe_embedded_captions", _none)
+
+
 def load_fixture(*parts: str) -> str:
     """Read a text fixture file relative to tests/fixtures/."""
     return (FIXTURES_DIR.joinpath(*parts)).read_text(encoding="utf-8")

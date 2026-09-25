@@ -49,6 +49,15 @@ from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
+# WO-1065: the substring app/platforms/embedded_captions.py's resolve-time
+# probe writes into transcript_warnings when a video has real captions
+# baked into its own stream (CEA-608) that haven't been extracted yet.
+# Only the constant is imported here -- extract_embedded_captions() itself
+# (ffmpeg/aiohttp work) is never called from archive/, only duck-typed and
+# invoked by worker/main.py, so importing this name doesn't pull any heavy
+# per-request work into the Archive process.
+from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_MARKER
+
 from ..utils.date_status import (
     iso_meeting_date,
     meeting_date_html,
@@ -327,6 +336,29 @@ def _youtube_permanent_transcript_failure_exists():
                 for marker in _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
             ]
         ),
+    )
+
+
+def _embedded_captions_marker_exists():
+    """SQL `EXISTS` for "this MeetingPage's default TranscriptVersion
+    carries the EMBEDDED_CAPTIONS_MARKER warning" -- used only by
+    find_auto_transcription_candidate() (WO-1065, 2026-09-25) to order
+    such a page ahead of the ordinary oldest-first queue. NOT a quality
+    marker like _GARBLED_MARKER/_HALLUCINATION_MARKER/_TRUNCATION_MARKERS
+    above -- a page with this marker has NO segments yet (the probe found
+    real caption words but nothing has extracted them into text), so it
+    already fails _good_default_transcript_exists() on its own and is
+    already a candidate; this only changes the ORDER candidates are tried
+    in, never whether one is eligible. Extraction is comparatively cheap
+    (no Whisper model run, just ffmpeg reading a track that's already
+    there) and the captions are the government's own real words, so
+    trying these first is strictly better than picking an arbitrary older
+    page and running a multi-minute transcription job on it instead."""
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    return exists().where(
+        TranscriptVersion.meeting_page_id == MeetingPage.id,
+        TranscriptVersion.is_default.is_(True),
+        warnings_text.like(f"%{EMBEDDED_CAPTIONS_MARKER}%"),
     )
 
 
@@ -1566,6 +1598,44 @@ async def _refresh_meeting_highlight(session, page: MeetingPage, all_segments) -
         logger.exception("highlight write failed for page id=%s", page.id)
 
 
+async def _record_embedded_captions_note(session, page_id: int, note: str) -> None:
+    """WO-1065: keep the "captions are embedded" note on a page that has no
+    caption text yet. Creates an empty default version to carry it (as
+    record_youtube_video_status() does) or adds it to an empty default.
+    Never touches a default that has segments."""
+    default_version = (
+        (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if default_version is None:
+        session.add(
+            TranscriptVersion(
+                meeting_page_id=page_id,
+                language=None,
+                source="sourced",
+                is_default=True,
+                segments=[],
+                transcript_warnings=[note],
+                content_hash=_EMPTY_CONTENT_HASH,
+            )
+        )
+        await session.flush()
+        return
+    if default_version.segments:
+        return
+    existing = default_version.transcript_warnings or []
+    if not any(EMBEDDED_CAPTIONS_MARKER in w for w in existing):
+        default_version.transcript_warnings = [*existing, note]
+
+
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
     """Create a MeetingPage (or attach a new TranscriptVersion to an
     existing one) from a resolver push. `payload` is the resolver's
@@ -1759,6 +1829,23 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default, agenda_items
             ):
                 current_default.is_default = False
+
+        # WO-1065: a push with no segments normally stores no version, so
+        # its warnings are lost. The "captions are embedded" note must
+        # survive: find_auto_transcription_candidate() puts those pages
+        # first. Stored the same way record_youtube_video_status() stores
+        # its notes, and only on a default that has no segments.
+        if not segments:
+            embedded_note = next(
+                (
+                    w
+                    for w in payload.get("transcript_warnings") or []
+                    if EMBEDDED_CAPTIONS_MARKER in w
+                ),
+                None,
+            )
+            if embedded_note:
+                await _record_embedded_captions_note(session, page.id, embedded_note)
 
         # Recomputed unconditionally on every ingest, not just when a new
         # version is created -- cheap (one extra indexed SELECT), and
@@ -9993,8 +10080,22 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     worker would burn a re-resolve (a real yt-dlp call from Render, the
     exact server IP YouTube blocks) and a full cooldown cycle on a page a
     real metadata check already confirmed can't be fixed that way.
+
+    WO-1065: a page whose default TranscriptVersion already carries
+    EMBEDDED_CAPTIONS_MARKER (a cheap resolve-time probe already found
+    real government captions baked into the video, just not extracted
+    yet) sorts ahead of the plain oldest-first order via
+    `_embedded_captions_marker_exists()` -- still subject to the same
+    cooldown/other filters as any other candidate, just tried first when
+    eligible. `gov_id` is returned alongside the rest so
+    maybe_generate_auto_job() can pin it on its ingest_resolution() call
+    per CLAUDE.md's "send gov_id in every ingest payload" rule -- this is
+    always the SAME page ingest_resolution() will match anyway (the
+    candidate row's own id), so it can never trigger a GovernmentMismatch;
+    it just avoids a passive re-resolve silently re-deriving identity.
     """
     async with async_session() as session:
+        has_embedded_marker = _embedded_captions_marker_exists()
         candidates = (
             await session.execute(
                 select(
@@ -10002,12 +10103,17 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
                     MeetingPage.slug,
                     MeetingPage.source_url_normalized,
                     MeetingPage.platform,
+                    MeetingPage.gov_id,
+                    has_embedded_marker.label("has_embedded_marker"),
                 )
                 .where(
                     ~_good_default_transcript_exists(),
                     ~_youtube_permanent_transcript_failure_exists(),
                 )
-                .order_by(MeetingPage.created_at.asc())
+                .order_by(
+                    has_embedded_marker.desc(),
+                    MeetingPage.created_at.asc(),
+                )
             )
         ).all()
         if not candidates:
@@ -10029,7 +10135,7 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
         jobs_by_page.setdefault(page_id, []).append((status, updated_at))
 
     now = datetime.now(timezone.utc)
-    for page_id, slug, source_url, platform in candidates:
+    for page_id, slug, source_url, platform, gov_id, _has_embedded_marker in candidates:
         if _cooldown_active(jobs_by_page.get(page_id, []), now):
             continue
         return {
@@ -10037,6 +10143,7 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
             "slug": slug,
             "source_url": source_url,
             "platform": platform,
+            "gov_id": gov_id,
         }
     return None
 
