@@ -66,6 +66,46 @@ def test_a_404_is_not_mistaken_for_a_429():
     assert looks_rate_limited("processed 14290 segments") is False
 
 
+# Real false positive (rtr-discovery full resolve, 2026-09-25): a plain
+# 404 whose URL carried video id 429 aborted the whole run after 6
+# minutes. There was no real 403, 429 or challenge page.
+_DAYTON_404 = (
+    "HTTP Error 404: Not Found "
+    "https://cityofdaytontx.granicus.com/MediaPlayer.php?clip_id=429&view_id=1"
+)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        _DAYTON_404,
+        "https://cityofdaytontx.granicus.com/MediaPlayer.php?clip_id=429&view_id=1",
+        # Same id with no scheme, and as a path segment.
+        "fetch failed for cityofdaytontx.granicus.com/MediaPlayer.php?clip_id=429",
+        "404 on /player/clip/429/",
+        # A URL mentioning rate limits is still only a URL.
+        "HTTP Error 404: Not Found https://example.gov/docs/rate-limit",
+    ],
+)
+def test_a_429_inside_a_url_is_not_a_refusal(message):
+    assert looks_rate_limited(message) is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # The 2026-08-22 string, now with the URL that failed attached.
+        "HTTP Error 429: Too Many Requests https://www.youtube.com/watch?v=abc",
+        "status 429 for https://cityofdaytontx.granicus.com/MediaPlayer.php?clip_id=7",
+        "got 429 from https://example.gov/api",
+        "429: blocked",
+        "server said 429.",
+    ],
+)
+def test_a_real_429_next_to_a_url_still_counts(message):
+    assert looks_rate_limited(message) is True
+
+
 # --- the breaker -------------------------------------------------------
 
 
