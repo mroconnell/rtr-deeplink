@@ -26,3 +26,9 @@ so far (see `BACKLOG.md`'s entry this WO closes, and
   coherent dialogue (not garbled/placeholder text) -- see the module
   docstring's "only ONE real example is confirmed so far" note for what
   this one positive example does and doesn't establish.
+- `snyder_civicmedia_vid133.html` -- `https://snydertx.gov/CivicMedia?
+  VID=133`, fetched live 2026-09-25 (WO-1069), `<script>`/`<style>`/
+  comments stripped. Kept because its site name, "City of Snyder", is the
+  one CivicMedia tenant in the Archive whose site name carries no state;
+  the state comes from the ZIP in the page's own footer address, so the
+  body has to stay.
