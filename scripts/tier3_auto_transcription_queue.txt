@@ -125,7 +125,6 @@ https://nscsd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?I
 https://olemissk12.diligent.community/Portal/MeetingInformation.aspx?Id=148		us:sd:1806870
 https://youtu.be/r977bdgqmC4?si=ySWeg70JnYsCS7KY		us:sd:2505130
 https://klamath-falls.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=253		us:place:4139700
-https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
 https://wcs-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=713		us:sd:5103900
 https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=946		us:sd:3904467
 https://greenwich-schools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=543		us:sd:0901710
@@ -155,7 +154,6 @@ https://oceansideschools.community.diligentoneplatform.com/Portal/MeetingInforma
 https://www.youtube.com/watch?v=rv9EcaATvgY&list=PLNM1bWmAVpoXCmRq84JIgnG84VBR9neCF&index=1	https://hudsonwi.gov/list.aspx?Mode=Subscribe#calendar	us:place:5536250
 https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=2002	https://niagarafalls.civicweb.net	us:place:3651055
 https://www.youtube.com/watch?v=em1HM4Ft4FU	https://hopewellboroughnj.gov/	us:place:3433150
-https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
 https://garrettcountyschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=314	https://garrettcountyschools.org/	us:sd:2400360
 https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1231	https://events.leeds1000islands.ca/	ca:csd:3507021
 https://youtu.be/baOM15QBojM	https://miamitownship.com/	us:cousub:3911349392
@@ -537,7 +535,6 @@ https://www.youtube.com/watch?v=egCrex1uB6A	https://www.volusia.org/government/c
 https://www.youtube.com/watch?v=_KUopZ-jajE	https://co.umatilla.or.us/departments/board-of-commissioners/agendas-minutes-videos
 https://www.youtube.com/watch?v=P3ewYzEdQA0	https://www.in.gov/counties/grant/
 https://www.youtube.com/watch?v=utKFTIrxl2U	https://www.chesterfieldcountysc.com/agendas-minutes
-https://www.youtube.com/watch?v=UC1UQVyMyybLHYJrI_Ms7pgA	https://knoxcounty.in.gov
 https://www.youtube.com/watch?v=EbcZURj13AY	https://www.houstoncountytn.gov/legislative-body-meetings
 https://www.youtube.com/watch?v=HY4Sr4X7_9Y	https://vigocounty.in.gov/meetings/
 https://www.youtube.com/watch?v=4kFzDylX1vQ	https://www.spartanburgcounty.gov
@@ -603,7 +600,6 @@ https://www.youtube.com/watch?v=hvt6RilOxOQ	https://lincolncountync.gov
 https://www.youtube.com/embed/ck76bzlEgIU?si=hJuBcYQ3IYkrdUZa	https://polkcountymn.gov
 https://www.youtube.com/live/IEZoIxA87S8	https://www.sussex.nj.us
 https://www.youtube.com/live/3zw9XsBgKhs?si=ZMzDm_rC8dsGWXpC	https://cumberlandcounty.virginia.gov
-https://www.youtube.com/watch?v=PLHelQFD49yC0pEwIoNeti336MKWKm46Wk	https://fayettecountyga.gov/government/boards_commissions/board_of_elections/index.php
 https://www.youtube.com/watch?v=opShAXxbREg	https://www.botetourtva.gov/765/Live-Stream
 https://www.youtube.com/watch?v=LcqnaTUQ4FY	https://franklincountyva.gov
 https://www.youtube.com/watch?v=ekoJyObfmH4	https://leelanau.gov/leelanau_county/board_of_commissioners/agendas_and_minutes_2025.php
@@ -949,11 +945,6 @@ https://www.youtube.com/watch?v=un1QQ7xI4dY
 https://www.youtube.com/watch?v=dKSIrbDom3M
 https://www.youtube.com/watch?v=4IE3MWqjGno
 https://youtu.be/I_CWisOvcFs
-https://vimeo.com/421632159
-https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false
-https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://boxcast.tv/channel/aetaajdf64jalxx20o9a	https://boxcast.tv/channel/aetaajdf64jalxx20o9a
-https://vimeo.com/697711522/afbcc0c15d
 https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155
 https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543
 https://clearfieldcity.primegov.com/Portal/Meeting?meetingTemplateId=2297
@@ -963,9 +954,6 @@ https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022
 https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201
 https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947
 https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239
-https://acpl.viebit.com/watch?hash=dfa24Xn5iWIGttXu
-https://biglake.viebit.com/watch?hash=8pmVSgvoh2IovoNc
-https://briarclifftv.viebit.com/watch?hash=qZINPSng8G8l29Kd
 https://buffalo.viebit.com/watch?hash=11TLAPa5nJChjObE
 https://chelseami.viebit.com/watch?hash=765Pp1qyLBy0r47o
 https://cokato.viebit.com/watch?hash=LBnEjAiaDS01iSzO
@@ -1319,3 +1307,6 @@ https://trms.northmetrotv.com/internetchannel/show/34106		us:place:2726738
 https://reflect-campbellcounty.cablecast.tv/internetchannel/show/61005		us:place:2136604
 https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065
 https://codington.sdcounty.gov/wp-content/uploads/2017/06/20170627-CCJAC-64kbps.mp3		us:county:46029
+https://vimeo.com/560189851	https://vimeo.com/channels/1570654
+https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
+https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
