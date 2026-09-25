@@ -17,9 +17,11 @@
      globals: public_base_url, generic_card_image_url, generic_card_image_alt
 -#}
 {% extends "base.html" %}
-{% block title %}Full Context — Red Tape Recordings{% endblock %}
+{% set _seo_title = "Public Meeting Clips in Full Context | Red Tape Recordings" %}
+{% set _description = "See the full public meeting behind a social media clip. Watch the original recording at the linked timestamp and read what came before and after." %}
+{% block title %}{{ _seo_title }}{% endblock %}
 {% block meta %}
-  <meta name="description" content="Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.">
+  <meta name="description" content="{{ _description }}">
   <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — Full Context" href="/context/feed.xml">
   {#- page 1 is real navigable content; page 2+ is the same posture as
      /meetings' pagination -- a near-duplicate listing page, not worth a
@@ -32,8 +34,8 @@
   <link rel="canonical" href="{{ public_base_url }}/context">
   <meta property="og:url" content="{{ public_base_url }}/context">
   {% endif %}
-  <meta property="og:title" content="Full Context | Red Tape Recordings">
-  <meta property="og:description" content="Clips of public government meetings that travel on social media, linked back to the full recording at the moment they show.">
+  <meta property="og:title" content="{{ _seo_title }}">
+  <meta property="og:description" content="{{ _description }}">
   <meta property="og:type" content="website">
   {#- No meeting of its own -- this page describes the whole feed, not
      one clip -- so it uses the same shared placeholder every other
@@ -45,6 +47,35 @@
   <meta name="twitter:card" content="{{ 'summary_large_image' if generic_card_image_url else 'summary' }}">
   {% if generic_card_image_url %}
   <meta name="twitter:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
+{% endblock %}
+{% block head_extra %}
+  {# Describe only the visible, indexable first-page collection. JSON encoding
+     keeps editor-authored headlines safe inside the script element. #}
+  {% if public_base_url and indexable and page == 1 and entries %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": {{ (public_base_url ~ '/context#collection')|tojson }},
+    "url": {{ (public_base_url ~ '/context')|tojson }},
+    "name": {{ _seo_title|tojson }},
+    "description": {{ _description|tojson }},
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": [
+        {% for entry in entries %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "name": {{ (entry.headline or entry.title or 'Full Context')|tojson }},
+          "url": {{ (public_base_url ~ entry.permalink)|tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  }
+  </script>
   {% endif %}
 {% endblock %}
 {% block content %}

@@ -2191,6 +2191,10 @@ rename happens.
 at least `CONTEXT_MIN_INDEXABLE` (5) published entries — the same
 thin-page reasoning as the `/state/*`/`/j/*` hub pages (see
 `STATE_HUB_PAGES.md`). Pages after the first are always `noindex`.
+The feed uses a descriptive public-meeting-clips title and description.
+Its indexable first page includes `CollectionPage` / `ItemList` JSON-LD
+with the visible entries in display order, linking to their canonical
+permalinks. This describes the collection without claiming a rich result.
 
 **Permalink pages (`/context/{id}` or `/context/{id}-{slug}`, WO-945
 follow-up, slugged and given real SEO substance in WO-946).** The feed's
