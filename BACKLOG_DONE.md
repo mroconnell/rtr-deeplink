@@ -23,6 +23,41 @@
 
 **Tests.** `tests/test_tenant_key.py`: 137 tests on real URLs, including the tenant-aware rule (and TelVue's exception), the owner check, the dominant-government guard, and a check that every tenant whose pins name several governments is in `MULTI_GOVERNMENT_TENANTS`.
 
+## WO-1058: shared-hub filter only on shared hubs, keep a lead when it rejects, wider hand-check leads, other-government lead matching [Done 2026-09-25]
+
+**Why.** Calibration run D found a bug in WO-1054's "this government only" filter: it ran on EVERY government's account, not just a confirmed shared hub. On a government's own Granicus/eScribe/CivicClerk/Town Hall Streams account, ordinary committee names ("Zoning Board", "Public Safety Committee") share no word with the government's own name, so ALL of that government's real candidates were rejected as if they belonged to another government. 80 governments hit this in run D.
+
+**Root cause.** `pick.py`'s third place-name pattern matches ANY title-case phrase right before a governing-body word ("Council", "Board", "Committee"...), not just a real place name — "Zoning Board" and "Public Safety Committee" match it exactly like "Cohasset City Council" does. It was running on every account, hub or not.
+
+**The fix.** Three changes, all in `app/platforms/meeting_finder/`:
+
+1. The weak pattern now only runs when the account is a confirmed shared hub — `listing.is_known_shared_hub()`, checked against `app/utils/jurisdiction_data/regional_tv_hubs.csv` (WO-1053). An ordinary account still drops a candidate that STRONGLY names a different place (an explicit place-type word, "Borough of Bellefonte", "Cohasset City Council") — that's still checked everywhere, hub or not.
+2. Fixing this exposed two smaller bugs the weak pattern's always-on behavior had been masking: `_PLACE_PHRASE_PATTERNS[0]` ("Borough of X"/"City of X") was case-sensitive on a lowercase-only alternation, so it never matched a real (capitalized) title at all; and `_place_core()` stripped a type word from ANYWHERE in a phrase, not just the end, which collapsed "State College" down to bare "college" — the exact collision `test_filter_does_not_confuse_college_township_with_state_college()` exists to catch. Both fixed so the College Township/Bellefonte and Nashwauk/Cohasset hub cases stay caught by the strong patterns alone.
+3. **Keep at least one** (Ryan's rule): when the filter would reject every candidate, the best rejected one is kept as a labelled lead instead of an empty result — `listing._apply_gov_filter()` marks it (`Candidate.foreign_gov_hint`), and `runner._try_resolve()` forces it into the same low-confidence "kept despite" bucket every other fallback uses (ranked last, so a genuine same-government find always wins), never letting it become a clean same-government find however cleanly it resolves.
+4. **Other-government leads**: every candidate dropped for naming a different place — kept or not — is described (`pick.describe_foreign_candidate()`) and collected on `VerdictRow.other_gov_leads`. A new script, `scripts/meeting_finder_other_gov_leads.py`, reads a run's JSONL, dedupes by URL, and matches each lead to a real government the same way `hub_harvest.py` already does (name + state + type, hub region as a tie-break, joint/special bodies to hand-read) — dry run only, writes `other_gov_ingest_queue_plan.csv` (confident matches) and `other_gov_hand_read.csv` (everything else).
+
+**Two smaller Ryan additions, same day.** `app/utils/video_hand_check.py`'s `assess_meeting_evidence()` direct-file length floor moved 45 -> 15 minutes (hand-checks found 21 of 28 in the 15-45 min range were real meetings) — still no upper bound. A new `runner._handcheck_lead()` marks a weak-lead row `handcheck_lead=yes/no` for a wider hand-check pass: "yes" unless the video is under 60s or its title carries a non-meeting sign; a video >= 80 minutes is always "yes" (a strong indicator on its own — 6 of 6 direct files that long were real meetings, against three webinars/trainings all under 63 min) except for a handful of unambiguous decorative-asset words (banner/hero/drone/doodle/welcome) that override it regardless of length.
+
+**Live re-run, 80 governments (the exact run D hub-flagged set), concurrency 16.**
+
+| Outcome | Before | After |
+|---|---|---|
+| Clean find | 0 | 41 |
+| `meeting-without-video` | 18 | 28 |
+| `video-low-confidence` | 0 | 5 |
+| `youtube-lead-only` | 0 | 3 |
+| `hub-carries-other-governments-not-this-one` | 61 | 2 |
+| `account-not-found` | 1 | 0 |
+| `blocked-browser-headers` | 0 | 1 |
+
+Of the 2 remaining `hub-carries-other-governments` rows: one (`watertownmn.gov`) is a real shared Viebit hub that genuinely carries only other governments' meetings, with no video the walk could resolve at all; the other (`elizabethcitync.gov`) is a residual false positive from the government's own meeting abbreviating its name ("City of EC Council") — filed as its own `BACKLOG.md` entry, and net still an improvement since it now keeps a real, reviewable video lead instead of reporting nothing.
+
+Both `College Township PA`/`Nashwauk MN` (this rule's original hub examples, not in the 80-government set) still behave correctly — `tests/test_wo1054_meeting_finder_hub_context.py`'s existing regression tests for both still pass.
+
+**Other-government leads, same run**: 425 raw leads collected across the 80 governments' walks, 153 deduped by URL. Running `scripts/meeting_finder_other_gov_leads.py` against them: 9 confident matches (all real, e.g. `ci.galesburg.il.us`'s own Council meetings, found while walking a DIFFERENT government's account), 144 sent to hand-read. This tool doesn't check whether a matched government already has an Archive page before listing it as "confident" (same parity as `hub_harvest.py`, which doesn't either) — a human reviews before ingesting.
+
+**Tests.** `tests/test_wo1058_hub_scope_leads.py` (new: committee-name false positive, strict-mode hub detection, `is_known_shared_hub()`, the foreign-lead override in `_try_resolve()`, `_handcheck_lead()`'s rules including the 80-minute override), `tests/test_wo1054_meeting_finder_hub_context.py` (updated for the 3-tuple return and the "keep at least one" behavior change), `tests/test_wo1041_meeting_evidence.py` (updated for the 15-minute floor).
+
 ## WO-1056: `tenant_key(url)`, one definition of a shared website's tenant, and a test that keeps the pins consistent with it [Done 2026-09-25]
 
 **Why.** rtr-discovery walks meeting listings per tenant. Ryan decided (2026-09-25, rtr-discovery's SHARED_WEBSITE_TENANTS.md) that on a shared website a tenant is one customer's slice, named by a "tenant key" defined once, here, next to the adapters and pins. The reason is rtr-discovery's FINDING-23: Town Square's pins matched `site=N`, the walker built URLs without `site=`, and nothing noticed.

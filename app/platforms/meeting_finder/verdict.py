@@ -49,16 +49,20 @@ CSV_FIELDS = [
     "try_next",
     "low_confidence_reason",
     "audio_only",
+    "handcheck_lead",
+    "other_gov_leads_count",
     "finished_at",
 ]
 
-# Kept in sync with VerdictRow's own fields (minus the two the CSV
-# flattens: `path` -> a joined string, `leads` -> a count) -- asserted at
-# import time so a field added to one and not the other fails loudly in
-# CI rather than silently dropping data from the CSV.
+# Kept in sync with VerdictRow's own fields (minus the fields the CSV
+# flattens: `path` -> a joined string, `leads`/`other_gov_leads` -> a
+# count) -- asserted at import time so a field added to one and not the
+# other fails loudly in CI rather than silently dropping data from the
+# CSV. `other_gov_leads`' own full detail (named place, body words, title,
+# date, url, hub host) is JSONL-only, same as `leads`/`path` -- WO-1058.
 _DATACLASS_FIELDS = {f.name for f in fields(VerdictRow)}
-_CSV_ONLY = {"leads_count"}
-_DATACLASS_ONLY = {"leads"}
+_CSV_ONLY = {"leads_count", "other_gov_leads_count"}
+_DATACLASS_ONLY = {"leads", "other_gov_leads"}
 assert (set(CSV_FIELDS) - _CSV_ONLY) | _DATACLASS_ONLY == _DATACLASS_FIELDS, (
     "verdict.CSV_FIELDS drifted from models.VerdictRow -- update both"
 )
@@ -124,6 +128,8 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "try_next": row.try_next,
                 "low_confidence_reason": row.low_confidence_reason,
                 "audio_only": row.audio_only,
+                "handcheck_lead": row.handcheck_lead,
+                "other_gov_leads_count": len(row.other_gov_leads),
                 "finished_at": row.finished_at,
             }
         )

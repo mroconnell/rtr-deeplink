@@ -110,13 +110,15 @@ fallbacks, which this module reuses unchanged rather than re-deriving.
 
 from __future__ import annotations
 
+import csv as _csv
+import dataclasses
 import importlib
 import importlib.util
 import json
 import os
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Awaitable, Callable, List, Optional, Tuple
@@ -153,7 +155,11 @@ from .models import (  # noqa: E402
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
 )
-from .pick import filter_candidates_to_government, parse_candidate_date
+from .pick import (
+    describe_foreign_candidate,
+    filter_candidates_to_government,
+    parse_candidate_date,
+)
 
 # --- Platform groupings for the ordered lister pipeline --------------
 
@@ -198,6 +204,14 @@ class ListResult:
     outcome: Optional[str]
     note: str = ""
     params: Optional[dict] = None
+    # WO-1058: every candidate `_apply_gov_filter()` dropped for naming a
+    # DIFFERENT government, described (`pick.describe_foreign_candidate()`)
+    # rather than dropped on the floor -- each one is a real, free
+    # link-first lead for that other government. Set regardless of
+    # whether the drop was partial or total (see `_apply_gov_filter()`).
+    # `runner.py` folds this into the walk's `state.other_gov_leads`,
+    # which ends up on `VerdictRow.other_gov_leads`.
+    foreign_leads: List[dict] = field(default_factory=list)
 
 
 def _candidate_from_dict(
@@ -1335,18 +1349,92 @@ async def _granicus_discover_view_id(
     return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
 
 
-# --- WO-1054 rule 5: shared-hub government filter, applied to every
-# lister's own candidates right before `list_account()` returns them. See
-# `pick.filter_candidates_to_government()`'s own docstring for the rule
-# and the real College Township/Bellefonte (shared TelVue org token) and
-# Nashwauk/Cohasset cases it exists for. A no-op when `gov_name` is empty
-# (every existing caller that doesn't pass it) or when nothing was
-# dropped, so this never changes behavior for a caller that hasn't opted
-# in.
-def _apply_gov_filter(result: ListResult, gov_name: Optional[str]) -> ListResult:
+# WO-1058: known shared regional-TV hubs (WO-1053's
+# `regional_tv_hubs.csv`) -- confirmed BY HAND to carry more than one
+# government's own section under one account (a TelVue org token or a
+# Cablecast tenant root). Only on one of these does the full (weak-pattern
+# included) shared-hub filter run -- see `pick._STRONG_PLACE_PHRASE_
+# PATTERNS`'s own comment for why running it on every account was the
+# real WO-1058 bug (21 of 68 regressions in calibration run D, none of
+# them an actual shared hub).
+_HUB_CSV_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "utils"
+    / "jurisdiction_data"
+    / "regional_tv_hubs.csv"
+)
+# A TelVue account url's org token lives in its path
+# (".../player/<token>/home"), not its host -- every TelVue hub shares the
+# same host (`videoplayer.telvue.com`), so host alone can't tell one
+# organization's account apart from another's. A Cablecast tenant's
+# per-town sections instead live under query params on ONE host
+# (`?site=N`), so host alone IS the right granularity there. `_hub_key()`
+# captures both shapes: (host, token-or-None).
+_HUB_TOKEN_RE = re.compile(r"/player/([^/]+)/", re.I)
+_KNOWN_HUB_KEYS: Optional[frozenset] = None
+
+
+def _hub_key(url: str) -> Tuple[str, Optional[str]]:
+    parsed = urlparse(url)
+    m = _HUB_TOKEN_RE.search(parsed.path)
+    return (parsed.netloc.lower(), m.group(1).lower() if m else None)
+
+
+def _known_hub_keys() -> frozenset:
+    global _KNOWN_HUB_KEYS
+    if _KNOWN_HUB_KEYS is None:
+        keys = set()
+        try:
+            with _HUB_CSV_PATH.open(newline="", encoding="utf-8") as f:
+                for row in _csv.DictReader(f):
+                    url = (row.get("url") or "").strip()
+                    if url:
+                        keys.add(_hub_key(url))
+        except FileNotFoundError:
+            pass
+        _KNOWN_HUB_KEYS = frozenset(keys)
+    return _KNOWN_HUB_KEYS
+
+
+def is_known_shared_hub(account_url: str) -> bool:
+    """True only when `account_url` matches a hub already confirmed, by
+    hand, in `regional_tv_hubs.csv` to carry more than one government's
+    own section. An account not in that file is treated as an ordinary
+    single-government account -- see `_apply_gov_filter()`."""
+    if not account_url:
+        return False
+    return _hub_key(account_url) in _known_hub_keys()
+
+
+# --- WO-1054 rule 5 / WO-1058: shared-hub government filter, applied to
+# every lister's own candidates right before `list_account()` returns
+# them. See `pick.filter_candidates_to_government()`'s own docstring for
+# the rule and the real College Township/Bellefonte (shared TelVue org
+# token) and Nashwauk/Cohasset cases it exists for. A no-op when
+# `gov_name` is empty (every existing caller that doesn't pass it) or when
+# nothing was dropped, so this never changes behavior for a caller that
+# hasn't opted in.
+#
+# WO-1058 additions: (1) the weak (non-place-type-word) half of the
+# filter only runs on a confirmed shared hub (`is_known_shared_hub()`);
+# (2) "keep at least one" (Ryan's rule) -- when every candidate would
+# otherwise be dropped, the best rejected one is kept anyway, as a labelled
+# lead for THIS government (never a bare empty result); (3) every dropped
+# candidate, kept or not, is described and returned as `foreign_leads` --
+# a real, free link-first lead for whichever OTHER government it names.
+def _apply_gov_filter(
+    result: ListResult, gov_name: Optional[str], account_url: str = ""
+) -> ListResult:
     if not result.candidates or not gov_name:
         return result
-    kept, drop_note = filter_candidates_to_government(result.candidates, gov_name)
+    strict = is_known_shared_hub(account_url)
+    kept, drop_note, foreign = filter_candidates_to_government(
+        result.candidates, gov_name, strict=strict
+    )
+    foreign_leads = [
+        {**describe_foreign_candidate(c), "hub_host": urlparse(account_url).netloc}
+        for c in foreign
+    ]
     if kept:
         if len(kept) == len(result.candidates):
             return result
@@ -1356,13 +1444,27 @@ def _apply_gov_filter(result: ListResult, gov_name: Optional[str]) -> ListResult
             outcome=result.outcome,
             note=result.note,
             params=result.params,
+            foreign_leads=foreign_leads,
         )
+    if not foreign:
+        return result
+    # Ryan's "keep at least one": don't hand back an empty result while a
+    # real (just unconfirmed-government) video sits right there -- keep
+    # the best rejected candidate, marked so `runner.py` never reports it
+    # as a clean same-government find however cleanly it resolves.
+    best = foreign[0]
+    lead_note = (
+        "possibly another government's meeting on a shared hub: "
+        f"{best.title or best.url!r}"
+    )
+    kept_lead = dataclasses.replace(best, foreign_gov_hint=lead_note)
     return ListResult(
-        candidates=[],
+        candidates=[kept_lead],
         lister=result.lister,
         outcome=OUTCOME_HUB_OTHER_GOVERNMENT,
         note=drop_note or result.note,
         params=result.params,
+        foreign_leads=foreign_leads,
     )
 
 
@@ -1445,46 +1547,46 @@ async def list_account(
     a_minus_1 = await _list_via_cablecast_gallery(platform, account_url, fetcher, limit)
     if a_minus_1 is not None:
         if a_minus_1.candidates:
-            return _apply_gov_filter(a_minus_1, gov_name)
+            return _apply_gov_filter(a_minus_1, gov_name, account_url)
         if a_minus_1.note:
             notes.append(a_minus_1.note)
 
     a0 = await _list_via_civicplus_light_check(platform, account_url, fetcher, limit)
     if a0 is not None and a0.candidates:
-        return _apply_gov_filter(a0, gov_name)
+        return _apply_gov_filter(a0, gov_name, account_url)
 
     g = await _list_via_cablecast_connect(platform, account_url, fetcher, limit)
     if g is not None:
         if g.candidates:
-            return _apply_gov_filter(g, gov_name)
+            return _apply_gov_filter(g, gov_name, account_url)
         if g.note:
             notes.append(g.note)
 
     h = await _list_via_wordpress(platform, account_url, fetcher, limit)
     if h is not None:
         if h.candidates:
-            return _apply_gov_filter(h, gov_name)
+            return _apply_gov_filter(h, gov_name, account_url)
         if h.note:
             notes.append(h.note)
 
     a = await _list_via_passive_verify_walker(platform, account_url, fetcher, limit)
     if a is not None:
         if a.candidates:
-            return _apply_gov_filter(a, gov_name)
+            return _apply_gov_filter(a, gov_name, account_url)
         if a.note:
             notes.append(a.note)
 
     a2 = await _list_via_swagit_views_page(platform, account_url, fetcher, limit)
     if a2 is not None:
         if a2.candidates:
-            return _apply_gov_filter(a2, gov_name)
+            return _apply_gov_filter(a2, gov_name, account_url)
         if a2.note:
             notes.append(a2.note)
 
     b = await _list_via_discovery(platform, account_url, limit, platform_params)
     if b is not None:
         if b.candidates:
-            return _apply_gov_filter(b, gov_name)
+            return _apply_gov_filter(b, gov_name, account_url)
         if b.note:
             notes.append(b.note)
 
@@ -1493,28 +1595,28 @@ async def list_account(
     )
     if c is not None:
         if c.candidates:
-            return _apply_gov_filter(c, gov_name)
+            return _apply_gov_filter(c, gov_name, account_url)
         if c.note:
             notes.append(c.note)
 
     d = await _list_via_adapter_hub(platform, account_url)
     if d is not None:
         if d.candidates:
-            return _apply_gov_filter(d, gov_name)
+            return _apply_gov_filter(d, gov_name, account_url)
         if d.note:
             notes.append(d.note)
 
     e = await _list_via_generic_scan(platform, account_url, fetcher, limit)
     if e is not None:
         if e.candidates:
-            return _apply_gov_filter(e, gov_name)
+            return _apply_gov_filter(e, gov_name, account_url)
         if e.note:
             notes.append(e.note)
 
     f = await _list_via_agenda_only_fallback(platform, account_url, fetcher, limit)
     if f is not None:
         if f.candidates:
-            return _apply_gov_filter(f, gov_name)
+            return _apply_gov_filter(f, gov_name, account_url)
         if f.note:
             notes.append(f.note)
 

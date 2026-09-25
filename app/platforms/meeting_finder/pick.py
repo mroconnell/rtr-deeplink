@@ -333,9 +333,16 @@ _GOV_MATCH_TOKEN_RE = re.compile(r"[a-zA-Z]+")
 # not just a shared word), which "state college" vs "college township"
 # never accidentally satisfies.
 _PLACE_PHRASE_PATTERNS = (
-    # "Borough of State College", "City of Cohasset", "Township of X"
+    # "Borough of State College", "City of Cohasset", "Township of X" --
+    # WO-1058: `(?i:...)` scopes case-insensitivity to just this
+    # alternation (a real title always capitalizes it, "Borough of...",
+    # but the type word alone was never matched case-sensitively before --
+    # this pattern silently never fired on any real title until now,
+    # which is why disabling pattern 3 for a non-hub account (this WO)
+    # would otherwise have also broken the real College Township/
+    # Bellefonte and Nashwauk/Cohasset hub cases that depend on this one).
     re.compile(
-        r"\b(?:city|town|township|borough|village|county)\s+of\s+"
+        r"\b(?i:city|town|township|borough|village|county)\s+of\s+"
         r"([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\b"
     ),
     # "College Township", "Cohasset City" (immediately before a type word)
@@ -357,30 +364,72 @@ _PLACE_PHRASE_PATTERNS = (
 def _place_core(phrase: str) -> Optional[str]:
     """Lowercases `phrase` and drops a single TRAILING type word
     (`_GOV_TYPE_WORDS`) if the phrase ends with one -- "State College" ->
-    "state college" (no type word to drop), "College Township" ->
-    "college", "Cohasset City" -> "cohasset". Returns `None` when the
-    phrase reduces to nothing (it WAS only a bare type word, e.g. a
-    captured "City" with no real name attached -- not a real place-name
-    candidate at all)."""
+    "state college" (no type word to drop -- "State" isn't trailing, it's
+    part of the real place name), "College Township" -> "college",
+    "Cohasset City" -> "cohasset". Returns `None` when the phrase reduces
+    to nothing but a bare type word (e.g. a captured "City" with no real
+    name attached -- not a real place-name candidate at all).
+
+    WO-1058: this ONLY ever drops a TRAILING type word, never one
+    elsewhere in the phrase -- a prior version filtered out a type word
+    from ANY position, which silently collapsed "State College" (a real
+    PA borough) down to bare "college", the SAME core as "College
+    Township" -- exactly the collision `test_filter_does_not_confuse_
+    college_township_with_state_college()` exists to catch, and this
+    docstring already promised "state college" stays two words. That bug
+    was never exposed before this WO because `_PLACE_PHRASE_PATTERNS[0]`
+    ("Borough of X") was itself case-sensitive-broken and never matched a
+    real (capitalized) title -- fixing that match (this WO, so the
+    now-default strong-pattern-only filter still catches "Borough of
+    Bellefonte"/"Borough of State College") is what surfaced this one."""
     words = phrase.strip().split()
     if not words:
         return None
     if len(words) > 1 and words[-1].lower() in _GOV_TYPE_WORDS:
         words = words[:-1]
-    core = " ".join(w.lower() for w in words if w.lower() not in _GOV_TYPE_WORDS)
-    return core or None
+    core_words = [w.lower() for w in words]
+    if all(w in _GOV_TYPE_WORDS for w in core_words):
+        return None
+    return " ".join(core_words)
 
 
-def _candidate_place_cores(title: str) -> List[str]:
+# WO-1058 (bug found in calibration run D, 2026-09-25): the third pattern
+# above ("Cohasset City Council", "College Township Board...") fires on
+# ANY title-case phrase immediately before a governing-body word -- not
+# just a real place name. A government's own ordinary committee names
+# ("Zoning Board", "Public Safety Committee", "Personnel Committee") match
+# it too, and none of those share a word with the government's own name,
+# so on an account that lists many different committees -- which is most
+# accounts, not just a shared hub -- this pattern alone was flagging every
+# single candidate as "a different government" and rejecting all of them
+# (21 of 68 real regressions: Oak Park IL, Clarington ON, Okotoks AB,
+# Sanford ME, and 17 more, none of them an actual shared hub). Patterns 1
+# and 2 (`_STRONG_PLACE_PHRASE_PATTERNS`) require an explicit place-type
+# word ("City of X", "X Township") right in the phrase, which a bare
+# committee name never has -- real shared-hub cases (College Township /
+# Bellefonte PA, Nashwauk / Cohasset MN) are still caught by these alone,
+# per this module's own tests. Pattern 3 is now used only when the caller
+# already knows the account is a confirmed shared hub (`strict=True`,
+# `listing.is_known_shared_hub()`) -- see `filter_candidates_to_government()`.
+_STRONG_PLACE_PHRASE_PATTERNS = _PLACE_PHRASE_PATTERNS[:2]
+
+
+def _candidate_place_cores(title: str, *, strict: bool = False) -> List[str]:
     """Every place-name phrase `title` (kept in its ORIGINAL case, not
     lowercased -- capitalization is the signal these patterns key off of)
     seems to name, reduced via `_place_core()`. Real titles can match more
     than one pattern for the SAME place ("College Township Board..."
     matches both the type-word and governing-body patterns) -- all are
     checked, not just the first, so agreement across patterns doesn't
-    matter and disagreement is still caught."""
+    matter and disagreement is still caught.
+
+    `strict` (WO-1058): only on a confirmed shared hub does the third,
+    weaker pattern (any phrase before a governing-body word, no place-type
+    word required) run -- see the module comment above `
+    _STRONG_PLACE_PHRASE_PATTERNS` for why it's unsafe as a default."""
+    patterns = _PLACE_PHRASE_PATTERNS if strict else _STRONG_PLACE_PHRASE_PATTERNS
     cores: List[str] = []
-    for pattern in _PLACE_PHRASE_PATTERNS:
+    for pattern in patterns:
         for match in pattern.finditer(title):
             core = _place_core(match.group(1))
             if core:
@@ -393,9 +442,31 @@ def _names_a_governing_body(title: Optional[str]) -> bool:
     return any(contains_word(t, kw) for kw in GOVERNING_BODY_KEYWORDS)
 
 
+def describe_foreign_candidate(candidate: Candidate) -> dict:
+    """WO-1058 rule (Ryan, 2026-09-25): every candidate this filter drops
+    for naming a different place is a real, free link-first lead for THAT
+    other government -- worth keeping, not just discarding. Always uses
+    the full (non-strict) place-phrase patterns, since this is describing
+    a candidate already confirmed foreign, not deciding whether to drop
+    it. Shape matches what `scripts/hub_harvest.py`'s own matcher already
+    expects a hub section to carry (name/state/body-type matching input)."""
+    title = candidate.title or ""
+    cores = _candidate_place_cores(title, strict=True)
+    body_words = [
+        kw for kw in GOVERNING_BODY_KEYWORDS if contains_word(title.lower(), kw)
+    ]
+    return {
+        "named_place": cores[0] if cores else None,
+        "body_words": body_words,
+        "title": candidate.title,
+        "date": candidate.date,
+        "url": candidate.url,
+    }
+
+
 def filter_candidates_to_government(
-    candidates: List[Candidate], gov_name: Optional[str]
-) -> Tuple[List[Candidate], Optional[str]]:
+    candidates: List[Candidate], gov_name: Optional[str], *, strict: bool = False
+) -> Tuple[List[Candidate], Optional[str], List[Candidate]]:
     """Drops a candidate whose title clearly names a DIFFERENT
     government's own place name -- see this module's own comment above
     for the real shared-hub cases this exists for. A candidate is only
@@ -409,19 +480,32 @@ def filter_candidates_to_government(
     posture: this must never manufacture emptiness out of an ordinary
     undated/untitled row).
 
-    Returns `(kept_candidates, drop_note)`: `drop_note` is set only when
-    EVERY candidate was dropped this way (the real "hub carries other
-    governments" finding); a partial drop returns the survivors with no
-    note, and an unfiltered/ambiguous list returns `candidates` itself
-    unchanged, `None`. Never called with a `gov_name` this WO can't
-    already trust: `runner.py` only ever passes the registry's own
-    `Government.gov_name` for `finder_input.gov_id`, never a caller's
-    unverified guess."""
+    `strict` (WO-1058): passed straight to `_candidate_place_cores()` --
+    only True on a confirmed shared hub (`listing.is_known_shared_hub()`).
+    False (the default -- an ordinary, single-government account) still
+    drops a candidate that STRONGLY names a different place ("Borough of
+    Bellefonte", "Cohasset City Council") -- it just never treats a bare
+    committee/board name ("Zoning Board", "Public Safety Committee") as
+    evidence of anywhere at all, which is the real bug this WO fixes (see
+    the module comment above `_STRONG_PLACE_PHRASE_PATTERNS`).
+
+    Returns `(kept_candidates, drop_note, foreign_candidates)`:
+    `drop_note` is set only when EVERY candidate was dropped this way (the
+    real "hub carries other governments" finding); a partial drop returns
+    the survivors with no note, and an unfiltered/ambiguous list returns
+    `candidates` itself unchanged, `None`, `[]`. `foreign_candidates` is
+    every dropped candidate, always (partial or total drop) -- WO-1058:
+    each one is a real, free lead for whichever OTHER government it
+    names, kept by the caller (`listing._apply_gov_filter()`) as
+    `ListResult.foreign_leads` regardless of what happens to `kept`.
+    Never called with a `gov_name` this WO can't already trust: `runner.py`
+    only ever passes the registry's own `Government.gov_name` for
+    `finder_input.gov_id`, never a caller's unverified guess."""
     if not gov_name or not candidates:
-        return candidates, None
+        return candidates, None, []
     gov_core = _place_core(gov_name)
     if not gov_core:
-        return candidates, None
+        return candidates, None, []
     kept: List[Candidate] = []
     foreign: List[Candidate] = []
     for c in candidates:
@@ -429,12 +513,14 @@ def filter_candidates_to_government(
         if not _names_a_governing_body(title):
             kept.append(c)
             continue
-        cores = _candidate_place_cores(title)
+        cores = _candidate_place_cores(title, strict=strict)
         if not cores or gov_core in cores:
             kept.append(c)
         else:
             foreign.append(c)
     if kept:
-        return kept, None
+        return kept, None, foreign
+    if not foreign:
+        return candidates, None, []
     sample = foreign[0].title or foreign[0].url
-    return [], f"hub carries other governments, not this one (e.g. {sample!r})"
+    return [], f"hub carries other governments, not this one (e.g. {sample!r})", foreign

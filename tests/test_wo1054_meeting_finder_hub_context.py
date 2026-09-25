@@ -274,7 +274,7 @@ def _cand(title, url="https://example.com/m"):
 
 def test_filter_keeps_all_when_no_gov_name_given():
     candidates = [_cand("Borough of Bellefonte - Council")]
-    kept, note = filter_candidates_to_government(candidates, None)
+    kept, note, foreign = filter_candidates_to_government(candidates, None)
     assert kept == candidates
     assert note is None
 
@@ -285,7 +285,9 @@ def test_filter_drops_only_other_governments_meetings():
     kept, Bellefonte's own is dropped."""
     own = _cand("College Township Board of Supervisors Meeting")
     other = _cand("Borough of Bellefonte - Council")
-    kept, note = filter_candidates_to_government([own, other], "College Township")
+    kept, note, foreign = filter_candidates_to_government(
+        [own, other], "College Township"
+    )
     assert kept == [own]
     assert note is None
 
@@ -302,13 +304,17 @@ def test_filter_does_not_confuse_college_township_with_state_college():
     same place."""
     own = _cand("College Township Board of Supervisors Meeting")
     other = _cand("Borough of State College - Council")
-    kept, note = filter_candidates_to_government([own, other], "College township")
+    kept, note, foreign = filter_candidates_to_government(
+        [own, other], "College township"
+    )
     assert kept == [own]
     assert note is None
 
     # And the true "hub carries other governments" case when ONLY the
     # State College meeting is on offer.
-    kept2, note2 = filter_candidates_to_government([other], "College township")
+    kept2, note2, foreign2 = filter_candidates_to_government(
+        [other], "College township"
+    )
     assert kept2 == []
     assert "State College" in (note2 or "")
 
@@ -316,7 +322,7 @@ def test_filter_does_not_confuse_college_township_with_state_college():
 def test_filter_reports_hub_other_government_when_everything_is_foreign():
     """Real Nashwauk MN / Cohasset MN shape."""
     other = _cand("Cohasset City Council")
-    kept, note = filter_candidates_to_government([other], "Nashwauk")
+    kept, note, foreign = filter_candidates_to_government([other], "Nashwauk")
     assert kept == []
     assert note is not None
     assert "Cohasset City Council" in note
@@ -330,7 +336,7 @@ def test_filter_keeps_ambiguous_untitled_rows_never_manufactures_emptiness():
     must not be misread as a foreign hub."""
     ambiguous = _cand("Budget Workshop")
     bare_date = _cand(None)
-    kept, note = filter_candidates_to_government(
+    kept, note, foreign = filter_candidates_to_government(
         [ambiguous, bare_date], "College Township"
     )
     assert kept == [ambiguous, bare_date]
@@ -341,8 +347,11 @@ def test_filter_keeps_ambiguous_untitled_rows_never_manufactures_emptiness():
 async def test_list_account_reports_hub_other_government_outcome(fetcher):
     """End-to-end through `listing.list_account()`'s own gov_name
     filtering wrapper -- a lister that only ever finds another
-    government's own meetings reports `OUTCOME_HUB_OTHER_GOVERNMENT`, not
-    a bare `OUTCOME_NO_MEETING_NOR_VIDEO`."""
+    government's own meetings reports `OUTCOME_HUB_OTHER_GOVERNMENT`, and
+    (WO-1058 rule 2, "keep at least one") keeps that other government's own
+    candidate as a labelled lead rather than an empty result -- marked so
+    `runner._try_resolve()` never reports it as THIS government's own
+    clean find."""
     from app.platforms import passive_verify
 
     async def fake_telvue_walker(hub_url: str):
@@ -368,9 +377,17 @@ async def test_list_account_reports_hub_other_government_outcome(fetcher):
         passive_verify._LISTING_WALKERS.clear()
         passive_verify._LISTING_WALKERS.update(before)
 
-    assert result.candidates == []
+    assert len(result.candidates) == 1
+    assert result.candidates[0].title == "Borough of Bellefonte - Council"
+    assert result.candidates[0].foreign_gov_hint is not None
+    assert "Bellefonte" in result.candidates[0].foreign_gov_hint
     assert result.outcome == OUTCOME_HUB_OTHER_GOVERNMENT
     assert "Bellefonte" in (result.note or "")
+    # WO-1058 rule 3: the dropped candidate is also described as a
+    # link-first lead for that other government.
+    assert len(result.foreign_leads) == 1
+    assert result.foreign_leads[0]["title"] == "Borough of Bellefonte - Council"
+    assert result.foreign_leads[0]["hub_host"] == "videoplayer.telvue.com"
 
 
 # --- Rule 6: generic WordPress site, listed via its own REST API --------
