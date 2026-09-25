@@ -35,3 +35,4 @@ us:county:20209,us:place:2036000,"Wyandotte County = Unified Government of Wyand
 us:county:47127,us:place:4744382,Moore County TN = Metropolitan Government of Lynchburg-Moore County.
 us:place:2028412,us:county:20071,Greeley County unified government (balance) place row -> the county row the Archive already uses.
 us:place:4732742,us:county:47169,"Hartsville/Trousdale County place row -> the county row the Archive already uses (found missing WO-186, 2026-09-10, while filling UScityURL rows; same shape as Greeley County KS above -- a curated alias on the county id already handles the hyphenated display form, so this mapping needed no new curated_governments.csv row)."
+us:county:08014,us:place:0809280,"City and County of Broomfield, CO (consolidated 2001). Added WO-1055 (2026-09-25): once _KNOWN_DOMAINS county entries render as ""Broomfield County, CO"", this keeps broomfieldco.cablecast.tv on the place row its pages already use."

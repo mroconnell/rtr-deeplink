@@ -188,6 +188,57 @@ PR description, not committed to the repo.
 
 **Tests.** `tests/test_wo1054_meeting_finder_hub_context.py`, 18 cases. The Cablecast Connect fixtures (`tests/fixtures/wo1054/`) are real, trimmed pages fetched live from `townsquare.tv` on 2026-09-24, not hand-built. Every case was also checked against a real live site at least once during this work order (see the PR description for the before/after table).
 
+## WO-1055: Harris County audit loose ends: METRO, The Harris Center, the Port and MWD minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
+
+**What and why.** The 2026-09-24 large-county audit (rtr-business `research/LARGE_COUNTY_GAP_WALK_2026-09-24.md`) found Harris County, TX pages that belong to other governments, one duplicate page, and a Dropbox meeting the queue probe could not read. A teammate session added the root cause of the Harris misfiling, five more wrong pins of the same kind, and three LA County items. This WO fixes the code and registry. The live page moves wait for a deploy (see `BACKLOG.md`'s WO-1055 `[HUMAN]` entry).
+
+**Registry.** Four governments added to `curated_governments.csv`:
+
+| Government | Id | Census unit | Why |
+|---|---|---|---|
+| Metropolitan Transit Authority of Harris County (METRO) | `rtr:us:tx:metropolitan-transit-authority-of-harris-county` | 157766 | Ryan: "Mint both" (2026-09-24). |
+| The Harris Center for Mental Health and IDD | `rtr:us:tx:the-harris-center-for-mental-health-and-idd` | none found | Ryan: "Mint both" (2026-09-24). |
+| Port of Corpus Christi Authority | `rtr:us:tx:port-of-corpus-christi` | 158176 | The brief called this id "existing". No committed file held it; the live site shows a "Port of Corpus Christi, TX" hub. Added so page 2659 can move to it; Ryan confirmed keeping it 2026-09-25. |
+| Metropolitan Water District of Southern California (MWD) | `rtr:us:ca:metropolitan-water-district-of-southern-california` | 123317 | Ryan: "yes mint MWD" (2026-09-24, relayed by the Enumeration sprint session). Page 2535 moves to it. |
+
+Each tenant host is pinned `authoritative` (ridemetro.granicus.com, theharriscentertx.new.swagit.com, portofcorpuschristi.granicus.com, mwdh2o.granicus.com). Each serves one body only, and its pages carried a county name, which a `fallback` pin does not override.
+
+**Root cause: county entries looked up without their type.** `_KNOWN_DOMAINS` stores a county as a bare name plus a type, e.g. `("Sacramento", "county", "CA")`. Two places wrote it as "Sacramento, CA" and dropped the type:
+
+1. `scripts/seed_gov_registry.py` built the pins that way, so the resolver pinned the host to the same-named city.
+2. `finalize_jurisdiction()` filled a blank page name that way at ingest. This runs before any pin, so fixing the pins alone would not have helped.
+
+Both now go through one helper, `_known_name_with_state()`, which writes "Sacramento County, CA". A scan of all 110 `_KNOWN_DOMAINS`-derived pins found six county hosts pinned to a city. Each host was fetched on 2026-09-25:
+
+| Host | Was | Now | What the host shows |
+|---|---|---|---|
+| agendanet.saccounty.gov | Sacramento city | Sacramento County | title "Sacramento County Board of Supervisors Meetings" |
+| egenda.scgov.net | Sarasota city | Sarasota County | "Sarasota BCC" meetings |
+| imaging.sedgwickcounty.org | Sedgwick city, KS | Sedgwick County, KS | title "PublicAccess - Sedgwick County" |
+| hcjfsonbase.jfs.hamilton-co.org | Hamilton city, OH | Hamilton County, OH | host answers 403; hamilton-co.org is titled "Hamilton County, OH" |
+| mccobagenda.databankcloud.com | Maricopa city | Maricopa County | page carries no name; kept the entry's existing evidence |
+| cocookmn.civicweb.net | Cook city, MN | Cook County, MN | title "Cook County - Home" (found by the scan, not in the teammate's list) |
+
+Two more county entries change text only. `dallascounty.civicweb.net` was already pinned to Dallas County. Broomfield, CO is a consolidated city and county, so `consolidated_governments.csv` now maps `us:county:08014` to the place row its pages already use (same as Denver). `ridemetro.granicus.com`'s `_KNOWN_DOMAINS` entry now names METRO.
+
+**Live pages seen on the public site, 2026-09-25.** Most county-host pages already sit on the county's hub; the text a page carried saved them. Two Sedgwick pages sit on a text-only "County of Sedgwick" hub, and the prepare script's host scan will pick them up.
+
+**Twin pages.** Each pair's public transcript export was byte-identical:
+
+| Twin to delete | Kept page | Cause |
+|---|---|---|
+| `harris-county-tx-2026-06-11-jun-11-2026-commissioners-court-12cb68` (page 1171) | page 538 | Swagit URL with a stray trailing `%5C`. Swagit pages have no `external_id`, so the URL was the only key. |
+| `los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors-fcc9d9` (page 3964, per the teammate) | the `player/clip` page | Granicus clip 12325 reached through `MediaPlayer.php`. |
+
+`normalize_url()` (both copies) now drops a trailing backslash, literal or `%5C`. The two Granicus URL shapes need no change: `external_id` is `granicus:<host>:<clip_id>` and both shapes give clip 12325 today, so a new ingest matches. The kept LA page most likely predates that key (added 2026-08-18). Both twins' addresses are in `_SLUG_REDIRECTS`, so they forward before they are deleted.
+
+**LA Metro registry row.** `rtr:us:ca:los-angeles-county-metropolitan-transportation-authority` was typed `county` and carried the alias "Los Angeles County, CA". Now `special_district`, alias removed. The resolver never read that alias (generated rows' aliases are ignored), but the Context lookup (`archive/context/lookup.py`) reads every alias. Its display name is unchanged. Pages already on it keep their stored `gov_type` until they are re-keyed or re-ingested.
+
+**Dropbox.** Already fixed by WO-1051 (PR #1429) before this WO started. Re-run 2026-09-25 with ffprobe installed: `probe_queue_entry()` accepts the Ingham County, MI 9/22/26 Board of Commissioners file (3,424.5 seconds, 259,815,205 bytes). No new code; the meeting is queued in `scripts/tier3_auto_transcription_queue.txt` under `us:county:26065`.
+
+**Tools.** `scripts/wo1055_prepare_worklist.py` (read-only) builds the worklist for `scripts/repair_wrong_pages.py`. Tests: `tests/test_wo1055_harris_county_loose_ends.py`, `tests/test_url_normalize.py`.
+
+
 ## WO-1052: ChampDS MP4s with their index at the end no longer probe as dead [Done 2026-09-24]
 
 **What and why.** The queue probe called real ChampDS meetings `reject-dead: ffprobe could not read a duration from the media file`. That blocked tier-1 ingests with real captions (worked around by hand for El Paso 164, Atlanta 1077 and Oak Hill 317). It would also have dropped Collegedale TN event 154 from the tier-3 queue, and it stopped El Paso County CO event 101 (page 3349) from being re-ingested to key it to its government.

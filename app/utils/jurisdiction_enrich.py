@@ -996,13 +996,16 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     ),
     "dublin.granicus.com": KnownJurisdiction("Dublin", "city", "CA"),
     "albanyca.granicus.com": KnownJurisdiction("Albany", "city", "CA"),
-    # Harris County, TX: the bare page's own real Granicus clip page
-    # (confirmed live) is titled for "...Metropolitan Transit Authority"
-    # committees -- METRO, the real, well-known Metropolitan Transit
-    # Authority of Harris County, Texas. "Harris County" is only
-    # nationally ambiguous between GA and TX, and no real evidence ties a
-    # METRO transit authority to Harris County, GA.
-    "ridemetro.granicus.com": KnownJurisdiction("Harris", "county", "TX"),
+    # METRO, the Metropolitan Transit Authority of Harris County, TX: the
+    # tenant's own real Granicus clip pages (confirmed live) are titled
+    # for "...Metropolitan Transit Authority" committees. This entry used
+    # to name Harris County itself, which filed METRO's meetings under
+    # the county government (pages 399, 4177, 5908 -- WO-1055,
+    # 2026-09-25). METRO is its own government
+    # (rtr:us:tx:metropolitan-transit-authority-of-harris-county).
+    "ridemetro.granicus.com": KnownJurisdiction(
+        "Metropolitan Transit Authority of Harris County", "authority", "TX"
+    ),
     # Washington County, OR (NOT VA, despite the original pairing's
     # assumption): confirmed live -- this exact domain's own page
     # literally renders `<div id="mottotext">Oregon</div>` right next to
@@ -1387,6 +1390,22 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
 
 def lookup_by_domain(netloc: str) -> Optional[KnownJurisdiction]:
     return _KNOWN_DOMAINS.get(netloc.lower())
+
+
+def _known_name_with_state(known: KnownJurisdiction) -> str:
+    """ "{Name}, {State}" for a `_KNOWN_DOMAINS` entry, as
+    `finalize_jurisdiction()` hands it on to the government resolver.
+
+    A county entry stores a bare name ("Sacramento") with its type in a
+    separate field, so it is written "Sacramento County, CA" here.
+    "Sacramento, CA" dropped the type, and the resolver answered with the
+    same-named CITY: six real county tenants were filed under a city
+    that way (WO-1055, 2026-09-25 -- Sacramento, Sarasota, Sedgwick KS,
+    Hamilton OH, Maricopa, Cook MN)."""
+    name = known.name
+    if known.type == "county" and not re.search(r"\bcounty\b", name, re.IGNORECASE):
+        name = f"{name} County"
+    return f"{name}, {known.state}"
 
 
 def known_jurisdiction_display(netloc: str) -> Optional[str]:
@@ -2757,11 +2776,11 @@ def finalize_jurisdiction(
     known = lookup_by_domain(netloc) if netloc else None
 
     if known and known.strength == "authoritative":
-        return JurisdictionResult(f"{known.name}, {known.state}", None, "authoritative")
+        return JurisdictionResult(_known_name_with_state(known), None, "authoritative")
 
     if not raw_jurisdiction:
         if known:
-            return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
+            return JurisdictionResult(_known_name_with_state(known), None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
 
     subdomain_hit = _validated_subdomain_hint_with_state(netloc) if netloc else None
@@ -2943,7 +2962,7 @@ def finalize_jurisdiction(
             )
 
     if known:
-        return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
+        return JurisdictionResult(_known_name_with_state(known), None, "fallback")
 
     # Nothing validated at all -- the one case the docstring above still
     # described (pre-WO-113) as "returned completely unchanged". A

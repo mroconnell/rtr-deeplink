@@ -77,3 +77,28 @@ def test_a_non_http_scheme_is_left_alone(normalize_url):
         "ftp://example.com/file"
     )
     assert normalize_url("ftp://example.com/file").startswith("ftp://")
+
+
+@pytest.mark.parametrize("normalize_url", IMPLEMENTATIONS)
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "https://harriscountytx.new.swagit.com/videos/390829%5C",
+        "https://harriscountytx.new.swagit.com/videos/390829%5c",
+        "https://harriscountytx.new.swagit.com/videos/390829\\",
+        "https://harriscountytx.new.swagit.com/videos/390829%5C%5C",
+    ],
+)
+def test_a_trailing_backslash_is_dropped(normalize_url, raw):
+    # WO-1055 (2026-09-25): Harris County's Jun 11 2026 Commissioners
+    # Court was archived twice, the second time from the same Swagit URL
+    # with a stray `%5C` on the end. Swagit pages carry no external_id,
+    # so this key was the only thing that could have matched them.
+    assert normalize_url(raw) == normalize_url(
+        "https://harriscountytx.new.swagit.com/videos/390829"
+    )
+
+
+@pytest.mark.parametrize("normalize_url", IMPLEMENTATIONS)
+def test_a_backslash_inside_the_url_is_left_alone(normalize_url):
+    assert normalize_url("https://example.gov/a%5Cb").endswith("/a%5Cb")
