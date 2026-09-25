@@ -370,7 +370,7 @@ def _media_format(media_url: str, content_type: Optional[str]) -> str:
     return "mp4"
 
 
-def _is_dropbox_url(url: str) -> bool:
+def is_dropbox_url(url: str) -> bool:
     """True for a Dropbox share link -- see module docstring's "HEAD
     refused, or unusable" section (WO-1048) for why these skip HEAD."""
     netloc = urlparse(url).netloc.lower()
@@ -471,7 +471,7 @@ def _resolve_direct_media_url(url: str) -> str:
             f"?id={file_id}&export=download&confirm=t"
         )
     parsed = urlparse(url)
-    if _is_dropbox_url(url):
+    if is_dropbox_url(url):
         # Dropbox's own documented direct-download flag -- confirmed live
         # 2026-09-12 to change a share page's response from its ordinary
         # HTML preview to a real download when the rest of the link
@@ -547,7 +547,7 @@ class DirectFileAssetFinder(AssetFinder):
         (see module docstring's "HEAD refused, or unusable" section), which
         runs for a Dropbox link, a HEAD answering 403/405/501, or a HEAD
         the client can't even parse."""
-        if not _is_dropbox_url(media_url):
+        if not is_dropbox_url(media_url):
             try:
                 async with aiohttp.ClientSession(
                     headers={"User-Agent": _UA}

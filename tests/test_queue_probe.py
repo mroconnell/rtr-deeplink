@@ -1807,3 +1807,47 @@ def test_write_pin_row_blank_match_still_refused_on_multi_gov_host(tmp_path):
         is False
     )
     assert not pins_path.exists()
+
+
+async def test_probe_direct_file_dropbox_skips_head_and_uses_ranged_get(
+    monkeypatch,
+):
+    # WO-1051: Ingham County, MI's real Dropbox recording. Dropbox's
+    # download host sends a gzip body after a HEAD response, so aiohttp
+    # raised "Bad status line" and this probe called a real file dead. No
+    # HEAD route is registered (`mock_session` without head_routes leaves
+    # HEAD unpatched, so pass an empty dict to make any HEAD fail the
+    # test). The ranged-GET headers are the real ones captured live
+    # 2026-09-24; the duration is ffprobe's real reading of the same file.
+    media_url = (
+        "https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4"
+        "?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=1"
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 3424.533333
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with mock_session(
+        {
+            media_url: FakeResponse(
+                status=206,
+                headers={
+                    "Content-Type": "application/binary",
+                    "Content-Range": "bytes 0-1023/259815205",
+                },
+                raw=bytes.fromhex("00000018667479706d70343200000000"),
+            )
+        },
+        head_routes={},
+    ):
+        result = await probe_queue_entry(
+            media_url, video_url=media_url, platform="direct_file", video_format="mp4"
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 259815205
+    assert result.duration_seconds == 3424.533333
