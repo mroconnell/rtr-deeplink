@@ -1423,18 +1423,28 @@ def is_known_shared_hub(account_url: str) -> bool:
 # candidate, kept or not, is described and returned as `foreign_leads` --
 # a real, free link-first lead for whichever OTHER government it names.
 def _apply_gov_filter(
-    result: ListResult, gov_name: Optional[str], account_url: str = ""
+    result: ListResult,
+    gov_name: Optional[str],
+    account_url: str = "",
+    *,
+    gov_state: Optional[str] = None,
 ) -> ListResult:
     if not result.candidates or not gov_name:
         return result
     strict = is_known_shared_hub(account_url)
     kept, drop_note, foreign = filter_candidates_to_government(
-        result.candidates, gov_name, strict=strict
+        result.candidates, gov_name, strict=strict, gov_state=gov_state
     )
-    foreign_leads = [
-        {**describe_foreign_candidate(c), "hub_host": urlparse(account_url).netloc}
-        for c in foreign
-    ]
+    hub_host = urlparse(account_url).netloc
+    foreign_leads: List[dict] = []
+    for c in foreign:
+        described = describe_foreign_candidate(
+            c, gov_name=gov_name, gov_state=gov_state
+        )
+        if described is None:
+            continue
+        described["hub_host"] = hub_host
+        foreign_leads.append(described)
     if kept:
         if len(kept) == len(result.candidates):
             return result
@@ -1501,6 +1511,7 @@ async def list_account(
     limit: int = 15,
     platform_params: Optional[dict] = None,
     gov_name: Optional[str] = None,
+    gov_state: Optional[str] = None,
     page_url: Optional[str] = None,
 ) -> ListResult:
     """Turn a known account (`platform` + `account_url`) into a list of
@@ -1525,6 +1536,12 @@ async def list_account(
     lister (c) for Vimeo only, where `account_url` is itself a video-host
     listing link, not a page worth pointing a reader at. Absent, this
     behaves exactly as before.
+
+    `gov_state` (WO-1060, optional): the searched government's own
+    state/province, forwarded to `_apply_gov_filter()` so a dropped
+    candidate's title naming that SAME state (not a different place) is
+    never recorded as an other-government lead. Absent, this behaves
+    exactly as before.
     """
     notes: List[str] = []
 
@@ -1547,46 +1564,48 @@ async def list_account(
     a_minus_1 = await _list_via_cablecast_gallery(platform, account_url, fetcher, limit)
     if a_minus_1 is not None:
         if a_minus_1.candidates:
-            return _apply_gov_filter(a_minus_1, gov_name, account_url)
+            return _apply_gov_filter(
+                a_minus_1, gov_name, account_url, gov_state=gov_state
+            )
         if a_minus_1.note:
             notes.append(a_minus_1.note)
 
     a0 = await _list_via_civicplus_light_check(platform, account_url, fetcher, limit)
     if a0 is not None and a0.candidates:
-        return _apply_gov_filter(a0, gov_name, account_url)
+        return _apply_gov_filter(a0, gov_name, account_url, gov_state=gov_state)
 
     g = await _list_via_cablecast_connect(platform, account_url, fetcher, limit)
     if g is not None:
         if g.candidates:
-            return _apply_gov_filter(g, gov_name, account_url)
+            return _apply_gov_filter(g, gov_name, account_url, gov_state=gov_state)
         if g.note:
             notes.append(g.note)
 
     h = await _list_via_wordpress(platform, account_url, fetcher, limit)
     if h is not None:
         if h.candidates:
-            return _apply_gov_filter(h, gov_name, account_url)
+            return _apply_gov_filter(h, gov_name, account_url, gov_state=gov_state)
         if h.note:
             notes.append(h.note)
 
     a = await _list_via_passive_verify_walker(platform, account_url, fetcher, limit)
     if a is not None:
         if a.candidates:
-            return _apply_gov_filter(a, gov_name, account_url)
+            return _apply_gov_filter(a, gov_name, account_url, gov_state=gov_state)
         if a.note:
             notes.append(a.note)
 
     a2 = await _list_via_swagit_views_page(platform, account_url, fetcher, limit)
     if a2 is not None:
         if a2.candidates:
-            return _apply_gov_filter(a2, gov_name, account_url)
+            return _apply_gov_filter(a2, gov_name, account_url, gov_state=gov_state)
         if a2.note:
             notes.append(a2.note)
 
     b = await _list_via_discovery(platform, account_url, limit, platform_params)
     if b is not None:
         if b.candidates:
-            return _apply_gov_filter(b, gov_name, account_url)
+            return _apply_gov_filter(b, gov_name, account_url, gov_state=gov_state)
         if b.note:
             notes.append(b.note)
 
@@ -1595,28 +1614,28 @@ async def list_account(
     )
     if c is not None:
         if c.candidates:
-            return _apply_gov_filter(c, gov_name, account_url)
+            return _apply_gov_filter(c, gov_name, account_url, gov_state=gov_state)
         if c.note:
             notes.append(c.note)
 
     d = await _list_via_adapter_hub(platform, account_url)
     if d is not None:
         if d.candidates:
-            return _apply_gov_filter(d, gov_name, account_url)
+            return _apply_gov_filter(d, gov_name, account_url, gov_state=gov_state)
         if d.note:
             notes.append(d.note)
 
     e = await _list_via_generic_scan(platform, account_url, fetcher, limit)
     if e is not None:
         if e.candidates:
-            return _apply_gov_filter(e, gov_name, account_url)
+            return _apply_gov_filter(e, gov_name, account_url, gov_state=gov_state)
         if e.note:
             notes.append(e.note)
 
     f = await _list_via_agenda_only_fallback(platform, account_url, fetcher, limit)
     if f is not None:
         if f.candidates:
-            return _apply_gov_filter(f, gov_name, account_url)
+            return _apply_gov_filter(f, gov_name, account_url, gov_state=gov_state)
         if f.note:
             notes.append(f.note)
 

@@ -54,7 +54,7 @@ from urllib.parse import urlparse
 
 from app.platforms.base import detect_platform
 from app.platforms.telvue import account_url_for as telvue_account_url_for
-from app.utils.gov_registry.registry import government_for_id
+from app.utils.gov_registry.registry import Government, government_for_id
 from app.utils.video_hand_check import has_non_meeting_sign
 from scripts.youtube_fetch_guard import is_youtube_host
 
@@ -247,22 +247,37 @@ _TRY_NEXT: Dict[str, str] = {
 # already does for a different purpose. A `gov_id` with no registry row
 # (or none given at all) just means the filter never fires -- see that
 # function's own "ambiguous -> keep" default -- not an error.
-_GOV_NAME_CACHE: Dict[str, Optional[str]] = {}
+#
+# WO-1060: caches the whole `Government` row (not just the name) so the
+# same lookup also answers `_gov_state_for_input()` -- the searched
+# government's own state, used by `pick.describe_foreign_candidate()` to
+# never record a lead that's just that government's own state name/code
+# resurfacing (the real Galesburg, IL regression this WO fixes).
+_GOV_CACHE: Dict[str, Optional[Government]] = {}
 
 
-def _gov_name_for_input(finder_input: FinderInput) -> Optional[str]:
+def _government_for_input(finder_input: FinderInput) -> Optional[Government]:
     gov_id = finder_input.gov_id
     if not gov_id:
         return None
-    if gov_id in _GOV_NAME_CACHE:
-        return _GOV_NAME_CACHE[gov_id]
+    if gov_id in _GOV_CACHE:
+        return _GOV_CACHE[gov_id]
     try:
         gov = government_for_id(gov_id)
     except Exception:  # noqa: BLE001
         gov = None
-    name = gov.gov_name if gov else None
-    _GOV_NAME_CACHE[gov_id] = name
-    return name
+    _GOV_CACHE[gov_id] = gov
+    return gov
+
+
+def _gov_name_for_input(finder_input: FinderInput) -> Optional[str]:
+    gov = _government_for_input(finder_input)
+    return gov.gov_name if gov else None
+
+
+def _gov_state_for_input(finder_input: FinderInput) -> Optional[str]:
+    gov = _government_for_input(finder_input)
+    return (gov.state or None) if gov else None
 
 
 def _try_next(outcome: Optional[str], budget_exhausted: bool) -> str:
@@ -416,6 +431,7 @@ async def _cached_list_account(
     *,
     page_url: Optional[str] = None,
     gov_name: Optional[str] = None,
+    gov_state: Optional[str] = None,
 ) -> ListResult:
     """WO-1035 item 5: "accounts listed once" -- `_shallow_step()` runs on
     every fork AND every hop, and more than one of those can land on the
@@ -439,7 +455,12 @@ async def _cached_list_account(
     if cached is not None:
         return cached
     result = await list_account(
-        platform, account_url, fetcher, page_url=page_url, gov_name=gov_name
+        platform,
+        account_url,
+        fetcher,
+        page_url=page_url,
+        gov_name=gov_name,
+        gov_state=gov_state,
     )
     state.listed_accounts[key] = result
     return result
@@ -726,6 +747,7 @@ async def _shallow_step(
                 state,
                 page_url=ident.final_url or url,
                 gov_name=_gov_name_for_input(finder_input),
+                gov_state=_gov_state_for_input(finder_input),
             )
         except SoftBudgetExceeded:
             # WO-1039 item 2: see the identical comment above.
