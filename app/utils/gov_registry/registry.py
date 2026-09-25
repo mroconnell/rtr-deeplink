@@ -338,13 +338,6 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         "spectrumstream.com",
         #   ChampDS's VOD2 stream host: `/VOD/event/{Customer}/...` (WO-1045).
         "securestream10.champds.com",
-        # WO-1061 (Ryan, 2026-09-25): Prince Edward County, ON's CivicWeb
-        # portal also publishes two joint bodies with Lennox and Addington
-        # County ("Prince Edward - Lennox and Addington Social Services" and
-        # its Housing Advisory Committee; 2 of 37 meeting types, checked
-        # live). CivicWeb meeting URLs carry only `Id=N`, so there is no
-        # tenant key: each meeting is pinned by its own `Id=`.
-        "princeedwardcounty.civicweb.net",
     }
 )
 

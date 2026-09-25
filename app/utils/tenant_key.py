@@ -85,10 +85,6 @@ SHARED_SINGLE_LISTING_HOSTS: FrozenSet[str] = frozenset(
         # Merrimack TV: the town and its School Board on one vault,
         # per-show pins.
         "reflect-townofmerrimack.cablecast.tv",
-        # Prince Edward County, ON's CivicWeb portal: the County plus two
-        # joint bodies with Lennox and Addington County; per-meeting
-        # `Id=` pins (WO-1061).
-        "princeedwardcounty.civicweb.net",
     }
 )
 

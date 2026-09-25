@@ -1,5 +1,22 @@
 # Backlog — done
 
+## WO-1063: Prince Edward County's portal is a single-government site after all; one Clinton redirect [Done 2026-09-25]
+
+**Why.** WO-1061 treated `princeedwardcounty.civicweb.net` as a multi-government host, because 2 of its 37 meeting types are joint bodies with Lennox and Addington County. Ryan then drew the useful distinction: a shared host is either **organized** (each customer has its own key in every URL, like ChampDS) or **mixed** (several governments' meetings thrown together, like a shared YouTube channel). The two need different solutions. Checked live:
+
+| Question | Answer |
+|---|---|
+| Does a meeting's URL say which body it belongs to? | No. Every meeting is `MeetingInformation.aspx?Id=N`; the type appears only on the page |
+| Are listings organized by body? | Yes. Each type has its own listing (`?type=8` Regular Council, `?type=18` Committee of the Whole) |
+| How many of the 37 types aren't Prince Edward County's own? | 2: the joint Social Services board and Housing Advisory Committee |
+| Do those 2 have any meetings posted? | No. 0 each, and no listing link |
+
+So it is neither kind. It is one government's own site with two empty entries for boards it shares. WO-1061's per-meeting pins made every new meeting wait for a pin, to guard against a risk with nothing behind it.
+
+**Fix.** Removed the portal from `MULTI_GOV_HOSTS` and `tenant_key.SHARED_SINGLE_LISTING_HOSTS`. Replaced the two `Id=` pins with one `authoritative` site pin to `ca:csd:3513020`. It is authoritative because the national table otherwise matches "Prince Edward County, ON" to the census division (WO-1061). A joint-body meeting, if one is ever archived, gets its own per-meeting pin. Both archived meetings, and a new one (`Id=4000`), resolve to Prince Edward County, and the feeder's owner check now accepts new meetings from the portal.
+
+**Clinton redirect.** Added `/j/clinton-mi` -> `/j/clinton-charter-township-mi`. `clinton-mi` was the hub of `rtr:us:mi:clinton`, a made-up id for the same township, which the backfill re-keyed after WO-1061. The other 5 hubs that run retired were left without redirects, because each would send one real government's hub to another (Richmond village, Armada village, Cape Vincent village, Kalamazoo city, Rappahannock County).
+
 ## WO-1062: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
 
 **What and why.** Job 4306 was Collier County FL's County Commission meeting of 2026-09-22 (`reflect-collier-countyboc.cablecast.tv/show/2277`), 11 h 10 min long. It transcribed 77 of 90 chunks, then failed three times on chunk 77, which starts 9 h 37 min in. The last 1 h 33 min had no transcript.
