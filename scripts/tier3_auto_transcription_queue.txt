@@ -1189,3 +1189,8 @@ https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:s
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
 https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
+https://reflect-ictv.cablecast.tv/internetchannel/show/33471		us:place:2725118
+https://reflect-ictv.cablecast.tv/internetchannel/show/33494		us:place:2735648
+https://trms.northmetrotv.com/internetchannel/show/33287		us:place:2711494
+https://trms.northmetrotv.com/internetchannel/show/34106		us:place:2726738
+https://reflect-campbellcounty.cablecast.tv/internetchannel/show/61005		us:place:2136604
