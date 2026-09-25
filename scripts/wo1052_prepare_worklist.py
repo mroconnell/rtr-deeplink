@@ -7,7 +7,8 @@ What it does, step by step.
    `scripts/repair_wrong_pages.py` does (`GET /internal/export/pages`, 500
    rows per request, no transcripts).
 2. Finds every page on the tenant hosts this WO corrects (METRO, The Harris
-   Center, the Port of Corpus Christi, and six county hosts that were
+   Center, the Port of Corpus Christi, the Metropolitan Water District
+   of Southern California, and six county hosts that were
    pinned to a same-named city). A page whose government is not the
    host's real one gets a `rekey` row. This finds pages the audit did not
    list, as well as the ones it did.
@@ -68,6 +69,7 @@ SOURCE_ENTRY = "WO-1052: 2026-09-24 large-county audit loose ends"
 METRO = "rtr:us:tx:metropolitan-transit-authority-of-harris-county"
 HARRIS_CENTER = "rtr:us:tx:the-harris-center-for-mental-health-and-idd"
 PORT = "rtr:us:tx:port-of-corpus-christi"
+MWD = "rtr:us:ca:metropolitan-water-district-of-southern-california"
 
 
 @dataclass(frozen=True)
@@ -106,6 +108,15 @@ HOST_TARGETS: Dict[str, HostTarget] = {
         "The Port of Corpus Christi Authority's own Granicus site (Port "
         "Commission). Ryan's 2026-09-24 audit brief asks for page 2659 to "
         "move here.",
+    ),
+    "mwdh2o.granicus.com": HostTarget(
+        MWD,
+        (2535,),
+        True,
+        "approve",
+        "The Metropolitan Water District of Southern California's own "
+        "Granicus site; filed under Los Angeles County. Ryan approved the "
+        "mint 2026-09-24.",
     ),
     # Six county hosts the seed script pinned to a same-named city
     # (see tenant_overrides.csv's WO-1052 evidence for what each page says).

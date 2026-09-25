@@ -1,18 +1,19 @@
 # Backlog — done
 
-## WO-1052: Harris County audit loose ends: METRO, The Harris Center and the Port minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
+## WO-1052: Harris County audit loose ends: METRO, The Harris Center, the Port and MWD minted; six county hosts no longer filed as cities; twin pages [Done 2026-09-25]
 
 **What and why.** The 2026-09-24 large-county audit (rtr-business `research/LARGE_COUNTY_GAP_WALK_2026-09-24.md`) found Harris County, TX pages that belong to other governments, one duplicate page, and a Dropbox meeting the queue probe could not read. A teammate session added the root cause of the Harris misfiling, five more wrong pins of the same kind, and three LA County items. This WO fixes the code and registry. The live page moves wait for a deploy (see `BACKLOG.md`'s WO-1052 `[HUMAN]` entry).
 
-**Registry.** Three governments added to `curated_governments.csv`:
+**Registry.** Four governments added to `curated_governments.csv`:
 
 | Government | Id | Census unit | Why |
 |---|---|---|---|
 | Metropolitan Transit Authority of Harris County (METRO) | `rtr:us:tx:metropolitan-transit-authority-of-harris-county` | 157766 | Ryan: "Mint both" (2026-09-24). |
 | The Harris Center for Mental Health and IDD | `rtr:us:tx:the-harris-center-for-mental-health-and-idd` | none found | Ryan: "Mint both" (2026-09-24). |
 | Port of Corpus Christi Authority | `rtr:us:tx:port-of-corpus-christi` | 158176 | The brief called this id "existing". No committed file held it; the live site shows a "Port of Corpus Christi, TX" hub. Added so page 2659 can move to it. |
+| Metropolitan Water District of Southern California (MWD) | `rtr:us:ca:metropolitan-water-district-of-southern-california` | 123317 | Ryan: "yes mint MWD" (2026-09-24, relayed by the Enumeration sprint session). Page 2535 moves to it. |
 
-Each tenant host is pinned `authoritative` (ridemetro.granicus.com, theharriscentertx.new.swagit.com, portofcorpuschristi.granicus.com). Each serves one body only, and its pages carried a county name, which a `fallback` pin does not override.
+Each tenant host is pinned `authoritative` (ridemetro.granicus.com, theharriscentertx.new.swagit.com, portofcorpuschristi.granicus.com, mwdh2o.granicus.com). Each serves one body only, and its pages carried a county name, which a `fallback` pin does not override.
 
 **Root cause: county entries looked up without their type.** `_KNOWN_DOMAINS` stores a county as a bare name plus a type, e.g. `("Sacramento", "county", "CA")`. Two places wrote it as "Sacramento, CA" and dropped the type:
 

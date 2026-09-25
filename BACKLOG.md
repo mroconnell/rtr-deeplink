@@ -181,9 +181,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
   [HUMAN] [LOGIN] WO-1052's live page moves and twin deletes wait for a…
-  [HUMAN] Page 2535 is the Metropolitan Water District of Southern…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
@@ -2000,17 +1999,11 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 - **[HUMAN] [LOGIN] WO-1052's live page moves and twin deletes wait for a deploy, then one worklist run.**
-  - **Issue**: WO-1052 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
-  - **Impact**: about 10 live pages show the wrong government; two meetings show twice; one promo trailer shows as a meeting.
+  - **Issue**: WO-1052 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
+  - **Impact**: about 11 live pages show the wrong government; two meetings show twice; one promo trailer shows as a meeting.
   - **Next action**: deploy the Archive with WO-1052. Then, on the Archive's Render shell: `python scripts/wo1052_prepare_worklist.py` (read-only), `python scripts/repair_wrong_pages.py run reports/wo1052_worklist.csv` (dry run), then Ryan types `approve` in `ryan_decision` for the 3964 and 5775 delete rows if he agrees, then `run ... --apply --allow-deletes`, then one more `run` to see every row "already done".
   - **Constraint**: the rekeys to the new ids fail until the deploy is live (the Archive checks the id exists). Deletes go after the deploy so the `_SLUG_REDIRECTS` entries are already live.
   - **History**: `BACKLOG_DONE.md` WO-1052.
-
-- **[HUMAN] Page 2535 is the Metropolitan Water District of Southern California, filed under LA County. Mint MWD?**
-  - **Issue**: page 2535 (`mwdh2o.granicus.com/player/clip/11683`, "Joint One Water & Adaptation Committee", 2025-09-23) is MWD's own meeting, filed under Los Angeles County (`us:county:06037`). MWD has no row in the committed registry and no tenant pin. One other live page address already starts `metropolitan-water-district-of-southern-california-`.
-  - **Impact**: one page on the wrong government; future `mwdh2o.granicus.com` pages have no pin.
-  - **Next action**: Ryan decides whether to mint MWD. If yes: add the row (special district) and an `authoritative` pin for `mwdh2o.granicus.com`, deploy, then re-key 2535 with `repair_wrong_pages.py`.
-  - **History**: `BACKLOG_DONE.md` WO-1052 (found by the 2026-09-24 audit; left alone on purpose).
 
 - **[HUMAN] Decide which hidden transcript versions to promote (WO-928 measured; WO-927's "7 pages clearly worse" was wrong).**
   - **Issue**: WO-927 (2026-09-20) counted cues and words, which favours our own pre-voice-filter Whisper text (it invents text over silence). WO-928 (2026-09-21) redid it from the text. Of the 5 pages WO-927 called "clearly worse" (1254, 1500, 1624, 2000, 3086), none needs a promotion: 1254's shown version is the clean one (the hidden one is Welsh text and one phrase x93), 2000's hidden version is 45 huge caption blocks, 1624 and 1500 show a fine version now (the roll-up caption on 1624 is hidden, and 1500's hidden version is a single cue), 3086 is two clean sourced versions. What is real: category A (shown is pre-filter Whisper with a defect, a clean post-filter Whisper is hidden) = 2 pages, 1225 and 1353. Category B (shown has a defect, a hidden version has none) = 8 pages fully read, 6 hand-confirmed: 1018, 1022, 1225, 1353 (loops) and 1967, 1990 (shown is 45 or 16 huge all-caps caption blocks that cannot be deep-linked); 725 is low priority, 1658 should stay as is. A random sample of 78 of the 1,042 multi-version pages not fully read found 0 more (upper bound about 40).

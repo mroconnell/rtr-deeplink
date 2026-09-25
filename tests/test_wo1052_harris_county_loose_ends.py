@@ -214,3 +214,15 @@ def test_port_of_corpus_christi_is_registered_and_pinned():
         "Nueces County, TX", tenant_host="portofcorpuschristi.granicus.com"
     )
     assert got.gov_id == "rtr:us:tx:port-of-corpus-christi"
+
+
+def test_mwd_is_minted_and_pinned():
+    mwd = "rtr:us:ca:metropolitan-water-district-of-southern-california"
+    gov = registry.governments()[mwd]
+    assert gov.gov_type == "special_district"
+    assert gov.cog_id == "123317"
+    # Page 2535 carried "Los Angeles County, CA"; the pin must beat it.
+    got = resolve_government(
+        "Los Angeles County, CA", tenant_host="mwdh2o.granicus.com"
+    )
+    assert got.gov_id == mwd
