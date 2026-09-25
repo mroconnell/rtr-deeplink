@@ -1396,7 +1396,7 @@ async def extract_chunk_audio(
             )
             logger.warning(
                 "Chunk audio at %ss for %s exists (%s bytes) but isn't decodable -- "
-                "retrying with an output-side seek before giving up",
+                "retrying once before giving up",
                 start,
                 media_url,
                 out_path.stat().st_size,
@@ -1410,7 +1410,7 @@ async def extract_chunk_audio(
             reason = _short_chunk_reason(duration, decoded_seconds)
             logger.warning(
                 "Chunk audio at %ss for %s decodes but is short: %s -- "
-                "retrying with an output-side seek before giving up",
+                "retrying once before giving up",
                 start,
                 media_url,
                 reason,

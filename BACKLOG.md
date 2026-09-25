@@ -124,7 +124,7 @@ Standing decisions — do NOT re-raise  (15)
   A single job still makes N consecutive pulls to the same host — WO-40…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (56)
-  Very long Cablecast meetings stop transcribing partway: read the…
+  Very long Cablecast meetings whose audio is split into many files…
   ClerkBase pages name the council without its state, so they stay…
   Winchester, MA reaches the right TelVue page now but still doesn't…
   State legislatures: small residual fixes remain after today's push —…
@@ -912,20 +912,13 @@ WO-932 and WO-913.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### Very long Cablecast meetings stop transcribing partway: read the separate audio file instead of the stream `[JUST-DO-IT]`
+### Very long Cablecast meetings whose audio is split into many files still stop transcribing partway `[NEEDS-AUDIT]`
 
-- **Issue**: some Cablecast streams keep their audio as a separate track (`#EXT-X-MEDIA:TYPE=AUDIO,URI="1080p_audio.m3u8"`, byte ranges into one `1080p_audio.mp4`). On the worker's ffmpeg (7.1.5), jumping into the middle of that stream writes an empty 224-byte file. WO-45's fallback retries with a slow jump that reads the stream from the start, but that has to finish inside the 120 s timeout, so it stops working somewhere past the 5-9 hour mark. Real case, WO-1061 (2026-09-25): Collier County FL's County Commission, 2026-09-22 (`reflect-collier-countyboc.cablecast.tv/show/2277`, 11 h 10 min, job 4306), finished 77 of 90 chunks and then failed three times on chunk 77 (starts 9 h 37 min in). Reproduced on the worker's own image (`python:3.12-slim-trixie`):
-
-  | Chunk start | Fast jump | Slow jump (fallback) | Separate audio file |
-  |---|---|---|---|
-  | 9 h 30 min | 224-byte empty file | real audio, 256 s | — |
-  | 9 h 37 min | 224-byte empty file | real audio, 178 s | real audio, 9 s |
-  | 11 h 0 min | — | — | real audio, 9 s |
-
-- **Impact**: only Cablecast meetings with separate-track audio *and* long enough to pass the ceiling lose their tail. Job 4306 lost its last 1 h 33 min. How many other jobs hit this is unmeasured; `/internal/transcription-failure-analysis` counts 108 Cablecast failures across 36 jobs, but that mixes this with the pre-WO-45 chunk-1 failures.
-- **Next action**: in `media_probe.extract_chunk_audio()` (shared by the cloud worker and the local script), when the media is a Cablecast master playlist with a `TYPE=AUDIO` rendition whose playlist names an `#EXT-X-MAP` file, extract from that `.mp4` directly with an input-side `-ss`. Then re-run job 4306's page.
-- **Constraint**: a stream with muxed `.ts` segments and no audio rendition (e.g. `city-slp-mn`) already works; leave it on the current path. Don't raise the 120 s timeout instead (standing decision). ffmpeg 8.1 doesn't have the bug, but moving the worker to it means an unstable Debian image.
-- **History**: `BACKLOG_DONE.md`'s Cablecast "isn't decodable" entry (WO-45, 2026-08) found the bug, built the fallback and measured the direct-file route (4 s at 900 s, 3 s at 3,600 s); it was set aside then as Cablecast-specific.
+- **Issue**: WO-1061 fixed Cablecast streams whose separate audio track is one file, but 3 of 10 tenants checked (Burlington/BCIT, Hudson OH, Yarmouth) split that track into hundreds of `.m4s` files. On the worker's ffmpeg (7.1.5), jumping into those streams also writes the 224-byte empty file (Burlington 2 h 30 min in, Yarmouth 3 h 53 min in, 2026-09-25), so they depend on the slow fallback, which runs past its 120 s limit deep into a long meeting.
+- **Impact**: a long enough meeting on these tenants loses its ending, as job 4306 did before WO-1061. How long "long enough" is on these tenants has not been measured.
+- **Next action**: test, on the worker's image, whether ffmpeg reads a chunk correctly from a trimmed copy of the audio playlist that starts at the segment containing the chunk's start (the `#EXT-X-MAP` line plus only the segments covering the window, with absolute URLs). That needs no seek at all, and would cover the one-file shape too.
+- **Constraint**: first measure the fast jump's own cost: on these tenants the failing first attempt took 104-135 s, close to the 120 s limit by itself.
+- **History**: `BACKLOG_DONE.md` WO-1061.
 
 ### ClerkBase pages name the council without its state, so they stay unresolved; the state is in the URL `[JUST-DO-IT]` `[EASY]`
 

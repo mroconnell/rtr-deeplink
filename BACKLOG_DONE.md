@@ -1,5 +1,46 @@
 # Backlog — done
 
+## WO-1061: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
+
+**What and why.** Job 4306 was Collier County FL's County Commission meeting of 2026-09-22 (`reflect-collier-countyboc.cablecast.tv/show/2277`), 11 h 10 min long. It transcribed 77 of 90 chunks, then failed three times on chunk 77, which starts 9 h 37 min in. The last 1 h 33 min had no transcript.
+
+**The cause.** Some Cablecast streams keep their audio as a separate track, stored as one `.mp4` file that the playlist reads in byte ranges. On the worker's ffmpeg (7.1.5), jumping into that stream writes an empty 224-byte file (the WO-45 bug). WO-45's fallback reads the stream from the start up to the chunk, which gets slower the further in the chunk is. It has 120 seconds. Measured on the worker's own image (`python:3.12-slim-trixie`):
+
+| Chunk start | Jump into stream | Slow fallback |
+|---|---|---|
+| 9 h 30 min | 224-byte empty file | real audio, 256 s |
+| 9 h 37 min | 224-byte empty file | real audio, 178 s |
+
+**The fix.** When the jump fails on such a stream, the retry now reads the separate audio file directly, with the same fast jump. The new `media_probe.single_file_audio_rendition_url()` finds that file from the playlists. It only accepts a stream whose audio segments all point at one file. `extract_chunk_audio()` uses it in place of the slow fallback, so a chunk still gets at most two attempts. The cloud worker and the local Whisper script both go through this function. The patched function, run on the worker's image:
+
+| Case | First try | Retry | Result | Time |
+|---|---|---|---|---|
+| Collier, 9 h 37 min (the failed chunk) | 224-byte empty file | audio file | full chunk | 34 s |
+| Collier, 11 h 7 min (last chunk) | 224-byte empty file | audio file | full chunk | 11 s |
+| Peabody MA, 2 h 30 min | 224-byte empty file | audio file | full chunk | 19 s |
+
+**Which Cablecast streams this covers.** 10 real tenants checked 2026-09-25:
+
+| Audio shape | Count of 10 | Tenants | What happens |
+|---|---|---|---|
+| Separate audio, one file | 4 | Bedford, Peabody, Salem, TVCTV | new fix applies |
+| Sound and picture together | 3 | Brunswick ME, VSCTV, Trumbull | never had the bug |
+| Separate audio split into many `.m4s` files | 3 | Burlington (BCIT), Hudson OH, Yarmouth | keeps the slow fallback |
+
+**Tests.** `tests/test_media_probe.py`: the lookup against the real Collier playlists, the split-file shape (Burlington's real playlist), a muxed stream and an unreadable master; the chunk-77 case reading the audio file; a failed audio-file read staying at two attempts; a plain file never looking for an audio track. `tests/conftest.py` gains an autouse fixture so no other test makes the lookup's network call.
+
+**Job 4306's page backfilled without redoing 9 hours.** The page already held the job's partial transcript (version 11876, 5,728 segments, 0 to 9 h 37 min), published automatically when the job failed. Only the missing tail (chunks 77-89, 9 h 37 min to the end) was transcribed, locally with faster-whisper "small", taking 11 minutes. The two were joined with `merge_chunk_segments()` and pushed through `/internal/ingest` as one `transcribed` version with `gov_id` `us:county:12021`, then promoted.
+
+| Part | Segments | Covers | Model |
+|---|---|---|---|
+| Existing partial | 5,728 | 0:05:14 to 9:37:30 | worker default ("tiny") |
+| New tail | 1,279 | 9:37:30 to 11:09:59 | "small" |
+| Published whole (version 11906, now default) | 7,007 | 0:05:14 to 11:09:59 | — |
+
+The join is one continuous passage ("those puzzle pieces" / "These aren't puzzle pieces"); nothing was dropped or doubled at the seam, and there are no hallucination warnings. The live page's transcript ends with "This meeting is adjourned." at 11:09:57. The old partial stays reachable as version 11876. The tail's model is larger than the worker's, so the last 93 minutes may read slightly better than the rest.
+
+**Caution: the split-file shape has the same bug, and this fix does not reach it.** On the worker's image, a jump into Burlington's stream (2 h 30 min in) and Yarmouth's (3 h 53 min in) also wrote the 224-byte empty file. There is no single audio file to read, so those streams keep the slow fallback and its limit. Split back out as its own `BACKLOG.md` entry.
+
 ## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
 **The problem.** WO-1058 built a way to record a real, free lead for another
