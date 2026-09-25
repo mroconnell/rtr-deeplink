@@ -288,7 +288,21 @@ TENANT_GOV_IDS = {
     "00293": "us:state:35",  # New Mexico
     "00283": "us:state:40",  # Oklahoma (House)
     "00289": "us:state:54",  # West Virginia (Senate)
+    # WO-1067: the seven WO-1006 tenants, pinned after a live re-check.
+    "00281": "us:state:23",  # Maine
+    "00282": "us:state:40",  # Oklahoma (Senate)
+    "00285": "us:state:19",  # Iowa
+    "00304": "us:state:51",  # Virginia
+    "00324": "us:state:32",  # Nevada
+    "00325": "us:state:29",  # Missouri
+    "00328": "us:state:42",  # Pennsylvania (House)
 }
+
+
+def test_every_known_tenant_is_pinned():
+    from app.platforms.sliq_harmony import TENANT_JURISDICTIONS
+
+    assert set(TENANT_GOV_IDS) == set(TENANT_JURISDICTIONS)
 
 
 @pytest.mark.parametrize("tenant,gov_id", sorted(TENANT_GOV_IDS.items()))
