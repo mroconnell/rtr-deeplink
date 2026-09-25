@@ -771,7 +771,15 @@ def test_resolver_imports_nothing_but_jurisdiction_enrich_from_this_repo():
     import from `app.platforms`, `archive/`, or a database module would
     silently break that; this fails the build instead."""
     package = Path(gov_registry.__file__).parent
-    allowed = {"app.utils.jurisdiction_enrich", "jurisdiction_enrich"}
+    # `tenant_key` (WO-1056) is a standard-library-only leaf module, so it
+    # lifts out with the package exactly as jurisdiction_enrich does;
+    # tests/test_tenant_key.py fails if it ever imports anything else.
+    allowed = {
+        "app.utils.jurisdiction_enrich",
+        "jurisdiction_enrich",
+        "app.utils.tenant_key",
+        "tenant_key",
+    }
     offenders = []
     for path in sorted(package.glob("*.py")):
         for line in path.read_text(encoding="utf-8").splitlines():

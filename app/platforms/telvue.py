@@ -9,7 +9,7 @@ import aiohttp
 from .base import AssetFinder
 from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting, TranscriptSegment
-from .tenant_key import telvue_org_token
+from ..utils.tenant_key import telvue_org_token
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
 

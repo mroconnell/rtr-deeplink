@@ -320,6 +320,65 @@ def tenant_key(url: str) -> Optional[str]:
     return rule(url)
 
 
+# --- Pins (tenant_overrides.csv rows) and tenant keys.
+#
+# A `match` is a substring of `path?query` or a `key=value` page hint
+# (see `resolver._match_override()`), so it is not a URL. To read one as
+# a tenant, a query-only pin needs a real page path in front of it.
+_QUERY_PIN_PATH: Dict[str, str] = {
+    "public.destinyhosted.com": "agenda_publish.cfm",
+    "townhallstreams.com": "stream.php",
+}
+_TELVUE_BARE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
+_BOXCAST_CHANNEL_HINT_RE = re.compile(r"^channel=boxcast:(.+)$", re.IGNORECASE)
+# How a pin may spell "exactly this tenant" in front of the bare key.
+_WHOLE_TENANT_PREFIXES = (
+    "player/",
+    "vod/",
+    "channel/",
+    "channel=boxcast:",
+    "clientid=",
+    "location_id=",
+    "id=",
+)
+
+
+def pin_tenant_key(host: str, match: Optional[str]) -> Optional[str]:
+    """The tenant key when this pin names a WHOLE tenant on a keyed
+    shared host (`/atlantaga/`, `site=8`, `player/{token}`, `id=24263`),
+    else None -- a narrower pin (one playlist, one event, one show), a
+    pin on any other host, or a match that cannot be read as a tenant.
+
+    `resolver._match_override()` uses this for two things (WO-1056):
+    a whole-tenant pin also matches every URL with that tenant key (so
+    DestinyHosted's `id=N` pins reach `/{N}/agenda/...` pages), and a
+    narrower pin wins over its tenant's whole-tenant pin (so a CMNtv
+    playlist pin beats the station pin).
+    """
+    host = _HOST_ALIASES.get((host or "").lower(), (host or "").lower())
+    if not match or _rule_for(host) is None:
+        return None
+    match = match.strip()
+    if host == "videoplayer.telvue.com" and _TELVUE_BARE_TOKEN_RE.match(match):
+        return match
+    hint = _BOXCAST_CHANNEL_HINT_RE.match(match)
+    if host == "boxcast.tv" and hint:
+        return hint.group(1).lower()
+    if re.match(r"^[A-Za-z_]+=", match):
+        url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"
+    else:
+        url = f"https://{host}/{match.lstrip('/')}"
+    key = tenant_key(url)
+    if not key:
+        return None
+    norm = match.strip("/").lower()
+    for prefix in _WHOLE_TENANT_PREFIXES:
+        if norm.startswith(prefix):
+            norm = norm[len(prefix) :]
+            break
+    return key if norm == key.lower() else None
+
+
 def tenant_name(url: str) -> Optional[str]:
     """The tenant's name: the host alone when the key is blank, else
     `host#key` (e.g. `play.champds.com#atlantaga`)."""

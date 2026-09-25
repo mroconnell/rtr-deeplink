@@ -80,7 +80,7 @@ from bs4 import BeautifulSoup
 
 from app.platforms import host_recognition
 from app.platforms.base import _ALL_CORPORATE_HOSTS, _REGISTRY, detect_platform
-from app.platforms.tenant_key import tenant_key
+from app.utils.tenant_key import tenant_key
 from app.platforms.youtube_ids import extract_video_id
 from app.utils.video_hand_check import prescreen_homepage_link, same_organization_flag
 from scripts.platform_fingerprints import fingerprint, load_signatures

@@ -181,12 +181,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (54)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  After WO-1056 deploys, re-resolve archived pages so CMNtv and…
   Pins the WO-1056 tenant-key test flagged for a decision `[HUMAN]`
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
@@ -205,7 +206,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (209)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (207)
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
   [NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is…
@@ -313,8 +314,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (209)
   [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
   [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
-  A station's whole-token pin beats its own playlist pins: 6 CMNtv…
-  DestinyHosted pins match only one of the two URL shapes that carry…
   6 `best_effort` YouTube pages archived a promotional/off-topic video…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
@@ -2036,6 +2035,14 @@ of human step they need.
   - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
+### After WO-1056 deploys, re-resolve archived pages so CMNtv and DestinyHosted pages get their pinned government `[HUMAN]`
+
+- **Issue**: WO-1056 fixed two pin-matching bugs in `resolver._match_override()`: CMNtv playlist pins now beat the station pin, and DestinyHosted `id=N` pins now reach `/{N}/agenda/...` pages. Archived pages keep the `gov_id` they were given at ingest, so pages ingested before the fix still carry the old answer.
+- **Impact**: existing CMNtv playlist pages (6 cities) still file under Berkley's school district, and existing DestinyHosted meeting pages under `rtr:unknown`. How many pages that is has not been counted.
+- **Next action**: after the deploy, run `python scripts/backfill_gov_id.py` from the Archive service's Render shell. It's a dry run by default and reports which rows would change. Review the report, then rerun with `--apply`.
+- **Constraint**: Render shell only, never a laptop against production (the script's own docstring).
+- **History**: `BACKLOG_DONE.md` WO-1056.
 
 ### Pins the WO-1056 tenant-key test flagged for a decision `[HUMAN]`
 
@@ -3784,22 +3791,6 @@ of human step they need.
     (2026-08-30); this entry compacted 2026-08-31. Albuquerque re-checked
     2026-08-31 and confirmed working correctly on a fresh real example —
     see `BACKLOG_DONE.md`.
-
-### A station's whole-token pin beats its own playlist pins: 6 CMNtv playlist pins never apply `[NEEDS-AUDIT]`
-
-- **Issue**: `resolver._match_override()` returns matching pins in the order `registry._load_tenant_overrides()` sorts them, which is alphabetical by `match`, not most-specific first. CMNtv's whole-station pin `player/Hejq7tDUseFZXc46e8pIxdl8NpmSEupd` (Berkley school district) sorts before `playlists/4479`, so a playlist URL matches the station pin first. Found by WO-1056's tenant-key test, checked with `resolve_government()` on 2026-09-25.
-- **Impact**: 6 of the 23 TelVue playlist pins resolve to Berkley's school district instead of their city: Auburn Hills, Berkley, Madison Heights, Royal Oak, Troy and Rochester, MI. RVTV's playlists work only because its station pin is a bare token that sorts after `playlists/`.
-- **Next action**: decide the order rule. The obvious one is "a pin narrower than its tenant beats the pin that is the tenant", which `app/platforms/tenant_key.py` can tell apart. Then flip `tests/test_tenant_key.py::test_a_playlist_pin_beats_its_stations_whole_token_pin` (a strict expected failure today).
-- **Constraint**: this changes which government existing Archive pages resolve to; count the affected pages from the Render shell before and after, never from a laptop.
-- **History**: `BACKLOG_DONE.md` WO-1056.
-
-### DestinyHosted pins match only one of the two URL shapes that carry the customer id `[NEEDS-AUDIT]`
-
-- **Issue**: all 16 `public.destinyhosted.com` pins are written `id=N`. That matches `agenda_publish.cfm?id=N`, but a meeting page carries the same id in its path (`/24263/agenda/agenda.cfm?seq=2036`), and that resolves to `rtr:unknown:public.destinyhosted.com`. Both shapes checked live 2026-09-25: 24263 is the City of Chandler, AZ in each. This is rtr-discovery's FINDING-23 shape inside this repo.
-- **Impact**: any DestinyHosted meeting page ingested by its own URL gets no government from these pins. How many Archive pages that is has not been counted.
-- **Next action**: count DestinyHosted pages by URL shape (Render shell), then either add a `/{id}/` pin beside each `id=N` pin or make the matcher compare tenant keys (`tenant_key.py`). Flip `tests/test_tenant_key.py::test_a_destinyhosted_meeting_page_gets_its_pinned_government` when fixed.
-- **Constraint**: pin rows are Ryan's call; don't bulk-edit them.
-- **History**: `BACKLOG_DONE.md` WO-1056.
 
 ### 6 `best_effort` YouTube pages archived a promotional/off-topic video instead of the real meeting `[NEEDS-AUDIT]`
 

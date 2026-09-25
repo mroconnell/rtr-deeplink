@@ -1,4 +1,4 @@
-"""Tests for app/platforms/tenant_key.py, and a check that keeps it
+"""Tests for app/utils/tenant_key.py, and a check that keeps it
 consistent with tenant_overrides.csv's pins.
 
 Every URL below is real: taken from an existing test or fixture, a
@@ -14,8 +14,8 @@ from typing import Optional, Tuple
 
 import pytest
 
-from app.platforms import tenant_key as tk
-from app.platforms.tenant_key import tenant_key, tenant_name
+from app.utils import tenant_key as tk
+from app.utils.tenant_key import tenant_key, tenant_name
 from app.utils.gov_registry.registry import MULTI_GOV_HOSTS
 
 OVERRIDES = (
@@ -408,15 +408,8 @@ KNOWN_CONFLICTING_KEYS = {
     ("videoplayer.telvue.com", "GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm"),
 }
 
-_TELVUE_BARE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
+# Castus's external-id page hint: `castus:{tenant slug}:{video id}`.
 _CASTUS_HINT_RE = re.compile(r"^castus:([^:]+):")
-_BOXCAST_HINT_RE = re.compile(r"^channel=boxcast:(.+)$")
-# A query-only pin needs a real page path to be read as a URL.
-_QUERY_PIN_PATH = {
-    "public.destinyhosted.com": "agenda_publish.cfm",
-    "townhallstreams.com": "stream.php",
-}
-_KEY_PREFIXES = ("player/", "vod/", "channel/", "clientid=", "location_id=", "id=")
 
 
 def _pin_tenant(host: str, match: str) -> Tuple[Optional[str], bool]:
@@ -424,30 +417,24 @@ def _pin_tenant(host: str, match: str) -> Tuple[Optional[str], bool]:
     the pin cannot be placed in exactly one tenant."""
     if host in tk.SHARED_SINGLE_LISTING_HOSTS:
         return "", False  # a per-meeting pin inside the one listing
-    key: Optional[str] = None
-    if host == "videoplayer.telvue.com" and _TELVUE_BARE_TOKEN_RE.match(match):
-        key = match
-    elif match in TELVUE_ID_TOKEN and host == "videoplayer.telvue.com":
+    whole = tk.pin_tenant_key(host, match)
+    if whole:
+        return whole, True
+    if host == "videoplayer.telvue.com" and match in TELVUE_ID_TOKEN:
         return TELVUE_ID_TOKEN[match], False
-    elif host == "boxcast.tv" and match.split("?")[0] in BOXCAST_BROADCAST_CHANNEL:
+    if host == "boxcast.tv" and match.split("?")[0] in BOXCAST_BROADCAST_CHANNEL:
         return BOXCAST_BROADCAST_CHANNEL[match.split("?")[0]], False
-    elif _CASTUS_HINT_RE.match(match) and host == "cloud.castus.tv":
-        return _CASTUS_HINT_RE.match(match).group(1).lower(), False
-    elif _BOXCAST_HINT_RE.match(match) and host == "boxcast.tv":
-        key = _BOXCAST_HINT_RE.match(match).group(1).lower()
+    hint = _CASTUS_HINT_RE.match(match)
+    if host == "cloud.castus.tv" and hint:
+        return hint.group(1).lower(), False
+    # A narrower pin written as part of a URL (`vod/tbnk/video/...`,
+    # `clientID=...&eventID=...`): read it as one.
+    if re.match(r"^[A-Za-z_]+=", match):
+        url = f"https://{host}/{tk._QUERY_PIN_PATH.get(host, '')}?{match}"
     else:
-        if re.match(r"^[A-Za-z_]+=", match):
-            url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"
-        else:
-            url = f"https://{host}/{match.lstrip('/')}"
-        key = tenant_key(url)
-    if not key:
-        return None, False
-    norm = match.strip("/").lower()
-    for prefix in ("channel=boxcast:",) + _KEY_PREFIXES:
-        if norm.startswith(prefix) and norm[len(prefix) :] == key.lower():
-            return key, True
-    return key, norm == key.lower()
+        url = f"https://{host}/{match.lstrip('/')}"
+    key = tenant_key(url)
+    return (key, False) if key else (None, False)
 
 
 def _pins_in_scope():
@@ -522,20 +509,11 @@ def test_meeting_finder_keeps_the_tenant_on_a_shared_host():
 
 
 # ---------------------------------------------------------------------------
-# 6. Two real pin bugs this test surfaced (WO-1056). Both are recorded as
-# strict expected failures: fixing either one makes its test pass, which
-# then fails as "XPASS" until the marker is removed. See BACKLOG.md.
+# 6. Two real pin bugs this test surfaced, fixed in resolver._match_override()
+# (WO-1056): a narrower pin beats its tenant's whole-tenant pin, and a
+# whole-tenant pin matches every URL shape carrying its tenant key.
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "WO-1056: pins are tried alphabetically, not most-specific first, so "
-        "CMNtv's whole-station pin (player/Hejq7..., Berkley's school "
-        "district) beats its per-city playlist pins (playlists/4479, Auburn "
-        "Hills). See BACKLOG.md."
-    ),
-)
 def test_a_playlist_pin_beats_its_stations_whole_token_pin():
     from app.utils.gov_registry.resolver import resolve_government
 
@@ -547,15 +525,6 @@ def test_a_playlist_pin_beats_its_stations_whole_token_pin():
     assert match.gov_id == "us:place:2604105"  # Auburn Hills, MI
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "WO-1056: DestinyHosted pins are written `id=N`, which only matches "
-        "the agenda_publish.cfm?id= shape; a meeting page "
-        "(/{id}/agenda/agenda.cfm?seq=...) carries the same id in its path "
-        "and resolves to unknown. See BACKLOG.md."
-    ),
-)
 def test_a_destinyhosted_meeting_page_gets_its_pinned_government():
     from app.utils.gov_registry.resolver import resolve_government
 
@@ -567,3 +536,21 @@ def test_a_destinyhosted_meeting_page_gets_its_pinned_government():
         path="/24263/agenda/agenda.cfm?seq=2036",
     )
     assert match.gov_id == "us:place:0412000"
+
+
+def test_tenant_key_imports_only_the_standard_library():
+    """rtr-discovery imports this module, and the gov_registry package
+    (liftable on its own, D5) depends on it -- so it must stay a leaf:
+    standard library only, no aiohttp, no yt-dlp, nothing from this repo."""
+    import ast
+    import sys
+
+    source = Path(tk.__file__).read_text(encoding="utf-8")
+    names = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            names.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            assert node.level == 0, "no relative imports"
+            names.add(node.module.split(".")[0])
+    assert names <= set(sys.stdlib_module_names), names

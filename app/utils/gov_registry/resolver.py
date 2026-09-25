@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+from ..tenant_key import pin_tenant_key, tenant_key
 from ..jurisdiction_enrich import (
     _name_validates_in_state,
     _validated_subdomain_hint_with_state,
@@ -258,6 +259,9 @@ def _match_override(
         return []
     haystack = (path or "").lower()
     hints = {k.lower(): (v or "").lower() for k, v in (page_hints or {}).items()}
+    # WO-1056: the page's own tenant key on a shared host (tenant_key.py),
+    # e.g. `24263` for DestinyHosted's `/24263/agenda/...`.
+    page_key = tenant_key(f"https://{host}{path}") if path else None
     out = []
     for row in rows:
         if row.match is None:
@@ -274,6 +278,26 @@ def _match_override(
                 continue
         elif needle in hints.values():
             out.append(row)
+            continue
+        # WO-1056: a pin naming a whole tenant matches every URL of that
+        # tenant, whichever shape spells it. DestinyHosted's `id=24263`
+        # pins used to reach only `agenda_publish.cfm?id=24263`, never the
+        # meeting pages at `/24263/agenda/...` -- rtr-discovery's
+        # FINDING-23, inside this repo.
+        whole = pin_tenant_key(host, row.match)
+        if whole and page_key and whole.lower() == page_key.lower():
+            out.append(row)
+    # WO-1056: a pin narrower than its tenant (one playlist, one event)
+    # wins over the pin naming the whole tenant. `rows` is alphabetical,
+    # so CMNtv's station pin `player/Hejq7...` used to beat its per-city
+    # `playlists/4479` pins. Stable, so all other order is unchanged; the
+    # catch-all (no match) stays last.
+    out.sort(
+        key=lambda r: (
+            r.match is None,
+            r.match is not None and pin_tenant_key(host, r.match) is not None,
+        )
+    )
     return out
 
 

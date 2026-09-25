@@ -4,7 +4,7 @@
 
 **Why.** rtr-discovery walks meeting listings per tenant. Ryan decided (2026-09-25, rtr-discovery's SHARED_WEBSITE_TENANTS.md) that on a shared website a tenant is one customer's slice, named by a "tenant key" defined once, here, next to the adapters and pins. The reason is rtr-discovery's FINDING-23: Town Square's pins matched `site=N`, the walker built URLs without `site=`, and nothing noticed.
 
-**What was built.** `app/platforms/tenant_key.py` (standard library only): `tenant_key(url)` returns `""` for a single website, the bare key on a shared one, and None when no tenant is defined or the URL does not carry its key. `tenant_name(url)` is the host, or `host#key`. Each rule copies the tenant parsing its adapter already does.
+**What was built.** `app/utils/tenant_key.py` (standard library only; in `app/utils/` rather than `app/platforms/` because the gov_registry resolver uses it, and that package may import only standalone utils, test_gov_registry D5): `tenant_key(url)` returns `""` for a single website, the bare key on a shared one, and None when no tenant is defined or the URL does not carry its key. `tenant_name(url)` is the host, or `host#key`. Each rule copies the tenant parsing its adapter already does.
 
 | Platform | Host(s) | Key | Real example -> key |
 |---|---|---|---|
@@ -25,7 +25,7 @@
 
 **Lined up with Meeting Finder.** `telvue._org_token_from_url()` now calls `tenant_key.telvue_org_token()`, so there is one definition of TelVue's tenant. `meeting_finder/identify.py`'s `_account_url_for_platform()` keeps the URL whenever it carries a tenant key, instead of collapsing a shared host to its bare root. That generalizes WO-1038's TelVue-only workaround in `runner.py`. For example, a ChampDS URL used to become `https://play.champds.com/`, which names no customer.
 
-**Found, not fixed (pin rows and the resolver are out of scope), all in `BACKLOG.md`.**
+**Found by the pin check.** The first two rows were then fixed the same day, at Ryan's request, in `resolver._match_override()`: a pin narrower than its tenant now beats the whole-tenant pin, and a whole-tenant pin matches every URL shape carrying its tenant key. After the fix, 23 of 23 TelVue playlist pins and 16 of 16 DestinyHosted pins resolve to their own government. Across about 5,900 real URLs from the queue files and tests, only one resolved differently from `main`: `boxcast.tv/channel/x1jps4n28nlgtaozsv5y`, which moved from unknown to Wilmington, OH, its pinned channel. The rest are in `BACKLOG.md`.
 
 | Finding | Count |
 |---|---|
@@ -35,7 +35,7 @@
 | MRVTV playlist pins with no findable org token | 3 |
 | Shared hosts with pins or traffic not in `MULTI_GOV_HOSTS` | 5 |
 
-**Tests.** `tests/test_tenant_key.py`, 113 tests plus 2 strict expected failures (one per bug above), all on real URLs.
+**Tests.** `tests/test_tenant_key.py`, 115 tests on real URLs, including one per fixed bug. Archived pages keep their old `gov_id` until `scripts/backfill_gov_id.py` is rerun from the Render shell; that step is in `BACKLOG.md`.
 
 ## WO-1053: link-first hub harvest -- regional TV hubs to governments (dry run) [Done 2026-09-24]
 
