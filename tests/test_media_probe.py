@@ -603,7 +603,7 @@ async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
     assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)
 
 
-# --- WO-1061: read a separate audio file instead of seeking the stream -----
+# --- WO-1062: read a separate audio file instead of seeking the stream -----
 #
 # Real case: Collier County FL's 11 h 10 min County Commission meeting
 # (reflect-collier-countyboc.cablecast.tv/show/2277, job 4306) died at

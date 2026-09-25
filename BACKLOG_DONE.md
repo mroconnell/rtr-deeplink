@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1061: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
+## WO-1062: very long Cablecast meetings no longer stop transcribing partway [Done 2026-09-25]
 
 **What and why.** Job 4306 was Collier County FL's County Commission meeting of 2026-09-22 (`reflect-collier-countyboc.cablecast.tv/show/2277`), 11 h 10 min long. It transcribed 77 of 90 chunks, then failed three times on chunk 77, which starts 9 h 37 min in. The last 1 h 33 min had no transcript.
 
@@ -40,6 +40,28 @@
 The join is one continuous passage ("those puzzle pieces" / "These aren't puzzle pieces"); nothing was dropped or doubled at the seam, and there are no hallucination warnings. The live page's transcript ends with "This meeting is adjourned." at 11:09:57. The old partial stays reachable as version 11876. The tail's model is larger than the worker's, so the last 93 minutes may read slightly better than the rest.
 
 **Caution: the split-file shape has the same bug, and this fix does not reach it.** On the worker's image, a jump into Burlington's stream (2 h 30 min in) and Yarmouth's (3 h 53 min in) also wrote the 224-byte empty file. There is no single audio file to read, so those streams keep the slow fallback and its limit. Split back out as its own `BACKLOG.md` entry.
+
+## WO-1061: Clinton Township's site pin made authoritative; Prince Edward County's portal handled as a shared host [Done 2026-09-25]
+
+**Why.** After WO-1060 (#1448) deployed, the backfill dry run moved two pages to the wrong government. The backfill resolves from each page's stored display name, and the national table matched that name before either `fallback` site pin applied:
+
+| Page | Stored name | Resolved by the table to | Should be |
+|---|---|---|---|
+| 9447 | "Clinton, MI" | Clinton village, MI (`us:place:2616480`) | Clinton charter township (`us:cousub:2609916520`) |
+| 9904 | "Prince Edward County, ON" | Prince Edward census division (`ca:cd:3513`) | Prince Edward County, the municipality (`ca:csd:3513020`) |
+
+**Checked both sites for other governments (live, 2026-09-25, at Ryan's request).**
+
+| Site | Bodies it publishes | Other governments |
+|---|---|---|
+| `www.clintontownship.com` (Agenda Center) | Board of Ethics, Civil Service Commission, Planning Commission, Zoning Board of Appeals, Downtown Development Authority | none; no video links to other channels |
+| `princeedwardcounty.civicweb.net` (37 meeting types) | Council, its committees, and the County's own local boards (Library Board, O.P.P. Detachment Board, Picton BIA, Affordable Housing Corporation) | 2 joint bodies with Lennox and Addington County: "Prince Edward - Lennox and Addington Social Services" and its Housing Advisory Committee |
+
+**Fix.**
+- **Clinton:** `www.clintontownship.com` is now `authoritative` (Ryan's call). It is the township's own single-government site.
+- **Prince Edward:** Ryan: the portal is a multi-government host. `princeedwardcounty.civicweb.net` is added to `MULTI_GOV_HOSTS` and classified in `tenant_key.SHARED_SINGLE_LISTING_HOSTS`. CivicWeb meeting URLs carry only `Id=N`, so there is no tenant key. The site-wide pin is replaced by per-meeting pins: `Id=3639` (page 9904) and `Id=2365` (page 6011) -> `ca:csd:3513020`. An unpinned meeting on the portal, such as a joint body's, now resolves to unknown rather than to Prince Edward County.
+
+**Caution.** A future Prince Edward meeting needs its own `Id=` pin before it can be ingested with a government. The tier-3 feeder's owner check refuses unpinned meetings on a shared host, so such lines stay in the queue.
 
 ## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
@@ -157,6 +179,8 @@ all -- that's an existing, unrelated resolver rule (`MULTI_GOV_HOSTS`),
 not something this WO's extraction fix touches.
 
 ## WO-1060: after the backfill -- 14 hub redirects committed, 10 wrong pins fixed, and two orphaned hubs re-joined [Done 2026-09-25]
+
+*Numbering note: two PRs used WO-1060 on 2026-09-25 -- #1447 (other-government lead extraction) and #1448 (this entry). Its follow-up is WO-1061.*
 
 **Why.** The post-deploy `backfill_gov_id.py --apply` (80 pages) retired 25 hub pages and wrote their redirects into a file on the Render instance. That file is not served, and the next deploy erases it. Reviewing those rows showed that about half pointed one government's hub at a different government. Checking the pages behind them showed that the backfill had faithfully applied pins that were already wrong. Ryan: "Just make it correct!"
 

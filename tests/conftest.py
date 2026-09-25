@@ -101,7 +101,7 @@ def _no_real_card_extraction(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_real_audio_rendition_lookup(monkeypatch):
-    """Keeps WO-1061's separate-audio-file lookup from making real network
+    """Keeps WO-1062's separate-audio-file lookup from making real network
     calls. `extract_chunk_audio()` runs it whenever an HLS chunk's first
     attempt fails at `start > 0`, which several faked-ffmpeg tests do on
     purpose with real-looking Cablecast URLs. Same pattern as the fixture

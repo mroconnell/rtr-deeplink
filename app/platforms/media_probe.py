@@ -1207,7 +1207,7 @@ async def slice_cached_audio(
     return True, None
 
 
-# WO-1061: an HLS master whose audio is a separate rendition stored as ONE
+# WO-1062: an HLS master whose audio is a separate rendition stored as ONE
 # file, every segment a byte range of it -- Cablecast's
 # `#EXT-X-MEDIA:TYPE=AUDIO,URI="1080p_audio.m3u8"` whose playlist is
 # `#EXT-X-MAP:URI="./1080p_audio.mp4"` plus `#EXT-X-BYTERANGE` lines that
@@ -1227,7 +1227,7 @@ async def single_file_audio_rendition_url(
     or None when the stream isn't that shape (or a playlist can't be
     read). Never raises.
 
-    **Why (WO-1061).** On such a stream the worker's ffmpeg (7.1.5)
+    **Why (WO-1062).** On such a stream the worker's ffmpeg (7.1.5)
     writes an empty 224-byte file for any input-side `-ss` into the
     playlist (WO-45), and WO-45's output-side fallback reads the stream
     from the start to reach `start`, which stops fitting the 120 s
@@ -1354,7 +1354,7 @@ async def extract_chunk_audio(
     what it costs, and the cheaper alternatives that were tested and
     don't work. The retry only ever runs on the failure path; a
     successful extraction is exactly as cheap as it was before. When the
-    stream keeps its audio in one separate file (WO-1061,
+    stream keeps its audio in one separate file (WO-1062,
     single_file_audio_rendition_url()), the retry is a fast input-side
     seek into that file instead -- the output-side seek reads the stream
     from the start, which runs past the timeout deep into a long meeting.
@@ -1421,7 +1421,7 @@ async def extract_chunk_audio(
     # fallback would be an identical, slower run of the same command.
     read_url = media_url
     if not ok and worth_seek_retry and start > 0:
-        # WO-1061: when the audio lives in one separate file, a fast
+        # WO-1062: when the audio lives in one separate file, a fast
         # input-side seek into THAT file replaces the slow output-side
         # retry (still one retry, so the 2 x 120 s worst case above holds;
         # the two playlist reads are capped at 15 s each).
@@ -1457,7 +1457,7 @@ async def extract_chunk_audio(
         if retry_ok and retry_decodable and not retry_short:
             logger.info(
                 "Chunk audio at %ss for %s recovered by %s after the input-side "
-                "seek returned %s -- see media_probe.py's WO-45/WO-1061 notes",
+                "seek returned %s -- see media_probe.py's WO-45/WO-1062 notes",
                 start,
                 media_url,
                 f"reading its audio file {audio_file}"
@@ -1504,7 +1504,7 @@ async def extract_chunk_audio(
                 "-ss",
                 str(start),
                 "-i",
-                # WO-1061: the URL that actually produced the chunk -- an
+                # WO-1062: the URL that actually produced the chunk -- an
                 # input-side seek into the original stream is the thing
                 # that failed on a separate-audio-file stream.
                 read_url,
