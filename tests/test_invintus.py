@@ -1,6 +1,8 @@
 import pytest
 
 from app.platforms.invintus import (
+    CLIENT_STATES,
+    LEGISLATURE_CLIENTS,
     InvintusAssetFinder,
     is_invintus_meeting_url,
     parse_invintus_ids,
@@ -46,7 +48,9 @@ async def test_resolve_real_university_place_city_council():
     assert result.external_id == "invintus:1872740071:2026081000"
     assert result.title == "University Place City Council 8/3/2026"
     assert result.date == "2026-08-03"
-    assert result.jurisdiction == "University Place"
+    # The state comes from CLIENT_STATES (Pierce County channel). Same
+    # government as the bare "University Place" (us:place:5373465).
+    assert result.jurisdiction == "University Place, WA"
     assert result.meeting_body == "University Place City Council"
     assert (
         result.video_url == "https://m-download.invintus.com/1872740071/"
@@ -155,3 +159,147 @@ def test_is_invintus_meeting_url_requires_both_ids():
         is False
     )
     assert is_invintus_meeting_url("https://example.gov/agendacenter") is False
+
+
+# --- Place from a body-name category (2026-09-25) ------------------------
+#
+# Real `Event/getDetailed` responses, captured live 2026-09-25 from
+# api.v3.invintus.com, trimmed to the fields the adapter reads (eventID,
+# clientID, startDateTime, title, categories, categoriesDetail,
+# captionPath, downloadLinks, streamingURIs); values unmodified:
+#   dupont_getDetailed.json                      1872740071 / 2026091009
+#   fife_reversed_categories_getDetailed.json    1872740071 / 2026061017
+#   tacoma_pierce_board_of_health_getDetailed.json 1872740071 / 2026091032
+#   cvtv_vancouver_getDetailed.json              2917038973 / 2026091017
+# `dupont_captions.vtt` is the first 20 real cues of that event's
+# captionPath file, fetched the same day.
+
+PIERCE = "1872740071"
+CVTV = "2917038973"
+
+
+def _page(client_id, event_id):
+    return f"https://player.invintus.com/?clientID={client_id}&eventID={event_id}"
+
+
+async def _resolve_fixture(name, client_id, event_id, routes=None):
+    post_routes = {
+        API_URL: FakeResponse(
+            status=200, text=load_fixture("invintus", name), url=API_URL
+        ),
+    }
+    with mock_session(routes or {}, post_routes=post_routes):
+        return await InvintusAssetFinder().resolve(_page(client_id, event_id))
+
+
+async def test_resolve_real_dupont_splits_city_council_and_adds_state():
+    # Only category is the body, "DuPont City Council". Handing that to
+    # the resolver gave "unresolved"; adding only the state minted
+    # rtr:us:wa:dupont-city-council. "DuPont, WA" is us:place:5318965.
+    captions_url = (
+        "https://m-download.invintus.com/1872740071/"
+        "ffab77b4b3c632172001f88863c0028f2e635ed9.vtt"
+    )
+    routes = {
+        captions_url: FakeResponse(
+            status=200,
+            text=load_fixture("invintus", "dupont_captions.vtt"),
+            url=captions_url,
+        )
+    }
+    result = await _resolve_fixture(
+        "dupont_getDetailed.json", PIERCE, "2026091009", routes
+    )
+
+    assert result.title == "DuPont City Council 9/22/2026"
+    assert result.date == "2026-09-22"
+    assert result.jurisdiction == "DuPont, WA"
+    assert result.meeting_body == "DuPont City Council"
+    assert len(result.segments) == 20
+    assert result.transcript_warnings == []
+
+
+async def test_resolve_real_cvtv_vancouver_city_council():
+    # CVTV lists only "Vancouver City Council", and has no captionPath.
+    result = await _resolve_fixture(
+        "cvtv_vancouver_getDetailed.json", CVTV, "2026091017"
+    )
+
+    assert result.title == "Vancouver City Council (09-21-26)"
+    assert result.jurisdiction == "Vancouver, WA"
+    assert result.meeting_body == "Vancouver City Council"
+    assert result.transcript_warnings == ["No captions found for this video."]
+
+
+async def test_resolve_real_fife_with_body_listed_first():
+    # The flat list here is ["Fife City Council", "Fife"], body first.
+    # categoriesDetail says "Fife" is the top entry, so the place is
+    # read from there, not from categories[0].
+    result = await _resolve_fixture(
+        "fife_reversed_categories_getDetailed.json", PIERCE, "2026061017"
+    )
+
+    assert result.jurisdiction == "Fife, WA"
+    assert result.meeting_body == "Fife City Council"
+
+
+async def test_resolve_real_board_of_health_gets_no_state():
+    # "Tac-PC Board of Health" names no place. With ", WA" added it
+    # would mint rtr:us:wa:tac-pc-board-of-health, so it stays as-is.
+    result = await _resolve_fixture(
+        "tacoma_pierce_board_of_health_getDetailed.json", PIERCE, "2026091032"
+    )
+
+    assert result.jurisdiction == "Tac-PC Board of Health"
+    assert result.meeting_body is None
+
+
+def test_county_council_with_committee_child():
+    # Real Pierce channel shapes (categoriesDetail, IDs as served live
+    # 2026-09-25): the committee is the child of "Pierce County Council".
+    detail = [
+        {"ID": "433", "name": "Pierce County Perf Audit", "childOf": "94"},
+        {"ID": "94", "name": "Pierce County Council", "childOf": None},
+    ]
+    assert InvintusAssetFinder._extract_categories(
+        ["Pierce County Perf Audit", "Pierce County Council"], detail, "WA"
+    ) == ("Pierce County, WA", "Pierce County Perf Audit")
+    only_council = [{"ID": "94", "name": "Pierce County Council", "childOf": None}]
+    assert InvintusAssetFinder._extract_categories(
+        ["Pierce County Council"], only_council, "WA"
+    ) == ("Pierce County, WA", "Pierce County Council")
+
+
+def test_place_with_non_council_child_gets_state():
+    # Real Sumner shape: "Sumner" alone is unresolved (several states
+    # have one); "Sumner, WA" is us:place:5368435.
+    detail = [
+        {"ID": "107", "name": "Sumner", "childOf": None},
+        {"ID": "7050", "name": "Sumner Study Session ", "childOf": "107"},
+    ]
+    assert InvintusAssetFinder._extract_categories(
+        ["Sumner", "Sumner Study Session "], detail, "WA"
+    ) == ("Sumner, WA", "Sumner Study Session")
+
+
+def test_unknown_client_splits_body_but_adds_no_state():
+    # A customer not in CLIENT_STATES: the place is still split off, but
+    # no state is guessed.
+    detail = [{"ID": "95", "name": "DuPont City Council", "childOf": None}]
+    assert InvintusAssetFinder._extract_categories(
+        ["DuPont City Council"], detail, None
+    ) == ("DuPont", "DuPont City Council")
+
+
+def test_without_categories_detail_first_category_is_the_top():
+    # No categoriesDetail: behaves as before (first category, last one
+    # as the body).
+    assert InvintusAssetFinder._extract_categories(
+        ["University Place", "University Place City Council"]
+    ) == ("University Place", "University Place City Council")
+
+
+def test_client_states_never_covers_a_legislature_tenant():
+    # WO-922's legislature path owns those tenants; WisconsinEye in
+    # particular also carries courts and news conferences.
+    assert not set(CLIENT_STATES) & set(LEGISLATURE_CLIENTS)

@@ -1,0 +1,34 @@
+{
+  "errors": {
+    "hasError": false,
+    "message": null
+  },
+  "data": {
+    "eventID": "2026091032",
+    "clientID": "1872740071",
+    "startDateTime": "2026-09-02 15:00:00",
+    "title": "Board of Health regular meeting, September 2, 2026",
+    "categories": [
+      "Tac-PC Board of Health"
+    ],
+    "categoriesDetail": [
+      {
+        "ID": "5852",
+        "name": "Tac-PC Board of Health",
+        "displayName": "Tac-PC Board of Health",
+        "childOf": null,
+        "isPublic": true
+      }
+    ],
+    "captionPath": "https://m-download.invintus.com/1872740071/c4de9ec84d315a9b57dcd8b2962d75fda1aedb18.vtt",
+    "downloadLinks": {
+      "audioDownloadURI": "https://m-download.invintus.com/1872740071/8e191afc340573e12d1129436409a24debe92b19_audio.mp3",
+      "videoDownloadURI": "https://m-download.invintus.com/1872740071/8e191afc340573e12d1129436409a24debe92b19.mp4"
+    },
+    "streamingURIs": {
+      "main": "https://api.v3.invintus.com/StreamURI/hls/1872740071/2026091032/media.m3u8",
+      "backup": null
+    }
+  },
+  "meta": null
+}
