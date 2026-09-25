@@ -48,6 +48,8 @@ from datetime import datetime, timezone
 from typing import Callable, List, Optional, Sequence, Tuple, TypeVar
 
 from app.platforms.granicus import GOVERNING_BODY_KEYWORDS
+from app.utils.gov_registry import resolver as gov_resolver
+from app.utils.jurisdiction_enrich import _STATE_NAME_TO_ABBR_LOWER
 from app.utils.video_hand_check import contains_word, looks_like_real_meeting
 
 from .models import Candidate
@@ -442,25 +444,254 @@ def _names_a_governing_body(title: Optional[str]) -> bool:
     return any(contains_word(t, kw) for kw in GOVERNING_BODY_KEYWORDS)
 
 
-def describe_foreign_candidate(candidate: Candidate) -> dict:
+# --- WO-1060: `describe_foreign_candidate()`'s own extraction, fixed. ---
+#
+# Review of WO-1058's live output found the ORIGINAL version above
+# (`_candidate_place_cores(title, strict=True)` -- the same weak "any
+# capitalized phrase before a governing-body word" pattern WO-1058 itself
+# had to gate behind `strict=True` for the DROP decision) produced almost
+# entirely noise once used to describe a lead: of 9 "confident" leads, all
+# 9 were Galesburg IL's own meetings ("Galesburg, IL City Council" ->
+# "IL" extracted as if it were a different place, because "IL" happens to
+# sit immediately before "City"); of 144 hand-read rows, the dominant
+# named_places were bare meeting-descriptor words the weak pattern
+# mistook for a place ("regular" x70, "recessed ..." x27, "special" x14,
+# plus several bare dates) -- only ONE real lead ("The School Board of
+# Nassau County, Florida" x6) was buried in that noise.
+#
+# The fix has three parts: (1) strip meeting/procedural noise words
+# before extracting, so "Regular"/"Special"/"Recessed" can never be
+# mistaken for a place sitting next to a real type word; (2) require an
+# explicit place-TYPE word (City/Town/Township/Borough/Village/County/
+# Parish/School District/ISD/USD) -- the same STRONG-pattern-only
+# discipline WO-1058 already applied to the drop decision, now applied to
+# the description too, so a bare committee/descriptor word is never
+# recorded as a lead at all (no lead beats a wrong one); (3) never record
+# a lead that's just the searched government's OWN name or state
+# resurfacing (Galesburg's "IL").
+_LEAD_NOISE_WORDS_RE = re.compile(
+    r"\b(?:"
+    r"agenda(?:\s+and\s+staff\s+reports)?(?:\s+for)?"
+    r"|minutes?"
+    r"|meetings?"
+    r"|regular"
+    r"|special"
+    r"|recessed"
+    r"|adjourned"
+    r"|emergency"
+    r"|called"
+    r"|work\s+session"
+    r"|session"
+    r"|budget\s+hearing"
+    r"|public\s+hearing"
+    r"|cancellation\s+notice"
+    r"|scheduled"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_LEAD_DATE_TIME_RE = re.compile(
+    r"\b\d{1,2}/\d{1,2}/\d{2,4}\b"
+    r"|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?"
+    r"\s+\d{1,2},?\s*(?:\d{4})?\b"
+    r"|\b\d{1,2}:\d{2}\s*(?:[ap]\.?m\.?)?\b"
+    r"|\b(?:19|20)\d{2}\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_lead_noise(text: str) -> str:
+    """Meeting/procedural noise words and dates/times stripped out --
+    never a place-TYPE word (City/County/...), same non-destructive
+    posture as `hub_harvest._extract_place_fragment()`'s own trailing-
+    descriptor strip, just aimed at a candidate TITLE's shape (leading
+    "Regular"/"Special", embedded dates) rather than a hub SECTION
+    name's shape (trailing "Board Meetings").
+
+    Only WHITESPACE runs are collapsed -- a comma or dash is deliberately
+    left alone, real regression (WO-1060 build): collapsing "Galesburg,
+    IL City Council" -> "Galesburg IL City Council" joined the city's own
+    name and its own state abbreviation into one contiguous two-word
+    phrase, which then matched as if "Galesburg IL" (not just "IL") were
+    a different place. A comma/dash between two capitalized words is
+    exactly the signal that they are NOT one contiguous place-name
+    phrase, and `_LEAD_PLACE_PHRASE_PATTERNS`'s own `[\\w.'-]` word class
+    already can't cross one -- removing it a second time here only
+    reintroduced the bug the character class was already preventing."""
+    working = _LEAD_NOISE_WORDS_RE.sub(" ", text or "")
+    working = _LEAD_DATE_TIME_RE.sub(" ", working)
+    return re.sub(r"[ \t]+", " ", working).strip()
+
+
+# Place-TYPE words a real other-government lead's title must carry --
+# wider than `_GOV_TYPE_WORDS` above (School District/ISD/USD/Parish
+# added, WO-1060) since a school-district or parish government is just as
+# real a "different government" as a city/county one. Deliberately
+# excludes the bare governing-body words (Council/Commission/Board/...)
+# `_PLACE_PHRASE_PATTERNS`'s third pattern uses -- that pattern is what
+# actually caused the "regular"/"special"/date noise, since it treats ANY
+# capitalized word before "Council" as a place with no type word to
+# anchor it.
+# Each entry: (pattern, "type_first" | "name_first") -- which capture
+# group holds the place-type word vs. the place name itself, so
+# `_extract_lead_place()` never has to guess it from casing (a real title
+# can capitalize either "City of Cohasset" or, mid-sentence, "city of
+# Cohasset").
+_LEAD_PLACE_PHRASE_PATTERNS = (
+    (
+        re.compile(
+            r"\b(?i:(city|town|township|borough|village|county|parish))\s+of\s+"
+            r"([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\b"
+        ),
+        "type_first",
+    ),
+    (
+        re.compile(
+            r"\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\s+"
+            r"(?:(City|Town|Township|Borough|Village|County|Parish|"
+            r"School\s+District|ISD|USD))\b"
+        ),
+        "name_first",
+    ),
+)
+
+
+def _extract_lead_place(title: str) -> Optional[Tuple[str, str]]:
+    """`(place_core, type_word)` for the real place-name phrase inside
+    `title`, requiring an explicit place-type word -- or `None` when
+    nothing place-shaped, with a real type word attached, is left once
+    meeting/procedural noise is stripped. See the module comment above
+    for why this is narrower than `_candidate_place_cores()`'s own weak
+    pattern. `type_word` (lowercased, WO-1060) is the place-type word the
+    phrase was actually found next to ("county", "school district"...) --
+    kept separately since `_place_core()` itself drops it from the name,
+    but a caller matching against the registry (a school district in
+    particular) needs to know it was there."""
+    working = _strip_lead_noise(title or "")
+    for pattern, order in _LEAD_PLACE_PHRASE_PATTERNS:
+        for match in pattern.finditer(working):
+            type_word, name = (
+                match.groups() if order == "type_first" else reversed(match.groups())
+            )
+            core = _place_core(name)
+            if core:
+                return core, re.sub(r"\s+", " ", type_word.strip().lower())
+    return None
+
+
+# Longest-name-first so "West Virginia" is tried before "Virginia" would
+# otherwise steal a partial match -- not load-bearing for any state pair
+# today, but cheap insurance against a future one.
+_STATE_FULL_NAME_RE = re.compile(
+    r"\b("
+    + "|".join(sorted(_STATE_NAME_TO_ABBR_LOWER, key=len, reverse=True))
+    + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _state_from_title_text(text: str) -> str:
+    """A state/province abbreviation named in `text`, either the
+    ", ST"-shaped suffix `gov_resolver.state_suffix_from_text()` already
+    recognizes anywhere in a real page title, or a full state name
+    written out in prose (WO-1060: real shape, "The School Board of
+    Nassau County, Florida" carries no abbreviation at all). The
+    RIGHTMOST match wins when more than one appears, since a real title's
+    own state is usually the trailing one ("..., Florida")."""
+    if not text:
+        return ""
+    code = gov_resolver.state_suffix_from_text(text)
+    if code:
+        return code
+    last = None
+    for m in _STATE_FULL_NAME_RE.finditer(text):
+        last = m
+    if last:
+        return _STATE_NAME_TO_ABBR_LOWER[last.group(1).lower()].upper()
+    return ""
+
+
+# The registry's own `Government.gov_name` carries a census-style
+# descriptor and state suffix a plain title never does -- "Galesburg
+# (city), IL", "Yarmouth (town), MA" -- neither of which `_place_core()`
+# (built for TITLE text) knows how to strip. Stripped here, once, before
+# comparing against a title-extracted core.
+_GOV_NAME_PARENTHETICAL_RE = re.compile(r"\s*\([^)]*\)")
+_GOV_NAME_TRAILING_STATE_RE = re.compile(r",\s*[A-Za-z]{2}\.?\s*$")
+
+
+def _own_government_core(gov_name: str) -> Optional[str]:
+    cleaned = _GOV_NAME_TRAILING_STATE_RE.sub("", gov_name)
+    cleaned = _GOV_NAME_PARENTHETICAL_RE.sub("", cleaned)
+    return _place_core(cleaned)
+
+
+def _is_own_government_place(
+    place_core: str, gov_name: Optional[str], gov_state: Optional[str]
+) -> bool:
+    """True only when `place_core` is clearly just the SEARCHED
+    government's own identity resurfacing -- its own name, or its own
+    state's name/code (Galesburg, IL's own "... Galesburg, IL City
+    Council..." extracts "il", which is Galesburg's own state, not a
+    different place). Deliberately an EXACT match only, never a prefix/
+    substring one: a real, separate government can share a name PREFIX
+    with the searched one (a real county's own government vs. a school
+    district of the same county, e.g. Nassau County, FL vs. Nassau County
+    School District, FL) without being the same government -- WO-1060's
+    own brief tried a substring rule first and explicitly retracted it
+    for exactly this reason."""
+    if not place_core:
+        return False
+    if gov_state:
+        state_lower = gov_state.strip().lower()
+        if place_core == state_lower:
+            return True
+        if _STATE_NAME_TO_ABBR_LOWER.get(place_core) == state_lower:
+            return True
+    if gov_name:
+        gov_core = _own_government_core(gov_name)
+        if gov_core and place_core == gov_core:
+            return True
+    return False
+
+
+def describe_foreign_candidate(
+    candidate: Candidate,
+    *,
+    gov_name: Optional[str] = None,
+    gov_state: Optional[str] = None,
+) -> Optional[dict]:
     """WO-1058 rule (Ryan, 2026-09-25): every candidate this filter drops
     for naming a different place is a real, free link-first lead for THAT
-    other government -- worth keeping, not just discarding. Always uses
-    the full (non-strict) place-phrase patterns, since this is describing
-    a candidate already confirmed foreign, not deciding whether to drop
-    it. Shape matches what `scripts/hub_harvest.py`'s own matcher already
-    expects a hub section to carry (name/state/body-type matching input)."""
+    other government -- worth keeping, not just discarding. WO-1060
+    narrowed WHICH dropped candidates actually earn a recorded lead (see
+    the module comment above `_LEAD_NOISE_WORDS_RE`): `None` when the
+    title names no real place at all, or only the searched government's
+    own name/state (`gov_name`/`gov_state`, both optional -- a caller
+    that doesn't know them just never excludes on that basis). Shape
+    matches what `scripts/hub_harvest.py`'s own matcher already expects a
+    hub section to carry (name/state/body-type matching input), plus a
+    `state` field (WO-1060) carrying the title's OWN state when the title
+    names one, so a caller never has to guess it from region/hub context
+    alone."""
     title = candidate.title or ""
-    cores = _candidate_place_cores(title, strict=True)
+    extracted = _extract_lead_place(title)
+    if extracted is None:
+        return None
+    place_core, place_type = extracted
+    if _is_own_government_place(place_core, gov_name, gov_state):
+        return None
     body_words = [
         kw for kw in GOVERNING_BODY_KEYWORDS if contains_word(title.lower(), kw)
     ]
     return {
-        "named_place": cores[0] if cores else None,
+        "named_place": place_core,
+        "place_type": place_type,
         "body_words": body_words,
         "title": candidate.title,
         "date": candidate.date,
         "url": candidate.url,
+        "state": _state_from_title_text(title),
     }
 
 

@@ -1,5 +1,75 @@
 # Backlog — done
 
+## WO-1060: "other government" leads were mostly noise -- fixed the extraction, not just the match [Done 2026-09-25]
+
+**The problem.** WO-1058 built a way to record a real, free lead for another
+government whenever Meeting Finder's own shared-hub filter dropped a
+candidate for naming a different place. A review of a real run found the
+extraction step, not the matching step, was broken. Of 9 "confident"
+leads, all 9 were Galesburg, IL's OWN meetings -- a title like "Galesburg,
+IL City Council" got read as if "IL" (Galesburg's own state) were a
+different place, just because it sits next to the word "City". Of 144
+"needs a human" leads, most weren't real places at all -- the extractor
+had mistaken plain meeting words for a place name.
+
+**Result, before this fix (144 hand-read leads, by named place):**
+
+| Named place | Count |
+|---|---|
+| regular | 70 |
+| recessed ... | 27 |
+| special | 14 |
+| (a real lead: Nassau County School Board, FL) | 6 |
+| everything else (mostly dates) | 27 |
+
+**The fix.** `app/platforms/meeting_finder/pick.py`'s `describe_foreign_
+candidate()`: (1) strips meeting words (Regular, Special, Recessed,
+Agenda, Minutes, dates...) before looking for a place name; (2) only
+counts it as a place when a real place-type word is right there (City,
+Town, Township, Borough, Village, County, Parish, School District, ISD,
+USD) -- never a bare committee name; (3) never records a lead that is
+just the SEARCHED government's own name or state showing up again. A
+county name can still be a real, separate lead even when it's inside the
+school district being searched (Nassau County, FL is a different
+government from Nassau County School District, FL) -- an early version of
+this rule tried to exclude that case and was wrong to.
+
+`scripts/meeting_finder_other_gov_leads.py` now re-reads each lead's own
+title with this same function, rather than trusting a `named_place`
+already written by the older code -- so re-running it against an old run
+picks up the fix without re-running Meeting Finder. `scripts/hub_harvest.
+py`'s matcher also learned one more trick: a bare county name plus state
+resolves to the COUNTY government by default, so a school-board lead
+now tries "<County> County School District" first, which correctly
+resolves to the real school district instead.
+
+**Result, re-running the same 153 leads after the fix:**
+
+| Result | Before | After |
+|---|---|---|
+| Confident (real, different government) | 9 (all wrong -- Galesburg's own meetings) | 6 (all correct -- Nassau County School District, FL) |
+| Needs a human, no place name found at all | 0 | 117 |
+| Needs a human, a real-looking name that still needs checking | 144 | 30 |
+
+**Live run, 40 governments on known shared hubs (2026-09-25).** Ran
+Meeting Finder live (not from saved output), 34 real inputs plus 6 new
+domains (`collegetownship.org`, `nashwaukmn.gov`, `linolakes.gov`,
+`lexingtonmn.gov`, `wilderky.gov`, `germantown.oh.us`), concurrency 16,
+dry run only, no ingest. Galesburg, IL -- the exact real regression this
+WO fixes -- produced 0 other-government leads live, same as the offline
+re-run above. Nassau County School District, FL produced 6 real, correct
+leads for Nassau County's own government. No other government in the
+40 produced a false lead. (The 6 new domains carried no `gov_id` in this
+test run, so Meeting Finder's own gov-name filter never engaged for them
+-- they exercised the resolve path, not the lead extraction this WO
+changed.)
+
+**Not fixed here:** a bare government name resolved through a REAL shared
+multi-tenant host (e.g. the actual `videoplayer.telvue.com`, not a
+per-customer subdomain) still needs a real per-tenant pin to resolve at
+all -- that's an existing, unrelated resolver rule (`MULTI_GOV_HOSTS`),
+not something this WO's extraction fix touches.
+
 ## WO-1059: a `key=value` pin matches an exact query parameter, not any text containing it [Done 2026-09-25]
 
 **The bug.** `resolver._match_override()` tested every pin with `needle in haystack` (the page's path and query, lowercased). So a `key=value` pin fired on any longer value, or on any parameter whose name ends the same way. Confirmed at 630a774: `resolve_government(None, tenant_host="reflect-tst-mn.cablecast.tv", path="/show/1?site=80")` returned Mendota Heights (`us:place:2741696`), tier pinned.

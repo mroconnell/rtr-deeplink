@@ -308,8 +308,34 @@ def _extract_place_fragment(text: str) -> str:
 
 
 def _match_place_text(
-    place_text: str, region_state: str, tenant_host: str
+    place_text: str,
+    region_state: str,
+    tenant_host: str,
+    *,
+    body_type_hint: str = "",
 ) -> "resolver.GovernmentMatch":
+    """`body_type_hint` (WO-1060, optional): `_guessed_body_type()`'s own
+    output for the section/title this place came from. Live-confirmed
+    2026-09-25 (`us_school_districts.csv`): a bare county/place name plus
+    state resolves to that COUNTY's general-purpose government by default
+    ("nassau, FL" -> Nassau County, FL, `us_counties.csv`) even when the
+    real body is its school district -- "nassau county school district,
+    FL" resolves correctly, as a REGISTRY-tier hit, to the actual school
+    district (Nassau County School District, FL). So when the hint says
+    `school district` and `place_text` doesn't already spell that out,
+    try the qualified form FIRST -- it is the more specific, more likely
+    correct match whenever it resolves at all."""
+    if (
+        body_type_hint == "school district"
+        and "school district" not in (place_text or "").lower()
+    ):
+        qualified = f"{place_text} School District"
+        qualified_match = resolver.resolve_government(
+            f"{qualified}, {region_state}" if region_state else qualified,
+            tenant_host=tenant_host,
+        )
+        if qualified_match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
+            return qualified_match
     raw_name = f"{place_text}, {region_state}" if region_state else place_text
     match = resolver.resolve_government(raw_name, tenant_host=tenant_host)
     if match.tier not in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):

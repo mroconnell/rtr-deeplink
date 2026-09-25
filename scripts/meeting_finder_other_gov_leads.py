@@ -1,11 +1,29 @@
 #!/usr/bin/env python3
-"""WO-1058: match Meeting Finder's own "other government" leads to a real
-government, the same way `scripts/hub_harvest.py` (WO-1053) already
-matches a hub section -- name + state + body type, hub region-state as a
-tie-break, a joint/special body always routed to hand-read. Reuses that
-script's own matcher (`_match_place_text()`/`_extract_place_fragment()`/
+"""WO-1058 (fixed WO-1060): match Meeting Finder's own "other government"
+leads to a real government, the same way `scripts/hub_harvest.py`
+(WO-1053) already matches a hub section -- name + state + body type, hub
+region-state as a tie-break, a joint/special body always routed to
+hand-read. Reuses that script's own matcher (`_match_place_text()`/
 `_is_joint_or_special_body()`) rather than a second copy, per CLAUDE.md's
 "one picking rule" framing for exactly this kind of shared logic.
+
+WO-1060: a review of WO-1058's live output found the recorded lead
+itself, not just the match step, was the problem -- of 9 "confident"
+leads, all 9 were Galesburg IL's own meetings ("Galesburg, IL City
+Council" mistaking its own state abbreviation "IL" for a different
+place); of 144 hand-read rows, the dominant `named_place`s were bare
+meeting-descriptor words ("regular" x70, "recessed ..." x27, "special"
+x14) a too-loose extraction pattern mistook for a place. Fixed at the
+source: `pick.describe_foreign_candidate()` (app/platforms/meeting_finder/
+pick.py) now requires an explicit place-TYPE word, strips meeting/
+procedural noise first, and never records a lead that's just the
+SEARCHED government's own name/state resurfacing. This script re-derives
+`named_place`/`state` from each lead's own `title` using that SAME
+function -- rather than trusting a `named_place` already written by an
+older run's code -- so re-running this script against an existing JSONL
+picks up the fix without needing to re-run Meeting Finder itself. The
+searched government's own name/state come from the JSONL row's own
+`identity_expected_gov_id` (`government_for_id()`), when present.
 
 Where the leads come from: `pick.filter_candidates_to_government()`
 (WO-1054, narrowed WO-1058) drops a candidate off a shared hub/account
@@ -55,10 +73,13 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.platforms.meeting_finder.models import Candidate  # noqa: E402
+from app.platforms.meeting_finder.pick import describe_foreign_candidate  # noqa: E402
 from app.utils.gov_registry import resolver  # noqa: E402
+from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 from scripts.hub_harvest import (  # noqa: E402
     HubRow,
-    _extract_place_fragment,
+    _guessed_body_type,
     _is_joint_or_special_body,
     _match_place_text,
     load_hubs,
@@ -91,9 +112,29 @@ def _hub_region_for_host(hubs: List[HubRow], hub_host: str) -> str:
     return ""
 
 
+_GOV_CACHE: Dict[str, Any] = {}
+
+
+def _gov_for_id(gov_id: str):
+    if not gov_id:
+        return None
+    if gov_id not in _GOV_CACHE:
+        try:
+            _GOV_CACHE[gov_id] = government_for_id(gov_id)
+        except Exception:  # noqa: BLE001
+            _GOV_CACHE[gov_id] = None
+    return _GOV_CACHE[gov_id]
+
+
 def load_leads(jsonl_path: Path) -> List[Dict[str, Any]]:
     """Every `VerdictRow.other_gov_leads` entry across one run's JSONL,
-    deduped by `url`."""
+    deduped by `url`. WO-1060: each lead also carries the SEARCHED
+    government's own `_gov_name`/`_gov_state` (from that row's own
+    `identity_expected_gov_id`, when the registry has one) -- needed by
+    `match_lead()` to re-derive the lead fresh from `title` via
+    `pick.describe_foreign_candidate()`, the same function Meeting Finder
+    itself calls live, rather than trusting a `named_place` an older run's
+    (buggy) code may have already written."""
     seen_urls = set()
     leads: List[Dict[str, Any]] = []
     with jsonl_path.open("r", encoding="utf-8") as f:
@@ -102,11 +143,15 @@ def load_leads(jsonl_path: Path) -> List[Dict[str, Any]]:
             if not line:
                 continue
             row = json.loads(line)
+            gov = _gov_for_id(row.get("identity_expected_gov_id") or "")
             for lead in row.get("other_gov_leads") or []:
                 url = lead.get("url")
                 if not url or url in seen_urls:
                     continue
                 seen_urls.add(url)
+                lead = dict(lead)
+                lead["_gov_name"] = gov.gov_name if gov else None
+                lead["_gov_state"] = (gov.state or None) if gov else None
                 leads.append(lead)
     return leads
 
@@ -114,11 +159,13 @@ def load_leads(jsonl_path: Path) -> List[Dict[str, Any]]:
 def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
     title = lead.get("title") or ""
     hub_host = lead.get("hub_host") or ""
-    region_state = _hub_region_for_host(hubs, hub_host)
-    body_words = ", ".join(lead.get("body_words") or [])
-    named_place = lead.get("named_place") or ""
+    hub_region_state = _hub_region_for_host(hubs, hub_host)
+    gov_name = lead.get("_gov_name")
+    gov_state = lead.get("_gov_state")
 
-    def _row(*, matched=None, confidence: str, reason: str) -> LeadMatch:
+    def _row(
+        *, matched=None, named_place="", body_words="", confidence: str, reason: str
+    ) -> LeadMatch:
         return LeadMatch(
             url=lead.get("url") or "",
             title=title,
@@ -138,30 +185,66 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
     # or hosted by.
     if _is_joint_or_special_body(title):
         return _row(
+            named_place=lead.get("named_place") or "",
+            body_words=", ".join(lead.get("body_words") or []),
             confidence="hand_read",
             reason="joint/special body -- needs a human",
         )
 
-    # `describe_foreign_candidate()`'s own `named_place` (pick.py) is
-    # already a real place-type phrase ("state college", "cohasset") --
-    # prefer it, and fall back to re-extracting a fragment from the title
-    # only when it's missing (an older/foreign-format lead).
-    place_fragment = named_place or _extract_place_fragment(title)
-    if not place_fragment:
+    # WO-1060: re-derive from `title` via the SAME function Meeting
+    # Finder calls live, rather than trusting whatever `named_place` this
+    # lead was already written with (that field is exactly what WO-1058's
+    # calibration found unreliable -- see this script's own module
+    # docstring). `describe_foreign_candidate()` returns `None` when the
+    # title names no real place at all, or only the searched government's
+    # own name/state -- both are "no lead", not "hand read".
+    described = describe_foreign_candidate(
+        Candidate(url=lead.get("url") or "", title=title, date=lead.get("date")),
+        gov_name=gov_name,
+        gov_state=gov_state,
+    )
+    if described is None:
         return _row(
             confidence="hand_read",
-            reason="no place name found in the lead's own title",
+            reason="no real place name found in the lead's own title",
         )
+    named_place = described["named_place"]
+    place_type = described.get("place_type") or ""
+    body_words = ", ".join(described["body_words"])
 
-    match = _match_place_text(place_fragment, region_state, hub_host)
+    # Rule 3 (WO-1060): the title's OWN state first, else the hub's
+    # region, else the searched government's own state -- never "no
+    # state" when the searched government has one.
+    region_state = described.get("state") or hub_region_state or gov_state or ""
+
+    body_type_hint = _guessed_body_type(title)
+    # `_place_core()` (pick.py) already dropped the place-type word from
+    # `named_place` ("Nassau County" -> "nassau") -- put a COUNTY name
+    # back together for `_match_place_text()`'s own school-district
+    # qualifier ("Nassau School District" doesn't resolve; "Nassau County
+    # School District" does -- confirmed live building this WO), since
+    # the real-world shape is "<County> County School District", not
+    # "<County> School District".
+    place_text = (
+        f"{named_place} County"
+        if body_type_hint == "school district" and place_type == "county"
+        else named_place
+    )
+    match = _match_place_text(
+        place_text, region_state, hub_host, body_type_hint=body_type_hint
+    )
     if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
         return _row(
             matched=match,
+            named_place=named_place,
+            body_words=body_words,
             confidence="confident",
             reason=f"exact name+state+type match ({match.tier})",
         )
     return _row(
         matched=match,
+        named_place=named_place,
+        body_words=body_words,
         confidence="hand_read",
         reason=f"resolver tier={match.tier}: {match.evidence}",
     )
