@@ -10,7 +10,11 @@ one pulled from a real customer's actual API response, not invented.
 import json
 
 from app.platforms.base import detect_platform
-from app.platforms.champds import _STREAM_ONLY_WARNING, ChampDSAssetFinder
+from app.platforms.champds import (
+    _STREAM_ONLY_WARNING,
+    ChampDSAssetFinder,
+    vod2_stream_for_download_url,
+)
 from app.platforms.media_probe import transcription_media_url
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -96,6 +100,12 @@ async def test_resolve_uses_direct_download_url_when_present():
     )
     assert result.video_format == "mp4"
     assert result.video_warnings == []
+    # WO-1052: the stream is set too, and our own server-side reads use it
+    # (an MP4 with its index at the end is too slow to read; champds.py).
+    assert result.server_media_url == (
+        "https://securestream10.champds.com/VOD/event/AtlantaGA/1227/x/y/master.m3u8"
+    )
+    assert transcription_media_url(result) == result.server_media_url
 
 
 async def test_resolve_keeps_vod2_out_of_the_player():
@@ -471,6 +481,10 @@ EL_PASO_CAPTION_URL = (
     "https://play.champds.com/CAPTION/elpasococo/2026-09/"
     "e6ceecf86eb48b6c349cb46adb72b3fd73862d46.vtt"
 )
+EL_PASO_VOD2 = (
+    "https://securestream10.champds.com/VOD/event/ElPasoCoCO/164/"
+    "1788958150000/lhBzs0m7J9FLd934RPV9Rg/master.m3u8"
+)
 
 
 def _api_route(customer: str, event_id: int, fixture: str) -> dict:
@@ -557,13 +571,49 @@ async def test_populated_captions_become_transcript_segments():
     assert first.text.startswith("Good morning and welcome to the Board of")
     assert result.transcript_language == "en"
     assert result.transcript_warnings == []
-    # El Paso also has a DownloadURL, so the player gets the plain MP4 and
-    # no server-only stream is set.
+    # El Paso also has a DownloadURL, so the player gets the plain MP4.
+    # WO-1052: its index sits at the end of a 1 GB file (206 s to reach,
+    # measured live), so transcription reads the VOD2 stream instead.
     assert result.video_url == (
         "https://play.champds.com/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
     )
-    assert result.server_media_url is None
-    assert transcription_media_url(result) == result.video_url
+    assert result.server_media_url == EL_PASO_VOD2
+    assert transcription_media_url(result) == EL_PASO_VOD2
+
+
+async def test_download_url_maps_back_to_its_vod2_stream():
+    # WO-1052: bulk_ingest.py hands the queue probe only the stored MP4
+    # URL, never the resolve result, so the stream is looked up from it.
+    with mock_session(_api_route("elpasococo", 164, "elpasococo_event_164.json")):
+        stream = await vod2_stream_for_download_url(
+            "https://play.champds.com/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
+        )
+
+    assert stream == EL_PASO_VOD2
+
+
+async def test_download_url_lookup_ignores_other_url_shapes():
+    # No request is made (mock_session({}) fails on any GET): only the
+    # real DOWNLOAD-MEDIA shape on play.champds.com is looked up.
+    with mock_session({}):
+        assert await vod2_stream_for_download_url(EL_PASO_URL) is None
+        assert (
+            await vod2_stream_for_download_url(
+                "https://example.com/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
+            )
+            is None
+        )
+
+
+async def test_download_url_lookup_survives_an_api_failure():
+    api_url = "https://playapi.champds.com/elpasococo/event/164"
+    with mock_session({api_url: FakeResponse(status=503, text="", url=api_url)}):
+        assert (
+            await vod2_stream_for_download_url(
+                "https://play.champds.com/DOWNLOAD-MEDIA/elpasococo/eventmainmedia/164"
+            )
+            is None
+        )
 
 
 async def test_a_failed_caption_fetch_keeps_the_video_and_says_so():

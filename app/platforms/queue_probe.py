@@ -80,6 +80,7 @@ from .base import (
     get_finder,
     is_multi_gov_host,
 )
+from .champds import vod2_stream_for_download_url
 from .direct_file import is_dropbox_url, is_laserfiche_url
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
@@ -979,6 +980,36 @@ async def _probe_direct_file(
             start,
             f"HEAD/ranged-GET on the media file failed: {e}",
         )
+
+    # WO-1052: a ChampDS DOWNLOAD-MEDIA MP4 often keeps its index at the
+    # END of the file, and ChampDS's server takes about 1 s per 5 MB of
+    # offset to reach it -- 206 s on a real 1 GB file, past ffprobe's
+    # 120 s timeout. The same event's VOD2 stream gives the duration in
+    # about 2 s, so read it there first; the HEAD above still supplies
+    # size and date. Falls through to ffprobe on the MP4 if the stream
+    # can't be found or read. See champds.py's WO-1052 note.
+    if _CHAMPDS_DIRECT_MEDIA_MARKER in urlparse(video_url).path.lower():
+        stream_url = await vod2_stream_for_download_url(video_url)
+        if stream_url:
+            # The stream checks for ChampDS's own Referer; the MP4's own
+            # origin (play.champds.com) gives exactly that, whatever
+            # source page the caller passed.
+            stream = await _probe_hls(url, platform, stream_url, video_url, start)
+            if stream.duration_seconds:
+                return _finish(
+                    url,
+                    platform,
+                    "head+champds-vod2",
+                    stream.duration_seconds,
+                    date,
+                    size_bytes,
+                    start,
+                )
+            logger.warning(
+                "ChampDS VOD2 stream unreadable for %s (%s); trying the MP4",
+                video_url,
+                stream.reason,
+            )
 
     duration = await media_probe.probe_duration(
         video_url, source_page_url=source_page_url or url
