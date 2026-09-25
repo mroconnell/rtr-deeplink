@@ -1,5 +1,50 @@
 # Backlog — done
 
+## WO-1059: a `key=value` pin matches an exact query parameter, not any text containing it [Done 2026-09-25]
+
+**The bug.** `resolver._match_override()` tested every pin with `needle in haystack` (the page's path and query, lowercased). So a `key=value` pin fired on any longer value, or on any parameter whose name ends the same way. Confirmed at 630a774: `resolve_government(None, tenant_host="reflect-tst-mn.cablecast.tv", path="/show/1?site=80")` returned Mendota Heights (`us:place:2741696`), tier pinned.
+
+**The fix.** A pin with a "=" and no "/" before it is a `key=value` pin. It now fires only when the page's query string (`parse_qs`) carries exactly that parameter with exactly that value, case-insensitive, or when the page hint of that name equals it. Every pair must match: the two Invintus pins are `clientID=…&eventID=…`. Path-shaped pins (leading "/", or a "/" before the first "=") and bare tokens keep text matching. WO-1056's whole-tenant check and the narrower-pin-first sort are unchanged.
+
+**Match shapes in `tenant_overrides.csv`** (at 630a774):
+
+| Shape | Pins | Matched by |
+|---|---|---|
+| `key=value` | 1,396 | exact query parameter or page hint (changed) |
+| bare token (YouTube/Vimeo ids, TelVue tokens, ClerkBase slugs, `castus:…` hints) | 3,095 | text or hint (unchanged) |
+| path-shaped (`/vod/andover/`, `vod/weston/video/…?page=HOME`) | 294 | text (unchanged) |
+| blank (whole single-website host) | 1,537 | always (unchanged) |
+
+`key=value` pins by name: `channel=` 1,330, `location_id=` 34, `id=` 16, `external_id=` 10, `site=` 3, `clientID=` 3.
+
+**Before and after** (same URLs, `main` vs this change):
+
+| URL | Before | After |
+|---|---|---|
+| `…tst-mn…/show/1?site=8` | Mendota Heights | Mendota Heights |
+| `…?site=80` | Mendota Heights | no pin |
+| `…?site=15` | West St. Paul | West St. Paul |
+| `…?site=150` | West St. Paul | no pin |
+| `…?site=6` | Inver Grove Heights | Inver Grove Heights |
+| `…?site=61` | Inver Grove Heights | no pin |
+| `townhallstreams.com/stream.php?location_id=94&id=75799` | Lisbon, ME | Lisbon, ME |
+| `…?location_id=940&id=1` | Lisbon, ME | no pin |
+| `public.destinyhosted.com/agenda_publish.cfm?id=24263` | Chandler, AZ | Chandler, AZ |
+| `…/x.cfm?clip_id=24263` | Chandler, AZ | no pin |
+| `…/agenda_publish.cfm?id=242630` | Chandler, AZ | no pin |
+| `player.invintus.com/?clientID=4879615486&eventID=…` | Oregon | Oregon |
+| `…?clientID=48796154860&eventID=1` | Oregon | no pin |
+
+**Pages already mis-keyed: none.** Read over the Archive's HTTP export (`GET /internal/export/pages`, 10,423 pages, 2026-09-25). 3,121 pages sit on hosts carrying `key=value` pins.
+
+| Count | Pages |
+|---|---|
+| Keyed by the old matcher but not by the exact rule (the bug's mis-keys) | 0 |
+| Keyed by the exact rule but not by the old matcher | 0 |
+| Archived pages a URL-parameter pin fires on (51 distinct pins), same under both rules | 66 |
+
+**Tests.** `tests/test_wo1059_pin_matcher_exact_query.py`, 1,510 tests. Every committed `key=value` pin fires on its own exact value, and never on one extra digit or on a parameter name that only ends the same way. The three Town Square pins resolve to their own town, and `site=60/80/150` get no pin. WO-1056's tests still pass.
+
 ## WO-1057: shared hosts keep one-government tenants' names; five more hosts protected; three bad pins removed [Done 2026-09-25]
 
 **Why.** `MULTI_GOV_HOSTS` did two things on a shared host: it refused a pin covering the whole host, and it refused to trust the adapter's own town name, so only a pin could identify a government. The second part was written for YouTube and Vimeo, where the name comes from an uploader's video title. On a keyed shared host (ChampDS, Castus, Town Hall Streams, ...), the name comes from the vendor's own record for one customer, so a tenant like `play.champds.com#atlantaga` is as trustworthy as that customer's own website. Ryan asked why the five newly found shared hosts shouldn't use the shared-host solution; the answer was that they should, once its second part became tenant-aware. Ryan agreed. One deviation, found while building it: TelVue keeps the old rule, because its adapter's name is a guess from each meeting's title (see below). `test_gov_registry.py`'s Town Square test now uses a real unpinned site (site=13, South St. Paul) in place of site=99 paired with another town's name.
