@@ -169,17 +169,18 @@ DELETES: Tuple[Delete, ...] = (
         "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors-fcc9d9",
         "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors",
         3964,
-        "",
+        "approve",
         "Twin of LA County's 2026-08-11 Board of Supervisors (Granicus clip "
-        "12325), archived from the MediaPlayer.php URL shape.",
+        "12325), archived from the MediaPlayer.php URL shape. Ryan approved "
+        "the delete 2026-09-25.",
     ),
     Delete(
         "los-angeles-county-ca-2025-08-26-2025-cssd-learning-summit-trailer-extended-aug",
         None,
         5775,
-        "",
+        "approve",
         "A promo trailer (2025 CSSD Learning Summit, lacountymediahost clip "
-        "13160), not a meeting.",
+        "13160), not a meeting. Ryan approved the delete 2026-09-25.",
     ),
 )
 
