@@ -1,0 +1,2900 @@
+1
+00:00:31,131 --> 00:00:31,865
+<font face="Monospace">{\an7}>> There We’re on the air. All </font>
+
+2
+00:00:31,865 --> 00:00:32,566
+<font face="Monospace">{\an7}>> There We’re on the air. All 
+right. Good morning. Everyone </font>
+
+3
+00:00:32,566 --> 00:00:33,200
+<font face="Monospace">{\an7}>> There We’re on the air. All 
+right. Good morning. Everyone 
+will call the meeting to </font>
+
+4
+00:00:33,200 --> 00:00:37,905
+<font face="Monospace">{\an7}right. Good morning. Everyone 
+will call the meeting to 
+order. For the emergency board </font>
+
+5
+00:00:37,905 --> 00:00:39,640
+<font face="Monospace">{\an7}will call the meeting to 
+order. For the emergency board 
+for Thursday, September 10th </font>
+
+6
+00:00:39,640 --> 00:00:40,341
+<font face="Monospace">{\an7}order. For the emergency board 
+for Thursday, September 10th 
+thank everyone for the early </font>
+
+7
+00:00:40,340 --> 00:00:43,076
+<font face="Monospace">{\an7}for Thursday, September 10th 
+thank everyone for the early 
+morning start. We have a lot </font>
+
+8
+00:00:43,076 --> 00:00:43,977
+<font face="Monospace">{\an7}thank everyone for the early 
+morning start. We have a lot 
+of agenda items this morning. </font>
+
+9
+00:00:43,977 --> 00:00:47,013
+<font face="Monospace">{\an7}morning start. We have a lot 
+of agenda items this morning. 
+79 requests. I think it was </font>
+
+10
+00:00:47,014 --> 00:00:48,649
+<font face="Monospace">{\an7}of agenda items this morning. 
+79 requests. I think it was 
+over 40 work sessions this </font>
+
+11
+00:00:48,649 --> 00:00:49,250
+<font face="Monospace">{\an7}79 requests. I think it was 
+over 40 work sessions this 
+morning. So thank you. </font>
+
+12
+00:00:49,249 --> 00:00:50,050
+<font face="Monospace">{\an7}over 40 work sessions this 
+morning. So thank you. 
+Everybody forming up their </font>
+
+13
+00:00:50,050 --> 00:00:53,186
+<font face="Monospace">{\an7}morning. So thank you. 
+Everybody forming up their 
+vocal cords also it’s our </font>
+
+14
+00:00:53,186 --> 00:00:54,054
+<font face="Monospace">{\an7}Everybody forming up their 
+vocal cords also it’s our 
+final day of legislative days. </font>
+
+15
+00:00:54,054 --> 00:00:55,556
+<font face="Monospace">{\an7}vocal cords also it’s our 
+final day of legislative days. 
+So thanks, everybody are also </font>
+
+16
+00:00:55,556 --> 00:00:59,193
+<font face="Monospace">{\an7}final day of legislative days. 
+So thanks, everybody are also 
+hanging in there. And then </font>
+
+17
+00:00:59,192 --> 00:01:00,126
+<font face="Monospace">{\an7}So thanks, everybody are also 
+hanging in there. And then 
+just a note at the beginning, </font>
+
+18
+00:01:00,127 --> 00:01:02,463
+<font face="Monospace">{\an7}hanging in there. And then 
+just a note at the beginning, 
+we have blanket excuse oles </font>
+
+19
+00:01:02,462 --> 00:01:03,496
+<font face="Monospace">{\an7}just a note at the beginning, 
+we have blanket excuse oles 
+for the member stop president. </font>
+
+20
+00:01:03,497 --> 00:01:06,100
+<font face="Monospace">{\an7}we have blanket excuse oles 
+for the member stop president. 
+I believe Senator McLain </font>
+
+21
+00:01:06,099 --> 00:01:06,800
+<font face="Monospace">{\an7}for the member stop president. 
+I believe Senator McLain 
+already had that permitted </font>
+
+22
+00:01:06,800 --> 00:01:07,301
+<font face="Monospace">{\an7}I believe Senator McLain 
+already had that permitted 
+excuse senator or </font>
+
+23
+00:01:07,301 --> 00:01:08,769
+<font face="Monospace">{\an7}already had that permitted 
+excuse senator or 
+representative homer and </font>
+
+24
+00:01:08,769 --> 00:01:12,640
+<font face="Monospace">{\an7}excuse senator or 
+representative homer and 
+else’s and reflect it. So when </font>
+
+25
+00:01:12,639 --> 00:01:13,306
+<font face="Monospace">{\an7}representative homer and 
+else’s and reflect it. So when 
+we get both, just wanted to </font>
+
+26
+00:01:13,307 --> 00:01:17,645
+<font face="Monospace">{\an7}else’s and reflect it. So when 
+we get both, just wanted to 
+note that for the record. We </font>
+
+27
+00:01:17,644 --> 00:01:19,112
+<font face="Monospace">{\an7}we get both, just wanted to 
+note that for the record. We 
+will move straight into work </font>
+
+28
+00:01:19,112 --> 00:01:20,647
+<font face="Monospace">{\an7}note that for the record. We 
+will move straight into work 
+session will open a work </font>
+
+29
+00:01:20,647 --> 00:01:21,781
+<font face="Monospace">{\an7}will move straight into work 
+session will open a work 
+session on consent First </font>
+
+30
+00:01:21,782 --> 00:01:24,818
+<font face="Monospace">{\an7}session will open a work 
+session on consent First 
+consent grant is the Higher </font>
+
+31
+00:01:24,818 --> 00:01:25,919
+<font face="Monospace">{\an7}session on consent First 
+consent grant is the Higher 
+Education Subcommittee. And </font>
+
+32
+00:01:25,919 --> 00:01:26,787
+<font face="Monospace">{\an7}consent grant is the Higher 
+Education Subcommittee. And 
+Representative Ruiz is the </font>
+
+33
+00:01:26,787 --> 00:01:27,621
+<font face="Monospace">{\an7}Education Subcommittee. And 
+Representative Ruiz is the 
+carrier Morning, Sir. Good </font>
+
+34
+00:01:27,621 --> 00:01:29,490
+<font face="Monospace">{\an7}Representative Ruiz is the 
+carrier Morning, Sir. Good 
+Morning, President of the </font>
+
+35
+00:01:29,489 --> 00:01:30,957
+<font face="Monospace">{\an7}carrier Morning, Sir. Good 
+Morning, President of the 
+Higher Education Subcommittee </font>
+
+36
+00:01:30,958 --> 00:01:32,827
+<font face="Monospace">{\an7}Morning, President of the 
+Higher Education Subcommittee 
+heard 7 requests and block </font>
+
+37
+00:01:32,826 --> 00:01:33,527
+<font face="Monospace">{\an7}Higher Education Subcommittee 
+heard 7 requests and block 
+from to state agencies track </font>
+
+38
+00:01:33,527 --> 00:01:34,161
+<font face="Monospace">{\an7}heard 7 requests and block 
+from to state agencies track 
+for approval to submit a </font>
+
+39
+00:01:34,161 --> 00:01:36,263
+<font face="Monospace">{\an7}from to state agencies track 
+for approval to submit a 
+federal grant applications. </font>
+
+40
+00:01:36,263 --> 00:01:38,098
+<font face="Monospace">{\an7}for approval to submit a 
+federal grant applications. 
+The requests are from higher </font>
+
+41
+00:01:38,098 --> 00:01:38,799
+<font face="Monospace">{\an7}federal grant applications. 
+The requests are from higher 
+Education. Corning Commission </font>
+
+42
+00:01:38,799 --> 00:01:39,433
+<font face="Monospace">{\an7}The requests are from higher 
+Education. Corning Commission 
+and for requests are from </font>
+
+43
+00:01:39,433 --> 00:01:42,202
+<font face="Monospace">{\an7}Education. Corning Commission 
+and for requests are from 
+Department of Education. Well, </font>
+
+44
+00:01:42,202 --> 00:01:42,803
+<font face="Monospace">{\an7}and for requests are from 
+Department of Education. Well, 
+they can see submitted </font>
+
+45
+00:01:42,803 --> 00:01:43,470
+<font face="Monospace">{\an7}Department of Education. Well, 
+they can see submitted 
+pacification to legislative </font>
+
+46
+00:01:43,470 --> 00:01:44,171
+<font face="Monospace">{\an7}they can see submitted 
+pacification to legislative 
+leadership on their intent to </font>
+
+47
+00:01:44,171 --> 00:01:47,641
+<font face="Monospace">{\an7}pacification to legislative 
+leadership on their intent to 
+apply for these grants. Higher </font>
+
+48
+00:01:47,641 --> 00:01:48,242
+<font face="Monospace">{\an7}leadership on their intent to 
+apply for these grants. Higher 
+Education Subcommittee </font>
+
+49
+00:01:48,241 --> 00:01:48,942
+<font face="Monospace">{\an7}apply for these grants. Higher 
+Education Subcommittee 
+recommends that the emergency </font>
+
+50
+00:01:48,942 --> 00:01:49,643
+<font face="Monospace">{\an7}Education Subcommittee 
+recommends that the emergency 
+board approved the submission </font>
+
+51
+00:01:49,643 --> 00:01:50,177
+<font face="Monospace">{\an7}recommends that the emergency 
+board approved the submission 
+of 7 federal grant </font>
+
+52
+00:01:50,177 --> 00:01:53,347
+<font face="Monospace">{\an7}board approved the submission 
+of 7 federal grant 
+applications bloc with the </font>
+
+53
+00:01:53,347 --> 00:01:54,481
+<font face="Monospace">{\an7}of 7 federal grant 
+applications bloc with the 
+understanding that if the </font>
+
+54
+00:01:54,481 --> 00:01:56,316
+<font face="Monospace">{\an7}applications bloc with the 
+understanding that if the 
+funds are awarded and the </font>
+
+55
+00:01:56,316 --> 00:01:56,983
+<font face="Monospace">{\an7}understanding that if the 
+funds are awarded and the 
+agencies will return to the </font>
+
+56
+00:01:56,984 --> 00:01:57,651
+<font face="Monospace">{\an7}funds are awarded and the 
+agencies will return to the 
+Legislature for approval of </font>
+
+57
+00:01:57,651 --> 00:01:59,520
+<font face="Monospace">{\an7}agencies will return to the 
+Legislature for approval of 
+any necessary federal funds or </font>
+
+58
+00:01:59,519 --> 00:02:00,487
+<font face="Monospace">{\an7}Legislature for approval of 
+any necessary federal funds or 
+federal funds as other funds </font>
+
+59
+00:02:00,487 --> 00:02:01,154
+<font face="Monospace">{\an7}any necessary federal funds or 
+federal funds as other funds 
+expenditure limitation and </font>
+
+60
+00:02:01,154 --> 00:02:04,457
+<font face="Monospace">{\an7}federal funds as other funds 
+expenditure limitation and 
+position authority. </font>
+
+61
+00:02:04,458 --> 00:02:05,192
+<font face="Monospace">{\an7}expenditure limitation and 
+position authority. 
+>> They represent a discussion </font>
+
+62
+00:02:05,192 --> 00:02:09,229
+<font face="Monospace">{\an7}position authority. 
+>> They represent a discussion 
+on the consent grants. </font>
+
+63
+00:02:09,229 --> 00:02:12,733
+<font face="Monospace">{\an7}>> They represent a discussion 
+on the consent grants. 
+Recognize Senator thank </font>
+
+64
+00:02:12,733 --> 00:02:14,868
+<font face="Monospace">{\an7}on the consent grants. 
+Recognize Senator thank 
+>> I realize that we’re in the </font>
+
+65
+00:02:14,868 --> 00:02:18,572
+<font face="Monospace">{\an7}Recognize Senator thank 
+>> I realize that we’re in the 
+interim and again, all these </font>
+
+66
+00:02:18,572 --> 00:02:20,507
+<font face="Monospace">{\an7}>> I realize that we’re in the 
+interim and again, all these 
+retroactive grants most the </font>
+
+67
+00:02:20,507 --> 00:02:21,475
+<font face="Monospace">{\an7}interim and again, all these 
+retroactive grants most the 
+time there are aware of these </font>
+
+68
+00:02:21,475 --> 00:02:24,478
+<font face="Monospace">{\an7}retroactive grants most the 
+time there are aware of these 
+grants. Prior to them during a </font>
+
+69
+00:02:24,478 --> 00:02:28,182
+<font face="Monospace">{\an7}time there are aware of these 
+grants. Prior to them during a 
+submittal. And the we’ve got </font>
+
+70
+00:02:28,181 --> 00:02:31,051
+<font face="Monospace">{\an7}grants. Prior to them during a 
+submittal. And the we’ve got 
+into this happen we’re they’re </font>
+
+71
+00:02:31,051 --> 00:02:33,420
+<font face="Monospace">{\an7}submittal. And the we’ve got 
+into this happen we’re they’re 
+coming back and they’re doing </font>
+
+72
+00:02:33,420 --> 00:02:34,454
+<font face="Monospace">{\an7}into this happen we’re they’re 
+coming back and they’re doing 
+that retroactively. And I </font>
+
+73
+00:02:34,454 --> 00:02:36,489
+<font face="Monospace">{\an7}coming back and they’re doing 
+that retroactively. And I 
+think that that is just plain </font>
+
+74
+00:02:36,490 --> 00:02:39,593
+<font face="Monospace">{\an7}that retroactively. And I 
+think that that is just plain 
+wrong. Be a guest this one. </font>
+
+75
+00:02:39,593 --> 00:02:41,929
+<font face="Monospace">{\an7}think that that is just plain 
+wrong. Be a guest this one. 
+But that’s a common theme </font>
+
+76
+00:02:41,928 --> 00:02:42,595
+<font face="Monospace">{\an7}wrong. Be a guest this one. 
+But that’s a common theme 
+through all of these and we </font>
+
+77
+00:02:42,596 --> 00:02:43,864
+<font face="Monospace">{\an7}But that’s a common theme 
+through all of these and we 
+have to control Thank you. </font>
+
+78
+00:02:43,864 --> 00:02:47,334
+<font face="Monospace">{\an7}through all of these and we 
+have to control Thank you. 
+Additional discussion. </font>
+
+79
+00:02:47,334 --> 00:02:48,068
+<font face="Monospace">{\an7}have to control Thank you. 
+Additional discussion. 
+>> See no one in the queue. Is </font>
+
+80
+00:02:48,068 --> 00:02:51,271
+<font face="Monospace">{\an7}Additional discussion. 
+>> See no one in the queue. Is 
+there objection? No. Senator </font>
+
+81
+00:02:51,271 --> 00:02:52,539
+<font face="Monospace">{\an7}>> See no one in the queue. Is 
+there objection? No. Senator 
+Starr Senator Anderson, to </font>
+
+82
+00:02:52,539 --> 00:02:55,609
+<font face="Monospace">{\an7}there objection? No. Senator 
+Starr Senator Anderson, to 
+show. See no one additional </font>
+
+83
+00:02:55,609 --> 00:02:59,480
+<font face="Monospace">{\an7}Starr Senator Anderson, to 
+show. See no one additional 
+the motion passes. Continuing </font>
+
+84
+00:02:59,479 --> 00:03:00,146
+<font face="Monospace">{\an7}show. See no one additional 
+the motion passes. Continuing 
+under work session and are </font>
+
+85
+00:03:00,147 --> 00:03:00,781
+<font face="Monospace">{\an7}the motion passes. Continuing 
+under work session and are 
+consent grants for Human </font>
+
+86
+00:03:00,781 --> 00:03:02,149
+<font face="Monospace">{\an7}under work session and are 
+consent grants for Human 
+Services subcommittee. </font>
+
+87
+00:03:02,149 --> 00:03:02,883
+<font face="Monospace">{\an7}consent grants for Human 
+Services subcommittee. 
+Recognize representative older </font>
+
+88
+00:03:02,883 --> 00:03:07,621
+<font face="Monospace">{\an7}Services subcommittee. 
+Recognize representative older 
+up. </font>
+
+89
+00:03:07,621 --> 00:03:08,722
+<font face="Monospace">{\an7}Recognize representative older 
+up. 
+>> committee heard 9 requests </font>
+
+90
+00:03:08,722 --> 00:03:10,591
+<font face="Monospace">{\an7}up. 
+>> committee heard 9 requests 
+and block from to state </font>
+
+91
+00:03:10,590 --> 00:03:11,191
+<font face="Monospace">{\an7}>> committee heard 9 requests 
+and block from to state 
+agencies for attractive </font>
+
+92
+00:03:11,191 --> 00:03:13,794
+<font face="Monospace">{\an7}and block from to state 
+agencies for attractive 
+approval to submit federal </font>
+
+93
+00:03:13,794 --> 00:03:14,795
+<font face="Monospace">{\an7}agencies for attractive 
+approval to submit federal 
+grant applications. 5 </font>
+
+94
+00:03:14,795 --> 00:03:15,496
+<font face="Monospace">{\an7}approval to submit federal 
+grant applications. 5 
+requested from the Department </font>
+
+95
+00:03:15,495 --> 00:03:16,096
+<font face="Monospace">{\an7}grant applications. 5 
+requested from the Department 
+of Human Services and 4 </font>
+
+96
+00:03:16,096 --> 00:03:18,532
+<font face="Monospace">{\an7}requested from the Department 
+of Human Services and 4 
+request or from the Oregon </font>
+
+97
+00:03:18,532 --> 00:03:19,733
+<font face="Monospace">{\an7}of Human Services and 4 
+request or from the Oregon 
+Health Authority. Both </font>
+
+98
+00:03:19,733 --> 00:03:20,400
+<font face="Monospace">{\an7}request or from the Oregon 
+Health Authority. Both 
+agencies submitted advance </font>
+
+99
+00:03:20,400 --> 00:03:21,067
+<font face="Monospace">{\an7}Health Authority. Both 
+agencies submitted advance 
+notification to legislative </font>
+
+100
+00:03:21,068 --> 00:03:21,769
+<font face="Monospace">{\an7}agencies submitted advance 
+notification to legislative 
+leadership of their intent to </font>
+
+101
+00:03:21,768 --> 00:03:25,071
+<font face="Monospace">{\an7}notification to legislative 
+leadership of their intent to 
+apply for the grants. The </font>
+
+102
+00:03:25,072 --> 00:03:25,739
+<font face="Monospace">{\an7}leadership of their intent to 
+apply for the grants. The 
+Human Services Subcommittee </font>
+
+103
+00:03:25,739 --> 00:03:26,440
+<font face="Monospace">{\an7}apply for the grants. The 
+Human Services Subcommittee 
+recommends that the emergency </font>
+
+104
+00:03:26,440 --> 00:03:27,141
+<font face="Monospace">{\an7}Human Services Subcommittee 
+recommends that the emergency 
+board approved the submission </font>
+
+105
+00:03:27,140 --> 00:03:28,942
+<font face="Monospace">{\an7}recommends that the emergency 
+board approved the submission 
+of the 9 federal grant </font>
+
+106
+00:03:28,942 --> 00:03:29,609
+<font face="Monospace">{\an7}board approved the submission 
+of the 9 federal grant 
+applications and block with </font>
+
+107
+00:03:29,609 --> 00:03:30,310
+<font face="Monospace">{\an7}of the 9 federal grant 
+applications and block with 
+the understanding that if the </font>
+
+108
+00:03:30,310 --> 00:03:32,879
+<font face="Monospace">{\an7}applications and block with 
+the understanding that if the 
+funds are awarded, agencies </font>
+
+109
+00:03:32,879 --> 00:03:33,613
+<font face="Monospace">{\an7}the understanding that if the 
+funds are awarded, agencies 
+will return to the Legislature </font>
+
+110
+00:03:33,613 --> 00:03:35,115
+<font face="Monospace">{\an7}funds are awarded, agencies 
+will return to the Legislature 
+for approval of any necessary </font>
+
+111
+00:03:35,115 --> 00:03:38,785
+<font face="Monospace">{\an7}will return to the Legislature 
+for approval of any necessary 
+federal funds or federal funds </font>
+
+112
+00:03:38,785 --> 00:03:39,452
+<font face="Monospace">{\an7}for approval of any necessary 
+federal funds or federal funds 
+as other funds expenditure </font>
+
+113
+00:03:39,453 --> 00:03:40,054
+<font face="Monospace">{\an7}federal funds or federal funds 
+as other funds expenditure 
+limitation and position </font>
+
+114
+00:03:40,053 --> 00:03:41,421
+<font face="Monospace">{\an7}as other funds expenditure 
+limitation and position 
+authority. They represented </font>
+
+115
+00:03:41,421 --> 00:03:47,127
+<font face="Monospace">{\an7}limitation and position 
+authority. They represented 
+discussion. Recognize. thank </font>
+
+116
+00:03:47,127 --> 00:03:47,961
+<font face="Monospace">{\an7}authority. They represented 
+discussion. Recognize. thank 
+you. </font>
+
+117
+00:03:47,961 --> 00:03:49,229
+<font face="Monospace">{\an7}discussion. Recognize. thank 
+you. 
+>> This is a perfect example </font>
+
+118
+00:03:49,229 --> 00:03:52,933
+<font face="Monospace">{\an7}you. 
+>> This is a perfect example 
+because you have matches up to </font>
+
+119
+00:03:52,933 --> 00:03:54,535
+<font face="Monospace">{\an7}>> This is a perfect example 
+because you have matches up to 
+50% agency that is totally out </font>
+
+120
+00:03:54,534 --> 00:03:57,370
+<font face="Monospace">{\an7}because you have matches up to 
+50% agency that is totally out 
+of control. And then the next </font>
+
+121
+00:03:57,370 --> 00:03:58,037
+<font face="Monospace">{\an7}50% agency that is totally out 
+of control. And then the next 
+budget cycle we’re going to </font>
+
+122
+00:03:58,038 --> 00:04:01,708
+<font face="Monospace">{\an7}of control. And then the next 
+budget cycle we’re going to 
+have to make cuts they’re </font>
+
+123
+00:04:01,708 --> 00:04:03,843
+<font face="Monospace">{\an7}budget cycle we’re going to 
+have to make cuts they’re 
+doing this this because until </font>
+
+124
+00:04:03,844 --> 00:04:05,479
+<font face="Monospace">{\an7}have to make cuts they’re 
+doing this this because until 
+get approval for so I’ll be a </font>
+
+125
+00:04:05,479 --> 00:04:08,549
+<font face="Monospace">{\an7}doing this this because until 
+get approval for so I’ll be a 
+no senator discussion. See no </font>
+
+126
+00:04:08,548 --> 00:04:17,624
+<font face="Monospace">{\an7}get approval for so I’ll be a 
+no senator discussion. See no 
+one in the Any objection. </font>
+
+127
+00:04:17,624 --> 00:04:18,258
+<font face="Monospace">{\an7}no senator discussion. See no 
+one in the Any objection. 
+>> Senator Starr, senator </font>
+
+128
+00:04:18,258 --> 00:04:18,992
+<font face="Monospace">{\an7}one in the Any objection. 
+>> Senator Starr, senator 
+answers. Senator Anderson, the </font>
+
+129
+00:04:18,992 --> 00:04:19,726
+<font face="Monospace">{\an7}>> Senator Starr, senator 
+answers. Senator Anderson, the 
+senator Girod with the jection </font>
+
+130
+00:04:19,726 --> 00:04:23,129
+<font face="Monospace">{\an7}answers. Senator Anderson, the 
+senator Girod with the jection 
+anyone else. Say no one else </font>
+
+131
+00:04:23,130 --> 00:04:25,499
+<font face="Monospace">{\an7}senator Girod with the jection 
+anyone else. Say no one else 
+motion passes will close work </font>
+
+132
+00:04:25,499 --> 00:04:26,133
+<font face="Monospace">{\an7}anyone else. Say no one else 
+motion passes will close work 
+session on consent grants </font>
+
+133
+00:04:26,133 --> 00:04:26,700
+<font face="Monospace">{\an7}motion passes will close work 
+session on consent grants 
+under Human Services </font>
+
+134
+00:04:26,700 --> 00:04:29,937
+<font face="Monospace">{\an7}session on consent grants 
+under Human Services 
+subcommittee. Move next to </font>
+
+135
+00:04:29,936 --> 00:04:31,404
+<font face="Monospace">{\an7}under Human Services 
+subcommittee. Move next to 
+consent grants that are </font>
+
+136
+00:04:31,404 --> 00:04:32,138
+<font face="Monospace">{\an7}subcommittee. Move next to 
+consent grants that are 
+natural Resources subcommittee </font>
+
+137
+00:04:32,139 --> 00:04:33,674
+<font face="Monospace">{\an7}consent grants that are 
+natural Resources subcommittee 
+and recognize Representative </font>
+
+138
+00:04:33,673 --> 00:04:36,376
+<font face="Monospace">{\an7}natural Resources subcommittee 
+and recognize Representative 
+Gomberg, thank co-chair and </font>
+
+139
+00:04:36,376 --> 00:04:37,077
+<font face="Monospace">{\an7}and recognize Representative 
+Gomberg, thank co-chair and 
+good morning. Members of the </font>
+
+140
+00:04:37,077 --> 00:04:39,046
+<font face="Monospace">{\an7}Gomberg, thank co-chair and 
+good morning. Members of the 
+committee, the Natural </font>
+
+141
+00:04:39,045 --> 00:04:40,079
+<font face="Monospace">{\an7}good morning. Members of the 
+committee, the Natural 
+Resources subcommittee. </font>
+
+142
+00:04:40,080 --> 00:04:40,781
+<font face="Monospace">{\an7}committee, the Natural 
+Resources subcommittee. 
+>> Her to request the request </font>
+
+143
+00:04:40,781 --> 00:04:42,950
+<font face="Monospace">{\an7}Resources subcommittee. 
+>> Her to request the request 
+in Blanc from 3 state agencies </font>
+
+144
+00:04:42,949 --> 00:04:43,850
+<font face="Monospace">{\an7}>> Her to request the request 
+in Blanc from 3 state agencies 
+for approval to submit 12 </font>
+
+145
+00:04:43,850 --> 00:04:45,752
+<font face="Monospace">{\an7}in Blanc from 3 state agencies 
+for approval to submit 12 
+federal grant applications, 10 </font>
+
+146
+00:04:45,752 --> 00:04:48,755
+<font face="Monospace">{\an7}for approval to submit 12 
+federal grant applications, 10 
+of which are retroactive state </font>
+
+147
+00:04:48,755 --> 00:04:49,756
+<font face="Monospace">{\an7}federal grant applications, 10 
+of which are retroactive state 
+agencies seeking approval </font>
+
+148
+00:04:49,756 --> 00:04:51,157
+<font face="Monospace">{\an7}of which are retroactive state 
+agencies seeking approval 
+included the Department </font>
+
+149
+00:04:51,158 --> 00:04:52,226
+<font face="Monospace">{\an7}agencies seeking approval 
+included the Department 
+Agriculture to incentivize </font>
+
+150
+00:04:52,225 --> 00:04:55,528
+<font face="Monospace">{\an7}included the Department 
+Agriculture to incentivize 
+native seed production, the </font>
+
+151
+00:04:55,529 --> 00:04:56,130
+<font face="Monospace">{\an7}Agriculture to incentivize 
+native seed production, the 
+Department of Fish and </font>
+
+152
+00:04:56,129 --> 00:04:57,564
+<font face="Monospace">{\an7}native seed production, the 
+Department of Fish and 
+Wildlife or Chronic Wasting </font>
+
+153
+00:04:57,564 --> 00:04:59,299
+<font face="Monospace">{\an7}Department of Fish and 
+Wildlife or Chronic Wasting 
+Disease response, coastal </font>
+
+154
+00:04:59,299 --> 00:05:01,101
+<font face="Monospace">{\an7}Wildlife or Chronic Wasting 
+Disease response, coastal 
+habitat conservation and fish </font>
+
+155
+00:05:01,101 --> 00:05:01,802
+<font face="Monospace">{\an7}Disease response, coastal 
+habitat conservation and fish 
+passage, construction and the </font>
+
+156
+00:05:01,802 --> 00:05:04,204
+<font face="Monospace">{\an7}habitat conservation and fish 
+passage, construction and the 
+Department Transportation for </font>
+
+157
+00:05:04,204 --> 00:05:06,306
+<font face="Monospace">{\an7}passage, construction and the 
+Department Transportation for 
+commercial vehicle enforcement </font>
+
+158
+00:05:06,306 --> 00:05:07,707
+<font face="Monospace">{\an7}Department Transportation for 
+commercial vehicle enforcement 
+habitat and community </font>
+
+159
+00:05:07,707 --> 00:05:09,943
+<font face="Monospace">{\an7}commercial vehicle enforcement 
+habitat and community 
+enhancement and transportation </font>
+
+160
+00:05:09,943 --> 00:05:11,244
+<font face="Monospace">{\an7}habitat and community 
+enhancement and transportation 
+projects, Mister President, </font>
+
+161
+00:05:11,244 --> 00:05:11,878
+<font face="Monospace">{\an7}enhancement and transportation 
+projects, Mister President, 
+all 12 of these items are </font>
+
+162
+00:05:11,878 --> 00:05:13,880
+<font face="Monospace">{\an7}projects, Mister President, 
+all 12 of these items are 
+detailed in our committee </font>
+
+163
+00:05:13,880 --> 00:05:15,982
+<font face="Monospace">{\an7}all 12 of these items are 
+detailed in our committee 
+agenda. And of course, are </font>
+
+164
+00:05:15,982 --> 00:05:18,117
+<font face="Monospace">{\an7}detailed in our committee 
+agenda. And of course, are 
+outlined in more detail on </font>
+
+165
+00:05:18,118 --> 00:05:20,287
+<font face="Monospace">{\an7}agenda. And of course, are 
+outlined in more detail on 
+Olis the Natural Resources </font>
+
+166
+00:05:20,287 --> 00:05:20,988
+<font face="Monospace">{\an7}outlined in more detail on 
+Olis the Natural Resources 
+Subcommittee recommends that </font>
+
+167
+00:05:20,987 --> 00:05:22,355
+<font face="Monospace">{\an7}Olis the Natural Resources 
+Subcommittee recommends that 
+the emergency board approve </font>
+
+168
+00:05:22,355 --> 00:05:23,356
+<font face="Monospace">{\an7}Subcommittee recommends that 
+the emergency board approve 
+the submission of the 12 </font>
+
+169
+00:05:23,356 --> 00:05:24,724
+<font face="Monospace">{\an7}the emergency board approve 
+the submission of the 12 
+federal grant applications en </font>
+
+170
+00:05:24,724 --> 00:05:25,892
+<font face="Monospace">{\an7}the submission of the 12 
+federal grant applications en 
+Blanc with the understanding </font>
+
+171
+00:05:25,892 --> 00:05:29,562
+<font face="Monospace">{\an7}federal grant applications en 
+Blanc with the understanding 
+that if the funds are awarded </font>
+
+172
+00:05:29,563 --> 00:05:30,264
+<font face="Monospace">{\an7}Blanc with the understanding 
+that if the funds are awarded 
+and the agencies will return </font>
+
+173
+00:05:30,263 --> 00:05:30,864
+<font face="Monospace">{\an7}that if the funds are awarded 
+and the agencies will return 
+to the Legislature for </font>
+
+174
+00:05:30,864 --> 00:05:32,666
+<font face="Monospace">{\an7}and the agencies will return 
+to the Legislature for 
+approval of any necessary. </font>
+
+175
+00:05:32,666 --> 00:05:33,400
+<font face="Monospace">{\an7}to the Legislature for 
+approval of any necessary. 
+Federal funds or federal funds </font>
+
+176
+00:05:33,400 --> 00:05:36,169
+<font face="Monospace">{\an7}approval of any necessary. 
+Federal funds or federal funds 
+as other funds expenditure </font>
+
+177
+00:05:36,169 --> 00:05:36,770
+<font face="Monospace">{\an7}Federal funds or federal funds 
+as other funds expenditure 
+limitation and position </font>
+
+178
+00:05:36,770 --> 00:05:38,905
+<font face="Monospace">{\an7}as other funds expenditure 
+limitation and position 
+authority. Representative </font>
+
+179
+00:05:38,905 --> 00:05:43,977
+<font face="Monospace">{\an7}limitation and position 
+authority. Representative 
+discussion. For for </font>
+
+180
+00:05:43,977 --> 00:05:47,747
+<font face="Monospace">{\an7}authority. Representative 
+discussion. For for 
+discussion. Objection. </font>
+
+181
+00:05:47,747 --> 00:05:48,448
+<font face="Monospace">{\an7}discussion. For for 
+discussion. Objection. 
+Objections noted for Senator </font>
+
+182
+00:05:48,448 --> 00:05:52,452
+<font face="Monospace">{\an7}discussion. Objection. 
+Objections noted for Senator 
+Anderson. See no additional </font>
+
+183
+00:05:52,452 --> 00:05:55,155
+<font face="Monospace">{\an7}Objections noted for Senator 
+Anderson. See no additional 
+members, both sufficient </font>
+
+184
+00:05:55,155 --> 00:05:56,757
+<font face="Monospace">{\an7}Anderson. See no additional 
+members, both sufficient 
+passes will close with work </font>
+
+185
+00:05:56,756 --> 00:05:58,424
+<font face="Monospace">{\an7}members, both sufficient 
+passes will close with work 
+session natural resources. 7 </font>
+
+186
+00:05:58,425 --> 00:06:00,427
+<font face="Monospace">{\an7}passes will close with work 
+session natural resources. 7 
+Open and consent grants under </font>
+
+187
+00:06:00,427 --> 00:06:01,161
+<font face="Monospace">{\an7}session natural resources. 7 
+Open and consent grants under 
+the Public Safety Subcommittee </font>
+
+188
+00:06:01,161 --> 00:06:05,666
+<font face="Monospace">{\an7}Open and consent grants under 
+the Public Safety Subcommittee 
+and recognize Inc. League’s a </font>
+
+189
+00:06:05,665 --> 00:06:06,733
+<font face="Monospace">{\an7}the Public Safety Subcommittee 
+and recognize Inc. League’s a 
+public safety subcommittee </font>
+
+190
+00:06:06,733 --> 00:06:08,001
+<font face="Monospace">{\an7}and recognize Inc. League’s a 
+public safety subcommittee 
+heard request and block from 6 </font>
+
+191
+00:06:08,001 --> 00:06:08,668
+<font face="Monospace">{\an7}public safety subcommittee 
+heard request and block from 6 
+agency seeking approval to </font>
+
+192
+00:06:08,668 --> 00:06:10,403
+<font face="Monospace">{\an7}heard request and block from 6 
+agency seeking approval to 
+submit a total 11 federal </font>
+
+193
+00:06:10,403 --> 00:06:10,937
+<font face="Monospace">{\an7}agency seeking approval to 
+submit a total 11 federal 
+grant applications. </font>
+
+194
+00:06:10,937 --> 00:06:14,374
+<font face="Monospace">{\an7}submit a total 11 federal 
+grant applications. 
+>> 9 which are attractive, </font>
+
+195
+00:06:14,374 --> 00:06:16,509
+<font face="Monospace">{\an7}grant applications. 
+>> 9 which are attractive, 
+senator out agencies seeking </font>
+
+196
+00:06:16,509 --> 00:06:17,410
+<font face="Monospace">{\an7}>> 9 which are attractive, 
+senator out agencies seeking 
+approval, including Oregon </font>
+
+197
+00:06:17,410 --> 00:06:18,611
+<font face="Monospace">{\an7}senator out agencies seeking 
+approval, including Oregon 
+Judicial Department, </font>
+
+198
+00:06:18,612 --> 00:06:19,580
+<font face="Monospace">{\an7}approval, including Oregon 
+Judicial Department, 
+Department of Public Safety </font>
+
+199
+00:06:19,579 --> 00:06:20,613
+<font face="Monospace">{\an7}Judicial Department, 
+Department of Public Safety 
+and Training Department of </font>
+
+200
+00:06:20,614 --> 00:06:22,749
+<font face="Monospace">{\an7}Department of Public Safety 
+and Training Department of 
+Emergency Management, Oregon </font>
+
+201
+00:06:22,749 --> 00:06:23,350
+<font face="Monospace">{\an7}and Training Department of 
+Emergency Management, Oregon 
+Department of Veterans </font>
+
+202
+00:06:23,350 --> 00:06:23,984
+<font face="Monospace">{\an7}Emergency Management, Oregon 
+Department of Veterans 
+Affairs, Oregon Business </font>
+
+203
+00:06:23,984 --> 00:06:24,718
+<font face="Monospace">{\an7}Department of Veterans 
+Affairs, Oregon Business 
+Development Department and the </font>
+
+204
+00:06:24,718 --> 00:06:27,087
+<font face="Monospace">{\an7}Affairs, Oregon Business 
+Development Department and the 
+Housing and Community Service </font>
+
+205
+00:06:27,087 --> 00:06:28,088
+<font face="Monospace">{\an7}Development Department and the 
+Housing and Community Service 
+Department. All in advance </font>
+
+206
+00:06:28,088 --> 00:06:28,622
+<font face="Monospace">{\an7}Housing and Community Service 
+Department. All in advance 
+notification to it. </font>
+
+207
+00:06:28,622 --> 00:06:29,256
+<font face="Monospace">{\an7}Department. All in advance 
+notification to it. 
+Legislative leadership of </font>
+
+208
+00:06:29,256 --> 00:06:30,924
+<font face="Monospace">{\an7}notification to it. 
+Legislative leadership of 
+their intent to apply for the </font>
+
+209
+00:06:30,924 --> 00:06:32,793
+<font face="Monospace">{\an7}Legislative leadership of 
+their intent to apply for the 
+grants. The Public Safety </font>
+
+210
+00:06:32,792 --> 00:06:33,459
+<font face="Monospace">{\an7}their intent to apply for the 
+grants. The Public Safety 
+subcommittee recommends of </font>
+
+211
+00:06:33,460 --> 00:06:35,696
+<font face="Monospace">{\an7}grants. The Public Safety 
+subcommittee recommends of 
+board approve the request to </font>
+
+212
+00:06:35,695 --> 00:06:37,697
+<font face="Monospace">{\an7}subcommittee recommends of 
+board approve the request to 
+apply for federal grants in </font>
+
+213
+00:06:37,697 --> 00:06:38,598
+<font face="Monospace">{\an7}board approve the request to 
+apply for federal grants in 
+block understand that funds </font>
+
+214
+00:06:38,598 --> 00:06:39,232
+<font face="Monospace">{\an7}apply for federal grants in 
+block understand that funds 
+are awarded. The agencies </font>
+
+215
+00:06:39,232 --> 00:06:40,667
+<font face="Monospace">{\an7}block understand that funds 
+are awarded. The agencies 
+return to legislature for </font>
+
+216
+00:06:40,667 --> 00:06:42,736
+<font face="Monospace">{\an7}are awarded. The agencies 
+return to legislature for 
+approval any necessary federal </font>
+
+217
+00:06:42,736 --> 00:06:43,570
+<font face="Monospace">{\an7}return to legislature for 
+approval any necessary federal 
+fund or federal funds or other </font>
+
+218
+00:06:43,570 --> 00:06:44,271
+<font face="Monospace">{\an7}approval any necessary federal 
+fund or federal funds or other 
+funds to expedited limitation </font>
+
+219
+00:06:44,271 --> 00:06:46,006
+<font face="Monospace">{\an7}fund or federal funds or other 
+funds to expedited limitation 
+position authority. </font>
+
+220
+00:06:46,006 --> 00:06:49,209
+<font face="Monospace">{\an7}funds to expedited limitation 
+position authority. 
+Representative discussion. </font>
+
+221
+00:06:49,209 --> 00:06:49,810
+<font face="Monospace">{\an7}position authority. 
+Representative discussion. 
+know, in the queue for </font>
+
+222
+00:06:49,809 --> 00:06:52,879
+<font face="Monospace">{\an7}Representative discussion. 
+know, in the queue for 
+discussion. Objection. </font>
+
+223
+00:06:52,879 --> 00:06:53,613
+<font face="Monospace">{\an7}know, in the queue for 
+discussion. Objection. 
+>> Nice. Senator Starr Senator </font>
+
+224
+00:06:53,613 --> 00:06:55,014
+<font face="Monospace">{\an7}discussion. Objection. 
+>> Nice. Senator Starr Senator 
+Anderson with objections. See </font>
+
+225
+00:06:55,015 --> 00:06:57,584
+<font face="Monospace">{\an7}>> Nice. Senator Starr Senator 
+Anderson with objections. See 
+no other members. Questions </font>
+
+226
+00:06:57,584 --> 00:06:59,786
+<font face="Monospace">{\an7}Anderson with objections. See 
+no other members. Questions 
+are sufficient motion passes. </font>
+
+227
+00:06:59,786 --> 00:07:00,787
+<font face="Monospace">{\an7}no other members. Questions 
+are sufficient motion passes. 
+We’ll close work session on </font>
+
+228
+00:07:00,787 --> 00:07:04,524
+<font face="Monospace">{\an7}are sufficient motion passes. 
+We’ll close work session on 
+the consent grants under </font>
+
+229
+00:07:04,524 --> 00:07:05,258
+<font face="Monospace">{\an7}We’ll close work session on 
+the consent grants under 
+public safety subcommittee and </font>
+
+230
+00:07:05,258 --> 00:07:06,793
+<font face="Monospace">{\an7}the consent grants under 
+public safety subcommittee and 
+open on consent grants under </font>
+
+231
+00:07:06,793 --> 00:07:07,460
+<font face="Monospace">{\an7}public safety subcommittee and 
+open on consent grants under 
+Human Services subcommittee </font>
+
+232
+00:07:07,460 --> 00:07:08,094
+<font face="Monospace">{\an7}open on consent grants under 
+Human Services subcommittee 
+recognize Representative </font>
+
+233
+00:07:08,094 --> 00:07:16,336
+<font face="Monospace">{\an7}Human Services subcommittee 
+recognize Representative 
+Smith. Thank you. Thank you, </font>
+
+234
+00:07:16,336 --> 00:07:23,276
+<font face="Monospace">{\an7}recognize Representative 
+Smith. Thank you. Thank you, 
+Mister. A president. The Human </font>
+
+235
+00:07:23,276 --> 00:07:25,278
+<font face="Monospace">{\an7}Smith. Thank you. Thank you, 
+Mister. A president. The Human 
+Services subcommittee received </font>
+
+236
+00:07:25,278 --> 00:07:26,146
+<font face="Monospace">{\an7}Mister. A president. The Human 
+Services subcommittee received 
+3 ports and block the </font>
+
+237
+00:07:26,146 --> 00:07:27,180
+<font face="Monospace">{\an7}Services subcommittee received 
+3 ports and block the 
+Department of Administrative </font>
+
+238
+00:07:27,180 --> 00:07:29,082
+<font face="Monospace">{\an7}3 ports and block the 
+Department of Administrative 
+Services submitted report on </font>
+
+239
+00:07:29,082 --> 00:07:31,184
+<font face="Monospace">{\an7}Department of Administrative 
+Services submitted report on 
+compensation plan changes and </font>
+
+240
+00:07:31,184 --> 00:07:33,119
+<font face="Monospace">{\an7}Services submitted report on 
+compensation plan changes and 
+report on general obligation, </font>
+
+241
+00:07:33,119 --> 00:07:35,188
+<font face="Monospace">{\an7}compensation plan changes and 
+report on general obligation, 
+bond refunding. </font>
+
+242
+00:07:35,188 --> 00:07:35,789
+<font face="Monospace">{\an7}report on general obligation, 
+bond refunding. 
+>> The public employee </font>
+
+243
+00:07:35,789 --> 00:07:36,723
+<font face="Monospace">{\an7}bond refunding. 
+>> The public employee 
+retirement system submit </font>
+
+244
+00:07:36,723 --> 00:07:37,724
+<font face="Monospace">{\an7}>> The public employee 
+retirement system submit 
+report on the agency’s </font>
+
+245
+00:07:37,724 --> 00:07:38,291
+<font face="Monospace">{\an7}retirement system submit 
+report on the agency’s 
+cloud-based computing </font>
+
+246
+00:07:38,291 --> 00:07:41,928
+<font face="Monospace">{\an7}report on the agency’s 
+cloud-based computing 
+strategy. And the Human </font>
+
+247
+00:07:41,928 --> 00:07:42,796
+<font face="Monospace">{\an7}cloud-based computing 
+strategy. And the Human 
+Services Subcommittee </font>
+
+248
+00:07:42,796 --> 00:07:44,731
+<font face="Monospace">{\an7}strategy. And the Human 
+Services Subcommittee 
+recommends that emergency </font>
+
+249
+00:07:44,731 --> 00:07:45,432
+<font face="Monospace">{\an7}Services Subcommittee 
+recommends that emergency 
+board acknowledge receipt of </font>
+
+250
+00:07:45,432 --> 00:07:47,834
+<font face="Monospace">{\an7}recommends that emergency 
+board acknowledge receipt of 
+the 3 agency reports. </font>
+
+251
+00:07:47,834 --> 00:07:51,404
+<font face="Monospace">{\an7}board acknowledge receipt of 
+the 3 agency reports. 
+Representative discussion. </font>
+
+252
+00:07:51,404 --> 00:07:52,105
+<font face="Monospace">{\an7}the 3 agency reports. 
+Representative discussion. 
+Resent you for discussion. Is </font>
+
+253
+00:07:52,105 --> 00:07:55,308
+<font face="Monospace">{\an7}Representative discussion. 
+Resent you for discussion. Is 
+there objection? Senator Starr </font>
+
+254
+00:07:55,308 --> 00:07:57,076
+<font face="Monospace">{\an7}Resent you for discussion. Is 
+there objection? Senator Starr 
+Senator Anderson, Senator </font>
+
+255
+00:07:57,077 --> 00:08:00,180
+<font face="Monospace">{\an7}there objection? Senator Starr 
+Senator Anderson, Senator 
+Girod Ditional. You know, </font>
+
+256
+00:08:00,180 --> 00:08:01,982
+<font face="Monospace">{\an7}Senator Anderson, Senator 
+Girod Ditional. You know, 
+additional objection. The </font>
+
+257
+00:08:01,982 --> 00:08:03,517
+<font face="Monospace">{\an7}Girod Ditional. You know, 
+additional objection. The 
+motion passes. We’ll close on </font>
+
+258
+00:08:03,516 --> 00:08:05,852
+<font face="Monospace">{\an7}additional objection. The 
+motion passes. We’ll close on 
+consent grants under Human </font>
+
+259
+00:08:05,852 --> 00:08:06,686
+<font face="Monospace">{\an7}motion passes. We’ll close on 
+consent grants under Human 
+Services subcommittee moving </font>
+
+260
+00:08:06,686 --> 00:08:07,387
+<font face="Monospace">{\an7}consent grants under Human 
+Services subcommittee moving 
+to individual items will open </font>
+
+261
+00:08:07,387 --> 00:08:08,121
+<font face="Monospace">{\an7}Services subcommittee moving 
+to individual items will open 
+on the first item item. Number </font>
+
+262
+00:08:08,121 --> 00:08:11,891
+<font face="Monospace">{\an7}to individual items will open 
+on the first item item. Number 
+one. The commission on </font>
+
+263
+00:08:11,891 --> 00:08:12,458
+<font face="Monospace">{\an7}on the first item item. Number 
+one. The commission on 
+Judicial Fitness and </font>
+
+264
+00:08:12,459 --> 00:08:13,193
+<font face="Monospace">{\an7}one. The commission on 
+Judicial Fitness and 
+disability recognize represent </font>
+
+265
+00:08:13,193 --> 00:08:18,331
+<font face="Monospace">{\an7}Judicial Fitness and 
+disability recognize represent 
+Owens. colleagues. Again, the </font>
+
+266
+00:08:18,331 --> 00:08:19,899
+<font face="Monospace">{\an7}disability recognize represent 
+Owens. colleagues. Again, the 
+Public Safety subcommittee </font>
+
+267
+00:08:19,899 --> 00:08:20,800
+<font face="Monospace">{\an7}Owens. colleagues. Again, the 
+Public Safety subcommittee 
+heard request from the </font>
+
+268
+00:08:20,800 --> 00:08:21,968
+<font face="Monospace">{\an7}Public Safety subcommittee 
+heard request from the 
+commission Judicial Fitness </font>
+
+269
+00:08:21,968 --> 00:08:24,037
+<font face="Monospace">{\an7}heard request from the 
+commission Judicial Fitness 
+and Disability. extraordinary re</font>
+
+270
+00:08:24,037 --> 00:08:25,939
+<font face="Monospace">{\an7}commission Judicial Fitness 
+and Disability. extraordinary re
+investigations and </font>
+
+271
+00:08:25,939 --> 00:08:26,673
+<font face="Monospace">{\an7}and Disability. extraordinary re
+investigations and 
+prosecutions. </font>
+
+272
+00:08:26,673 --> 00:08:27,374
+<font face="Monospace">{\an7}investigations and 
+prosecutions. 
+>> The commission is managing </font>
+
+273
+00:08:27,374 --> 00:08:29,643
+<font face="Monospace">{\an7}prosecutions. 
+>> The commission is managing 
+routine case loads within the </font>
+
+274
+00:08:29,642 --> 00:08:30,309
+<font face="Monospace">{\an7}>> The commission is managing 
+routine case loads within the 
+legislative approved budget </font>
+
+275
+00:08:30,310 --> 00:08:33,513
+<font face="Monospace">{\an7}routine case loads within the 
+legislative approved budget 
+for normal cost for the </font>
+
+276
+00:08:33,513 --> 00:08:34,581
+<font face="Monospace">{\an7}legislative approved budget 
+for normal cost for the 
+extraordinary case loads a </font>
+
+277
+00:08:34,581 --> 00:08:36,716
+<font face="Monospace">{\an7}for normal cost for the 
+extraordinary case loads a 
+number of formal investigation </font>
+
+278
+00:08:36,716 --> 00:08:37,383
+<font face="Monospace">{\an7}extraordinary case loads a 
+number of formal investigation 
+remains with an historical </font>
+
+279
+00:08:37,384 --> 00:08:38,018
+<font face="Monospace">{\an7}number of formal investigation 
+remains with an historical 
+average with a number of </font>
+
+280
+00:08:38,018 --> 00:08:40,888
+<font face="Monospace">{\an7}remains with an historical 
+average with a number of 
+prosecutions slightly above </font>
+
+281
+00:08:40,887 --> 00:08:42,088
+<font face="Monospace">{\an7}average with a number of 
+prosecutions slightly above 
+average. Extraordinary </font>
+
+282
+00:08:42,088 --> 00:08:42,889
+<font face="Monospace">{\an7}prosecutions slightly above 
+average. Extraordinary 
+expenses, however, are </font>
+
+283
+00:08:42,889 --> 00:08:43,556
+<font face="Monospace">{\an7}average. Extraordinary 
+expenses, however, are 
+projected to exceed the </font>
+
+284
+00:08:43,556 --> 00:08:44,223
+<font face="Monospace">{\an7}expenses, however, are 
+projected to exceed the 
+legislative approved budget </font>
+
+285
+00:08:44,224 --> 00:08:46,359
+<font face="Monospace">{\an7}projected to exceed the 
+legislative approved budget 
+for the Biennium. The </font>
+
+286
+00:08:46,359 --> 00:08:48,595
+<font face="Monospace">{\an7}legislative approved budget 
+for the Biennium. The 
+Legislature provide the </font>
+
+287
+00:08:48,595 --> 00:08:49,196
+<font face="Monospace">{\an7}for the Biennium. The 
+Legislature provide the 
+commission with nominal </font>
+
+288
+00:08:49,195 --> 00:08:51,564
+<font face="Monospace">{\an7}Legislature provide the 
+commission with nominal 
+extraordinary expense budget </font>
+
+289
+00:08:51,564 --> 00:08:52,732
+<font face="Monospace">{\an7}commission with nominal 
+extraordinary expense budget 
+with the understanding that </font>
+
+290
+00:08:52,732 --> 00:08:53,433
+<font face="Monospace">{\an7}extraordinary expense budget 
+with the understanding that 
+the commission may return to </font>
+
+291
+00:08:53,433 --> 00:08:54,668
+<font face="Monospace">{\an7}with the understanding that 
+the commission may return to 
+the emergency board for the </font>
+
+292
+00:08:54,667 --> 00:08:55,368
+<font face="Monospace">{\an7}the commission may return to 
+the emergency board for the 
+Legislature for supplemental </font>
+
+293
+00:08:55,368 --> 00:08:58,538
+<font face="Monospace">{\an7}the emergency board for the 
+Legislature for supplemental 
+funding if warranted the </font>
+
+294
+00:08:58,538 --> 00:09:01,041
+<font face="Monospace">{\an7}Legislature for supplemental 
+funding if warranted the 
+requested would bring the </font>
+
+295
+00:09:01,041 --> 00:09:01,742
+<font face="Monospace">{\an7}funding if warranted the 
+requested would bring the 
+total extraordinary expenses </font>
+
+296
+00:09:01,741 --> 00:09:03,843
+<font face="Monospace">{\an7}requested would bring the 
+total extraordinary expenses 
+budget 291, 6, 6, one general </font>
+
+297
+00:09:03,843 --> 00:09:06,379
+<font face="Monospace">{\an7}total extraordinary expenses 
+budget 291, 6, 6, one general 
+fund the public safety </font>
+
+298
+00:09:06,379 --> 00:09:07,080
+<font face="Monospace">{\an7}budget 291, 6, 6, one general 
+fund the public safety 
+subcommittee recommends that </font>
+
+299
+00:09:07,080 --> 00:09:09,115
+<font face="Monospace">{\an7}fund the public safety 
+subcommittee recommends that 
+the emergency board allocate </font>
+
+300
+00:09:09,115 --> 00:09:10,083
+<font face="Monospace">{\an7}subcommittee recommends that 
+the emergency board allocate 
+150,000 general fund from the </font>
+
+301
+00:09:10,083 --> 00:09:10,717
+<font face="Monospace">{\an7}the emergency board allocate 
+150,000 general fund from the 
+emergency fund to the </font>
+
+302
+00:09:10,717 --> 00:09:12,552
+<font face="Monospace">{\an7}150,000 general fund from the 
+emergency fund to the 
+commission on Judicial Fitness </font>
+
+303
+00:09:12,552 --> 00:09:14,687
+<font face="Monospace">{\an7}emergency fund to the 
+commission on Judicial Fitness 
+and disability for one time </font>
+
+304
+00:09:14,687 --> 00:09:15,254
+<font face="Monospace">{\an7}commission on Judicial Fitness 
+and disability for one time 
+basis for once again. </font>
+
+305
+00:09:15,255 --> 00:09:17,424
+<font face="Monospace">{\an7}and disability for one time 
+basis for once again. 
+Extraordinary expenses. They </font>
+
+306
+00:09:17,424 --> 00:09:18,125
+<font face="Monospace">{\an7}basis for once again. 
+Extraordinary expenses. They 
+represent discussion on this </font>
+
+307
+00:09:18,124 --> 00:09:20,860
+<font face="Monospace">{\an7}Extraordinary expenses. They 
+represent discussion on this 
+agenda item. Seeing no one in </font>
+
+308
+00:09:20,860 --> 00:09:23,663
+<font face="Monospace">{\an7}represent discussion on this 
+agenda item. Seeing no one in 
+the queue. Is there objection? </font>
+
+309
+00:09:23,663 --> 00:09:24,297
+<font face="Monospace">{\an7}agenda item. Seeing no one in 
+the queue. Is there objection? 
+See? No objection. motion </font>
+
+310
+00:09:24,297 --> 00:09:29,335
+<font face="Monospace">{\an7}the queue. Is there objection? 
+See? No objection. motion 
+passes. Anderson, to you the </font>
+
+311
+00:09:29,335 --> 00:09:30,069
+<font face="Monospace">{\an7}See? No objection. motion 
+passes. Anderson, to you the 
+queue. </font>
+
+312
+00:09:30,070 --> 00:09:31,505
+<font face="Monospace">{\an7}passes. Anderson, to you the 
+queue. 
+>> Thank you, co-chair and </font>
+
+313
+00:09:31,504 --> 00:09:32,171
+<font face="Monospace">{\an7}queue. 
+>> Thank you, co-chair and 
+couldn’t get your attention </font>
+
+314
+00:09:32,172 --> 00:09:34,141
+<font face="Monospace">{\an7}>> Thank you, co-chair and 
+couldn’t get your attention 
+before went to the individual. </font>
+
+315
+00:09:34,140 --> 00:09:34,774
+<font face="Monospace">{\an7}couldn’t get your attention 
+before went to the individual. 
+I would just like to make </font>
+
+316
+00:09:34,774 --> 00:09:35,475
+<font face="Monospace">{\an7}before went to the individual. 
+I would just like to make 
+They’ve been if I could back </font>
+
+317
+00:09:35,475 --> 00:09:38,511
+<font face="Monospace">{\an7}I would just like to make 
+They’ve been if I could back 
+to the consent, what are we </font>
+
+318
+00:09:38,511 --> 00:09:40,780
+<font face="Monospace">{\an7}They’ve been if I could back 
+to the consent, what are we 
+just do this without </font>
+
+319
+00:09:40,780 --> 00:09:41,481
+<font face="Monospace">{\an7}to the consent, what are we 
+just do this without 
+objection, we’ll suspend the </font>
+
+320
+00:09:41,481 --> 00:09:42,182
+<font face="Monospace">{\an7}just do this without 
+objection, we’ll suspend the 
+rules to be able to return to </font>
+
+321
+00:09:42,182 --> 00:09:42,816
+<font face="Monospace">{\an7}objection, we’ll suspend the 
+rules to be able to return to 
+the previous agenda item </font>
+
+322
+00:09:42,816 --> 00:09:43,517
+<font face="Monospace">{\an7}rules to be able to return to 
+the previous agenda item 
+Siakam a comment will be able </font>
+
+323
+00:09:43,516 --> 00:09:46,586
+<font face="Monospace">{\an7}the previous agenda item 
+Siakam a comment will be able 
+to note that for the record. </font>
+
+324
+00:09:46,586 --> 00:09:47,187
+<font face="Monospace">{\an7}Siakam a comment will be able 
+to note that for the record. 
+>> Including I Senator </font>
+
+325
+00:09:47,187 --> 00:09:48,555
+<font face="Monospace">{\an7}to note that for the record. 
+>> Including I Senator 
+Anderson, Mister Chair. may </font>
+
+326
+00:09:48,555 --> 00:09:49,589
+<font face="Monospace">{\an7}>> Including I Senator 
+Anderson, Mister Chair. may 
+have noticed a voted no on all </font>
+
+327
+00:09:49,589 --> 00:09:54,994
+<font face="Monospace">{\an7}Anderson, Mister Chair. may 
+have noticed a voted no on all 
+the consent requests and is my </font>
+
+328
+00:09:54,994 --> 00:09:59,298
+<font face="Monospace">{\an7}have noticed a voted no on all 
+the consent requests and is my 
+4 a little bit of a protest. </font>
+
+329
+00:09:59,299 --> 00:10:01,234
+<font face="Monospace">{\an7}the consent requests and is my 
+4 a little bit of a protest. 
+I’m struck how in this current </font>
+
+330
+00:10:01,234 --> 00:10:06,406
+<font face="Monospace">{\an7}4 a little bit of a protest. 
+I’m struck how in this current 
+state we’re as a body going </font>
+
+331
+00:10:06,406 --> 00:10:07,274
+<font face="Monospace">{\an7}I’m struck how in this current 
+state we’re as a body going 
+after the federal badmouthing </font>
+
+332
+00:10:07,273 --> 00:10:11,577
+<font face="Monospace">{\an7}state we’re as a body going 
+after the federal badmouthing 
+them critical of them. But </font>
+
+333
+00:10:11,578 --> 00:10:12,479
+<font face="Monospace">{\an7}after the federal badmouthing 
+them critical of them. But 
+same time we are very quick to </font>
+
+334
+00:10:12,479 --> 00:10:16,416
+<font face="Monospace">{\an7}them critical of them. But 
+same time we are very quick to 
+take their money. And </font>
+
+335
+00:10:16,416 --> 00:10:17,484
+<font face="Monospace">{\an7}same time we are very quick to 
+take their money. And 
+recognizing the environment </font>
+
+336
+00:10:17,484 --> 00:10:18,785
+<font face="Monospace">{\an7}take their money. And 
+recognizing the environment 
+we’re in right now in this </font>
+
+337
+00:10:18,785 --> 00:10:20,820
+<font face="Monospace">{\an7}recognizing the environment 
+we’re in right now in this 
+legislature and the shortage </font>
+
+338
+00:10:20,820 --> 00:10:22,955
+<font face="Monospace">{\an7}we’re in right now in this 
+legislature and the shortage 
+anticipated shortage of </font>
+
+339
+00:10:22,956 --> 00:10:26,092
+<font face="Monospace">{\an7}legislature and the shortage 
+anticipated shortage of 
+revenue whether to new project </font>
+
+340
+00:10:26,092 --> 00:10:31,130
+<font face="Monospace">{\an7}anticipated shortage of 
+revenue whether to new project 
+or projects. Cost money. And </font>
+
+341
+00:10:31,131 --> 00:10:33,100
+<font face="Monospace">{\an7}revenue whether to new project 
+or projects. Cost money. And 
+I’m I’m concerned about the </font>
+
+342
+00:10:33,099 --> 00:10:35,668
+<font face="Monospace">{\an7}or projects. Cost money. And 
+I’m I’m concerned about the 
+bulk of this and the real lack </font>
+
+343
+00:10:35,668 --> 00:10:38,504
+<font face="Monospace">{\an7}I’m I’m concerned about the 
+bulk of this and the real lack 
+of evaluation. Whether even </font>
+
+344
+00:10:38,505 --> 00:10:39,172
+<font face="Monospace">{\an7}bulk of this and the real lack 
+of evaluation. Whether even 
+though there’s no matching </font>
+
+345
+00:10:39,172 --> 00:10:41,207
+<font face="Monospace">{\an7}of evaluation. Whether even 
+though there’s no matching 
+funds and some of these it </font>
+
+346
+00:10:41,207 --> 00:10:44,477
+<font face="Monospace">{\an7}though there’s no matching 
+funds and some of these it 
+still costs money to run these </font>
+
+347
+00:10:44,477 --> 00:10:45,078
+<font face="Monospace">{\an7}funds and some of these it 
+still costs money to run these 
+programs or continue a </font>
+
+348
+00:10:45,078 --> 00:10:47,781
+<font face="Monospace">{\an7}still costs money to run these 
+programs or continue a 
+program. And I I just critical </font>
+
+349
+00:10:47,780 --> 00:10:49,315
+<font face="Monospace">{\an7}programs or continue a 
+program. And I I just critical 
+of ourselves to me included </font>
+
+350
+00:10:49,315 --> 00:10:55,087
+<font face="Monospace">{\an7}program. And I I just critical 
+of ourselves to me included 
+for not being as critiquing </font>
+
+351
+00:10:55,088 --> 00:10:57,123
+<font face="Monospace">{\an7}of ourselves to me included 
+for not being as critiquing 
+this information so it is is </font>
+
+352
+00:10:57,123 --> 00:10:59,125
+<font face="Monospace">{\an7}for not being as critiquing 
+this information so it is is 
+just simply my my There are </font>
+
+353
+00:10:59,125 --> 00:10:59,759
+<font face="Monospace">{\an7}this information so it is is 
+just simply my my There are 
+certainly some good stuff </font>
+
+354
+00:10:59,759 --> 00:11:04,631
+<font face="Monospace">{\an7}just simply my my There are 
+certainly some good stuff 
+there. But protesting the </font>
+
+355
+00:11:04,631 --> 00:11:06,032
+<font face="Monospace">{\an7}certainly some good stuff 
+there. But protesting the 
+process. Thank you. Thank you, </font>
+
+356
+00:11:06,032 --> 00:11:06,733
+<font face="Monospace">{\an7}there. But protesting the 
+process. Thank you. Thank you, 
+Senator. We will note that on </font>
+
+357
+00:11:06,733 --> 00:11:07,934
+<font face="Monospace">{\an7}process. Thank you. Thank you, 
+Senator. We will note that on 
+the record under the correct </font>
+
+358
+00:11:07,934 --> 00:11:09,836
+<font face="Monospace">{\an7}Senator. We will note that on 
+the record under the correct 
+order of business, additional </font>
+
+359
+00:11:09,836 --> 00:11:13,073
+<font face="Monospace">{\an7}the record under the correct 
+order of business, additional 
+current and or consent. See no </font>
+
+360
+00:11:13,072 --> 00:11:16,042
+<font face="Monospace">{\an7}order of business, additional 
+current and or consent. See no 
+one. We’ll return individual </font>
+
+361
+00:11:16,042 --> 00:11:17,877
+<font face="Monospace">{\an7}current and or consent. See no 
+one. We’ll return individual 
+items open work session on the </font>
+
+362
+00:11:17,877 --> 00:11:18,578
+<font face="Monospace">{\an7}one. We’ll return individual 
+items open work session on the 
+Higher Education Coordinating </font>
+
+363
+00:11:18,578 --> 00:11:19,279
+<font face="Monospace">{\an7}items open work session on the 
+Higher Education Coordinating 
+Commission recognized Senator </font>
+
+364
+00:11:19,279 --> 00:11:21,348
+<font face="Monospace">{\an7}Higher Education Coordinating 
+Commission recognized Senator 
+Golden. Thank you. Mister </font>
+
+365
+00:11:21,347 --> 00:11:23,616
+<font face="Monospace">{\an7}Commission recognized Senator 
+Golden. Thank you. Mister 
+co-chair, the Higher Education </font>
+
+366
+00:11:23,616 --> 00:11:24,417
+<font face="Monospace">{\an7}Golden. Thank you. Mister 
+co-chair, the Higher Education 
+subcommittee, her request from </font>
+
+367
+00:11:24,417 --> 00:11:27,287
+<font face="Monospace">{\an7}co-chair, the Higher Education 
+subcommittee, her request from 
+the Higher Education </font>
+
+368
+00:11:27,287 --> 00:11:28,188
+<font face="Monospace">{\an7}subcommittee, her request from 
+the Higher Education 
+Coordinating Commission. </font>
+
+369
+00:11:28,188 --> 00:11:29,523
+<font face="Monospace">{\an7}the Higher Education 
+Coordinating Commission. 
+>> Our projected operational </font>
+
+370
+00:11:29,522 --> 00:11:31,457
+<font face="Monospace">{\an7}Coordinating Commission. 
+>> Our projected operational 
+funding shortfall for southern </font>
+
+371
+00:11:31,457 --> 00:11:34,593
+<font face="Monospace">{\an7}>> Our projected operational 
+funding shortfall for southern 
+Oregon University. The 2026 </font>
+
+372
+00:11:34,594 --> 00:11:35,228
+<font face="Monospace">{\an7}funding shortfall for southern 
+Oregon University. The 2026 
+legislature appropriated </font>
+
+373
+00:11:35,228 --> 00:11:35,895
+<font face="Monospace">{\an7}Oregon University. The 2026 
+legislature appropriated 
+50 million dollars. General </font>
+
+374
+00:11:35,895 --> 00:11:39,399
+<font face="Monospace">{\an7}legislature appropriated 
+50 million dollars. General 
+fund to the emergency board to </font>
+
+375
+00:11:39,399 --> 00:11:40,100
+<font face="Monospace">{\an7}50 million dollars. General 
+fund to the emergency board to 
+provide short-term financial </font>
+
+376
+00:11:40,099 --> 00:11:42,668
+<font face="Monospace">{\an7}fund to the emergency board to 
+provide short-term financial 
+stability for You contingent </font>
+
+377
+00:11:42,669 --> 00:11:45,305
+<font face="Monospace">{\an7}provide short-term financial 
+stability for You contingent 
+on specified actions and </font>
+
+378
+00:11:45,305 --> 00:11:45,972
+<font face="Monospace">{\an7}stability for You contingent 
+on specified actions and 
+deliverables from both the </font>
+
+379
+00:11:45,972 --> 00:11:48,308
+<font face="Monospace">{\an7}on specified actions and 
+deliverables from both the 
+commission and the University, </font>
+
+380
+00:11:48,308 --> 00:11:50,510
+<font face="Monospace">{\an7}deliverables from both the 
+commission and the University, 
+the emergency board release 7 </font>
+
+381
+00:11:50,510 --> 00:11:51,411
+<font face="Monospace">{\an7}commission and the University, 
+the emergency board release 7 
+and a half billion dollars in </font>
+
+382
+00:11:51,411 --> 00:11:55,148
+<font face="Monospace">{\an7}the emergency board release 7 
+and a half billion dollars in 
+June 2026. so you partially </font>
+
+383
+00:11:55,148 --> 00:11:56,750
+<font face="Monospace">{\an7}and a half billion dollars in 
+June 2026. so you partially 
+satisfy these requirements and </font>
+
+384
+00:11:56,749 --> 00:12:00,453
+<font face="Monospace">{\an7}June 2026. so you partially 
+satisfy these requirements and 
+directed the hack to return in </font>
+
+385
+00:12:00,453 --> 00:12:03,089
+<font face="Monospace">{\an7}satisfy these requirements and 
+directed the hack to return in 
+September with an updated </font>
+
+386
+00:12:03,089 --> 00:12:04,524
+<font face="Monospace">{\an7}directed the hack to return in 
+September with an updated 
+financial forecast Internet. </font>
+
+387
+00:12:04,524 --> 00:12:05,425
+<font face="Monospace">{\an7}September with an updated 
+financial forecast Internet. 
+So you board of trustees </font>
+
+388
+00:12:05,425 --> 00:12:07,994
+<font face="Monospace">{\an7}financial forecast Internet. 
+So you board of trustees 
+approved long-term plan for </font>
+
+389
+00:12:07,994 --> 00:12:08,695
+<font face="Monospace">{\an7}So you board of trustees 
+approved long-term plan for 
+delivering higher education. </font>
+
+390
+00:12:08,695 --> 00:12:13,099
+<font face="Monospace">{\an7}approved long-term plan for 
+delivering higher education. 
+Southern Oregon. So use July </font>
+
+391
+00:12:13,099 --> 00:12:14,934
+<font face="Monospace">{\an7}delivering higher education. 
+Southern Oregon. So use July 
+2026. Forecast reflects or </font>
+
+392
+00:12:14,934 --> 00:12:19,872
+<font face="Monospace">{\an7}Southern Oregon. So use July 
+2026. Forecast reflects or 
+projected 16% fall enrollment </font>
+
+393
+00:12:19,872 --> 00:12:22,041
+<font face="Monospace">{\an7}2026. Forecast reflects or 
+projected 16% fall enrollment 
+decline continued our </font>
+
+394
+00:12:22,041 --> 00:12:24,176
+<font face="Monospace">{\an7}projected 16% fall enrollment 
+decline continued our 
+reprogram deficits and greater </font>
+
+395
+00:12:24,177 --> 00:12:26,079
+<font face="Monospace">{\an7}decline continued our 
+reprogram deficits and greater 
+reliance on restructuring and </font>
+
+396
+00:12:26,079 --> 00:12:28,181
+<font face="Monospace">{\an7}reprogram deficits and greater 
+reliance on restructuring and 
+cost reductions. Although </font>
+
+397
+00:12:28,181 --> 00:12:29,082
+<font face="Monospace">{\an7}reliance on restructuring and 
+cost reductions. Although 
+receipt of the full 50 million </font>
+
+398
+00:12:29,082 --> 00:12:31,051
+<font face="Monospace">{\an7}cost reductions. Although 
+receipt of the full 50 million 
+dollars special purpose, </font>
+
+399
+00:12:31,050 --> 00:12:32,051
+<font face="Monospace">{\an7}receipt of the full 50 million 
+dollars special purpose, 
+appropriation is projected to </font>
+
+400
+00:12:32,051 --> 00:12:34,787
+<font face="Monospace">{\an7}dollars special purpose, 
+appropriation is projected to 
+So you solvent through fiscal </font>
+
+401
+00:12:34,787 --> 00:12:38,591
+<font face="Monospace">{\an7}appropriation is projected to 
+So you solvent through fiscal 
+year 2027 small shortfalls in </font>
+
+402
+00:12:38,591 --> 00:12:41,928
+<font face="Monospace">{\an7}So you solvent through fiscal 
+year 2027 small shortfalls in 
+estimated tuition revenue or </font>
+
+403
+00:12:41,928 --> 00:12:43,096
+<font face="Monospace">{\an7}year 2027 small shortfalls in 
+estimated tuition revenue or 
+plan savings could eliminate </font>
+
+404
+00:12:43,096 --> 00:12:45,465
+<font face="Monospace">{\an7}estimated tuition revenue or 
+plan savings could eliminate 
+its projected cash balance to </font>
+
+405
+00:12:45,465 --> 00:12:48,034
+<font face="Monospace">{\an7}plan savings could eliminate 
+its projected cash balance to 
+achieve longer-term stability </font>
+
+406
+00:12:48,034 --> 00:12:50,537
+<font face="Monospace">{\an7}its projected cash balance to 
+achieve longer-term stability 
+as show use board approved </font>
+
+407
+00:12:50,536 --> 00:12:52,038
+<font face="Monospace">{\an7}achieve longer-term stability 
+as show use board approved 
+vitality plan targets </font>
+
+408
+00:12:52,038 --> 00:12:54,807
+<font face="Monospace">{\an7}as show use board approved 
+vitality plan targets 
+20 million dollars in </font>
+
+409
+00:12:54,807 --> 00:12:55,474
+<font face="Monospace">{\an7}vitality plan targets 
+20 million dollars in 
+structural savings through </font>
+
+410
+00:12:55,475 --> 00:12:57,477
+<font face="Monospace">{\an7}20 million dollars in 
+structural savings through 
+workforce academic, </font>
+
+411
+00:12:57,477 --> 00:12:59,379
+<font face="Monospace">{\an7}structural savings through 
+workforce academic, 
+administrative and You re </font>
+
+412
+00:12:59,379 --> 00:13:01,114
+<font face="Monospace">{\an7}workforce academic, 
+administrative and You re 
+restructuring with success </font>
+
+413
+00:13:01,114 --> 00:13:02,882
+<font face="Monospace">{\an7}administrative and You re 
+restructuring with success 
+dependent on achieving the </font>
+
+414
+00:13:02,882 --> 00:13:04,917
+<font face="Monospace">{\an7}restructuring with success 
+dependent on achieving the 
+targeted savings without </font>
+
+415
+00:13:04,917 --> 00:13:06,118
+<font face="Monospace">{\an7}dependent on achieving the 
+targeted savings without 
+further enrollment declines or </font>
+
+416
+00:13:06,119 --> 00:13:09,856
+<font face="Monospace">{\an7}targeted savings without 
+further enrollment declines or 
+deterioration and services. </font>
+
+417
+00:13:09,856 --> 00:13:10,557
+<font face="Monospace">{\an7}further enrollment declines or 
+deterioration and services. 
+Higher education subcommittee </font>
+
+418
+00:13:10,556 --> 00:13:12,725
+<font face="Monospace">{\an7}deterioration and services. 
+Higher education subcommittee 
+recommends that the emergency </font>
+
+419
+00:13:12,725 --> 00:13:13,926
+<font face="Monospace">{\an7}Higher education subcommittee 
+recommends that the emergency 
+board allocate 7 million, </font>
+
+420
+00:13:13,926 --> 00:13:17,196
+<font face="Monospace">{\an7}recommends that the emergency 
+board allocate 7 million, 
+500,000 dollars. General fund </font>
+
+421
+00:13:17,196 --> 00:13:17,830
+<font face="Monospace">{\an7}board allocate 7 million, 
+500,000 dollars. General fund 
+from the special purpose </font>
+
+422
+00:13:17,830 --> 00:13:19,565
+<font face="Monospace">{\an7}500,000 dollars. General fund 
+from the special purpose 
+Appropriation made to the </font>
+
+423
+00:13:19,565 --> 00:13:20,633
+<font face="Monospace">{\an7}from the special purpose 
+Appropriation made to the 
+emergency board for supporting </font>
+
+424
+00:13:20,633 --> 00:13:22,935
+<font face="Monospace">{\an7}Appropriation made to the 
+emergency board for supporting 
+Southern Oregon University </font>
+
+425
+00:13:22,935 --> 00:13:25,738
+<font face="Monospace">{\an7}emergency board for supporting 
+Southern Oregon University 
+with short term financial </font>
+
+426
+00:13:25,738 --> 00:13:26,339
+<font face="Monospace">{\an7}Southern Oregon University 
+with short term financial 
+stability to the Higher </font>
+
+427
+00:13:26,339 --> 00:13:27,841
+<font face="Monospace">{\an7}with short term financial 
+stability to the Higher 
+Education Coordinating </font>
+
+428
+00:13:27,840 --> 00:13:29,575
+<font face="Monospace">{\an7}stability to the Higher 
+Education Coordinating 
+Commission to distribute you </font>
+
+429
+00:13:29,575 --> 00:13:30,242
+<font face="Monospace">{\an7}Education Coordinating 
+Commission to distribute you 
+to address its operational </font>
+
+430
+00:13:30,243 --> 00:13:32,312
+<font face="Monospace">{\an7}Commission to distribute you 
+to address its operational 
+funding shortfall. The </font>
+
+431
+00:13:32,312 --> 00:13:34,948
+<font face="Monospace">{\an7}to address its operational 
+funding shortfall. The 
+subcommittee also recommends </font>
+
+432
+00:13:34,947 --> 00:13:37,883
+<font face="Monospace">{\an7}funding shortfall. The 
+subcommittee also recommends 
+the fire Education </font>
+
+433
+00:13:37,884 --> 00:13:38,685
+<font face="Monospace">{\an7}subcommittee also recommends 
+the fire Education 
+Coordinating Commission </font>
+
+434
+00:13:38,685 --> 00:13:39,352
+<font face="Monospace">{\an7}the fire Education 
+Coordinating Commission 
+continue to monitor us are </font>
+
+435
+00:13:39,352 --> 00:13:42,088
+<font face="Monospace">{\an7}Coordinating Commission 
+continue to monitor us are 
+used cash flow forecast and </font>
+
+436
+00:13:42,088 --> 00:13:43,890
+<font face="Monospace">{\an7}continue to monitor us are 
+used cash flow forecast and 
+implementation of vitality </font>
+
+437
+00:13:43,890 --> 00:13:47,861
+<font face="Monospace">{\an7}used cash flow forecast and 
+implementation of vitality 
+plan to ensure that the </font>
+
+438
+00:13:47,860 --> 00:13:48,661
+<font face="Monospace">{\an7}implementation of vitality 
+plan to ensure that the 
+university demonstrates </font>
+
+439
+00:13:48,661 --> 00:13:49,262
+<font face="Monospace">{\an7}plan to ensure that the 
+university demonstrates 
+measurable progress in </font>
+
+440
+00:13:49,262 --> 00:13:50,096
+<font face="Monospace">{\an7}university demonstrates 
+measurable progress in 
+aligning recurring </font>
+
+441
+00:13:50,096 --> 00:13:52,632
+<font face="Monospace">{\an7}measurable progress in 
+aligning recurring 
+expenditures, personnel and </font>
+
+442
+00:13:52,632 --> 00:13:54,501
+<font face="Monospace">{\an7}aligning recurring 
+expenditures, personnel and 
+academic. An auxiliary </font>
+
+443
+00:13:54,500 --> 00:13:56,435
+<font face="Monospace">{\an7}expenditures, personnel and 
+academic. An auxiliary 
+operations with realistic </font>
+
+444
+00:13:56,436 --> 00:13:59,339
+<font face="Monospace">{\an7}academic. An auxiliary 
+operations with realistic 
+enrollment and sustainable </font>
+
+445
+00:13:59,339 --> 00:14:00,106
+<font face="Monospace">{\an7}operations with realistic 
+enrollment and sustainable 
+revenue without reliance on </font>
+
+446
+00:14:00,106 --> 00:14:01,975
+<font face="Monospace">{\an7}enrollment and sustainable 
+revenue without reliance on 
+additional one-time state </font>
+
+447
+00:14:01,974 --> 00:14:02,808
+<font face="Monospace">{\an7}revenue without reliance on 
+additional one-time state 
+funding to address operating </font>
+
+448
+00:14:02,809 --> 00:14:04,577
+<font face="Monospace">{\an7}additional one-time state 
+funding to address operating 
+deficits. </font>
+
+449
+00:14:04,577 --> 00:14:05,178
+<font face="Monospace">{\an7}funding to address operating 
+deficits. 
+>> Thank you, Senator. </font>
+
+450
+00:14:05,178 --> 00:14:07,247
+<font face="Monospace">{\an7}deficits. 
+>> Thank you, Senator. 
+Discussion on the item. </font>
+
+451
+00:14:07,246 --> 00:14:10,549
+<font face="Monospace">{\an7}>> Thank you, Senator. 
+Discussion on the item. 
+Recognize represent a bonus. </font>
+
+452
+00:14:10,550 --> 00:14:13,620
+<font face="Monospace">{\an7}Discussion on the item. 
+Recognize represent a bonus. 
+Thank I want to so you for </font>
+
+453
+00:14:13,619 --> 00:14:14,286
+<font face="Monospace">{\an7}Recognize represent a bonus. 
+Thank I want to so you for 
+coming back in my office. I </font>
+
+454
+00:14:14,287 --> 00:14:15,021
+<font face="Monospace">{\an7}Thank I want to so you for 
+coming back in my office. I 
+voted no last the board in the </font>
+
+455
+00:14:15,021 --> 00:14:16,155
+<font face="Monospace">{\an7}coming back in my office. I 
+voted no last the board in the 
+first tranche money that went </font>
+
+456
+00:14:16,155 --> 00:14:16,756
+<font face="Monospace">{\an7}voted no last the board in the 
+first tranche money that went 
+to them. </font>
+
+457
+00:14:16,756 --> 00:14:17,423
+<font face="Monospace">{\an7}first tranche money that went 
+to them. 
+>> Years I thought they’re </font>
+
+458
+00:14:17,423 --> 00:14:19,725
+<font face="Monospace">{\an7}to them. 
+>> Years I thought they’re 
+repeating their heirs because </font>
+
+459
+00:14:19,726 --> 00:14:20,727
+<font face="Monospace">{\an7}>> Years I thought they’re 
+repeating their heirs because 
+in their solvency point, it </font>
+
+460
+00:14:20,727 --> 00:14:21,461
+<font face="Monospace">{\an7}repeating their heirs because 
+in their solvency point, it 
+looks like there’s going to be </font>
+
+461
+00:14:21,461 --> 00:14:22,629
+<font face="Monospace">{\an7}in their solvency point, it 
+looks like there’s going to be 
+increase in enrollment. That’s </font>
+
+462
+00:14:22,628 --> 00:14:24,196
+<font face="Monospace">{\an7}looks like there’s going to be 
+increase in enrollment. That’s 
+what they’ve done the last </font>
+
+463
+00:14:24,197 --> 00:14:26,433
+<font face="Monospace">{\an7}increase in enrollment. That’s 
+what they’ve done the last 
+several times. So coming in </font>
+
+464
+00:14:26,432 --> 00:14:27,133
+<font face="Monospace">{\an7}what they’ve done the last 
+several times. So coming in 
+with a more refined, this is, </font>
+
+465
+00:14:27,133 --> 00:14:28,401
+<font face="Monospace">{\an7}several times. So coming in 
+with a more refined, this is, 
+hey, we can even put up with a </font>
+
+466
+00:14:28,401 --> 00:14:30,103
+<font face="Monospace">{\an7}with a more refined, this is, 
+hey, we can even put up with a 
+16%. reduction enrollment and </font>
+
+467
+00:14:30,103 --> 00:14:33,840
+<font face="Monospace">{\an7}hey, we can even put up with a 
+16%. reduction enrollment and 
+so become solvent. Makes me </font>
+
+468
+00:14:33,840 --> 00:14:34,574
+<font face="Monospace">{\an7}16%. reduction enrollment and 
+so become solvent. Makes me 
+feel a lot more comfortable. I </font>
+
+469
+00:14:34,574 --> 00:14:35,642
+<font face="Monospace">{\an7}so become solvent. Makes me 
+feel a lot more comfortable. I 
+sure hope they don’t have a </font>
+
+470
+00:14:35,641 --> 00:14:36,375
+<font face="Monospace">{\an7}feel a lot more comfortable. I 
+sure hope they don’t have a 
+60% reduction by hoping get on </font>
+
+471
+00:14:36,376 --> 00:14:37,043
+<font face="Monospace">{\an7}sure hope they don’t have a 
+60% reduction by hoping get on 
+a trajectory of, you know, </font>
+
+472
+00:14:37,043 --> 00:14:38,678
+<font face="Monospace">{\an7}60% reduction by hoping get on 
+a trajectory of, you know, 
+even are growing in the </font>
+
+473
+00:14:38,678 --> 00:14:39,579
+<font face="Monospace">{\an7}a trajectory of, you know, 
+even are growing in the 
+future. But I’m glad to be a </font>
+
+474
+00:14:39,579 --> 00:14:41,581
+<font face="Monospace">{\an7}even are growing in the 
+future. But I’m glad to be a 
+yes, this time. </font>
+
+475
+00:14:41,581 --> 00:14:42,248
+<font face="Monospace">{\an7}future. But I’m glad to be a 
+yes, this time. 
+>> Thank you. Representive </font>
+
+476
+00:14:42,248 --> 00:14:46,319
+<font face="Monospace">{\an7}yes, this time. 
+>> Thank you. Representive 
+additional discussion. Right? </font>
+
+477
+00:14:46,319 --> 00:14:47,353
+<font face="Monospace">{\an7}>> Thank you. Representive 
+additional discussion. Right? 
+My Senator Boquist co-chair, </font>
+
+478
+00:14:47,353 --> 00:14:50,289
+<font face="Monospace">{\an7}additional discussion. Right? 
+My Senator Boquist co-chair, 
+want to express the gratitude </font>
+
+479
+00:14:50,289 --> 00:14:51,791
+<font face="Monospace">{\an7}My Senator Boquist co-chair, 
+want to express the gratitude 
+from university and my </font>
+
+480
+00:14:51,791 --> 00:14:53,826
+<font face="Monospace">{\an7}want to express the gratitude 
+from university and my 
+community from the very </font>
+
+481
+00:14:53,826 --> 00:14:55,628
+<font face="Monospace">{\an7}from university and my 
+community from the very 
+beginning. You know, it’s less </font>
+
+482
+00:14:55,628 --> 00:14:56,295
+<font face="Monospace">{\an7}community from the very 
+beginning. You know, it’s less 
+a year ago now that I think </font>
+
+483
+00:14:56,295 --> 00:14:58,264
+<font face="Monospace">{\an7}beginning. You know, it’s less 
+a year ago now that I think 
+about it. But last January, </font>
+
+484
+00:14:58,264 --> 00:15:00,433
+<font face="Monospace">{\an7}a year ago now that I think 
+about it. But last January, 
+the response of leadership and </font>

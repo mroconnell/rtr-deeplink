@@ -53,6 +53,7 @@ _init_sentry()
 
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
+from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_MARKER
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
@@ -64,7 +65,9 @@ from app.platforms.media_probe import (
     slice_cached_audio,
     transcription_media_url,
 )
+from app.platforms.models import TranscriptSegment
 from app.utils.retry import retry_async
+from app.utils.vtt_parser import detect_language_from_texts, is_likely_garbled
 from archive.db import crud
 from archive.utils import email as email_utils
 from worker.segment_utils import (
@@ -198,6 +201,86 @@ async def maybe_generate_auto_job() -> bool:
     except Exception as e:
         await _fail(f"Re-resolve failed: {e}")
         return True
+
+    # WO-1065: some Invintus meetings have real captions baked directly
+    # into the video stream (CEA-608), which app/platforms/invintus.py's
+    # resolve() only ever cheaply *probes* for -- see
+    # app/platforms/embedded_captions.py's module docstring. When the
+    # fresh re-resolve above says a page is in that state, extracting the
+    # real text here is strictly cheaper than a Whisper transcription job
+    # (no model, and it's the government's own words), so it's tried
+    # first, before ever falling into the ordinary chunk-job path below.
+    # `getattr` duck-types on the exact method name invintus.py's
+    # InvintusAssetFinder.extract_embedded_captions() docstring commits
+    # to, rather than importing that class directly -- any future
+    # adapter that grows the same method gets this for free.
+    extractor = getattr(finder, "extract_embedded_captions", None)
+    if extractor is not None and any(
+        EMBEDDED_CAPTIONS_MARKER in w for w in (result.transcript_warnings or [])
+    ):
+        logger.info("Auto-generation: %s has embedded captions, extracting", slug)
+        started = time.monotonic()
+        try:
+            cues = await extractor(source_url)
+        except Exception as e:
+            await _fail(f"Embedded caption extraction failed: {e}")
+            return True
+        elapsed = time.monotonic() - started
+        logger.info(
+            "Auto-generation: %s embedded-caption extraction finished in %.0fs "
+            "(%s cues)",
+            slug,
+            elapsed,
+            len(cues),
+        )
+        if cues:
+            result.segments = [TranscriptSegment(**cue) for cue in cues]
+            result.transcript_warnings = [
+                w
+                for w in (result.transcript_warnings or [])
+                if EMBEDDED_CAPTIONS_MARKER not in w
+            ]
+            result.transcript_language = detect_language_from_texts(
+                cue["text"] for cue in cues
+            )
+            # Same wording (and _GARBLED_MARKER substring) as
+            # app/platforms/invintus.py's own scraped-caption path -- kept
+            # identical on purpose so a garbled embedded-captions page is
+            # classified the same way everywhere else already checks for
+            # this exact text (archive/db/crud.py's _GARBLED_MARKER).
+            if is_likely_garbled(cues, lang=result.transcript_language):
+                result.transcript_warnings.append(
+                    "This transcript looks garbled at the source (not "
+                    "a parsing bug on our end) -- treat it as "
+                    "approximate. You can request a transcript from "
+                    "the audio instead."
+                )
+            payload = {**result.model_dump(), "source": "sourced"}
+            # Per CLAUDE.md's "send gov_id in every ingest payload" rule --
+            # this pins the SAME page find_auto_transcription_candidate()
+            # already picked, so it can never raise GovernmentMismatch; it
+            # just keeps a passive re-resolve from silently re-deriving
+            # identity for an already-keyed page.
+            if candidate.get("gov_id"):
+                payload["gov_id"] = candidate["gov_id"]
+            await crud.ingest_resolution(
+                payload=payload, input_url_normalized=source_url
+            )
+            logger.info(
+                "Auto-generation: %s ingested %d embedded-caption segments",
+                slug,
+                len(cues),
+            )
+            return True
+        # The resolve-time probe said yes, but a full extraction over the
+        # whole stream found no real words -- fall through to the
+        # ordinary Whisper chunk-job path below unchanged, same as any
+        # other page with no embedded-captions marker at all.
+        logger.info(
+            "Auto-generation: %s embedded-caption extraction found no words, "
+            "falling back to transcription",
+            slug,
+        )
 
     # WO-1045: the playable video_url, or a server-only stream (ChampDS VOD2).
     media_url = transcription_media_url(result)

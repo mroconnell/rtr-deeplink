@@ -1,3 +1,4 @@
+import difflib
 import re
 
 from langdetect import detect as _detect_language
@@ -5,6 +6,7 @@ from langdetect import detect as _detect_language
 from app.utils.vtt_parser import (
     _is_rollup_pair,
     _looks_like_rollup,
+    _rollup_cue_units,
     _rollup_lines,
     decode_vtt_bytes,
     dedupe_rollup_cues,
@@ -1123,3 +1125,118 @@ def test_detect_language_short_transcript_is_unchanged_single_sample():
     assert detect_language_from_texts(texts) == "en"
     assert detect_language_from_texts(["hi"]) is None
     assert detect_language_from_texts([]) is None
+
+
+def test_dedupe_rollup_cues_real_invintus_three_line_rollup_fixture():
+    # Real Invintus/CEA-608 captions for the Oregon Legislature's Joint
+    # Emergency Board, 2026-09-10 (an embedded Invintus player, not a
+    # platform this repo has an adapter for yet -- fetched live as the
+    # ffmpeg `subcc` SRT output production will actually feed in). First
+    # 15 minutes only; full meeting is much longer.
+    #
+    # Fifth real roll-up shape, and the first one where the window is
+    # *three* lines deep, not two: each cue repeats the previous cue's
+    # last two lines and adds one new line (the first couple of cues grow
+    # 1 -> 2 -> 3 lines before the window is full). _rollup_lines()'s
+    # line-by-line comparison sees only "different speech" at every
+    # adjacent pair (the repeat is three lines back, not one) and
+    # _looks_like_rollup() correctly says "not roll-up" -- confirmed
+    # below. The cue-level fallback (_rollup_cue_units(), one unit per
+    # cue with all its lines joined) puts the repeat back where the
+    # existing word-overlap merge can find it, without touching how the
+    # four two-line-or-less shapes above are detected.
+    #
+    # This fixture also carries ffmpeg's own markup: an ASS/SSA alignment
+    # override ("{\an7}") at the start of every cue's text, inside a
+    # <font face="Monospace"> tag. Left unstripped, the override tag
+    # prefixes whichever word follows it ("{\an7}order") and breaks the
+    # word-level overlap match against the same word appearing untagged
+    # elsewhere -- this is what _TAG_RE's ASS-tag branch exists for.
+    content = load_fixture(
+        "invintus", "embedded_oregon_eb_2026091029_first15min_ffmpeg.srt"
+    )
+    cues = parse_srt(content)
+    assert len(cues) == 484
+
+    lines = _rollup_lines(cues)
+    assert _looks_like_rollup(lines) is False
+    cue_units = _rollup_cue_units(cues)
+    assert _looks_like_rollup(cue_units) is True
+
+    segments = dedupe_rollup_cues(cues)
+
+    # No two *consecutive* segments repeat the same text, and none is a
+    # growing prefix of the next -- i.e. no real caption line survives
+    # into 2+ consecutive output segments, the defect this shape produces
+    # when left undetected (47,365 words across the full meeting vs
+    # ~15,795 real, every line tripled). A real, non-consecutive repeat
+    # (e.g. "Representative discussion." said by two different members a
+    # few segments apart) is genuine speech, not a merge defect, so this
+    # deliberately checks adjacency rather than global uniqueness -- the
+    # Tacoma Granicus fixture above can use the stricter global check
+    # only because that excerpt happens to have no legitimate repeats.
+    texts = [s["text"] for s in segments]
+    assert all(a != b for a, b in zip(texts, texts[1:]))
+    assert not any(b.startswith(a) for a, b in zip(texts, texts[1:]))
+
+    words = " ".join(texts).split()
+
+    # Ground truth: the same 15 minutes captured from ccextractor with
+    # its -noru option, which writes each roll-up line exactly once.
+    noru_content = load_fixture(
+        "invintus", "embedded_oregon_eb_2026091029_first15min_ccextractor_noru.srt"
+    )
+    noru_cues = parse_srt(noru_content)
+    noru_words = " ".join(c["text"].replace("\n", " ") for c in noru_cues).split()
+
+    # Word count within ~1% of the ccextractor ground truth (measured:
+    # 2,039 vs 2,047 -- 0.4% low, from a couple of segments the two tools
+    # split slightly differently at the very start of the excerpt where
+    # the window is still growing from 1 to 3 lines).
+    assert abs(len(words) - len(noru_words)) / len(noru_words) < 0.01
+
+    fold = lambda ws: [w.casefold() for w in ws]  # noqa: E731
+    ratio = difflib.SequenceMatcher(None, fold(words), fold(noru_words)).ratio()
+    assert ratio > 0.95
+
+
+def test_dedupe_rollup_cues_real_invintus_two_line_rollup_fixture_unchanged():
+    # Real Invintus/CEA-608 captions.srt for Port of Vancouver via CVTV,
+    # 2026-09-10 -- same vendor as the three-line Oregon fixture above,
+    # but this one is the ordinary two-line window (the previous line
+    # promoted to the top of a two-line cue, same shape as CivicClerk's
+    # Antioch fixture) and must be detected and merged by the existing
+    # *line*-level path, unchanged by the cue-level fallback WO-1065
+    # added for the three-line shape.
+    content = load_fixture("invintus", "embedded_cvtv_2026091018_full_ffmpeg.srt")
+    cues = parse_srt(content)
+    assert len(cues) == 460
+
+    lines = _rollup_lines(cues)
+    assert _looks_like_rollup(lines) is True
+
+    segments = dedupe_rollup_cues(cues)
+    # Pinned exact numbers, measured after the {\an7} ASS-tag stripping
+    # fix (without it, every cue's first word is silently glued to a
+    # literal "{\an7}" prefix, which defeats the word-overlap match and
+    # this track dedupes to 460 unmerged segments / 4,455 words instead).
+    assert len(segments) == 458
+    words = " ".join(s["text"] for s in segments).split()
+    assert len(words) == 2225
+    # No leftover ASS/SSA override tag anywhere in the reconstructed text.
+    assert not any("{\\an" in s["text"] for s in segments)
+
+
+def test_rollup_cue_units_joins_each_cues_lines_into_one_unit():
+    cues = [
+        {"start": 0.0, "end": 1.0, "text": "one"},
+        {"start": 1.0, "end": 2.0, "text": "one\ntwo"},
+        {"start": 2.0, "end": 3.0, "text": ""},
+    ]
+    assert _rollup_cue_units(cues) == [
+        (cues[0], "one", True),
+        (cues[1], "one two", True),
+        # The blank cue contributes no unit at all -- there's no text to
+        # compare, and an empty string would trivially "overlap" with
+        # anything, which would corrupt the ratio.
+    ]

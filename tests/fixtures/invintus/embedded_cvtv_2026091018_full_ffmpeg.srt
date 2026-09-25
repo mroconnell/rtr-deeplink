@@ -1,0 +1,2299 @@
+1
+00:00:07,441 --> 00:00:39,907
+<font face="Monospace">{\an7}2026. I’m calling a meeting to</font>
+
+2
+00:00:39,907 --> 00:00:42,042
+<font face="Monospace">{\an7}2026. I’m calling a meeting to
+order at 930. There was no</font>
+
+3
+00:00:42,042 --> 00:00:43,443
+<font face="Monospace">{\an7}order at 930. There was no
+executive session held this</font>
+
+4
+00:00:43,443 --> 00:00:45,278
+<font face="Monospace">{\an7}executive session held this
+morning. Please note this</font>
+
+5
+00:00:45,279 --> 00:00:47,414
+<font face="Monospace">{\an7}morning. Please note this
+meeting is being televised</font>
+
+6
+00:00:47,414 --> 00:00:50,317
+<font face="Monospace">{\an7}meeting is being televised
+being recorded. My name is Don</font>
+
+7
+00:00:50,317 --> 00:00:51,752
+<font face="Monospace">{\an7}being recorded. My name is Don
+orange and I’m the Commission</font>
+
+8
+00:00:51,752 --> 00:00:53,153
+<font face="Monospace">{\an7}orange and I’m the Commission
+president for the Port of</font>
+
+9
+00:00:53,153 --> 00:00:55,055
+<font face="Monospace">{\an7}president for the Port of
+Vancouver. Joining me are</font>
+
+10
+00:00:55,055 --> 00:00:57,157
+<font face="Monospace">{\an7}Vancouver. Joining me are
+Commissioner Eric LaBrant and</font>
+
+11
+00:00:57,157 --> 00:00:59,559
+<font face="Monospace">{\an7}Commissioner Eric LaBrant and
+Temple Lentz. We are conducting</font>
+
+12
+00:00:59,560 --> 00:01:03,297
+<font face="Monospace">{\an7}Temple Lentz. We are conducting
+a hybrid meeting along with our</font>
+
+13
+00:01:03,297 --> 00:01:04,698
+<font face="Monospace">{\an7}a hybrid meeting along with our
+in-person meeting we are having</font>
+
+14
+00:01:04,698 --> 00:01:07,267
+<font face="Monospace">{\an7}in-person meeting we are having
+here. We are also set up for</font>
+
+15
+00:01:07,267 --> 00:01:08,702
+<font face="Monospace">{\an7}here. We are also set up for
+those who are not physically</font>
+
+16
+00:01:08,702 --> 00:01:11,238
+<font face="Monospace">{\an7}those who are not physically
+able to provide oral testimony,</font>
+
+17
+00:01:11,238 --> 00:01:14,475
+<font face="Monospace">{\an7}able to provide oral testimony,
+can do so virtually. Please</font>
+
+18
+00:01:14,474 --> 00:01:15,875
+<font face="Monospace">{\an7}can do so virtually. Please
+join me in the Pledge of</font>
+
+19
+00:01:15,876 --> 00:01:21,648
+<font face="Monospace">{\an7}join me in the Pledge of
+Allegiance. I pledge allegiance</font>
+
+20
+00:01:21,648 --> 00:01:23,617
+<font face="Monospace">{\an7}Allegiance. I pledge allegiance
+to the flag of the United</font>
+
+21
+00:01:23,617 --> 00:01:25,953
+<font face="Monospace">{\an7}to the flag of the United
+States of America and to the</font>
+
+22
+00:01:25,953 --> 00:01:28,122
+<font face="Monospace">{\an7}States of America and to the
+Republic for which it stands.</font>
+
+23
+00:01:28,121 --> 00:01:31,024
+<font face="Monospace">{\an7}Republic for which it stands.
+>> One nation under God,</font>
+
+24
+00:01:31,024 --> 00:01:32,425
+<font face="Monospace">{\an7}>> One nation under God,
+indivisible, with liberty and</font>
+
+25
+00:01:32,426 --> 00:01:38,332
+<font face="Monospace">{\an7}indivisible, with liberty and
+justice for all.</font>
+
+26
+00:01:38,332 --> 00:01:39,967
+<font face="Monospace">{\an7}justice for all.
+>> Moving to the agenda. The</font>
+
+27
+00:01:39,967 --> 00:01:42,903
+<font face="Monospace">{\an7}>> Moving to the agenda. The
+first action item is approval</font>
+
+28
+00:01:42,903 --> 00:01:45,439
+<font face="Monospace">{\an7}first action item is approval
+of the minutes. Commissioner</font>
+
+29
+00:01:45,439 --> 00:01:46,106
+<font face="Monospace">{\an7}of the minutes. Commissioner
+Linse.</font>
+
+30
+00:01:46,106 --> 00:01:47,240
+<font face="Monospace">{\an7}Linse.
+>> I’ve reviewed the minutes</font>
+
+31
+00:01:47,240 --> 00:01:49,109
+<font face="Monospace">{\an7}>> I’ve reviewed the minutes
+and find them to be in order,</font>
+
+32
+00:01:49,109 --> 00:01:50,110
+<font face="Monospace">{\an7}and find them to be in order,
+so I move approval.</font>
+
+33
+00:01:50,110 --> 00:01:52,312
+<font face="Monospace">{\an7}so I move approval.
+>> I’ll second the motion. All</font>
+
+34
+00:01:52,312 --> 00:01:55,816
+<font face="Monospace">{\an7}>> I’ll second the motion. All
+those in favor? Aye aye aye.</font>
+
+35
+00:01:55,816 --> 00:02:00,854
+<font face="Monospace">{\an7}those in favor? Aye aye aye.
+Unanimously. Uhl. Next on the</font>
+
+36
+00:02:00,854 --> 00:02:02,322
+<font face="Monospace">{\an7}Unanimously. Uhl. Next on the
+agenda is open Forum.</font>
+
+37
+00:02:02,322 --> 00:02:03,790
+<font face="Monospace">{\an7}agenda is open Forum.
+>> Good morning commissioners.</font>
+
+38
+00:02:03,790 --> 00:02:05,592
+<font face="Monospace">{\an7}>> Good morning commissioners.
+We did not have anyone sign up</font>
+
+39
+00:02:05,592 --> 00:02:07,027
+<font face="Monospace">{\an7}We did not have anyone sign up
+to speak virtually today. And</font>
+
+40
+00:02:07,027 --> 00:02:08,695
+<font face="Monospace">{\an7}to speak virtually today. And
+we do not have anyone in the</font>
+
+41
+00:02:08,695 --> 00:02:12,432
+<font face="Monospace">{\an7}we do not have anyone in the
+audience that is here to speak.</font>
+
+42
+00:02:12,432 --> 00:02:13,833
+<font face="Monospace">{\an7}audience that is here to speak.
+>> Is if president invite them</font>
+
+43
+00:02:13,834 --> 00:02:15,636
+<font face="Monospace">{\an7}>> Is if president invite them
+to the podium. I guess that</font>
+
+44
+00:02:15,636 --> 00:02:18,205
+<font face="Monospace">{\an7}to the podium. I guess that
+means yes. Next.</font>
+
+45
+00:02:18,205 --> 00:02:20,307
+<font face="Monospace">{\an7}means yes. Next.
+>> So we have two action items</font>
+
+46
+00:02:20,307 --> 00:02:22,142
+<font face="Monospace">{\an7}>> So we have two action items
+today, and I’d like to welcome</font>
+
+47
+00:02:22,142 --> 00:02:23,944
+<font face="Monospace">{\an7}today, and I’d like to welcome
+Lori Taylor, our industrial and</font>
+
+48
+00:02:23,944 --> 00:02:25,379
+<font face="Monospace">{\an7}Lori Taylor, our industrial and
+maritime sales manager, to the</font>
+
+49
+00:02:25,379 --> 00:02:27,114
+<font face="Monospace">{\an7}maritime sales manager, to the
+podium to present our first</font>
+
+50
+00:02:27,114 --> 00:02:28,248
+<font face="Monospace">{\an7}podium to present our first
+item. Good morning.</font>
+
+51
+00:02:28,248 --> 00:02:30,383
+<font face="Monospace">{\an7}item. Good morning.
+>> Good morning. Good morning</font>
+
+52
+00:02:30,384 --> 00:02:33,354
+<font face="Monospace">{\an7}>> Good morning. Good morning
+commissioners. This first</font>
+
+53
+00:02:33,353 --> 00:02:35,055
+<font face="Monospace">{\an7}commissioners. This first
+action item is to approve the</font>
+
+54
+00:02:35,055 --> 00:02:36,690
+<font face="Monospace">{\an7}action item is to approve the
+Second Amendment lease between</font>
+
+55
+00:02:36,690 --> 00:02:39,159
+<font face="Monospace">{\an7}Second Amendment lease between
+the Port of Vancouver, USA, G</font>
+
+56
+00:02:39,159 --> 00:02:41,228
+<font face="Monospace">{\an7}the Port of Vancouver, USA, G
+and M industries, Inc. doing</font>
+
+57
+00:02:41,228 --> 00:02:43,030
+<font face="Monospace">{\an7}and M industries, Inc. doing
+business as Vanport Trucking.</font>
+
+58
+00:02:43,030 --> 00:02:45,900
+<font face="Monospace">{\an7}business as Vanport Trucking.
+We have Mark Coash, the owner</font>
+
+59
+00:02:45,899 --> 00:02:47,634
+<font face="Monospace">{\an7}We have Mark Coash, the owner
+and general manager at Rinehart</font>
+
+60
+00:02:47,634 --> 00:02:50,203
+<font face="Monospace">{\an7}and general manager at Rinehart
+with us today, so they can</font>
+
+61
+00:02:50,203 --> 00:02:51,738
+<font face="Monospace">{\an7}with us today, so they can
+correct any dates if I get them</font>
+
+62
+00:02:51,738 --> 00:02:54,874
+<font face="Monospace">{\an7}correct any dates if I get them
+wrong. The Port of Vancouver</font>
+
+63
+00:02:54,875 --> 00:02:57,044
+<font face="Monospace">{\an7}wrong. The Port of Vancouver
+USA’s strategic plan</font>
+
+64
+00:02:57,044 --> 00:02:58,145
+<font face="Monospace">{\an7}USA’s strategic plan
+establishes goals to support</font>
+
+65
+00:02:58,145 --> 00:02:59,680
+<font face="Monospace">{\an7}establishes goals to support
+growth and economic</font>
+
+66
+00:02:59,680 --> 00:03:00,981
+<font face="Monospace">{\an7}growth and economic
+opportunities for existing</font>
+
+67
+00:03:00,981 --> 00:03:03,250
+<font face="Monospace">{\an7}opportunities for existing
+tenants. G and M Industries,</font>
+
+68
+00:03:03,250 --> 00:03:06,754
+<font face="Monospace">{\an7}tenants. G and M Industries,
+Inc. DBA Vancouver Port</font>
+
+69
+00:03:06,753 --> 00:03:08,622
+<font face="Monospace">{\an7}Inc. DBA Vancouver Port
+Trucking has been a port tenant</font>
+
+70
+00:03:08,622 --> 00:03:11,859
+<font face="Monospace">{\an7}Trucking has been a port tenant
+since 1966 and located in</font>
+
+71
+00:03:11,858 --> 00:03:13,126
+<font face="Monospace">{\an7}since 1966 and located in
+several locations throughout</font>
+
+72
+00:03:13,126 --> 00:03:16,129
+<font face="Monospace">{\an7}several locations throughout
+the port over the years. In</font>
+
+73
+00:03:16,129 --> 00:03:17,897
+<font face="Monospace">{\an7}the port over the years. In
+1992, Vanport Trucking was</font>
+
+74
+00:03:17,898 --> 00:03:19,733
+<font face="Monospace">{\an7}1992, Vanport Trucking was
+established, creating a second</font>
+
+75
+00:03:19,733 --> 00:03:23,503
+<font face="Monospace">{\an7}established, creating a second
+generation company. In 2011,</font>
+
+76
+00:03:23,503 --> 00:03:24,804
+<font face="Monospace">{\an7}generation company. In 2011,
+Vanport Trucking relocated to</font>
+
+77
+00:03:24,805 --> 00:03:27,641
+<font face="Monospace">{\an7}Vanport Trucking relocated to
+the current location at 3201</font>
+
+78
+00:03:27,641 --> 00:03:29,476
+<font face="Monospace">{\an7}the current location at 3201
+northwest lower River road,</font>
+
+79
+00:03:29,476 --> 00:03:31,578
+<font face="Monospace">{\an7}northwest lower River road,
+where they store and Transload</font>
+
+80
+00:03:31,578 --> 00:03:33,046
+<font face="Monospace">{\an7}where they store and Transload
+building materials for</font>
+
+81
+00:03:33,046 --> 00:03:34,114
+<font face="Monospace">{\an7}building materials for
+distribution throughout</font>
+
+82
+00:03:34,114 --> 00:03:35,549
+<font face="Monospace">{\an7}distribution throughout
+Washington and Oregon. They</font>
+
+83
+00:03:35,549 --> 00:03:37,718
+<font face="Monospace">{\an7}Washington and Oregon. They
+currently have 22 full time</font>
+
+84
+00:03:37,718 --> 00:03:40,688
+<font face="Monospace">{\an7}currently have 22 full time
+employees. On August 1st, 2016,</font>
+
+85
+00:03:40,687 --> 00:03:43,890
+<font face="Monospace">{\an7}employees. On August 1st, 2016,
+the Port and Van Port Trucking</font>
+
+86
+00:03:43,890 --> 00:03:45,658
+<font face="Monospace">{\an7}the Port and Van Port Trucking
+entered into a new ten year</font>
+
+87
+00:03:45,659 --> 00:03:49,663
+<font face="Monospace">{\an7}entered into a new ten year
+lease for 31,500ft█!S of</font>
+
+88
+00:03:49,663 --> 00:03:51,098
+<font face="Monospace">{\an7}lease for 31,500ft█!S of
+warehouse and office space at</font>
+
+89
+00:03:51,098 --> 00:03:53,901
+<font face="Monospace">{\an7}warehouse and office space at
+building 3201, and an</font>
+
+90
+00:03:53,900 --> 00:03:55,535
+<font face="Monospace">{\an7}building 3201, and an
+additional one acre of flexible</font>
+
+91
+00:03:55,535 --> 00:03:58,638
+<font face="Monospace">{\an7}additional one acre of flexible
+truck parking, with two two</font>
+
+92
+00:03:58,638 --> 00:04:02,575
+<font face="Monospace">{\an7}truck parking, with two two
+year options to extend. In 2019,</font>
+
+93
+00:04:02,576 --> 00:04:04,211
+<font face="Monospace">{\an7}year options to extend. In 2019,
+the First Amendment increased</font>
+
+94
+00:04:04,211 --> 00:04:06,180
+<font face="Monospace">{\an7}the First Amendment increased
+the warehouse space to a total</font>
+
+95
+00:04:06,179 --> 00:04:09,816
+<font face="Monospace">{\an7}the warehouse space to a total
+of 40,500ft█!S. The purpose of</font>
+
+96
+00:04:09,816 --> 00:04:11,584
+<font face="Monospace">{\an7}of 40,500ft█!S. The purpose of
+the Second Amendment is to</font>
+
+97
+00:04:11,585 --> 00:04:13,387
+<font face="Monospace">{\an7}the Second Amendment is to
+exercise the remaining two</font>
+
+98
+00:04:13,386 --> 00:04:15,188
+<font face="Monospace">{\an7}exercise the remaining two
+options for a total of four</font>
+
+99
+00:04:15,188 --> 00:04:18,158
+<font face="Monospace">{\an7}options for a total of four
+years. Effective August 1st,</font>
+
+100
+00:04:18,158 --> 00:04:21,662
+<font face="Monospace">{\an7}years. Effective August 1st,
+2026 through July 31st, 2030,</font>
+
+101
+00:04:21,661 --> 00:04:23,363
+<font face="Monospace">{\an7}2026 through July 31st, 2030,
+and consolidate their one acre</font>
+
+102
+00:04:23,363 --> 00:04:25,599
+<font face="Monospace">{\an7}and consolidate their one acre
+of truck parking to one</font>
+
+103
+00:04:25,599 --> 00:04:26,900
+<font face="Monospace">{\an7}of truck parking to one
+location. And that’s what you</font>
+
+104
+00:04:26,900 --> 00:04:28,969
+<font face="Monospace">{\an7}location. And that’s what you
+see on your screens is their</font>
+
+105
+00:04:28,969 --> 00:04:34,608
+<font face="Monospace">{\an7}see on your screens is their
+consolidated one acre. I had it</font>
+
+106
+00:04:34,608 --> 00:04:37,111
+<font face="Monospace">{\an7}consolidated one acre. I had it
+and I lost it. The port will be</font>
+
+107
+00:04:37,110 --> 00:04:39,679
+<font face="Monospace">{\an7}and I lost it. The port will be
+providing up to 25,000 in</font>
+
+108
+00:04:39,679 --> 00:04:41,447
+<font face="Monospace">{\an7}providing up to 25,000 in
+repairs to repave two entry</font>
+
+109
+00:04:41,448 --> 00:04:44,351
+<font face="Monospace">{\an7}repairs to repave two entry
+ramps and replace an 18 foot by</font>
+
+110
+00:04:44,351 --> 00:04:46,453
+<font face="Monospace">{\an7}ramps and replace an 18 foot by
+45 foot section of concrete</font>
+
+111
+00:04:46,453 --> 00:04:48,121
+<font face="Monospace">{\an7}45 foot section of concrete
+flooring. If approved, the</font>
+
+112
+00:04:48,121 --> 00:04:49,389
+<font face="Monospace">{\an7}flooring. If approved, the
+value of this lease amendment</font>
+
+113
+00:04:49,389 --> 00:04:54,761
+<font face="Monospace">{\an7}value of this lease amendment
+is approximately $1,010,880</font>
+
+114
+00:04:54,761 --> 00:04:56,630
+<font face="Monospace">{\an7}is approximately $1,010,880
+over the term, plus additional</font>
+
+115
+00:04:56,630 --> 00:04:59,967
+<font face="Monospace">{\an7}over the term, plus additional
+charges for let Cam and Surance</font>
+
+116
+00:04:59,966 --> 00:05:01,968
+<font face="Monospace">{\an7}charges for let Cam and Surance
+and stormwater fees. The</font>
+
+117
+00:05:01,968 --> 00:05:03,436
+<font face="Monospace">{\an7}and stormwater fees. The
+revenue for this lease has been</font>
+
+118
+00:05:03,436 --> 00:05:05,939
+<font face="Monospace">{\an7}revenue for this lease has been
+included in the 2027</font>
+
+119
+00:05:05,939 --> 00:05:08,108
+<font face="Monospace">{\an7}included in the 2027
+preliminary budget. The</font>
+
+120
+00:05:08,108 --> 00:05:09,309
+<font face="Monospace">{\an7}preliminary budget. The
+recommendation that the Board</font>
+
+121
+00:05:09,309 --> 00:05:11,144
+<font face="Monospace">{\an7}recommendation that the Board
+of Commissioners approve and</font>
+
+122
+00:05:11,144 --> 00:05:13,179
+<font face="Monospace">{\an7}of Commissioners approve and
+authorize the CEO to execute</font>
+
+123
+00:05:13,180 --> 00:05:16,050
+<font face="Monospace">{\an7}authorize the CEO to execute
+the Second Amendment lease at</font>
+
+124
+00:05:16,049 --> 00:05:18,151
+<font face="Monospace">{\an7}the Second Amendment lease at
+3201 B and C between the Port</font>
+
+125
+00:05:18,151 --> 00:05:21,421
+<font face="Monospace">{\an7}3201 B and C between the Port
+of Vancouver, USA, and Van Port</font>
+
+126
+00:05:21,421 --> 00:05:26,426
+<font face="Monospace">{\an7}of Vancouver, USA, and Van Port
+Trucking. Any questions?</font>
+
+127
+00:05:26,426 --> 00:05:27,894
+<font face="Monospace">{\an7}Trucking. Any questions?
+>> I’m trying to orient myself</font>
+
+128
+00:05:27,894 --> 00:05:30,063
+<font face="Monospace">{\an7}>> I’m trying to orient myself
+on the map here. Is that Saint</font>
+
+129
+00:05:30,063 --> 00:05:31,164
+<font face="Monospace">{\an7}on the map here. Is that Saint
+Francis?</font>
+
+130
+00:05:31,164 --> 00:05:31,831
+<font face="Monospace">{\an7}Francis?
+>> Yes. Okay.</font>
+
+131
+00:05:31,832 --> 00:05:34,735
+<font face="Monospace">{\an7}>> Yes. Okay.
+>> And then their their</font>
+
+132
+00:05:34,734 --> 00:05:36,502
+<font face="Monospace">{\an7}>> And then their their
+warehouse space and office</font>
+
+133
+00:05:36,503 --> 00:05:38,605
+<font face="Monospace">{\an7}warehouse space and office
+space is on the previous slide,</font>
+
+134
+00:05:38,605 --> 00:05:41,441
+<font face="Monospace">{\an7}space is on the previous slide,
+I believe. Yep. And that’s</font>
+
+135
+00:05:41,441 --> 00:05:43,576
+<font face="Monospace">{\an7}I believe. Yep. And that’s
+right behind. The admin</font>
+
+136
+00:05:43,577 --> 00:05:45,412
+<font face="Monospace">{\an7}right behind. The admin
+building you see there.</font>
+
+137
+00:05:45,412 --> 00:05:53,687
+<font face="Monospace">{\an7}building you see there.
+>> Thank you.</font>
+
+138
+00:05:53,687 --> 00:05:56,623
+<font face="Monospace">{\an7}>> Thank you.
+>> Somebody want to move for</font>
+
+139
+00:05:56,623 --> 00:05:58,058
+<font face="Monospace">{\an7}>> Somebody want to move for
+I’ll move that. We adopt the</font>
+
+140
+00:05:58,058 --> 00:05:59,059
+<font face="Monospace">{\an7}I’ll move that. We adopt the
+recommendation as presented.</font>
+
+141
+00:05:59,059 --> 00:06:00,894
+<font face="Monospace">{\an7}recommendation as presented.
+>> Second.</font>
+
+142
+00:06:00,894 --> 00:06:03,130
+<font face="Monospace">{\an7}>> Second.
+>> Moved and seconded. All</font>
+
+143
+00:06:03,129 --> 00:06:06,666
+<font face="Monospace">{\an7}>> Moved and seconded. All
+those in favor. Aye aye.</font>
+
+144
+00:06:06,666 --> 00:06:08,234
+<font face="Monospace">{\an7}those in favor. Aye aye.
+Unanimously. Thank you. Thank</font>
+
+145
+00:06:08,235 --> 00:06:09,203
+<font face="Monospace">{\an7}Unanimously. Thank you. Thank
+you.</font>
+
+146
+00:06:09,202 --> 00:06:10,737
+<font face="Monospace">{\an7}you.
+>> Thank you Lori. Thank you,</font>
+
+147
+00:06:10,737 --> 00:06:12,439
+<font face="Monospace">{\an7}>> Thank you Lori. Thank you,
+Mark and Ed for joining us this</font>
+
+148
+00:06:12,439 --> 00:06:14,274
+<font face="Monospace">{\an7}Mark and Ed for joining us this
+morning. Really appreciate</font>
+
+149
+00:06:14,274 --> 00:06:15,041
+<font face="Monospace">{\an7}morning. Really appreciate
+appreciate you being a long</font>
+
+150
+00:06:15,041 --> 00:06:17,477
+<font face="Monospace">{\an7}appreciate you being a long
+term tenant and and your</font>
+
+151
+00:06:17,477 --> 00:06:19,212
+<font face="Monospace">{\an7}term tenant and and your
+business. So thank you so much.</font>
+
+152
+00:06:19,212 --> 00:06:19,979
+<font face="Monospace">{\an7}business. So thank you so much.
+Thank you.</font>
+
+153
+00:06:19,980 --> 00:06:22,182
+<font face="Monospace">{\an7}Thank you.
+>> And good luck in the current</font>
+
+154
+00:06:22,182 --> 00:06:23,517
+<font face="Monospace">{\an7}>> And good luck in the current
+environment. We read that</font>
+
+155
+00:06:23,516 --> 00:06:24,851
+<font face="Monospace">{\an7}environment. We read that
+things are getting interesting</font>
+
+156
+00:06:24,851 --> 00:06:29,356
+<font face="Monospace">{\an7}things are getting interesting
+in trucking.</font>
+
+157
+00:06:29,356 --> 00:06:31,458
+<font face="Monospace">{\an7}in trucking.
+>> Okay, so we have our second</font>
+
+158
+00:06:31,458 --> 00:06:33,760
+<font face="Monospace">{\an7}>> Okay, so we have our second
+and final action item is going</font>
+
+159
+00:06:33,760 --> 00:06:35,428
+<font face="Monospace">{\an7}and final action item is going
+to be presented by Ahmed</font>
+
+160
+00:06:35,428 --> 00:06:38,731
+<font face="Monospace">{\an7}to be presented by Ahmed
+Mohammed. Good morning Ahmed.</font>
+
+161
+00:06:38,732 --> 00:06:40,534
+<font face="Monospace">{\an7}Mohammed. Good morning Ahmed.
+>> Thank you Juliana. Good</font>
+
+162
+00:06:40,533 --> 00:06:41,234
+<font face="Monospace">{\an7}>> Thank you Juliana. Good
+morning commissioners.</font>
+
+163
+00:06:41,234 --> 00:06:43,002
+<font face="Monospace">{\an7}morning commissioners.
+>> Good morning.</font>
+
+164
+00:06:43,003 --> 00:06:44,805
+<font face="Monospace">{\an7}>> Good morning.
+>> My agenda item today is</font>
+
+165
+00:06:44,804 --> 00:06:46,606
+<font face="Monospace">{\an7}>> My agenda item today is
+approval of contracts with</font>
+
+166
+00:06:46,606 --> 00:06:48,475
+<font face="Monospace">{\an7}approval of contracts with
+Jacob Engineering Muffett</font>
+
+167
+00:06:48,475 --> 00:06:49,876
+<font face="Monospace">{\an7}Jacob Engineering Muffett
+Nicole Interface engineering</font>
+
+168
+00:06:49,876 --> 00:06:51,678
+<font face="Monospace">{\an7}Nicole Interface engineering
+for on call electrical</font>
+
+169
+00:06:51,678 --> 00:06:52,746
+<font face="Monospace">{\an7}for on call electrical
+engineering and consulting</font>
+
+170
+00:06:52,746 --> 00:06:55,983
+<font face="Monospace">{\an7}engineering and consulting
+services. This agenda item</font>
+
+171
+00:06:55,982 --> 00:06:57,550
+<font face="Monospace">{\an7}services. This agenda item
+supports the port’s strategic</font>
+
+172
+00:06:57,550 --> 00:06:59,218
+<font face="Monospace">{\an7}supports the port’s strategic
+plan. Goals for maintaining the</font>
+
+173
+00:06:59,219 --> 00:07:01,021
+<font face="Monospace">{\an7}plan. Goals for maintaining the
+port’s sustainability program.</font>
+
+174
+00:07:01,021 --> 00:07:03,223
+<font face="Monospace">{\an7}port’s sustainability program.
+To ensure the port’s operations</font>
+
+175
+00:07:03,223 --> 00:07:04,991
+<font face="Monospace">{\an7}To ensure the port’s operations
+are based on economic,</font>
+
+176
+00:07:04,991 --> 00:07:07,126
+<font face="Monospace">{\an7}are based on economic,
+environmental and social values,</font>
+
+177
+00:07:07,127 --> 00:07:08,962
+<font face="Monospace">{\an7}environmental and social values,
+as well as pursuing</font>
+
+178
+00:07:08,962 --> 00:07:11,097
+<font face="Monospace">{\an7}as well as pursuing
+opportunities that utilize the</font>
+
+179
+00:07:11,097 --> 00:07:12,532
+<font face="Monospace">{\an7}opportunities that utilize the
+port’s property and</font>
+
+180
+00:07:12,532 --> 00:07:13,600
+<font face="Monospace">{\an7}port’s property and
+infrastructure investments to</font>
+
+181
+00:07:13,600 --> 00:07:15,102
+<font face="Monospace">{\an7}infrastructure investments to
+create jobs and support the</font>
+
+182
+00:07:15,101 --> 00:07:18,304
+<font face="Monospace">{\an7}create jobs and support the
+economy. The port requires</font>
+
+183
+00:07:18,305 --> 00:07:20,841
+<font face="Monospace">{\an7}economy. The port requires
+consulting services to support</font>
+
+184
+00:07:20,840 --> 00:07:22,241
+<font face="Monospace">{\an7}consulting services to support
+maintenance, expanded services</font>
+
+185
+00:07:22,242 --> 00:07:24,478
+<font face="Monospace">{\an7}maintenance, expanded services
+and upgrades to electrical</font>
+
+186
+00:07:24,477 --> 00:07:26,179
+<font face="Monospace">{\an7}and upgrades to electrical
+infrastructure while focusing</font>
+
+187
+00:07:26,179 --> 00:07:28,014
+<font face="Monospace">{\an7}infrastructure while focusing
+on the Climate action Plan</font>
+
+188
+00:07:28,014 --> 00:07:30,884
+<font face="Monospace">{\an7}on the Climate action Plan
+goals. Examples of work that</font>
+
+189
+00:07:30,884 --> 00:07:32,352
+<font face="Monospace">{\an7}goals. Examples of work that
+can be performed under this</font>
+
+190
+00:07:32,352 --> 00:07:34,487
+<font face="Monospace">{\an7}can be performed under this
+contract include evaluating</font>
+
+191
+00:07:34,487 --> 00:07:36,289
+<font face="Monospace">{\an7}contract include evaluating
+port’s current and future power</font>
+
+192
+00:07:36,289 --> 00:07:39,225
+<font face="Monospace">{\an7}port’s current and future power
+needs. Shorf power projects</font>
+
+193
+00:07:39,225 --> 00:07:40,660
+<font face="Monospace">{\an7}needs. Shorf power projects
+upgrading port’s electrical</font>
+
+194
+00:07:40,660 --> 00:07:42,428
+<font face="Monospace">{\an7}upgrading port’s electrical
+systems with an emphasis on</font>
+
+195
+00:07:42,429 --> 00:07:44,231
+<font face="Monospace">{\an7}systems with an emphasis on
+decreasing dependency on fossil</font>
+
+196
+00:07:44,230 --> 00:07:46,766
+<font face="Monospace">{\an7}decreasing dependency on fossil
+fuels, and incorporating green</font>
+
+197
+00:07:46,766 --> 00:07:48,601
+<font face="Monospace">{\an7}fuels, and incorporating green
+power solutions such as</font>
+
+198
+00:07:48,601 --> 00:07:50,736
+<font face="Monospace">{\an7}power solutions such as
+electrical vehicles and</font>
+
+199
+00:07:50,737 --> 00:07:54,608
+<font face="Monospace">{\an7}electrical vehicles and
+electrical power Hvac systems.</font>
+
+200
+00:07:54,607 --> 00:07:57,243
+<font face="Monospace">{\an7}electrical power Hvac systems.
+On June 18th, 2026, the port</font>
+
+201
+00:07:57,243 --> 00:07:58,978
+<font face="Monospace">{\an7}On June 18th, 2026, the port
+issued a request for</font>
+
+202
+00:07:58,979 --> 00:08:00,447
+<font face="Monospace">{\an7}issued a request for
+qualification for on call</font>
+
+203
+00:08:00,447 --> 00:08:01,915
+<font face="Monospace">{\an7}qualification for on call
+electrical and consulting</font>
+
+204
+00:08:01,915 --> 00:08:04,484
+<font face="Monospace">{\an7}electrical and consulting
+services and received nine</font>
+
+205
+00:08:04,484 --> 00:08:07,287
+<font face="Monospace">{\an7}services and received nine
+proposals for evaluation.</font>
+
+206
+00:08:07,287 --> 00:08:08,555
+<font face="Monospace">{\an7}proposals for evaluation.
+Interviews were conducted and</font>
+
+207
+00:08:08,555 --> 00:08:10,857
+<font face="Monospace">{\an7}Interviews were conducted and
+the results determined. Jacobs.</font>
+
+208
+00:08:10,857 --> 00:08:12,058
+<font face="Monospace">{\an7}the results determined. Jacobs.
+Engineering, Moffatt, Nichol</font>
+
+209
+00:08:12,058 --> 00:08:13,459
+<font face="Monospace">{\an7}Engineering, Moffatt, Nichol
+and Interface Engineering to be</font>
+
+210
+00:08:13,460 --> 00:08:14,995
+<font face="Monospace">{\an7}and Interface Engineering to be
+the most qualified consultants</font>
+
+211
+00:08:14,995 --> 00:08:17,364
+<font face="Monospace">{\an7}the most qualified consultants
+to perform the services for the</font>
+
+212
+00:08:17,364 --> 00:08:20,167
+<font face="Monospace">{\an7}to perform the services for the
+port. The contracts will be</font>
+
+213
+00:08:20,166 --> 00:08:21,968
+<font face="Monospace">{\an7}port. The contracts will be
+issued for five years, with an</font>
+
+214
+00:08:21,968 --> 00:08:23,837
+<font face="Monospace">{\an7}issued for five years, with an
+option to extend to complete</font>
+
+215
+00:08:23,837 --> 00:08:27,441
+<font face="Monospace">{\an7}option to extend to complete
+any open task orders. Should a</font>
+
+216
+00:08:27,440 --> 00:08:28,841
+<font face="Monospace">{\an7}any open task orders. Should a
+contract reach its dollar</font>
+
+217
+00:08:28,842 --> 00:08:29,710
+<font face="Monospace">{\an7}contract reach its dollar
+threshold, additional funds</font>
+
+218
+00:08:29,709 --> 00:08:31,211
+<font face="Monospace">{\an7}threshold, additional funds
+will be requested in accordance</font>
+
+219
+00:08:31,211 --> 00:08:34,247
+<font face="Monospace">{\an7}will be requested in accordance
+with resolution 1022.</font>
+
+220
+00:08:34,247 --> 00:08:35,682
+<font face="Monospace">{\an7}with resolution 1022.
+Administrative authority of the</font>
+
+221
+00:08:35,682 --> 00:08:38,385
+<font face="Monospace">{\an7}Administrative authority of the
+CEO. Funds for these contracts</font>
+
+222
+00:08:38,385 --> 00:08:40,020
+<font face="Monospace">{\an7}CEO. Funds for these contracts
+will be are included in the</font>
+
+223
+00:08:40,020 --> 00:08:41,855
+<font face="Monospace">{\an7}will be are included in the
+approved 2026 budget and we and</font>
+
+224
+00:08:41,855 --> 00:08:43,290
+<font face="Monospace">{\an7}approved 2026 budget and we and
+will be requested in the</font>
+
+225
+00:08:43,289 --> 00:08:46,492
+<font face="Monospace">{\an7}will be requested in the
+subsequent annual budgets. The</font>
+
+226
+00:08:46,493 --> 00:08:47,828
+<font face="Monospace">{\an7}subsequent annual budgets. The
+recommendation for the Board of</font>
+
+227
+00:08:47,827 --> 00:08:48,795
+<font face="Monospace">{\an7}recommendation for the Board of
+Commissioners is to authorize</font>
+
+228
+00:08:48,795 --> 00:08:50,797
+<font face="Monospace">{\an7}Commissioners is to authorize
+the CEO to execute a contract</font>
+
+229
+00:08:50,797 --> 00:08:52,632
+<font face="Monospace">{\an7}the CEO to execute a contract
+with Jacobs Engineering for a</font>
+
+230
+00:08:52,632 --> 00:08:55,502
+<font face="Monospace">{\an7}with Jacobs Engineering for a
+not to exceed amount of</font>
+
+231
+00:08:55,502 --> 00:08:57,371
+<font face="Monospace">{\an7}not to exceed amount of
+$500,000. Moffatt, Nicole. For</font>
+
+232
+00:08:57,370 --> 00:08:59,472
+<font face="Monospace">{\an7}$500,000. Moffatt, Nicole. For
+a not to exceed amount of</font>
+
+233
+00:08:59,472 --> 00:09:00,873
+<font face="Monospace">{\an7}a not to exceed amount of
+$500,000 and interface</font>
+
+234
+00:09:00,874 --> 00:09:02,309
+<font face="Monospace">{\an7}$500,000 and interface
+engineering for a not to exceed</font>
+
+235
+00:09:02,308 --> 00:09:04,844
+<font face="Monospace">{\an7}engineering for a not to exceed
+amount of $500,000 to perform</font>
+
+236
+00:09:04,844 --> 00:09:06,612
+<font face="Monospace">{\an7}amount of $500,000 to perform
+on call electrical engineering</font>
+
+237
+00:09:06,613 --> 00:09:08,782
+<font face="Monospace">{\an7}on call electrical engineering
+services. Thank you. Any</font>
+
+238
+00:09:08,782 --> 00:09:13,453
+<font face="Monospace">{\an7}services. Thank you. Any
+questions?</font>
+
+239
+00:09:13,453 --> 00:09:16,356
+<font face="Monospace">{\an7}questions?
+>> Hearing none, I’ll move that</font>
+
+240
+00:09:16,356 --> 00:09:17,824
+<font face="Monospace">{\an7}>> Hearing none, I’ll move that
+we adopt the recommendation as</font>
+
+241
+00:09:17,824 --> 00:09:18,525
+<font face="Monospace">{\an7}we adopt the recommendation as
+presented.</font>
+
+242
+00:09:18,525 --> 00:09:20,027
+<font face="Monospace">{\an7}presented.
+>> Second.</font>
+
+243
+00:09:20,026 --> 00:09:21,160
+<font face="Monospace">{\an7}>> Second.
+>> All those in favor?</font>
+
+244
+00:09:21,161 --> 00:09:22,629
+<font face="Monospace">{\an7}>> All those in favor?
+>> Aye.</font>
+
+245
+00:09:22,629 --> 00:09:32,305
+<font face="Monospace">{\an7}>> Aye.
+>> Aye. Unanimously. Thank you.</font>
+
+246
+00:09:32,305 --> 00:09:35,575
+<font face="Monospace">{\an7}>> Aye. Unanimously. Thank you.
+>> No unfinished business today.</font>
+
+247
+00:09:35,575 --> 00:09:40,013
+<font face="Monospace">{\an7}>> No unfinished business today.
+No new business. And just for</font>
+
+248
+00:09:40,013 --> 00:09:42,148
+<font face="Monospace">{\an7}No new business. And just for
+today, I just wanted to share</font>
+
+249
+00:09:42,148 --> 00:09:44,217
+<font face="Monospace">{\an7}today, I just wanted to share
+that last week, I attended the</font>
+
+250
+00:09:44,217 --> 00:09:46,386
+<font face="Monospace">{\an7}that last week, I attended the
+AWB Association of Washington</font>
+
+251
+00:09:46,386 --> 00:09:48,922
+<font face="Monospace">{\an7}AWB Association of Washington
+Businesses Policy Summit in</font>
+
+252
+00:09:48,922 --> 00:09:51,458
+<font face="Monospace">{\an7}Businesses Policy Summit in
+Spokane. We had an opportunity</font>
+
+253
+00:09:51,458 --> 00:09:53,961
+<font face="Monospace">{\an7}Spokane. We had an opportunity
+to get updates on upcoming</font>
+
+254
+00:09:53,960 --> 00:09:56,262
+<font face="Monospace">{\an7}to get updates on upcoming
+legislation. And just to</font>
+
+255
+00:09:56,262 --> 00:09:58,097
+<font face="Monospace">{\an7}legislation. And just to
+understand the potential issues</font>
+
+256
+00:09:58,098 --> 00:10:00,000
+<font face="Monospace">{\an7}understand the potential issues
+as we’re getting ready for</font>
+
+257
+00:09:59,999 --> 00:10:03,302
+<font face="Monospace">{\an7}as we’re getting ready for
+session, what to expect in</font>
+
+258
+00:10:03,303 --> 00:10:05,839
+<font face="Monospace">{\an7}session, what to expect in
+transportation tax and fiscal</font>
+
+259
+00:10:05,839 --> 00:10:08,342
+<font face="Monospace">{\an7}transportation tax and fiscal
+policy, higher education,</font>
+
+260
+00:10:08,341 --> 00:10:11,211
+<font face="Monospace">{\an7}policy, higher education,
+energy. So a lot of a lot of</font>
+
+261
+00:10:11,211 --> 00:10:13,046
+<font face="Monospace">{\an7}energy. So a lot of a lot of
+conversations happening there.</font>
+
+262
+00:10:13,046 --> 00:10:15,549
+<font face="Monospace">{\an7}conversations happening there.
+And then also, what are some of</font>
+
+263
+00:10:15,548 --> 00:10:18,451
+<font face="Monospace">{\an7}And then also, what are some of
+the potential challenges that</font>
+
+264
+00:10:18,451 --> 00:10:20,219
+<font face="Monospace">{\an7}the potential challenges that
+businesses in the state are</font>
+
+265
+00:10:20,220 --> 00:10:22,289
+<font face="Monospace">{\an7}businesses in the state are
+facing? And so they’ve shared</font>
+
+266
+00:10:22,288 --> 00:10:25,191
+<font face="Monospace">{\an7}facing? And so they’ve shared
+that feedback with the AWB team</font>
+
+267
+00:10:25,191 --> 00:10:29,228
+<font face="Monospace">{\an7}that feedback with the AWB team
+as they look to provide insight</font>
+
+268
+00:10:29,229 --> 00:10:30,997
+<font face="Monospace">{\an7}as they look to provide insight
+for legislators with the</font>
+
+269
+00:10:30,997 --> 00:10:33,500
+<font face="Monospace">{\an7}for legislators with the
+upcoming session. That’s all I</font>
+
+270
+00:10:33,500 --> 00:10:35,302
+<font face="Monospace">{\an7}upcoming session. That’s all I
+have today.</font>
+
+271
+00:10:35,301 --> 00:10:38,971
+<font face="Monospace">{\an7}have today.
+>> Thank you. Next up is</font>
+
+272
+00:10:38,972 --> 00:10:41,241
+<font face="Monospace">{\an7}>> Thank you. Next up is
+commissioners and my sheets is</font>
+
+273
+00:10:41,241 --> 00:10:42,142
+<font face="Monospace">{\an7}commissioners and my sheets is
+Commissioner Lentz. You’re up.</font>
+
+274
+00:10:42,142 --> 00:10:46,480
+<font face="Monospace">{\an7}Commissioner Lentz. You’re up.
+>> All right. Met with the CEO.</font>
+
+275
+00:10:46,479 --> 00:10:49,415
+<font face="Monospace">{\an7}>> All right. Met with the CEO.
+And then last week, in my</font>
+
+276
+00:10:49,415 --> 00:10:50,483
+<font face="Monospace">{\an7}And then last week, in my
+capacity as chair of the</font>
+
+277
+00:10:50,483 --> 00:10:51,918
+<font face="Monospace">{\an7}capacity as chair of the
+Freight Mobility Strategic</font>
+
+278
+00:10:51,918 --> 00:10:54,788
+<font face="Monospace">{\an7}Freight Mobility Strategic
+Investment Board, went to our</font>
+
+279
+00:10:54,787 --> 00:10:56,222
+<font face="Monospace">{\an7}Investment Board, went to our
+regular meeting, which was in</font>
+
+280
+00:10:56,222 --> 00:10:59,092
+<font face="Monospace">{\an7}regular meeting, which was in
+Ellensburg. And we had a very</font>
+
+281
+00:10:59,092 --> 00:11:01,628
+<font face="Monospace">{\an7}Ellensburg. And we had a very
+interesting tour of Anderson</font>
+
+282
+00:11:01,628 --> 00:11:04,931
+<font face="Monospace">{\an7}interesting tour of Anderson
+Hay processing facility, which</font>
+
+283
+00:11:04,931 --> 00:11:07,000
+<font face="Monospace">{\an7}Hay processing facility, which
+I’ll side note smelled amazing.</font>
+
+284
+00:11:07,000 --> 00:11:08,468
+<font face="Monospace">{\an7}I’ll side note smelled amazing.
+All this, all this alfalfa</font>
+
+285
+00:11:08,468 --> 00:11:09,703
+<font face="Monospace">{\an7}All this, all this alfalfa
+coming in. It was really cool,</font>
+
+286
+00:11:09,702 --> 00:11:12,438
+<font face="Monospace">{\an7}coming in. It was really cool,
+but also wonderful to see their</font>
+
+287
+00:11:12,438 --> 00:11:13,506
+<font face="Monospace">{\an7}but also wonderful to see their
+operation. And then immediately</font>
+
+288
+00:11:13,506 --> 00:11:14,841
+<font face="Monospace">{\an7}operation. And then immediately
+following that, we had a</font>
+
+289
+00:11:14,841 --> 00:11:16,176
+<font face="Monospace">{\an7}following that, we had a
+roundtable with ag producers</font>
+
+290
+00:11:16,176 --> 00:11:19,613
+<font face="Monospace">{\an7}roundtable with ag producers
+and processors and shippers to</font>
+
+291
+00:11:19,612 --> 00:11:21,214
+<font face="Monospace">{\an7}and processors and shippers to
+talk about their needs. And</font>
+
+292
+00:11:21,214 --> 00:11:22,882
+<font face="Monospace">{\an7}talk about their needs. And
+just as far as an intersection</font>
+
+293
+00:11:22,882 --> 00:11:25,718
+<font face="Monospace">{\an7}just as far as an intersection
+between trucking and the</font>
+
+294
+00:11:25,718 --> 00:11:27,887
+<font face="Monospace">{\an7}between trucking and the
+business environment and the</font>
+
+295
+00:11:27,887 --> 00:11:29,722
+<font face="Monospace">{\an7}business environment and the
+difficulties that so many of</font>
+
+296
+00:11:29,722 --> 00:11:31,991
+<font face="Monospace">{\an7}difficulties that so many of
+the companies are having lately.</font>
+
+297
+00:11:31,991 --> 00:11:33,860
+<font face="Monospace">{\an7}the companies are having lately.
+It was a it was a very</font>
+
+298
+00:11:33,860 --> 00:11:34,861
+<font face="Monospace">{\an7}It was a it was a very
+interesting roundtable to learn</font>
+
+299
+00:11:34,861 --> 00:11:35,962
+<font face="Monospace">{\an7}interesting roundtable to learn
+more about those issues. And,</font>
+
+300
+00:11:35,962 --> 00:11:38,398
+<font face="Monospace">{\an7}more about those issues. And,
+you know, hay specifically is</font>
+
+301
+00:11:38,398 --> 00:11:40,133
+<font face="Monospace">{\an7}you know, hay specifically is
+generally, you know, goes on</font>
+
+302
+00:11:40,133 --> 00:11:41,501
+<font face="Monospace">{\an7}generally, you know, goes on
+containers. So we don’t see</font>
+
+303
+00:11:41,501 --> 00:11:44,170
+<font face="Monospace">{\an7}containers. So we don’t see
+much of it here. But the issues</font>
+
+304
+00:11:44,170 --> 00:11:46,272
+<font face="Monospace">{\an7}much of it here. But the issues
+that those shippers and</font>
+
+305
+00:11:46,272 --> 00:11:48,441
+<font face="Monospace">{\an7}that those shippers and
+producers were having really</font>
+
+306
+00:11:48,441 --> 00:11:50,243
+<font face="Monospace">{\an7}producers were having really
+translates, I think, across the</font>
+
+307
+00:11:50,243 --> 00:11:52,779
+<font face="Monospace">{\an7}translates, I think, across the
+industry. So as we’re working</font>
+
+308
+00:11:52,779 --> 00:11:55,282
+<font face="Monospace">{\an7}industry. So as we’re working
+on legislative agendas and</font>
+
+309
+00:11:55,281 --> 00:11:56,749
+<font face="Monospace">{\an7}on legislative agendas and
+talking with folks in our</font>
+
+310
+00:11:56,749 --> 00:11:58,584
+<font face="Monospace">{\an7}talking with folks in our
+community, it’s really helpful</font>
+
+311
+00:11:58,585 --> 00:12:01,021
+<font face="Monospace">{\an7}community, it’s really helpful
+to have these reminders of the</font>
+
+312
+00:12:01,020 --> 00:12:03,890
+<font face="Monospace">{\an7}to have these reminders of the
+importance not we’re not just a</font>
+
+313
+00:12:03,890 --> 00:12:07,127
+<font face="Monospace">{\an7}importance not we’re not just a
+freight and trade driven</font>
+
+314
+00:12:07,126 --> 00:12:08,394
+<font face="Monospace">{\an7}freight and trade driven
+economy for the entire state,</font>
+
+315
+00:12:08,394 --> 00:12:10,263
+<font face="Monospace">{\an7}economy for the entire state,
+but there are so many jobs tied</font>
+
+316
+00:12:10,263 --> 00:12:12,198
+<font face="Monospace">{\an7}but there are so many jobs tied
+to it for all of our</font>
+
+317
+00:12:12,198 --> 00:12:14,300
+<font face="Monospace">{\an7}to it for all of our
+individuals who live here. And</font>
+
+318
+00:12:14,300 --> 00:12:17,203
+<font face="Monospace">{\an7}individuals who live here. And
+whatever we can do to help</font>
+
+319
+00:12:17,203 --> 00:12:18,671
+<font face="Monospace">{\an7}whatever we can do to help
+sustain and grow these</font>
+
+320
+00:12:18,671 --> 00:12:21,174
+<font face="Monospace">{\an7}sustain and grow these
+businesses is is in our</font>
+
+321
+00:12:21,174 --> 00:12:22,642
+<font face="Monospace">{\an7}businesses is is in our
+interest as residents of the</font>
+
+322
+00:12:22,642 --> 00:12:24,777
+<font face="Monospace">{\an7}interest as residents of the
+state. As we continue to work</font>
+
+323
+00:12:24,777 --> 00:12:26,946
+<font face="Monospace">{\an7}state. As we continue to work
+on improving our economy. So it</font>
+
+324
+00:12:26,946 --> 00:12:28,414
+<font face="Monospace">{\an7}on improving our economy. So it
+was just it was really</font>
+
+325
+00:12:28,414 --> 00:12:30,516
+<font face="Monospace">{\an7}was just it was really
+informative to see their</font>
+
+326
+00:12:30,516 --> 00:12:32,651
+<font face="Monospace">{\an7}informative to see their
+operations and to learn more</font>
+
+327
+00:12:32,652 --> 00:12:33,953
+<font face="Monospace">{\an7}operations and to learn more
+directly from the businesses</font>
+
+328
+00:12:33,953 --> 00:12:34,854
+<font face="Monospace">{\an7}directly from the businesses
+about what they’re, what</font>
+
+329
+00:12:34,854 --> 00:12:36,589
+<font face="Monospace">{\an7}about what they’re, what
+they’re working with.</font>
+
+330
+00:12:36,589 --> 00:12:42,061
+<font face="Monospace">{\an7}they’re working with.
+>> So thank you. Commissioner</font>
+
+331
+00:12:42,061 --> 00:12:44,964
+<font face="Monospace">{\an7}>> So thank you. Commissioner
+LaBrant. Let’s see. I had the</font>
+
+332
+00:12:44,964 --> 00:12:48,534
+<font face="Monospace">{\an7}LaBrant. Let’s see. I had the
+opportunity to attend our ninth</font>
+
+333
+00:12:48,534 --> 00:12:52,138
+<font face="Monospace">{\an7}opportunity to attend our ninth
+public tour for the year. As</font>
+
+334
+00:12:52,138 --> 00:12:53,573
+<font face="Monospace">{\an7}public tour for the year. As
+always, just a really</font>
+
+335
+00:12:53,573 --> 00:12:55,708
+<font face="Monospace">{\an7}always, just a really
+informative, informative tour.</font>
+
+336
+00:12:55,708 --> 00:13:00,146
+<font face="Monospace">{\an7}informative, informative tour.
+I think this is this one we had.</font>
+
+337
+00:13:00,146 --> 00:13:01,514
+<font face="Monospace">{\an7}I think this is this one we had.
+I’m trying to recall, I think</font>
+
+338
+00:13:01,514 --> 00:13:03,649
+<font face="Monospace">{\an7}I’m trying to recall, I think
+we had a the shred pile was the</font>
+
+339
+00:13:03,650 --> 00:13:06,119
+<font face="Monospace">{\an7}we had a the shred pile was the
+biggest I’ve ever seen it in</font>
+
+340
+00:13:06,119 --> 00:13:10,590
+<font face="Monospace">{\an7}biggest I’ve ever seen it in
+preparation for for a ship. And</font>
+
+341
+00:13:10,590 --> 00:13:11,925
+<font face="Monospace">{\an7}preparation for for a ship. And
+just, you know, lots of good.</font>
+
+342
+00:13:11,924 --> 00:13:13,526
+<font face="Monospace">{\an7}just, you know, lots of good.
+As always, lots of good</font>
+
+343
+00:13:13,526 --> 00:13:14,660
+<font face="Monospace">{\an7}As always, lots of good
+questions from the folks on the</font>
+
+344
+00:13:14,661 --> 00:13:17,697
+<font face="Monospace">{\an7}questions from the folks on the
+tour. So had the opportunity to</font>
+
+345
+00:13:17,697 --> 00:13:19,432
+<font face="Monospace">{\an7}tour. So had the opportunity to
+attend the Hispanic Heritage</font>
+
+346
+00:13:19,432 --> 00:13:23,770
+<font face="Monospace">{\an7}attend the Hispanic Heritage
+Gala. They’re doing fantastic</font>
+
+347
+00:13:23,770 --> 00:13:26,339
+<font face="Monospace">{\an7}Gala. They’re doing fantastic
+work in helping support our</font>
+
+348
+00:13:26,339 --> 00:13:28,508
+<font face="Monospace">{\an7}work in helping support our
+local economy and our regional</font>
+
+349
+00:13:28,508 --> 00:13:32,078
+<font face="Monospace">{\an7}local economy and our regional
+economy. They had some</font>
+
+350
+00:13:32,078 --> 00:13:33,079
+<font face="Monospace">{\an7}economy. They had some
+statistics that they shared,</font>
+
+351
+00:13:33,079 --> 00:13:34,981
+<font face="Monospace">{\an7}statistics that they shared,
+and it’s always surprising to</font>
+
+352
+00:13:34,981 --> 00:13:37,851
+<font face="Monospace">{\an7}and it’s always surprising to
+me how much of our local and</font>
+
+353
+00:13:37,850 --> 00:13:40,720
+<font face="Monospace">{\an7}me how much of our local and
+regional economy is driven by</font>
+
+354
+00:13:40,720 --> 00:13:43,690
+<font face="Monospace">{\an7}regional economy is driven by
+Latino small businesses also</font>
+
+355
+00:13:43,690 --> 00:13:46,860
+<font face="Monospace">{\an7}Latino small businesses also
+had the opportunity to meet</font>
+
+356
+00:13:46,859 --> 00:13:50,796
+<font face="Monospace">{\an7}had the opportunity to meet
+with with our CEO. And I think</font>
+
+357
+00:13:50,797 --> 00:13:57,270
+<font face="Monospace">{\an7}with with our CEO. And I think
+that about covers it. Thank you.</font>
+
+358
+00:13:57,270 --> 00:13:58,338
+<font face="Monospace">{\an7}that about covers it. Thank you.
+I got out.</font>
+
+359
+00:13:58,338 --> 00:14:00,574
+<font face="Monospace">{\an7}I got out.
+>> To Columbia Springs to tour</font>
+
+360
+00:14:00,573 --> 00:14:02,375
+<font face="Monospace">{\an7}>> To Columbia Springs to tour
+their hatchery, and they’re</font>
+
+361
+00:14:02,375 --> 00:14:05,979
+<font face="Monospace">{\an7}their hatchery, and they’re
+doing a beautiful job of</font>
+
+362
+00:14:05,978 --> 00:14:09,215
+<font face="Monospace">{\an7}doing a beautiful job of
+managing. They get a lot of the</font>
+
+363
+00:14:09,215 --> 00:14:11,084
+<font face="Monospace">{\an7}managing. They get a lot of the
+water that they out of the</font>
+
+364
+00:14:11,084 --> 00:14:14,621
+<font face="Monospace">{\an7}water that they out of the
+hillside that that they use to,</font>
+
+365
+00:14:14,620 --> 00:14:17,056
+<font face="Monospace">{\an7}hillside that that they use to,
+to keep the fish going. And</font>
+
+366
+00:14:17,056 --> 00:14:19,659
+<font face="Monospace">{\an7}to keep the fish going. And
+it’s, it’s pretty fascinating</font>
+
+367
+00:14:19,659 --> 00:14:21,761
+<font face="Monospace">{\an7}it’s, it’s pretty fascinating
+and, and interesting. If you</font>
+
+368
+00:14:21,761 --> 00:14:24,364
+<font face="Monospace">{\an7}and, and interesting. If you
+get a chance for a tour, it’s</font>
+
+369
+00:14:24,364 --> 00:14:27,868
+<font face="Monospace">{\an7}get a chance for a tour, it’s
+worthwhile. The next day I went</font>
+
+370
+00:14:27,867 --> 00:14:30,403
+<font face="Monospace">{\an7}worthwhile. The next day I went
+to habitat for humanity, which</font>
+
+371
+00:14:30,403 --> 00:14:32,171
+<font face="Monospace">{\an7}to habitat for humanity, which
+is they were having a green</font>
+
+372
+00:14:32,171 --> 00:14:36,909
+<font face="Monospace">{\an7}is they were having a green
+business deal for the county.</font>
+
+373
+00:14:36,909 --> 00:14:38,411
+<font face="Monospace">{\an7}business deal for the county.
+And they’ve managed. This is</font>
+
+374
+00:14:38,411 --> 00:14:41,981
+<font face="Monospace">{\an7}And they’ve managed. This is
+the one up on 50 at round</font>
+
+375
+00:14:41,981 --> 00:14:44,116
+<font face="Monospace">{\an7}the one up on 50 at round
+figures, 52nd in Saint Johns,</font>
+
+376
+00:14:44,117 --> 00:14:45,919
+<font face="Monospace">{\an7}figures, 52nd in Saint Johns,
+which is my neighborhood. And</font>
+
+377
+00:14:45,918 --> 00:14:46,952
+<font face="Monospace">{\an7}which is my neighborhood. And
+it’s a wonderful thing that</font>
+
+378
+00:14:46,953 --> 00:14:49,823
+<font face="Monospace">{\an7}it’s a wonderful thing that
+they didn’t leave this this</font>
+
+379
+00:14:49,822 --> 00:14:52,024
+<font face="Monospace">{\an7}they didn’t leave this this
+building to collect dust for</font>
+
+380
+00:14:52,024 --> 00:14:55,294
+<font face="Monospace">{\an7}building to collect dust for
+ten years. And they’re the</font>
+
+381
+00:14:55,294 --> 00:14:57,029
+<font face="Monospace">{\an7}ten years. And they’re the
+effect of having basically a</font>
+
+382
+00:14:57,029 --> 00:14:58,297
+<font face="Monospace">{\an7}effect of having basically a
+second hand store and a second</font>
+
+383
+00:14:58,297 --> 00:14:59,932
+<font face="Monospace">{\an7}second hand store and a second
+hand construction store and a</font>
+
+384
+00:14:59,932 --> 00:15:03,536
+<font face="Monospace">{\an7}hand construction store and a
+second hand furniture in their</font>
+
+385
+00:15:03,536 --> 00:15:04,537
+<font face="Monospace">{\an7}second hand furniture in their
+recycling. And they’re taking</font>
+
+386
+00:15:04,537 --> 00:15:06,072
+<font face="Monospace">{\an7}recycling. And they’re taking
+it really, really, very</font>
+
+387
+00:15:06,072 --> 00:15:11,844
+<font face="Monospace">{\an7}it really, really, very
+seriously with a ton of it. You</font>
+
+388
+00:15:11,844 --> 00:15:12,945
+<font face="Monospace">{\an7}seriously with a ton of it. You
+see a whole bunch of people</font>
+
+389
+00:15:12,945 --> 00:15:14,580
+<font face="Monospace">{\an7}see a whole bunch of people
+doing good stuff, and it gives</font>
+
+390
+00:15:14,580 --> 00:15:17,249
+<font face="Monospace">{\an7}doing good stuff, and it gives
+you a good feeling about.</font>
+
+391
+00:15:17,250 --> 00:15:19,018
+<font face="Monospace">{\an7}you a good feeling about.
+Things to come. And then I went</font>
+
+392
+00:15:19,018 --> 00:15:21,487
+<font face="Monospace">{\an7}Things to come. And then I went
+from there to Ryan’s group,</font>
+
+393
+00:15:21,487 --> 00:15:25,091
+<font face="Monospace">{\an7}from there to Ryan’s group,
+invited me to, to come down to</font>
+
+394
+00:15:25,091 --> 00:15:29,062
+<font face="Monospace">{\an7}invited me to, to come down to
+our Cascadia Tech maritime</font>
+
+395
+00:15:29,061 --> 00:15:31,230
+<font face="Monospace">{\an7}our Cascadia Tech maritime
+group that meets just next to</font>
+
+396
+00:15:31,230 --> 00:15:36,268
+<font face="Monospace">{\an7}group that meets just next to
+that shred pile. And the young</font>
+
+397
+00:15:36,269 --> 00:15:37,537
+<font face="Monospace">{\an7}that shred pile. And the young
+folks there are just amazing.</font>
+
+398
+00:15:37,537 --> 00:15:39,606
+<font face="Monospace">{\an7}folks there are just amazing.
+And they’re trying to get. And</font>
+
+399
+00:15:39,605 --> 00:15:40,806
+<font face="Monospace">{\an7}And they’re trying to get. And
+I actually told them that I’d</font>
+
+400
+00:15:40,807 --> 00:15:42,709
+<font face="Monospace">{\an7}I actually told them that I’d
+try to see if I could do</font>
+
+401
+00:15:42,708 --> 00:15:43,809
+<font face="Monospace">{\an7}try to see if I could do
+anything about getting them on</font>
+
+402
+00:15:43,810 --> 00:15:46,012
+<font face="Monospace">{\an7}anything about getting them on
+a boat, and I need to do that,</font>
+
+403
+00:15:46,012 --> 00:15:49,616
+<font face="Monospace">{\an7}a boat, and I need to do that,
+but they’re. They’re young</font>
+
+404
+00:15:49,615 --> 00:15:50,716
+<font face="Monospace">{\an7}but they’re. They’re young
+people that are taking the</font>
+
+405
+00:15:50,716 --> 00:15:52,151
+<font face="Monospace">{\an7}people that are taking the
+world very seriously and what</font>
+
+406
+00:15:52,151 --> 00:15:53,919
+<font face="Monospace">{\an7}world very seriously and what
+they’re about. And it’s kind of</font>
+
+407
+00:15:53,920 --> 00:15:56,189
+<font face="Monospace">{\an7}they’re about. And it’s kind of
+exciting. Anything else that I</font>
+
+408
+00:15:56,189 --> 00:15:57,924
+<font face="Monospace">{\an7}exciting. Anything else that I
+did that was exciting? I’m</font>
+
+409
+00:15:57,924 --> 00:16:00,026
+<font face="Monospace">{\an7}did that was exciting? I’m
+pretty sure I talked to the CEO</font>
+
+410
+00:16:00,026 --> 00:16:02,262
+<font face="Monospace">{\an7}pretty sure I talked to the CEO
+myself. You’re very popular</font>
+
+411
+00:16:02,261 --> 00:16:05,898
+<font face="Monospace">{\an7}myself. You’re very popular
+person this week. Having done</font>
+
+412
+00:16:05,898 --> 00:16:07,600
+<font face="Monospace">{\an7}person this week. Having done
+that, I’m not going to try to</font>
+
+413
+00:16:07,600 --> 00:16:10,503
+<font face="Monospace">{\an7}that, I’m not going to try to
+skip past you. Juliana is going</font>
+
+414
+00:16:10,503 --> 00:16:12,305
+<font face="Monospace">{\an7}skip past you. Juliana is going
+to share with us upcoming</font>
+
+415
+00:16:12,305 --> 00:16:13,339
+<font face="Monospace">{\an7}to share with us upcoming
+events.</font>
+
+416
+00:16:13,339 --> 00:16:15,541
+<font face="Monospace">{\an7}events.
+>> Yes. So we have our next</font>
+
+417
+00:16:15,541 --> 00:16:18,778
+<font face="Monospace">{\an7}>> Yes. So we have our next
+commission meeting is Tuesday,</font>
+
+418
+00:16:18,778 --> 00:16:20,947
+<font face="Monospace">{\an7}commission meeting is Tuesday,
+October 13th. We do have our</font>
+
+419
+00:16:20,947 --> 00:16:23,817
+<font face="Monospace">{\an7}October 13th. We do have our
+final tour of the season. So we</font>
+
+420
+00:16:23,816 --> 00:16:26,085
+<font face="Monospace">{\an7}final tour of the season. So we
+have our tour number ten, which</font>
+
+421
+00:16:26,085 --> 00:16:28,854
+<font face="Monospace">{\an7}have our tour number ten, which
+is going to be Saturday,</font>
+
+422
+00:16:28,855 --> 00:16:30,990
+<font face="Monospace">{\an7}is going to be Saturday,
+September 26th. It is full, but</font>
+
+423
+00:16:30,990 --> 00:16:32,425
+<font face="Monospace">{\an7}September 26th. It is full, but
+again, please make sure that</font>
+
+424
+00:16:32,425 --> 00:16:34,560
+<font face="Monospace">{\an7}again, please make sure that
+you sign up for our newsletter</font>
+
+425
+00:16:34,560 --> 00:16:36,295
+<font face="Monospace">{\an7}you sign up for our newsletter
+and to receive notifications</font>
+
+426
+00:16:36,295 --> 00:16:37,496
+<font face="Monospace">{\an7}and to receive notifications
+for our tour dates for next</font>
+
+427
+00:16:37,497 --> 00:16:39,132
+<font face="Monospace">{\an7}for our tour dates for next
+year. They’re very popular.</font>
+
+428
+00:16:39,131 --> 00:16:40,399
+<font face="Monospace">{\an7}year. They’re very popular.
+They fill up pretty fast. So</font>
+
+429
+00:16:40,399 --> 00:16:42,134
+<font face="Monospace">{\an7}They fill up pretty fast. So
+that’s, that’s great to great</font>
+
+430
+00:16:42,134 --> 00:16:45,404
+<font face="Monospace">{\an7}that’s, that’s great to great
+to see. You could see there are</font>
+
+431
+00:16:45,404 --> 00:16:47,573
+<font face="Monospace">{\an7}to see. You could see there are
+several other things happening</font>
+
+432
+00:16:47,573 --> 00:16:50,810
+<font face="Monospace">{\an7}several other things happening
+in the community. And as</font>
+
+433
+00:16:50,810 --> 00:16:52,111
+<font face="Monospace">{\an7}in the community. And as
+especially as we transition</font>
+
+434
+00:16:52,111 --> 00:16:55,181
+<font face="Monospace">{\an7}especially as we transition
+into the fall season.</font>
+
+435
+00:16:55,181 --> 00:16:56,916
+<font face="Monospace">{\an7}into the fall season.
+>> Very cool.</font>
+
+436
+00:16:56,916 --> 00:16:58,217
+<font face="Monospace">{\an7}>> Very cool.
+>> Thank you. Just a reminder</font>
+
+437
+00:16:58,217 --> 00:16:59,919
+<font face="Monospace">{\an7}>> Thank you. Just a reminder
+on ways to communicate with the</font>
+
+438
+00:16:59,919 --> 00:17:01,220
+<font face="Monospace">{\an7}on ways to communicate with the
+commission. Folks have the</font>
+
+439
+00:17:01,220 --> 00:17:03,089
+<font face="Monospace">{\an7}commission. Folks have the
+opportunity to join us for our</font>
+
+440
+00:17:03,089 --> 00:17:04,857
+<font face="Monospace">{\an7}opportunity to join us for our
+commission meetings and speak</font>
+
+441
+00:17:04,857 --> 00:17:06,659
+<font face="Monospace">{\an7}commission meetings and speak
+during open forum. I can</font>
+
+442
+00:17:06,659 --> 00:17:07,760
+<font face="Monospace">{\an7}during open forum. I can
+certainly email the</font>
+
+443
+00:17:07,760 --> 00:17:09,562
+<font face="Monospace">{\an7}certainly email the
+commissioners information. You</font>
+
+444
+00:17:09,562 --> 00:17:10,963
+<font face="Monospace">{\an7}commissioners information. You
+can call the office. We’ll make</font>
+
+445
+00:17:10,963 --> 00:17:12,465
+<font face="Monospace">{\an7}can call the office. We’ll make
+sure you get in touch with the</font>
+
+446
+00:17:12,465 --> 00:17:14,233
+<font face="Monospace">{\an7}sure you get in touch with the
+commissioners. And just a</font>
+
+447
+00:17:14,233 --> 00:17:15,367
+<font face="Monospace">{\an7}commissioners. And just a
+reminder to please get on to</font>
+
+448
+00:17:15,368 --> 00:17:17,470
+<font face="Monospace">{\an7}reminder to please get on to
+the port’s website. We have a</font>
+
+449
+00:17:17,470 --> 00:17:19,605
+<font face="Monospace">{\an7}the port’s website. We have a
+lot of great information on our</font>
+
+450
+00:17:19,605 --> 00:17:21,373
+<font face="Monospace">{\an7}lot of great information on our
+website on what’s happening</font>
+
+451
+00:17:21,374 --> 00:17:25,011
+<font face="Monospace">{\an7}website on what’s happening
+with everyone’s port.</font>
+
+452
+00:17:25,011 --> 00:17:28,715
+<font face="Monospace">{\an7}with everyone’s port.
+>> Very cool. All right. We’ve</font>
+
+453
+00:17:28,714 --> 00:17:30,416
+<font face="Monospace">{\an7}>> Very cool. All right. We’ve
+got no workshop today. We’ve</font>
+
+454
+00:17:30,416 --> 00:17:34,320
+<font face="Monospace">{\an7}got no workshop today. We’ve
+got no administrative work</font>
+
+455
+00:17:34,320 --> 00:17:36,889
+<font face="Monospace">{\an7}got no administrative work
+session. We’ve completed the</font>
+
+456
+00:17:36,889 --> 00:17:39,058
+<font face="Monospace">{\an7}session. We’ve completed the
+items on today’s agenda. Next,</font>
+
+457
+00:17:39,058 --> 00:17:40,993
+<font face="Monospace">{\an7}items on today’s agenda. Next,
+we’ll sign documents and then</font>
+
+458
+00:17:40,993 --> 00:17:42,728
+<font face="Monospace">{\an7}we’ll sign documents and then
+I’ll adjourn the meeting. This</font>
+
+459
+00:17:42,728 --> 00:17:44,129
+<font face="Monospace">{\an7}I’ll adjourn the meeting. This
+is the end of the public</font>
+
+460
+00:17:44,130 --> 00:17:49,869
+<font face="Monospace">{\an7}is the end of the public
+portion. Thank you.</font>
+

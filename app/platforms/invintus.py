@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlparse
 import aiohttp
 
 from .base import AssetFinder
+from .embedded_captions import EMBEDDED_CAPTIONS_WARNING, probe_embedded_captions
 from .models import ResolvedMeeting, TranscriptSegment
 
 logger = logging.getLogger("rtr_deeplink.invintus")
@@ -90,7 +91,16 @@ _AUTH_HEADERS = {
 # meeting transcript, not placeholder text). `None` on plenty of real
 # events (confirmed on both Des Moines, WA and Leon County, FL samples,
 # whose PRE-recording-only fixtures never generated captions) -- a real
-# per-meeting negative, not a parse failure.
+# per-meeting negative, not a parse failure. **A `None` `captionPath`
+# isn't always the whole story, though (WO-1065, 2026-09-25)**: some
+# events (confirmed live on a real Oregon Legislature Joint Emergency
+# Board meeting, clientID 4879615486, eventID 2026091029) carry no
+# separate caption file at all, but the video itself has real CEA-608
+# captions embedded in the HLS stream (`streamingURIs.main`) -- see
+# `embedded_captions.py`'s module docstring for how that's confirmed and
+# read. When `captionPath` is empty and a stream URL exists, `resolve()`
+# below probes a few pieces of that stream before deciding whether to
+# say "no captions" or "captions exist but aren't extracted yet."
 #
 # **Jurisdiction**: `categories`/`categoriesDetail` is `null` on some
 # tenants (Des Moines and Leon County samples), a per-tenant choice on
@@ -506,7 +516,21 @@ class InvintusAssetFinder(AssetFinder):
                         "couldn't be fetched or parsed."
                     )
             else:
-                transcript_warnings.append("No captions found for this video.")
+                stream_url = (data.get("streamingURIs") or {}).get("main")
+                embedded_result = None
+                if stream_url:
+                    embedded_result = await probe_embedded_captions(session, stream_url)
+                if embedded_result is True:
+                    transcript_warnings.append(EMBEDDED_CAPTIONS_WARNING)
+                else:
+                    if embedded_result is None and stream_url:
+                        logger.info(
+                            "Invintus embedded-captions probe couldn't decide "
+                            "for client %s event %s",
+                            client_id,
+                            event_id,
+                        )
+                    transcript_warnings.append("No captions found for this video.")
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -523,6 +547,31 @@ class InvintusAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    async def extract_embedded_captions(self, url: str) -> List[dict]:
+        """Re-reads getDetailed for `url` and, if it has a playable
+        stream, extracts real CEA-608 captions embedded in it (see
+        `embedded_captions.py`'s module docstring). Returns [] when the
+        event has no stream or the video has no real embedded words;
+        raises when the event can't be read, so a transient failure isn't
+        mistaken for "no captions". The worker duck-types on this exact method name to know
+        an adapter supports this extraction path."""
+        from .embedded_captions import extract_embedded_captions
+
+        client_id, event_id = parse_invintus_ids(url)
+        if not client_id or not event_id:
+            return []
+        async with aiohttp.ClientSession() as session:
+            data = await self._fetch_event_detail(session, client_id, event_id)
+            if not data:
+                raise RuntimeError(
+                    f"Couldn't read Invintus event {client_id}/{event_id}"
+                )
+            stream_url = (data.get("streamingURIs") or {}).get("main")
+            if not stream_url:
+                return []
+            cues = await extract_embedded_captions(session, stream_url)
+        return cues
 
     @staticmethod
     async def _fetch_event_detail(
