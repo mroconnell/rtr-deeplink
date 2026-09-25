@@ -663,6 +663,51 @@ def test_the_feeders_owner_check_agrees_with_ingest(url, owned):
     assert has_owner(url)[0] is owned
 
 
+# ChampDS customers whose own meeting-body lists or archive search titles
+# (playapi.champds.com, read 2026-09-25) show a second government; the
+# name is each customer's real CustomerName, as the adapter formats it.
+CHAMPDS_SEVERAL_GOVERNMENTS = [
+    ("gillettewy", "Gillette, WY"),
+    ("fonddulacwi", "Fond du Lac, WI"),
+    ("falmouthme", "Falmouth, ME"),
+    ("gorhamme", "Gorham, ME"),
+    ("isleofwightcova", "Isle of Wight Co, VA"),
+    ("provincetownma", "Provincetown, MA"),
+    ("brookfieldct", "Brookfield, CT"),
+    ("maustonwi", "MaustonWI"),
+    ("yonkersny", "Yonkers, NY"),
+]
+
+
+@pytest.mark.parametrize("customer,name", CHAMPDS_SEVERAL_GOVERNMENTS)
+def test_champds_customers_with_several_governments_need_a_pin(customer, name):
+    """Their one customer name is applied to every meeting, so it must not
+    decide the government (a Campbell County meeting on `gillettewy` is not
+    Gillette city's). Unpinned, the page is blank and has no owner."""
+    from app.platforms.queue_probe import has_owner
+    from app.utils.gov_registry.resolver import resolve_government
+
+    assert ("play.champds.com", customer) in tk.MULTI_GOVERNMENT_TENANTS
+    match = resolve_government(
+        name, tenant_host="play.champds.com", path=f"/{customer}/event/1"
+    )
+    assert match.gov_id == "rtr:unknown:play.champds.com"
+    assert has_owner(f"https://play.champds.com/{customer}/event/1")[0] is False
+
+
+def test_a_one_government_champds_customer_still_resolves_by_name():
+    """Control: an unpinned ChampDS customer whose bodies are all one
+    government's (James City County, VA) keeps its name."""
+    from app.utils.gov_registry.resolver import resolve_government
+
+    match = resolve_government(
+        "James City County, VA",
+        tenant_host="play.champds.com",
+        path="/jamescitycova/event/1",
+    )
+    assert match.gov_id == "us:county:51095"
+
+
 def test_every_tenant_whose_pins_name_several_governments_is_listed():
     by_tenant = defaultdict(set)
     for host, match, gov in _pins_in_scope():
