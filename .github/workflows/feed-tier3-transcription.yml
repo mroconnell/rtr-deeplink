@@ -11,7 +11,7 @@
 # Runs on GitHub's own runners for the same reason feed-granicus-
 # transcription.yml does. That only holds for the queue's non-YouTube
 # lines: the queue also holds YouTube lines, which only the drip Mac may
-# fetch (docs/YOUTUBE_DRIP_RUNBOOK.md). WO-1063 (2026-09-25): the script
+# fetch (docs/YOUTUBE_DRIP_RUNBOOK.md). WO-1064 (2026-09-25): the script
 # now skips every line the drip claims and refuses any YouTube request
 # (scripts/youtube_fetch_guard.py). Before that it took the front 12
 # lines whatever they were, and dropped 148 real YouTube-backed meetings

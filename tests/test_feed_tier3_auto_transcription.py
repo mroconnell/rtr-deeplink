@@ -589,7 +589,7 @@ def test_append_feed_log_row_unmocked_no_owner_tag(monkeypatch, tmp_path):
     assert rows[0]["tag"] == "NO-OWNER"
 
 
-# --- WO-1063: leave YouTube lines for the drip Mac -------------------------
+# --- WO-1064: leave YouTube lines for the drip Mac -------------------------
 #
 # Real, 2026-09-22 to 2026-09-25: this GitHub-runner feed took the front 12
 # queue lines whatever they were. With YouTube lines queued at the front,

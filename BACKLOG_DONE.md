@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1063: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
+## WO-1064: the GitHub tier-3 feed dropped 148 YouTube meetings as "dead"; it now leaves them for the drip Mac [Done 2026-09-25]
 
 **What was found.** Asked to resolve and merge #1421, an automated "advance the tier-3 queue" PR. All 12 of its rejections were YouTube answering "Sign in to confirm you're not a bot" to the GitHub runner, not dead meetings. The feed log showed the same across four days:
 

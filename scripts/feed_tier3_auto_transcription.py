@@ -361,7 +361,7 @@ def select_batch(
     """(batch, remainder): the first `size` lines the YouTube drip does
     NOT claim, and everything else in its original order.
 
-    WO-1063 (2026-09-25): this used to be a plain `lines[:BATCH_SIZE]`.
+    WO-1064 (2026-09-25): this used to be a plain `lines[:BATCH_SIZE]`.
     The queue also holds YouTube lines, which only the drip Mac may fetch
     (`docs/YOUTUBE_DRIP_RUNBOOK.md`), and once 35 of them were queued at
     the front (#1423) this GitHub-runner feed took them first. YouTube
@@ -401,7 +401,7 @@ async def main() -> None:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return
 
-    # WO-1063: this process must make no YouTube request at all, direct or
+    # WO-1064: this process must make no YouTube request at all, direct or
     # through an adapter (CLAUDE.md; the runbook's rule 5). Installed here,
     # not at import, because the drip Mac imports this module for
     # `_push_if_has_video()` and must keep its own YouTube access.
@@ -453,7 +453,7 @@ async def main() -> None:
         remainder = remainder + no_owner_lines
 
     if youtube_lines:
-        # WO-1063: same reasoning as [NO-OWNER] -- not a dead link. The
+        # WO-1064: same reasoning as [NO-OWNER] -- not a dead link. The
         # drip Mac can't claim these by URL either (see BACKLOG.md), so
         # they go to the end rather than blocking the front.
         print(
