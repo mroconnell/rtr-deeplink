@@ -353,6 +353,9 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Pacifica Coast TV: Pacifica and Half Moon Bay, CA council
         # meetings (BACKLOG_DONE.md's Half Moon Bay/Pacifica entry).
         ("videoplayer.telvue.com", "wuZKb9gwEY7sMACIIsr7VSJglB35kNZA"),
+        # Kalamazoo, MI's TelVue station: City of Kalamazoo committees and
+        # the Kalamazoo County Board of Commissioners (WO-1060).
+        ("videoplayer.telvue.com", "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05"),
         # Castus "tbnk" (Kentucky regional commission): a dozen-plus cities
         # (registry.py's MULTI_GOV_HOSTS comment; per-video pins).
         ("cloud.castus.tv", "tbnk"),
