@@ -289,3 +289,152 @@ def pick_candidates(
         get_date=lambda c: c.date or "",
         limit=limit,
     )
+
+
+# --- WO-1054 rule 5 (Ryan, 2026-09-24): "on a shared hub pick only THIS
+# government's meetings." One TelVue org token or Cablecast tenant root
+# routinely serves several nearby governments off the same account (real
+# examples Ryan hand-checked: College Township, PA and Bellefonte, PA
+# share one Centre County C-NET TelVue token; Nashwauk, MN's own hub can
+# carry a neighboring Cohasset, MN meeting the same way). Neither
+# `_telvue_walker()` nor `_cablecast_walker()` (passive_verify.py, not
+# owned by this WO) filters its listing by government at all -- every
+# real video under the account comes back, oldest bookkeeping and all.
+#
+# This never GUESSES which government a candidate belongs to -- it only
+# drops a candidate whose own title both (a) looks like a real meeting
+# (carries one of `GOVERNING_BODY_KEYWORDS` -- "council", "commission",
+# "board", "committee", "hearing") and (b) names no word in common with
+# `gov_name`. A title with no governing-body word at all ("Budget
+# Workshop", a bare date, "Regular Meeting") is never touched -- it's
+# ambiguous, not evidence of a different government, and Ryan's own
+# "keep at least one" posture (docs/MEETING_FINDER.md's Back-pressure
+# section) says an ambiguous row must never be manufactured into an
+# empty result. Only when EVERY real candidate clearly names some OTHER
+# government does this report the true finding -- `models.
+# OUTCOME_HUB_OTHER_GOVERNMENT` -- rather than the generic "nothing
+# found" a caller would otherwise log.
+_GOV_TYPE_WORDS = frozenset(
+    {
+        "city", "town", "township", "county", "borough", "village",
+        "parish", "municipality", "municipal", "government", "district",
+        "regional", "state", "public", "authority", "unified",
+    }
+)  # fmt: skip
+_GOV_MATCH_TOKEN_RE = re.compile(r"[a-zA-Z]+")
+
+# Real, confirmed collision (WO-1054, live 2026-09-24): College Township,
+# PA and the Borough of State College, PA share one Centre County C-NET
+# TelVue token, AND both real names contain the bare word "college" --
+# comparing gov_name/title as a plain BAG of words (the first version of
+# this rule) can't tell "College Township" apart from "State College",
+# since "college" alone overlaps either way. `_place_core()` below
+# compares the CONTIGUOUS place-name phrase instead (order-preserving,
+# not just a shared word), which "state college" vs "college township"
+# never accidentally satisfies.
+_PLACE_PHRASE_PATTERNS = (
+    # "Borough of State College", "City of Cohasset", "Township of X"
+    re.compile(
+        r"\b(?:city|town|township|borough|village|county)\s+of\s+"
+        r"([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\b"
+    ),
+    # "College Township", "Cohasset City" (immediately before a type word)
+    re.compile(
+        r"\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\s+"
+        r"(?:City|Town|Township|Borough|Village|County)\b"
+    ),
+    # "Cohasset City Council", "College Township Board" (immediately
+    # before a governing-body word) -- GOVERNING_BODY_KEYWORDS itself is
+    # lowercase-only, so this pattern matches case-insensitively on the
+    # trailing word alone.
+    re.compile(
+        r"\b([A-Z][\w.'-]*(?:\s+[A-Za-z.'-]+){0,2})\s+"
+        r"(?:Council|Commission|Board|Committee|Hearing)\b"
+    ),
+)
+
+
+def _place_core(phrase: str) -> Optional[str]:
+    """Lowercases `phrase` and drops a single TRAILING type word
+    (`_GOV_TYPE_WORDS`) if the phrase ends with one -- "State College" ->
+    "state college" (no type word to drop), "College Township" ->
+    "college", "Cohasset City" -> "cohasset". Returns `None` when the
+    phrase reduces to nothing (it WAS only a bare type word, e.g. a
+    captured "City" with no real name attached -- not a real place-name
+    candidate at all)."""
+    words = phrase.strip().split()
+    if not words:
+        return None
+    if len(words) > 1 and words[-1].lower() in _GOV_TYPE_WORDS:
+        words = words[:-1]
+    core = " ".join(w.lower() for w in words if w.lower() not in _GOV_TYPE_WORDS)
+    return core or None
+
+
+def _candidate_place_cores(title: str) -> List[str]:
+    """Every place-name phrase `title` (kept in its ORIGINAL case, not
+    lowercased -- capitalization is the signal these patterns key off of)
+    seems to name, reduced via `_place_core()`. Real titles can match more
+    than one pattern for the SAME place ("College Township Board..."
+    matches both the type-word and governing-body patterns) -- all are
+    checked, not just the first, so agreement across patterns doesn't
+    matter and disagreement is still caught."""
+    cores: List[str] = []
+    for pattern in _PLACE_PHRASE_PATTERNS:
+        for match in pattern.finditer(title):
+            core = _place_core(match.group(1))
+            if core:
+                cores.append(core)
+    return cores
+
+
+def _names_a_governing_body(title: Optional[str]) -> bool:
+    t = (title or "").lower()
+    return any(contains_word(t, kw) for kw in GOVERNING_BODY_KEYWORDS)
+
+
+def filter_candidates_to_government(
+    candidates: List[Candidate], gov_name: Optional[str]
+) -> Tuple[List[Candidate], Optional[str]]:
+    """Drops a candidate whose title clearly names a DIFFERENT
+    government's own place name -- see this module's own comment above
+    for the real shared-hub cases this exists for. A candidate is only
+    ever dropped when its title (a) looks like a real meeting (carries a
+    `GOVERNING_BODY_KEYWORDS` word) AND (b) `_candidate_place_cores()`
+    finds at least one real place-name phrase in it AND (c) NONE of those
+    phrases match `gov_name`'s own core. A title with no governing-body
+    word, or with one but no recognizable place-name phrase at all (a
+    bare "City Council Meeting"), is never touched -- ambiguous, not
+    evidence of a different government (Ryan's "keep at least one"
+    posture: this must never manufacture emptiness out of an ordinary
+    undated/untitled row).
+
+    Returns `(kept_candidates, drop_note)`: `drop_note` is set only when
+    EVERY candidate was dropped this way (the real "hub carries other
+    governments" finding); a partial drop returns the survivors with no
+    note, and an unfiltered/ambiguous list returns `candidates` itself
+    unchanged, `None`. Never called with a `gov_name` this WO can't
+    already trust: `runner.py` only ever passes the registry's own
+    `Government.gov_name` for `finder_input.gov_id`, never a caller's
+    unverified guess."""
+    if not gov_name or not candidates:
+        return candidates, None
+    gov_core = _place_core(gov_name)
+    if not gov_core:
+        return candidates, None
+    kept: List[Candidate] = []
+    foreign: List[Candidate] = []
+    for c in candidates:
+        title = c.title or ""
+        if not _names_a_governing_body(title):
+            kept.append(c)
+            continue
+        cores = _candidate_place_cores(title)
+        if not cores or gov_core in cores:
+            kept.append(c)
+        else:
+            foreign.append(c)
+    if kept:
+        return kept, None
+    sample = foreign[0].title or foreign[0].url
+    return [], f"hub carries other governments, not this one (e.g. {sample!r})"

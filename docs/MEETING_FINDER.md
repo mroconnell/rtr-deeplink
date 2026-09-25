@@ -346,7 +346,7 @@ government on the guess-ladder queue (see Follow-ups).
 `list_account(platform, account_url, fetcher, *, limit=15,
 platform_params=None) -> ListResult` turns a known account into a list of
 candidate meetings, newest-first. It only lists -- Resolve is still the
-only place an adapter's `resolve()` runs to pick and confirm one. Five
+only place an adapter's `resolve()` runs to pick and confirm one. Seven
 listers, tried in order, stopping at the first that returns candidates:
 
 | | Lister | Example |
@@ -356,12 +356,30 @@ listers, tried in order, stopping at the first that returns candidates:
 | c | The adapter's own meeting list: some adapters answer a listing page with its meetings (`CalendarPageError`) | Legistar `boston.legistar.com/Calendar.aspx` |
 | d | Adapters that walk a hub themselves and resolve straight to ONE meeting | Castus's own `_pick_newest`, a Cablecast gallery, a townhallstreams town page |
 | e | Generic: `passive_verify._generic_link_scan_walker()` on links that look like one meeting | a TelVue listing page with no bespoke walker |
+| f | "Cablecast Connect" (WO-1054): a WordPress plugin whose page IS already a real listing -- reads its own `.gc-cc-card` markup, topped up via its `wp-json/cablecast/v1/recent-shows` REST route, then unwraps each show page's own `watch-vod-embed` iframe into a real, resolvable Cablecast candidate | `townsquare.tv/programs/site/mendota-heights-8/` (Mendota Heights, MN) |
+| g | A plain WordPress site (WO-1054): searches `wp-json/wp/v2/posts?search=meeting`/`?search=video` for a post that embeds a real video | tried on Wilder, KY per Ryan's own brief -- came back empty there (its real video is found a different way, a direct homepage link) |
 
 If the platform has no adapter at all (no passive_verify walker, no
 rtr-discovery enumerator, no registered `AssetFinder`), the outcome is
 `unsupported-platform-no-adapter` and the platform is recorded per
 rtr-business `research/UNSUPPORTED_PLATFORMS.md`. Otherwise, nothing
 found is `no-meeting-nor-video`.
+
+**Shared-hub government filter (WO-1054, Ryan's rule 2026-09-24).** One
+TelVue org token or Cablecast tenant root routinely serves several nearby
+governments off the same account. `pick.filter_candidates_to_government()`
+drops a candidate whose title clearly names a DIFFERENT government's own
+place name (compared as a whole phrase, not a shared word -- confirmed
+live College Township, PA and the Borough of State College, PA both
+contain the bare word "college" but are different places), applied to
+every lister's own output in `list_account()` whenever a caller passes
+`gov_name` (`runner.py` looks this up once per government from the
+`gov_id` registry). A title with no governing-body word, or no
+recognizable place name, is left alone -- ambiguous, never treated as
+evidence of another government. When EVERY candidate names a different
+government, the outcome is `models.OUTCOME_HUB_OTHER_GOVERNMENT` ("hub
+carries other governments, not this one") rather than a bare "nothing
+found".
 
 **Fetch injection (WO-1028).** Listers (a) and (e) call straight into
 `passive_verify.py`'s own walker functions, which fetch pages through
@@ -667,6 +685,17 @@ confirmed fixed against the live government afterward:
   when the adapter itself never returns a `ResolvedMeeting` to read
   `agenda_items` off of.
 
+**WO-1054 (Ryan's link-context rule, 2026-09-24): a link's own nearby
+paragraph, not just its click text, can make it a strong hop, off-site
+included.** `hop.py`'s `_rescue_link_context_broadcast_score()` reads the
+anchor's nearest paragraph/list-item/table-cell for phrases like "streams
+the meetings", "airs replays", "broadcast", "channel 18", or "watch ...
+live"/"watch ... replay" -- confirmed live on Lake Oswego, OR's real
+meetings page, whose own link text is a generic "Check their website"
+pointing at `tvctv.org` (the actual sentence naming the broadcast partner
+is one paragraph away). Guarded by the same vendor-marketing-apex check
+every other rescue in this module uses.
+
 ### Resolve
 
 - One picking rule (from `pick_calendar_candidates()`): a real date, a
@@ -676,6 +705,16 @@ confirmed fixed against the live government afterward:
 - Tier-3 length rule: over 90 minutes, look for a shorter meeting from the
   same government first.
 - Before calling a channel off-mission, look at 3 or more videos.
+- **WO-1054 (Ryan's rule, 2026-09-24): a broken TelVue link falls back to
+  the same channel's own listing once.** A TelVue candidate found via Hop
+  can itself be a stale link (confirmed live: College Township, PA's own
+  "C-Net Meeting Broadcasts" nav points at a `/playlists/{n}/media/{m}`
+  URL that 404s). When a TelVue candidate's `resolve()` call fails,
+  `resolve.py`'s `_telvue_broken_media_fallback()` tries the SAME org
+  token's `/home`/`/videos` listing once (reusing `passive_verify.
+  _telvue_walker()`, which already reduces any TelVue URL to that
+  canonical entry point) and offers its real videos as fresh candidates,
+  rather than reporting the one broken link as "nothing found".
 
 ### Verdict
 
