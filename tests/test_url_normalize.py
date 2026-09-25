@@ -90,7 +90,7 @@ def test_a_non_http_scheme_is_left_alone(normalize_url):
     ],
 )
 def test_a_trailing_backslash_is_dropped(normalize_url, raw):
-    # WO-1053 (2026-09-25): Harris County's Jun 11 2026 Commissioners
+    # WO-1055 (2026-09-25): Harris County's Jun 11 2026 Commissioners
     # Court was archived twice, the second time from the same Swagit URL
     # with a stray `%5C` on the end. Swagit pages carry no external_id,
     # so this key was the only thing that could have matched them.

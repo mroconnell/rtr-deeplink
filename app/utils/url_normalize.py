@@ -18,7 +18,7 @@ def normalize_url(url: str) -> str:
     """
     # A stray trailing backslash -- literal or percent-encoded -- is a
     # copy-paste artifact, never part of a real meeting URL. Real case
-    # (WO-1053, 2026-09-25): Harris County's Jun 11 2026 Commissioners
+    # (WO-1055, 2026-09-25): Harris County's Jun 11 2026 Commissioners
     # Court was archived twice, once from `.../videos/390829` and once
     # from `.../videos/390829%5C`; Swagit pages carry no external_id, so
     # the URL was the only key and the two did not match.

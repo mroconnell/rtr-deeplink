@@ -1000,7 +1000,7 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # tenant's own real Granicus clip pages (confirmed live) are titled
     # for "...Metropolitan Transit Authority" committees. This entry used
     # to name Harris County itself, which filed METRO's meetings under
-    # the county government (pages 399, 4177, 5908 -- WO-1053,
+    # the county government (pages 399, 4177, 5908 -- WO-1055,
     # 2026-09-25). METRO is its own government
     # (rtr:us:tx:metropolitan-transit-authority-of-harris-county).
     "ridemetro.granicus.com": KnownJurisdiction(
@@ -1400,7 +1400,7 @@ def _known_name_with_state(known: KnownJurisdiction) -> str:
     separate field, so it is written "Sacramento County, CA" here.
     "Sacramento, CA" dropped the type, and the resolver answered with the
     same-named CITY: six real county tenants were filed under a city
-    that way (WO-1053, 2026-09-25 -- Sacramento, Sarasota, Sedgwick KS,
+    that way (WO-1055, 2026-09-25 -- Sacramento, Sarasota, Sedgwick KS,
     Hamilton OH, Maricopa, Cook MN)."""
     name = known.name
     if known.type == "county" and not re.search(r"\bcounty\b", name, re.IGNORECASE):

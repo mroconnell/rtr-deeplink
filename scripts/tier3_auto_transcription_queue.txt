@@ -1,15 +1,5 @@
-https://play.champds.com/cobbcoga/event/155	https://www.cobbcounty.gov/communications/cobbtv	us:county:13067
-https://play.champds.com/gwinnettcoga/event/356	https://www.gwinnettcounty.com/government/departments/communications/tv-gwinnett/videos/commission-meetings	us:county:13135
-https://www.youtube.com/watch?v=gde00r0sXXA&t=5s		us:cousub:4212955128
-https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697		us:cousub:4200157472
-https://www.youtube.com/live/ffgRc-07yUw?si=OB29-NWm2pMAn4WJ		us:cousub:3910978456
-https://nscsd.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=537		us:sd:3621210
-https://olemissk12.diligent.community/Portal/MeetingInformation.aspx?Id=148		us:sd:1806870
-https://youtu.be/r977bdgqmC4?si=ySWeg70JnYsCS7KY		us:sd:2505130
-https://klamath-falls.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=253		us:place:4139700
-https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
-https://walton.civicweb.net/Portal/MeetingInformation.aspx?Id=7347		us:sd:1201980
-https://waverly.civicweb.net/Portal/MeetingInformation.aspx?Id=18914		us:sd:3904914
+https://play.champds.com/cobbcoga/event/155		us:county:13067
+https://play.champds.com/gwinnettcoga/event/356		us:county:13135
 https://wcs-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=713		us:sd:5103900
 https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=946		us:sd:3904467
 https://greenwich-schools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=543		us:sd:0901710
@@ -1199,4 +1189,9 @@ https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:s
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
 https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
+https://reflect-ictv.cablecast.tv/internetchannel/show/33471		us:place:2725118
+https://reflect-ictv.cablecast.tv/internetchannel/show/33494		us:place:2735648
+https://trms.northmetrotv.com/internetchannel/show/33287		us:place:2711494
+https://trms.northmetrotv.com/internetchannel/show/34106		us:place:2726738
+https://reflect-campbellcounty.cablecast.tv/internetchannel/show/61005		us:place:2136604
 https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065

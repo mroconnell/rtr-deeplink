@@ -1,4 +1,4 @@
-"""WO-1053 (2026-09-25): loose ends from the 2026-09-24 large-county audit.
+"""WO-1055 (2026-09-25): loose ends from the 2026-09-24 large-county audit.
 
 Two kinds of wrong pin, both in `tenant_overrides.csv`:
 
@@ -9,7 +9,7 @@ Two kinds of wrong pin, both in `tenant_overrides.csv`:
 * Six `_KNOWN_DOMAINS` county entries were pinned to a same-named CITY.
   `scripts/seed_gov_registry.py` looked each one up as "Name, ST" and
   dropped its "county" type. Each host was re-fetched 2026-09-25 (see
-  BACKLOG_DONE.md's WO-1053 entry for what each page says).
+  BACKLOG_DONE.md's WO-1055 entry for what each page says).
 """
 
 import pytest
@@ -104,13 +104,13 @@ def test_broomfield_stays_on_its_consolidated_place_row():
     assert resolve_government(finalized.jurisdiction).gov_id == "us:place:0809280"
 
 
-# --- scripts/wo1053_prepare_worklist.py --------------------------------
+# --- scripts/wo1055_prepare_worklist.py --------------------------------
 # Synthetic pages: the shape is `GET /internal/export/pages`'s own (id,
 # slug, gov_id, source_url_normalized, versions); the ids, slugs and hosts
 # are the real ones the 2026-09-24 audit and the public pages showed.
 
 from scripts import repair_wrong_pages as rwp  # noqa: E402
-from scripts.wo1053_prepare_worklist import plan_rows  # noqa: E402
+from scripts.wo1055_prepare_worklist import plan_rows  # noqa: E402
 
 HARRIS_KEEP = "harris-county-tx-2026-06-11-jun-11-2026-commissioners-court"
 HARRIS_TWIN = HARRIS_KEEP + "-12cb68"
