@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1060: "other government" leads were mostly noise -- fixed the extraction, not just the match [Done 2026-09-25]
+## WO-1060: "other government" leads were mostly noise, and one was the searched government itself [Done 2026-09-25]
 
 **The problem.** WO-1058 built a way to record a real, free lead for another
 government whenever Meeting Finder's own shared-hub filter dropped a
@@ -19,50 +19,95 @@ had mistaken plain meeting words for a place name.
 | regular | 70 |
 | recessed ... | 27 |
 | special | 14 |
-| (a real lead: Nassau County School Board, FL) | 6 |
+| nassau (see below) | 6 |
 | everything else (mostly dates) | 27 |
 
-**The fix.** `app/platforms/meeting_finder/pick.py`'s `describe_foreign_
-candidate()`: (1) strips meeting words (Regular, Special, Recessed,
-Agenda, Minutes, dates...) before looking for a place name; (2) only
-counts it as a place when a real place-type word is right there (City,
+**The extraction fix.** `app/platforms/meeting_finder/pick.py`'s
+`describe_foreign_candidate()`: (1) strips meeting words (Regular, Special,
+Recessed, Agenda, Minutes, dates...) before looking for a place name; (2)
+only counts it as a place when a real place-type word is right there (City,
 Town, Township, Borough, Village, County, Parish, School District, ISD,
 USD) -- never a bare committee name; (3) never records a lead that is
-just the SEARCHED government's own name or state showing up again. A
-county name can still be a real, separate lead even when it's inside the
-school district being searched (Nassau County, FL is a different
-government from Nassau County School District, FL) -- an early version of
-this rule tried to exclude that case and was wrong to.
+just the SEARCHED government's own name or state showing up again.
 
-`scripts/meeting_finder_other_gov_leads.py` now re-reads each lead's own
-title with this same function, rather than trusting a `named_place`
-already written by the older code -- so re-running it against an old run
-picks up the fix without re-running Meeting Finder. `scripts/hub_harvest.
-py`'s matcher also learned one more trick: a bare county name plus state
-resolves to the COUNTY government by default, so a school-board lead
-now tries "<County> County School District" first, which correctly
+**Ryan's review of this PR found a second, deeper bug the first pass
+missed.** The first fix's own "confident" list (6 leads) turned out to be
+wrong too: it was Nassau County School District, FL's OWN meetings ("The
+School Board of Nassau County, Florida"), rejected by a DIFFERENT check
+(`filter_candidates_to_government()`, not the extraction above) as if they
+belonged to another government, then "confidently" matched right back to
+the same government being searched -- a self-referential false lead. Two
+more fixes:
+
+1. **"School Board of X County" (and 3 close variants) means X County's
+   school district, not the county government.** `filter_candidates_to_
+   government()` now recognizes 4 real shapes -- "School Board of X
+   County[, State]", "X County School Board", "X County Board of
+   Education", "X County Schools" -- and checks state too (a real Nassau
+   County exists in both FL and NY). When the SEARCHED government is that
+   county's own school district, the meeting is kept as its own (never
+   rejected, never a lead). Searching the plain COUNTY government of the
+   same name, or a different county/state entirely, that title is a
+   DIFFERENT real government (the school district) -- always a lead, never
+   a false rejection either way.
+2. **A lead is dropped whenever it resolves back to the government being
+   searched, checked by `gov_id`, never by name** -- a defense-in-depth
+   safety net in `scripts/meeting_finder_other_gov_leads.py`'s
+   `match_lead()` that also cleans up a lead a run recorded BEFORE fix 1
+   landed (this script only re-describes an already-dropped candidate; it
+   can't un-drop one).
+
+`scripts/meeting_finder_other_gov_leads.py` re-reads each lead's own title
+with the same extraction Meeting Finder itself calls live, rather than
+trusting a `named_place` already written by older code -- so re-running it
+against an old run picks up both fixes without re-running Meeting Finder.
+`scripts/hub_harvest.py`'s matcher also learned that a bare county name
+plus state resolves to the COUNTY government by default, so a school-board
+lead now tries "<County> County School District" first, which correctly
 resolves to the real school district instead.
 
-**Result, re-running the same 153 leads after the fix:**
+**Result, re-running the same 153 leads after both fixes:**
 
 | Result | Before | After |
 |---|---|---|
-| Confident (real, different government) | 9 (all wrong -- Galesburg's own meetings) | 6 (all correct -- Nassau County School District, FL) |
-| Needs a human, no place name found at all | 0 | 117 |
+| Confident (real, different government) | 9 (all wrong -- Galesburg's own meetings) | 0 |
+| Needs a human, no place name found at all | 0 | 123 |
 | Needs a human, a real-looking name that still needs checking | 144 | 30 |
+
+Zero confident is correct here, not a regression: every real "confident"
+candidate this run's 40 governments produced (Nassau County School
+District, FL) is now kept as that government's own meeting rather than
+manufactured into a lead at all -- see the live run below.
 
 **Live run, 40 governments on known shared hubs (2026-09-25).** Ran
 Meeting Finder live (not from saved output), 34 real inputs plus 6 new
 domains (`collegetownship.org`, `nashwaukmn.gov`, `linolakes.gov`,
 `lexingtonmn.gov`, `wilderky.gov`, `germantown.oh.us`), concurrency 16,
-dry run only, no ingest. Galesburg, IL -- the exact real regression this
-WO fixes -- produced 0 other-government leads live, same as the offline
-re-run above. Nassau County School District, FL produced 6 real, correct
-leads for Nassau County's own government. No other government in the
-40 produced a false lead. (The 6 new domains carried no `gov_id` in this
-test run, so Meeting Finder's own gov-name filter never engaged for them
--- they exercised the resolve path, not the lead extraction this WO
-changed.)
+dry run only, no ingest. Galesburg, IL -- the exact real regression the
+first fix targets -- produced 0 other-government leads. Nassau County
+School District, FL -- the exact real regression the review caught --
+now resolves its own meeting (`nassaucountysd.new.swagit.com`'s "The
+School Board of Nassau County, Florida") instead of generating a false
+lead. Total other-government leads across all 40 governments: 0.
+
+**Live check, 6 real county-named school districts (2026-09-25, after the
+review fix), to confirm the "kept as their own meeting" behavior holds
+beyond the one Nassau case:**
+
+| Government | Result |
+|---|---|
+| Nassau County School District, FL (`nassau.k12.fl.us`) | Found its own meeting (tier 3, Swagit) -- no false lead |
+| Alachua County School District, FL (`sbac.edu`) | YouTube-only (sent to the drip); unrelated to this fix |
+| Cobb County School District, GA (`cobbk12.org`) | Blocked browser headers on its board page; unrelated to this fix |
+| Anne Arundel County Public Schools, MD (`aacps.org`) | Timed out behind a Microsoft login redirect; unrelated to this fix |
+| Fairfax County Public Schools, VA (`fcps.edu`) | Found an audio-only recording (tier 3); unrelated to this fix |
+| Knox County School District, TN (`knoxschools.org`) | DNS/no meeting found on its own site; unrelated to this fix |
+
+Only Nassau's own site actually surfaces a "School Board of X County"-
+shaped title today, so it's the only one of the 6 that exercises the new
+rule end to end -- the other 5 hit real, unrelated site-access problems
+(JS-gated pages, login walls, DNS) before ever listing a candidate title.
+None of the 6 produced a false rejection or a false lead either way.
 
 **Not fixed here:** a bare government name resolved through a REAL shared
 multi-tenant host (e.g. the actual `videoplayer.telvue.com`, not a

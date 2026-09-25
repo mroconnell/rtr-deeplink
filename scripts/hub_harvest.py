@@ -84,6 +84,12 @@ _BODY_TYPE_WORDS: Tuple[Tuple[str, str], ...] = (
     ("school board", "school district"),
     ("school district", "school district"),
     ("board of education", "school district"),
+    # WO-1060 review (Ryan, 2026-09-25): "X County Schools" (e.g. "Nassau
+    # County Schools") names the same real government as "X County School
+    # Board"/"X County School District" -- none of the three patterns
+    # above match it (no "school board"/"school district"/"board of
+    # education" substring), so it fell through to no body type at all.
+    ("county schools", "school district"),
     ("county board", "county"),
     ("board of commissioners", "county"),
     ("commissioners court", "county"),

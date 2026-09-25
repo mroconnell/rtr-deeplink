@@ -1433,7 +1433,7 @@ def _apply_gov_filter(
         return result
     strict = is_known_shared_hub(account_url)
     kept, drop_note, foreign = filter_candidates_to_government(
-        result.candidates, gov_name, strict=strict
+        result.candidates, gov_name, strict=strict, gov_state=gov_state
     )
     hub_host = urlparse(account_url).netloc
     foreign_leads: List[dict] = []

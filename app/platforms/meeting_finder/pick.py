@@ -655,6 +655,112 @@ def _is_own_government_place(
     return False
 
 
+# --- Ryan's WO-1060 review (2026-09-25): "School Board of X County" is
+# X County's own SCHOOL DISTRICT, not the county government. ---
+#
+# Real regression this fixes: Nassau County School District, FL's OWN
+# meetings ("The School Board of Nassau County, Florida") were rejected
+# by `filter_candidates_to_government()` as a DIFFERENT government --
+# `_place_core("Nassau County School District, FL")` reduces to "nassau
+# county school" (only ONE trailing type word, "district", gets dropped),
+# while the title's own extracted core is bare "nassau" -- a granularity
+# mismatch, not a real different place. The lead step then "confidently"
+# matched the rejected candidate back to `us:sd:1201350` -- the SAME
+# government being searched. Two things follow: (1) when the SEARCHED
+# government IS that county's school district, this shape is its own
+# meeting and must never be rejected; (2) when the searched government is
+# the plain COUNTY (or anything else), this shape names a REAL, DIFFERENT
+# government (the school district) and must always be treated as foreign,
+# regardless of whether the county name happens to match the county being
+# searched -- a county government and its own school district are two
+# different governments even though they share a name.
+_SCHOOL_RELATED_GOV_WORDS = (
+    "school district",
+    "public schools",
+    "school system",
+    "board of education",
+)
+
+
+def _gov_name_is_school_related(gov_name: Optional[str]) -> bool:
+    lowered = (gov_name or "").lower()
+    return any(w in lowered for w in _SCHOOL_RELATED_GOV_WORDS)
+
+
+# Iteratively strips school/county descriptor words from the END of a
+# gov_name (after its state suffix/parenthetical are already gone) until
+# nothing more matches -- "Nassau County School District" -> "Nassau
+# County" -> "Nassau", vs. `_place_core()`'s own single-strip, which only
+# gets to "Nassau County School" (see the module comment above).
+_COUNTY_HOME_SUFFIX_RE = re.compile(
+    r"[\s\-,]*\b(?:school district|public schools|school system|"
+    r"board of education|schools|county)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _county_home_core(gov_name: str) -> str:
+    working = _GOV_NAME_TRAILING_STATE_RE.sub("", gov_name or "")
+    working = _GOV_NAME_PARENTHETICAL_RE.sub("", working)
+    while True:
+        stripped = _COUNTY_HOME_SUFFIX_RE.sub("", working).strip(" ,-")
+        if stripped == working:
+            break
+        working = stripped
+    return working.strip().lower()
+
+
+# The 4 real shapes Ryan named: "School Board of X County[, State]", "X
+# County School Board", "X County Board of Education", "X County
+# Schools" -- all name X County's school district, never the county
+# government itself, regardless of which government's own walk happens
+# to be running.
+_COUNTY_SCHOOL_BODY_PREFIX_RE = re.compile(
+    r"\b(?i:school board of)\s+([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})"
+    r"\s+(?i:county)\b"
+)
+_COUNTY_SCHOOL_BODY_SUFFIX_RE = re.compile(
+    r"\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})\s+(?i:county)\s+"
+    r"(?i:school board|board of education|schools)\b"
+)
+
+
+def _extract_county_school_body(title: str) -> Optional[Tuple[str, str]]:
+    """`(county_core, title_state)` when `title` names one of the 4 real
+    "X County's school district" shapes -- or `None` otherwise. Runs on
+    the RAW title (not noise-stripped): these shapes are themselves the
+    real meeting title, not noise sitting around one."""
+    for pattern in (_COUNTY_SCHOOL_BODY_PREFIX_RE, _COUNTY_SCHOOL_BODY_SUFFIX_RE):
+        match = pattern.search(title or "")
+        if match:
+            core = _place_core(match.group(1))
+            if core:
+                return core, _state_from_title_text(title)
+    return None
+
+
+def _is_own_county_school_body(
+    county_core: str,
+    title_state: str,
+    gov_name: Optional[str],
+    gov_state: Optional[str],
+) -> bool:
+    """True only when the SEARCHED government (`gov_name`) is itself
+    `county_core`'s own school district -- never true for a plain
+    city/county/town search, even one named `county_core`, since a
+    county government and its own school district are different real
+    governments (Ryan's review, 2026-09-25)."""
+    if not _gov_name_is_school_related(gov_name):
+        return False
+    home_core = _county_home_core(gov_name or "")
+    if not home_core or home_core != county_core:
+        return False
+    if title_state and gov_state and title_state.upper() != gov_state.upper():
+        # Real, different Nassau County -- e.g. FL vs. NY.
+        return False
+    return True
+
+
 def describe_foreign_candidate(
     candidate: Candidate,
     *,
@@ -673,13 +779,31 @@ def describe_foreign_candidate(
     hub section to carry (name/state/body-type matching input), plus a
     `state` field (WO-1060) carrying the title's OWN state when the title
     names one, so a caller never has to guess it from region/hub context
-    alone."""
+    alone.
+
+    Ryan's review (2026-09-25) added one more exclusion, checked FIRST
+    and instead of the generic name/state check below: a "School Board
+    of X County"-shaped title (`_extract_county_school_body()`) names X
+    County's own SCHOOL DISTRICT, a real, different government from the
+    plain COUNTY of the same name -- so a plain name/state match against
+    `gov_name` is the WRONG test here (Nassau County, FL's own name
+    equals this title's extracted place exactly, yet the video is really
+    a lead to Nassau County's DIFFERENT school district, not the
+    county's own meeting) -- see `_is_own_county_school_body()`'s own
+    docstring."""
     title = candidate.title or ""
     extracted = _extract_lead_place(title)
     if extracted is None:
         return None
     place_core, place_type = extracted
-    if _is_own_government_place(place_core, gov_name, gov_state):
+    county_school = _extract_county_school_body(title)
+    if county_school is not None:
+        school_county_core, school_title_state = county_school
+        if _is_own_county_school_body(
+            school_county_core, school_title_state, gov_name, gov_state
+        ):
+            return None
+    elif _is_own_government_place(place_core, gov_name, gov_state):
         return None
     body_words = [
         kw for kw in GOVERNING_BODY_KEYWORDS if contains_word(title.lower(), kw)
@@ -696,7 +820,11 @@ def describe_foreign_candidate(
 
 
 def filter_candidates_to_government(
-    candidates: List[Candidate], gov_name: Optional[str], *, strict: bool = False
+    candidates: List[Candidate],
+    gov_name: Optional[str],
+    *,
+    strict: bool = False,
+    gov_state: Optional[str] = None,
 ) -> Tuple[List[Candidate], Optional[str], List[Candidate]]:
     """Drops a candidate whose title clearly names a DIFFERENT
     government's own place name -- see this module's own comment above
@@ -731,7 +859,17 @@ def filter_candidates_to_government(
     `ListResult.foreign_leads` regardless of what happens to `kept`.
     Never called with a `gov_name` this WO can't already trust: `runner.py`
     only ever passes the registry's own `Government.gov_name` for
-    `finder_input.gov_id`, never a caller's unverified guess."""
+    `finder_input.gov_id`, never a caller's unverified guess.
+
+    `gov_state` (WO-1060, optional): checked ONLY for the "School Board
+    of X County" family of shapes (see the module comment above
+    `_SCHOOL_RELATED_GOV_WORDS`) -- a title in that shape is the searched
+    government's OWN meeting when the searched government IS that
+    county's school district (never a plain city/county/town, even one
+    named the same county), and is otherwise ALWAYS foreign regardless of
+    the normal place-core comparison below, since a county government and
+    its own school district are different real governments even when
+    they share a name."""
     if not gov_name or not candidates:
         return candidates, None, []
     gov_core = _place_core(gov_name)
@@ -743,6 +881,16 @@ def filter_candidates_to_government(
         title = c.title or ""
         if not _names_a_governing_body(title):
             kept.append(c)
+            continue
+        county_school = _extract_county_school_body(title)
+        if county_school is not None:
+            county_core, title_state = county_school
+            if _is_own_county_school_body(
+                county_core, title_state, gov_name, gov_state
+            ):
+                kept.append(c)
+            else:
+                foreign.append(c)
             continue
         cores = _candidate_place_cores(title, strict=strict)
         if not cores or gov_core in cores:

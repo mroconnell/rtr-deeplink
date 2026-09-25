@@ -34,12 +34,45 @@ gov_id`. A school-district body (`hub_harvest._guessed_body_type()`) gets
 its own resolver retry: a bare "Nassau, FL" resolves to the COUNTY
 government by default; "Nassau County School District, FL" resolves
 (REGISTRY tier) to the real school district.
+
+**Ryan's review of this PR (2026-09-25) found a second, deeper bug the
+first pass missed**: the live row searching `nassau.k12.fl.us`
+(`us:sd:1201350`, Nassau County School District, FL) got its OWN Swagit
+meetings ("The School Board of Nassau County, Florida") REJECTED by
+`filter_candidates_to_government()` as a different government --
+`_place_core("Nassau County School District, FL")` only drops ONE
+trailing type word ("district"), landing on "nassau county school",
+while the title's own extracted core is bare "nassau" -- a granularity
+mismatch, not a real different place. The lead step then "confidently"
+matched the rejected candidate back to `us:sd:1201350` -- the government
+being searched. Two more fixes:
+
+  3. `filter_candidates_to_government()` (`gov_state`, new optional
+     param) now recognizes the 4 real "X County's school district"
+     shapes ("School Board of X County[, State]", "X County School
+     Board", "X County Board of Education", "X County Schools") and
+     handles them specially: when the SEARCHED government IS that
+     county's own school district (name + state match), the candidate is
+     KEPT (its own meeting, never a lead); otherwise -- including a
+     search for the plain COUNTY government of the very same name -- it
+     is ALWAYS foreign (a lead to the school district), since a county
+     and its own school district are different real governments even
+     though they share a name.
+  4. `match_lead()` also drops a lead outright (returns `None`) whenever
+     the resolver's own match turns out to be the government being
+     searched -- checked by `gov_id`, never by name -- as a defense-in-
+     depth safety net that also cleans up a lead a run recorded BEFORE
+     fix 3 landed (this script can only re-describe a candidate that was
+     already dropped by the OLD code; it can't un-drop it).
 """
 
 from __future__ import annotations
 
 from app.platforms.meeting_finder.models import Candidate
-from app.platforms.meeting_finder.pick import describe_foreign_candidate
+from app.platforms.meeting_finder.pick import (
+    describe_foreign_candidate,
+    filter_candidates_to_government,
+)
 from scripts.hub_harvest import HubRow
 from scripts.meeting_finder_other_gov_leads import match_lead
 
@@ -89,18 +122,84 @@ def test_nassau_county_school_board_extracts_county_and_state():
     assert "board" in info["body_words"]
 
 
-def test_nassau_lead_survives_against_its_own_school_district_search():
-    """The searched government for this real row IS Nassau County School
-    District, FL (`nassau.k12.fl.us`) -- WO-1060's brief tried excluding
-    a shared-prefix name ("Nassau County" inside "Nassau County School
-    District") and explicitly retracted it: a real, separate government
-    (the county) can share that prefix without being the one searched."""
+def test_nassau_lead_survives_against_a_different_search_by_name_alone():
+    """`describe_foreign_candidate()` itself only ever excludes an EXACT
+    name/state match -- it doesn't know about the "X County's school
+    district" special case (that lives in `filter_candidates_to_
+    government()`, tested below), so on its own it still describes this
+    title as a lead when the searched government's name doesn't exactly
+    equal it (a real, separate government -- Nassau County, FL -- can
+    share this name prefix without being the same government)."""
     cand = _cand("The School Board of Nassau County, Florida")
     info = describe_foreign_candidate(
-        cand, gov_name="Nassau County School District, FL", gov_state="FL"
+        cand, gov_name="Nassau County, FL", gov_state="FL"
     )
     assert info is not None
     assert info["named_place"] == "nassau"
+
+
+# --- filter_candidates_to_government(): the "X County's school district"
+# special case (Ryan's review, 2026-09-25) -----------------------------
+
+
+def test_nassau_school_board_is_kept_as_its_own_meeting_when_searching_the_district():
+    """The real regression: Nassau County School District, FL's OWN
+    meeting must never be rejected as a different government."""
+    cand = _cand(
+        "The School Board of Nassau County, Florida",
+        url="https://nassaucountysd.new.swagit.com/videos/400594",
+    )
+    kept, note, foreign = filter_candidates_to_government(
+        [cand], "Nassau County School District, FL", gov_state="FL"
+    )
+    assert kept == [cand]
+    assert foreign == []
+    assert note is None
+
+
+def test_nassau_school_board_is_a_foreign_lead_when_searching_the_county():
+    """Searching the PLAIN COUNTY government of the same name: the same
+    title now names a DIFFERENT real government (the school district),
+    even though the county name matches exactly -- a county and its own
+    school district are different governments."""
+    cand = _cand(
+        "The School Board of Nassau County, Florida",
+        url="https://nassaucountysd.new.swagit.com/videos/400594",
+    )
+    kept, note, foreign = filter_candidates_to_government(
+        [cand], "Nassau County, FL", gov_state="FL"
+    )
+    assert kept == []
+    assert foreign == [cand]
+    assert note is not None
+
+
+def test_nassau_school_board_different_state_is_still_foreign():
+    """A real, different Nassau County (NY, not FL) -- the state check
+    matters, not just the name."""
+    cand = _cand(
+        "The School Board of Nassau County, Florida",
+        url="https://nassaucountysd.new.swagit.com/videos/400594",
+    )
+    kept, note, foreign = filter_candidates_to_government(
+        [cand], "Nassau County School District, NY", gov_state="NY"
+    )
+    assert kept == []
+    assert foreign == [cand]
+
+
+def test_county_schools_shape_also_recognized():
+    """The 4th real shape Ryan named: "X County Schools" (no "board"/
+    "district"/"education" word at all)."""
+    cand = _cand(
+        "Nassau County Schools Special Meeting",
+        url="https://nassaucountysd.new.swagit.com/videos/1",
+    )
+    kept, _note, foreign = filter_candidates_to_government(
+        [cand], "Nassau County School District, FL", gov_state="FL"
+    )
+    assert kept == [cand]
+    assert foreign == []
 
 
 def test_state_college_borough_extracts_full_two_word_name():
@@ -150,19 +249,48 @@ def _hubs():
     ]
 
 
-def test_match_lead_nassau_school_board_is_confident_school_district():
+def test_match_lead_nassau_school_board_is_confident_when_searched_by_the_county():
+    """A real, different search subject (Nassau COUNTY, not its own
+    school district) stumbling on this video via a shared hub gets a
+    real, correct, confident lead to the school district."""
     lead = {
         "url": "https://nassaucountysd.new.swagit.com/videos/400594",
         "title": "The School Board of Nassau County, Florida",
         "date": None,
         "hub_host": "nassaucountysd.new.swagit.com",
-        "_gov_name": "Nassau County School District, FL",
+        "_gov_id": "us:county:12089",
+        "_gov_name": "Nassau County, FL",
         "_gov_state": "FL",
     }
     result = match_lead(lead, hubs=[])
+    assert result is not None
     assert result.confidence == "confident"
     assert result.matched_gov_id == "us:sd:1201350"
     assert "School District" in result.matched_gov_name
+
+
+def test_match_lead_drops_lead_that_resolves_back_to_the_searched_government():
+    """Ryan's review, 2026-09-25: the real bug this PR shipped with --
+    the searched government (Nassau County School District, FL) got its
+    OWN meeting recorded as a "confident" lead pointing back at itself.
+    This is a defense-in-depth safety net checked by `gov_id`, never by
+    name -- deliberately exercised here with a `_gov_name` that does NOT
+    contain any of `_SCHOOL_RELATED_GOV_WORDS` ("Nassau, FL", a plausible
+    bare/legacy registry alias), so `describe_foreign_candidate()`'s own
+    county-school-body exclusion (tested above) does NOT catch it either
+    -- proving the `gov_id` check catches a case name-based reasoning
+    misses, not just re-testing the same fix twice."""
+    lead = {
+        "url": "https://nassaucountysd.new.swagit.com/videos/400594",
+        "title": "The School Board of Nassau County, Florida",
+        "date": None,
+        "hub_host": "nassaucountysd.new.swagit.com",
+        "_gov_id": "us:sd:1201350",
+        "_gov_name": "Nassau, FL",
+        "_gov_state": "FL",
+    }
+    result = match_lead(lead, hubs=[])
+    assert result is None
 
 
 def test_match_lead_state_college_is_confident():
@@ -207,7 +335,10 @@ def test_match_lead_galesburg_own_meeting_produces_no_named_place():
     result = match_lead(lead, hubs=[])
     assert result.confidence == "hand_read"
     assert result.named_place == ""
-    assert result.reason == "no real place name found in the lead's own title"
+    assert (
+        result.reason
+        == "no lead: title names no real different place, or only the government being searched"
+    )
 
 
 def test_match_lead_regular_council_produces_no_named_place():

@@ -68,7 +68,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -143,23 +143,39 @@ def load_leads(jsonl_path: Path) -> List[Dict[str, Any]]:
             if not line:
                 continue
             row = json.loads(line)
-            gov = _gov_for_id(row.get("identity_expected_gov_id") or "")
+            gov_id = row.get("identity_expected_gov_id") or ""
+            gov = _gov_for_id(gov_id)
             for lead in row.get("other_gov_leads") or []:
                 url = lead.get("url")
                 if not url or url in seen_urls:
                     continue
                 seen_urls.add(url)
                 lead = dict(lead)
+                lead["_gov_id"] = gov_id or None
                 lead["_gov_name"] = gov.gov_name if gov else None
                 lead["_gov_state"] = (gov.state or None) if gov else None
                 leads.append(lead)
     return leads
 
 
-def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
+def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> Optional[LeadMatch]:
+    """`None` (WO-1060 review, Ryan 2026-09-25) when the resolver's own
+    match turns out to be the SEARCHED government itself -- checked by
+    `gov_id`, never by name (two governments can have the same rendered
+    name in different states, and a name comparison is exactly the kind
+    of thing `pick.py`'s own `_place_core()` granularity mismatch already
+    got wrong once for this real case: Nassau County School District,
+    FL's own meetings resolved back to its own `us:sd:1201350`).  This is
+    a defense-in-depth check on top of `pick.filter_candidates_to_
+    government()`'s own fix (the county-school-body special case,
+    `_is_own_county_school_body()`) -- it also cleans up leads a run made
+    BEFORE that fix landed, which this script's own re-derive-from-title
+    behavior can't otherwise undo (the candidate was already dropped by
+    the OLD code; this script only re-describes what's left)."""
     title = lead.get("title") or ""
     hub_host = lead.get("hub_host") or ""
     hub_region_state = _hub_region_for_host(hubs, hub_host)
+    gov_id = lead.get("_gov_id")
     gov_name = lead.get("_gov_name")
     gov_state = lead.get("_gov_state")
 
@@ -206,7 +222,7 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
     if described is None:
         return _row(
             confidence="hand_read",
-            reason="no real place name found in the lead's own title",
+            reason="no lead: title names no real different place, or only the government being searched",
         )
     named_place = described["named_place"]
     place_type = described.get("place_type") or ""
@@ -233,6 +249,11 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
     match = _match_place_text(
         place_text, region_state, hub_host, body_type_hint=body_type_hint
     )
+    if gov_id and match.gov_id and match.gov_id == gov_id:
+        # WO-1060 review: the resolver matched the lead back to the
+        # SEARCHED government itself -- not a different government at
+        # all, so this isn't a lead. See this function's own docstring.
+        return None
     if match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
         return _row(
             matched=match,
@@ -253,7 +274,14 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> LeadMatch:
 def run(jsonl_path: Path, out_dir: Path) -> List[LeadMatch]:
     hubs = load_hubs()
     leads = load_leads(jsonl_path)
-    matches = [match_lead(lead, hubs) for lead in leads]
+    raw_matches = [match_lead(lead, hubs) for lead in leads]
+    # WO-1060 review: `match_lead()` returns `None` when the resolver
+    # matched a lead back to the government being searched -- not a real
+    # different government, so it's dropped entirely rather than written
+    # to either output file. Reported separately (`main()`) so this isn't
+    # silently invisible.
+    same_government_dropped = sum(1 for m in raw_matches if m is None)
+    matches = [m for m in raw_matches if m is not None]
 
     out_dir.mkdir(parents=True, exist_ok=True)
     confident = [m for m in matches if m.confidence == "confident"]
@@ -311,6 +339,11 @@ def run(jsonl_path: Path, out_dir: Path) -> List[LeadMatch]:
                 ]
             )
 
+    if same_government_dropped:
+        print(
+            f"{same_government_dropped} lead(s) dropped: resolved back to the "
+            "government being searched, not a different one"
+        )
     return matches
 
 
