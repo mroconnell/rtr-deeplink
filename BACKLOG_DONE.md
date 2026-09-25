@@ -1,5 +1,123 @@
 # Backlog — done
 
+## WO-1053: link-first hub harvest -- regional TV hubs to governments (dry run) [Done 2026-09-24]
+
+**What this was for.** Some governments' meetings can never be found by
+starting from their own website. Ryan named two: Nashwauk, MN and
+Wilder, KY. Both towns' own sites show no video. Both really do have
+video, but only on a shared regional TV channel run by a bigger group
+or county, with a separate section per town. This is the "link-first"
+flow (`rtr-business` `research/LINK_FIRST_MATCHING.md`): read the hub
+itself, match each section to a real government by name AND state AND
+type, and only then send it for ingest. This was a dry run: nothing was
+ingested, no queue file changed, `rtr-business` was not touched.
+
+**What was built.** A new seed file,
+`app/utils/jurisdiction_data/regional_tv_hubs.csv`, lists 11 real
+regional hubs, each checked against a real, live page before being
+added (never guessed from a name). A new script, `scripts/hub_harvest.py`,
+reads that file and, for each hub, lists every section (a town, or a
+body inside a town) and that section's newest meeting, then tries to
+match the section to a real government using the resolver already in
+this codebase (`app/utils/gov_registry/resolver.py`).
+
+**The Nashwauk / Wilder answer.** Both are real, clean matches — the
+hub already carries a dedicated section for each town, separate from
+its neighbors:
+
+| Government | Hub | Section found | Newest meeting | Match |
+|---|---|---|---|---|
+| Nashwauk, MN | Iron Range TV Cablecast | "Nashwauk City Council" (its own section, 75 videos) | 2026-09-08 | Confident (`us:place:2744980`) |
+| Wilder, KY | Campbell County KY Cablecast | "Wilder City Council" (its own section) | 2026-09-08 | Confident (`us:place:2183172`) |
+
+This also explains and fixes an earlier mistake: a previous pass (the
+2026-09-23/24 Meeting Finder run, `finds.json`) had filed a *Cohasset*
+City Council video under Nashwauk's government id, because Cohasset and
+Nashwauk share the same hub and the earlier pass picked whichever video
+came back first instead of picking Nashwauk's own section. This script
+finds both as separate, real sections with separate real videos, and a
+test (`tests/test_hub_harvest.py`) checks they never share a video.
+
+**Counts per hub.**
+
+| Hub | Sections found | Confident matches | Note |
+|---|---|---|---|
+| Iron Range TV Cablecast | 14 | 5 | Nashwauk and Cohasset both confident, both correct now |
+| North Metro TV TRMS Cablecast | 37 | 6 | Real public entry point is `/internetchannel/?site=N`, not the bare host (that 302s to a staff login page) |
+| Centre County C-NET (TelVue) | 44 | 0 | TelVue is a registered shared host — every section needs a human pin, by design (see below) |
+| Campbell County KY Cablecast | 23 | 10 | Wilder confident, plus 9 other Campbell County KY towns |
+| Town Square TV | 8 | 0 | Real backing tenant is `reflect-tst-mn.cablecast.tv`, not the WordPress wrapper |
+| TVCTV | 6 | 0 | CablecastPublicSite template has no confirmed per-site show API yet — recorded as leads only |
+| Dakota Media Access | 10 | 0 | Same shape as North Metro TV |
+| Miami Valley Communications Council | 1 | 0 | Same shape; only one section resolved this pass |
+| Harbor Media | 32 | 2 | Single-town hub (Hingham, MA) |
+| Montague Community Television | 1 | 0 | Real platform is Vimeo, not Cablecast — corrects a wrong guess in CLAUDE.md |
+| Pierce County TV | 9 | 0 (confirmed sections, no video) | YouTube-drip-only — never fetched here at all |
+
+18 confident, not-yet-covered matches went into a dry-run
+`ingest_queue_plan.csv` with a real caption tier from the actual
+platform adapter's own `resolve()` (read-only, no ingest): 13 tier-1
+(real captions), 3 tier-3 (video only), plus the 2 above. 163 sections
+went to `hand_read.csv` — mostly TelVue's shared-host sections, which
+the resolver correctly refuses to match without a human pin (see
+below), and a few hub shapes (TVCTV, Pierce County TV) this pass could
+list but not fully resolve yet.
+
+**Two real, reusable bugs found and fixed while building this.**
+
+1. `finalize_jurisdiction()` (in `app/utils/jurisdiction_enrich.py`,
+   not owned by this WO) repairs "X City Council MEETING, ST" to the
+   real place name, but not a bare "X City Council, ST" with no
+   "Meeting" word. Without a workaround, `resolve_government()` minted
+   a brand-new id for "Nashwauk City Council, MN" instead of finding
+   the real, already-registered government. `hub_harvest.py`'s own
+   `_resolver_candidate_text()` appends "Meeting" when it's missing, as
+   a script-local workaround; the underlying gap in
+   `jurisdiction_enrich.py` is still there for whoever next touches
+   that file.
+2. Reading a Cablecast Remix page's whole embedded data tree found the
+   same gallery object more than once (a real, shared "Anoka County
+   Board Meetings" section on North Metro TV, syndicated onto every one
+   of its 7 member cities' own pages) — first read as 6 duplicate rows
+   for the same meeting, now deduplicated per hub.
+
+**TelVue's own multi-government-host rule worked exactly as designed.**
+`videoplayer.telvue.com` is already registered as a shared host, so the
+resolver refuses to match a name on it without an existing per-video
+pin — every Centre County C-NET section came back "blank" (needs a
+human) rather than a guessed match, even though several titles (College
+Township Council, Halfmoon Township Board of Supervisors, and others)
+are clean, real government names. That is the safe, intended outcome
+for a shared host, not a bug — see `LINK_FIRST_MATCHING.md`'s own
+caution about pinning per-video, never per-host.
+
+**Caution.** TVCTV's real show API has no confirmed per-site filter
+(the API ignores `site=` and its category list is shared across all
+governments), and Pierce County TV's own newest-meeting video sits
+behind a further JS widget this pass didn't walk — both hubs' sections
+are real and confirmed, but "newest meeting" is left blank rather than
+guessed for either. Neither was pinned or queued.
+
+**Tests.** `tests/test_hub_harvest.py`, 19 tests, real fixtures in
+`tests/fixtures/hub_harvest/` fetched live 2026-09-24 from Iron Range
+TV Cablecast and Centre County C-NET — covers the Nashwauk/Wilder
+match, the "Meeting"-suffix workaround, gallery de-duplication, the
+loosened body-word detector, and a hard assertion that the Pierce
+County TV path never calls its network session at all.
+
+**What changed and where.**
+
+| File | What happened |
+|---|---|
+| `app/utils/jurisdiction_data/regional_tv_hubs.csv` (new) | 11 hubs, each with a real, live-confirmed URL and notes |
+| `scripts/hub_harvest.py` (new) | the harvester |
+| `tests/test_hub_harvest.py` (new), `tests/fixtures/hub_harvest/` (new) | 19 tests against real fixtures |
+
+Dry run only, per the brief: no ingest, no queue file edited, no
+`rtr-business` file touched. `hub_sections.csv`,
+`ingest_queue_plan.csv` and `hand_read.csv` from this run are in the
+PR description, not committed to the repo.
+
 ## WO-1051: the queue probe reads Dropbox files, and Claycomo/Collier rules in the registry [Done 2026-09-24]
 
 **What and why.** Two loose ends left by WO-1048.
