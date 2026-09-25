@@ -207,7 +207,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (21)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (208)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (210)
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
@@ -316,6 +316,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (208)
   [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
   [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
+  `backfill_gov_id.py --apply` writes hub redirects to a file the live…
+  WO-171 LocalView channel pins: at least two named a neighbouring…
   6 `best_effort` YouTube pages archived a promotional/off-topic video…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
@@ -3808,6 +3810,22 @@ of human step they need.
     (2026-08-30); this entry compacted 2026-08-31. Albuquerque re-checked
     2026-08-31 and confirmed working correctly on a fresh real example —
     see `BACKLOG_DONE.md`.
+
+### `backfill_gov_id.py --apply` writes hub redirects to a file the live site never reads, and the next deploy erases it `[NEEDS-AUDIT]`
+
+- **Issue**: on `--apply`, the script writes retired-hub redirects into `archive/data/hub_slug_aliases.csv` on the Render instance it runs on. Checked 2026-09-25 after the WO-1057 backfill: the 23 rows it wrote were not served (`/j/hooper`, `/j/yarmouth-ma` both 404), and a redeploy replaces the file with the repo's copy. The rows only reach users if someone copies them into a PR by hand (WO-204b, WO-1060).
+- **Impact**: every backfill run leaves its retired hubs 404ing until a follow-up PR lands. The tidy-up step also leaves a stale reverse row behind: the 2026-09-11 `baltimore-md` -> `baltimore-city-md` row and today's `baltimore-city-md` -> `baltimore-md` row formed a loop (caught by `test_committed_file_has_no_alias_resolving_to_another_alias`).
+- **Next action**: have `--apply` print the rows it wrote as CSV (or write them to `--report`'s folder) so they can be committed directly, and make `write_retirements()` drop a row whose old slug is now a live hub.
+- **Constraint**: don't let the script redirect one government's hub to a different government: WO-1060 found 9 such rows (Yarmouth MA -> ME, Armada Township -> village, ...). Only same-government renames should get a redirect.
+- **History**: `BACKLOG_DONE.md` WO-1060.
+
+### WO-171 LocalView channel pins: at least two named a neighbouring government, so the rest need a check `[NEEDS-AUDIT]`
+
+- **Issue**: WO-1060 found two WO-171 "own-channel verdict" pins wrong: `@cityofrichmondheightsohio6020` pointed at Richmond village, OH instead of Richmond Heights city, and `@doversherborncabletv` (a Dover-Sherborn shared cable channel) at Dover alone. Two more wrong pins came from other runs (wo221 Cape Vincent town -> village; wo346 Armada Township -> village).
+- **Impact**: each wrong channel pin files every video on that channel under the wrong government. The pattern (a place name matched to a similarly named neighbour) is exactly what a name-based join produces.
+- **Next action**: for each `wo171_localview` channel pin, compare the pinned government's name with its own evidence text and the titles of its archived pages (via `GET /internal/export/pages`); list mismatches for Ryan.
+- **Constraint**: read the export over HTTP; never query production directly.
+- **History**: `BACKLOG_DONE.md` WO-1060.
 
 ### 6 `best_effort` YouTube pages archived a promotional/off-topic video instead of the real meeting `[NEEDS-AUDIT]`
 
