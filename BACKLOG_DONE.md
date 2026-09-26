@@ -1,5 +1,33 @@
 # Backlog — done
 
+## WO-1100: TelVue — each meeting gets its own government, and its date [Done 2026-09-26]
+
+**What was done and why.** Every TelVue customer checked is a regional station that carries more than one government. A pin on the whole customer (its org token) was applied before the meeting's own name was read, so a school board or a town council went to the station's town or county. Separately, the adapter read a date only from a title ending "- Month D, YYYY", which few customers write.
+
+Three changes:
+1. `resolver.py` rung 1b, TelVue only (`tenant_key.NAME_FROM_MEETING_TITLE_HOSTS`): the meeting's own name goes first (`_meeting_title_government()`). It counts only when it keys to a real registry government in the one state the customer's pins agree on; a name with no state gets that state. Otherwise the whole-customer pin decides, as before. Narrower pins (playlist, series, video) still win outright. `queue_probe.has_owner()` no longer sends a whole-customer TelVue pin's id, so the feeder does not skip the name step.
+2. `telvue.py`: a station in `MULTI_GOVERNMENT_TENANTS` no longer gets its station-level name or logo name when the title names no place. New `ORG_TOKEN_BODY_GOVERNMENTS` names bodies per customer (Derry's School Board and Town Council, Pierre's School Board). The dash in "Kalamazoo County - Board of ..." no longer sticks to the name. Queen Anne's (QACTV) and Pierre (OaheTV) added to `MULTI_GOVERNMENT_TENANTS`.
+3. Dates: rtr-discovery's walker formats ported (`meeting_date()`), then the media page's `og:description`.
+
+**Result.** rtr-discovery's 8 saved meetings (2026-09-25), run offline through the adapter and the resolver:
+
+| Meeting | Title | Government before | Government after |
+| --- | --- | --- | --- |
+| Derry 1046119 | Town Council - 09/15/26 | Derry, NH | Derry, NH |
+| Derry 1047520 | School Board Meeting - 09/22/2026 | Derry, NH (wrong) | Derry Cooperative School District, NH |
+| Kalamazoo 1045901 | Kalamazoo County - Board of Commissioners - September 15, 2026 Meeting | blank | Kalamazoo County, MI |
+| Kalamazoo 1047784 | Oshtemo Township - Planning Commission - September 24, 2026 Meeting | blank | blank |
+| Queen Anne's 1047333 | County Commissioners Meeting &#124;&#124; 09/21/2026 | Queen Anne's County, MD | Queen Anne's County, MD |
+| Queen Anne's 1047511 | Centreville Town Council &#124;&#124; 09/17/2026 | Queen Anne's County, MD (wrong) | Centreville, MD |
+| Pierre 1045603 | Pierre School Board | Pierre, SD (wrong) | Pierre School District 32-2, SD |
+| Pierre 1047373 | Pierre City Commission | Pierre, SD | Pierre, SD |
+
+Dates: the adapter read 0 of rtr-discovery's 10 dated test titles before and 10 of 10 after. Pierre's "9-22-2026" is read from `og:description`.
+
+**Caution.** Oshtemo stays blank: "Oshtemo Township, MI" mints rather than keying to the Census's "Oshtemo charter township" (new `BACKLOG.md` entry). 54 TelVue customers have a pin carrying their org token (49 of them a whole-customer pin); for these, a title that names a place in the pins' state now wins over the whole-customer pin. A title word that is also a real place in that state (an "Energy Committee" on an Illinois station would read "Energy") would now win too; no such title was seen in the 8 pages. Customers with only token-less playlist pins (RVTV, C-NET) and customers with no pin stay blank, as before. Already-archived pages move only when `scripts/backfill_gov_id.py` runs after a deploy.
+
+**Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1100/` (capture note there). Synthetic names are commented as such.
+
 ## WO-1092: Loch Alpine Sanitary Authority gets a registry id [Done 2026-09-26]
 
 **What was done and why.** Meeting Finder's 2026-09-26 retry run found a "LASA Operating Committee" meeting on Scio Township's Granicus site and filed it under Webster Township; the hand-check caught that it is neither. LASA is the Loch Alpine Sanitary Authority, a real special district in the Census of Governments list (`cog_units.csv`, cog_id 149810, Washtenaw County, MI). That list is deliberately not loaded as registry ids, so the authority had none. Ryan approved minting it (2026-09-26).

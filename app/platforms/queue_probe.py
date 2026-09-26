@@ -72,8 +72,9 @@ import yt_dlp
 
 from ..utils.gov_registry.registry import match_shape_problem
 from ..utils.gov_registry.resolver import (
-    _matched_multi_gov_pin,
+    _matched_multi_gov_pin_row,
     _tenant_host,
+    is_customer_fallback_pin,
     trusts_shared_tenant_name,
 )
 from . import media_probe
@@ -1538,7 +1539,10 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
       caller can put it straight into the ingest payload (CLAUDE.md's
       "send the government's id in every ingest payload" rule) instead
       of depending on the Archive service's OWN deployed copy of
-      `tenant_overrides.csv` being up to date.
+      `tenant_overrides.csv` being up to date. Except (WO-1100) a TelVue
+      pin naming the whole customer: that returns `(True, None, "")`,
+      since ingest tries the meeting's own name before that pin and an id
+      in the payload would skip it.
     * `(False, None, reason)` -- the host is a `MULTI_GOV_HOSTS` host
       with no matching pin -- ingest would land this page on
       `rtr:unknown:{host}` (TIER_BLANK), exactly the gap WO-345/WO-346
@@ -1551,9 +1555,14 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
     if not is_multi_gov_host(host):
         return True, None, ""
     path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-    matched = _matched_multi_gov_pin(host, path, {})
+    matched = _matched_multi_gov_pin_row(host, path, {})
     if matched:
-        gov, _evidence = matched
+        gov, _evidence, row = matched
+        if is_customer_fallback_pin(host, row):
+            # WO-1100: a TelVue pin naming the whole customer is only the
+            # fallback; ingest tries the meeting's own name first. Owned,
+            # but no id handed back, so the Archive's ladder decides.
+            return True, None, ""
         return True, gov.gov_id, ""
     if trusts_shared_tenant_name(host, path):
         # WO-1057: one government's tenant on a keyed shared host
