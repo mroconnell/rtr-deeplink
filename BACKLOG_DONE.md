@@ -1,5 +1,28 @@
 # Backlog — done
 
+## WO-1081: Meeting Finder lists 35 known Swagit view pages, with dates [Done 2026-09-26]
+
+**What was done and why.** A Swagit tenant's tab pages (`/city-council`) are empty shells (WO-1036). Only a numbered `/views/{id}` page lists its meetings, and nothing on the tenant's own Swagit site links one: the government's website embeds it. Dublin, CA is the worked example. Its own "Watch Meetings" page embeds `dublinca.new.swagit.com/views/876/`, which lists 17 City Council meetings, while its tabs list none. rtr-discovery measured the gap on 2026-09-26: 271 of 438 Swagit tenants had 0 meetings in its ledger.
+
+- **`app/utils/jurisdiction_data/swagit_views.csv`**: the 35 view numbers already recorded in our research files, one per tenant, each copied from a real link, with the file it came from (`found_in`) and how strong that is (`evidence`). It moved here from rtr-discovery #79, so both tools read one copy, next to `tenant_overrides.csv`.
+- **`app/platforms/swagit.py`**: `known_views()` and `known_view_for(host)` read it. A bare `*.swagit.com` host finds its `*.new.swagit.com` row.
+- **Meeting Finder's Swagit lister** (`listing._list_via_swagit_views_page`): a bare tenant URL now lists its known view page instead of declining. A tenant with no row still falls through to the other listers, as before.
+- **Dates on a view page** (`listing._parse_swagit_video_table`): a view page puts each date in its own column. Only the cell under the title was read, so every row came back undated (Dublin's view 876: 17 rows, 0 dates). The older WO-1028 test used a synthetic row with the date under the title, so it could not catch this.
+
+**Result.**
+
+| Check | Result |
+| --- | --- |
+| New tests (`tests/test_wo1081_swagit_known_views.py`, real fixture `tests/fixtures/swagit/dublin_views_876.html`) | Pass. 2 of the 5 fail without the change. |
+| Full suite | 7,640 passed; 2 failed, the known local-export tests (`BACKLOG.md`), which fail on unchanged main too |
+| `ruff check .`, `ruff format --check .` | Pass |
+
+`test_swagit_bare_tenant_root_falls_through_to_discovery` (WO-1028) now uses `montgomerycountytx.new.swagit.com`. Its old tenant, Wise County TX, has a known view, so it now lists that view instead of falling through.
+
+**Caution.** A view number shows the same listing on any Swagit host. Wise County TX's view 908, opened on `dublinca.new.swagit.com`, showed Wise County's meetings under a "Dublin, CA Video Archive" heading. Video numbers are shared the same way, but a video page shows its true owner's branding (Ryan, 2026-09-26: `dublinca.new.swagit.com/videos/400823` shows Wise County's Sep 14 meeting with the Wise County banner). So a view number is only trusted when read from a real link, never guessed. A wrong row would file another government's meetings under the tenant. Pins and view numbers carry the same risk, which is why this file lives here. It changes production behavior only after a deploy.
+
+**Found along the way.** `tests/test_destinyhosted.py::test_resolve_delegates_through_onclick_swagit_link` reaches the network. With DNS blocked, it fails on unchanged main (c46c6b0).
+
 ## WO-1080: five public bodies found by Meeting Finder get registry ids [Done 2026-09-26]
 
 **What was done and why.** Meeting Finder's 2026-09-25/26 runs found real meetings of five public bodies that had no registry id, linked from school-district sites and wrongly filed there by the finder (hand-checked). Ryan: "mint the five public bodies, skip PIAA" (2026-09-26).
