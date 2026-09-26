@@ -206,7 +206,18 @@ Held back, not applied (`research/wo1077_review.csv`): six Google Drive links co
 
 Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
 
-**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
+**Second pass, 2026-09-26.** Meeting Finder ran again on the 40 agenda-only governments, this time from each government's own homepage (`--entry start`, pin mode), to look for video on another site.
+
+| Second-pass result | Count of 40 |
+|---|---|
+| Tier 3, queued | 1 |
+| Tier 3, held for hand-check | 1 |
+| Meetings found, no video | 22 |
+| Stopped at the 15-minute per-government limit | 16 |
+
+Queued: Stillwater County MT, a 17-minute Board of County Commissioners meeting on its CivicClerk portal (identity check agrees). Held: Colusa County CA, an undated Vimeo video whose length could not be measured.
+
+**Caution.** 22 governments showed meetings but no video from both starting points; they most likely do not post recordings. The 16 that hit the time limit were not rerun: the first 24 yielded one find.
 
 ## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
 
