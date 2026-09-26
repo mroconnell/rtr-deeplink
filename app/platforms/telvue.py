@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from datetime import date as _date
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
@@ -817,6 +817,72 @@ _NO_CAPTIONS_WARNING = (
 )
 
 
+def meeting_name_from_title(
+    title: Optional[str], org_token: Optional[str], html: Optional[str] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """(jurisdiction, meeting_body) for one TelVue meeting, from its title
+    and its customer's org token -- the name `resolve()` hands the Archive.
+
+    WO-1130: module-level so `scripts/backfill_gov_id.py` can re-derive
+    the name from an archived page's stored title. A page filed before
+    WO-1100 had its `jurisdiction` rewritten to the whole-customer pin's
+    government, so the name the meeting itself gave is gone from that
+    column; its title still carries it. `html` is the media page when
+    there is one (`resolve()`); the backfill has none, so the logo and
+    page-text hints are skipped there.
+    """
+    jurisdiction = TelvueAssetFinder._guess_jurisdiction(title)
+    jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
+        jurisdiction, netloc=None, page_text=html
+    )
+    # WO-1100: a station carrying several governments has no one
+    # station-level name. Its org-token entry may still fill the
+    # state of a name the title gave (below), but never stands in
+    # for a name the title did not give: the resolver would file
+    # every meeting under it (RVTV's "Ashland" on Jackson County
+    # meetings). Its logo is skipped for the same reason.
+    several_governments = (
+        "videoplayer.telvue.com",
+        org_token or "",
+    ) in MULTI_GOVERNMENT_TENANTS
+    meeting_body = None
+    if not jurisdiction:
+        jurisdiction, meeting_body = _body_government(org_token, title)
+    known_jurisdiction = (
+        _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token) if org_token else None
+    )
+    if not jurisdiction:
+        if not several_governments:
+            jurisdiction = known_jurisdiction
+    elif known_jurisdiction:
+        # Real gap found 2026-08-28 (BACKLOG_DONE.md), widened
+        # 2026-08-29: originally only handled a *bare*,
+        # nationally-ambiguous name (e.g. "Ashland") the title
+        # guess had left with no state -- the old `if not
+        # jurisdiction` gate only ever consulted this registry on
+        # a TOTAL guess failure. That still missed the case where
+        # `enrich_jurisdiction_text()` resolves an ambiguous bare
+        # name to the WRONG state/country instead of no state at
+        # all -- confirmed live: "Newmarket" (bare, from the
+        # title) enriched to "Newmarket, ON" (Ontario, presumably
+        # the more populous/prominent real place of that name),
+        # when this specific channel's own page is unambiguously
+        # Newmarket, NH (newmarketnh.gov). Comparing only the
+        # base name (before any comma) on both sides -- ignoring
+        # whatever state enrichment guessed -- catches both
+        # shapes with one check, while the base-name-match
+        # requirement still guarantees this never lets one org's
+        # registry entry override a genuinely DIFFERENT city's
+        # real guess under the same token.
+        known_name = known_jurisdiction.split(",")[0].strip().lower()
+        guessed_name = jurisdiction.split(",")[0].strip().lower()
+        if guessed_name == known_name:
+            jurisdiction = known_jurisdiction
+    if not jurisdiction and not several_governments and html:
+        jurisdiction = TelvueAssetFinder._org_logo_jurisdiction(html)
+    return jurisdiction, meeting_body
+
+
 class TelvueAssetFinder(AssetFinder):
     """Resolves video + transcript for a TelVue-hosted meeting page."""
 
@@ -855,56 +921,8 @@ class TelvueAssetFinder(AssetFinder):
                 # WO-1100: every other shape the customers write, then the
                 # media page's own og:description.
                 date = meeting_date(entry.get("title"), _og_description(html))
-            jurisdiction = self._guess_jurisdiction(title)
-            jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
-                jurisdiction, netloc=None, page_text=html
-            )
             org_token = _org_token_from_url(final_url)
-            # WO-1100: a station carrying several governments has no one
-            # station-level name. Its org-token entry may still fill the
-            # state of a name the title gave (below), but never stands in
-            # for a name the title did not give: the resolver would file
-            # every meeting under it (RVTV's "Ashland" on Jackson County
-            # meetings). Its logo is skipped for the same reason.
-            several_governments = (
-                "videoplayer.telvue.com",
-                org_token or "",
-            ) in MULTI_GOVERNMENT_TENANTS
-            meeting_body = None
-            if not jurisdiction:
-                jurisdiction, meeting_body = _body_government(org_token, title)
-            known_jurisdiction = (
-                _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token) if org_token else None
-            )
-            if not jurisdiction:
-                if not several_governments:
-                    jurisdiction = known_jurisdiction
-            elif known_jurisdiction:
-                # Real gap found 2026-08-28 (BACKLOG_DONE.md), widened
-                # 2026-08-29: originally only handled a *bare*,
-                # nationally-ambiguous name (e.g. "Ashland") the title
-                # guess had left with no state -- the old `if not
-                # jurisdiction` gate only ever consulted this registry on
-                # a TOTAL guess failure. That still missed the case where
-                # `enrich_jurisdiction_text()` resolves an ambiguous bare
-                # name to the WRONG state/country instead of no state at
-                # all -- confirmed live: "Newmarket" (bare, from the
-                # title) enriched to "Newmarket, ON" (Ontario, presumably
-                # the more populous/prominent real place of that name),
-                # when this specific channel's own page is unambiguously
-                # Newmarket, NH (newmarketnh.gov). Comparing only the
-                # base name (before any comma) on both sides -- ignoring
-                # whatever state enrichment guessed -- catches both
-                # shapes with one check, while the base-name-match
-                # requirement still guarantees this never lets one org's
-                # registry entry override a genuinely DIFFERENT city's
-                # real guess under the same token.
-                known_name = known_jurisdiction.split(",")[0].strip().lower()
-                guessed_name = jurisdiction.split(",")[0].strip().lower()
-                if guessed_name == known_name:
-                    jurisdiction = known_jurisdiction
-            if not jurisdiction and not several_governments:
-                jurisdiction = self._org_logo_jurisdiction(html)
+            jurisdiction, meeting_body = meeting_name_from_title(title, org_token, html)
 
             video_url = entry.get("file")
             video_format = "m3u8" if video_url and ".m3u8" in video_url else None

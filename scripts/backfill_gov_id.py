@@ -144,6 +144,8 @@ async def main() -> None:
     )
     from archive.db.models import MeetingPage
     from archive.utils.jurisdiction_format import normalize_state_suffix
+    from app.platforms.telvue import meeting_name_from_title
+    from app.utils.tenant_key import NAME_FROM_MEETING_TITLE_HOSTS, telvue_org_token
 
     # The one tier this sweep must not overwrite. Imported by value
     # rather than re-spelled, so a rename cannot silently un-protect
@@ -178,6 +180,8 @@ async def main() -> None:
             MeetingPage.platform,
             MeetingPage.external_id,
             MeetingPage.video_channel,
+            # WO-1130: a TelVue page's name is re-read from its title (below).
+            MeetingPage.title,
         ).order_by(MeetingPage.id.asc())
         if args.limit:
             stmt = stmt.limit(args.limit)
@@ -224,6 +228,7 @@ async def main() -> None:
             platform,
             external_id,
             video_channel,
+            title,
         ) = row
         parsed = urlparse(source_url or "")
         host = (parsed.netloc or "").lower().split(":")[0]
@@ -238,6 +243,19 @@ async def main() -> None:
         # output. normalize_state_suffix() first, matching the order
         # _find_or_create_page() uses.
         raw = normalize_state_suffix(jurisdiction)
+        if platform == "telvue" and host in NAME_FROM_MEETING_TITLE_HOSTS:
+            # WO-1130: before WO-1100 a whole-customer TelVue pin was applied
+            # first, and the stored `jurisdiction` was rewritten to the pin's
+            # government ("Queen Anne's County, MD" on a Centreville council
+            # meeting). Re-resolving that string only reproduces the pin. The
+            # title still carries the meeting's own name, so re-derive it the
+            # way the adapter does now. No name in the title -> the stored
+            # string, and rung 1b falls back to the pin as before.
+            title_name, _body = meeting_name_from_title(
+                title, telvue_org_token(source_url or "")
+            )
+            if title_name:
+                raw = normalize_state_suffix(title_name)
         # WO-105: same page_hints_for() build as crud._resolve_page_
         # government() -- see that function's docstring for why this was
         # previously always empty in production.
@@ -305,6 +323,7 @@ async def main() -> None:
             _platform,
             _external_id,
             _video_channel,
+            _title,
         ) = row
         match = resolved[page_id]
         if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
