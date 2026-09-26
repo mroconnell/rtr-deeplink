@@ -21,6 +21,8 @@ asyncpg==0.31.0
     # via -r requirements.in
 attrs==26.1.0
     # via aiohttp
+beautifulsoup4==4.15.0
+    # via -r requirements.in
 certifi==2026.7.22
     # via
     #   httpcore
@@ -97,6 +99,8 @@ sentry-sdk==2.69.2
     # via -r requirements.in
 six==1.17.0
     # via langdetect
+soupsieve==2.10
+    # via beautifulsoup4
 sqlalchemy[asyncio]==2.0.54
     # via
     #   -r requirements.in
@@ -106,6 +110,7 @@ starlette==1.6.0
 typing-extensions==4.16.0
     # via
     #   alembic
+    #   beautifulsoup4
     #   fastapi
     #   pydantic
     #   pydantic-core
