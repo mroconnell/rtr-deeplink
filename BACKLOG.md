@@ -188,12 +188,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
-  [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
-  [HUMAN] Decide which hidden transcript versions to promote (WO-928…
-  [HUMAN] Run the re-transcription queue for the pre-voice-filter…
-  [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
-  [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
-  After WO-1089 deploys, re-resolve two real Vimeo meetings and read…
+  TelVue pages filed before WO-1100 keep the wrong government; the…  (5)
+    [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
+    [HUMAN] Decide which hidden transcript versions to promote (WO-928…
+    [HUMAN] Run the re-transcription queue for the pre-voice-filter…
+    [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
+    [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  Vimeo blocks Render: every caption fetch gets a challenge page, so no…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
   Mad River Valley TV's three playlist pins name no TelVue org token…
@@ -2072,6 +2073,27 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
+### TelVue pages filed before WO-1100 keep the wrong government; the backfill script cannot fix them `[HUMAN]`
+
+- **Issue**: WO-1100 (2026-09-26) files each TelVue meeting under the
+  government its own name identifies, not the station's whole-customer
+  pin. New resolves are right (checked live on 5 meetings the same day).
+  But `scripts/backfill_gov_id.py` re-resolves from each page's stored
+  `jurisdiction`, and on a pinned TelVue page that string was already
+  rewritten to the pin's government (e.g. "Queen Anne's County, MD" for a
+  Centreville council meeting). The meeting's own name is gone from the
+  row, so the backfill reproduces the old answer.
+- **Impact**: archived school-board and town meetings on multi-government
+  TelVue stations (49 customers have a whole-customer pin) stay filed
+  under the station's town or county until something re-files them.
+- **Next action**: Ryan picks one. (a) A small script that re-resolves
+  each archived `videoplayer.telvue.com` page from its stored title
+  through the WO-1100 path, dry run first. (b) Leave them; fix by hand
+  only when one is noticed.
+- **Constraint**: run any bulk re-file from the Archive service's Render
+  shell, dry run by default; never touch `manual_override` rows.
+- **History**: WO-1100 (PR #1504); `BACKLOG_DONE.md`'s WO-1100 entry.
+
 - **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
   - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
   - **Impact**: about 11 live pages show the wrong government; two meetings show twice; one promo trailer shows as a meeting.
@@ -2107,36 +2129,31 @@ of human step they need.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
 
-### After WO-1089 deploys, re-resolve two real Vimeo meetings and read the new "vimeo captions fallback" logs to see why the route comes and goes `[HUMAN]` `[WAIT]`
+### Vimeo blocks Render: every caption fetch gets a challenge page, so no Vimeo meeting gets a transcript on the server `[HUMAN]` `[WAIT]`
 
-- **Issue**: a real Vimeo meeting with a working CC button in the player
-  (Salisbury NC, `vimeo.com/1226646429`) got no transcript through this
-  app on 2026-09-26, even though the identical route worked on a
-  different Salisbury NC video three days earlier (`1223368476`, 1,336
-  real segments — see `BACKLOG_DONE.md`). Before WO-1089, every fallback
-  path was silent, so nobody could tell *why* a given meeting failed:
-  Playwright unavailable, the render timing out, no `<track>` rendered,
-  or the signed VTT fetch itself failing all looked identical. WO-1089
-  adds a stable, greppable log line (`"vimeo captions fallback"`, always
-  naming the video id) for every one of those reasons, on both the
-  existing headless-browser route and the new cheap plain-fetch route it
-  adds (tried first, before ever starting a browser).
-- **Impact**: 67 of 99 Vimeo pages in the Archive have a transcript and
-  32 don't (count as of this WO's investigation) — a materially
-  incomplete platform, and until this deploys nobody can read *why* any
-  specific one of the 32 failed without reproducing it by hand.
-- **Next action**: once WO-1089 deploys, resolve `vimeo.com/1226646429`
-  and `vimeo.com/1212025580` once each through the webapp, then read the
-  Render logs for lines starting `"vimeo captions fallback"` naming
-  those two video ids. Report what each one says (challenge, no browser,
-  no track, fetch failure, etc.) — that's the actual diagnosis this WO
-  couldn't finish without a deploy.
-- **Constraint**: if Render's own fetch of the player page gets a
-  challenge page (the same "Verify you are human" class of block this
-  module already documents), stop there and report it rather than
-  trying anything to get past it, per CLAUDE.md's "politely" rule.
-- **History**: this WO (WO-1089, 2026-09-26); `app/platforms/vimeo.py`'s
-  own module docstring has the full investigation.
+- **Issue**: after WO-1089 deployed (2026-09-26), the new log lines showed
+  the same result on every try, for both test videos (`1226646429`, three
+  tries; `1212025580`, one): the plain fetch of the player page returned
+  a challenge page (HTTP 401), and the headless browser then found no
+  `<track>` element. `1212025580` is the video whose saved 2026-08-31 page
+  carried working captions, so what changed is Vimeo's treatment of
+  Render, not the video. The browser most likely got the challenge page
+  too, but the log does not record the rendered page's title, so that is
+  not confirmed.
+- **Impact**: no new Vimeo meeting gets a transcript on the server. 67 of
+  99 archived Vimeo pages have one (count at WO-1089), from before the
+  block. rtr-discovery keeps Vimeo at Tier 2 (captions only the local path
+  can read).
+- **Next action**: none required. Optional: log the rendered page's title
+  beside "no <track> element found", to confirm the browser is challenged
+  too. If a later log shows a caption fetch succeeding, rtr-discovery can
+  move Vimeo back to Tier 1 with its one-line change.
+- **Constraint**: never try to get past the challenge (CLAUDE.md's
+  "politely" rule). A webapp resolve serves a saved earlier result for a
+  video it has already found, so a re-test needs a meeting it has not
+  seen, or the page's "Refresh this page" button (one-hour cooldown).
+- **History**: WO-1089 (PR #1500, 2026-09-26); `app/platforms/vimeo.py`'s
+  module docstring.
 
 ### Existing Invintus pages need one re-resolve after WO-1065 deploys, to find captions carried in the video `[HUMAN]` `[WAIT]`
 
