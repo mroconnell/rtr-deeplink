@@ -1,5 +1,29 @@
 # Backlog — done
 
+## WO-1088: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
+
+**What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.
+
+**What this actually broke.** Only Sliq Harmony and BoxCast, in practice. ChampDS, Invintus and TelVue each already have their own `passive_verify` listing walker (lister a), and `_list_via_discovery()` has always had an earlier check that skips rtr-discovery entirely when a walker is registered for the platform — so lister (b) was never reached for those three regardless of this bug. Sliq Harmony and BoxCast have no such walker, so lister (b) was their only way to get a listing, and it never worked.
+
+**What was fixed.** `app/platforms/meeting_finder/listing.py`'s `_list_via_discovery()` now builds the tenant name with `app/utils/tenant_key.py`'s `tenant_name()` (the one place this repo defines a tenant's name; rtr-discovery's own `discovery.tenants.tenant_for_url()` imports this exact module and delegates to the same rule) instead of a bare `urlparse().netloc`. On a keyed website whose URL still carries its key, that's `host#key` (e.g. `play.champds.com#atlantaga`); on every other platform it's unchanged — the bare host, same as before. `identify.py`'s `_account_url_for_platform()` already keeps a keyed URL's full path in `account_url` rather than collapsing it to the bare host, so the key was there to use; lister (b) just wasn't reading it.
+
+**Result**, one real customer address per keyed platform (each sourced from `app/utils/jurisdiction_data/tenant_overrides.csv`, cited per row):
+
+| Platform | Real customer address | What `list_tenant()` got before | What it gets after | Result |
+|---|---|---|---|---|
+| ChampDS | `play.champds.com/atlantaga/` (Atlanta, GA) | `play.champds.com` | `play.champds.com#atlantaga` | Unchanged in production — ChampDS keeps its own listing walker (lister a); lister (b) is never reached for it either way |
+| Invintus | `player.invintus.com/?clientID=4853176732` (Leon County, FL) | `player.invintus.com` | `player.invintus.com#4853176732` | Unchanged in production — same reason, Invintus has its own walker |
+| TelVue | `videoplayer.telvue.com/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/media/1041369` (City of Kalamazoo, MI) | `videoplayer.telvue.com` | `videoplayer.telvue.com#2bm0gzQWeVRzdCgvjXziXKwO3icSKh05` | Unchanged in production — same reason, TelVue has its own walker |
+| Sliq Harmony | `sg001-harmony.sliq.net/00284/` (Arkansas Legislature) | `sg001-harmony.sliq.net` (walker refused: no tenant key) | `sg001-harmony.sliq.net#00284` | Fixed — Sliq Harmony has no listing walker, so this is the real path; a Sliq Harmony customer can now be listed at all |
+| BoxCast | `boxcast.tv/channel/x1jps4n28nlgtaozsv5y` (City of Wilmington, OH) | `boxcast.tv` (walker refused: no tenant key) | `boxcast.tv#x1jps4n28nlgtaozsv5y` | Fixed — BoxCast has no listing walker either; same fix |
+
+**Tests.** Five new tests in `tests/test_wo1028_meeting_finder_listing.py`, one per platform above, each asserting the exact `(platform, netloc, limit, params)` tuple `list_tenant()` receives (mocked — no network). For ChampDS/Invintus/TelVue, the test removes that platform's `passive_verify` walker registration first (restored by the file's existing autouse fixture) to exercise `_list_via_discovery()`'s own netloc-building in isolation, since production traffic never reaches it for those three; the test docstrings say so. Sliq Harmony and BoxCast need no such removal — they were already exercising the real path.
+
+**Caution.** ChampDS, Invintus and TelVue's own walkers are kept, not made redundant by this fix — they're still the only lister that runs for those three platforms in production, and this PR doesn't change that. If one of those walkers is ever removed, lister (b) would then be reached for that platform and would now carry the key correctly — a latent correctness fix for that future, not something observable today.
+
+**Docs.** Updated `listing.py`'s own module docstring (lister b's description) to say the tenant name now carries a keyed platform's key, and its Swagit-views-page comment (which referenced the old bare-netloc behavior) to say Swagit specifically is unaffected, since it isn't a keyed platform.
+
 ## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
 
 **What was tested and why.** Ryan reported that Meeting Finder said several sites were "domain dead" (`dns-unresolvable`) when the sites clearly worked — he could visit them in a browser. Five real examples: streaming.easdpa.org, video.collierschools.com, streamgages.springfieldmo.gov, media.polson.k12.mt.us, streaming.usd367.org. Each one still showed real progress in its own notes ("no-meeting-nor-video; dns-unresolvable; picked by..."), which meant Meeting Finder DID find real content, then threw that result away and reported the site as dead anyway.

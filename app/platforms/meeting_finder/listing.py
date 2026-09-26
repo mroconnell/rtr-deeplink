@@ -37,6 +37,24 @@ gives, stopping at the first that returns candidates:
      YouTube-drip rule; `list_tenant()` itself already refuses it, this
      module refuses it first so a missing/stale rtr-discovery checkout
      can never accidentally reach that refusal via some other path.
+     **The account name handed to `list_tenant()` is `host#key` on a
+     keyed website that carries its key (WO-1088), not the bare host**
+     -- `app/utils/tenant_key.py`'s `tenant_name()`, the one place this
+     repo defines a tenant's name (rtr-discovery's own `discovery.
+     tenants.tenant_for_url()` imports this exact module and delegates
+     to the same rule over `RTR_DEEPLINK_PATH`, so calling it directly
+     here avoids a second, more fragile import chain for a rule already
+     defined in this repo). Before WO-1088 this was unconditionally
+     `urlparse(account_url).netloc`, so every keyed-website walker
+     (`champds`, `invintus`, `telvue`, `sliq_harmony`, `boxcast` --
+     `Enumerator.tenant_keyed`) raised `TenantNotEnumerable` on the
+     missing key and lister (b) always came back empty for them. In
+     practice this only ever blocked Sliq Harmony and BoxCast: ChampDS,
+     Invintus and TelVue already have their own passive_verify walkers
+     (lister a), and the check just above never even lets lister (b)
+     run for a platform a walker is registered for -- so this fix
+     changes nothing for those three today, it only fixes the two
+     platforms lister (b) actually serves.
   c. The adapter's own meeting list -- some adapters answer a listing
      page with a `CalendarPageError` pick-list instead of one meeting
      (legistar, municode_meetings, vimeo, wistia, tampa).
@@ -141,6 +159,7 @@ from app.platforms.cablecast import (
 )
 from app.platforms.direct_file import is_direct_file_url
 from app.platforms.swagit import known_view_for
+from app.utils.tenant_key import tenant_name
 
 from .fetch import BudgetExceeded, Fetcher
 from .models import Candidate
@@ -727,10 +746,11 @@ async def _list_via_wordpress(
 # `SwagitEnumerator` already parses this exact `table#video-table` shape
 # for its tab-slug pages -- the row parsing below is copied from there
 # (same real shape, not re-derived), just pointed at a `/views/{id}` URL
-# lister (b) never reaches with the specific path intact (see
-# `_list_via_discovery()`'s own docstring: it passes only the account
-# URL's `netloc` to `list_tenant()`, discarding the path). Tried before
-# lister (b) so a known-good `/views/{id}` URL is used directly rather
+# lister (b) never reaches with the specific path intact: Swagit isn't
+# a keyed platform (WO-1088's `tenant_name()` fix to `_list_via_
+# discovery()` only keeps a keyed website's `#key`), so it still passes
+# rtr-discovery only the bare `netloc`, discarding the path. Tried
+# before lister (b) so a known-good `/views/{id}` URL is used directly rather
 # than falling through to a bare-host tenant walk that lands back on an
 # empty tab-slug default. A bare `/videos/{id}` URL is itself a single
 # real candidate -- no listing page to fetch at all.
@@ -929,7 +949,17 @@ async def _list_via_discovery(
                 f"({_discovery_import_failed}) -- degrading to the next lister"
             ),
         )
-    netloc = urlparse(account_url).netloc
+    # WO-1088: `tenant_name()` returns `host#key` on a keyed shared
+    # website whose URL still carries its key (identify.py's own
+    # `_account_url_for_platform()` is what keeps the key in `account_
+    # url` in the first place -- it only collapses to the bare host when
+    # there's no tenant key to lose), and the bare host on every other
+    # platform, same as before. Falls back to the raw netloc when
+    # `tenant_name()` finds no tenant at all (an out-of-scope host, or a
+    # keyed website whose URL doesn't carry its key) -- unchanged from
+    # the pre-fix behavior, and still lets a keyed enumerator raise its
+    # own `TenantNotEnumerable` rather than this module guessing.
+    netloc = tenant_name(account_url) or urlparse(account_url).netloc
     if not netloc:
         return None
     try:
