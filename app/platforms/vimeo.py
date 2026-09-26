@@ -146,6 +146,42 @@ metadata already come for free from oEmbed -- worth it because an
 approximate transcript is one of this app's two core value props (see
 CLAUDE.md's "why this exists"), and because the failure mode is silent
 degradation, never a broken resolve.
+
+## The headless render sometimes wasn't even necessary, and the failure was silent (WO-1089, 2026-09-26)
+
+Re-verified live 2026-09-26: a real Vimeo meeting with a working CC
+button in the player (Salisbury NC, `vimeo.com/1226646429`) got no
+transcript through this app that day, even though the identical route
+worked on a different Salisbury NC video three days earlier
+(`1223368476`, 1,336 real segments -- see BACKLOG_DONE.md). 67 of 99
+Vimeo pages in the Archive have a transcript and 32 don't, so this route
+genuinely comes and goes -- and until this change, every one of those 32
+failures logged nothing at all: `_fetch_captions_via_headless_browser()`
+fell back to `_NO_CAPTIONS_WARNING` the same way whether Playwright was
+missing, the render timed out, no `<track>` rendered, or the signed VTT
+fetch itself failed, with no line in the logs saying which. Two things
+follow, both below: (1) every one of those branches now logs through
+`_log_caption_fallback()`, one line each, under the stable, greppable
+prefix `"vimeo captions fallback"`, always naming the video id. (2) a
+cheaper route is tried first, before ever starting a browser: a plain,
+unauthenticated GET of the player page itself sometimes isn't
+challenged at all (a real Chromium render is only needed to get past a
+Cloudflare gate), and when it isn't, the page's own inline
+`window.playerConfig.request.text_tracks` already carries the same real
+signed caption URL a `<track>` element would -- confirmed against a real,
+unmodified 2026-08-31 capture (`tests/fixtures/vimeo/
+player_salisbury_1212025580.html`, the same fixture the headless-browser
+route's own test already uses). `_fetch_captions()` tries this plain
+route first and only falls back to the headless browser when it can't be
+used, for any reason. Per CLAUDE.md's "politely" rule, the plain fetch
+never tries to get past a real challenge when it hits one (401/403/429,
+or a challenge-page body like Cloudflare's "Verify you are human") -- it
+just logs that specific reason and moves on to the browser path, the same
+one this module already used exclusively before.
+
+This doesn't explain *why* the route comes and goes -- that diagnosis
+needs a deploy and then real resolves through the webapp against the two
+videos above, reading the new log lines (see BACKLOG.md).
 """
 
 import asyncio
@@ -268,6 +304,46 @@ _MONTHS = {
     "november": 11,
     "december": 12,
 }
+
+# WO-1089, 2026-09-26: every path that ends -- or continues past a
+# recoverable stage -- toward the video-only caption fallback logs
+# through `_log_caption_fallback()`, one line each, under this stable,
+# greppable prefix, always naming the video id. Before this, several of
+# these branches (no headless browser, no `<track>` found) logged
+# nothing at all -- see this module's docstring for the real incident
+# that motivated it.
+_CAPTION_FALLBACK_LOG_PREFIX = "vimeo captions fallback"
+
+
+def _log_caption_fallback(video_id: str, reason: str) -> None:
+    logger.warning("%s: %s (video %s)", _CAPTION_FALLBACK_LOG_PREFIX, reason, video_id)
+
+
+# The cheap route's own challenge detection (WO-1089, 2026-09-26) --
+# separate from generic_fallback.py's WAF markers since this is Vimeo's
+# own real observed challenge, not a government host's. 401/403/429
+# match what's already been seen live against Vimeo directly: a real
+# Cloudflare "Verify you are human" page (this module's docstring,
+# Spokane WA) and the plain 401 challenge page both a cloud session and
+# Ryan's own Mac got fetching a real player page directly on 2026-09-26.
+# Per CLAUDE.md's "politely" rule, hitting one of these is the signal to
+# stop and fall back to the browser -- never to try to get past it.
+_CHALLENGE_STATUSES = (401, 403, 429)
+_CHALLENGE_BODY_MARKERS = (
+    "verify you are human",
+    "just a moment",
+    "attention required",
+    "checking your browser",
+)
+_CHALLENGE_BODY_SNIFF_CHARS = 4096
+
+
+def _looks_like_challenge_page(body: Optional[str]) -> bool:
+    if not body:
+        return False
+    snippet = body[:_CHALLENGE_BODY_SNIFF_CHARS].lower()
+    return any(marker in snippet for marker in _CHALLENGE_BODY_MARKERS)
+
 
 _NO_CAPTIONS_WARNING = (
     "Vimeo doesn't hand out caption files to anything but its own player, so we "
@@ -436,6 +512,87 @@ def _extract_caption_track(html: str) -> Optional[Tuple[str, str]]:
     return None
 
 
+def _extract_text_tracks_from_player_page(html: str) -> Optional[list]:
+    """The real `request.text_tracks` array off a player page's own
+    `window.playerConfig`, when the plain GET wasn't challenged -- e.g.
+    `[{"id":314604795,"lang":"en-x-autogen","url":"https://captions.
+    vimeo.com/captions/314604795.vtt?expires=...&sig=...",
+    "kind":"subtitles","label":"English (auto-generated)",
+    "provenance":"ai_generated","default":true}]`, confirmed present in a
+    real, unmodified 2026-08-31 capture
+    (`tests/fixtures/vimeo/player_salisbury_1212025580.html`) of the same
+    video the headless-browser route's own test already uses.
+
+    Uses `json.JSONDecoder().raw_decode()` at the marker's offset rather
+    than a regex for the closing brace: `playerConfig` is one huge,
+    deeply-nested object (media manifests, ab-test flags, and more), and
+    `raw_decode()` parses exactly one valid JSON value starting there and
+    stops, ignoring whatever JS statement follows (a trailing `;` here) --
+    safe against nested braces in a way a non-greedy regex isn't.
+
+    None for anything that doesn't match this shape (`playerConfig`
+    missing, not real JSON, no `text_tracks` list) -- a normal, silent
+    "this route doesn't apply here" outcome, not a wall worth reporting;
+    only a genuine challenge response is logged (see
+    `_fetch_captions_via_player_page_directly()`)."""
+    marker = "window.playerConfig = "
+    idx = html.find(marker)
+    if idx == -1:
+        return None
+    try:
+        config, _end = json.JSONDecoder().raw_decode(html, idx + len(marker))
+    except ValueError:
+        return None
+    if not isinstance(config, dict):
+        return None
+    tracks = (config.get("request") or {}).get("text_tracks")
+    return tracks if isinstance(tracks, list) and tracks else None
+
+
+def _choose_text_track(tracks: list) -> Optional[Tuple[str, str]]:
+    """`(caption_url, lang)` for the first usable entry in a
+    `text_tracks` list -- chosen the same way `_extract_caption_track()`
+    picks off the rendered `<track>` elements: the first real
+    `kind="subtitles"`/`"captions"` entry with a URL, in listed order.
+    No separate language-preference pass exists on that path either, so
+    this mirrors it exactly rather than inventing a new rule only here."""
+    for track in tracks:
+        if not isinstance(track, dict):
+            continue
+        kind = str(track.get("kind") or "").strip().lower()
+        url = str(track.get("url") or "").strip()
+        if kind in ("subtitles", "captions") and url:
+            return url, str(track.get("lang") or "").strip()
+    return None
+
+
+async def _fetch_player_page_directly(
+    video_id: str, privacy_hash: Optional[str]
+) -> Tuple[Optional[str], Optional[int]]:
+    """`(body, status)` for a plain, unauthenticated GET of the player
+    page -- the cheap route tried before ever starting a headless
+    browser (WO-1089, 2026-09-26). A module-level function, not a
+    classmethod, so a test can monkeypatch it directly -- the same
+    pattern this suite already uses for `fetch_via_browser`.
+
+    `status` is still returned on a non-exception failure (a real HTTP
+    response, just not a 200) so the caller can tell a genuine challenge
+    (401/403/429) apart from every other kind of failure and log it
+    specifically; only a raised exception (network error, DNS failure)
+    gives back `(None, None)`."""
+    url = embed_url(video_id, privacy_hash)
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with guarded_get(
+                session, url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
+                status = response.status
+                body = await read_capped_text(response)
+                return body, status
+    except Exception:
+        return None, None
+
+
 def _date_from_title(title: Optional[str]) -> Optional[str]:
     if not title:
         return None
@@ -578,16 +735,15 @@ class VimeoAssetFinder(AssetFinder):
                 "above should still work."
             ]
 
-        # See this module's docstring, "Captions ARE server-reachable after
-        # all" (2026-08-31): a headless-browser render of the player page
-        # itself (not /config, which still fails even there) carries a
-        # real signed caption URL in its DOM. Purely additive -- any
-        # failure here (Playwright unavailable, no <track>, a Cloudflare
-        # challenge, the signed fetch itself failing) leaves the video-only
-        # `_NO_CAPTIONS_WARNING` set above untouched.
-        cues, caption_language = await cls._fetch_captions_via_headless_browser(
-            video_id, privacy_hash
-        )
+        # See this module's docstring for both routes tried here: the
+        # cheap plain-fetch route (WO-1089, 2026-09-26) is tried first,
+        # then the headless-browser render (2026-08-31) whenever that
+        # can't be used. Purely additive -- any failure on either route
+        # (Playwright unavailable, no <track>/no `text_tracks`, a
+        # Cloudflare challenge, a signed fetch failing) leaves the
+        # video-only `_NO_CAPTIONS_WARNING` set above untouched, and is
+        # logged (see `_log_caption_fallback()`).
+        cues, caption_language = await cls._fetch_captions(video_id, privacy_hash)
         if cues:
             resolved.segments = [TranscriptSegment(**cue) for cue in cues]
             resolved.transcript_language = caption_language
@@ -603,6 +759,71 @@ class VimeoAssetFinder(AssetFinder):
                     "bug on our end) -- treat it as approximate."
                 )
         return resolved
+
+    @classmethod
+    async def _fetch_captions(
+        cls, video_id: str, privacy_hash: Optional[str]
+    ) -> Tuple[Optional[List[dict]], Optional[str]]:
+        """`(cues, language)`, trying the cheap plain-fetch route first
+        (WO-1089, 2026-09-26) and only starting a headless browser when
+        that route can't be used -- see this module's docstring for why
+        the cheap route sometimes works and sometimes doesn't. Every
+        failure reason on either route is logged (see
+        `_log_caption_fallback()`); this method itself never raises, so
+        `resolve_video_id()` can always fall back to the video-only
+        warning."""
+        cues, language = await cls._fetch_captions_via_player_page_directly(
+            video_id, privacy_hash
+        )
+        if cues:
+            return cues, language
+        return await cls._fetch_captions_via_headless_browser(video_id, privacy_hash)
+
+    @classmethod
+    async def _fetch_captions_via_player_page_directly(
+        cls, video_id: str, privacy_hash: Optional[str]
+    ) -> Tuple[Optional[List[dict]], Optional[str]]:
+        """`(cues, language)` for the real signed caption track read
+        straight out of a plain, unauthenticated GET of the player page's
+        own `window.playerConfig.request.text_tracks` (see this module's
+        docstring) -- or `(None, None)` on any failure, including a
+        genuine challenge (in which case that's logged and this falls
+        back to the headless-browser route, never attempting to get past
+        the challenge itself, per CLAUDE.md's "politely" rule)."""
+        body, status = await _fetch_player_page_directly(video_id, privacy_hash)
+        if status in _CHALLENGE_STATUSES or _looks_like_challenge_page(body):
+            _log_caption_fallback(
+                video_id,
+                f"plain fetch of the player page got a challenge (HTTP {status})",
+            )
+            return None, None
+        if status != 200 or not body:
+            return None, None
+
+        tracks = _extract_text_tracks_from_player_page(body)
+        if not tracks:
+            return None, None
+        chosen = _choose_text_track(tracks)
+        if chosen is None:
+            return None, None
+        caption_url, lang = chosen
+
+        caption_body = await cls._fetch(caption_url)
+        if not caption_body:
+            _log_caption_fallback(
+                video_id, "signed caption URL fetch failed (plain-fetch route)"
+            )
+            return None, None
+        cues, _fallback_text = parse_captions_by_extension(caption_url, caption_body)
+        if not cues:
+            _log_caption_fallback(
+                video_id, "caption file parsed to zero cues (plain-fetch route)"
+            )
+            return None, None
+        language = detect_language_from_texts(c.get("text") for c in cues) or (
+            lang.split("-")[0].lower() if lang else None
+        )
+        return cues, language
 
     @classmethod
     async def _fetch_captions_via_headless_browser(
@@ -622,6 +843,7 @@ class VimeoAssetFinder(AssetFinder):
                 fetch_via_browser(embed_url(video_id, privacy_hash)), timeout=30
             )
         except HeadlessBrowserUnavailable:
+            _log_caption_fallback(video_id, "no headless browser available")
             return None, None
         except asyncio.TimeoutError:
             # `fetch_via_browser()`'s own `page.goto()` already has a 20s
@@ -632,9 +854,12 @@ class VimeoAssetFinder(AssetFinder):
             # indefinitely rather than raising. This outer bound makes
             # "no captions" a guaranteed worst case instead of a hung
             # request -- never worse than the video-only fallback below.
-            logger.warning("Vimeo headless caption fetch timed out for %s", video_id)
+            _log_caption_fallback(video_id, "headless browser fetch timed out")
             return None, None
         except Exception:
+            _log_caption_fallback(
+                video_id, "headless browser fetch raised an exception"
+            )
             logger.warning(
                 "Vimeo headless caption fetch failed for %s", video_id, exc_info=True
             )
@@ -642,14 +867,17 @@ class VimeoAssetFinder(AssetFinder):
 
         track = _extract_caption_track(html)
         if track is None:
+            _log_caption_fallback(video_id, "no <track> element found on player page")
             return None, None
         caption_url, srclang = track
 
         body = await cls._fetch(caption_url)
         if not body:
+            _log_caption_fallback(video_id, "signed caption URL fetch failed")
             return None, None
         cues, _fallback_text = parse_captions_by_extension(caption_url, body)
         if not cues:
+            _log_caption_fallback(video_id, "caption file parsed to zero cues")
             return None, None
         language = detect_language_from_texts(c.get("text") for c in cues) or (
             srclang.split("-")[0].lower() if srclang else None
