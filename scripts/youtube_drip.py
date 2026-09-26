@@ -107,6 +107,20 @@ LOCAL_PROBE_SIDECAR_PATH = (
 )
 DEFAULT_STATE_DIR = Path.home() / ".rtr" / "youtube_drip"
 
+# WO-1027 (2026-09-25): the `leads` lane. Ryan's hand-check spec for
+# youtube_channel_leads.csv (Steps 2-4 in scripts/youtube_leads_fetch.py's
+# docstring), run one row per tick like every other lane -- never a
+# separate process, since that would add to the same one-connection
+# YouTube budget without the tick loop's own accounting knowing about it.
+# The input CSV, progress, results log and the local (gitignored,
+# unfolded) queue-line buffer for a `pass` verdict all live next to the
+# drip's own state files, not in the repo -- it's a data snapshot Ryan
+# supplied directly, not something this checkout tracks.
+LEADS_QUEUE_CSV = DEFAULT_STATE_DIR / "leads_queue.csv"
+LEADS_PROGRESS_PATH = DEFAULT_STATE_DIR / "leads_progress.json"
+LEADS_RESULTS_PATH = DEFAULT_STATE_DIR / "leads_results.jsonl"
+LOCAL_LEADS_QUEUE_BUFFER = REPO_ROOT / "scripts" / "tier3_leads_new_lines.local.txt"
+
 SPACING_SECONDS = 180.0
 SPACING_JITTER_SECONDS = 60.0
 BLOCK_SLEEPS_SECONDS = (900, 1800, 3600, 7200, 14400)
@@ -847,6 +861,96 @@ class Drip:
         )
         return True, None
 
+    async def lane_leads(
+        self, session: aiohttp.ClientSession
+    ) -> Tuple[bool, Optional[float]]:
+        """WO-1027: one row of youtube_channel_leads.csv per tick, Ryan's
+        2026-09-25 hand-check spec (scripts/youtube_leads_fetch.py). No
+        `session` use -- yt-dlp is a subprocess, not this process's own
+        aiohttp client -- but the signature matches every other lane's so
+        `tick()` doesn't need a special case."""
+        import csv
+        import json
+
+        from scripts.youtube_leads_fetch import process_row
+
+        if not LEADS_QUEUE_CSV.exists():
+            return False, None
+
+        progress = {"done_urls": [], "passed_govs": []}
+        if LEADS_PROGRESS_PATH.exists():
+            progress = json.loads(LEADS_PROGRESS_PATH.read_text())
+        done = set(progress["done_urls"])
+        passed_govs = set(progress["passed_govs"])
+
+        with LEADS_QUEUE_CSV.open(newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+
+        row = next(
+            (
+                r
+                for r in rows
+                if r["channel_url"] not in done
+                and (r.get("gov_id") or "") not in passed_govs
+            ),
+            None,
+        )
+        if row is None:
+            return False, None
+
+        verdict = process_row(row)
+
+        if verdict.verdict == "needs-human" and "block signature" in verdict.reason:
+            # A real block: don't consume this row (retry it next time),
+            # and pause every lane the same way captions/audio already do.
+            return True, self._block(
+                "blocked_until", "block_level", f"leads lane: {verdict.reason}"
+            )
+
+        done.add(row["channel_url"])
+        if verdict.verdict == "pass" and verdict.picked_video_url:
+            gid = (row.get("gov_id") or "").strip()
+            if gid:
+                passed_govs.add(gid)
+            from app.platforms.queue_probe import append_queue_line
+
+            append_queue_line(
+                verdict.picked_video_url,
+                gov_id=gid,
+                queue_path=LOCAL_LEADS_QUEUE_BUFFER,
+            )
+
+        LEADS_PROGRESS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        LEADS_PROGRESS_PATH.write_text(
+            json.dumps({"done_urls": sorted(done), "passed_govs": sorted(passed_govs)})
+        )
+        with LEADS_RESULTS_PATH.open("a", encoding="utf-8") as f:
+            f.write(
+                json.dumps(
+                    {
+                        "channel_url": row["channel_url"],
+                        "gov_id": row.get("gov_id"),
+                        "government": row.get("government"),
+                        "kind": row.get("kind"),
+                        "verdict": verdict.verdict,
+                        "reason": verdict.reason,
+                        "picked_video_url": verdict.picked_video_url,
+                        "picked_title": verdict.picked_title,
+                        "identity_tier": verdict.identity_tier,
+                        "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    }
+                )
+                + "\n"
+            )
+
+        logger.info(
+            "leads    %-18s %s -- %s",
+            verdict.verdict,
+            row.get("government") or row.get("gov_id"),
+            verdict.reason[:140],
+        )
+        return True, None
+
     async def tick(self, session: aiohttp.ClientSession, status_csv: Path) -> float:
         """One scheduling step. Returns how long to sleep before the next."""
         self.state.rollover(status_csv)
@@ -860,6 +964,8 @@ class Drip:
             order.append(self.lane_feed)
         if "audio" in self.lanes:
             order.append(self.lane_audio)
+        if "leads" in self.lanes:
+            order.append(self.lane_leads)
         try:
             for lane in order:
                 touched, override = await lane(session)
@@ -958,6 +1064,26 @@ async def advance(state: State) -> None:
         f"folded {folded} new probe row(s) from the local buffer into "
         f"{DEFAULT_SIDECAR_PATH.name}; local buffer cleared"
     )
+
+    leads_folded = 0
+    if LOCAL_LEADS_QUEUE_BUFFER.exists():
+        from app.platforms.queue_probe import append_queue_line
+
+        for line in LOCAL_LEADS_QUEUE_BUFFER.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+            url = parts[0]
+            source = parts[1] if len(parts) > 1 and parts[1] else None
+            gid = parts[2] if len(parts) > 2 else ""
+            if append_queue_line(url, source, gov_id=gid, queue_path=QUEUE_FILE):
+                leads_folded += 1
+        LOCAL_LEADS_QUEUE_BUFFER.unlink()
+        print(
+            f"folded {leads_folded} new leads-lane queue line(s) from the local "
+            f"buffer into {QUEUE_FILE.name}; local buffer cleared"
+        )
 
     async with aiohttp.ClientSession() as session:
         try:
@@ -1078,7 +1204,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--lanes",
         default="captions,feed,audio",
-        help="comma-separated subset of captions,feed,audio",
+        help="comma-separated subset of captions,feed,audio,leads",
     )
     p.add_argument("--spacing-seconds", type=float, default=SPACING_SECONDS)
     p.add_argument("--audio-per-day", type=int, default=AUDIO_DOWNLOADS_PER_DAY)
