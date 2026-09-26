@@ -774,6 +774,47 @@ re-paced (avoids doubling the wait for its own already-paced fetches),
 and for the `contextvars` mechanics that keep two concurrent governments'
 counts from mixing.
 
+## Second pass, one more hop, adaptive budget (WO-1076, 2026-09-25)
+
+Calibration set D (2026-09-25) found 1,581 known-video governments, 728
+found (46%): 380 ending `youtube-lead-only` (about 190 of those had a
+known non-YouTube video platform on file), 149 ending
+`meeting-without-video`, and about 70 running out of budget. Three
+rescues, all in `runner.py`, all bounded so a government that never
+shows promising evidence pays nothing extra:
+
+1. **Second pass** (`_second_pass_for_youtube_only()`): before settling
+   for `OUTCOME_YOUTUBE_LEAD_ONLY` (no platform account, no meeting video
+   anywhere in the walk), spend `second_pass_extra_fetches` more (default
+   8, `--second-pass-extra-fetches`) on a focused pass across every
+   fork's own already-fetched page, following only links whose text/URL
+   carries site-nav vocabulary (Meetings / Agendas & Minutes / Government
+   / Council / Board / Watch / Video / Media / TV --
+   `_SECOND_PASS_NAV_WORDS_RE`). Never fires once real, non-YouTube
+   evidence (a meeting-without-video listing, a foreign-hub lead) is
+   already on record -- that walk reports the real finding instead.
+2. **One more hop** (the `_deep_step()` `elif` branch, `_CONTEXT_HOP_
+   WORDS_RE`): when the ordinary hop budget for a fork is spent but the
+   page in hand is a real meetings/agenda hub (`hop.is_document_hub()`)
+   or the walk already found a meeting with no video, one extra hop is
+   allowed for a link whose own anchor text or URL carries a broadcast
+   context word (video/watch/broadcast/stream/replay/TV/channel). Test
+   case: Lake Oswego, OR (`citycouncil` -> `city-council-meetings` -> the
+   TVCTV sentence -> `tvctv.org`, three real hops past a homepage that
+   itself already cost one). One extra hop total per government
+   (`_WalkState.bonus_hop_available`), not a second `max_hops`.
+3. **Adaptive budget** (`_maybe_raise_budget()`): once a government's
+   walk turns up a meetings page, a recognized video-platform account, or
+   a meeting-without-video listing, its own fetch cap is raised to
+   `adaptive_max_fetches` (default 24, `--adaptive-max-fetches`) instead
+   of stopping at the ordinary default -- once per walk, logged on the
+   Verdict row's own `note` ("adaptive budget: raised to N fetches
+   (reason)").
+
+Live before/after numbers against calibration set D's own youtube-lead-
+only/meeting-without-video/budget-exhausted governments are in this WO's
+own PR description.
+
 ## Follow-ups (slow queues, their own paced runs)
 
 | Queue | Fed by | What it does |

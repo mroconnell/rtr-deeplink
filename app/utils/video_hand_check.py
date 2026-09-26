@@ -162,22 +162,59 @@ def _hand_check_phrase_hit(haystack_lower: str, phrase: str) -> bool:
     return re.search(r"\b" + re.escape(phrase) + r"\b", haystack_lower) is not None
 
 
+# WO-1076 addendum (Ryan, 2026-09-25): a hand-check of calibration set D's
+# weak leads found 10 real false positives -- Glendale USD, Nassau County
+# SD (FL), Prince George County Public Schools (VA), South Windsor SD,
+# Baltimore County PS, Calvert County PS, Midland PS, Falmouth Schools
+# (ME), South Pasadena USD, Lake Oswego SD -- every one a school
+# district's OWN board/committee meeting, rejected by the very phrases
+# above ("school board"/"board of education"/"school committee") that
+# exist to catch a DIFFERENT government's video. The same rejection is
+# right when the searched government is a town/city (Coventry CT,
+# Springfield MA, Sanford ME, Windsor CT all got their school district's
+# board, not their own). These three phrases are the only ones in
+# `_HAND_CHECK_KIND_A_PHRASES` that can ever name the searched
+# government's OWN body -- every other phrase there (a county assessor, a
+# state DOT district, a regional commission, a court system) never does,
+# whatever `gov_kind` is, so this set stays narrow on purpose.
+_SCHOOL_DISTRICT_OWN_BODY_PHRASES = frozenset(
+    {"school board", "board of education", "school committee"}
+)
+
+
+def _gov_kind_is_school_district(gov_kind) -> bool:
+    """Accepts either the registry's own `gov_type` spelling
+    (`app.utils.gov_registry.classify.SCHOOL_DISTRICT`, `"school_district"`)
+    or a plain-English research-CSV value (`"school district"`, `"sd"`) --
+    callers pass either shape (see this function's own call site)."""
+    normalized = (gov_kind or "").strip().lower().replace(" ", "_")
+    return normalized in ("school_district", "sd")
+
+
 def classify_video_hand_check(title, channel_text, gov_name, gov_kind):
     """Returns None (no concern), or (kind, reason) where kind is "A" or
-    "B" -- see module comment above. `gov_name`/`gov_kind` are accepted
-    for a future, more targeted check but unused by today's phrase list
-    (every phrase here is already specific enough not to need them --
-    e.g. "school board" never means THIS government's own board, whatever
-    its name). `channel_text` is whatever channel-derived text the
-    adapter already resolved (YouTube's `video_channel` handle plus its
-    own validated `jurisdiction` guess -- see `resolve_candidate()`'s
-    caller) -- no extra network call is made here, this only reads
-    fields the resolve step already populated."""
+    "B" -- see module comment above. `channel_text` is whatever channel-
+    derived text the adapter already resolved (YouTube's `video_channel`
+    handle plus its own validated `jurisdiction` guess -- see
+    `resolve_candidate()`'s caller) -- no extra network call is made
+    here, this only reads fields the resolve step already populated.
+
+    `gov_kind`: used ONLY to un-reject a school district's own board/
+    committee meeting (`_SCHOOL_DISTRICT_OWN_BODY_PHRASES`) when the
+    government being searched IS a school district -- see that
+    constant's own comment for the real false positives this fixes.
+    Every other Kind A/B phrase stays gov_kind-independent, since none of
+    them can ever be the searched government's own meeting (`gov_name`
+    itself remains unused by today's phrase list for the same reason --
+    accepted for a future, more targeted check)."""
     title_low = (title or "").lower()
     channel_low = (channel_text or "").lower()
     haystack = f"{title_low} {channel_low}"
+    is_school_district = _gov_kind_is_school_district(gov_kind)
 
     for phrase, owner_hint in _HAND_CHECK_KIND_A_PHRASES:
+        if is_school_district and phrase in _SCHOOL_DISTRICT_OWN_BODY_PHRASES:
+            continue
         if _hand_check_phrase_hit(haystack, phrase):
             return ("A", f"{owner_hint} (matched {phrase!r})")
 
