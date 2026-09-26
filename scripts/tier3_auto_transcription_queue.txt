@@ -1,15 +1,3 @@
-https://salem.cablecast.tv/internetchannel/show/19762	https://salem.cablecast.tv/internetchannel/show/19762
-https://sheridanwy.new.swagit.com/videos/400903	https://sheridanwy.new.swagit.com/videos/400903
-https://sapatv.cablecast.tv/internetchannel/show/44047	https://sapatv.cablecast.tv/internetchannel/show/44047
-https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1058	https://narragansettri.granicus.com/player/clip/1058?view_id=1
-https://weatherford.granicus.com/MediaPlayer.php?view_id=4&clip_id=3517	https://weatherford.granicus.com/player/clip/3517?view_id=4
-https://lmctvny.new.swagit.com/videos/394834
-https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1028	https://fonddulac.granicus.com/player/clip/1024?view_id=5
-https://new.medwaycable.com/internetchannel/show/4321?channel=3
-http://96.233.59.29/internetchannel/show/17211?site=1&channel=2
-http://98.118.96.186/internetchannel/show/8513?site=3&query=school+committee&fullText=false
-http://50.77.30.235/internetchannel/show/6382?channel=3
-http://71.174.52.234/internetchannel/show/17506?channel=2
 https://salem.cablecast.tv/internetchannel/show/19607?site=1
 https://reflect-city-hudson-oh.cablecast.tv/internetchannel/show/3991
 https://reflect-dctv-18.cablecast.tv/internetchannel/show/13283
@@ -524,6 +512,11 @@ https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=26025		us:county:0
 https://townhallstreams.com/stream.php?location_id=77&id=70002		us:cousub:2303187985
 https://usbe.portal.civicclerk.com/event/552/media		rtr:us:ut:state-board-of-education
 https://scgtv.cablecast.tv/show/123		us:county:12117
+https://cloud.castus.tv/vod/misenate/video/6ab69ae1090c968dd0b15121?page=HOME		rtr:us:mi:board-of-state-canvassers
+https://www.tn.gov/content/dam/tn/tn-public-charter-school-commission/documents/meetings/2021-meetings/9-22-special-called-meeting/TN%20Charter%20Commission%20Special-Called%20Meeting-20210922%201802-1.mp4		rtr:us:tn:public-charter-school-commission
+https://pub-fvrd.escribemeetings.com/Meeting.aspx?Id=5ee75c6e-7ae6-401f-be66-54b9d256afc4		rtr:ca:bc:fraser-valley-regional-hospital-district
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
+https://stillwatercomt.portal.civicclerk.com/event/767/media	https://www.stillwatercountymt.gov/166/Board-of-County-Commissioners	us:county:30095
 https://www.youtube.com/watch?v=mK97ehq_aoQ		us:place:0672520
 https://www.youtube.com/watch?v=cOLWYO3hpnA		us:place:0682744
 https://www.youtube.com/watch?v=sNqq1h291l4		us:place:0809555
