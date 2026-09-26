@@ -811,6 +811,12 @@ async def list_playlist_items(
     return items
 
 
+_NO_CAPTIONS_WARNING = (
+    "This meeting has video but no caption file was found -- "
+    "captioning doesn't appear to have been generated for it yet."
+)
+
+
 class TelvueAssetFinder(AssetFinder):
     """Resolves video + transcript for a TelVue-hosted meeting page."""
 
@@ -932,10 +938,7 @@ class TelvueAssetFinder(AssetFinder):
                                 "a transcript from the audio instead."
                             )
                     else:
-                        transcript_warnings.append(
-                            "This meeting has video but no caption file was found -- "
-                            "captioning doesn't appear to have been generated for it yet."
-                        )
+                        transcript_warnings.append(_NO_CAPTIONS_WARNING)
                 elif track.get("kind") == "chapters":
                     cues = await self._fetch_vtt(session, absolute_url)
                     for cue in cues or []:
@@ -947,6 +950,12 @@ class TelvueAssetFinder(AssetFinder):
 
             if not video_url:
                 video_warnings.append("No video found on this TelVue page.")
+            elif not segments and not transcript_warnings:
+                # WO-1110: a media entry that lists no caption track at all
+                # (`"tracks":[]`, both of Pierre SD's saved pages,
+                # 2026-09-25) said nothing, where one whose caption file came
+                # back empty already did. Same message for both.
+                transcript_warnings.append(_NO_CAPTIONS_WARNING)
 
         return ResolvedMeeting(
             platform=self.platform_name,
