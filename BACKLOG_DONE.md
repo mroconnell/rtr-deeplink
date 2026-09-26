@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1084: the access ladder no longer hops off the government's own site -- 74 of 118 wrong finds gone, 176 of 177 real ones kept [Done 2026-09-26]
+
+**What was done and why.** WO-1077's hand-read of 737 ladder finds showed that most "another organization's" finds came from one step: the hop step followed a link off the government's own site (a state portal's policy page, a university extension office, a tourism board) and credited whatever it found there to the government. The clearest case: every Kentucky city on the state's `*.ky.gov` template has a footer link to `kentucky.gov/policies`, which carries the state's `kygov` YouTube channel. `scripts/wo147_access_ladder_sweep.py` now has `_is_offsite_hop()`: both hop scorers refuse a hop to a host that is not the page's own host, a subdomain of it (or the reverse), or a known meeting-platform host. Tests: `tests/test_wo1084_offsite_hops.py` (real host pairs from WO-1077).
+
+**Result.** The ladder was re-run with the fix on WO-1077 governments whose find had a hand-read verdict; the run was stopped at 295 of 317.
+
+| Result with the fix | Wrong finds ("another organization's") | Real finds ("own meeting platform") |
+|---|---|---|
+| Same link found | 41 | 175 |
+| A different link found | 3 | 1 |
+| No link now | 74 | 1 |
+| **Total** | **118** | **177** |
+
+The 41 wrong finds that remain were found on the government's own pages (36) or through a platform host (5); the fix does not touch those, and the note for another organization's link on the government's own page is the open WO-933 entry in `BACKLOG.md`. The one real find lost is Coryell County TX, whose recordings are on its clerk's own separate domain; filed as its own `BACKLOG.md` entry.
+
 ## WO-1083: crawler burst on `/j/` hub pages took the whole Archive down — cached the GROUP BY, added the missing `bs4` dependency [Done 2026-09-26]
 
 **What happened.** On 2026-09-26, from about 6:56 to 7:02 AM Pacific, the Archive went down. A crawler asked for dozens of `/j/<slug>` hub pages every second — mostly Utah town and county pages (`/j/*-ut`). Every one of those pages runs one database query that counts every meeting page in the whole Archive, grouped by government. That query had no cache: every request ran it fresh. The Archive keeps only 5 database connections open per worker (plus 2 spare), and runs 2 workers. The burst of hub-page requests used up every connection and kept them busy. Every other page — `/m/` meeting pages, `/context`, `/state/*`, even the health check — started failing with a "connection pool timeout" error. Render's automatic health check saw the failures and shut the instance down.

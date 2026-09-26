@@ -594,16 +594,48 @@ _ROUTINE_WORDS = (
 _BOILERPLATE_PHRASES = ("does not support the video tag",)
 
 
+def _strip_www(netloc: str) -> str:
+    n = (netloc or "").lower().split(":")[0]
+    return n[4:] if n.startswith("www.") else n
+
+
+def _is_offsite_hop(netloc: str, base_netloc: str) -> bool:
+    """WO-1084: True when a hop candidate leaves the government's own
+    site for a host that is not a known meeting-platform host. The hop
+    page is then another organization's (a state portal's policy page, a
+    university extension office, a tourism board, a bill-pay vendor), and
+    whatever link the ladder finds there was being credited to the
+    government -- WO-1077 hand-read 737 ladder finds and most "another
+    organization's" ones came this way (kentucky.gov's `kygov` channel
+    from a `*.ky.gov` city footer, UT/Penn State/Texas A&M extension
+    channels, the Missouri SOS, arkansas.com). "Own site" is the same
+    host, or one host a subdomain of the other (`www.x.gov`, `x.gov`,
+    `agenda.x.gov`), so a county on a state host (`in.gov/counties/...`)
+    keeps its same-host hops while `wickliffe.ky.gov` -> `kentucky.gov`
+    and `co.a.in.us` -> `co.b.in.us` are refused."""
+    n, b = _strip_www(netloc), _strip_www(base_netloc)
+    if not n or not b or n == b:
+        return False
+    if n.endswith("." + b) or b.endswith("." + n):
+        return False
+    if is_vendor_href_host(n) or any(h in n for h in _PLATFORM_HREF_HINTS):
+        return False
+    return True
+
+
 def _score_hop_candidate(
     text: str, href: str, full_url: str, base_netloc: str
 ) -> Optional[int]:
     """Returns None for a candidate that should never be offered at all
-    (a bare vendor-marketing apex, or boilerplate markup text that isn't
+    (a bare vendor-marketing apex, an off-site non-platform page --
+    `_is_offsite_hop()`, WO-1084 -- or boilerplate markup text that isn't
     a real navigational label); otherwise a signed score, higher is
     better. See this module's WO-228 comment block above for where each
     weight comes from."""
     netloc = urlparse(full_url).netloc.lower()
     if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+    if _is_offsite_hop(netloc, base_netloc):
         return None
 
     hay = f"{text} {href}".lower()
@@ -912,9 +944,13 @@ def _score_hop_candidate_weighted(
     bonus (vendor host, or a named first-party path) + the legacy
     routine-word penalty (kept -- still real signal for "this is a
     general city-events calendar, not a meeting hub", independent of
-    which vocabulary flags a link in the first place)."""
+    which vocabulary flags a link in the first place). An off-site
+    non-platform page is never offered either (`_is_offsite_hop()`,
+    WO-1084)."""
     netloc = urlparse(full_url).netloc.lower()
     if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+    if _is_offsite_hop(netloc, base_netloc):
         return None
 
     hay = f"{text} {href}".lower()

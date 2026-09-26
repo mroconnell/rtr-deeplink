@@ -231,7 +231,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped…
-  [NEEDS-AUDIT] `[EASY]` The access ladder follows a hop link off the…
+  [NEEDS-AUDIT] `[EASY]` The access ladder's off-site hop guard drops a…
   [NEEDS-AUDIT] `[EASY]` The access ladder's `direct_file` and YouTube…
   [NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
@@ -2522,13 +2522,12 @@ of human step they need.
   - **Constraint**: flag, never reject: real shared cable-access channels have no name overlap.
   - **History**: `BACKLOG_DONE.md` WO-933, WO-908, WO-909, WO-912, WO-913. WO-1077 (2026-09-25) hand-read 737 ladder finds with a verdict each (`rtr-business/research/wo1077_passA_results.csv`), a ready sample for the re-run.
 
-- **[NEEDS-AUDIT] `[EASY]` The access ladder follows a hop link off the government's own site and credits whatever it finds there to the government.**
-  - **Issue**: `_score_hop_candidate()` (`scripts/wo147_access_ladder_sweep.py`) only refuses a vendor's marketing site; any other off-site page can be the hop page, and a link found on it is reported as the government's. WO-1077 (2026-09-25) hand-read 737 ladder finds and saw this many times: university extension pages (UT Extension for McMinn County TN, Penn State Extension for Tioga County PA, Texas A&M AgriLife for Terry and Zavala County TX), state pages (kentucky.gov's `kygov` channel for Metcalfe, Butler, Monroe and Elliott County KY; the Missouri Secretary of State for Madison and Atchison County MO; Illinois DHS for Ford County IL; arkansas.com's tourism channel for Lincoln, Howard and Fulton County AR), and a waste company's site for Avoyelles Parish LA.
-  - **Impact**: most of the "other org" finds in WO-1077 came this way. A sweep that trusts the ladder files state and university channels under counties.
-  - **Next action**: in the hop step, only accept a hop page on a different registrable domain when that domain is a known meeting-platform host (the `_PLATFORM_HREF_HINTS` list); re-run the ladder on the WO-1077 rows marked "other org" to confirm they drop out and the "own meeting platform" rows stay.
-  - **Constraint**: a county's own site can live on a state host (`in.gov/counties/<name>`, `<name>.okcounties.org`, `portal.arkansas.gov/counties/<name>`); treat the recorded domain's own host as on-site even when it is a state domain.
-  - **History**: `BACKLOG_DONE.md` WO-1077. Related, different fix: the entry above (the note for another organization's link on the government's own page).
-
+- **[NEEDS-AUDIT] `[EASY]` The access ladder's off-site hop guard drops a government's own second domain (a county clerk's separate site).**
+  - **Issue**: WO-1084's `_is_offsite_hop()` (`scripts/wo147_access_ladder_sweep.py`) refuses any hop to a host that is not the page's own host, a subdomain of it, or a meeting-platform host. Coryell County TX keeps its Commissioners Court recordings on its clerk's own domain (`coryellcountyclerk.com`), which the guard now refuses.
+  - **Impact**: 1 of 177 real finds lost in WO-1084's re-run; the guard removed 74 of 118 wrong ones.
+  - **Next action**: allow a hop to a different domain when that domain is one of the government's own `alternate_domains` in the research file, or when the link text and the target site both name the government; re-run on Coryell County to confirm.
+  - **Constraint**: do not reopen general off-site hops; that is what credited state and university channels to counties.
+  - **History**: `BACKLOG_DONE.md` WO-1084.
 - **[NEEDS-AUDIT] `[EASY]` The access ladder's `direct_file` and YouTube hits include things that are not meeting media, and its "same domain" check rejects real ones.**
   - **Issue**: WO-1077's hand-read found four shapes. (1) Google Drive share links count as `direct_file`, but several were PDFs ("Employment Application.pdf", "2026 DVAM Proclamation.pdf", a chamber guide). (2) Files on `videos.evo.cloud` are rejected as "different domain", but that host belongs to EvoGov, the company that builds the county's own site (Clinton County OH and Iowa County WI had real meeting video there; Kendallville IN and St. James NC had homepage background videos); four places (Edinboro, Spring Valley, Winona Lake, Deer Park) were credited with InvoiceCloud's own "Making a Payment with PayPal" Wistia video from their bill-pay page. (3) The plausibility check compares against the recorded domain, not the site the recorded domain redirects to, so Owosso MI's real council audio on `ci.owosso.mi.us` was rejected. (4) Non-channel YouTube URLs count as hits: the bare youtube.com homepage (Oswego County NY, Jackson County IN), a search URL (Grain Valley MO) and YouTube's own terms page (Cuming County NE).
   - **Impact**: false finds to hand-read, and a few real meeting recordings dropped.
