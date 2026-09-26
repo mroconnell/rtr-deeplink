@@ -267,7 +267,7 @@ async def test_day_one_backfill_is_a_no_op_for_every_live_url():
     # is outside the day-one claim: no split existed on day one, and
     # re-recording it from its computed slug would -- correctly -- undo the
     # split. Including it made this fail whenever that module ran first
-    # (WO-1087, found running the suite in shuffled order).
+    # (WO-1088, found running the suite in shuffled order).
     governments = [
         (gov_id, jurisdiction)
         for gov_id, jurisdiction in rows

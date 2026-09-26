@@ -80,7 +80,7 @@ def test_run_with_deadline_does_not_block_process_exit_on_a_leaked_thread():
     # slow-trickle HTTP server and `requests` (~1s more per run); a
     # ThreadPoolExecutor-based `run_with_deadline` still hangs this script
     # until the timeout below kills it (checked when this was simplified,
-    # WO-1088).
+    # WO-1089).
     script = """
 import sys, time
 sys.path.insert(0, "scripts")

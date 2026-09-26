@@ -107,7 +107,7 @@ async def test_state_page_lists_states_jurisdictions():
     # "most recently archived" block, which it shows only while no
     # California meeting has a highlight. Other test modules seed CA
     # meetings that do, and then the page shows those as featured cards
-    # instead -- this failed whenever one of them ran first (WO-1087,
+    # instead -- this failed whenever one of them ran first (WO-1088,
     # found running the suite in shuffled order). The meeting-link wiring
     # is still asserted, on Georgia (no other test module ingests a Georgia
     # page), in the test below.

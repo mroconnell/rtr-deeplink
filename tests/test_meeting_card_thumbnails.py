@@ -500,7 +500,7 @@ async def test_backfill_offset_pages_past_the_head_of_the_queue():
     # Each window holds at most `limit` (500) candidates, and in a full run
     # the shared DB can hold more than that -- then offset 2 returns 500
     # too, two past the end of `everything`, and a plain
-    # `_slugs(2) == everything[2:]` failed (WO-1087, found running the
+    # `_slugs(2) == everything[2:]` failed (WO-1088, found running the
     # suite in shuffled order). Compare only the part both windows cover.
     everything = _slugs(0)
     assert len(everything) >= 3

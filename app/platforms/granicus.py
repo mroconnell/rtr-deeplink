@@ -283,7 +283,7 @@ _BROWSER_RETRY_HEADERS = {
 # Granicus's own captions.vtt appears to stop at exactly this many cues
 # on very long meetings (see resolve()'s check). Same name as
 # scripts/scan_truncated_transcripts.py's copy. A named constant so a test
-# can prove the "exactly N" rule with a 3-cue file (WO-1088).
+# can prove the "exactly N" rule with a 3-cue file (WO-1089).
 GRANICUS_CUE_CAP = 36000
 
 

@@ -658,7 +658,7 @@ async def test_resolve_document_shape_skips_agenda_fetch_when_no_index_points(
     # any /document/.../?record=false route, so an unmocked request would
     # fail loudly if this were (wrongly) still attempted.
     # The YouTube metadata call is faked like every other resolve test here:
-    # without it this made a real yt-dlp request to YouTube (WO-1088).
+    # without it this made a real yt-dlp request to YouTube (WO-1089).
     monkeypatch.setattr(
         YouTubeAssetFinder, "_extract_info", _fake_extract_info_document
     )

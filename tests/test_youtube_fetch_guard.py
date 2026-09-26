@@ -131,7 +131,7 @@ def test_yt_dlp_metadata_call_is_refused_before_any_connection(armed_guard):
     Opted out of conftest.py's yt-dlp refusal, because the real call is
     what this test is about. `"proxy": ""` makes yt-dlp connect directly:
     through an HTTPS proxy it never looks the host up itself, so the guard
-    never sees it and the call reaches YouTube (WO-1088, found in a cloud
+    never sees it and the call reaches YouTube (WO-1089, found in a cloud
     container with a proxy -- the guard's own gap there is a BACKLOG.md
     entry)."""
     yt_dlp = pytest.importorskip("yt_dlp")

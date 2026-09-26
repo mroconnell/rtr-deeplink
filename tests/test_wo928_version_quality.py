@@ -236,7 +236,7 @@ async def test_run_classifies_a_seeded_page_and_writes_nothing(tmp_path):
 
     out = tmp_path / "out.csv"
     # Only this test's page: a full run read every page other test modules
-    # left in the shared DB (WO-1088). The same read path, CSV write and
+    # left in the shared DB (WO-1089). The same read path, CSV write and
     # read-only guarantee are exercised either way.
     tally = await Q.run(str(out), None, only_page_ids=[page_id])
     with open(out) as fh:

@@ -416,7 +416,7 @@ async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
     # Ukiah, CA: a real Census place (us:place:0681134) that no other test
     # module seeds. A coverage row shows ONE example page per government
     # (the first with a transcript), so with a government other modules
-    # also seed -- this used Napa until WO-1087 -- the example could be
+    # also seed -- this used Napa until WO-1088 -- the example could be
     # their page, and this failed whenever one of them ran first (found
     # running the suite in shuffled order). Keep it a government no other
     # test uses.

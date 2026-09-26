@@ -804,7 +804,7 @@ Already done from the same survey: Nevada (harvest script and platform
 matches). State-agency-only portals (14 states) are deliberately parked for
 a future state-agency phase.
 
-## Test-suite and start-up speed (2026-09-26, from WO-1088's slow-test audit)
+## Test-suite and start-up speed (2026-09-26, from WO-1089's slow-test audit)
 
 Found while auditing the slowest tests. None is a bug; each would make real
 start-up or real runs faster, not only the tests. Unverified beyond the

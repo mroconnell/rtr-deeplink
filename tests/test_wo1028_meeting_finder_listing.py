@@ -55,7 +55,7 @@ def fetcher():
     """A real Fetcher that treats every host as unreachable. Two tests
     below reach the generic-scan lister, which fetched the live
     lacity.primegov.com and example.portal.civicclerk.com pages -- passing
-    only because those pages happened to yield nothing (WO-1088). Every
+    only because those pages happened to yield nothing (WO-1089). Every
     host now answers like a dead one, so this file never touches the
     network; tests that need page content stub the lister instead."""
     real = Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
@@ -627,8 +627,8 @@ async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monke
     # No /views|videos/{id} path and no known view number -- lister (a2)
     # declines, falls through to lister (b) (rtr-discovery), same as before
     # this WO. (WO-1081: a tenant WITH a row in `swagit_views.csv` now lists
-    # its known view instead -- Wise County TX has one, so this uses a
-    # tenant that doesn't.)
+    # its known view instead -- Wise County TX has one, and since WO-1087
+    # almost every real tenant does, so this uses a made-up host.)
     called = {}
 
     class _FakeCandidate:
@@ -642,9 +642,7 @@ async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monke
     class _FakeResult:
         status = "ok"
         reason = None
-        candidates = [
-            _FakeCandidate("https://montgomerycountytx.new.swagit.com/videos/1")
-        ]
+        candidates = [_FakeCandidate("https://no-known-view.new.swagit.com/videos/1")]
         params = None
 
     class _FakeModule:
@@ -658,9 +656,9 @@ async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monke
     monkeypatch.setattr(listing, "_load_discovery_module", lambda: _FakeModule())
 
     result = await listing.list_account(
-        "swagit", "https://montgomerycountytx.new.swagit.com/", fetcher
+        "swagit", "https://no-known-view.new.swagit.com/", fetcher
     )
-    assert called["netloc"] == "montgomerycountytx.new.swagit.com"
+    assert called["netloc"] == "no-known-view.new.swagit.com"
     assert result.lister == "discovery:swagit"
 
 

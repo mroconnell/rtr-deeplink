@@ -120,7 +120,7 @@ def _join_lingering_threads(*, timeout: float = 2.0) -> int:
     remaining = [t for t in threading.enumerate() if t is not threading.main_thread()]
     # One shared deadline, not `timeout` per thread: joining each thread
     # for the full `timeout` in turn made N hung threads cost N x timeout
-    # before exit (WO-1088, found because a test paid it for the suite's
+    # before exit (WO-1089, found because a test paid it for the suite's
     # own leftover threads).
     deadline = time.monotonic() + timeout
     for t in remaining:

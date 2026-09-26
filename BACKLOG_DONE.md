@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1088: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
+## WO-1089: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
 
 **What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
 
@@ -58,7 +58,7 @@ Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("
 - A full run with the real yt-dlp call refused found only the three tests above, plus the guard test that uses it on purpose.
 - Other small change: `tests/conftest.py` now deletes its temporary SQLite file at exit (230 had built up in one container).
 
-## WO-1087: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
+## WO-1088: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
 
 **What.** Six tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All six had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
 
@@ -91,6 +91,23 @@ Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("
 | Normal order | 7,626 passed; the only failure is the proxy-only YouTube test |
 
 **Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
+
+## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
+
+**What was done and why.** `swagit_views.csv` (WO-1081) held 35 view numbers copied from links in research files. rtr-discovery's Swagit owner sweep (2026-09-26) proved who owns every view: it read view pages 1-1,090 and two video pages from each of the 567 with meetings; a video page names its owner in its analytics tag (`page_location: 'https://{owner}.swagit.com/...'`) wherever it is opened. Checked against that, 3 of the 35 rows were another government's view and 4 pointed at empty views:
+
+| Row in WO-1081 | View | Owner, per the sweep (both videos agree; Ryan confirmed in a browser) |
+| --- | --- | --- |
+| `austintx.new.swagit.com` | 5 | Denton, TX (`dentontx`) |
+| `ferndalesd.new.swagit.com` | 44 | Hamilton Southeastern Schools, IN (`hamiltonseschoolsin`) |
+| `idahofallsid.new.swagit.com` | 170 | Murphy, TX (`murphytx`) |
+| `batonrougela`, `houstontx`, `lmctvny`, `plainviewtx` | 136, 408, 424, 363 | none: the views list no meetings |
+
+The file is rebuilt from the sweep only: 427 views for 353 rtr-discovery Swagit tenants, every row naming the video pages that prove ownership. A tenant may now have several views (48 do); `known_views()` returns a list, `known_views_for(host)` is new, and Meeting Finder's Swagit lister walks every known view of a bare tenant URL.
+
+**Result.** Tests in `tests/test_wo1081_swagit_known_views.py` (file well-formed and owner-proven, one tenant per view, the three corrected owners, several views listed). `test_swagit_bare_tenant_root_falls_through_to_discovery` now uses a made-up host, since nearly every real tenant has a view. Full suite and ruff results are in the PR.
+
+**Caution.** A walk with WO-1081's file (rtr-discovery run 4354, 2026-09-26) listed 150 of Denton's, Hamilton Southeastern's and Murphy's meetings under Austin, Ferndale and Idaho Falls. None reached the Archive (0 pages, checked the same day). They were marked `filtered_out` (`wrong_swagit_view_owner`) in rtr-discovery's ledger on Ryan's Mac. Render services have `autoDeploy: false`; if WO-1081 was deployed by hand, deploy this too.
 
 ## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
 
