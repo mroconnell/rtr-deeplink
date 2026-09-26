@@ -1164,7 +1164,10 @@ _PHOENIX_HTML = (
     'style="color:Gray;">Not Available</a>'
     "</body></html>"
 )
-_PHOENIX_URL = "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831"
+_PHOENIX_URL = (
+    "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831"
+    "&GUID=165A34F1-E386-4245-89E7-11D51ED26D7E"
+)
 
 # Real entries, in the shape yt-dlp's flat channel listing returns them.
 # Both are genuine videos on Phoenix's own channel.
