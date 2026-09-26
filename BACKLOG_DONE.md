@@ -1,5 +1,24 @@
 # Backlog — done
 
+## WO-1123: 85 Swagit views that are only an index, filed with owner proof [Done 2026-09-26]
+
+**What was done and why.** WO-1087 filed every Swagit view whose page lists meetings. 337 view pages listed none. 108 of those are an index: they link category pages (`/views/{n}/{slug}`) that hold the meetings. San Benito, TX's view 322 is the worked example. rtr-discovery's follow-up sweep read each index's categories and proved the owner from two video pages. A view with a single meeting was proven by that one video (Waxahachie's view 311).
+
+The categories were read on the owner's own address. That matters: a category opened on another Swagit address shows that address's own meetings. The sweep saw Dublin's council under view 34's "city-council".
+
+`swagit_views.csv` gets 85 rows: every proven view whose owner is an rtr-discovery Swagit site. 27 of these sites had no view before, such as DART (561), H-GAC (634), Cypress CA (630), San Benito (322) and Yellowknife (254).
+
+| Result | Count |
+| --- | --- |
+| Index views with a proven owner | 101 |
+| Filed: owner is an rtr-discovery Swagit site | 85 |
+| Not filed: owner is not a site yet (waiting on Ryan's review in rtr-business) | 16 |
+| Not filed: owner not proven (117, 527: a video page unreadable; 556: "not a customer") | 3 |
+
+**Result.** `tests/test_wo1123_swagit_index_views.py`: index views are filed under their owners, a known owner keeps its first view first, and the three unproven views are not filed. The WO-1081 file checks still pass.
+
+**Caution.** Meeting Finder reads an index view's categories only once WO-1102 is merged. Until then these 85 views list nothing there. rtr-discovery's walker needs its own change (rtr-discovery #88).
+
 ## WO-1122: a block on a SECONDARY fetch was overriding a real finding from the government's own readable site [Done 2026-09-26]
 
 **What was checked and why.** A no-platform-signature Meeting Finder run (2026-09-26, about 7,000 governments) had 1,134 governments end in a block outcome (`blocked-browser-headers` 590, `blocked-headless` 478, `cloudflare-challenge-blocked` 55, `blocked-waf-akamai` 11). Every one of those had fetched 3 or more pages before the block, none was blocked on the very first page, and 805 had already reached the Hop phase — meaning the block, whatever it was, did not come from the government's own front door. Real example: primeroschool.org's own homepage loaded fine; Start's own guessed vendor subdomain (`agenda.primeroschool.org`) was refused; the old outcome ranking let that one refusal become the whole government's verdict.
