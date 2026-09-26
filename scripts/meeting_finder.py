@@ -50,6 +50,8 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.meeting_finder.models import ENTRY_PHASES, FinderInput  # noqa: E402
 from app.platforms.meeting_finder.runner import (  # noqa: E402
     DEFAULT_GOV_TIMEOUT_MINUTES,
+    _DEFAULT_ADAPTIVE_MAX_FETCHES,
+    _DEFAULT_SECOND_PASS_EXTRA_FETCHES,
     run_inputs,
 )
 
@@ -169,6 +171,23 @@ def main() -> None:
         help="Append intake/resolve lane counts over time to this file",
     )
     parser.add_argument(
+        "--second-pass-extra-fetches",
+        type=int,
+        default=_DEFAULT_SECOND_PASS_EXTRA_FETCHES,
+        help="Extra fetches spent on a focused nav-link rescue before settling "
+        f"for youtube-lead-only (default: {_DEFAULT_SECOND_PASS_EXTRA_FETCHES}; "
+        "0 disables it -- WO-1070 item 1).",
+    )
+    parser.add_argument(
+        "--adaptive-max-fetches",
+        type=int,
+        default=_DEFAULT_ADAPTIVE_MAX_FETCHES,
+        help="Raised fetch cap for a government once real evidence (a meetings "
+        "page, a recognized platform account, a meeting-without-video listing) "
+        f"turns up (default: {_DEFAULT_ADAPTIVE_MAX_FETCHES}; <= --max-fetches "
+        "disables it -- WO-1070 item 3).",
+    )
+    parser.add_argument(
         "--gov-timeout-minutes",
         type=float,
         default=DEFAULT_GOV_TIMEOUT_MINUTES,
@@ -201,6 +220,8 @@ def main() -> None:
             max_waiting=args.max_waiting,
             lanes_log=args.lanes_log,
             gov_timeout_minutes=args.gov_timeout_minutes,
+            second_pass_extra_fetches=args.second_pass_extra_fetches,
+            adaptive_max_fetches=args.adaptive_max_fetches,
         )
     )
     _print_summary(rows)

@@ -59,7 +59,7 @@ from app.utils.video_hand_check import has_non_meeting_sign
 from scripts.youtube_fetch_guard import is_youtube_host
 
 from .fetch import BudgetExceeded, Fetcher, SoftBudgetExceeded
-from .hop import _SOCIAL_LEAD_PLATFORMS, canonical_page_key, rank_hops
+from .hop import _SOCIAL_LEAD_PLATFORMS, canonical_page_key, is_document_hub, rank_hops
 from .identify import IdentifyResult, _classify_url, identify
 from .identity import check_identity
 from .listing import ListResult, list_account
@@ -188,6 +188,22 @@ _VIDEO_WORDS_RE = re.compile(
     r"watch|video|stream|on[- ]demand|livestream|broadcast", re.I
 )
 
+# WO-1070 item 2 ("one more hop from a meetings page"): Ryan's own context
+# words for a link that isn't itself a known platform but whose text/URL
+# names how the meeting is broadcast -- widens the vocabulary
+# `hop.py`'s `_LINK_CONTEXT_BROADCAST_RE` already rescues by SCORE (a
+# nearby paragraph mentioning "streams the meetings"/"airs replays") to
+# also cover the plainer case of the link's OWN anchor text/URL, so a
+# link like "TVCTV" or "Replays" is recognized even with no surrounding
+# sentence at all. Test case: Lake Oswego, OR
+# (`ci.oswego.or.us/citycouncil` -> `.../city-council-meetings` -> the
+# TVCTV sentence -> `tvctv.org`) -- three real hops from the homepage,
+# one more than the ordinary `max_hops=2` (+1 for the first fork) reaches
+# once the homepage itself already cost a hop to get past.
+_CONTEXT_HOP_WORDS_RE = re.compile(
+    r"watch|video|broadcast|stream|replay|\btv\b|channel", re.I
+)
+
 # WO-1039 item 2: fetches held back from Pass 1 (Identify->List->Resolve,
 # across every fork) for Pass 2 (Scan/Hop) -- real, confirmed problem:
 # Ashland, OR's own CivicPlus AgendaCenter listing walk alone used the
@@ -198,6 +214,45 @@ _VIDEO_WORDS_RE = re.compile(
 # reserve()`/`SoftBudgetExceeded` for how it's enforced without marking
 # the whole government's walk as budget-exhausted.
 _PASS1_BUDGET_RESERVE = 3
+
+# WO-1070 item 1 ("second pass before settling for youtube-lead-only"):
+# calibration set D (2026-09-25) found 380 governments ending
+# `youtube-lead-only`, ~190 of them with a KNOWN non-YouTube video
+# platform on file -- real evidence the site has more to find than the
+# ordinary 12-fetch budget reached. When a walk would otherwise end there
+# with no platform account and no meeting video ever found
+# (`_would_end_youtube_lead_only()`), this many extra fetches are spent on
+# one focused pass across every fork's own already-fetched page, following
+# only high-value site-nav links (Meetings / Agendas & Minutes /
+# Government / Council / Board / Watch / Video / Media / TV --
+# `rank_hops()`'s own site-nav scoring already favors these; this only
+# narrows which of its ranked hops get followed). Configurable via
+# `run_one()`/`run_inputs()`'s `second_pass_extra_fetches` (0 disables it)
+# and `scripts/meeting_finder.py --second-pass-extra-fetches`.
+_DEFAULT_SECOND_PASS_EXTRA_FETCHES = 8
+_SECOND_PASS_NAV_WORDS_RE = re.compile(
+    r"\bmeetings?\b|\bagendas?\b|\bminutes\b|\bgovernment\b|\bcouncil\b|\bboard\b"
+    r"|\bwatch\b|\bvideos?\b|\bmedia\b|\btv\b",
+    re.I,
+)
+# Each rescued fork gets its own short hop chain (Hop's ordinary sibling-
+# hop safety net still applies within it) rather than one bare fetch --
+# real governments this targets (calibration set D) often need one more
+# click past the nav link itself (e.g. a "Watch Meetings" landing page
+# that itself links out to the real vendor).
+_SECOND_PASS_HOPS = 2
+# Per fork's own already-fetched page, not a total -- bounded small so
+# this stays a focused rescue, not a second full breadth pass.
+_SECOND_PASS_LINKS_PER_PAGE = 4
+
+# WO-1070 item 3 ("adaptive budget"): once a government's walk turns up
+# real promising evidence -- a meetings/agenda page, a recognized video-
+# platform account, or a meeting-without-video listing -- raise ITS OWN
+# fetch budget instead of stopping at the ordinary default. Configurable
+# via `run_one()`/`run_inputs()`'s `adaptive_max_fetches` (<= the ordinary
+# `max_fetches` disables it) and `scripts/meeting_finder.py
+# --adaptive-max-fetches`.
+_DEFAULT_ADAPTIVE_MAX_FETCHES = 24
 
 
 # WO-1031 (Ryan, 2026-09-23): "a good discovery rate and some well-marked
@@ -357,6 +412,21 @@ class _WalkState:
     # OWN walk ever finds a clean result, and folded into the final
     # `VerdictRow.other_gov_leads`.
     other_gov_leads: List[Dict[str, Any]] = field(default_factory=list)
+    # WO-1070: adaptive-budget/second-pass configuration for this walk
+    # (set once, from `run_one()`'s own params, before the phase loop
+    # starts) plus the bookkeeping each feature needs to fire at most
+    # once and to say so in the final VerdictRow.note (item 1/3: "log
+    # when it's used").
+    adaptive_budget_enabled: bool = True
+    adaptive_max_fetches: int = _DEFAULT_ADAPTIVE_MAX_FETCHES
+    adaptive_budget_used: bool = False
+    second_pass_used: bool = False
+    budget_notes: List[str] = field(default_factory=list)
+    # WO-1070 item 2: consumed the first time the "one more hop" rescue
+    # fires anywhere in this government's walk -- one extra hop total per
+    # government, not per fork, so this stays a narrow rescue rather than
+    # a second `max_hops`.
+    bonus_hop_available: bool = True
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -372,6 +442,31 @@ class _WalkState:
     @property
     def done(self) -> bool:
         return self.result is not None or self.budget_exhausted
+
+
+def _maybe_raise_budget(fetcher: Fetcher, state: _WalkState, *, reason: str) -> None:
+    """WO-1070 item 3 ("adaptive budget"): once real promising evidence
+    turns up for this government, raise ITS OWN fetch budget instead of
+    stopping at the ordinary default -- these are the governments where
+    extra budget actually pays off (a meetings/agenda page, a recognized
+    video-platform account, a meeting-without-video listing), not a
+    blanket increase for every government. Only ever raises (never
+    lowers) and only once per walk (`state.adaptive_budget_used`), so a
+    government that keeps finding "promising" evidence doesn't keep
+    getting new budget forever. Logged on `state.budget_notes` (folded
+    into the final VerdictRow.note either way -- see `run_one()`) and
+    counted for free in `VerdictRow.requests_total`, since that already
+    wraps the whole `Fetcher` for the life of the walk
+    (`pace_all_requests()`)."""
+    if not state.adaptive_budget_enabled or state.adaptive_budget_used:
+        return
+    if fetcher.max_fetches >= state.adaptive_max_fetches:
+        return
+    fetcher.max_fetches = state.adaptive_max_fetches
+    state.adaptive_budget_used = True
+    state.budget_notes.append(
+        f"adaptive budget: raised to {state.adaptive_max_fetches} fetches ({reason})"
+    )
 
 
 _CALENDAR_PATH_RE = re.compile(r"calendar\.aspx|/calendar/|/events?/", re.I)
@@ -562,6 +657,7 @@ async def _try_resolve(
     state: _WalkState,
     *,
     max_tries: int,
+    fetcher: Optional[Fetcher] = None,
 ) -> bool:
     """Runs Resolve on `candidates`; on success, records the winner on
     `state` and returns True. On failure, records the outcome and
@@ -654,6 +750,13 @@ async def _try_resolve(
     state.outcomes.append(result.outcome)
     if result.note:
         state.resolve_notes.append(result.note)
+    # WO-1070 item 3: a meeting-without-video listing is exactly the
+    # "promising evidence" this rule is for -- a real meeting body, just
+    # no video yet found; give this government's own walk more room to
+    # keep looking (item 2's own extra hop) rather than stopping at the
+    # ordinary default.
+    if fetcher is not None and result.outcome == OUTCOME_MEETING_WITHOUT_VIDEO:
+        _maybe_raise_budget(fetcher, state, reason="meeting-without-video listing")
     return False
 
 
@@ -724,6 +827,10 @@ async def _shallow_step(
         state.outcomes.append(ident.outcome)
 
     if ident.platform and ident.account_url and ident.supported is not False:
+        # WO-1070 item 3: a recognized video-platform account is real
+        # promising evidence for this government -- give the rest of its
+        # own walk more room before stopping at the ordinary budget.
+        _maybe_raise_budget(fetcher, state, reason="recognized platform account")
         account_url = ident.account_url
         if ident.platform == "telvue":
             # WO-1038: `identify.py`'s generic account-url reduction
@@ -762,7 +869,11 @@ async def _shallow_step(
             state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
             if await _try_resolve(
-                list_result.candidates, finder_input, state, max_tries=max_tries
+                list_result.candidates,
+                finder_input,
+                state,
+                max_tries=max_tries,
+                fetcher=fetcher,
             ):
                 return None  # resolved -- no deep pass needed for this fork
 
@@ -823,6 +934,13 @@ async def _deep_step(
     if state.done:
         return
     page = ident.page
+    # WO-1070 item 3: a real document/meeting hub (a document link, an
+    # event permalink, or a known platform link anywhere on the page) is
+    # promising evidence for this government too, even before Scan/Hop
+    # finds anything specific on it -- give the rest of this walk more
+    # room before stopping at the ordinary budget.
+    if page is not None and is_document_hub(page):
+        _maybe_raise_budget(fetcher, state, reason="meetings page")
     # `ident.platform` only belongs here as a hop preference in
     # docs/MEETING_FINDER.md's "platform known, account unknown" case
     # (`ident.account_url is None`) -- weighting Hop toward MORE of a
@@ -870,7 +988,11 @@ async def _deep_step(
         )
         if scan_result.media_candidates:
             if await _try_resolve(
-                scan_result.media_candidates, finder_input, state, max_tries=max_tries
+                scan_result.media_candidates,
+                finder_input,
+                state,
+                max_tries=max_tries,
+                fetcher=fetcher,
             ):
                 return
 
@@ -1042,6 +1164,45 @@ async def _deep_step(
             if state.done or siblings_tried >= _MAX_SIBLING_HOPS_PER_PAGE:
                 break
 
+    elif (
+        not state.done
+        and state.bonus_hop_available
+        and page is not None
+        and page.html
+        and (is_document_hub(page) or OUTCOME_MEETING_WITHOUT_VIDEO in state.outcomes)
+    ):
+        # WO-1070 item 2 ("one more hop from a meetings page"): the
+        # ordinary hop budget for this fork is spent (`hops_left <= 0`,
+        # the `if` above didn't run), but the page in hand is itself a
+        # real meetings/agenda hub (or this walk already found meetings
+        # with no video) -- allow ONE extra hop, and only for a link whose
+        # own anchor text or URL carries a broadcast/context word
+        # (`_CONTEXT_HOP_WORDS_RE`; see the Lake Oswego, OR test case in
+        # that constant's own comment). `state.bonus_hop_available` makes
+        # this a one-time rescue for the whole government, not a second
+        # `max_hops`; the nested `_walk_from()` call gets `hops_left=0` so
+        # it can't chain into a second bonus hop of its own.
+        for hop in rank_hops(page, prefer_video=True, limit=_HOP_CANDIDATE_LIMIT):
+            if _norm_url(hop.url) in seen:
+                continue
+            if is_youtube_host(urlparse(hop.url).hostname or ""):
+                continue
+            if not _CONTEXT_HOP_WORDS_RE.search(f"{hop.anchor} {hop.url}"):
+                continue
+            state.bonus_hop_available = False
+            state.hops += 1
+            await _walk_from(
+                hop.url,
+                fetcher,
+                finder_input,
+                state,
+                hops_left=0,
+                seen=seen,
+                max_tries=max_tries,
+                prefer_vendor=prefer_vendor,
+            )
+            break
+
 
 async def _walk_from(
     url: str,
@@ -1079,6 +1240,89 @@ async def _walk_from(
     )
 
 
+# WO-1070 item 1: "no platform account, no meeting video" -- these two
+# outcomes mean real, non-YouTube evidence was already found somewhere in
+# the walk, so the second pass (a rescue specifically for the "YouTube is
+# literally all there is" case) doesn't apply -- item 2's own "one more
+# hop" already covers the meeting-without-video case, and a foreign-hub
+# lead is real evidence of an account, just not this government's own.
+_NON_YOUTUBE_EVIDENCE_OUTCOMES = frozenset(
+    {OUTCOME_MEETING_WITHOUT_VIDEO, OUTCOME_HUB_OTHER_GOVERNMENT}
+)
+
+
+def _would_end_youtube_lead_only(state: _WalkState) -> bool:
+    """True when this government's walk, as it stands after Pass 1/2,
+    would settle for `OUTCOME_YOUTUBE_LEAD_ONLY`: nothing clean resolved,
+    no "kept despite" fallback either, no other real evidence recorded,
+    and at least one YouTube lead was found along the way (the same check
+    `run_one()` itself makes at the very end to decide whether to append
+    that outcome -- see its own final `else` branch)."""
+    if state.result is not None or state.low_confidence is not None:
+        return False
+    if not any(lead.get("kind") == "youtube" for lead in state.leads):
+        return False
+    return not any(o in _NON_YOUTUBE_EVIDENCE_OUTCOMES for o in state.outcomes)
+
+
+async def _second_pass_for_youtube_only(
+    pending_deep: List[Tuple[str, IdentifyResult, int]],
+    fetcher: Fetcher,
+    finder_input: FinderInput,
+    state: _WalkState,
+    *,
+    seen: Set[str],
+    max_tries: int,
+    extra_fetches: int,
+) -> None:
+    """WO-1070 item 1: before settling for `OUTCOME_YOUTUBE_LEAD_ONLY`,
+    spend `extra_fetches` more on a focused pass across every fork's own
+    already-fetched page (`pending_deep`, from Pass 1 above), following
+    only its highest-value site-nav links -- restricted to
+    `_SECOND_PASS_NAV_WORDS_RE`'s vocabulary (Meetings / Agendas & Minutes
+    / Government / Council / Board / Watch / Video / Media / TV).
+    `rank_hops()` itself already scores this vocabulary highly (its own
+    nav-hub/video-hub label bonuses); this only narrows which of its
+    ranked hops get followed, so the pass stays a small, targeted rescue
+    rather than a second full breadth pass. The YouTube leads already
+    found are kept on `state.leads` regardless -- this only ever REPLACES
+    the final outcome if a real, non-YouTube find turns up."""
+    if state.done or not pending_deep:
+        return
+    fetcher.max_fetches += extra_fetches
+    state.second_pass_used = True
+    state.budget_notes.append(
+        f"second pass: youtube-lead-only rescue, +{extra_fetches} fetches"
+    )
+    for _point, ident, _hops_budget in pending_deep:
+        if state.done:
+            break
+        page = ident.page
+        if page is None or not page.html:
+            continue
+        followed = 0
+        for hop in rank_hops(page, limit=_HOP_CANDIDATE_LIMIT):
+            if state.done or followed >= _SECOND_PASS_LINKS_PER_PAGE:
+                break
+            if _norm_url(hop.url) in seen:
+                continue
+            if is_youtube_host(urlparse(hop.url).hostname or ""):
+                continue
+            if not _SECOND_PASS_NAV_WORDS_RE.search(f"{hop.anchor} {hop.url}"):
+                continue
+            followed += 1
+            state.hops += 1
+            await _walk_from(
+                hop.url,
+                fetcher,
+                finder_input,
+                state,
+                hops_left=_SECOND_PASS_HOPS,
+                seen=seen,
+                max_tries=max_tries,
+            )
+
+
 async def _run_phase_loop(
     finder_input: FinderInput,
     fetcher: Fetcher,
@@ -1087,6 +1331,7 @@ async def _run_phase_loop(
     max_hops: int,
     max_forks: int,
     state: Optional[_WalkState] = None,
+    second_pass_extra_fetches: int = _DEFAULT_SECOND_PASS_EXTRA_FETCHES,
 ) -> _WalkState:
     # WO-1038 addendum: a caller (`run_one()`, for `_run_one_with_timeout()`'s
     # benefit) may hand in an already-created `_WalkState` it kept a
@@ -1116,7 +1361,11 @@ async def _run_phase_loop(
             state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
             await _try_resolve(
-                list_result.candidates, finder_input, state, max_tries=max_tries
+                list_result.candidates,
+                finder_input,
+                state,
+                max_tries=max_tries,
+                fetcher=fetcher,
             )
         return state
 
@@ -1141,6 +1390,7 @@ async def _run_phase_loop(
                     finder_input,
                     state,
                     max_tries=max_tries,
+                    fetcher=fetcher,
                 )
         return state
 
@@ -1236,6 +1486,24 @@ async def _run_phase_loop(
                 max_tries=max_tries,
             )
 
+    # Pass 3 (WO-1070 item 1): a focused, budget-extended rescue, but only
+    # when the walk would otherwise settle for OUTCOME_YOUTUBE_LEAD_ONLY --
+    # see `_would_end_youtube_lead_only()`'s own docstring.
+    if (
+        not state.done
+        and second_pass_extra_fetches > 0
+        and _would_end_youtube_lead_only(state)
+    ):
+        await _second_pass_for_youtube_only(
+            pending_deep,
+            fetcher,
+            finder_input,
+            state,
+            seen=seen,
+            max_tries=max_tries,
+            extra_fetches=second_pass_extra_fetches,
+        )
+
     return state
 
 
@@ -1247,6 +1515,8 @@ async def run_one(
     max_hops: int = 2,
     max_forks: int = 3,
     max_fetches: int = 12,
+    second_pass_extra_fetches: int = _DEFAULT_SECOND_PASS_EXTRA_FETCHES,
+    adaptive_max_fetches: int = _DEFAULT_ADAPTIVE_MAX_FETCHES,
     progress: Optional[Dict[str, Any]] = None,
 ) -> VerdictRow:
     """Runs the whole pipe for one input and returns its `VerdictRow`.
@@ -1302,7 +1572,14 @@ async def run_one(
         )
 
     fetcher = Fetcher(max_fetches=max_fetches)
-    walk_state = _WalkState()
+    walk_state = _WalkState(
+        # WO-1070 item 3: `adaptive_max_fetches <= max_fetches` disables
+        # the feature outright (there's nothing left to raise TO) --
+        # `_maybe_raise_budget()`'s own `>=` check already no-ops in that
+        # case, this just avoids logging a "raise" that doesn't happen.
+        adaptive_budget_enabled=adaptive_max_fetches > max_fetches,
+        adaptive_max_fetches=adaptive_max_fetches,
+    )
     if progress is not None:
         progress["state"] = walk_state
         progress["fetcher"] = fetcher
@@ -1318,6 +1595,7 @@ async def run_one(
                 max_hops=max_hops,
                 max_forks=max_forks,
                 state=walk_state,
+                second_pass_extra_fetches=second_pass_extra_fetches,
             )
     finally:
         await fetcher.aclose()
@@ -1417,6 +1695,17 @@ async def run_one(
             else "nothing found"
         )
 
+    # WO-1070 items 1/3: "log when it's used" -- append regardless of
+    # which branch above produced `note`, a clean find included (the
+    # adaptive budget can fire on the same walk that then finds a real
+    # video off the extra fetches it bought).
+    if state.budget_notes:
+        note = (
+            f"{note}; {'; '.join(state.budget_notes)}"
+            if note
+            else "; ".join(state.budget_notes)
+        )
+
     return VerdictRow(
         run_id=run_id,
         input_url=finder_input.url,
@@ -1495,6 +1784,8 @@ async def _run_one_with_timeout(
     max_forks: int,
     max_fetches: int,
     gov_timeout_minutes: float,
+    second_pass_extra_fetches: int = _DEFAULT_SECOND_PASS_EXTRA_FETCHES,
+    adaptive_max_fetches: int = _DEFAULT_ADAPTIVE_MAX_FETCHES,
 ) -> VerdictRow:
     """Runs `run_one()` under a hard wall-clock cap per government (Ryan,
     2026-09-23 -- see `DEFAULT_GOV_TIMEOUT_MINUTES`'s own comment for the
@@ -1534,6 +1825,8 @@ async def _run_one_with_timeout(
             max_hops=max_hops,
             max_forks=max_forks,
             max_fetches=max_fetches,
+            second_pass_extra_fetches=second_pass_extra_fetches,
+            adaptive_max_fetches=adaptive_max_fetches,
             progress=progress,
         )
     )
@@ -1581,6 +1874,8 @@ async def run_inputs(
     max_waiting: Optional[int] = None,
     lanes_log: Optional[Path] = None,
     gov_timeout_minutes: float = DEFAULT_GOV_TIMEOUT_MINUTES,
+    second_pass_extra_fetches: int = _DEFAULT_SECOND_PASS_EXTRA_FETCHES,
+    adaptive_max_fetches: int = _DEFAULT_ADAPTIVE_MAX_FETCHES,
 ) -> List[VerdictRow]:
     """Drive every input in `inputs`, appending a `VerdictRow` to
     `out_path` (+ its JSONL twin) as each one finishes so a rerun resumes
@@ -1613,6 +1908,8 @@ async def run_inputs(
                 max_forks=max_forks,
                 max_fetches=max_fetches,
                 gov_timeout_minutes=gov_timeout_minutes,
+                second_pass_extra_fetches=second_pass_extra_fetches,
+                adaptive_max_fetches=adaptive_max_fetches,
             )
         except Exception as exc:  # noqa: BLE001
             # WO-1034: a government must never vanish from the results.

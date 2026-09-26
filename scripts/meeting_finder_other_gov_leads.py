@@ -83,6 +83,7 @@ from scripts.hub_harvest import (  # noqa: E402
     _is_joint_or_special_body,
     _match_place_text,
     load_hubs,
+    normalize_body_type_word,
 )
 
 
@@ -233,7 +234,35 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> Optional[LeadMatch]:
     # state" when the searched government has one.
     region_state = described.get("state") or hub_region_state or gov_state or ""
 
-    body_type_hint = _guessed_body_type(title)
+    # WO-1070 addendum: `_guessed_body_type(title)` stays FIRST -- it
+    # already knows compound shapes `place_type` alone can't tell apart
+    # ("School Board of Nassau County" is a SCHOOL DISTRICT lead, even
+    # though the only explicit type word next to the place name is
+    # "County" -- see the school-district qualifier just below, which
+    # depends on this precedence). `place_type` -- `pick.py`'s own
+    # EXPLICIT type word, found right next to the place name in the title
+    # (`_extract_lead_place()`) -- is the fallback, for a real type word
+    # `_guessed_body_type()`'s narrower phrase list simply doesn't cover
+    # (e.g. "Lucas County Plan Commission" -- no `_BODY_TYPE_WORDS` phrase
+    # matches "plan commission", but `place_type` still finds "county").
+    # Either way, this hint also feeds `_match_place_text()`'s own type-
+    # agreement check (`_enforce_type_agreement()`), the real fix for the
+    # WO-1070 false "confident" matches (a same-named government of the
+    # WRONG type -- "Grant County Board of Commissioners" matching a
+    # CITY, "Hilton Head Island Town Council" matching a COUNTY).
+    # Both sides normalized BEFORE the `or` -- `_guessed_body_type()` can
+    # return a real phrase match that still carries no type-agreement
+    # constraint at all ("same-as-named-place", from a bare "planning
+    # commission"/"park board" phrase -- a truthy string, but not a real
+    # type word). Real regression this order fixes: "Springfield Township
+    # Planning Commission Meeting" matched `_guessed_body_type()`'s
+    # "planning commission" phrase FIRST (-> "same-as-named-place", no
+    # constraint) and never reached `place_type`'s own explicit
+    # "township" at all, silently skipping the type check and letting the
+    # WRONG match (Springfield CITY, MI) back through as "confident".
+    body_type_hint = normalize_body_type_word(
+        _guessed_body_type(title)
+    ) or normalize_body_type_word(place_type)
     # `_place_core()` (pick.py) already dropped the place-type word from
     # `named_place` ("Nassau County" -> "nassau") -- put a COUNTY name
     # back together for `_match_place_text()`'s own school-district
