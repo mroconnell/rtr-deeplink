@@ -126,6 +126,25 @@ Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("
 
 **Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
 
+## WO-1091: six public bodies found on Swagit get registry ids, site pins and views [Done 2026-09-26]
+
+**What was done and why.** rtr-discovery's Swagit owner sweep (2026-09-26) found 113 Swagit owners that are not yet discovery sites. 18 had no research-file row. Ryan decided (2026-09-26): skip the 4 Swagit test accounts and the 5 Australian councils, hold 3 unverified bodies in rtr-business's `QUASI_GOVERNMENTAL_AND_UNVERIFIED_GOVS.md`, and add the 6 that are Census of Governments units (Collin College confirmed in scope). Each got a curated registry row (Port of Vancouver pattern, WO-1067), a whole-site pin, and its owner-proven Swagit views:
+
+| Body | Registry id | Census unit | Swagit site | Views | Meetings listed |
+| --- | --- | --- | --- | --- | --- |
+| Benbrook Water Authority, TX | `rtr:us:tx:benbrook-water-authority` | 135717 | `benbrookwater.new.swagit.com` | 118 | 117 |
+| Collin College, TX | `rtr:us:tx:collin-college` | 140570 | `collincollegetx.new.swagit.com` | 503 | 273 |
+| Galveston County Consolidated Drainage District, TX | `rtr:us:tx:galveston-county-consolidated-drainage-district` | 157494 | `gccddtx.new.swagit.com` | 918 | 8 |
+| Gulf Coast Water Authority, TX | `rtr:us:tx:gulf-coast-water-authority` | 157511 | `gcwa.new.swagit.com` | 686, 921 | 128 |
+| Golder Ranch Fire District, AZ | `rtr:us:az:golder-ranch-fire-district` | 201336 | `grfdaz.new.swagit.com` | 146 | 82 |
+| North Texas Tollway Authority, TX | `rtr:us:tx:north-texas-tollway-authority` | 214086 | `ntta.new.swagit.com` | 485 | 29 |
+
+The pins' source is `ryan_stated+swagit_owner_sweep`. A pin to an `rtr:` id needs a human source (the King County NC case). Ryan approved these six bodies and their sites in chat; the sweep supplies the evidence, recorded in each row. Without the pin, Gulf Coast Water Authority and the Tollway Authority did not resolve, because Swagit's names for them carry no state.
+
+**Result.** `tests/test_wo1091_swagit_special_districts.py`: each site resolves to its body for a page titled only "Board Meeting", each has its views, and Benbrook (city), Collin County and Galveston County still resolve to themselves. Full suite and ruff results are in the PR.
+
+**Caution.** Collin College is a community college district, typed `school_district` as the Census types it. These bodies change filing only after a deploy, for pages whose host is one of these six sites.
+
 ## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
 
 **What was done and why.** `swagit_views.csv` (WO-1081) held 35 view numbers copied from links in research files. rtr-discovery's Swagit owner sweep (2026-09-26) proved who owns every view: it read view pages 1-1,090 and two video pages from each of the 567 with meetings; a video page names its owner in its analytics tag (`page_location: 'https://{owner}.swagit.com/...'`) wherever it is opened. Checked against that, 3 of the 35 rows were another government's view and 4 pointed at empty views:
