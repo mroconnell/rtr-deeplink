@@ -743,11 +743,17 @@ _SWAGIT_ROW_DATE_FORMATS = (
 
 def _parse_swagit_video_table(html: str, base_url: str) -> List[Candidate]:
     soup = BeautifulSoup(html, "html.parser")
-    table = soup.find(id="video-table")
-    if table is None:
-        return []
+    # WO-1085: a `/views/{id}` page is the tenant's whole archive, one tab
+    # per body and year, and every tab is its own `table#video-table`
+    # (Carmel IN's view 1: 88 tabs, 1,530 meetings; Dublin CA's view 876:
+    # 4). Only the first table was read -- 19 of Carmel's 1,530.
+    rows = [
+        tr
+        for table in soup.find_all("table", id="video-table")
+        for tr in table.find_all("tr")
+    ]
     candidates: List[Candidate] = []
-    for tr in table.find_all("tr"):
+    for tr in rows:
         a = tr.find("a", href=True)
         if a is None:
             continue
