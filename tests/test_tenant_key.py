@@ -365,6 +365,10 @@ TELVUE_ID_TOKEN = {
     "playlists/4806": "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru",  # C-NET
     "playlists/4815": "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru",  # C-NET
     **{
+        f"playlists/{n}": "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"  # C-NET (WO-1070)
+        for n in (4805, 4808, 4820, 4827, 4840, 9293)
+    },
+    **{
         f"playlists/{n}": "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP"  # RVTV
         for n in (5222, 5224, 5226, 5229, 5237, 5242)
     },

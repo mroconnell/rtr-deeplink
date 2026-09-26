@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+  Pages whose stored source URL their own adapter can't re-resolve are…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
   Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
@@ -449,7 +450,7 @@ Reliability, ops & cost  (11)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
 Trust, safety & data quality  (30)
-  Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked…
+  Pinned hosts: pins no person checked still lose to a wrong name match…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
   ChampDS jurisdiction text comes out wrong for customer names that…
@@ -921,6 +922,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Pages whose stored source URL their own adapter can't re-resolve are never auto-transcribed `[JUST-DO-IT]`
+
+- **Issue**: worker/main.py, `bulk_queue_transcription_backlog.py` and `transcribe_backlog_locally.py` all re-resolve a MeetingPage from its own stored `source_url_normalized` via `get_finder(page.platform).resolve(source_url)`. Confirmed live 2026-09-25: Mary Esther, FL (page id 11151, platform civicclerk) stores the bare portal root `https://maryestherfl.portal.civicclerk.com` (no event id), which `civicclerk.py` can never parse — root cause was `feed_tier3_auto_transcription.py`'s `_push_if_has_video()` applying a queue line's `source_url` override unconditionally, even when the queued URL was itself a real, re-resolvable CivicClerk event page.
+- **Impact**: such a page cycles through the auto-transcription cooldown forever, never transcribed, even though its stored `video_url` is real and playable. A conductor shape check (not live-verified) over all 10,496 Archive pages found 504 without a good transcript, of which about 58 look unrecoverable this way (125 YouTube, excluded already; 52 with a source URL on a different platform than the page; 6 bare homepages) and 46 non-YouTube tier-3 queue lines still carry a bare-host override that would keep producing this shape until this PR deploys.
+- **Next action**: deploy this PR (worker + archive services) — `app/platforms/reresolve.py`'s `reresolve_for_transcription()` falls back to a page's stored `video_url` when its `source_url` can't be re-resolved, and the upstream override bug is fixed. Once live, the ~58 affected pages come back for auto-transcription on their next cooldown expiry with no manual re-ingest needed.
+- **Constraint**: the ~58 pages' stored `source_url_normalized` is still wrong for their own "View original source" link — this fix only unblocks transcription, it doesn't repair the stored URL. Fixing that is a data change, Ryan's call.
+- **History**: `app/platforms/reresolve.py`'s own module docstring has the full Mary Esther, FL writeup.
 
 ### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
 
@@ -2482,21 +2491,21 @@ of human step they need.
   - **Impact**: the ladder copies still hand back other organizations' links without a note.
   - **Next action**: re-run the rule once on WO-912's hand-read finds; wire the note into the three copies (or retire them); look at how to catch a wrong recorded website.
   - **Constraint**: flag, never reject: real shared cable-access channels have no name overlap.
-  - **History**: `BACKLOG_DONE.md` WO-933, WO-908, WO-909, WO-912, WO-913. WO-1070 (2026-09-25) hand-read 737 ladder finds with a verdict each (`rtr-business/research/wo1070_passA_results.csv`), a ready sample for the re-run.
+  - **History**: `BACKLOG_DONE.md` WO-933, WO-908, WO-909, WO-912, WO-913. WO-1077 (2026-09-25) hand-read 737 ladder finds with a verdict each (`rtr-business/research/wo1077_passA_results.csv`), a ready sample for the re-run.
 
 - **[NEEDS-AUDIT] `[EASY]` The access ladder follows a hop link off the government's own site and credits whatever it finds there to the government.**
-  - **Issue**: `_score_hop_candidate()` (`scripts/wo147_access_ladder_sweep.py`) only refuses a vendor's marketing site; any other off-site page can be the hop page, and a link found on it is reported as the government's. WO-1070 (2026-09-25) hand-read 737 ladder finds and saw this many times: university extension pages (UT Extension for McMinn County TN, Penn State Extension for Tioga County PA, Texas A&M AgriLife for Terry and Zavala County TX), state pages (kentucky.gov's `kygov` channel for Metcalfe, Butler, Monroe and Elliott County KY; the Missouri Secretary of State for Madison and Atchison County MO; Illinois DHS for Ford County IL; arkansas.com's tourism channel for Lincoln, Howard and Fulton County AR), and a waste company's site for Avoyelles Parish LA.
-  - **Impact**: most of the "other org" finds in WO-1070 came this way. A sweep that trusts the ladder files state and university channels under counties.
-  - **Next action**: in the hop step, only accept a hop page on a different registrable domain when that domain is a known meeting-platform host (the `_PLATFORM_HREF_HINTS` list); re-run the ladder on the WO-1070 rows marked "other org" to confirm they drop out and the "own meeting platform" rows stay.
+  - **Issue**: `_score_hop_candidate()` (`scripts/wo147_access_ladder_sweep.py`) only refuses a vendor's marketing site; any other off-site page can be the hop page, and a link found on it is reported as the government's. WO-1077 (2026-09-25) hand-read 737 ladder finds and saw this many times: university extension pages (UT Extension for McMinn County TN, Penn State Extension for Tioga County PA, Texas A&M AgriLife for Terry and Zavala County TX), state pages (kentucky.gov's `kygov` channel for Metcalfe, Butler, Monroe and Elliott County KY; the Missouri Secretary of State for Madison and Atchison County MO; Illinois DHS for Ford County IL; arkansas.com's tourism channel for Lincoln, Howard and Fulton County AR), and a waste company's site for Avoyelles Parish LA.
+  - **Impact**: most of the "other org" finds in WO-1077 came this way. A sweep that trusts the ladder files state and university channels under counties.
+  - **Next action**: in the hop step, only accept a hop page on a different registrable domain when that domain is a known meeting-platform host (the `_PLATFORM_HREF_HINTS` list); re-run the ladder on the WO-1077 rows marked "other org" to confirm they drop out and the "own meeting platform" rows stay.
   - **Constraint**: a county's own site can live on a state host (`in.gov/counties/<name>`, `<name>.okcounties.org`, `portal.arkansas.gov/counties/<name>`); treat the recorded domain's own host as on-site even when it is a state domain.
-  - **History**: `BACKLOG_DONE.md` WO-1070. Related, different fix: the entry above (the note for another organization's link on the government's own page).
+  - **History**: `BACKLOG_DONE.md` WO-1077. Related, different fix: the entry above (the note for another organization's link on the government's own page).
 
 - **[NEEDS-AUDIT] `[EASY]` The access ladder's `direct_file` and YouTube hits include things that are not meeting media, and its "same domain" check rejects real ones.**
-  - **Issue**: WO-1070's hand-read found four shapes. (1) Google Drive share links count as `direct_file`, but several were PDFs ("Employment Application.pdf", "2026 DVAM Proclamation.pdf", a chamber guide). (2) Files on `videos.evo.cloud` are rejected as "different domain", but that host belongs to EvoGov, the company that builds the county's own site (Clinton County OH and Iowa County WI had real meeting video there; Kendallville IN and St. James NC had homepage background videos); four places (Edinboro, Spring Valley, Winona Lake, Deer Park) were credited with InvoiceCloud's own "Making a Payment with PayPal" Wistia video from their bill-pay page. (3) The plausibility check compares against the recorded domain, not the site the recorded domain redirects to, so Owosso MI's real council audio on `ci.owosso.mi.us` was rejected. (4) Non-channel YouTube URLs count as hits: the bare youtube.com homepage (Oswego County NY, Jackson County IN), a search URL (Grain Valley MO) and YouTube's own terms page (Cuming County NE).
+  - **Issue**: WO-1077's hand-read found four shapes. (1) Google Drive share links count as `direct_file`, but several were PDFs ("Employment Application.pdf", "2026 DVAM Proclamation.pdf", a chamber guide). (2) Files on `videos.evo.cloud` are rejected as "different domain", but that host belongs to EvoGov, the company that builds the county's own site (Clinton County OH and Iowa County WI had real meeting video there; Kendallville IN and St. James NC had homepage background videos); four places (Edinboro, Spring Valley, Winona Lake, Deer Park) were credited with InvoiceCloud's own "Making a Payment with PayPal" Wistia video from their bill-pay page. (3) The plausibility check compares against the recorded domain, not the site the recorded domain redirects to, so Owosso MI's real council audio on `ci.owosso.mi.us` was rejected. (4) Non-channel YouTube URLs count as hits: the bare youtube.com homepage (Oswego County NY, Jackson County IN), a search URL (Grain Valley MO) and YouTube's own terms page (Cuming County NE).
   - **Impact**: false finds to hand-read, and a few real meeting recordings dropped.
   - **Next action**: drop Google Drive links from `direct_file` unless the link text or path names an audio/video file; compare against the final (post-redirect) host as well as the recorded domain; treat `videos.evo.cloud` as on-site when the page's `<meta name="generator">` names EvoGov; ignore YouTube URLs that are not a channel, handle, playlist or video.
   - **Constraint**: an EvoGov-hosted video is often a looping homepage hero video, not a meeting; being on-site only makes it plausible, not a meeting.
-  - **History**: `BACKLOG_DONE.md` WO-1070.
+  - **History**: `BACKLOG_DONE.md` WO-1077.
 
 - **[NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s hand-read page fetch has no Content-Type guard, so a `hub_url` that is itself a raw media file gets its full body pulled into memory before being truncated.**
   - **Issue**: found live 2026-09-14 (WO-364), while re-running the same hand-read method WO-361 used against 3 new `direct_file`-platform candidates whose `hub_url` was literally the video's own URL (no wrapping HTML page): Chesterfield Inlet, Nunavut (165 MB `.mp4`), North township, Indiana (31 MB `.webm`), a Wisconsin.gov shared site-template asset (12 MB `.mp4`, served from `/_catalogs/masterpage/WIGovSite/images/`, not town-specific content). `wo361_handread.py`'s `fetch()` does `raw = await resp.read()` with no Range header and no Content-Type check — the *entire* response body is pulled into memory first, and only truncated to 3 MB afterward for storage. That is a real, if accidental, violation of the standing "never download a media file" rule (preamble.md; the rule exists because of the 2026-09-12 Ramsey MN 39 MB mp3 incident) — nothing was saved to disk, but up to 165 MB traversed the network and sat in process memory per candidate.
@@ -6034,13 +6043,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
+### Pinned hosts: pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
 
-- **Issue**: WO-1068 fixed 15 wrong pins, re-filed 34 pages and added a rule that a person-checked fallback pin beats a name match to a different place. Two things are left. (1) 4 pages need a decision: LA World Airports (pages 335, 5784, on a minted id while the pin says City of Los Angeles) and M-NCPPC (361 on Montgomery County, 5817 and 10467 on a minted M-NCPPC id, while the pin is a separate minted "Montgomery County Planning Board"). (2) The rule only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
-- **Impact**: 4 pages on a debatable government; future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
-- **Next action**: (1) Ryan picks one id each for LAWA and M-NCPPC, then re-file through `POST /internal/jurisdiction/override`. (2) Re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync, siouxcity under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps.
+- **Issue**: WO-1068's rule (a person-checked fallback pin beats a namesake name match) only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
+- **Impact**: future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
+- **Next action**: re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps. Separately: `mncppc.iqm2.com` (pinned by Ryan to Prince George's County) has 2 Archive pages (1253, 2268) with no government at all; that host is M-NCPPC's Prince George's side, so it may want the same M-NCPPC id WO-1074 gave `mncppc.granicus.com` (Ryan's call).
 - **Constraint**: report before re-filing any existing page. `playback.orionontv.org` page 10402 ("Township Board Meeting" on a city id, pin `WO-322`) is a likely third case, not yet checked.
-- **History**: `BACKLOG_DONE.md` WO-1068; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
+- **History**: `BACKLOG_DONE.md` WO-1068 and WO-1074; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
 
 ### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
 
@@ -7371,19 +7380,19 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ### YouTube channels the access ladder found for 5,000+ governments are recorded but not confirmed as meeting channels `[IMPROVEMENT-ROUND]`
 
-- **Issue:** WO-1070 (2026-09-25) recorded 105 YouTube channels as `suspected_video_provider=youtube` in `jurisdiction_coverage.csv` because the government's own page ties the channel to its meetings ("Watch Commission meetings", a Video column in a meetings table). Nobody opened the channels: this Mac is not the drip Mac. Another 197 found channels sit only behind a footer icon ("likely own general channel") and were not recorded.
+- **Issue:** WO-1077 (2026-09-25) recorded 105 YouTube channels as `suspected_video_provider=youtube` in `jurisdiction_coverage.csv` because the government's own page ties the channel to its meetings ("Watch Commission meetings", a Video column in a meetings table). Nobody opened the channels: this Mac is not the drip Mac. Another 197 found channels sit only behind a footer icon ("likely own general channel") and were not recorded.
 - **Impact:** about 300 larger governments may already have meeting video on YouTube with no Archive page.
-- **Next action:** hand the 105 recorded channels, then the 197 icon-only ones, to the drip Mac (`scripts/youtube_drip.py`) for a channel listing check; the list, with the page evidence for each, is `rtr-business/research/wo1070_passA_results.csv` (verdict column).
+- **Next action:** hand the 105 recorded channels, then the 197 icon-only ones, to the drip Mac (`scripts/youtube_drip.py`) for a channel listing check; the list, with the page evidence for each, is `rtr-business/research/wo1077_passA_results.csv` (verdict column).
 - **Constraint:** YouTube is fetched only by the drip Mac (`docs/YOUTUBE_DRIP_RUNBOOK.md`).
-- **History:** `BACKLOG_DONE.md` WO-1070.
+- **History:** `BACKLOG_DONE.md` WO-1077.
 
 ### 37 of the 212 dead government addresses over 5,000 people were not repaired `[IMPROVEMENT-ROUND]`
 
-- **Issue:** WO-1070 repaired 175 `dns-unresolvable` rows (www/http forms, alternate domains, CISA's .gov list, state directories, all hand-confirmed). Not repaired: 14 not found, 16 behind a human-verification wall (Cloudflare or SiteGround's "sgcaptcha"), 6 where the proposed site was wrong or unclear (Columbia MS is a hacked WordPress site; Newburyport MA's homepage carries unrelated Mexican ID-verification text; Scioto County OH got Scioto Township; Polk County GA got a parked domain; Dallas County MO got the Buffalo chamber of commerce; Monmouth OR is walled), plus Greene County TN, whose only working site is a WP Engine staging host.
+- **Issue:** WO-1077 repaired 175 `dns-unresolvable` rows (www/http forms, alternate domains, CISA's .gov list, state directories, all hand-confirmed). Not repaired: 14 not found, 16 behind a human-verification wall (Cloudflare or SiteGround's "sgcaptcha"), 6 where the proposed site was wrong or unclear (Columbia MS is a hacked WordPress site; Newburyport MA's homepage carries unrelated Mexican ID-verification text; Scioto County OH got Scioto Township; Polk County GA got a parked domain; Dallas County MO got the Buffalo chamber of commerce; Monmouth OR is walled), plus Greene County TN, whose only working site is a WP Engine staging host.
 - **Impact:** these keep `reject_reason=dns-unresolvable`, which is wrong for some: Vermont counties (Chittenden, Orange) have no county board, and six Oklahoma counties (Stephens, Garvin, Caddo, Pushmataha, Murray, Cotton) publish only through local newspapers.
 - **Next action:** give those eight a reason that says so (ENUMERATION_METHODS.md section 23 has no bucket yet; propose `no-county-government` and `no-official-website`), and recheck Pontotoc County MS and Pontotoc MS, whose sites were down together at one host that evening.
 - **Constraint:** never try to get past the walls.
-- **History:** `BACKLOG_DONE.md` WO-1070; per-government results in `rtr-business/research/wo1070_passB_results.csv`.
+- **History:** `BACKLOG_DONE.md` WO-1077; per-government results in `rtr-business/research/wo1077_passB_results.csv`.
 
 ## Dormant — needs a real example first `[LATER]`
 
@@ -7400,7 +7409,7 @@ Nothing open here right now.
   caffeinate -i /Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python scripts/wo908_headless_pilot.py --candidates-csv ~/Documents/rtr-business/research/wo912_candidates.csv --out-csv ~/Documents/rtr-business/research/wo912_report.csv --limit 8559
   ```
   Check on it every hour or two by counting rows with Python's `csv` module (`wc -l` over-counts: some notes span lines). When it finishes, the report is the deliverable. Optional: add the newly walled governments to `rtr-business/research/walled_governments_browser_agent_brief.md`.
-- **Constraint:** nothing is handed on from the run. No lead, ingest, pin or research-file change comes out of it, because a quarter of the raw finds were another organization's (57 of 225 in WO-912) and nobody reads them. If a reading is ever wanted, the method is in `BACKLOG_DONE.md`'s WO-912 entry, and `rtr-business/research/wo912_rerun_groups.csv` marks the never-covered governments (about twice the yield). Also dropped: a headless second opinion on the never-covered governments, which on the WO-912 sample found 4 links in 356 loads and none was usable. The ladder never solves a human-verification wall. YouTube is fetched only by the drip Mac; the ladder's headless fetch blocks it at the browser (PR #1254). Don't rebuild `wo912_candidates.csv`: its order comes from a seeded shuffle of the whole list, so rebuilding it after any research-file change reshuffles the order. 828 of the 7,359 (those over 5,000 people rejected "no-platform-link-found") were run by WO-1070 on 2026-09-25 into `rtr-business/research/wo1070_passA_results.csv`, not into `wo912_report.csv`, so the resume won't skip them; drop those gov_ids from the run or accept the ~3 hours of repeat work.
+- **Constraint:** nothing is handed on from the run. No lead, ingest, pin or research-file change comes out of it, because a quarter of the raw finds were another organization's (57 of 225 in WO-912) and nobody reads them. If a reading is ever wanted, the method is in `BACKLOG_DONE.md`'s WO-912 entry, and `rtr-business/research/wo912_rerun_groups.csv` marks the never-covered governments (about twice the yield). Also dropped: a headless second opinion on the never-covered governments, which on the WO-912 sample found 4 links in 356 loads and none was usable. The ladder never solves a human-verification wall. YouTube is fetched only by the drip Mac; the ladder's headless fetch blocks it at the browser (PR #1254). Don't rebuild `wo912_candidates.csv`: its order comes from a seeded shuffle of the whole list, so rebuilding it after any research-file change reshuffles the order. 828 of the 7,359 (those over 5,000 people rejected "no-platform-link-found") were run by WO-1077 on 2026-09-25 into `rtr-business/research/wo1077_passA_results.csv`, not into `wo912_report.csv`, so the resume won't skip them; drop those gov_ids from the run or accept the ~3 hours of repeat work.
 - **History:** `BACKLOG_DONE.md`'s WO-912 entry (the run, the method, the projection); `rtr-business/research/wo912_rerun_groups.csv`.
 
 ### Video-to-calendar join: match a government's video source to its own calendar by body and date `[PARK]` `[BIG]`

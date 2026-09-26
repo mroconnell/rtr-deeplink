@@ -93,6 +93,158 @@ async def test_maybe_generate_auto_job_records_failure_for_unsupported_platform(
     assert "Re-resolve failed" in recorded["error_message"]
 
 
+# --- WO-1073: video_url fallback when source_url can't be re-resolved -----
+#
+# SYNTHETIC, per CLAUDE.md's synthetic-test rule: reuses the real,
+# confirmed-live 2026-09-25 Mary Esther, FL shape (a bare CivicClerk
+# portal-root source_url civicclerk.py's real adapter can't parse, paired
+# with a real, playable stored video_url) -- see app/platforms/
+# reresolve.py's own module docstring for the full writeup.
+
+
+async def test_maybe_generate_auto_job_falls_back_to_stored_video_url(monkeypatch):
+    """The primary re-resolve of source_url raises on every attempt (a
+    permanent, not transient, failure -- a bare portal root never grows
+    an event id no matter how many times it's retried), so this must
+    fall back to the page's stored video_url rather than exhausting
+    retries and recording a permanent failure."""
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
+    from app.platforms.models import ResolvedMeeting
+
+    source_url = "https://maryestherfl.portal.civicclerk.com"
+    video_url = (
+        "https://cpmedia.azureedge.net/maryestherfl/"
+        "1a1a01e3-6195-4f33-be2c-4f0c7c235deb.mp4"
+    )
+
+    async def _candidate():
+        return {
+            "meeting_page_id": 11151,
+            "slug": "mary-esther-fl-2026-09-08-regular-city-council-meeting",
+            "source_url": source_url,
+            "platform": "civicclerk",
+            "video_url": video_url,
+        }
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    monkeypatch.setattr(reresolve_mod, "detect_platform", lambda url: "direct_file")
+
+    class _FallbackFinder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="direct_file",
+                source_url=url,
+                video_url=video_url,
+                video_format="mp4",
+            )
+
+    monkeypatch.setattr(reresolve_mod, "get_finder", lambda platform: _FallbackFinder())
+
+    async def _probe(video_url, *, source_page_url):
+        return 3600.0
+
+    monkeypatch.setattr(worker.main, "probe_duration", _probe)
+
+    monkeypatch.setattr(
+        worker.main.crud, "find_auto_transcription_candidate", _candidate
+    )
+
+    called_failure = False
+
+    async def _fail_if_called(*args, **kwargs):
+        nonlocal called_failure
+        called_failure = True
+
+    monkeypatch.setattr(
+        worker.main.crud, "create_failed_auto_transcription_job", _fail_if_called
+    )
+
+    created = {}
+
+    async def _create_job(**kwargs):
+        created.update(kwargs)
+        return {"job_id": 4242}
+
+    monkeypatch.setattr(worker.main.crud, "create_transcription_job", _create_job)
+
+    assert await worker.main.maybe_generate_auto_job() is True
+    assert called_failure is False
+    assert created["media_url"] == video_url
+    # The job payload's source_url/platform must be the PAGE's own
+    # original values, not the fallback's direct_file platform/video URL
+    # -- otherwise the next ingest/job-creation call for this same page
+    # would fail to match it by source_url_normalized and either create
+    # a duplicate page or overwrite its platform column (see
+    # app/platforms/reresolve.py's own docstring).
+    assert created["payload"]["source_url"] == source_url
+    assert created["payload"]["platform"] == "civicclerk"
+
+
+async def test_maybe_generate_auto_job_never_falls_back_to_a_youtube_video_url(
+    monkeypatch,
+):
+    """Per CLAUDE.md's YouTube-drip-only rule: even though a stored
+    video_url happens to be a youtube.com link, this must never be used
+    as a fallback target from the cloud worker."""
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
+    # Both retry attempts raise the same permanent-shaped ValueError (no
+    # fallback ever kicks in, per this test's whole point), so retry_async
+    # WILL back off between them -- shortened here so the test doesn't
+    # actually wait out the real ~10s base delay.
+    monkeypatch.setattr(worker.main, "AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS", 0.001)
+    monkeypatch.setattr(worker.main, "AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS", 0.002)
+
+    async def _candidate():
+        return {
+            "meeting_page_id": 22222,
+            "slug": "fake-slug-youtube-fallback",
+            "source_url": "https://maryestherfl.portal.civicclerk.com",
+            "platform": "civicclerk",
+            "video_url": "https://www.youtube.com/watch?v=abc123",
+        }
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("must never call get_finder for a YouTube fallback")
+
+    monkeypatch.setattr(reresolve_mod, "get_finder", _boom)
+
+    monkeypatch.setattr(
+        worker.main.crud, "find_auto_transcription_candidate", _candidate
+    )
+
+    recorded = {}
+
+    async def _record_failure(*, meeting_page_id, requester_email, error_message):
+        recorded["error_message"] = error_message
+        return {"job_id": 1, "status": "failed"}
+
+    monkeypatch.setattr(
+        worker.main.crud, "create_failed_auto_transcription_job", _record_failure
+    )
+
+    assert await worker.main.maybe_generate_auto_job() is True
+    assert "Could not find an event ID" in recorded["error_message"]
+
+
 # --- The feasibility check's own one-shot-no-retry gap (2026-08-22) --------
 #
 # Checked here as part of BACKLOG.md's "transcribe_backlog_locally.py gives

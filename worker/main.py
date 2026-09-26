@@ -66,6 +66,7 @@ from app.platforms.media_probe import (
     transcription_media_url,
 )
 from app.platforms.models import TranscriptSegment
+from app.platforms.reresolve import reresolve_for_transcription
 from app.utils.retry import retry_async
 from app.utils.vtt_parser import detect_language_from_texts, is_likely_garbled
 from archive.db import crud
@@ -173,6 +174,7 @@ async def maybe_generate_auto_job() -> bool:
     slug = candidate["slug"]
     source_url = candidate["source_url"]
     platform = candidate["platform"]
+    video_url = candidate.get("video_url")
     logger.info("Auto-generation: trying candidate %s (%s)", slug, source_url)
 
     async def _fail(reason: str) -> None:
@@ -188,9 +190,25 @@ async def maybe_generate_auto_job() -> bool:
         # get_finder() stays outside the retry on purpose: an unregistered
         # platform is a permanent answer, and its failure message shape
         # ("Re-resolve failed: ...") is unchanged from before this retry
-        # existed.
+        # existed. `finder` is also needed below (unconditionally, once
+        # this succeeds) for the embedded-captions check, which is always
+        # about this page's own ORIGINAL platform -- never the WO-1073
+        # video_url fallback's platform, even when that fallback is what
+        # actually supplied the media.
+        #
+        # WO-1073: `reresolve_for_transcription()` (not a bare
+        # `finder.resolve(source_url)`) so a page whose stored
+        # source_url its own adapter can't parse (e.g. a bare CivicClerk
+        # portal root with no event id -- see that module's own Mary
+        # Esther, FL writeup) can still fall back to its stored
+        # `video_url` instead of failing this re-resolve forever.
         result = await retry_async(
-            lambda: finder.resolve(source_url),
+            lambda: reresolve_for_transcription(
+                finder=finder,
+                platform=platform,
+                source_url=source_url,
+                video_url=video_url,
+            ),
             label=f"auto-generation re-resolve of {source_url}",
             attempts=AUTO_GENERATION_ATTEMPTS,
             base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,

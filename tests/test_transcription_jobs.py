@@ -1411,6 +1411,28 @@ async def test_find_auto_transcription_candidate_returns_page_missing_transcript
     assert await crud.find_auto_transcription_candidate() is not None
 
 
+async def test_find_auto_transcription_candidate_includes_video_url():
+    """WO-1073: `video_url` must ride along in the returned dict so
+    `worker/main.py`'s `maybe_generate_auto_job()` can fall back to it
+    (via `app/platforms/reresolve.py`) when a fresh re-resolve of the
+    page's own `source_url` fails -- `list_transcription_backlog_
+    candidates()` already returned this field; this was the one
+    candidate-search function that didn't. Not tied to page ordering in
+    the shared fixture DB (see the module docstring) -- whichever
+    candidate comes back, its `video_url` must match the same page's
+    real column value."""
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    candidate = await crud.find_auto_transcription_candidate()
+    assert candidate is not None
+    assert "video_url" in candidate
+
+    async with async_session() as session:
+        page = await session.get(MeetingPage, candidate["meeting_page_id"])
+        assert candidate["video_url"] == page.video_url
+
+
 async def test_find_auto_transcription_candidate_skips_page_in_cooldown():
     from archive.db.engine import async_session
     from archive.db.models import MeetingPage

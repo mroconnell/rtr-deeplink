@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1070: the Friday-night queue's token-heavy coverage passes -- 175 dead addresses repaired, 209 own meeting platforms recorded [Done 2026-09-25]
+## WO-1077: the Friday-night queue's token-heavy coverage passes -- 175 dead addresses repaired, 209 own meeting platforms recorded [Done 2026-09-25]
 
 **What was done and why.** The parked "Friday-night queue" entry held two passes for a week with spare usage. Ryan ran them on 2026-09-25, 5-8 PM, with read-only agents reporting back and one conductor making every edit. Both passes cover governments over 5,000 people.
 
@@ -39,7 +39,7 @@ What the 661 links turned out to be, from the hand-read:
 
 The ladder on the 176 repaired addresses (175 plus Greene TN) found a link on 76; 20 were the government's own non-YouTube meeting platform and 12 YouTube channels tied to meetings.
 
-**What changed in the research file** (`rtr-business` commit 854911c, `research/apply_wo1070_friday_queue.py`, under the lock, re-read, unchanged row count, temp file + rename; 354 rows):
+**What changed in the research file** (`rtr-business` commit 854911c, `research/apply_wo1077_friday_queue.py`, under the lock, re-read, unchanged row count, temp file + rename; 354 rows):
 
 | Change | Count |
 |---|---|
@@ -48,13 +48,24 @@ The ladder on the 176 repaired addresses (175 plus Greene TN) found a link on 76
 | YouTube channel recorded as `suspected_video_provider=youtube` (the government's page ties it to meetings) | 105 |
 | Pulaski County MO -> `wrong-domain-mapping` (`pulaskigov.com` serves Pulaski County, Kentucky) | 1 |
 
-Held back, not applied (`research/wo1070_review.csv`): six Google Drive links counted as `direct_file` (some are PDFs); four finds where the batch agent's own check disagreed with the hand-read (Muskogee County OK's agenda site is the City of Muskogee's authorities; Coahoma County MS's BoardDocs was blocked; Stutsman County ND's recording 404s; Nebraska City's video is a vendor welcome video); Greene County TN's staging host. Also noted, not changed: Bonne Terre MO's recorded domain `sfcgov.org` is St. Francois County's site.
+Held back, not applied (`research/wo1077_review.csv`): six Google Drive links counted as `direct_file` (some are PDFs); four finds where the batch agent's own check disagreed with the hand-read (Muskogee County OK's agenda site is the City of Muskogee's authorities; Coahoma County MS's BoardDocs was blocked; Stutsman County ND's recording 404s; Nebraska City's video is a vendor welcome video); Greene County TN's staging host. Also noted, not changed: Bonne Terre MO's recorded domain `sfcgov.org` is St. Francois County's site.
 
 **Caution.** The YouTube channels were never opened. "Ties it to meetings" means the government's own page says so ("Watch Commission meetings", a Video column in a meetings table); it does not mean the channel has recent meetings. The two follow-ups are in `BACKLOG.md`: the drip Mac should check the 105 recorded channels, then the 197 icon-only ones, and 37 dead addresses stay unrepaired (eight of them need a truer reject reason: Vermont counties have no county board; six Oklahoma counties publish only in newspapers).
 
 **Ladder problems found.** The hand-read found two fixable ladder faults, filed in `BACKLOG.md`'s Open bugs: the hop step follows links off the government's own site (state agencies, university extensions, tourism boards) and credits what it finds there to the government, which produced most of the "another organization's" YouTube finds; and the `direct_file`/YouTube hit filter lets through Google Drive PDFs, non-channel YouTube URLs and InvoiceCloud help videos, while rejecting real meeting audio when the site redirects to a different domain or hosts video on `videos.evo.cloud` (EvoGov). The run also covered 828 of the 7,359 governments in the parked WO-912 rerun; that entry now says so.
 
-**Recommendation.** Ingest from the 104 recorded non-YouTube platforms next (CivicPlus AgendaCenter 39, CivicWeb 9, CivicClerk 9, Vimeo 7, Swagit 3, BoardDocs 3 and others; `research/wo1070_changes.csv`), passing each row's `gov_id`. Hand the YouTube channels to the drip Mac.
+**Recommendation.** Ingest from the 104 recorded non-YouTube platforms next (CivicPlus AgendaCenter 39, CivicWeb 9, CivicClerk 9, Vimeo 7, Swagit 3, BoardDocs 3 and others; `research/wo1077_changes.csv`), passing each row's `gov_id`. Hand the YouTube channels to the drip Mac.
+
+## WO-1074: LA World Airports and M-NCPPC keep their own ids; their hosts are pinned to them [Done 2026-09-25]
+
+**What was done and why.** WO-1068 left 4 pages for Ryan's call. He accepted the recommendations.
+
+| Body | Decision | Why |
+| --- | --- | --- |
+| LA World Airports (`lawa.granicus.com`) | Its own id, not the City of Los Angeles | A city proprietary department with its own board, handled like LADWP (architecture doc §1.3) |
+| M-NCPPC (`mncppc.granicus.com`) | One id, `rtr:us:md:maryland-national-capital-park-and-planning-commission` | The Montgomery County Planning Board is an M-NCPPC body, not a separate government or the county |
+
+Both hosts now carry an `authoritative` pin to that id (as LADWP's do), because the adapter's own name for an M-NCPPC page can read "Montgomery County, MD". Page 361 was re-filed from Montgomery County to M-NCPPC (dry run, then applied). The other 4 pages were already on these ids.
 
 ## WO-1069: CivicMedia pages now name their own government [Done 2026-09-25]
 
