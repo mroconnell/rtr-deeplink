@@ -28,6 +28,23 @@ Dates: the adapter read 0 of rtr-discovery's 10 dated test titles before and 10 
 
 **Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1091/` (capture note there). Synthetic names are commented as such.
 
+## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
+
+**What was done and why.** `swagit_views.csv` (WO-1081) held 35 view numbers copied from links in research files. rtr-discovery's Swagit owner sweep (2026-09-26) proved who owns every view: it read view pages 1-1,090 and two video pages from each of the 567 with meetings; a video page names its owner in its analytics tag (`page_location: 'https://{owner}.swagit.com/...'`) wherever it is opened. Checked against that, 3 of the 35 rows were another government's view and 4 pointed at empty views:
+
+| Row in WO-1081 | View | Owner, per the sweep (both videos agree; Ryan confirmed in a browser) |
+| --- | --- | --- |
+| `austintx.new.swagit.com` | 5 | Denton, TX (`dentontx`) |
+| `ferndalesd.new.swagit.com` | 44 | Hamilton Southeastern Schools, IN (`hamiltonseschoolsin`) |
+| `idahofallsid.new.swagit.com` | 170 | Murphy, TX (`murphytx`) |
+| `batonrougela`, `houstontx`, `lmctvny`, `plainviewtx` | 136, 408, 424, 363 | none: the views list no meetings |
+
+The file is rebuilt from the sweep only: 427 views for 353 rtr-discovery Swagit tenants, every row naming the video pages that prove ownership. A tenant may now have several views (48 do); `known_views()` returns a list, `known_views_for(host)` is new, and Meeting Finder's Swagit lister walks every known view of a bare tenant URL.
+
+**Result.** Tests in `tests/test_wo1081_swagit_known_views.py` (file well-formed and owner-proven, one tenant per view, the three corrected owners, several views listed). `test_swagit_bare_tenant_root_falls_through_to_discovery` now uses a made-up host, since nearly every real tenant has a view. Full suite and ruff results are in the PR.
+
+**Caution.** A walk with WO-1081's file (rtr-discovery run 4354, 2026-09-26) listed 150 of Denton's, Hamilton Southeastern's and Murphy's meetings under Austin, Ferndale and Idaho Falls. None reached the Archive (0 pages, checked the same day). They were marked `filtered_out` (`wrong_swagit_view_owner`) in rtr-discovery's ledger on Ryan's Mac. Render services have `autoDeploy: false`; if WO-1081 was deployed by hand, deploy this too.
+
 ## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
 
 **What was tested and why.** Ryan reported that Meeting Finder said several sites were "domain dead" (`dns-unresolvable`) when the sites clearly worked — he could visit them in a browser. Five real examples: streaming.easdpa.org, video.collierschools.com, streamgages.springfieldmo.gov, media.polson.k12.mt.us, streaming.usd367.org. Each one still showed real progress in its own notes ("no-meeting-nor-video; dns-unresolvable; picked by..."), which meant Meeting Finder DID find real content, then threw that result away and reported the site as dead anyway.

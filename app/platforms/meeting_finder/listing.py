@@ -140,7 +140,7 @@ from app.platforms.cablecast import (
     list_gallery_shows,
 )
 from app.platforms.direct_file import is_direct_file_url
-from app.platforms.swagit import known_view_for
+from app.platforms.swagit import known_views_for
 
 from .fetch import BudgetExceeded, Fetcher
 from .models import Candidate
@@ -824,35 +824,45 @@ async def _list_via_swagit_views_page(
             lister="swagit_views_page",
             outcome=None,
         )
-    if not _SWAGIT_VIEWS_URL_RE.search(parsed.path):
-        # WO-1081: a bare tenant URL (the tab pages are empty) lists its
-        # known view page instead, when `swagit_views.csv` has one. The
-        # view is fetched on the tenant's own host, the host the number
-        # was recorded with.
-        views_id = known_view_for(parsed.netloc)
-        if not views_id:
+    if _SWAGIT_VIEWS_URL_RE.search(parsed.path):
+        view_urls = [account_url]
+    else:
+        # WO-1081/WO-1087: a bare tenant URL (the tab pages are empty)
+        # lists its known view pages instead, from `swagit_views.csv` --
+        # every one, since a tenant can have several (one per channel or
+        # set of bodies). Each is fetched on the tenant's own host.
+        views = known_views_for(parsed.netloc)
+        if not views:
             return None
-        account_url = f"{parsed.scheme or 'https'}://{parsed.netloc}/views/{views_id}/"
-    try:
-        result = await fetcher.fetch(account_url, need_links=True)
-    except BudgetExceeded as e:
+        base = f"{parsed.scheme or 'https'}://{parsed.netloc}"
+        view_urls = [f"{base}/views/{v}/" for v in views]
+    candidates: List[Candidate] = []
+    notes: List[str] = []
+    for url in view_urls:
+        if len(candidates) >= limit:
+            break
+        try:
+            result = await fetcher.fetch(url, need_links=True)
+        except BudgetExceeded as e:
+            notes.append(str(e))
+            break
+        html = result.html if (result.status == 200 or result.links_only) else None
+        if not html:
+            notes.append(f"could not fetch {url} ({result.outcome or result.status})")
+            continue
+        candidates.extend(_parse_swagit_video_table(html, result.final_url or url))
+    if candidates:
         return ListResult(
-            candidates=[], lister="swagit_views_page", outcome=None, note=str(e)
+            candidates=candidates[:limit], lister="swagit_views_page", outcome=None
         )
-    html = result.html if (result.status == 200 or result.links_only) else None
-    if not html:
+    if notes:
         return ListResult(
             candidates=[],
             lister="swagit_views_page",
             outcome=None,
-            note=f"could not fetch {account_url} ({result.outcome or result.status})",
+            note="; ".join(notes),
         )
-    candidates = _parse_swagit_video_table(html, result.final_url or account_url)
-    if not candidates:
-        return None
-    return ListResult(
-        candidates=candidates[:limit], lister="swagit_views_page", outcome=None
-    )
+    return None
 
 
 # --- Lister (b): rtr-discovery's list_tenant() ------------------------
