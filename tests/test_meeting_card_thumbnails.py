@@ -497,10 +497,18 @@ async def test_backfill_offset_pages_past_the_head_of_the_queue():
         assert response.json()["offset"] == offset
         return [c["slug"] for c in response.json()["candidates"]]
 
+    # Each window holds at most `limit` (500) candidates, and in a full run
+    # the shared DB can hold more than that -- then offset 2 returns 500
+    # too, two past the end of `everything`, and a plain
+    # `_slugs(2) == everything[2:]` failed (WO-1083, found running the
+    # suite in shuffled order). Compare only the part both windows cover.
     everything = _slugs(0)
     assert len(everything) >= 3
-    assert _slugs(2) == everything[2:]
-    assert _slugs(len(everything)) == []
+    from_two = _slugs(2)
+    assert from_two[: len(everything) - 2] == everything[2:]
+    if len(everything) < 500:  # not capped: nothing may appear past the end
+        assert len(from_two) == len(everything) - 2
+    assert _slugs(10**9) == []
 
 
 async def test_backfill_by_slugs_returns_exactly_those_pages_in_order():

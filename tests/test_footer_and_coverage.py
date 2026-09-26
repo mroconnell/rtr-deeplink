@@ -413,13 +413,20 @@ async def test_full_jurisdiction_coverage_viebit_cannot_be_audio_transcribed():
 
 
 async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
+    # Ukiah, CA: a real Census place (us:place:0681134) that no other test
+    # module seeds. A coverage row shows ONE example page per government
+    # (the first with a transcript), so with a government other modules
+    # also seed -- this used Napa until WO-1083 -- the example could be
+    # their page, and this failed whenever one of them ran first (found
+    # running the suite in shuffled order). Keep it a government no other
+    # test uses.
     payload = {
         "platform": "granicus",
         "source_url": "https://coverage-jurisdiction-test.granicus.com/player/clip/1",
         "external_id": "coverage-jurisdiction-test-1",
-        "title": "Napa City Council Regular Meeting",
+        "title": "Ukiah City Council Regular Meeting",
         "date": "2026-01-01",
-        "jurisdiction": "City of Napa, CA",
+        "jurisdiction": "City of Ukiah, CA",
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
         "segments": [{"start": 0, "end": 1, "text": "hello"}],
@@ -432,15 +439,15 @@ async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
     )
 
     jurisdictions = await crud.get_jurisdiction_coverage()
-    # Stored as "Napa, CA", not the payload's "City of Napa, CA": since
+    # Stored as "Ukiah, CA", not the payload's "City of Ukiah, CA": since
     # WO-99 `jurisdiction` is the DISPLAY NAME generated from the
-    # government the page resolved to (us:place:0650258), and `gov_id` is
+    # government the page resolved to (us:place:0681134), and `gov_id` is
     # the identity. That rewrite is what makes every spelling of one
     # government read the same way and share one hub.
-    napa_row = next(row for row in jurisdictions if row["jurisdiction"] == "Napa, CA")
-    assert napa_row["example"]["title"] == "Napa City Council Regular Meeting"
-    assert napa_row["example"]["has_transcript"] is True
-    assert napa_row["page_count"] >= 1
+    ukiah_row = next(row for row in jurisdictions if row["jurisdiction"] == "Ukiah, CA")
+    assert ukiah_row["example"]["title"] == "Ukiah City Council Regular Meeting"
+    assert ukiah_row["example"]["has_transcript"] is True
+    assert ukiah_row["page_count"] >= 1
 
 
 async def test_jurisdiction_coverage_sorted_case_insensitively():

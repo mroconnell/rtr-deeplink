@@ -1,5 +1,6 @@
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -227,3 +228,50 @@ def wrong_page_export_2026_09_21() -> tuple[Path | None, str]:
         f"({_WRONG_PAGE_EXPORT_ROWS:,} rows, no page after "
         f"{_WRONG_PAGE_EXPORT_LAST_CREATED}): " + "; ".join(found)
     )
+
+
+# Pending Archive pushes (app/db/crud.get_pending_archive_pushes) come back
+# oldest first and capped (limit=10 by default, and the sweep always uses
+# the default). The suite's SQLite file is shared and never reset, so a
+# test's freshly logged row sits BEHIND every pending row other modules
+# left earlier -- tests/test_archive_push_tracking.py failed whenever enough
+# of those ran first (WO-1083, found running the suite in shuffled order).
+# Tests where the cap applies backdate their own rows to put them first,
+# and delete what they logged afterwards so a backdated leftover can't
+# crowd out a later test.
+PENDING_PUSH_BACKDATE = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+
+async def backdate_resolutions(resolution_ids, *, start=PENDING_PUSH_BACKDATE):
+    """Give each row an old created_at, in the order given, one second
+    apart, so they sort before any row logged at the real current time."""
+    from sqlalchemy import update
+
+    from app.db.engine import async_session
+    from app.db.models import MeetingResolution
+
+    async with async_session() as session:
+        for i, resolution_id in enumerate(resolution_ids):
+            await session.execute(
+                update(MeetingResolution)
+                .where(MeetingResolution.id == resolution_id)
+                .values(created_at=start + timedelta(seconds=i))
+            )
+        await session.commit()
+
+
+async def delete_resolutions(resolution_ids):
+    from sqlalchemy import delete
+
+    from app.db.engine import async_session
+    from app.db.models import MeetingResolution
+
+    if not resolution_ids:
+        return
+    async with async_session() as session:
+        await session.execute(
+            delete(MeetingResolution).where(
+                MeetingResolution.id.in_(list(resolution_ids))
+            )
+        )
+        await session.commit()

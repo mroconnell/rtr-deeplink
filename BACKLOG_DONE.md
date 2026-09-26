@@ -1,5 +1,35 @@
 # Backlog — done
 
+## WO-1083: five tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
+
+**What.** Five tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All five had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
+
+**Cause and fix for each.**
+
+| Test | What got in the way | Fix |
+|---|---|---|
+| `test_archive_push_tracking.py`: `test_push_and_track_records_failure_on_unsuccessful_push`, `test_sweep_retries_every_pending_push_and_returns_what_it_found` | `get_pending_archive_pushes()` returns only the 10 oldest pending rows, and the sweep always uses that default. Other files' older pending rows pushed the test's new row out of the 10. | A test that only checks whether a row is pending now asks for every pending row. Where the sweep runs, the test backdates its own row to 2000-01-01 so it comes first. Each test deletes its rows afterwards. The shared helpers are `backdate_resolutions()` and `delete_resolutions()` in `tests/conftest.py`. |
+| `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` | A coverage row shows one example page per government: the first with a transcript. Other files also store Napa pages, so the example could be theirs ("Test Meeting"). | Uses Ukiah, CA instead: a real Census place (`us:place:0681134`) that no other test file uses. |
+| `test_state_pages.py::test_state_page_lists_states_jurisdictions` | The test looked for a link to its own Napa meeting. The state page lists meetings by link only in its "most recently archived" block. It shows that block only while no California meeting has a highlight, and other files store California meetings that do. | Checks the Napa row's link to its hub (`/j/napa-ca`) instead. The next test still checks a meeting link, on Georgia, which no other test file stores. |
+| `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue` | It asks for up to 500 candidates. A full run can hold more than 500, so the list from offset 2 was also 500 long, 2 past the end of the first list. | Compares only the part both lists cover. When the first list isn't capped, it still checks the exact length. The "past the end" check uses a very large offset. |
+
+`test_app_db_crud.py` got the same fix as the push-tracking file. It queries the same 10-row list and relied on the same luck; it had not failed yet.
+
+**How each cause was checked.** Each one was reproduced before it was fixed.
+- **Push tracking, footer and thumbnails:** a full run with these files placed last reproduced 4 of the 5 failures.
+- **State page:** it did not fail in that run. It was reproduced by rebuilding the exact failing seed-11 file order on the commit it was seen on (`c46c6b0`).
+- **The state-page cause was checked twice with probes.** Two first readings of the code were wrong. The first guessed that the Napa row's example pointed at another file's meeting; a probe showed the example was this test's own meeting. The second guessed that the meeting had fallen out of the 25-meeting recent list; a probe showed it was still in the list. A probe in that order found 4 featured meetings, so the recent list was never shown.
+
+**Result.** Full runs on this branch. The one test deselected in each run is `test_yt_dlp_metadata_call_is_refused_before_any_connection`, which fails only behind this container's proxy (see `BACKLOG.md`).
+
+| Order | Result |
+|---|---|
+| The failing files placed last | 7,626 passed, 0 failed |
+| Shuffled, seed 11 | 7,626 passed, 0 failed |
+| Shuffled, seed 22 | 7,626 passed, 0 failed |
+
+**Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
+
 ## WO-1081: Meeting Finder lists 35 known Swagit view pages, with dates [Done 2026-09-26]
 
 **What was done and why.** A Swagit tenant's tab pages (`/city-council`) are empty shells (WO-1036). Only a numbered `/views/{id}` page lists its meetings, and nothing on the tenant's own Swagit site links one: the government's website embeds it. Dublin, CA is the worked example. Its own "Watch Meetings" page embeds `dublinca.new.swagit.com/views/876/`, which lists 17 City Council meetings, while its tabs list none. rtr-discovery measured the gap on 2026-09-26: 271 of 438 Swagit tenants had 0 meetings in its ledger.

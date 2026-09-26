@@ -11,17 +11,36 @@ not the real HTTP call (already covered by app/archive_client.py's own
 usage elsewhere).
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 import app.main
 from app.db import crud
+from conftest import backdate_resolutions, delete_resolutions
 
 client = TestClient(app.main.app)
 
+# Every pending push, not the default first 10: a membership check must not
+# depend on how many pending rows other test modules left in the shared DB.
+_ALL = 10_000
+_logged: list[int] = []
 
-async def _log(url_suffix: str, *, transcript_found: bool = True) -> int:
+
+@pytest.fixture(autouse=True)
+async def _delete_logged_rows():
+    yield
+    await delete_resolutions(_logged)
+    _logged.clear()
+
+
+async def _log(
+    url_suffix: str, *, transcript_found: bool = True, oldest: bool = False
+) -> int:
+    """`oldest=True` backdates the row so it comes first in the pending
+    queue -- needed wherever the sweep runs, since the sweep only ever
+    takes the 10 oldest pending rows."""
     url = f"https://example.granicus.com/player/clip/push-tracking-{url_suffix}"
-    return await crud.log_resolution(
+    resolution_id = await crud.log_resolution(
         input_url=url,
         input_url_normalized=url,
         input_platform="granicus",
@@ -35,6 +54,10 @@ async def _log(url_suffix: str, *, transcript_found: bool = True) -> int:
             "agenda_items": [],
         },
     )
+    _logged.append(resolution_id)
+    if oldest:
+        await backdate_resolutions([resolution_id])
+    return resolution_id
 
 
 async def test_push_and_track_marks_pushed_on_success(monkeypatch):
@@ -46,7 +69,7 @@ async def test_push_and_track_marks_pushed_on_success(monkeypatch):
     resolution_id = await _log("success")
     await app.main._push_and_track(resolution_id, {}, "https://example.com")
 
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
 
@@ -59,7 +82,7 @@ async def test_push_and_track_records_failure_on_unsuccessful_push(monkeypatch):
     resolution_id = await _log("failure")
     await app.main._push_and_track(resolution_id, {}, "https://example.com")
 
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     match = [p for p in pending if p["resolution_id"] == resolution_id]
     assert len(match) == 1
     assert match[0]["attempts"] == 1
@@ -78,14 +101,14 @@ async def test_sweep_retries_every_pending_push_and_returns_what_it_found(monkey
     # zero it out here so this test can see the row as a candidate.
     monkeypatch.setattr(app.main, "ARCHIVE_PUSH_RETRY_AFTER_MINUTES", 0)
 
-    resolution_id = await _log("sweep")
+    resolution_id = await _log("sweep", oldest=True)
     retried = await app.main._sweep_pending_archive_pushes()
 
     assert resolution_id in [r["resolution_id"] for r in retried]
     assert any(url.endswith("push-tracking-sweep") for url in pushed_urls)
 
     # And it's no longer pending after a successful sweep.
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
 
@@ -95,10 +118,10 @@ async def test_sweep_leaves_a_failed_push_pending_for_next_time(monkeypatch):
 
     monkeypatch.setattr(app.main.archive_client, "push", _fake_push)
 
-    resolution_id = await _log("sweep-fail")
+    resolution_id = await _log("sweep-fail", oldest=True)
     await app.main._sweep_pending_archive_pushes()
 
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id in [p["resolution_id"] for p in pending]
 
 
@@ -124,7 +147,7 @@ async def test_sweep_endpoint_retries_and_reports_pending_pushes(monkeypatch):
     monkeypatch.setattr(app.main.archive_client, "push", _fake_push)
     monkeypatch.setattr(app.main, "ARCHIVE_PUSH_RETRY_AFTER_MINUTES", 0)
 
-    resolution_id = await _log("endpoint")
+    resolution_id = await _log("endpoint", oldest=True)
     response = client.get(
         "/admin/sweep-pending-pushes",
         headers={"Authorization": "Bearer test-admin-token"},
