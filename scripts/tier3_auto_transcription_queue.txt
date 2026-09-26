@@ -586,3 +586,4 @@ https://www.twinsburgtwp.com/Downloads/ZC_audio_20260714.mp3		us:cousub:39153780
 https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024		us:county:55039
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1716/Cgcsd/28652865-f07e-4d22-8aab-d4362b1f04fc/2026-27_Proposed_Budget.mp4?disposition=inline		us:sd:3600124
 https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
+https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
