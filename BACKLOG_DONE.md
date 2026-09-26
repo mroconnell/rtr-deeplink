@@ -18,6 +18,43 @@ State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_ty
 
 **Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
 
+## WO-1081: four local-only test failures fixed so a full local run is clean [Done 2026-09-26]
+
+**What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
+
+**1 and 2. The two wrong-page export tests** (`test_repair_wrong_pages.py::test_every_row_matches_the_local_export_it_was_built_from`, `test_wrong_page_screen.py::test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages`).
+
+Cause: both check real rows of the 2026-09-21 meeting export. They read `/tmp/rtr_meeting_inventory/meeting_inventory.csv` and skipped only when that file was missing. The daily dashboard refresh rewrites that file (2026-09-23, then 2026-09-25 07:08), so the tests ran on a newer export and failed on pages the repairs had since changed.
+
+Fix: `tests/conftest.py`'s `wrong_page_export_2026_09_21()` only accepts a file that looks like the 2026-09-21 export. The CSV has no date in it, so it checks two facts about that export:
+
+| Check | Value for the 2026-09-21 export |
+|---|---|
+| Rows | 10,280 (recorded twice in `BACKLOG.md`, both measured from that export) |
+| Newest page `created_at` | no later than 2026-09-22 (one day of slack: `created_at` is UTC, the export ran in Pacific time) |
+
+It prefers a dated copy, `/tmp/rtr_meeting_inventory/meeting_inventory_2026-09-21.csv`, when one exists, since the refresh never overwrites that file. On any other export the tests skip, and the skip reason gives the row count and newest date it found.
+
+Verified with stand-in files. A 10,280-row file whose newest page is 2026-09-25 skips both tests with that reason. A file matching both checks runs the real check.
+
+Caution: the 10,280 figure comes from the backlog, not from the file itself; the real 2026-09-21 export was not available here. If the Mac's copy of that export does not match both checks, the tests skip (and say why) instead of running. To keep the real check running, save that export as `meeting_inventory_2026-09-21.csv`.
+
+**3. `test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own`.**
+
+Cause: the test needs an Archive-owned table (`meeting_pages`) in the database the resolver reflects. Before this change it relied on the suite-wide SQLite file from `conftest.py`, which every test module shares, so what the file held at this test's turn depended on the rest of the run. The exact Mac-only trigger was not reproduced. It passed here in the normal order, in 3 shuffled orders, and when every test file was collected but only this test was run.
+
+Fix: a fixture builds a fresh SQLite file with both services' tables and points `app.db.engine.engine` at it. The endpoint reads that attribute at call time. The test now depends on nothing another test does.
+
+**4. `test_context_candidate_review.py::test_detail_read_is_one_snapshot_during_concurrent_save`.**
+
+Cause: the test started a save during an open read, slept a fixed 0.05 seconds, then checked the save had not finished. A fixed sleep says nothing about where the save actually is, so the check depended on timing. The one Mac flake was not reproduced here: 55 repeats of the file, 30 of them with every CPU busy, all passed. A probe showed the save really does stay blocked for 2 full seconds while the read is open.
+
+Fix: the save's own call to `_active_observations` (made inside its write transaction, just before it commits) now sets a signal. The read waits for that signal before it checks. So the check always runs with the save really in progress, never before the save has started. A failure now names the save's outcome or its error.
+
+Verified that it still catches the real bug. With the read's snapshot removed from `archive/context/store.py` (temporarily, then restored), it fails with "the save finished while the read was still open: 'saved'".
+
+**Result.** Full local run in a cloud container, with every file collected: all four pass. The two export tests skip because no export exists here. The one remaining failure, `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`, happens only because this container sends web traffic through a proxy. It is logged in `BACKLOG.md`, along with four other tests that fail only when test files run in a shuffled order, and the unconfirmed rtr-discovery import lead for tests 3 and 4.
+
 ## WO-1078: Meeting Finder checks the government TYPE a body's name implies, not just its place name [Done 2026-09-26]
 
 **Issue.** A no-platform-signature Meeting Finder run found 58 videos on

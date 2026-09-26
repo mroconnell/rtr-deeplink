@@ -387,6 +387,12 @@ async def test_detail_read_is_one_snapshot_during_concurrent_save(monkeypatch):
     real_active = store._active_observations
     writer_task = None
     interleaved = False
+    # Set by the writer's own _active_observations call, which it makes
+    # inside its write transaction just before committing. Waiting on this
+    # rather than on a fixed sleep means the check below always runs with
+    # the save genuinely in flight: under a fixed 0.05s sleep, a slow run
+    # could reach the check before the save had even begun.
+    writer_in_transaction = asyncio.Event()
 
     async def interleave_after_candidate_read(session, read_candidate_id):
         nonlocal interleaved, writer_task
@@ -402,8 +408,14 @@ async def test_detail_read_is_one_snapshot_during_concurrent_save(monkeypatch):
             )
             # The reader's transaction holds the candidate snapshot. The save
             # may begin, but it cannot commit a revision into this response.
+            await asyncio.wait_for(writer_in_transaction.wait(), timeout=10)
             await asyncio.sleep(0.05)
-            assert not writer_task.done()
+            assert not writer_task.done(), (
+                "the save finished while the read was still open: "
+                f"{writer_task.exception() or writer_task.result()['outcome']!r}"
+            )
+        else:
+            writer_in_transaction.set()
         return await real_active(session, read_candidate_id)
 
     monkeypatch.setattr(store, "_active_observations", interleave_after_candidate_read)
