@@ -7120,3 +7120,9 @@ https://cityofnewalbany.granicus.com/MediaPlayer.php?view_id=1&clip_id=248,grani
 https://oswego.granicus.com/MediaPlayer.php?view_id=2&clip_id=769,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-26T11:48:10+00:00,,0
 https://peabody.cablecast.tv/internetchannel/show/20173,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-09-26T11:48:13+00:00,,0
 https://quincyil.granicus.com/MediaPlayer.php?view_id=1&clip_id=146,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-26T11:48:17+00:00,,0
+https://socorronm.suiteonemedia.com/event/?id=661,suiteone,head+ffprobe,4656.97,2026-09-16,320472826,1,accept,,2.38,2026-09-26T03:15:03+00:00,bulk_ingest,0
+https://southamptoncountyva.new.swagit.com/videos/399152,swagit,hls-master+variant,8911.18,,,1,accept,,1.60,2026-09-26T03:15:10+00:00,bulk_ingest,0
+https://horizoncitytx.new.swagit.com/videos/400364,swagit,hls-master+variant,6733.40,,,1,accept,,0.25,2026-09-26T03:15:17+00:00,bulk_ingest,0
+https://lincolnconm.suiteonemedia.com/event/?id=136,suiteone,head+ffprobe,19749.18,2026-09-15,2099005168,1,accept,,2.68,2026-09-26T03:15:24+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/dPcc0-8Tpa1TXgczFV-MDZZSIEysEfp3/media/1045741,telvue,telvue-page-json,2767.00,,,1,accept,,0.42,2026-09-26T03:15:29+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt/media/1047640,telvue,telvue-page-json,4285.00,,,1,accept,,0.39,2026-09-26T03:15:31+00:00,bulk_ingest,0
