@@ -26,7 +26,12 @@ import pytest
 
 from app.platforms.meeting_finder import listing
 from app.platforms.meeting_finder.fetch import Fetcher, FetchResult
-from app.platforms.swagit import SWAGIT_VIEWS_FILE, known_view_for, known_views
+from app.platforms.swagit import (
+    SWAGIT_VIEWS_FILE,
+    known_view_for,
+    known_views,
+    known_views_for,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "swagit" / "dublin_views_876.html"
 DUBLIN = "dublinca.new.swagit.com"
@@ -64,18 +69,32 @@ def test_a_real_view_page_row_keeps_its_date():
 
 
 def test_the_known_views_file_is_well_formed():
+    # WO-1087: every row is owner-proven (rtr-discovery's 2026-09-26 owner
+    # sweep); a tenant may have several views, one row each.
     with SWAGIT_VIEWS_FILE.open(newline="") as f:
         rows = list(csv.DictReader(f))
-    hosts = [r["tenant_host"] for r in rows]
-    assert len(rows) == 35
-    assert len(hosts) == len(set(hosts)), "one view per tenant"
+    pairs = [(r["tenant_host"], r["views_id"]) for r in rows]
+    assert len(pairs) == len(set(pairs)), "one row per tenant and view"
+    views = [r["views_id"] for r in rows]
+    assert len(views) == len(set(views)), "a view belongs to one tenant"
     for r in rows:
         assert r["tenant_host"].endswith(".swagit.com")
         assert re.fullmatch(r"\d+", r["views_id"])
-        # Copied from a real link, never built: the link names this tenant.
         assert r["source_url"] == f"https://{r['tenant_host']}/views/{r['views_id']}"
-        assert r["found_in"]
-    assert known_views()[DUBLIN] == "876"
+        assert r["found_in"] and r["evidence"]
+    assert known_views()[DUBLIN] == ["876"]
+
+
+def test_the_three_wrong_views_are_filed_under_their_real_owners():
+    # WO-1087: WO-1081 filed these under the wrong tenant. The owner sweep
+    # read two video pages from each view; both named the real owner, and
+    # Ryan confirmed in a browser (2026-09-26).
+    assert known_views_for("austintx.new.swagit.com") == ["794"]
+    assert known_views_for("ferndalesd.new.swagit.com") == ["312"]
+    assert known_views_for("idahofallsid.new.swagit.com") == ["169"]
+    assert "5" in known_views_for("dentontx.new.swagit.com")
+    assert known_views_for("hamiltonseschoolsin.new.swagit.com") == ["44"]
+    assert known_views_for("murphytx.new.swagit.com") == ["170"]
 
 
 def test_a_bare_swagit_host_finds_its_new_swagit_row():
@@ -118,3 +137,22 @@ async def test_a_bare_tenant_url_with_no_known_view_is_left_to_other_listers(
         )
 
     assert result is None
+
+
+async def test_a_tenant_with_several_views_lists_all_of_them(fetcher, monkeypatch):
+    # WO-1087: 48 tenants have more than one view (one per channel or set
+    # of bodies). Each is fetched and their meetings are combined.
+    monkeypatch.setattr(listing, "known_views_for", lambda host: ["876", "999"])
+    requested: list[str] = []
+
+    async def fake_fetch(url: str, *, need_links: bool = True):
+        requested.append(url)
+        return _page(url, FIXTURE.read_text())
+
+    with patch.object(fetcher, "fetch", side_effect=fake_fetch):
+        result = await listing._list_via_swagit_views_page(
+            "swagit", f"https://{DUBLIN}/", fetcher, 20
+        )
+
+    assert requested == [f"https://{DUBLIN}/views/876/", f"https://{DUBLIN}/views/999/"]
+    assert len(result.candidates) == 6

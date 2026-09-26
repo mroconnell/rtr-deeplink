@@ -25,18 +25,20 @@ from ..utils.vtt_parser import (
     parse_captions_by_extension,
 )
 
-# WO-1081: known `/views/{id}` listing pages, one per Swagit tenant. A
-# tenant's tab pages are empty shells (WO-1036); only a numbered view page
-# lists its meetings, and nothing on the tenant's own site links one --
-# the government's website embeds it (Dublin, CA's "Watch Meetings" page
-# embeds `dublinca.new.swagit.com/views/876/`). Each row was copied from a
-# real link, with the file it came from. A view number is only trusted
-# that way, never guessed: any Swagit host serves any view's listing
-# (confirmed live 2026-09-26 -- Wise County TX's view 908 from
-# dublinca.new.swagit.com), so a wrong number files another government's
-# meetings under this tenant. rtr-discovery's Swagit walker reads this
-# same file (moved here from rtr-discovery #79 so both tools share one
-# copy, like `tenant_overrides.csv`).
+# WO-1081/WO-1087: known `/views/{id}` listing pages for Swagit tenants.
+# A tenant's tab pages are empty shells (WO-1036); only a numbered view
+# page lists its meetings, and the government's own website is what links
+# it. Any Swagit host serves any view number's listing (and any video
+# number), so a view is filed to a tenant only with proof of ownership:
+# WO-1087 rebuilt this file from rtr-discovery's 2026-09-26 owner sweep,
+# which read two video pages from every view (1-1,090) and took the owner
+# each names in its analytics tag (`page_location: 'https://{owner}.
+# swagit.com/...'`). WO-1081's first 35 rows came from links in research
+# files instead; 3 of them were another government's view (Austin's "5"
+# is Denton TX's, Ferndale SD's "44" is Hamilton Southeastern IN's, Idaho
+# Falls' "170" is Murphy TX's) and 4 pointed at empty views. A tenant can
+# have several views (one per channel or set of bodies): one row each.
+# rtr-discovery's Swagit walker reads this same file.
 SWAGIT_VIEWS_FILE = (
     Path(__file__).resolve().parent.parent
     / "utils"
@@ -46,29 +48,38 @@ SWAGIT_VIEWS_FILE = (
 
 
 @lru_cache(maxsize=1)
-def known_views() -> Dict[str, str]:
-    """Swagit tenant host -> its known `/views/{id}` number."""
+def known_views() -> Dict[str, List[str]]:
+    """Swagit tenant host -> its known `/views/{id}` numbers, file order."""
+    views: Dict[str, List[str]] = {}
     if not SWAGIT_VIEWS_FILE.exists():
-        return {}
+        return views
     with SWAGIT_VIEWS_FILE.open(newline="") as f:
-        return {
-            row["tenant_host"].strip().lower(): row["views_id"].strip()
-            for row in csv.DictReader(f)
-            if row.get("tenant_host") and row.get("views_id")
-        }
+        for row in csv.DictReader(f):
+            host = (row.get("tenant_host") or "").strip().lower()
+            view = (row.get("views_id") or "").strip()
+            if host and view and view not in views.setdefault(host, []):
+                views[host].append(view)
+    return views
 
 
-def known_view_for(host: str) -> Optional[str]:
-    """The known view number for a Swagit host, or None. A bare
+def known_views_for(host: str) -> List[str]:
+    """Every known view number for a Swagit host (empty if none). A bare
     `*.swagit.com` host redirects to `*.new.swagit.com` (WO-1036), so
-    either spelling finds the same row."""
+    either spelling finds the same rows."""
     host = (host or "").lower()
     views = known_views()
     if host in views:
-        return views[host]
+        return list(views[host])
     if host.endswith(".swagit.com") and ".new.swagit.com" not in host:
-        return views.get(host[: -len(".swagit.com")] + ".new.swagit.com")
-    return None
+        return list(views.get(host[: -len(".swagit.com")] + ".new.swagit.com", []))
+    return []
+
+
+def known_view_for(host: str) -> Optional[str]:
+    """The first known view number for a Swagit host, or None (kept for
+    callers that take one view; prefer `known_views_for`)."""
+    found = known_views_for(host)
+    return found[0] if found else None
 
 
 # Rolling time window for grouping #transcript-fragments' word-level
