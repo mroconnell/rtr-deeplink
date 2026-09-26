@@ -1503,7 +1503,12 @@ async function init() {
     setupTranscriptLanguagePicker(data.transcript_language, segments, data.alternate_transcripts || []);
     renderTranscript(segments);
     setupTranscriptSearch();
-  } else if (transcriptWarnings.length) {
+  } else if (transcriptWarnings.length || data.video_url) {
+    // WO-1110: a playable video with no transcript AND no warning used to
+    // leave this whole column empty (Pierre SD's TelVue meetings,
+    // 2026-09-26: no caption track listed at all, so the adapter wrote no
+    // warning). The archived page already shows this panel regardless;
+    // the live page now does too whenever there is a video to link into.
     document.getElementById('transcriptMissing').hidden = false;
     if (bestEffort) {
       // No live playhead to honestly show here -- deep-link reliability

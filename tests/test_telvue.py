@@ -1364,6 +1364,29 @@ async def test_wo1100_titles_are_kept_as_written():
     assert result.title == "Centreville Town Council || 09/17/2026"
 
 
+from app.platforms.telvue import _NO_CAPTIONS_WARNING  # noqa: E402
+
+
+async def test_wo1110_no_caption_track_says_so():
+    # Pierre's real saved page lists no caption track at all
+    # (`"tracks":[]`). Before WO-1110 the adapter wrote no warning, so the
+    # live meeting page's transcript column came up empty (Ryan,
+    # 2026-09-26).
+    result = await _resolve_saved_page("pierre", 1045603)
+    assert result.video_url
+    assert not result.segments
+    assert result.transcript_warnings == [_NO_CAPTIONS_WARNING]
+
+
+async def test_wo1110_captioned_meeting_gets_no_warning():
+    # Control: Derry's saved page lists a caption track. The saved caption
+    # file is not served here (a 404, see `_resolve_saved_page()`), so this
+    # takes the older "caption file came back empty" branch -- one warning,
+    # never two.
+    result = await _resolve_saved_page("derry", 1047520)
+    assert result.transcript_warnings.count(_NO_CAPTIONS_WARNING) == 1
+
+
 # The 10 dated titles in rtr-discovery's walker tests
 # (tests/test_telvue.py::test_meeting_dates there). Before WO-1100 the
 # adapter read a date only from a title ending "- Month D, YYYY", which
