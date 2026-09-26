@@ -121,12 +121,33 @@ def normalize_body_type_word(word: str) -> str:
 # rule (CLAUDE.md) this table's own construction leaned on.
 #
 # Each entry: (phrase, expected gov_types, plain-language owner hint for
-# the recorded lead). Order matters only in that a longer, more specific
-# phrase is listed before a shorter one it could otherwise be confused
-# with (e.g. "state board of education" before a bare "board of
-# education"); none of these phrases are literal substrings of each
-# other, so match order does not change which one fires.
+# the recorded lead). `match_body_type_phrase()` below picks the LONGEST
+# matching phrase when more than one appears in the same title, so list
+# order itself is not load-bearing -- but real, confirmed overlaps DO
+# exist (see the conductor's 2026-09-26 PR review): "Harnett County Board
+# of Education - Sep 17 2026" (a real approved find, Harnett County, NC's
+# own county-wide school district, common in NC/GA/MD/WV/KY/TN) contains
+# BOTH "county board" (12 chars, this table's own COUNTY phrase) and
+# "board of education" (19 chars, this table's own SCHOOL phrase) as
+# substrings -- picking the longest of the two correctly selects "board
+# of education" and keeps this a clean find. "County School Board" and
+# "County Schools Board of Education" were checked too: neither contains
+# the literal "county board" substring ("school"/"schools" sits between
+# "county" and "board"), so they were never actually at risk, but they
+# exercise the same overlap-resolution path in
+# `tests/test_wo1078_meeting_finder_body_type.py`.
 _MUNICIPAL_TYPES: FrozenSet[str] = frozenset({classify.MUNICIPALITY})
+# "City Council"/"Common Council"/"City Commission" specifically (not
+# "Village Board", which is never a township): some New England and New
+# Jersey cities are legally registered as county subdivisions
+# (`classify.TOWNSHIP`, the `us:cousub:` namespace) rather than an
+# incorporated place (`classify.MUNICIPALITY`) -- real example class the
+# conductor's review named. A school district search finding a real
+# TOWN's council is still caught either way, since neither
+# `classify.MUNICIPALITY` nor `classify.TOWNSHIP` is `SCHOOL_DISTRICT`.
+_CITY_COUNCIL_TYPES: FrozenSet[str] = frozenset(
+    {classify.MUNICIPALITY, classify.TOWNSHIP}
+)
 _COUNTY_TYPES: FrozenSet[str] = frozenset({classify.COUNTY})
 _TOWN_TYPES: FrozenSet[str] = frozenset({classify.TOWNSHIP, classify.MUNICIPALITY})
 _SCHOOL_TYPES: FrozenSet[str] = frozenset({classify.SCHOOL_DISTRICT})
@@ -188,9 +209,9 @@ VIDEO_TITLE_BODY_PHRASES: Tuple[Tuple[str, FrozenSet[str], str], ...] = (
     ("town council", _TOWN_TYPES, "the town/city's own council"),
     ("town board", _TOWN_TYPES, "the town's own board"),
     # City/village bodies.
-    ("common council", _MUNICIPAL_TYPES, "the city's own common council"),
-    ("city council", _MUNICIPAL_TYPES, "the city's own council"),
-    ("city commission", _MUNICIPAL_TYPES, "the city's own commission"),
+    ("common council", _CITY_COUNCIL_TYPES, "the city's own common council"),
+    ("city council", _CITY_COUNCIL_TYPES, "the city's own council"),
+    ("city commission", _CITY_COUNCIL_TYPES, "the city's own commission"),
     ("village board", _MUNICIPAL_TYPES, "the village's own board"),
     # Non-school municipal/county body, type otherwise unspecified.
     (
@@ -221,19 +242,32 @@ VIDEO_TITLE_BODY_PHRASES: Tuple[Tuple[str, FrozenSet[str], str], ...] = (
 def match_body_type_phrase(
     title: Optional[str],
 ) -> Optional[Tuple[str, FrozenSet[str], str]]:
-    """The first `VIDEO_TITLE_BODY_PHRASES` entry whose phrase appears in
+    """The LONGEST `VIDEO_TITLE_BODY_PHRASES` entry whose phrase appears in
     `title` as a whole word/phrase (case-insensitive), or `None` when no
     recognized body-name phrase is present at all -- an ordinary,
     ambiguous title ("Regular Meeting", "Planning Commission", a bare
     "Board of Trustees") always returns `None` and is never treated as
-    evidence of anything."""
+    evidence of anything.
+
+    Longest match wins (not first-in-table-order) because a real title
+    can contain more than one recognized phrase as a substring of each
+    other's surrounding text, and the longer one is always the more
+    specific, correct read: "Harnett County Board of Education - Sep 17
+    2026" (a real approved find, Harnett County, NC's own county-wide
+    school district) contains both "county board" (this table's COUNTY
+    phrase) and "board of education" (this table's SCHOOL phrase) --
+    picking the shorter one first (the bug this docstring replaces)
+    wrongly read it as the county's own meeting. See the module comment
+    above `VIDEO_TITLE_BODY_PHRASES` for the fuller writeup."""
     low = (title or "").lower()
     if not low:
         return None
+    best: Optional[Tuple[str, FrozenSet[str], str]] = None
     for phrase, expected_types, owner_hint in VIDEO_TITLE_BODY_PHRASES:
         if re.search(r"\b" + re.escape(phrase) + r"\b", low):
-            return phrase, expected_types, owner_hint
-    return None
+            if best is None or len(phrase) > len(best[0]):
+                best = (phrase, expected_types, owner_hint)
+    return best
 
 
 def body_type_disagreement(

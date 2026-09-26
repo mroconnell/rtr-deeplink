@@ -97,6 +97,66 @@ def test_no_disagreement_without_gov_type():
     assert gov_body_types.body_type_disagreement("Town Council 9/22/2026", None) is None
 
 
+def test_longest_match_wins_county_board_vs_board_of_education():
+    """Real bug (conductor's PR #1483 review, 2026-09-26): "county board"
+    (12 chars) used to fire before "board of education" (19 chars) got a
+    chance, because `match_body_type_phrase()` returned the first table
+    entry that matched rather than the most specific one. "Harnett County
+    Board of Education - Sep 17 2026" is Harnett County, NC's own
+    real, approved find (a county-wide school district, common in NC/GA/
+    MD/WV/KY/TN) -- it must never be flagged as the plain county
+    government's own meeting."""
+    title = "Harnett County Board of Education - Sep 17 2026"
+    match = gov_body_types.match_body_type_phrase(title)
+    assert match is not None
+    assert match[0] == "board of education"
+    assert gov_body_types.body_type_disagreement(title, "school_district") is None
+    # The plain county government itself must NOT treat this as its own
+    # meeting -- it's still a real, different government's body (the
+    # county's school district), just not the specific "county board"
+    # false match this bug produced.
+    assert gov_body_types.body_type_disagreement(title, "county") is not None
+
+
+def test_longest_match_also_handles_county_school_board_variants():
+    """Two more real shapes named in the same review -- neither actually
+    contains the literal "county board" substring ("school"/"schools"
+    sits in between), so they were never at risk, but they exercise the
+    same longest-match path and must stay correctly classified as the
+    school district's own meeting."""
+    for title in (
+        "Leon County School Board Meeting (September 22, 2026)",
+        "County Schools Board of Education Meeting",
+    ):
+        assert (
+            gov_body_types.body_type_disagreement(title, "school_district") is None
+        ), title
+
+
+def test_city_council_family_also_allows_township():
+    """Real gap (same review): some New England/New Jersey cities are
+    legally registered as county subdivisions (`classify.TOWNSHIP`), not
+    an incorporated place (`classify.MUNICIPALITY`) -- "City Council"/
+    "Common Council"/"City Commission" must agree with either, so a real
+    city government of either registry shape is never wrongly flagged as
+    foreign to itself. The actual target case (a school district finding
+    a real town/city's council) is unaffected: `school_district` is in
+    neither type."""
+    for phrase_title in (
+        "City Council Meeting - Sep 17 2026",
+        "Common Council - 6/9/2026",
+        "City Commission Regular Meeting",
+    ):
+        assert gov_body_types.body_type_disagreement(phrase_title, "township") is None
+        assert (
+            gov_body_types.body_type_disagreement(phrase_title, "municipality") is None
+        )
+        assert (
+            gov_body_types.body_type_disagreement(phrase_title, "school_district")
+            is not None
+        )
+
+
 # ---------------------------------------------------------------------
 # pick.filter_candidates_to_government() / describe_foreign_candidate()
 # ---------------------------------------------------------------------
