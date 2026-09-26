@@ -579,7 +579,8 @@ async def _fetch_player_page_directly(
     response, just not a 200) so the caller can tell a genuine challenge
     (401/403/429) apart from every other kind of failure and log it
     specifically; only a raised exception (network error, DNS failure)
-    gives back `(None, None)`."""
+    gives back `(None, None)` -- logged here (not by the caller), since
+    this is the only place that has the actual exception to name."""
     url = embed_url(video_id, privacy_hash)
     try:
         async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
@@ -589,7 +590,11 @@ async def _fetch_player_page_directly(
                 status = response.status
                 body = await read_capped_text(response)
                 return body, status
-    except Exception:
+    except Exception as exc:
+        _log_caption_fallback(
+            video_id,
+            f"plain-fetch route: request raised {type(exc).__name__}: {exc}",
+        )
         return None, None
 
 
@@ -791,33 +796,53 @@ class VimeoAssetFinder(AssetFinder):
         back to the headless-browser route, never attempting to get past
         the challenge itself, per CLAUDE.md's "politely" rule)."""
         body, status = await _fetch_player_page_directly(video_id, privacy_hash)
+        if status is None:
+            # `_fetch_player_page_directly()` already logged the exception
+            # reason (it has the exception itself; this method only ever
+            # sees the (None, None) result of it).
+            return None, None
         if status in _CHALLENGE_STATUSES or _looks_like_challenge_page(body):
             _log_caption_fallback(
                 video_id,
-                f"plain fetch of the player page got a challenge (HTTP {status})",
+                f"plain-fetch route: player page returned a challenge (HTTP {status})",
             )
             return None, None
-        if status != 200 or not body:
+        if status != 200:
+            _log_caption_fallback(
+                video_id, f"plain-fetch route: player page returned HTTP {status}"
+            )
+            return None, None
+        if not body:
+            _log_caption_fallback(
+                video_id, "plain-fetch route: player page body was empty"
+            )
             return None, None
 
         tracks = _extract_text_tracks_from_player_page(body)
         if not tracks:
+            _log_caption_fallback(
+                video_id,
+                "plain-fetch route: no window.playerConfig text_tracks found",
+            )
             return None, None
         chosen = _choose_text_track(tracks)
         if chosen is None:
+            _log_caption_fallback(
+                video_id, "plain-fetch route: no usable text_tracks entry"
+            )
             return None, None
         caption_url, lang = chosen
 
         caption_body = await cls._fetch(caption_url)
         if not caption_body:
             _log_caption_fallback(
-                video_id, "signed caption URL fetch failed (plain-fetch route)"
+                video_id, "plain-fetch route: signed caption URL fetch failed"
             )
             return None, None
         cues, _fallback_text = parse_captions_by_extension(caption_url, caption_body)
         if not cues:
             _log_caption_fallback(
-                video_id, "caption file parsed to zero cues (plain-fetch route)"
+                video_id, "plain-fetch route: caption file parsed to zero cues"
             )
             return None, None
         language = detect_language_from_texts(c.get("text") for c in cues) or (
@@ -856,9 +881,10 @@ class VimeoAssetFinder(AssetFinder):
             # request -- never worse than the video-only fallback below.
             _log_caption_fallback(video_id, "headless browser fetch timed out")
             return None, None
-        except Exception:
+        except Exception as exc:
             _log_caption_fallback(
-                video_id, "headless browser fetch raised an exception"
+                video_id,
+                f"headless route: fetch raised {type(exc).__name__}: {exc}",
             )
             logger.warning(
                 "Vimeo headless caption fetch failed for %s", video_id, exc_info=True

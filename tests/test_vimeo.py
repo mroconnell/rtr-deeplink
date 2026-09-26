@@ -73,6 +73,9 @@ from app.platforms.vimeo import (
     is_vimeo_listing,
     parse_vimeo_video,
 )
+from app.platforms.vimeo import (
+    _fetch_player_page_directly as _real_fetch_player_page_directly,
+)
 from app.utils import url_guard
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -635,6 +638,206 @@ async def test_signed_caption_fetch_failure_is_logged(caplog):
     ]
     assert any(
         "signed caption URL fetch failed" in line and "1212025580" in line
+        for line in fallback_lines
+    )
+
+
+async def test_headless_exception_is_logged_with_type_and_message(caplog):
+    # The headless render raises something other than
+    # HeadlessBrowserUnavailable/TimeoutError -- the log line now names
+    # the real exception type and message, not just "an exception".
+    url = "https://vimeo.com/1212025580"
+
+    async def _fake_fetch_via_browser(fetch_url, **kwargs):
+        raise RuntimeError("boom, real browser crash")
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo.fetch_via_browser", _fake_fetch_via_browser
+        ):
+            with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "RuntimeError" in line and "boom, real browser crash" in line
+        for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_exception_is_logged_with_type_and_message(caplog):
+    # A real network/DNS failure inside _fetch_player_page_directly()
+    # itself used to disappear entirely (returns (None, None) with
+    # nothing logged) -- now the exception type and message are logged
+    # from the one place that actually has the exception. Uses the real,
+    # unpatched function (imported at module load time, before the
+    # autouse `_no_direct_player_page_captions` fixture replaces the
+    # module attribute of the same name) -- this test exists specifically
+    # to exercise that real implementation.
+    with caplog.at_level("WARNING"):
+        with mock.patch.object(
+            aiohttp.ClientSession,
+            "get",
+            side_effect=OSError("real DNS failure"),
+        ):
+            body, status = await _real_fetch_player_page_directly("1212025580", None)
+
+    assert (body, status) == (None, None)
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line
+        and "OSError" in line
+        and "real DNS failure" in line
+        and "1212025580" in line
+        for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_non_challenge_error_status_is_logged(caplog):
+    # A non-200 response that ISN'T a challenge (e.g. a plain 503) used
+    # to fall through silently -- the post-deploy diagnosis needs to be
+    # able to tell this apart from a genuine challenge.
+    url = "https://vimeo.com/1212025580"
+
+    async def _fake_direct_fetch(video_id, privacy_hash):
+        return "<html>server error</html>", 503
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo._fetch_player_page_directly", _fake_direct_fetch
+        ):
+            with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line and "HTTP 503" in line and "1212025580" in line
+        for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_empty_body_is_logged(caplog):
+    # A 200 with an empty body (e.g. a truncated response) used to fall
+    # through silently too.
+    url = "https://vimeo.com/1212025580"
+
+    async def _fake_direct_fetch(video_id, privacy_hash):
+        return "", 200
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo._fetch_player_page_directly", _fake_direct_fetch
+        ):
+            with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line and "body was empty" in line
+        for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_no_text_tracks_is_logged(caplog):
+    # A real 200 response that isn't a challenge but simply has no
+    # window.playerConfig / no text_tracks (e.g. a differently-shaped
+    # page, or one with captions turned off) -- distinguishable now from
+    # every other reason.
+    url = "https://vimeo.com/1212025580"
+
+    async def _fake_direct_fetch(video_id, privacy_hash):
+        return "<html><body>no playerConfig here</body></html>", 200
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo._fetch_player_page_directly", _fake_direct_fetch
+        ):
+            with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line and "text_tracks" in line for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_no_usable_track_entry_is_logged(caplog):
+    # window.playerConfig.request.text_tracks exists but every entry is
+    # a kind this app doesn't claim (e.g. "chapters", not
+    # "subtitles"/"captions") -- also previously silent.
+    url = "https://vimeo.com/1212025580"
+    player_html = (
+        "<script>window.playerConfig = "
+        '{"request": {"text_tracks": '
+        '[{"kind": "chapters", "url": "https://example.com/x.vtt", "lang": "en"}]'
+        "}}</script>"
+    )
+
+    async def _fake_direct_fetch(video_id, privacy_hash):
+        return player_html, 200
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo._fetch_player_page_directly", _fake_direct_fetch
+        ):
+            with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line and "no usable text_tracks entry" in line
+        for line in fallback_lines
+    )
+
+
+async def test_direct_fetch_signed_caption_failure_is_logged(caplog):
+    # The plain-fetch route's own signed-VTT fetch failing gets its own
+    # distinctly-worded line from the headless route's equivalent, so the
+    # two routes are never confused for each other in the logs.
+    url = "https://vimeo.com/1212025580"
+    player_html = load_fixture("vimeo", "player_salisbury_1212025580.html")
+    caption_url = (
+        "https://captions.vimeo.com/captions/314604795.vtt"
+        "?expires=1788217973&sig=f1ebb8b30fd11e977375b7b4a5de62641846d6fe"
+    )
+
+    async def _fake_direct_fetch(video_id, privacy_hash):
+        return player_html, 200
+
+    with caplog.at_level("WARNING"):
+        with mock.patch(
+            "app.platforms.vimeo._fetch_player_page_directly", _fake_direct_fetch
+        ):
+            routes = {
+                **_oembed_route(url, "oembed_salisbury_1212025580.json"),
+                caption_url: FakeResponse(status=503, url=caption_url),
+            }
+            with mock_session(routes):
+                result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    fallback_lines = [
+        r.message for r in caplog.records if "vimeo captions fallback" in r.message
+    ]
+    assert any(
+        "plain-fetch route" in line and "signed caption URL fetch failed" in line
         for line in fallback_lines
     )
 
