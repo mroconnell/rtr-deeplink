@@ -38,6 +38,9 @@ from ..utils.vtt_parser import (
 # is Denton TX's, Ferndale SD's "44" is Hamilton Southeastern IN's, Idaho
 # Falls' "170" is Murphy TX's) and 4 pointed at empty views. A tenant can
 # have several views (one per channel or set of bodies): one row each.
+# WO-1123 added 85 views that are only an index (no meetings of their
+# own; they link `/views/{id}/{slug}` category pages that hold them),
+# proven the same way from a follow-up sweep of those views.
 # rtr-discovery's Swagit walker reads this same file.
 SWAGIT_VIEWS_FILE = (
     Path(__file__).resolve().parent.parent
