@@ -667,7 +667,7 @@ def test_the_feeders_owner_check_agrees_with_ingest(url, owned):
     assert has_owner(url)[0] is owned
 
 
-# WO-1091: rtr-discovery's saved listings (tests/fixtures/telvue/wo1091/,
+# WO-1100: rtr-discovery's saved listings (tests/fixtures/telvue/wo1100/,
 # 2026-09-25) show two governments on each of these stations: QACTV's
 # County Commissioners and Centreville Town Council; OaheTV's Pierre City
 # Commission and Pierre School Board.
@@ -692,13 +692,13 @@ def test_queen_annes_and_pierre_stations_carry_several_governments(
     from conftest import load_fixture
 
     name = "queenannes" if token.startswith("Abf") else "pierre"
-    listing = load_fixture("telvue", "wo1091", f"{name}_videos.html")
+    listing = load_fixture("telvue", "wo1100", f"{name}_videos.html")
     assert first in listing and second in listing
     assert ("videoplayer.telvue.com", token) in tk.MULTI_GOVERNMENT_TENANTS
 
 
 def test_feeder_sends_no_id_for_a_telvue_whole_customer_pin():
-    """WO-1091: the Archive tries a TelVue meeting's own name before the
+    """WO-1100: the Archive tries a TelVue meeting's own name before the
     customer's pin, so the tier-3 feeder must not send the pin's id (an id
     in the payload skips that step). Owned, no id. A narrower pin still
     hands its id back."""

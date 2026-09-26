@@ -388,7 +388,7 @@ reasons. That is how every sweep below was scoped.
   open (97 more pins flagged suspect by an oEmbed audit, not yet
   hand-checked).
 - **TelVue is the exception: a pin naming a whole customer is only the
-  fallback (WO-1091, 2026-09-26).** Every TelVue customer checked is a
+  fallback (WO-1100, 2026-09-26).** Every TelVue customer checked is a
   regional station carrying several governments, so a pin on the org
   token filed a school board or a town council under the station's town
   or county. On `videoplayer.telvue.com` only (`tenant_key.
@@ -402,7 +402,7 @@ reasons. That is how every sweep below was scoped.
   to a customer in `MULTI_GOVERNMENT_TENANTS`, and names some bodies per
   customer (`ORG_TOKEN_BODY_GOVERNMENTS`: Derry's and Pierre's school
   boards). `queue_probe.has_owner()` sends no id for such a pin, so the
-  feeder does not skip the name step. See `BACKLOG_DONE.md`'s WO-1091
+  feeder does not skip the name step. See `BACKLOG_DONE.md`'s WO-1100
   entry.
 
 ## 4. How coverage is grown: the sweep pattern

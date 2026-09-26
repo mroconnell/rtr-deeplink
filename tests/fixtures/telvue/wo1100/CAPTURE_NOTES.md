@@ -1,8 +1,8 @@
-# TelVue fixtures for WO-1091: capture notes
+# TelVue fixtures for WO-1100: capture notes
 
 Copied unchanged (byte for byte) on 2026-09-26 from rtr-discovery's
 `tests/fixtures/telvue/` (commit `3324188`, 2026-09-25). No new requests
-were made for WO-1091. Full notes for every file are in that repo's own
+were made for WO-1100. Full notes for every file are in that repo's own
 `tests/fixtures/telvue/CAPTURE_NOTES.md`; the lines for these files are
 repeated here.
 
@@ -40,9 +40,9 @@ with the same User-Agent forced.
 
 The caption and chapter files these media pages point to were not
 copied. The tests answer those requests with a 404, which the adapter
-already handles; nothing in WO-1091 reads them.
+already handles; nothing in WO-1100 reads them.
 
 One correction to rtr-discovery's note, which says "No date field was
 found on any media page": there is no date *field*, but Pierre's media
 page 1047373 carries the meeting date as text in its `og:description`
-("9-22-2026"). WO-1091 reads it.
+("9-22-2026"). WO-1100 reads it.

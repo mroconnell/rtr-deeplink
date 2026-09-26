@@ -4418,10 +4418,10 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 - **`[JUST-DO-IT]` `[EASY]` "X Township, MI" mints instead of keying to the Census's "X charter township".**
   - **Issue**: `resolve_government("Oshtemo Township, MI")` → `rtr:us:mi:oshtemo-township` (unverified), while "Oshtemo Charter Township, MI" → `us:cousub:2607761400`. Same for Canton, Kalamazoo, Texas and Bloomfield Township, MI (all mint, checked 2026-09-26); Plainfield Township, MI (a plain township) keys fine. The lookup does not try the "charter township" spelling for a name written "X Township".
-  - **Impact**: Kalamazoo's TelVue station meeting "Oshtemo Township - Planning Commission - September 24, 2026 Meeting" stays blank after WO-1091, because its name only mints. Any adapter reading a Michigan charter township as "X Township" repeats it.
+  - **Impact**: Kalamazoo's TelVue station meeting "Oshtemo Township - Planning Commission - September 24, 2026 Meeting" stays blank after WO-1100, because its name only mints. Any adapter reading a Michigan charter township as "X Township" repeats it.
   - **Next action**: when "X Township, MI" finds no township, try "X charter township" in the same state; test with the five names above.
   - **Constraint**: never key "X Township" to a village or city of the same name (the entry above).
-  - **History**: found by WO-1091, 2026-09-26.
+  - **History**: found by WO-1100, 2026-09-26.
 
 - **`[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored jurisdiction (`Kaua&apos;i County, HI`) is never unescaped, so the county lookup fails on an apostrophe.**
   - **Issue**: `kauai.granicus.com`'s two pages store `Kaua&apos;i County, HI` verbatim; `resolve_government()` on it is `unresolved` ("no 'Kaua&apos;i County' in HI"), while `Kaua'i County, HI` and `Kauai County, HI` both key to `us:county:15007` — `tables.lookup_keys()` already strips the ʻokina, it's only the entity that defeats it. Nothing on the path calls `html.unescape()`.
