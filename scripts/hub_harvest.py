@@ -40,6 +40,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
+from dataclasses import replace as _dc_replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -52,7 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.youtube_fetch_guard import install as install_youtube_guard  # noqa: E402
 from app.platforms.cablecast import CablecastAssetFinder  # noqa: E402
 from app.platforms.telvue import TelvueAssetFinder  # noqa: E402
-from app.utils.gov_registry import resolver  # noqa: E402
+from app.utils.gov_registry import classify, resolver  # noqa: E402
 
 HUB_CSV = (
     Path(__file__).resolve().parents[1]
@@ -144,6 +145,84 @@ def _guessed_body_type(text: str) -> str:
     return ""
 
 
+# WO-1076 addendum (Ryan, 2026-09-25): a hand-check of real "confident"
+# matches found the government-TYPE word in a title was being ignored --
+# "Town of Horseheads Planning Board" matched Horseheads VILLAGE, NY;
+# "Springfield Township Board" matched Springfield CITY, MI; "Grant
+# County Board of Commissioners" matched Grant (a city), MN; "Lucas
+# County Plan Commission" matched Lucas village, OH; "Hilton Head Island
+# Town Council" matched Beaufort COUNTY, SC. Every one of these is a real,
+# different government from the one actually named -- the registry
+# distinguishes them (`Government.gov_type`: `county`, `school_district`,
+# `township` for a Census county-subdivision id (`us:cousub:`, a New
+# England/NY/PA-style "town"/"township"), `municipality` for a Census
+# place id (`us:place:`, an incorporated city/village/borough/town) -- so
+# a body-type word this specific maps to a real, checkable constraint.
+# `_BODY_TYPE_WORDS`'/`_extract_lead_place()`'s own vocabulary (both
+# broader, phrase- or suffix-based) is normalized down to these same
+# five buckets by `normalize_body_type_word()` below.
+#
+# "town"/"borough"/"village"/"city" all map to the SAME real gov_type
+# (`municipality`) OR, for "town" alone, also `township` -- Census tracks
+# an incorporated municipality without regard to its own state-legal
+# label (a "city", "town", "village" or "borough" are all one `place`
+# row), while a "town" specifically can ALSO be a New England/NY/WI-style
+# county subdivision with no separate incorporated-place status at all
+# (the real Horseheads case: the TOWN is `us:cousub:`/`township`, the
+# VILLAGE inside it is a separate `us:place:`/`municipality`). Keeping
+# "town" permissive (either type) avoids a false rejection in a state
+# where "town" means an ordinary incorporated municipality; the real
+# regressions above are all still caught because none of their WRONG
+# matches were even in the permitted set (a county, in each case).
+_EXPECTED_GOV_TYPES_BY_BODY_TYPE: Dict[str, frozenset] = {
+    "county": frozenset({classify.COUNTY}),
+    "school district": frozenset({classify.SCHOOL_DISTRICT}),
+    "township": frozenset({classify.TOWNSHIP}),
+    # WO-1076 addendum: real Horseheads, NY case -- an explicit "Town of
+    # X" is this repo's own established convention for the county-
+    # subdivision id (`us:cousub:`/`township`), per `resolver.py`'s own
+    # `_general_purpose_lookup()` docstring ("the town resolves to
+    # `us:cousub:...` and the village to `us:place:...`"). Kept strict
+    # (not permissive of `municipality` too, unlike `township-or-village`
+    # below) specifically because "Town of Horseheads Planning Board"
+    # matching Horseheads VILLAGE, NY (`municipality`) is the real
+    # regression this fix exists for.
+    "town": frozenset({classify.TOWNSHIP}),
+    "township-or-village": frozenset({classify.TOWNSHIP, classify.MUNICIPALITY}),
+    "village": frozenset({classify.MUNICIPALITY}),
+    "city": frozenset({classify.MUNICIPALITY}),
+    "borough": frozenset({classify.MUNICIPALITY}),
+}
+
+# `pick.describe_foreign_candidate()`'s own `place_type` vocabulary (the
+# literal type word found next to the place name in a title: "county",
+# "town", "township", "borough", "village", "city", "parish", "school
+# district", "isd", "usd" -- see `pick._LEAD_PLACE_PHRASE_PATTERNS`) is
+# close to but not identical to `_BODY_TYPE_WORDS`'s own descriptive
+# strings above -- normalized here so both callers (this script's own
+# `_guessed_body_type()` hint and `scripts/meeting_finder_other_gov_
+# leads.py`'s `place_type` field) feed `_match_place_text()` the same
+# vocabulary.
+_PLACE_TYPE_WORD_ALIASES: Dict[str, str] = {
+    "parish": "county",  # Louisiana's county-equivalent.
+    "isd": "school district",
+    "usd": "school district",
+}
+
+
+def normalize_body_type_word(word: str) -> str:
+    """A raw type word (from `pick.py`'s `place_type` or this script's
+    own `_guessed_body_type()`) reduced to one of
+    `_EXPECTED_GOV_TYPES_BY_BODY_TYPE`'s own keys, or "" when `word`
+    carries no real type-agreement constraint (e.g. "same-as-named-place",
+    or a word this function doesn't recognize)."""
+    normalized = (word or "").strip().lower()
+    normalized = _PLACE_TYPE_WORD_ALIASES.get(normalized, normalized)
+    if normalized in _EXPECTED_GOV_TYPES_BY_BODY_TYPE:
+        return normalized
+    return ""
+
+
 def _resolver_candidate_text(text: str) -> str:
     """`app/utils/jurisdiction_enrich.finalize_jurisdiction()`'s repair
     rule turns "X City Council MEETING, ST" into "X City, ST" (a real
@@ -206,7 +285,19 @@ _JOINT_OR_SPECIAL_BODY_RE = re.compile(
     r"|\bregional\b.{0,40}\b(?:council|board|commission)\b"
     r"|\bcouncil of governments\b"
     r"|\bwatershed commission\b"
-    r"|(?<!school )(?<!school-)\bdistrict\b",
+    r"|(?<!school )(?<!school-)\bdistrict\b"
+    # WO-1076 addendum (Ryan, 2026-09-25): a police services board is a
+    # separate, often multi-jurisdiction body, never the general
+    # government it's hosted by/named after -- real example: Essex
+    # County OPP (Ontario Provincial Police) Detachment Board, matched
+    # to "Essex, ON" by name alone even though it's a policing board, not
+    # Essex's own council. "Joint Meeting"/"Joint Hearing" (distinct from
+    # "joint powers"/"joint authority" above, already a real body name
+    # rather than a description of the meeting) is the same shape: two or
+    # more governments meeting together, never just one.
+    r"|\bpolice\b"
+    r"|\bopp\b"
+    r"|\bjoint\s+(?:meetings?|hearings?)\b",
     re.IGNORECASE,
 )
 
@@ -313,6 +404,47 @@ def _extract_place_fragment(text: str) -> str:
     return working
 
 
+def _enforce_type_agreement(
+    match: "resolver.GovernmentMatch", body_type_hint: str
+) -> "resolver.GovernmentMatch":
+    """WO-1076 addendum: `body_type_hint` (normalized via
+    `normalize_body_type_word()`) says the title carried an EXPLICIT
+    place-type word -- "Town of X", "X Township", "X County...". If the
+    resolver's own match disagrees (a different real `gov_type`), that is
+    not a low-confidence match to accept anyway -- it is evidence the
+    match is simply WRONG (a same-named government of a different kind).
+    Downgraded to `TIER_UNVERIFIED` (never a confident/registry match) so
+    every caller's existing "confident only at TIER_PINNED/TIER_REGISTRY"
+    check already routes it to hand-read, with no separate check needed
+    at each call site. A hint this function doesn't recognize ("") or a
+    match with no real gov_id (nothing to compare) is passed through
+    unchanged."""
+    expected = _EXPECTED_GOV_TYPES_BY_BODY_TYPE.get(body_type_hint)
+    if (
+        not expected
+        or not match.gov_id
+        or match.gov_type
+        not in (
+            classify.COUNTY,
+            classify.MUNICIPALITY,
+            classify.TOWNSHIP,
+            classify.SCHOOL_DISTRICT,
+        )
+    ):
+        return match
+    if match.gov_type in expected:
+        return match
+    return _dc_replace(
+        match,
+        tier=resolver.TIER_UNVERIFIED,
+        evidence=(
+            f"title names a {body_type_hint!r}-type government, but the closest "
+            f"name+state match ({match.gov_name!r}) is a {match.gov_type!r} -- "
+            "kept for a human, not auto-matched"
+        ),
+    )
+
+
 def _match_place_text(
     place_text: str,
     region_state: str,
@@ -321,7 +453,9 @@ def _match_place_text(
     body_type_hint: str = "",
 ) -> "resolver.GovernmentMatch":
     """`body_type_hint` (WO-1060, optional): `_guessed_body_type()`'s own
-    output for the section/title this place came from. Live-confirmed
+    output for the section/title this place came from -- normalized via
+    `normalize_body_type_word()` before use, so either this script's own
+    vocabulary or `pick.py`'s `place_type` words work. Live-confirmed
     2026-09-25 (`us_school_districts.csv`): a bare county/place name plus
     state resolves to that COUNTY's general-purpose government by default
     ("nassau, FL" -> Nassau County, FL, `us_counties.csv`) even when the
@@ -330,7 +464,14 @@ def _match_place_text(
     district (Nassau County School District, FL). So when the hint says
     `school district` and `place_text` doesn't already spell that out,
     try the qualified form FIRST -- it is the more specific, more likely
-    correct match whenever it resolves at all."""
+    correct match whenever it resolves at all.
+
+    WO-1076 addendum: whatever match is finally chosen, if `body_type_hint`
+    names an explicit type word, the match's own `gov_type` must agree
+    (`_enforce_type_agreement()`) -- otherwise it is downgraded to
+    `TIER_UNVERIFIED` rather than trusted, however well the NAME matched.
+    """
+    body_type_hint = normalize_body_type_word(body_type_hint)
     if (
         body_type_hint == "school district"
         and "school district" not in (place_text or "").lower()
@@ -341,7 +482,7 @@ def _match_place_text(
             tenant_host=tenant_host,
         )
         if qualified_match.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
-            return qualified_match
+            return _enforce_type_agreement(qualified_match, body_type_hint)
     raw_name = f"{place_text}, {region_state}" if region_state else place_text
     match = resolver.resolve_government(raw_name, tenant_host=tenant_host)
     if match.tier not in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
@@ -357,8 +498,8 @@ def _match_place_text(
             tenant_host=tenant_host,
         )
         if retried.tier in (resolver.TIER_PINNED, resolver.TIER_REGISTRY):
-            return retried
-    return match
+            return _enforce_type_agreement(retried, body_type_hint)
+    return _enforce_type_agreement(match, body_type_hint)
 
 
 def _consistent_place_from_titles(

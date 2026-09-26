@@ -90,6 +90,7 @@ from app.platforms import passive_verify
 from app.platforms.passive_verify import _confirm_not_audio_only
 from app.platforms.telvue import _org_token_from_url as _telvue_org_token_from_url
 from app.platforms.vimeo import EMBED_DOMAIN_RESTRICTED_WARNING
+from app.utils.gov_registry.registry import Government, government_for_id
 from app.utils.video_hand_check import (
     assess_meeting_evidence,
     assess_video_candidate,
@@ -115,6 +116,31 @@ from .pick import pick_candidates
 # evidence either way) beats rank 2 (a video whose length couldn't be
 # measured at all AND has no real meeting evidence -- see WO-1049 below).
 # Lower rank wins.
+# WO-1076 addendum: `finder_input.gov_id` -> the government's own
+# `gov_name`/`gov_type`, looked up once per `gov_id` and cached for the
+# life of the process -- so `assess_video_candidate()` can tell a school
+# district's OWN board/committee meeting apart from a DIFFERENT school
+# district's (see `video_hand_check._gov_kind_is_school_district()`'s own
+# comment for the real false positives this fixes). Same pattern as
+# `runner.py`'s own `_GOV_CACHE` (a separate cache -- `resolve.py` can't
+# import from `runner.py`, which imports THIS module).
+_GOV_CACHE: dict[str, Optional[Government]] = {}
+
+
+def _government_for_input(finder_input: FinderInput) -> Optional[Government]:
+    gov_id = finder_input.gov_id
+    if not gov_id:
+        return None
+    if gov_id in _GOV_CACHE:
+        return _GOV_CACHE[gov_id]
+    try:
+        gov = government_for_id(gov_id)
+    except Exception:  # noqa: BLE001
+        gov = None
+    _GOV_CACHE[gov_id] = gov
+    return gov
+
+
 _KEPT_DESPITE_TOO_SHORT = 0
 _KEPT_DESPITE_GATE_REJECTED = 1
 # WO-1049 fix 3 (Ryan's rule, 2026-09-23): this rank is now reached ONLY
@@ -595,11 +621,14 @@ async def _resolve_candidates_with_meeting(
         # checks below instead of discarding the candidate.
         audio_only = False
         if result.video_url:
+            gov = _government_for_input(finder_input)
             gate = assess_video_candidate(
                 title=result.title,
                 video_url=result.video_url,
                 platform=result.platform,
                 structured=True,
+                gov_name=gov.gov_name if gov else None,
+                gov_kind=gov.gov_type if gov else None,
             )
             if gate.rejected:
                 # WO-1035 item 2: kept as a last resort instead of lost --
