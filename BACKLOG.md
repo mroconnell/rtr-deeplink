@@ -187,12 +187,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  After WO-1089 deploys, re-resolve two real Vimeo meetings and read…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
   Mad River Valley TV's three playlist pins name no TelVue org token…
@@ -2104,6 +2105,37 @@ of human step they need.
   - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
+### After WO-1089 deploys, re-resolve two real Vimeo meetings and read the new "vimeo captions fallback" logs to see why the route comes and goes `[HUMAN]` `[WAIT]`
+
+- **Issue**: a real Vimeo meeting with a working CC button in the player
+  (Salisbury NC, `vimeo.com/1226646429`) got no transcript through this
+  app on 2026-09-26, even though the identical route worked on a
+  different Salisbury NC video three days earlier (`1223368476`, 1,336
+  real segments — see `BACKLOG_DONE.md`). Before WO-1089, every fallback
+  path was silent, so nobody could tell *why* a given meeting failed:
+  Playwright unavailable, the render timing out, no `<track>` rendered,
+  or the signed VTT fetch itself failing all looked identical. WO-1089
+  adds a stable, greppable log line (`"vimeo captions fallback"`, always
+  naming the video id) for every one of those reasons, on both the
+  existing headless-browser route and the new cheap plain-fetch route it
+  adds (tried first, before ever starting a browser).
+- **Impact**: 67 of 99 Vimeo pages in the Archive have a transcript and
+  32 don't (count as of this WO's investigation) — a materially
+  incomplete platform, and until this deploys nobody can read *why* any
+  specific one of the 32 failed without reproducing it by hand.
+- **Next action**: once WO-1089 deploys, resolve `vimeo.com/1226646429`
+  and `vimeo.com/1212025580` once each through the webapp, then read the
+  Render logs for lines starting `"vimeo captions fallback"` naming
+  those two video ids. Report what each one says (challenge, no browser,
+  no track, fetch failure, etc.) — that's the actual diagnosis this WO
+  couldn't finish without a deploy.
+- **Constraint**: if Render's own fetch of the player page gets a
+  challenge page (the same "Verify you are human" class of block this
+  module already documents), stop there and report it rather than
+  trying anything to get past it, per CLAUDE.md's "politely" rule.
+- **History**: this WO (WO-1089, 2026-09-26); `app/platforms/vimeo.py`'s
+  own module docstring has the full investigation.
 
 ### Existing Invintus pages need one re-resolve after WO-1065 deploys, to find captions carried in the video `[HUMAN]` `[WAIT]`
 
