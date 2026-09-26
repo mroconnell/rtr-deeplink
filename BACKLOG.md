@@ -448,7 +448,7 @@ Reliability, ops & cost  (11)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
 Trust, safety & data quality  (30)
-  Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked…
+  Pinned hosts: pins no person checked still lose to a wrong name match…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
   ChampDS jurisdiction text comes out wrong for customer names that…
@@ -6026,13 +6026,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### Pinned hosts: 4 pages wait on Ryan's call, and pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
+### Pinned hosts: pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
 
-- **Issue**: WO-1068 fixed 15 wrong pins, re-filed 34 pages and added a rule that a person-checked fallback pin beats a name match to a different place. Two things are left. (1) 4 pages need a decision: LA World Airports (pages 335, 5784, on a minted id while the pin says City of Los Angeles) and M-NCPPC (361 on Montgomery County, 5817 and 10467 on a minted M-NCPPC id, while the pin is a separate minted "Montgomery County Planning Board"). (2) The rule only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
-- **Impact**: 4 pages on a debatable government; future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
-- **Next action**: (1) Ryan picks one id each for LAWA and M-NCPPC, then re-file through `POST /internal/jurisdiction/override`. (2) Re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync, siouxcity under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps.
+- **Issue**: WO-1068's rule (a person-checked fallback pin beats a namesake name match) only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
+- **Impact**: future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
+- **Next action**: re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps. Separately: `mncppc.iqm2.com` (pinned by Ryan to Prince George's County) has 2 Archive pages (1253, 2268) with no government at all; that host is M-NCPPC's Prince George's side, so it may want the same M-NCPPC id WO-1074 gave `mncppc.granicus.com` (Ryan's call).
 - **Constraint**: report before re-filing any existing page. `playback.orionontv.org` page 10402 ("Township Board Meeting" on a city id, pin `WO-322`) is a likely third case, not yet checked.
-- **History**: `BACKLOG_DONE.md` WO-1068; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
+- **History**: `BACKLOG_DONE.md` WO-1068 and WO-1074; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
 
 ### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
 
