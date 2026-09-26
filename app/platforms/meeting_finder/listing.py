@@ -818,6 +818,35 @@ def _parse_swagit_video_table(html: str, base_url: str) -> List[Candidate]:
     return candidates
 
 
+# WO-1102 (2026-09-26): some view pages are only an index. They hold no
+# meetings of their own; their tabs link category sub-pages that do.
+# San Benito, TX's `/views/322/` has no rows and links
+# `/views/322/commission-meetings` (the meetings) and `/views/322/live`
+# (the live stream, never a meeting list). A category link is
+# `/views/{n}/{slug}` with the same `n` as the index page.
+_SWAGIT_LIVE_SLUGS = frozenset({"live"})
+
+
+def _swagit_view_category_urls(html: str, page_url: str) -> List[str]:
+    view = _SWAGIT_VIEWS_URL_RE.search(urlparse(page_url).path)
+    if view is None:
+        return []
+    host = urlparse(page_url).netloc.lower()
+    pattern = re.compile(rf"^/views/{view.group(1)}/([^/]+)/?$", re.I)
+    urls: List[str] = []
+    for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
+        target = urlparse(urljoin(page_url, a["href"]))
+        if target.netloc.lower() != host:
+            continue
+        m = pattern.match(target.path)
+        if not m or m.group(1).lower() in _SWAGIT_LIVE_SLUGS:
+            continue
+        url = f"{target.scheme}://{target.netloc}{target.path}"
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
 async def _list_via_swagit_views_page(
     platform: str, account_url: str, fetcher: Fetcher, limit: int
 ) -> Optional[ListResult]:
@@ -858,19 +887,37 @@ async def _list_via_swagit_views_page(
         view_urls = [f"{base}/views/{v}/" for v in views]
     candidates: List[Candidate] = []
     notes: List[str] = []
-    for url in view_urls:
-        if len(candidates) >= limit:
-            break
-        try:
-            result = await fetcher.fetch(url, need_links=True)
-        except BudgetExceeded as e:
-            notes.append(str(e))
-            break
+
+    async def _fetch_html(url: str) -> tuple[Optional[str], str]:
+        # Raises BudgetExceeded; the caller stops there.
+        result = await fetcher.fetch(url, need_links=True)
         html = result.html if (result.status == 200 or result.links_only) else None
         if not html:
             notes.append(f"could not fetch {url} ({result.outcome or result.status})")
-            continue
-        candidates.extend(_parse_swagit_video_table(html, result.final_url or url))
+        return html, result.final_url or url
+
+    try:
+        for url in view_urls:
+            if len(candidates) >= limit:
+                break
+            html, page_url = await _fetch_html(url)
+            if not html:
+                continue
+            found = _parse_swagit_video_table(html, page_url)
+            if found:
+                candidates.extend(found)
+                continue
+            # WO-1102: an index view page -- read its category pages.
+            for category_url in _swagit_view_category_urls(html, page_url):
+                if len(candidates) >= limit:
+                    break
+                category_html, category_final = await _fetch_html(category_url)
+                if category_html:
+                    candidates.extend(
+                        _parse_swagit_video_table(category_html, category_final)
+                    )
+    except BudgetExceeded as e:
+        notes.append(str(e))
     if candidates:
         return ListResult(
             candidates=candidates[:limit], lister="swagit_views_page", outcome=None

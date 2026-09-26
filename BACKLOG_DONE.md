@@ -89,6 +89,25 @@ primeroschool.org (the case that surfaced this) now reads `no-meeting-nor-video`
 
 **Tests.** `tests/test_telvue.py`: Pierre's real saved page now gets the warning; Derry's still gets exactly one.
 
+## WO-1102: Meeting Finder reads a Swagit view page's category pages when the view page is only an index [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder lists a Swagit customer by reading its known view pages, `/views/{n}/` (WO-1081, WO-1087). Some view pages are only an index. They hold no meetings of their own. Their tabs link category pages, `/views/{n}/{slug}`, and those hold the meetings. San Benito, TX is the real example (checked live 2026-09-26): `sanbenitotx.new.swagit.com/views/322/` has no meeting rows, and links `/views/322/commission-meetings` and `/views/322/live`. The lister read only the index page, so it found nothing.
+
+`app/platforms/meeting_finder/listing.py`'s `_list_via_swagit_views_page()` now does this: when a view page gives no meetings, it collects that page's category links (same view number `n`), skips `live` (the live stream, not a list of meetings), and reads each category page's table the same way. It uses the same fetcher, so the fetch budget still applies, and it stops at the lister's `limit`. A view page that has its own meetings works as before; its category links are not fetched.
+
+**Result.** San Benito's view 322, before and after:
+
+| Page | Meetings found before | Meetings found after |
+|---|---|---|
+| `/views/322/` (the index) | 0 | 0 |
+| `/views/322/commission-meetings` | not read | 10 (its first page) |
+
+**Caution.** Only the first page of each category page is read. San Benito's commission-meetings page links 26 pages; pages 2 to 26 are not followed yet. How many other view pages are index pages has not been counted.
+
+**Tests.** `tests/test_wo1102_swagit_view_categories.py` (5 tests, no network): an index view leads to its category page's meetings; `live` is skipped; the limit holds; a spent budget stops cleanly; a view with its own rows does not fetch categories. Fixtures are real San Benito pages captured 2026-09-26 and trimmed (`tests/fixtures/swagit/sanbenito_views_322_index.html`, `sanbenito_views_322_commission_meetings.html`; the second page's raw `<title>` says "City of Austin" because Swagit reuses a title, but the videos are San Benito's).
+
+**Docs.** A progress note on `BACKLOG.md`'s open entry "Swagit's tab-slug listing pages are empty JS shells".
+
 ## WO-1101: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
 
 **What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.
