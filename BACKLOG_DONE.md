@@ -1,5 +1,94 @@
 # Backlog — done
 
+## WO-1078: Meeting Finder checks the government TYPE a body's name implies, not just its place name [Done 2026-09-26]
+
+**Issue.** A no-platform-signature Meeting Finder run found 58 videos on
+supported platforms. 53 were real meetings, but 23 were the WRONG
+government's meeting. Almost every wrong one was a school district
+searching its own site, landing on its town's or county's video instead,
+because the two share one TV/streaming account. The existing filter
+(WO-1054/WO-1058) only catches a shared account serving a DIFFERENT
+PLACE. It never catches the SAME place, a DIFFERENT KIND of government —
+a school district's search returning "Town Council" or "Common Council"
+never triggered it, because the video names no different place, just a
+different body.
+
+**What was built.** A video's own title names the body that met, and the
+body's name says what KIND of government it belongs to — "Town Council"
+is never a school district's own meeting; "School Committee" always is,
+even on the town's shared channel. `app/utils/gov_body_types.py` is a
+new, small table mapping real body names (Select Board, Board of
+Selectmen, Town Council, County Commissioners, Common Council, City
+Council, Village Board, State Board of Education, Housing Authority...)
+to the government types (`app.utils.gov_registry.classify`) that body can
+actually belong to. `pick.filter_candidates_to_government()` and
+`describe_foreign_candidate()` (`app/platforms/meeting_finder/pick.py`)
+now take the searched government's own type and drop a candidate whose
+title names a body of a clearly different type — recorded as an
+other-government lead, same mechanism as the place-name filter, so
+nothing is thrown away (Ryan's "keep at least one" rule already covers
+this, since it operates on the same drop/foreign-lead list). Threaded
+through `listing.list_account()`/`_apply_gov_filter()` and
+`runner._gov_type_for_input()`, a new small lookup alongside the existing
+`_gov_name_for_input()`/`_gov_state_for_input()`.
+
+Deliberately conservative, per Ryan's brief: an ambiguous body name
+(Planning Commission, Zoning Board of Appeals, Finance Committee, a bare
+Board of Trustees, a generic "Regular Meeting") is never in the table, so
+it can never trigger a wrong reject. `scripts/hub_harvest.py`'s own
+WO-1076 government-TYPE agreement check (a HUB SECTION's own heading, a
+different data shape) now imports its `EXPECTED_GOV_TYPES_BY_BODY_TYPE`/
+`normalize_body_type_word()` machinery from this same new module instead
+of keeping its own copy — one government-type vocabulary, not two.
+
+**Result, checked against the 2026-09-26 hand-check's own real, hand-verified data (44 confirmed-wrong "other government" finds, 185 confirmed-correct "approve" finds):**
+
+| Check | Count | Result |
+| --- | --- | --- |
+| Real wrong finds (other_gov_rows.csv) caught and turned into a labelled lead | 44 | 22 (50%) |
+| Real correct finds (all_verdicts.csv approve rows) wrongly rejected | 185 | 0 (target: 0) |
+
+The 22 misses are titles with no recognizable body-name phrase at all
+(a bare "Committee on Administration Finance and Law", "BCC Budget Public
+Hearing", "MTG-PZC-2026-09-21", several blank titles) or a deliberately
+excluded ambiguous phrase (Zoning Board of Appeals, Board of Finance,
+Board of Appeals) — a human, or a future, narrower phrase, is still the
+backstop for those, same as before this WO.
+
+**Result, live** (`scripts/meeting_finder.py`, concurrency 12, real
+fetches) **on the ~60 governments from that hand-check whose original find
+was on a supported platform — 44 confirmed-wrong finds plus a 16-government
+sample of confirmed-correct finds, run twice, gate off then on:**
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Found, all 60 | 56 | 55 |
+| Found, the 44 wrong-find governments | 40 | 39 |
+| Found, the 16 correct-find governments | 16 | 16 |
+| Governments with an other-government lead recorded | 1 | 21 |
+| Other-government leads recorded, total | 4 | 119 |
+
+The 16 correct-find governments stayed 16 of 16 found, live, both times —
+zero regressions. Of the 44 wrong-find governments, one fewer "found" the
+wrong video after the fix (meadowisd.net's Vimeo lead, previously a wrong
+find, now correctly dropped — a live retry then hit a transient Cloudflare
+block trying the next candidate, not a logic problem). 21 of the 44 now
+carry a real, labelled other-government lead where the run previously
+reported nothing.
+
+**A residual gap, not fixed here:** several of the 22 real misses above
+(a bare "Committee on...", "BCC", short/ambiguous board names) need either
+a wider phrase table (after seeing more real examples) or a person. Filed
+in `BACKLOG.md`'s Platform & jurisdiction coverage section.
+
+**Where the code lives.** New: `app/utils/gov_body_types.py`. Changed:
+`app/platforms/meeting_finder/pick.py`, `app/platforms/meeting_finder/
+listing.py`, `app/platforms/meeting_finder/runner.py`,
+`scripts/hub_harvest.py` (import only, values unchanged). Tests:
+`tests/test_wo1078_meeting_finder_body_type.py`. See
+`docs/MEETING_FINDER.md`'s new "Body-name/government-TYPE filter"
+section.
+
 ## WO-1079: Humboldt County Office of Education gets a registry id; its video leaves Cuddeback [Done 2026-09-26]
 
 **What was done and why.** Meeting Finder's 2026-09-26 run found a Humboldt County Office of Education video ("Safety and Equity in Schools - Student Advisory Safety & Equity Working Group", Vimeo author "Humboldt Co. Office of Education") on `humboldt.k12.ca.us`. The research row for Cuddeback Union Elementary (`us:sd:0610230`) carries that domain, so the ingest filed the page under Cuddeback. Ryan said to re-file it under the county office (2026-09-26).
