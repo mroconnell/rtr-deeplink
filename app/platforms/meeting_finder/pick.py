@@ -48,6 +48,7 @@ from datetime import datetime, timezone
 from typing import Callable, List, Optional, Sequence, Tuple, TypeVar
 
 from app.platforms.granicus import GOVERNING_BODY_KEYWORDS
+from app.utils import gov_body_types
 from app.utils.gov_registry import resolver as gov_resolver
 from app.utils.jurisdiction_enrich import _STATE_NAME_TO_ABBR_LOWER
 from app.utils.video_hand_check import contains_word, looks_like_real_meeting
@@ -766,6 +767,7 @@ def describe_foreign_candidate(
     *,
     gov_name: Optional[str] = None,
     gov_state: Optional[str] = None,
+    gov_type: Optional[str] = None,
 ) -> Optional[dict]:
     """WO-1058 rule (Ryan, 2026-09-25): every candidate this filter drops
     for naming a different place is a real, free link-first lead for THAT
@@ -790,8 +792,39 @@ def describe_foreign_candidate(
     equals this title's extracted place exactly, yet the video is really
     a lead to Nassau County's DIFFERENT school district, not the
     county's own meeting) -- see `_is_own_county_school_body()`'s own
-    docstring."""
+    docstring.
+
+    WO-1078 (`gov_type`, optional) added a THIRD, independent check, tried
+    before the place-name checks above: `gov_body_types.
+    body_type_disagreement()` catches a candidate that names the SAME
+    place but a DIFFERENT kind of governing body -- a school district
+    search finding "Common Council - 6/9/2026" (Cumberland, WI's city
+    council, real example) names no place at all, so the place-based
+    checks above would return `None` for it with no `gov_type`; with
+    `gov_type` this instead returns a body-type-flavored lead. See that
+    function's own docstring for why this is conservative by design."""
     title = candidate.title or ""
+    body_type_hit = gov_body_types.body_type_disagreement(title, gov_type)
+    if body_type_hit is not None:
+        phrase, expected_types, owner_hint = body_type_hit
+        extracted = _extract_lead_place(title)
+        place_core, place_type = extracted if extracted else ("", "")
+        body_words = [
+            kw for kw in GOVERNING_BODY_KEYWORDS if contains_word(title.lower(), kw)
+        ]
+        return {
+            "named_place": place_core,
+            "place_type": place_type,
+            "body_words": body_words,
+            "title": candidate.title,
+            "date": candidate.date,
+            "url": candidate.url,
+            "state": _state_from_title_text(title),
+            "reason": "body_type_mismatch",
+            "body_phrase": phrase,
+            "other_gov_types": sorted(expected_types),
+            "owner_hint": owner_hint,
+        }
     extracted = _extract_lead_place(title)
     if extracted is None:
         return None
@@ -825,6 +858,7 @@ def filter_candidates_to_government(
     *,
     strict: bool = False,
     gov_state: Optional[str] = None,
+    gov_type: Optional[str] = None,
 ) -> Tuple[List[Candidate], Optional[str], List[Candidate]]:
     """Drops a candidate whose title clearly names a DIFFERENT
     government's own place name -- see this module's own comment above
@@ -869,7 +903,21 @@ def filter_candidates_to_government(
     named the same county), and is otherwise ALWAYS foreign regardless of
     the normal place-core comparison below, since a county government and
     its own school district are different real governments even when
-    they share a name."""
+    they share a name.
+
+    `gov_type` (WO-1078, optional): a THIRD, independent check, tried
+    before the place-name checks below -- see `gov_body_types.
+    body_type_disagreement()`. A candidate whose title names a governing
+    body clearly of a DIFFERENT type (a school district search finding a
+    "Town Council" video) is dropped regardless of place-name agreement --
+    same place, wrong kind of government, still not this government's own
+    meeting. Conversely, a candidate whose body-type phrase AGREES with
+    `gov_type` is kept immediately, without running the place-name checks
+    at all -- real case (Ryan, 2026-09-26): lincnet.org's own "School
+    Committee 09.10.26" video, on the TOWN's shared Castus channel, names
+    no place at all and would otherwise fall through the place-name logic
+    untouched anyway, but an explicit keep here means a future, stricter
+    place-name rule can never accidentally start rejecting it."""
     if not gov_name or not candidates:
         return candidates, None, []
     gov_core = _place_core(gov_name)
@@ -879,6 +927,28 @@ def filter_candidates_to_government(
     foreign: List[Candidate] = []
     for c in candidates:
         title = c.title or ""
+        # WO-1078: checked BEFORE the generic `_names_a_governing_body()`
+        # gate below (unlike the place-name checks that follow) --
+        # `VIDEO_TITLE_BODY_PHRASES` is itself a specific, real-body-name
+        # phrase list (not a bare keyword), so it doesn't need that
+        # generic pre-filter for safety, and gating it there would miss
+        # real cases the pre-filter's narrower keyword list
+        # (`GOVERNING_BODY_KEYWORDS` = council/commission/board/committee/
+        # hearing) doesn't cover: "County Commissioners" (no bare
+        # "commission"/"board" word), "Redevelopment and Housing
+        # Authority" (no "board"/"commission"/... word at all), and a
+        # one-word "Selectboard" title (no separate "board" word) --
+        # three real rows in `other_gov_rows.csv` (qacps.org,
+        # harrisonburg.k12.va.us, wwsu.org/arrsd.org) confirmed this live.
+        if gov_type:
+            body_match = gov_body_types.match_body_type_phrase(title)
+            if body_match is not None:
+                _phrase, expected_types, _hint = body_match
+                if gov_type in expected_types:
+                    kept.append(c)
+                else:
+                    foreign.append(c)
+                continue
         if not _names_a_governing_body(title):
             kept.append(c)
             continue

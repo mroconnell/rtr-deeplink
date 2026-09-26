@@ -53,6 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.youtube_fetch_guard import install as install_youtube_guard  # noqa: E402
 from app.platforms.cablecast import CablecastAssetFinder  # noqa: E402
 from app.platforms.telvue import TelvueAssetFinder  # noqa: E402
+from app.utils import gov_body_types  # noqa: E402
 from app.utils.gov_registry import classify, resolver  # noqa: E402
 
 HUB_CSV = (
@@ -174,53 +175,19 @@ def _guessed_body_type(text: str) -> str:
 # where "town" means an ordinary incorporated municipality; the real
 # regressions above are all still caught because none of their WRONG
 # matches were even in the permitted set (a county, in each case).
-_EXPECTED_GOV_TYPES_BY_BODY_TYPE: Dict[str, frozenset] = {
-    "county": frozenset({classify.COUNTY}),
-    "school district": frozenset({classify.SCHOOL_DISTRICT}),
-    "township": frozenset({classify.TOWNSHIP}),
-    # WO-1076 addendum: real Horseheads, NY case -- an explicit "Town of
-    # X" is this repo's own established convention for the county-
-    # subdivision id (`us:cousub:`/`township`), per `resolver.py`'s own
-    # `_general_purpose_lookup()` docstring ("the town resolves to
-    # `us:cousub:...` and the village to `us:place:...`"). Kept strict
-    # (not permissive of `municipality` too, unlike `township-or-village`
-    # below) specifically because "Town of Horseheads Planning Board"
-    # matching Horseheads VILLAGE, NY (`municipality`) is the real
-    # regression this fix exists for.
-    "town": frozenset({classify.TOWNSHIP}),
-    "township-or-village": frozenset({classify.TOWNSHIP, classify.MUNICIPALITY}),
-    "village": frozenset({classify.MUNICIPALITY}),
-    "city": frozenset({classify.MUNICIPALITY}),
-    "borough": frozenset({classify.MUNICIPALITY}),
-}
-
-# `pick.describe_foreign_candidate()`'s own `place_type` vocabulary (the
-# literal type word found next to the place name in a title: "county",
-# "town", "township", "borough", "village", "city", "parish", "school
-# district", "isd", "usd" -- see `pick._LEAD_PLACE_PHRASE_PATTERNS`) is
-# close to but not identical to `_BODY_TYPE_WORDS`'s own descriptive
-# strings above -- normalized here so both callers (this script's own
-# `_guessed_body_type()` hint and `scripts/meeting_finder_other_gov_
-# leads.py`'s `place_type` field) feed `_match_place_text()` the same
-# vocabulary.
-_PLACE_TYPE_WORD_ALIASES: Dict[str, str] = {
-    "parish": "county",  # Louisiana's county-equivalent.
-    "isd": "school district",
-    "usd": "school district",
-}
-
-
-def normalize_body_type_word(word: str) -> str:
-    """A raw type word (from `pick.py`'s `place_type` or this script's
-    own `_guessed_body_type()`) reduced to one of
-    `_EXPECTED_GOV_TYPES_BY_BODY_TYPE`'s own keys, or "" when `word`
-    carries no real type-agreement constraint (e.g. "same-as-named-place",
-    or a word this function doesn't recognize)."""
-    normalized = (word or "").strip().lower()
-    normalized = _PLACE_TYPE_WORD_ALIASES.get(normalized, normalized)
-    if normalized in _EXPECTED_GOV_TYPES_BY_BODY_TYPE:
-        return normalized
-    return ""
+#
+# WO-1078: moved to `app/utils/gov_body_types.py` so Meeting Finder's own
+# body-type check (`app/platforms/meeting_finder/pick.py`, a video
+# TITLE's own governing-body name rather than a hub SECTION heading) can
+# use the exact same `_EXPECTED_GOV_TYPES_BY_BODY_TYPE`/
+# `normalize_body_type_word()` without a second copy -- `app/` code can't
+# import from `scripts/` (CLAUDE.md), so the shared table has to live in
+# `app/` and this script imports it, not the reverse. Values and behavior
+# are unchanged; only the location moved.
+_EXPECTED_GOV_TYPES_BY_BODY_TYPE: Dict[str, frozenset] = (
+    gov_body_types.EXPECTED_GOV_TYPES_BY_BODY_TYPE
+)
+normalize_body_type_word = gov_body_types.normalize_body_type_word
 
 
 def _resolver_candidate_text(text: str) -> str:
