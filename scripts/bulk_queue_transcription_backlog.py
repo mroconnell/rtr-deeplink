@@ -24,7 +24,9 @@ own "reserved for future self-generated/idle-time batch work" comment).
 
 Reuses the exact same feasibility gate worker/main.py's own
 maybe_generate_auto_job() already applies before creating a job --
-re-resolve fresh (never trust a stored video_url, which can go stale),
+re-resolve fresh (never trust a stored video_url as the PRIMARY source,
+since it can go stale -- only as a WO-1073 fallback when the fresh
+re-resolve of source_url itself fails, see app/platforms/reresolve.py),
 probe_duration(), is_plausible_meeting_duration() -- so an infeasible
 candidate is skipped cheaply here too, before ever reaching
 create-job. Does NOT do any local transcription itself (unlike
@@ -137,6 +139,7 @@ from app.platforms.media_probe import (  # noqa: E402
     is_plausible_meeting_duration,
     transcription_media_url,
 )
+from app.platforms.reresolve import reresolve_for_transcription  # noqa: E402
 
 # Same "flushes immediately even when piped to a log file" reasoning as
 # worker/main.py / scripts/transcribe_backlog_locally.py -- see the
@@ -376,7 +379,15 @@ async def _check_feasible(page: dict) -> dict:
         return {"ok": False, "reason": f"unsupported platform: {e}"}
 
     try:
-        result = await finder.resolve(source_url)
+        # WO-1073: falls back to this page's own stored video_url when
+        # re-resolving its source_url fails or finds no usable media --
+        # see app/platforms/reresolve.py's own Mary Esther, FL writeup.
+        result = await reresolve_for_transcription(
+            finder=finder,
+            platform=platform,
+            source_url=source_url,
+            video_url=page.get("video_url"),
+        )
     except Exception as e:
         return {
             "ok": False,

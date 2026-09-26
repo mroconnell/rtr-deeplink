@@ -10093,6 +10093,14 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     always the SAME page ingest_resolution() will match anyway (the
     candidate row's own id), so it can never trigger a GovernmentMismatch;
     it just avoids a passive re-resolve silently re-deriving identity.
+
+    WO-1073: `video_url` is returned alongside the rest too, so
+    `maybe_generate_auto_job()` can fall back to it (via
+    `app/platforms/reresolve.py`'s `reresolve_for_transcription()`) when
+    a fresh re-resolve of this page's own `source_url` fails -- see that
+    module's docstring for the real Mary Esther, FL case this closes.
+    `list_transcription_backlog_candidates()` already returns this field;
+    this was the one candidate-search function that didn't.
     """
     async with async_session() as session:
         has_embedded_marker = _embedded_captions_marker_exists()
@@ -10104,6 +10112,7 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
                     MeetingPage.source_url_normalized,
                     MeetingPage.platform,
                     MeetingPage.gov_id,
+                    MeetingPage.video_url,
                     has_embedded_marker.label("has_embedded_marker"),
                 )
                 .where(
@@ -10135,7 +10144,15 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
         jobs_by_page.setdefault(page_id, []).append((status, updated_at))
 
     now = datetime.now(timezone.utc)
-    for page_id, slug, source_url, platform, gov_id, _has_embedded_marker in candidates:
+    for (
+        page_id,
+        slug,
+        source_url,
+        platform,
+        gov_id,
+        video_url,
+        _has_embedded_marker,
+    ) in candidates:
         if _cooldown_active(jobs_by_page.get(page_id, []), now):
             continue
         return {
@@ -10144,6 +10161,7 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
             "source_url": source_url,
             "platform": platform,
             "gov_id": gov_id,
+            "video_url": video_url,
         }
     return None
 

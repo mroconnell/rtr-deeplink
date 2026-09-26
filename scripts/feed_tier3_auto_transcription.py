@@ -138,6 +138,16 @@ from scripts.bulk_ingest import (  # noqa: E402
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 BATCH_SIZE = 12
 
+# WO-1073: the platforms a queue line's second (source_url override)
+# field was actually designed for -- a QUEUED url that is itself a bare
+# video link with no meeting-page structure of its own, discovered via a
+# different real page (see BACKLOG_DONE.md's 2026-08-29 entry).
+# `_push_if_has_video()` only applies the override when `detect_platform
+# (url)` is one of these; see that function's own WO-1073 comment for
+# why applying it to a real meeting-page platform (CivicClerk, CivicWeb,
+# Granicus, ...) is the bug this closes.
+_BARE_VIDEO_LINK_PLATFORMS = frozenset({"youtube", "vimeo", "direct_file"})
+
 # WO-937: a durable per-line record of _push_if_has_video()'s own
 # [OK]/[SKIP]/[FAIL]/[NO-OWNER] result -- before this, the only place a
 # result lived was stdout, so once a line is popped off QUEUE_FILE (which
@@ -271,8 +281,33 @@ async def _push_if_has_video(
     if probe.verdict.startswith("reject-"):
         return f"[SKIP] {probe.verdict}: {probe.reason} ({url})"
 
+    # WO-1073: the override exists for exactly one shape -- the QUEUED
+    # url itself being a bare video link (YouTube/Vimeo/a direct file, no
+    # meeting-page structure of its own) discovered via a DIFFERENT real
+    # page, so that different page's URL should be recorded as source_url
+    # instead of the video host (see BACKLOG_DONE.md's 2026-08-29 "tier3
+    # source_url override" entry). It must NOT be applied when the queued
+    # url is ITSELF a real meeting page on a platform that can be
+    # re-resolved on its own (a CivicClerk event, a Diligent/CivicWeb
+    # MeetingInformation page, a Granicus clip, ...) -- overwriting
+    # `source_url` there discards the one URL this page's own platform
+    # adapter can actually re-resolve later (worker/main.py's idle-time
+    # auto-generation, this script's own future re-runs), leaving the page
+    # to fail every re-resolve forever (see app/platforms/reresolve.py's
+    # Mary Esther, FL writeup -- confirmed live 2026-09-25, that exact
+    # root cause: a queue line paired a real CivicClerk event URL with a
+    # bare-portal-root override, and this function applied it
+    # unconditionally).
+    override_note = ""
     if source_url_override:
-        result.source_url = source_url_override
+        if platform in _BARE_VIDEO_LINK_PLATFORMS:
+            result.source_url = source_url_override
+        else:
+            override_note = (
+                f" [override ignored: queued URL is itself a {platform!r} "
+                f"meeting page, not a bare video link -- keeping it as "
+                f"source_url instead of {source_url_override!r}]"
+            )
 
     # WO-346: refuse to advance a line whose source_url has no owner --
     # a MULTI_GOV_HOSTS host (youtube.com, vimeo.com, ...) with no
@@ -352,7 +387,7 @@ async def _push_if_has_video(
         return f"[FAIL] ingest failed: {url} ({e})"
 
     page_url = response.get("url") if response else None
-    return f"[OK] {url} -> {page_url or '(no url in response)'}"
+    return f"[OK] {url} -> {page_url or '(no url in response)'}{override_note}"
 
 
 def select_batch(

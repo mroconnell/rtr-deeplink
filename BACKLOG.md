@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (58)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+  Pages whose stored source URL their own adapter can't re-resolve are…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
   Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
@@ -918,6 +919,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Pages whose stored source URL their own adapter can't re-resolve are never auto-transcribed `[JUST-DO-IT]`
+
+- **Issue**: worker/main.py, `bulk_queue_transcription_backlog.py` and `transcribe_backlog_locally.py` all re-resolve a MeetingPage from its own stored `source_url_normalized` via `get_finder(page.platform).resolve(source_url)`. Confirmed live 2026-09-25: Mary Esther, FL (page id 11151, platform civicclerk) stores the bare portal root `https://maryestherfl.portal.civicclerk.com` (no event id), which `civicclerk.py` can never parse — root cause was `feed_tier3_auto_transcription.py`'s `_push_if_has_video()` applying a queue line's `source_url` override unconditionally, even when the queued URL was itself a real, re-resolvable CivicClerk event page.
+- **Impact**: such a page cycles through the auto-transcription cooldown forever, never transcribed, even though its stored `video_url` is real and playable. A conductor shape check (not live-verified) over all 10,496 Archive pages found 504 without a good transcript, of which about 58 look unrecoverable this way (125 YouTube, excluded already; 52 with a source URL on a different platform than the page; 6 bare homepages) and 46 non-YouTube tier-3 queue lines still carry a bare-host override that would keep producing this shape until this PR deploys.
+- **Next action**: deploy this PR (worker + archive services) — `app/platforms/reresolve.py`'s `reresolve_for_transcription()` falls back to a page's stored `video_url` when its `source_url` can't be re-resolved, and the upstream override bug is fixed. Once live, the ~58 affected pages come back for auto-transcription on their next cooldown expiry with no manual re-ingest needed.
+- **Constraint**: the ~58 pages' stored `source_url_normalized` is still wrong for their own "View original source" link — this fix only unblocks transcription, it doesn't repair the stored URL. Fixing that is a data change, Ryan's call.
+- **History**: `app/platforms/reresolve.py`'s own module docstring has the full Mary Esther, FL writeup.
 
 ### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
 
