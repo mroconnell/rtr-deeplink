@@ -2142,12 +2142,13 @@ of human step they need.
   not confirmed.
 - **Impact**: no new Vimeo meeting gets a transcript on the server. 67 of
   99 archived Vimeo pages have one (count at WO-1089), from before the
-  block. rtr-discovery keeps Vimeo at Tier 2 (captions only the local path
-  can read).
+  block. In rtr-discovery, a Vimeo meeting with captions stays Tier 2
+  (captions only the local path can read); one without captions is Tier 3
+  (needs transcription), as before.
 - **Next action**: none required. Optional: log the rendered page's title
   beside "no <track> element found", to confirm the browser is challenged
   too. If a later log shows a caption fetch succeeding, rtr-discovery can
-  move Vimeo back to Tier 1 with its one-line change.
+  move captioned Vimeo meetings back to Tier 1 with its one-line change.
 - **Constraint**: never try to get past the challenge (CLAUDE.md's
   "politely" rule). A webapp resolve serves a saved earlier result for a
   video it has already found, so a re-test needs a meeting it has not
