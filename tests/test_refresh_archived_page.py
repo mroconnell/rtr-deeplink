@@ -21,7 +21,7 @@ def _fake_public_dns(monkeypatch):
     route tests failed on a machine with no DNS (the route checks the
     submitted URL's host before anything else). Same
     fixture as tests/test_generic_fallback.py: a fixed public IP for any
-    hostname. Found 2026-09-26 (WO-1081) by running the suite with DNS
+    hostname. Found 2026-09-26 (WO-1082) by running the suite with DNS
     blocked."""
     monkeypatch.setattr(
         url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]

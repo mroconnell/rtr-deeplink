@@ -41,7 +41,7 @@ State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_ty
 
 **Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
 
-## WO-1081: local-only test failures fixed so a full local run is clean, with or without network [Done 2026-09-26]
+## WO-1082: local-only test failures fixed so a full local run is clean, with or without network [Done 2026-09-26]
 
 **What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed, and one more (item 5) failed on a Mac with no network. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
 
