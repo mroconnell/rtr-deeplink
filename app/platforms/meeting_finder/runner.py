@@ -66,6 +66,7 @@ from .listing import ListResult, list_account
 from .pacing import pace_all_requests
 from .models import (
     OUTCOME_ACCOUNT_NOT_FOUND,
+    OUTCOME_DNS_UNRESOLVABLE,
     OUTCOME_EMBED_RESTRICTED,
     OUTCOME_ERROR,
     OUTCOME_HUB_OTHER_GOVERNMENT,
@@ -439,6 +440,20 @@ class _WalkState:
     # government, not per fork, so this stays a narrow rescue rather than
     # a second `max_hops`.
     bonus_hop_available: bool = True
+    # WO-1086: set once `start()` itself has confirmed a real host resolves
+    # (it returned real starting points rather than its own
+    # `dns-unresolvable` outcome). Once this is True, a *later*
+    # `dns-unresolvable` collected anywhere else in this walk can only be a
+    # SECONDARY starting point's own DNS failure (e.g. a guessed `www.`
+    # sibling that doesn't exist for a host that's already a subdomain --
+    # streaming.easdpa.org, video.collierschools.com, ...) -- never a sign
+    # the government's own site is unreachable, since that already would
+    # have short-circuited the walk before any fork ran. See
+    # `run_one()`'s own final-outcome step, which excludes it on this
+    # basis rather than letting `_pick_outcome()`'s ranking (35, well
+    # above `no-meeting-nor-video`'s 10) let that secondary failure
+    # override a real finding from another fork.
+    dns_gate_passed: bool = False
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -1436,6 +1451,11 @@ async def _run_phase_loop(
                 state.outcomes.append(start_result.outcome)
                 return state
             starting_points = start_result.starting_points or [finder_input.url]
+            # WO-1086: `start()` returned real starting points rather than
+            # its own `dns-unresolvable` outcome above, so at least one
+            # real host for this government is confirmed to resolve. See
+            # `_WalkState.dns_gate_passed`'s own comment.
+            state.dns_gate_passed = True
             # "one more [hop] from a homepage" -- Start's own first
             # starting point (its own homepage variant) gets one extra
             # hop of depth.
@@ -1691,7 +1711,26 @@ async def run_one(
     else:
         if any(lead.get("kind") == "youtube" for lead in state.leads):
             state.outcomes.append(OUTCOME_YOUTUBE_LEAD_ONLY)
-        outcome = _pick_outcome(state.outcomes)
+        # WO-1086: once Start has confirmed a real host resolves for this
+        # government (`dns_gate_passed`), a `dns-unresolvable` collected
+        # anywhere ELSE in the walk -- a secondary starting point's own
+        # DNS failure, or (confirmed live: jsd117.org, palomaesd.org,
+        # hartisd.net) a real third-party link Hop followed later that
+        # happens to be dead (spiceworks/myon.com/etc.) -- can never mean
+        # THIS government's own site is unreachable, since that already
+        # would have short-circuited the walk before any fork ran (see
+        # `_WalkState.dns_gate_passed`'s own comment). Dropped
+        # unconditionally, not just when something else was found: if
+        # nothing else was ever collected either, `_pick_outcome([])`
+        # already falls back to `no-meeting-nor-video` -- correct, since
+        # the government's own site is confirmed reachable, just nothing
+        # useful was found on it.
+        verdict_outcomes = state.outcomes
+        if state.dns_gate_passed:
+            verdict_outcomes = [
+                o for o in state.outcomes if o != OUTCOME_DNS_UNRESOLVABLE
+            ]
+        outcome = _pick_outcome(verdict_outcomes)
         result_url = None
         platform = None
         tier = None
@@ -1701,7 +1740,7 @@ async def run_one(
         # just the short outcome code -- see `_WalkState.resolve_notes`'s
         # own comment for the real Greenburgh NY / Upper Providence PA
         # reports this fixes.
-        note_parts = list(dict.fromkeys(state.outcomes)) + list(
+        note_parts = list(dict.fromkeys(verdict_outcomes)) + list(
             dict.fromkeys(state.resolve_notes)
         )
         note = "; ".join(note_parts) or (

@@ -1,5 +1,37 @@
 # Backlog — done
 
+## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
+
+**What was tested and why.** Ryan reported that Meeting Finder said several sites were "domain dead" (`dns-unresolvable`) when the sites clearly worked — he could visit them in a browser. Five real examples: streaming.easdpa.org, video.collierschools.com, streamgages.springfieldmo.gov, media.polson.k12.mt.us, streaming.usd367.org. Each one still showed real progress in its own notes ("no-meeting-nor-video; dns-unresolvable; picked by..."), which meant Meeting Finder DID find real content, then threw that result away and reported the site as dead anyway.
+
+**What was found.** Meeting Finder checks a site from more than one address at once: the plain address (`streaming.easdpa.org`), and a "www." version (`www.streaming.easdpa.org`). For all 5 reported sites, the plain address works but the "www." version does not exist at all — there's no such thing as `www.streaming.easdpa.org`. When Meeting Finder tried that made-up address, the address lookup failed, and Meeting Finder recorded that failure as "domain dead" — even though the real address, checked moments earlier, worked fine. A ranking rule then let that one failed lookup outrank the real, working result.
+
+A second, separate case turned up while checking a wider run from the same day: 23 more real governments (ppps.org, hartisd.net, and 21 others) had the OPPOSITE problem — the plain address doesn't exist, but "www." does. Same bug, mirror image: Meeting Finder tried the plain address first, that lookup failed, and the failure won the ranking again even though "www." worked.
+
+Checking the full list of "domain dead" results from that day's run turned up more of this than expected: out of 53 unlabeled "domain dead" results, 52 were sites that actually work — only 1 (ccsuonline.org) was a genuinely dead domain.
+
+**What was fixed.** Two changes in `app/platforms/meeting_finder/`:
+1. `start.py` now only tries the plain address or the "www." address when a real address lookup says that one actually exists — never both automatically.
+2. `runner.py` now remembers once a real address for a government has been confirmed working. From that point on, an address-lookup failure anywhere else in the walk (a "www." guess, or a real link the walk followed that happens to be broken) can never be reported as "this government's site is dead" — it falls back to "nothing found" instead, which is accurate.
+
+A truly dead domain (neither address exists) is unaffected — that case is caught earlier and still reports "domain dead" correctly.
+
+**Result**, checked against real domains before and after the fix:
+
+| Domains checked | Count | Before fix | After fix |
+|---|---|---|---|
+| 5 domains Ryan reported (see above) | 5 | all 5: "domain dead" | all 5: real result (usually "nothing found") |
+| 23 more real domains from one day's run (a scratch list of "domain dead" verdicts whose domain actually resolves) | 23 | all 23: "domain dead" | 22: real result; 1 unchanged (a real timeout, unrelated to this bug) |
+| Genuinely dead domains (checked as a control: 1 real, `ccsuonline.org`, plus 4 made-up domains that were never registered) | 5 | all 5: "domain dead" | all 5: still "domain dead" (correct) |
+
+27 of 28 real, working domains flipped from a wrong "domain dead" verdict to a real result. The one that didn't flip (mokena159.org) was already reporting a different, correct block reason before this fix and is unaffected by it.
+
+**Caution.** This was checked against 33 real domains picked from one day's run, not the full history of "domain dead" verdicts. The fix should be re-checked against a fresh full-scale run before assuming every past "domain dead" result in the database is wrong — some genuinely are.
+
+**Tests.** `tests/test_wo1086_meeting_finder_dns_false_positive.py`, marked synthetic where the DNS data is hand-built (the shapes match `dns_lookup()`'s real fields, confirmed against real domains above): the "www." sibling not tried when it doesn't exist; the plain address not tried when it doesn't exist; a second address's failure not overriding a real finding; every address failing after the gate still falls back to "nothing found," not "domain dead"; a genuinely dead domain still correctly reports "domain dead."
+
+**Recommendation.** Re-run the queued 1,186-government retry now that this is fixed — it should recover most of the false "domain dead" verdicts from before.
+
 ## WO-1084: the access ladder no longer hops off the government's own site -- 74 of 118 wrong finds gone, 176 of 177 real ones kept [Done 2026-09-26]
 
 **What was done and why.** WO-1077's hand-read of 737 ladder finds showed that most "another organization's" finds came from one step: the hop step followed a link off the government's own site (a state portal's policy page, a university extension office, a tourism board) and credited whatever it found there to the government. The clearest case: every Kentucky city on the state's `*.ky.gov` template has a footer link to `kentucky.gov/policies`, which carries the state's `kygov` YouTube channel. `scripts/wo147_access_ladder_sweep.py` now has `_is_offsite_hop()`: both hop scorers refuse a hop to a host that is not the page's own host, a subdomain of it (or the reverse), or a known meeting-platform host. Tests: `tests/test_wo1084_offsite_hops.py` (real host pairs from WO-1077).
