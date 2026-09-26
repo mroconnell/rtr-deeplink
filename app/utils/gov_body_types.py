@@ -151,7 +151,10 @@ _CITY_COUNCIL_TYPES: FrozenSet[str] = frozenset(
 _COUNTY_TYPES: FrozenSet[str] = frozenset({classify.COUNTY})
 _TOWN_TYPES: FrozenSet[str] = frozenset({classify.TOWNSHIP, classify.MUNICIPALITY})
 _SCHOOL_TYPES: FrozenSet[str] = frozenset({classify.SCHOOL_DISTRICT})
-_STATE_TYPES: FrozenSet[str] = frozenset({classify.STATE})
+# WO-1080: state agencies are registered as type `other` (Ryan's WO-220 call,
+# e.g. rtr:us:ut:state-board-of-education, rtr:us:mo:state-board-of-education),
+# so a state board's own meetings must agree with OTHER as well as STATE.
+_STATE_TYPES: FrozenSet[str] = frozenset({classify.STATE, classify.OTHER})
 _SPECIAL_TYPES: FrozenSet[str] = frozenset({classify.SPECIAL_DISTRICT})
 # "Planning Board" (unlike the ambiguous "Planning Commission") is, in
 # every real example seen, a municipal/county/town body -- never a school
