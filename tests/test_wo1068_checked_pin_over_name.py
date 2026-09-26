@@ -212,3 +212,130 @@ def test_a_name_that_is_not_the_pins_namesake_keeps_its_own_government():
 )
 def test_lawa_and_mncppc_hosts_are_their_own_governments(name, host, path, gov_id):
     assert _resolve(name, host, path).gov_id == gov_id
+
+
+# ---------------------------------------------------------------------------
+# WO-1100 (2026-09-26): on TelVue the pin naming a whole customer (its org
+# token) is the fallback, not the first answer. WO-1068 above made a
+# checked pin beat a namesake; this is the other direction, and only on
+# TelVue, where every customer carries more than one government.
+#
+# The names are what telvue.py now returns for rtr-discovery's 8 saved
+# media pages (tests/fixtures/telvue/wo1100/, captured 2026-09-25);
+# tests/test_telvue.py checks the adapter half on the same pages.
+
+_TELVUE = "videoplayer.telvue.com"
+_DERRY = "/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/"
+_KALAMAZOO = "/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/media/"
+_QUEEN_ANNES = "/player/AbfNhigIqnG-4roGCxaFupXEKfme9dfT/media/"
+_PIERRE = "/player/5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq/media/"
+
+
+@pytest.mark.parametrize(
+    "name, path, gov_id",
+    [
+        # Were wrong: the whole-customer pin filed them under the town or
+        # the county.
+        (
+            "Derry Cooperative School District, NH",  # School Board Meeting
+            _DERRY + "1047520",
+            "us:sd:3302610",
+        ),
+        (
+            "Pierre School District 32-2, SD",  # Pierre School Board
+            _PIERRE + "1045603",
+            "us:sd:4655260",
+        ),
+        # "Centreville Town Council || 09/17/2026": the adapter reads
+        # "Centreville" with no state; the pins' state (MD) is added.
+        ("Centreville", _QUEEN_ANNES + "1047511", "us:place:2414950"),
+        # Was blank: no pin for the station, but its two one-video pins
+        # are both Michigan.
+        ("Kalamazoo County, MI", _KALAMAZOO + "1045901", "us:county:26077"),
+        # Were right and stay right.
+        ("Derry, NH", _DERRY + "1046119", "us:cousub:3301517940"),
+        ("Pierre, SD", _PIERRE + "1047373", "us:place:4649600"),
+    ],
+)
+def test_telvue_meetings_own_name_goes_before_the_customer_pin(name, path, gov_id):
+    assert _resolve(name, _TELVUE, path).gov_id == gov_id
+
+
+def test_telvue_generic_title_still_uses_the_customer_pin():
+    # "County Commissioners Meeting || 09/21/2026" names no place: the
+    # adapter returns no name and the Queen Anne's County pin decides.
+    match = _resolve(None, _TELVUE, _QUEEN_ANNES + "1047333")
+    assert (match.gov_id, match.tier) == ("us:county:24035", TIER_PINNED)
+
+
+def test_telvue_name_that_matches_the_pin_keeps_the_pinned_tier():
+    match = _resolve("Pierre, SD", _TELVUE, _PIERRE + "1047373")
+    assert match.tier == TIER_PINNED
+
+
+def test_telvue_oshtemo_stays_blank_because_its_name_only_mints():
+    # "Oshtemo Township - Planning Commission - September 24, 2026
+    # Meeting". The Census row is "Oshtemo charter township", and the
+    # ladder does not match "Oshtemo Township, MI" to it (it mints), so
+    # the name identifies nobody and the unpinned station stays blank.
+    match = _resolve("Oshtemo Township", _TELVUE, _KALAMAZOO + "1047784")
+    assert match.gov_id == "rtr:unknown:videoplayer.telvue.com"
+
+
+@pytest.mark.parametrize(
+    "name, path, gov_id",
+    [
+        # A name in another state never beats the pin. Synthetic name
+        # (Centreville, VA is a real place) on the real QACTV page.
+        ("Centreville, VA", _QUEEN_ANNES + "1047511", "us:county:24035"),
+        # Narrower pins still win: Derry's school-board media pin, and
+        # Kalamazoo's one-video City of Kalamazoo pin (WO-1060). Names
+        # synthetic, chosen to disagree with the pin.
+        ("Derry, NH", _DERRY + "951693", "us:sd:3302610"),
+        ("Kalamazoo County, MI", _KALAMAZOO + "1041369", "us:place:2642160"),
+    ],
+)
+def test_telvue_pins_the_name_cannot_beat(name, path, gov_id):
+    match = _resolve(name, _TELVUE, path)
+    assert (match.gov_id, match.tier) == (gov_id, TIER_PINNED)
+
+
+def test_telvue_station_with_no_state_from_pins_stays_blank():
+    # RVTV's pins are playlist pins that carry no org token, so no state
+    # is fixed and the name is not used (tests/test_tenant_key.py's
+    # WO-1057 case, unchanged).
+    match = _resolve(
+        "Grants Pass, OR",
+        _TELVUE,
+        "/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047347",
+    )
+    assert match.gov_id == "rtr:unknown:videoplayer.telvue.com"
+
+
+def test_other_multi_gov_hosts_keep_the_whole_tenant_pin_first():
+    # Control: a ChampDS whole-customer pin (Atlanta) still wins over a
+    # different name. WO-1100 is TelVue only. Synthetic name.
+    match = _resolve("Fulton County, GA", "play.champds.com", "/atlantaga/event/1")
+    assert (match.gov_id, match.tier) == ("us:place:1304000", TIER_PINNED)
+
+
+def test_every_telvue_station_name_agrees_with_its_customer_pin():
+    """telvue.py's hand-checked station names are applied when a title
+    names no place. On a customer with a whole-customer pin they now reach
+    the resolver before the pin, so each must name the pin's government,
+    or a generic title would move off the pin (13 of 13 agree, 2026-09-26)."""
+    from app.platforms.telvue import _KNOWN_ORG_TOKEN_JURISDICTIONS
+    from app.utils.gov_registry import registry
+    from app.utils.tenant_key import pin_tenant_key
+
+    pins = {}
+    for row in registry.tenant_overrides().get(_TELVUE, []):
+        token = pin_tenant_key(_TELVUE, row.match)
+        if token:
+            pins.setdefault(token, set()).add(row.gov_id)
+    checked = 0
+    for token, name in _KNOWN_ORG_TOKEN_JURISDICTIONS.items():
+        if token in pins:
+            checked += 1
+            assert resolve_government(name).gov_id in pins[token], (token, name)
+    assert checked >= 13
