@@ -7044,3 +7044,42 @@ https://biglake.viebit.com/watch?hash=8pmVSgvoh2IovoNc,viebit,viebit-page-config
 https://biglake.viebit.com/watch?hash=8pmVSgvoh2IovoNc,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.27,2026-09-25T21:50:50+00:00,feed_tier3_auto_transcription,0
 https://briarclifftv.viebit.com/watch?hash=qZINPSng8G8l29Kd,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.21,2026-09-25T21:50:52+00:00,,0
 https://briarclifftv.viebit.com/watch?hash=qZINPSng8G8l29Kd,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.18,2026-09-25T21:50:53+00:00,feed_tier3_auto_transcription,0
+https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155,primegov,hls-master+variant,3549.75,,,1,accept,,1.33,2026-09-25T23:57:34+00:00,,0
+https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155,swagit,hls-master+variant,3549.75,,,1,accept,,0.95,2026-09-25T23:57:35+00:00,feed_tier3_auto_transcription,0
+https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543,primegov,hls-master+variant,3819.18,,,1,accept,,0.56,2026-09-25T23:57:40+00:00,,0
+https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543,swagit,hls-master+variant,3819.18,,,1,accept,,0.13,2026-09-25T23:57:40+00:00,feed_tier3_auto_transcription,0
+https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=7368,primegov,hls-master+variant,6219.73,,,1,accept,,4.18,2026-09-25T23:57:48+00:00,,0
+https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=7368,swagit,hls-master+variant,6219.73,,,1,accept,,0.63,2026-09-25T23:57:48+00:00,feed_tier3_auto_transcription,0
+https://gilroy.primegov.com/Portal/Meeting?meetingTemplateId=5173,primegov,hls-master+variant,2544.54,,,1,accept,,1.35,2026-09-25T23:57:53+00:00,,0
+https://gilroy.primegov.com/Portal/Meeting?meetingTemplateId=5173,swagit,hls-master+variant,2544.54,,,1,accept,,0.59,2026-09-25T23:57:53+00:00,feed_tier3_auto_transcription,0
+https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022,primegov,hls-master+variant,2910.13,,,1,accept,,1.42,2026-09-25T23:57:59+00:00,,0
+https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022,swagit,hls-master+variant,2910.13,,,1,accept,,1.45,2026-09-25T23:58:00+00:00,feed_tier3_auto_transcription,0
+https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201,primegov,hls-master+variant,140.40,,,0,accept,,0.97,2026-09-25T23:58:05+00:00,,0
+https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201,swagit,hls-master+variant,140.40,,,0,accept,,0.10,2026-09-25T23:58:06+00:00,feed_tier3_auto_transcription,0
+https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947,primegov,hls-master+variant,1235.03,,,1,accept,,0.41,2026-09-25T23:58:11+00:00,,0
+https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947,swagit,hls-master+variant,1235.03,,,1,accept,,0.07,2026-09-25T23:58:11+00:00,feed_tier3_auto_transcription,0
+https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239,primegov,hls-master+variant,2709.42,,,1,accept,,0.96,2026-09-25T23:58:15+00:00,,0
+https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239,swagit,hls-master+variant,2709.42,,,1,accept,,0.10,2026-09-25T23:58:15+00:00,feed_tier3_auto_transcription,0
+https://nassau-k12-fl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=435,civicweb,hls-master+variant,1570.90,,,1,accept,,0.80,2026-09-25T23:58:20+00:00,,0
+https://nassau-k12-fl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=435,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist was unreachable (timeout or connection error),20.36,2026-09-25T23:58:40+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1181703270/3449ea3918,vimeo,vimeo-oembed,3188.00,2026-04-09,,1,accept,,0.07,2026-09-25T23:59:05+00:00,,0
+https://www.transylvaniacounty.org/meetings,vimeo,vimeo-oembed,3188.00,2026-04-09,,1,accept,,0.05,2026-09-25T23:59:05+00:00,feed_tier3_auto_transcription,0
+https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260831/-1/22675,sliq_harmony,hls-master+variant,1779.21,,,1,accept,,0.38,2026-09-25T23:59:08+00:00,,0
+https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260831/-1/22675,sliq_harmony,hls-master+variant,1779.21,,,1,accept,,0.33,2026-09-25T23:59:08+00:00,feed_tier3_auto_transcription,0
+https://player.invintus.com/?clientID=4879615486&eventID=2026021271,invintus,head+ffprobe,1054.98,2026-02-26,302982435,1,accept,,1.35,2026-09-25T23:59:13+00:00,,0
+https://player.invintus.com/?clientID=4879615486&eventID=2026021271,invintus,head+ffprobe,1054.98,2026-02-26,302982435,1,accept,,0.28,2026-09-25T23:59:13+00:00,feed_tier3_auto_transcription,0
+https://player.invintus.com/?clientID=4879615486&eventID=2026031022,invintus,head+ffprobe,1166.95,2026-03-04,319335498,1,accept,,1.83,2026-09-25T23:59:18+00:00,,0
+https://player.invintus.com/?clientID=4879615486&eventID=2026031022,invintus,head+ffprobe,1166.95,2026-03-04,319335498,1,accept,,0.35,2026-09-25T23:59:18+00:00,feed_tier3_auto_transcription,0
+https://player.invintus.com/?clientID=2789595964&eventID=2026051017,invintus,head+ffprobe,1220.05,2026-05-12,198138651,1,accept,,2.61,2026-09-25T23:59:24+00:00,,0
+https://player.invintus.com/?clientID=2789595964&eventID=2026051017,invintus,head+ffprobe,1220.05,2026-05-12,198138651,1,accept,,0.34,2026-09-25T23:59:25+00:00,feed_tier3_auto_transcription,0
+https://player.invintus.com/?clientID=2789595964&eventID=2026031061,invintus,head+ffprobe,1493.61,2026-03-31,390907726,1,accept,,1.82,2026-09-25T23:59:31+00:00,,0
+https://player.invintus.com/?clientID=2789595964&eventID=2026031061,invintus,head+ffprobe,1493.61,2026-03-31,390907726,1,accept,,0.39,2026-09-25T23:59:31+00:00,feed_tier3_auto_transcription,0
+https://springvalleytx.portal.civicclerk.com/event/338/media,civicclerk,head+ffprobe,3149.08,2026-09-17,95354299,1,accept,,2.85,2026-09-25T23:59:39+00:00,,0
+https://springvalleytx.portal.civicclerk.com/event/338/media,civicclerk,head+ffprobe,3149.08,2026-09-17,95354299,1,accept,,0.34,2026-09-25T23:59:40+00:00,feed_tier3_auto_transcription,0
+https://maryestherfl.portal.civicclerk.com/event/110/media,civicclerk,head+ffprobe,1159.60,2026-09-10,54690465,1,accept,,2.37,2026-09-25T23:59:47+00:00,,0
+https://maryestherfl.portal.civicclerk.com,civicclerk,head+ffprobe,1159.60,2026-09-10,54690465,1,accept,,0.49,2026-09-25T23:59:47+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/195536478,vimeo,vimeo-oembed,1878.00,2016-12-13,,1,accept,,0.07,2026-09-25T23:59:55+00:00,,0
+https://vimeo.com/195536478,vimeo,vimeo-oembed,1878.00,2016-12-13,,1,accept,,0.06,2026-09-25T23:59:55+00:00,feed_tier3_auto_transcription,0
+https://jupiterislandfl.portal.civicclerk.com/event/343/media,civicclerk,head+ffprobe,12625.82,2026-09-14,4137593150,1,accept,,3.49,2026-09-26T00:00:03+00:00,,0
+https://jupiterislandfl.portal.civicclerk.com/event/343/media,civicclerk,head+ffprobe,12625.82,2026-09-14,4137593150,1,accept,,0.52,2026-09-26T00:00:04+00:00,feed_tier3_auto_transcription,0
+https://live.pomonaca.gov/internetchannel/show/289,cablecast,hls-master+variant,3213.98,,,1,accept,,1.04,2026-09-26T00:00:17+00:00,,0
