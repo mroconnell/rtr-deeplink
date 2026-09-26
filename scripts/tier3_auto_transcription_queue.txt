@@ -1,3 +1,4 @@
+https://www.youtube.com/watch?v=uQ3QSECC2gw		us:cousub:0911068940
 https://www.youtube.com/watch?v=IQkbjrVAFwo		us:sd:2926850
 https://www.youtube.com/watch?v=QxjsBOF7k7I		us:sd:2010140
 https://www.youtube.com/watch?v=JvN04Kq4HXQ		us:sd:2918540
@@ -1496,3 +1497,22 @@ https://drive.google.com/file/d/1T5lao-jauLgS3TSCfkRPeNdvqjsYBo9b/view?usp=drive
 http://reflect-dennis-yarmouth.cablecast.tv/internetchannel/show/802?channel=1		us:sd:2504140
 https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703		us:sd:0626640
 https://drive.google.com/file/d/1HZbTfuV2XtP8krWWx7vYYPwajOPae8Ls/view?usp=sharing		us:sd:0624720
+https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691		us:county:08097
+https://hays.granicus.com/MediaPlayer.php?view_id=2&clip_id=371		us:county:48209
+https://ontariocony.portal.civicclerk.com/event/2053/media		us:county:36069
+https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045524		us:sd:2505730
+https://cook-county.granicus.com/MediaPlayer.php?view_id=2&clip_id=5841		us:county:17031
+https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/1041008		us:place:3445330
+https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA/media/1029109		us:place:5518025
+https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5554		us:place:4131250
+https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1052		us:place:0950370
+https://cloud.castus.tv/vod/somerset/video/6ab5dfca1932cf0002ef21f8?page=HOME		us:cousub:2500562430
+https://townhallstreams.com/stream.php?location_id=78&id=76172		us:cousub:2302362645
+https://play.champds.com/lincolnwoodil/event/90		us:place:1743744
+https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1042351		us:cousub:2502761800
+https://alameda.granicus.com/MediaPlayer.php?view_id=2&clip_id=4345		us:place:0600562
+https://videoplayer.telvue.com/player/rb5Cd5C4A-90O1S3556SjZ8grdhFAYJy/media/1047714?fullscreen=false&showtabssearch=false&autostart=false		us:cousub:5002325825
+https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=26025		us:county:08067
+https://townhallstreams.com/stream.php?location_id=77&id=70002		us:cousub:2303187985
+https://usbe.portal.civicclerk.com/event/552/media		rtr:us:ut:state-board-of-education
+https://scgtv.cablecast.tv/show/123		us:county:12117
