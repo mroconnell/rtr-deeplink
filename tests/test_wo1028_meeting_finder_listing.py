@@ -606,8 +606,11 @@ async def test_swagit_videos_url_is_its_own_single_candidate(fetcher):
 
 @pytest.mark.asyncio
 async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monkeypatch):
-    # No /views|videos/{id} path -- lister (a2) declines, falls through to
-    # lister (b) (rtr-discovery), same as before this WO.
+    # No /views|videos/{id} path and no known view number -- lister (a2)
+    # declines, falls through to lister (b) (rtr-discovery), same as before
+    # this WO. (WO-1081: a tenant WITH a row in `swagit_views.csv` now lists
+    # its known view instead -- Wise County TX has one, so this uses a
+    # tenant that doesn't.)
     called = {}
 
     class _FakeCandidate:
@@ -621,7 +624,9 @@ async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monke
     class _FakeResult:
         status = "ok"
         reason = None
-        candidates = [_FakeCandidate("https://wisecountytx.new.swagit.com/videos/1")]
+        candidates = [
+            _FakeCandidate("https://montgomerycountytx.new.swagit.com/videos/1")
+        ]
         params = None
 
     class _FakeModule:
@@ -635,9 +640,9 @@ async def test_swagit_bare_tenant_root_falls_through_to_discovery(fetcher, monke
     monkeypatch.setattr(listing, "_load_discovery_module", lambda: _FakeModule())
 
     result = await listing.list_account(
-        "swagit", "https://wisecountytx.new.swagit.com/", fetcher
+        "swagit", "https://montgomerycountytx.new.swagit.com/", fetcher
     )
-    assert called["netloc"] == "wisecountytx.new.swagit.com"
+    assert called["netloc"] == "montgomerycountytx.new.swagit.com"
     assert result.lister == "discovery:swagit"
 
 
