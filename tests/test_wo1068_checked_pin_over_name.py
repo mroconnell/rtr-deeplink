@@ -141,3 +141,30 @@ def test_a_name_that_is_not_the_pins_namesake_keeps_its_own_government():
         "Davie, FL", "browardmpo.new.swagit.com", "/videos/29818/transcript"
     )
     assert match.gov_id == "us:place:1216475"
+
+
+# --- WO-1074 (2026-09-25): Ryan's calls on LAWA and M-NCPPC ---
+
+
+@pytest.mark.parametrize(
+    "name, host, path, gov_id",
+    [
+        # Page 361: an M-NCPPC Planning Board meeting whose stored name
+        # read "Montgomery County, MD".
+        (
+            "Montgomery County, MD",
+            "mncppc.granicus.com",
+            "/player/clip/3287",
+            "rtr:us:md:maryland-national-capital-park-and-planning-commission",
+        ),
+        # LAWA is its own government, like LADWP, never the City of LA.
+        (
+            "Los Angeles, CA",
+            "lawa.granicus.com",
+            "/player/clip/1256",
+            "rtr:us:ca:l-a-world-airports-board-of-airport-commissioners",
+        ),
+    ],
+)
+def test_lawa_and_mncppc_hosts_are_their_own_governments(name, host, path, gov_id):
+    assert _resolve(name, host, path).gov_id == gov_id

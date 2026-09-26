@@ -1,5 +1,16 @@
 # Backlog — done
 
+## WO-1074: LA World Airports and M-NCPPC keep their own ids; their hosts are pinned to them [Done 2026-09-25]
+
+**What was done and why.** WO-1068 left 4 pages for Ryan's call. He accepted the recommendations.
+
+| Body | Decision | Why |
+| --- | --- | --- |
+| LA World Airports (`lawa.granicus.com`) | Its own id, not the City of Los Angeles | A city proprietary department with its own board, handled like LADWP (architecture doc §1.3) |
+| M-NCPPC (`mncppc.granicus.com`) | One id, `rtr:us:md:maryland-national-capital-park-and-planning-commission` | The Montgomery County Planning Board is an M-NCPPC body, not a separate government or the county |
+
+Both hosts now carry an `authoritative` pin to that id (as LADWP's do), because the adapter's own name for an M-NCPPC page can read "Montgomery County, MD". Page 361 was re-filed from Montgomery County to M-NCPPC (dry run, then applied). The other 4 pages were already on these ids.
+
 ## WO-1069: CivicMedia pages now name their own government [Done 2026-09-25]
 
 **What was done and why.** rtr-discovery's live check (2026-09-25) found `app/platforms/civicmedia.py` read real captions on 6 of 6 meetings but returned no government on any of them; Hanover Park IL's 9 meetings were rejected "no government" the same way. The adapter never set `jurisdiction`. The Archive's 11 CivicMedia pages only have a government because the scripts that filed them (WO-341/347/349/357) sent a `gov_id`, which the Archive stores as `pinned` (`archive/db/crud.py`, `_caller_pinned_match()`); Englewood OH's page was later set by hand (`manual_override`). No `tenant_overrides.csv` row matches any of these hosts.
