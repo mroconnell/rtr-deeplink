@@ -212,10 +212,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (211)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (212)
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
+  [NEEDS-AUDIT] Meeting Finder files another government's meeting under…
   [NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is…
   [NEEDS-AUDIT] `detect_platform()`/`parse_vimeo_video()` never…
   [NEEDS-AUDIT] Swagit's tab-slug listing pages are empty JS shells on…
@@ -2409,6 +2410,13 @@ of human step they need.
   - **Next action**: reproduce each case with `app/utils/gov_registry/resolver.py` (name + state -> id) and find why a new `rtr:` id is minted when a real one exists (likely a name-normalisation miss: "town", "township", county suffixes, "-north-carolina" style slugs) and why a cross-border/prefix match wins (Newmarket, Stephen/Stephentown). Fix the matcher, then merge the minted duplicates into the real ids.
   - **Constraint**: never rebuild the registry or the research file through a gov_id-keyed dict (duplicate/blank ids exist); read `docs/COVERAGE_HANDOVER.md` §3 (identity) first.
   - **History**: found 2026-09-23/24 by Meeting Finder calibration runs A and B (conductor session 93b5f9ae).
+
+- **[NEEDS-AUDIT] Meeting Finder files another government's meeting under the searched one, through shared or guessed accounts (no-platform-signature run, 2026-09-26).**
+  - **Issue**: hand-checking 394 finds from the 6,924-government run: 44 were real meetings of a different government. Four sources: (1) a school district's site links a shared town or county TV account (Cablecast, TelVue, Castus, Town Hall Streams), and the finder returns the town's meeting — 23 of 58 supported-platform finds; (2) a civicweb tenant guessed from the name: `mapleton.civicweb.net` (Township of Mapleton, ON) was matched to 4 different US governments, `hamilton.civicweb.net` to 2, and `riverside.civicweb.net` is an empty "Organization of Template" account matched to 3; (3) a state account linked from district sites: Missouri DESE's Vimeo (State Board of Education) matched 6 Missouri districts, Michigan's `misenate` Castus (Board of State Canvassers) 2; (4) a same-name place in another state: La Plata R-II MO -> La Plata County CO. A research row can also carry a shared domain: `humboldt.k12.ca.us` (Humboldt County Office of Education) is Cuddeback Union Elementary's domain, so a county-office video was ingested under Cuddeback (`us:sd:0610230`) on 2026-09-26.
+  - **Impact**: wrong-government pages and wrong "found" research rows. Hand-check catches most; an ingest's gov_id pin does not (the Archive only checks the id exists).
+  - **Next action**: (1) is being built as WO-1078 (title body name vs government type). (2) treat a civicweb/Diligent subdomain guessed from the name as a lead only unless its page title names the searched government. (3) drop state-agency accounts (DESE, `misenate`, `usbe`, tn.gov) as a district's own. (5) Ryan to decide on the Cuddeback page (re-file under Humboldt COE or remove).
+  - **Constraint**: never discard these meetings — Ryan's rule is that another government's meeting is a good find, processed as that government.
+  - **History**: found 2026-09-26 by the hand-check of the no-platform-signature run (conductor session 93b5f9ae); verdicts in that session's `scratchpad/hc7/all_verdicts.csv`.
 
 - **[NEEDS-AUDIT] Meeting Finder's meeting-evidence rule (WO-1041) is slightly strict: it demoted 8 of 34 hand-approved real meetings.**
   - **Issue**: re-grading batches 1 and 2 against 95 hand-checked finds: agreement rose from 39% to 86%, but 8 real approvals were demoted: 3 because the identity check wrongly said "disagrees" (e.g. Robbinsdale ISD's id written a different way), 5 because the re-grade script has no title for non-Vimeo, non-direct-file "undated, lister order" picks (live `resolve.py` reads the adapter's title, so live runs should do better).
