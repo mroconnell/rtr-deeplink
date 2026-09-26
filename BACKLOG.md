@@ -187,12 +187,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  After WO-1089 deploys, re-resolve two real Vimeo meetings and read…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
   Mad River Valley TV's three playlist pins name no TelVue org token…
@@ -292,8 +293,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
   [NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac,…
-  [NEEDS-AUDIT] Four more tests fail when the test files run in a…
-  [NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they…
+  [NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still…
+  [NEEDS-AUDIT] A Meeting Finder run still cannot exit while an…
   [NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
@@ -2105,6 +2106,37 @@ of human step they need.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
 
+### After WO-1089 deploys, re-resolve two real Vimeo meetings and read the new "vimeo captions fallback" logs to see why the route comes and goes `[HUMAN]` `[WAIT]`
+
+- **Issue**: a real Vimeo meeting with a working CC button in the player
+  (Salisbury NC, `vimeo.com/1226646429`) got no transcript through this
+  app on 2026-09-26, even though the identical route worked on a
+  different Salisbury NC video three days earlier (`1223368476`, 1,336
+  real segments — see `BACKLOG_DONE.md`). Before WO-1089, every fallback
+  path was silent, so nobody could tell *why* a given meeting failed:
+  Playwright unavailable, the render timing out, no `<track>` rendered,
+  or the signed VTT fetch itself failing all looked identical. WO-1089
+  adds a stable, greppable log line (`"vimeo captions fallback"`, always
+  naming the video id) for every one of those reasons, on both the
+  existing headless-browser route and the new cheap plain-fetch route it
+  adds (tried first, before ever starting a browser).
+- **Impact**: 67 of 99 Vimeo pages in the Archive have a transcript and
+  32 don't (count as of this WO's investigation) — a materially
+  incomplete platform, and until this deploys nobody can read *why* any
+  specific one of the 32 failed without reproducing it by hand.
+- **Next action**: once WO-1089 deploys, resolve `vimeo.com/1226646429`
+  and `vimeo.com/1212025580` once each through the webapp, then read the
+  Render logs for lines starting `"vimeo captions fallback"` naming
+  those two video ids. Report what each one says (challenge, no browser,
+  no track, fetch failure, etc.) — that's the actual diagnosis this WO
+  couldn't finish without a deploy.
+- **Constraint**: if Render's own fetch of the player page gets a
+  challenge page (the same "Verify you are human" class of block this
+  module already documents), stop there and report it rather than
+  trying anything to get past it, per CLAUDE.md's "politely" rule.
+- **History**: this WO (WO-1089, 2026-09-26); `app/platforms/vimeo.py`'s
+  own module docstring has the full investigation.
+
 ### Existing Invintus pages need one re-resolve after WO-1065 deploys, to find captions carried in the video `[HUMAN]` `[WAIT]`
 
 - **Issue**: WO-1065 makes the Invintus resolver spot captions carried inside the video, and the worker extract them. Pages ingested before that deploy still say "No captions found" and don't carry the note the worker looks for.
@@ -2916,20 +2948,20 @@ of human step they need.
   - **Next action**: on the Mac, run the full suite with `-p no:cacheprovider` and compare `sys.path`, `os.environ['DATABASE_URL']` and `sys.modules['app.db.engine'].engine.url` before and after collection. If rtr-discovery changes any of them, make those test modules import the script inside a fixture that restores `sys.path` afterwards.
   - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26); first seen 2026-09-10 (WO-166).
 
-- **[NEEDS-AUDIT] Four more tests fail when the test files run in a different order: rows left by one file in the shared test database change another file's results.**
-  - **Issue**: with test files shuffled (seeds 11, 22 and 33, whole files kept together), these failed: `test_state_pages.py::test_state_page_lists_states_jurisdictions`, `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue`, `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` (2 of 3 orders) and two tests in `test_archive_push_tracking.py`. The failures are extra or different rows ("Left contains 2 more items", "'Test Meeting' == 'Napa City Council Regular Meeting'"). All pass in the normal alphabetical order, which is the order CI and a plain local run use.
-  - **Impact**: none on today's runs. Adding or renaming a test file can reorder the suite and turn these red with no code change.
-  - **Next action**: for each test, find the rows it counts or reads by slug and scope them to rows the test created itself (unique ids, as `conftest.py`'s `_archive_db_schema` docstring asks), or give the file its own database.
-  - **History**: found running the suite in shuffled order for WO-1082, 2026-09-26.
+- **[NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still make real DNS lookups; they pass without network, but the suite is not fully offline.**
+  - **Issue**: a full run with every DNS lookup blocked (2026-09-26, after WO-1090) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`). All 6 pass with or without DNS. That file already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s one lookup is deliberate: it tests the lookup-failure path.) The two `test_wo1028_meeting_finder_listing.py` tests that fetched live pages are fixed (WO-1090).
+  - **Impact**: none on results. With network, these tests can send a real DNS query for a made-up host.
+  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call.
+  - **History**: found in WO-1082's offline scan; narrowed by WO-1090 (`BACKLOG_DONE.md`).
 
-- **[NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they pass without network today, but the suite is not fully offline.**
-  - **Issue**: a full run with every DNS lookup blocked (2026-09-26) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`) and 2 in `test_wo1028_meeting_finder_listing.py` (`lacity.primegov.com`, `example.portal.civicclerk.com`). All 8 pass with or without DNS. `test_generic_fallback.py` already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s own lookup is deliberate: it tests the lookup-failure path.)
-  - **Impact**: none on results today. With network, these tests can send a real lookup, and possibly a real request, to hosts that exist (`lacity.primegov.com`).
-  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call the way `tests/test_generic_fallback.py` fakes the SSRF check.
-  - **History**: found in WO-1082's offline scan (`BACKLOG_DONE.md`).
+- **[NEEDS-AUDIT] A Meeting Finder run still cannot exit while an abandoned fetch is hung: `asyncio.run()` waits for it before WO-1042's exit step is reached.**
+  - **Issue**: `scripts/meeting_finder.py`'s `main()` calls `asyncio.run(...)` (line ~216) and only then `_join_lingering_threads()` and `os._exit()`. When `--gov-timeout-minutes` abandons a government whose headless fetch is stuck in `asyncio.to_thread()`, `asyncio.run()` shuts down its default thread pool and waits for that thread first. Measured 2026-09-26 on Python 3.11.15 and 3.12.3 with a 6-second abandoned `to_thread(time.sleep, 6)`: `asyncio.run()` returned only after the full 6s on both. The standard library caps that wait at 300s on 3.12 (documented, not measured here); 3.11 has no cap.
+  - **Impact**: the overnight-batch hang WO-1042 fixed can still happen, for up to 5 minutes on the pinned 3.12 (forever on 3.11), whenever a government's fetch hangs past the cap. WO-1042's own tests only cover `_join_lingering_threads()`, not this earlier wait.
+  - **Next action**: have `main()` run the loop without the default-executor wait, for example by creating the loop itself and calling `os._exit()` from inside it after the rows are written, or by running abandoned sync fetches on an explicitly daemon thread instead of the default executor. Then add a subprocess test with a hung `to_thread` call that must exit within a few seconds.
+  - **History**: found by WO-1090's slow-test audit (`BACKLOG_DONE.md`); WO-1042 is the original fix.
 
 - **[NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request made through an HTTPS proxy.**
-  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused: `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection` fails in a cloud container for this reason (confirmed 2026-09-26).
+  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused. Confirmed 2026-09-26 in a cloud container: yt-dlp's log showed 3 real YouTube requests. The guard's own test now passes `"proxy": ""` so it tests the guard honestly everywhere (WO-1090), but production callers (the queue probe) pass no such option.
   - **Impact**: none on the office Macs unless a proxy is set there. On any machine that uses a proxy, the "zero YouTube requests off the drip Mac" rule is not enforced by the guard.
   - **Next action**: decide whether proxied machines matter. If they do, also refuse YouTube hosts at the HTTP-client level (yt-dlp's `urlopen`, `aiohttp`, `requests`), or have `install()` clear proxy settings for YouTube hosts.
   - **History**: found running the full suite for WO-1082, 2026-09-26.
