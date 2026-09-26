@@ -6,6 +6,7 @@ see `tests/fixtures/civicmedia/README.md` for what was fetched and why.
 from app.platforms.base import detect_platform
 from app.platforms.civicmedia import (
     CivicMediaAssetFinder,
+    _jurisdiction_from_page,
     civicmedia_page_id,
     is_civicmedia_page_url,
     is_tikilive_embed_url,
@@ -153,6 +154,71 @@ async def test_no_iframe_found_is_an_honest_video_warning_not_a_crash():
     assert resolved.video_warnings == [
         "This looks like a CivicMedia page, but we couldn't find its video player."
     ]
+
+
+# -- jurisdiction from the page's own site name (WO-1069) -------------
+
+
+async def test_real_hobart_page_names_its_own_government():
+    # The real page's `og:site_name` is "Hobart, IN" -- before WO-1069
+    # resolve() returned no jurisdiction at all, and a caller that sent
+    # no gov_id got "no government".
+    with mock_session(_routes(vtt_body=None)):
+        resolved = await CivicMediaAssetFinder().resolve(PAGE_URL)
+
+    assert resolved.jurisdiction == "Hobart, IN"
+
+
+def test_real_hobart_site_name_keys_to_the_archive_government():
+    # us:place:1834114 is the gov_id the Archive already holds for this
+    # page (pinned by the WO-349 ingest script); the page's own name now
+    # reaches it at registry level with no pin.
+    from app.utils.gov_registry import resolve_government
+
+    html = load_fixture("civicmedia", "hobart_civicmedia_vid326.html")
+    match = resolve_government(
+        _jurisdiction_from_page(html, PAGE_URL), tenant_host="www.cityofhobart.org"
+    )
+    assert (match.gov_id, match.tier) == ("us:place:1834114", "registry")
+
+
+def test_real_snyder_site_name_without_a_state_gets_one():
+    # Real page, snydertx.gov/CivicMedia?VID=133: its site name is "City
+    # of Snyder", no state. Snyder is real in more than one state, so the
+    # name alone doesn't place it; the ZIP in the page's own footer
+    # address does, via enrich_jurisdiction_text().
+    html = load_fixture("civicmedia", "snyder_civicmedia_vid133.html")
+    assert (
+        _jurisdiction_from_page(html, "https://snydertx.gov/CivicMedia?VID=133")
+        == "City of Snyder, TX"
+    )
+
+
+def test_title_is_the_fallback_when_og_site_name_is_missing():
+    # SYNTHETIC: the real Hobart page with its og:site_name tag removed,
+    # leaving the real "CivicMedia™ • Hobart, IN • CivicEngage" title.
+    # Every CivicMedia page checked so far (11 tenants) carries both, so
+    # no real page missing the tag has been seen.
+    html = load_fixture("civicmedia", "hobart_civicmedia_vid326.html")
+    stripped = html.replace('property="og:site_name"', 'property="og:ignored"')
+    assert stripped != html
+    assert _jurisdiction_from_page(stripped, PAGE_URL) == "Hobart, IN"
+
+
+def test_civicplus_subdomain_is_the_last_resort():
+    # SYNTHETIC page text; the host shape is real (ma-middleton.civicplus
+    # .com serves the same CivicMedia site as www.middletonma.gov).
+    url = "https://ma-middleton.civicplus.com/CivicMedia?VID=814"
+    assert _jurisdiction_from_page("<html></html>", url) == "Middleton, MA"
+    assert _jurisdiction_from_page("<html></html>", PAGE_URL) is None
+
+
+async def test_bare_tikilive_embed_has_no_government_to_read():
+    # The embed's own HTML names no tenant -- the honest answer is None.
+    with mock_session(_routes(vtt_body=None)):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
+
+    assert resolved.jurisdiction is None
 
 
 # -- refresh_playlist_url() (signed/expiring HLS playlist, WO-341) -----
