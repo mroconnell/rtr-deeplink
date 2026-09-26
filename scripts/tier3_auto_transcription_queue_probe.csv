@@ -7159,3 +7159,19 @@ https://videoplayer.telvue.com/player/c3u9LDqF4P2BmKomyp2Nfg8d-zRkKnkJ/media/104
 https://videoplayer.telvue.com/player/AbfNhigIqnG-4roGCxaFupXEKfme9dfT/media/1047333,telvue,telvue-page-json,7297.00,,,1,accept,,0.42,2026-09-26T13:54:44+00:00,bulk_ingest,0
 https://vod.glastonbury-ct.gov/internetchannel/show/1071?channel=1,cablecast,hls-master+variant,14592.60,,,1,accept,,0.87,2026-09-26T13:54:50+00:00,bulk_ingest,0
 http://live.westboroughtv.org/internetchannel/show/15060?site=2,cablecast,hls-master+variant,17997.19,,,1,accept,,0.66,2026-09-26T13:54:58+00:00,bulk_ingest,0
+https://salem.cablecast.tv/internetchannel/show/19762,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.15,2026-09-26T16:46:10+00:00,,0
+https://sheridanwy.new.swagit.com/videos/400903,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.17,2026-09-26T16:46:12+00:00,,0
+https://sapatv.cablecast.tv/internetchannel/show/44047,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.11,2026-09-26T16:46:14+00:00,,0
+https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1058,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-26T16:46:17+00:00,,0
+https://weatherford.granicus.com/MediaPlayer.php?view_id=4&clip_id=3517,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-26T16:46:20+00:00,,0
+https://lmctvny.new.swagit.com/videos/394834,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-26T16:46:22+00:00,,0
+https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1028,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-26T16:46:26+00:00,,0
+https://new.medwaycable.com/internetchannel/show/4321?channel=3,cablecast,hls-master+variant,13394.75,,,1,accept,,0.51,2026-09-26T16:46:28+00:00,,0
+https://new.medwaycable.com/internetchannel/show/4321?channel=3,cablecast,hls-master+variant,13394.75,,,1,accept,,0.47,2026-09-26T16:46:29+00:00,feed_tier3_auto_transcription,0
+http://96.233.59.29/internetchannel/show/17211?site=1&channel=2,cablecast,hls-master+variant,8488.85,,,1,accept,,0.29,2026-09-26T16:46:31+00:00,,0
+http://96.233.59.29/internetchannel/show/17211?site=1&channel=2,cablecast,hls-master+variant,8488.85,,,1,accept,,0.22,2026-09-26T16:46:31+00:00,feed_tier3_auto_transcription,0
+http://98.118.96.186/internetchannel/show/8513?site=3&query=school+committee&fullText=false,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.17,2026-09-26T16:46:34+00:00,,0
+http://50.77.30.235/internetchannel/show/6382?channel=3,cablecast,hls-master+variant,8750.51,,,1,accept,,0.38,2026-09-26T16:46:36+00:00,,0
+http://50.77.30.235/internetchannel/show/6382?channel=3,cablecast,hls-master+variant,8750.51,,,1,accept,,0.32,2026-09-26T16:46:36+00:00,feed_tier3_auto_transcription,0
+http://71.174.52.234/internetchannel/show/17506?channel=2,cablecast,hls-master+variant,6310.22,,,1,accept,,0.35,2026-09-26T16:46:39+00:00,,0
+http://71.174.52.234/internetchannel/show/17506?channel=2,cablecast,hls-master+variant,6310.22,,,1,accept,,0.23,2026-09-26T16:46:39+00:00,feed_tier3_auto_transcription,0
