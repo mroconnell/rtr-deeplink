@@ -235,11 +235,16 @@ async def test_run_classifies_a_seeded_page_and_writes_nothing(tmp_path):
         ).scalar_one()
 
     out = tmp_path / "out.csv"
-    tally = await Q.run(str(out), None)
+    # Only this test's page: a full run read every page other test modules
+    # left in the shared DB (WO-1084). The same read path, CSV write and
+    # read-only guarantee are exercised either way.
+    tally = await Q.run(str(out), None, only_page_ids=[page_id])
     with open(out) as fh:
-        mine = [r for r in csv.DictReader(fh) if r["page_id"] == str(page_id)]
-    assert sorted(r["category"] for r in mine) == ["A", "B"]
-    assert tally["category_A"] >= 1
+        rows = list(csv.DictReader(fh))
+    assert {r["page_id"] for r in rows} == {str(page_id)}
+    assert sorted(r["category"] for r in rows) == ["A", "B"]
+    assert tally["pages_read"] == 1
+    assert tally["category_A"] == 1
 
     async with async_session() as session:
         after = (

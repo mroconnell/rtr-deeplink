@@ -121,6 +121,7 @@ def test_back_pressure_stops_admitting_while_resolve_is_backed_up(
 
     monkeypatch.setattr(runner, "_resolve_candidates_with_meeting", fake_resolve)
     monkeypatch.setattr(runner, "run_one", fake_run_one)
+    monkeypatch.setattr(runner, "ADMIT_POLL_SECONDS", 0.005)
 
     async def scenario():
         inputs = [FinderInput(url=f"slow{i}.example") for i in range(3)] + [
@@ -135,7 +136,10 @@ def test_back_pressure_stops_admitting_while_resolve_is_backed_up(
                 max_waiting=1,
             )
         )
-        await asyncio.sleep(0.5)
+        # Many admission checks happen inside this window, so a leak in
+        # back-pressure has many chances to show (WO-1084: was 0.5s with
+        # the runner also polling every 0.5s -- one check per window).
+        await asyncio.sleep(0.05)
         started_while_blocked = len(started)
         resolve_gate.set()
         rows = await task

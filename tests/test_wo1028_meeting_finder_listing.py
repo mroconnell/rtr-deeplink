@@ -15,6 +15,7 @@ parsing, which is out of scope here.
 
 from __future__ import annotations
 
+import time
 from typing import List
 from unittest.mock import patch
 
@@ -51,7 +52,24 @@ def _clean_walker_registry():
 
 @pytest.fixture
 def fetcher():
-    return Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
+    """A real Fetcher that treats every host as unreachable. Two tests
+    below reach the generic-scan lister, which fetched the live
+    lacity.primegov.com and example.portal.civicclerk.com pages -- passing
+    only because those pages happened to yield nothing (WO-1084). Every
+    host now answers like a dead one, so this file never touches the
+    network; tests that need page content stub the lister instead."""
+    real = Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
+
+    async def _offline_fetch(url: str, *, need_links: bool = True):
+        return real._result(
+            requested_url=url,
+            access_mode="dead",
+            outcome="dns-unresolvable",
+            start=time.monotonic(),
+        )
+
+    real.fetch = _offline_fetch
+    return real
 
 
 # --- Lister (a): passive_verify's registered walkers -------------------

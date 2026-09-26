@@ -2,9 +2,11 @@ import ssl
 from unittest import mock
 
 import aiohttp
+import pytest
 from aiohttp.client_reqrep import ConnectionKey
 from bs4 import BeautifulSoup
 
+from app.platforms import granicus
 from app.platforms.granicus import (
     GranicusAssetFinder,
     _BROWSER_RETRY_HEADERS,
@@ -247,17 +249,10 @@ async def test_resolve_prefers_rss_channel_title_over_meta_description():
     assert result.jurisdiction == "City of San Diego, CA"
 
 
-async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
-    # Granicus's own captions.vtt appears to hard-cap at exactly 36,000
-    # cues on very long meetings, cutting off mid-sentence with no
-    # warning of its own -- confirmed live 2026-08-15 on 3 independent
-    # real customers (College Park GA, Coral Gables FL, Marion County
-    # FL), see BACKLOG.md. Synthetic VTT here (36,000 real cues would be
-    # an unwieldy fixture), reusing the real Napa clip 3450 page shape.
+def _napa_routes_with_cues(n: int) -> dict:
     url = "https://napacity.granicus.com/player/clip/3450"
-    html = load_fixture("granicus", "napacity_clip3450.html")
     lines = ["WEBVTT", ""]
-    for i in range(36000):
+    for i in range(n):
         start_s, end_s = i, i + 1
         start = (
             f"{start_s // 3600:02d}:{(start_s % 3600) // 60:02d}:{start_s % 60:02d}.000"
@@ -266,23 +261,45 @@ async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
         lines.append(f"{start} --> {end}")
         lines.append(f"cue {i}")
         lines.append("")
-    captions = "\n".join(lines).encode("utf-8")
-
-    routes = {
-        url: FakeResponse(status=200, text=html, url=url),
+    return {
+        url: FakeResponse(
+            status=200, text=load_fixture("granicus", "napacity_clip3450.html"), url=url
+        ),
         "https://napacity.granicus.com/videos/3450/captions.vtt": FakeResponse(
-            status=200, raw=captions
+            status=200, raw="\n".join(lines).encode("utf-8")
         ),
         "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1": FakeResponse(
             status=404
         ),
     }
 
-    with mock_session(routes):
+
+def test_granicus_cue_cap_is_36000():
+    # The real cap the test below shrinks for speed.
+    assert granicus.GRANICUS_CUE_CAP == 36000
+
+
+@pytest.mark.parametrize("cues, flagged", [(3, True), (2, False)])
+async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off(
+    monkeypatch, cues, flagged
+):
+    # Granicus's own captions.vtt appears to hard-cap at exactly 36,000
+    # cues on very long meetings, cutting off mid-sentence with no
+    # warning of its own -- confirmed live 2026-08-15 on 3 independent
+    # real customers (College Park GA, Coral Gables FL, Marion County
+    # FL), see BACKLOG.md. Synthetic VTT, reusing the real Napa clip 3450
+    # page shape. The cap is shrunk to 3 so the file is 3 cues, not
+    # 36,000 (~1s of parsing, WO-1084); the real value is pinned above.
+    # One cue short of the cap must NOT be flagged -- the rule is
+    # "exactly", and a real meeting just under it is complete.
+    monkeypatch.setattr(granicus, "GRANICUS_CUE_CAP", 3)
+    url = "https://napacity.granicus.com/player/clip/3450"
+
+    with mock_session(_napa_routes_with_cues(cues)):
         result = await GranicusAssetFinder().resolve(url)
 
-    assert len(result.segments) == 36000
-    assert any("36,000" in w for w in result.transcript_warnings)
+    assert len(result.segments) == cues
+    assert any("36,000" in w for w in result.transcript_warnings) is flagged
 
 
 async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():

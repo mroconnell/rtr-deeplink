@@ -129,25 +129,18 @@ def _run_in_fresh_subprocess(script: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_importing_fetch_module_does_not_install_the_youtube_guard():
-    script = (
-        "import scripts.youtube_fetch_guard as guard\n"
-        "import app.platforms.meeting_finder.fetch  # noqa: F401\n"
-        "assert guard._installed is False, "
-        "'importing fetch.py alone installed the process-wide YouTube guard'\n"
-        "print('ok')\n"
-    )
-    result = _run_in_fresh_subprocess(script)
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
-def test_constructing_a_fetcher_installs_the_youtube_guard():
+def test_importing_fetch_does_not_install_the_youtube_guard_but_a_fetcher_does():
+    """Both halves of the rule in one fresh interpreter: import alone
+    leaves the guard off, constructing a Fetcher turns it on. These were
+    two subprocess tests, but the constructor one already asserted the
+    import-only fact first, so one start-up (~1.5s) proves both (WO-1084)."""
     script = (
         "import scripts.youtube_fetch_guard as guard\n"
         "from app.platforms.meeting_finder.fetch import Fetcher\n"
-        "assert guard._installed is False\n"
+        "assert guard._installed is False, "
+        "'importing fetch.py alone installed the process-wide YouTube guard'\n"
         "Fetcher()\n"
-        "assert guard._installed is True\n"
+        "assert guard._installed is True, 'constructing a Fetcher did not install it'\n"
         "print('ok')\n"
     )
     result = _run_in_fresh_subprocess(script)
@@ -722,6 +715,40 @@ async def test_shared_host_pacer_spaces_two_fetcher_instances():
         # elapsed); with it, the second one waits out the first's own
         # per_host_delay_s.
         assert elapsed >= delay * 0.9
+        assert len(hits) == 2
+        assert (hits[1] - hits[0]) >= delay * 0.9
+    finally:
+        await server.close()
+
+
+def test_default_politeness_delay_is_two_and_a_half_seconds(monkeypatch):
+    """Pins the real value conftest.py's `_no_politeness_delays` zeroes for
+    speed, so changing it is a deliberate act. `monkeypatch` here is the
+    same object that fixture used, so `undo()` restores the real constant."""
+    monkeypatch.undo()
+    assert fetch_module.DEFAULT_PER_HOST_DELAY_S == 2.5
+    assert Fetcher().per_host_delay_s == 2.5
+
+
+async def test_one_fetcher_spaces_two_requests_to_the_same_host():
+    """Politeness within ONE Fetcher (one government's walk): its second
+    request to a host waits out `per_host_delay_s` after the first. The
+    shared-pacer test above covers two instances; this covers one."""
+    import time
+
+    hits = []
+
+    async def handler(request):
+        hits.append(time.monotonic())
+        return web.Response(text="<html><a href='/x'>x</a></html>")
+
+    server = await _make_server({"/a": handler, "/b": handler})
+    try:
+        base = f"http://{server.host}:{server.port}"
+        delay = 0.05
+        fetcher = Fetcher(per_host_delay_s=delay, allow_headless=False)
+        await fetcher.fetch(f"{base}/a")
+        await fetcher.fetch(f"{base}/b")
         assert len(hits) == 2
         assert (hits[1] - hits[0]) >= delay * 0.9
     finally:

@@ -803,3 +803,24 @@ that nobody has picked up. Suggestions for Ryan to triage, not a roadmap.
 Already done from the same survey: Nevada (harvest script and platform
 matches). State-agency-only portals (14 states) are deliberately parked for
 a future state-agency phase.
+
+## Test-suite and start-up speed (2026-09-26, from WO-1084's slow-test audit)
+
+Found while auditing the slowest tests. None is a bug; each would make real
+start-up or real runs faster, not only the tests. Unverified beyond the
+measurements quoted; re-check before building.
+
+- **Load `app/utils/jurisdiction_enrich.py`'s CSV tables lazily.** It reads
+  five CSV files at import time (about 0.5s of every ~1.1s cold import of
+  the app). Every fresh interpreter pays it: the worker, every CLI script,
+  and each test that starts a subprocess. One cached loader per table
+  would move the cost to first use.
+- **Check the fetch budget before the politeness wait in Meeting Finder.**
+  `app/platforms/meeting_finder/fetch.py`'s `_plain_get` waits out the
+  per-host delay (up to 2.5s) and only then asks the budget, so a fetch
+  the budget refuses still sleeps first. `_headless` already does it the
+  other way round.
+- **Parse only the `<h1>` in SuiteOne's title lookup.** `app/platforms/
+  suiteone.py`'s `_extract_title` parses a whole real 2.6 MB event page
+  with BeautifulSoup to find one heading (about 1s). A `SoupStrainer("h1")`
+  measured 0.39s on the same page.

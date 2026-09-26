@@ -1,3 +1,4 @@
+import atexit
 import os
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,20 @@ import pytest
 _test_db_fd, _test_db_path = tempfile.mkstemp(suffix=".db", prefix="rtr_archive_test_")
 os.close(_test_db_fd)
 os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{_test_db_path}")
+
+
+def _remove_test_db() -> None:
+    # One temp file per run, never deleted before (230 left in one cloud
+    # container's /tmp by 2026-09-26, WO-1084). Removed at interpreter exit,
+    # after every engine is done with it; a failure here is harmless.
+    for suffix in ("", "-journal", "-wal", "-shm"):
+        try:
+            os.remove(_test_db_path + suffix)
+        except OSError:
+            pass
+
+
+atexit.register(_remove_test_db)
 
 # Same reasoning as DATABASE_URL above -- app.main/archive.main both call
 # load_dotenv() at import time, which (override=False) is a no-op once
@@ -275,3 +290,64 @@ async def delete_resolutions(resolution_ids):
             )
         )
         await session.commit()
+
+
+# Politeness waits between requests to one host. They protect real
+# government servers, not anything a test checks, and the fakes these tests
+# talk to need no protecting -- yet each one was paid for real, adding ~45s
+# to every CI run (WO-1084). Zeroed here for every test, but only in
+# modules a test has already imported, so this costs nothing and imports
+# nothing. Some scripts are imported both as `scripts.X` and as a bare `X`
+# (a test that puts scripts/ on sys.path), so both names are listed. Add a
+# constant here when a new one turns up in `pytest --durations`. A test
+# about the real value can call `monkeypatch.undo()` first, as
+# tests/test_meeting_finder_fetch.py's pin test does.
+_POLITENESS_DELAYS = (
+    ("app.platforms.meeting_finder.fetch", "DEFAULT_PER_HOST_DELAY_S"),
+    ("app.platforms.meeting_finder.resolve", "CANDIDATE_DELAY_SECONDS"),
+    ("scripts.wo147_access_ladder_sweep", "HOST_DELAY_SECONDS"),
+    ("scripts.wo134_confirmed_hits_ingest", "CANDIDATE_DELAY_SECONDS"),
+    # Imported BY NAME from scripts.bulk_ingest, so its own copy is the one
+    # its loop sleeps on -- patch both.
+    ("scripts.feed_tier3_auto_transcription", "REQUEST_DELAY_SECONDS"),
+    ("scripts.bulk_ingest", "REQUEST_DELAY_SECONDS"),
+    ("scripts.pmn_utah_pilot", "PMN_REQUEST_DELAY_SECONDS"),
+    ("pmn_utah_pilot", "PMN_REQUEST_DELAY_SECONDS"),
+    ("scripts.build_pin_worklist", "SWAGIT_DELAY_SECONDS"),
+    ("build_pin_worklist", "SWAGIT_DELAY_SECONDS"),
+)
+
+
+@pytest.fixture(autouse=True)
+def _no_politeness_delays(monkeypatch):
+    import sys
+
+    for module_name, attr in _POLITENESS_DELAYS:
+        module = sys.modules.get(module_name)
+        if module is not None and hasattr(module, attr):
+            monkeypatch.setattr(module, attr, 0)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_youtube_metadata_calls(monkeypatch, request):
+    """No test may reach YouTube (CLAUDE.md: only the drip Mac fetches
+    YouTube; the suite is network-free). Three resolve tests did, through
+    yt-dlp, on every run -- they passed only because the failed call was
+    caught, and cost 2-5s each (WO-1084). The real `extract_info` now
+    refuses at once in every test. A test that fakes yt-dlp itself (e.g.
+    tests/test_youtube.py replaces `YoutubeDL`) is unaffected; a test that
+    needs the real call opts out with `@pytest.mark.real_yt_dlp`. Only
+    patched when yt_dlp is already imported, so this imports nothing."""
+    import sys
+
+    yt_dlp = sys.modules.get("yt_dlp")
+    if yt_dlp is None or request.node.get_closest_marker("real_yt_dlp"):
+        return
+
+    def _refuse(self, url, *args, **kwargs):
+        raise yt_dlp.utils.DownloadError(
+            f"test suite: real yt-dlp call refused for {url!r} -- fake "
+            "YouTubeAssetFinder._extract_info (see tests/test_civicweb.py)"
+        )
+
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", _refuse)

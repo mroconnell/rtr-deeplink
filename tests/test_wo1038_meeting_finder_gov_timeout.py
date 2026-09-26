@@ -31,7 +31,7 @@ def test_gov_timeout_abandons_a_hanging_government(monkeypatch, tmp_path: Path):
         runner.run_inputs(
             [FinderInput(url="stuck.example", entry="start")],
             tmp_path / "v.csv",
-            gov_timeout_minutes=0.01,  # 0.6s -- keep the test fast
+            gov_timeout_minutes=0.001,  # 0.06s -- keep the test fast
         )
     )
     elapsed = time.monotonic() - started
@@ -71,7 +71,7 @@ def test_gov_timeout_reports_partial_progress(monkeypatch, tmp_path: Path):
         runner.run_inputs(
             [FinderInput(url="stuck.example", entry="start")],
             tmp_path / "v.csv",
-            gov_timeout_minutes=0.01,
+            gov_timeout_minutes=0.001,  # 0.06s
         )
     )
     row = rows[0]
@@ -110,7 +110,7 @@ def test_gov_timeout_does_not_block_other_governments(monkeypatch, tmp_path: Pat
             ],
             tmp_path / "v.csv",
             concurrency=2,
-            gov_timeout_minutes=0.02,  # 1.2s
+            gov_timeout_minutes=0.001,  # 0.06s
         )
     )
     elapsed = time.monotonic() - started
@@ -120,7 +120,8 @@ def test_gov_timeout_does_not_block_other_governments(monkeypatch, tmp_path: Pat
     assert stuck_row.outcome == runner.OUTCOME_INTERNAL_TIMEOUT
     fast_row = next(r for r in rows if r.input_url == "fast.example")
     assert fast_row.outcome is None
-    # Both rows land at roughly the stuck government's own timeout, not
-    # some multiple of it -- the fast one was never made to wait behind
-    # the stuck one's abandoned task.
+    # Rows are appended as each government FINISHES, so the fast one
+    # landing first proves it never waited behind the stuck one -- a
+    # direct check, where the old `elapsed < 10` only bounded it loosely.
+    assert [row.input_url for row in rows] == ["fast.example", "stuck.example"]
     assert elapsed < 10, elapsed

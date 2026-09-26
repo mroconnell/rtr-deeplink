@@ -14,6 +14,7 @@ import pytest
 from app.platforms.base import detect_platform, register
 from app.platforms.civiclive import CivicLiveAssetFinder, is_civiclive_host
 from app.platforms.granicus import GranicusAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 from app.utils import url_guard
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -177,7 +178,9 @@ async def test_channel_link_alone_is_not_treated_as_a_video():
     assert result.video_url is None
 
 
-async def test_resolve_finds_a_real_single_youtube_video_still_on_civiclive():
+async def test_resolve_finds_a_real_single_youtube_video_still_on_civiclive(
+    monkeypatch,
+):
     # Synthetic HTML (no live CivicLive tenant with a server-rendered,
     # per-meeting embedded YouTube video has been found yet -- see
     # civiclive.py's own module docstring) modeled on the real, confirmed
@@ -192,6 +195,13 @@ async def test_resolve_finds_a_real_single_youtube_video_still_on_civiclive():
         "</body></html>"
     )
     routes = {url: FakeResponse(status=200, text=html, url=url)}
+    # The YouTube metadata call is faked: without it this made a real
+    # yt-dlp request to YouTube on every run (WO-1084).
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {"title": "City Council Meeting", "upload_date": "20260101"},
+    )
 
     with mock_session(routes):
         result = await CivicLiveAssetFinder().resolve(url)

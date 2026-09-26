@@ -280,6 +280,13 @@ _BROWSER_RETRY_HEADERS = {
 }
 
 
+# Granicus's own captions.vtt appears to stop at exactly this many cues
+# on very long meetings (see resolve()'s check). Same name as
+# scripts/scan_truncated_transcripts.py's copy. A named constant so a test
+# can prove the "exactly N" rule with a 3-cue file (WO-1084).
+GRANICUS_CUE_CAP = 36000
+
+
 class GranicusAssetFinder(AssetFinder):
     """Resolves video + transcript for a Granicus meeting page.
 
@@ -956,7 +963,7 @@ class GranicusAssetFinder(AssetFinder):
                     _vtt_url, cues, lang = chosen
                     segments = [TranscriptSegment(**cue) for cue in cues]
                     transcript_language = lang
-                    if len(segments) == 36000:
+                    if len(segments) == GRANICUS_CUE_CAP:
                         # Granicus's own captions.vtt appears to hard-cap at
                         # exactly 36,000 cues on very long meetings, cutting
                         # off mid-sentence with no warning of its own --

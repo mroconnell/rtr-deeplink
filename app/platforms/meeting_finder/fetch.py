@@ -346,6 +346,14 @@ def _challenge_outcome(body: str | None) -> str:
     return "cloudflare-challenge-blocked"
 
 
+# The politeness gap between two requests to the same host. A module
+# constant rather than only a default argument so the test suite can set it
+# to 0 in one place: every fetch-ladder test makes a second request to its
+# loopback server, and waiting the real 2.5s there cost ~25s per CI run
+# (WO-1084). `Fetcher(per_host_delay_s=...)` still overrides it per walk.
+DEFAULT_PER_HOST_DELAY_S = 2.5
+
+
 class Fetcher:
     """One fetch helper, reused across every page a single Meeting Finder
     walk reads. See this module's docstring for the ladder and what each
@@ -355,7 +363,7 @@ class Fetcher:
         self,
         *,
         max_fetches: int = 12,
-        per_host_delay_s: float = 2.5,
+        per_host_delay_s: float | None = None,
         allow_headless: bool = True,
         allow_wayback: bool = True,
         user_agent: str | None = None,
@@ -368,7 +376,9 @@ class Fetcher:
         # one `Fetcher` in the same process is fine.
         _install_youtube_guard()
         self.max_fetches = max_fetches
-        self.per_host_delay_s = per_host_delay_s
+        self.per_host_delay_s = (
+            DEFAULT_PER_HOST_DELAY_S if per_host_delay_s is None else per_host_delay_s
+        )
         self.allow_headless = allow_headless
         self.allow_wayback = allow_wayback
         self.fetches_used = 0

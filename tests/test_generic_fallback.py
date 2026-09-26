@@ -194,7 +194,7 @@ async def test_resolve_logs_a_raised_page_fetch_exception(caplog):
     assert any("page fetch failed" in r.message for r in caplog.records)
 
 
-async def test_resolve_finds_video_in_a_body_undecodable_as_utf8():
+async def test_resolve_finds_video_in_a_body_undecodable_as_utf8(monkeypatch):
     # Real bug, confirmed live 2026-09-02: Corte Madera, CA's own
     # AgendaCenter "Minutes" link is a raw PDF served with no charset in
     # its Content-Type header, so aiohttp's own encoding guess is "utf-8"
@@ -206,6 +206,9 @@ async def test_resolve_finds_video_in_a_body_undecodable_as_utf8():
     # ASCII inside the otherwise-binary PDF bytes. Confirmed on the real
     # page that `errors="replace"` preserves that embedded ASCII text
     # intact (only the surrounding invalid byte runs get replaced).
+    # Faked like the other YouTube-delegating tests here: without it this
+    # made a real yt-dlp request to YouTube (WO-1084).
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
     raw_body = (
         b"%PDF-1.4 garbage \xff\xfe\x00\x01 more garbage "
         b"https://www.youtube.com/watch?v=ja9HDKa1gI0 trailing \x80\x81 bytes"

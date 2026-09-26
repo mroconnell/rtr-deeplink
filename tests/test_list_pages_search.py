@@ -351,7 +351,7 @@ async def test_search_vocabulary_dedupes_words_shared_across_pages():
         assert count == 1
 
 
-async def test_upsert_vocabulary_words_chunks_a_large_word_set():
+async def test_upsert_vocabulary_words_chunks_a_large_word_set(monkeypatch):
     # Real incident, 2026-08-18: scripts/backfill_search_vocabulary.py
     # passed an entire 200-page batch's union of distinct words (62,000+)
     # to one call, which built a single INSERT with one bound parameter
@@ -361,10 +361,28 @@ async def test_upsert_vocabulary_words_chunks_a_large_word_set():
     # enforce that specific limit, but this still confirms the chunking
     # loop itself is correct (every word lands, nothing silently dropped)
     # regardless of dialect.
-    words = {f"zzyzxbulkword{i}" for i in range(70_000)}
+    #
+    # Proved with a small chunk size rather than 70,000 real words (~1.9s,
+    # and 70k rows left in the shared DB for every later test -- WO-1084):
+    # 50 words in chunks of 7 is 7 full chunks plus a partial tail, the
+    # same loop shape, checked by statement count and by row count.
+    # The real chunk size must stay under the Postgres parameter limit.
+    assert crud._VOCAB_UPSERT_CHUNK_SIZE < 65535
+    monkeypatch.setattr(crud, "_VOCAB_UPSERT_CHUNK_SIZE", 7)
+    words = {f"zzyzxbulkword{i}" for i in range(50)}
     async with async_session() as session:
+        executed = []
+        real_execute = session.execute
+
+        async def _counting_execute(stmt, *args, **kwargs):
+            executed.append(stmt)
+            return await real_execute(stmt, *args, **kwargs)
+
+        session.execute = _counting_execute
         await crud._upsert_vocabulary_words(session, words)
+        session.execute = real_execute
         await session.commit()
+    assert len(executed) == 8  # ceil(50 / 7): no chunk dropped, tail included
 
     async with async_session() as session:
         count = (
@@ -372,4 +390,4 @@ async def test_upsert_vocabulary_words_chunks_a_large_word_set():
                 select(func.count()).where(SearchVocabulary.word.like("zzyzxbulkword%"))
             )
         ).scalar_one()
-        assert count == 70_000
+        assert count == 50

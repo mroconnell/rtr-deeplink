@@ -45,10 +45,11 @@ def _payload(
     }
 
 
-def _walk(**params) -> list[dict]:
-    """Every page the endpoint returns, following next_after_id to the end."""
+def _walk(*, start_after_id: int = 0, **params) -> list[dict]:
+    """Every page the endpoint returns after `start_after_id`, following
+    next_after_id to the end."""
     pages: list[dict] = []
-    after_id = 0
+    after_id = start_after_id
     while True:
         r = client.get(
             "/internal/export/pages",
@@ -113,11 +114,17 @@ async def test_export_include_segments_returns_the_default_versions_segments():
 
 
 async def test_export_paginates_by_id_without_gaps_or_duplicates():
+    own_ids = []
     for i in range(3):
         url = f"https://example.granicus.com/player/clip/export-page-{i}"
-        await crud.ingest_resolution(_payload(f"export:page:{i}", url), url)
+        result = await crud.ingest_resolution(_payload(f"export:page:{i}", url), url)
+        own_ids.append(result["page_id"])
 
-    pages = _walk(limit=2)
+    # Start the walk just before this test's own pages. From id 0, 2 pages
+    # per request walked every page other test modules left in the shared
+    # DB -- ~340 requests and up to ~4s late in a full run (WO-1084). The
+    # cursor still crosses page boundaries (3 pages, limit 2).
+    pages = _walk(limit=2, start_after_id=min(own_ids) - 1)
     ids = [p["id"] for p in pages]
     assert ids == sorted(ids)
     assert len(ids) == len(set(ids))

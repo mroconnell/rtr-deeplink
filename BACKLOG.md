@@ -213,7 +213,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (217)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
   [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
@@ -292,7 +292,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (217)
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
   [NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac,…
-  [NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they…
+  [NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still…
+  [NEEDS-AUDIT] A Meeting Finder run still cannot exit while an…
   [NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
@@ -2916,14 +2917,20 @@ of human step they need.
   - **Next action**: on the Mac, run the full suite with `-p no:cacheprovider` and compare `sys.path`, `os.environ['DATABASE_URL']` and `sys.modules['app.db.engine'].engine.url` before and after collection. If rtr-discovery changes any of them, make those test modules import the script inside a fixture that restores `sys.path` afterwards.
   - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26); first seen 2026-09-10 (WO-166).
 
-- **[NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they pass without network today, but the suite is not fully offline.**
-  - **Issue**: a full run with every DNS lookup blocked (2026-09-26) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`) and 2 in `test_wo1028_meeting_finder_listing.py` (`lacity.primegov.com`, `example.portal.civicclerk.com`). All 8 pass with or without DNS. `test_generic_fallback.py` already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s own lookup is deliberate: it tests the lookup-failure path.)
-  - **Impact**: none on results today. With network, these tests can send a real lookup, and possibly a real request, to hosts that exist (`lacity.primegov.com`).
-  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call the way `tests/test_generic_fallback.py` fakes the SSRF check.
-  - **History**: found in WO-1082's offline scan (`BACKLOG_DONE.md`).
+- **[NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still make real DNS lookups; they pass without network, but the suite is not fully offline.**
+  - **Issue**: a full run with every DNS lookup blocked (2026-09-26, after WO-1084) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`). All 6 pass with or without DNS. That file already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s one lookup is deliberate: it tests the lookup-failure path.) The two `test_wo1028_meeting_finder_listing.py` tests that fetched live pages are fixed (WO-1084).
+  - **Impact**: none on results. With network, these tests can send a real DNS query for a made-up host.
+  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call.
+  - **History**: found in WO-1082's offline scan; narrowed by WO-1084 (`BACKLOG_DONE.md`).
+
+- **[NEEDS-AUDIT] A Meeting Finder run still cannot exit while an abandoned fetch is hung: `asyncio.run()` waits for it before WO-1042's exit step is reached.**
+  - **Issue**: `scripts/meeting_finder.py`'s `main()` calls `asyncio.run(...)` (line ~216) and only then `_join_lingering_threads()` and `os._exit()`. When `--gov-timeout-minutes` abandons a government whose headless fetch is stuck in `asyncio.to_thread()`, `asyncio.run()` shuts down its default thread pool and waits for that thread first. Measured 2026-09-26 on Python 3.11.15 and 3.12.3 with a 6-second abandoned `to_thread(time.sleep, 6)`: `asyncio.run()` returned only after the full 6s on both. The standard library caps that wait at 300s on 3.12 (documented, not measured here); 3.11 has no cap.
+  - **Impact**: the overnight-batch hang WO-1042 fixed can still happen, for up to 5 minutes on the pinned 3.12 (forever on 3.11), whenever a government's fetch hangs past the cap. WO-1042's own tests only cover `_join_lingering_threads()`, not this earlier wait.
+  - **Next action**: have `main()` run the loop without the default-executor wait, for example by creating the loop itself and calling `os._exit()` from inside it after the rows are written, or by running abandoned sync fetches on an explicitly daemon thread instead of the default executor. Then add a subprocess test with a hung `to_thread` call that must exit within a few seconds.
+  - **History**: found by WO-1084's slow-test audit (`BACKLOG_DONE.md`); WO-1042 is the original fix.
 
 - **[NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request made through an HTTPS proxy.**
-  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused: `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection` fails in a cloud container for this reason (confirmed 2026-09-26).
+  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused. Confirmed 2026-09-26 in a cloud container: yt-dlp's log showed 3 real YouTube requests. The guard's own test now passes `"proxy": ""` so it tests the guard honestly everywhere (WO-1084), but production callers (the queue probe) pass no such option.
   - **Impact**: none on the office Macs unless a proxy is set there. On any machine that uses a proxy, the "zero YouTube requests off the drip Mac" rule is not enforced by the guard.
   - **Next action**: decide whether proxied machines matter. If they do, also refuse YouTube hosts at the HTTP-client level (yt-dlp's `urlopen`, `aiohttp`, `requests`), or have `install()` clear proxy settings for YouTube hosts.
   - **History**: found running the full suite for WO-1082, 2026-09-26.

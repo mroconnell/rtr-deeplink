@@ -1,5 +1,59 @@
 # Backlog — done
 
+## WO-1084: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
+
+**What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
+
+**Result.** Same machine, run one right after the other:
+
+| Measure | Before | After |
+|---|---|---|
+| Whole test run | 254 s | 160 s |
+| Test steps over 0.5 s | 64 steps, 107 s in total | 19 steps, 20 s in total |
+
+The whole-run figure moves with the container's load (the same "before" code took 197 s earlier that day). The slow-step total is the steadier measure. CI will show the real figure on its own runners.
+
+**Found along the way, beyond speed.**
+- **Three tests made real requests to YouTube on every run**, through yt-dlp, and passed only because the failed call was caught: `test_civiclive.py::test_resolve_finds_a_real_single_youtube_video_still_on_civiclive`, `test_civicweb.py::test_resolve_document_shape_skips_agenda_fetch_when_no_index_points` and `test_generic_fallback.py::test_resolve_finds_video_in_a_body_undecodable_as_utf8`. That broke CLAUDE.md's "YouTube only from the drip Mac" rule on any machine that ran the suite. The earlier DNS-blocked scan (WO-1082) missed them: yt-dlp sends its requests through a proxy when one is set, so no local lookup happened. They now fake the call. A new `tests/conftest.py` fixture makes the real `yt_dlp.YoutubeDL.extract_info` refuse in every test, so a future test cannot do this again. The guard test that needs the real call opts out with `@pytest.mark.real_yt_dlp`.
+- **Two Meeting Finder listing tests fetched live web pages** (`lacity.primegov.com`, `example.portal.civicclerk.com`) and passed only because those pages returned nothing useful. The file's `fetcher` fixture now treats every host as unreachable.
+- **The Meeting Finder's exit step waited 2 s per leftover thread, one after another** (`scripts/meeting_finder.py`'s `_join_lingering_threads`). It now shares one 2 s limit across all threads. A new test checks that three hung threads cost one grace period, not three.
+- **An earlier wait can still stop a Meeting Finder run from exiting** (up to 5 minutes on Python 3.12). Measured, not fixed here; logged in `BACKLOG.md`.
+
+**Each slow test: why it was slow, what it protects, and what changed.**
+
+| Test (file) | Why it was slow | What it protects | Change |
+|---|---|---|---|
+| `test_meeting_finder_fetch.py`: 9 fetch-ladder tests (2.5 s each, one 5 s) | The real 2.5 s politeness gap between two requests to the same host, paid on the second request to the test's loopback server | Each rung of the fetch ladder: browser headers after a 403, headless, Wayback links-only, the budget | Gap set to 0 in tests (new constant `DEFAULT_PER_HOST_DELAY_S`). New tests pin the real 2.5 s and check that one fetcher still spaces two requests. |
+| `test_meeting_finder_fetch.py`: two fresh-process tests (1.7 s each) | Each started a new Python process | Importing `fetch.py` must not switch on the YouTube block; creating a `Fetcher` must | Merged into one process. The second test already checked the first's fact before doing its own. |
+| `test_wo1042_meeting_finder_clean_exit.py` (up to 6 s) | The exit step's per-thread wait, multiplied by the suite's own leftover threads | A hung thread cannot hold up exit | One shared limit, in the real code; shorter test limits |
+| `test_wo1038_meeting_finder_gov_timeout.py` (up to 1.2 s) | The tests' own deadlines | A hung government is abandoned on time and does not block the others | Deadline 0.06 s. The "does not block" test now checks the fast government finishes first, instead of a loose "under 10 s". |
+| `test_wo1031_meeting_finder_backpressure.py` (1 s) | A hard-coded 0.5 s re-check in the runner | New governments are held back while Resolve is full | New constant `ADMIT_POLL_SECONDS`, 0.005 s in the test. The test now sees many admission checks, not one. |
+| `test_sweep_deadline.py` exit test (1.2 s) | A local slow web server and `requests` in a subprocess | A hung call cannot keep the process from exiting | A plain 60 s sleep in the subprocess. It still hangs until killed if the helper uses a non-daemon thread (checked). |
+| `test_wo905_agendacenter_hop_sweep.py`: 4 tests (2–6 s) | The access ladder's 2 s host delay | How the sweep reports each fetch outcome | Delay set to 0 in tests |
+| `test_wo169_*`, `test_wo170_*`, `test_wo1049_*`, `test_wo1024_*` (0.75–1.5 s) | Two 0.75 s delays between video candidates | Which candidate wins, and when "rejected by probe" is reported | Delays set to 0 in tests |
+| `test_wo346_no_owner_requeue.py` (3 s) | A 1.5 s delay between queue lines | An ownerless line goes back into the queue | Delay set to 0 in tests |
+| `test_pmn_utah_pilot.py`, `test_pin_worklist.py` (0.5–1 s) | 0.5 s and 1 s delays between requests | The PMN outage-page fallback; Swagit footer caching | Delays set to 0 in tests |
+| `test_transcription_jobs.py`: 3 backlog tests (up to 3 s late in a run) | The backlog list checks every page oldest first, two queries each; the test's own pages were the newest | Pages with a recorded probe failure leave the backlog (WO-83); garbled and cut-off pages stay in it | The test's pages are moved to the front, and a small `limit` stops the scan after them. Their real dates are restored afterwards. |
+| `test_export_pages.py` pagination (up to 4 s late in a run) | Paged through every page in the shared database, 2 at a time | Export pagination has no gaps or duplicates | Starts just before its own pages |
+| `test_list_pages_search.py` vocabulary chunking (1.9 s) | Inserted 70,000 words | The 2026-08-18 Postgres parameter-limit incident | 50 words in chunks of 7, checked by statement count and row count. The real chunk size is still asserted to be under the limit. |
+| `test_wo928_version_quality.py` (up to 1.5 s) | Read every page in the shared database | The report reads a page, writes the CSV and writes nothing to the database | New `only_page_ids` option on `run()`, used by the test only |
+| `test_granicus.py` 36,000-cue test (1 s) | Built and parsed 36,000 real captions | Granicus files that stop at exactly 36,000 cues get the "may be cut off" warning | New constant `GRANICUS_CUE_CAP`, set to 3 in the test; the real value is pinned. A 2-cue case now checks "exactly" (not flagged one below). |
+| `test_retranscription_queue.py` glob scan (0.55 s) | One regex with an unanchored prefix backtracked over about 6 MB of scripts | No script or workflow sweeps up the hand-curated queue file | Prefix removed; same matches |
+| The three YouTube tests above (2–5 s each) | Real yt-dlp requests | CivicLive/CivicWeb/generic-fallback hand-offs to YouTube | Faked, as their neighbouring tests already were |
+
+**Left as they are, on purpose:**
+- **Four fresh-process import tests (1–1.9 s each).** These are `test_wo932_identity_gate`, `test_date_status`, `test_feed_tier3_auto_transcription` and `test_worker_import_graph`. Each proves something about a clean start that only a new process can show. Sharing one process would save about 4 s, but would make them depend on each other's import order.
+- **Tests that parse real multi-megabyte government pages** (SuiteOne, Aurora, Palm Beach). The work is real, and shrinking the files would break the real-fixture rule.
+- **About 0.5 s on whichever test first loads the Census tables.** It moves around but is paid once per run.
+
+Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("Test-suite and start-up speed").
+
+**Verification.**
+- Every rewritten test was checked against a temporary break of the code it guards: removing back-pressure, removing the backlog cooldown, the old per-thread join, and a non-daemon thread. Each fails as it should, and the code was restored.
+- Full runs after the change, all 7,630 passed with 0 failures: normal order, four shuffled orders (seeds 11, 22, 33, 44), and one with every DNS lookup blocked.
+- A full run with the real yt-dlp call refused found only the three tests above, plus the guard test that uses it on purpose.
+- Other small change: `tests/conftest.py` now deletes its temporary SQLite file at exit (230 had built up in one container).
+
 ## WO-1083: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
 
 **What.** Six tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All six had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.

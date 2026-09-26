@@ -649,12 +649,19 @@ async def test_resolve_document_shape_builds_real_agenda_items_from_local_index_
     assert result.agenda_items[2].end == 1541.0
 
 
-async def test_resolve_document_shape_skips_agenda_fetch_when_no_index_points():
+async def test_resolve_document_shape_skips_agenda_fetch_when_no_index_points(
+    monkeypatch,
+):
     # The already-tested achdidaho fixture (EVENT_JSON) has an empty
     # LocalIndexPoints -- no extra request should even be attempted, let
     # alone break anything. mock_session's routes dict deliberately omits
     # any /document/.../?record=false route, so an unmocked request would
     # fail loudly if this were (wrongly) still attempted.
+    # The YouTube metadata call is faked like every other resolve test here:
+    # without it this made a real yt-dlp request to YouTube (WO-1084).
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_extract_info", _fake_extract_info_document
+    )
     routes = {
         DOCUMENT_URL: FakeResponse(status=200, text=DOCUMENT_HTML, url=DOCUMENT_URL),
         EVENT_URL: FakeResponse(status=200, text=EVENT_JSON, url=EVENT_URL),

@@ -74,37 +74,20 @@ def test_run_with_deadline_does_not_block_process_exit_on_a_leaked_thread():
     import subprocess
     import sys
 
+    # A plain 60s sleep stands in for the hung request: what decides
+    # whether the process can exit is the KIND of thread the leaked call
+    # runs on, not what it is waiting for. The original repro used a local
+    # slow-trickle HTTP server and `requests` (~1s more per run); a
+    # ThreadPoolExecutor-based `run_with_deadline` still hangs this script
+    # until the timeout below kills it (checked when this was simplified,
+    # WO-1084).
     script = """
-import sys, time, threading, http.server, socketserver
+import sys, time
 sys.path.insert(0, "scripts")
-import requests
 from sweep_deadline import DeadlineExceeded, run_with_deadline
 
-class SlowTrickle(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Length", "1000000")
-        self.end_headers()
-        for _ in range(60):
-            try:
-                self.wfile.write(b"x")
-                self.wfile.flush()
-            except Exception:
-                return
-            time.sleep(1)
-    def log_message(self, *a):
-        pass
-
-class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
-httpd = Server(("127.0.0.1", 0), SlowTrickle)
-port = httpd.server_address[1]
-threading.Thread(target=httpd.serve_forever, daemon=True).start()
-
 try:
-    run_with_deadline(requests.get, f"http://127.0.0.1:{port}/", timeout=6, deadline_seconds=1)
+    run_with_deadline(time.sleep, 60, deadline_seconds=0.1)
 except DeadlineExceeded:
     print("deadline-fired", flush=True)
 print("process-about-to-exit", flush=True)
@@ -113,7 +96,7 @@ print("process-about-to-exit", flush=True)
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,  # generous, but must NOT need anywhere near the
+        timeout=10,  # generous, but must NOT need anywhere near the
         # leaked call's own 60s -- a regression to non-daemon threads
         # would time out here.
         cwd=".",

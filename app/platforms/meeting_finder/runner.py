@@ -1875,6 +1875,12 @@ async def _run_one_with_timeout(
     return _timeout_verdict_row(finder_input, run_id, progress, gov_timeout_minutes)
 
 
+# How often run_inputs() re-checks whether Resolve has room while
+# back-pressure holds new governments back (WO-1031). A named constant so a
+# test can poll faster (WO-1084).
+ADMIT_POLL_SECONDS = 0.5
+
+
 async def run_inputs(
     inputs: Iterable[FinderInput],
     out_path: Path,
@@ -1991,7 +1997,7 @@ async def run_inputs(
         for finder_input in todo:
             await intake.acquire()
             while lanes.waiting > lanes.max_waiting:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(ADMIT_POLL_SECONDS)
             active += 1
             _log("admit")
             tasks.append(asyncio.create_task(_admitted(finder_input)))

@@ -53,7 +53,7 @@ def test_a_thread_that_finishes_within_the_grace_period_is_joined():
     t = threading.Thread(target=_quick)
     t.start()
     try:
-        still_alive = _join_lingering_threads(timeout=2.0)
+        still_alive = _join_lingering_threads(timeout=0.5)
     finally:
         t.join(timeout=5.0)
     assert still_alive <= baseline
@@ -94,10 +94,15 @@ def test_multiple_lingering_threads_are_all_counted():
     for t in threads:
         t.start()
     try:
-        still_alive = _join_lingering_threads(timeout=0.1)
+        started = time.monotonic()
+        still_alive = _join_lingering_threads(timeout=0.2)
+        elapsed = time.monotonic() - started
         # Only this test's threads are stable; others may come and go on CI.
         assert all(t.is_alive() for t in threads)
         assert still_alive >= 3
+        # One grace period in total, not one per hung thread (WO-1084):
+        # three hung threads at 0.2s each would take >= 0.6s.
+        assert elapsed < 0.5
     finally:
         stop.set()
         for t in threads:

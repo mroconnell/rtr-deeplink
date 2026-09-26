@@ -455,7 +455,12 @@ def evaluate_page(page: dict, versions: list[dict]) -> list[dict]:
     return rows
 
 
-async def run(out_path: str, limit: int | None) -> Counter:
+async def run(
+    out_path: str, limit: int | None, *, only_page_ids: list[int] | None = None
+) -> Counter:
+    """`only_page_ids` restricts the read to those pages. The command line
+    never passes it; it lets the test read its own seeded page instead of
+    every page in the suite's shared database (WO-1084)."""
     from sqlalchemy import select
 
     from archive.db.engine import async_session
@@ -463,6 +468,8 @@ async def run(out_path: str, limit: int | None) -> Counter:
 
     async with async_session() as session:
         stmt = select(TranscriptVersion.meeting_page_id).distinct()
+        if only_page_ids is not None:
+            stmt = stmt.where(TranscriptVersion.meeting_page_id.in_(only_page_ids))
         page_ids = sorted(set((await session.execute(stmt)).scalars().all()))
     if limit:
         page_ids = page_ids[:limit]

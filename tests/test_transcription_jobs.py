@@ -6,6 +6,8 @@ run in any order without colliding (the fixture DB isn't reset per-test).
 """
 
 import asyncio
+import contextlib
+from datetime import datetime, timedelta
 
 from archive.db import crud
 
@@ -2618,6 +2620,68 @@ async def test_list_recent_transcription_failures_covers_both_failure_classes():
 # prove that mechanism actually works end-to-end at the crud layer.
 
 
+@contextlib.asynccontextmanager
+async def _first_in_backlog(page_ids):
+    """Moves these pages to the FRONT of the backlog while the block runs,
+    then restores their real `created_at`.
+
+    `list_transcription_backlog_candidates()` walks every page oldest
+    first (two queries per page) and stops at `limit`. A test's fresh
+    pages are the NEWEST, so with no limit it walked every page other test
+    modules left in the shared DB -- up to ~3s per call late in a full run
+    (WO-1084). Backdated to 1990, they come first, and `limit=len(pages)`
+    stops the walk right after them. Restored afterwards so no later test
+    finds them at the front."""
+    from sqlalchemy import select, update
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    async with async_session() as session:
+        original = dict(
+            (
+                await session.execute(
+                    select(MeetingPage.id, MeetingPage.created_at).where(
+                        MeetingPage.id.in_(page_ids)
+                    )
+                )
+            ).all()
+        )
+        for i, page_id in enumerate(page_ids):
+            await session.execute(
+                update(MeetingPage)
+                .where(MeetingPage.id == page_id)
+                .values(created_at=datetime(1990, 1, 1) + timedelta(seconds=i))
+            )
+        await session.commit()
+    try:
+        yield
+    finally:
+        async with async_session() as session:
+            for page_id, created_at in original.items():
+                await session.execute(
+                    update(MeetingPage)
+                    .where(MeetingPage.id == page_id)
+                    .values(created_at=created_at)
+                )
+            await session.commit()
+
+
+async def _page_id_for_url(url):
+    from sqlalchemy import select
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+
+
 async def test_list_transcription_backlog_candidates_includes_meeting_page_id():
     from archive.db.engine import async_session
     from archive.db.models import MeetingPage
@@ -2651,7 +2715,8 @@ async def test_list_transcription_backlog_candidates_includes_meeting_page_id():
         )
         page_id = page.id
 
-    candidates = await crud.list_transcription_backlog_candidates()
+    async with _first_in_backlog([page_id]):
+        candidates = await crud.list_transcription_backlog_candidates(limit=1)
     match = next(c for c in candidates if c["slug"] == slug)
     assert match["meeting_page_id"] == page_id
 
@@ -2706,7 +2771,12 @@ async def test_list_transcription_backlog_candidates_includes_garbled_and_granic
         "a known limit in Granicus's own captioning for very long meetings.",
     )
 
-    candidates = await crud.list_transcription_backlog_candidates(limit=5000)
+    own_ids = [
+        await _page_id_for_url(garbled_url),
+        await _page_id_for_url(truncated_url),
+    ]
+    async with _first_in_backlog(own_ids):
+        candidates = await crud.list_transcription_backlog_candidates(limit=2)
     slugs = {c["slug"] for c in candidates}
     assert garbled_slug in slugs
     assert truncated_slug in slugs
@@ -2767,7 +2837,10 @@ async def test_probe_failure_recording_removes_candidate_from_next_backlog_call(
 
     # Sanity check: all three are real candidates right now, before any
     # failure has been recorded against them.
-    candidates_before = await crud.list_transcription_backlog_candidates(limit=5000)
+    async with _first_in_backlog(page_ids):
+        candidates_before = await crud.list_transcription_backlog_candidates(
+            limit=len(page_ids)
+        )
     ids_before = {c["meeting_page_id"] for c in candidates_before}
     for pid in page_ids:
         assert pid in ids_before
@@ -2785,7 +2858,13 @@ async def test_probe_failure_recording_removes_candidate_from_next_backlog_call(
     # freshly in cooldown, which is exactly what lets a subsequent hourly
     # run reach further into the backlog instead of grinding the same
     # candidates in place.
-    candidates_after = await crud.list_transcription_backlog_candidates(limit=5000)
+    # Backdated again, so were they still candidates they would be the
+    # first three returned: a small window proves the exclusion as well as
+    # a full scan does.
+    async with _first_in_backlog(page_ids):
+        candidates_after = await crud.list_transcription_backlog_candidates(
+            limit=len(page_ids)
+        )
     ids_after = {c["meeting_page_id"] for c in candidates_after}
     for pid in page_ids:
         assert pid not in ids_after

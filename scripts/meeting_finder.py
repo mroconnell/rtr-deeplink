@@ -37,6 +37,7 @@ import csv
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -117,8 +118,13 @@ def _join_lingering_threads(*, timeout: float = 2.0) -> int:
     exits via `os._exit()` regardless -- see that call site's own
     comment for why a plain return from `main()` isn't enough."""
     remaining = [t for t in threading.enumerate() if t is not threading.main_thread()]
+    # One shared deadline, not `timeout` per thread: joining each thread
+    # for the full `timeout` in turn made N hung threads cost N x timeout
+    # before exit (WO-1084, found because a test paid it for the suite's
+    # own leftover threads).
+    deadline = time.monotonic() + timeout
     for t in remaining:
-        t.join(timeout=timeout)
+        t.join(timeout=max(0.0, deadline - time.monotonic()))
     return sum(1 for t in remaining if t.is_alive())
 
 
