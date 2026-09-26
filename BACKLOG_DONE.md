@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1111: weak-lead triage step with a known non-meeting video list [Done 2026-09-26]
+
+**What was done and why.** Hand-checks of the 2026-09-25/26 Meeting Finder runs found about 98% of weak leads were not meetings, and a few identical videos showed up on dozens of unrelated government sites (TASB's "Boardbook" demo on 64, a Google Sites stock clip on 59, a learning-software tutorial on 54). Ryan asked for a hand-made list of known non-meeting videos, used only when picking weak leads for hand-check -- not inside Meeting Finder.
+
+**Result.** `scripts/meeting_finder_weak_lead_triage.py` reads verdict files and rtr-business `research/known_non_meeting_videos.csv` (226 hand-confirmed rows), drops known-bad videos, applies Ryan's duration bands (70+, then 40-70, then 20-40, unknown length kept, 8-20 only on request, under 8 skipped), and writes an ordered hand-check case file.
+
+| Weak leads, 2026-09-26 no-platform-signature run | Count of 1,456 |
+|---|---|
+| Skipped: under 8 minutes | 1,165 |
+| Skipped: known non-meeting video | 165 |
+| Skipped: 8-20 minutes | 24 |
+| Kept for hand-check | 102 |
+
+**Caution.** The list only grows from confirmed hand-check verdicts; never add a row from a guess. Meeting Finder does not read it.
+
 ## WO-1101: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
 
 **What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.

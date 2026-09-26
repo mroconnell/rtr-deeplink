@@ -934,3 +934,13 @@ Each step is useful on its own.
 - Whether rtr-discovery's enumerators need a small "list one tenant
   without the ledger" entry point, so Meeting Finder can call them for an
   account that is not in rtr-discovery's ledger.
+
+
+## Weak-lead triage (WO-1111)
+
+Weak leads (`video-low-confidence`, or `handcheck_lead=yes`) go through
+`scripts/meeting_finder_weak_lead_triage.py` before any hand-check. It skips
+videos listed in rtr-business `research/known_non_meeting_videos.csv` (hand-
+confirmed non-meetings) and applies Ryan's duration bands: 70+ minutes first,
+then 40-70, then 20-40, unknown length kept, 8-20 only with `--include-8-20`,
+under 8 never. Meeting Finder itself never reads the known-bad list.
