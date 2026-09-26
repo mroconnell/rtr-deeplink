@@ -188,6 +188,7 @@ from app.platforms.media_probe import (
     slice_cached_audio,
     transcription_media_url,
 )  # noqa: E402
+from app.platforms.reresolve import reresolve_for_transcription  # noqa: E402
 from app.utils.retry import retry_async  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
@@ -1014,6 +1015,7 @@ async def transcribe_meeting(
     resume: bool = True,
     chunk_cooldown_seconds: float = 0.0,
     thermal_poll_seconds: float = 30.0,
+    video_url: Optional[str] = None,
 ) -> dict:
     """Re-resolves `source_url` fresh (HLS/signed URLs can go stale, same
     reasoning as worker/main.py's own re-resolve-before-each-chunk), probes
@@ -1077,6 +1079,15 @@ async def transcribe_meeting(
     candidates cheaply" brief: a re-resolve failure, an implausible
     duration, and an outright transcription failure are all just reasons
     this particular meeting isn't ready yet, not fatal errors for the run.
+
+    `video_url` (WO-1073, optional -- process_one() passes the page's own
+    stored `video_url`, the --url path passes None): when the fresh
+    `source_url` re-resolve above fails or finds no usable media, this
+    falls back to re-resolving THAT stored URL instead, via
+    app/platforms/reresolve.py's `reresolve_for_transcription()` -- see
+    that module's own Mary Esther, FL writeup for the real case this
+    closes (a page whose stored source_url its own platform adapter can
+    never parse, but whose stored video_url is a real, playable file).
     """
     try:
         finder = get_finder(platform)
@@ -1085,7 +1096,12 @@ async def transcribe_meeting(
 
     try:
         result = await retry_async(
-            lambda: finder.resolve(source_url),
+            lambda: reresolve_for_transcription(
+                finder=finder,
+                platform=platform,
+                source_url=source_url,
+                video_url=video_url,
+            ),
             label=f"re-resolve of {source_url}",
             attempts=MEDIA_ATTEMPTS,
             base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
@@ -1707,6 +1723,7 @@ async def process_one(
         resume=resume,
         chunk_cooldown_seconds=chunk_cooldown_seconds,
         thermal_poll_seconds=thermal_poll_seconds,
+        video_url=page.get("video_url"),
     )
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}

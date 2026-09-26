@@ -360,3 +360,83 @@ async def test_a_batch_of_mixed_candidates_records_failures_only_for_the_infeasi
         "https://example.com/meeting/12",
         "https://example.com/meeting/14",
     ]
+
+
+# --- WO-1073: _check_feasible() falls back to the page's stored video_url -
+#
+# SYNTHETIC, per CLAUDE.md's synthetic-test rule: reuses the real,
+# confirmed-live 2026-09-25 Mary Esther, FL shape -- see
+# app/platforms/reresolve.py's own module docstring for the full writeup.
+
+
+async def test_check_feasible_falls_back_to_stored_video_url(monkeypatch):
+    from app.platforms.models import ResolvedMeeting
+
+    source_url = "https://maryestherfl.portal.civicclerk.com"
+    video_url = (
+        "https://cpmedia.azureedge.net/maryestherfl/"
+        "1a1a01e3-6195-4f33-be2c-4f0c7c235deb.mp4"
+    )
+    page = {
+        "slug": "mary-esther-fl-2026-09-08-regular-city-council-meeting",
+        "source_url_normalized": source_url,
+        "platform": "civicclerk",
+        "video_url": video_url,
+    }
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    monkeypatch.setattr(reresolve_mod, "detect_platform", lambda url: "direct_file")
+
+    class _FallbackFinder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="direct_file",
+                source_url=url,
+                video_url=video_url,
+                video_format="mp4",
+            )
+
+    monkeypatch.setattr(reresolve_mod, "get_finder", lambda platform: _FallbackFinder())
+
+    async def _probe_plan(result, *, source_page_url, max_chunk_seconds):
+        return 3600.0, None
+
+    monkeypatch.setattr(mod, "probe_duration_and_chunk_plan", _probe_plan)
+
+    feasible = await mod._check_feasible(page)
+    assert feasible["ok"] is True
+    assert feasible["result"].source_url == source_url
+    assert feasible["result"].platform == "civicclerk"
+
+
+async def test_check_feasible_never_falls_back_to_a_youtube_video_url(monkeypatch):
+    page = {
+        "slug": "fake-slug-youtube-fallback",
+        "source_url_normalized": "https://maryestherfl.portal.civicclerk.com",
+        "platform": "civicclerk",
+        "video_url": "https://www.youtube.com/watch?v=abc123",
+    }
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("must never call get_finder for a YouTube fallback")
+
+    monkeypatch.setattr(reresolve_mod, "get_finder", _boom)
+
+    feasible = await mod._check_feasible(page)
+    assert feasible["ok"] is False
+    assert "Could not find an event ID" in feasible["reason"]

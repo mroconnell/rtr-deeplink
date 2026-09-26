@@ -183,6 +183,86 @@ async def test_push_if_has_video_overrides_source_url_when_given(monkeypatch):
     assert captured["payload"]["source_url"] == real_source_url
 
 
+async def test_push_if_has_video_ignores_override_for_a_direct_file_url(monkeypatch):
+    """A direct video/audio file is ALSO a bare-video-link shape (WO-303
+    added the direct_file adapter after this override was originally
+    built for YouTube/Vimeo) -- the override still applies for it."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    bare_video_url = "https://example.gov/recordings/2026-09-08.mp4"
+    real_source_url = "https://example.gov/agenda/42"
+    result = _FakeResolvedMeeting(video_url=bare_video_url, source_url=bare_video_url)
+
+    monkeypatch.setattr(mod, "detect_platform", lambda url: "direct_file")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/example-page-direct-file"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(
+        session=None, url=bare_video_url, source_url_override=real_source_url
+    )
+
+    assert "[OK]" in outcome
+    assert "override ignored" not in outcome
+    assert captured["payload"]["source_url"] == real_source_url
+
+
+async def test_push_if_has_video_ignores_override_for_a_real_meeting_page(
+    monkeypatch,
+):
+    """WO-1073: the real Mary Esther, FL root cause. When the QUEUED url
+    is itself a real meeting page on a platform that can be re-resolved
+    on its own (here, a CivicClerk event URL), a paired source_url
+    override must be IGNORED, not applied -- applying it discards the
+    one URL civicclerk.py's own adapter can actually re-resolve later,
+    leaving the page to fail its re-resolve forever (see
+    app/platforms/reresolve.py's own writeup of this exact case)."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    real_event_url = "https://maryestherfl.portal.civicclerk.com/event/110/media"
+    bare_portal_root = "https://maryestherfl.portal.civicclerk.com"
+    result = _FakeResolvedMeeting(
+        video_url="https://cpmedia.azureedge.net/maryestherfl/"
+        "1a1a01e3-6195-4f33-be2c-4f0c7c235deb.mp4",
+        source_url=real_event_url,
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda url: "civicclerk")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "probe_queue_entry", _accepting_probe_stub)
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    captured = {}
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        captured["payload"] = payload
+        return {"url": "/m/mary-esther-fl"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(
+        session=None, url=real_event_url, source_url_override=bare_portal_root
+    )
+
+    assert "[OK]" in outcome
+    assert "override ignored" in outcome
+    # The queued (real, re-resolvable) URL is kept as source_url -- NOT
+    # the bare portal-root override.
+    assert captured["payload"]["source_url"] == real_event_url
+
+
 async def test_push_if_has_video_leaves_source_url_alone_without_an_override(
     monkeypatch,
 ):
