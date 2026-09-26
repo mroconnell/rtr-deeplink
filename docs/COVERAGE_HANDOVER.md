@@ -387,6 +387,23 @@ reasons. That is how every sweep below was scoped.
   `BACKLOG.md`'s live entry for the precedence trade-off this leaves
   open (97 more pins flagged suspect by an oEmbed audit, not yet
   hand-checked).
+- **TelVue is the exception: a pin naming a whole customer is only the
+  fallback (WO-1100, 2026-09-26).** Every TelVue customer checked is a
+  regional station carrying several governments, so a pin on the org
+  token filed a school board or a town council under the station's town
+  or county. On `videoplayer.telvue.com` only (`tenant_key.
+  NAME_FROM_MEETING_TITLE_HOSTS`), rung 1b now tries the meeting's own
+  name first (`resolver._meeting_title_government()`): it must key to a
+  real registry government in the one state the customer's pins agree
+  on, and a name with no state gets that state. Otherwise the whole-
+  customer pin decides, as before. A narrower pin (playlist, series,
+  video) still wins outright. A customer with no token-bearing pin keeps
+  the blank. telvue.py no longer applies its station-level name or logo
+  to a customer in `MULTI_GOVERNMENT_TENANTS`, and names some bodies per
+  customer (`ORG_TOKEN_BODY_GOVERNMENTS`: Derry's and Pierre's school
+  boards). `queue_probe.has_owner()` sends no id for such a pin, so the
+  feeder does not skip the name step. See `BACKLOG_DONE.md`'s WO-1100
+  entry.
 
 ## 4. How coverage is grown: the sweep pattern
 

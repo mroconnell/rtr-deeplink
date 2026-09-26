@@ -15,6 +15,7 @@ parsing, which is out of scope here.
 
 from __future__ import annotations
 
+import time
 from typing import List
 from unittest.mock import patch
 
@@ -51,7 +52,24 @@ def _clean_walker_registry():
 
 @pytest.fixture
 def fetcher():
-    return Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
+    """A real Fetcher that treats every host as unreachable. Two tests
+    below reach the generic-scan lister, which fetched the live
+    lacity.primegov.com and example.portal.civicclerk.com pages -- passing
+    only because those pages happened to yield nothing (WO-1090). Every
+    host now answers like a dead one, so this file never touches the
+    network; tests that need page content stub the lister instead."""
+    real = Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
+
+    async def _offline_fetch(url: str, *, need_links: bool = True):
+        return real._result(
+            requested_url=url,
+            access_mode="dead",
+            outcome="dns-unresolvable",
+            start=time.monotonic(),
+        )
+
+    real.fetch = _offline_fetch
+    return real
 
 
 # --- Lister (a): passive_verify's registered walkers -------------------
@@ -274,6 +292,144 @@ async def test_lister_b_degrades_with_a_note_when_rtr_discovery_unavailable(
         OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
     )
     assert "rtr-discovery unavailable" in result.note
+
+
+# --- Lister (b), WO-1101: keyed-website tenant names --------------------
+#
+# A keyed website is one host shared by many customers, with a key in the
+# address naming the customer (`app/utils/tenant_key.py`). Before WO-1101,
+# `_list_via_discovery()` passed rtr-discovery's `list_tenant()` only
+# `urlparse(account_url).netloc` -- the bare host, with the customer key
+# thrown away. Every keyed platform's own rtr-discovery walker reads the
+# key from `TenantRecord.tenant_key` and refuses (`TenantNotEnumerable`)
+# when it's missing, so lister (b) always came back empty for a keyed
+# tenant. These tests assert `_list_via_discovery()` now hands
+# `list_tenant()` the full `host#key` tenant name for each of the five
+# platforms whose rtr-discovery enumerator sets `tenant_keyed = True`
+# (`~/Documents/rtr-discovery/discovery/enumerators/{champds,invintus,
+# telvue,sliq_harmony,boxcast}.py`).
+#
+# ChampDS, Invintus and TelVue also each have their own passive_verify
+# listing walker (lister a) -- `_list_via_discovery()`'s own early-return
+# a few lines above the fix means lister (b) is never reached for them in
+# production, walker registered or not. These three tests remove that
+# platform's registration first, purely to exercise `_list_via_
+# discovery()`'s own netloc-building in isolation; see the "kept, not
+# redundant" reasoning in this module's own docstring update (WO-1101)
+# and this PR's description for why those walkers stay.
+#
+# Every URL below is a real customer address, sourced from
+# `app/utils/jurisdiction_data/tenant_overrides.csv` (cited per test).
+
+
+@pytest.mark.asyncio
+async def test_lister_b_champds_customer_reaches_list_tenant_with_key(
+    fetcher, monkeypatch
+):
+    """Atlanta, GA on ChampDS -- tenant_overrides.csv's
+    `play.champds.com,/atlantaga/,us:place:1304000,...` row (also the
+    worked example in tenant_key.py's own module docstring)."""
+    passive_verify._ensure_walkers_registered()
+    passive_verify._LISTING_WALKERS.pop("champds", None)
+    fake_module = _FakeDiscoveryModule(_FakeListResult("ok", candidates=[]))
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: fake_module)
+
+    await listing._list_via_discovery(
+        "champds", "https://play.champds.com/atlantaga/", 15, None
+    )
+    assert fake_module.calls == [("champds", "play.champds.com#atlantaga", 15, None)]
+
+
+@pytest.mark.asyncio
+async def test_lister_b_invintus_customer_reaches_list_tenant_with_key(
+    fetcher, monkeypatch
+):
+    """Leon County, FL on Invintus -- tenant_overrides.csv's
+    `player.invintus.com,clientID=4853176732,us:county:12073,...` row
+    (WO-1066)."""
+    passive_verify._ensure_walkers_registered()
+    passive_verify._LISTING_WALKERS.pop("invintus", None)
+    fake_module = _FakeDiscoveryModule(_FakeListResult("ok", candidates=[]))
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: fake_module)
+
+    await listing._list_via_discovery(
+        "invintus",
+        "https://player.invintus.com/?clientID=4853176732",
+        15,
+        None,
+    )
+    assert fake_module.calls == [
+        ("invintus", "player.invintus.com#4853176732", 15, None)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lister_b_telvue_customer_reaches_list_tenant_with_key(
+    fetcher, monkeypatch
+):
+    """City of Kalamazoo, MI on TelVue -- tenant_overrides.csv's
+    `videoplayer.telvue.com,player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/
+    media/1041369,us:place:2642160,...` row (WO-1060). The org token
+    keeps its exact case (`telvue_org_token()`'s own docstring)."""
+    passive_verify._ensure_walkers_registered()
+    passive_verify._LISTING_WALKERS.pop("telvue", None)
+    fake_module = _FakeDiscoveryModule(_FakeListResult("ok", candidates=[]))
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: fake_module)
+
+    await listing._list_via_discovery(
+        "telvue",
+        "https://videoplayer.telvue.com/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/media/1041369",
+        15,
+        None,
+    )
+    assert fake_module.calls == [
+        (
+            "telvue",
+            "videoplayer.telvue.com#2bm0gzQWeVRzdCgvjXziXKwO3icSKh05",
+            15,
+            None,
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lister_b_sliq_harmony_customer_reaches_list_tenant_with_key(
+    fetcher, monkeypatch
+):
+    """Arkansas Legislature on Sliq Harmony -- tenant_overrides.csv's
+    `sg001-harmony.sliq.net,/00284/,us:state:05,...` row (WO-921). Sliq
+    Harmony has no passive_verify walker, so this is the real production
+    path, not just an isolation test -- lister (b) is the only lister
+    that can list a Sliq Harmony tenant at all."""
+    fake_module = _FakeDiscoveryModule(_FakeListResult("ok", candidates=[]))
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: fake_module)
+
+    await listing._list_via_discovery(
+        "sliq_harmony", "https://sg001-harmony.sliq.net/00284/", 15, None
+    )
+    assert fake_module.calls == [
+        ("sliq_harmony", "sg001-harmony.sliq.net#00284", 15, None)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lister_b_boxcast_customer_reaches_list_tenant_with_key(
+    fetcher, monkeypatch
+):
+    """City of Wilmington, OH on BoxCast -- tenant_overrides.csv's
+    `boxcast.tv,channel=boxcast:x1jps4n28nlgtaozsv5y,us:place:3985792,...`
+    row (WO-227), also cited in `app/platforms/boxcast.py`'s own module
+    docstring and `tests/test_boxcast.py`. BoxCast has no passive_verify
+    walker either, so this is also the real production path."""
+    fake_module = _FakeDiscoveryModule(_FakeListResult("ok", candidates=[]))
+    monkeypatch.setattr(listing, "_load_discovery_module", lambda: fake_module)
+
+    await listing._list_via_discovery(
+        "boxcast", "https://boxcast.tv/channel/x1jps4n28nlgtaozsv5y", 15, None
+    )
+    assert fake_module.calls == [
+        ("boxcast", "boxcast.tv#x1jps4n28nlgtaozsv5y", 15, None)
+    ]
 
 
 # --- Lister (c): adapter's own CalendarPageError -----------------------

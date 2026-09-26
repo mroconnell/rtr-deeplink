@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1090: Adapter health canary had failed every day since 2026-08-29 — two causes fixed, one reclassified, one real outage found [Done 2026-09-26]
+## WO-1112: Adapter health canary had failed every day since 2026-08-29 — two causes fixed, one reclassified, one real outage found [Done 2026-09-26]
 
 **What was checked and why.** The daily canary (`.github/workflows/adapter-canary.yml`) had failed 29 scheduled runs in a row (2026-08-29 to 2026-09-26), so it read as noise. The brief named ffprobe and tvw.org as likely causes. Every one of the 29 failed logs was read and each run's `FAIL` lines counted.
 
@@ -35,6 +35,183 @@
 **The one failure is real.** open.media's whole site broke on 2026-09-26: every tenant serves an empty JavaScript shell and a browser shows "Unexpected Application Error! 404 Not Found". This is the canary doing its job. Logged in `BACKLOG.md`.
 
 **Residuals split back out to `BACKLOG.md`:** the open.media outage; tvw possibly blocked on production too; the canary's `youtube` check can't see a YouTube caption break; `legistar.py` shows a raw error on a GUID-less link.
+
+## WO-1110: a TelVue meeting with no caption track showed an empty transcript column [Done 2026-09-26]
+
+**What was done and why.** Ryan added Pierre SD's two TelVue meetings on 2026-09-26. Both pages showed the video and nothing at all where the transcript or the "no transcript" message goes. Two gaps caused it. `app/platforms/telvue.py` warned only when a caption file came back empty, not when the media entry listed no caption track (`"tracks":[]`, Pierre's shape). And `app/static/player.js` showed the "no transcript" panel only when there was a warning to show. The archived page (`archive/templates/meeting_page.html`) already showed its panel without one.
+
+**Result.** The adapter now gives the same "no caption file was found" warning for both shapes. The live page shows the panel whenever there is a video, warning or not. Checked in a local browser on Pierre's real meeting 1045603.
+
+**Tests.** `tests/test_telvue.py`: Pierre's real saved page now gets the warning; Derry's still gets exactly one.
+
+## WO-1101: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
+
+**What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.
+
+**What this actually broke.** Only Sliq Harmony and BoxCast, in practice. ChampDS, Invintus and TelVue each already have their own `passive_verify` listing walker (lister a), and `_list_via_discovery()` has always had an earlier check that skips rtr-discovery entirely when a walker is registered for the platform — so lister (b) was never reached for those three regardless of this bug. Sliq Harmony and BoxCast have no such walker, so lister (b) was their only way to get a listing, and it never worked.
+
+**What was fixed.** `app/platforms/meeting_finder/listing.py`'s `_list_via_discovery()` now builds the tenant name with `app/utils/tenant_key.py`'s `tenant_name()` (the one place this repo defines a tenant's name; rtr-discovery's own `discovery.tenants.tenant_for_url()` imports this exact module and delegates to the same rule) instead of a bare `urlparse().netloc`. On a keyed website whose URL still carries its key, that's `host#key` (e.g. `play.champds.com#atlantaga`); on every other platform it's unchanged — the bare host, same as before. `identify.py`'s `_account_url_for_platform()` already keeps a keyed URL's full path in `account_url` rather than collapsing it to the bare host, so the key was there to use; lister (b) just wasn't reading it.
+
+**Result**, one real customer address per keyed platform (each sourced from `app/utils/jurisdiction_data/tenant_overrides.csv`, cited per row):
+
+| Platform | Real customer address | What `list_tenant()` got before | What it gets after | Result |
+|---|---|---|---|---|
+| ChampDS | `play.champds.com/atlantaga/` (Atlanta, GA) | `play.champds.com` | `play.champds.com#atlantaga` | Unchanged in production — ChampDS keeps its own listing walker (lister a); lister (b) is never reached for it either way |
+| Invintus | `player.invintus.com/?clientID=4853176732` (Leon County, FL) | `player.invintus.com` | `player.invintus.com#4853176732` | Unchanged in production — same reason, Invintus has its own walker |
+| TelVue | `videoplayer.telvue.com/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05/media/1041369` (City of Kalamazoo, MI) | `videoplayer.telvue.com` | `videoplayer.telvue.com#2bm0gzQWeVRzdCgvjXziXKwO3icSKh05` | Unchanged in production — same reason, TelVue has its own walker |
+| Sliq Harmony | `sg001-harmony.sliq.net/00284/` (Arkansas Legislature) | `sg001-harmony.sliq.net` (walker refused: no tenant key) | `sg001-harmony.sliq.net#00284` | Fixed — Sliq Harmony has no listing walker, so this is the real path; a Sliq Harmony customer can now be listed at all |
+| BoxCast | `boxcast.tv/channel/x1jps4n28nlgtaozsv5y` (City of Wilmington, OH) | `boxcast.tv` (walker refused: no tenant key) | `boxcast.tv#x1jps4n28nlgtaozsv5y` | Fixed — BoxCast has no listing walker either; same fix |
+
+**Tests.** Five new tests in `tests/test_wo1028_meeting_finder_listing.py`, one per platform above, each asserting the exact `(platform, netloc, limit, params)` tuple `list_tenant()` receives (mocked — no network). For ChampDS/Invintus/TelVue, the test removes that platform's `passive_verify` walker registration first (restored by the file's existing autouse fixture) to exercise `_list_via_discovery()`'s own netloc-building in isolation, since production traffic never reaches it for those three; the test docstrings say so. Sliq Harmony and BoxCast need no such removal — they were already exercising the real path.
+
+**Caution.** ChampDS, Invintus and TelVue's own walkers are kept, not made redundant by this fix — they're still the only lister that runs for those three platforms in production, and this PR doesn't change that. If one of those walkers is ever removed, lister (b) would then be reached for that platform and would now carry the key correctly — a latent correctness fix for that future, not something observable today.
+
+**Docs.** Updated `listing.py`'s own module docstring (lister b's description) to say the tenant name now carries a keyed platform's key, and its Swagit-views-page comment (which referenced the old bare-netloc behavior) to say Swagit specifically is unaffected, since it isn't a keyed platform.
+
+## WO-1100: TelVue — each meeting gets its own government, and its date [Done 2026-09-26]
+
+**What was done and why.** Every TelVue customer checked is a regional station that carries more than one government. A pin on the whole customer (its org token) was applied before the meeting's own name was read, so a school board or a town council went to the station's town or county. Separately, the adapter read a date only from a title ending "- Month D, YYYY", which few customers write.
+
+Three changes:
+1. `resolver.py` rung 1b, TelVue only (`tenant_key.NAME_FROM_MEETING_TITLE_HOSTS`): the meeting's own name goes first (`_meeting_title_government()`). It counts only when it keys to a real registry government in the one state the customer's pins agree on; a name with no state gets that state. Otherwise the whole-customer pin decides, as before. Narrower pins (playlist, series, video) still win outright. `queue_probe.has_owner()` no longer sends a whole-customer TelVue pin's id, so the feeder does not skip the name step.
+2. `telvue.py`: a station in `MULTI_GOVERNMENT_TENANTS` no longer gets its station-level name or logo name when the title names no place. New `ORG_TOKEN_BODY_GOVERNMENTS` names bodies per customer (Derry's School Board and Town Council, Pierre's School Board). The dash in "Kalamazoo County - Board of ..." no longer sticks to the name. Queen Anne's (QACTV) and Pierre (OaheTV) added to `MULTI_GOVERNMENT_TENANTS`.
+3. Dates: rtr-discovery's walker formats ported (`meeting_date()`), then the media page's `og:description`.
+
+**Result.** rtr-discovery's 8 saved meetings (2026-09-25), run offline through the adapter and the resolver:
+
+| Meeting | Title | Government before | Government after |
+| --- | --- | --- | --- |
+| Derry 1046119 | Town Council - 09/15/26 | Derry, NH | Derry, NH |
+| Derry 1047520 | School Board Meeting - 09/22/2026 | Derry, NH (wrong) | Derry Cooperative School District, NH |
+| Kalamazoo 1045901 | Kalamazoo County - Board of Commissioners - September 15, 2026 Meeting | blank | Kalamazoo County, MI |
+| Kalamazoo 1047784 | Oshtemo Township - Planning Commission - September 24, 2026 Meeting | blank | blank |
+| Queen Anne's 1047333 | County Commissioners Meeting &#124;&#124; 09/21/2026 | Queen Anne's County, MD | Queen Anne's County, MD |
+| Queen Anne's 1047511 | Centreville Town Council &#124;&#124; 09/17/2026 | Queen Anne's County, MD (wrong) | Centreville, MD |
+| Pierre 1045603 | Pierre School Board | Pierre, SD (wrong) | Pierre School District 32-2, SD |
+| Pierre 1047373 | Pierre City Commission | Pierre, SD | Pierre, SD |
+
+Dates: the adapter read 0 of rtr-discovery's 10 dated test titles before and 10 of 10 after. Pierre's "9-22-2026" is read from `og:description`.
+
+**Caution.** Oshtemo stays blank: "Oshtemo Township, MI" mints rather than keying to the Census's "Oshtemo charter township" (new `BACKLOG.md` entry). 54 TelVue customers have a pin carrying their org token (49 of them a whole-customer pin); for these, a title that names a place in the pins' state now wins over the whole-customer pin. A title word that is also a real place in that state (an "Energy Committee" on an Illinois station would read "Energy") would now win too; no such title was seen in the 8 pages. Customers with only token-less playlist pins (RVTV, C-NET) and customers with no pin stay blank, as before. Already-archived pages move only when `scripts/backfill_gov_id.py` runs after a deploy.
+
+**Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1100/` (capture note there). Synthetic names are commented as such.
+
+## WO-1092: Loch Alpine Sanitary Authority gets a registry id [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder's 2026-09-26 retry run found a "LASA Operating Committee" meeting on Scio Township's Granicus site and filed it under Webster Township; the hand-check caught that it is neither. LASA is the Loch Alpine Sanitary Authority, a real special district in the Census of Governments list (`cog_units.csv`, cog_id 149810, Washtenaw County, MI). That list is deliberately not loaded as registry ids, so the authority had none. Ryan approved minting it (2026-09-26).
+
+**Result.** New curated row `rtr:us:mi:loch-alpine-sanitary-authority` (special_district, cog_id 149810 recorded). The meeting is filed under it once the Archive runs a build that has this row.
+
+## WO-1090: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
+
+**What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
+
+**Result.** Same machine, run one right after the other:
+
+| Measure | Before | After |
+|---|---|---|
+| Whole test run | 254 s | 160 s |
+| Test steps over 0.5 s | 64 steps, 107 s in total | 19 steps, 20 s in total |
+
+The whole-run figure moves with the container's load (the same "before" code took 197 s earlier that day). The slow-step total is the steadier measure. CI will show the real figure on its own runners.
+
+Re-measured after merging the latest `main` (with WO-1083 to WO-1086 in it), again run one right after the other: `main` took 199 s; this branch took 110 s, with all 7,660 tests passing.
+
+The same run showed one more timing-fragile test, `test_claim_heartbeat.py::test_the_heartbeat_survives_a_transient_database_error`. It failed once in a full run and passed on every rerun: it slept a fixed 0.06 s and expected two 0.01 s heartbeats in that time. It now waits for the second heartbeat, capped at 2 s. It still fails, after the cap, if the heartbeat stops after a failure (checked).
+
+**Found along the way, beyond speed.**
+- **Three tests made real requests to YouTube on every run**, through yt-dlp, and passed only because the failed call was caught: `test_civiclive.py::test_resolve_finds_a_real_single_youtube_video_still_on_civiclive`, `test_civicweb.py::test_resolve_document_shape_skips_agenda_fetch_when_no_index_points` and `test_generic_fallback.py::test_resolve_finds_video_in_a_body_undecodable_as_utf8`. That broke CLAUDE.md's "YouTube only from the drip Mac" rule on any machine that ran the suite. The earlier DNS-blocked scan (WO-1082) missed them: yt-dlp sends its requests through a proxy when one is set, so no local lookup happened. They now fake the call. A new `tests/conftest.py` fixture makes the real `yt_dlp.YoutubeDL.extract_info` refuse in every test, so a future test cannot do this again. The guard test that needs the real call opts out with `@pytest.mark.real_yt_dlp`.
+- **Two Meeting Finder listing tests fetched live web pages** (`lacity.primegov.com`, `example.portal.civicclerk.com`) and passed only because those pages returned nothing useful. The file's `fetcher` fixture now treats every host as unreachable.
+- **The Meeting Finder's exit step waited 2 s per leftover thread, one after another** (`scripts/meeting_finder.py`'s `_join_lingering_threads`). It now shares one 2 s limit across all threads. A new test checks that three hung threads cost one grace period, not three.
+- **An earlier wait can still stop a Meeting Finder run from exiting** (up to 5 minutes on Python 3.12). Measured, not fixed here; logged in `BACKLOG.md`.
+
+**Each slow test: why it was slow, what it protects, and what changed.**
+
+| Test (file) | Why it was slow | What it protects | Change |
+|---|---|---|---|
+| `test_meeting_finder_fetch.py`: 9 fetch-ladder tests (2.5 s each, one 5 s) | The real 2.5 s politeness gap between two requests to the same host, paid on the second request to the test's loopback server | Each rung of the fetch ladder: browser headers after a 403, headless, Wayback links-only, the budget | Gap set to 0 in tests (new constant `DEFAULT_PER_HOST_DELAY_S`). New tests pin the real 2.5 s and check that one fetcher still spaces two requests. |
+| `test_meeting_finder_fetch.py`: two fresh-process tests (1.7 s each) | Each started a new Python process | Importing `fetch.py` must not switch on the YouTube block; creating a `Fetcher` must | Merged into one process. The second test already checked the first's fact before doing its own. |
+| `test_wo1042_meeting_finder_clean_exit.py` (up to 6 s) | The exit step's per-thread wait, multiplied by the suite's own leftover threads | A hung thread cannot hold up exit | One shared limit, in the real code; shorter test limits |
+| `test_wo1038_meeting_finder_gov_timeout.py` (up to 1.2 s) | The tests' own deadlines | A hung government is abandoned on time and does not block the others | Deadline 0.06 s. The "does not block" test now checks the fast government finishes first, instead of a loose "under 10 s". |
+| `test_wo1031_meeting_finder_backpressure.py` (1 s) | A hard-coded 0.5 s re-check in the runner | New governments are held back while Resolve is full | New constant `ADMIT_POLL_SECONDS`, 0.005 s in the test. The test now sees many admission checks, not one. |
+| `test_sweep_deadline.py` exit test (1.2 s) | A local slow web server and `requests` in a subprocess | A hung call cannot keep the process from exiting | A plain 60 s sleep in the subprocess. It still hangs until killed if the helper uses a non-daemon thread (checked). |
+| `test_wo905_agendacenter_hop_sweep.py`: 4 tests (2–6 s) | The access ladder's 2 s host delay | How the sweep reports each fetch outcome | Delay set to 0 in tests |
+| `test_wo169_*`, `test_wo170_*`, `test_wo1049_*`, `test_wo1024_*` (0.75–1.5 s) | Two 0.75 s delays between video candidates | Which candidate wins, and when "rejected by probe" is reported | Delays set to 0 in tests |
+| `test_wo346_no_owner_requeue.py` (3 s) | A 1.5 s delay between queue lines | An ownerless line goes back into the queue | Delay set to 0 in tests |
+| `test_pmn_utah_pilot.py`, `test_pin_worklist.py` (0.5–1 s) | 0.5 s and 1 s delays between requests | The PMN outage-page fallback; Swagit footer caching | Delays set to 0 in tests |
+| `test_transcription_jobs.py`: 3 backlog tests (up to 3 s late in a run) | The backlog list checks every page oldest first, two queries each; the test's own pages were the newest | Pages with a recorded probe failure leave the backlog (WO-83); garbled and cut-off pages stay in it | The test's pages are moved to the front, and a small `limit` stops the scan after them. Their real dates are restored afterwards. |
+| `test_export_pages.py` pagination (up to 4 s late in a run) | Paged through every page in the shared database, 2 at a time | Export pagination has no gaps or duplicates | Starts just before its own pages |
+| `test_list_pages_search.py` vocabulary chunking (1.9 s) | Inserted 70,000 words | The 2026-08-18 Postgres parameter-limit incident | 50 words in chunks of 7, checked by statement count and row count. The real chunk size is still asserted to be under the limit. |
+| `test_wo928_version_quality.py` (up to 1.5 s) | Read every page in the shared database | The report reads a page, writes the CSV and writes nothing to the database | New `only_page_ids` option on `run()`, used by the test only |
+| `test_granicus.py` 36,000-cue test (1 s) | Built and parsed 36,000 real captions | Granicus files that stop at exactly 36,000 cues get the "may be cut off" warning | New constant `GRANICUS_CUE_CAP`, set to 3 in the test; the real value is pinned. A 2-cue case now checks "exactly" (not flagged one below). |
+| `test_retranscription_queue.py` glob scan (0.55 s) | One regex with an unanchored prefix backtracked over about 6 MB of scripts | No script or workflow sweeps up the hand-curated queue file | Prefix removed; same matches |
+| The three YouTube tests above (2–5 s each) | Real yt-dlp requests | CivicLive/CivicWeb/generic-fallback hand-offs to YouTube | Faked, as their neighbouring tests already were |
+
+**Left as they are, on purpose:**
+- **Four fresh-process import tests (1–1.9 s each).** These are `test_wo932_identity_gate`, `test_date_status`, `test_feed_tier3_auto_transcription` and `test_worker_import_graph`. Each proves something about a clean start that only a new process can show. Sharing one process would save about 4 s, but would make them depend on each other's import order.
+- **Tests that parse real multi-megabyte government pages** (SuiteOne, Aurora, Palm Beach). The work is real, and shrinking the files would break the real-fixture rule.
+- **About 0.5 s on whichever test first loads the Census tables.** It moves around but is paid once per run.
+
+Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("Test-suite and start-up speed").
+
+**Verification.**
+- Every rewritten test was checked against a temporary break of the code it guards: removing back-pressure, removing the backlog cooldown, the old per-thread join, and a non-daemon thread. Each fails as it should, and the code was restored.
+- Full runs after the change, all 7,630 passed with 0 failures: normal order, four shuffled orders (seeds 11, 22, 33, 44), and one with every DNS lookup blocked.
+- A full run with the real yt-dlp call refused found only the three tests above, plus the guard test that uses it on purpose.
+- Other small change: `tests/conftest.py` now deletes its temporary SQLite file at exit (230 had built up in one container).
+
+## WO-1088: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
+
+**What.** Six tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All six had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
+
+**Cause and fix for each.**
+
+| Test | What got in the way | Fix |
+|---|---|---|
+| `test_archive_push_tracking.py`: `test_push_and_track_records_failure_on_unsuccessful_push`, `test_sweep_retries_every_pending_push_and_returns_what_it_found` | `get_pending_archive_pushes()` returns only the 10 oldest pending rows, and the sweep always uses that default. Other files' older pending rows pushed the test's new row out of the 10. | A test that only checks whether a row is pending now asks for every pending row. Where the sweep runs, the test backdates its own row to 2000-01-01 so it comes first. Each test deletes its rows afterwards. The shared helpers are `backdate_resolutions()` and `delete_resolutions()` in `tests/conftest.py`. |
+| `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` | A coverage row shows one example page per government: the first with a transcript. Other files also store Napa pages, so the example could be theirs ("Test Meeting"). | Uses Ukiah, CA instead: a real Census place (`us:place:0681134`) that no other test file uses. |
+| `test_state_pages.py::test_state_page_lists_states_jurisdictions` | The test looked for a link to its own Napa meeting. The state page lists meetings by link only in its "most recently archived" block. It shows that block only while no California meeting has a highlight, and other files store California meetings that do. | Checks the Napa row's link to its hub (`/j/napa-ca`) instead. The next test still checks a meeting link, on Georgia, which no other test file stores. |
+| `test_hub_slug_freeze.py::test_day_one_backfill_is_a_no_op_for_every_live_url` (found by the seed 33 and 44 runs below) | It deleted every stored hub URL, re-recorded each government from its computed URL, and expected no URL to change. But `test_split_hub_slug.py` deliberately gives two real Yarmouth, NS governments their own permanent URLs (`town-of-yarmouth-ns`, `municipality-of-yarmouth-ns`) instead of the shared computed `yarmouth-ns`. Re-recording undid that split. | It now covers only governments whose URL still equals the computed one: the day-one situation it describes, before any split existed. It deletes and unfreezes only those governments' rows, so other files' rows survive it. Reproduced with `test_split_hub_slug.py` run first: the original fails and the fix passes, in either order. |
+| `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue` | It asks for up to 500 candidates. A full run can hold more than 500, so the list from offset 2 was also 500 long, 2 past the end of the first list. | Compares only the part both lists cover. When the first list isn't capped, it still checks the exact length. The "past the end" check uses a very large offset. |
+
+`test_app_db_crud.py` got the same fix as the push-tracking file. It queries the same 10-row list and relied on the same luck; it had not failed yet.
+
+**How each cause was checked.** Each one was reproduced before it was fixed.
+- **Push tracking, footer and thumbnails:** a full run with these files placed last reproduced 4 of the 5 failures.
+- **State page:** it did not fail in that run. It was reproduced by rebuilding the exact failing seed-11 file order on the commit it was seen on (`c46c6b0`).
+- **The state-page cause was checked twice with probes.** Two first readings of the code were wrong. The first guessed that the Napa row's example pointed at another file's meeting; a probe showed the example was this test's own meeting. The second guessed that the meeting had fallen out of the 25-meeting recent list; a probe showed it was still in the list. A probe in that order found 4 featured meetings, so the recent list was never shown.
+
+**Result.** Full runs on this branch. The one test deselected in each run is `test_yt_dlp_metadata_call_is_refused_before_any_connection`, which fails only behind this container's proxy (see `BACKLOG.md`).
+
+| Order | Result |
+|---|---|
+| The failing files placed last | 7,626 passed, 0 failed |
+| Shuffled, seed 11 | 7,626 passed, 0 failed |
+| Shuffled, seed 22 | 7,626 passed, 0 failed |
+| Shuffled, seed 33 | 1 failed: `test_hub_slug_freeze`, fixed above |
+| Shuffled, seed 44 | 1 failed: `test_hub_slug_freeze`, fixed above |
+| Normal order | 7,626 passed; the only failure is the proxy-only YouTube test |
+
+**Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
+
+## WO-1091: six public bodies found on Swagit get registry ids, site pins and views [Done 2026-09-26]
+
+**What was done and why.** rtr-discovery's Swagit owner sweep (2026-09-26) found 113 Swagit owners that are not yet discovery sites. 18 had no research-file row. Ryan decided (2026-09-26): skip the 4 Swagit test accounts and the 5 Australian councils, hold 3 unverified bodies in rtr-business's `QUASI_GOVERNMENTAL_AND_UNVERIFIED_GOVS.md`, and add the 6 that are Census of Governments units (Collin College confirmed in scope). Each got a curated registry row (Port of Vancouver pattern, WO-1067), a whole-site pin, and its owner-proven Swagit views:
+
+| Body | Registry id | Census unit | Swagit site | Views | Meetings listed |
+| --- | --- | --- | --- | --- | --- |
+| Benbrook Water Authority, TX | `rtr:us:tx:benbrook-water-authority` | 135717 | `benbrookwater.new.swagit.com` | 118 | 117 |
+| Collin College, TX | `rtr:us:tx:collin-college` | 140570 | `collincollegetx.new.swagit.com` | 503 | 273 |
+| Galveston County Consolidated Drainage District, TX | `rtr:us:tx:galveston-county-consolidated-drainage-district` | 157494 | `gccddtx.new.swagit.com` | 918 | 8 |
+| Gulf Coast Water Authority, TX | `rtr:us:tx:gulf-coast-water-authority` | 157511 | `gcwa.new.swagit.com` | 686, 921 | 128 |
+| Golder Ranch Fire District, AZ | `rtr:us:az:golder-ranch-fire-district` | 201336 | `grfdaz.new.swagit.com` | 146 | 82 |
+| North Texas Tollway Authority, TX | `rtr:us:tx:north-texas-tollway-authority` | 214086 | `ntta.new.swagit.com` | 485 | 29 |
+
+The pins' source is `ryan_stated+swagit_owner_sweep`. A pin to an `rtr:` id needs a human source (the King County NC case). Ryan approved these six bodies and their sites in chat; the sweep supplies the evidence, recorded in each row. Without the pin, Gulf Coast Water Authority and the Tollway Authority did not resolve, because Swagit's names for them carry no state.
+
+**Result.** `tests/test_wo1091_swagit_special_districts.py`: each site resolves to its body for a page titled only "Board Meeting", each has its views, and Benbrook (city), Collin County and Galveston County still resolve to themselves. Full suite and ruff results are in the PR.
+
+**Caution.** Collin College is a community college district, typed `school_district` as the Census types it. These bodies change filing only after a deploy, for pages whose host is one of these six sites.
 
 ## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
 

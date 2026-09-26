@@ -188,12 +188,13 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (61)
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  After WO-1089 deploys, re-resolve two real Vimeo meetings and read…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
   Mad River Valley TV's three playlist pins name no TelVue org token…
@@ -214,7 +215,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (221)
   [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
@@ -293,8 +294,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
   [NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac,…
-  [NEEDS-AUDIT] Four more tests fail when the test files run in a…
-  [NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they…
+  [NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still…
+  [NEEDS-AUDIT] A Meeting Finder run still cannot exit while an…
   [NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
@@ -351,7 +352,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (29)
+  Jurisdiction extraction & backfill  (30)
     `[NEEDS-AUDIT]` A real, live Archive page for the Town of Franklin,…
     `[NEEDS-AUDIT]` ~1,056 of the ~1,099 governments of 5,000+ whose…
     `[NEEDS-AUDIT]` Two governments have a `jurisdiction_coverage.csv`…
@@ -360,6 +361,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (220)
     `[NEEDS-AUDIT]` A real, resolvable Albion, MI civicweb page archived…
     `[NEEDS-AUDIT]` `[EXAMPLE]` The county-form name of a fully…
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
+    `[JUST-DO-IT]` `[EASY]` "X Township, MI" mints instead of keying to…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
     [HUMAN] Five `youtu.be` pages for the Wasatch Front Waste & Recycling…
@@ -2072,7 +2074,7 @@ WO-932 and WO-913.
 - **Issue:** since late August 2026 a bare `MeetingDetail.aspx?ID=...` link returns 410 on every Legistar tenant checked (Phoenix, Charlotte, 2026-09-26); only `?ID=...&GUID=...` loads. `LegistarAssetFinder._fetch()` calls `raise_for_status()`, so the reader sees `ClientResponseError: 410`.
 - **Impact:** anyone pasting a trimmed Legistar link gets an unhelpful error. Links copied from Legistar itself carry the GUID, so this is uncommon.
 - **Next action:** catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a plain `video_warnings` message ("Legistar needs the full meeting link, including GUID=...") — the same pattern "No video link found" already uses.
-- **History:** split from the Phoenix canary entry, finished by WO-1090 — see `BACKLOG_DONE.md`.
+- **History:** split from the Phoenix canary entry, finished by WO-1112 — see `BACKLOG_DONE.md`.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -2114,6 +2116,37 @@ of human step they need.
   - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
+### After WO-1089 deploys, re-resolve two real Vimeo meetings and read the new "vimeo captions fallback" logs to see why the route comes and goes `[HUMAN]` `[WAIT]`
+
+- **Issue**: a real Vimeo meeting with a working CC button in the player
+  (Salisbury NC, `vimeo.com/1226646429`) got no transcript through this
+  app on 2026-09-26, even though the identical route worked on a
+  different Salisbury NC video three days earlier (`1223368476`, 1,336
+  real segments — see `BACKLOG_DONE.md`). Before WO-1089, every fallback
+  path was silent, so nobody could tell *why* a given meeting failed:
+  Playwright unavailable, the render timing out, no `<track>` rendered,
+  or the signed VTT fetch itself failing all looked identical. WO-1089
+  adds a stable, greppable log line (`"vimeo captions fallback"`, always
+  naming the video id) for every one of those reasons, on both the
+  existing headless-browser route and the new cheap plain-fetch route it
+  adds (tried first, before ever starting a browser).
+- **Impact**: 67 of 99 Vimeo pages in the Archive have a transcript and
+  32 don't (count as of this WO's investigation) — a materially
+  incomplete platform, and until this deploys nobody can read *why* any
+  specific one of the 32 failed without reproducing it by hand.
+- **Next action**: once WO-1089 deploys, resolve `vimeo.com/1226646429`
+  and `vimeo.com/1212025580` once each through the webapp, then read the
+  Render logs for lines starting `"vimeo captions fallback"` naming
+  those two video ids. Report what each one says (challenge, no browser,
+  no track, fetch failure, etc.) — that's the actual diagnosis this WO
+  couldn't finish without a deploy.
+- **Constraint**: if Render's own fetch of the player page gets a
+  challenge page (the same "Verify you are human" class of block this
+  module already documents), stop there and report it rather than
+  trying anything to get past it, per CLAUDE.md's "politely" rule.
+- **History**: this WO (WO-1089, 2026-09-26); `app/platforms/vimeo.py`'s
+  own module docstring has the full investigation.
 
 ### Existing Invintus pages need one re-resolve after WO-1065 deploys, to find captions carried in the video `[HUMAN]` `[WAIT]`
 
@@ -2926,20 +2959,20 @@ of human step they need.
   - **Next action**: on the Mac, run the full suite with `-p no:cacheprovider` and compare `sys.path`, `os.environ['DATABASE_URL']` and `sys.modules['app.db.engine'].engine.url` before and after collection. If rtr-discovery changes any of them, make those test modules import the script inside a fixture that restores `sys.path` afterwards.
   - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26); first seen 2026-09-10 (WO-166).
 
-- **[NEEDS-AUDIT] Four more tests fail when the test files run in a different order: rows left by one file in the shared test database change another file's results.**
-  - **Issue**: with test files shuffled (seeds 11, 22 and 33, whole files kept together), these failed: `test_state_pages.py::test_state_page_lists_states_jurisdictions`, `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue`, `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` (2 of 3 orders) and two tests in `test_archive_push_tracking.py`. The failures are extra or different rows ("Left contains 2 more items", "'Test Meeting' == 'Napa City Council Regular Meeting'"). All pass in the normal alphabetical order, which is the order CI and a plain local run use.
-  - **Impact**: none on today's runs. Adding or renaming a test file can reorder the suite and turn these red with no code change.
-  - **Next action**: for each test, find the rows it counts or reads by slug and scope them to rows the test created itself (unique ids, as `conftest.py`'s `_archive_db_schema` docstring asks), or give the file its own database.
-  - **History**: found running the suite in shuffled order for WO-1082, 2026-09-26.
+- **[NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still make real DNS lookups; they pass without network, but the suite is not fully offline.**
+  - **Issue**: a full run with every DNS lookup blocked (2026-09-26, after WO-1090) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`). All 6 pass with or without DNS. That file already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s one lookup is deliberate: it tests the lookup-failure path.) The two `test_wo1028_meeting_finder_listing.py` tests that fetched live pages are fixed (WO-1090).
+  - **Impact**: none on results. With network, these tests can send a real DNS query for a made-up host.
+  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call.
+  - **History**: found in WO-1082's offline scan; narrowed by WO-1090 (`BACKLOG_DONE.md`).
 
-- **[NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they pass without network today, but the suite is not fully offline.**
-  - **Issue**: a full run with every DNS lookup blocked (2026-09-26) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`) and 2 in `test_wo1028_meeting_finder_listing.py` (`lacity.primegov.com`, `example.portal.civicclerk.com`). All 8 pass with or without DNS. `test_generic_fallback.py` already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s own lookup is deliberate: it tests the lookup-failure path.)
-  - **Impact**: none on results today. With network, these tests can send a real lookup, and possibly a real request, to hosts that exist (`lacity.primegov.com`).
-  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call the way `tests/test_generic_fallback.py` fakes the SSRF check.
-  - **History**: found in WO-1082's offline scan (`BACKLOG_DONE.md`).
+- **[NEEDS-AUDIT] A Meeting Finder run still cannot exit while an abandoned fetch is hung: `asyncio.run()` waits for it before WO-1042's exit step is reached.**
+  - **Issue**: `scripts/meeting_finder.py`'s `main()` calls `asyncio.run(...)` (line ~216) and only then `_join_lingering_threads()` and `os._exit()`. When `--gov-timeout-minutes` abandons a government whose headless fetch is stuck in `asyncio.to_thread()`, `asyncio.run()` shuts down its default thread pool and waits for that thread first. Measured 2026-09-26 on Python 3.11.15 and 3.12.3 with a 6-second abandoned `to_thread(time.sleep, 6)`: `asyncio.run()` returned only after the full 6s on both. The standard library caps that wait at 300s on 3.12 (documented, not measured here); 3.11 has no cap.
+  - **Impact**: the overnight-batch hang WO-1042 fixed can still happen, for up to 5 minutes on the pinned 3.12 (forever on 3.11), whenever a government's fetch hangs past the cap. WO-1042's own tests only cover `_join_lingering_threads()`, not this earlier wait.
+  - **Next action**: have `main()` run the loop without the default-executor wait, for example by creating the loop itself and calling `os._exit()` from inside it after the rows are written, or by running abandoned sync fetches on an explicitly daemon thread instead of the default executor. Then add a subprocess test with a hung `to_thread` call that must exit within a few seconds.
+  - **History**: found by WO-1090's slow-test audit (`BACKLOG_DONE.md`); WO-1042 is the original fix.
 
 - **[NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request made through an HTTPS proxy.**
-  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused: `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection` fails in a cloud container for this reason (confirmed 2026-09-26).
+  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused. Confirmed 2026-09-26 in a cloud container: yt-dlp's log showed 3 real YouTube requests. The guard's own test now passes `"proxy": ""` so it tests the guard honestly everywhere (WO-1090), but production callers (the queue probe) pass no such option.
   - **Impact**: none on the office Macs unless a proxy is set there. On any machine that uses a proxy, the "zero YouTube requests off the drip Mac" rule is not enforced by the guard.
   - **Next action**: decide whether proxied machines matter. If they do, also refuse YouTube hosts at the HTTP-client level (yt-dlp's `urlopen`, `aiohttp`, `requests`), or have `install()` clear proxy settings for YouTube hosts.
   - **History**: found running the full suite for WO-1082, 2026-09-26.
@@ -4393,6 +4426,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: add `(?:charter\s+)?` before `township` in `_LEADING_TYPE_RE` and a test with the Shelby pair. The page fix is in the `[HUMAN]` entry under Needs a human.
   - **History**: found by WO-125's landing-page check, 2026-09-09.
 
+- **`[JUST-DO-IT]` `[EASY]` "X Township, MI" mints instead of keying to the Census's "X charter township".**
+  - **Issue**: `resolve_government("Oshtemo Township, MI")` → `rtr:us:mi:oshtemo-township` (unverified), while "Oshtemo Charter Township, MI" → `us:cousub:2607761400`. Same for Canton, Kalamazoo, Texas and Bloomfield Township, MI (all mint, checked 2026-09-26); Plainfield Township, MI (a plain township) keys fine. The lookup does not try the "charter township" spelling for a name written "X Township".
+  - **Impact**: Kalamazoo's TelVue station meeting "Oshtemo Township - Planning Commission - September 24, 2026 Meeting" stays blank after WO-1100, because its name only mints. Any adapter reading a Michigan charter township as "X Township" repeats it.
+  - **Next action**: when "X Township, MI" finds no township, try "X charter township" in the same state; test with the five names above.
+  - **Constraint**: never key "X Township" to a village or city of the same name (the entry above).
+  - **History**: found by WO-1100, 2026-09-26.
+
 - **`[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored jurisdiction (`Kaua&apos;i County, HI`) is never unescaped, so the county lookup fails on an apostrophe.**
   - **Issue**: `kauai.granicus.com`'s two pages store `Kaua&apos;i County, HI` verbatim; `resolve_government()` on it is `unresolved` ("no 'Kaua&apos;i County' in HI"), while `Kaua'i County, HI` and `Kauai County, HI` both key to `us:county:15007` — `tables.lookup_keys()` already strips the ʻokina, it's only the entity that defeats it. Nothing on the path calls `html.unescape()`.
   - **Impact**: two pages sat on `/j/kaua-apos-i-county-hi` until WO-125 pinned the host; any adapter that passes an entity-encoded title through (Granicus RSS titles do) will repeat it.
@@ -5629,23 +5669,23 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] `[WAIT]` open.media's whole site broke on 2026-09-26 — every tenant now serves an empty JavaScript shell, and the `open_media` adapter finds no video.**
   - **Issue**: since 2026-09-26 every open.media page (Eugene, Goodyear, checked by hand) returns the same 501-byte page that loads `/assets/index-619b7080.js`; a real browser shows "Unexpected Application Error! 404 Not Found" because the site's own `/api/settings/` call returns 404. The old `og:video` tag and `om_youtube` blob that `openmedia.py` reads are gone.
-  - **Impact**: no open.media meeting can resolve, for readers or the canary (`FAIL open_media`, 3 runs in a row on 2026-09-26 — the scheduled one plus WO-1090's two). The site is broken for people too, so this looks like open.media mid-migration, not a change we can build against yet.
+  - **Impact**: no open.media meeting can resolve, for readers or the canary (`FAIL open_media`, 3 runs in a row on 2026-09-26 — the scheduled one plus WO-1112's two). The site is broken for people too, so this looks like open.media mid-migration, not a change we can build against yet.
   - **Next action**: re-check `https://eugene.open.media/sessions/344982/city-council-work-session-july-15-2026` in a browser after a few days. If a real page comes back with a new structure, read its network requests (the bundle calls `/api/sessions/{id}/`, `/api/sessions/{id}/cue-points/`) and rebuild the adapter against that; if the old page comes back, nothing to do.
   - **Constraint**: don't rebuild the adapter against today's broken shell — there is no working data source behind it to test against.
-  - **History**: found by WO-1090 (2026-09-26); see `BACKLOG_DONE.md`'s WO-1090 entry.
+  - **History**: found by WO-1112 (2026-09-26); see `BACKLOG_DONE.md`'s WO-1112 entry.
 
 - **[NEEDS-AUDIT] tvw.org shows the adapter a Cloudflare "Just a moment..." check from data-center addresses — production may be hit too.**
   - **Issue**: from a GitHub runner (run `36264762854`), every aiohttp request to a tvw.org video page got HTTP 403 with `cf-mitigated: challenge`, whatever User-Agent was sent; `curl` from the same runner, and aiohttp from a home connection, got the real page. `tvw.py` just raises the 403.
   - **Impact**: the canary can't check tvw from CI (now reported as `BLOCKED`, not `FAIL` — `CANARY_KNOWN_CI_BLOCKS` in `scripts/adapter_canary.py`). Render is also a data center, so a reader pasting a tvw.org link may get a raw error; not yet checked.
   - **Next action**: resolve one tvw.org URL on production (a normal `/api/resolve` call) and see whether it returns the page or a 403. If blocked, make `tvw.py` catch the 403 and return a plain reader-facing warning (the `transcript_warnings`/`video_warnings` pattern), and note the Invintus player link as the route that still works.
   - **Constraint**: this is a human-verification challenge — do not try to get past it (no browser-fingerprint imitation, no challenge solving), per `CLAUDE.md`'s politeness rule.
-  - **History**: WO-1010 built the adapter (2026-09-22); canary failed every run since. See `BACKLOG_DONE.md`'s WO-1090 entry.
+  - **History**: WO-1010 built the adapter (2026-09-22); canary failed every run since. See `BACKLOG_DONE.md`'s WO-1112 entry.
 
 - **[NEEDS-AUDIT] The canary's `youtube` check passes even when YouTube refuses the runner, so it can't see a YouTube caption break.**
   - **Issue**: every canary run logs ~10 `yt-dlp` "Sign in to confirm you're not a bot" errors, yet `youtube` passes, because `has_real_content()` is satisfied by a `video_url` alone.
   - **Impact**: a real YouTube caption failure (the thing `CLAUDE.md`'s yt-dlp bullet warns about) would never turn the canary red. Low urgency: YouTube captions come from the drip Mac, not from these runners.
   - **Next action**: decide whether the canary should check YouTube at all from GitHub (it also makes YouTube requests from outside the drip Mac); if yes, require segments for `youtube` and list it in `CANARY_KNOWN_CI_BLOCKS`; if no, move it to `CANARY_EXCLUSIONS` with this reason.
-  - **History**: noticed while reading every canary log for WO-1090 (2026-09-26).
+  - **History**: noticed while reading every canary log for WO-1112 (2026-09-26).
 
 - **[NEEDS-AUDIT] Aurora, CO's `aurora_tv` canary sample has failed twice in 5 weeks with the identical "resolve returned no real content" signature, both times unreproducible by hand — worth watching, not yet a confirmed regression.**
   - **Issue**: the adapter health canary's `FAIL aurora_tv: resolve returned no real content` against `https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026` has now happened twice: 2026-08-18 (run `32155218602`) and 2026-09-19 (run `35459294828`), roughly 5 weeks apart, same URL, same error signature both times. Both times a direct re-check immediately after (a plain fetch of the same URL) found the page fully healthy: HTTP 200, a real, well-formed `mp4_url` in the page's `drupal-settings-json` blob pointing at Aurora's own Cablecast storage (`reflect-aurora.cablecast.tv`). Re-checked a third time 2026-09-21 while promoting this entry: `app/platforms/aurora.py`'s parsing target is unchanged, and every canary run since 2026-09-19 (6 checked: 09-16, 09-17, 09-18, 09-19, 09-20, and today's 09-21) shows no third occurrence.

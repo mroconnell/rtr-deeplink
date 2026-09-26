@@ -1270,3 +1270,205 @@ async def test_list_playlist_items_empty_page_returns_empty_list():
             BELLEFONTE_ORG_TOKEN, BELLEFONTE_PLAYLIST_ID, offset=200
         )
     assert items == []
+
+
+# ---------------------------------------------------------------------------
+# WO-1100 (2026-09-26): each meeting gets its own government, and its date.
+# Real pages: rtr-discovery's saved TelVue captures of 2026-09-25, copied
+# unchanged into tests/fixtures/telvue/wo1100/ (see CAPTURE_NOTES.md there).
+
+import json  # noqa: E402
+import re  # noqa: E402
+from urllib.parse import urljoin  # noqa: E402
+
+import pytest  # noqa: E402
+
+from app.platforms.telvue import (  # noqa: E402
+    _KNOWN_ORG_TOKEN_JURISDICTIONS,
+    meeting_date,
+)
+from app.utils.tenant_key import MULTI_GOVERNMENT_TENANTS  # noqa: E402
+
+_WO1100_TOKENS = {
+    "derry": "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l",
+    "kalamazoo": "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05",
+    "queenannes": "AbfNhigIqnG-4roGCxaFupXEKfme9dfT",
+    "pierre": "5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq",
+}
+
+
+async def _resolve_saved_page(customer: str, media_id: int, html: str = None):
+    url = (
+        f"https://videoplayer.telvue.com/player/{_WO1100_TOKENS[customer]}"
+        f"/media/{media_id}"
+    )
+    if html is None:
+        html = load_fixture(
+            "telvue", "wo1100", f"{customer}_media_{media_id}_page.html"
+        )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+    # The caption and chapter files were not copied (nothing here reads
+    # them); answer them 404, which the adapter already handles.
+    playlist = re.search(
+        r"Player\.setupData\['playlist'\]\s*=\s*(\[.*?\]);", html, re.S
+    )
+    for track in json.loads(playlist.group(1))[0].get("tracks", []):
+        track_url = urljoin(url, track["file"])
+        routes[track_url] = FakeResponse(status=404, text="", url=track_url)
+    with mock_session(routes):
+        return await TelvueAssetFinder().resolve(url)
+
+
+@pytest.mark.parametrize(
+    "customer, media_id, jurisdiction, meeting_body, date",
+    [
+        # Derry: the body table names each body's government.
+        ("derry", 1046119, "Derry, NH", "Town Council", "2026-09-15"),
+        (
+            "derry",
+            1047520,
+            "Derry Cooperative School District, NH",
+            "School Board",
+            "2026-09-22",
+        ),
+        # Kalamazoo: the dash before the body no longer sticks to the name.
+        ("kalamazoo", 1045901, "Kalamazoo County, MI", None, "2026-09-15"),
+        ("kalamazoo", 1047784, "Oshtemo Township", None, "2026-09-24"),
+        # Queen Anne's: a generic title gives no name (the pin decides).
+        ("queenannes", 1047333, None, None, "2026-09-21"),
+        ("queenannes", 1047511, "Centreville", None, "2026-09-17"),
+        # Pierre: "September 2026" in og:description is not a date;
+        # "9-22-2026" is.
+        (
+            "pierre",
+            1045603,
+            "Pierre School District 32-2, SD",
+            "School Board",
+            None,
+        ),
+        ("pierre", 1047373, "Pierre, SD", None, "2026-09-22"),
+    ],
+)
+async def test_wo1100_saved_meetings(
+    customer, media_id, jurisdiction, meeting_body, date
+):
+    result = await _resolve_saved_page(customer, media_id)
+    assert result.jurisdiction == jurisdiction
+    assert result.meeting_body == meeting_body
+    assert result.date == date
+
+
+async def test_wo1100_titles_are_kept_as_written():
+    # The date is read from the title, not cut out of it.
+    result = await _resolve_saved_page("queenannes", 1047511)
+    assert result.title == "Centreville Town Council || 09/17/2026"
+
+
+from app.platforms.telvue import _NO_CAPTIONS_WARNING  # noqa: E402
+
+
+async def test_wo1110_no_caption_track_says_so():
+    # Pierre's real saved page lists no caption track at all
+    # (`"tracks":[]`). Before WO-1110 the adapter wrote no warning, so the
+    # live meeting page's transcript column came up empty (Ryan,
+    # 2026-09-26).
+    result = await _resolve_saved_page("pierre", 1045603)
+    assert result.video_url
+    assert not result.segments
+    assert result.transcript_warnings == [_NO_CAPTIONS_WARNING]
+
+
+async def test_wo1110_captioned_meeting_gets_no_warning():
+    # Control: Derry's saved page lists a caption track. The saved caption
+    # file is not served here (a 404, see `_resolve_saved_page()`), so this
+    # takes the older "caption file came back empty" branch -- one warning,
+    # never two.
+    result = await _resolve_saved_page("derry", 1047520)
+    assert result.transcript_warnings.count(_NO_CAPTIONS_WARNING) == 1
+
+
+# The 10 dated titles in rtr-discovery's walker tests
+# (tests/test_telvue.py::test_meeting_dates there). Before WO-1100 the
+# adapter read a date only from a title ending "- Month D, YYYY", which
+# none of these do.
+TEN_DATED_TITLES = [
+    (
+        "kalamazoo_videos.html",
+        "Oshtemo Township - Planning Commission - September 24, 2026 Meeting",
+        "2026-09-24",
+    ),
+    (
+        "kalamazoo_videos.html",
+        "September 15, 2026 Kalamazoo County Committee of the Whole",
+        "2026-09-15",
+    ),
+    ("derry_videos.html", "School Board Meeting - 09/22/2026", "2026-09-22"),
+    ("derry_videos.html", "Planning Board - 09/16/26", "2026-09-16"),
+    (
+        "derry_videos.html",
+        "Conservation Commission Emergency Meeting - 8/24/2026",
+        "2026-08-24",
+    ),
+    ("queenannes_videos.html", "Centreville Town Council || 09/17/2026", "2026-09-17"),
+    ("queenannes_videos.html", "Centreville Town Council | 5.21.2026", "2026-05-21"),
+    (
+        "queenannes_videos.html",
+        "County Commissioners Budget Presentation 3 | 05.20.2026",
+        "2026-05-20",
+    ),
+    ("pierre_playlist_11342_items_offset0.html", "citycommission060909", "2009-06-09"),
+    ("pierre_playlist_11342_items_offset0.html", "CityComm10082024", "2024-10-08"),
+]
+
+
+@pytest.mark.parametrize("fixture, title, expected", TEN_DATED_TITLES)
+def test_wo1100_ten_dated_titles_parse(fixture, title, expected):
+    # Each title is a real row of its saved listing.
+    assert title in load_fixture("telvue", "wo1100", fixture)
+    assert meeting_date(title, None) == expected
+    # And the old trailing-"Month D, YYYY" reader parses none of them.
+    assert TelvueAssetFinder._split_title_date(title)[1] is None
+
+
+@pytest.mark.parametrize(
+    "title, description, expected",
+    [
+        # pierre_videos.html rows: the date is only in the description.
+        ("Pierre City Commission", "9-22-2026", "2026-09-22"),
+        (
+            "Pierre City Commission",
+            "Sept 15, 2026 Pierre City Commission meeting",
+            "2026-09-15",
+        ),
+        ("Pierre City Commission", "8-25-26", "2026-08-25"),
+        # A month with no day, a year alone: no date.
+        ("Pierre School Board", "September 2026", None),
+        ("Trail of Governors", "2026, Noem", None),
+    ],
+)
+def test_wo1100_description_dates(title, description, expected):
+    assert description in load_fixture("telvue", "wo1100", "pierre_videos.html")
+    assert meeting_date(title, description) == expected
+
+
+async def test_wo1100_a_station_name_never_stands_in_on_a_multi_government_station():
+    # SYNTHETIC: the real Ashland (RVTV) page with its title swapped for a
+    # generic one. RVTV carries Jackson County, Ashland, Medford and more,
+    # so its "Ashland, OR" station entry must not name this meeting; before
+    # WO-1100 it did (the Jackson County -> "Ashland" shape).
+    token = "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP"
+    assert ("videoplayer.telvue.com", token) in MULTI_GOVERNMENT_TENANTS
+    assert _KNOWN_ORG_TOKEN_JURISDICTIONS[token] == "Ashland, OR"
+    html = load_fixture("telvue", "ashland_planning_1040134_page.html")
+    html = html.replace("Ashland Planning Commission", "Board of Commissioners")
+    url = f"https://videoplayer.telvue.com/player/{token}/media/1040134"
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+    playlist = re.search(
+        r"Player\.setupData\['playlist'\]\s*=\s*(\[.*?\]);", html, re.S
+    )
+    for track in json.loads(playlist.group(1))[0].get("tracks", []):
+        track_url = urljoin(url, track["file"])
+        routes[track_url] = FakeResponse(status=404, text="", url=track_url)
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+    assert result.jurisdiction is None

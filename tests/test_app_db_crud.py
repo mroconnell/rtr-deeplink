@@ -9,7 +9,23 @@ trace -- see BACKLOG_DONE.md.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.db import crud
+from conftest import backdate_resolutions, delete_resolutions
+
+# Every pending push, not the default first 10: a membership check must not
+# depend on how many pending rows other test modules left in the shared DB
+# (see conftest.py's backdate_resolutions() for the failure this avoids).
+_ALL = 10_000
+_logged: list[int] = []
+
+
+@pytest.fixture(autouse=True)
+async def _delete_logged_rows():
+    yield
+    await delete_resolutions(_logged)
+    _logged.clear()
 
 
 async def _log(
@@ -20,7 +36,7 @@ async def _log(
     video_found: bool = False,
     resolved_payload: dict | None = None,
 ) -> int:
-    return await crud.log_resolution(
+    resolution_id = await crud.log_resolution(
         input_url=f"https://example.granicus.com/player/clip/{url_suffix}",
         input_url_normalized=f"https://example.granicus.com/player/clip/{url_suffix}",
         input_platform="granicus",
@@ -32,6 +48,8 @@ async def _log(
         if resolved_payload is not None
         else {"segments": [], "agenda_items": []},
     )
+    _logged.append(resolution_id)
+    return resolution_id
 
 
 async def test_log_resolution_returns_a_real_row_id():
@@ -42,12 +60,14 @@ async def test_log_resolution_returns_a_real_row_id():
 
 async def test_mark_archive_pushed_sets_timestamp():
     resolution_id = await _log("mark-pushed", transcript_found=True)
-    pending_before = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending_before = await crud.get_pending_archive_pushes(
+        min_age_minutes=0, limit=_ALL
+    )
     assert resolution_id in [p["resolution_id"] for p in pending_before]
 
     await crud.mark_archive_pushed(resolution_id)
 
-    pending_after = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending_after = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending_after]
 
 
@@ -56,7 +76,7 @@ async def test_record_archive_push_failure_increments_attempts():
     await crud.record_archive_push_failure(resolution_id)
     await crud.record_archive_push_failure(resolution_id)
 
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     match = [p for p in pending if p["resolution_id"] == resolution_id]
     assert len(match) == 1
     assert match[0]["attempts"] == 2
@@ -67,10 +87,10 @@ async def test_pending_pushes_excludes_rows_still_within_grace_period():
     # still very likely in flight seconds after the response returns --
     # the sweep must not race it and double-push.
     resolution_id = await _log("grace-period", transcript_found=True)
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=5)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=5, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
     # But it's a real candidate once the grace period is ignored (min_age_minutes=0).
-    pending_now = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending_now = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id in [p["resolution_id"] for p in pending_now]
 
 
@@ -83,7 +103,7 @@ async def test_pending_pushes_excludes_content_free_resolutions():
         transcript_found=False,
         resolved_payload={"segments": [], "agenda_items": []},
     )
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
 
@@ -98,7 +118,7 @@ async def test_pending_pushes_includes_agenda_only_resolutions():
             "agenda_items": [{"start": 0, "end": 0, "text": "Call to order"}],
         },
     )
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id in [p["resolution_id"] for p in pending]
 
 
@@ -117,7 +137,7 @@ async def test_pending_pushes_includes_video_only_resolutions():
             "video_url": "https://example.cablecast.tv/videos/1234",
         },
     )
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id in [p["resolution_id"] for p in pending]
 
 
@@ -133,13 +153,18 @@ async def test_pending_pushes_finds_a_real_candidate_behind_many_content_free_ro
     # reproduces that shape directly: 15 content-free rows (comfortably
     # more than a small limit*multiplier would have over-fetched) logged
     # before one real candidate.
-    for i in range(15):
+    noise = [
         await _log(
             f"content-free-{i}",
             transcript_found=False,
             resolved_payload={"segments": [], "agenda_items": []},
         )
+        for i in range(15)
+    ]
     resolution_id = await _log("real-candidate-behind-the-noise", transcript_found=True)
+    # Oldest of all, in this order: limit=5 is this test's subject, so its
+    # own rows must come before any pending row another module left behind.
+    await backdate_resolutions([*noise, resolution_id])
 
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=5)
     assert resolution_id in [p["resolution_id"] for p in pending]
@@ -149,7 +174,7 @@ async def test_pending_pushes_excludes_non_success_status():
     resolution_id = await _log(
         "resolve-failed", status="resolve_failed", transcript_found=False
     )
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
 
@@ -158,7 +183,7 @@ async def test_pending_pushes_stops_after_max_attempts():
     for _ in range(crud.MAX_ARCHIVE_PUSH_ATTEMPTS):
         await crud.record_archive_push_failure(resolution_id)
 
-    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=_ALL)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
 

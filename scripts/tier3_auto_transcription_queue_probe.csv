@@ -7665,3 +7665,10 @@ https://www.youtube.com/watch?v=xhmJTFg1FKE,youtube,yt-dlp-metadata,5888.00,2026
 https://www.youtube.com/watch?v=cYEqqHMvD0k,youtube,yt-dlp-metadata,5414.00,2026-08-14,109367319,1,accept,,1.85,2026-09-26T16:42:02+00:00,,0
 https://www.youtube.com/watch?v=XayrcZrOIfQ,youtube,yt-dlp-metadata,5081.00,2024-10-16,189286044,1,accept,,2.18,2026-09-26T16:45:42+00:00,,0
 https://www.youtube.com/watch?v=hm_xmLrrWvo,youtube,yt-dlp-metadata,967.00,2021-01-17,19843537,1,accept,,1.85,2026-09-26T16:49:22+00:00,,0
+https://vimeo.com/1202186516,vimeo,vimeo-oembed,18329.00,2026-06-17,,1,accept,,0.07,2026-09-26T15:01:10+00:00,bulk_ingest,0
+https://vimeo.com/1176686660,vimeo,vimeo-oembed,21218.00,2026-03-24,,1,accept,,0.07,2026-09-26T15:01:18+00:00,bulk_ingest,0
+https://vimeo.com/1200865354,vimeo,vimeo-oembed,216.00,2026-06-12,,0,accept,,0.06,2026-09-26T15:01:27+00:00,bulk_ingest,0
+https://vimeo.com/1225408178,vimeo,vimeo-oembed,22784.00,2026-09-09,,1,flag-long,"duration 6.33h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",0.07,2026-09-26T15:01:34+00:00,bulk_ingest,0
+https://vimeo.com/1203935134,vimeo,vimeo-oembed,26369.00,2026-06-23,,1,flag-long,"duration 7.32h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",0.06,2026-09-26T15:01:43+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1047606,telvue,telvue-page-json,4268.00,,,1,accept,,0.46,2026-09-26T19:05:26+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS/media/1047485,telvue,telvue-page-json,4129.00,,,1,accept,,0.37,2026-09-26T19:37:18+00:00,bulk_ingest,0
