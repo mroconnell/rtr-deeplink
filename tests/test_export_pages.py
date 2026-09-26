@@ -122,7 +122,7 @@ async def test_export_paginates_by_id_without_gaps_or_duplicates():
 
     # Start the walk just before this test's own pages. From id 0, 2 pages
     # per request walked every page other test modules left in the shared
-    # DB -- ~340 requests and up to ~4s late in a full run (WO-1084). The
+    # DB -- ~340 requests and up to ~4s late in a full run (WO-1088). The
     # cursor still crosses page boundaries (3 pages, limit 2).
     pages = _walk(limit=2, start_after_id=min(own_ids) - 1)
     ids = [p["id"] for p in pages]

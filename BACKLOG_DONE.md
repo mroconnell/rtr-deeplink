@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1084: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
+## WO-1088: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
 
 **What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
 
@@ -12,6 +12,10 @@
 | Test steps over 0.5 s | 64 steps, 107 s in total | 19 steps, 20 s in total |
 
 The whole-run figure moves with the container's load (the same "before" code took 197 s earlier that day). The slow-step total is the steadier measure. CI will show the real figure on its own runners.
+
+Re-measured after merging the latest `main` (with WO-1083 to WO-1086 in it), again run one right after the other: `main` took 199 s; this branch took 110 s, with all 7,660 tests passing.
+
+The same run showed one more timing-fragile test, `test_claim_heartbeat.py::test_the_heartbeat_survives_a_transient_database_error`. It failed once in a full run and passed on every rerun: it slept a fixed 0.06 s and expected two 0.01 s heartbeats in that time. It now waits for the second heartbeat, capped at 2 s. It still fails, after the cap, if the heartbeat stops after a failure (checked).
 
 **Found along the way, beyond speed.**
 - **Three tests made real requests to YouTube on every run**, through yt-dlp, and passed only because the failed call was caught: `test_civiclive.py::test_resolve_finds_a_real_single_youtube_video_still_on_civiclive`, `test_civicweb.py::test_resolve_document_shape_skips_agenda_fetch_when_no_index_points` and `test_generic_fallback.py::test_resolve_finds_video_in_a_body_undecodable_as_utf8`. That broke CLAUDE.md's "YouTube only from the drip Mac" rule on any machine that ran the suite. The earlier DNS-blocked scan (WO-1082) missed them: yt-dlp sends its requests through a proxy when one is set, so no local lookup happened. They now fake the call. A new `tests/conftest.py` fixture makes the real `yt_dlp.YoutubeDL.extract_info` refuse in every test, so a future test cannot do this again. The guard test that needs the real call opts out with `@pytest.mark.real_yt_dlp`.
@@ -54,7 +58,7 @@ Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("
 - A full run with the real yt-dlp call refused found only the three tests above, plus the guard test that uses it on purpose.
 - Other small change: `tests/conftest.py` now deletes its temporary SQLite file at exit (230 had built up in one container).
 
-## WO-1083: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
+## WO-1087: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
 
 **What.** Six tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All six had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
 
@@ -87,6 +91,96 @@ Optional speed-ups to real code found by the audit are in `CLAUDE_BACKLOG.md` ("
 | Normal order | 7,626 passed; the only failure is the proxy-only YouTube test |
 
 **Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
+
+## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
+
+**What was tested and why.** Ryan reported that Meeting Finder said several sites were "domain dead" (`dns-unresolvable`) when the sites clearly worked — he could visit them in a browser. Five real examples: streaming.easdpa.org, video.collierschools.com, streamgages.springfieldmo.gov, media.polson.k12.mt.us, streaming.usd367.org. Each one still showed real progress in its own notes ("no-meeting-nor-video; dns-unresolvable; picked by..."), which meant Meeting Finder DID find real content, then threw that result away and reported the site as dead anyway.
+
+**What was found.** Meeting Finder checks a site from more than one address at once: the plain address (`streaming.easdpa.org`), and a "www." version (`www.streaming.easdpa.org`). For all 5 reported sites, the plain address works but the "www." version does not exist at all — there's no such thing as `www.streaming.easdpa.org`. When Meeting Finder tried that made-up address, the address lookup failed, and Meeting Finder recorded that failure as "domain dead" — even though the real address, checked moments earlier, worked fine. A ranking rule then let that one failed lookup outrank the real, working result.
+
+A second, separate case turned up while checking a wider run from the same day: 23 more real governments (ppps.org, hartisd.net, and 21 others) had the OPPOSITE problem — the plain address doesn't exist, but "www." does. Same bug, mirror image: Meeting Finder tried the plain address first, that lookup failed, and the failure won the ranking again even though "www." worked.
+
+Checking the full list of "domain dead" results from that day's run turned up more of this than expected: out of 53 unlabeled "domain dead" results, 52 were sites that actually work — only 1 (ccsuonline.org) was a genuinely dead domain.
+
+**What was fixed.** Two changes in `app/platforms/meeting_finder/`:
+1. `start.py` now only tries the plain address or the "www." address when a real address lookup says that one actually exists — never both automatically.
+2. `runner.py` now remembers once a real address for a government has been confirmed working. From that point on, an address-lookup failure anywhere else in the walk (a "www." guess, or a real link the walk followed that happens to be broken) can never be reported as "this government's site is dead" — it falls back to "nothing found" instead, which is accurate.
+
+A truly dead domain (neither address exists) is unaffected — that case is caught earlier and still reports "domain dead" correctly.
+
+**Result**, checked against real domains before and after the fix:
+
+| Domains checked | Count | Before fix | After fix |
+|---|---|---|---|
+| 5 domains Ryan reported (see above) | 5 | all 5: "domain dead" | all 5: real result (usually "nothing found") |
+| 23 more real domains from one day's run (a scratch list of "domain dead" verdicts whose domain actually resolves) | 23 | all 23: "domain dead" | 22: real result; 1 unchanged (a real timeout, unrelated to this bug) |
+| Genuinely dead domains (checked as a control: 1 real, `ccsuonline.org`, plus 4 made-up domains that were never registered) | 5 | all 5: "domain dead" | all 5: still "domain dead" (correct) |
+
+27 of 28 real, working domains flipped from a wrong "domain dead" verdict to a real result. The one that didn't flip (mokena159.org) was already reporting a different, correct block reason before this fix and is unaffected by it.
+
+**Caution.** This was checked against 33 real domains picked from one day's run, not the full history of "domain dead" verdicts. The fix should be re-checked against a fresh full-scale run before assuming every past "domain dead" result in the database is wrong — some genuinely are.
+
+**Tests.** `tests/test_wo1086_meeting_finder_dns_false_positive.py`, marked synthetic where the DNS data is hand-built (the shapes match `dns_lookup()`'s real fields, confirmed against real domains above): the "www." sibling not tried when it doesn't exist; the plain address not tried when it doesn't exist; a second address's failure not overriding a real finding; every address failing after the gate still falls back to "nothing found," not "domain dead"; a genuinely dead domain still correctly reports "domain dead."
+
+**Recommendation.** Re-run the queued 1,186-government retry now that this is fixed — it should recover most of the false "domain dead" verdicts from before.
+
+## WO-1085: Meeting Finder reads every tab of a Swagit view page [Done 2026-09-26]
+
+**What was done and why.** A Swagit `/views/{id}` page is the tenant's whole archive, split into tabs by body and year, and every tab is its own `table#video-table`. `listing._parse_swagit_video_table` read only the first table: the current year of the first body. Found in rtr-discovery's Swagit view sweep (2026-09-26), which saved all 567 view pages that have meetings:
+
+| View page | Tabs | Meetings on the page | Meetings read before |
+| --- | --- | --- | --- |
+| View 1, Carmel, IN | 88 | 1,530 | 19 |
+| View 876, Dublin, CA | 4 | 28 | 17 |
+| All 567 view pages with meetings | | 246,945 | 9,622 |
+
+It now reads every table on the page.
+
+**Result.** New test `tests/test_wo1085_swagit_all_tabs.py`, on a real capture of Dublin's view 876 with the tab list and all 4 tabs, trimmed to 2 rows each (`tests/fixtures/swagit/dublin_views_876_all_tabs.html`). It fails without the change. The full suite and ruff results are in the PR.
+
+**Caution.** Candidates come body by body, not strictly newest-first. `list_account()` still cuts the list at `limit`, so on a large archive the first body's tabs fill the limit before later bodies. The same fix for rtr-discovery's Swagit walker is rtr-discovery #84.
+
+## WO-1084: the access ladder no longer hops off the government's own site -- 74 of 118 wrong finds gone, 176 of 177 real ones kept [Done 2026-09-26]
+
+**What was done and why.** WO-1077's hand-read of 737 ladder finds showed that most "another organization's" finds came from one step: the hop step followed a link off the government's own site (a state portal's policy page, a university extension office, a tourism board) and credited whatever it found there to the government. The clearest case: every Kentucky city on the state's `*.ky.gov` template has a footer link to `kentucky.gov/policies`, which carries the state's `kygov` YouTube channel. `scripts/wo147_access_ladder_sweep.py` now has `_is_offsite_hop()`: both hop scorers refuse a hop to a host that is not the page's own host, a subdomain of it (or the reverse), or a known meeting-platform host. Tests: `tests/test_wo1084_offsite_hops.py` (real host pairs from WO-1077).
+
+**Result.** The ladder was re-run with the fix on WO-1077 governments whose find had a hand-read verdict; the run was stopped at 295 of 317.
+
+| Result with the fix | Wrong finds ("another organization's") | Real finds ("own meeting platform") |
+|---|---|---|
+| Same link found | 41 | 175 |
+| A different link found | 3 | 1 |
+| No link now | 74 | 1 |
+| **Total** | **118** | **177** |
+
+The 41 wrong finds that remain were found on the government's own pages (36) or through a platform host (5); the fix does not touch those, and the note for another organization's link on the government's own page is the open WO-933 entry in `BACKLOG.md`. The one real find lost is Coryell County TX, whose recordings are on its clerk's own separate domain; filed as its own `BACKLOG.md` entry.
+
+## WO-1083: crawler burst on `/j/` hub pages took the whole Archive down — cached the GROUP BY, added the missing `bs4` dependency [Done 2026-09-26]
+
+**What happened.** On 2026-09-26, from about 6:56 to 7:02 AM Pacific, the Archive went down. A crawler asked for dozens of `/j/<slug>` hub pages every second — mostly Utah town and county pages (`/j/*-ut`). Every one of those pages runs one database query that counts every meeting page in the whole Archive, grouped by government. That query had no cache: every request ran it fresh. The Archive keeps only 5 database connections open per worker (plus 2 spare), and runs 2 workers. The burst of hub-page requests used up every connection and kept them busy. Every other page — `/m/` meeting pages, `/context`, `/state/*`, even the health check — started failing with a "connection pool timeout" error. Render's automatic health check saw the failures and shut the instance down.
+
+**What was built.**
+
+- A short-term cache for that GROUP BY query (`archive/db/hub_groups_cache.py`), used by `crud._hub_groups()`. The first request in a 60-second window runs the real query; every other request in that window reuses its answer instead of running the query again. 60 seconds matches the TTL the Archive's existing hub-slug cache already uses, chosen for the same reason: short enough that a real change shows up within a minute, long enough to make the query itself close to free.
+- A second, separate protection against a burst: if many requests miss the cache at the exact same moment (the situation that took the Archive down), only ONE of them runs the real query. The rest wait for that one answer and share it, instead of each starting its own copy of the same query. This is the part that actually stops the incident from repeating — a plain cache alone would not have helped during the first second of a burst, before anything was cached yet.
+- The cache is cleared immediately (not left to expire) whenever a page's government changes: after an ingest, after a human override, and after an admin page-delete. So a newly-added or newly-corrected meeting still shows up on its hub right away, not up to 60 seconds later.
+- Configurable via `HUB_GROUPS_CACHE_TTL_SECONDS` (default 60; set to 0 to turn caching off).
+- Separately, production logs from the same day showed a second, unrelated error: `ModuleNotFoundError: No module named 'bs4'`, hit whenever a BoxCast meeting page tried to refresh its video link. The Archive service was missing a dependency (`beautifulsoup4`) that one of its code paths needs. Added to `archive/requirements.in`/`archive/requirements.txt`, the same way the resolver service already has it.
+
+**Result — 100 requests against a local Archive, deliberately shrunk to a 2-connection pool (no spare connections) and a realistic 100ms-per-query delay standing in for a real production database round trip, before and after:**
+
+| Check | Before (no cache) | After (cache + single-flight) |
+| --- | --- | --- |
+| Requests that timed out waiting for a database connection | 74 of 100 | 0 of 100 |
+| Requests that succeeded | 26 of 100 | 100 of 100 |
+| Real GROUP BY queries actually run | 100 | 1 |
+| Total time for all 100 requests | 2.21s | 0.12s |
+
+See `docs/investigations/wo1083_hub_groups_pool_measurement.md` for the exact method, the caveats on these numbers, and how to reproduce them.
+
+**Caution.** A page that just got a government (via ingest, an override, or the hub-slug freeze sweep) can take up to 60 seconds to show up on its `/j/` hub page, on the sitemap, and in `/state/*` page counts — unless it came in through ingest, override, or delete, which clear the cache right away. This is the same trade-off the existing hub-slug cache already makes, at the same 60-second window.
+
+**Tests.** `tests/test_wo1083_hub_groups_cache.py`: cache hit/miss, manual invalidation, TTL expiry, TTL disabled, 50 concurrent requests sharing one real query, a failed query not getting stuck or wrongly cached, and an end-to-end check that a real ingest shows up on its hub page immediately. All existing hub/jurisdiction tests still pass.
 
 ## WO-1081: Meeting Finder lists 35 known Swagit view pages, with dates [Done 2026-09-26]
 
@@ -349,7 +443,18 @@ Held back, not applied (`research/wo1077_review.csv`): six Google Drive links co
 
 Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
 
-**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
+**Second pass, 2026-09-26.** Meeting Finder ran again on the 40 agenda-only governments, this time from each government's own homepage (`--entry start`, pin mode), to look for video on another site.
+
+| Second-pass result | Count of 40 |
+|---|---|
+| Tier 3, queued | 1 |
+| Tier 3, held for hand-check | 1 |
+| Meetings found, no video | 22 |
+| Stopped at the 15-minute per-government limit | 16 |
+
+Queued: Stillwater County MT, a 17-minute Board of County Commissioners meeting on its CivicClerk portal (identity check agrees). Held: Colusa County CA, an undated Vimeo video whose length could not be measured.
+
+**Caution.** 22 governments showed meetings but no video from both starting points; they most likely do not post recordings. The 16 that hit the time limit were not rerun: the first 24 yielded one find.
 
 ## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
 

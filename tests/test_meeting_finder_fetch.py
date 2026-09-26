@@ -133,7 +133,7 @@ def test_importing_fetch_does_not_install_the_youtube_guard_but_a_fetcher_does()
     """Both halves of the rule in one fresh interpreter: import alone
     leaves the guard off, constructing a Fetcher turns it on. These were
     two subprocess tests, but the constructor one already asserted the
-    import-only fact first, so one start-up (~1.5s) proves both (WO-1084)."""
+    import-only fact first, so one start-up (~1.5s) proves both (WO-1088)."""
     script = (
         "import scripts.youtube_fetch_guard as guard\n"
         "from app.platforms.meeting_finder.fetch import Fetcher\n"

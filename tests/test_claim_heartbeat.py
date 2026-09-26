@@ -218,8 +218,15 @@ async def test_the_heartbeat_survives_a_transient_database_error(monkeypatch):
     monkeypatch.setattr(worker_main.crud, "heartbeat_claim", _flaky)
     monkeypatch.setattr(worker_main, "CLAIM_HEARTBEAT_SECONDS", 0.01)
 
+    # Wait for the second beat rather than a fixed 0.06s: on a busy
+    # machine six 0.01s beats did not always fit in 0.06s, and this failed
+    # once in a full run with no code change (WO-1088). A heartbeat that
+    # really stopped after the failure still fails, after the 2s cap.
     async with worker_main._keeping_claim_alive(88):
-        await asyncio.sleep(0.06)
+        for _ in range(200):
+            if calls["n"] >= 2:
+                break
+            await asyncio.sleep(0.01)
 
     assert calls["n"] >= 2, "heartbeat stopped after one failure"
 

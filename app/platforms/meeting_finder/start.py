@@ -171,10 +171,39 @@ async def start(
             seen.add(url)
             starting_points.append(url)
 
-    # Homepage variants, per docs/MEETING_FINDER.md's own order.
-    _add(f"https://{domain}/")
-    _add(f"https://www.{domain}/")
-    _add(f"http://{domain}/")
+    # Homepage variants, per docs/MEETING_FINDER.md's own order -- but
+    # WO-1086: only add whichever of the apex/`www.` actually resolves
+    # (`dns_info` already carries both, from the DNS gate above, which
+    # only ever required ONE of them to resolve, never both). Adding
+    # both unconditionally produced a doomed, DNS-erroring fetch for real
+    # governments in EITHER direction, confirmed live 2026-09-26:
+    #   - apex resolves, `www.` doesn't -- true of every one of a
+    #     subdomain host (streaming.easdpa.org, video.collierschools.com,
+    #     streamgages.springfieldmo.gov, media.polson.k12.mt.us,
+    #     streaming.usd367.org) -- there's no such thing as
+    #     `www.streaming.easdpa.org`.
+    #   - apex doesn't resolve, `www.` does -- the OPPOSITE asymmetry,
+    #     just as common in practice (ppps.org, hartisd.net,
+    #     midkotaschools.k12.nd.us and 20 more from one real sweep alone,
+    #     2026-09-26: the bare apex has no A/CNAME record at all, only
+    #     `www.` does, mostly on Apptegy-hosted districts).
+    # Either doomed fetch raised a DNS error, `fetch.py` reported it as
+    # that fork's own `dns-unresolvable` outcome, and `runner.py`'s
+    # outcome ranking (35, well above `no-meeting-nor-video`'s 10) let
+    # that secondary fork's failure override a real finding from the
+    # fork that actually resolved. See `_WalkState.dns_gate_passed` in
+    # runner.py for the second half of the fix (belt and braces for any
+    # OTHER way a secondary fork could still raise a stray
+    # `dns-unresolvable`, e.g. a broken link found later in the walk --
+    # confirmed live too, see that field's own comment).
+    apex_resolves = bool(dns_info.get("apex_a") or dns_info.get("apex_cname"))
+    www_resolves = bool(dns_info.get("www_a") or dns_info.get("www_cname"))
+    if apex_resolves:
+        _add(f"https://{domain}/")
+    if www_resolves:
+        _add(f"https://www.{domain}/")
+    if apex_resolves:
+        _add(f"http://{domain}/")
 
     notes: List[str] = []
 

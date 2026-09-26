@@ -363,7 +363,7 @@ async def test_upsert_vocabulary_words_chunks_a_large_word_set(monkeypatch):
     # regardless of dialect.
     #
     # Proved with a small chunk size rather than 70,000 real words (~1.9s,
-    # and 70k rows left in the shared DB for every later test -- WO-1084):
+    # and 70k rows left in the shared DB for every later test -- WO-1088):
     # 50 words in chunks of 7 is 7 full chunks plus a partial tail, the
     # same loop shape, checked by statement count and by row count.
     # The real chunk size must stay under the Postgres parameter limit.

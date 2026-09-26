@@ -297,7 +297,15 @@ audit mode (see rtr-business `research/LINK_FIRST_MATCHING.md`).
 - **DNS gate first.** If neither the domain nor `www.` resolves, stop with
   `dns-unresolvable`, then try the research row's alternate domains
   (passed in via `alternates` -- Start itself never reads rtr-business).
-- **Homepage:** `https://domain/`, then `https://www.domain/`, then `http://`.
+- **Homepage:** `https://domain/`, then `https://www.domain/`, then
+  `http://` -- but WO-1086: only whichever of the apex/`www.` `dns_lookup()`
+  itself says actually resolves. Adding both unconditionally produced a
+  real, confirmed false `dns-unresolvable` VERDICT for a government whose
+  site works fine, in either direction: a subdomain host has no `www.`
+  sibling at all (streaming.easdpa.org, confirmed live 2026-09-26), and
+  plenty of ordinary districts have the opposite gap -- no bare-apex A/
+  CNAME record, only `www.` resolves (ppps.org and 22 more, same date).
+  See "Verdict's outcome choice" below for the other half of the fix.
 - **Cheap extra starting points,** reusing stage 1's functions in
   `scripts/wo282_recon.py` (`dns_lookup()`, the robots and sitemap
   readers): guessed subdomains that actually resolved (`agenda.`,
@@ -643,7 +651,23 @@ is never fetched twice no matter which fork or hop reaches it.
   `account-not-found`, which beats `unsupported-platform-no-adapter`,
   which beats a generic access block (a challenge/WAF block, then a
   plain `blocked-*`, then `timeout`/`dns-unresolvable`), which beats
-  reporting nothing at all (`no-meeting-nor-video`, the floor).
+  reporting nothing at all (`no-meeting-nor-video`, the floor). **WO-1086:**
+  once `start()` has confirmed at least one real starting-point host
+  resolves (`_WalkState.dns_gate_passed`), a `dns-unresolvable` collected
+  LATER in the same walk is dropped from this ranking entirely, rather
+  than being allowed to win it -- it can only be a secondary starting
+  point's own DNS failure (the doomed homepage variant above) or a real
+  third-party link Hop followed that happens to be dead, never a sign
+  THIS government's own site is unreachable (that already would have
+  short-circuited the walk before any fork ran). Confirmed live: a
+  government whose own homepage fetch succeeded still ended up verdicted
+  `dns-unresolvable` because Hop later followed a real link to an
+  unrelated dead host (jsd117.org -> jsd117.on.spiceworks.com). If
+  nothing else was ever collected either, the ranking already falls back
+  to `no-meeting-nor-video` -- correct, since the site is confirmed
+  reachable, just nothing useful was found on it. A domain where `start()`
+  itself never found a resolving host (`dns_gate_passed` stays False) is
+  unaffected -- that's still a real `dns-unresolvable` verdict.
 - **Politeness across governments sharing a vendor host:** `fetch.py`'s
   own per-`Fetcher` spacing only paces one government's own requests: two
   DIFFERENT `Fetcher`s (two governments running concurrently under

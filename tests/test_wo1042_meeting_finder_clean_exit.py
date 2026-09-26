@@ -100,7 +100,7 @@ def test_multiple_lingering_threads_are_all_counted():
         # Only this test's threads are stable; others may come and go on CI.
         assert all(t.is_alive() for t in threads)
         assert still_alive >= 3
-        # One grace period in total, not one per hung thread (WO-1084):
+        # One grace period in total, not one per hung thread (WO-1088):
         # three hung threads at 0.2s each would take >= 0.6s.
         assert elapsed < 0.5
     finally:
