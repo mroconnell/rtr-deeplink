@@ -116,7 +116,7 @@ from .pick import pick_candidates
 # evidence either way) beats rank 2 (a video whose length couldn't be
 # measured at all AND has no real meeting evidence -- see WO-1049 below).
 # Lower rank wins.
-# WO-1070 addendum: `finder_input.gov_id` -> the government's own
+# WO-1074 addendum: `finder_input.gov_id` -> the government's own
 # `gov_name`/`gov_type`, looked up once per `gov_id` and cached for the
 # life of the process -- so `assess_video_candidate()` can tell a school
 # district's OWN board/committee meeting apart from a DIFFERENT school

@@ -176,7 +176,7 @@ def main() -> None:
         default=_DEFAULT_SECOND_PASS_EXTRA_FETCHES,
         help="Extra fetches spent on a focused nav-link rescue before settling "
         f"for youtube-lead-only (default: {_DEFAULT_SECOND_PASS_EXTRA_FETCHES}; "
-        "0 disables it -- WO-1070 item 1).",
+        "0 disables it -- WO-1074 item 1).",
     )
     parser.add_argument(
         "--adaptive-max-fetches",
@@ -185,7 +185,7 @@ def main() -> None:
         help="Raised fetch cap for a government once real evidence (a meetings "
         "page, a recognized platform account, a meeting-without-video listing) "
         f"turns up (default: {_DEFAULT_ADAPTIVE_MAX_FETCHES}; <= --max-fetches "
-        "disables it -- WO-1070 item 3).",
+        "disables it -- WO-1074 item 3).",
     )
     parser.add_argument(
         "--gov-timeout-minutes",

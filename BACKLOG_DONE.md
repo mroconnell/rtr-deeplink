@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1070: Meeting Finder second pass, one more hop, adaptive budget; two gate fixes [Done 2026-09-25]
+## WO-1074: Meeting Finder second pass, one more hop, adaptive budget; two gate fixes [Done 2026-09-25]
 
 **What was done and why.** Calibration set D (2026-09-25) found 1,581 known-video governments, 728 found (46%). Of the rest: 380 governments ended with only a YouTube lead (no other video platform found), 149 found meetings but no video, and about 70 ran out of fetch budget. Ryan approved three fixes, built together:
 

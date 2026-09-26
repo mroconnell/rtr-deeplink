@@ -1,4 +1,4 @@
-"""WO-1070 addendum (Ryan, 2026-09-25): the "other government" lead
+"""WO-1074 addendum (Ryan, 2026-09-25): the "other government" lead
 matcher (`scripts/hub_harvest.py`'s `_match_place_text()`, used by both
 that script and `scripts/meeting_finder_other_gov_leads.py`) ignored the
 government-TYPE word in a title. Real wrong "confident" matches from the

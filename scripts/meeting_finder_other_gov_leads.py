@@ -234,7 +234,7 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> Optional[LeadMatch]:
     # state" when the searched government has one.
     region_state = described.get("state") or hub_region_state or gov_state or ""
 
-    # WO-1070 addendum: `_guessed_body_type(title)` stays FIRST -- it
+    # WO-1074 addendum: `_guessed_body_type(title)` stays FIRST -- it
     # already knows compound shapes `place_type` alone can't tell apart
     # ("School Board of Nassau County" is a SCHOOL DISTRICT lead, even
     # though the only explicit type word next to the place name is
@@ -247,7 +247,7 @@ def match_lead(lead: Dict[str, Any], hubs: List[HubRow]) -> Optional[LeadMatch]:
     # matches "plan commission", but `place_type` still finds "county").
     # Either way, this hint also feeds `_match_place_text()`'s own type-
     # agreement check (`_enforce_type_agreement()`), the real fix for the
-    # WO-1070 false "confident" matches (a same-named government of the
+    # WO-1074 false "confident" matches (a same-named government of the
     # WRONG type -- "Grant County Board of Commissioners" matching a
     # CITY, "Hilton Head Island Town Council" matching a COUNTY).
     # Both sides normalized BEFORE the `or` -- `_guessed_body_type()` can
