@@ -1,5 +1,42 @@
 # Backlog — done
 
+## WO-1076: Meeting Finder second pass, one more hop, adaptive budget; two gate fixes [Done 2026-09-25]
+
+**What was done and why.** Calibration set D (2026-09-25) found 1,581 known-video governments, 728 found (46%). Of the rest: 380 governments ended with only a YouTube lead (no other video platform found), 149 found meetings but no video, and about 70 ran out of fetch budget. Ryan approved three fixes, built together:
+
+1. **Second pass.** Before giving up with "YouTube only," spend 8 more page fetches following links like "Meetings," "Watch," or "TV" on pages already read. Only runs when nothing else was found.
+2. **One more hop.** When a page is a real meetings page (or we already found a meeting with no video) but we're out of hops, allow one extra hop for a link that mentions video/watch/broadcast/stream/replay/TV/channel. Test case: Lake Oswego, OR, whose real path is three hops from its homepage (city council page, meetings page, then a sentence naming its TV partner).
+3. **Adaptive budget.** Once a government shows real promise (a meetings page, a known video platform, or a "meeting but no video" listing), raise its fetch limit from 12 to 24 instead of stopping. Logged in the report.
+
+Two more fixes came from a hand-check of this run's weak leads:
+
+4. **School boards no longer reject themselves.** The video-quality gate rejected a school district's own board meeting because its title said "School Board" or "Board of Education" — a rule meant to catch a DIFFERENT school district's video. Ten real governments were wrongly rejected this way (Glendale USD, Nassau County SD, Prince George County Public Schools, South Windsor SD, Baltimore County PS, Calvert County PS, Midland PS, Falmouth Schools ME, South Pasadena USD, Lake Oswego SD). Fixed: the gate now also checks whether the government being searched IS a school district, and only rejects when it isn't.
+5. **"Other government" leads now check government type, not just name.** The lead matcher matched a lead's title to a same-named government of the WRONG type — "Town of Horseheads" to a village, "Grant County Board of Commissioners" to a city, "Hilton Head Island Town Council" to a county, "Lucas County Plan Commission" to a village, "Springfield Township Board" to a city. Fixed: the title's own type word (county/township/town/village/city/borough/school district) must now agree with the matched government's real type, or the lead goes to hand-read instead. A police board or "Joint Meeting"/"Joint Hearing" title also now goes to hand-read outright (real example: Essex County OPP Detachment Board).
+
+**Result, live, before/after, 409 governments (concurrency 24), from calibration set D's own hardest cases — the youtube-lead-only-with-known-platform set (189), the meeting-without-video set (149), and the budget-exhausted set (71, 3 governments counted in two sets).**
+
+| Input file | Found before | Found after | Count |
+| --- | --- | --- | --- |
+| YouTube-lead-only, known platform isn't YouTube | 7 | 47 | 189 |
+| Meeting found, no video (known video platform) | 0 | 11 | 149 |
+| Budget ran out | 2 | 17 | 71 |
+| **All 409 (unique)** | **9** | **75** | **409** |
+
+Cost per government went up, as expected (the adaptive budget raised the cap for 374 of 409 — almost every government showed at least one of the three kinds of promise):
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Fetches, median | 12 | 24 |
+| Fetches, 90th percentile | 12 | 24 |
+| Requests total, median | 12 | 25 |
+| Requests total, 90th percentile | 26 | 41 |
+
+**No regression.** 30 governments chosen at random from calibration set D's already-found list (755 total) were re-run with the new code: all 30 still found their meeting cleanly.
+
+This before/after run started before fixes 4 and 5 landed, so its numbers cover items 1–3 only. Fixes 4 and 5 were verified separately: fix 4 live on 3 real school districts (Glendale USD, Lake Oswego SD, Falmouth Schools ME — all now resolve cleanly where they were rejected before); fix 5 by re-running the lead-matching step on calibration set D's own real output — the 5 wrong "confident" matches above are now correctly downgraded to hand-read, and the true confident list is now Cass County, MI's Planning Commission and Simcoe County, ON's Council (both real, both the right government type).
+
+**Where the code lives.** `app/platforms/meeting_finder/runner.py` (items 1–3), `app/utils/video_hand_check.py` and `app/platforms/meeting_finder/resolve.py` (item 4), `scripts/hub_harvest.py` and `scripts/meeting_finder_other_gov_leads.py` (item 5). New CLI flags: `--second-pass-extra-fetches` (default 8), `--adaptive-max-fetches` (default 24), both in `scripts/meeting_finder.py`. See `docs/MEETING_FINDER.md`'s new "Second pass, one more hop, adaptive budget" section.
+
 ## WO-1074: LA World Airports and M-NCPPC keep their own ids; their hosts are pinned to them [Done 2026-09-25]
 
 **What was done and why.** WO-1068 left 4 pages for Ryan's call. He accepted the recommendations.
