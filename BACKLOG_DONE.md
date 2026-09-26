@@ -1,5 +1,21 @@
 # Backlog — done
 
+## WO-1085: Meeting Finder reads every tab of a Swagit view page [Done 2026-09-26]
+
+**What was done and why.** A Swagit `/views/{id}` page is the tenant's whole archive, split into tabs by body and year, and every tab is its own `table#video-table`. `listing._parse_swagit_video_table` read only the first table: the current year of the first body. Found in rtr-discovery's Swagit view sweep (2026-09-26), which saved all 567 view pages that have meetings:
+
+| View page | Tabs | Meetings on the page | Meetings read before |
+| --- | --- | --- | --- |
+| View 1, Carmel, IN | 88 | 1,530 | 19 |
+| View 876, Dublin, CA | 4 | 28 | 17 |
+| All 567 view pages with meetings | | 246,945 | 9,622 |
+
+It now reads every table on the page.
+
+**Result.** New test `tests/test_wo1085_swagit_all_tabs.py`, on a real capture of Dublin's view 876 with the tab list and all 4 tabs, trimmed to 2 rows each (`tests/fixtures/swagit/dublin_views_876_all_tabs.html`). It fails without the change. The full suite and ruff results are in the PR.
+
+**Caution.** Candidates come body by body, not strictly newest-first. `list_account()` still cuts the list at `limit`, so on a large archive the first body's tabs fill the limit before later bodies. The same fix for rtr-discovery's Swagit walker is rtr-discovery #84.
+
 ## WO-1084: the access ladder no longer hops off the government's own site -- 74 of 118 wrong finds gone, 176 of 177 real ones kept [Done 2026-09-26]
 
 **What was done and why.** WO-1077's hand-read of 737 ladder finds showed that most "another organization's" finds came from one step: the hop step followed a link off the government's own site (a state portal's policy page, a university extension office, a tourism board) and credited whatever it found there to the government. The clearest case: every Kentucky city on the state's `*.ky.gov` template has a footer link to `kentucky.gov/policies`, which carries the state's `kygov` YouTube channel. `scripts/wo147_access_ladder_sweep.py` now has `_is_offsite_hop()`: both hop scorers refuse a hop to a host that is not the page's own host, a subdomain of it (or the reverse), or a known meeting-platform host. Tests: `tests/test_wo1084_offsite_hops.py` (real host pairs from WO-1077).
