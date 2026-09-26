@@ -213,7 +213,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (215)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (218)
   [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
@@ -225,13 +225,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (215)
   [NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and…
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
   [NEEDS-AUDIT] Gov Coverage: remaining unidentified pages and…
-  [NEEDS-AUDIT] Local-export tests depend on an inventory that changes…
+  [NEEDS-AUDIT] Newer meeting exports show pages the wrong-page…
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
   [NEEDS-AUDIT] Thirteen hand-confirmed government platform links could…
   [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
   [NEEDS-AUDIT] `[EASY]` CivicMedia's ffmpeg card-thumbnail extraction…
   [NEEDS-AUDIT] `find_platform_link()` accepts the first vendor-shaped…
-  [NEEDS-AUDIT] `[EASY]` The access ladder follows a hop link off the…
+  [NEEDS-AUDIT] `[EASY]` The access ladder's off-site hop guard drops a…
   [NEEDS-AUDIT] `[EASY]` The access ladder's `direct_file` and YouTube…
   [NEEDS-AUDIT] `[EASY]` `wo355_handread.py`/`wo361_handread.py`'s…
   [NEEDS-AUDIT] `[EASY]` `queue_probe.py`'s duration prober has no…
@@ -291,7 +291,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (215)
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
-  [NEEDS-AUDIT]…
+  [NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac,…
+  [NEEDS-AUDIT] Four more tests fail when the test files run in a…
+  [NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they…
+  [NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own…
@@ -2457,7 +2460,8 @@ of human step they need.
   - **Impact**: rtr-discovery PR #42 (this WO) fixed the redirect-host bug in tab-URL building and added a `views_id` override for a caller (rtr-deeplink's Meeting Finder) that already found a specific `/views/{id}` link via its own page scan — that closes the gap for Meeting Finder's on-demand resolves (see rtr-deeplink's own `listing.py` WO-1036 fix, which lists a known `/views/{id}` URL directly). It does **not** close the gap for rtr-discovery's own unattended bulk sweeps, which only ever have a bare tenant netloc and must still walk tab slugs — those sweeps may be silently under-counting every Swagit tenant's real catalog.
   - **Next action**: measure how many Swagit tenants in rtr-discovery's own corpus currently enumerate to 0 candidates via tab-slug walking; for those, try a headless-render fallback (confirmed NOT to help per WO-1036's live testing above — tab-slug pages stayed empty even headless) or look for a real, unauthenticated API/sitemap that lists a tenant's own `/views/{id}` pages without needing one supplied in advance.
   - **Constraint**: don't assume headless rendering fixes this — already confirmed live that it doesn't for the tab-slug shape specifically.
-  - **History**: rtr-deeplink `BACKLOG_DONE.md`'s WO-1036 entry; rtr-discovery PR #42.
+  - **Progress (2026-09-26)**: measured: 271 of 438 Swagit tenants had 0 meetings in rtr-discovery's ledger. A tenant's own site never links a `/views/{id}` page; the government's website embeds it (Dublin CA's "Watch Meetings" page embeds `/views/876/`). WO-1081 added `app/utils/jurisdiction_data/swagit_views.csv` (35 known views copied from real links, 19 of them for the 271), which Meeting Finder and rtr-discovery both read. View and video numbers are shared across all Swagit hosts, so a number must be read, never guessed. Next: map views to tenants for the remaining 252 by matching each view page's video numbers to videos the Archive already holds (exactly one tenant per view, at least 2 matches, stop at the first 429 or challenge page); fall back to scanning the government's own site for an embedded `/views/` link.
+  - **History**: rtr-deeplink `BACKLOG_DONE.md`'s WO-1036 and WO-1081 entries; rtr-discovery PRs #42 and #79.
 
 - **[NEEDS-AUDIT] `verify_hub()`'s own CivicPlus path (and `municode_meetings.py`) still can't tell an agenda-only tenant apart from an empty one -- Meeting Finder's List worked around it, `verify_hub()` didn't.**
   - **Issue**: `passive_verify._civicplus_walker()`'s step 1 only calls `_add(title, date, url)` when a listing row's own `url` field is set (`if row.get("url"): _add(...)`). Confirmed live 2026-09-23 on Cass County, MN (`mn-casscounty.civicplus.com/AgendaCenter`): `civicplus.py`'s own `_find_candidate_rows()` returns 37 real rows (title, date, `agenda_link`, `packet_link` all populated), but every one has `url=None` (no video link on the row itself) -- a genuinely agenda-only tenant, not a fetch failure or a parsing miss. The walker itself still returns `[]` for this case, identical to what a tenant with zero real meetings would return -- WO-1028 (2026-09-23) deliberately left `_civicplus_walker()` itself unchanged (it's shared with `verify_hub()`, whose own tests/behavior weren't in scope to touch) and instead added a SEPARATE fallback, `listing._civicplus_agenda_only_fallback()`, that only `listing.list_account()` calls when every other lister comes back empty for a `civicplus` account -- it re-parses the page with `_find_candidate_rows()` directly and returns the video-less rows as `Candidate`s with `has_video_hint=False`. `municode_meetings.py` has the identical shape CivicPlus had before its own 2026-09-07 fix: its `resolve()` still calls `self._find_video_rows()` (never renamed/generalized) to build its `CalendarPageError` pick-list, so an agenda-only Municode Meetings tenant hits the same blind spot, and List has no fallback for it yet (in practice rtr-discovery's own `MunicodeMeetingsEnumerator`, tried before municode_meetings' own `CalendarPageError` path, already answers most real accounts -- confirmed live on `bristol-ri.municodemeetings.com`).
@@ -2479,12 +2483,12 @@ of human step they need.
   - **Constraint:** School boards, towns versus villages, and shared hosts must not be folded into another government's row to make a join succeed.
   - **History:** See `BACKLOG_DONE.md`'s “Gov Coverage 54-row reconciliation” entry and `rtr-business/research/coverage_join_audit_2026-09-22/` for the row-level evidence and applied changes.
 
-- **[NEEDS-AUDIT] Local-export tests depend on an inventory that changes after repairs.**
-  - **Issue**: `test_every_row_matches_the_local_export_it_was_built_from` and `test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages` fail with the current `/tmp/rtr_meeting_inventory/meeting_inventory.csv`: page 2504 has no government id, and page 3643 is no longer flagged.
-  - **Impact**: full local pytest fails even on unchanged main when that export exists; these tests skip when it is absent.
-  - **Next action**: the tests were written against the 2026-09-21 export, but they read `/tmp/rtr_meeting_inventory/meeting_inventory.csv`, which the daily dashboard refresh rewrites (last 2026-09-23 07:08). Make both read a dated snapshot the refresh never overwrites (e.g. skip unless `/tmp/rtr_meeting_inventory/meeting_inventory_2026-09-21.csv` exists), or check the export's own date and skip when it is not 2026-09-21. Separately confirm that page 2504 (Minnesota Public Utilities Commission) losing `us:county:27007` and page 2234 leaving the export are the wrong-page repairs landing as intended.
-  - **Constraint**: preserve the current export and actual repaired data; do not alter either just to satisfy historical assertions.
-  - **History**: reproduced on unchanged main `bc076ba` on 2026-09-22 while checking the WO-169 format-forwarding fix; see its completed entry in `BACKLOG_DONE.md`.
+- **[NEEDS-AUDIT] Newer meeting exports show pages the wrong-page worklist expected to find unchanged: page 2504 has lost `us:county:27007` and page 3643 is no longer flagged.**
+  - **Issue**: the 2026-09-23 and 2026-09-25 local exports disagree with `reports/wrong_page_worklist.csv` (built from the 2026-09-21 export): page 2504 (Minnesota Public Utilities Commission) now has no government id, page 3643 is no longer flagged by `scripts/wrong_page_screen.py`, and page 2234 is gone from the export.
+  - **Impact**: unknown until checked. If these are the WO-934 repairs landing, nothing is wrong. If not, three pages changed for a reason nobody has recorded.
+  - **Next action**: compare each page against the WO-934 repair run's own output and say which change it made; any page the repair did not touch needs its own explanation.
+  - **Constraint**: do not edit the export or the worklist to make old assertions pass; the two tests that read the 2026-09-21 export now skip on any other export (WO-1082).
+  - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26), which fixed the tests themselves.
 
 - **[NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file name ("video1516165031", "20251021", "CC20260908.mp4") becomes the page title as-is, on every platform: Ryan chose the fallback title "<government name> archive video".**
   - **Issue**: `vimeo.com/1199438213` still returns the title "video1516165031" (checked live 2026-09-21; its page 10200, Oak Bluffs MA, was fixed by hand in WO-925). The gate (`app/utils/video_hand_check.py`, WO-933) treats `^video\d+$`, `^IMG_\d+` and `^\d+$` as no title (`cannot_tell`), but the adapters still use the source's own title as-is. The count, from the local export of 2026-09-21 (10,280 pages): **12 pages (0.1%)**. Viebit 7 (raw file names: `NYCC-PV-CH-CHA_251218-163834.mp4`, `NYCC-250-8-2_251218-120823.mp4`, `8-18-26_Council-Meeting.mp4`, `CC20260908.mp4`, `DDA_Meeting_08_20_26.mp4`, `9_8_26_Council_Meeting.mp4`, `TBC_06_09_2026Mtg.mp4`), Granicus 3 (date-only titles `20251021`, `171205`, `20260901`, all Laramie County WY), YouTube 2 (`7959635610958757251`, `video1254656692`), Vimeo 0.
@@ -2518,13 +2522,12 @@ of human step they need.
   - **Constraint**: flag, never reject: real shared cable-access channels have no name overlap.
   - **History**: `BACKLOG_DONE.md` WO-933, WO-908, WO-909, WO-912, WO-913. WO-1077 (2026-09-25) hand-read 737 ladder finds with a verdict each (`rtr-business/research/wo1077_passA_results.csv`), a ready sample for the re-run.
 
-- **[NEEDS-AUDIT] `[EASY]` The access ladder follows a hop link off the government's own site and credits whatever it finds there to the government.**
-  - **Issue**: `_score_hop_candidate()` (`scripts/wo147_access_ladder_sweep.py`) only refuses a vendor's marketing site; any other off-site page can be the hop page, and a link found on it is reported as the government's. WO-1077 (2026-09-25) hand-read 737 ladder finds and saw this many times: university extension pages (UT Extension for McMinn County TN, Penn State Extension for Tioga County PA, Texas A&M AgriLife for Terry and Zavala County TX), state pages (kentucky.gov's `kygov` channel for Metcalfe, Butler, Monroe and Elliott County KY; the Missouri Secretary of State for Madison and Atchison County MO; Illinois DHS for Ford County IL; arkansas.com's tourism channel for Lincoln, Howard and Fulton County AR), and a waste company's site for Avoyelles Parish LA.
-  - **Impact**: most of the "other org" finds in WO-1077 came this way. A sweep that trusts the ladder files state and university channels under counties.
-  - **Next action**: in the hop step, only accept a hop page on a different registrable domain when that domain is a known meeting-platform host (the `_PLATFORM_HREF_HINTS` list); re-run the ladder on the WO-1077 rows marked "other org" to confirm they drop out and the "own meeting platform" rows stay.
-  - **Constraint**: a county's own site can live on a state host (`in.gov/counties/<name>`, `<name>.okcounties.org`, `portal.arkansas.gov/counties/<name>`); treat the recorded domain's own host as on-site even when it is a state domain.
-  - **History**: `BACKLOG_DONE.md` WO-1077. Related, different fix: the entry above (the note for another organization's link on the government's own page).
-
+- **[NEEDS-AUDIT] `[EASY]` The access ladder's off-site hop guard drops a government's own second domain (a county clerk's separate site).**
+  - **Issue**: WO-1084's `_is_offsite_hop()` (`scripts/wo147_access_ladder_sweep.py`) refuses any hop to a host that is not the page's own host, a subdomain of it, or a meeting-platform host. Coryell County TX keeps its Commissioners Court recordings on its clerk's own domain (`coryellcountyclerk.com`), which the guard now refuses.
+  - **Impact**: 1 of 177 real finds lost in WO-1084's re-run; the guard removed 74 of 118 wrong ones.
+  - **Next action**: allow a hop to a different domain when that domain is one of the government's own `alternate_domains` in the research file, or when the link text and the target site both name the government; re-run on Coryell County to confirm.
+  - **Constraint**: do not reopen general off-site hops; that is what credited state and university channels to counties.
+  - **History**: `BACKLOG_DONE.md` WO-1084.
 - **[NEEDS-AUDIT] `[EASY]` The access ladder's `direct_file` and YouTube hits include things that are not meeting media, and its "same domain" check rejects real ones.**
   - **Issue**: WO-1077's hand-read found four shapes. (1) Google Drive share links count as `direct_file`, but several were PDFs ("Employment Application.pdf", "2026 DVAM Proclamation.pdf", a chamber guide). (2) Files on `videos.evo.cloud` are rejected as "different domain", but that host belongs to EvoGov, the company that builds the county's own site (Clinton County OH and Iowa County WI had real meeting video there; Kendallville IN and St. James NC had homepage background videos); four places (Edinboro, Spring Valley, Winona Lake, Deer Park) were credited with InvoiceCloud's own "Making a Payment with PayPal" Wistia video from their bill-pay page. (3) The plausibility check compares against the recorded domain, not the site the recorded domain redirects to, so Owosso MI's real council audio on `ci.owosso.mi.us` was rejected. (4) Non-channel YouTube URLs count as hits: the bare youtube.com homepage (Oswego County NY, Jackson County IN), a search URL (Grain Valley MO) and YouTube's own terms page (Cuming County NE).
   - **Impact**: false finds to hand-read, and a few real meeting recordings dropped.
@@ -2907,12 +2910,29 @@ of human step they need.
   - **Constraint**: don't fold this into WO-166's `_classify_direct_media()` — that function is deliberately scoped to a response that IS the media file (Content-Type/Content-Disposition detection), not a page that merely points at one; a SharePoint page needs its own detection and its own resolve path, the same way LIMS/SLC got their own platform entries in `detect_platform()` rather than being handled generically.
   - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (recorded distinctly per that WO's own scope, not built there); `rtr-business/research/ENUMERATION_METHODS.md` §186/§191 for the original finding.
 
-- **[NEEDS-AUDIT] `tests/test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own` fails or passes depending on test collection order, not on any change to the code it tests.**
-  - **Issue**: found live 2026-09-10 (WO-166) while rebasing onto `main` — this test failed both on a fresh `origin/main` checkout run alone and in a full `pytest` run, then passed cleanly in a later full run with no code change in between. The test asserts `"meeting_pages" in data["actual_columns"]`, relying on `archive.main`'s `init_models()` having already run (via some other test module's import) to populate that table in the shared SQLite file — whether that's true depends on which test files pytest happens to collect and import first, not on anything this test or `/admin/schema-info` itself controls.
-  - **Impact**: an occasional false-positive red CI run on an unrelated PR, with no real regression behind it — the exact "flaky test masks a real one" risk this repo's own testing conventions try to avoid.
-  - **Next action**: give this test its own explicit fixture that calls `archive.main`'s `init_models()` (or the equivalent used elsewhere in this suite) before asserting on `actual_columns`, rather than relying on import-order luck from unrelated test modules.
-  - **Constraint**: none known — this is a test-isolation fix, not a change to `/admin/schema-info` itself.
-  - **History**: found incidentally rebasing WO-166 (`BACKLOG_DONE.md`, 2026-09-10) onto `main`; not caused by that PR — confirmed by running the same test against a clean `origin/main` worktree with no WO-166 changes present at all.
+- **[NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac, never in CI or a cloud container; the one Mac-only difference found is that collecting the suite there imports rtr-discovery.**
+  - **Issue**: `test_schema_info_ignores_tables_this_service_does_not_own` and `test_detail_read_is_one_snapshot_during_concurrent_save` failed in some full local runs on the Mac and passed alone. In a cloud container neither failed once: 4 full runs (1 in normal order, 3 with the test files shuffled) and 55 repeats of the second test's file, 30 of them with every CPU busy. When pytest collects `tests/test_wo932_wo145_raw_identity.py`, it imports `scripts/wo145_api_first_sweep.py`, which puts `~/Documents/rtr-discovery` first on Python's import path for the rest of the run and imports that repo's `discovery` package. That only happens where the sibling checkout exists (the Mac), and it happens before any test runs. Its effect on these two tests is not confirmed: this session was not given access to rtr-discovery.
+  - **Impact**: none today. WO-1082 changed both tests so they no longer depend on the shared test database or on a fixed wait. But an import that changes the import path for the whole run can still affect other tests on the Mac.
+  - **Next action**: on the Mac, run the full suite with `-p no:cacheprovider` and compare `sys.path`, `os.environ['DATABASE_URL']` and `sys.modules['app.db.engine'].engine.url` before and after collection. If rtr-discovery changes any of them, make those test modules import the script inside a fixture that restores `sys.path` afterwards.
+  - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26); first seen 2026-09-10 (WO-166).
+
+- **[NEEDS-AUDIT] Four more tests fail when the test files run in a different order: rows left by one file in the shared test database change another file's results.**
+  - **Issue**: with test files shuffled (seeds 11, 22 and 33, whole files kept together), these failed: `test_state_pages.py::test_state_page_lists_states_jurisdictions`, `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue`, `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` (2 of 3 orders) and two tests in `test_archive_push_tracking.py`. The failures are extra or different rows ("Left contains 2 more items", "'Test Meeting' == 'Napa City Council Regular Meeting'"). All pass in the normal alphabetical order, which is the order CI and a plain local run use.
+  - **Impact**: none on today's runs. Adding or renaming a test file can reorder the suite and turn these red with no code change.
+  - **Next action**: for each test, find the rows it counts or reads by slug and scope them to rows the test created itself (unique ids, as `conftest.py`'s `_archive_db_schema` docstring asks), or give the file its own database.
+  - **History**: found running the suite in shuffled order for WO-1082, 2026-09-26.
+
+- **[NEEDS-AUDIT] `[EASY]` Some tests still make real DNS lookups; they pass without network today, but the suite is not fully offline.**
+  - **Issue**: a full run with every DNS lookup blocked (2026-09-26) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`) and 2 in `test_wo1028_meeting_finder_listing.py` (`lacity.primegov.com`, `example.portal.civicclerk.com`). All 8 pass with or without DNS. `test_generic_fallback.py` already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s own lookup is deliberate: it tests the lookup-failure path.)
+  - **Impact**: none on results today. With network, these tests can send a real lookup, and possibly a real request, to hosts that exist (`lacity.primegov.com`).
+  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call the way `tests/test_generic_fallback.py` fakes the SSRF check.
+  - **History**: found in WO-1082's offline scan (`BACKLOG_DONE.md`).
+
+- **[NEEDS-AUDIT] The YouTube fetch guard does not stop a YouTube request made through an HTTPS proxy.**
+  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. When `HTTPS_PROXY` is set, yt-dlp asks the proxy to connect, so no local name lookup happens and nothing is refused: `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection` fails in a cloud container for this reason (confirmed 2026-09-26).
+  - **Impact**: none on the office Macs unless a proxy is set there. On any machine that uses a proxy, the "zero YouTube requests off the drip Mac" rule is not enforced by the guard.
+  - **Next action**: decide whether proxied machines matter. If they do, also refuse YouTube hosts at the HTTP-client level (yt-dlp's `urlopen`, `aiohttp`, `requests`), or have `install()` clear proxy settings for YouTube hosts.
+  - **History**: found running the full suite for WO-1082, 2026-09-26.
 
 - **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT/SIGSEGV crash-loop — 34 occurrences 2026-08-30 through 2026-09-10 20:54 UTC, then quiet — `--loop asyncio` (WO-239) is looking like a real fix, not yet confirmed for long enough to close.**
   - **Issue**: identical "Exited with status 134" Render alerts, 34 occurrences from 2026-08-30 16:54 UTC through 2026-09-10 20:54 UTC, one of which (2026-09-10, mid-afternoon PDT) exited with status 139 (SIGSEGV) rather than 134. Memory pressure stays ruled out (14-day and same-day graphs both stay well under the `standard` plan's 2GB ceiling except the 2026-09-01 exception already on record). **WO-239 (2026-09-10) added `PYTHONFAULTHANDLER=1` to all four services and captured two real fault dumps the same day — both show `Unexpected error 9 on netlink descriptor` immediately before the fatal signal, and neither dump marks any thread "Current thread" the way an ordinary Python-level fault does.** That message comes from libuv, the C library uvloop (uvicorn's silent default event loop, never a deliberate choice recorded anywhere in this repo) is built on — a real, evidence-based lead toward uvloop/libuv specifically.

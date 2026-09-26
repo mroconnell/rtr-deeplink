@@ -1,5 +1,70 @@
 # Backlog — done
 
+## WO-1084: the access ladder no longer hops off the government's own site -- 74 of 118 wrong finds gone, 176 of 177 real ones kept [Done 2026-09-26]
+
+**What was done and why.** WO-1077's hand-read of 737 ladder finds showed that most "another organization's" finds came from one step: the hop step followed a link off the government's own site (a state portal's policy page, a university extension office, a tourism board) and credited whatever it found there to the government. The clearest case: every Kentucky city on the state's `*.ky.gov` template has a footer link to `kentucky.gov/policies`, which carries the state's `kygov` YouTube channel. `scripts/wo147_access_ladder_sweep.py` now has `_is_offsite_hop()`: both hop scorers refuse a hop to a host that is not the page's own host, a subdomain of it (or the reverse), or a known meeting-platform host. Tests: `tests/test_wo1084_offsite_hops.py` (real host pairs from WO-1077).
+
+**Result.** The ladder was re-run with the fix on WO-1077 governments whose find had a hand-read verdict; the run was stopped at 295 of 317.
+
+| Result with the fix | Wrong finds ("another organization's") | Real finds ("own meeting platform") |
+|---|---|---|
+| Same link found | 41 | 175 |
+| A different link found | 3 | 1 |
+| No link now | 74 | 1 |
+| **Total** | **118** | **177** |
+
+The 41 wrong finds that remain were found on the government's own pages (36) or through a platform host (5); the fix does not touch those, and the note for another organization's link on the government's own page is the open WO-933 entry in `BACKLOG.md`. The one real find lost is Coryell County TX, whose recordings are on its clerk's own separate domain; filed as its own `BACKLOG.md` entry.
+
+## WO-1083: crawler burst on `/j/` hub pages took the whole Archive down — cached the GROUP BY, added the missing `bs4` dependency [Done 2026-09-26]
+
+**What happened.** On 2026-09-26, from about 6:56 to 7:02 AM Pacific, the Archive went down. A crawler asked for dozens of `/j/<slug>` hub pages every second — mostly Utah town and county pages (`/j/*-ut`). Every one of those pages runs one database query that counts every meeting page in the whole Archive, grouped by government. That query had no cache: every request ran it fresh. The Archive keeps only 5 database connections open per worker (plus 2 spare), and runs 2 workers. The burst of hub-page requests used up every connection and kept them busy. Every other page — `/m/` meeting pages, `/context`, `/state/*`, even the health check — started failing with a "connection pool timeout" error. Render's automatic health check saw the failures and shut the instance down.
+
+**What was built.**
+
+- A short-term cache for that GROUP BY query (`archive/db/hub_groups_cache.py`), used by `crud._hub_groups()`. The first request in a 60-second window runs the real query; every other request in that window reuses its answer instead of running the query again. 60 seconds matches the TTL the Archive's existing hub-slug cache already uses, chosen for the same reason: short enough that a real change shows up within a minute, long enough to make the query itself close to free.
+- A second, separate protection against a burst: if many requests miss the cache at the exact same moment (the situation that took the Archive down), only ONE of them runs the real query. The rest wait for that one answer and share it, instead of each starting its own copy of the same query. This is the part that actually stops the incident from repeating — a plain cache alone would not have helped during the first second of a burst, before anything was cached yet.
+- The cache is cleared immediately (not left to expire) whenever a page's government changes: after an ingest, after a human override, and after an admin page-delete. So a newly-added or newly-corrected meeting still shows up on its hub right away, not up to 60 seconds later.
+- Configurable via `HUB_GROUPS_CACHE_TTL_SECONDS` (default 60; set to 0 to turn caching off).
+- Separately, production logs from the same day showed a second, unrelated error: `ModuleNotFoundError: No module named 'bs4'`, hit whenever a BoxCast meeting page tried to refresh its video link. The Archive service was missing a dependency (`beautifulsoup4`) that one of its code paths needs. Added to `archive/requirements.in`/`archive/requirements.txt`, the same way the resolver service already has it.
+
+**Result — 100 requests against a local Archive, deliberately shrunk to a 2-connection pool (no spare connections) and a realistic 100ms-per-query delay standing in for a real production database round trip, before and after:**
+
+| Check | Before (no cache) | After (cache + single-flight) |
+| --- | --- | --- |
+| Requests that timed out waiting for a database connection | 74 of 100 | 0 of 100 |
+| Requests that succeeded | 26 of 100 | 100 of 100 |
+| Real GROUP BY queries actually run | 100 | 1 |
+| Total time for all 100 requests | 2.21s | 0.12s |
+
+See `docs/investigations/wo1083_hub_groups_pool_measurement.md` for the exact method, the caveats on these numbers, and how to reproduce them.
+
+**Caution.** A page that just got a government (via ingest, an override, or the hub-slug freeze sweep) can take up to 60 seconds to show up on its `/j/` hub page, on the sitemap, and in `/state/*` page counts — unless it came in through ingest, override, or delete, which clear the cache right away. This is the same trade-off the existing hub-slug cache already makes, at the same 60-second window.
+
+**Tests.** `tests/test_wo1083_hub_groups_cache.py`: cache hit/miss, manual invalidation, TTL expiry, TTL disabled, 50 concurrent requests sharing one real query, a failed query not getting stuck or wrongly cached, and an end-to-end check that a real ingest shows up on its hub page immediately. All existing hub/jurisdiction tests still pass.
+
+## WO-1081: Meeting Finder lists 35 known Swagit view pages, with dates [Done 2026-09-26]
+
+**What was done and why.** A Swagit tenant's tab pages (`/city-council`) are empty shells (WO-1036). Only a numbered `/views/{id}` page lists its meetings, and nothing on the tenant's own Swagit site links one: the government's website embeds it. Dublin, CA is the worked example. Its own "Watch Meetings" page embeds `dublinca.new.swagit.com/views/876/`, which lists 17 City Council meetings, while its tabs list none. rtr-discovery measured the gap on 2026-09-26: 271 of 438 Swagit tenants had 0 meetings in its ledger.
+
+- **`app/utils/jurisdiction_data/swagit_views.csv`**: the 35 view numbers already recorded in our research files, one per tenant, each copied from a real link, with the file it came from (`found_in`) and how strong that is (`evidence`). It moved here from rtr-discovery #79, so both tools read one copy, next to `tenant_overrides.csv`.
+- **`app/platforms/swagit.py`**: `known_views()` and `known_view_for(host)` read it. A bare `*.swagit.com` host finds its `*.new.swagit.com` row.
+- **Meeting Finder's Swagit lister** (`listing._list_via_swagit_views_page`): a bare tenant URL now lists its known view page instead of declining. A tenant with no row still falls through to the other listers, as before.
+- **Dates on a view page** (`listing._parse_swagit_video_table`): a view page puts each date in its own column. Only the cell under the title was read, so every row came back undated (Dublin's view 876: 17 rows, 0 dates). The older WO-1028 test used a synthetic row with the date under the title, so it could not catch this.
+
+**Result.**
+
+| Check | Result |
+| --- | --- |
+| New tests (`tests/test_wo1081_swagit_known_views.py`, real fixture `tests/fixtures/swagit/dublin_views_876.html`) | Pass. 2 of the 5 fail without the change. |
+| Full suite | 7,640 passed; 2 failed, the known local-export tests (`BACKLOG.md`), which fail on unchanged main too |
+| `ruff check .`, `ruff format --check .` | Pass |
+
+`test_swagit_bare_tenant_root_falls_through_to_discovery` (WO-1028) now uses `montgomerycountytx.new.swagit.com`. Its old tenant, Wise County TX, has a known view, so it now lists that view instead of falling through.
+
+**Caution.** A view number shows the same listing on any Swagit host. Wise County TX's view 908, opened on `dublinca.new.swagit.com`, showed Wise County's meetings under a "Dublin, CA Video Archive" heading. Video numbers are shared the same way, but a video page shows its true owner's branding (Ryan, 2026-09-26: `dublinca.new.swagit.com/videos/400823` shows Wise County's Sep 14 meeting with the Wise County banner). So a view number is only trusted when read from a real link, never guessed. A wrong row would file another government's meetings under the tenant. Pins and view numbers carry the same risk, which is why this file lives here. It changes production behavior only after a deploy.
+
+**Found along the way.** `tests/test_destinyhosted.py::test_resolve_delegates_through_onclick_swagit_link` reaches the network. With DNS blocked, it fails on unchanged main (c46c6b0).
+
 ## WO-1080: five public bodies found by Meeting Finder get registry ids [Done 2026-09-26]
 
 **What was done and why.** Meeting Finder's 2026-09-25/26 runs found real meetings of five public bodies that had no registry id, linked from school-district sites and wrongly filed there by the finder (hand-checked). Ryan: "mint the five public bodies, skip PIAA" (2026-09-26).
@@ -17,6 +82,61 @@
 State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_types.py`'s state-board phrases now accept `other` as well as `state`, so a state board's own meetings are not rejected when that board is searched (new test in `tests/test_wo1078_meeting_finder_body_type.py`).
 
 **Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
+
+## WO-1082: local-only test failures fixed so a full local run is clean, with or without network [Done 2026-09-26]
+
+**What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed, and one more (item 5) failed on a Mac with no network. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
+
+**1 and 2. The two wrong-page export tests** (`test_repair_wrong_pages.py::test_every_row_matches_the_local_export_it_was_built_from`, `test_wrong_page_screen.py::test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages`).
+
+Cause: both check real rows of the 2026-09-21 meeting export. They read `/tmp/rtr_meeting_inventory/meeting_inventory.csv` and skipped only when that file was missing. The daily dashboard refresh rewrites that file (2026-09-23, then 2026-09-25 07:08), so the tests ran on a newer export and failed on pages the repairs had since changed.
+
+Fix: `tests/conftest.py`'s `wrong_page_export_2026_09_21()` only accepts a file that looks like the 2026-09-21 export. The CSV has no date in it, so it checks two facts about that export:
+
+| Check | Value for the 2026-09-21 export |
+|---|---|
+| Rows | 10,280 (recorded twice in `BACKLOG.md`, both measured from that export) |
+| Newest page `created_at` | no later than 2026-09-22 (one day of slack: `created_at` is UTC, the export ran in Pacific time) |
+
+It prefers a dated copy, `/tmp/rtr_meeting_inventory/meeting_inventory_2026-09-21.csv`, when one exists, since the refresh never overwrites that file. On any other export the tests skip, and the skip reason gives the row count and newest date it found.
+
+Verified with stand-in files. A 10,280-row file whose newest page is 2026-09-25 skips both tests with that reason. A file matching both checks runs the real check.
+
+Caution: the 10,280 figure comes from the backlog, not from the file itself; the real 2026-09-21 export was not available here. If the Mac's copy of that export does not match both checks, the tests skip (and say why) instead of running. To keep the real check running, save that export as `meeting_inventory_2026-09-21.csv`.
+
+**3. `test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own`.**
+
+Cause: the test needs an Archive-owned table (`meeting_pages`) in the database the resolver reflects. Before this change it relied on the suite-wide SQLite file from `conftest.py`, which every test module shares, so what the file held at this test's turn depended on the rest of the run. The exact Mac-only trigger was not reproduced. It passed here in the normal order, in 3 shuffled orders, and when every test file was collected but only this test was run.
+
+Fix: a fixture builds a fresh SQLite file with both services' tables and points `app.db.engine.engine` at it. The endpoint reads that attribute at call time. The test now depends on nothing another test does.
+
+**4. `test_context_candidate_review.py::test_detail_read_is_one_snapshot_during_concurrent_save`.**
+
+Cause: the test started a save during an open read, slept a fixed 0.05 seconds, then checked the save had not finished. A fixed sleep says nothing about where the save actually is, so the check depended on timing. The one Mac flake was not reproduced here: 55 repeats of the file, 30 of them with every CPU busy, all passed. A probe showed the save really does stay blocked for 2 full seconds while the read is open.
+
+Fix: the save's own call to `_active_observations` (made inside its write transaction, just before it commits) now sets a signal. The read waits for that signal before it checks. So the check always runs with the save really in progress, never before the save has started. A failure now names the save's outcome or its error.
+
+Verified that it still catches the real bug. With the read's snapshot removed from `archive/context/store.py` (temporarily, then restored), it fails with "the save finished while the read was still open: 'saved'".
+
+**5. `test_destinyhosted.py::test_resolve_delegates_through_onclick_swagit_link`** (added after a report from the session working on PR #1489).
+
+Cause: it failed with "DNS blocked" on a Mac without network access. The test fakes every page fetch with `mock_session`. But before each fetch, `app/utils/url_guard.py`'s SSRF check looks up the host's real address (`_resolve_hostname`), and the test reaches that check through `generic_fallback`'s page fetch. So the test needed working DNS even though it never fetched a page.
+
+Fix: the file gets the same autouse fixture `tests/test_generic_fallback.py` already uses. It returns a fixed public address (93.184.216.34) for any host name.
+
+Verified with every DNS lookup blocked in the test process: before the fix, 1 of the file's 2 tests failed and it made 2 real lookups (`public.destinyhosted.com`). After the fix, both pass and it makes no lookups.
+
+To find any others, the whole suite was then run with every DNS lookup blocked. Two more files failed for the same reason and got the same fixture:
+
+| File | Tests that failed with no DNS | Host looked up |
+|---|---|---|
+| `test_refresh_archived_page.py` | 4 of 4 | `example.granicus.com` |
+| `test_queue_probe.py` | 1 (`test_probe_vimeo_accepts_real_shaped_oembed_response`) | `vimeo.com` |
+
+After the fix, all 91 tests in the three files pass with DNS blocked, and none of them makes a lookup. Four other files still make real lookups but pass either way; they are logged in `BACKLOG.md`.
+
+
+**Result.** Full local run in a cloud container, with every file collected: all four pass. The two export tests skip because no export exists here. The one remaining failure, `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`, happens only because this container sends web traffic through a proxy. It is logged in `BACKLOG.md`, along with four other tests that fail only when test files run in a shuffled order, and the unconfirmed rtr-discovery import lead for tests 3 and 4.
 
 ## WO-1078: Meeting Finder checks the government TYPE a body's name implies, not just its place name [Done 2026-09-26]
 
@@ -183,7 +303,18 @@ Held back, not applied (`research/wo1077_review.csv`): six Google Drive links co
 
 Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
 
-**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
+**Second pass, 2026-09-26.** Meeting Finder ran again on the 40 agenda-only governments, this time from each government's own homepage (`--entry start`, pin mode), to look for video on another site.
+
+| Second-pass result | Count of 40 |
+|---|---|
+| Tier 3, queued | 1 |
+| Tier 3, held for hand-check | 1 |
+| Meetings found, no video | 22 |
+| Stopped at the 15-minute per-government limit | 16 |
+
+Queued: Stillwater County MT, a 17-minute Board of County Commissioners meeting on its CivicClerk portal (identity check agrees). Held: Colusa County CA, an undated Vimeo video whose length could not be measured.
+
+**Caution.** 22 governments showed meetings but no video from both starting points; they most likely do not post recordings. The 16 that hit the time limit were not rerun: the first 24 yielded one find.
 
 ## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
 

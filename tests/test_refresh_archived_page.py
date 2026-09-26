@@ -7,9 +7,26 @@ archive_client.lookup/_recheck_archived_page, no real network call.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 
 import app.main
+from app.utils import url_guard
+
+
+@pytest.fixture(autouse=True)
+def _fake_public_dns(monkeypatch):
+    """app.utils.url_guard's SSRF check (WO-5) resolves each hostname for
+    real before a fetch, even when the fetch itself is faked. Without this, all four
+    route tests failed on a machine with no DNS (the route checks the
+    submitted URL's host before anything else). Same
+    fixture as tests/test_generic_fallback.py: a fixed public IP for any
+    hostname. Found 2026-09-26 (WO-1082) by running the suite with DNS
+    blocked."""
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
+
 
 client = TestClient(app.main.app)
 

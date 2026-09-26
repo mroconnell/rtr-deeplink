@@ -3,6 +3,15 @@ uvicorn[standard]>=0.53.0
 jinja2>=3.1
 aiohttp>=3.9
 langdetect>=1.0.9
+# WO-1083: archive/utils/video_refresh.py's fresh_video_url() lazily
+# imports app/platforms/boxcast.py (its "boxcast"/"civicmedia" refresh
+# handlers), which imports app/platforms/granicus.py at module level,
+# which imports bs4 -- so any BoxCast/CivicMedia meeting page render hit
+# `ModuleNotFoundError: No module named 'bs4'` in production and silently
+# fell back to the (possibly-expired) stored video URL instead of a fresh
+# one. Same pin as requirements.in's copy for the resolver, which already
+# has this dependency because its own platform adapters use bs4 directly.
+beautifulsoup4>=4.12
 sqlalchemy[asyncio]>=2.0.54
 asyncpg>=0.29
 aiosqlite>=0.20

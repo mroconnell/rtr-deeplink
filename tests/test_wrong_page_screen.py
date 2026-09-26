@@ -12,12 +12,13 @@ import csv
 from pathlib import Path
 
 import pytest
+from conftest import wrong_page_export_2026_09_21
 
 from scripts import wrong_page_screen as screen
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SHEET = REPO_ROOT / "reports" / "wrong_page_worklist.csv"
-EXPORT = Path("/tmp/rtr_meeting_inventory/meeting_inventory.csv")
+EXPORT, EXPORT_SKIP_REASON = wrong_page_export_2026_09_21()
 
 
 @pytest.mark.parametrize(
@@ -153,9 +154,7 @@ def test_from_archive_needs_a_token(monkeypatch, tmp_path, capsys):
     assert code == 1 and "ARCHIVE_INGEST_TOKEN" in capsys.readouterr().err
 
 
-@pytest.mark.skipif(
-    not EXPORT.exists(), reason="the local 2026-09-21 export is not here"
-)
+@pytest.mark.skipif(EXPORT is None, reason=EXPORT_SKIP_REASON)
 def test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages(tmp_path):
     """Real data: the 23 wrong-type school-board pages the audit found are
     all still flagged today, and every one of them is a row of the sheet."""
