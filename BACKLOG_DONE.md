@@ -54,7 +54,21 @@ Held back, not applied (`research/wo1077_review.csv`): six Google Drive links co
 
 **Ladder problems found.** The hand-read found two fixable ladder faults, filed in `BACKLOG.md`'s Open bugs: the hop step follows links off the government's own site (state agencies, university extensions, tourism boards) and credits what it finds there to the government, which produced most of the "another organization's" YouTube finds; and the `direct_file`/YouTube hit filter lets through Google Drive PDFs, non-channel YouTube URLs and InvoiceCloud help videos, while rejecting real meeting audio when the site redirects to a different domain or hosts video on `videos.evo.cloud` (EvoGov). The run also covered 828 of the 7,359 governments in the parked WO-912 rerun; that entry now says so.
 
-**Recommendation.** Ingest from the 104 recorded non-YouTube platforms next (CivicPlus AgendaCenter 39, CivicWeb 9, CivicClerk 9, Vimeo 7, Swagit 3, BoardDocs 3 and others; `research/wo1077_changes.csv`), passing each row's `gov_id`. Hand the YouTube channels to the drip Mac.
+**Ingest, the same evening.** Ryan asked for the tier-1 finds ingested and the rest queued or dripped. Meeting Finder (`scripts/meeting_finder.py`, pin mode, each row's `gov_id`) ran on the 104 recorded non-YouTube platforms; `scripts/meeting_finder_followups.py` (live check, then `--apply-ingest --apply-queue`) did the rest. Most recorded platforms turned out to carry agendas, not recordings:
+
+| Meeting Finder result | Count of 104 |
+|---|---|
+| Tier 1, ingested | 6 |
+| Tier 3, queued (3 more were already on the tier-3 queue) | 9 |
+| Tier 2, YouTube drip lead | 3 |
+| Held: clip under a minute or no meeting evidence | 4 |
+| Meetings found, no video | 40 |
+| No meeting and no video | 37 |
+| Embed-restricted | 2 |
+
+Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
+
+**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
 
 ## WO-1076: Meeting Finder second pass, one more hop, adaptive budget; two gate fixes [Done 2026-09-25]
 
