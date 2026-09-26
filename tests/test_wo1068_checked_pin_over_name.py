@@ -215,13 +215,13 @@ def test_lawa_and_mncppc_hosts_are_their_own_governments(name, host, path, gov_i
 
 
 # ---------------------------------------------------------------------------
-# WO-1087 (2026-09-26): on TelVue the pin naming a whole customer (its org
+# WO-1091 (2026-09-26): on TelVue the pin naming a whole customer (its org
 # token) is the fallback, not the first answer. WO-1068 above made a
 # checked pin beat a namesake; this is the other direction, and only on
 # TelVue, where every customer carries more than one government.
 #
 # The names are what telvue.py now returns for rtr-discovery's 8 saved
-# media pages (tests/fixtures/telvue/wo1087/, captured 2026-09-25);
+# media pages (tests/fixtures/telvue/wo1091/, captured 2026-09-25);
 # tests/test_telvue.py checks the adapter half on the same pages.
 
 _TELVUE = "videoplayer.telvue.com"
@@ -314,7 +314,7 @@ def test_telvue_station_with_no_state_from_pins_stays_blank():
 
 def test_other_multi_gov_hosts_keep_the_whole_tenant_pin_first():
     # Control: a ChampDS whole-customer pin (Atlanta) still wins over a
-    # different name. WO-1087 is TelVue only. Synthetic name.
+    # different name. WO-1091 is TelVue only. Synthetic name.
     match = _resolve("Fulton County, GA", "play.champds.com", "/atlantaga/event/1")
     assert (match.gov_id, match.tier) == ("us:place:1304000", TIER_PINNED)
 

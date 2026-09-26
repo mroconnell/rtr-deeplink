@@ -331,7 +331,7 @@ def tenant_key(url: str) -> Optional[str]:
 # comes from one meeting's title -- and TelVue's adapter falls back to one
 # town per station, which is how RVTV's Jackson County meetings read as
 # "Ashland". For these, only a pin identifies the government (on TelVue,
-# also the meeting's own name: see NAME_FROM_MEETING_TITLE_HOSTS, WO-1087).
+# also the meeting's own name: see NAME_FROM_MEETING_TITLE_HOSTS, WO-1091).
 #
 # Every entry is real and evidenced; tests/test_tenant_key.py fails if the
 # pins show another tenant naming more than one government that is not
@@ -359,11 +359,11 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         ("videoplayer.telvue.com", "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05"),
         # Queen Anne's County, MD's station (QACTV): county commissioners
         # and Centreville's town council (rtr-discovery's saved
-        # queenannes_videos.html, 2026-09-25; WO-1087).
+        # queenannes_videos.html, 2026-09-25; WO-1091).
         ("videoplayer.telvue.com", "AbfNhigIqnG-4roGCxaFupXEKfme9dfT"),
         # Pierre, SD's station (OaheTV): the city commission and the Pierre
         # School Board (rtr-discovery's saved pierre_videos.html,
-        # 2026-09-25; WO-1087).
+        # 2026-09-25; WO-1091).
         ("videoplayer.telvue.com", "5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq"),
         # ChampDS customers whose one CustomerName is applied to every
         # meeting, but whose own meeting-body list (playapi.champds.com/
@@ -404,7 +404,7 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
 # table and the station logo; RVTV's "Ashland" for Jackson County
 # meetings came from that station-level fallback.
 #
-# WO-1087: on these hosts a pin naming the whole customer is only the
+# WO-1091: on these hosts a pin naming the whole customer is only the
 # fallback. `resolver._meeting_title_government()` tries the meeting's own
 # name first, bounded to the state the customer's pins agree on, and
 # telvue.py no longer applies a station-level name to a customer in

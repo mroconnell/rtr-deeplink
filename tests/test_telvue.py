@@ -1273,9 +1273,9 @@ async def test_list_playlist_items_empty_page_returns_empty_list():
 
 
 # ---------------------------------------------------------------------------
-# WO-1087 (2026-09-26): each meeting gets its own government, and its date.
+# WO-1091 (2026-09-26): each meeting gets its own government, and its date.
 # Real pages: rtr-discovery's saved TelVue captures of 2026-09-25, copied
-# unchanged into tests/fixtures/telvue/wo1087/ (see CAPTURE_NOTES.md there).
+# unchanged into tests/fixtures/telvue/wo1091/ (see CAPTURE_NOTES.md there).
 
 import json  # noqa: E402
 import re  # noqa: E402
@@ -1289,7 +1289,7 @@ from app.platforms.telvue import (  # noqa: E402
 )
 from app.utils.tenant_key import MULTI_GOVERNMENT_TENANTS  # noqa: E402
 
-_WO1087_TOKENS = {
+_WO1091_TOKENS = {
     "derry": "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l",
     "kalamazoo": "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05",
     "queenannes": "AbfNhigIqnG-4roGCxaFupXEKfme9dfT",
@@ -1299,12 +1299,12 @@ _WO1087_TOKENS = {
 
 async def _resolve_saved_page(customer: str, media_id: int, html: str = None):
     url = (
-        f"https://videoplayer.telvue.com/player/{_WO1087_TOKENS[customer]}"
+        f"https://videoplayer.telvue.com/player/{_WO1091_TOKENS[customer]}"
         f"/media/{media_id}"
     )
     if html is None:
         html = load_fixture(
-            "telvue", "wo1087", f"{customer}_media_{media_id}_page.html"
+            "telvue", "wo1091", f"{customer}_media_{media_id}_page.html"
         )
     routes = {url: FakeResponse(status=200, text=html, url=url)}
     # The caption and chapter files were not copied (nothing here reads
@@ -1349,7 +1349,7 @@ async def _resolve_saved_page(customer: str, media_id: int, html: str = None):
         ("pierre", 1047373, "Pierre, SD", None, "2026-09-22"),
     ],
 )
-async def test_wo1087_saved_meetings(
+async def test_wo1091_saved_meetings(
     customer, media_id, jurisdiction, meeting_body, date
 ):
     result = await _resolve_saved_page(customer, media_id)
@@ -1358,14 +1358,14 @@ async def test_wo1087_saved_meetings(
     assert result.date == date
 
 
-async def test_wo1087_titles_are_kept_as_written():
+async def test_wo1091_titles_are_kept_as_written():
     # The date is read from the title, not cut out of it.
     result = await _resolve_saved_page("queenannes", 1047511)
     assert result.title == "Centreville Town Council || 09/17/2026"
 
 
 # The 10 dated titles in rtr-discovery's walker tests
-# (tests/test_telvue.py::test_meeting_dates there). Before WO-1087 the
+# (tests/test_telvue.py::test_meeting_dates there). Before WO-1091 the
 # adapter read a date only from a title ending "- Month D, YYYY", which
 # none of these do.
 TEN_DATED_TITLES = [
@@ -1399,9 +1399,9 @@ TEN_DATED_TITLES = [
 
 
 @pytest.mark.parametrize("fixture, title, expected", TEN_DATED_TITLES)
-def test_wo1087_ten_dated_titles_parse(fixture, title, expected):
+def test_wo1091_ten_dated_titles_parse(fixture, title, expected):
     # Each title is a real row of its saved listing.
-    assert title in load_fixture("telvue", "wo1087", fixture)
+    assert title in load_fixture("telvue", "wo1091", fixture)
     assert meeting_date(title, None) == expected
     # And the old trailing-"Month D, YYYY" reader parses none of them.
     assert TelvueAssetFinder._split_title_date(title)[1] is None
@@ -1423,16 +1423,16 @@ def test_wo1087_ten_dated_titles_parse(fixture, title, expected):
         ("Trail of Governors", "2026, Noem", None),
     ],
 )
-def test_wo1087_description_dates(title, description, expected):
-    assert description in load_fixture("telvue", "wo1087", "pierre_videos.html")
+def test_wo1091_description_dates(title, description, expected):
+    assert description in load_fixture("telvue", "wo1091", "pierre_videos.html")
     assert meeting_date(title, description) == expected
 
 
-async def test_wo1087_a_station_name_never_stands_in_on_a_multi_government_station():
+async def test_wo1091_a_station_name_never_stands_in_on_a_multi_government_station():
     # SYNTHETIC: the real Ashland (RVTV) page with its title swapped for a
     # generic one. RVTV carries Jackson County, Ashland, Medford and more,
     # so its "Ashland, OR" station entry must not name this meeting; before
-    # WO-1087 it did (the Jackson County -> "Ashland" shape).
+    # WO-1091 it did (the Jackson County -> "Ashland" shape).
     token = "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP"
     assert ("videoplayer.telvue.com", token) in MULTI_GOVERNMENT_TENANTS
     assert _KNOWN_ORG_TOKEN_JURISDICTIONS[token] == "Ashland, OR"

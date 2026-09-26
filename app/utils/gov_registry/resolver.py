@@ -395,7 +395,7 @@ def _matched_multi_gov_pin_row(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> Optional[Tuple[Government, str, TenantOverride]]:
     """`_matched_multi_gov_pin()` plus the row that matched, so rung 1b can
-    tell a pin naming a whole TelVue customer from a narrower one (WO-1087)."""
+    tell a pin naming a whole TelVue customer from a narrower one (WO-1091)."""
     for row in _match_override(host, path, page_hints):
         gov = registry.government_for_id(row.gov_id)
         if gov:
@@ -2086,7 +2086,7 @@ def trusts_shared_tenant_name(host: Optional[str], path: Optional[str]) -> bool:
 
 
 def is_customer_fallback_pin(host: str, row: TenantOverride) -> bool:
-    """WO-1087: True for a pin naming a whole customer on a host whose
+    """WO-1091: True for a pin naming a whole customer on a host whose
     adapter reads the government from each meeting's title (TelVue's org
     token). Such a pin is only the fallback: rung 1b tries the meeting's
     own name first. The one definition: `queue_probe.has_owner()` uses it
@@ -2097,7 +2097,7 @@ def is_customer_fallback_pin(host: str, row: TenantOverride) -> bool:
 
 
 def _customer_pin_state(host: str, path: Optional[str]) -> str:
-    """WO-1087: the one state every pin on this page's customer names, on a
+    """WO-1091: the one state every pin on this page's customer names, on a
     host whose adapter reads the government from each meeting's title
     (`tenant_key.NAME_FROM_MEETING_TITLE_HOSTS`, i.e. TelVue). "" when the
     customer has no pin, or its pins disagree on the state.
@@ -2130,11 +2130,11 @@ def _customer_pin_state(host: str, path: Optional[str]) -> str:
 def _meeting_title_government(
     raw_name: Optional[str], host: str, path: Optional[str]
 ) -> Optional[GovernmentMatch]:
-    """WO-1087: the government a TelVue meeting's own name identifies, or
+    """WO-1091: the government a TelVue meeting's own name identifies, or
     None. Rung 1b tries this before a pin naming the whole customer, which
     is now only the fallback.
 
-    Before WO-1087 a whole-customer pin won outright, so every meeting on
+    Before WO-1091 a whole-customer pin won outright, so every meeting on
     a station went to one government. rtr-discovery's 8 saved TelVue
     meetings (2026-09-25): 3 right, 3 wrong (Derry's and Pierre's school
     boards filed under the town, Centreville's council under Queen Anne's
@@ -2165,7 +2165,7 @@ def _meeting_title_government(
         tier=match.tier,
         evidence=(
             f"{match.evidence}; the meeting's own name on {host}, "
-            f"in its pins' state {state} (WO-1087)"
+            f"in its pins' state {state} (WO-1091)"
         ),
         meeting_body=match.meeting_body,
         country=match.country,
@@ -2388,7 +2388,7 @@ def _resolve_government_ladder(
         # exactly as before (broken-registry case, same as `_pinned()`).
         gov, evidence, row = matched_pin
         if is_customer_fallback_pin(host, row):
-            # WO-1087: on TelVue a pin naming the WHOLE customer (its org
+            # WO-1091: on TelVue a pin naming the WHOLE customer (its org
             # token) is only the fallback. The meeting's own name goes
             # first, because every customer carries more than one
             # government. A narrower pin (one playlist, series or video)
@@ -2428,7 +2428,7 @@ def _resolve_government_ladder(
             # computes it per HOST, which on a shared host is other customers'.
             tenant_gov_id = None
         else:
-            # WO-1087: a TelVue meeting with no matching pin still gets its
+            # WO-1091: a TelVue meeting with no matching pin still gets its
             # own name's government, when the customer's other pins fix
             # the state (Kalamazoo's station: two one-video pins, both MI).
             by_name = _meeting_title_government(raw_name, host, path)

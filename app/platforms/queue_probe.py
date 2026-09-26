@@ -1539,7 +1539,7 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
       caller can put it straight into the ingest payload (CLAUDE.md's
       "send the government's id in every ingest payload" rule) instead
       of depending on the Archive service's OWN deployed copy of
-      `tenant_overrides.csv` being up to date. Except (WO-1087) a TelVue
+      `tenant_overrides.csv` being up to date. Except (WO-1091) a TelVue
       pin naming the whole customer: that returns `(True, None, "")`,
       since ingest tries the meeting's own name before that pin and an id
       in the payload would skip it.
@@ -1559,7 +1559,7 @@ def has_owner(source_url: str) -> tuple[bool, Optional[str], str]:
     if matched:
         gov, _evidence, row = matched
         if is_customer_fallback_pin(host, row):
-            # WO-1087: a TelVue pin naming the whole customer is only the
+            # WO-1091: a TelVue pin naming the whole customer is only the
             # fallback; ingest tries the meeting's own name first. Owned,
             # but no id handed back, so the Archive's ladder decides.
             return True, None, ""

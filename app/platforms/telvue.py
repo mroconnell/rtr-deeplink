@@ -565,7 +565,7 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     "qDzDQ8k2993lxm2IqCNZjdoqxagPQUa_": "Pipestone, MN",
 }
 
-# WO-1087: org token -> {body named in a meeting's title: government name},
+# WO-1091: org token -> {body named in a meeting's title: government name},
 # for a customer that carries more than one government and titles some
 # meetings by body alone ("School Board Meeting - 09/22/2026"). Used only
 # when the title names no place. Each name must resolve to its own
@@ -591,7 +591,7 @@ ORG_TOKEN_BODY_GOVERNMENTS = {
     },
 }
 
-# WO-1087: meeting dates in the shapes TelVue customers write them, ported
+# WO-1091: meeting dates in the shapes TelVue customers write them, ported
 # from rtr-discovery's TelVue walker (discovery/enumerators/telvue.py,
 # `meeting_date()`), which parsed all 10 dated titles in its 2026-09-25
 # saved pages where `_split_title_date()` parsed none. Month first always.
@@ -846,7 +846,7 @@ class TelvueAssetFinder(AssetFinder):
 
             title, date = self._split_title_date(entry.get("title"))
             if not date:
-                # WO-1087: every other shape the customers write, then the
+                # WO-1091: every other shape the customers write, then the
                 # media page's own og:description.
                 date = meeting_date(entry.get("title"), _og_description(html))
             jurisdiction = self._guess_jurisdiction(title)
@@ -854,7 +854,7 @@ class TelvueAssetFinder(AssetFinder):
                 jurisdiction, netloc=None, page_text=html
             )
             org_token = _org_token_from_url(final_url)
-            # WO-1087: a station carrying several governments has no one
+            # WO-1091: a station carrying several governments has no one
             # station-level name. Its org-token entry may still fill the
             # state of a name the title gave (below), but never stands in
             # for a name the title did not give: the resolver would file
@@ -1005,7 +1005,7 @@ class TelvueAssetFinder(AssetFinder):
         match = _BODY_SUFFIX_RE.match(title.strip())
         if not match:
             return None
-        # WO-1087: Kalamazoo's station writes "Kalamazoo County - Board of
+        # WO-1091: Kalamazoo's station writes "Kalamazoo County - Board of
         # Commissioners - September 15, 2026 Meeting", so the name before
         # the body keeps its dash ("Kalamazoo County -").
         name = match.group(1).strip().rstrip("-|:,").strip()

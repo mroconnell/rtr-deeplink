@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1087: TelVue — each meeting gets its own government, and its date [Done 2026-09-26]
+## WO-1091: TelVue — each meeting gets its own government, and its date [Done 2026-09-26]
 
 **What was done and why.** Every TelVue customer checked is a regional station that carries more than one government. A pin on the whole customer (its org token) was applied before the meeting's own name was read, so a school board or a town council went to the station's town or county. Separately, the adapter read a date only from a title ending "- Month D, YYYY", which few customers write.
 
@@ -26,7 +26,7 @@ Dates: the adapter read 0 of rtr-discovery's 10 dated test titles before and 10 
 
 **Caution.** Oshtemo stays blank: "Oshtemo Township, MI" mints rather than keying to the Census's "Oshtemo charter township" (new `BACKLOG.md` entry). 54 TelVue customers have a pin carrying their org token (49 of them a whole-customer pin); for these, a title that names a place in the pins' state now wins over the whole-customer pin. A title word that is also a real place in that state (an "Energy Committee" on an Illinois station would read "Energy") would now win too; no such title was seen in the 8 pages. Customers with only token-less playlist pins (RVTV, C-NET) and customers with no pin stay blank, as before. Already-archived pages move only when `scripts/backfill_gov_id.py` runs after a deploy.
 
-**Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1087/` (capture note there). Synthetic names are commented as such.
+**Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1091/` (capture note there). Synthetic names are commented as such.
 
 ## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
 
