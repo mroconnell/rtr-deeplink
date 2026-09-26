@@ -18,9 +18,9 @@ State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_ty
 
 **Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
 
-## WO-1081: four local-only test failures fixed so a full local run is clean [Done 2026-09-26]
+## WO-1081: local-only test failures fixed so a full local run is clean, with or without network [Done 2026-09-26]
 
-**What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
+**What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed, and one more (item 5) failed on a Mac with no network. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
 
 **1 and 2. The two wrong-page export tests** (`test_repair_wrong_pages.py::test_every_row_matches_the_local_export_it_was_built_from`, `test_wrong_page_screen.py::test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages`).
 
@@ -52,6 +52,24 @@ Cause: the test started a save during an open read, slept a fixed 0.05 seconds, 
 Fix: the save's own call to `_active_observations` (made inside its write transaction, just before it commits) now sets a signal. The read waits for that signal before it checks. So the check always runs with the save really in progress, never before the save has started. A failure now names the save's outcome or its error.
 
 Verified that it still catches the real bug. With the read's snapshot removed from `archive/context/store.py` (temporarily, then restored), it fails with "the save finished while the read was still open: 'saved'".
+
+**5. `test_destinyhosted.py::test_resolve_delegates_through_onclick_swagit_link`** (added after a report from the session working on PR #1489).
+
+Cause: it failed with "DNS blocked" on a Mac without network access. The test fakes every page fetch with `mock_session`. But before each fetch, `app/utils/url_guard.py`'s SSRF check looks up the host's real address (`_resolve_hostname`), and the test reaches that check through `generic_fallback`'s page fetch. So the test needed working DNS even though it never fetched a page.
+
+Fix: the file gets the same autouse fixture `tests/test_generic_fallback.py` already uses. It returns a fixed public address (93.184.216.34) for any host name.
+
+Verified with every DNS lookup blocked in the test process: before the fix, 1 of the file's 2 tests failed and it made 2 real lookups (`public.destinyhosted.com`). After the fix, both pass and it makes no lookups.
+
+To find any others, the whole suite was then run with every DNS lookup blocked. Two more files failed for the same reason and got the same fixture:
+
+| File | Tests that failed with no DNS | Host looked up |
+|---|---|---|
+| `test_refresh_archived_page.py` | 4 of 4 | `example.granicus.com` |
+| `test_queue_probe.py` | 1 (`test_probe_vimeo_accepts_real_shaped_oembed_response`) | `vimeo.com` |
+
+After the fix, all 91 tests in the three files pass with DNS blocked, and none of them makes a lookup. Four other files still make real lookups but pass either way; they are logged in `BACKLOG.md`.
+
 
 **Result.** Full local run in a cloud container, with every file collected: all four pass. The two export tests skip because no export exists here. The one remaining failure, `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`, happens only because this container sends web traffic through a proxy. It is logged in `BACKLOG.md`, along with four other tests that fail only when test files run in a shuffled order, and the unconfirmed rtr-discovery import lead for tests 3 and 4.
 
