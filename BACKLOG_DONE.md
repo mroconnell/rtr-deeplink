@@ -1,5 +1,41 @@
 # Backlog — done
 
+## WO-1090: Adapter health canary had failed every day since 2026-08-29 — two causes fixed, one reclassified, one real outage found [Done 2026-09-26]
+
+**What was checked and why.** The daily canary (`.github/workflows/adapter-canary.yml`) had failed 29 scheduled runs in a row (2026-08-29 to 2026-09-26), so it read as noise. The brief named ffprobe and tvw.org as likely causes. Every one of the 29 failed logs was read and each run's `FAIL` lines counted.
+
+| What the run failed on | Runs (of 29) | Cause |
+|---|---|---|
+| `legistar[1]` (Phoenix), HTTP 410 | 29 | bare `?ID=` link; Legistar now needs the `GUID` |
+| `tvw`, HTTP 403 | 5 (every run since it was added 9/22) | Cloudflare challenge from GitHub runners |
+| `townhallstreams`, no content | 3 | one-off (9/9–9/11), passing since |
+| `seattle_channel` / `aurora_tv`, timeout or no content | 2 each | one-offs |
+| `open_media`, `legistar[0]`, `granicus`, `civicclerk` | 1 each | one-offs |
+
+**The ffprobe errors never failed a run.** They were caught and logged (22–24 tracebacks per run, only from 9/21 on). WO-923 (2026-09-20) added a coverage check to every resolve that calls ffprobe; production has it, the runner didn't, so the check was silently skipped.
+
+**The Phoenix 410 was not a dead meeting.** The earlier backlog entry said the meeting was gone, partly because Phoenix's Legistar API returned `[]` for `EventId eq 1425831`. That was the wrong lookup: `1425831` is a `MeetingDetail` page id, not an API `EventId` (the same meeting is API event `2651`). The real cause: Legistar answers 410 to any link without `GUID=` — confirmed on Phoenix and Charlotte. With its GUID, the same 7/1/2026 City Council Formal page loads and still shows the "Not Available" video markup the WO-30 YouTube-channel fallback expects.
+
+**tvw.org is a bot challenge, not an address block.** From a GitHub runner (run `36264762854`): `curl` got 200 with any User-Agent; aiohttp got 403 with `cf-mitigated: challenge` and a "Just a moment..." page with every User-Agent tried. From a home connection aiohttp got 200. Not worked around, per `CLAUDE.md`.
+
+**What was changed.**
+1. The workflow installs ffmpeg (adds about 14 seconds).
+2. The Phoenix canary URL (and `tests/test_legistar.py`'s `_PHOENIX_URL`) now carries its GUID.
+3. `scripts/adapter_canary.py` gained `CANARY_KNOWN_CI_BLOCKS`: tvw is still run daily, but a 403 there prints on a `BLOCKED` line and doesn't fail the run. Any other tvw failure still does, and a pass prints `UNBLOCKED`. Five new tests in `tests/test_adapter_canary.py`.
+
+**Result**, real canary run `36264914976` on the fix branch:
+
+| Result | Count of 44 |
+|---|---|
+| Passed | 42 |
+| Blocked from CI as expected (`tvw`) | 1 |
+| Failed (`open_media`) | 1 |
+| ffprobe tracebacks | 0 (was 24) |
+
+**The one failure is real.** open.media's whole site broke on 2026-09-26: every tenant serves an empty JavaScript shell and a browser shows "Unexpected Application Error! 404 Not Found". This is the canary doing its job. Logged in `BACKLOG.md`.
+
+**Residuals split back out to `BACKLOG.md`:** the open.media outage; tvw possibly blocked on production too; the canary's `youtube` check can't see a YouTube caption break; `legistar.py` shows a raw error on a GUID-less link.
+
 ## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
 
 **What was done and why.** `swagit_views.csv` (WO-1081) held 35 view numbers copied from links in research files. rtr-discovery's Swagit owner sweep (2026-09-26) proved who owns every view: it read view pages 1-1,090 and two video pages from each of the 567 with meetings; a video page names its owner in its analytics tag (`page_location: 'https://{owner}.swagit.com/...'`) wherever it is opened. Checked against that, 3 of the 35 rows were another government's view and 4 pointed at empty views:
@@ -16,6 +52,7 @@ The file is rebuilt from the sweep only: 427 views for 353 rtr-discovery Swagit 
 **Result.** Tests in `tests/test_wo1081_swagit_known_views.py` (file well-formed and owner-proven, one tenant per view, the three corrected owners, several views listed). `test_swagit_bare_tenant_root_falls_through_to_discovery` now uses a made-up host, since nearly every real tenant has a view. Full suite and ruff results are in the PR.
 
 **Caution.** A walk with WO-1081's file (rtr-discovery run 4354, 2026-09-26) listed 150 of Denton's, Hamilton Southeastern's and Murphy's meetings under Austin, Ferndale and Idaho Falls. None reached the Archive (0 pages, checked the same day). They were marked `filtered_out` (`wrong_swagit_view_owner`) in rtr-discovery's ledger on Ryan's Mac. Render services have `autoDeploy: false`; if WO-1081 was deployed by hand, deploy this too.
+
 
 ## WO-1086: Meeting Finder was calling working sites "domain dead" — fixed, most of one day's `dns-unresolvable` verdicts were wrong [Done 2026-09-26]
 

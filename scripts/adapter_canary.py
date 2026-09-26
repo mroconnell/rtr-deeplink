@@ -185,7 +185,13 @@ CANARY_URLS: dict[str, list[str]] = {
     "legistar": [
         "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1365278"
         "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|",
-        "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831",
+        # The GUID is required: since late August 2026 Legistar answers
+        # 410 Gone to any bare `?ID=` meeting link, on every tenant checked
+        # (Phoenix and Charlotte both, re-confirmed 2026-09-26). The bare
+        # form of this same meeting failed every canary run from
+        # 2026-08-29 to 2026-09-26.
+        "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831"
+        "&GUID=165A34F1-E386-4245-89E7-11D51ED26D7E",
     ],
     "lims": ["https://lims.minneapolismn.gov/MarkedAgenda/CI/6133"],
     # Bristol, RI -- confirmed live 2026-09-01, a real, busy tenant
@@ -332,6 +338,41 @@ CANARY_EXCLUSIONS: dict[str, str] = {
 }
 
 
+# Platforms whose canary URL is known to be refused from a GitHub Actions
+# runner by the site's own bot protection, with the real evidence. The
+# canary still runs them every day. A 403 from one of these is reported
+# on its own "BLOCKED" line and does not fail the run; any other failure
+# (a changed page, no content, a timeout) still does. If one starts
+# passing, the report says so, so a lifted block gets noticed and the
+# entry removed. Never add a platform here to hide a failure that has
+# not been shown to be a bot check -- that is what this list is not for.
+CANARY_KNOWN_CI_BLOCKS: dict[str, str] = {
+    "tvw": (
+        "tvw.org sits behind Cloudflare. From a GitHub runner on "
+        "2026-09-26 (run 36264762854), every aiohttp request got HTTP 403 "
+        "with `cf-mitigated: challenge` and a 'Just a moment...' page -- "
+        "Cloudflare's human-verification check -- whatever User-Agent was "
+        "sent (none, an honest RTR one, a desktop Chrome one). The same "
+        "URL fetched by curl from the same runner, and by aiohttp from a "
+        "home connection, returned the real page (200). This repo does "
+        "not get past a bot challenge, so the canary can't check this "
+        "adapter from CI. See BACKLOG.md's tvw.org entry."
+    ),
+}
+
+
+def is_expected_ci_block(result: dict) -> bool:
+    """A failed result that matches a documented CANARY_KNOWN_CI_BLOCKS
+    entry: the right platform, and a 403 (the shape the block was
+    measured with), not some other failure."""
+    base_name = result["platform"].split("[", 1)[0]
+    return (
+        not result["ok"]
+        and base_name in CANARY_KNOWN_CI_BLOCKS
+        and "403" in (result["reason"] or "")
+    )
+
+
 def has_real_content(result: ResolvedMeeting) -> bool:
     """Same "meaningful content" definition as app/main.py's
     /api/health/resolve-check (WO-7) -- kept in sync deliberately, since
@@ -443,12 +484,27 @@ async def run_canary(urls: dict[str, list[str]]) -> list[dict]:
 
 
 def format_report(results: list[dict]) -> str:
-    failed = [r for r in results if not r["ok"]]
-    lines = [
-        f"Adapter health canary: {len(results) - len(failed)}/{len(results)} platforms OK"
-    ]
+    failed = [r for r in results if not r["ok"] and not is_expected_ci_block(r)]
+    blocked = [r for r in results if is_expected_ci_block(r)]
+    ok_count = len(results) - len(failed) - len(blocked)
+    header = f"Adapter health canary: {ok_count}/{len(results)} platforms OK"
+    if blocked:
+        header += f", {len(blocked)} blocked from CI as expected"
+    lines = [header]
     for r in failed:
         lines.append(f"  FAIL {r['platform']}: {r['reason']} ({r['url']})")
+    for r in blocked:
+        lines.append(
+            f"  BLOCKED {r['platform']} (known CI block, not counted as a "
+            f"failure -- see CANARY_KNOWN_CI_BLOCKS): {r['reason']} ({r['url']})"
+        )
+    for r in results:
+        if r["ok"] and r["platform"].split("[", 1)[0] in CANARY_KNOWN_CI_BLOCKS:
+            lines.append(
+                f"  UNBLOCKED {r['platform']}: listed in CANARY_KNOWN_CI_BLOCKS "
+                f"but passed this run -- the block may have lifted; remove "
+                f"the entry if it keeps passing ({r['url']})"
+            )
     for r in results:
         if r.get("recovered_after_retry"):
             lines.append(
@@ -466,7 +522,7 @@ async def main() -> int:
     register_all_finders()
     results = await run_canary(CANARY_URLS)
     print(format_report(results))
-    return 1 if any(not r["ok"] for r in results) else 0
+    return 1 if any(not r["ok"] and not is_expected_ci_block(r) for r in results) else 0
 
 
 if __name__ == "__main__":

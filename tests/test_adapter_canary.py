@@ -22,10 +22,12 @@ from app.platforms.models import ResolvedMeeting
 from conftest import registered_platforms
 from scripts.adapter_canary import (
     CANARY_EXCLUSIONS,
+    CANARY_KNOWN_CI_BLOCKS,
     CANARY_URLS,
     check_platform,
     format_report,
     has_real_content,
+    is_expected_ci_block,
     run_canary,
 )
 
@@ -394,3 +396,81 @@ def test_format_report_lists_only_failures():
     assert "1/2 platforms OK" in report
     assert "FAIL broken: resolve returned no real content (u2)" in report
     assert "FAIL good" not in report
+
+
+# --------------------------------------------------------------------
+# Known CI blocks (2026-09-26): a platform whose site shows a GitHub
+# runner a bot challenge is still run, but its 403 is reported on its own
+# line and does not fail the run. Any other failure on that platform
+# still does, and a pass is flagged so a lifted block gets noticed.
+# --------------------------------------------------------------------
+
+
+def test_every_known_ci_block_is_canaried_and_explains_itself():
+    # A block entry for a platform with no canary URL would never be
+    # exercised, and one with no reason is just a silenced failure.
+    for platform, reason in CANARY_KNOWN_CI_BLOCKS.items():
+        assert platform in CANARY_URLS, platform
+        assert reason.strip(), f"{platform} is listed as blocked with no reason"
+
+
+def test_a_403_on_a_known_blocked_platform_does_not_fail_the_run(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.adapter_canary.CANARY_KNOWN_CI_BLOCKS", {"walled": "evidence"}
+    )
+    results = [
+        {"platform": "good", "url": "u1", "ok": True, "reason": None},
+        {
+            "platform": "walled",
+            "url": "u2",
+            "ok": False,
+            "reason": "ClientResponseError: 403, message='Forbidden'",
+        },
+    ]
+
+    assert is_expected_ci_block(results[1])
+    report = format_report(results)
+    assert "1/2 platforms OK, 1 blocked from CI as expected" in report
+    assert "BLOCKED walled" in report
+    assert "FAIL walled" not in report
+
+
+def test_a_non_403_failure_on_a_known_blocked_platform_still_fails(monkeypatch):
+    # The block was measured as a 403. A page that loads but has changed
+    # shape is a real adapter problem and must still turn the run red.
+    monkeypatch.setattr(
+        "scripts.adapter_canary.CANARY_KNOWN_CI_BLOCKS", {"walled": "evidence"}
+    )
+    result = {
+        "platform": "walled",
+        "url": "u2",
+        "ok": False,
+        "reason": "resolve returned no real content",
+    }
+
+    assert not is_expected_ci_block(result)
+    assert "FAIL walled" in format_report([result])
+
+
+def test_a_403_on_an_unlisted_platform_still_fails():
+    result = {
+        "platform": "not_listed_anywhere",
+        "url": "u",
+        "ok": False,
+        "reason": "ClientResponseError: 403, message='Forbidden'",
+    }
+
+    assert not is_expected_ci_block(result)
+    assert "FAIL not_listed_anywhere" in format_report([result])
+
+
+def test_a_known_blocked_platform_that_passes_is_flagged(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.adapter_canary.CANARY_KNOWN_CI_BLOCKS", {"walled": "evidence"}
+    )
+    report = format_report(
+        [{"platform": "walled", "url": "u", "ok": True, "reason": None}]
+    )
+
+    assert "1/1 platforms OK" in report
+    assert "UNBLOCKED walled" in report

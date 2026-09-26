@@ -45,6 +45,14 @@ jobs:
       - run: pip install -r requirements.txt
       - run: playwright install chromium
 
+      # The production resolver has ffprobe on PATH (see render.yaml), and
+      # since WO-923 (2026-09-20) every resolve calls it to check how much
+      # of the video a transcript covers. Without it here, each run logged
+      # ~22 "No such file or directory: 'ffprobe'" tracebacks and skipped
+      # that check, so the canary no longer matched production.
+      - name: Install ffmpeg (for ffprobe)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
       - name: Run adapter canary
         run: python scripts/adapter_canary.py
 
