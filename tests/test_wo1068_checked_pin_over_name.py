@@ -74,15 +74,51 @@ def test_a_department_pin_does_not_displace_its_own_government():
 
 
 def test_a_pin_no_person_checked_does_not_override_a_name():
-    # ashlandcowi's pin came from an automated Archive study, so a name
-    # match still wins (pages 1072/1302 were re-filed by hand instead;
-    # today's CivicClerk adapter reads them as "Ashland County, WI").
+    # reflect-townofwellfleet's pin (wo309b) was not marked checked in
+    # WO-1075: the channel also carries Barnstable County shows. So a
+    # namesake name match still wins there (page 5248, since re-filed by
+    # hand, read "Wellfleet, NE").
     match = _resolve(
-        "Ashland (city), WI",
-        "ashlandcowi.portal.civicclerk.com",
-        "/event/362/media",
+        "Wellfleet, NE",
+        "reflect-townofwellfleet.cablecast.tv",
+        "/internetchannel/show/3415",
     )
-    assert match.gov_id == "us:place:5503225"
+    assert match.gov_id == "us:place:3152085"
+
+
+@pytest.mark.parametrize(
+    "name, host, path, gov_id",
+    [
+        # WO-1075: pins re-checked live and marked checked. The bare
+        # names are the adapters' own shapes for these misfiled pages.
+        (
+            "Ashland, WI",
+            "ashlandcowi.portal.civicclerk.com",
+            "/event/362/media",
+            "us:county:55003",
+        ),
+        (
+            "Dubuque, IA",
+            "dubuquecountyia.portal.civicclerk.com",
+            "/event/1548/media",
+            "us:county:19061",
+        ),
+        (
+            "Salt Lake City, UT",
+            "saltlakecounty.portal.civicclerk.com",
+            "/event/4172/media",
+            "us:county:49035",
+        ),
+        (
+            "Barnstable County, MA",
+            "barnstable.cablecast.tv",
+            "/internetchannel/show/12106",
+            "us:place:2503690",
+        ),
+    ],
+)
+def test_rechecked_pins_now_beat_a_namesake(name, host, path, gov_id):
+    assert _resolve(name, host, path).gov_id == gov_id
 
 
 @pytest.mark.parametrize(
@@ -155,6 +191,14 @@ def test_a_name_that_is_not_the_pins_namesake_keeps_its_own_government():
             "Montgomery County, MD",
             "mncppc.granicus.com",
             "/player/clip/3287",
+            "rtr:us:md:maryland-national-capital-park-and-planning-commission",
+        ),
+        # WO-1075: the Prince George's side of M-NCPPC (pages 1253, 2268
+        # had no government).
+        (
+            "The Maryland-National Capital Park & Planning Commission",
+            "mncppc.iqm2.com",
+            "/Citizens/SplitView.aspx?MeetingID=1",
             "rtr:us:md:maryland-national-capital-park-and-planning-commission",
         ),
         # LAWA is its own government, like LADWP, never the City of LA.
