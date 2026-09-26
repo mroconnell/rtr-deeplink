@@ -1,8 +1,11 @@
+import csv
 import json
 import logging
 import re
 from datetime import datetime
-from typing import List, Optional, Tuple
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
@@ -21,6 +24,52 @@ from ..utils.vtt_parser import (
     normalize_shouting_caption,
     parse_captions_by_extension,
 )
+
+# WO-1081: known `/views/{id}` listing pages, one per Swagit tenant. A
+# tenant's tab pages are empty shells (WO-1036); only a numbered view page
+# lists its meetings, and nothing on the tenant's own site links one --
+# the government's website embeds it (Dublin, CA's "Watch Meetings" page
+# embeds `dublinca.new.swagit.com/views/876/`). Each row was copied from a
+# real link, with the file it came from. A view number is only trusted
+# that way, never guessed: any Swagit host serves any view's listing
+# (confirmed live 2026-09-26 -- Wise County TX's view 908 from
+# dublinca.new.swagit.com), so a wrong number files another government's
+# meetings under this tenant. rtr-discovery's Swagit walker reads this
+# same file (moved here from rtr-discovery #79 so both tools share one
+# copy, like `tenant_overrides.csv`).
+SWAGIT_VIEWS_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "utils"
+    / "jurisdiction_data"
+    / "swagit_views.csv"
+)
+
+
+@lru_cache(maxsize=1)
+def known_views() -> Dict[str, str]:
+    """Swagit tenant host -> its known `/views/{id}` number."""
+    if not SWAGIT_VIEWS_FILE.exists():
+        return {}
+    with SWAGIT_VIEWS_FILE.open(newline="") as f:
+        return {
+            row["tenant_host"].strip().lower(): row["views_id"].strip()
+            for row in csv.DictReader(f)
+            if row.get("tenant_host") and row.get("views_id")
+        }
+
+
+def known_view_for(host: str) -> Optional[str]:
+    """The known view number for a Swagit host, or None. A bare
+    `*.swagit.com` host redirects to `*.new.swagit.com` (WO-1036), so
+    either spelling finds the same row."""
+    host = (host or "").lower()
+    views = known_views()
+    if host in views:
+        return views[host]
+    if host.endswith(".swagit.com") and ".new.swagit.com" not in host:
+        return views.get(host[: -len(".swagit.com")] + ".new.swagit.com")
+    return None
+
 
 # Rolling time window for grouping #transcript-fragments' word-level
 # segments into readable lines -- decided over a fixed word count since

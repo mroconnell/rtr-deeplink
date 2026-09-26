@@ -140,6 +140,7 @@ from app.platforms.cablecast import (
     list_gallery_shows,
 )
 from app.platforms.direct_file import is_direct_file_url
+from app.platforms.swagit import known_view_for
 
 from .fetch import BudgetExceeded, Fetcher
 from .models import Candidate
@@ -760,14 +761,22 @@ def _parse_swagit_video_table(html: str, base_url: str) -> List[Candidate]:
             else []
         )
         title = lines[0] if lines else None
+        # A tab page puts the date under the title; a `/views/{id}` page
+        # puts it in its own column ("Video | Date | Duration | Links").
+        # WO-1081: only the first was read, so every row from a real view
+        # page came back undated (Dublin, CA's view 876: 17 rows, 0 dates).
+        texts = [lines[-1]] if len(lines) > 1 else []
+        texts += [cell.get_text(" ", strip=True) for cell in tr.find_all("td")[1:]]
         date = None
-        if len(lines) > 1:
+        for text in texts:
             for fmt in _SWAGIT_ROW_DATE_FORMATS:
                 try:
-                    date = datetime.strptime(lines[-1], fmt).strftime("%Y-%m-%d")
+                    date = datetime.strptime(text, fmt).strftime("%Y-%m-%d")
                     break
                 except ValueError:
                     continue
+            if date:
+                break
         candidates.append(
             Candidate(
                 url=urljoin(base_url, f"/videos/{m.group(1)}"),
@@ -810,7 +819,14 @@ async def _list_via_swagit_views_page(
             outcome=None,
         )
     if not _SWAGIT_VIEWS_URL_RE.search(parsed.path):
-        return None
+        # WO-1081: a bare tenant URL (the tab pages are empty) lists its
+        # known view page instead, when `swagit_views.csv` has one. The
+        # view is fetched on the tenant's own host, the host the number
+        # was recorded with.
+        views_id = known_view_for(parsed.netloc)
+        if not views_id:
+            return None
+        account_url = f"{parsed.scheme or 'https'}://{parsed.netloc}/views/{views_id}/"
     try:
         result = await fetcher.fetch(account_url, need_links=True)
     except BudgetExceeded as e:
