@@ -28,6 +28,12 @@ Dates: the adapter read 0 of rtr-discovery's 10 dated test titles before and 10 
 
 **Tests.** `tests/test_telvue.py`, `tests/test_tenant_key.py`, `tests/test_wo1068_checked_pin_over_name.py`, on the real pages copied to `tests/fixtures/telvue/wo1100/` (capture note there). Synthetic names are commented as such.
 
+## WO-1092: Loch Alpine Sanitary Authority gets a registry id [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder's 2026-09-26 retry run found a "LASA Operating Committee" meeting on Scio Township's Granicus site and filed it under Webster Township; the hand-check caught that it is neither. LASA is the Loch Alpine Sanitary Authority, a real special district in the Census of Governments list (`cog_units.csv`, cog_id 149810, Washtenaw County, MI). That list is deliberately not loaded as registry ids, so the authority had none. Ryan approved minting it (2026-09-26).
+
+**Result.** New curated row `rtr:us:mi:loch-alpine-sanitary-authority` (special_district, cog_id 149810 recorded). The meeting is filed under it once the Archive runs a build that has this row.
+
 ## WO-1090: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
 
 **What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
