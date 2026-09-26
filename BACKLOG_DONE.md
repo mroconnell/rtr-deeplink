@@ -15,6 +15,14 @@
 
 **Caution.** The list only grows from confirmed hand-check verdicts; never add a row from a guess. Meeting Finder does not read it.
 
+## WO-1110: a TelVue meeting with no caption track showed an empty transcript column [Done 2026-09-26]
+
+**What was done and why.** Ryan added Pierre SD's two TelVue meetings on 2026-09-26. Both pages showed the video and nothing at all where the transcript or the "no transcript" message goes. Two gaps caused it. `app/platforms/telvue.py` warned only when a caption file came back empty, not when the media entry listed no caption track (`"tracks":[]`, Pierre's shape). And `app/static/player.js` showed the "no transcript" panel only when there was a warning to show. The archived page (`archive/templates/meeting_page.html`) already showed its panel without one.
+
+**Result.** The adapter now gives the same "no caption file was found" warning for both shapes. The live page shows the panel whenever there is a video, warning or not. Checked in a local browser on Pierre's real meeting 1045603.
+
+**Tests.** `tests/test_telvue.py`: Pierre's real saved page now gets the warning; Derry's still gets exactly one.
+
 ## WO-1101: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
 
 **What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.
