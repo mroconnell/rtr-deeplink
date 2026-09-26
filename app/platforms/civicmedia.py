@@ -73,18 +73,48 @@ captioned meeting.
      when a video has none, per CLAUDE.md's "never claim a caption path
      works without a positive example" rule.
 
+## Which government (WO-1069, 2026-09-25)
+
+Before this, `resolve()` returned no `jurisdiction` at all. Every one of
+the Archive's 11 CivicMedia pages still has a government only because
+the ingest script that filed it sent a `gov_id` (the Archive files a
+caller's `gov_id` as `pinned`, see `archive/db/crud.py`'s
+`_caller_pinned_match()`). Any caller that did not send one got "no
+government" -- rtr-discovery's live check, 2026-09-25, and Hanover Park,
+IL's nine meetings.
+
+The page says who it belongs to. Every CivicMedia page is a CivicPlus
+"CivicEngage" site, and all 10 government-hosted pages in the Archive
+carry the site's own name twice, confirmed live 2026-09-25:
+`<meta property="og:site_name" content="Middleton, MA">` and
+`<title>CivicMedia™ • Middleton, MA • CivicEngage</title>`. `_jurisdiction_from_page()` reads the
+first, falls back to the second, and runs the name through
+`jurisdiction_enrich.enrich_jurisdiction_text()` -- the same path
+`proudcity.py` uses for its own `og:site_name` -- so "City of Snyder"
+(snydertx.gov, no state in its site name) comes back "City of Snyder,
+TX". On all 10 sites the result keys to the same government the Archive
+already holds, at `registry` level. Last resort, when the page names
+nothing: CivicPlus's own `{state}-{name}.civicplus.com` subdomain rule,
+reused from `civicplus.py`.
+
+A bare TikiLive embed URL (Rosetown, SK is the one in the Archive) has
+no government page to read -- the embed's own HTML names no tenant --
+so it still returns no jurisdiction. That is the honest answer; a caller
+filing one must send a `gov_id`.
+
 ## What's still unconfirmed
 
-Only one real tenant (Hobart, IN) has been checked. `BACKLOG.md`'s own
-note on this gap ("unknown how common" the CivicMedia widget is among
-CivicPlus customers) still applies -- this adapter is built from one
-real, live-verified example, same as Vimeo's original build before its
-own 8-jurisdiction confirmation pass. `detect_platform()`'s registration
+The adapter was built from one real tenant (Hobart, IN). By 2026-09-25
+eleven tenants had Archive pages and rtr-discovery's live check resolved
+real captions on 6 of 6 meetings across three more sites, so the page
+shape is well confirmed; how common the widget is among CivicPlus
+customers is still unknown. `detect_platform()`'s registration
 of the `/civicmedia` path + `VID=` query shape means any OTHER tenant
 using this widget will now be recognized and resolved the same way, so
 each new one found strengthens rather than replaces this evidence.
 """
 
+import html as html_module
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -94,6 +124,7 @@ from bs4 import BeautifulSoup
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.url_guard import read_capped_text
 from ..utils.vtt_parser import (
     detect_language_from_texts,
@@ -115,6 +146,17 @@ _TIKILIVE_HOST = "civplus.tikiliveapi.com"
 # see module docstring. Either way, the trailing run of digits is the
 # real id `?VID=` (bare) and the TikiLive embed's own `videoId=` share.
 _TRAILING_DIGITS_RE = re.compile(r"(\d+)$")
+
+# The CivicEngage site's own name -- see "Which government" in the module
+# docstring. The <title> shape is "{page} • {site name} • CivicEngage".
+_SITE_NAME_RE = re.compile(
+    r"<meta\s+property=[\"']og:site_name[\"']\s+content=[\"']([^\"']+)[\"']",
+    re.IGNORECASE,
+)
+_CIVICENGAGE_TITLE_RE = re.compile(
+    r"<title>[^<]*?\u2022\s*([^<\u2022]+?)\s*\u2022\s*CivicEngage\s*</title>",
+    re.IGNORECASE,
+)
 
 _M3U8_RE = re.compile(r"https?://[^\"'\s]*\.m3u8[^\"'\s]*")
 _CAPTION_TRACK_RE = re.compile(r"https?://[^\"'\s]*/closed-captions/[^\"'\s]*\.vtt")
@@ -181,6 +223,24 @@ async def _fetch(url: str) -> Tuple[Optional[str], Optional[str]]:
         return None, f"{type(e).__name__}: {e}"
 
 
+def _jurisdiction_from_page(html: str, url: str) -> Optional[str]:
+    """The government a CivicMedia page belongs to, from the page's own
+    site name -- see "Which government" in the module docstring. None
+    when the page names nothing and the host isn't a
+    `{state}-{name}.civicplus.com` subdomain."""
+    match = _SITE_NAME_RE.search(html) or _CIVICENGAGE_TITLE_RE.search(html)
+    name = html_module.unescape(match.group(1)).strip() if match else ""
+    if name:
+        return jurisdiction_enrich.enrich_jurisdiction_text(
+            name, netloc=urlparse(url).netloc, page_text=html
+        )
+    # Imported here: civicplus.py is the bigger module and pulls in the
+    # platform registry through base.py; nothing else here needs it.
+    from .civicplus import CivicPlusAssetFinder
+
+    return CivicPlusAssetFinder._jurisdiction_from_subdomain(url)
+
+
 def _embed_url_for_video_id(video_id: str) -> str:
     return (
         f"https://{_TIKILIVE_HOST}/embed?scheme=embedVod&videoId={video_id}&autoplay=no"
@@ -197,6 +257,7 @@ class CivicMediaAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         title: Optional[str] = None
+        jurisdiction: Optional[str] = None
         video_id = _video_id_from_url(url)
 
         if not is_tikilive_embed_url(url):
@@ -210,6 +271,7 @@ class CivicMediaAssetFinder(AssetFinder):
                     source_url=url,
                     video_warnings=[f"We couldn't read this CivicMedia page ({err})."],
                 )
+            jurisdiction = _jurisdiction_from_page(html, url)
             soup = BeautifulSoup(html, "html.parser")
             iframe = soup.find("iframe", id="videoPlayer") or soup.find(
                 "iframe", src=re.compile(re.escape(_TIKILIVE_HOST))
@@ -218,6 +280,7 @@ class CivicMediaAssetFinder(AssetFinder):
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
+                    jurisdiction=jurisdiction,
                     video_warnings=[
                         "This looks like a CivicMedia page, but we couldn't find "
                         "its video player."
@@ -236,6 +299,7 @@ class CivicMediaAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
+                jurisdiction=jurisdiction,
                 video_warnings=[
                     "This looks like a CivicMedia/TikiLive link, but we couldn't "
                     "find a real video id on it."
@@ -254,6 +318,7 @@ class CivicMediaAssetFinder(AssetFinder):
             source_url=url,
             external_id=f"civicmedia:{video_id}",
             title=title,
+            jurisdiction=jurisdiction,
             video_url=video_url,
             video_format="m3u8" if video_url else None,
         )

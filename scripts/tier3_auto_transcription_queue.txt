@@ -1,3 +1,6 @@
+https://www.youtube.com/watch?v=x-j7uc_Nsjk&feature=youtu.be		us:place:4810768
+https://www.youtube.com/watch?v=b1JaaRs7Jtc		us:county:04003
+https://youtu.be/0PKMZYg9wGA		us:cousub:3905704724
 https://www.youtube.com/watch?v=XYdKJjWRVQM
 https://www.youtube.com/watch?v=JlLqQfcJJ5Q
 https://www.youtube.com/watch?v=hCxsLZA5KLM
@@ -945,15 +948,7 @@ https://www.youtube.com/watch?v=un1QQ7xI4dY
 https://www.youtube.com/watch?v=dKSIrbDom3M
 https://www.youtube.com/watch?v=4IE3MWqjGno
 https://youtu.be/I_CWisOvcFs
-https://cityofnorthlasvegas.primegov.com/Portal/Meeting?meetingTemplateId=16155
-https://cityofvernon.primegov.com/Portal/Meeting?meetingTemplateId=2543
 https://clearfieldcity.primegov.com/Portal/Meeting?meetingTemplateId=2297
-https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=7368
-https://gilroy.primegov.com/Portal/Meeting?meetingTemplateId=5173
-https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5022
-https://prs.primegov.com/Portal/Meeting?meetingTemplateId=41201
-https://psupple.primegov.com/Portal/Meeting?meetingTemplateId=29947
-https://townofyountville.primegov.com/Portal/Meeting?meetingTemplateId=6239
 https://buffalo.viebit.com/watch?hash=11TLAPa5nJChjObE
 https://chelseami.viebit.com/watch?hash=765Pp1qyLBy0r47o
 https://cokato.viebit.com/watch?hash=LBnEjAiaDS01iSzO
@@ -967,19 +962,7 @@ https://northmankato.viebit.com/watch?hash=zTOVuPXRHa9gJP1N
 https://springfieldtwp.viebit.com/watch?hash=zn77JAEQMEb7M9Pa
 https://tullytown.viebit.com/watch?hash=aYvmeTTVuJc1tsDI
 https://watertown.viebit.com/watch?hash=2FdjXAPYydoOCsLn
-https://nassau-k12-fl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=435
 https://nkschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=123
-https://vimeo.com/1181703270/3449ea3918	https://www.transylvaniacounty.org/meetings
-https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260831/-1/22675
-https://player.invintus.com/?clientID=4879615486&eventID=2026021271
-https://player.invintus.com/?clientID=4879615486&eventID=2026031022
-https://player.invintus.com/?clientID=2789595964&eventID=2026051017
-https://player.invintus.com/?clientID=2789595964&eventID=2026031061
-https://springvalleytx.portal.civicclerk.com/event/338/media
-https://maryestherfl.portal.civicclerk.com/event/110/media	https://maryestherfl.portal.civicclerk.com
-https://vimeo.com/195536478
-https://jupiterislandfl.portal.civicclerk.com/event/343/media
-https://live.pomonaca.gov/internetchannel/show/289
 https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17032	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17032
 https://reflect-bcit.cablecast.tv/internetchannel/show/54621	https://reflect-bcit.cablecast.tv/internetchannel/show/54621
 https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6643	https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6643
@@ -1310,3 +1293,15 @@ https://codington.sdcounty.gov/wp-content/uploads/2017/06/20170627-CCJAC-64kbps.
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
 https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
+https://laportetx.new.swagit.com/videos/400931		us:place:4841440
+https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
+https://pagecova.portal.civicclerk.com/event/6214/media		us:county:51139
+https://www.chelseavt.org/wp/wp-content/uploads/2026/09/BOA-1-260922_0433.mp3		us:cousub:5001713525
+http://96.233.59.29/internetchannel/show/16188?site=1&channel=2		us:cousub:2500538225
+https://ectorcountytx.new.swagit.com/videos/398923		us:county:48135
+https://olmosparktx.portal.civicclerk.com/event/359/media		us:place:4853988
+https://townhallstreams.com/stream.php?location_id=72&id=70326		us:cousub:3301137140
+https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
+https://wake-forest.granicus.com/MediaPlayer.php?view_id=3&clip_id=2032		us:place:3770540
+http://reflect-vsctv.cablecast.tv/internetchannel/show/7465?channel=1		us:cousub:0913019130
+https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045

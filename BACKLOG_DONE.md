@@ -56,6 +56,23 @@ Held back, not applied (`research/wo1070_review.csv`): six Google Drive links co
 
 **Recommendation.** Ingest from the 104 recorded non-YouTube platforms next (CivicPlus AgendaCenter 39, CivicWeb 9, CivicClerk 9, Vimeo 7, Swagit 3, BoardDocs 3 and others; `research/wo1070_changes.csv`), passing each row's `gov_id`. Hand the YouTube channels to the drip Mac.
 
+## WO-1069: CivicMedia pages now name their own government [Done 2026-09-25]
+
+**What was done and why.** rtr-discovery's live check (2026-09-25) found `app/platforms/civicmedia.py` read real captions on 6 of 6 meetings but returned no government on any of them; Hanover Park IL's 9 meetings were rejected "no government" the same way. The adapter never set `jurisdiction`. The Archive's 11 CivicMedia pages only have a government because the scripts that filed them (WO-341/347/349/357) sent a `gov_id`, which the Archive stores as `pinned` (`archive/db/crud.py`, `_caller_pinned_match()`); Englewood OH's page was later set by hand (`manual_override`). No `tenant_overrides.csv` row matches any of these hosts.
+
+The fix reads the name the CivicPlus site gives itself: `og:site_name` ("Middleton, MA"), falling back to the `<title>` ("CivicMedia™ • Middleton, MA • CivicEngage"), then to CivicPlus's `{state}-{name}.civicplus.com` subdomain rule. The name goes through `enrich_jurisdiction_text()`, so "City of Snyder" (no state) becomes "City of Snyder, TX" from the ZIP in the page footer. A bare TikiLive embed URL names no government and still returns none.
+
+**Result, live on 2026-09-25.**
+
+| Pages checked | Count | Government found | Matches the Archive's government |
+| --- | --- | --- | --- |
+| The Archive's CivicMedia pages on a government site | 10 | 10 | 10 |
+| The Archive's bare TikiLive embed (Rosetown SK) | 1 | 0 | not applicable |
+| rtr-discovery live-check meetings | 6 | 6 | not in the Archive |
+| Hanover Park IL (one meeting) | 1 | 1 (us:place:1732746) | not in the Archive |
+
+Every match is at `registry` level (a national table), not a pin.
+
 ## WO-1068: 15 wrong pins fixed, 34 misfiled pages re-filed, a checked pin now beats a wrong place match [Done 2026-09-25]
 
 **What was done and why.** The 2026-09-25 export showed 66 pages on 44 hosts with a whole-host pin filed under another government (`docs/investigations/whole_host_pin_mismatch_2026-09-25.md`). Ryan approved three steps.
