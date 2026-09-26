@@ -70,6 +70,21 @@ Ingested, each checked live on redtaperecordings.com under the right government:
 
 **Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
 
+## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
+
+**What was done and why.** WO-1068's rule only trusts pins a person checked. The 10 machine-made pins that had already misfiled a page were re-checked live against each host's own portal or site, and all 10 held, so each now carries `landing_page` in its source: colonieny, shelbytownmi, townofvictorny, websterny, ashlandcowi, walworthcowi, carteretcountync, barnstable, dubuquecountyia, saltlakecounty. `reflect-townofwellfleet.cablecast.tv` was left unmarked: its channel also carries Barnstable County shows.
+
+Two more pages were re-filed (dry run first):
+
+| Page | Filed under before | Filed under after | Why |
+| --- | --- | --- | --- |
+| 10402 "Township Board Meeting 09-08-2026" (playback.orionontv.org) | Lake Orion village | Orion Charter Township | WO-322 had hand-pinned this show to the township; the channel's "Village of Lake Orion" name beat the pin |
+| 1253, 2268 "M-NCPPC Planning Board Meeting" (mncppc.iqm2.com) | none | M-NCPPC | the portal is M-NCPPC's Prince George's side; same call as WO-1074 |
+
+`mncppc.iqm2.com`'s pin moved from Prince George's County (a fallback that never applied: rung 3 blocks a county fallback for a commission name) to an authoritative pin to M-NCPPC, matching `mncppc.granicus.com`.
+
+**Result.** Re-resolving all 10,485 Archive pages from their stored names: the marked pins change 1 page's answer (Barnstable's 2026-09-03 Town Council, already filed under the town; the old code would have moved it to the county on a re-resolve).
+
 ## WO-1076: Meeting Finder second pass, one more hop, adaptive budget; two gate fixes [Done 2026-09-25]
 
 **What was done and why.** Calibration set D (2026-09-25) found 1,581 known-video governments, 728 found (46%). Of the rest: 380 governments ended with only a YouTube lead (no other video platform found), 149 found meetings but no video, and about 70 ran out of fetch budget. Ryan approved three fixes, built together:

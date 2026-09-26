@@ -450,7 +450,7 @@ Reliability, ops & cost  (11)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
 Trust, safety & data quality  (30)
-  Pinned hosts: pins no person checked still lose to a wrong name match…
+  Pinned hosts: machine-made pins with no Archive pages yet are…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
   ChampDS jurisdiction text comes out wrong for customer names that…
@@ -6043,13 +6043,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### Pinned hosts: pins no person checked still lose to a wrong name match `[NEEDS-AUDIT]`
+### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
 
-- **Issue**: WO-1068's rule (a person-checked fallback pin beats a namesake name match) only fires for a namesake match (so Broward MPO -> Davie, DCCCD -> Duncanville still need a hand re-file if they recur) and only trusts `registry.HUMAN_PIN_SOURCES`, so pins from `wo310` (Ryan-approved town pins), `archive_study_*`, `wo306`/`wo309b` and the name-guess sweeps still lose to a wrong name. Of the 31 wrong pages under correct pins on 2026-09-25, 14 sat under such pins.
-- **Impact**: future pages on those hosts can land wrong again (a re-file is sticky, a new page is not).
-- **Next action**: re-check the non-human pins that already misfiled a page (colonieny, shelbytownmi, townofvictorny, websterny under `wo310`; ashlandcowi, walworthcowi, carteretcountync under `archive_study`; barnstable, wellfleet) and add a human source token once confirmed. Never mark the `wildcard_http_sweep` ones without a live check: 7 of the 15 wrong pins came from those sweeps. Separately: `mncppc.iqm2.com` (pinned by Ryan to Prince George's County) has 2 Archive pages (1253, 2268) with no government at all; that host is M-NCPPC's Prince George's side, so it may want the same M-NCPPC id WO-1074 gave `mncppc.granicus.com` (Ryan's call).
-- **Constraint**: report before re-filing any existing page. `playback.orionontv.org` page 10402 ("Township Board Meeting" on a city id, pin `WO-322`) is a likely third case, not yet checked.
-- **History**: `BACKLOG_DONE.md` WO-1068 and WO-1074; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
+- **Issue**: WO-1068's rule (a person-checked fallback pin beats a namesake name match) trusts only `registry.HUMAN_PIN_SOURCES`. WO-1075 re-checked and marked the 10 machine-made pins that had already misfiled a page. Every other machine-made whole-host pin is still unchecked, and 7 of the 15 wrong pins found on 2026-09-25 came from the name-guess `wildcard_http_sweep_*` runs (Durham NC pinned to Durham ON, Eustis FL to Eustis ME, and so on). The rule also fires only for a namesake match, so a special body filed under an unrelated place (Broward MPO -> Davie) still needs a hand re-file.
+- **Impact**: a wrong pin does no harm until a page with no resolvable name lands on its host; then the page goes to the wrong government with nothing flagging it.
+- **Next action**: for each `wildcard_http_sweep_*` pin, compare the pinned government's state with the host's own landing page (title or footer), the check that caught all 7 on 2026-09-25; fix mismatches and add `landing_page` to the ones that hold. `reflect-townofwellfleet.cablecast.tv` stays unmarked on purpose: its channel also carries Barnstable County shows ("Assembly", "County Com").
+- **Constraint**: report before re-filing any existing page.
+- **History**: `BACKLOG_DONE.md` WO-1068, WO-1074, WO-1075; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
 
 ### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
 
