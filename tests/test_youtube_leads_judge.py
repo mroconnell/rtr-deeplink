@@ -82,6 +82,24 @@ def test_candidate_old_meeting_still_counts():
     assert v.bucket == "meeting"
 
 
+def test_candidate_passes_french_body_word_and_date():
+    """Confirmed live 2026-09-26: a whole run of Quebec (and one Acadian)
+    municipalities came back off-mission with identity correctly confirmed
+    strong, because every one titles its real meetings in French. Same gap
+    already found and fixed once before for a different sweep (WO-327)."""
+    v = assess_candidate(
+        "Séance ordinaire du conseil municipal - 15 septembre 2026",
+        gov_kind="municipality",
+    )
+    assert v.bucket == "meeting"
+    assert v.has_body_word and v.has_date
+
+
+def test_candidate_french_promo_still_rejected():
+    v = assess_candidate("Vidéo promotionnelle de la ville", gov_kind="municipality")
+    assert v.bucket == "not-a-meeting"
+
+
 def test_candidate_rejects_promo():
     v = assess_candidate(
         "Ribbon Cutting Ceremony for New Fire Station", gov_kind="municipality"

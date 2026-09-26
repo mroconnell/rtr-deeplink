@@ -26,6 +26,27 @@ BODY_WORDS = (
     "town board",
     "supervisors",
     "assembly",
+    # French (2026-09-26): confirmed live -- a run of Quebec (and one
+    # Acadian, NB) municipalities all came back off-mission with their
+    # channel identity correctly confirmed strong, because every one of
+    # them titles its real meetings in French ("Séance ordinaire du
+    # conseil municipal", "Assemblée du conseil"), which this list
+    # couldn't recognize at all. Same gap this repo already found and
+    # fixed once before for a different sweep (WO-327, French vocabulary
+    # for the passive-discovery hop-scorer) -- English-only body-word
+    # lists are a recurring, confirmed failure mode against Quebec
+    # governments specifically, not a one-off.
+    "conseil",
+    "conseil municipal",
+    "séance",
+    "séance du conseil",
+    "séance ordinaire",
+    "séance extraordinaire",
+    "assemblée",
+    "assemblée municipale",
+    "comité",
+    "audience publique",
+    "réunion du conseil",
 )
 # Abbreviations need a word boundary but are short enough to false-positive
 # inside another word if not careful (e.g. "bos" inside a longer token) --
