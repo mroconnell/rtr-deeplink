@@ -1,5 +1,32 @@
 # Backlog — done
 
+## WO-1083: crawler burst on `/j/` hub pages took the whole Archive down — cached the GROUP BY, added the missing `bs4` dependency [Done 2026-09-26]
+
+**What happened.** On 2026-09-26, from about 6:56 to 7:02 AM Pacific, the Archive went down. A crawler asked for dozens of `/j/<slug>` hub pages every second — mostly Utah town and county pages (`/j/*-ut`). Every one of those pages runs one database query that counts every meeting page in the whole Archive, grouped by government. That query had no cache: every request ran it fresh. The Archive keeps only 5 database connections open per worker (plus 2 spare), and runs 2 workers. The burst of hub-page requests used up every connection and kept them busy. Every other page — `/m/` meeting pages, `/context`, `/state/*`, even the health check — started failing with a "connection pool timeout" error. Render's automatic health check saw the failures and shut the instance down.
+
+**What was built.**
+
+- A short-term cache for that GROUP BY query (`archive/db/hub_groups_cache.py`), used by `crud._hub_groups()`. The first request in a 60-second window runs the real query; every other request in that window reuses its answer instead of running the query again. 60 seconds matches the TTL the Archive's existing hub-slug cache already uses, chosen for the same reason: short enough that a real change shows up within a minute, long enough to make the query itself close to free.
+- A second, separate protection against a burst: if many requests miss the cache at the exact same moment (the situation that took the Archive down), only ONE of them runs the real query. The rest wait for that one answer and share it, instead of each starting its own copy of the same query. This is the part that actually stops the incident from repeating — a plain cache alone would not have helped during the first second of a burst, before anything was cached yet.
+- The cache is cleared immediately (not left to expire) whenever a page's government changes: after an ingest, after a human override, and after an admin page-delete. So a newly-added or newly-corrected meeting still shows up on its hub right away, not up to 60 seconds later.
+- Configurable via `HUB_GROUPS_CACHE_TTL_SECONDS` (default 60; set to 0 to turn caching off).
+- Separately, production logs from the same day showed a second, unrelated error: `ModuleNotFoundError: No module named 'bs4'`, hit whenever a BoxCast meeting page tried to refresh its video link. The Archive service was missing a dependency (`beautifulsoup4`) that one of its code paths needs. Added to `archive/requirements.in`/`archive/requirements.txt`, the same way the resolver service already has it.
+
+**Result — 100 requests against a local Archive, deliberately shrunk to a 2-connection pool (no spare connections) and a realistic 100ms-per-query delay standing in for a real production database round trip, before and after:**
+
+| Check | Before (no cache) | After (cache + single-flight) |
+| --- | --- | --- |
+| Requests that timed out waiting for a database connection | 74 of 100 | 0 of 100 |
+| Requests that succeeded | 26 of 100 | 100 of 100 |
+| Real GROUP BY queries actually run | 100 | 1 |
+| Total time for all 100 requests | 2.21s | 0.12s |
+
+See `docs/investigations/wo1083_hub_groups_pool_measurement.md` for the exact method, the caveats on these numbers, and how to reproduce them.
+
+**Caution.** A page that just got a government (via ingest, an override, or the hub-slug freeze sweep) can take up to 60 seconds to show up on its `/j/` hub page, on the sitemap, and in `/state/*` page counts — unless it came in through ingest, override, or delete, which clear the cache right away. This is the same trade-off the existing hub-slug cache already makes, at the same 60-second window.
+
+**Tests.** `tests/test_wo1083_hub_groups_cache.py`: cache hit/miss, manual invalidation, TTL expiry, TTL disabled, 50 concurrent requests sharing one real query, a failed query not getting stuck or wrongly cached, and an end-to-end check that a real ingest shows up on its hub page immediately. All existing hub/jurisdiction tests still pass.
+
 ## WO-1081: Meeting Finder lists 35 known Swagit view pages, with dates [Done 2026-09-26]
 
 **What was done and why.** A Swagit tenant's tab pages (`/city-council`) are empty shells (WO-1036). Only a numbered `/views/{id}` page lists its meetings, and nothing on the tenant's own Swagit site links one: the government's website embeds it. Dublin, CA is the worked example. Its own "Watch Meetings" page embeds `dublinca.new.swagit.com/views/876/`, which lists 17 City Council meetings, while its tabs list none. rtr-discovery measured the gap on 2026-09-26: 271 of 438 Swagit tenants had 0 meetings in its ledger.

@@ -112,7 +112,7 @@ from ..utils.context_links import (
 from ..utils.context_links import context_permalink as _context_permalink
 from ..utils.context_links import embed_for as _context_embed_for
 from ..utils.video_thumbnail import target_offset_seconds, youtube_thumbnail_url
-from . import hub_slugs
+from . import hub_groups_cache, hub_slugs
 from .engine import async_session
 from .models import (
     ContextEntry,
@@ -1349,6 +1349,11 @@ async def _find_or_create_page(
     await hub_slugs.record_government(
         session, page.gov_id, live_hub_slug(page.gov_id, page.jurisdiction)
     )
+    # WO-1083: a new or freshly-identified page changes _hub_groups()'s
+    # page counts (and, for a newly-keyed government, its group entirely)
+    # -- invalidate rather than waiting out the cache's TTL, so ingest
+    # shows up on its hub immediately. See hub_groups_cache.py.
+    hub_groups_cache.invalidate()
     return page, created
 
 
@@ -4143,6 +4148,11 @@ async def override_jurisdiction(
                 session, gov_id, live_hub_slug(gov_id, display)
             )
             await session.commit()
+            # WO-1083: an override just changed jurisdiction/gov_id for
+            # `changed` pages -- invalidate _hub_groups()'s cache so the
+            # affected hubs reflect it on the next request rather than
+            # waiting out its TTL. See hub_groups_cache.py.
+            hub_groups_cache.invalidate()
 
     rules_written = _append_override_rules(rules) if (rules and not dry_run) else 0
 
@@ -8461,129 +8471,160 @@ def effective_state_abbr(
     return state_abbr_from_jurisdiction(jurisdiction)
 
 
-async def _hub_groups(session) -> dict[str, dict]:
+async def _hub_groups(session, *, bypass_cache: bool = False) -> dict[str, dict]:
     """slug -> {key, display, gov_ids, jurisdictions: [raw strings],
     page_count, last_updated, state_abbr, gov_type}, from one GROUP BY
     over indexable, non-empty pages.
 
     Grouped by `gov_id` (WO-99), not by the slug of a display string.
-    A few hundred rows -- cheap enough to run per request (no cache, so
-    nothing can go stale), same approach the state pages use.
 
-    Keyed by SLUG because the slug is the URL, while the identity inside
-    each group is the `gov_id`. Two different governments resolving to one
-    slug would merge here; measured against the whole 5,053-page export on
-    2026-09-02 that happens zero times, because a registry display name
-    carries its state and its LSAD disambiguator ("Cottage Grove
-    (village), WI"). If it ever does happen the symptom is two
-    governments on one hub, which `splits.csv` in the scoring report is
-    exactly the thing that would show it.
+    **Cached, single-flight, WO-1083.** This function's own "a few
+    hundred rows -- cheap enough to run per request (no cache, so nothing
+    can go stale)" claim was true when it was written and stale by
+    2026-09-26, when a crawler burst against `/j/*-ut` hub pages ran this
+    GROUP BY dozens of times a second, exhausted the Postgres connection
+    pool (5 + 2 overflow per worker), and took the whole Archive down --
+    every route failed with `QueuePool ... timeout 30.00`, not just `/j/`.
+    The result is now cached process-wide for `HUB_GROUPS_CACHE_TTL_SECONDS`
+    (default 60, same TTL `hub_slugs.py`'s frozen-slug cache already uses)
+    via `archive/db/hub_groups_cache.py`, which also makes concurrent
+    misses share one real query instead of each starting their own -- see
+    that module's docstring for the full reasoning, the staleness this
+    trades for (a page can take up to the TTL to appear on its hub after
+    being ingested/overridden), and which write paths invalidate it
+    immediately instead of waiting out the TTL. Keyed by SLUG because the
+    slug is the URL, while the identity inside each group is the
+    `gov_id`. Two different governments resolving to one slug would merge
+    here; measured against the whole 5,053-page export on 2026-09-02 that
+    happens zero times, because a registry display name carries its state
+    and its LSAD disambiguator ("Cottage Grove (village), WI"). If it
+    ever does happen the symptom is two governments on one hub, which
+    `splits.csv` in the scoring report is exactly the thing that would
+    show it.
+
+    `bypass_cache=True` forces a fresh computation (and refreshes the
+    cache for everyone else too) -- for tests, and for any caller that
+    cannot tolerate the TTL's staleness window.
     """
-    # WO-256: load the frozen slugs before `_hub_identity()` is called for
-    # the first time in this request. This is the main entry point for the
-    # whole cache -- `/j/`, `/state/*`, the home page and `sitemap.xml`
-    # all come through here.
-    await hub_slugs.refresh(session)
-    stmt = (
-        select(
-            MeetingPage.gov_id,
-            MeetingPage.gov_type,
-            MeetingPage.jurisdiction,
-            func.count(),
-            func.max(MeetingPage.updated_at),
-        )
-        .where(*_hub_base_conditions())
-        .group_by(MeetingPage.gov_id, MeetingPage.gov_type, MeetingPage.jurisdiction)
-    )
-    rows = (await session.execute(stmt)).all()
-    groups: dict[str, dict] = {}
 
-    def _group(slug, key, display, jurisdiction, registry_type, gov_type, last_updated):
-        g = groups.setdefault(
-            slug,
-            {
-                "slug": slug,
-                "key": key,
-                "display": display,
-                "gov_ids": [],
-                # Display only, for the /meetings?jurisdiction= "search
-                # all" link -- NOT a membership test any more (WO-256).
-                "jurisdictions": [],
-                # Ids of the un-keyed pages that belong here, worked out in
-                # Python by `_unkeyed_membership()` below.
-                "page_ids": [],
-                "page_count": 0,
-                "last_updated": last_updated,
-                "state_abbr": state_abbr_from_jurisdiction(display or jurisdiction),
-                "gov_type": registry_type or gov_type,
-            },
+    async def _compute() -> dict[str, dict]:
+        # WO-256: load the frozen slugs before `_hub_identity()` is called
+        # for the first time in this request. This is the main entry
+        # point for the whole cache -- `/j/`, `/state/*`, the home page
+        # and `sitemap.xml` all come through here.
+        await hub_slugs.refresh(session)
+        stmt = (
+            select(
+                MeetingPage.gov_id,
+                MeetingPage.gov_type,
+                MeetingPage.jurisdiction,
+                func.count(),
+                func.max(MeetingPage.updated_at),
+            )
+            .where(*_hub_base_conditions())
+            .group_by(
+                MeetingPage.gov_id, MeetingPage.gov_type, MeetingPage.jurisdiction
+            )
         )
-        g["jurisdictions"].append(jurisdiction)
-        if last_updated and (
-            g["last_updated"] is None or last_updated > g["last_updated"]
-        ):
-            g["last_updated"] = last_updated
-        return g
+        rows = (await session.execute(stmt)).all()
+        groups: dict[str, dict] = {}
 
-    # Pass 1: the real governments. An `rtr:unknown:<host>` id is NOT one
-    # -- it means "we do not know whose meeting this is" -- and letting it
-    # into `gov_ids` is exactly how 47 unrelated pages ended up on four
-    # real hubs (Orem UT, Tooele UT, Box Elder County UT, Caledonia
-    # Township MI, measured 2026-09-11): one such page whose raw text
-    # happened to slugify onto a real hub put the shared placeholder id
-    # into that hub's id list, which then matched EVERY page carrying the
-    # same placeholder.
-    unkeyed_seen = False
-    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
-        if not hub_slugs._usable(gov_id):
-            unkeyed_seen = True
-            continue
-        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
-        if not slug:
-            continue
-        g = _group(
+        def _group(
             slug, key, display, jurisdiction, registry_type, gov_type, last_updated
-        )
-        if gov_id not in g["gov_ids"]:
-            g["gov_ids"].append(gov_id)
-        g["page_count"] += count
+        ):
+            g = groups.setdefault(
+                slug,
+                {
+                    "slug": slug,
+                    "key": key,
+                    "display": display,
+                    "gov_ids": [],
+                    # Display only, for the /meetings?jurisdiction= "search
+                    # all" link -- NOT a membership test any more (WO-256).
+                    "jurisdictions": [],
+                    # Ids of the un-keyed pages that belong here, worked
+                    # out in Python by `_unkeyed_membership()` below.
+                    "page_ids": [],
+                    "page_count": 0,
+                    "last_updated": last_updated,
+                    "state_abbr": state_abbr_from_jurisdiction(display or jurisdiction),
+                    "gov_type": registry_type or gov_type,
+                },
+            )
+            g["jurisdictions"].append(jurisdiction)
+            if last_updated and (
+                g["last_updated"] is None or last_updated > g["last_updated"]
+            ):
+                g["last_updated"] = last_updated
+            return g
 
-    if not unkeyed_seen:
-        return groups
-
-    # Pass 2: the un-keyed pages, by HOST rather than by raw text
-    # (WO-256, the audit's §5). Both queries behind this are small: the
-    # first returns only un-keyed pages (418 of 8,222 in the 2026-09-11
-    # export), the second only pages sharing one of their hosts.
-    adoption, unkeyed = await _unkeyed_membership(session)
-    gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
-    for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
-        owner = adoption.get(host)
-        g = gov_group.get(owner) if owner else None
-        if g is None:
-            # Not adopted, so it keeps the hub its own raw text has always
-            # given it -- UNLESS that slug already belongs to a real
-            # government, in which case this is one of the contamination
-            # cases above and the page belongs nowhere until it is keyed.
-            _key, slug, display, _registry_type = _hub_identity(gov_id, jurisdiction)
-            if not slug or (slug in groups and groups[slug]["gov_ids"]):
+        # Pass 1: the real governments. An `rtr:unknown:<host>` id is NOT
+        # one -- it means "we do not know whose meeting this is" -- and
+        # letting it into `gov_ids` is exactly how 47 unrelated pages
+        # ended up on four real hubs (Orem UT, Tooele UT, Box Elder
+        # County UT, Caledonia Township MI, measured 2026-09-11): one
+        # such page whose raw text happened to slugify onto a real hub
+        # put the shared placeholder id into that hub's id list, which
+        # then matched EVERY page carrying the same placeholder.
+        unkeyed_seen = False
+        for gov_id, gov_type, jurisdiction, count, last_updated in rows:
+            if not hub_slugs._usable(gov_id):
+                unkeyed_seen = True
+                continue
+            key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
+            if not slug:
                 continue
             g = _group(
-                slug,
-                gov_id or slug,
-                display,
-                jurisdiction,
-                None,
-                gov_type,
-                last_updated,
+                slug, key, display, jurisdiction, registry_type, gov_type, last_updated
             )
-        elif last_updated and (
-            g["last_updated"] is None or last_updated > g["last_updated"]
-        ):
-            g["last_updated"] = last_updated
-        g["page_ids"].append(page_id)
-        g["page_count"] += 1
-    return groups
+            if gov_id not in g["gov_ids"]:
+                g["gov_ids"].append(gov_id)
+            g["page_count"] += count
+
+        if not unkeyed_seen:
+            return groups
+
+        # Pass 2: the un-keyed pages, by HOST rather than by raw text
+        # (WO-256, the audit's §5). Both queries behind this are small:
+        # the first returns only un-keyed pages (418 of 8,222 in the
+        # 2026-09-11 export), the second only pages sharing one of their
+        # hosts.
+        adoption, unkeyed = await _unkeyed_membership(session)
+        gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
+        for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
+            owner = adoption.get(host)
+            g = gov_group.get(owner) if owner else None
+            if g is None:
+                # Not adopted, so it keeps the hub its own raw text has
+                # always given it -- UNLESS that slug already belongs to
+                # a real government, in which case this is one of the
+                # contamination cases above and the page belongs nowhere
+                # until it is keyed.
+                _key, slug, display, _registry_type = _hub_identity(
+                    gov_id, jurisdiction
+                )
+                if not slug or (slug in groups and groups[slug]["gov_ids"]):
+                    continue
+                g = _group(
+                    slug,
+                    gov_id or slug,
+                    display,
+                    jurisdiction,
+                    None,
+                    gov_type,
+                    last_updated,
+                )
+            elif last_updated and (
+                g["last_updated"] is None or last_updated > g["last_updated"]
+            ):
+                g["last_updated"] = last_updated
+            g["page_ids"].append(page_id)
+            g["page_count"] += 1
+        return groups
+
+    return await hub_groups_cache.get_or_compute(
+        "hub_groups", _compute, bypass_cache=bypass_cache
+    )
 
 
 async def _unkeyed_membership(session):
@@ -8740,7 +8781,7 @@ async def _state_topic_chips(session, abbr: Optional[str]) -> list[dict]:
 
 
 async def get_jurisdiction_hub_data(
-    slug: str, topic_slug: Optional[str] = None
+    slug: str, topic_slug: Optional[str] = None, *, bypass_cache: bool = False
 ) -> Optional[dict]:
     """Everything /j/{slug} renders, or None when no indexable page maps to
     this slug (the route 404s). Every meeting for the hub's government --
@@ -8752,9 +8793,13 @@ async def get_jurisdiction_hub_data(
     template turns into a robots meta and the sitemap uses to include the
     hub. Loads every meeting for one government -- San Diego's 42 is the
     current maximum, so no pagination; the "search all" link to
-    /meetings?jurisdiction= covers a future 500-meeting city."""
+    /meetings?jurisdiction= covers a future 500-meeting city.
+
+    `bypass_cache` forces a fresh `_hub_groups()` read -- see that
+    function's docstring and `archive/db/hub_groups_cache.py` (WO-1083).
+    """
     async with async_session() as session:
-        groups = await _hub_groups(session)
+        groups = await _hub_groups(session, bypass_cache=bypass_cache)
         group = groups.get(slug)
         if group is None:
             return None
@@ -11238,6 +11283,9 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
 
         if not dry_run:
             await session.commit()
+            # WO-1083: a deleted page must not linger on its old hub for
+            # up to the cache's TTL. See hub_groups_cache.py.
+            hub_groups_cache.invalidate()
 
         return {
             "dry_run": dry_run,
