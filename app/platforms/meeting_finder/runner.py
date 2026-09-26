@@ -335,6 +335,18 @@ def _gov_state_for_input(finder_input: FinderInput) -> Optional[str]:
     return (gov.state or None) if gov else None
 
 
+# WO-1078: the searched government's own `gov_type` (`county`/
+# `municipality`/`township`/`school_district`/`state`/`special_district`),
+# same cached lookup as the two functions above -- forwarded to
+# `list_account()` so `pick.filter_candidates_to_government()` can catch a
+# candidate whose title names a governing body of a clearly different
+# TYPE (a school district search finding a "Town Council" video), not
+# just a different NAME.
+def _gov_type_for_input(finder_input: FinderInput) -> Optional[str]:
+    gov = _government_for_input(finder_input)
+    return gov.gov_type if gov else None
+
+
 def _try_next(outcome: Optional[str], budget_exhausted: bool) -> str:
     if outcome is None:
         return ""
@@ -527,6 +539,7 @@ async def _cached_list_account(
     page_url: Optional[str] = None,
     gov_name: Optional[str] = None,
     gov_state: Optional[str] = None,
+    gov_type: Optional[str] = None,
 ) -> ListResult:
     """WO-1035 item 5: "accounts listed once" -- `_shallow_step()` runs on
     every fork AND every hop, and more than one of those can land on the
@@ -556,6 +569,7 @@ async def _cached_list_account(
         page_url=page_url,
         gov_name=gov_name,
         gov_state=gov_state,
+        gov_type=gov_type,
     )
     state.listed_accounts[key] = result
     return result
@@ -855,6 +869,7 @@ async def _shallow_step(
                 page_url=ident.final_url or url,
                 gov_name=_gov_name_for_input(finder_input),
                 gov_state=_gov_state_for_input(finder_input),
+                gov_type=_gov_type_for_input(finder_input),
             )
         except SoftBudgetExceeded:
             # WO-1039 item 2: see the identical comment above.

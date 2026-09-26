@@ -381,6 +381,56 @@ government, the outcome is `models.OUTCOME_HUB_OTHER_GOVERNMENT` ("hub
 carries other governments, not this one") rather than a bare "nothing
 found".
 
+**Body-name/government-TYPE filter (WO-1078, Ryan's rule 2026-09-26).**
+The place-name filter above catches a shared hub serving a DIFFERENT
+PLACE. It does not catch the more common real case: the SAME place, a
+DIFFERENT KIND of government -- a school district's search landing on
+its town's or county's own meeting, because the two share one TV/
+streaming account. Real, measured problem: a no-platform-signature run
+found 58 videos on supported platforms; 23 were a different government,
+almost always a school district finding its town/county's video (e.g.
+Glastonbury, CT's school district search returning "Town Council", or
+Cumberland, WI's school district search returning the city's "Common
+Council").
+
+The meeting's own TITLE names the governing body, and the body implies a
+government TYPE -- `app/utils/gov_body_types.py`'s
+`VIDEO_TITLE_BODY_PHRASES` maps real body names ("Town Council", "Board
+of Selectmen", "County Commissioners", "State Board of Education",
+"Housing Authority"...) to the `Government.gov_type` values
+(`app.utils.gov_registry.classify`) that body can actually belong to.
+`pick.filter_candidates_to_government()`/`describe_foreign_candidate()`
+take an optional `gov_type` (the searched government's own type, looked
+up once per government by `runner._gov_type_for_input()`) and, when a
+candidate's title names a body whose implied type clearly disagrees,
+drop it as a same-place-different-TYPE lead -- same `other_gov_leads`
+mechanism as the place-name filter, so nothing is thrown away (Ryan's
+"keep at least one" rule applies here too: when every candidate is a
+different government's body, the best one is still returned, marked).
+Checked BEFORE the place-name filter's own generic
+`GOVERNING_BODY_KEYWORDS` gate (council/commission/board/committee/
+hearing, whole-word only) -- that gate misses real titles this WO needs
+("County Commissioners" has no bare "commission"/"board" word,
+"Redevelopment and Housing Authority" has no keyword at all).
+
+Deliberately conservative: an ambiguous body name (Planning Commission,
+Zoning Board of Appeals, Finance Committee, a bare Board of Trustees, a
+generic "Regular Meeting") is never in the phrase table, so it never
+triggers a reject. Re-run against the 2026-09-26 hand-check's 44 real
+other-government rows and 185 real approved finds: 22 of the 44 (50%)
+are now caught and recorded as leads instead of returned wrong; 0 of the
+185 real, correct finds are wrongly rejected (including a school
+district's own committee meeting found on its town's shared channel, and
+"SHAC" -- a school district's own required School Health Advisory
+Council committee, confirmed via 10 real approved recordings rather than
+assumed to be a state body as its name might suggest). See
+`app/utils/gov_body_types.py`'s own module docstring for why this table
+is separate from -- but shares its `classify.*` vocabulary and
+`EXPECTED_GOV_TYPES_BY_BODY_TYPE`/`normalize_body_type_word()` machinery
+with -- `scripts/hub_harvest.py`'s own government-TYPE agreement check
+(WO-1076), which works on a hub SECTION heading rather than a video
+TITLE and has different tuning for that reason.
+
 **Fetch injection (WO-1028).** Listers (a) and (e) call straight into
 `passive_verify.py`'s own walker functions, which fetch pages through
 that module's private `_fetch()`. So those walkers use Meeting Finder's

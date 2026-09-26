@@ -213,7 +213,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (22)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (214)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (215)
+  [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
   [NEEDS-AUDIT] `cablecast.py`'s "Cablecast Connect" resolve path 404s…
   [NEEDS-AUDIT] The government registry creates duplicate ids and…
@@ -2401,6 +2402,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078) misses 22 of 44 real wrong-government finds — no recognizable body phrase, or a deliberately excluded ambiguous one.**
+  - **Issue**: WO-1078's own re-check of the 2026-09-26 hand-check's 44 real other-government rows caught 22 (50%). The other 22 either name no body phrase `app/utils/gov_body_types.py`'s table recognizes at all ("Committee on Administration Finance and Law", "BCC Budget Public Hearing", "MTG-PZC-2026-09-21", several blank titles), or use a phrase deliberately excluded as ambiguous (Zoning Board of Appeals, Board of Finance, Board of Appeals, "Historic District Commission").
+  - **Impact**: these 22 still come back as a wrong find with no lead recorded, same as before this WO — no regression, but no improvement either. A human hand-check is still the only backstop for them.
+  - **Next action**: once more real examples of each miss shape accumulate (this repo's own "verify against real data" rule — a table built from 1-2 examples risks a wrong generalization, e.g. "BCC" could mean things other than Board of County Commissioners elsewhere), add narrowly-scoped phrases/rules for the ones that repeat. Not urgent: `[LATER]`-shaped, waiting on volume.
+  - **Constraint**: don't widen the ambiguous exclusions (Zoning Board of Appeals, Board of Finance, Finance Committee, bare Board of Trustees, Planning Commission) without a real, confirmed case — they were excluded specifically because they can name either a school district's own body or a different government's, per Ryan's 2026-09-26 brief.
+  - **History**: found building and verifying WO-1078, 2026-09-26; see `BACKLOG_DONE.md`'s WO-1078 entry for the full before/after tables.
 
 - **[NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name match still misses a government's own meeting when its title abbreviates the place name.**
   - **Issue**: WO-1058's live re-run (80 governments, 2026-09-25) found one residual false positive: Elizabeth City NC's own Vimeo hub lists a real meeting titled "City of EC Council Sept 14 2026 Part 2" — "EC" is the government's own name abbreviated, but `_place_core()` reduces it to the literal core `"ec"`, which doesn't match `_place_core("Elizabeth City")` -> `"elizabeth"`, so the filter treats it as a different government's meeting.
