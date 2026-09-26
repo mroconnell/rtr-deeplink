@@ -1,4 +1,4 @@
-"""WO-1074 addendum (Ryan, 2026-09-25): the video quality gate
+"""WO-1076 addendum (Ryan, 2026-09-25): the video quality gate
 (`app/utils/video_hand_check.py`'s `classify_video_hand_check()`, called
 from `assess_video_candidate()`) rejects a "school board"/"board of
 education"/"school committee" title outright, on the theory that it

@@ -145,7 +145,7 @@ def _guessed_body_type(text: str) -> str:
     return ""
 
 
-# WO-1074 addendum (Ryan, 2026-09-25): a hand-check of real "confident"
+# WO-1076 addendum (Ryan, 2026-09-25): a hand-check of real "confident"
 # matches found the government-TYPE word in a title was being ignored --
 # "Town of Horseheads Planning Board" matched Horseheads VILLAGE, NY;
 # "Springfield Township Board" matched Springfield CITY, MI; "Grant
@@ -178,7 +178,7 @@ _EXPECTED_GOV_TYPES_BY_BODY_TYPE: Dict[str, frozenset] = {
     "county": frozenset({classify.COUNTY}),
     "school district": frozenset({classify.SCHOOL_DISTRICT}),
     "township": frozenset({classify.TOWNSHIP}),
-    # WO-1074 addendum: real Horseheads, NY case -- an explicit "Town of
+    # WO-1076 addendum: real Horseheads, NY case -- an explicit "Town of
     # X" is this repo's own established convention for the county-
     # subdivision id (`us:cousub:`/`township`), per `resolver.py`'s own
     # `_general_purpose_lookup()` docstring ("the town resolves to
@@ -286,7 +286,7 @@ _JOINT_OR_SPECIAL_BODY_RE = re.compile(
     r"|\bcouncil of governments\b"
     r"|\bwatershed commission\b"
     r"|(?<!school )(?<!school-)\bdistrict\b"
-    # WO-1074 addendum (Ryan, 2026-09-25): a police services board is a
+    # WO-1076 addendum (Ryan, 2026-09-25): a police services board is a
     # separate, often multi-jurisdiction body, never the general
     # government it's hosted by/named after -- real example: Essex
     # County OPP (Ontario Provincial Police) Detachment Board, matched
@@ -407,7 +407,7 @@ def _extract_place_fragment(text: str) -> str:
 def _enforce_type_agreement(
     match: "resolver.GovernmentMatch", body_type_hint: str
 ) -> "resolver.GovernmentMatch":
-    """WO-1074 addendum: `body_type_hint` (normalized via
+    """WO-1076 addendum: `body_type_hint` (normalized via
     `normalize_body_type_word()`) says the title carried an EXPLICIT
     place-type word -- "Town of X", "X Township", "X County...". If the
     resolver's own match disagrees (a different real `gov_type`), that is
@@ -466,7 +466,7 @@ def _match_place_text(
     try the qualified form FIRST -- it is the more specific, more likely
     correct match whenever it resolves at all.
 
-    WO-1074 addendum: whatever match is finally chosen, if `body_type_hint`
+    WO-1076 addendum: whatever match is finally chosen, if `body_type_hint`
     names an explicit type word, the match's own `gov_type` must agree
     (`_enforce_type_agreement()`) -- otherwise it is downgraded to
     `TIER_UNVERIFIED` rather than trusted, however well the NAME matched.

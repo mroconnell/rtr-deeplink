@@ -774,7 +774,7 @@ re-paced (avoids doubling the wait for its own already-paced fetches),
 and for the `contextvars` mechanics that keep two concurrent governments'
 counts from mixing.
 
-## Second pass, one more hop, adaptive budget (WO-1074, 2026-09-25)
+## Second pass, one more hop, adaptive budget (WO-1076, 2026-09-25)
 
 Calibration set D (2026-09-25) found 1,581 known-video governments, 728
 found (46%): 380 ending `youtube-lead-only` (about 190 of those had a

@@ -162,7 +162,7 @@ def _hand_check_phrase_hit(haystack_lower: str, phrase: str) -> bool:
     return re.search(r"\b" + re.escape(phrase) + r"\b", haystack_lower) is not None
 
 
-# WO-1074 addendum (Ryan, 2026-09-25): a hand-check of calibration set D's
+# WO-1076 addendum (Ryan, 2026-09-25): a hand-check of calibration set D's
 # weak leads found 10 real false positives -- Glendale USD, Nassau County
 # SD (FL), Prince George County Public Schools (VA), South Windsor SD,
 # Baltimore County PS, Calvert County PS, Midland PS, Falmouth Schools

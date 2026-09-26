@@ -1,4 +1,4 @@
-"""WO-1074: Meeting Finder second pass -- three rescues on top of the
+"""WO-1076: Meeting Finder second pass -- three rescues on top of the
 WO-1024/1030 phase loop, calibration set D (2026-09-25):
 
 1. A "second pass" before settling for `OUTCOME_YOUTUBE_LEAD_ONLY`: when a
