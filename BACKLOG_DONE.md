@@ -1,5 +1,23 @@
 # Backlog — done
 
+## WO-1080: five public bodies found by Meeting Finder get registry ids [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder's 2026-09-25/26 runs found real meetings of five public bodies that had no registry id, linked from school-district sites and wrongly filed there by the finder (hand-checked). Ryan: "mint the five public bodies, skip PIAA" (2026-09-26).
+
+**Result.** New curated rows:
+
+| Government | Id | Type | Meetings found |
+|---|---|---|---|
+| Missouri State Board of Education | `rtr:us:mo:state-board-of-education` | other | 8 links (5 videos, MO DESE Vimeo) |
+| Board of State Canvassers, MI | `rtr:us:mi:board-of-state-canvassers` | other | 2 links (1 video, `misenate` Castus) |
+| Tennessee Public Charter School Commission | `rtr:us:tn:public-charter-school-commission` | other | 1 |
+| Fraser Valley Regional Hospital District, BC | `rtr:ca:bc:fraser-valley-regional-hospital-district` | special_district | 1 |
+| Harrisonburg Redevelopment and Housing Authority, VA | `rtr:us:va:harrisonburg-redevelopment-and-housing-authority` | special_district | 1 |
+
+State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_types.py`'s state-board phrases now accept `other` as well as `state`, so a state board's own meetings are not rejected when that board is searched (new test in `tests/test_wo1078_meeting_finder_body_type.py`).
+
+**Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
+
 ## WO-1078: Meeting Finder checks the government TYPE a body's name implies, not just its place name [Done 2026-09-26]
 
 **Issue.** A no-platform-signature Meeting Finder run found 58 videos on

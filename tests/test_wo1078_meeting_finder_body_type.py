@@ -318,3 +318,17 @@ def test_synthetic_all_foreign_still_keeps_one_labelled_lead():
     assert len(filtered.candidates) == 1
     assert filtered.candidates[0].foreign_gov_hint
     assert filtered.outcome is not None
+
+
+def test_state_board_agrees_with_its_own_other_typed_registry_row():
+    """WO-1080: state agencies are registered as type `other` (WO-220), so the
+    Missouri State Board of Education's own meeting (real title, MO DESE Vimeo
+    1202186516) must not be rejected when that board itself is searched, while
+    a school district still sees it as another government."""
+    from app.utils import gov_body_types
+    from app.utils.gov_registry import classify
+
+    title = "2026 06 23 Missouri State Board of Education Meeting"
+    assert gov_body_types.body_type_disagreement(title, classify.OTHER) is None
+    assert gov_body_types.body_type_disagreement(title, classify.STATE) is None
+    assert gov_body_types.body_type_disagreement(title, classify.SCHOOL_DISTRICT)
