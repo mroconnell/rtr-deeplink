@@ -260,11 +260,22 @@ async def test_day_one_backfill_is_a_no_op_for_every_live_url():
                 .distinct()
             )
         ).all()
+    # Only governments whose hub URL is still today's computed slug. A
+    # government another test module already SPLIT onto its own permanent
+    # slug (tests/test_split_hub_slug.py gives two real Yarmouth, NS
+    # governments `town-of-yarmouth-ns` / `municipality-of-yarmouth-ns`)
+    # is outside the day-one claim: no split existed on day one, and
+    # re-recording it from its computed slug would -- correctly -- undo the
+    # split. Including it made this fail whenever that module ran first
+    # (WO-1083, found running the suite in shuffled order).
     governments = [
         (gov_id, jurisdiction)
         for gov_id, jurisdiction in rows
         if hub_slugs._usable(gov_id)
+        and crud.hub_slug_for_page(gov_id, jurisdiction)
+        == crud.live_hub_slug(gov_id, jurisdiction)
     ]
+    in_scope = {gov_id for gov_id, _ in governments}
     assert len(governments) >= 7, "too few real governments seeded to mean anything"
 
     before = {
@@ -278,7 +289,9 @@ async def test_day_one_backfill_is_a_no_op_for_every_live_url():
         # the rows left in place the insert is a no-op (ON CONFLICT DO
         # NOTHING, by design -- a clock once started is never restarted),
         # and nothing would freeze.
-        await session.execute(delete(HubSlug))
+        # Only this test's governments: another module's rows (a split
+        # among them) must survive this test.
+        await session.execute(delete(HubSlug).where(HubSlug.gov_id.in_(in_scope)))
         await session.commit()
     hub_slugs.reset_cache()
     async with async_session() as session:
@@ -322,6 +335,8 @@ async def test_day_one_backfill_is_a_no_op_for_every_live_url():
     # frozen would make a later test's registry monkeypatch silently
     # meaningless rather than failing loudly.
     async with async_session() as session:
-        await session.execute(update(HubSlug).values(frozen_at=None))
+        await session.execute(
+            update(HubSlug).where(HubSlug.gov_id.in_(in_scope)).values(frozen_at=None)
+        )
         await session.commit()
     hub_slugs.reset_cache()

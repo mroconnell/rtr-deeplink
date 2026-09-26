@@ -1,8 +1,8 @@
 # Backlog — done
 
-## WO-1083: five tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
+## WO-1083: six tests that failed only when test files ran in a shuffled order [Done 2026-09-26]
 
-**What.** Five tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All five had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
+**What.** Six tests passed in the normal (alphabetical) order but failed when the test files ran in a shuffled order. All six had one root cause. The suite shares one SQLite database that is never reset, and each test assumed it would see only its own rows. Rows left by other test files got in the way. Each test now checks only what it controls. The fixes change test files only; no app code.
 
 **Cause and fix for each.**
 
@@ -11,6 +11,7 @@
 | `test_archive_push_tracking.py`: `test_push_and_track_records_failure_on_unsuccessful_push`, `test_sweep_retries_every_pending_push_and_returns_what_it_found` | `get_pending_archive_pushes()` returns only the 10 oldest pending rows, and the sweep always uses that default. Other files' older pending rows pushed the test's new row out of the 10. | A test that only checks whether a row is pending now asks for every pending row. Where the sweep runs, the test backdates its own row to 2000-01-01 so it comes first. Each test deletes its rows afterwards. The shared helpers are `backdate_resolutions()` and `delete_resolutions()` in `tests/conftest.py`. |
 | `test_footer_and_coverage.py::test_get_jurisdiction_coverage_lists_a_real_ingested_meeting` | A coverage row shows one example page per government: the first with a transcript. Other files also store Napa pages, so the example could be theirs ("Test Meeting"). | Uses Ukiah, CA instead: a real Census place (`us:place:0681134`) that no other test file uses. |
 | `test_state_pages.py::test_state_page_lists_states_jurisdictions` | The test looked for a link to its own Napa meeting. The state page lists meetings by link only in its "most recently archived" block. It shows that block only while no California meeting has a highlight, and other files store California meetings that do. | Checks the Napa row's link to its hub (`/j/napa-ca`) instead. The next test still checks a meeting link, on Georgia, which no other test file stores. |
+| `test_hub_slug_freeze.py::test_day_one_backfill_is_a_no_op_for_every_live_url` (found by the seed 33 and 44 runs below) | It deleted every stored hub URL, re-recorded each government from its computed URL, and expected no URL to change. But `test_split_hub_slug.py` deliberately gives two real Yarmouth, NS governments their own permanent URLs (`town-of-yarmouth-ns`, `municipality-of-yarmouth-ns`) instead of the shared computed `yarmouth-ns`. Re-recording undid that split. | It now covers only governments whose URL still equals the computed one: the day-one situation it describes, before any split existed. It deletes and unfreezes only those governments' rows, so other files' rows survive it. Reproduced with `test_split_hub_slug.py` run first: the original fails and the fix passes, in either order. |
 | `test_meeting_card_thumbnails.py::test_backfill_offset_pages_past_the_head_of_the_queue` | It asks for up to 500 candidates. A full run can hold more than 500, so the list from offset 2 was also 500 long, 2 past the end of the first list. | Compares only the part both lists cover. When the first list isn't capped, it still checks the exact length. The "past the end" check uses a very large offset. |
 
 `test_app_db_crud.py` got the same fix as the push-tracking file. It queries the same 10-row list and relied on the same luck; it had not failed yet.
@@ -27,6 +28,9 @@
 | The failing files placed last | 7,626 passed, 0 failed |
 | Shuffled, seed 11 | 7,626 passed, 0 failed |
 | Shuffled, seed 22 | 7,626 passed, 0 failed |
+| Shuffled, seed 33 | 1 failed: `test_hub_slug_freeze`, fixed above |
+| Shuffled, seed 44 | 1 failed: `test_hub_slug_freeze`, fixed above |
+| Normal order | 7,626 passed; the only failure is the proxy-only YouTube test |
 
 **Caution.** Other tests may carry the same weakness and just have not been hit by an order tried so far. The usual shape: a check against a capped or "first match" list in the shared database.
 
