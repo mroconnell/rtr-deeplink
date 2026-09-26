@@ -1,5 +1,11 @@
 # Backlog — done
 
+## WO-1092: Loch Alpine Sanitary Authority gets a registry id [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder's 2026-09-26 retry run found a "LASA Operating Committee" meeting on Scio Township's Granicus site and filed it under Webster Township; the hand-check caught that it is neither. LASA is the Loch Alpine Sanitary Authority, a real special district in the Census of Governments list (`cog_units.csv`, cog_id 149810, Washtenaw County, MI). That list is deliberately not loaded as registry ids, so the authority had none. Ryan approved minting it (2026-09-26).
+
+**Result.** New curated row `rtr:us:mi:loch-alpine-sanitary-authority` (special_district, cog_id 149810 recorded). The meeting is filed under it once the Archive runs a build that has this row.
+
 ## WO-1087: Swagit view numbers rebuilt from owner proof; 3 wrong rows from WO-1081 removed [Done 2026-09-26]
 
 **What was done and why.** `swagit_views.csv` (WO-1081) held 35 view numbers copied from links in research files. rtr-discovery's Swagit owner sweep (2026-09-26) proved who owns every view: it read view pages 1-1,090 and two video pages from each of the 567 with meetings; a video page names its owner in its analytics tag (`page_location: 'https://{owner}.swagit.com/...'`) wherever it is opened. Checked against that, 3 of the 35 rows were another government's view and 4 pointed at empty views:
