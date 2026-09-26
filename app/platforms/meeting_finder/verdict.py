@@ -51,6 +51,7 @@ CSV_FIELDS = [
     "audio_only",
     "handcheck_lead",
     "other_gov_leads_count",
+    "blocked_url",
     "finished_at",
 ]
 
@@ -130,6 +131,7 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "audio_only": row.audio_only,
                 "handcheck_lead": row.handcheck_lead,
                 "other_gov_leads_count": len(row.other_gov_leads),
+                "blocked_url": row.blocked_url,
                 "finished_at": row.finished_at,
             }
         )

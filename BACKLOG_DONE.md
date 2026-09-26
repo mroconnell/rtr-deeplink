@@ -1,5 +1,35 @@
 # Backlog — done
 
+## WO-1122: a block on a SECONDARY fetch was overriding a real finding from the government's own readable site [Done 2026-09-26]
+
+**What was checked and why.** A no-platform-signature Meeting Finder run (2026-09-26, about 7,000 governments) had 1,134 governments end in a block outcome (`blocked-browser-headers` 590, `blocked-headless` 478, `cloudflare-challenge-blocked` 55, `blocked-waf-akamai` 11). Every one of those had fetched 3 or more pages before the block, none was blocked on the very first page, and 805 had already reached the Hop phase — meaning the block, whatever it was, did not come from the government's own front door. Real example: primeroschool.org's own homepage loaded fine; Start's own guessed vendor subdomain (`agenda.primeroschool.org`) was refused; the old outcome ranking let that one refusal become the whole government's verdict.
+
+**Root cause.** `runner.py` ranks every outcome collected during a government's walk and keeps the most informative one. A block outcome (55–60) ranks far above "nothing found" (10), so a refusal of ANY page — including a made-up subdomain Start guessed, or an off-site link Hop followed — could beat a real (if empty) finding from the government's own site.
+
+**What was changed.**
+1. Every block-like outcome now records the URL that was actually refused (`_WalkState.block_events`, a new `VerdictRow.blocked_url` field).
+2. The final outcome only keeps a block-like outcome when at least one refusal happened on the government's OWN host — the input domain or its `www.` sibling, and nothing narrower or wider (a guessed vendor subdomain does not count, even though it shares a parent domain). A refusal anywhere else is recorded in the row's `note` ("`<outcome> at <url> (secondary, not verdict)`") but never wins.
+3. A new `site-broken` outcome for a TLS certificate error, a failed handshake, or a refused connection on the government's own starting page — a genuinely broken site, never a bot-detection block, so `fetch.py` reports it immediately instead of retrying with browser headers. Its `try_next` says to find the government's current domain, not "retry" or "try Wayback."
+
+**Live check, 50 real governments** (40 from the four block outcomes above, 10 `no-meeting-nor-video` controls — same nps run, `--entry start`, otherwise default settings):
+
+| Result | Count of 40 originally-blocked governments |
+|---|---|
+| Now report a real finding (`no-meeting-nor-video` or `youtube-lead-only`) instead of a block | 26 |
+| Still report an access issue — confirmed a refusal of the government's own host | 14 |
+
+Of those 14, 3 reclassified from an ordinary block to the new `site-broken` outcome (a real bad certificate/connection refusal on their own homepage, e.g. `bhisd.net`, `lipanindians.net`). Every one of the 14 was checked by hand against `blocked_url`: all 14 point at the government's own host, none at a secondary fetch.
+
+| Result | Count of 10 no-meeting-nor-video controls |
+|---|---|
+| Unchanged | 10 |
+
+primeroschool.org (the case that surfaced this) now reads `no-meeting-nor-video`, with both guessed-subdomain refusals recorded in its note as secondary.
+
+**Caution.** This sample is 50 governments out of the much larger population `BACKLOG.md`'s "Blocked governments" entry sizes itself against — that entry's own numbers (87 of 799, and 1,134 above) are now flagged stale there and corrected with this finding; a full re-run is still needed before resizing follow-up work.
+
+**Tests.** `tests/test_wo1122_meeting_finder_secondary_block.py` (6 cases: secondary-host block doesn't win, own-homepage/own-meetings-page block still wins, `site-broken` classification and its own-host override, `blocked_url` matches the refused URL) and 4 new cases in `tests/test_meeting_finder_fetch.py` (TLS certificate error, TLS handshake failure, connection refused → `site-broken`; an ordinary dropped connection is unaffected).
+
 ## WO-1112: Adapter health canary had failed every day since 2026-08-29 — two causes fixed, one reclassified, one real outage found [Done 2026-09-26]
 
 **What was checked and why.** The daily canary (`.github/workflows/adapter-canary.yml`) had failed 29 scheduled runs in a row (2026-08-29 to 2026-09-26), so it read as noise. The brief named ffprobe and tvw.org as likely causes. Every one of the 29 failed logs was read and each run's `FAIL` lines counted.

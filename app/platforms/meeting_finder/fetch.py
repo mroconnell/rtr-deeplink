@@ -508,12 +508,38 @@ class Fetcher:
         ):
             return None, url, None, "timeout"
         except (
+            aiohttp.ClientConnectorCertificateError,
+            aiohttp.ClientConnectorSSLError,
+        ):
+            # WO-1122: a REAL broken site, not a bot-detection block --
+            # a certificate that doesn't match the hostname, is
+            # self-signed/untrusted, or a TLS handshake that fails
+            # outright. `ClientConnectorCertificateError` is itself an
+            # `ssl.SSLCertVerificationError` (hostname mismatch,
+            # self-signed, untrusted CA); `ClientConnectorSSLError`
+            # covers a broader handshake failure. Retrying with browser
+            # headers (the ordinary next rung) never fixes either -- the
+            # TLS handshake fails before any header is ever sent -- so
+            # this is reported straight away as `site_broken`, not
+            # escalated up the header ladder. See `fetch()`'s own
+            # handling of this error kind.
+            return None, url, None, "site_broken"
+        except (
             aiohttp.ServerDisconnectedError,
             aiohttp.ClientOSError,
             aiohttp.ClientConnectorError,
             aiohttp.ClientPayloadError,
             aiohttp.ClientConnectionError,
-        ):
+        ) as exc:
+            # WO-1122: a real connection refusal (nothing is listening --
+            # a genuinely dead/broken site) is a different, more useful
+            # finding than an ordinary dropped connection (which is
+            # usually a bot-detection edge dropping us, and IS worth
+            # retrying with browser headers). `ClientConnectorError`
+            # proxies `.errno`/`.os_error` from the underlying OSError.
+            os_error = getattr(exc, "os_error", None)
+            if isinstance(os_error, ConnectionRefusedError):
+                return None, url, None, "site_broken"
             return None, url, None, "dropped"
         finally:
             self._mark_host(host)
@@ -686,6 +712,17 @@ class Fetcher:
                 outcome="timeout",
                 start=start,
             )
+        if err == "site_broken":
+            # WO-1122: a real broken site (bad certificate, failed TLS
+            # handshake, connection refused) -- never worth retrying with
+            # browser headers, since none of those are a bot-detection
+            # response to how the request looked.
+            return self._result(
+                requested_url=url,
+                access_mode=access_mode,
+                outcome="site-broken",
+                start=start,
+            )
 
         # Rung 2: browser headers -- only after a 403 or a connection-level
         # refusal (a dropped connection, a `RemoteDisconnected`-shaped
@@ -708,6 +745,13 @@ class Fetcher:
                     requested_url=url,
                     access_mode=access_mode,
                     outcome="timeout",
+                    start=start,
+                )
+            if err2 == "site_broken":
+                return self._result(
+                    requested_url=url,
+                    access_mode=access_mode,
+                    outcome="site-broken",
                     start=start,
                 )
             if err2 == "dropped" or status2 == 403:

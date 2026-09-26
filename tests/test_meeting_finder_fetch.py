@@ -27,7 +27,9 @@ Playwright helper itself.
 
 from __future__ import annotations
 
+import errno
 import json
+import ssl
 import subprocess
 import sys
 from pathlib import Path
@@ -676,6 +678,54 @@ async def test_dropped_connection_retries_with_browser_headers():
     fetcher._session = _RaisingSession(aiohttp.ServerDisconnectedError())
     result = await fetcher.fetch("https://example.invalid/")
     assert result.access_mode == "browser-headers"
+    assert result.outcome == "blocked-browser-headers"
+
+
+# WO-1122: a real broken site (bad TLS certificate, failed handshake, or a
+# refused connection) is a different, more actionable finding than an
+# ordinary bot-detection block -- none of these three is fixed by
+# retrying with browser headers (the handshake/connection never
+# completes far enough for any header to matter), so `fetch()` must
+# report `site-broken` immediately, without escalating up the ladder.
+async def test_tls_certificate_error_is_classified_as_site_broken():
+    fetcher = Fetcher(allow_wayback=False)
+    fetcher._session = _RaisingSession(
+        aiohttp.ClientConnectorCertificateError(
+            None, ssl.SSLCertVerificationError("hostname mismatch")
+        )
+    )
+    result = await fetcher.fetch("https://bad-cert.example.gov/")
+    assert result.outcome == "site-broken"
+    # Never escalated to browser headers -- a TLS failure happens before
+    # any HTTP header is ever sent.
+    assert result.access_mode == "plain"
+
+
+async def test_tls_handshake_failure_is_classified_as_site_broken():
+    fetcher = Fetcher(allow_wayback=False)
+    fetcher._session = _RaisingSession(
+        aiohttp.ClientConnectorSSLError(None, OSError("handshake failed"))
+    )
+    result = await fetcher.fetch("https://broken-handshake.example.gov/")
+    assert result.outcome == "site-broken"
+
+
+async def test_connection_refused_is_classified_as_site_broken():
+    os_error = OSError(errno.ECONNREFUSED, "Connection refused")
+    fetcher = Fetcher(allow_wayback=False)
+    fetcher._session = _RaisingSession(aiohttp.ClientConnectorError(None, os_error))
+    result = await fetcher.fetch("https://nothing-listening.example.gov/")
+    assert result.outcome == "site-broken"
+
+
+async def test_ordinary_dropped_connection_is_not_site_broken():
+    """Regression guard: an ordinary dropped connection (no OSError, or an
+    OSError that isn't a real connection refusal) must keep going through
+    the existing browser-headers retry -- `site-broken` is narrow, not a
+    replacement for the generic "dropped" classification."""
+    fetcher = Fetcher(allow_wayback=False)
+    fetcher._session = _RaisingSession(aiohttp.ClientOSError("reset by peer"))
+    result = await fetcher.fetch("https://example.invalid/")
     assert result.outcome == "blocked-browser-headers"
 
 

@@ -668,6 +668,46 @@ is never fetched twice no matter which fork or hop reaches it.
   reachable, just nothing useful was found on it. A domain where `start()`
   itself never found a resolving host (`dns_gate_passed` stays False) is
   unaffected -- that's still a real `dns-unresolvable` verdict.
+- **WO-1122: a block found on a SECONDARY fetch never wins the verdict
+  when the government's own site was actually readable.** Measured
+  2026-09-26 across a real ~7,000-government run: every one of 1,134
+  block-outcome governments had fetched 3+ pages first, none was blocked
+  on its very first page, and 805 had already reached the Hop phase --
+  meaning the block, whatever it was, came from somewhere Deep in the
+  walk, not the government's own homepage. Real example:
+  primeroschool.org's own homepage loaded fine; Start's OWN guessed
+  vendor subdomain (`agenda.primeroschool.org`, from `start.py`'s
+  `VENDOR_SUBDOMAIN_GUESSES`) was refused; the old ranking (a block, 55-60,
+  far above `no-meeting-nor-video`'s 10) let that one secondary refusal
+  become the WHOLE government's verdict. The fix: every block-like outcome
+  (`cloudflare-challenge-blocked`/`blocked-waf-akamai`/
+  `blocked-browser-headers`/`blocked-headless`/`site-broken`, see below)
+  is recorded in `_WalkState.block_events` together with the URL that was
+  actually refused. `run_one()`'s own final-outcome step only lets a
+  block-like outcome win the ranking when at least one of its occurrences
+  was refused on the government's OWN HOST -- narrowly defined
+  (`runner._own_host_set()`) as the input URL's own registrable host plus
+  its `www.` sibling, deliberately NOT any other subdomain (a guessed
+  vendor subdomain is not "own host" even though it shares a parent
+  domain). A block on the government's own homepage, or its own meetings/
+  agenda page on that same host, still wins, unchanged -- that is real,
+  useful evidence. Every secondary refusal is still recorded in
+  `VerdictRow.note` (`"<outcome> at <url> (secondary, not verdict)"`), and
+  the refused URL behind whichever block DOES win is on
+  `VerdictRow.blocked_url` -- see BACKLOG_DONE.md's WO-1122 entry for the
+  live before/after numbers.
+- **WO-1122: `site-broken` is a distinct outcome from `dns-unresolvable`**
+  for when the government's own starting page's domain resolves but the
+  site itself doesn't actually work -- a TLS certificate that doesn't
+  match the hostname (or is self-signed/untrusted), a TLS handshake that
+  fails outright, or a connection refused (nothing listening on the
+  port). None of these three is a bot-detection response, so `fetch.py`
+  reports `site-broken` immediately rather than escalating up the
+  browser-headers ladder the way an ordinary block does. `try_next` for
+  it says to find the government's CURRENT domain, not "retry" or "try
+  another network" -- the domain itself isn't dead, it just isn't serving
+  a real site anymore. Subject to the exact same own-host override as
+  every other block-like outcome above.
 - **Politeness across governments sharing a vendor host:** `fetch.py`'s
   own per-`Fetcher` spacing only paces one government's own requests: two
   DIFFERENT `Fetcher`s (two governments running concurrently under
@@ -799,10 +839,11 @@ nothing is ingested or queued from here.
 |---|---|
 | Input, entry phase, path taken | `pomonaca.gov`, Start, homepage → "Watch" → `live.pomonaca.gov` |
 | Result | meeting URL, platform, tier 1/2/3, length |
-| Or a named outcome (§23 of rtr-business `ENUMERATION_METHODS.md`) | `meeting-without-video`, `unsupported-platform-no-adapter`, `off-mission`, `cloudflare-challenge-blocked`, `account-not-found` |
+| Or a named outcome (§23 of rtr-business `ENUMERATION_METHODS.md`) | `meeting-without-video`, `unsupported-platform-no-adapter`, `off-mission`, `cloudflare-challenge-blocked`, `account-not-found`, `site-broken` (WO-1122) |
 | Identity | agrees / disagrees (points to …) / page says nothing |
 | Leads found on the way | YouTube channels, other governments' accounts |
 | Budget used | hops, forks, fetches |
+| Refused URL (WO-1122, block-like outcomes only) | `blocked_url` — the URL actually refused, always on the government's own host (a secondary host's own refusal never becomes the verdict — see "Verdict's outcome choice" above); every secondary refusal is still in `note` |
 
 Ingesting, queuing tier 3 and writing the research row stay separate
 steps, after the hand-read.
@@ -818,6 +859,7 @@ used by Start, Identify, Scan and Hop.
 | Browser headers | Only after a 403 or a dropped connection |
 | Headless browser | Only when a page loaded but shows no links |
 | Wayback's latest copy | After a human-verification challenge, **or after the ladder ends in an ordinary hard block with no challenge marker** (a 403/dropped connection that persists through the browser-headers rung -- WO-1032). **For links only**, recorded with the snapshot date. Never the government's own media. The outcome string itself doesn't change; `FetchResult.wayback_timestamp` being set is the flag that Wayback links were used |
+| Nothing -- reported straight away as `site-broken` (WO-1122) | A TLS certificate error (hostname mismatch, self-signed, untrusted), a TLS handshake failure, or a connection refused -- never retried with browser headers or a challenge check, since none of the three is a bot-detection response to how the request looked |
 
 We never try to get past a site's challenge. Per-host politeness spacing
 and robots.txt apply as in stage 1.

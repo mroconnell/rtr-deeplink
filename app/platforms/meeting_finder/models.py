@@ -34,6 +34,22 @@ OUTCOME_CLOUDFLARE_CHALLENGE_BLOCKED = "cloudflare-challenge-blocked"
 OUTCOME_BLOCKED_PLAIN_HTTP = "blocked-plain-http"
 OUTCOME_BLOCKED_BROWSER_HEADERS = "blocked-browser-headers"
 OUTCOME_TIMEOUT = "timeout"
+# WO-1122: the government's OWN starting page(s) answer, but the site
+# itself is broken -- a TLS certificate that doesn't match the hostname
+# (or is self-signed/untrusted), a TLS handshake that fails outright, or a
+# plain connection refusal (nothing listening on the port at all). This is
+# never a bot-detection response (retrying with browser headers, or any
+# other request shape, never fixes any of the three), and it is a
+# materially different, more actionable finding than
+# `OUTCOME_DNS_UNRESOLVABLE` -- the domain itself resolves, so the fix is
+# "find the government's CURRENT domain/site", not "the domain is dead".
+# Reused across `fetch.py` (which reports it as a plain string, matching
+# every other outcome that module already returns by string literal) and
+# `runner.py`'s own outcome ranking/try_next table. See CLAUDE.md's
+# viebit.com SSL_CERT_FILE entry for the kind of false "the remote
+# server's certificate is broken" conclusion this outcome exists to make
+# checkable instead of guessed at.
+OUTCOME_SITE_BROKEN = "site-broken"
 
 # Meeting Finder's own, per docs/MEETING_FINDER.md's Identify/Follow-ups
 # sections -- new spellings, not reused from elsewhere, since neither
@@ -282,4 +298,14 @@ class VerdictRow:
     # `scripts/meeting_finder_other_gov_leads.py`, never ingested directly
     # from here (Verdict is read-only, see verdict.py's own docstring).
     other_gov_leads: List[Dict[str, Any]] = field(default_factory=list)
+    # WO-1122: the URL that was actually refused, for a block-like
+    # (`cloudflare-challenge-blocked`/`blocked-waf-akamai`/
+    # `blocked-browser-headers`/`blocked-headless`/`site-broken`) outcome
+    # -- set only when the FINAL `outcome` is one of those, and only to
+    # the refused URL that made it the verdict (the government's own host,
+    # per `runner.py`'s `_own_host_set()`/`_is_own_host()` -- a refusal on
+    # some OTHER host never becomes the verdict in the first place; see
+    # `note` for every secondary refusal this walk also saw). Blank
+    # whenever `outcome` isn't block-like.
+    blocked_url: str = ""
     finished_at: str = ""
