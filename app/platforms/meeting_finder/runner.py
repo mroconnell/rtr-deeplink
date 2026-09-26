@@ -49,7 +49,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 from app.platforms.base import detect_platform
@@ -74,6 +74,7 @@ from .models import (
     OUTCOME_MEETING_WITHOUT_VIDEO,
     OUTCOME_NO_MEETING_NOR_VIDEO,
     OUTCOME_OFF_MISSION,
+    OUTCOME_SITE_BROKEN,
     OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER,
     OUTCOME_VIDEO_LOW_CONFIDENCE,
     Candidate,
@@ -146,6 +147,10 @@ _OUTCOME_PRIORITY: Dict[str, int] = {
     "blocked-waf-akamai": 60,
     "blocked-browser-headers": 55,
     "blocked-headless": 55,
+    # WO-1122: ranked alongside the other block-like outcomes -- a broken
+    # site (bad cert/handshake/refused connection) on the government's own
+    # starting pages is just as informative as an ordinary access block.
+    OUTCOME_SITE_BROKEN: 55,
     "timeout": 40,
     "dns-unresolvable": 35,
     "youtube-not-fetched": 20,
@@ -153,6 +158,29 @@ _OUTCOME_PRIORITY: Dict[str, int] = {
 }
 _UNKNOWN_OUTCOME_PRIORITY = 6
 _FLOOR_PRIORITY = 0
+
+# WO-1122: outcomes that report a REFUSAL of one specific fetch, as
+# opposed to a genuine "nothing here" finding. These are the outcomes the
+# own-host override applies to (see `_own_host_set()`/`_is_own_host()` and
+# `run_one()`'s own final-outcome step): a refusal on some OTHER host
+# (a guessed vendor subdomain that doesn't really exist, an off-site link,
+# a vendor's own tenant host) must never become the government's verdict
+# when its own site was actually readable -- see the measured
+# primeroschool.org case (docs/MEETING_FINDER.md / BACKLOG_DONE.md's
+# WO-1122 entry): the homepage loaded fine, a GUESSED subdomain
+# (`agenda.primeroschool.org`) was refused, and that one refusal became
+# the whole government's verdict. `OUTCOME_DNS_UNRESOLVABLE` is handled
+# separately, by `_WalkState.dns_gate_passed` (WO-1086) -- kept out of
+# this set so the two overrides don't fight each other.
+_BLOCK_LIKE_OUTCOMES = frozenset(
+    {
+        "cloudflare-challenge-blocked",
+        "blocked-waf-akamai",
+        "blocked-browser-headers",
+        "blocked-headless",
+        OUTCOME_SITE_BROKEN,
+    }
+)
 
 # See the call site's own comment: `rank_hops()`'s ranked list is
 # filtered AFTER the fact (YouTube, already-known-platform links), so it
@@ -288,6 +316,13 @@ _TRY_NEXT: Dict[str, str] = {
     "blocked-waf-akamai": "blocked: try another network, or Wayback by hand",
     "blocked-browser-headers": "blocked: try another network, or Wayback by hand",
     "blocked-headless": "blocked: try another network, or Wayback by hand",
+    # WO-1122: distinct from "blocked" (a bot-detection response) and from
+    # "domain dead" (dns-unresolvable, below) -- the domain resolves and
+    # answers, but the site itself is broken (bad certificate, failed TLS
+    # handshake, or connection refused). Trying another network or reading
+    # Wayback never helps here; the government's real current site is
+    # somewhere else.
+    OUTCOME_SITE_BROKEN: "site is broken (bad cert/handshake/refused): find the government's current domain",
     "timeout": "site timed out: retry later",
     "dns-unresolvable": "domain dead: find the current website (alternate domains)",
 }
@@ -454,6 +489,14 @@ class _WalkState:
     # above `no-meeting-nor-video`'s 10) let that secondary failure
     # override a real finding from another fork.
     dns_gate_passed: bool = False
+    # WO-1122: every block-like outcome (`_BLOCK_LIKE_OUTCOMES`) recorded
+    # anywhere in this walk, paired with the URL that was actually
+    # refused -- `run_one()`'s own final-outcome step uses this to tell a
+    # refusal of the government's OWN starting pages (a real, useful
+    # finding) apart from a refusal of some OTHER host reached along the
+    # way (a guessed vendor subdomain, an off-site link) that never proved
+    # this government's own site is unreachable. See `_record_outcome()`.
+    block_events: List[Tuple[str, str]] = field(default_factory=list)
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -539,6 +582,56 @@ def _norm_url(url: str) -> str:
     if len(path) > 1 and path.endswith("/"):
         path = path[:-1]
     return parsed._replace(path=path, fragment="").geturl()
+
+
+def _own_host_set(finder_input: FinderInput) -> FrozenSet[str]:
+    """WO-1122: the government's OWN host, narrowly -- the input URL's own
+    registrable host plus its `www.` sibling, lowercased. Deliberately
+    narrow, per Ryan's own instruction: a Start-guessed vendor subdomain
+    (`agenda.primeroschool.org`) is NOT "own host" even though it shares a
+    parent domain with the real input (`primeroschool.org`) -- that's
+    exactly the secondary starting point whose own refusal must not become
+    the government's verdict (see `_BLOCK_LIKE_OUTCOMES`'s own comment).
+    Same normalization `start.py`'s `_normalize_domain()`/`_strip_www()`
+    already apply, kept small and local here rather than importing those
+    (private helpers of another module) for one two-line computation."""
+    raw = (finder_input.url or "").strip()
+    if not raw:
+        return frozenset()
+    if "://" not in raw:
+        raw = f"https://{raw}"
+    host = (urlparse(raw).netloc or "").lower().split(":")[0]
+    if not host:
+        return frozenset()
+    bare = host[4:] if host.startswith("www.") else host
+    if not bare:
+        return frozenset()
+    return frozenset({bare, f"www.{bare}"})
+
+
+def _is_own_host(url: Optional[str], own_hosts: FrozenSet[str]) -> bool:
+    if not url or not own_hosts:
+        return False
+    host = (urlparse(url).hostname or "").lower()
+    return host in own_hosts
+
+
+def _record_outcome(
+    state: _WalkState, outcome: Optional[str], url: Optional[str]
+) -> None:
+    """Append `outcome` to `state.outcomes` (unchanged behavior), and, for
+    a block-like outcome (`_BLOCK_LIKE_OUTCOMES`), also remember which URL
+    was actually refused (`state.block_events`) -- WO-1122's "record which
+    URL/host was refused for every block outcome". Every call site that
+    used to do a bare `state.outcomes.append(...)` for a fetch-derived
+    outcome goes through this instead; `url` is the best URL available at
+    that call site for what was actually fetched (a hop/fork target's
+    `final_url` when the fetch got that far, else the URL asked for)."""
+    if not outcome:
+        return
+    state.outcomes.append(outcome)
+    if outcome in _BLOCK_LIKE_OUTCOMES and url:
+        state.block_events.append((outcome, url))
 
 
 def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]]:
@@ -776,7 +869,9 @@ async def _try_resolve(
         )
         if state.low_confidence is None or rank < state.low_confidence[0]:
             state.low_confidence = (rank, result, meeting)
-    state.outcomes.append(result.outcome)
+    _record_outcome(
+        state, result.outcome, result.candidate.url if result.candidate else None
+    )
     if result.note:
         state.resolve_notes.append(result.note)
     # WO-1076 item 3: a meeting-without-video listing is exactly the
@@ -852,8 +947,7 @@ async def _shallow_step(
         row["kind"] = "guess_queue"
         row["url"] = url
         state.leads.append(row)
-    if ident.outcome:
-        state.outcomes.append(ident.outcome)
+    _record_outcome(state, ident.outcome, ident.final_url or url)
 
     if ident.platform and ident.account_url and ident.supported is not False:
         # WO-1076 item 3: a recognized video-platform account is real
@@ -893,8 +987,7 @@ async def _shallow_step(
             state.budget_exhausted = True
             return None
         state.reach("list")
-        if list_result.outcome:
-            state.outcomes.append(list_result.outcome)
+        _record_outcome(state, list_result.outcome, account_url)
         if list_result.foreign_leads:
             state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
@@ -1385,8 +1478,7 @@ async def _run_phase_loop(
             return state
         state.reach("list")
         state.path.append(finder_input.url)
-        if list_result.outcome:
-            state.outcomes.append(list_result.outcome)
+        _record_outcome(state, list_result.outcome, finder_input.url)
         if list_result.foreign_leads:
             state.other_gov_leads.extend(list_result.foreign_leads)
         if list_result.candidates:
@@ -1407,8 +1499,7 @@ async def _run_phase_loop(
             state.budget_exhausted = True
             return state
         state.reach("scan")
-        if page.outcome:
-            state.outcomes.append(page.outcome)
+        _record_outcome(state, page.outcome, finder_input.url)
         if page.html:
             scan_result = await scan_page(page, fetcher)
             state.leads.extend(
@@ -1656,6 +1747,7 @@ async def run_one(
     handcheck_lead = ""
     meeting_url: Optional[str] = None
     meeting_title: Optional[str] = None
+    blocked_url = ""
     if result is not None:
         outcome = None
         result_url = result.video_url
@@ -1730,7 +1822,37 @@ async def run_one(
             verdict_outcomes = [
                 o for o in state.outcomes if o != OUTCOME_DNS_UNRESOLVABLE
             ]
+
+        # WO-1122: a block-like outcome (`_BLOCK_LIKE_OUTCOMES`) recorded
+        # ONLY on a secondary fetch -- a Start-guessed vendor subdomain, an
+        # off-site link, a vendor tenant host -- must never win the
+        # government's verdict when its own site was actually readable.
+        # Real measured case (2026-09-26, 1,134 governments): a walk that
+        # reached Hop, read its own site fine, and had one guessed
+        # subdomain refused still reported as a flat "blocked" government.
+        # A block outcome survives here only if AT LEAST ONE occurrence of
+        # it happened on the government's own host (`_own_host_set()`) --
+        # `_is_own_host()`'s own comment says exactly how narrow that is.
+        own_hosts = _own_host_set(finder_input)
+        own_host_block_outcomes = {
+            o for (o, u) in state.block_events if _is_own_host(u, own_hosts)
+        }
+        secondary_blocks = [
+            (o, u) for (o, u) in state.block_events if not _is_own_host(u, own_hosts)
+        ]
+        verdict_outcomes = [
+            o
+            for o in verdict_outcomes
+            if o not in _BLOCK_LIKE_OUTCOMES or o in own_host_block_outcomes
+        ]
         outcome = _pick_outcome(verdict_outcomes)
+        if outcome in _BLOCK_LIKE_OUTCOMES:
+            own_matches = [
+                u
+                for (o, u) in state.block_events
+                if o == outcome and _is_own_host(u, own_hosts)
+            ]
+            blocked_url = own_matches[0] if own_matches else ""
         result_url = None
         platform = None
         tier = None
@@ -1748,6 +1870,17 @@ async def run_one(
             if state.budget_exhausted
             else "nothing found"
         )
+        # WO-1122: every secondary refusal is still worth a human's time to
+        # know about (item 1: "record which URL/host was refused"), even
+        # though it never becomes the verdict -- deduplicated by
+        # (outcome, url) pair, since the same guessed subdomain can be
+        # re-fetched across a fork/hop's own retries.
+        if secondary_blocks:
+            secondary_text = "; ".join(
+                f"{o} at {u} (secondary, not verdict)"
+                for o, u in dict.fromkeys(secondary_blocks)
+            )
+            note = f"{note}; {secondary_text}" if note else secondary_text
 
     # WO-1076 items 1/3: "log when it's used" -- append regardless of
     # which branch above produced `note`, a clean find included (the
@@ -1787,6 +1920,7 @@ async def run_one(
         audio_only=audio_only,
         handcheck_lead=handcheck_lead,
         other_gov_leads=state.other_gov_leads,
+        blocked_url=blocked_url,
         try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
     )
