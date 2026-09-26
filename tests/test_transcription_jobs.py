@@ -2629,7 +2629,7 @@ async def _first_in_backlog(page_ids):
     first (two queries per page) and stops at `limit`. A test's fresh
     pages are the NEWEST, so with no limit it walked every page other test
     modules left in the shared DB -- up to ~3s per call late in a full run
-    (WO-1089). Backdated to 1990, they come first, and `limit=len(pages)`
+    (WO-1090). Backdated to 1990, they come first, and `limit=len(pages)`
     stops the walk right after them. Restored afterwards so no later test
     finds them at the front."""
     from sqlalchemy import select, update

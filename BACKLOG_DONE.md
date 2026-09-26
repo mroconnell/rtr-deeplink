@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1089: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
+## WO-1090: the slowest tests audited and sped up; three tests stopped reaching YouTube [Done 2026-09-26]
 
 **What was done and why.** CI's test step went from 1 min 03 s (12 Sep, 3,052 test functions) to 3 min 07 s (26 Sep, 5,093). There were more tests, but also tests that really waited. Every test step over 0.5 s was audited for what makes it slow, what it protects, whether it is needed, and a cheaper way to check the same thing. **The answer for every one: needed; none was deleted.** Each check now runs without the wait.
 

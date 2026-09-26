@@ -19,7 +19,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{_test_db_path}")
 
 def _remove_test_db() -> None:
     # One temp file per run, never deleted before (230 left in one cloud
-    # container's /tmp by 2026-09-26, WO-1089). Removed at interpreter exit,
+    # container's /tmp by 2026-09-26, WO-1090). Removed at interpreter exit,
     # after every engine is done with it; a failure here is harmless.
     for suffix in ("", "-journal", "-wal", "-shm"):
         try:
@@ -295,7 +295,7 @@ async def delete_resolutions(resolution_ids):
 # Politeness waits between requests to one host. They protect real
 # government servers, not anything a test checks, and the fakes these tests
 # talk to need no protecting -- yet each one was paid for real, adding ~45s
-# to every CI run (WO-1089). Zeroed here for every test, but only in
+# to every CI run (WO-1090). Zeroed here for every test, but only in
 # modules a test has already imported, so this costs nothing and imports
 # nothing. Some scripts are imported both as `scripts.X` and as a bare `X`
 # (a test that puts scripts/ on sys.path), so both names are listed. Add a
@@ -333,7 +333,7 @@ def _no_real_youtube_metadata_calls(monkeypatch, request):
     """No test may reach YouTube (CLAUDE.md: only the drip Mac fetches
     YouTube; the suite is network-free). Three resolve tests did, through
     yt-dlp, on every run -- they passed only because the failed call was
-    caught, and cost 2-5s each (WO-1089). The real `extract_info` now
+    caught, and cost 2-5s each (WO-1090). The real `extract_info` now
     refuses at once in every test. A test that fakes yt-dlp itself (e.g.
     tests/test_youtube.py replaces `YoutubeDL`) is unaffected; a test that
     needs the real call opts out with `@pytest.mark.real_yt_dlp`. Only

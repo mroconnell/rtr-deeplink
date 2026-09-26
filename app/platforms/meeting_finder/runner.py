@@ -1916,7 +1916,7 @@ async def _run_one_with_timeout(
 
 # How often run_inputs() re-checks whether Resolve has room while
 # back-pressure holds new governments back (WO-1031). A named constant so a
-# test can poll faster (WO-1089).
+# test can poll faster (WO-1090).
 ADMIT_POLL_SECONDS = 0.5
 
 

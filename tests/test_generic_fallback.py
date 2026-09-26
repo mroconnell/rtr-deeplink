@@ -207,7 +207,7 @@ async def test_resolve_finds_video_in_a_body_undecodable_as_utf8(monkeypatch):
     # page that `errors="replace"` preserves that embedded ASCII text
     # intact (only the surrounding invalid byte runs get replaced).
     # Faked like the other YouTube-delegating tests here: without it this
-    # made a real yt-dlp request to YouTube (WO-1089).
+    # made a real yt-dlp request to YouTube (WO-1090).
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
     raw_body = (
         b"%PDF-1.4 garbage \xff\xfe\x00\x01 more garbage "

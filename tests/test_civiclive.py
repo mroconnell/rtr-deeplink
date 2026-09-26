@@ -196,7 +196,7 @@ async def test_resolve_finds_a_real_single_youtube_video_still_on_civiclive(
     )
     routes = {url: FakeResponse(status=200, text=html, url=url)}
     # The YouTube metadata call is faked: without it this made a real
-    # yt-dlp request to YouTube on every run (WO-1089).
+    # yt-dlp request to YouTube on every run (WO-1090).
     monkeypatch.setattr(
         YouTubeAssetFinder,
         "_extract_info",

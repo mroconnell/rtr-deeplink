@@ -137,7 +137,7 @@ def test_back_pressure_stops_admitting_while_resolve_is_backed_up(
             )
         )
         # Many admission checks happen inside this window, so a leak in
-        # back-pressure has many chances to show (WO-1089: was 0.5s with
+        # back-pressure has many chances to show (WO-1090: was 0.5s with
         # the runner also polling every 0.5s -- one check per window).
         await asyncio.sleep(0.05)
         started_while_blocked = len(started)

@@ -460,7 +460,7 @@ async def run(
 ) -> Counter:
     """`only_page_ids` restricts the read to those pages. The command line
     never passes it; it lets the test read its own seeded page instead of
-    every page in the suite's shared database (WO-1089)."""
+    every page in the suite's shared database (WO-1090)."""
     from sqlalchemy import select
 
     from archive.db.engine import async_session

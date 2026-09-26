@@ -208,7 +208,7 @@ GLOB_PATTERNS = [
     # A queue-named wildcard ending in .txt (`*queue*.txt`, `queue*.txt`).
     # No leading `[\w*-]*`: `search` finds the same strings without it, and
     # the unanchored prefix made this one pattern backtrack across ~6 MB of
-    # scripts text -- 90% of this test's time (WO-1089).
+    # scripts text -- 90% of this test's time (WO-1090).
     re.compile(r"""queue[\w*-]*\*[\w*-]*\.txt""", re.I),
     re.compile(r"""\*[\w*-]*queue[\w*-]*\.txt""", re.I),
     # A blanket `git add` in an automatic workflow would commit this file too.

@@ -289,7 +289,7 @@ async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off(
     # real customers (College Park GA, Coral Gables FL, Marion County
     # FL), see BACKLOG.md. Synthetic VTT, reusing the real Napa clip 3450
     # page shape. The cap is shrunk to 3 so the file is 3 cues, not
-    # 36,000 (~1s of parsing, WO-1089); the real value is pinned above.
+    # 36,000 (~1s of parsing, WO-1090); the real value is pinned above.
     # One cue short of the cap must NOT be flagged -- the rule is
     # "exactly", and a real meeting just under it is complete.
     monkeypatch.setattr(granicus, "GRANICUS_CUE_CAP", 3)

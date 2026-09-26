@@ -350,7 +350,7 @@ def _challenge_outcome(body: str | None) -> str:
 # constant rather than only a default argument so the test suite can set it
 # to 0 in one place: every fetch-ladder test makes a second request to its
 # loopback server, and waiting the real 2.5s there cost ~25s per CI run
-# (WO-1089). `Fetcher(per_host_delay_s=...)` still overrides it per walk.
+# (WO-1090). `Fetcher(per_host_delay_s=...)` still overrides it per walk.
 DEFAULT_PER_HOST_DELAY_S = 2.5
 
 

@@ -220,7 +220,7 @@ async def test_the_heartbeat_survives_a_transient_database_error(monkeypatch):
 
     # Wait for the second beat rather than a fixed 0.06s: on a busy
     # machine six 0.01s beats did not always fit in 0.06s, and this failed
-    # once in a full run with no code change (WO-1089). A heartbeat that
+    # once in a full run with no code change (WO-1090). A heartbeat that
     # really stopped after the failure still fails, after the 2s cap.
     async with worker_main._keeping_claim_alive(88):
         for _ in range(200):

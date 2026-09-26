@@ -55,7 +55,7 @@ def fetcher():
     """A real Fetcher that treats every host as unreachable. Two tests
     below reach the generic-scan lister, which fetched the live
     lacity.primegov.com and example.portal.civicclerk.com pages -- passing
-    only because those pages happened to yield nothing (WO-1089). Every
+    only because those pages happened to yield nothing (WO-1090). Every
     host now answers like a dead one, so this file never touches the
     network; tests that need page content stub the lister instead."""
     real = Fetcher(max_fetches=12, allow_headless=False, allow_wayback=False)
