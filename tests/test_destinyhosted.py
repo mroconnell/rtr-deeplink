@@ -7,11 +7,28 @@ always an already-supported platform (mostly Swagit) linked via
 `onclick="swagitPlay('https://...')"`, never a literal href.
 """
 
+import pytest
+
 from app.platforms.base import register
 from app.platforms.destinyhosted import DestinyHostedAssetFinder
 from app.platforms.swagit import SwagitAssetFinder
+from app.utils import url_guard
 
 from aiohttp_mock import FakeResponse, mock_session
+
+
+@pytest.fixture(autouse=True)
+def _fake_public_dns(monkeypatch):
+    """mock_session fakes every page fetch, but app.utils.url_guard's SSRF
+    check (WO-5) still resolves each hostname for real before the fetch.
+    The onclick-Swagit test reaches it through generic_fallback's page
+    fetch, so it failed with "DNS blocked" on a machine without network
+    access (reported 2026-09-26, found by the session working on PR
+    #1489). Same fixture as tests/test_generic_fallback.py: a fixed public
+    IP for any hostname, so the file never touches the network."""
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
 
 
 def _register_swagit():

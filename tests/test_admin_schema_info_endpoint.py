@@ -13,7 +13,12 @@ production's state, which is the exact mistake BACKLOG_DONE.md's
 2026-08-09/08-10 Alembic incidents record.
 """
 
+import asyncio
+
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 import app.main
 
@@ -83,12 +88,40 @@ def test_schema_info_reports_jurisdiction_confidence_column():
     assert "jurisdiction_confidence" in data["actual_columns"]["meeting_resolutions"]
 
 
-def test_schema_info_ignores_tables_this_service_does_not_own():
-    """The resolver and the Archive share one Postgres database (and, in
-    the test suite, one SQLite file -- conftest.py runs both services'
-    init_models() against it). actual_columns is a whole-database
-    reflection, so the Archive's tables appear here; they must not count
-    as a mismatch, since app/db/models.py says nothing about them.
+@pytest.fixture
+def own_shared_database(tmp_path, monkeypatch):
+    """A fresh SQLite file holding both services' tables, used by the
+    endpoint in place of the suite-wide one.
+
+    The suite-wide file (conftest.py) is shared by every test module, and
+    what it holds at this test's turn depended on everything collected
+    before it: this test passed alone and failed in some full local runs
+    (BACKLOG.md, 2026-09-10 and 2026-09-26), while CI passed. Building the
+    exact state the test asserts about -- one database, the resolver's
+    tables plus an Archive-owned one -- makes it depend on nothing else.
+    The endpoint imports `engine` and `Base` from app.db at call time, so
+    patching the module attribute is what it reads.
+    """
+    import app.db.engine as resolver_engine
+    import app.db.models as resolver_models
+    import archive.db.models as archive_models
+
+    path = tmp_path / "shared.db"
+    sync_engine = create_engine(f"sqlite:///{path}")
+    resolver_models.Base.metadata.create_all(sync_engine)
+    archive_models.Base.metadata.create_all(sync_engine)
+    sync_engine.dispose()
+    engine = create_async_engine(f"sqlite+aiosqlite:///{path}")
+    monkeypatch.setattr(resolver_engine, "engine", engine)
+    yield
+    asyncio.run(engine.dispose())
+
+
+def test_schema_info_ignores_tables_this_service_does_not_own(own_shared_database):
+    """The resolver and the Archive share one Postgres database.
+    actual_columns is a whole-database reflection, so the Archive's tables
+    appear here; they must not count as a mismatch, since app/db/models.py
+    says nothing about them.
     """
     response = client.get(
         "/admin/schema-info", headers={"Authorization": "Bearer test-admin-token"}

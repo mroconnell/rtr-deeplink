@@ -28,6 +28,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import archive.main
+from conftest import wrong_page_export_2026_09_21
 from app.utils.gov_registry import government_for_id, registry
 from archive.db import crud
 from scripts import repair_wrong_pages as tool
@@ -49,7 +50,7 @@ from scripts.repair_wrong_pages import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SHEET = REPO_ROOT / "reports" / "wrong_page_worklist.csv"
 POOL = REPO_ROOT / "reports" / "wo934_youtube_no_transcript_pool.csv"
-EXPORT = Path("/tmp/rtr_meeting_inventory/meeting_inventory.csv")
+EXPORT, EXPORT_SKIP_REASON = wrong_page_export_2026_09_21()
 
 TODAY = dt.date(2026, 9, 21)
 
@@ -248,9 +249,7 @@ def test_the_washcoar_pins_no_longer_file_the_channel_under_alabama():
         assert "us:county:05143" in line and "us:county:01129" not in line
 
 
-@pytest.mark.skipif(
-    not EXPORT.exists(), reason="the local 2026-09-21 export is not here"
-)
+@pytest.mark.skipif(EXPORT is None, reason=EXPORT_SKIP_REASON)
 def test_every_row_matches_the_local_export_it_was_built_from():
     """Real check, run where the export exists: the sheet is not stale against it."""
     rows = _sheet_rows()

@@ -1516,4 +1516,8 @@ https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=26025		us:county:0
 https://townhallstreams.com/stream.php?location_id=77&id=70002		us:cousub:2303187985
 https://usbe.portal.civicclerk.com/event/552/media		rtr:us:ut:state-board-of-education
 https://scgtv.cablecast.tv/show/123		us:county:12117
+https://cloud.castus.tv/vod/misenate/video/6ab69ae1090c968dd0b15121?page=HOME		rtr:us:mi:board-of-state-canvassers
+https://www.tn.gov/content/dam/tn/tn-public-charter-school-commission/documents/meetings/2021-meetings/9-22-special-called-meeting/TN%20Charter%20Commission%20Special-Called%20Meeting-20210922%201802-1.mp4		rtr:us:tn:public-charter-school-commission
+https://pub-fvrd.escribemeetings.com/Meeting.aspx?Id=5ee75c6e-7ae6-401f-be66-54b9d256afc4		rtr:ca:bc:fraser-valley-regional-hospital-district
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
 https://stillwatercomt.portal.civicclerk.com/event/767/media	https://www.stillwatercountymt.gov/166/Board-of-County-Commissioners	us:county:30095
