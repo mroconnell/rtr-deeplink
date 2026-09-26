@@ -1,5 +1,75 @@
 # Backlog — done
 
+## WO-1077: the Friday-night queue's token-heavy coverage passes -- 175 dead addresses repaired, 209 own meeting platforms recorded [Done 2026-09-25]
+
+**What was done and why.** The parked "Friday-night queue" entry held two passes for a week with spare usage. Ryan ran them on 2026-09-25, 5-8 PM, with read-only agents reporting back and one conductor making every edit. Both passes cover governments over 5,000 people.
+
+- **Pass A.** Governments rejected `no-platform-link-found` that no earlier headless or ladder report covered: 1,802 (the entry said 3,144; earlier work had covered the rest). Each got `run_access_ladder()` through `scripts/wo908_headless_pilot.py`, four batches at once. Every link found was then hand-read: non-YouTube links were opened; YouTube links were never opened (this Mac is not the drip Mac) and were judged only from the text around the link on the government's own page.
+- **Pass B.** Governments rejected `dns-unresolvable`: 212 (the entry said 475). A script tried the `www.` and `http://` forms, the alternate domains on file, and CISA's .gov list; agents hand-confirmed every proposed site and looked up the rest in state directories. The ladder then ran on every repaired address.
+
+**Result, pass A.** Where the ladder got to, out of 1,802:
+
+| Result | Count of 1,802 |
+|---|---|
+| Reached the site, no meeting link | 943 |
+| Link found | 661 |
+| Not reached (dead, blocked, timeout) | 130 |
+| Human-verification wall | 68 |
+
+What the 661 links turned out to be, from the hand-read:
+
+| Hand-read verdict | Non-YouTube (194) | YouTube (467) |
+|---|---|---|
+| The government's own meeting platform | 95 | 2 |
+| YouTube: the government's own page ties it to meetings | - | 91 |
+| YouTube: the government's own channel, footer icon only | - | 182 |
+| The government's own, not meetings | 54 | 7 |
+| Another organization's, or an unrelated embed | 22 | 107 |
+| Cannot tell | 23 | 78 |
+
+**Result, pass B.** Out of 212 dead addresses:
+
+| Result | Count of 212 |
+|---|---|
+| Repaired and hand-confirmed | 175 |
+| Not found | 14 |
+| Behind a human-verification wall | 16 |
+| Proposed site wrong or unclear | 6 |
+| Working site is only a hosting staging address (Greene County TN) | 1 |
+
+The ladder on the 176 repaired addresses (175 plus Greene TN) found a link on 76; 20 were the government's own non-YouTube meeting platform and 12 YouTube channels tied to meetings.
+
+**What changed in the research file** (`rtr-business` commit 854911c, `research/apply_wo1077_friday_queue.py`, under the lock, re-read, unchanged row count, temp file + rename; 354 rows):
+
+| Change | Count |
+|---|---|
+| Dead domain replaced by the confirmed site; old domain kept in `alternate_domains`; `reject_reason` cleared | 175 |
+| Own meeting platform recorded in the blank provider/example columns; `reject_reason` cleared | 104 |
+| YouTube channel recorded as `suspected_video_provider=youtube` (the government's page ties it to meetings) | 105 |
+| Pulaski County MO -> `wrong-domain-mapping` (`pulaskigov.com` serves Pulaski County, Kentucky) | 1 |
+
+Held back, not applied (`research/wo1077_review.csv`): six Google Drive links counted as `direct_file` (some are PDFs); four finds where the batch agent's own check disagreed with the hand-read (Muskogee County OK's agenda site is the City of Muskogee's authorities; Coahoma County MS's BoardDocs was blocked; Stutsman County ND's recording 404s; Nebraska City's video is a vendor welcome video); Greene County TN's staging host. Also noted, not changed: Bonne Terre MO's recorded domain `sfcgov.org` is St. Francois County's site.
+
+**Caution.** The YouTube channels were never opened. "Ties it to meetings" means the government's own page says so ("Watch Commission meetings", a Video column in a meetings table); it does not mean the channel has recent meetings. The two follow-ups are in `BACKLOG.md`: the drip Mac should check the 105 recorded channels, then the 197 icon-only ones, and 37 dead addresses stay unrepaired (eight of them need a truer reject reason: Vermont counties have no county board; six Oklahoma counties publish only in newspapers).
+
+**Ladder problems found.** The hand-read found two fixable ladder faults, filed in `BACKLOG.md`'s Open bugs: the hop step follows links off the government's own site (state agencies, university extensions, tourism boards) and credits what it finds there to the government, which produced most of the "another organization's" YouTube finds; and the `direct_file`/YouTube hit filter lets through Google Drive PDFs, non-channel YouTube URLs and InvoiceCloud help videos, while rejecting real meeting audio when the site redirects to a different domain or hosts video on `videos.evo.cloud` (EvoGov). The run also covered 828 of the 7,359 governments in the parked WO-912 rerun; that entry now says so.
+
+**Ingest, the same evening.** Ryan asked for the tier-1 finds ingested and the rest queued or dripped. Meeting Finder (`scripts/meeting_finder.py`, pin mode, each row's `gov_id`) ran on the 104 recorded non-YouTube platforms; `scripts/meeting_finder_followups.py` (live check, then `--apply-ingest --apply-queue`) did the rest. Most recorded platforms turned out to carry agendas, not recordings:
+
+| Meeting Finder result | Count of 104 |
+|---|---|
+| Tier 1, ingested | 6 |
+| Tier 3, queued (3 more were already on the tier-3 queue) | 9 |
+| Tier 2, YouTube drip lead | 3 |
+| Held: clip under a minute or no meeting evidence | 4 |
+| Meetings found, no video | 40 |
+| No meeting and no video | 37 |
+| Embed-restricted | 2 |
+
+Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
+
+**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
+
 ## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
 
 **What was done and why.** WO-1068's rule only trusts pins a person checked. The 10 machine-made pins that had already misfiled a page were re-checked live against each host's own portal or site, and all 10 held, so each now carries `landing_page` in its source: colonieny, shelbytownmi, townofvictorny, websterny, ashlandcowi, walworthcowi, carteretcountync, barnstable, dubuquecountyia, saltlakecounty. `reflect-townofwellfleet.cablecast.tv` was left unmarked: its channel also carries Barnstable County shows.
