@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (59)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (60)
+  Run Meeting Finder on the 7,599 never-checked and "no platform link…
   Pages whose stored source URL their own adapter can't re-resolve are…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
@@ -923,6 +924,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Run Meeting Finder on the 7,599 never-checked and "no platform link found" governments `[JUST-DO-IT]` `[WAIT]`
+
+- **Issue**: after the 2026-09-25/26 runs, 244 research rows are still never checked (blank `reject_reason`, blank `transcribed`, no example URL, not queued) and 7,588 carry `no-platform-link-found`; none has been through Meeting Finder yet. Deduplicated by domain: 7,599 governments.
+- **Impact**: the previous group of this size (6,924 no-platform-signature governments) gave 394 finds, 185 hand-approved meetings and 19 tier-1 ingests; this group should yield on the same scale.
+- **Next action**: Ryan runs it on a Friday with bandwidth to spare (his call, 2026-09-26). Rebuild the input from `rtr-business/research/jurisdiction_coverage.csv` (never-checked first, then `no-platform-link-found` shuffled; skip `website_status=none-known-2022` and any gov_id already in an earlier Meeting Finder run), run `scripts/meeting_finder.py --entry start --mode pin` at concurrency 36 on the latest `main` (WO-1078 included), then hand-check and file as in `docs/MEETING_FINDER.md`. Weak leads: triage by length (70+ min first, then 40-70, 20-40; skip under 8 min). Optionally add the 544 `timeout` and 1,134 blocked rows from the 2026-09-26 run as a retry batch.
+- **Constraint**: about 10-12 hours on the office connection; zero YouTube requests off the drip Mac (`scripts/youtube_fetch_guard.install()`).
+- **History**: planned 2026-09-26 by the Meeting Finder conductor session (93b5f9ae) and deferred by Ryan.
 
 ### Pages whose stored source URL their own adapter can't re-resolve are never auto-transcribed `[JUST-DO-IT]`
 

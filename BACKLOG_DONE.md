@@ -1,5 +1,13 @@
 # Backlog — done
 
+## WO-1079: Humboldt County Office of Education gets a registry id; its video leaves Cuddeback [Done 2026-09-26]
+
+**What was done and why.** Meeting Finder's 2026-09-26 run found a Humboldt County Office of Education video ("Safety and Equity in Schools - Student Advisory Safety & Equity Working Group", Vimeo author "Humboldt Co. Office of Education") on `humboldt.k12.ca.us`. The research row for Cuddeback Union Elementary (`us:sd:0610230`) carries that domain, so the ingest filed the page under Cuddeback. Ryan said to re-file it under the county office (2026-09-26).
+
+**Result.** New curated row `rtr:us:ca:humboldt-county-office-of-education`, typed like the Santa Clara and Solano county-office rows (WO-934). The page is re-filed through `/internal/jurisdiction/override` once the Archive runs a build that has this row.
+
+**Caution.** Cuddeback's research row still names the county office's domain; it is marked `wrong-domain-mapping` in rtr-business rather than given a guessed domain.
+
 ## WO-1077: the Friday-night queue's token-heavy coverage passes -- 175 dead addresses repaired, 209 own meeting platforms recorded [Done 2026-09-25]
 
 **What was done and why.** The parked "Friday-night queue" entry held two passes for a week with spare usage. Ryan ran them on 2026-09-25, 5-8 PM, with read-only agents reporting back and one conductor making every edit. Both passes cover governments over 5,000 people.
