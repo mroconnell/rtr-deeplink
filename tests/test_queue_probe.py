@@ -31,8 +31,24 @@ from app.platforms.queue_probe import (
     _sum_extinf,
     probe_queue_entry,
 )
+from app.utils import url_guard
 from conftest import load_fixture
 from tests.aiohttp_mock import FakeResponse, mock_session
+
+
+@pytest.fixture(autouse=True)
+def _fake_public_dns(monkeypatch):
+    """app.utils.url_guard's SSRF check (WO-5) resolves each hostname for
+    real before a fetch, even when the fetch itself is faked. Without this, the Vimeo
+    oEmbed probe tests looked up vimeo.com for real, and the "accept" case
+    failed on a machine with no DNS. Same
+    fixture as tests/test_generic_fallback.py: a fixed public IP for any
+    hostname. Found 2026-09-26 (WO-1082) by running the suite with DNS
+    blocked."""
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
+
 
 # --- pure logic: verdict boundaries -----------------------------------
 

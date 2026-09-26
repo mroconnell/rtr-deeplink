@@ -174,3 +174,56 @@ def registered_platforms() -> set[str]:
         return set(base._REGISTRY)
     finally:
         base._REGISTRY.update(snapshot)
+
+
+# The local meeting export two WO-934 tests were built from
+# (tests/test_repair_wrong_pages.py, tests/test_wrong_page_screen.py). They
+# assert real rows of THAT export, so they must never run on another one.
+# /tmp/rtr_meeting_inventory/meeting_inventory.csv is rewritten by every
+# dashboard refresh (2026-09-23 and 2026-09-25 07:08), and the old
+# `skipif(not EXPORT.exists())` then ran them on the newer export and failed
+# on pages the repairs had since fixed. The CSV carries no export date, so
+# the file is recognised by two facts about the 2026-09-21 export instead:
+# its row count (10,280 pages, recorded in two BACKLOG.md entries measured
+# from it) and its newest page's created_at (no page after 2026-09-21; one
+# day of slack because created_at is UTC and the export ran in Pacific
+# time). A dated copy is preferred when present, since nothing overwrites it.
+WRONG_PAGE_EXPORT_DIR = Path("/tmp/rtr_meeting_inventory")
+_WRONG_PAGE_EXPORT_ROWS = 10_280
+_WRONG_PAGE_EXPORT_LAST_CREATED = "2026-09-22"
+
+
+def _export_fingerprint(path: Path) -> tuple[int, str]:
+    import csv
+
+    rows, newest = 0, ""
+    with open(path, newline="", encoding="utf-8") as fh:
+        for raw in csv.DictReader(fh):
+            rows += 1
+            newest = max(newest, (raw.get("created_at") or "")[:10])
+    return rows, newest
+
+
+def wrong_page_export_2026_09_21() -> tuple[Path | None, str]:
+    """The 2026-09-21 export if one is on disk, else (None, why not)."""
+    found = []
+    for path in (
+        WRONG_PAGE_EXPORT_DIR / "meeting_inventory_2026-09-21.csv",
+        WRONG_PAGE_EXPORT_DIR / "meeting_inventory.csv",
+    ):
+        if not path.exists():
+            continue
+        rows, newest = _export_fingerprint(path)
+        if (
+            rows == _WRONG_PAGE_EXPORT_ROWS
+            and newest <= _WRONG_PAGE_EXPORT_LAST_CREATED
+        ):
+            return path, ""
+        found.append(f"{path.name}: {rows:,} rows, newest page {newest or '(none)'}")
+    if not found:
+        return None, "the local 2026-09-21 export is not here"
+    return None, (
+        "the local export is not the 2026-09-21 one "
+        f"({_WRONG_PAGE_EXPORT_ROWS:,} rows, no page after "
+        f"{_WRONG_PAGE_EXPORT_LAST_CREATED}): " + "; ".join(found)
+    )

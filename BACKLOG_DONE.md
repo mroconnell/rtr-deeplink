@@ -68,6 +68,61 @@ State agencies are typed `other`, per Ryan's WO-220 call. `app/utils/gov_body_ty
 
 **Caution.** The Archive only accepts these ids after a deploy that includes this file. The meetings are ingested or queued under them after that deploy. PIAA (a private nonprofit) was not minted.
 
+## WO-1082: local-only test failures fixed so a full local run is clean, with or without network [Done 2026-09-26]
+
+**What.** Four tests failed or flaked in full local `python -m pytest` runs on `main` while CI passed, and one more (item 5) failed on a Mac with no network. Each was fixed at its cause where the cause was found, and made independent of other tests where it was not.
+
+**1 and 2. The two wrong-page export tests** (`test_repair_wrong_pages.py::test_every_row_matches_the_local_export_it_was_built_from`, `test_wrong_page_screen.py::test_the_screen_runs_on_the_real_export_and_finds_the_worklist_pages`).
+
+Cause: both check real rows of the 2026-09-21 meeting export. They read `/tmp/rtr_meeting_inventory/meeting_inventory.csv` and skipped only when that file was missing. The daily dashboard refresh rewrites that file (2026-09-23, then 2026-09-25 07:08), so the tests ran on a newer export and failed on pages the repairs had since changed.
+
+Fix: `tests/conftest.py`'s `wrong_page_export_2026_09_21()` only accepts a file that looks like the 2026-09-21 export. The CSV has no date in it, so it checks two facts about that export:
+
+| Check | Value for the 2026-09-21 export |
+|---|---|
+| Rows | 10,280 (recorded twice in `BACKLOG.md`, both measured from that export) |
+| Newest page `created_at` | no later than 2026-09-22 (one day of slack: `created_at` is UTC, the export ran in Pacific time) |
+
+It prefers a dated copy, `/tmp/rtr_meeting_inventory/meeting_inventory_2026-09-21.csv`, when one exists, since the refresh never overwrites that file. On any other export the tests skip, and the skip reason gives the row count and newest date it found.
+
+Verified with stand-in files. A 10,280-row file whose newest page is 2026-09-25 skips both tests with that reason. A file matching both checks runs the real check.
+
+Caution: the 10,280 figure comes from the backlog, not from the file itself; the real 2026-09-21 export was not available here. If the Mac's copy of that export does not match both checks, the tests skip (and say why) instead of running. To keep the real check running, save that export as `meeting_inventory_2026-09-21.csv`.
+
+**3. `test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own`.**
+
+Cause: the test needs an Archive-owned table (`meeting_pages`) in the database the resolver reflects. Before this change it relied on the suite-wide SQLite file from `conftest.py`, which every test module shares, so what the file held at this test's turn depended on the rest of the run. The exact Mac-only trigger was not reproduced. It passed here in the normal order, in 3 shuffled orders, and when every test file was collected but only this test was run.
+
+Fix: a fixture builds a fresh SQLite file with both services' tables and points `app.db.engine.engine` at it. The endpoint reads that attribute at call time. The test now depends on nothing another test does.
+
+**4. `test_context_candidate_review.py::test_detail_read_is_one_snapshot_during_concurrent_save`.**
+
+Cause: the test started a save during an open read, slept a fixed 0.05 seconds, then checked the save had not finished. A fixed sleep says nothing about where the save actually is, so the check depended on timing. The one Mac flake was not reproduced here: 55 repeats of the file, 30 of them with every CPU busy, all passed. A probe showed the save really does stay blocked for 2 full seconds while the read is open.
+
+Fix: the save's own call to `_active_observations` (made inside its write transaction, just before it commits) now sets a signal. The read waits for that signal before it checks. So the check always runs with the save really in progress, never before the save has started. A failure now names the save's outcome or its error.
+
+Verified that it still catches the real bug. With the read's snapshot removed from `archive/context/store.py` (temporarily, then restored), it fails with "the save finished while the read was still open: 'saved'".
+
+**5. `test_destinyhosted.py::test_resolve_delegates_through_onclick_swagit_link`** (added after a report from the session working on PR #1489).
+
+Cause: it failed with "DNS blocked" on a Mac without network access. The test fakes every page fetch with `mock_session`. But before each fetch, `app/utils/url_guard.py`'s SSRF check looks up the host's real address (`_resolve_hostname`), and the test reaches that check through `generic_fallback`'s page fetch. So the test needed working DNS even though it never fetched a page.
+
+Fix: the file gets the same autouse fixture `tests/test_generic_fallback.py` already uses. It returns a fixed public address (93.184.216.34) for any host name.
+
+Verified with every DNS lookup blocked in the test process: before the fix, 1 of the file's 2 tests failed and it made 2 real lookups (`public.destinyhosted.com`). After the fix, both pass and it makes no lookups.
+
+To find any others, the whole suite was then run with every DNS lookup blocked. Two more files failed for the same reason and got the same fixture:
+
+| File | Tests that failed with no DNS | Host looked up |
+|---|---|---|
+| `test_refresh_archived_page.py` | 4 of 4 | `example.granicus.com` |
+| `test_queue_probe.py` | 1 (`test_probe_vimeo_accepts_real_shaped_oembed_response`) | `vimeo.com` |
+
+After the fix, all 91 tests in the three files pass with DNS blocked, and none of them makes a lookup. Four other files still make real lookups but pass either way; they are logged in `BACKLOG.md`.
+
+
+**Result.** Full local run in a cloud container, with every file collected: all four pass. The two export tests skip because no export exists here. The one remaining failure, `test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`, happens only because this container sends web traffic through a proxy. It is logged in `BACKLOG.md`, along with four other tests that fail only when test files run in a shuffled order, and the unconfirmed rtr-discovery import lead for tests 3 and 4.
+
 ## WO-1078: Meeting Finder checks the government TYPE a body's name implies, not just its place name [Done 2026-09-26]
 
 **Issue.** A no-platform-signature Meeting Finder run found 58 videos on
@@ -233,7 +288,18 @@ Held back, not applied (`research/wo1077_review.csv`): six Google Drive links co
 
 Ingested, each checked live on redtaperecordings.com under the right government: Socorro NM City Council, Southampton County VA Board of Supervisors, Horizon City TX City Council, Lincoln County NM Commission, Marshfield WI Utility Commission, Dover NH City Council. Queued: Crawford County AR, Whitley County KY, Dakota County NE, Park Hills MO, Iqaluit NU, Midway UT, Saratoga Springs NY, Owosso MI, Middletown PA. The YouTube channels went to the drip lane's list (`research/youtube_channel_leads.csv`, `source_wo=WO-1077`): 70 new rows; 38 were already listed. Research-file status updated in `rtr-business` commit 9888d23.
 
-**Recommendation.** The 40 "meetings found, no video" platforms are agenda portals; their video, if any, lives elsewhere (Ryan's 2026-09-13 rule: an empty listing means try another hub). A second Meeting Finder pass from each government's own homepage, not the agenda portal, is the next cheap step.
+**Second pass, 2026-09-26.** Meeting Finder ran again on the 40 agenda-only governments, this time from each government's own homepage (`--entry start`, pin mode), to look for video on another site.
+
+| Second-pass result | Count of 40 |
+|---|---|
+| Tier 3, queued | 1 |
+| Tier 3, held for hand-check | 1 |
+| Meetings found, no video | 22 |
+| Stopped at the 15-minute per-government limit | 16 |
+
+Queued: Stillwater County MT, a 17-minute Board of County Commissioners meeting on its CivicClerk portal (identity check agrees). Held: Colusa County CA, an undated Vimeo video whose length could not be measured.
+
+**Caution.** 22 governments showed meetings but no video from both starting points; they most likely do not post recordings. The 16 that hit the time limit were not rerun: the first 24 yielded one find.
 
 ## WO-1075: 10 machine-made pins re-checked and marked; Orion and M-NCPPC Prince George's pages re-filed [Done 2026-09-25]
 
