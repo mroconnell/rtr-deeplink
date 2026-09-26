@@ -1,3 +1,6 @@
+https://www.youtube.com/watch?v=x-j7uc_Nsjk&feature=youtu.be		us:place:4810768
+https://www.youtube.com/watch?v=b1JaaRs7Jtc		us:county:04003
+https://youtu.be/0PKMZYg9wGA		us:cousub:3905704724
 https://www.youtube.com/watch?v=XYdKJjWRVQM
 https://www.youtube.com/watch?v=JlLqQfcJJ5Q
 https://www.youtube.com/watch?v=hCxsLZA5KLM
@@ -1290,3 +1293,15 @@ https://codington.sdcounty.gov/wp-content/uploads/2017/06/20170627-CCJAC-64kbps.
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
 https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx?Id=42c217b8-671f-43a6-a2f9-884e728b2060	https://www.alfred-plantagenet.com/en/government-administration/council-council-meetings/agenda-minutes-videos	ca:csd:3502023
+https://laportetx.new.swagit.com/videos/400931		us:place:4841440
+https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
+https://pagecova.portal.civicclerk.com/event/6214/media		us:county:51139
+https://www.chelseavt.org/wp/wp-content/uploads/2026/09/BOA-1-260922_0433.mp3		us:cousub:5001713525
+http://96.233.59.29/internetchannel/show/16188?site=1&channel=2		us:cousub:2500538225
+https://ectorcountytx.new.swagit.com/videos/398923		us:county:48135
+https://olmosparktx.portal.civicclerk.com/event/359/media		us:place:4853988
+https://townhallstreams.com/stream.php?location_id=72&id=70326		us:cousub:3301137140
+https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
+https://wake-forest.granicus.com/MediaPlayer.php?view_id=3&clip_id=2032		us:place:3770540
+http://reflect-vsctv.cablecast.tv/internetchannel/show/7465?channel=1		us:cousub:0913019130
+https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045

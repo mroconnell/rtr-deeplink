@@ -323,6 +323,92 @@ async def test_transcribe_meeting_does_not_retry_an_unsupported_platform(local_m
     assert "unsupported platform" in result["reason"]
 
 
+async def test_transcribe_meeting_falls_back_to_stored_video_url(local_media):
+    """WO-1073: the real Mary Esther, FL shape -- a bare CivicClerk
+    portal-root source_url that adapter can never parse (a permanent
+    failure, not a transient one), paired with a real, playable stored
+    video_url."""
+    mary_esther_source_url = "https://maryestherfl.portal.civicclerk.com"
+    mary_esther_video_url = (
+        "https://cpmedia.azureedge.net/maryestherfl/"
+        "1a1a01e3-6195-4f33-be2c-4f0c7c235deb.mp4"
+    )
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    local_media.setattr(tbl, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    local_media.setattr(reresolve_mod, "detect_platform", lambda url: "direct_file")
+
+    class _FallbackFinder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="direct_file",
+                source_url=url,
+                video_url=mary_esther_video_url,
+                video_format="mp4",
+            )
+
+    local_media.setattr(reresolve_mod, "get_finder", lambda platform: _FallbackFinder())
+
+    async def _extract(*args, **kwargs):
+        return True, None
+
+    local_media.setattr(tbl, "extract_chunk_audio", _extract)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(),
+        mary_esther_source_url,
+        "civicclerk",
+        chunk_size_seconds=900,
+        video_url=mary_esther_video_url,
+    )
+    assert result["ok"] is True
+    # The final result's platform/video_url come from the (successful)
+    # fallback resolve -- source_url is untouched, since transcribe_
+    # meeting()'s caller (process_one()) always sends the page's own
+    # source_url_normalized as the ingest payload's source_url regardless
+    # (see that function's own comment), not result["video_url"]/
+    # ["platform"] here.
+    assert result["video_url"] == mary_esther_video_url
+    assert result["platform"] == "civicclerk"
+
+
+async def test_transcribe_meeting_never_falls_back_to_a_youtube_video_url(
+    local_media,
+):
+    """Per CLAUDE.md's YouTube-drip-only rule -- this script never runs on
+    the drip Mac, so it must never fetch a YouTube video_url as a
+    fallback target."""
+
+    class _PrimaryFinder:
+        async def resolve(self, url):
+            raise ValueError("Could not find an event ID in URL path: ")
+
+    local_media.setattr(tbl, "get_finder", lambda platform: _PrimaryFinder())
+
+    import app.platforms.reresolve as reresolve_mod
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("must never call get_finder for a YouTube fallback")
+
+    local_media.setattr(reresolve_mod, "get_finder", _boom)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(),
+        "https://maryestherfl.portal.civicclerk.com",
+        "civicclerk",
+        chunk_size_seconds=900,
+        video_url="https://www.youtube.com/watch?v=abc123",
+    )
+    assert result["ok"] is False
+    assert "Could not find an event ID" in result["reason"]
+
+
 async def test_transcribe_meeting_retries_a_chunk_extraction_that_fails_once(
     local_media,
 ):
