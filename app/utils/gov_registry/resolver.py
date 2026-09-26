@@ -33,7 +33,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, parse_qsl, urlparse
 
-from ..tenant_key import pin_tenant_key, tenant_key, trusted_tenant_key
+from ..tenant_key import (
+    NAME_FROM_MEETING_TITLE_HOSTS,
+    pin_tenant_key,
+    tenant_key,
+    trusted_tenant_key,
+)
 from ..jurisdiction_enrich import (
     _name_validates_in_state,
     _validated_subdomain_hint_with_state,
@@ -382,6 +387,15 @@ def _matched_multi_gov_pin(
     `us:county:36005` lost to rung 4's national-table match on the
     video's title before it was ever consulted).
     """
+    matched = _matched_multi_gov_pin_row(host, path, page_hints)
+    return (matched[0], matched[1]) if matched else None
+
+
+def _matched_multi_gov_pin_row(
+    host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
+) -> Optional[Tuple[Government, str, TenantOverride]]:
+    """`_matched_multi_gov_pin()` plus the row that matched, so rung 1b can
+    tell a pin naming a whole TelVue customer from a narrower one (WO-1087)."""
     for row in _match_override(host, path, page_hints):
         gov = registry.government_for_id(row.gov_id)
         if gov:
@@ -390,7 +404,7 @@ def _matched_multi_gov_pin(
                 evidence += f" match={row.match}"
             if row.source:
                 evidence += f" source={row.source}"
-            return gov, evidence
+            return gov, evidence, row
         # Same broken-registry fall-through as `_pinned()`.
     return None
 
@@ -2071,6 +2085,95 @@ def trusts_shared_tenant_name(host: Optional[str], path: Optional[str]) -> bool:
     return trusted_tenant_key(f"https://{host}{path or '/'}") is not None
 
 
+def is_customer_fallback_pin(host: str, row: TenantOverride) -> bool:
+    """WO-1087: True for a pin naming a whole customer on a host whose
+    adapter reads the government from each meeting's title (TelVue's org
+    token). Such a pin is only the fallback: rung 1b tries the meeting's
+    own name first. The one definition: `queue_probe.has_owner()` uses it
+    so the tier-3 feeder does not send the pin's id and skip that step."""
+    return host in NAME_FROM_MEETING_TITLE_HOSTS and bool(
+        pin_tenant_key(host, row.match)
+    )
+
+
+def _customer_pin_state(host: str, path: Optional[str]) -> str:
+    """WO-1087: the one state every pin on this page's customer names, on a
+    host whose adapter reads the government from each meeting's title
+    (`tenant_key.NAME_FROM_MEETING_TITLE_HOSTS`, i.e. TelVue). "" when the
+    customer has no pin, or its pins disagree on the state.
+
+    A TelVue customer is a regional station: every one checked carries
+    more than one government, but all of them in one state. The pins are
+    the only place that state is recorded by a person, so they bound
+    which names a meeting's title may resolve to.
+    """
+    if host not in NAME_FROM_MEETING_TITLE_HOSTS or not path:
+        return ""
+    key = tenant_key(f"https://{host}{path}")
+    if not key:
+        return ""
+    states = set()
+    for row in _override_rows_for_host(host):
+        if not row.match:
+            continue
+        row_key = pin_tenant_key(host, row.match) or tenant_key(
+            f"https://{host}/{row.match.lstrip('/')}"
+        )
+        if not row_key or row_key.lower() != key.lower():
+            continue
+        gov = registry.government_for_id(row.gov_id)
+        if gov and gov.state:
+            states.add((gov.country, gov.state.upper()))
+    return next(iter(states))[1] if len(states) == 1 else ""
+
+
+def _meeting_title_government(
+    raw_name: Optional[str], host: str, path: Optional[str]
+) -> Optional[GovernmentMatch]:
+    """WO-1087: the government a TelVue meeting's own name identifies, or
+    None. Rung 1b tries this before a pin naming the whole customer, which
+    is now only the fallback.
+
+    Before WO-1087 a whole-customer pin won outright, so every meeting on
+    a station went to one government. rtr-discovery's 8 saved TelVue
+    meetings (2026-09-25): 3 right, 3 wrong (Derry's and Pierre's school
+    boards filed under the town, Centreville's council under Queen Anne's
+    County), 2 blank (Kalamazoo County, Oshtemo Township).
+
+    The name counts only when all of these hold:
+      - the customer's pins agree on one state (`_customer_pin_state()`);
+        no pin at all keeps today's blank;
+      - the name names no other state. A name with no state gets the
+        pins' state ("Centreville" -> "Centreville, MD");
+      - the ladder keys it to a real government (tier `registry`) in that
+        state. A mint or an unresolved name identifies nobody.
+    """
+    state = _customer_pin_state(host, path)
+    raw = (raw_name or "").strip()
+    if not state or not raw:
+        return None
+    name, name_state = _split_state(raw)
+    if not name or (name_state and name_state != state):
+        return None
+    match = _resolve_government_ladder(f"{name}, {state}")
+    if match.tier != TIER_REGISTRY or (match.state or "").upper() != state:
+        return None
+    return GovernmentMatch(
+        gov_id=match.gov_id,
+        gov_name=match.gov_name,
+        gov_type=match.gov_type,
+        tier=match.tier,
+        evidence=(
+            f"{match.evidence}; the meeting's own name on {host}, "
+            f"in its pins' state {state} (WO-1087)"
+        ),
+        meeting_body=match.meeting_body,
+        country=match.country,
+        state=match.state,
+        government=match.government,
+    )
+
+
 # WO-1068: the general-purpose types a checked whole-host pin may override.
 _PLACE_LIKE_TYPES = frozenset(
     {classify.COUNTY, classify.MUNICIPALITY, classify.TOWNSHIP}
@@ -2273,7 +2376,7 @@ def _resolve_government_ladder(
     #     untouched.
     multi_gov_host = bool(host) and registry.is_multi_gov_host(host)
     matched_pin = (
-        _matched_multi_gov_pin(host, path, page_hints) if multi_gov_host else None
+        _matched_multi_gov_pin_row(host, path, page_hints) if multi_gov_host else None
     )
     if multi_gov_host and matched_pin:
         # WO-221: a matched pin wins here, before rung 2's name repair and
@@ -2283,7 +2386,18 @@ def _resolve_government_ladder(
         # only fires when a pin actually matched, and a matched row whose
         # gov_id has no `governments.csv` entry still falls through
         # exactly as before (broken-registry case, same as `_pinned()`).
-        gov, evidence = matched_pin
+        gov, evidence, row = matched_pin
+        if is_customer_fallback_pin(host, row):
+            # WO-1087: on TelVue a pin naming the WHOLE customer (its org
+            # token) is only the fallback. The meeting's own name goes
+            # first, because every customer carries more than one
+            # government. A narrower pin (one playlist, series or video)
+            # still wins outright.
+            # When both name the same government the pin's answer stands,
+            # so a page that was already right keeps its `pinned` tier.
+            by_name = _meeting_title_government(raw_name, host, path)
+            if by_name and by_name.gov_id != gov.gov_id:
+                return by_name
         finalized = finalize_jurisdiction(raw_name, netloc=host or None)
         return _match(gov, TIER_PINNED, evidence, finalized.meeting_body)
     has_matching_pin = multi_gov_host and bool(_match_override(host, path, page_hints))
@@ -2314,6 +2428,12 @@ def _resolve_government_ladder(
             # computes it per HOST, which on a shared host is other customers'.
             tenant_gov_id = None
         else:
+            # WO-1087: a TelVue meeting with no matching pin still gets its
+            # own name's government, when the customer's other pins fix
+            # the state (Kalamazoo's station: two one-video pins, both MI).
+            by_name = _meeting_title_government(raw_name, host, path)
+            if by_name:
+                return by_name
             finalized = finalize_jurisdiction(raw_name, netloc=host or None)
             reason = (
                 f"{host} is a shared, multi-government host with no matching "

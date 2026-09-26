@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import date as _date
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse
 
@@ -9,7 +10,7 @@ import aiohttp
 from .base import AssetFinder
 from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.tenant_key import telvue_org_token
+from ..utils.tenant_key import MULTI_GOVERNMENT_TENANTS, telvue_org_token
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
 
@@ -564,6 +565,141 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     "qDzDQ8k2993lxm2IqCNZjdoqxagPQUa_": "Pipestone, MN",
 }
 
+# WO-1087: org token -> {body named in a meeting's title: government name},
+# for a customer that carries more than one government and titles some
+# meetings by body alone ("School Board Meeting - 09/22/2026"). Used only
+# when the title names no place. Each name must resolve to its own
+# registry id with the state given (the same rule as invintus.py's
+# CLIENT_BODY_GOVERNMENTS). One line per body, from a real saved page.
+ORG_TOKEN_BODY_GOVERNMENTS = {
+    # Derry, NH (rtr-discovery's saved derry_media_*_page.html,
+    # 2026-09-25). "Town Council - 09/15/26" reads "Derry NH's Town
+    # Council Meeting" in its own og:description. "School Board Meeting"
+    # is the Derry Cooperative School District's: Ryan identified media
+    # 951693, the same title shape, as the district's on 2026-09-21 (its
+    # tenant_overrides.csv pin).
+    "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l": {
+        "School Board": "Derry Cooperative School District, NH",
+        "Town Council": "Derry, NH",
+    },
+    # Pierre, SD's OaheTV (pierre_media_1045603_page.html, 2026-09-25):
+    # "Pierre School Board" is Pierre School District 32-2's board, the
+    # one school district in Pierre. The title guess drops it ("school"
+    # is a stopword in `_guess_jurisdiction()`).
+    "5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq": {
+        "School Board": "Pierre School District 32-2, SD",
+    },
+}
+
+# WO-1087: meeting dates in the shapes TelVue customers write them, ported
+# from rtr-discovery's TelVue walker (discovery/enumerators/telvue.py,
+# `meeting_date()`), which parsed all 10 dated titles in its 2026-09-25
+# saved pages where `_split_title_date()` parsed none. Month first always.
+_DATE_MONTH = (
+    r"(?P<month>jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?"
+    r"|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?"
+    r"|dec(?:ember)?)"
+)
+_DATE_MONTHS = {
+    m: i + 1
+    for i, m in enumerate(
+        (
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "may",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "oct",
+            "nov",
+            "dec",
+        )
+    )
+}
+# "September 24, 2026", "Sept 15, 2026", "Sept. 4, 2026", "April 14,  2026".
+# A month with no day ("September 2026") is not a date.
+_NAMED_DATE_RE = re.compile(
+    rf"\b{_DATE_MONTH}\.?\s+(?P<day>\d{{1,2}}),?\s+(?P<year>\d{{4}})\b", re.I
+)
+# "09/22/2026", "09/17/26", "8/24/2026", "2/3/26", "9-22-2026", "8-25-26",
+# "5.21.2026", "05.20.2026".
+_NUMERIC_DATE_RE = re.compile(
+    r"(?<![\d./-])(?P<month>\d{1,2})(?P<sep>[/.-])(?P<day>\d{1,2})(?P=sep)"
+    r"(?P<year>\d{4}|\d{2})(?![\d/-])"
+)
+# Pierre's bulk-uploaded file names as the whole title:
+# "citycommission060909" (MMDDYY), "CityComm10082024" (MMDDYYYY).
+_FILE_NAME_DATE_RE = re.compile(r"^[A-Za-z]+(?P<digits>\d{6}|\d{8})$")
+_OG_DESCRIPTION_RE = re.compile(
+    r"<meta\s+(?:content=\"([^\"]*)\"\s+property=\"og:description\""
+    r"|property=\"og:description\"\s+content=\"([^\"]*)\")",
+    re.I,
+)
+
+
+def _make_date(year: int, month: int, day: int) -> Optional[str]:
+    if year < 100:
+        year += 2000
+    try:
+        return _date(year, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+def _date_in(text: Optional[str]) -> Optional[str]:
+    """The first real month-day-year date in `text`, as YYYY-MM-DD."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    found = []
+    for match in _NAMED_DATE_RE.finditer(text):
+        month = _DATE_MONTHS[match["month"][:3].lower()]
+        when = _make_date(int(match["year"]), month, int(match["day"]))
+        if when:
+            found.append((match.start(), when))
+            break
+    for match in _NUMERIC_DATE_RE.finditer(text):
+        when = _make_date(int(match["year"]), int(match["month"]), int(match["day"]))
+        if when:
+            found.append((match.start(), when))
+            break
+    if found:
+        return min(found)[1]
+    match = _FILE_NAME_DATE_RE.match(text)
+    if match:
+        digits = match["digits"]
+        return _make_date(int(digits[4:]), int(digits[:2]), int(digits[2:4]))
+    return None
+
+
+def meeting_date(title: Optional[str], description: Optional[str]) -> Optional[str]:
+    """The meeting date from the title, else the media page's description
+    (og:description: Pierre writes "9-22-2026" there and nothing in the
+    title), else None. Never the upload time."""
+    return _date_in(title) or _date_in(description)
+
+
+def _og_description(page_html: str) -> Optional[str]:
+    match = _OG_DESCRIPTION_RE.search(page_html or "")
+    if not match:
+        return None
+    import html as _html_module
+
+    return _html_module.unescape(match.group(1) or match.group(2) or "").strip() or None
+
+
+def _body_government(org_token: Optional[str], title: Optional[str]):
+    """(government name, body) from `ORG_TOKEN_BODY_GOVERNMENTS` when the
+    title names one of this customer's listed bodies, else (None, None)."""
+    bodies = ORG_TOKEN_BODY_GOVERNMENTS.get(org_token or "", {})
+    for body, government in bodies.items():
+        if re.search(rf"\b{re.escape(body)}\b", title or "", re.I):
+            return government, body
+    return None, None
+
 
 def _org_token_from_url(url: str) -> Optional[str]:
     # The org token is TelVue's tenant key; tenant_key.py holds the one
@@ -709,16 +845,34 @@ class TelvueAssetFinder(AssetFinder):
                 )
 
             title, date = self._split_title_date(entry.get("title"))
+            if not date:
+                # WO-1087: every other shape the customers write, then the
+                # media page's own og:description.
+                date = meeting_date(entry.get("title"), _og_description(html))
             jurisdiction = self._guess_jurisdiction(title)
             jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
                 jurisdiction, netloc=None, page_text=html
             )
             org_token = _org_token_from_url(final_url)
+            # WO-1087: a station carrying several governments has no one
+            # station-level name. Its org-token entry may still fill the
+            # state of a name the title gave (below), but never stands in
+            # for a name the title did not give: the resolver would file
+            # every meeting under it (RVTV's "Ashland" on Jackson County
+            # meetings). Its logo is skipped for the same reason.
+            several_governments = (
+                "videoplayer.telvue.com",
+                org_token or "",
+            ) in MULTI_GOVERNMENT_TENANTS
+            meeting_body = None
+            if not jurisdiction:
+                jurisdiction, meeting_body = _body_government(org_token, title)
             known_jurisdiction = (
                 _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token) if org_token else None
             )
             if not jurisdiction:
-                jurisdiction = known_jurisdiction
+                if not several_governments:
+                    jurisdiction = known_jurisdiction
             elif known_jurisdiction:
                 # Real gap found 2026-08-28 (BACKLOG_DONE.md), widened
                 # 2026-08-29: originally only handled a *bare*,
@@ -743,7 +897,7 @@ class TelvueAssetFinder(AssetFinder):
                 guessed_name = jurisdiction.split(",")[0].strip().lower()
                 if guessed_name == known_name:
                     jurisdiction = known_jurisdiction
-            if not jurisdiction:
+            if not jurisdiction and not several_governments:
                 jurisdiction = self._org_logo_jurisdiction(html)
 
             video_url = entry.get("file")
@@ -800,6 +954,7 @@ class TelvueAssetFinder(AssetFinder):
             title=title,
             date=date,
             jurisdiction=jurisdiction,
+            meeting_body=meeting_body,
             video_url=video_url,
             video_format=video_format,
             segments=segments,
@@ -850,7 +1005,10 @@ class TelvueAssetFinder(AssetFinder):
         match = _BODY_SUFFIX_RE.match(title.strip())
         if not match:
             return None
-        name = match.group(1).strip()
+        # WO-1087: Kalamazoo's station writes "Kalamazoo County - Board of
+        # Commissioners - September 15, 2026 Meeting", so the name before
+        # the body keeps its dash ("Kalamazoo County -").
+        name = match.group(1).strip().rstrip("-|:,").strip()
         # Real bug, confirmed live 2026-08-16: a bare "City Council -
         # 5.6.2025" title (no actual city name prefix) matches the regex
         # with group(1)="City", which enrich_jurisdiction_text() then

@@ -667,6 +667,50 @@ def test_the_feeders_owner_check_agrees_with_ingest(url, owned):
     assert has_owner(url)[0] is owned
 
 
+# WO-1087: rtr-discovery's saved listings (tests/fixtures/telvue/wo1087/,
+# 2026-09-25) show two governments on each of these stations: QACTV's
+# County Commissioners and Centreville Town Council; OaheTV's Pierre City
+# Commission and Pierre School Board.
+@pytest.mark.parametrize(
+    "token, first, second",
+    [
+        (
+            "AbfNhigIqnG-4roGCxaFupXEKfme9dfT",
+            "County Commissioners Meeting || 09/21/2026",
+            "Centreville Town Council || 09/17/2026",
+        ),
+        (
+            "5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq",
+            "Pierre City Commission",
+            "Pierre School Board",
+        ),
+    ],
+)
+def test_queen_annes_and_pierre_stations_carry_several_governments(
+    token, first, second
+):
+    from conftest import load_fixture
+
+    name = "queenannes" if token.startswith("Abf") else "pierre"
+    listing = load_fixture("telvue", "wo1087", f"{name}_videos.html")
+    assert first in listing and second in listing
+    assert ("videoplayer.telvue.com", token) in tk.MULTI_GOVERNMENT_TENANTS
+
+
+def test_feeder_sends_no_id_for_a_telvue_whole_customer_pin():
+    """WO-1087: the Archive tries a TelVue meeting's own name before the
+    customer's pin, so the tier-3 feeder must not send the pin's id (an id
+    in the payload skips that step). Owned, no id. A narrower pin still
+    hands its id back."""
+    from app.platforms.queue_probe import has_owner
+
+    base = "https://videoplayer.telvue.com/player/"
+    whole = has_owner(base + "AbfNhigIqnG-4roGCxaFupXEKfme9dfT/media/1047511")
+    assert whole == (True, None, "")
+    narrow = has_owner(base + "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/951693")
+    assert narrow == (True, "us:sd:3302610", "")
+
+
 # ChampDS customers whose own meeting-body lists or archive search titles
 # (playapi.champds.com, read 2026-09-25) show a second government; the
 # name is each customer's real CustomerName, as the adapter formats it.
