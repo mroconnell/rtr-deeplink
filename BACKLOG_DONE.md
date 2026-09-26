@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1092: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
+## WO-1101: Meeting Finder now passes a keyed platform's customer key to rtr-discovery, not just the bare host [Done 2026-09-26]
 
 **What was found.** A "keyed platform" is one website shared by many customers, with a key in the address that names the customer (`play.champds.com/atlantaga/` is Atlanta, GA; `play.champds.com/augustaga/` is a different customer on the same host). Meeting Finder's lister (b) — the fallback that calls rtr-discovery's `list_tenant()` for a platform its own listing walkers don't cover — built that call from `urlparse(account_url).netloc` alone, the bare host, throwing the customer key away. Every keyed platform's rtr-discovery walker (ChampDS, Invintus, TelVue, Sliq Harmony, BoxCast) reads the key from `TenantRecord.tenant_key` and refuses with `TenantNotEnumerable` when it's missing, so lister (b) always came back empty for a keyed tenant.
 

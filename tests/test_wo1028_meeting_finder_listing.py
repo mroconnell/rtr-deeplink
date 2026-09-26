@@ -276,10 +276,10 @@ async def test_lister_b_degrades_with_a_note_when_rtr_discovery_unavailable(
     assert "rtr-discovery unavailable" in result.note
 
 
-# --- Lister (b), WO-1092: keyed-website tenant names --------------------
+# --- Lister (b), WO-1101: keyed-website tenant names --------------------
 #
 # A keyed website is one host shared by many customers, with a key in the
-# address naming the customer (`app/utils/tenant_key.py`). Before WO-1092,
+# address naming the customer (`app/utils/tenant_key.py`). Before WO-1101,
 # `_list_via_discovery()` passed rtr-discovery's `list_tenant()` only
 # `urlparse(account_url).netloc` -- the bare host, with the customer key
 # thrown away. Every keyed platform's own rtr-discovery walker reads the
@@ -297,7 +297,7 @@ async def test_lister_b_degrades_with_a_note_when_rtr_discovery_unavailable(
 # production, walker registered or not. These three tests remove that
 # platform's registration first, purely to exercise `_list_via_
 # discovery()`'s own netloc-building in isolation; see the "kept, not
-# redundant" reasoning in this module's own docstring update (WO-1092)
+# redundant" reasoning in this module's own docstring update (WO-1101)
 # and this PR's description for why those walkers stay.
 #
 # Every URL below is a real customer address, sourced from

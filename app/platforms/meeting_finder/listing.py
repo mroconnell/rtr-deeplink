@@ -38,13 +38,13 @@ gives, stopping at the first that returns candidates:
      module refuses it first so a missing/stale rtr-discovery checkout
      can never accidentally reach that refusal via some other path.
      **The account name handed to `list_tenant()` is `host#key` on a
-     keyed website that carries its key (WO-1092), not the bare host**
+     keyed website that carries its key (WO-1101), not the bare host**
      -- `app/utils/tenant_key.py`'s `tenant_name()`, the one place this
      repo defines a tenant's name (rtr-discovery's own `discovery.
      tenants.tenant_for_url()` imports this exact module and delegates
      to the same rule over `RTR_DEEPLINK_PATH`, so calling it directly
      here avoids a second, more fragile import chain for a rule already
-     defined in this repo). Before WO-1092 this was unconditionally
+     defined in this repo). Before WO-1101 this was unconditionally
      `urlparse(account_url).netloc`, so every keyed-website walker
      (`champds`, `invintus`, `telvue`, `sliq_harmony`, `boxcast` --
      `Enumerator.tenant_keyed`) raised `TenantNotEnumerable` on the
@@ -747,7 +747,7 @@ async def _list_via_wordpress(
 # for its tab-slug pages -- the row parsing below is copied from there
 # (same real shape, not re-derived), just pointed at a `/views/{id}` URL
 # lister (b) never reaches with the specific path intact: Swagit isn't
-# a keyed platform (WO-1092's `tenant_name()` fix to `_list_via_
+# a keyed platform (WO-1101's `tenant_name()` fix to `_list_via_
 # discovery()` only keeps a keyed website's `#key`), so it still passes
 # rtr-discovery only the bare `netloc`, discarding the path. Tried
 # before lister (b) so a known-good `/views/{id}` URL is used directly rather
@@ -959,7 +959,7 @@ async def _list_via_discovery(
                 f"({_discovery_import_failed}) -- degrading to the next lister"
             ),
         )
-    # WO-1092: `tenant_name()` returns `host#key` on a keyed shared
+    # WO-1101: `tenant_name()` returns `host#key` on a keyed shared
     # website whose URL still carries its key (identify.py's own
     # `_account_url_for_platform()` is what keeps the key in `account_
     # url` in the first place -- it only collapses to the bare host when
