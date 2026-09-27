@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://belleviewfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=393
-https://bristolva.granicus.com/MediaPlayer.php?view_id=1&clip_id=527
-https://townofclarksville.granicus.com/MediaPlayer.php?view_id=1&clip_id=412
-https://currycountynm.granicus.com/MediaPlayer.php?view_id=1&clip_id=737
-https://cityofdaytontx.granicus.com/MediaPlayer.php?view_id=1&clip_id=428
-https://dilworthmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=292
-https://elbertcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=438
-https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744
-https://floydcountyga.granicus.com/MediaPlayer.php?view_id=1&clip_id=131
-https://franklintn.granicus.com/MediaPlayer.php?view_id=1&clip_id=775
-https://fcoh.granicus.com/MediaPlayer.php?view_id=1&clip_id=1
-https://gadsdencountyfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=181
 https://glynncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1008
 https://cityofgoosecreek.granicus.com/MediaPlayer.php?view_id=1&clip_id=451
 https://granbury.granicus.com/MediaPlayer.php?view_id=1&clip_id=888

@@ -7697,3 +7697,13 @@ https://player.vimeo.com/video/1224163036?badge=0&autopause=0&player_id=0&app_id
 https://vimeo.com/1111826071/882aeae980?share=copy,vimeo,vimeo-oembed,4405.00,2025-08-20,,1,accept,,0.07,2026-09-27T01:27:30+00:00,bulk_ingest,0
 https://simivalley.granicus.com/MediaPlayer.php?view_id=7&clip_id=3006,granicus,hls-master+variant,6125.08,,,1,accept,,0.15,2026-09-27T01:27:37+00:00,bulk_ingest,0
 https://vimeo.com/1217345455/2a3cf7bf2d,vimeo,vimeo-oembed,11640.00,2026-08-11,,1,accept,,0.10,2026-09-27T01:27:44+00:00,bulk_ingest,0
+https://belleviewfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=393,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.15,2026-09-27T05:46:51+00:00,,0
+https://townofclarksville.granicus.com/MediaPlayer.php?view_id=1&clip_id=412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:46:58+00:00,,0
+https://currycountynm.granicus.com/MediaPlayer.php?view_id=1&clip_id=737,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:01+00:00,,0
+https://cityofdaytontx.granicus.com/MediaPlayer.php?view_id=1&clip_id=428,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:06+00:00,,0
+https://dilworthmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=292,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T05:47:10+00:00,,0
+https://elbertcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=438,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:12+00:00,,0
+https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:15+00:00,,0
+https://floydcountyga.granicus.com/MediaPlayer.php?view_id=1&clip_id=131,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T05:47:18+00:00,,0
+https://fcoh.granicus.com/MediaPlayer.php?view_id=1&clip_id=1,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:23+00:00,,0
+https://gadsdencountyfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=181,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:26+00:00,,0
