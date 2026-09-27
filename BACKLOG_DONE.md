@@ -1,5 +1,51 @@
 # Backlog — done
 
+## WO-1131: the parked 7,359-small-government rerun, done with Meeting Finder instead of the access ladder -- 4 meetings ingested, 67 queued [Done 2026-09-26]
+
+**What was done and why.** The parked entry ("Run the access ladder on the other 7,359 small governments and keep the raw report", Ryan 2026-09-20) predates Meeting Finder. On 2026-09-26 Ryan asked to check the overlap and switch if it made sense. It did: Meeting Finder fetches with the same rungs as the ladder (plain, browser headers, headless, plus Wayback) and then picks a meeting, grades its tier and checks identity, at about the same speed at scale.
+
+| The 6,531 governments still left in the parked list | Count of 6,531 |
+|---|---|
+| Already had a Meeting Finder verdict (overnight runs 2026-09-24, nps, mwv, calD, retry) | 1,750 |
+| No Meeting Finder verdict | 4,781 |
+
+The 1,750 were not rerun except the 62 that had timed out: blocked, no-meeting, YouTube-only and dead-address outcomes would not change with the ladder. 18 governments that rtr-discovery's seed/walk covers (by `gov_id` or tenant host in `ledger.db`) were left out, and 2 already in another run's retry list. The ladder itself ran 691 governments (with WO-1084's off-site hop guard) before the switch; those rows are in `rtr-business/research/wo912_report.csv` (commit c924ce8).
+
+**Result.** Meeting Finder (`--entry start --mode pin`, concurrency 16, 2026-09-26 10:04-17:11, a watcher that would pause it on a jump in blocked or timeout outcomes; it never did) wrote 4,767 verdict rows:
+
+| Meeting Finder result | Count of 4,767 |
+|---|---|
+| No meeting and no video | 1,806 |
+| Blocked | 1,705 |
+| YouTube lead only | 473 |
+| Low-confidence or flagged find | 181 |
+| Meetings found, no video | 170 |
+| Timed out or error | 130 |
+| Address doesn't resolve | 120 |
+| Clean find, tier 2 (YouTube) | 88 |
+| Clean find, tier 3 | 73 |
+| Clean find, tier 1 | 9 |
+| Account not found, no adapter, or embed-restricted | 12 |
+
+What was done with the finds (`scripts/meeting_finder_followups.py`, dry run first, then applied with Ryan's approval):
+
+| What happened to each find | Count of 351 finds |
+|---|---|
+| Ingested (tier 1) | 4 |
+| Queued (tier 3) | 67 |
+| Already on the tier-3 queue | 1 |
+| Dropped: under 8 minutes (Ryan's rule) | 159 |
+| Hand-checked: not this government's meeting, or cannot tell | 32 |
+| Tier 2 (YouTube meeting): left to the drip | 88 |
+
+Separately, 380 YouTube leads went onto the drip list (`research/youtube_channel_leads.csv`, `source_wo=WO-1131`), one per government with a YouTube find or lead, channel preferred; 3 more were already there.
+
+Ingested, each checked live: Fayette County KY (Lexington, Planning Commission), Beekman town NY (Planning Board), Davidson County TN (Metro Council), Marion County IN (Metropolitan Development Commission). The last two, plus the Sitka, Jupiter Island and Central Okanagan queue lines, came from a hand-check of the 37 flagged finds that were 8 minutes or longer (or of unknown length): 5 own meetings, 12 own non-meetings, 9 not meetings, 8 another government's meeting, 3 cannot tell. Research-file status: `rtr-business` commits e1f21df and 7f23a3a.
+
+**Caution.** The hand-check found a research-file mismatch: Park Ridge village WI's recorded site is Park Ridge, Illinois's (not changed). Three Virginia towns (Painter, Keller, Hallwood) all resolved to the same Accomack County committee video, a shared-hub case the identity check should have caught.
+
+**Recommendation.** YouTube is most of what is left for these governments (473 lead-only plus 88 tier 2); per Ryan it is low priority. The 1,705 blocked governments need a different network or a human, not another pass.
+
 ## WO-1123: 85 Swagit views that are only an index, filed with owner proof [Done 2026-09-26]
 
 **What was done and why.** WO-1087 filed every Swagit view whose page lists meetings. 337 view pages listed none. 108 of those are an index: they link category pages (`/views/{n}/{slug}`) that hold the meetings. San Benito, TX's view 322 is the worked example. rtr-discovery's follow-up sweep read each index's categories and proved the owner from two video pages. A view with a single meeting was proven by that one video (Waxahachie's view 311).
