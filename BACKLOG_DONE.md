@@ -1,5 +1,39 @@
 # Backlog — done
 
+## WO-1144: 5 public bodies get registry ids; 9 rtr-discovery sites whose captioned meetings had no government get pins [Done 2026-09-27]
+
+**What was done and why.** rtr-discovery's breadth pass rejected captioned meetings on 33 sites as `no_government:blank`: the resolver could not tell whose meeting it was. Each site was checked by hand on 2026-09-27 against its own pages. Every GEOID was checked on Census TIGERweb. Pins were added only where a page names one government.
+
+Five bodies had no registry id. Ryan approved minting them (2026-09-27, chat), following the Texas Workforce Commission and PennDOT pattern: a `curated_governments.csv` row, `source=curated+ryan_stated`, state agencies typed `other`.
+
+| New registry id | Type | Census unit |
+| --- | --- | --- |
+| `rtr:us:tx:texas-alcoholic-beverage-commission` | other (state agency) | none |
+| `rtr:us:tx:texas-health-and-human-services-commission` | other (state agency) | none |
+| `rtr:us:tx:texas-department-of-transportation` | other (state agency) | none |
+| `rtr:us:ca:marin-municipal-water-district` | special_district | 142380 |
+| `rtr:us:fl:lee-county-port-authority` | special_district | none found |
+
+The pins:
+
+| Site | Government | Pin |
+| --- | --- | --- |
+| `cityofbranson.primegov.com` | Branson city, MO | whole site |
+| `glendaleca.primegov.com` | Glendale city, CA | whole site |
+| `ketchikan.primegov.com` | Ketchikan city, AK | whole site |
+| `losalamitosca.portal.civicclerk.com` | Los Alamitos city, CA | whole site |
+| `reflect-harbor-media.cablecast.tv` | Hingham town, MA | 7 shows, one row each |
+| `tabc.new.swagit.com` | Texas Alcoholic Beverage Commission | whole site |
+| `texashhsc.new.swagit.com` | Texas Health and Human Services Commission | whole site |
+| `txdot.new.swagit.com` | Texas Department of Transportation | whole site |
+| `lcpa.primegov.com` | Lee County Port Authority, FL | whole site |
+
+Harbor Media also carries Hingham Public Schools and community shows, so it is pinned per show, never per site.
+
+**Result.** `tests/test_wo1144_blank_gov_pins.py`: a page that names no government resolves to the pinned one; each new id is a curated registry row; an unpinned Harbor Media show is not filed under Hingham; Lee County, Marin County and Texas still resolve as before.
+
+**Caution.** Marin Municipal Water District's site (`marinwater-ca.municodemeetings.com`) is not pinned. Municode rate-limited the check (HTTP/2 `ENHANCE_YOUR_CALM`), so the site still needs a live look. Angels Camp CA and New Haven MI (also Municode) were left out for the same reason; the only evidence was a Wayback copy. Cablecast put up an AWS WAF challenge, so no other Cablecast site was checked. The Woodlands Convention and Visitors Bureau gets no id: it may not be a government. None of this changes where anything is filed until a deploy.
+
 ## WO-1145: Meeting Finder no longer calls a real government site "broken" just because it's missing its own intermediate certificate [Done 2026-09-27]
 
 **The problem, in plain words.** A web browser trusts a site's certificate by checking who signed it, link by link, back to a certificate the browser already trusts. Some sites forget to send one of those links (their own "intermediate" certificate). A real browser, and macOS's own network code, quietly go fetch the missing link themselves and the site works fine. Python's own network code does not do this extra fetch, so it gives up and calls the site broken. WO-1134 found 6 real, working government sites hitting exactly this gap (`naplescsd.org`, `vercounty.org`, `desmet.k12.sd.us`, `millercreeksd.org`, `gusd.us`, `copiah.ms`), all reported as `site-broken` — "go find this government's new domain" — when the domain was never the problem.
