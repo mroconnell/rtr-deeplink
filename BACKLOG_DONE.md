@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1130: old TelVue pages re-filed from their titles [Done 2026-09-26]
+
+**What was done and why.** Before WO-1100, a whole-customer TelVue pin filed every meeting on a station under one government, and the stored `jurisdiction` was rewritten to it, so `scripts/backfill_gov_id.py` could only reproduce the pin. WO-1130 (PR #1516) makes it re-read a TelVue page's name from its stored title, through `app/platforms/telvue.py`'s `meeting_name_from_title()` (the adapter's own logic, moved out so both share it).
+
+**Result.** Run on the Archive's Render shell on 2026-09-26, by Ryan. 114 TelVue pages, 24 of them `manual_override` (left alone).
+
+| Page | Filed under before | Filed under after | Why |
+| --- | --- | --- | --- |
+| 3531, Albany Common Council 08/03/26 | Schenectady, NY | Albany, NY | The title names Albany; the Common Council is the City of Albany's |
+| 11158, "PEC Meeting 9-14-2026" | Avon, CO | Vail, CO | The title names no one; the station's pin and its adapter entry are Vail, and PEC is Vail's Planning and Environmental Commission |
+
+A second dry run afterwards reported 0 changes. The run retired the `avon-co` hub; its redirect row to `vail-co` is added to `archive/data/hub_slug_aliases.csv` here (the apply wrote it only to the Render shell's disk).
+
+**Caution.** Only 2 of 114 archived pages were misfiled this way. 19 TelVue pages stay at tier `blank`: their titles name no one and no pin covers their station.
+
 ## WO-1134: a block on ONE own-host form was still outranking a real walk of a working sibling form -- 32 of 40 flip to a real result [Done 2026-09-26]
 
 **What was tested and why.** WO-1122 (below) stopped a block found on a SECONDARY host (a guessed vendor subdomain, an off-site link) from winning a government's verdict. It measured its own fix against real governments and moved on. A follow-up check of 384 governments verdicted `site-broken` in a 2026-09-26 re-run found a much bigger version of the same shape: a live probe (plain `curl`, four forms per domain -- apex/`www.` times https/http) found 212 whose domain actually works in SOME form. Most of those had the bare apex's TLS certificate broken while `www.` (or plain http) loads fine -- but WO-1122's own-host check only asked "did a block happen on the government's own host," and both the apex and `www.` count as the SAME "own host." So the apex's own refusal still won, even though the government's real site, one click away, was fine.

@@ -190,12 +190,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
-  TelVue pages filed before WO-1100: run the WO-1130 re-file on the…  (5)
-    [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
-    [HUMAN] Decide which hidden transcript versions to promote (WO-928…
-    [HUMAN] Run the re-transcription queue for the pre-voice-filter…
-    [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
-    [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
+  [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
+  [HUMAN] Decide which hidden transcript versions to promote (WO-928…
+  [HUMAN] Run the re-transcription queue for the pre-voice-filter…
+  [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
+  [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
   Vimeo blocks Render: every caption fetch gets a challenge page, so no…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
@@ -2092,28 +2091,6 @@ WO-932 and WO-913.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-### TelVue pages filed before WO-1100: run the WO-1130 re-file on the Archive's Render shell `[HUMAN]` `[LOGIN]`
-
-- **Issue**: before WO-1100, a whole-customer TelVue pin filed every
-  meeting on a station under one government, and the page's stored
-  `jurisdiction` was rewritten to that government. WO-1130 lets
-  `scripts/backfill_gov_id.py` re-read a TelVue page's name from its
-  stored title instead (same `meeting_name_from_title()` the adapter
-  uses), so those pages can move. Not yet run against production.
-- **Impact**: archived school-board and town meetings on multi-government
-  TelVue stations (49 customers have a whole-customer pin) stay under the
-  station's town or county until the run.
-- **Next action**: after the Archive is deployed with WO-1130, on the
-  Archive's Render shell: `python scripts/backfill_gov_id.py --hosts
-  videoplayer.telvue.com --report /tmp/telvue_refile.csv` (dry run, the
-  default). Ryan reads the proposed moves; then the same command with
-  `--apply`; then one more dry run, expecting 0 changes.
-- **Constraint**: Render shell only, never a laptop against production.
-  `manual_override` rows are never moved. A title that names no one
-  keeps the pin's government.
-- **History**: WO-1100 (PR #1504), WO-1130; `BACKLOG_DONE.md`'s WO-1100
-  entry.
 
 - **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
   - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
