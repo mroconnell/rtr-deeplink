@@ -829,3 +829,6 @@ https://www.youtube.com/watch?v=JZTTEcJBock		us:place:5613150
 https://www.youtube.com/watch?v=NygSdcgCg2s		us:place:5645050
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
 https://www.youtube.com/watch?v=k9dZdq5uyQA		us:place:0258660
+https://drive.google.com/uc?id=17bPhz-i_rWB69hjagyIeuYZFNPG48JG7&export=download		us:sd:1712540
+https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2		us:sd:2503300
+http://108.20.229.83/internetchannel/show/3534?site=3		us:sd:2509930
