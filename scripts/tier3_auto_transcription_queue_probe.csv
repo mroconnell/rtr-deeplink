@@ -7707,3 +7707,13 @@ https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744,granicus,
 https://floydcountyga.granicus.com/MediaPlayer.php?view_id=1&clip_id=131,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T05:47:18+00:00,,0
 https://fcoh.granicus.com/MediaPlayer.php?view_id=1&clip_id=1,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:23+00:00,,0
 https://gadsdencountyfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=181,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-27T05:47:26+00:00,,0
+https://glynncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1008,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.17,2026-09-27T12:27:43+00:00,,0
+https://cityofgoosecreek.granicus.com/MediaPlayer.php?view_id=1&clip_id=451,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T12:27:48+00:00,,0
+https://granbury.granicus.com/MediaPlayer.php?view_id=1&clip_id=888,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T12:27:53+00:00,,0
+https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T12:28:04+00:00,,0
+https://groveport.granicus.com/MediaPlayer.php?view_id=1&clip_id=68,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T12:28:21+00:00,,0
+https://harrisontwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=502,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.11,2026-09-27T12:28:32+00:00,,0
+https://haywoodcountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=496,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-09-27T12:28:41+00:00,,0
+https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-09-27T12:28:49+00:00,,0
+https://jimwellscountytx.granicus.com/MediaPlayer.php?view_id=1&clip_id=61,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-27T12:28:56+00:00,,0
+https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.05,2026-09-27T12:29:01+00:00,,0

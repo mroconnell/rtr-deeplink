@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://glynncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1008
-https://cityofgoosecreek.granicus.com/MediaPlayer.php?view_id=1&clip_id=451
-https://granbury.granicus.com/MediaPlayer.php?view_id=1&clip_id=888
-https://granbyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=26
-https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9
-https://cityofgriffin.granicus.com/MediaPlayer.php?view_id=1&clip_id=336
-https://groveport.granicus.com/MediaPlayer.php?view_id=1&clip_id=68
-https://harrisontwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=502
-https://haywoodcountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=496
-https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424
-https://jimwellscountytx.granicus.com/MediaPlayer.php?view_id=1&clip_id=61
-https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630
 https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
 https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
 https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
