@@ -575,3 +575,70 @@ https://fonddulac.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024		us:county
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1716/Cgcsd/28652865-f07e-4d22-8aab-d4362b1f04fc/2026-27_Proposed_Budget.mp4?disposition=inline		us:sd:3600124
 https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
 https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
+https://objects.liquidweb.services/pweamo/Sesquicentennial%20Celebration%202009%20Commorative%20Video%20Slideshow.mp4	https://pewamo.gov/events/1-south-pavilion-rented/	us:place:2663900
+https://static1.squarespace.com/static/57b32613b8a79bb69f00a87e/t/65948372341c9a3e5af7f634/1736894896994/1-02-2024+Town+Council+Meeting.MP3	https://www.townofnashville.org/2024-town-council-meetings	us:place:1852038
+https://mobridge.org/video/Sp-Council-Meeting-3-30-20-Desktop.mp4	https://mobridge.org/city-videos.php	us:place:4643180
+https://nannvilletwp.com/wp-content/uploads/2020/04/zoom_0.mp4	https://nannvilletwp.com/	us:cousub:4207554720
+https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/media/920704	https://saugertiesny.gov/	us:place:3665288
+https://cityofworthingtonhillsky.gov/Assets/Files/Audio/July 21 2026.mp3	https://cityofworthingtonhillsky.gov/CityMeetings.aspx	us:place:2184891
+https://chocolay.gov/wp-content/uploads/2026/09/townshipboard091426.mp3	https://chocolay.gov/township-board/	us:cousub:2610315660
+https://stpaulks.us/video/4KSZH94W8E85AP9GG7DKX.mp4	https://stpaulks.us/herpafend-before-and-after-why-small-details-started-gaining-unexpected-notice-is-it-legit-side-effects-ingredients-jra6bfa6l/	us:place:2062500
+https://www.dropbox.com/s/afo5pnahgrs374w/May%202021%20Special%20Meeting%20Trimmed%20Recording.mp4?dl=0	https://neccog.org/about_neccog/agendas_and_minutes.php	us:county:09150
+https://reflect-tacm.cablecast.tv/store-3/5930-GTMetro-20260922-v1/vod.mp4	https://www.tacm.tv/govtvmeetings.asp	us:cousub:2605523800
+https://www.lonestartx.net/s/May-25-2021-Special-Meeting-217-West-Germany-Variance.mp4	https://www.lonestartx.net/city-council-agendas-minutes	us:place:4843684
+https://chatfield.granicus.com/MediaPlayer.php?view_id=21&clip_id=6673	https://www.cityofchatfieldmn.gov/government/mayor-city-council/watch-online-meetings	us:place:2711008
+https://cablecast.lmcc-tv.org/CablecastPublicSite/show/451?site=2	https://cablecast.lmcc-tv.org/CablecastPublicSite/?channel=2	us:place:2767130
+https://www.townhallstreams.com/stream.php?location_id=47&id=76460	https://oobmaine.com/	us:cousub:2303155085
+https://saint-jude.ca/video/Séance extra Budget 2022.mp4	https://saint-jude.ca/proces-verbaux.html	ca:csd:2454110
+https://townofdeerfieldny.gov/media/clips/0910/tbmeeting7-13-2026.m4a	https://townofdeerfieldny.gov/government/recordings/	us:cousub:3606519928
+https://www.munogden.ca/uploads/1/3/4/8/134872540/s%C3%A9ance_conseil_ogden_audio_20220111.mp3	https://www.munogden.ca/seances_conseil.html	ca:csd:2445020
+https://irp.cdn-website.com/2728571a/files/uploaded/GMT20240821-133832_Recording_640x360.mp4	https://www.westmoreonline.org/meeting-agendas	us:cousub:5001981700
+https://www.cranetwppcohio.gov/wp-content/uploads/2025/09/Forder-Bridge-Video-1.mp4	https://www.cranetwppcohio.gov/news-events/	us:cousub:3912519176
+https://drive.google.com/file/d/1TBGkktcvLH5lkGgUzk8P1tkAogUyv7ze/view?usp=drive_web	http://townofub.org/	us:place:2479350
+https://www.denvillenj.gov/docs/Council/meeting_audio/council meeting audio 9-15-2026.m4a?t=202609161558480	https://www.denvillenj.gov/township_council_agendas_minutes.php	us:cousub:3402717650
+http://cablecast.awcm.org/internetchannel/show/6760?site=10	http://cablecast.awcm.org/CablecastPublicSite/?site=10	us:cousub:2502701885
+https://napoleontownship.us/Meeting Minutes and Agenda/2024/NAPOLEON ROADS PH — 8-8-24.m4a?t=202408161120400	http://napoleontownship.us/	us:cousub:2607556640
+https://reflect-independence-tv-mi.cablecast.tv/CablecastPublicSite/show/5037?site=2	https://indtwp.com/departments/independence_television/index.php	us:cousub:2612540400
+https://townofcoupeville.org/wp-content/uploads/2026/03/03.24.2026-Recording.mp4	https://townofcoupeville.org/2026-town-council-meetings/	us:place:5315185
+https://florencenj.b-cdn.net/video1638524381.mp4	https://florencenj.b-cdn.net/video1177699531.mp4	us:cousub:3400523850
+https://vimeo.com/646255429?embedded=true&source=video_title&owner=44401397	https://twp.columbia.mi.us/meeting-videos/	us:cousub:2607517400
+https://lebanonjunctionky.com/wp-content/uploads/2026/02/260105_023659_00-jan-2026.mp3	https://lebanonjunctionky.com/resources/meeting-minutes/	us:place:2144362
+https://www.westminstervt.org/wp-content/uploads/2025/08/video2386315013.mp4	https://www.westminstervt.org/agendas-minutes/	us:place:5081325
+https://maldenwaorg.wordpress.com/wp-content/uploads/2021/05/may-20-2021-cdbg-public-hearing-malden-fire-station.m4a	https://maldenwaorg.wordpress.com/meetings-and-documents/	us:place:5342275
+https://www.bartonvillagevt.gov/wp-content/uploads/2026/09/09.22.2026-Regular-Trustees-Meeting-Part-1.mp3?_=1	https://www.bartonvillagevt.gov/agenda-minutes/	us:place:5003475
+https://www.freedomny.gov/uploads/1/4/2/7/142714364/january_19_2026_regular_board_meeting.m4a	https://www.freedomny.gov/minutes.html	us:cousub:3600927441
+https://drive.google.com/file/d/11OpWcPWHdhSlayvs0HOM8yOR5JhAY0Hw/view?usp=sharing	https://www.surfsidetx.org/page/city.2020documents	us:place:4871384
+https://www.concordvt.us/wp-content/uploads/2025/02/PZB-Meeting_Town-of-Concord_1-15-2025.wav	https://www.concordvt.us/31-2/planning-zoning-meeting-agendas-minutes/	us:cousub:5000915250
+https://allamuchynj.org/vertical/sites/%7BFFEC7C1F-E8A4-412C-A698-D10C0A872E47%7D/uploads/Council_20251229_124344.m4a	http://allamuchynj.org/2025meetings	us:cousub:3404100670
+http://monclovatwp.org/wp-content/uploads/2026/02/TEA-JEDD-02_03_2026-1.mp3	https://monclovatwp.org/legal-notices-hearing-notices/	us:cousub:3909551156
+http://www.channel16.org/CablecastPublicSite/show/1331?site=1	https://www.manchesterct.gov/Residents/Stay-in-the-Loop/Silk-City-TV	us:cousub:0911044700
+https://municipalite.saint-leon-le-grand.qc.ca/images/Upload/Files/audio/2022-01-17.mp4	https://municipalite.saint-leon-le-grand.qc.ca/municipalite/conseil-municipal.html	ca:csd:2407030
+https://municipalite.grossesroches.ca/images/Upload/Enregistrements_des_seances_du_conseil/MuniRoches_1591054347.mp3	https://municipalite.grossesroches.ca/communiques.html	ca:csd:2408015
+https://www.dropbox.com/scl/fi/y6w1xrmgldmzu6zrvkea6/Board-of-Supervisors-Monthly-Meeting-September-20-2023.mp4?rlkey=i74qf2okpi9wlhj2ptkdi1hnu&dl=0	https://www.brunswickco.com/government/board_of_supervisors/agendas___minutes	us:place:5100724
+https://static1.squarespace.com/static/594bfce15016e15137030ab2/t/6a95901f04fbf276ad70d69f/1788186755785/20260830+-+Ephesians+6.18+-+Watch+and+Pray.mp3	https://www.riversidetx.org/news/2026/8/30/standing-firm-watch-and-pray-ephesians-618	us:place:4862408
+https://static1.squarespace.com/static/5f69321df81a87039c352033/t/6a5fc00a840004708496b965/1784660000579/July+20%2C+2026+Council+Meeting.mp4	https://www.cityofbouldermt.com/minutes	us:place:3008575
+https://brunswickny.gov/files/TBAudio04142022.MP3	https://brunswickny.gov/minutes.php	us:cousub:3608310275
+https://www.cityofmalta.com/s/240712_0005-lmh3.MP3	https://www.cityofmalta.com/meeting-recordings	us:place:3047425
+https://irp.cdn-website.com/47bd5126/files/uploaded/March2026.mp3	https://www.kirbyvt.gov/town-of-kirby-vt-planning-committee-minutes-and-agendas	us:cousub:5000537900
+https://www.fortgratiot.us/download/28918/audio-7.mp3	https://www.fortgratiot.us/board-commissions/zoning-board-of-appeals/	us:cousub:2614729760
+https://townofmaurice.gov/wp-content/uploads/2023/06/PageBG-Broadband-High.mp4	https://townofmaurice.gov/maurice-meeting-schedules-agendas-and-minutes/	us:place:2249240
+https://player.vimeo.com/video/1043797125?badge=0&autopause=0&player_id=0&app_id=58479	https://wheatlandtownship.com/	us:cousub:1719781035
+https://johnqit.com/tcmt/09-01-2026.mp3	https://www.treasurecountymt.gov/commissioners	us:county:30103
+https://municipalite.saint-joseph-de-lepage.qc.ca/images/Upload/primo/seances-enregistrements/2022/seance-du-conseil-du-7-fevrier-2022.mp4	https://municipalite.saint-joseph-de-lepage.qc.ca/municipal/conseil-municipal/enregistrement-des-seances.html	ca:csd:2409070
+https://www.dropbox.com/scl/fi/q8igvuq98p0svauhxn966/04-09-2026-Special-Commission-Meeting-Recording.mp3?rlkey=8g90cfne66g7wguvh3ykpdxpp&dl=0	https://www.cityofcedarkey.org/262/Public-Records-of-Past-Meetings	us:place:1211225
+https://www.dropbox.com/s/upaff51euizrx4u/S%C3%A9ance%206mai%202020.mp4?dl=0	https://stmathieudharricana.com/la-municipalite/conseil-municipal/pv-et-enregistrements-video-1	ca:csd:2488050
+https://www.dropbox.com/scl/fi/osh8mlzsed6htr848uokk/2018-07-31-PB-Audio.mp3?rlkey=k0tdt20b4z90r974xtmis7hvz&e=1&dl=0	https://villageofmillbrookny.gov/planning-board-meetings-archive	us:place:3647273
+https://jeffersoncountytx.gov/Coffee%20Bean_Damon%20West_short_46m.mp4	http://jeffersoncountytx.gov/	us:county:48245
+https://cloud.castus.tv/vod/rctv/video/6ab1e673e142c2000215b46b?page=HOME	https://raymondnh.gov/	us:cousub:3301564020
+https://cloud.castus.tv/vod/lrpatv/video/6ab68d2a1bceae00024101ca?page=HOME	https://lrpa.org/video-on-demand/	us:cousub:3300104740
+https://drive.google.com/file/d/1pt6v8TpMRJD6X8NITt1GnpuikXNWhAC1/view?usp=sharing	https://mansfieldtownship-nj.gov/index.php/government/agendas-minutes-bill-list	us:cousub:3400543290
+https://eastgulllake.gov/vertical/sites/%7BF4DD0CCB-CB33-4568-A2AD-0D17E332F9F8%7D/uploads/January_2020_Council_Meeting_Audio_Recording1.mp3	https://eastgulllake.gov/index.asp?SEC=F8787858-43F3-4C1F-A8DB-15D11E8C39C3	us:place:2717630
+https://drive.google.com/file/d/1NcS7K9ExrikJgMWzXuKX4OiUuDSQl84n/view?usp=sharing	https://dewittcountyil.gov/government/agendas_minutes.php	us:place:1719798
+https://player.vimeo.com/video/675553234?color&autopause=0&loop=0&muted=0&title=1&portrait=1&byline=1#t=	https://www.combinedlocks.wi.gov/village-board/election-information/	us:place:5516500
+https://drive.google.com/file/d/1LIIw2jEjlwAXY_HauFn5bfasWYVS3mCa/view?usp=sharing	https://silverplumetown.com/recorded-meetings/	us:place:0870360
+https://storage.googleapis.com/juniper-media-library/349/2025/07/linninfosession-09-23-2024-.mp4	https://townoflinn.wi.gov/town-of-linn-city-of-lake-geneva-fire-ems-partnership	us:cousub:5512744750
+https://vod.easthamptonmedia.org/internetchannel/show/22598?channel=1	http://www.easthamptonmedia.org	us:cousub:2501562745
+https://stampinggroundky.gov/wp-content/uploads/2024/04/50th-anniversary-of-the-1974-Tornado-that-hit-Stamping-Ground.mp4	http://stampinggroundky.gov/	us:place:2173038
+https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
+https://jupiterislandfl.portal.civicclerk.com/event/347/media	https://townofjupiterisland.com/	us:place:1235925
+https://pub-rdco.escribemeetings.com/Meeting.aspx?Id=8376597b-a360-4119-9808-6d1d5ffc3b7f	https://www.rdco.com/your-government/regional-board/	ca:cd:5935

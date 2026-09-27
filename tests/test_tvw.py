@@ -42,7 +42,7 @@ async def test_resolve_real_senate_housing_meeting():
     detail_json = load_fixture("tvw", "senate_housing_getDetailed.json")
     captions_vtt = load_fixture("tvw", "senate_housing_captions_trimmed.vtt")
 
-    # WO-1131: the link carries the eventID, so tvw.org itself is never
+    # WO-1132: the link carries the eventID, so tvw.org itself is never
     # fetched -- PAGE_URL is deliberately absent from these routes, and
     # mock_session raises on any unmocked call. `wrapper_html` is still
     # loaded to check the link's ID matches the page's own meta tag.

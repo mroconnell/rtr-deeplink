@@ -347,9 +347,9 @@ CANARY_EXCLUSIONS: dict[str, str] = {
 # entry removed. Never add a platform here to hide a failure that has
 # not been shown to be a bot check -- that is what this list is not for.
 CANARY_KNOWN_CI_BLOCKS: dict[str, str] = {
-    # Empty since WO-1131 (2026-09-26). "tvw" was here from WO-1112: from a
+    # Empty since WO-1132 (2026-09-26). "tvw" was here from WO-1112: from a
     # GitHub runner, tvw.org's Cloudflare check answered aiohttp with a
-    # 403 challenge. WO-1131 made tvw.py read the meeting number from the
+    # 403 challenge. WO-1132 made tvw.py read the meeting number from the
     # link and skip tvw.org entirely, so the canary URL no longer meets it.
 }
 

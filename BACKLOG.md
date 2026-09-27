@@ -539,8 +539,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (37)
 
 Dormant — needs a real example first `[LATER]`
 
-Parked deliberately — allowed back `[PARK]`  (4)
-  Run the access ladder on the other 7,359 small governments and keep…
+Parked deliberately — allowed back `[PARK]`  (3)
   Video-to-calendar join: match a government's video source to its own…  (3)
     [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
     [PARK] MPO / transit-authority / utility-district name table.
@@ -7519,18 +7518,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 Nothing open here right now.
 
 ## Parked deliberately — allowed back `[PARK]`
-
-### Run the access ladder on the other 7,359 small governments and keep the raw report `[PARK]`
-
-- **Issue:** WO-912 ran the access ladder (`run_access_ladder()`: a plain fetch, then browser headers, then a headless browser only when a page loads but shows no meeting link) on a random 1,200 of 8,559 small governments. 7,359 were not run: 3,843 that no earlier ladder report ever covered and 3,516 that one did. Ryan (2026-09-20): run them later this week with a cheaper agent, if there is usage room. He dropped two steps: no reading of the links found, and no extra headless pass.
-- **Impact:** the run gives a saved report and nothing else. Projected from the 1,200: about 1,325 raw links (1,170 to 1,490), about a quarter of them another organization's; about 4% of the governments behind a human-verification wall (about 320); about 4% unreachable (about 325, no such site or no page). The research file rejects all 7,359 as "no platform link found" or "no platform signature" whether or not the site even loads; the report would sort them into reachable, dead site and walled. About 25 hours unattended (12.4 seconds per government), and little agent time: start it and check on it now and then.
-- **Next action:** run the ladder on all 7,359. It resumes and skips the 1,200 already in the report. Use the main checkout's venv (`/Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python`); from a worktree, set `DATABASE_URL` and `ARCHIVE_BASE_URL` explicitly first:
-  ```
-  caffeinate -i /Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python scripts/wo908_headless_pilot.py --candidates-csv ~/Documents/rtr-business/research/wo912_candidates.csv --out-csv ~/Documents/rtr-business/research/wo912_report.csv --limit 8559
-  ```
-  Check on it every hour or two by counting rows with Python's `csv` module (`wc -l` over-counts: some notes span lines). When it finishes, the report is the deliverable. Optional: add the newly walled governments to `rtr-business/research/walled_governments_browser_agent_brief.md`.
-- **Constraint:** nothing is handed on from the run. No lead, ingest, pin or research-file change comes out of it, because a quarter of the raw finds were another organization's (57 of 225 in WO-912) and nobody reads them. If a reading is ever wanted, the method is in `BACKLOG_DONE.md`'s WO-912 entry, and `rtr-business/research/wo912_rerun_groups.csv` marks the never-covered governments (about twice the yield). Also dropped: a headless second opinion on the never-covered governments, which on the WO-912 sample found 4 links in 356 loads and none was usable. The ladder never solves a human-verification wall. YouTube is fetched only by the drip Mac; the ladder's headless fetch blocks it at the browser (PR #1254). Don't rebuild `wo912_candidates.csv`: its order comes from a seeded shuffle of the whole list, so rebuilding it after any research-file change reshuffles the order. 828 of the 7,359 (those over 5,000 people rejected "no-platform-link-found") were run by WO-1077 on 2026-09-25 into `rtr-business/research/wo1077_passA_results.csv`, not into `wo912_report.csv`, so the resume won't skip them; drop those gov_ids from the run or accept the ~3 hours of repeat work.
-- **History:** `BACKLOG_DONE.md`'s WO-912 entry (the run, the method, the projection); `rtr-business/research/wo912_rerun_groups.csv`.
 
 ### Video-to-calendar join: match a government's video source to its own calendar by body and date `[PARK]` `[BIG]`
 

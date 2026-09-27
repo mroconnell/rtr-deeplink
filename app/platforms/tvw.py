@@ -63,7 +63,7 @@ _EVENT_ID_META_RE = _meta_re("eventID")
 
 
 # TVW's one Invintus tenant. Confirmed identical on every real page
-# fetched (WO-1010's three, WO-1131's five, 2026-09-26).
+# fetched (WO-1010's three, WO-1132's five, 2026-09-26).
 TVW_CLIENT_ID = "9375922947"
 
 # A real tvw.org link ends in the Invintus eventID: `/video/{slug}-{id}/`.
@@ -102,7 +102,7 @@ class TVWAssetFinder(AssetFinder):
     platform_name = "tvw"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        # WO-1131 (2026-09-26): read the IDs from the link itself when it
+        # WO-1132 (2026-09-26): read the IDs from the link itself when it
         # carries them, and never fetch tvw.org in that case. tvw.org sits
         # behind Cloudflare, which shows aiohttp a "Just a moment..." human
         # check (403, `cf-mitigated: challenge`) from data-center addresses
