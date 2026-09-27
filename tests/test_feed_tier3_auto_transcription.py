@@ -701,6 +701,11 @@ _ESCRIBE_LINE = (
     "https://pub-alfred-plantagenet.escribemeetings.com/Meeting.aspx"
     "?Id=42c217b8-671f-43a6-a2f9-884e728b2060"
 )
+# WO-1147 (2026-09-27): a real single-video Vimeo URL, from
+# tests/test_vimeo.py's own confirmed-real fixtures -- Vimeo now needs the
+# same off-GitHub-runner treatment as YouTube (see scripts/youtube_drip.py's
+# `lane_vimeo`), so select_batch() must hold this line back too.
+_VIMEO_LINE = "https://vimeo.com/1212025580"
 
 
 def _drip_claims(url):
@@ -728,6 +733,18 @@ def test_select_batch_leaves_every_drip_line_in_place():
     assert batch == [_GRANICUS_LINE, _CIVICCLERK_LINE, _ESCRIBE_LINE]
     # The drip's lines keep their order, still at the front.
     assert remainder == [_YT_LINE, _CIVICWEB_LINE, _PRIMEGOV_LINE]
+
+
+def test_select_batch_holds_back_a_vimeo_line_too():
+    # WO-1147: confirms, rather than assumes, that select_batch() already
+    # works for Vimeo for free once _classify_queue_url() claims it --
+    # per this WO's own instruction to verify rather than assume.
+    lines = [_VIMEO_LINE, _GRANICUS_LINE, _ESCRIBE_LINE]
+
+    batch, remainder = select_batch(lines, _drip_claims, size=12)
+
+    assert batch == [_GRANICUS_LINE, _ESCRIBE_LINE]
+    assert remainder == [_VIMEO_LINE]
 
 
 def test_select_batch_fills_the_batch_from_past_the_youtube_lines():

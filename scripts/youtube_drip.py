@@ -28,6 +28,29 @@ block is a different mechanism. Nothing here retries through a block.
 Any other error in a tick (an Archive timeout, say) is logged and the
 tick retried five minutes later; the process never exits on one.
 
+  vimeo     (WO-1147, 2026-09-27, opt-in -- not in the default --lanes)
+            pages on the site waiting for a transcript
+            (GET /internal/transcript-wanted?platform=vimeo) -> one resolve
+            each, via scripts/fetch_vimeo_transcripts.process_one(), which
+            ingests or writes Vimeo's own permanent no-captions marker.
+            This lane is NOT part of the YouTube request budget above --
+            Vimeo is a completely different host/service with no shared
+            rate-limit reason to pace jointly with YouTube (unlike the
+            three lanes above, which really do share one budget because
+            they all ultimately talk to YouTube). It lives in this same
+            process purely for operational convenience: one always-on Mac,
+            one tick loop, one state file, one lock file -- not because
+            Vimeo shares YouTube's block sensitivity. It reuses the same
+            `--spacing-seconds` as every other lane (no separate pacing
+            knob -- Vimeo has no documented rate-limit history the way
+            YouTube does) and has its own independent block ladder
+            (`vimeo_blocked_until`/`vimeo_block_level`), since a Vimeo
+            challenge is a different, unrelated signal from a YouTube one.
+            See BACKLOG.md's "Vimeo blocks Render" entry for why this
+            exists at all: as of 2026-09-26, Render's own cloud IP gets a
+            challenge page on every Vimeo caption fetch, the same
+            structural problem YouTube has always had here.
+
 State lives outside the repo (--state-dir, default ~/.rtr/youtube_drip),
 so a restart resumes. A lock file stops a second instance on the same
 machine -- two pingers on one address is what this replaces. No alert
@@ -182,15 +205,29 @@ def _classify_queue_url(url: str) -> Tuple[bool, str]:
     detected platform when kept, or a short skip reason otherwise. The one
     place `youtube_queue_lines()` and `check_lines()` (WO-367's
     --check-lines) both dispatch on, so the filter a line actually gets fed
-    through and the filter a dry run reports on can never drift apart."""
+    through and the filter a dry run reports on can never drift apart.
+
+    Claims a line for this drip Mac -- not only a YouTube video, but (WO-1147,
+    2026-09-27) a real single-video Vimeo URL too, since Vimeo's own caption
+    fetch now needs the same off-Render treatment as YouTube's (see this
+    module's docstring). `parse_vimeo_video()` is reused directly (not a
+    second regex) so a listing page (a showcase/channel with many meetings)
+    is correctly rejected the same way YouTube's own 11-char-id check
+    rejects a bare channel/playlist URL."""
     try:
         platform = detect_platform(url)
     except UnsupportedPlatformError:
         return False, "unsupported platform"
     if platform in YOUTUBE_DELEGATING_PLATFORMS:
         return True, platform
+    if platform == "vimeo":
+        from app.platforms.vimeo import parse_vimeo_video
+
+        if parse_vimeo_video(url) is None:
+            return False, "vimeo platform but not a real single-video URL"
+        return True, platform
     if platform != "youtube":
-        return False, f"platform={platform}, not a YouTube delegator"
+        return False, f"platform={platform}, not a YouTube or Vimeo delegator"
     if not _YT_ID_RE.search(url):
         return False, "youtube platform but no 11-char video id in the URL"
     return True, platform
@@ -198,9 +235,9 @@ def _classify_queue_url(url: str) -> Tuple[bool, str]:
 
 def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]]:
     """(raw line, url, source_url_override) for every queue line whose URL
-    is a YouTube video, or a page on a platform that embeds one. Uses the
-    feed's own line parser so the tab field means the same thing here as
-    there."""
+    is a YouTube or Vimeo video, or a page on a platform that embeds one
+    (WO-1147: the feed lane claims Vimeo lines too now). Uses the feed's
+    own line parser so the tab field means the same thing here as there."""
     from scripts.feed_tier3_auto_transcription import _parse_queue_line
 
     out = []
@@ -544,6 +581,13 @@ def _empty_state() -> dict:
         "block_level": 0,
         "audio_blocked_until": 0.0,
         "audio_block_level": 0,
+        # WO-1147: Vimeo's own lane bookkeeping, deliberately kept separate
+        # from the YouTube-family dicts/counters above -- Vimeo pages are a
+        # disjoint set of slugs (video_format differs) and its block ladder
+        # is an independent, unrelated signal from YouTube's own.
+        "vimeo_done": {},
+        "vimeo_blocked_until": 0.0,
+        "vimeo_block_level": 0,
         "day": "",
         "today": {},
         "blocks_total": 0,
@@ -586,6 +630,10 @@ class State:
                             "audio_done",
                             "audio_failed",
                             "blocks",
+                            "vimeo_ingested",
+                            "vimeo_marked",
+                            "vimeo_failed",
+                            "vimeo_blocks",
                         ]
                     )
                 w.writerow(
@@ -601,6 +649,10 @@ class State:
                             "audio_done",
                             "audio_failed",
                             "blocks",
+                            "vimeo_ingested",
+                            "vimeo_marked",
+                            "vimeo_failed",
+                            "vimeo_blocks",
                         )
                     ]
                 )
@@ -636,13 +688,24 @@ class Drip:
         self._engine = None
 
     # -- block bookkeeping
-    def _block(self, key: str, level_key: str, detail: str) -> float:
+    def _block(
+        self, key: str, level_key: str, detail: str, *, counter_key: str = "blocks"
+    ) -> float:
+        """`counter_key` (WO-1147, 2026-09-27): which `daily_status.csv`
+        counter this block bumps, via `self.state.bump()`. Defaults to the
+        shared `"blocks"` counter every YouTube-family lane
+        (captions/feed/audio/leads) already used before this parameter
+        existed -- unchanged for them. `lane_vimeo` passes
+        `counter_key="vimeo_blocks"` instead, so a Vimeo challenge (a
+        different, unrelated signal from a YouTube block) gets its own
+        column rather than conflating into a count that, before this WO,
+        only ever meant "a YouTube-family block happened"."""
         d = self.state.data
         sleep = next_block_sleep(d[level_key])
         d[level_key] += 1
         d[key] = time.time() + sleep
         d["blocks_total"] += 1
-        self.state.bump("blocks")
+        self.state.bump(counter_key)
         logger.warning(
             "BLOCK (%s): sleeping %d min -- %s", key, sleep // 60, detail[:200]
         )
@@ -699,6 +762,69 @@ class Drip:
             self.state.data["prefer"].remove(slug)
         self.state.data["block_level"] = 0
         logger.info("captions %-8s %s -- %s", status.upper(), slug, detail[:140])
+        return True, None
+
+    async def lane_vimeo(
+        self, session: aiohttp.ClientSession
+    ) -> Tuple[bool, Optional[float]]:
+        """WO-1147 (2026-09-27): the Vimeo sibling of lane_captions() above
+        -- same shape, its own queue (GET /internal/transcript-wanted
+        ?platform=vimeo), its own `done` dict (`vimeo_done`, never shared
+        with `captions_done` -- see _empty_state()'s own comment), and its
+        own independent block ladder (`vimeo_blocked_until`/
+        `vimeo_block_level`, bumping a Vimeo-only `vimeo_blocks` counter,
+        never the shared `blocks` counter the YouTube-family lanes use --
+        nothing else in this repo reads `daily_status.csv` programmatically
+        as of this WO, so a clean separate column was preferred over
+        conflating Vimeo blocks into a count that today only ever means a
+        YouTube-family block).
+
+        Reuses `self.state.data["prefer"]` (the same list the feed lane
+        populates for a freshly-fed YouTube page) rather than a separate
+        Vimeo-only prefer list -- `pick_caption_page()` is generic over any
+        list of pages with a "slug" key and a `done` dict, so a freshly-fed
+        Vimeo page jumping this lane's own queue quickly is exactly the
+        same win the feed lane already gets for YouTube, at zero extra
+        bookkeeping cost."""
+        from scripts import fetch_vimeo_transcripts as vimeo_fetch
+
+        pages = await vimeo_fetch._get_wanted(session)
+        page = pick_caption_page(
+            pages, self.state.data["vimeo_done"], self.state.data["prefer"]
+        )
+        if page is None:
+            return False, None
+        slug = page["slug"]
+        try:
+            result = await vimeo_fetch.process_one(session, page, dry_run=self.dry_run)
+        except Exception as e:
+            result = {
+                "slug": slug,
+                "status": "failed",
+                "detail": f"{type(e).__name__}: {e}",
+            }
+        status, detail = (
+            result["status"],
+            " ".join(str(result.get("detail") or "").split()),
+        )
+        if status == "blocked":
+            return True, self._block(
+                "vimeo_blocked_until",
+                "vimeo_block_level",
+                f"{slug}: {detail}",
+                counter_key="vimeo_blocks",
+            )
+        if status == "ingested":
+            self.state.bump("vimeo_ingested")
+        elif status == "skipped":
+            self.state.bump("vimeo_marked")
+        else:
+            self.state.bump("vimeo_failed")
+        self.state.data["vimeo_done"][slug] = status
+        if slug in self.state.data["prefer"]:
+            self.state.data["prefer"].remove(slug)
+        self.state.data["vimeo_block_level"] = 0
+        logger.info("vimeo    %-8s %s -- %s", status.upper(), slug, detail[:140])
         return True, None
 
     async def lane_feed(
@@ -960,6 +1086,14 @@ class Drip:
         order: List[Callable] = []
         if "captions" in self.lanes:
             order.append(self.lane_captions)
+        # WO-1147: right after captions, before feed -- an arbitrary but
+        # reasonable choice (Vimeo shares no request budget with anything
+        # else here, so its position doesn't affect pacing correctness);
+        # placed here rather than last so it gets a turn before a
+        # feed/audio lane with a lot of pending work would otherwise crowd
+        # it out on every tick.
+        if "vimeo" in self.lanes:
+            order.append(self.lane_vimeo)
         if "feed" in self.lanes:
             order.append(self.lane_feed)
         if "audio" in self.lanes:
@@ -1204,7 +1338,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--lanes",
         default="captions,feed,audio",
-        help="comma-separated subset of captions,feed,audio,leads",
+        help=(
+            "comma-separated subset of captions,feed,audio,leads,vimeo -- "
+            "vimeo (WO-1147) is opt-in and NOT in the default, since it is "
+            "a new lane Ryan should add explicitly the first time it's "
+            "wanted (e.g. --lanes captions,feed,audio,vimeo)"
+        ),
     )
     p.add_argument("--spacing-seconds", type=float, default=SPACING_SECONDS)
     p.add_argument("--audio-per-day", type=int, default=AUDIO_DOWNLOADS_PER_DAY)

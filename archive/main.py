@@ -6,7 +6,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Literal, Optional, Set
 from urllib.parse import quote, urlsplit
 
 from dotenv import load_dotenv
@@ -792,20 +792,35 @@ async def internal_topic_candidates(
 
 
 @app.get("/internal/transcript-wanted")
-async def internal_transcript_wanted(authorization: Optional[str] = Header(None)):
-    """The "transcript wanted" queue: every archived YouTube-backed page
+async def internal_transcript_wanted(
+    platform: Optional[Literal["youtube", "vimeo"]] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """The "transcript wanted" queue: every archived page on `platform`
     with no *good* default transcript -- missing entirely, or present but
     flagged bad (garbled/no real content), see
     list_youtube_pages_missing_transcripts()'s own docstring (WO-15,
-    BACKLOG.md). Consumed by scripts/fetch_youtube_transcripts.py, which
-    fetches captions from a residential IP (this service's own cloud IP is
-    confirmed blocked by YouTube -- see the crud function's docstring) and
-    pushes them back through the normal /internal/ingest path.
+    BACKLOG.md; Vimeo added WO-1147, 2026-09-27). Omitting `platform`
+    behaves exactly as before this parameter existed (the YouTube queue).
+    Passing `platform=vimeo` returns the Vimeo queue instead, consumed by
+    scripts/fetch_vimeo_transcripts.py. Either fetch script runs from a
+    residential/office IP -- this service's own cloud IP is confirmed
+    blocked by both YouTube and Vimeo's caption endpoints, see the crud
+    function's docstring -- and pushes results back through the normal
+    /internal/ingest path. A single query-param dispatch point rather than
+    a sibling route, so this queue is exposed from exactly one place
+    regardless of platform. `Literal["youtube", "vimeo"]` means an
+    unsupported value gets FastAPI's own ordinary 422, not hand-rolled
+    validation.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return {"pages": await crud.list_youtube_pages_missing_transcripts()}
+    return {
+        "pages": await crud.list_youtube_pages_missing_transcripts(
+            platform=platform or "youtube"
+        )
+    }
 
 
 @app.get("/internal/transcription-backlog")
