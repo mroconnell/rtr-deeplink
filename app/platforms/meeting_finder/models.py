@@ -15,7 +15,7 @@ one, and don't invent a new spelling for something that already has one.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # --- Named outcomes -----------------------------------------------------
 # Every value below is either already written by another script in this
@@ -126,6 +126,12 @@ class FinderInput:
     url_source: Optional[str] = None
     mode: str = "pin"  # "pin" | "audit"
     entry: str = "start"  # one of ENTRY_PHASES
+    # WO-1142: the research row's own other domains, tried in order by
+    # Start only when `url` itself is DNS-dead (see start.py's docstring).
+    # Before this field existed nothing ever handed them to Start, so a
+    # government whose main domain had lapsed was reported
+    # `dns-unresolvable` even with a working domain on file.
+    alternates: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.mode not in ("pin", "audit"):
