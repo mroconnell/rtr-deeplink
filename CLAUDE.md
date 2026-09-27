@@ -105,16 +105,17 @@ under everything else. This repo extracts and fixes just that part.
   redtaperecordings.com) — both already handled by
   `app/platforms/civicclerk.py`'s existing fallback chain with no code
   change needed. Vimeo (added 2026-08-21, WO-29) was built video-first:
-  its signed caption config 403s every plain HTTP client. **Captions do
-  work now, and have since 2026-08-31 (PR #643):** `app/platforms/vimeo.py`
-  renders the player page in the headless browser, reads the signed
-  `captions.vimeo.com/...vtt` URL from its `<track>` element, and parses
-  it through the shared `vtt_parser`; if that fails it falls back to
-  video-only with a reader-facing warning. Re-confirmed live 2026-09-23:
-  Salisbury NC's 9/01/2026 City Council meeting
-  (`player.vimeo.com/video/1223368476`) resolved with 1,336 real caption
-  segments. (This note said "video-only" until 2026-09-23; it was three
-  weeks stale.) Good starting samples: Salisbury NC
+  its signed caption config 403s every plain HTTP client. `app/platforms/
+  vimeo.py` reads captions by rendering the player page in the headless
+  browser and reading the signed `captions.vimeo.com/...vtt` URL from its
+  `<track>` element (PR #643, 2026-08-31; re-confirmed 2026-09-23 on
+  Salisbury NC, `player.vimeo.com/video/1223368476`, 1,336 segments).
+  **Since 2026-09-26 that works from an office Mac but not from Render:**
+  Vimeo answers the server with a 401 challenge, then no `<track>`
+  (BACKLOG.md, WO-1120). So Vimeo is **tier 2**, like YouTube: captions
+  exist, but only a local run can read them. Meeting Finder labels a
+  Vimeo find with captions tier 2 (WO-1146), and the drip's Vimeo lane
+  ingests them (WO-1147). Good starting samples: Salisbury NC
   (`vimeo.com/1212025580`), Chicago IL
   (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
   DF5C52EA-0D6B-F111-A823-001DD8019941`).

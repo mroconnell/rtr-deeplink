@@ -14,8 +14,9 @@ the first video meeting fails to resolve, take the next one. That still
 adds breadth.
 
 Ryan's ingest rule stands. Only meetings with video become pages. Tier 1
-(captions the server can fetch) and tier 2 (YouTube captions the local
-fetch can get) are ingested with segments. Tier 3 (video, no reachable
+(captions the server can fetch) and tier 2 (captions exist, but only a local run can read them: YouTube,
+and Vimeo since 2026-09-26) are ingested with segments, tier 2 from the drip Mac (WO-1146,
+WO-1147). Tier 3 (video, no reachable
 captions) is queued for cloud auto-transcription. Agenda-only is
 recorded as `no-video-found` and never ingested.
 

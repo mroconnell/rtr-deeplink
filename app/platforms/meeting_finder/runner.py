@@ -81,7 +81,7 @@ from .models import (
     FinderInput,
     VerdictRow,
 )
-from .resolve import _resolve_candidates_with_meeting
+from .resolve import _resolve_candidates_with_meeting, captions_local_only
 from .scan import scan_page
 from .start import start as run_start
 from .verdict import append_verdict, load_done
@@ -345,6 +345,14 @@ _TRY_NEXT: Dict[str, str] = {
 # never record a lead that's just that government's own state name/code
 # resurfacing (the real Galesburg, IL regression this WO fixes).
 _GOV_CACHE: Dict[str, Optional[Government]] = {}
+
+
+def _tier2_lead_kind(result) -> str:
+    """WO-1146: a tier-2 lead is YouTube (never fetched, a drip lead) or
+    Vimeo (captions read locally, for the drip's Vimeo lane)."""
+    if captions_local_only(result.platform, result.video_url):
+        return "vimeo"
+    return "youtube"
 
 
 def _government_for_input(finder_input: FinderInput) -> Optional[Government]:
@@ -1732,7 +1740,9 @@ async def run_one(
         identity = check_identity(meeting, finder_input)
         leads = []
         if result.tier == 2 and result.candidate is not None:
-            leads.append({"kind": "youtube", "url": result.candidate.url})
+            leads.append(
+                {"kind": _tier2_lead_kind(result), "url": result.candidate.url}
+            )
         return VerdictRow(
             run_id=run_id,
             input_url=finder_input.url,
@@ -1828,7 +1838,9 @@ async def run_one(
             meeting_url = result.candidate.url
             meeting_title = result.candidate.title
         if result.tier == 2 and result.candidate is not None:
-            state.leads.append({"kind": "youtube", "url": result.candidate.url})
+            state.leads.append(
+                {"kind": _tier2_lead_kind(result), "url": result.candidate.url}
+            )
     elif lc_result is not None:
         # A real video was found somewhere in the walk, but every one of
         # them was a "keep at least one" fallback (a rejected title, a
