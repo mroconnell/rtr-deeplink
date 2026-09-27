@@ -552,6 +552,24 @@ services:
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
       - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
         sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
+      # WO-1148 (2026-09-27): runs worker/main.py's maybe_generate_batch_
+      # auto_jobs() -- the batch counterpart to the single-candidate idle
+      # trickle above, replacing scripts/bulk_queue_transcription_backlog.py's
+      # retired GitHub Actions cron (see that workflow file's own comment
+      # for why: GitHub's runner IPs get a real 403/404/timeout from a wide
+      # swath of hosts this worker's own IP never sees, which was quietly
+      # cooling down most of the transcription backlog). An explicit,
+      # separate opt-in from AUTO_TRANSCRIPTION_REQUESTER_EMAIL on purpose
+      # -- it's a real behavior change (many live re-resolve+ffprobe calls
+      # per pass, not one), so it gets its own conscious flip rather than
+      # riding along with a var that's already set for another reason.
+      # Deliberately NOT set on rtr-transcription-worker-2 below -- same
+      # "exactly one worker replica does idle-time generation" reasoning as
+      # that block's own AUTO_TRANSCRIPTION_REQUESTER_EMAIL omission; two
+      # workers both probing the same pool every pass would double live
+      # traffic against these hosts for no benefit.
+      - key: BULK_TOPUP_ENABLED
+        value: "true"
 
   # Second replica of the transcription worker above -- added 2026-08-21
   # to work down the ~1600+-meeting untranscribed backlog faster during a
@@ -637,7 +655,10 @@ services:
       # AUTO_TRANSCRIPTION_REQUESTER_EMAIL is deliberately NOT set here --
       # see the block comment above. Left out of the list entirely (not
       # present with an empty value) so this replica's idle-time
-      # auto-generation path never activates.
+      # generation (and, as of WO-1148, batch top-up too --
+      # maybe_generate_batch_auto_jobs() also short-circuits without a
+      # requester email) short-circuits before ever reaching a candidate
+      # search. BULK_TOPUP_ENABLED is correspondingly also NOT set here.
 
 databases:
   # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): brings the one paid,

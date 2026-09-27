@@ -551,3 +551,253 @@ async def test_auto_generation_falls_back_to_single_clip_when_plan_probe_fails(
     assert await worker.main.maybe_generate_auto_job() is True
     assert created["probed_duration_seconds"] == 120.0
     assert created["chunk_plan"] is None
+
+
+# --- WO-1148: too_many_active_jobs must be reported, not swallowed --------
+#
+# maybe_generate_auto_job()'s single-candidate path can never actually hit
+# this (run_forever() only calls it once the whole active-job table is
+# confirmed empty), but maybe_generate_batch_auto_jobs() has no such
+# guarantee once it's created a few jobs of its own -- this is the case
+# that guarantee doesn't cover.
+
+
+async def test_generate_one_candidate_returns_capped_on_too_many_active_jobs(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
+    from app.platforms.models import ResolvedMeeting
+
+    class _Finder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="escribe",
+                source_url=url,
+                video_url="https://example.org/meeting.m3u8",
+                video_format="m3u8",
+            )
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
+
+    async def _probe(video_url, *, source_page_url):
+        return 3600.0
+
+    monkeypatch.setattr(worker.main, "probe_duration", _probe)
+
+    async def _create_job(**kwargs):
+        return {"error": "too_many_active_jobs", "slug": "fake-slug"}
+
+    monkeypatch.setattr(worker.main.crud, "create_transcription_job", _create_job)
+
+    candidate = {
+        "meeting_page_id": 999999,
+        "slug": "fake-slug",
+        "source_url": "https://pub-3ce.escribemeetings.com/Meeting.aspx?Id=fake",
+        "platform": "escribe",
+    }
+    result = await worker.main._generate_one_candidate(candidate)
+    assert result == worker.main._RESULT_CAPPED
+
+
+# --- WO-1148: batch top-up ---------------------------------------------
+#
+# Runs the same feasibility gate over a POOL of backlog candidates instead
+# of the single oldest one -- see this module's own "Batch top-up" comment
+# block. These tests cover the loop/stop-condition logic only; the shared
+# per-candidate gate itself is exercised above and in
+# test_worker_embedded_captions.py.
+
+
+def _enable_batch_topup(monkeypatch):
+    monkeypatch.setattr(worker.main, "BULK_TOPUP_ENABLED", True)
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
+
+
+async def test_batch_topup_disabled_without_flag(monkeypatch):
+    monkeypatch.setattr(worker.main, "BULK_TOPUP_ENABLED", False)
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
+
+    async def _fail_if_called(limit):
+        raise AssertionError("must not fetch a pool when BULK_TOPUP_ENABLED is False")
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _fail_if_called
+    )
+
+    assert await worker.main.maybe_generate_batch_auto_jobs() == 0
+
+
+async def test_batch_topup_disabled_without_requester_email(monkeypatch):
+    monkeypatch.setattr(worker.main, "BULK_TOPUP_ENABLED", True)
+    monkeypatch.setattr(worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "")
+
+    async def _fail_if_called(limit):
+        raise AssertionError("must not fetch a pool without a requester email")
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _fail_if_called
+    )
+
+    assert await worker.main.maybe_generate_batch_auto_jobs() == 0
+
+
+async def test_batch_topup_skips_youtube_backed_candidates(monkeypatch):
+    # Same reasoning as scripts/bulk_queue_transcription_backlog.py's own
+    # pre-filter: a YouTube-backed page needs
+    # scripts/fetch_youtube_transcripts.py's caption-fetch path (run from
+    # the drip Mac), never a direct ffprobe from here.
+    _enable_batch_topup(monkeypatch)
+
+    async def _candidates(limit):
+        return [
+            {
+                "meeting_page_id": 1,
+                "slug": "yt-page",
+                "source_url_normalized": "https://youtube.com/watch?v=abc",
+                "platform": "youtube",
+                "video_url": "https://www.youtube.com/embed/abc",
+                "video_format": "youtube",
+            }
+        ]
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _candidates
+    )
+
+    async def _fail_if_called(candidate):
+        raise AssertionError("a YouTube-backed candidate must never reach the gate")
+
+    monkeypatch.setattr(worker.main, "_generate_one_candidate", _fail_if_called)
+
+    assert await worker.main.maybe_generate_batch_auto_jobs() == 0
+
+
+async def test_batch_topup_stops_at_job_limit(monkeypatch):
+    _enable_batch_topup(monkeypatch)
+    monkeypatch.setattr(worker.main, "BULK_TOPUP_JOB_LIMIT", 2)
+
+    async def _candidates(limit):
+        return [
+            {
+                "meeting_page_id": i,
+                "slug": f"page-{i}",
+                "source_url_normalized": f"https://example.com/{i}",
+                "platform": "escribe",
+                "video_url": None,
+                "video_format": None,
+                "gov_id": None,
+            }
+            for i in range(5)
+        ]
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _candidates
+    )
+
+    attempted = []
+
+    async def _generate(candidate):
+        attempted.append(candidate["slug"])
+        return worker.main._RESULT_CREATED
+
+    monkeypatch.setattr(worker.main, "_generate_one_candidate", _generate)
+
+    created = await worker.main.maybe_generate_batch_auto_jobs()
+    assert created == 2
+    assert attempted == ["page-0", "page-1"]  # stopped, didn't touch page-2..4
+
+
+async def test_batch_topup_stops_immediately_on_capped(monkeypatch):
+    _enable_batch_topup(monkeypatch)
+
+    async def _candidates(limit):
+        return [
+            {
+                "meeting_page_id": i,
+                "slug": f"page-{i}",
+                "source_url_normalized": f"https://example.com/{i}",
+                "platform": "escribe",
+                "video_url": None,
+                "video_format": None,
+                "gov_id": None,
+            }
+            for i in range(3)
+        ]
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _candidates
+    )
+
+    attempted = []
+
+    async def _generate(candidate):
+        attempted.append(candidate["slug"])
+        return worker.main._RESULT_CAPPED
+
+    monkeypatch.setattr(worker.main, "_generate_one_candidate", _generate)
+
+    created = await worker.main.maybe_generate_batch_auto_jobs()
+    assert created == 0
+    assert attempted == ["page-0"]  # never tried page-1/page-2
+
+
+async def test_batch_topup_does_not_count_failed_or_ingested_toward_limit(monkeypatch):
+    # A recorded probe failure or a direct embedded-captions ingest is real
+    # work done, but neither consumes active-job headroom, so neither
+    # should stop the pass early the way a real created job does.
+    _enable_batch_topup(monkeypatch)
+    monkeypatch.setattr(worker.main, "BULK_TOPUP_JOB_LIMIT", 1)
+
+    async def _candidates(limit):
+        return [
+            {
+                "meeting_page_id": i,
+                "slug": f"page-{i}",
+                "source_url_normalized": f"https://example.com/{i}",
+                "platform": "escribe",
+                "video_url": None,
+                "video_format": None,
+                "gov_id": None,
+            }
+            for i in range(3)
+        ]
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _candidates
+    )
+
+    outcomes = [
+        worker.main._RESULT_FAILED,
+        worker.main._RESULT_INGESTED,
+        worker.main._RESULT_CREATED,
+    ]
+    attempted = []
+
+    async def _generate(candidate):
+        attempted.append(candidate["slug"])
+        return outcomes[len(attempted) - 1]
+
+    monkeypatch.setattr(worker.main, "_generate_one_candidate", _generate)
+
+    created = await worker.main.maybe_generate_batch_auto_jobs()
+    assert created == 1
+    assert attempted == ["page-0", "page-1", "page-2"]  # all three tried
+
+
+async def test_batch_topup_no_candidates_is_a_no_op(monkeypatch):
+    _enable_batch_topup(monkeypatch)
+
+    async def _candidates(limit):
+        return []
+
+    monkeypatch.setattr(
+        worker.main.crud, "list_transcription_backlog_candidates", _candidates
+    )
+
+    assert await worker.main.maybe_generate_batch_auto_jobs() == 0

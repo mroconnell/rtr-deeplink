@@ -148,34 +148,78 @@ AUTO_GENERATION_ATTEMPTS = 2
 AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS = 10.0
 AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS = 60.0
 
+# --- Batch top-up (WO-1148) -----------------------------------------------
+#
+# scripts/bulk_queue_transcription_backlog.py's hourly GitHub Actions cron
+# existed to give both cloud workers real *concurrent* work beyond what
+# maybe_generate_auto_job()'s one-at-a-time idle trickle produces (see that
+# script's own module docstring). Confirmed live 2026-09-27 (BACKLOG.md):
+# running that feasibility check from a GitHub Actions runner produces a
+# real, high-volume false-negative -- Granicus, Cablecast, IQM2, ChampDS
+# and CivicClerk all served a real HTTP 403/404/timeout to GitHub's own
+# runner IPs that this worker's IP never sees (confirmed by re-running the
+# identical check from a residential Mac and by this worker's own
+# uneventful day-to-day extraction from these same hosts for real jobs).
+# WO-83's cooldown mechanism can't tell that failure apart from a
+# genuinely dead source, so it quietly pushed nearly the entire backlog
+# into escalating (1-to-30-day) cooldown -- both workers sat at
+# active_jobs=0 with backlog_no_transcript=541 behind them.
+#
+# The fix is to run the SAME feasibility check from a location these hosts
+# don't block, instead of trying to detect-and-exempt a connection-level
+# failure after the fact. This worker's own IP already qualifies (it
+# extracts real audio from these hosts every day), and it already has
+# direct, in-process access to archive.db.crud and app.platforms -- no
+# HTTP round trip needed. The GitHub Actions cron is retired (see
+# .github/workflows/bulk-queue-transcription-backlog.yml's own comment);
+# scripts/bulk_queue_transcription_backlog.py stays for manual/dry-run use.
+#
+# Gated by BULK_TOPUP_ENABLED (render.yaml) rather than always-on: with
+# two worker services sharing one database, running this on both would
+# double the live probe traffic against these hosts for no benefit --
+# create_transcription_job()'s own dedup means whichever one loses the
+# race just gets the winner's job back. Only rtr-transcription-worker
+# (not -2) carries this env var.
+BULK_TOPUP_ENABLED = os.environ.get("BULK_TOPUP_ENABLED", "") == "true"
+
+# Separate, much longer cadence than AUTO_GENERATION_CHECK_INTERVAL_SECONDS:
+# this does a real pool fetch plus up to BULK_TOPUP_JOB_LIMIT live
+# re-resolve+ffprobe feasibility checks, not one cheap DB-only decision.
+BULK_TOPUP_CHECK_INTERVAL_SECONDS = 1800  # 30 minutes
+
+# Same defaults scripts/bulk_queue_transcription_backlog.py's
+# CANDIDATE_POOL_SIZE/BATCH_SIZE used -- large enough to clear a dense
+# skippable band (e.g. a run of YouTube-backed pages) in one pass without
+# unbounded per-candidate probing cost, and well under
+# MAX_CONCURRENT_TRANSCRIPTION_JOBS=15 so a real live visitor's own
+# request always still has headroom.
+BULK_TOPUP_POOL_SIZE = 100
+BULK_TOPUP_JOB_LIMIT = 8
+
+_RESULT_CREATED = "created"  # a real TranscriptionJob now exists
+_RESULT_INGESTED = "ingested"  # resolved directly via embedded captions, no job needed
+_RESULT_FAILED = "failed"  # feasibility check failed, recorded for cooldown
+_RESULT_CAPPED = "capped"  # too_many_active_jobs -- stop, don't try another candidate
+
 
 def _auto_media_kind(video_format) -> str:
     return "audio" if (video_format or "") in ("mp3", "wav") else "video"
 
 
-async def maybe_generate_auto_job() -> bool:
-    """Looks for a MeetingPage missing a good transcript and, if one
-    exists and isn't in cooldown, creates a low-priority self-generated
-    transcription job for it -- see BACKLOG_DONE.md's auto-idle-time entry.
-    Caller (run_forever()) is responsible for only calling this when the
-    job queue is confirmed empty and the check interval has elapsed.
-    Returns True if a job (real or feasibility-failed) was created, so the
-    caller can treat that the same as "did work" for polling-cadence
-    purposes -- False means there was nothing to do (or auto-generation
-    isn't configured), not that something went wrong.
+async def _generate_one_candidate(candidate: dict) -> str:
+    """Runs the exact feasibility gate maybe_generate_auto_job() always
+    ran -- live re-resolve, embedded-captions check, chunk-plan/duration
+    probe, then either a direct ingest, a real job, or a recorded probe
+    failure -- for ONE candidate dict (meeting_page_id, slug, source_url,
+    platform, video_url, gov_id). Split out from maybe_generate_auto_job()
+    (WO-1148) so maybe_generate_batch_auto_jobs() can drive it over
+    several candidates in one pass without duplicating this ~150-line
+    gate. Returns one of the _RESULT_* constants above.
     """
-    if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL:
-        return False
-
-    candidate = await crud.find_auto_transcription_candidate()
-    if candidate is None:
-        return False
-
     slug = candidate["slug"]
     source_url = candidate["source_url"]
     platform = candidate["platform"]
     video_url = candidate.get("video_url")
-    logger.info("Auto-generation: trying candidate %s (%s)", slug, source_url)
 
     async def _fail(reason: str) -> None:
         logger.info("Auto-generation: %s not feasible (%s)", slug, reason)
@@ -218,7 +262,7 @@ async def maybe_generate_auto_job() -> bool:
         )
     except Exception as e:
         await _fail(f"Re-resolve failed: {e}")
-        return True
+        return _RESULT_FAILED
 
     # WO-1065: some Invintus meetings have real captions baked directly
     # into the video stream (CEA-608), which app/platforms/invintus.py's
@@ -242,7 +286,7 @@ async def maybe_generate_auto_job() -> bool:
             cues = await extractor(source_url)
         except Exception as e:
             await _fail(f"Embedded caption extraction failed: {e}")
-            return True
+            return _RESULT_FAILED
         elapsed = time.monotonic() - started
         logger.info(
             "Auto-generation: %s embedded-caption extraction finished in %.0fs "
@@ -289,7 +333,7 @@ async def maybe_generate_auto_job() -> bool:
                 slug,
                 len(cues),
             )
-            return True
+            return _RESULT_INGESTED
         # The resolve-time probe said yes, but a full extraction over the
         # whole stream found no real words -- fall through to the
         # ordinary Whisper chunk-job path below unchanged, same as any
@@ -307,7 +351,7 @@ async def maybe_generate_auto_job() -> bool:
         # about this page, not a transient failure -- recorded immediately,
         # no retry, exactly as before.
         await _fail("No usable audio or video source was found.")
-        return True
+        return _RESULT_FAILED
 
     # WO-79: a meeting split into several real per-clip files with no
     # single combined recording (some Swagit tenants -- see
@@ -357,10 +401,10 @@ async def maybe_generate_auto_job() -> bool:
         )
     if duration is None:
         await _fail("Found a media source but couldn't read it.")
-        return True
+        return _RESULT_FAILED
     if not is_plausible_meeting_duration(duration):
         await _fail("Media duration doesn't look like a full meeting recording.")
-        return True
+        return _RESULT_FAILED
 
     job = await crud.create_transcription_job(
         payload=result.model_dump(),
@@ -374,8 +418,111 @@ async def maybe_generate_auto_job() -> bool:
         priority=crud.PRIORITY_LOW,
         chunk_plan=chunk_plan,
     )
+    # WO-1148: only reachable in practice via maybe_generate_batch_auto_jobs()
+    # -- the single-candidate caller only ever runs when run_forever() has
+    # already confirmed the active job table is empty, so this can't fire
+    # there. The batch caller has no such guarantee once it's created a few
+    # jobs of its own, so this has to be checked here rather than assumed.
+    if job.get("error") == "too_many_active_jobs":
+        logger.info(
+            "Auto-generation: %s -- too_many_active_jobs, headroom used up", slug
+        )
+        return _RESULT_CAPPED
     logger.info("Auto-generation: created job %s for %s", job.get("job_id"), slug)
+    return _RESULT_CREATED
+
+
+async def maybe_generate_auto_job() -> bool:
+    """Looks for a MeetingPage missing a good transcript and, if one
+    exists and isn't in cooldown, creates a low-priority self-generated
+    transcription job for it -- see BACKLOG_DONE.md's auto-idle-time entry.
+    Caller (run_forever()) is responsible for only calling this when the
+    job queue is confirmed empty and the check interval has elapsed.
+    Returns True if a job (real or feasibility-failed) was created, so the
+    caller can treat that the same as "did work" for polling-cadence
+    purposes -- False means there was nothing to do (or auto-generation
+    isn't configured), not that something went wrong.
+    """
+    if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL:
+        return False
+
+    candidate = await crud.find_auto_transcription_candidate()
+    if candidate is None:
+        return False
+
+    logger.info(
+        "Auto-generation: trying candidate %s (%s)",
+        candidate["slug"],
+        candidate["source_url"],
+    )
+    await _generate_one_candidate(candidate)
     return True
+
+
+async def maybe_generate_batch_auto_jobs() -> int:
+    """The batch counterpart to maybe_generate_auto_job() (WO-1148) --
+    pulls a pool of backlog candidates across ANY platform (not just the
+    single oldest one) and runs the same feasibility gate over each,
+    stopping once BULK_TOPUP_JOB_LIMIT real jobs exist or headroom under
+    MAX_CONCURRENT_TRANSCRIPTION_JOBS runs out. See this module's own
+    "Batch top-up" comment block for why this exists and why it must run
+    from here (this worker's own IP) rather than from GitHub Actions.
+
+    No-op (returns 0 immediately) unless BULK_TOPUP_ENABLED and
+    AUTO_TRANSCRIPTION_REQUESTER_EMAIL are both set. Returns the number of
+    REAL jobs created this pass -- an embedded-captions direct ingest or a
+    recorded probe failure both still represent real work done on a
+    candidate, but neither consumes active-job headroom, so neither counts
+    toward the job-limit stop condition.
+    """
+    if not (BULK_TOPUP_ENABLED and AUTO_TRANSCRIPTION_REQUESTER_EMAIL):
+        return 0
+
+    candidates = await crud.list_transcription_backlog_candidates(
+        limit=BULK_TOPUP_POOL_SIZE
+    )
+    created = 0
+    for row in candidates:
+        if created >= BULK_TOPUP_JOB_LIMIT:
+            break
+        # Same cheap pre-filter scripts/bulk_queue_transcription_backlog.py's
+        # _check_feasible() applies: a YouTube-backed page's video_url isn't
+        # ffprobe-readable directly -- it needs
+        # scripts/fetch_youtube_transcripts.py's caption-fetch path instead,
+        # run from the drip Mac, never from here (see docs/YOUTUBE_DRIP_
+        # RUNBOOK.md). Skipping up front avoids both a wasted re-resolve and
+        # a wrongly-recorded probe "failure" for a page that was never a
+        # Whisper candidate in the first place.
+        if (row.get("video_format") or "") == "youtube":
+            continue
+        candidate = {
+            "meeting_page_id": row["meeting_page_id"],
+            "slug": row["slug"],
+            "source_url": row["source_url_normalized"],
+            "platform": row["platform"],
+            "video_url": row.get("video_url"),
+            "gov_id": row.get("gov_id"),
+        }
+        logger.info(
+            "Batch top-up: trying candidate %s (%s)",
+            candidate["slug"],
+            candidate["source_url"],
+        )
+        try:
+            outcome = await _generate_one_candidate(candidate)
+        except Exception:
+            logger.exception(
+                "Batch top-up: unhandled error on candidate %s", candidate["slug"]
+            )
+            continue
+        if outcome == _RESULT_CREATED:
+            created += 1
+        elif outcome == _RESULT_CAPPED:
+            break
+
+    if created:
+        logger.info("Batch top-up: created %d job(s) this pass", created)
+    return created
 
 
 # --- Keeping a live claim alive ------------------------------------------
@@ -942,6 +1089,7 @@ async def run_forever() -> None:
 
     empty_polls = 0
     last_auto_check = 0.0
+    last_bulk_topup_check = 0.0
     while True:
         try:
             processed = await process_next_chunk(engine)
@@ -980,6 +1128,20 @@ async def run_forever() -> None:
                         empty_polls = 0
                 except Exception:
                     logger.exception("Unhandled error in auto-generation check.")
+
+            # WO-1148: separate, much longer cadence -- see
+            # maybe_generate_batch_auto_jobs()'s own docstring. Runs
+            # independently of the single-candidate check above (not
+            # instead of it): this only fires on rtr-transcription-worker
+            # (BULK_TOPUP_ENABLED), the single-candidate check still runs
+            # on both, and either one finding real work resets empty_polls.
+            if now - last_bulk_topup_check >= BULK_TOPUP_CHECK_INTERVAL_SECONDS:
+                last_bulk_topup_check = now
+                try:
+                    if await maybe_generate_batch_auto_jobs():
+                        empty_polls = 0
+                except Exception:
+                    logger.exception("Unhandled error in batch top-up check.")
 
         await asyncio.sleep(
             POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS

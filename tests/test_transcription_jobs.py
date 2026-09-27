@@ -2721,6 +2721,53 @@ async def test_list_transcription_backlog_candidates_includes_meeting_page_id():
     assert match["meeting_page_id"] == page_id
 
 
+async def test_list_transcription_backlog_candidates_includes_gov_id():
+    # WO-1148: worker/main.py's maybe_generate_batch_auto_jobs() feeds a
+    # candidate from here through the same per-candidate gate
+    # maybe_generate_auto_job() uses, whose embedded-captions ingest branch
+    # pins gov_id on its ingest_resolution() call (CLAUDE.md's "send gov_id
+    # in every ingest payload" rule) -- this was the one candidate-search
+    # function that didn't return it, unlike find_auto_transcription_
+    # candidate() (see the gov_id test above this one's own section).
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    url = "https://example.granicus.com/player/clip/backlog-gov-id"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:backlog-gov-id",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        page_id = page.id
+        page_gov_id = page.gov_id
+
+    async with _first_in_backlog([page_id]):
+        candidates = await crud.list_transcription_backlog_candidates(limit=1)
+    match = next(c for c in candidates if c["slug"] == slug)
+    assert match["gov_id"] == page_gov_id
+
+
 async def test_list_transcription_backlog_candidates_includes_garbled_and_granicus_truncated_pages():
     # BACKLOG.md's "stale archived transcripts have no automated refresh
     # path" entry claims 31 real pages (20 garbled + 11 Granicus-
