@@ -730,6 +730,46 @@ async def test_ordinary_dropped_connection_is_not_site_broken():
 
 
 # ---------------------------------------------------------------------------
+# WO-1145: `Fetcher`'s own session verifies certificates through
+# `truststore` (the OS's own trust API) instead of aiohttp's default
+# certifi-bundle context, so a real government site missing its own
+# intermediate certificate (which macOS/browsers silently fix by fetching
+# it themselves) is no longer misreported as `site-broken`. Live
+# verification against the real hosts this fixes, and against
+# expired/wrong-host/self-signed badssl.com negatives that must STILL be
+# rejected, is in the PR description (not reproduced here -- no live host
+# is wired into this suite, per this file's own module docstring). What
+# IS covered here, synthetically: `_session_for()` actually builds its
+# connector's `ssl=` from `truststore`, not from the default context.
+# ---------------------------------------------------------------------------
+
+
+async def test_session_uses_a_truststore_ssl_context():
+    fetcher = Fetcher()
+    session = await fetcher._session_for()
+    try:
+        connector = session.connector
+        assert isinstance(connector, aiohttp.TCPConnector)
+        # `truststore.SSLContext` is a real (if unconventional) subclass
+        # of `ssl.SSLContext` -- see truststore's own source -- so this
+        # also proves it's not just *an* SSLContext but truststore's own.
+        assert type(connector._ssl).__module__ == "truststore._api"
+    finally:
+        await session.close()
+
+
+async def test_new_ssl_context_helper_returns_a_fresh_truststore_context_each_time():
+    ctx1 = fetch_module._new_ssl_context()
+    ctx2 = fetch_module._new_ssl_context()
+    assert type(ctx1).__module__ == "truststore._api"
+    assert ctx1 is not ctx2, (
+        "one shared module-level SSLContext would carry TLS session state "
+        "across unrelated governments/Fetchers -- each Fetcher's own "
+        "session must get its own context"
+    )
+
+
+# ---------------------------------------------------------------------------
 # WO-1030: the shared per-host pacer -- politeness across CONCURRENT
 # Fetcher instances (one per government under runner.py's --concurrency),
 # not just within one instance.

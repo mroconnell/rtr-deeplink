@@ -12,6 +12,12 @@ python-dotenv>=1.0
 slowapi>=0.1.9
 playwright>=1.63.0
 alembic>=1.20.0
+# Native OS certificate verification for Meeting Finder's own fetch
+# helper (WO-1145, 2026-09-27) -- see app/platforms/meeting_finder/
+# fetch.py's docstring and `_new_ssl_context()` for why: it lets
+# verification chase a missing intermediate certificate the way macOS/
+# browsers already do, without ever turning verification off.
+truststore>=0.10
 # Auth (2026-08-10): Clerk, chosen specifically so this app never has to
 # hand-roll session/cookie/password security -- see BACKLOG.md's
 # "Accounts + token billing" section. clerk-backend-api verifies the
