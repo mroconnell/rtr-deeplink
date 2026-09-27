@@ -1,5 +1,25 @@
 # Backlog — done
 
+## WO-1131: tvw.org links resolve again on production — the adapter no longer loads tvw.org when the link carries the meeting number [Done 2026-09-26]
+
+**What was tested and why.** WO-1112 found that tvw.org's Cloudflare check answers our Python client with a "Just a moment..." challenge (HTTP 403) from data-center addresses. A production resolve on 2026-09-26 confirmed readers hit it too: a new tvw.org link returned `resolve_failed` with a raw 403. The same meeting's `player.invintus.com` link resolved fine on production (video plus 680 caption segments).
+
+**What was found.** On 5 of 5 real tvw.org pages, the Invintus meeting number is the 10 digits ending the link (`...-2026091211/`), and the client number is always `9375922947`.
+
+| Page | Number in link | Page's own `eventID` |
+|---|---|---|
+| senate-housing | 2026091165 | 2026091165 |
+| house-technology-economic-development-veterans | 2026091178 | 2026091178 |
+| interbranch-advisory-committee | 2026091112 | 2026091112 |
+| joint-select-committee-on-civic-health | 2026091211 | 2026091211 |
+| legislator-profile-representative-april-berg | 2025011743 | 2025011743 |
+
+**What was changed.** `app/platforms/tvw.py` builds the Invintus link straight from the tvw.org link and never fetches tvw.org when the number is there. Only a link without a number still loads the page; a 403 there now returns a plain reader warning instead of a raw error. This does not get past the challenge; it just avoids needing the page. `tvw` was removed from the canary's `CANARY_KNOWN_CI_BLOCKS`. New tests in `tests/test_tvw.py` (the no-number link is synthetic; no real one has been seen).
+
+**Result.** Resolving two real links locally: Civic Health came back with title, date, video and 680 caption segments; House Technology (dated 9/28, not yet held) came back with a plain "No playable video found" warning. See the PR's canary run for the GitHub-side result.
+
+**Caution.** Readers only get this after a deploy (`autoDeploy: false`).
+
 ## WO-1123: 85 Swagit views that are only an index, filed with owner proof [Done 2026-09-26]
 
 **What was done and why.** WO-1087 filed every Swagit view whose page lists meetings. 337 view pages listed none. 108 of those are an index: they link category pages (`/views/{n}/{slug}`) that hold the meetings. San Benito, TX's view 322 is the worked example. rtr-discovery's follow-up sweep read each index's categories and proved the owner from two video pages. A view with a single meeting was proven by that one video (Waxahachie's view 311).

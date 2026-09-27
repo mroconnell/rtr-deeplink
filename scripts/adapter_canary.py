@@ -347,17 +347,10 @@ CANARY_EXCLUSIONS: dict[str, str] = {
 # entry removed. Never add a platform here to hide a failure that has
 # not been shown to be a bot check -- that is what this list is not for.
 CANARY_KNOWN_CI_BLOCKS: dict[str, str] = {
-    "tvw": (
-        "tvw.org sits behind Cloudflare. From a GitHub runner on "
-        "2026-09-26 (run 36264762854), every aiohttp request got HTTP 403 "
-        "with `cf-mitigated: challenge` and a 'Just a moment...' page -- "
-        "Cloudflare's human-verification check -- whatever User-Agent was "
-        "sent (none, an honest RTR one, a desktop Chrome one). The same "
-        "URL fetched by curl from the same runner, and by aiohttp from a "
-        "home connection, returned the real page (200). This repo does "
-        "not get past a bot challenge, so the canary can't check this "
-        "adapter from CI. See BACKLOG.md's tvw.org entry."
-    ),
+    # Empty since WO-1131 (2026-09-26). "tvw" was here from WO-1112: from a
+    # GitHub runner, tvw.org's Cloudflare check answered aiohttp with a
+    # 403 challenge. WO-1131 made tvw.py read the meeting number from the
+    # link and skip tvw.org entirely, so the canary URL no longer meets it.
 }
 
 
