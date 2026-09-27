@@ -117,6 +117,22 @@ budget. This budget only ever counted THIS Fetcher's own requests to the
 target site -- see `.pacing`'s `pace_all_requests()` (WO-1032) for the
 separate, process-wide count of every real request a government's whole
 walk makes, adapters' own aiohttp sessions included.
+
+Certificate verification (WO-1145): `Fetcher`'s own aiohttp session
+verifies certificates through `truststore` (the OS's own trust API)
+rather than aiohttp's default certifi-bundle `SSLContext` -- see
+`_new_ssl_context()`'s own comment below for the real gap this closes
+(a government site missing its own intermediate certificate, which
+macOS/browsers silently fix by fetching it themselves and Python's
+`ssl` module never does) and the live verification that a genuinely bad
+certificate is still rejected. Where this changes nothing: on Linux
+(the resolver, the cloud worker, CI -- none of which import this
+module anyway), `truststore` reads the system CA bundle without doing
+the AIA (missing-intermediate) fetch macOS does; Meeting Finder only
+ever runs interactively from an office Mac, so that Linux difference
+never comes up in practice here, but it's why this fix stayed scoped to
+this one Fetcher rather than becoming a process-wide or shared-client
+change.
 """
 
 from __future__ import annotations
@@ -125,11 +141,13 @@ import asyncio
 import json
 import os
 import re
+import ssl
 import time
 from dataclasses import dataclass
 from urllib.parse import quote, urlparse
 
 import certifi
+import truststore
 
 # CLAUDE.md: a fresh Homebrew-Python venv has an empty default SSL trust
 # store, and aiohttp builds its default SSLContext at import time -- this
@@ -137,7 +155,12 @@ import certifi
 # unlike the YouTube guard below this one CANNOT be deferred to
 # `Fetcher.__init__`. Low risk to run merely on import: it's a
 # `setdefault`, so it changes nothing for a process that already has a
-# real `SSL_CERT_FILE` (or a working trust store) of its own.
+# real `SSL_CERT_FILE` (or a working trust store) of its own. Still set
+# even though `Fetcher`'s own session below no longer uses certifi's
+# bundle directly (see `_session_for()`) -- this module's OTHER network
+# calls (`wo282_recon.py`'s `requests`-based Wayback/CDX helpers, run via
+# `asyncio.to_thread()`) still go through the stdlib `ssl` module's
+# default verify paths, which do read `SSL_CERT_FILE`.
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 import aiohttp  # noqa: E402
@@ -267,6 +290,51 @@ DEFAULT_TIMEOUT = aiohttp.ClientTimeout(total=15)
 # may need the identical fix if this same error shows up against one of
 # them.
 _MAX_HEADER_SIZE = 65536
+
+
+# WO-1145: a real government site can be missing its own intermediate
+# certificate from what it actually SENDS during the TLS handshake, while
+# still having a perfectly good, currently-valid certificate chain --
+# confirmed live 2026-09-27 on all 6 of WO-1134's flagged `site-broken`
+# governments (`naplescsd.org`, `vercounty.org`, `desmet.k12.sd.us`,
+# `millercreeksd.org`, `gusd.us`, `copiah.ms`, apex and `www.` alike).
+# `curl`/a real browser succeeds anyway because macOS's own TLS stack
+# fetches the missing intermediate itself over the network, from the
+# certificate's own AIA (Authority Information Access) extension --
+# Python's `ssl` module, and therefore aiohttp's default `SSLContext`
+# (certifi's bundle, `SSL_CERT_FILE` above), never does this AIA chase,
+# so it rejects the handshake outright with "unable to get local issuer
+# certificate" -- a real gap between what Python verifies and what the
+# OS/browsers verify, not a genuinely broken site.
+#
+# `truststore` (https://pypi.org/project/truststore/) closes this gap by
+# verifying through the OS's own trust API instead of a bundled CA list:
+# macOS's Security framework (which does AIA chasing, confirmed by the
+# live check above), Windows' CNG, or -- on Linux -- OpenSSL against the
+# system CA bundle (see the file-level docstring's "Where this changes
+# nothing" note for why Linux is unaffected either way here).
+# Verification STAYS ON: `truststore.SSLContext` still rejects an
+# expired, wrong-host or self-signed certificate exactly like the
+# default context does -- confirmed live against
+# https://expired.badssl.com/, https://wrong.host.badssl.com/ and
+# https://self-signed.badssl.com/, all three still raise
+# `ClientConnectorCertificateError` and are still reported `site-broken`
+# by `_plain_get()` below. This is a strictly more correct verifier, not
+# a relaxed one.
+#
+# Scope: this is `Fetcher`'s OWN aiohttp session only -- no other
+# adapter's aiohttp session (in `app/platforms/*.py`, the cloud worker,
+# or the resolver) is touched by this change, and none of them import
+# this module. Meeting Finder itself only ever runs interactively from
+# an office Mac (`scripts/meeting_finder.py`, see docs/MEETING_FINDER.md)
+# -- it is never invoked by the cloud worker or by CI -- so the AIA-
+# chasing behavior this exists for only needs to work on macOS, which is
+# what was verified live. A fresh `SSLContext` per session (not a
+# module-level singleton) matches `truststore`'s own documented usage
+# and keeps this cheap: one context per `Fetcher` (one per government),
+# not per request.
+def _new_ssl_context() -> ssl.SSLContext:
+    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 
 class BudgetExceeded(RuntimeError):
@@ -439,6 +507,7 @@ class Fetcher:
                 timeout=DEFAULT_TIMEOUT,
                 max_line_size=_MAX_HEADER_SIZE,
                 max_field_size=_MAX_HEADER_SIZE,
+                connector=aiohttp.TCPConnector(ssl=_new_ssl_context()),
             )
         return self._session
 

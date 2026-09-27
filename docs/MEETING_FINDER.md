@@ -737,6 +737,29 @@ is never fetched twice no matter which fork or hop reaches it.
   another network" -- the domain itself isn't dead, it just isn't serving
   a real site anymore. Subject to the exact same own-host override as
   every other block-like outcome above.
+- **WO-1145: a certificate the site's own TLS handshake never sends its
+  intermediate for is no longer `site-broken`.** Six of WO-1134's 40
+  `site-broken` governments (`naplescsd.org`, `vercounty.org`,
+  `desmet.k12.sd.us`, `millercreeksd.org`, `gusd.us`, `copiah.ms`)
+  turned out to have a perfectly good, currently-valid certificate --
+  `curl`/a real browser loads them fine because macOS's own TLS stack
+  fetches the missing intermediate certificate itself (AIA chasing);
+  Python's `ssl`/aiohttp's default certifi-bundle context never does
+  this, so it rejected the handshake outright with "unable to get local
+  issuer certificate." `fetch.py`'s own `Fetcher` now verifies through
+  the `truststore` package (the OS's own trust API) instead --
+  verification stays fully on: a genuinely bad certificate (expired,
+  wrong host, self-signed -- confirmed live against badssl.com's own
+  test certificates) is still rejected and still reported
+  `site-broken`. Confirmed live: all 6 governments above now resolve
+  past Start instead of stopping at `site-broken`. Scoped to Meeting
+  Finder's own `Fetcher` only (see that module's docstring) --
+  no other adapter's aiohttp session changed, and Meeting Finder only
+  ever runs on an office Mac, where the AIA-chasing behavior this
+  relies on is available; on Linux (the resolver, the cloud worker, CI)
+  `truststore` verifies against the system CA bundle without doing that
+  extra fetch, which is why this stayed a narrow fix rather than a
+  shared-client change.
 - **Politeness across governments sharing a vendor host:** `fetch.py`'s
   own per-`Fetcher` spacing only paces one government's own requests: two
   DIFFERENT `Fetcher`s (two governments running concurrently under
@@ -888,7 +911,7 @@ used by Start, Identify, Scan and Hop.
 | Browser headers | Only after a 403 or a dropped connection |
 | Headless browser | Only when a page loaded but shows no links |
 | Wayback's latest copy | After a human-verification challenge, **or after the ladder ends in an ordinary hard block with no challenge marker** (a 403/dropped connection that persists through the browser-headers rung -- WO-1032). **For links only**, recorded with the snapshot date. Never the government's own media. The outcome string itself doesn't change; `FetchResult.wayback_timestamp` being set is the flag that Wayback links were used |
-| Nothing -- reported straight away as `site-broken` (WO-1122) | A TLS certificate error (hostname mismatch, self-signed, untrusted), a TLS handshake failure, or a connection refused -- never retried with browser headers or a challenge check, since none of the three is a bot-detection response to how the request looked |
+| Nothing -- reported straight away as `site-broken` (WO-1122) | A TLS certificate error (hostname mismatch, self-signed, untrusted), a TLS handshake failure, or a connection refused -- never retried with browser headers or a challenge check, since none of the three is a bot-detection response to how the request looked. (WO-1145: verification goes through `truststore`/the OS trust store, so a site missing only its own intermediate certificate -- which macOS/browsers fetch themselves -- no longer lands here; a genuinely bad certificate still does.) |
 
 We never try to get past a site's challenge. Per-host politeness spacing
 and robots.txt apply as in stage 1.

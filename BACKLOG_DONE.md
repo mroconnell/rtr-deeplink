@@ -1,5 +1,66 @@
 # Backlog — done
 
+## WO-1145: Meeting Finder no longer calls a real government site "broken" just because it's missing its own intermediate certificate [Done 2026-09-27]
+
+**The problem, in plain words.** A web browser trusts a site's certificate by checking who signed it, link by link, back to a certificate the browser already trusts. Some sites forget to send one of those links (their own "intermediate" certificate). A real browser, and macOS's own network code, quietly go fetch the missing link themselves and the site works fine. Python's own network code does not do this extra fetch, so it gives up and calls the site broken. WO-1134 found 6 real, working government sites hitting exactly this gap (`naplescsd.org`, `vercounty.org`, `desmet.k12.sd.us`, `millercreeksd.org`, `gusd.us`, `copiah.ms`), all reported as `site-broken` — "go find this government's new domain" — when the domain was never the problem.
+
+**The fix.** `app/platforms/meeting_finder/fetch.py`'s own `Fetcher` (used by every Meeting Finder phase that reads a page) now checks certificates through a package called `truststore`, which asks the operating system to do the check instead of Python's own bundled list. On a Mac, that's the same check a real browser uses, missing-link-fetching included. Verification never turns off — a certificate that is genuinely wrong (expired, wrong website, self-signed) is still rejected, just like before.
+
+**Live check, before this fix.** All 6 governments from WO-1134, both fetched with today's client:
+
+| Government | Result |
+| --- | --- |
+| naplescsd.org (+ www) | Rejected: "unable to get local issuer certificate" |
+| vercounty.org | Rejected: same error |
+| desmet.k12.sd.us | Rejected: same error |
+| millercreeksd.org | Rejected: same error |
+| gusd.us | Rejected: same error |
+| copiah.ms (+ www) | Rejected: same error |
+
+**Live check, with the fix.** Same 6 governments, same real network, only the certificate check changed:
+
+| Government | Result |
+| --- | --- |
+| naplescsd.org (+ www) | Loads (HTTP 200) |
+| vercounty.org | Loads (HTTP 200) |
+| desmet.k12.sd.us | Loads (HTTP 200) |
+| millercreeksd.org | Loads (HTTP 200) |
+| gusd.us | Loads (HTTP 200) |
+| copiah.ms (+ www) | Loads (HTTP 200) |
+
+**Genuinely bad certificates are still rejected**, checked against badssl.com's own test sites, both before and after the fix:
+
+| Test site | Result, before | Result, after |
+| --- | --- | --- |
+| expired.badssl.com | Rejected: certificate expired | Rejected: certificate expired |
+| wrong.host.badssl.com | Rejected: wrong hostname | Rejected: wrong hostname |
+| self-signed.badssl.com | Rejected: self-signed | Rejected: self-signed |
+
+**Meeting Finder re-run, the real test.** `scripts/meeting_finder.py --entry start --mode pin` against the same 6 governments (concurrency 2). Before the fix, all 6 stopped immediately with `site-broken`. After the fix, all 6 got past that page-load step and reached a real Meeting Finder outcome:
+
+| Government | Outcome before | Outcome after |
+| --- | --- | --- |
+| naplescsd.org | site-broken | no-meeting-nor-video |
+| vercounty.org | site-broken | youtube-lead-only |
+| desmet.k12.sd.us | site-broken | youtube-lead-only |
+| gusd.us | site-broken | unsupported-platform-no-adapter |
+| millercreeksd.org | site-broken | unsupported-platform-no-adapter |
+| copiah.ms | site-broken | youtube-lead-only |
+
+None of the 6 had a directly-ingestible video waiting — three are YouTube-only (routed to the drip, per CLAUDE.md's YouTube rule), two use a school-board platform (`eboardsolutions.com`) Meeting Finder has no adapter for yet, one found no meeting/video at all. The win here isn't "6 new videos" — it's that a human reading `try_next` for these 6 no longer gets sent hunting for a domain that was never broken.
+
+**Where this does NOT reach.** Resolve calls each candidate's own platform adapter (`app/platforms/*.py`) to check a specific video/file URL, and those adapters open their own, separate network sessions — shared with the cloud worker and resolver, deliberately untouched by this fix. The live re-run above actually hit this: `vercounty.org`'s and `desmet.k12.sd.us`'s own linked video files still failed with the identical certificate error, on the same host this fix just repaired for page-loading. Both cases were YouTube-lead-only outcomes anyway, so nothing was lost here, but the gap is real — see the matching `NEEDS-AUDIT` entry in `BACKLOG.md`.
+
+**Why not fixed everywhere at once.** `truststore` verifies through the operating system, and only macOS's version does the "fetch the missing link" step this fix relies on. Meeting Finder only ever runs by hand on an office Mac — never in the cloud worker, the resolver, or CI, all of which run on Linux — so this stayed a narrow change to Meeting Finder's own page-fetcher rather than a shared-client change. On Linux, `truststore` still works (it checks against the system's own certificate list), it just wouldn't get the missing-link fetch — a difference that never comes up here because nothing on Linux imports this file.
+
+**Dependency.** `truststore` added to `requirements.in`/`requirements.txt` (pinned the same way every other dependency here is).
+
+**Tests.** Two new synthetic tests in `tests/test_meeting_finder_fetch.py` confirm `Fetcher`'s own session is actually built with a `truststore` context (mocked, no real network — this file's own convention, since no live host is wired into the suite) and that each `Fetcher` gets its own fresh context rather than one shared, stateful one. All 27 pre-existing tests in that file, and the full `meeting_finder`-scoped suite (377 tests), still pass unchanged.
+
+**Gates.** `ruff check`, `ruff format --check`, full `pytest`, and both `alembic check` runs (archive + app) all green — no schema touched. `scripts/check_backlog_done_headings.py` green.
+
+**Deploy status.** `app/platforms/meeting_finder/` is not called by any Render service — Meeting Finder is run by hand from an office Mac. Merging to `main` is enough; there is no deploy to ask for.
+
 ## WO-1143: the GitHub tier-3 feed also dropped 49 Granicus/Cablecast/Swagit meetings as "dead" when only its own IP was blocked [Done 2026-09-27]
 
 **Same bug family as WO-1064, below, a different cause.** WO-1064 fixed the GitHub feed (`scripts/feed_tier3_auto_transcription.py`) dropping real meetings when YouTube blocked the runner's IP. This picks up the second cause found in the same feed log: Granicus, Cablecast and Swagit also block GitHub Actions' IP ranges, with a plain HTTP 403 — even though this probe already sends the correct Referer/User-Agent.
