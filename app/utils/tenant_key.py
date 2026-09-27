@@ -393,6 +393,13 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Castus "tbnk" (Kentucky regional commission): a dozen-plus cities
         # (registry.py's MULTI_GOV_HOSTS comment; per-video pins).
         ("cloud.castus.tv", "tbnk"),
+        # Castus "comm7tv" (Billings, MT Community 7): Billings city, Yellowstone
+        # County and the SD2 joint school board, each its own playlist
+        # (WO-1148 channel census, 2026-09-27; per-video pins).
+        ("cloud.castus.tv", "comm7tv"),
+        # Castus "waterford-media" (Waterford, MI): Waterford charter township
+        # and Waterford School District (WO-1148; per-video pins).
+        ("cloud.castus.tv", "waterford-media"),
     }
 )
 
