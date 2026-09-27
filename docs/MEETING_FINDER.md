@@ -882,7 +882,16 @@ every other rescue in this module uses.
 - Run the adapter on each candidate until one has a transcript, or a
   probed video of reasonable length (`queue_probe.probe_queue_entry()`).
 - Tier-3 length rule: over 90 minutes, look for a shorter meeting from the
-  same government first.
+  same government first. Tier 1 has no length rule (Ryan, 2026-09-27):
+  captions cost nothing to add.
+- **Tiers (WO-1146).** Tier 1 = captions the server can fetch. Tier 2 =
+  captions exist, but only a local run can read them: YouTube (never
+  fetched here, saved as a drip lead) and Vimeo (the adapter reads its
+  captions from an office Mac, but Vimeo answers the server with a 401
+  challenge, BACKLOG.md WO-1120), so a Vimeo find with captions is tier 2
+  with a note, `resolve.captions_local_only()`, whether the page is
+  Vimeo's own or a platform that embeds it. Tier 3 = video, no reachable
+  captions. The drip's Vimeo lane (WO-1147) ingests Vimeo tier 2.
 - Before calling a channel off-mission, look at 3 or more videos.
 - **WO-1054 (Ryan's rule, 2026-09-24): a broken TelVue link falls back to
   the same channel's own listing once.** A TelVue candidate found via Hop

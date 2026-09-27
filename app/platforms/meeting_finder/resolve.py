@@ -127,6 +127,30 @@ from .pick import pick_candidates
 _GOV_CACHE: dict[str, Optional[Government]] = {}
 
 
+# WO-1146: tier 2 = captions exist, but only a local run can read them
+# (Ryan, 2026-09-26; rtr-discovery's `roster.TIER2_PLATFORMS`). YouTube
+# finds are tier 2 already (never fetched here, saved as drip leads).
+# Vimeo is the other one: from an office Mac the Vimeo adapter still
+# returns real caption segments, but Vimeo answers the server with a 401
+# challenge (BACKLOG.md, WO-1120), so a Vimeo find with captions can't be
+# ingested as tier 1 -- its captions come in through the drip's Vimeo
+# lane (WO-1147). If Vimeo ever serves the server again, drop it here.
+LOCAL_ONLY_CAPTION_HOSTS = ("vimeo.com",)
+LOCAL_ONLY_CAPTIONS_NOTE = (
+    "captions readable only by a local run (Vimeo blocks the server): tier 2"
+)
+
+
+def captions_local_only(platform: Optional[str], video_url: Optional[str]) -> bool:
+    """True when a find's captions can only be read locally -- the video
+    is on a LOCAL_ONLY_CAPTION_HOSTS host, whatever platform delegated to
+    it (Chicago ELMS and BoardDocs pages embed Vimeo)."""
+    if (platform or "").lower() == "vimeo":
+        return True
+    host = (urlparse(video_url or "").hostname or "").lower()
+    return any(host == h or host.endswith("." + h) for h in LOCAL_ONLY_CAPTION_HOSTS)
+
+
 def _government_for_input(finder_input: FinderInput) -> Optional[Government]:
     gov_id = finder_input.gov_id
     if not gov_id:
@@ -690,16 +714,20 @@ async def _resolve_candidates_with_meeting(
                             rule,
                         )
                     continue
+            local_only = captions_local_only(result.platform, result.video_url)
+            extra = "audio only" if audio_only else ""
+            if local_only:
+                extra = "; ".join(p for p in (extra, LOCAL_ONLY_CAPTIONS_NOTE) if p)
             return (
                 ResolveResult(
                     candidate=cand,
-                    tier=1,
+                    tier=2 if local_only else 1,
                     platform=result.platform,
                     video_url=result.video_url,
                     has_segments=True,
                     duration_seconds=result.video_duration_seconds,
                     outcome=None,
-                    note=_note("audio only" if audio_only else ""),
+                    note=_note(extra),
                     audio_only=audio_only,
                 ),
                 result,
