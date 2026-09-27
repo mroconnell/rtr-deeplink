@@ -1,5 +1,37 @@
 # Backlog — done
 
+## WO-1143: the GitHub tier-3 feed also dropped 49 Granicus/Cablecast/Swagit meetings as "dead" when only its own IP was blocked [Done 2026-09-27]
+
+**Same bug family as WO-1064, below, a different cause.** WO-1064 fixed the GitHub feed (`scripts/feed_tier3_auto_transcription.py`) dropping real meetings when YouTube blocked the runner's IP. This picks up the second cause found in the same feed log: Granicus, Cablecast and Swagit also block GitHub Actions' IP ranges, with a plain HTTP 403 — even though this probe already sends the correct Referer/User-Agent.
+
+**What the numbers say.** Read from `scripts/tier3_auto_transcription_queue_feed_log.csv` (log starts 2026-09-22, checked 2026-09-27):
+
+| Reason the feed dropped it | Count | Still happening? |
+| --- | --- | --- |
+| YouTube "Sign in to confirm you're not a bot" | 159 | No — all before WO-1064 merged (2026-09-25T18:19 UTC); 0 since |
+| HTTP 403 on the HLS master/variant playlist | 47 | Yes |
+| HTTP 403 on a direct-file HEAD/ranged-GET | 2 | Yes |
+| A real dead file (ffprobe couldn't read it) | 1 | Yes — genuinely dead, unaffected by this fix |
+
+The task that opened this WO quoted 159/39/1 from an earlier read of the same log; the true count by the time this landed was 159/49 (47+2)/1 — the log kept growing while the fix was built. Re-derived here rather than repeated, per this file's own standing rule on backlog claims decaying.
+
+**Proof it's a runner-IP problem, not a dead recording.** `evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744` was dropped by this feed as `reject-dead`. The same URL, same headers, resolves and probes clean from an office Mac: 10,109 seconds, `hls-master+variant`, real segments. Only GitHub's IP gets the 403.
+
+**The fix**, all in `scripts/feed_tier3_auto_transcription.py` (no change to `app/platforms/queue_probe.py` — its `reject-dead` verdict is correct as far as it can tell; the runner-specific context belongs in the feed, not the probe):
+
+1. `blocked_from_github_reason(probe)` returns `"hls-403"` for a `reject-dead` verdict whose reason is an HTTP 403 specifically (never 404/DNS-failure/timeout/empty-playlist) on one of the three probe shapes that can produce that exact message (`hls-master+variant`, `head+ffprobe`, `ranged-get+ffprobe`) — narrow on purpose, so an unrelated message that happens to mention "403" in passing can't match. It also returns `"youtube-bot-wall"` for YouTube's literal block text, as a second, independent net alongside the existing guard-based check (`needed_youtube()`) for the rare case a YouTube request reaches the network without being refused first.
+2. `_push_if_has_video()` returns `[NOT-REACHABLE-FROM-GITHUB] <reason>` instead of dropping such a line, before it ever reaches the ordinary `[SKIP] reject-...` path.
+3. `route_kept_line()` (a pure helper, tested on its own) sorts that tag into `"youtube"` (same destination as before: the drip Mac) or `"not-reachable"`. `main()` keeps a `not-reachable` line in the queue the same way it already keeps a `[NO-OWNER]`/`[YOUTUBE]` line — appended to the very end of `remainder`, never the front, so it never blocks the 12 fresh lines behind it. There's no drip-equivalent claimant for this shape (no URL-shape pre-filter can predict a 403 before probing), so unlike a YouTube line it still takes a batch slot each time its turn comes back around — it just doesn't get dropped when it does.
+4. A genuine 404/DNS failure/timeout/empty-playlist verdict is untouched — still drops exactly as before.
+
+**Finding the 49 already-dropped lines.** They're in `tier3_auto_transcription_queue_feed_log.csv`, tag `SKIP`, detail containing "returned HTTP 403", timestamps 2026-09-22 through 2026-09-27 — not restored in this PR (a separate session is recovering dropped queue-feed lines from the same log; see that PR for the recovery).
+
+**Tests.** `tests/test_feed_tier3_auto_transcription.py`: `blocked_from_github_reason()` against all three real 403 message shapes, the YouTube bot-wall text, and four negative cases (genuine 404, timeout, zero segments, a coincidental "403" substring with the wrong probe method, and a non-`reject-dead` verdict); `route_kept_line()`'s sorting; `_push_if_has_video()` integration for the 403 case (kept, not ingested), a genuine 404 (still dropped, not ingested — the explicit regression check), and the YouTube-text defense-in-depth case; and a queue-ordering test proving a kept 403 line lands at the end of `remainder`, so the next run's batch still fills from fresh lines first.
+
+**Gates.** `ruff check`, `ruff format --check`, full `pytest` (7,802 passed, 18 skipped, 4 xfailed), and both `alembic check` runs (archive + app) all green — no schema touched. `scripts/check_backlog_done_headings.py` green.
+
+**Deploy status.** A plain script invoked by `.github/workflows/feed-tier3-transcription.yml` (GitHub Actions), not a Render service — merging to `main` is enough; the next scheduled run (every 6 hours) picks it up with no separate deploy step.
+
 ## WO-1135: the transcription top-up driver now searches past a dense YouTube band instead of being zeroed out by it [Done 2026-09-27]
 
 **Why this ran.** Ryan noticed the Render transcription workers looked idle and guessed it might be a shortage of tier-3 (video, no captions) meetings — he was careful to note the hundreds of tier-2 (YouTube-caption) meetings piling up were a separate problem, the drip job's own responsibility, not the workers'. Checking the live numbers (`GET /internal/transcription-queue-stats`) showed the opposite of a shortage: `active_jobs: 0` but a healthy, actively-growing 676-line tier-3 discovery queue behind it, and 9 real jobs completed in the prior 24h — the workers weren't starved of supply, and weren't broken.

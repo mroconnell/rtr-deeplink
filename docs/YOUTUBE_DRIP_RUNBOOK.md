@@ -20,6 +20,17 @@ Every YouTube request comes out of one shared budget: about one every
 three to four minutes. That pace ran five hours on 2026-09-11 with no
 block, where the old once-a-day burst was blocked after 9–38 pages.
 
+**A line the GitHub feed keeps isn't always this Mac's job.** The feed
+tags a kept line in `tier3_auto_transcription_queue_feed_log.csv` two
+ways: `YOUTUBE` (this Mac's feed lane, above) and, since WO-1143
+(2026-09-27), `NOT-REACHABLE-FROM-GITHUB` for a Granicus/Cablecast/Swagit
+line that 403s to GitHub's IP but works fine from an ordinary connection
+(no YouTube involved at all). The drip doesn't claim those — they just
+sit in the queue and get retried by GitHub each cycle. If one needs to
+become a page sooner, run `scripts/feed_tier3_auto_transcription.py`
+by hand from any non-GitHub-Actions machine (this Mac included) — the
+same code succeeds there because it isn't GitHub's IP doing the asking.
+
 When YouTube does block ("too many requests", "sign in to confirm you're
 not a bot"), the process pauses everything for 15 minutes, then 30, 1
 hour, 2 hours, 4 hours, and tries again. A success resets that ladder.

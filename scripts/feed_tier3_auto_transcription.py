@@ -148,8 +148,64 @@ BATCH_SIZE = 12
 # Granicus, ...) is the bug this closes.
 _BARE_VIDEO_LINK_PLATFORMS = frozenset({"youtube", "vimeo", "direct_file"})
 
+# WO-1143: a `reject-dead` probe result whose real cause is "GitHub
+# Actions' runner IPs can't reach this," not "this meeting is dead" --
+# `queue_probe.py` has no way to know that, so it reports the same
+# `reject-dead` verdict either way. Measured live from
+# `tier3_auto_transcription_queue_feed_log.csv` (2026-09-22 to 09-27):
+# every one of these had a real, playable meeting behind it.
+#
+# `probe.probe_method` is checked alongside the literal "403" so this
+# never matches an unrelated 403 buried in a different kind of message
+# (e.g. a resolve-time HTTP error) -- only the three shapes
+# `queue_probe._probe_hls()`/`_probe_direct_file()` actually produce for
+# a plain access-denied response: "HLS master/variant playlist returned
+# HTTP 403" and "HEAD/ranged-GET on the media file returned HTTP 403".
+# Granicus, Cablecast and Swagit all 403 GitHub's IP ranges even with the
+# correct Referer/User-Agent this probe already sends (the same headers
+# that work fine from an office connection) -- proven live 2026-09-27 on
+# a real dropped line, evansville.granicus.com/MediaPlayer.php?view_id=
+# 1&clip_id=8744 (10,109s, hls-master+variant, from an office Mac; HTTP
+# 403 to the same URL, same headers, from this GitHub Actions runner).
+# A 404/DNS-failure/timeout/zero-segments verdict is left alone -- those
+# are real signs of a dead recording, not a blocked runner, and keep
+# today's behavior (dropped as a genuine reject-dead).
+_GITHUB_BLOCKABLE_403_PROBE_METHODS = frozenset(
+    {"hls-master+variant", "head+ffprobe", "ranged-get+ffprobe"}
+)
+
+
+def blocked_from_github_reason(probe) -> Optional[str]:
+    """None, or a short tag naming why a `reject-dead` probe result is
+    plausibly "not reachable from this GitHub Actions runner" rather than
+    a genuinely dead meeting -- WO-1143, same bug family as WO-1064's
+    YouTube fix (`BACKLOG_DONE.md`), for a different pair of causes:
+
+    - "youtube-bot-wall": yt-dlp's own message carries YouTube's literal
+      "Sign in to confirm you're not a bot" text. In the normal case
+      `main()` installs `youtube_fetch_guard` before any line runs, so a
+      real attempt to reach YouTube is refused before it leaves this
+      machine and `needed_youtube()` (keyed off the guard's own REFUSED
+      count, not this text) already catches it -- this check is a second,
+      independent net for the same outcome should a YouTube request ever
+      reach the network anyway (guard not installed, or a code path that
+      doesn't go through `socket.getaddrinfo`/aiohttp's resolver).
+    - "hls-403": see `_GITHUB_BLOCKABLE_403_PROBE_METHODS` above.
+    """
+    if probe.verdict != "reject-dead" or not probe.reason:
+        return None
+    reason = probe.reason.lower()
+    if "sign in to confirm" in reason:
+        return "youtube-bot-wall"
+    if "403" in reason and probe.probe_method in _GITHUB_BLOCKABLE_403_PROBE_METHODS:
+        return "hls-403"
+    return None
+
+
 # WO-937: a durable per-line record of _push_if_has_video()'s own
-# [OK]/[SKIP]/[FAIL]/[NO-OWNER] result -- before this, the only place a
+# [OK]/[SKIP]/[FAIL]/[NO-OWNER] result (also [YOUTUBE], WO-1064, and
+# [NOT-REACHABLE-FROM-GITHUB], WO-1143 -- both applied by main(), never
+# returned by _push_if_has_video() itself) -- before this, the only place a
 # result lived was stdout, so once a line is popped off QUEUE_FILE (which
 # advances "regardless of individual outcomes," see main()'s own comment),
 # its fate only survived in that one day's GitHub Actions run transcript.
@@ -278,6 +334,14 @@ async def _push_if_has_video(
         video_format=result.video_format,
     )
     append_probe_row(probe_sidecar_path, probe)
+    # WO-1143: don't drop a line whose probe only failed because THIS
+    # RUNNER can't reach it -- see blocked_from_github_reason()'s own
+    # docstring. main() reads this tag to decide where the line goes
+    # (the drip Mac for a YouTube-shaped block, back into the queue for
+    # an HLS 403) instead of the ordinary "reject- -> dropped" path below.
+    github_block = blocked_from_github_reason(probe)
+    if github_block:
+        return f"[NOT-REACHABLE-FROM-GITHUB] {github_block}: {probe.reason} ({url})"
     if probe.verdict.startswith("reject-"):
         return f"[SKIP] {probe.verdict}: {probe.reason} ({url})"
 
@@ -424,6 +488,23 @@ def needed_youtube(result: str, refused_before: int, refused_now: int) -> bool:
     return refused_now > refused_before and not result.startswith("[OK]")
 
 
+def route_kept_line(result: str) -> Optional[str]:
+    """WO-1143: which non-drop bucket a `_push_if_has_video()` result
+    (before `needed_youtube()`'s own guard-based rewrite, which is
+    checked first in main() and takes priority) belongs in --
+    `"youtube"` (the drip Mac) or `"not-reachable"` (kept in the ordinary
+    queue, see blocked_from_github_reason()) -- or `None` for an ordinary
+    OK/SKIP/FAIL/NO-OWNER result that drops (or ingests) as it always
+    has. A pure function, kept separate from main()'s loop, the same
+    "test the decision, not the wiring" split `needed_youtube()` and
+    `select_batch()` above already use."""
+    if result.startswith("[NOT-REACHABLE-FROM-GITHUB] youtube-bot-wall"):
+        return "youtube"
+    if result.startswith("[NOT-REACHABLE-FROM-GITHUB]"):
+        return "not-reachable"
+    return None
+
+
 async def main() -> None:
     if not QUEUE_FILE.exists():
         print("No queue file found -- nothing to do.")
@@ -450,7 +531,8 @@ async def main() -> None:
     )
     print(
         f"Feeding {len(batch)} URL(s), {len(remainder)} remaining after this run "
-        "(YouTube lines are left for the drip Mac)."
+        "(YouTube lines are left for the drip Mac; a line this runner can't "
+        "reach, e.g. a Granicus/Cablecast 403, is kept and retried later)."
     )
 
     register_all_finders()
@@ -462,6 +544,14 @@ async def main() -> None:
     # otherwise permanently lose it the moment its batch slot comes up.
     no_owner_lines: list[str] = []
     youtube_lines: list[str] = []
+    # WO-1143: an HLS/direct-file line that 403'd only because this
+    # runner's IP is blocked (Granicus/Cablecast/Swagit -- see
+    # blocked_from_github_reason()'s own docstring). Not a dead link,
+    # same "keep it, don't drop it" treatment as no_owner_lines/
+    # youtube_lines above -- it just has no drip-equivalent claimant, so
+    # it goes back into the ordinary queue rotation instead of a
+    # dedicated lane.
+    not_reachable_lines: list[str] = []
     async with aiohttp.ClientSession() as session:
         for i, line in enumerate(batch):
             url, source_url_override, line_gov_id = _parse_queue_line(line)
@@ -472,6 +562,22 @@ async def main() -> None:
             if needed_youtube(result, refused_before, len(youtube_fetch_guard.REFUSED)):
                 result = f"[YOUTUBE] needs YouTube, left in the queue: {url} ({result})"
                 youtube_lines.append(line)
+            else:
+                bucket = route_kept_line(result)
+                if bucket == "youtube":
+                    # The guard normally catches this first (the branch
+                    # above) -- this is the second, independent net
+                    # described in blocked_from_github_reason()'s
+                    # docstring, for a YouTube request that reached the
+                    # network anyway. Same destination either way: the
+                    # drip Mac.
+                    result = (
+                        f"[YOUTUBE] needs YouTube (bot-check reached the "
+                        f"network), left in the queue: {url} ({result})"
+                    )
+                    youtube_lines.append(line)
+                elif bucket == "not-reachable":
+                    not_reachable_lines.append(line)
             print(result)
             _append_feed_log_row(url, result)
             if result.startswith("[NO-OWNER]"):
@@ -496,6 +602,28 @@ async def main() -> None:
             "in the queue."
         )
         remainder = remainder + youtube_lines
+
+    if not_reachable_lines:
+        # WO-1143: same reasoning as [NO-OWNER]/[YOUTUBE] -- these are
+        # real, playable meetings that only this runner can't reach
+        # (Granicus/Cablecast/Swagit 403ing GitHub Actions' IP ranges).
+        # No pre-batch filter exists for this shape the way select_batch()
+        # has for YouTube (a 403 can't be predicted before probing), so
+        # unlike a YouTube line this one still takes a batch slot each
+        # time it comes back around -- but it goes to the very end of the
+        # queue afterward, same as the other two kept-not-dropped shapes,
+        # so it never blocks the 12 lines behind it. Find these later by
+        # the feed log's own NOT-REACHABLE-FROM-GITHUB tag (`scripts/
+        # tier3_auto_transcription_queue_feed_log.csv`) -- a plain HTTP
+        # request to the same URL from an office/home connection succeeds
+        # (see BACKLOG_DONE.md's WO-1143 entry for the proof).
+        print(
+            f"[NOT-REACHABLE-FROM-GITHUB] {len(not_reachable_lines)} line(s) were "
+            "refused by the vendor's CDN to this runner's IP (HTTP 403) and were "
+            "left in the queue -- probably reachable from an office/home "
+            "connection."
+        )
+        remainder = remainder + not_reachable_lines
 
     # Advance the queue regardless of individual outcomes -- same "don't
     # retry failing commands in a loop" reasoning as
