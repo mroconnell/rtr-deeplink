@@ -1,5 +1,25 @@
 # Backlog — done
 
+## WO-1132: tvw.org links resolve again on production — the adapter no longer loads tvw.org when the link carries the meeting number [Done 2026-09-26]
+
+**What was tested and why.** WO-1112 found that tvw.org's Cloudflare check answers our Python client with a "Just a moment..." challenge (HTTP 403) from data-center addresses. A production resolve on 2026-09-26 confirmed readers hit it too: a new tvw.org link returned `resolve_failed` with a raw 403. The same meeting's `player.invintus.com` link resolved fine on production (video plus 680 caption segments).
+
+**What was found.** On 5 of 5 real tvw.org pages, the Invintus meeting number is the 10 digits ending the link (`...-2026091211/`), and the client number is always `9375922947`.
+
+| Page | Number in link | Page's own `eventID` |
+|---|---|---|
+| senate-housing | 2026091165 | 2026091165 |
+| house-technology-economic-development-veterans | 2026091178 | 2026091178 |
+| interbranch-advisory-committee | 2026091112 | 2026091112 |
+| joint-select-committee-on-civic-health | 2026091211 | 2026091211 |
+| legislator-profile-representative-april-berg | 2025011743 | 2025011743 |
+
+**What was changed.** `app/platforms/tvw.py` builds the Invintus link straight from the tvw.org link and never fetches tvw.org when the number is there. Only a link without a number still loads the page; a 403 there now returns a plain reader warning instead of a raw error. This does not get past the challenge; it just avoids needing the page. `tvw` was removed from the canary's `CANARY_KNOWN_CI_BLOCKS`. New tests in `tests/test_tvw.py` (the no-number link is synthetic; no real one has been seen).
+
+**Result.** Resolving two real links locally: Civic Health came back with title, date, video and 680 caption segments; House Technology (dated 9/28, not yet held) came back with a plain "No playable video found" warning. See the PR's canary run for the GitHub-side result.
+
+**Caution.** Readers only get this after a deploy (`autoDeploy: false`).
+
 ## WO-1131: the parked 7,359-small-government rerun, done with Meeting Finder instead of the access ladder -- 4 meetings ingested, 67 queued [Done 2026-09-26]
 
 **What was done and why.** The parked entry ("Run the access ladder on the other 7,359 small governments and keep the raw report", Ryan 2026-09-20) predates Meeting Finder. On 2026-09-26 Ryan asked to check the overlap and switch if it made sense. It did: Meeting Finder fetches with the same rungs as the ladder (plain, browser headers, headless, plus Wayback) and then picks a meeting, grades its tier and checks identity, at about the same speed at scale.

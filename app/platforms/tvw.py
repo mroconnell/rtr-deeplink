@@ -62,6 +62,31 @@ _CLIENT_ID_META_RE = _meta_re("clientID")
 _EVENT_ID_META_RE = _meta_re("eventID")
 
 
+# TVW's one Invintus tenant. Confirmed identical on every real page
+# fetched (WO-1010's three, WO-1132's five, 2026-09-26).
+TVW_CLIENT_ID = "9375922947"
+
+# A real tvw.org link ends in the Invintus eventID: `/video/{slug}-{id}/`.
+# Confirmed on 5 of 5 real pages on 2026-09-26 (senate-housing-2026091165,
+# house-technology-economic-development-veterans-2026091178,
+# interbranch-advisory-committee-2026091112, joint-select-committee-on-
+# civic-health-2026091211, legislator-profile-representative-april-berg-
+# 2025011743): the trailing 10 digits equal the page's own `eventID` meta
+# tag every time. Every eventID seen is YYYYMM plus 4 digits, hence `20`.
+_EVENT_ID_IN_PATH_RE = re.compile(r"-(20\d{8})/?$")
+
+_BLOCKED_WARNING = (
+    "tvw.org didn't let us load this page, and the link has no meeting "
+    "number in it. Try the meeting's full tvw.org/video/... link, or its "
+    "player.invintus.com link."
+)
+
+
+def _event_id_from_url(url: str) -> Optional[str]:
+    match = _EVENT_ID_IN_PATH_RE.search(urlparse(url).path)
+    return match.group(1) if match else None
+
+
 def is_tvw_video_url(url: str) -> bool:
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -77,19 +102,30 @@ class TVWAssetFinder(AssetFinder):
     platform_name = "tvw"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url, timeout=aiohttp.ClientTimeout(total=30)
-            ) as response:
-                response.raise_for_status()
-                html = await response.text()
-
-        client_id, event_id = self._extract_ids(html)
-        if not client_id or not event_id:
-            raise ValueError(
-                f"Could not find an embedded Invintus clientID/eventID on "
-                f"tvw.org page: {url}"
-            )
+        # WO-1132 (2026-09-26): read the IDs from the link itself when it
+        # carries them, and never fetch tvw.org in that case. tvw.org sits
+        # behind Cloudflare, which shows aiohttp a "Just a moment..." human
+        # check (403, `cf-mitigated: challenge`) from data-center addresses
+        # -- confirmed from a GitHub runner and on production, where every
+        # new tvw.org link failed with a raw 403. We don't get past that
+        # check; we simply don't need the page. Only a link with no ID in
+        # it still fetches tvw.org, and a 403 there becomes a plain warning.
+        event_id = _event_id_from_url(url)
+        client_id = TVW_CLIENT_ID if event_id else None
+        if not event_id:
+            html = await self._fetch_page(url)
+            if html is None:
+                return ResolvedMeeting(
+                    platform=self.platform_name,
+                    source_url=url,
+                    video_warnings=[_BLOCKED_WARNING],
+                )
+            client_id, event_id = self._extract_ids(html)
+            if not client_id or not event_id:
+                raise ValueError(
+                    f"Could not find an embedded Invintus clientID/eventID on "
+                    f"tvw.org page: {url}"
+                )
 
         invintus_url = (
             f"https://player.invintus.com/?clientID={client_id}&eventID={event_id}"
@@ -99,6 +135,20 @@ class TVWAssetFinder(AssetFinder):
         result.source_url = url
         result.external_id = f"tvw:{event_id}"
         return result
+
+    @staticmethod
+    async def _fetch_page(url: str) -> Optional[str]:
+        """The tvw.org page's HTML, or None when tvw.org refuses us with
+        a 403 (its Cloudflare check). Any other HTTP error still raises."""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status == 403:
+                    logger.warning("tvw.org refused %s with a 403", url)
+                    return None
+                response.raise_for_status()
+                return await response.text()
 
     @staticmethod
     def _extract_ids(html: str) -> Tuple[Optional[str], Optional[str]]:
