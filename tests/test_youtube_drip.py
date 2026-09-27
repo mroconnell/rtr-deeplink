@@ -89,7 +89,7 @@ def test_check_lines_reports_keep_and_skip_with_a_reason():
     ]
     assert out[0][2] == "boarddocs"
     assert out[1][2] == "boarddocs"
-    assert out[2][2] == "platform=granicus, not a YouTube delegator"
+    assert out[2][2] == "platform=granicus, not a YouTube or Vimeo delegator"
 
 
 def test_run_check_lines_cli_prints_one_line_per_row(tmp_path, capsys):
@@ -354,6 +354,10 @@ def test_audio_page_from_export_row_needs_youtube_and_the_marker():
 
 
 def test_state_rollover_writes_yesterday_and_resets(tmp_path):
+    # WO-1147: the CSV row grew four new vimeo_* columns at the end
+    # (ingested/marked/failed/blocks) -- this test's expected row is
+    # updated to match, still all-zero here since no vimeo activity
+    # happened in this test.
     state = yd.State(tmp_path / "state.json")
     state.rollover(tmp_path / "daily.csv", today="2026-09-11")
     state.bump("captions_ingested", 3)
@@ -361,8 +365,22 @@ def test_state_rollover_writes_yesterday_and_resets(tmp_path):
     state.rollover(tmp_path / "daily.csv", today="2026-09-12")
     rows = (tmp_path / "daily.csv").read_text().splitlines()
     assert rows[0].startswith("day,captions_ingested")
-    assert rows[1] == "2026-09-11,3,0,0,0,0,0,0,1"
+    assert rows[0].endswith("vimeo_ingested,vimeo_marked,vimeo_failed,vimeo_blocks")
+    assert rows[1] == "2026-09-11,3,0,0,0,0,0,0,1,0,0,0,0"
     assert state.data["today"] == {} and state.data["day"] == "2026-09-12"
+
+
+def test_state_rollover_records_vimeo_activity_in_its_own_columns(tmp_path):
+    state = yd.State(tmp_path / "state.json")
+    state.rollover(tmp_path / "daily.csv", today="2026-09-11")
+    state.bump("vimeo_ingested", 2)
+    state.bump("vimeo_marked")
+    state.bump("vimeo_blocks")
+    state.rollover(tmp_path / "daily.csv", today="2026-09-12")
+    rows = (tmp_path / "daily.csv").read_text().splitlines()
+    # captions/feed/audio/blocks columns stay 0 -- vimeo activity never
+    # touches the shared YouTube-family counters.
+    assert rows[1] == "2026-09-11,0,0,0,0,0,0,0,0,2,1,0,1"
 
 
 def _drip(tmp_path, lanes=("captions", "feed", "audio")):
@@ -429,6 +447,123 @@ def test_tick_honours_a_block_and_the_ladder_escalates(tmp_path, monkeypatch):
     drip.state.data["blocked_until"] = 0
     assert asyncio.run(drip.tick(None, tmp_path / "daily.csv")) == 1800.0
     assert drip.state.data["blocks_total"] == 2
+
+
+def test_lane_vimeo_ingests_and_tracks_its_own_done_dict(tmp_path, monkeypatch):
+    import scripts.fetch_vimeo_transcripts as vimeo_fetch
+
+    drip = _drip(tmp_path, lanes=("vimeo",))
+    drip.dry_run = False
+
+    async def fake_get_wanted(session):
+        return [{"slug": "v1", "platform": "vimeo", "video_url": "https://vimeo.com/1"}]
+
+    async def fake_process_one(session, page, *, dry_run):
+        return {"slug": page["slug"], "status": "ingested", "detail": "3 segments"}
+
+    monkeypatch.setattr(vimeo_fetch, "_get_wanted", fake_get_wanted)
+    monkeypatch.setattr(vimeo_fetch, "process_one", fake_process_one)
+
+    touched, override = asyncio.run(drip.lane_vimeo(None))
+    assert touched is True and override is None
+    assert drip.state.data["vimeo_done"] == {"v1": "ingested"}
+    assert drip.state.data["today"]["vimeo_ingested"] == 1
+    # The YouTube-family done dict is untouched.
+    assert drip.state.data["captions_done"] == {}
+
+
+def test_lane_vimeo_block_is_independent_of_the_youtube_ladder(tmp_path, monkeypatch):
+    import scripts.fetch_vimeo_transcripts as vimeo_fetch
+
+    drip = _drip(tmp_path, lanes=("vimeo",))
+    drip.dry_run = False
+
+    async def fake_get_wanted(session):
+        return [{"slug": "v1", "platform": "vimeo", "video_url": "https://vimeo.com/1"}]
+
+    async def fake_process_one(session, page, *, dry_run):
+        return {
+            "slug": page["slug"],
+            "status": "blocked",
+            "detail": "player page returned a challenge (HTTP 401)",
+        }
+
+    monkeypatch.setattr(vimeo_fetch, "_get_wanted", fake_get_wanted)
+    monkeypatch.setattr(vimeo_fetch, "process_one", fake_process_one)
+
+    touched, sleep_for = asyncio.run(drip.lane_vimeo(None))
+    assert touched is True
+    assert sleep_for == 900.0
+    # Vimeo's own ladder moved -- the YouTube-family one did not.
+    assert drip.state.data["vimeo_blocked_until"] > 0
+    assert drip.state.data["vimeo_block_level"] == 1
+    assert drip.state.data["blocked_until"] == 0
+    assert drip.state.data["block_level"] == 0
+    # And the shared "blocks" counter (YouTube-family) is untouched --
+    # only the Vimeo-only counter bumped.
+    assert drip.state.data["today"].get("blocks", 0) == 0
+    assert drip.state.data["today"]["vimeo_blocks"] == 1
+    assert drip.state.data["vimeo_done"] == {}  # a blocked page is not "done"
+
+
+def test_lane_vimeo_returns_no_work_when_queue_is_empty(tmp_path, monkeypatch):
+    import scripts.fetch_vimeo_transcripts as vimeo_fetch
+
+    drip = _drip(tmp_path, lanes=("vimeo",))
+
+    async def fake_get_wanted(session):
+        return []
+
+    monkeypatch.setattr(vimeo_fetch, "_get_wanted", fake_get_wanted)
+    assert asyncio.run(drip.lane_vimeo(None)) == (False, None)
+
+
+def test_tick_includes_vimeo_lane_only_when_enabled(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("vimeo",))
+    calls = []
+
+    async def vimeo(session):
+        calls.append("vimeo")
+        return False, None
+
+    monkeypatch.setattr(drip, "lane_vimeo", vimeo)
+    asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    assert calls == ["vimeo"]
+
+    drip2 = _drip(tmp_path, lanes=("captions",))  # vimeo not in lanes
+
+    async def should_not_run(session):
+        raise AssertionError("lane_vimeo must not run when not in --lanes")
+
+    monkeypatch.setattr(drip2, "lane_vimeo", should_not_run)
+    monkeypatch.setattr(drip2, "lane_captions", lambda session: _ok_no_work())
+    asyncio.run(drip2.tick(None, tmp_path / "daily.csv"))
+
+
+async def _ok_no_work():
+    return False, None
+
+
+def test_youtube_queue_lines_keeps_a_real_vimeo_video_and_skips_a_listing():
+    # Real Vimeo URL shapes from tests/test_vimeo.py's own fixtures (per
+    # CLAUDE.md's synthetic-test convention: reuse a confirmed-real shape).
+    lines = [
+        "https://vimeo.com/1212025580",
+        "https://player.vimeo.com/video/1223368476",
+        "https://vimeo.com/showcase/crrma",  # a listing, not one meeting
+        "https://cityoftacoma.granicus.com/player/clip/7460",
+    ]
+    out = yd.youtube_queue_lines(lines)
+    assert [u for _, u, _ in out] == [
+        "https://vimeo.com/1212025580",
+        "https://player.vimeo.com/video/1223368476",
+    ]
+
+
+def test_classify_queue_url_vimeo_listing_is_skipped():
+    keep, detail = yd._classify_queue_url("https://vimeo.com/showcase/crrma")
+    assert keep is False
+    assert "not a real single-video URL" in detail
 
 
 def test_lane_audio_respects_daily_cap(tmp_path):

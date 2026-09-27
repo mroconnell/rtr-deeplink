@@ -15,10 +15,29 @@ all three jobs, slowly and steadily, so YouTube never sees a burst:
 | captions | pages on the site waiting for a transcript | asks YouTube for the video's captions and puts them on the page; if the channel disabled captions, marks the page so nobody asks again | one page every 3–4 minutes |
 | feed | the YouTube lines in `scripts/tier3_auto_transcription_queue.txt` (the GitHub feed leaves these alone, WO-1064) | turns each into a site page (same checks as the GitHub feed), then the captions lane fetches its captions next | same budget |
 | audio | pages marked "captions disabled" | downloads the audio and transcribes it with Whisper on this Mac | at most 3 downloads a day (raise only after a week without a block) |
+| vimeo | pages on the site waiting for a transcript, `video_format=vimeo` (WO-1147, 2026-09-27, **opt-in — not in the default `--lanes`**) | resolves the video locally through the Vimeo adapter, the same way a real browser would, and either puts the real captions on the page or records a permanent "no captions" marker | same shared spacing as the other lanes — **not** the same shared YouTube budget (see below) |
 
 Every YouTube request comes out of one shared budget: about one every
 three to four minutes. That pace ran five hours on 2026-09-11 with no
 block, where the old once-a-day burst was blocked after 9–38 pages.
+
+**Why there's a `vimeo` lane here at all, and why it's different from the
+other three.** As of 2026-09-26, Render's own cloud IP gets a challenge
+page on every Vimeo caption fetch — the same structural problem YouTube
+has always had for this service (see `BACKLOG.md`'s "Vimeo blocks Render"
+entry). `app/platforms/vimeo.py`'s resolver still works fine from an
+ordinary residential/office IP, so it needs the same "fetch here, push to
+the Archive" treatment. But Vimeo is a **completely different host**, not
+part of YouTube's own request budget — there is no shared rate-limit
+reason to pace it jointly with the three lanes above. It's bundled into
+this same process purely for **operational convenience**: one always-on
+Mac, one tick loop, one state file, one lock file — not because Vimeo
+shares YouTube's block sensitivity. It reuses the same
+`--spacing-seconds` every other lane uses (no separate pacing knob) and
+has its own independent block ladder, entirely separate from the
+YouTube-family one. **It is not in the default `--lanes` value** — add it
+explicitly the first time it's wanted:
+`--lanes captions,feed,audio,vimeo`.
 
 **A line the GitHub feed keeps isn't always this Mac's job.** The feed
 tags a kept line in `tier3_auto_transcription_queue_feed_log.csv` two
@@ -73,7 +92,14 @@ later. It does not exit. This is also routine.
    lane as a lead (`research/youtube_channel_leads.csv`) instead of losing
    it. `scripts/wo912_wo913_ingest_confirmed.py` is the worked example.
    A separate browser process (Playwright) is not covered by the guard;
-   a script that drives one must refuse YouTube URLs itself.
+   a script that drives one must refuse YouTube URLs itself. **This rule
+   is YouTube-only.** Vimeo is not blocked the way YouTube is from a
+   normal office/residential connection — a script run anywhere else can
+   still make Vimeo requests for video/metadata. The one place Vimeo
+   *is* blocked today is Render's own service specifically fetching
+   Vimeo **captions** (see the "vimeo" lane row above and `BACKLOG.md`'s
+   "Vimeo blocks Render" entry) — that's why the vimeo lane exists on
+   this Mac at all, not because Vimeo shares rule 5's YouTube concern.
 
 ## Start it
 
@@ -93,8 +119,8 @@ It keeps its memory in `~/.rtr/youtube_drip/`:
 | File | What it is |
 |---|---|
 | `drip.log` | every page, every block, timestamped |
-| `state.json` | what is done, what is queued, current block; survives restarts |
-| `daily_status.csv` | one line per day: captions ingested / marked / failed, fed ok / skipped / needing identity review, dead videos, audio done / failed, blocks |
+| `state.json` | what is done, what is queued, current block; survives restarts — now also holds the vimeo lane's own `vimeo_done`/`vimeo_blocked_until`/`vimeo_block_level` keys, kept entirely separate from the YouTube-family ones |
+| `daily_status.csv` | one line per day: captions ingested / marked / failed, fed ok / skipped / needing identity review, dead videos, audio done / failed, blocks, and (WO-1147) vimeo ingested / marked / failed / blocks in their own columns — a Vimeo challenge bumps `vimeo_blocks`, never the shared `blocks` column |
 | `fed_pages.csv` | one row per page the feed lane created, with the government the Archive keyed it to and whether a human should check it |
 | `dead_videos.csv` | one row per removed video with the channel's newest streams, for a human to pick a replacement meeting from |
 | `lock` | stops a second copy starting on this Mac |
@@ -208,10 +234,10 @@ blocks or none, and no day with zero actions while there was work.
 ## Options
 
 ```
---lanes captions,feed,audio   run a subset
---spacing-seconds 180         seconds between YouTube requests (do not lower)
---audio-per-day 3             audio downloads per day
---model-size small            Whisper model for the audio lane (default: sized from RAM)
---dry-run                     do everything except write to the site
---once                        one step, then exit (for a quick check)
+--lanes captions,feed,audio,vimeo   run a subset (vimeo is opt-in, not in the default)
+--spacing-seconds 180               seconds between requests (do not lower)
+--audio-per-day 3                   audio downloads per day
+--model-size small                  Whisper model for the audio lane (default: sized from RAM)
+--dry-run                           do everything except write to the site
+--once                              one step, then exit (for a quick check)
 ```

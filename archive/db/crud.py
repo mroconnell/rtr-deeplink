@@ -231,6 +231,25 @@ _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS = (
     _YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
 )
 
+# Vimeo's own PERMANENT-FAILURE marker (WO-1147, 2026-09-27) -- same shape
+# as the YouTube markers just above: this one means "a real, direct check
+# (scripts/fetch_vimeo_transcripts.py, run from a residential/office IP,
+# never Render's -- see BACKLOG.md's "Vimeo blocks Render" entry) confirmed
+# this video genuinely has no captions", not "we couldn't reach Vimeo
+# today". A separate PRIVATE constant, not an import of
+# app.platforms.vimeo.VIMEO_NO_CAPTIONS_CONFIRMED_MARKER: this file already
+# keeps its own copies of the YouTube markers in sync with
+# app/platforms/youtube.py's public ones BY CONVENTION, not by import (see
+# that module's constants and this file's own comment above them), and this
+# follows the same established pattern rather than inventing a new one.
+# Keep this string byte-identical to app/platforms/vimeo.py's
+# VIMEO_NO_CAPTIONS_CONFIRMED_MARKER -- there is no import to enforce it,
+# tests/test_transcript_wanted.py checks both sides don't drift.
+_VIMEO_NO_CAPTIONS_CONFIRMED_MARKER = (
+    "Vimeo: no captions found from a direct check (not a Render challenge)"
+)
+_VIMEO_PERMANENT_TRANSCRIPT_FAILURE_MARKERS = (_VIMEO_NO_CAPTIONS_CONFIRMED_MARKER,)
+
 # Every warning substring meaning "the transcript we have stops before the
 # meeting did". A tuple, so a newly-detected form of truncation is one
 # line here rather than a parallel bucket (see _OUTCOME_LABELS below).
@@ -389,6 +408,29 @@ async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     return _has_real_warning_free_transcript(row[1])
 
 
+async def _has_permanent_transcript_failure_marker(
+    session, meeting_page_id: int, markers: tuple
+) -> bool:
+    """True if this page's default TranscriptVersion carries any marker in
+    `markers` -- the shared check behind both
+    _has_youtube_permanent_transcript_failure() and
+    _has_vimeo_permanent_transcript_failure() (WO-1147, 2026-09-27),
+    factored out so a platform's own permanent-failure marker tuple is the
+    only thing each caller needs to supply."""
+    row = (
+        await session.execute(
+            select(TranscriptVersion.transcript_warnings).where(
+                TranscriptVersion.meeting_page_id == meeting_page_id,
+                TranscriptVersion.is_default.is_(True),
+            )
+        )
+    ).first()
+    if row is None:
+        return False
+    warnings = row[0] or []
+    return any(marker in w for w in warnings for marker in markers)
+
+
 async def _has_youtube_permanent_transcript_failure(
     session, meeting_page_id: int
 ) -> bool:
@@ -402,21 +444,22 @@ async def _has_youtube_permanent_transcript_failure(
     find_auto_transcription_candidate() (a single WHERE clause over many
     pages, rather than one page at a time inside an existing Python loop
     the way this function's one caller already works)."""
-    row = (
-        await session.execute(
-            select(TranscriptVersion.transcript_warnings).where(
-                TranscriptVersion.meeting_page_id == meeting_page_id,
-                TranscriptVersion.is_default.is_(True),
-            )
-        )
-    ).first()
-    if row is None:
-        return False
-    warnings = row[0] or []
-    return any(
-        marker in w
-        for w in warnings
-        for marker in _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
+    return await _has_permanent_transcript_failure_marker(
+        session, meeting_page_id, _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
+    )
+
+
+async def _has_vimeo_permanent_transcript_failure(
+    session, meeting_page_id: int
+) -> bool:
+    """True if this page's default TranscriptVersion carries a confirmed
+    Vimeo permanent-failure transcript marker (WO-1147, 2026-09-27) -- the
+    Vimeo sibling of _has_youtube_permanent_transcript_failure() above,
+    used by list_youtube_pages_missing_transcripts(platform="vimeo") to stop
+    re-queuing a page scripts/fetch_vimeo_transcripts.py has already
+    confirmed has no captions."""
+    return await _has_permanent_transcript_failure_marker(
+        session, meeting_page_id, _VIMEO_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
     )
 
 
@@ -2206,16 +2249,28 @@ async def list_pages_for_export(
     return result
 
 
-async def list_youtube_pages_missing_transcripts() -> list[dict]:
-    """Every archived YouTube-backed meeting page with no *good* default
-    transcript -- the "transcript wanted" queue consumed by
-    scripts/fetch_youtube_transcripts.py. YouTube-only because that's the
-    one platform whose captions this service structurally can't fetch
-    itself: confirmed live 2026-08-10 that even youtube-transcript-api
-    (a different endpoint/recipe from the already-blocked yt-dlp and
-    timedtext paths) gets IpBlocked from Render's cloud IP while working
-    fine from a residential one, so fetching happens off-server and gets
-    pushed back through the normal /internal/ingest path.
+async def list_youtube_pages_missing_transcripts(
+    platform: str = "youtube",
+) -> list[dict]:
+    """Every archived meeting page on `platform` with no *good* default
+    transcript -- the "transcript wanted" queue. `platform="youtube"`
+    (the default -- MUST behave byte-for-byte identically to before this
+    parameter existed; every existing caller passes zero arguments) is
+    consumed by scripts/fetch_youtube_transcripts.py;
+    `platform="vimeo"` (WO-1147, 2026-09-27) is consumed by
+    scripts/fetch_vimeo_transcripts.py. Both platforms share the same
+    structural problem this queue exists to work around: this service's
+    own Render IP can fetch neither's captions itself (YouTube --
+    confirmed live 2026-08-10, even youtube-transcript-api, a different
+    endpoint/recipe from the already-blocked yt-dlp and timedtext paths,
+    gets IpBlocked from Render while working fine from a residential IP;
+    Vimeo -- confirmed live 2026-09-26, every caption fetch gets a
+    challenge page from Render's IP specifically, see BACKLOG.md's "Vimeo
+    blocks Render" entry), so fetching happens off-server, from a
+    residential/office connection, and gets pushed back through the
+    normal /internal/ingest path. Any other `platform` value raises
+    ValueError -- a programmer error (no other caller should ever pass
+    one), not a runtime condition to handle gracefully.
 
     "No good transcript" reuses `_has_good_transcript()` (the same quality
     gate `list_transcription_backlog_candidates()` already uses) rather
@@ -2232,22 +2287,36 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
     Returns exactly the identity fields a push needs for
     _find_or_create_page() to match the existing page rather than
     creating a duplicate: platform, external_id, source_url_normalized.
+    Vimeo pages return the exact same shape as YouTube ones, so the
+    drip's caption lane can treat both platforms uniformly.
 
-    Also excludes a page carrying a confirmed YouTube permanent-failure
-    transcript marker (WO-135, 2026-09-09) -- see
-    _has_youtube_permanent_transcript_failure()'s own docstring. This is
-    the actual mechanism that stops scripts/fetch_youtube_transcripts.py
-    re-queuing a page forever once it's confirmed the failure and called
-    record_youtube_video_status(): without this, the marker would be
-    recorded but never actually consulted, and this queue would keep
-    handing the same known-permanent page back out every single day.
+    Also excludes a page carrying a confirmed platform-specific
+    permanent-failure transcript marker (YouTube: WO-135, 2026-09-09;
+    Vimeo: WO-1147, 2026-09-27) -- see
+    _has_youtube_permanent_transcript_failure()'s/
+    _has_vimeo_permanent_transcript_failure()'s own docstrings. This is
+    the actual mechanism that stops the corresponding fetch script
+    re-queuing a page forever once it's confirmed the failure and
+    recorded the marker: without this, the marker would be recorded but
+    never actually consulted, and this queue would keep handing the same
+    known-permanent page back out every single day.
     """
+    if platform == "youtube":
+        permanent_failure_check = _has_youtube_permanent_transcript_failure
+    elif platform == "vimeo":
+        permanent_failure_check = _has_vimeo_permanent_transcript_failure
+    else:
+        raise ValueError(
+            f"list_youtube_pages_missing_transcripts: unsupported platform {platform!r} "
+            "(must be 'youtube' or 'vimeo')"
+        )
+
     async with async_session() as session:
         pages = (
             (
                 await session.execute(
                     select(MeetingPage)
-                    .where(MeetingPage.video_format == "youtube")
+                    .where(MeetingPage.video_format == platform)
                     .order_by(MeetingPage.created_at.asc())
                 )
             )
@@ -2259,7 +2328,7 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
         for page in pages:
             if await _has_good_transcript(session, page.id):
                 continue
-            if await _has_youtube_permanent_transcript_failure(session, page.id):
+            if await permanent_failure_check(session, page.id):
                 continue
             wanted.append(
                 {

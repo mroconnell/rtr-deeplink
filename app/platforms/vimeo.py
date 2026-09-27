@@ -351,6 +351,25 @@ _NO_CAPTIONS_WARNING = (
     "CC button inside the player above will still turn them on."
 )
 
+# WO-1147 (2026-09-27): the PERMANENT-failure marker
+# scripts/fetch_vimeo_transcripts.py records via POST
+# /internal/pages/{slug}/video-status when a real, direct resolve_video_id()
+# call (from a residential/office IP, never Render's -- see this module's
+# docstring and BACKLOG.md's "Vimeo blocks Render" entry) confirms a video
+# genuinely has no captions -- as opposed to merely being unreachable today
+# because of Render's own challenge. Public here, mirroring how
+# app/platforms/youtube.py's own YOUTUBE_CAPTIONS_DISABLED_MARKER etc. are
+# public, so a caller outside this module (the fetch script) can reference
+# the real string. archive/db/crud.py keeps its OWN private copy
+# (_VIMEO_NO_CAPTIONS_CONFIRMED_MARKER) holding the identical value, kept in
+# sync by hand -- the same established pattern that file's own YOUTUBE
+# markers already use relative to this file's YouTube counterparts (no
+# import between the two services' marker constants; see that file's
+# comment). Do not reword without updating both sides.
+VIMEO_NO_CAPTIONS_CONFIRMED_MARKER = (
+    "Vimeo: no captions found from a direct check (not a Render challenge)"
+)
+
 # Per-account jurisdiction map for account names that are glued
 # abbreviations validated_label_extract() has no generic way to expand --
 # same pattern as telvue.py's _KNOWN_ORG_TOKEN_JURISDICTIONS, built one
