@@ -298,14 +298,21 @@ audit mode (see rtr-business `research/LINK_FIRST_MATCHING.md`).
   `dns-unresolvable`, then try the research row's alternate domains
   (passed in via `alternates` -- Start itself never reads rtr-business).
 - **Homepage:** `https://domain/`, then `https://www.domain/`, then
-  `http://` -- but WO-1086: only whichever of the apex/`www.` `dns_lookup()`
-  itself says actually resolves. Adding both unconditionally produced a
-  real, confirmed false `dns-unresolvable` VERDICT for a government whose
-  site works fine, in either direction: a subdomain host has no `www.`
-  sibling at all (streaming.easdpa.org, confirmed live 2026-09-26), and
-  plenty of ordinary districts have the opposite gap -- no bare-apex A/
-  CNAME record, only `www.` resolves (ppps.org and 22 more, same date).
-  See "Verdict's outcome choice" below for the other half of the fix.
+  `http://domain/`, then (WO-1134) `http://www.domain/` -- but WO-1086:
+  only whichever of the apex/`www.` `dns_lookup()` itself says actually
+  resolves. Adding both unconditionally produced a real, confirmed false
+  `dns-unresolvable` VERDICT for a government whose site works fine, in
+  either direction: a subdomain host has no `www.` sibling at all
+  (streaming.easdpa.org, confirmed live 2026-09-26), and plenty of
+  ordinary districts have the opposite gap -- no bare-apex A/CNAME
+  record, only `www.` resolves (ppps.org and 22 more, same date). See
+  "Verdict's outcome choice" below for the other half of the fix. Both
+  `https://` forms are always tried before either `http://` fallback
+  (fork order, never instead of https) -- WO-1134 added the plain-http
+  `www.` fallback after a live probe of 384 `site-broken`/blocked-*
+  governments found 15 (of 212 whose domain works in some form) that
+  only load over plain http on the `www.` host specifically; the apex
+  already had this fallback.
 - **Cheap extra starting points,** reusing stage 1's functions in
   `scripts/wo282_recon.py` (`dns_lookup()`, the robots and sitemap
   readers): guessed subdomains that actually resolved (`agenda.`,
@@ -690,12 +697,34 @@ is never fetched twice no matter which fork or hop reaches it.
   its `www.` sibling, deliberately NOT any other subdomain (a guessed
   vendor subdomain is not "own host" even though it shares a parent
   domain). A block on the government's own homepage, or its own meetings/
-  agenda page on that same host, still wins, unchanged -- that is real,
-  useful evidence. Every secondary refusal is still recorded in
-  `VerdictRow.note` (`"<outcome> at <url> (secondary, not verdict)"`), and
-  the refused URL behind whichever block DOES win is on
-  `VerdictRow.blocked_url` -- see BACKLOG_DONE.md's WO-1122 entry for the
-  live before/after numbers.
+  agenda page on that same host, still wins **only if no OTHER own-host
+  form ever loaded successfully anywhere in the walk** (WO-1134, see
+  below) -- that is real, useful evidence. Every secondary refusal is
+  still recorded in `VerdictRow.note`
+  (`"<outcome> at <url> (secondary, not verdict)"`), and the refused URL
+  behind whichever block DOES win is on `VerdictRow.blocked_url` -- see
+  BACKLOG_DONE.md's WO-1122 entry for the live before/after numbers.
+- **WO-1134: a block confined to ONE own-host form never wins the verdict
+  when a DIFFERENT own-host form actually loaded.** WO-1122's own-host
+  check above only asked "did a block happen on the government's own
+  host" (apex or `www.`) -- it never asked whether some OTHER form of
+  that same host was actually readable. Measured 2026-09-26: of 384
+  governments verdicted `site-broken`, a live probe found 212 whose SAME
+  domain works in a different form -- most often the bare apex's TLS
+  certificate is broken while `www.` (or plain http) loads and gets
+  walked normally, and the apex's own refusal (still "own host") kept
+  outranking that real walk. The fix: `_WalkState.own_host_page_fetched`
+  is set the first time ANY own-host starting page (from Start's own
+  homepage variants, or a deeper own-host page Hop reaches) returns real
+  HTML, regardless of which form. A block-like outcome on the own host
+  only survives to become the verdict when this is still `False` -- i.e.
+  no own-host form ever loaded anywhere in the walk. When it IS `True`,
+  the real walk result (`found` / `no-meeting-nor-video` /
+  `meeting-without-video` / ...) wins instead, and the refused own-host
+  URL is demoted into `VerdictRow.note` the same way a secondary-host
+  refusal already was -- `VerdictRow.blocked_url` stays empty in that
+  case, same as any other non-winning block. See BACKLOG_DONE.md's
+  WO-1134 entry for the live before/after numbers.
 - **WO-1122: `site-broken` is a distinct outcome from `dns-unresolvable`**
   for when the government's own starting page's domain resolves but the
   site itself doesn't actually work -- a TLS certificate that doesn't
