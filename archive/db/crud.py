@@ -2344,6 +2344,15 @@ async def list_transcription_backlog_candidates(
     zero jobs" entry (25+ hours sampled, 8/8 candidates every single run
     were the same archive-stream.granicus.com clips failing "ffprobe
     couldn't read the media", a known origin 504).
+
+    Also carries `gov_id` (WO-1148, 2026-09-27) -- worker/main.py's
+    maybe_generate_batch_auto_jobs() feeds a candidate from here through
+    the same per-candidate logic maybe_generate_auto_job() uses, whose
+    embedded-captions ingest branch pins `gov_id` on its
+    ingest_resolution() call per CLAUDE.md's "send gov_id in every ingest
+    payload" rule -- find_auto_transcription_candidate() already returned
+    it for exactly this reason; this was the one candidate-search function
+    that didn't.
     """
     async with async_session() as session:
         pages = (
@@ -2373,6 +2382,7 @@ async def list_transcription_backlog_candidates(
                     "video_url": page.video_url,
                     "video_format": page.video_format,
                     "jurisdiction": page.jurisdiction,
+                    "gov_id": page.gov_id,
                     "date": page.date,
                     "created_at": page.created_at.isoformat(),
                 }

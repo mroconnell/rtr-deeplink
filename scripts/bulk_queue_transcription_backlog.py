@@ -59,20 +59,23 @@ would land in pending_confirmation and need a manual confirmation-email
 click before it's ever claimable, defeating the entire point of this
 script.
 
-Runs hourly via .github/workflows/bulk-queue-transcription-backlog.yml
-(added 2026-08-21, after a live run confirmed both workers genuinely idle
-between manual runs -- see BACKLOG.md's matching entry) -- also safe to
-run by hand any time the queue needs an immediate top-up rather than
-waiting for the next scheduled run. Server-side dedup
-(create_transcription_job() returns the existing job for a page instead
-of creating a duplicate) plus the too_many_active_jobs early-stop above
-are what make hourly safe: a page that already has an active job is a
-no-op here, and the run stops on its own once real headroom under
-MAX_CONCURRENT_TRANSCRIPTION_JOBS is used up, so this doesn't pile up an
-ever-growing queue between runs. Tied to the backlog catch-up window this
-second worker exists for -- revisit the cadence (or disable the workflow)
-once BACKLOG.md's backlog figure is worked down and a single worker's own
-idle-time trickle is enough again.
+Ran hourly via .github/workflows/bulk-queue-transcription-backlog.yml from
+2026-08-21 until WO-1148 (2026-09-27), when that schedule was retired --
+see that workflow file's own comment for why (GitHub's own runner IPs get
+a real 403/404/timeout from a wide swath of hosts this repo's cloud
+workers never see, which was quietly cooling down most of the backlog via
+WO-83's mechanism). The fix runs the same feasibility check from inside
+worker/main.py itself (maybe_generate_batch_auto_jobs(), gated by
+render.yaml's BULK_TOPUP_ENABLED) instead -- Render's own IP, already
+proven not blocked by these hosts. This script itself is unchanged and
+still safe to run by hand any time (e.g. a one-off inspection, or a
+catch-up run from a specific machine known not to be blocked by a
+specific host) -- server-side dedup (create_transcription_job() returns
+the existing job for a page instead of creating a duplicate) plus the
+too_many_active_jobs early-stop above make repeated runs safe: a page
+that already has an active job is a no-op here, and a run stops on its
+own once real headroom under MAX_CONCURRENT_TRANSCRIPTION_JOBS is used
+up.
 
 Usage (from the repo root, with the venv active):
     python scripts/bulk_queue_transcription_backlog.py --dry-run
