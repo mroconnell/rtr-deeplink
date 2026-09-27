@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1130: old TelVue pages re-filed from their titles [Done 2026-09-26]
+
+**What was done and why.** Before WO-1100, a whole-customer TelVue pin filed every meeting on a station under one government, and the stored `jurisdiction` was rewritten to it, so `scripts/backfill_gov_id.py` could only reproduce the pin. WO-1130 (PR #1516) makes it re-read a TelVue page's name from its stored title, through `app/platforms/telvue.py`'s `meeting_name_from_title()` (the adapter's own logic, moved out so both share it).
+
+**Result.** Run on the Archive's Render shell on 2026-09-26, by Ryan. 114 TelVue pages, 24 of them `manual_override` (left alone).
+
+| Page | Filed under before | Filed under after | Why |
+| --- | --- | --- | --- |
+| 3531, Albany Common Council 08/03/26 | Schenectady, NY | Albany, NY | The title names Albany; the Common Council is the City of Albany's |
+| 11158, "PEC Meeting 9-14-2026" | Avon, CO | Vail, CO | The title names no one; the station's pin and its adapter entry are Vail, and PEC is Vail's Planning and Environmental Commission |
+
+A second dry run afterwards reported 0 changes. The run retired the `avon-co` hub; its redirect row to `vail-co` is added to `archive/data/hub_slug_aliases.csv` here (the apply wrote it only to the Render shell's disk).
+
+**Caution.** Only 2 of 114 archived pages were misfiled this way. 19 TelVue pages stay at tier `blank`: their titles name no one and no pin covers their station.
+
 ## WO-1132: tvw.org links resolve again on production — the adapter no longer loads tvw.org when the link carries the meeting number [Done 2026-09-26]
 
 **What was tested and why.** WO-1112 found that tvw.org's Cloudflare check answers our Python client with a "Just a moment..." challenge (HTTP 403) from data-center addresses. A production resolve on 2026-09-26 confirmed readers hit it too: a new tvw.org link returned `resolve_failed` with a raw 403. The same meeting's `player.invintus.com` link resolved fine on production (video plus 680 caption segments).
