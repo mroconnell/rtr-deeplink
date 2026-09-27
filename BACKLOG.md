@@ -216,7 +216,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (222)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
+  [NEEDS-AUDIT] `bulk_queue_transcription_backlog.py`'s own feasibility…
   [NEEDS-AUDIT] `fetch.py`'s aiohttp client rejects a real government…
   [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
   [NEEDS-AUDIT] `pick.filter_candidates_to_government()`'s place-name…
@@ -2454,6 +2455,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `bulk_queue_transcription_backlog.py`'s own feasibility check may also wrongly cool down real Granicus/Cablecast candidates blocked only from GitHub's runner IPs — same root cause as the sibling tier-3 feed script's bug, not yet confirmed here specifically.**
+  - **Issue**: found 2026-09-27, alongside WO-1135 (this script's YouTube-band fix, `BACKLOG_DONE.md`). A live dry-run with `CANDIDATE_POOL_SIZE=100` returned only 10 currently-eligible candidates from a 516-page no-transcript backlog — all 10 YouTube-backed — meaning the great majority of the backlog is presently sitting in `_in_auto_transcription_cooldown()`'s escalating backoff, not just-fetched-and-skipped. The same day, the Meeting Finder conductor session proved (`evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744`) that GitHub Actions' runner IPs get a real HTTP 403 from Granicus/Cablecast that an office Mac never sees, and that this exact shape was causing `feed_tier3_auto_transcription.py` to drop real, transcribable meetings as "dead." This script's own `_check_feasible()` does a live re-resolve + `ffprobe` from the same GitHub Actions runner, and WO-83's mechanism records ANY feasibility failure — including a 403-caused one — as a real probe failure, entering the same escalating cooldown a genuinely bad candidate would.
+  - **Impact**: if confirmed, real Granicus/Cablecast (and possibly other 403-prone-from-GitHub host) candidates are being cooled down for up to 30 days over a reachability problem specific to GitHub's IPs, not a real defect in the source — the same value-destroying pattern the conductor already proved in the sibling script, just unconfirmed here.
+  - **Next action**: pull a sample of recent `record-probe-failure` reasons for Granicus/Cablecast-platform candidates and check whether any read like a connection/403 failure rather than a genuine "ffprobe couldn't read the media" content problem; if confirmed, apply the same fix direction as the sibling script's fix (in progress, Meeting Finder conductor session, 2026-09-27) here too — treat "not reachable from this runner" differently from "genuinely bad candidate," e.g. by running this script's own feasibility check from a location that can reach these hosts, or by not recording a cooldown-triggering failure for a connection-level error specifically.
+  - **Constraint**: don't change the record-probe-failure behavior for a real ffprobe content failure (corrupt file, wrong duration, etc.) — only a connection-level/403 failure is suspected of being a false negative here.
+  - **History**: this session's own live measurement, 2026-09-27; Meeting Finder conductor session's parallel finding in `feed_tier3_auto_transcription.py` (same day) is the proof-of-concept this hypothesis leans on.
 
 - **[NEEDS-AUDIT] `fetch.py`'s aiohttp client rejects a real government site's certificate chain that `curl`/browsers accept — a missing-intermediate-certificate gap, not a genuinely broken site.**
   - **Issue**: WO-1134's live check (BACKLOG_DONE.md) found 6 of 40 real `site-broken` governments (`naplescsd.org`, `vercounty.org`, `desmet.k12.sd.us`, `millercreeksd.org`, `gusd.us`, `copiah.ms`) fail with the exact same error on both the apex and `www.`: `SSLCertVerificationError: unable to get local issuer certificate`. Confirmed live: `curl` against the identical URL succeeds with a valid chain (macOS's own TLS stack fetches the missing intermediate certificate itself, a behavior called AIA chasing); Python's `ssl`/`aiohttp` does not do this and rejects the handshake outright when the server's own certificate response omits the intermediate.
