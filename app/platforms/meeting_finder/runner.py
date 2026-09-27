@@ -497,6 +497,22 @@ class _WalkState:
     # way (a guessed vendor subdomain, an off-site link) that never proved
     # this government's own site is unreachable. See `_record_outcome()`.
     block_events: List[Tuple[str, str]] = field(default_factory=list)
+    # WO-1134: set once ANY own-host starting page (apex or `www.`, https
+    # or http -- whichever forms `start.py` actually tried) was fetched
+    # and returned real HTML anywhere in this walk. WO-1122's own-host
+    # override (above) only asked "did a block happen on the own host?" --
+    # it didn't ask whether some OTHER form of the same own host was
+    # actually readable. Measured real bug (2026-09-26): of 384
+    # governments verdicted `site-broken`, 212 had the SAME domain working
+    # in a different form -- most often the bare apex's TLS certificate is
+    # broken while `www.` (or plain http) loads fine and gets walked
+    # normally, but the apex's own refusal still won the verdict because
+    # it, too, counted as "own host". This field lets `run_one()` tell
+    # "every own-host form is broken" (site-broken/blocked-* correctly
+    # wins) apart from "one own-host form is broken but another one
+    # worked" (the real walk result wins instead, with the refused form
+    # recorded in the note). See `_note_own_host_reachable()`.
+    own_host_page_fetched: bool = False
 
     def reach(self, phase: str) -> None:
         idx = _PHASE_INDEX[phase]
@@ -632,6 +648,47 @@ def _record_outcome(
     state.outcomes.append(outcome)
     if outcome in _BLOCK_LIKE_OUTCOMES and url:
         state.block_events.append((outcome, url))
+
+
+def _note_own_host_reachable(
+    state: _WalkState,
+    page: Optional[Any],
+    urls: Iterable[Optional[str]],
+    own_hosts: FrozenSet[str],
+) -> None:
+    """WO-1134: record that a real page body was fetched from one of the
+    government's own hosts (`own_hosts`, from `_own_host_set()`) -- see
+    `_WalkState.own_host_page_fetched`'s own comment for why this is a
+    separate signal from `dns_gate_passed` (DNS resolving is not the same
+    as the page actually loading) and from a block-like outcome winning
+    (that's about a REFUSAL; this is about a SUCCESS). `page` is a
+    `FetchResult`-shaped object (real attributes used: `.html`, `.status`,
+    `.outcome`) or `None`; `urls` are every URL worth checking against
+    `own_hosts` for this fetch (the requested URL and, when different, the
+    final URL after redirects) -- a no-op once already True, since one
+    confirmed own-host success is all `run_one()` ever needs to know.
+
+    Real HTML alone is not enough: a live check of 10 real
+    `no-working-site-found` control domains (BACKLOG_DONE.md's WO-1134
+    entry) turned up carrollton-ga.gov, whose plain-http form serves a
+    hosting provider's own "Flywheel - Password Required" staging page
+    (HTTP 401, real HTML) -- not the government's actual site. `fetch.py`
+    only ever raises a block-like `outcome` off a 403/challenge, so a 401/
+    409/500-shaped error page still comes back with `outcome=None` and a
+    real body. `page.status` is required to be a genuine 2xx/3xx (`fetch.py`
+    follows redirects itself, so this is always the FINAL status) on top
+    of `outcome is None`, so an auth-walled or error-status page never
+    counts as "the site is readable" -- only a page that actually
+    answered normally does."""
+    if state.own_host_page_fetched or page is None:
+        return
+    html = getattr(page, "html", None)
+    status = getattr(page, "status", None)
+    outcome = getattr(page, "outcome", None)
+    if not html or outcome is not None or status is None or not (200 <= status < 400):
+        return
+    if any(_is_own_host(u, own_hosts) for u in urls if u):
+        state.own_host_page_fetched = True
 
 
 def _youtube_leads(urls: Iterable[str], *, found_at: str) -> List[Dict[str, Any]]:
@@ -948,6 +1005,12 @@ async def _shallow_step(
         row["url"] = url
         state.leads.append(row)
     _record_outcome(state, ident.outcome, ident.final_url or url)
+    # WO-1134: this fork's own URL (an own-host homepage variant, most of
+    # the time) or its final URL after redirects actually loaded -- see
+    # `_note_own_host_reachable()`'s own docstring.
+    _note_own_host_reachable(
+        state, ident.page, [url, ident.final_url], _own_host_set(finder_input)
+    )
 
     if ident.platform and ident.account_url and ident.supported is not False:
         # WO-1076 item 3: a recognized video-platform account is real
@@ -1500,6 +1563,9 @@ async def _run_phase_loop(
             return state
         state.reach("scan")
         _record_outcome(state, page.outcome, finder_input.url)
+        _note_own_host_reachable(
+            state, page, [finder_input.url, page.final_url], _own_host_set(finder_input)
+        )
         if page.html:
             scan_result = await scan_page(page, fetcher)
             state.leads.extend(
@@ -1832,13 +1898,31 @@ async def run_one(
         # subdomain refused still reported as a flat "blocked" government.
         # A block outcome survives here only if AT LEAST ONE occurrence of
         # it happened on the government's own host (`_own_host_set()`) --
-        # `_is_own_host()`'s own comment says exactly how narrow that is.
+        # `_is_own_host()`'s own comment says exactly how narrow that is --
+        # AND (WO-1134) no own-host starting page ever loaded successfully
+        # ANYWHERE in the walk. Real measured case (2026-09-26, 384
+        # governments verdicted `site-broken`): 212 had the SAME domain
+        # working in a different form (usually the bare apex's TLS
+        # certificate is broken while `www.` loads fine, or the mirror
+        # image) -- WO-1122's own-host check alone still let the broken
+        # form's own refusal win, because it never asked whether some
+        # OTHER own-host form was actually readable. `own_host_page_fetched`
+        # (see its own comment) is that second check.
         own_hosts = _own_host_set(finder_input)
-        own_host_block_outcomes = {
-            o for (o, u) in state.block_events if _is_own_host(u, own_hosts)
-        }
+        own_host_reachable = state.own_host_page_fetched
+        own_host_block_outcomes = (
+            set()
+            if own_host_reachable
+            else {o for (o, u) in state.block_events if _is_own_host(u, own_hosts)}
+        )
+        # Every block-like event that does NOT win the verdict -- either it
+        # was never on the government's own host, or (WO-1134) it was, but
+        # some other own-host form loaded fine, so it's demoted to a note
+        # rather than the verdict.
         secondary_blocks = [
-            (o, u) for (o, u) in state.block_events if not _is_own_host(u, own_hosts)
+            (o, u)
+            for (o, u) in state.block_events
+            if not _is_own_host(u, own_hosts) or own_host_reachable
         ]
         verdict_outcomes = [
             o
@@ -1870,11 +1954,11 @@ async def run_one(
             if state.budget_exhausted
             else "nothing found"
         )
-        # WO-1122: every secondary refusal is still worth a human's time to
-        # know about (item 1: "record which URL/host was refused"), even
-        # though it never becomes the verdict -- deduplicated by
-        # (outcome, url) pair, since the same guessed subdomain can be
-        # re-fetched across a fork/hop's own retries.
+        # WO-1122/WO-1134: every secondary refusal is still worth a human's
+        # time to know about (item 1: "record which URL/host was
+        # refused"), even though it never becomes the verdict --
+        # deduplicated by (outcome, url) pair, since the same guessed
+        # subdomain can be re-fetched across a fork/hop's own retries.
         if secondary_blocks:
             secondary_text = "; ".join(
                 f"{o} at {u} (secondary, not verdict)"

@@ -1,3 +1,9 @@
+https://www.youtube.com/watch?v=C-VsHqycao0		ca:csd:4817039
+https://www.youtube.com/watch?v=HNlW4WH8jCo		us:sd:0621330
+https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
+https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
+https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
+https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
 https://belleviewfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=393
 https://bristolva.granicus.com/MediaPlayer.php?view_id=1&clip_id=527
 https://townofclarksville.granicus.com/MediaPlayer.php?view_id=1&clip_id=412
@@ -642,3 +648,38 @@ https://stampinggroundky.gov/wp-content/uploads/2024/04/50th-anniversary-of-the-
 https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
 https://jupiterislandfl.portal.civicclerk.com/event/347/media	https://townofjupiterisland.com/	us:place:1235925
 https://pub-rdco.escribemeetings.com/Meeting.aspx?Id=8376597b-a360-4119-9808-6d1d5ffc3b7f	https://www.rdco.com/your-government/regional-board/	ca:cd:5935
+https://drive.google.com/file/d/1E81f9tU1RVoFmf_1cwTT4iwZNfVssR6B/view?usp=sharing		us:sd:3703420
+https://hickorycreektx.new.swagit.com/videos/395647		us:place:4833476
+https://resources.finalsite.net/videos/t_video_mp4_480/v1788531016/palaciosisdorg/okpzcwbrbtq0yvaequsq/24August2026SpecialMeeting-20260824_225927UTC-MeetingRecording.mp4		us:sd:4834020
+https://fairmont.org/wp-content/uploads/2025/01/12-17-2024.wav		us:place:2720330
+https://melbournefl.new.swagit.com/videos/402072		us:place:1243975
+https://vvuhsd.new.swagit.com/videos/395521		us:sd:0636972
+https://drive.google.com/file/d/1oR3Ltgz9nPIe5876aKGCqOooweMZsrIq/view?usp=sharing		us:place:1857978
+https://player.vimeo.com/video/411365458		us:sd:1813080
+https://play.champds.com/falmouthschoolsme/event/135		us:sd:2305670
+https://reflect-hktv.cablecast.tv/internetchannel/show/2883?site=1		us:sd:0903539
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235		us:sd:0904320
+https://cloud.castus.tv/vod/tbnk/?page=PLAYLIST		us:place:2109856
+https://norfolkpublicschools.new.swagit.com/videos/382362		us:sd:5102670
+https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
+https://mnortonville.com/wp-content/uploads/2020/04/2020-07-07-City-Council-Audio.mp3		us:place:2748706
+https://farmington.utah.gov/wp-content/uploads/2026/09/09.15.26-General-Session-Q-SYS.mp3		us:place:4924740
+https://play.champds.com/mtprospectil/event/309		us:place:1751089
+https://drive.google.com/file/d/1RtqpkywzKDHRPp56JR6EA7Dv4W8iyL9Y/view		us:sd:0634170
+https://drive.google.com/file/d/1tRFoMo-tUgG4WwQSccUAMB-XEleNL78n/view?usp=sharing		ca:csd:4706071
+https://files.smartsites.parentsquare.com/11758/gmt20251015-005953_recording_640x360-1.mp4		us:sd:4101740
+https://drive.google.com/file/d/1M2uG4o8zn0kQ4O3bSgn6LonupR90KEfR/view?usp=sharing		us:sd:4108100
+https://drive.google.com/file/d/186ECbJ6fmMHJvovmKZoCqSkTVmsybo_y/view		us:sd:0904740
+https://vimeo.com/1227343669		us:place:2179482
+https://resources.finalsite.net/videos/t_video_mp4_480/v1747256190/jamestownk12ndus/le0mkb6qiaot24patjot/Community-facility-survey-meeting.mp4		us:sd:3800021
+https://4.files.edl.io/ac18/08/31/26/163348-57e9a1c1-f917-443d-ac22-25be7c14f5af.m4a		us:sd:5304830
+https://vimeo.com/412879424/009bd47913		us:sd:0904590
+https://dakotamediaaccess.net/CablecastPublicSite/show/10633?site=2		us:sd:3800014
+https://drive.google.com/file/d/1tWswfF4ReSUg5IYbhqEM0nybrXog8gH8/view?usp=sharing		us:sd:0635910
+https://flaglercofl.portal.civicclerk.com/event/1020/media		us:county:12035
+https://4.files.edl.io/bda2/02/11/26/215532-bc2b02fc-5140-4f49-a515-e3159c89147d.mp3		us:sd:0604290
+https://drive.google.com/file/d/1qaVcvSGDYKNpofWBZtR7oGlmMwQFF35Z/view?usp=sharing		us:sd:3904536
+https://www.whiteplainspublicschools.org/uploaded/Calendar_Directory_Files/video1171863655.mp4		us:sd:3631260
+https://player.vimeo.com/video/1025105388		us:sd:2314787
+https://drive.google.com/file/d/1y9pG1nDF_T96Y2w92AG-gdamS4vJfM7O/view		us:sd:0903540
+https://drive.google.com/file/d/1PCJiuxTZWSyiQ58BLXFyrSfvG82GW1ek/view?usp=sharing		us:sd:0905250

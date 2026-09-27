@@ -15,6 +15,35 @@ A second dry run afterwards reported 0 changes. The run retired the `avon-co` hu
 
 **Caution.** Only 2 of 114 archived pages were misfiled this way. 19 TelVue pages stay at tier `blank`: their titles name no one and no pin covers their station.
 
+## WO-1134: a block on ONE own-host form was still outranking a real walk of a working sibling form -- 32 of 40 flip to a real result [Done 2026-09-26]
+
+**What was tested and why.** WO-1122 (below) stopped a block found on a SECONDARY host (a guessed vendor subdomain, an off-site link) from winning a government's verdict. It measured its own fix against real governments and moved on. A follow-up check of 384 governments verdicted `site-broken` in a 2026-09-26 re-run found a much bigger version of the same shape: a live probe (plain `curl`, four forms per domain -- apex/`www.` times https/http) found 212 whose domain actually works in SOME form. Most of those had the bare apex's TLS certificate broken while `www.` (or plain http) loads fine -- but WO-1122's own-host check only asked "did a block happen on the government's own host," and both the apex and `www.` count as the SAME "own host." So the apex's own refusal still won, even though the government's real site, one click away, was fine.
+
+**What was changed**, both in `app/platforms/meeting_finder/`:
+1. `runner.py`: a new `_WalkState.own_host_page_fetched` flag, set the first time ANY own-host page (Start's own homepage variants, or a deeper own-host page Hop reaches) returns real HTML with a genuine 2xx/3xx status and no fetch-level outcome. A block-like outcome on the own host now only wins the verdict when this is still `False` -- i.e. no own-host form ever loaded anywhere in the walk. When it's `True`, the real walk result wins, and the refused own-host URL is demoted into `VerdictRow.note` the same way a secondary-host refusal already was.
+2. `start.py`: `www.` gets the same plain-http fallback the apex already had (`http://www.{domain}/`, tried after both https forms, per fork order -- never instead of https).
+
+**A real false positive found while building this, fixed before shipping**: `_note_own_host_reachable()`'s first version treated any real HTML body as "reachable," and a live check of the 10 `no-working-site-found` control governments below caught it immediately -- `carrollton-ga.gov`'s plain-http form serves its hosting provider's own "Flywheel - Password Required" staging page over HTTP 401. Real HTML, not the government's site. `fetch.py` only ever raises a block-like outcome off a 403 or a challenge marker, so a 401/409/500-shaped error page still comes back with `outcome=None` and a real body. Fixed by also requiring the fetch's own `status` to be a genuine 2xx/3xx and its `outcome` to be `None` -- an auth-walled or error-status page no longer counts as "the site is readable." Covered by `tests/test_wo1134_meeting_finder_own_host_reachable.py`'s `test_hosting_provider_password_wall_does_not_count_as_reachable`.
+
+**Result, live check of 50 real governments** (`--entry start`, same nps-style run as WO-1122's own check): 40 from the 212 `same-domain-works` probe rows, plus 10 from the 108 `no-working-site-found` rows as controls (JSONL before/after saved for both runs).
+
+| Result | Count of 40 `same-domain-works` governments |
+|---|---|
+| Now report a real finding instead of `site-broken`/blocked-* | 32 |
+| Still `site-broken` (see caution below -- a different, real gap, not this fix) | 7 |
+| Already a non-block result before and after | 1 |
+
+| Result | Count of 10 `no-working-site-found` controls |
+|---|---|
+| Unchanged (still correctly `site-broken`) | 8 |
+| Changed to a real finding | 2 |
+
+Both control changes were checked by hand and are real improvements, not the auth-wall false positive above: `fannindel.net` resolved a genuine YouTube-lead-only meeting (the probe's own curl check never found the right page; Meeting Finder's walk did); `seviersd.org` reached the Hop phase and found nothing meeting-shaped after a browser-headers retry got past a 403 the probe's plain curl request couldn't.
+
+**Caution.** 6 of the 7 still-`site-broken` `same-domain-works` governments (`naplescsd.org`, `vercounty.org`, `desmet.k12.sd.us`, `millercreeksd.org`, `gusd.us`, `copiah.ms`) share one exact cause, confirmed live: `SSLCertVerificationError: unable to get local issuer certificate` -- these sites' TLS handshake omits the intermediate certificate, which `curl` on this Mac tolerates (macOS's TLS stack fetches the missing intermediate itself) but Python's `ssl`/`aiohttp` does not. This is a real, separate gap in `fetch.py`'s own TLS handling, not a defect in this fix -- both apex and `www.` genuinely fail the SAME way for our client, so `own_host_page_fetched` correctly stays `False` and `site-broken` is the right verdict from THIS client's perspective. Filed as its own `BACKLOG.md` entry (missing-intermediate-certificate gap) rather than worked around here. The 7th (`blainecounty.ne.gov`) is a real domain migration -- the old domain is genuinely dead; its real site is `blainecounty.nebraska.gov` (already in `alternates`/an alternate-domain problem, not this fix).
+
+**Tests.** `tests/test_wo1134_meeting_finder_own_host_reachable.py` (6 cases: apex-broken/www-loads flips to the walk result, both-forms-broken still wins, a deeper own-host page counts too, the auth-wall/error-status false positive above, plus the two `start.py` http-`www.` fallback cases) and one updated case in `tests/test_wo1122_meeting_finder_secondary_block.py` (the shape that used to assert a block wins when one own-host form actually loaded -- see that file's own updated comment).
+
 ## WO-1132: tvw.org links resolve again on production — the adapter no longer loads tvw.org when the link carries the meeting number [Done 2026-09-26]
 
 **What was tested and why.** WO-1112 found that tvw.org's Cloudflare check answers our Python client with a "Just a moment..." challenge (HTTP 403) from data-center addresses. A production resolve on 2026-09-26 confirmed readers hit it too: a new tvw.org link returned `resolve_failed` with a raw 403. The same meeting's `player.invintus.com` link resolved fine on production (video plus 680 caption segments).

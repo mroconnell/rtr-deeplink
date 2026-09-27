@@ -204,6 +204,19 @@ async def start(
         _add(f"https://www.{domain}/")
     if apex_resolves:
         _add(f"http://{domain}/")
+    # WO-1134: the same plain-http fallback as the apex form, one line
+    # up -- both https forks are always tried first (fork order, above),
+    # so this is "after https failed for this form", never "instead of".
+    # Real, measured gap: a live probe of 384 `site-broken`/blocked-*
+    # governments (2026-09-26, see docs/MEETING_FINDER.md and
+    # BACKLOG_DONE.md's WO-1134 entry) found 212 whose domain actually
+    # works in SOME form -- of those, 15 needed plain http on the `www.`
+    # host specifically (e.g. `http://www.cityofkress.tx.citygovt.org/`),
+    # a form Start never tried before this: only the apex got an http
+    # fallback, `www.` only ever got https. 83 more needed the apex http
+    # fallback that already existed above.
+    if www_resolves:
+        _add(f"http://www.{domain}/")
 
     notes: List[str] = []
 
