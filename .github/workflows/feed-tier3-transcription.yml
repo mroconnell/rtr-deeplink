@@ -17,6 +17,19 @@
 # lines whatever they were, and dropped 148 real YouTube-backed meetings
 # as "dead" on YouTube's bot check.
 #
+# WO-1143 (2026-09-27): this runner's IP is ALSO blocked by Granicus,
+# Cablecast and Swagit -- a plain HTTP 403 on the HLS master/variant
+# playlist or a direct-file HEAD/ranged-GET, even with the correct
+# Referer/User-Agent this probe already sends, while the identical URL
+# works from an office/home connection (proven live,
+# evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744). The
+# script now leaves a line like that in the queue too (tagged
+# NOT-REACHABLE-FROM-GITHUB in tier3_auto_transcription_queue_feed_log.
+# csv) instead of recording it as dead -- 49 real meetings were dropped
+# this way between 2026-09-22 and 2026-09-27. A genuine 404/DNS failure/
+# timeout/empty playlist is unaffected and still drops as before. See
+# BACKLOG_DONE.md's WO-1143 entry.
+#
 # The queue (scripts/tier3_auto_transcription_queue.txt) is 466 pages
 # confirmed live 2026-08-16 to have a real video_url via a direct
 # re-resolve (not just an archived-URL match) -- see

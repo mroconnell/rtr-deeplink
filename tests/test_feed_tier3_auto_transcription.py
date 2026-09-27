@@ -23,7 +23,9 @@ from app.platforms.queue_probe import ProbeResult
 from scripts.feed_tier3_auto_transcription import (
     _parse_queue_line,
     _push_if_has_video,
+    blocked_from_github_reason,
     needed_youtube,
+    route_kept_line,
     select_batch,
 )
 
@@ -766,3 +768,295 @@ def test_importing_the_feed_does_not_block_youtube_for_the_drip():
         check=True,
     )
     assert out.stdout.strip() == "socket"
+
+
+# --- WO-1143: don't drop a line this runner can't reach -------------------
+#
+# Real, 2026-09-22 to 2026-09-27 (tier3_auto_transcription_queue_feed_log.
+# csv): 159 lines dropped as reject-dead for YouTube's "Sign in to confirm
+# you're not a bot" (all before WO-1064 merged 2026-09-25T18:19 UTC -- 0
+# since) and 49 for an HTTP 403 on the HLS master/variant playlist or a
+# direct-file HEAD/ranged-GET (Granicus, Cablecast, Swagit -- still
+# happening; proven live reachable from an office Mac,
+# evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744).
+
+
+def _probe(
+    *,
+    verdict="reject-dead",
+    reason="HLS variant playlist carried zero segments",
+    probe_method="hls-master+variant",
+):
+    return ProbeResult(
+        url="https://example.com",
+        platform="granicus",
+        probe_method=probe_method,
+        duration_seconds=None,
+        date=None,
+        size_bytes=None,
+        verdict=verdict,
+        reason=reason,
+        probe_seconds=0.05,
+        over_nine_minutes=False,
+    )
+
+
+def test_blocked_from_github_reason_matches_hls_master_403():
+    probe = _probe(
+        reason="HLS master playlist returned HTTP 403",
+        probe_method="hls-master+variant",
+    )
+    assert blocked_from_github_reason(probe) == "hls-403"
+
+
+def test_blocked_from_github_reason_matches_hls_variant_403():
+    probe = _probe(
+        reason="HLS variant playlist returned HTTP 403",
+        probe_method="hls-master+variant",
+    )
+    assert blocked_from_github_reason(probe) == "hls-403"
+
+
+def test_blocked_from_github_reason_matches_direct_file_head_403():
+    probe = _probe(
+        reason="HEAD/ranged-GET on the media file returned HTTP 403",
+        probe_method="head+ffprobe",
+    )
+    assert blocked_from_github_reason(probe) == "hls-403"
+
+
+def test_blocked_from_github_reason_matches_direct_file_ranged_get_403():
+    probe = _probe(
+        reason="HEAD/ranged-GET on the media file returned HTTP 403",
+        probe_method="ranged-get+ffprobe",
+    )
+    assert blocked_from_github_reason(probe) == "hls-403"
+
+
+def test_blocked_from_github_reason_matches_youtube_bot_wall_text():
+    """The guard normally catches this before yt-dlp ever produces this
+    exact message (see needed_youtube()) -- this is the second net for a
+    request that reached the network anyway."""
+    probe = _probe(
+        reason="yt-dlp: ERROR: [youtube] abc123: Sign in to confirm you're not a bot",
+        probe_method="yt-dlp-metadata",
+    )
+    assert blocked_from_github_reason(probe) == "youtube-bot-wall"
+
+
+def test_blocked_from_github_reason_leaves_a_genuine_404_alone():
+    """A real 404 is a real dead link -- must keep dropping exactly as
+    before, not get swept into the "kept" bucket."""
+    probe = _probe(
+        reason="HLS master playlist returned HTTP 404",
+        probe_method="hls-master+variant",
+    )
+    assert blocked_from_github_reason(probe) is None
+
+
+def test_blocked_from_github_reason_leaves_a_genuine_dns_or_timeout_alone():
+    probe = _probe(
+        reason="HLS master playlist was unreachable (timeout or connection error)",
+        probe_method="hls-master+variant",
+    )
+    assert blocked_from_github_reason(probe) is None
+
+
+def test_blocked_from_github_reason_leaves_zero_segments_alone():
+    probe = _probe(reason="HLS variant playlist carried zero segments")
+    assert blocked_from_github_reason(probe) is None
+
+
+def test_blocked_from_github_reason_requires_the_right_probe_method():
+    """A coincidental "403" substring in an unrelated message (e.g. a
+    resolve-time error that happens to quote a status code) must not
+    match just because the word is present -- only the exact HLS/
+    direct-file probe shapes do."""
+    probe = _probe(
+        reason="resolve raised: something mentioning code 403 in passing",
+        probe_method="resolve",
+    )
+    assert blocked_from_github_reason(probe) is None
+
+
+def test_blocked_from_github_reason_ignores_non_dead_verdicts():
+    probe = _probe(
+        verdict="reject-short",
+        reason="duration 30.0s is below the 60s meeting-plausibility floor",
+    )
+    assert blocked_from_github_reason(probe) is None
+
+
+def test_route_kept_line_sorts_youtube_from_not_reachable():
+    assert (
+        route_kept_line(
+            "[NOT-REACHABLE-FROM-GITHUB] youtube-bot-wall: yt-dlp: ... (https://x)"
+        )
+        == "youtube"
+    )
+    assert (
+        route_kept_line(
+            "[NOT-REACHABLE-FROM-GITHUB] hls-403: HLS master playlist "
+            "returned HTTP 403 (https://x)"
+        )
+        == "not-reachable"
+    )
+    assert route_kept_line("[SKIP] reject-dead: ... (https://x)") is None
+    assert route_kept_line("[OK] https://x -> /m/y") is None
+
+
+async def test_push_if_has_video_keeps_a_line_403d_only_from_this_runner(
+    monkeypatch,
+):
+    """WO-1143: Granicus/Cablecast/Swagit refuse GitHub's IP ranges with a
+    plain HTTP 403 even with the correct headers this probe already
+    sends -- proven live reachable from an office connection
+    (evansville.granicus.com, BACKLOG_DONE.md). Must not be dropped."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744"
+    result = _FakeResolvedMeeting(
+        video_url="https://evansville.granicus.com/videos/8744.m3u8", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "granicus")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    async def _blocked_probe(
+        url, *, video_url=None, source_page_url=None, platform=None, video_format=None
+    ):
+        return _probe(
+            reason="HLS master playlist returned HTTP 403",
+            probe_method="hls-master+variant",
+        )
+
+    monkeypatch.setattr(mod, "probe_queue_entry", _blocked_probe)
+
+    ingest_called = False
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        nonlocal ingest_called
+        ingest_called = True
+        return {"url": "/m/should-not-happen"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert not ingest_called
+    assert outcome.startswith("[NOT-REACHABLE-FROM-GITHUB] hls-403")
+    assert route_kept_line(outcome) == "not-reachable"
+
+
+async def test_push_if_has_video_still_drops_a_genuinely_dead_404(monkeypatch):
+    """Regression: this WO must not soften a real dead link into
+    "kept" -- a 404 (removed recording) keeps dropping exactly as
+    before."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://example.granicus.com/player/clip/404404"
+    result = _FakeResolvedMeeting(
+        video_url="https://example.com/gone.m3u8", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "granicus")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    async def _dead_probe(
+        url, *, video_url=None, source_page_url=None, platform=None, video_format=None
+    ):
+        return _probe(
+            reason="HLS master playlist returned HTTP 404",
+            probe_method="hls-master+variant",
+        )
+
+    monkeypatch.setattr(mod, "probe_queue_entry", _dead_probe)
+
+    ingest_called = False
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        nonlocal ingest_called
+        ingest_called = True
+        return {"url": "/m/should-not-happen"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert not ingest_called
+    assert outcome.startswith("[SKIP] reject-dead")
+    assert route_kept_line(outcome) is None
+
+
+async def test_push_if_has_video_keeps_a_youtube_bot_wall_that_reached_the_network(
+    monkeypatch,
+):
+    """Defense-in-depth net: if the literal "Sign in to confirm you're not
+    a bot" text ever reaches this probe (the guard didn't catch it
+    first), it must still be kept, not dropped as reject-dead."""
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://newtriertwpil.portal.civicclerk.com/event/233/media"
+    result = _FakeResolvedMeeting(
+        video_url="https://www.youtube.com/watch?v=abc12345678", source_url=url
+    )
+
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "civicclerk")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    async def _bot_wall_probe(
+        url, *, video_url=None, source_page_url=None, platform=None, video_format=None
+    ):
+        return _probe(
+            reason="yt-dlp: ERROR: [youtube] abc12345678: Sign in to confirm "
+            "you're not a bot",
+            probe_method="yt-dlp-metadata",
+        )
+
+    monkeypatch.setattr(mod, "probe_queue_entry", _bot_wall_probe)
+
+    ingest_called = False
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        nonlocal ingest_called
+        ingest_called = True
+        return {"url": "/m/should-not-happen"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+
+    outcome = await _push_if_has_video(session=None, url=url, source_url_override=None)
+
+    assert not ingest_called
+    assert outcome.startswith("[NOT-REACHABLE-FROM-GITHUB] youtube-bot-wall")
+    assert route_kept_line(outcome) == "youtube"
+
+
+def test_a_kept_403_line_goes_to_the_end_not_the_front_of_the_next_batch():
+    """WO-1143: main() appends a kept NOT-REACHABLE-FROM-GITHUB line to
+    the end of `remainder`, the same shape as no_owner_lines/
+    youtube_lines -- so the next run's batch is filled from fresh,
+    not-yet-tried lines first, and this line only comes up again once
+    everything ahead of it has had a turn. It never blocks the 12 lines
+    behind it (the queue's own "head")."""
+    fresh_lines = [f"https://x{i}.granicus.com/player/clip/{i}" for i in range(20)]
+    kept_403_line = (
+        "https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744"
+    )
+
+    # Mirrors main()'s own `remainder = remainder + not_reachable_lines`.
+    remainder_after_one_run = fresh_lines + [kept_403_line]
+
+    batch, remainder = select_batch(remainder_after_one_run, lambda url: False, size=12)
+
+    assert kept_403_line not in batch
+    assert batch == fresh_lines[:12]
+    assert remainder == fresh_lines[12:] + [kept_403_line]
