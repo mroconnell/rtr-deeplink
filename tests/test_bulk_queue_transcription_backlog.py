@@ -440,3 +440,172 @@ async def test_check_feasible_never_falls_back_to_a_youtube_video_url(monkeypatc
     feasible = await mod._check_feasible(page)
     assert feasible["ok"] is False
     assert "Could not find an event ID" in feasible["reason"]
+
+
+# --- _run_batch() (WO-1135) --------------------------------------------
+
+
+async def test_run_batch_skips_past_a_dense_youtube_band_to_a_real_candidate(
+    monkeypatch,
+):
+    # The exact live-measured incident this WO fixes: a contiguous run of
+    # YouTube-backed candidates at the front of the fetched pool must not
+    # zero out the whole run -- a real, feasible candidate further back in
+    # the SAME pool should still get a job created.
+    pages = [{"slug": f"youtube-{i}"} for i in range(5)] + [{"slug": "real-candidate"}]
+
+    async def fake_get_candidates(session, limit):
+        assert limit == 100
+        return pages
+
+    async def fake_process_candidate(session, page, *, requester_email, dry_run):
+        if page["slug"] == "real-candidate":
+            return mod._OUTCOME_CREATED
+        return mod._OUTCOME_SKIPPED
+
+    monkeypatch.setattr(mod, "_get_candidates", fake_get_candidates)
+    monkeypatch.setattr(mod, "_process_candidate", fake_process_candidate)
+
+    result = await mod._run_batch(
+        session="fake-session",
+        pool_size=100,
+        job_limit=8,
+        requester_email="auto@example.com",
+        dry_run=False,
+    )
+
+    assert result == {
+        "created": 1,
+        "skipped": 5,
+        "capped": False,
+        "candidates_seen": 6,
+    }
+
+
+async def test_run_batch_stops_once_job_limit_reached_even_with_more_pool_left(
+    monkeypatch,
+):
+    pages = [{"slug": f"good-{i}"} for i in range(10)]
+
+    async def fake_get_candidates(session, limit):
+        return pages
+
+    async def fake_process_candidate(session, page, *, requester_email, dry_run):
+        return mod._OUTCOME_CREATED
+
+    monkeypatch.setattr(mod, "_get_candidates", fake_get_candidates)
+    monkeypatch.setattr(mod, "_process_candidate", fake_process_candidate)
+
+    result = await mod._run_batch(
+        session="fake-session",
+        pool_size=100,
+        job_limit=3,
+        requester_email="auto@example.com",
+        dry_run=False,
+    )
+
+    # Exactly job_limit jobs created, even though the pool held 10 -- the
+    # remaining 7 are left for the next run rather than wastefully probed.
+    assert result == {
+        "created": 3,
+        "skipped": 0,
+        "capped": False,
+        "candidates_seen": 3,
+    }
+
+
+async def test_run_batch_exhausts_pool_without_reaching_job_limit(monkeypatch):
+    # All candidates infeasible (e.g. an entire pool of YouTube) -- the
+    # run must finish cleanly at candidates_seen == len(pool), not hang
+    # or error, and created stays 0.
+    pages = [{"slug": f"youtube-{i}"} for i in range(4)]
+
+    async def fake_get_candidates(session, limit):
+        return pages
+
+    async def fake_process_candidate(session, page, *, requester_email, dry_run):
+        return mod._OUTCOME_SKIPPED
+
+    monkeypatch.setattr(mod, "_get_candidates", fake_get_candidates)
+    monkeypatch.setattr(mod, "_process_candidate", fake_process_candidate)
+
+    result = await mod._run_batch(
+        session="fake-session",
+        pool_size=100,
+        job_limit=8,
+        requester_email="auto@example.com",
+        dry_run=False,
+    )
+
+    assert result == {
+        "created": 0,
+        "skipped": 4,
+        "capped": False,
+        "candidates_seen": 4,
+    }
+
+
+async def test_run_batch_stops_early_on_too_many_active_jobs(monkeypatch):
+    pages = [
+        {"slug": "good-1"},
+        {"slug": "good-2"},
+        {"slug": "would-be-capped"},
+        {"slug": "never-reached"},
+    ]
+    outcomes = {
+        "good-1": mod._OUTCOME_CREATED,
+        "good-2": mod._OUTCOME_CREATED,
+        "would-be-capped": mod._OUTCOME_CAPPED,
+        "never-reached": mod._OUTCOME_CREATED,
+    }
+
+    async def fake_get_candidates(session, limit):
+        return pages
+
+    async def fake_process_candidate(session, page, *, requester_email, dry_run):
+        return outcomes[page["slug"]]
+
+    monkeypatch.setattr(mod, "_get_candidates", fake_get_candidates)
+    monkeypatch.setattr(mod, "_process_candidate", fake_process_candidate)
+
+    result = await mod._run_batch(
+        session="fake-session",
+        pool_size=100,
+        job_limit=8,
+        requester_email="auto@example.com",
+        dry_run=False,
+    )
+
+    # Stops the moment a CAPPED outcome is seen, never reaching the 4th
+    # (which would have been created if the run had continued).
+    assert result == {
+        "created": 2,
+        "skipped": 0,
+        "capped": True,
+        "candidates_seen": 3,
+    }
+
+
+async def test_run_batch_empty_backlog_is_a_clean_no_op(monkeypatch):
+    async def fake_get_candidates(session, limit):
+        return []
+
+    called = _Recorder()
+    monkeypatch.setattr(mod, "_get_candidates", fake_get_candidates)
+    monkeypatch.setattr(mod, "_process_candidate", called)
+
+    result = await mod._run_batch(
+        session="fake-session",
+        pool_size=100,
+        job_limit=8,
+        requester_email="auto@example.com",
+        dry_run=False,
+    )
+
+    assert result == {
+        "created": 0,
+        "skipped": 0,
+        "capped": False,
+        "candidates_seen": 0,
+    }
+    assert called.calls == []

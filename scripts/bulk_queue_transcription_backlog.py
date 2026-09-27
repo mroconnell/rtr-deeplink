@@ -107,6 +107,31 @@ see AUTO_TRANSCRIPTION_BASE_COOLDOWN) actually apply, so each hourly run
 now grinds a little further into a dense bad-host band instead of
 grinding the same 8 candidates in place. Not done in --dry-run mode,
 consistent with --dry-run creating no other rows either.
+
+WO-1135 (2026-09-27): WO-83's cooldown fix helps a run grind PAST a bad
+band, one candidate at a time, but it doesn't help within a single run --
+this script used to fetch exactly `--limit` (default BATCH_SIZE=8)
+candidates and stop, so a contiguous band at the front of
+list_transcription_backlog_candidates()'s oldest-archived-first ordering
+could still zero out an entire hourly run by itself. Confirmed live: five
+consecutive hourly runs (2026-09-26 17:15 through 2026-09-27 08:17 UTC)
+each fetched exactly 8 candidates, found all 8 YouTube-backed (this
+script's own cheap pre-filter in _check_feasible() -- YouTube needs
+scripts/fetch_youtube_transcripts.py's real-caption path, not Whisper),
+and created zero jobs -- while both cloud workers sat at active_jobs=0
+(GET /internal/transcription-queue-stats) despite a healthy, actively-
+growing tier-3 discovery queue behind them (scripts/
+tier3_auto_transcription_queue.txt, 676 lines at the time). Measured
+scale: 128 of 476 no-transcript pages (~27%) are YouTube-backed, dense
+enough at the old end of the ordering to fill an 8-candidate fetch
+completely, repeatedly. Fix: fetch a much larger pool
+(CANDIDATE_POOL_SIZE) than the number of jobs this run is allowed to
+create (--limit/BATCH_SIZE), and stop once `--limit` real jobs have been
+created (or the pool runs out, or too_many_active_jobs caps the run) --
+never simply once the pool has been looked at. One run can now skip past
+an entire skippable band in one pass instead of grinding through it a
+handful of candidates per hour. See _run_batch()'s own docstring for the
+loop this replaced.
 """
 
 import argparse
@@ -160,6 +185,16 @@ REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH
 # Deliberately well under archive/db/crud.py's global
 # MAX_CONCURRENT_TRANSCRIPTION_JOBS=15 -- see module docstring for why.
 BATCH_SIZE = 8
+
+# How many candidates to FETCH and search through, independent of
+# BATCH_SIZE/--limit (how many jobs a run is allowed to CREATE) -- see
+# WO-1135's module-docstring entry for the live-measured incident this
+# fixes. Large enough to clear a dense skippable band (128 of 476
+# no-transcript pages were YouTube-backed when measured) in one pass,
+# without being so large that one run risks unbounded per-candidate
+# feasibility-check cost (a real re-resolve + ffprobe call for anything
+# that isn't a cheap YouTube-format skip).
+CANDIDATE_POOL_SIZE = 100
 
 # Same retry policy as scripts/transcribe_backlog_locally.py's
 # _request_json() -- see that function's own comment for the full
@@ -498,6 +533,84 @@ async def _process_candidate(
     return _OUTCOME_CREATED
 
 
+async def _run_batch(
+    session: aiohttp.ClientSession,
+    *,
+    pool_size: int,
+    job_limit: int,
+    requester_email: str,
+    dry_run: bool,
+) -> dict:
+    """Fetches up to `pool_size` backlog candidates -- deliberately larger
+    than `job_limit`, see CANDIDATE_POOL_SIZE's own comment -- and
+    processes them in order, stopping once `job_limit` real jobs have been
+    created, or the pool runs out, or a too_many_active_jobs response caps
+    the run early. Never simply stops once `pool_size` candidates have
+    been looked at: that was the previous, un-split version of this loop,
+    and it let a dense skippable band (e.g. all YouTube-backed) silently
+    zero out an entire run before WO-1135. Split out of main() for the
+    same reason _process_candidate() already was -- testable without a
+    real aiohttp session, env vars, or a running Archive; see
+    tests/test_bulk_queue_transcription_backlog.py.
+
+    Returns {"created": int, "skipped": int, "capped": bool,
+    "candidates_seen": int} -- "candidates_seen" can be less than the
+    pool's own size (job_limit reached or capped early) or more than
+    job_limit (skips don't count against it).
+    """
+    pages = await _get_candidates(session, pool_size)
+    if not pages:
+        logger.info("Transcription backlog is empty -- nothing to do.")
+        return {"created": 0, "skipped": 0, "capped": False, "candidates_seen": 0}
+
+    logger.info(
+        "%s%d candidate meeting(s) fetched from %s (job_limit=%d)",
+        "[DRY RUN] " if dry_run else "",
+        len(pages),
+        _base_url(),
+        job_limit,
+    )
+
+    created = skipped = 0
+    capped = False
+    candidates_seen = 0
+    for page in pages:
+        if created >= job_limit:
+            break
+        candidates_seen += 1
+        slug = page.get("slug", "?")
+        logger.info("Candidate %d/%d: %s", candidates_seen, len(pages), slug)
+
+        outcome = await _process_candidate(
+            session, page, requester_email=requester_email, dry_run=dry_run
+        )
+
+        if outcome == _OUTCOME_CREATED:
+            created += 1
+            logger.info(
+                "Progress so far: %d created, %d skipped (of %d candidates seen)",
+                created,
+                skipped,
+                candidates_seen,
+            )
+        elif outcome == _OUTCOME_CAPPED:
+            capped = True
+            break
+        elif outcome == _OUTCOME_SKIPPED:
+            skipped += 1
+        # _OUTCOME_CREATE_FAILED: matches the pre-refactor behavior of not
+        # counting a create-job HTTP failure against either counter -- a
+        # real error already logged by _process_candidate, not a
+        # feasibility skip.
+
+    return {
+        "created": created,
+        "skipped": skipped,
+        "capped": capped,
+        "candidates_seen": candidates_seen,
+    }
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -546,7 +659,13 @@ async def main() -> None:
 
     async with aiohttp.ClientSession() as session:
         try:
-            pages = await _get_candidates(session, args.limit)
+            batch = await _run_batch(
+                session,
+                pool_size=CANDIDATE_POOL_SIZE,
+                job_limit=args.limit,
+                requester_email=requester_email,
+                dry_run=args.dry_run,
+            )
         except Exception as e:
             logger.error(
                 "Could not fetch the candidate list from %s, even after retrying: %s "
@@ -556,50 +675,12 @@ async def main() -> None:
             )
             sys.exit(1)
 
-        if not pages:
-            logger.info("Transcription backlog is empty -- nothing to do.")
-            return
-
         logger.info(
-            "%s%d candidate meeting(s) from %s",
-            "[DRY RUN] " if args.dry_run else "",
-            len(pages),
-            _base_url(),
-        )
-
-        created = skipped = capped = 0
-        for i, page in enumerate(pages):
-            slug = page.get("slug", "?")
-            logger.info("Candidate %d/%d: %s", i + 1, len(pages), slug)
-
-            outcome = await _process_candidate(
-                session, page, requester_email=requester_email, dry_run=args.dry_run
-            )
-
-            if outcome == _OUTCOME_CREATED:
-                created += 1
-                logger.info(
-                    "Progress so far: %d created, %d skipped (of %d candidates)",
-                    created,
-                    skipped,
-                    len(pages),
-                )
-            elif outcome == _OUTCOME_CAPPED:
-                capped += 1
-                break
-            elif outcome == _OUTCOME_SKIPPED:
-                skipped += 1
-            # _OUTCOME_CREATE_FAILED: matches the pre-refactor behavior of
-            # not counting a create-job HTTP failure against either
-            # counter -- it's a real error already logged by
-            # _process_candidate, not a feasibility skip.
-
-        logger.info(
-            "RUN COMPLETE: %d created, %d skipped, capped=%s (of %d candidates).",
-            created,
-            skipped,
-            bool(capped),
-            len(pages),
+            "RUN COMPLETE: %d created, %d skipped, capped=%s (of %d candidates seen).",
+            batch["created"],
+            batch["skipped"],
+            batch["capped"],
+            batch["candidates_seen"],
         )
 
 
