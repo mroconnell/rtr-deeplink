@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
-https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
-https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
-https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
-https://livermore.granicus.com/MediaPlayer.php?view_id=1&clip_id=710
-https://lyonco.granicus.com/MediaPlayer.php?view_id=1&clip_id=502
-https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
-https://palmertwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=290
-https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
-https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241
-https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
-https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
 https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
 https://cityofsouthgate.granicus.com/MediaPlayer.php?view_id=1&clip_id=706
 https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
@@ -834,3 +822,12 @@ https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2		u
 http://108.20.229.83/internetchannel/show/3534?site=3		us:sd:2509930
 https://townhallstreams.com/stream.php?location_id=155&id=76193		us:cousub:3301117780
 https://drive.google.com/uc?id=1o8TbdZwQRwTEOViifgH5HiO_wPcvPK6K&export=download		us:place:3072625
+https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
+https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
+https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
+https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
+https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
+https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
+https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241
+https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
+https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
