@@ -158,10 +158,36 @@ async def test_own_homepage_block_still_wins(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_own_meetings_page_block_still_wins(monkeypatch):
-    """A block on the government's own meetings/agenda page -- still the
-    same registrable host as the input, just a different path/fork --
-    must also still win. `www.` counts as the same "own host" as the bare
-    apex."""
+    """A block on the government's own host wins when EVERY own-host form
+    Start tried was refused -- `www.` counts as the same "own host" as the
+    bare apex. Both forms blocked here (unlike the WO-1134 test below,
+    where one own-host form succeeds), so there is no real walk result to
+    prefer over the block."""
+    fi = FinderInput(url="https://example.gov/", entry="start")
+    points = ["https://example.gov/", "https://www.example.gov/"]
+
+    def identify_by_url(url):
+        return _identify_with_outcome(url, "blocked-waf-akamai")
+
+    _fake_run(monkeypatch, points, identify_by_url)
+
+    row = await runner.run_one(fi, run_id="wo1122-c", max_forks=3, max_hops=0)
+
+    assert row.outcome == "blocked-waf-akamai"
+    assert row.blocked_url in points
+
+
+@pytest.mark.asyncio
+async def test_own_host_block_demoted_when_another_own_host_form_worked(monkeypatch):
+    """WO-1134: this is the shape that used to be `test_own_meetings_page_
+    block_still_wins` above, before the fix -- the apex loads fine
+    (nothing meeting-shaped found) and `www.` is blocked. Both are the
+    government's own host per `_own_host_set()`, so WO-1122's own-host
+    check alone let the `www.` block win. That's the measured bug
+    (BACKLOG_DONE.md's WO-1134 entry, 212 of 384 `site-broken`
+    governments had a working sibling form): the government's site IS
+    readable (via the apex), so the real walk result must win, with the
+    `www.` refusal demoted to the note."""
     fi = FinderInput(url="https://example.gov/", entry="start")
     points = ["https://example.gov/", "https://www.example.gov/"]
 
@@ -172,10 +198,12 @@ async def test_own_meetings_page_block_still_wins(monkeypatch):
 
     _fake_run(monkeypatch, points, identify_by_url)
 
-    row = await runner.run_one(fi, run_id="wo1122-c", max_forks=3, max_hops=0)
+    row = await runner.run_one(fi, run_id="wo1134-a", max_forks=3, max_hops=0)
 
-    assert row.outcome == "blocked-waf-akamai"
-    assert row.blocked_url == "https://www.example.gov/"
+    assert row.outcome == OUTCOME_NO_MEETING_NOR_VIDEO
+    assert row.blocked_url == ""
+    assert "www.example.gov" in (row.note or "")
+    assert "secondary" in (row.note or "")
 
 
 # --- Rule 4: site-broken classification -----------------------------------
