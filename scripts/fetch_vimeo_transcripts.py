@@ -120,6 +120,35 @@ def classify_vimeo_block(log_messages: List[str]) -> bool:
     return any(_CHALLENGE_LOG_SUBSTRING in (msg or "").lower() for msg in log_messages)
 
 
+# Both routes must positively agree before a page is marked "no captions"
+# for good (WO-1147 review, 2026-09-27): the plain fetch loaded the player
+# page and found no text tracks, AND the headless browser loaded it and
+# found no <track>. Anything else -- no browser, a timeout, an exception,
+# a challenge on either route -- means we could not look, so the page is
+# retried later instead of being settled wrongly. Strings are the real
+# `_log_caption_fallback()` reasons in app/platforms/vimeo.py.
+_PLAIN_ROUTE_NO_TRACKS = "plain-fetch route: no window.playerConfig text_tracks found"
+_HEADLESS_ROUTE_NO_TRACK = "no <track> element found on player page"
+_COULD_NOT_LOOK = (
+    "challenge",
+    "no headless browser available",
+    "timed out",
+    "raised",
+    "returned http",
+    "body was empty",
+)
+
+
+def confirmed_no_captions(log_messages: List[str]) -> bool:
+    """True only when both caption routes looked and found nothing."""
+    low = [(m or "").lower() for m in log_messages]
+    if any(bad in m for m in low for bad in _COULD_NOT_LOOK):
+        return False
+    return any(_PLAIN_ROUTE_NO_TRACKS.lower() in m for m in low) and any(
+        _HEADLESS_ROUTE_NO_TRACK.lower() in m for m in low
+    )
+
+
 class _CapturingHandler(logging.Handler):
     def __init__(self):
         super().__init__(level=logging.WARNING)
@@ -224,16 +253,19 @@ async def process_one(
     # captions" outcome (resolve_video_id() sets its own _NO_CAPTIONS_
     # WARNING onto transcript_warnings in exactly this case; checked via
     # membership rather than re-deriving the string).
-    confirmed_no_captions = _NO_CAPTIONS_WARNING in (resolved.transcript_warnings or [])
-    if not confirmed_no_captions:
+    no_captions = _NO_CAPTIONS_WARNING in (
+        resolved.transcript_warnings or []
+    ) and confirmed_no_captions(handler.messages)
+    if not no_captions:
         # Some other warning path (e.g. the domain-restricted-embed case)
         # -- not a confirmed no-captions outcome, so don't record a
         # permanent marker for it.
         return {
             "slug": slug,
             "status": "failed",
-            "detail": f"no segments and not a confirmed no-captions outcome: "
-            f"{resolved.transcript_warnings!r}",
+            "detail": f"no segments and not a confirmed no-captions outcome "
+            f"(retried later): {resolved.transcript_warnings!r}; "
+            f"routes: {handler.messages!r}",
         }
 
     if dry_run:

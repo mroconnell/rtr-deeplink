@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from fetch_vimeo_transcripts import (  # noqa: E402
     classify_vimeo_block,
+    confirmed_no_captions,
     process_one,
 )
 
@@ -34,6 +35,22 @@ _REAL_CHALLENGE_MESSAGE = (
     "vimeo captions fallback: plain-fetch route: player page returned a "
     "challenge (HTTP 401) (video 1226646429)"
 )
+
+
+def _log_both_routes_found_nothing():
+    import logging
+
+    log = logging.getLogger("rtr_deeplink.vimeo")
+    log.warning(
+        "vimeo captions fallback: plain-fetch route: no window.playerConfig "
+        "text_tracks found (video 1212025580)"
+    )
+    log.warning(
+        "vimeo captions fallback: no <track> element found on player page "
+        "(video 1212025580)"
+    )
+
+
 _REAL_NON_CHALLENGE_MESSAGES = [
     "vimeo captions fallback: no <track> element found on player page (video 1212025580)",
     "vimeo captions fallback: caption file parsed to zero cues (video 1212025580)",
@@ -128,6 +145,7 @@ async def test_process_one_ingests_and_promotes_real_segments(monkeypatch):
     )
 
     async def fake_resolve_video_id(video_id, *, privacy_hash=None, source_url=None):
+        _log_both_routes_found_nothing()
         return resolved
 
     monkeypatch.setattr(
@@ -188,6 +206,7 @@ async def test_process_one_records_permanent_marker_when_no_captions_confirmed(
     )
 
     async def fake_resolve_video_id(video_id, *, privacy_hash=None, source_url=None):
+        _log_both_routes_found_nothing()
         return resolved
 
     monkeypatch.setattr(
@@ -277,6 +296,7 @@ async def test_process_one_dry_run_ingest_case_makes_no_network_call(monkeypatch
     )
 
     async def fake_resolve_video_id(video_id, *, privacy_hash=None, source_url=None):
+        _log_both_routes_found_nothing()
         return resolved
 
     monkeypatch.setattr(
@@ -308,6 +328,7 @@ async def test_process_one_dry_run_no_captions_case_makes_no_network_call(monkey
     )
 
     async def fake_resolve_video_id(video_id, *, privacy_hash=None, source_url=None):
+        _log_both_routes_found_nothing()
         return resolved
 
     monkeypatch.setattr(
@@ -322,3 +343,22 @@ async def test_process_one_dry_run_no_captions_case_makes_no_network_call(monkey
     assert result["status"] == "skipped"
     assert "[dry-run] would record permanent no-captions marker" in result["detail"]
     assert calls == []
+
+
+def test_confirmed_no_captions_needs_both_routes():
+    plain = _REAL_NON_CHALLENGE_MESSAGES[3]
+    headless = _REAL_NON_CHALLENGE_MESSAGES[0]
+    assert confirmed_no_captions([plain, headless])
+    assert not confirmed_no_captions([plain])
+    assert not confirmed_no_captions([headless])
+    assert not confirmed_no_captions([])
+
+
+def test_confirmed_no_captions_false_when_a_route_could_not_look():
+    plain = _REAL_NON_CHALLENGE_MESSAGES[3]
+    headless = _REAL_NON_CHALLENGE_MESSAGES[0]
+    no_browser = _REAL_NON_CHALLENGE_MESSAGES[2]
+    timed_out = "vimeo captions fallback: headless browser fetch timed out (video 1)"
+    assert not confirmed_no_captions([plain, no_browser])
+    assert not confirmed_no_captions([plain, timed_out])
+    assert not confirmed_no_captions([_REAL_CHALLENGE_MESSAGE, headless])
