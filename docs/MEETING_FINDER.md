@@ -294,9 +294,22 @@ audit mode (see rtr-business `research/LINK_FIRST_MATCHING.md`).
 `start(domain_or_url, fetcher, *, alternates=None, guess_subdomains=True)
 -> StartResult(starting_points, outcome, note)`.
 
-- **DNS gate first.** If neither the domain nor `www.` resolves, stop with
-  `dns-unresolvable`, then try the research row's alternate domains
-  (passed in via `alternates` -- Start itself never reads rtr-business).
+- **DNS gate first.** If neither the domain nor `www.` resolves, try the
+  research row's alternate domains, in order, and continue on the first
+  whose homepage resolves (Start itself never reads rtr-business). Since
+  WO-1142 the caller really can hand them over: `FinderInput.alternates`,
+  fed from the CLI's `alternates` column (semicolon-separated), is passed
+  to `start()` by `runner.py`. Before WO-1142 nothing ever passed them, so
+  134 small governments whose main domain is a lapsed .gov were reported
+  `dns-unresolvable` with a working domain on file (rtr-business
+  `research/domain_fill_2026-09-26/dead_domains/`, 2026-09-27).
+- **Guessed hosts as a last resort (WO-1142).** If no candidate has a
+  live homepage but a guessed subdomain or vendor-account label resolved
+  for one of them, Start keeps those hosts as the only starting points
+  (no robots.txt or sitemap read against the dead homepage). They were
+  already computed by `dns_lookup()` on every call and used to be thrown
+  away. They are guesses, so identity is Verdict's job (audit mode).
+  Only when nothing resolves is the outcome `dns-unresolvable`.
 - **Homepage:** `https://domain/`, then `https://www.domain/`, then
   `http://domain/`, then (WO-1134) `http://www.domain/` -- but WO-1086:
   only whichever of the apex/`www.` `dns_lookup()` itself says actually

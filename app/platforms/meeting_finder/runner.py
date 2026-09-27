@@ -1599,7 +1599,9 @@ async def _run_phase_loop(
             first_hops_budget = max_hops
         else:
             try:
-                start_result = await run_start(finder_input.url, fetcher)
+                start_result = await run_start(
+                    finder_input.url, fetcher, alternates=finder_input.alternates
+                )
             except BudgetExceeded:
                 state.budget_exhausted = True
                 return state

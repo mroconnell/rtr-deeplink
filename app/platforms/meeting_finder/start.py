@@ -14,10 +14,13 @@ own docstring already gives for importing `wo282_recon.py`'s Wayback
 helpers directly.
 
 **DNS gate first** (docs/MEETING_FINDER.md): if neither the apex domain
-nor `www.` resolves, the outcome is `dns-unresolvable` -- unless one of
-`alternates` (the research row's own alternate domains, passed in by the
-caller; Start itself never reads rtr-business) resolves instead, in which
-case Start continues against that domain.
+nor `www.` resolves, Start tries each of `alternates` (the research row's
+own alternate domains, passed in by the caller as `FinderInput.alternates`
+since WO-1142; Start itself never reads rtr-business) and continues
+against the first whose homepage resolves. If none does, it falls back
+(WO-1142) to the first candidate where a guessed subdomain or vendor-
+account label resolved, and starts from those hosts alone. Only when
+nothing resolves at all is the outcome `dns-unresolvable`.
 
 **Cheap extra starting points**, all real, all cited above: guessed
 vendor subdomains that actually resolved (`agenda.`, `meetings.`,
@@ -90,14 +93,39 @@ def _strip_www(host: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
+def _homepage_resolves(info: dict) -> bool:
+    return bool(
+        info.get("apex_a")
+        or info.get("apex_cname")
+        or info.get("www_a")
+        or info.get("www_cname")
+    )
+
+
+def _guessed_hosts_resolve(info: dict) -> bool:
+    """WO-1142: a guessed subdomain or vendor-account label that resolved
+    -- the same entries `start()` turns into starting points below. An
+    own-domain wildcard entry doesn't count (same A records as the apex:
+    not a separate host)."""
+    subs = [
+        e
+        for e in info.get("resolving_subdomains") or []
+        if not e.get("likely_own_domain_wildcard")
+    ]
+    return bool(subs or info.get("resolving_vendor_labels"))
+
+
 async def _dns_resolves(domain: str) -> Optional[dict]:
     """`dns_lookup()` (sync, real `dig` subprocess calls) off the event
-    loop. Returns the raw dict when either the apex or `www.` resolves,
-    else `None`."""
+    loop. Returns the raw dict when the apex or `www.` resolves, or
+    (WO-1142) when only a guessed subdomain / vendor-account label does;
+    else `None`. `dns_lookup()` already runs every guess on each call, so
+    keeping a guess that resolved costs no extra lookup -- before WO-1142
+    it was computed and then thrown away whenever the homepage was dead."""
     info = await asyncio.to_thread(dns_lookup, domain)
-    apex_resolves = bool(info.get("apex_a") or info.get("apex_cname"))
-    www_resolves = bool(info.get("www_a") or info.get("www_cname"))
-    return info if (apex_resolves or www_resolves) else None
+    if _homepage_resolves(info) or _guessed_hosts_resolve(info):
+        return info
+    return None
 
 
 def _sitemap_starting_points(urls: Sequence[str]) -> List[str]:
@@ -148,20 +176,34 @@ async def start(
     order, only when `domain_or_url` itself is DNS-dead -- they come from
     the caller (a research row's own `alternate_domains`), never read
     from rtr-business by this function itself."""
-    domain, dns_info = await _try_domain(domain_or_url, fetcher)
-    tried = [domain_or_url]
-    if domain is None:
-        for alt in alternates or []:
-            domain, dns_info = await _try_domain(alt, fetcher)
-            tried.append(alt)
-            if domain is not None:
-                break
+    # WO-1142: a domain whose homepage resolves always wins. Failing that,
+    # the alternates (the research row's other domains) are tried for a
+    # homepage too, in order. Only when no candidate has a live homepage
+    # does Start fall back to the first candidate whose guessed subdomain
+    # or vendor-account label resolved -- a found host, but a guess, so
+    # identity is left to Verdict (audit mode) as for any link-first find.
+    tried: List[str] = []
+    subdomain_only: "Optional[tuple[str, dict]]" = None
+    domain, dns_info = None, None
+    for candidate in [domain_or_url, *(alternates or [])]:
+        host, info = await _try_domain(candidate, fetcher)
+        tried.append(candidate)
+        if host is None or info is None:
+            continue
+        if _homepage_resolves(info):
+            domain, dns_info = host, info
+            break
+        if subdomain_only is None:
+            subdomain_only = (host, info)
+    if domain is None and subdomain_only is not None and guess_subdomains:
+        domain, dns_info = subdomain_only
     if domain is None or dns_info is None:
         return StartResult(
             starting_points=[],
             outcome=OUTCOME_DNS_UNRESOLVABLE,
             note=f"neither apex nor www. resolved for: {', '.join(tried)}",
         )
+    homepage_live = _homepage_resolves(dns_info)
 
     starting_points: List[str] = []
     seen = set()
@@ -227,6 +269,18 @@ async def start(
             _add(f"https://{entry['host']}/")
         for entry in dns_info.get("resolving_vendor_labels") or []:
             _add(f"https://{entry['host']}/")
+
+    if not homepage_live:
+        # WO-1142: the homepage is dead, so robots.txt and the sitemap
+        # would only fail against it. Start from the guessed hosts alone.
+        notes.append(
+            f"apex and www. dead for {domain}; starting from guessed hosts only"
+        )
+        return StartResult(
+            starting_points=starting_points,
+            outcome=None,
+            note="; ".join(notes),
+        )
 
     # Robots + sitemap -- own small budget, never spends Fetcher.max_fetches
     # (see module docstring). Never raises: both wo282_recon helpers already

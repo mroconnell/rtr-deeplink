@@ -10,7 +10,8 @@ Identify -> List/Scan -> Hop -> Resolve -> Verdict) is wired.
         [--concurrency N]
 
 `rows.csv` columns: `url` (required), `gov_id`, `platform_hint`,
-`url_source`, `mode`, `entry` -- see docs/MEETING_FINDER.md's "Input
+`url_source`, `mode`, `entry`, `alternates` (semicolon-separated other
+domains for the same government, tried when `url` is DNS-dead; WO-1142) -- see docs/MEETING_FINDER.md's "Input
 rows" table. A row's own `mode`/`entry` column overrides the CLI flag's
 default for that row only.
 
@@ -74,6 +75,13 @@ def _read_inputs(
                     url_source=(row.get("url_source") or "").strip() or None,
                     mode=(row.get("mode") or "").strip() or default_mode,
                     entry=(row.get("entry") or "").strip() or default_entry,
+                    alternates=tuple(
+                        a.strip()
+                        for a in (row.get("alternates") or "")
+                        .replace(",", ";")
+                        .split(";")
+                        if a.strip()
+                    ),
                 )
             )
     return inputs
