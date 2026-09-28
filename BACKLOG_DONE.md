@@ -1,5 +1,31 @@
 # Backlog — done
 
+## WO-1155: a direct ISI Live file now reads the caption file next to it [Done 2026-09-28]
+
+(Filed as WO-1151; renumbered WO-1155 in PR #1562.)
+
+**What was done and why.** ISI Live (iSiLIVE) keeps each recording's captions next to the file, at `video.isilive.ca/{client}/{file}.vtt` (or `.{lang}.vtt`). `escribe.py` read that file, but only through an eScribe meeting page. A bare ISI Live URL went to `direct_file.py` and came back with video and no captions, so captioned meetings fell to tier 3. `direct_file.py` now recognises five ISI Live shapes, points each at the `/download/` file, and reads the caption file with `escribe.py`'s own rule. That rule now lives in two shared helpers, `find_isilive_captions()` and `isilive_caption_warnings()`, used by both adapters. When no caption file exists, the result is the same plain-file result as before. The folder name is ISI Live's customer name, so no government is taken from it; `jurisdiction` stays empty and the gov_id comes from the research row.
+
+| URL shape | Before | Now |
+| --- | --- | --- |
+| `video.isilive.ca/download/{client}/{file}` | video, no captions | video and captions |
+| `video.isilive.ca/{client}/{file}` | video, no captions | video and captions |
+| `video.isilive.ca/play/{client}/{file}` | failed (the page is HTML, not video) | video and captions |
+| `video.isilive.ca/{client}/{file}.html` | platform unknown | video and captions |
+| `cdn1.isilive.ca/vod/_definst_/mp4:{client}/{file}/playlist.m3u8` | failed (playlist is not `video/*`) | video and captions |
+
+**Result, checked live 2026-09-28** (one request at a time, 3 s apart). Miramichi's download URL resolved with 826 caption lines in English. Whitehorse's `.html` page resolved to its video with no captions and no warning, as before.
+
+**Tests.** `tests/test_isilive_direct_file.py`: recorded caption files for Miramichi NB, Bracebridge ON and Green Cove Springs FL (first 99 lines), and the real 404 answer for Whitehorse YT and Nunavut.
+
+**Next step after deploy.** Ingest these three meetings as tier 1 with their gov_ids. Meeting URLs are in rtr-business `research/slug_learning_2026-09-27/isilive/INGEST_RESULTS.md`.
+
+| Government | gov_id | File |
+| --- | --- | --- |
+| Miramichi NB | ca:csd:1309050 | `video.isilive.ca/download/miramichi/2026-05-19.mp4` |
+| Bracebridge ON | ca:csd:3544018 | `video.isilive.ca/download/bracebridge/2024-08-09 Committee of Adjustment for Minor Variances Meeting.mp4` |
+| Green Cove Springs FL | us:place:1227400 | `video.isilive.ca/download/greencovesprings/2025-09-16Council.mp4` |
+
 ## WO-1153: two rtr-discovery tenants filed under a far-away government get the right one [Done 2026-09-27]
 
 **What was done and why.** A slug reverse check in rtr-business (2026-09-27) found two vendor sites filed under a same-named government in the wrong place. Ryan's rule: a nearby government (a county and its city) is close enough; fix a wrong state or a far-away place. Both were checked live on 2026-09-27 before pinning.

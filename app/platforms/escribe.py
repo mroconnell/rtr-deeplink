@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote, urlparse
 
 import aiohttp
@@ -274,39 +274,13 @@ class EscribeAssetFinder(AssetFinder):
                 video_url = f"https://cdn1.isilive.ca/vod/_definst_/mp4:{client_id}/{encoded_stream}/playlist.m3u8"
                 video_format = "m3u8"
 
-                candidates = []
-                for suffix in KNOWN_LANGUAGE_SUFFIXES:
-                    vtt_url = (
-                        f"https://video.isilive.ca/{client_id}/{encoded_stream}"
-                        + (f".{suffix}" if suffix else "")
-                        + ".vtt"
-                    )
-                    cues = await self._fetch_vtt(session, vtt_url)
-                    if cues:
-                        candidates.append(
-                            (vtt_url, cues, self._detect_cue_language(cues))
-                        )
-
-                target_match = next(
-                    (c for c in candidates if c[2] == TARGET_LANGUAGE), None
-                )
-                chosen = target_match or (candidates[0] if candidates else None)
+                chosen = await find_isilive_captions(session, client_id, encoded_stream)
 
                 if chosen:
                     _vtt_url, cues, lang = chosen
                     segments = [TranscriptSegment(**cue) for cue in cues]
                     transcript_language = lang
-                    if lang and lang != TARGET_LANGUAGE:
-                        transcript_warnings.append(
-                            f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' -- "
-                            "no matching-language track was found for this meeting."
-                        )
-                    if is_likely_garbled(cues, lang=lang):
-                        transcript_warnings.append(
-                            "This transcript looks garbled at the source (not a parsing "
-                            "bug on our end) -- treat it as approximate. You can request "
-                            "a transcript from the audio instead."
-                        )
+                    transcript_warnings.extend(isilive_caption_warnings(cues, lang))
                 else:
                     transcript_warnings.append(
                         "This meeting has video but no caption file was found in any "
@@ -682,3 +656,53 @@ class EscribeAssetFinder(AssetFinder):
                 )
             )
         return items
+
+
+async def find_isilive_captions(
+    session: aiohttp.ClientSession, client_id: str, encoded_stream: str
+) -> Optional[Tuple[str, list, Optional[str]]]:
+    """`(vtt_url, cues, language)` for the caption file iSiLIVE keeps next
+    to a recording, or None when no language's file exists.
+
+    iSiLIVE stores captions at `video.isilive.ca/{client}/{file}.vtt`
+    (English) or `.{lang}.vtt` (see KNOWN_LANGUAGE_SUFFIXES). Every
+    suffix is tried, and the English track wins when there is one;
+    otherwise the first file found is used. `encoded_stream` is the file
+    path already percent-encoded (a space becomes `%20`).
+
+    Shared by this adapter (an eScribe meeting page's `isi_player`) and
+    `direct_file.py` (a bare iSiLIVE file URL, WO-1155) so both read
+    captions by the same rule.
+    """
+    candidates = []
+    for suffix in KNOWN_LANGUAGE_SUFFIXES:
+        vtt_url = (
+            f"https://video.isilive.ca/{client_id}/{encoded_stream}"
+            + (f".{suffix}" if suffix else "")
+            + ".vtt"
+        )
+        cues = await EscribeAssetFinder._fetch_vtt(session, vtt_url)
+        if cues:
+            candidates.append(
+                (vtt_url, cues, EscribeAssetFinder._detect_cue_language(cues))
+            )
+    target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
+    return target_match or (candidates[0] if candidates else None)
+
+
+def isilive_caption_warnings(cues, lang: Optional[str]) -> List[str]:
+    """Reader-facing warnings for a caption track `find_isilive_captions()`
+    chose: a non-English track, and a track garbled at the source."""
+    warnings: List[str] = []
+    if lang and lang != TARGET_LANGUAGE:
+        warnings.append(
+            f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' -- "
+            "no matching-language track was found for this meeting."
+        )
+    if is_likely_garbled(cues, lang=lang):
+        warnings.append(
+            "This transcript looks garbled at the source (not a parsing "
+            "bug on our end) -- treat it as approximate. You can request "
+            "a transcript from the audio instead."
+        )
+    return warnings
