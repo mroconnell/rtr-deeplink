@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://vailgov.granicus.com/MediaPlayer.php?view_id=1&clip_id=80
-https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
-https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
-https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
-https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
-https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
-https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
-https://abingtonpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=752
-https://ashwaubenon.granicus.com/MediaPlayer.php?view_id=1&clip_id=5162
-https://atlastownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=27
-https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
-https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236
 https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
 https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
 https://buckeyeaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=610
@@ -910,3 +898,11 @@ https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/104
 https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/media/1040015	https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/videos	us:cousub:3402741362
 https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045756	https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/videos	us:cousub:2501379740
 https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/media/1008681	https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/videos	us:cousub:2501730700
+https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
+https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
+https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
+https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
+https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
+https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
+https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
+https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236
