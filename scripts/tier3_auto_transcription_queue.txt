@@ -911,7 +911,6 @@ https://reflect-bethelpark-cable.cablecast.tv/internetchannel/show/2651	https://
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18285	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:cousub:2612509110
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17861	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608640
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18268	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608160
-https://reflect-ccstv.cablecast.tv/internetchannel/show/6783	https://reflect-ccstv.cablecast.tv/CablecastPublicSite/	us:sd:3904371
 https://reflect-champaign.cablecast.tv/internetchannel/show/5891	https://reflect-champaign.cablecast.tv/CablecastPublicSite/	us:cousub:1701912398
 https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/show/2804?site=1	https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/	us:cousub:3301512100
 https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692	https://reflect-citylink-siouxfalls.cablecast.tv/CablecastPublicSite/	us:county:46099
