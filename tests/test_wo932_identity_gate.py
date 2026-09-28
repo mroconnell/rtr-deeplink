@@ -372,11 +372,19 @@ def test_flag_rate_over_every_real_single_tenant_pin_stays_low():
     person can read at a glance (ccsf = San Francisco, stpete = St.
     Petersburg, lawa = Los Angeles World Airports). The ceiling is a guard
     against the matching rules drifting into flagging most real tenants; it
-    is not a claim that each flag is wrong."""
+    is not a claim that each flag is wrong.
+
+    Per-show Cablecast pins (`match` = `cablecast:<host>:<show id>`) are
+    skipped: they sit on shared PEG station hosts on purpose (one station
+    films several towns), so the host label is never meant to name the
+    government. 41 such pins flagged on 2026-09-27 (PEG station and
+    Cablecast reflect audits, PR #1552)."""
     tested = flagged = 0
     with (DATA / "tenant_overrides.csv").open(newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             if not tenant_label(row["tenant_host"]):
+                continue
+            if row["match"].startswith("cablecast:"):
                 continue
             gov = government_for_id(row["gov_id"])
             if gov is None:
