@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
-https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
-https://buckeyeaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=610
-https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
-https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
-https://claytownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=309
-https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
-https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
-https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
-https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
-https://dorchester.granicus.com/MediaPlayer.php?view_id=1&clip_id=746
-https://eastfishkillny.granicus.com/MediaPlayer.php?view_id=1&clip_id=11
 https://eastjordancity.granicus.com/MediaPlayer.php?view_id=1&clip_id=160
 https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
 https://empiremn.granicus.com/MediaPlayer.php?view_id=1&clip_id=136
@@ -1065,3 +1053,11 @@ https://www.siskiyoucounty.gov/sites/default/files/fileattachments/planning_comm
 https://www.dropbox.com/scl/fi/rcfvo11lavfz6l23047hw/9-21-2026-Committee-Meeting.mp3?rlkey=fo0ihx2wdd206l6536341a3fk&st=hnwv1ryx&dl=0		us:place:3919778
 https://brevardpublicschools.new.swagit.com/videos/372483		us:sd:1200150
 https://msdpiketownshipin.new.swagit.com/videos/237000		us:sd:1808910
+https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
+https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
+https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
+https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
+https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
+https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
+https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
+https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
