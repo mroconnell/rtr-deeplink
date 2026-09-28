@@ -452,6 +452,20 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Castus "waterford-media" (Waterford, MI): Waterford charter township
         # and Waterford School District (WO-1148; per-video pins).
         ("cloud.castus.tv", "waterford-media"),
+        # Castus "amesbury": Amesbury School District, Amesbury city (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "amesbury"),
+        # Castus "epping": Epping School District, Epping town (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "epping"),
+        # Castus "hampsteadcabletv": Hampstead School District, tier3 queue ownership audit (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "hampsteadcabletv"),
+        # Castus "lrpatv": Belknap County, Gilford town, Laconia city (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "lrpatv"),
+        # Castus "manchestertv": Manchester School District, Manchester city (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "manchestertv"),
+        # Castus "west-boylston": West Boylston School District, West Boylston town (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "west-boylston"),
+        # Castus "weston": Weston School District, tier3 queue ownership audit (WO-1152 census, per-video pins).
+        ("cloud.castus.tv", "weston"),
     }
 )
 
