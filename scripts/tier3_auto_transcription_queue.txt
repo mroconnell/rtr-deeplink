@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://eastjordancity.granicus.com/MediaPlayer.php?view_id=1&clip_id=160
-https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
-https://empiremn.granicus.com/MediaPlayer.php?view_id=1&clip_id=136
-https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
-https://graymaine.granicus.com/MediaPlayer.php?view_id=1&clip_id=1117
-https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
-https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
-https://hartsvillesc.granicus.com/MediaPlayer.php?view_id=1&clip_id=245
-https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
-https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
-https://humble-tx.granicus.com/MediaPlayer.php?view_id=1&clip_id=74
-https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
 https://kitcarsoncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1184
 https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
 https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
@@ -1061,3 +1049,10 @@ https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
 https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
 https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
 https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
+https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
+https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
+https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
+https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
+https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
+https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
+https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
