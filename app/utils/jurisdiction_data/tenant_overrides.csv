@@ -222,7 +222,7 @@ ci.southbridge.ma.us,,us:place:2563345,fallback,identity_join+landing_page,"Sout
 city-slp-mn.cablecast.tv,,us:place:2757220,fallback,ryan_stated,"St Louis Park, MN -- us:place:2757220 St. Louis Park city matched with spacing ignored"
 citychannel-ia.cablecast.tv,,us:place:1922395,fallback,auto_derived+visual_confirmed,'CityChannel Dubuque ... local government programming'; about text names Iowa (landing.png) [reports/jurisdiction_screens/citychannel-ia.cablecast.tv/landing.png reports/jurisdiction_screens/citychannel-ia.cablecast.tv/meeting.png] -> place 1922395 -> registry: us_places.csv Dubuque city
 cityofavalon.gov,,us:place:0603274,fallback,hub_sweep_wo126,"coverage registry row us:place:0603274 (Avalon city, CA); hub https://cityofavalon.gov/AgendaCenter; meeting found via youtube at https://cityofavalon.gov/AgendaCenter"
-cityofbadger.civicweb.net,,ca:csd:1006026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Badger
+cityofbadger.civicweb.net,,us:place:2703160,fallback,audit_rows_pins_2026-09-28,corrected from ca:csd:1006026: civicweb: Regular Council agenda 7/23/2025 (Badger Community Center) pays Roseau County Highway Department and cites MN statute
 cityofbelmont.civicweb.net,,us:place:3704840,fallback,ryan_stated,"Belmont, NC -- us_places.csv Belmont city"
 cityofbrea.cablecast.tv,,us:place:0608100,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:0608100; 2 weak page(s) e.g. /m/2026-07-22-july-21-2026-brea-city-council-meeting
 cityofbrookings.granicus.com,,us:place:4607580,fallback,identity_join+landing_page,"Brookings (city), SD -- us_places.csv Brookings city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
@@ -263,7 +263,7 @@ cityofrehoboth.civicweb.net,,us:place:1060290,fallback,ryan_stated,"Rehoboth Bea
 cityofsalmonarm.escribemeetings.com,,ca:csd:5939032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Salmon Arm
 cityofsancarlos.primegov.com,,us:place:0665070,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0665070 match=exact -> registry: us_places.csv San Carlos city
 cityofstillwater.granicus.com,,us:place:2762824,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2762824; 1 weak page(s) e.g. /m/city-of-stillwater-2024-12-05-12-05-2024-2025-road-projects
-cityoftracy.primegov.com,,ca:csd:1303005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tracy
+cityoftracy.primegov.com,,us:place:0680238,fallback,audit_rows_pins_2026-09-28,"corrected from ca:csd:1303005: primegov: HTML agenda (Tracy Public Financing Authority, 5/19/2026) reads Tracy City Hall, 333 Civic Center Plaza, Tracy, California 95376"
 cityofventura.granicus.com,,us:place:0665042,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS says Ventura, CA for this host, and the seeding run resolved that string to Ventura COUNTY -- freezing into an authoritative pin the exact bug the curated us:place:0665042 row now fixes (Census names the city San Buenaventura (Ventura) city, so the place table keys no Ventura in CA). The host says cityofventura; ventura.primegov.com is the county and keeps us:county:06111."
 cityofvernon.primegov.com,,us:place:0682422,fallback,landing_page+wo1068,"Vernon, CA -- meeting agendas give 4305 Santa Fe Ave, Vernon, California (checked live 2026-09-25). Replaces a DNS-sweep name guess to Vernon, BC. WO-1068, 2026-09-25."
 cityofwalnut.granicus.com,,us:place:0683332,fallback,ryan_stated,"Walnut, CA -- us_places.csv Walnut city"
@@ -606,7 +606,7 @@ kirklandlake.civicweb.net,,ca:csd:3554068,fallback,wildcard_http_sweep_2,DNS res
 kitchener.escribemeetings.com,,ca:csd:3530013,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Kitchener
 kitimatstikine.civicweb.net,,ca:cd:5949,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Kitimat-Stikine
 kneehillcounty.escribemeetings.com,,ca:csd:4805041,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4805041 Kneehill County matched with spacing ignored
-knoxcounty.primegov.com,,us:county:48275,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Knox County
+knoxcounty.primegov.com,,us:county:47093,fallback,audit_rows_pins_2026-09-28,"corrected from us:county:48275: primegov: no meetings listed; portal logo is the seal reading Official Seal Knox County, Tenn."
 lacanadaflintridge-ca.granicus.com,,us:place:0639003,fallback,ryan_stated,"La Cañada Flintridge, CA -- us:place:0639003 La CaÃ±ada Flintridge city matched with spacing ignored"
 lacenter.civicweb.net,,us:place:5336710,fallback,ryan_stated,"La Center, WA -- us_places.csv La Center city"
 lacity.primegov.com,,us:place:0644000,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Los Angeles city
@@ -688,7 +688,7 @@ lsmo.granicus.com,,us:place:2941348,fallback,ryan_stated,"Lees Summit, MO -- us:
 lucanbiddulph.escribemeetings.com,,ca:csd:3539060,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lucan Biddulph
 lumby.civicweb.net,,ca:csd:5937005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lumby
 lwsd.granicus.com,,us:sd:5304230,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_school_districts.csv Lake Washington School District (unified)
-lyoncounty.primegov.com,,us:county:27083,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Lyon County
+lyoncounty.primegov.com,,us:county:32019,fallback,audit_rows_pins_2026-09-28,"corrected from us:county:27083: primegov: no meetings listed; portal logo reads Lyon County 1861 (Nevada Territory county formed 1861; the IA, KS, KY and MN Lyon Counties date from other years)"
 lytton.civicweb.net,,ca:csd:5933015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lytton
 lyttonbc.civicweb.net,,ca:csd:5933015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lytton
 machar.escribemeetings.com,,ca:csd:3549054,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Machar
@@ -756,7 +756,7 @@ middleton.civicweb.net,,ca:csd:1205016,fallback,wildcard_http_sweep_2,DNS resolv
 middletown.granicus.com,,us:place:0947290,fallback,ryan_stated,"Middletown, CT -- us_places.csv Middletown city"
 midland.civicweb.net,,ca:csd:3543074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Midland
 midland.granicus.com,,us:place:2653780,fallback,ryan_stated,"Midland, MI -- us_places.csv Midland city"
-midland.primegov.com,,ca:csd:3543074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Midland
+midland.primegov.com,,us:place:4848072,fallback,audit_rows_pins_2026-09-28,"corrected from ca:csd:3543074: primegov: 2025 meeting location reads Midland City Hall, 300 N. Loraine Street Midland Texas 79701"
 milfordct.us,,us:place:0947515,fallback,consolidated_government,Every archived page on this host keys to this consolidated city-county already (2026-09-10 audit of ~30 such governments); pinned so a re-spelling can never split it.
 millersburgoregon.gov,,us:place:4148300,fallback,ryan_stated,"Millersburg, OR -- us_places.csv Millersburg city"
 milpitasca.portal.civicclerk.com,,us:place:0647766,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Milpitas, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Milpitas city"
@@ -822,7 +822,7 @@ nevco.granicus.com,view_id=4,us:place:0630798,fallback,landing_page+wo1068,"Gras
 newark.granicus.com,,us:place:3451000,fallback,landing_page,"WRONG PIN (fixed 2026-09-03, rtr-discovery Phase 3 FINDING-9): the upcoming_roster pin below assumed this host was Newark, Alameda County, CA purely by matching the hostname text ""newark"" to the roster jurisdiction name -- the roster never lists newark.granicus.com as Newark, CA's calendar_url (that jurisdiction's real calendar_url is newark.legistar.com). Live-checked https://newark.granicus.com/ViewPublisher.php?view_id=2 -- page reads ""City of Newark, New Jersey - Live Proceedings"" / ""City of Newark, NJ Streaming Media Archive"" -> place 3451000 -> registry: us_places.csv Newark city, NJ. Prior (wrong) pin: gov_id=us:place:0650916, source=ryan_stated+upcoming_roster, evidence=rtr-upcoming roster: Newark, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Newark city"
 newburghny.new.swagit.com,,us:place:3650034,fallback,identity_join+landing_page,"Newburgh (city), NY -- us_places.csv Newburgh city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 newcarlisleohio.gov,,us:place:3954334,fallback,ryan_stated,"New Carlisle, OH -- us_places.csv New Carlisle city"
-newcastle.civicweb.net,,us:cousub:2301548645,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_cousubs.csv Newcastle town
+newcastle.civicweb.net,,us:place:5348645,fallback,audit_rows_pins_2026-09-28,"corrected from us:cousub:2301548645: civicweb: City Council minutes 10/21/2025 headed City of Newcastle, 12835 Newcastle Way, Newcastle, WA 98056"
 newmarket.escribemeetings.com,,ca:csd:3519048,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Newmarket
 newtecumseth.civicweb.net,,ca:csd:3543007,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv New Tecumseth
 newtonkansas.civicweb.net,,us:place:2050475,fallback,ryan_stated,"Newton, KS -- us_places.csv Newton city"
@@ -1510,7 +1510,7 @@ westlincoln.escribemeetings.com,,ca:csd:3526021,fallback,wildcard_http_sweep_2,b
 westlockcounty.civicweb.net,,rtr:ca:ab:westlock-county,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'Westlock County, AB'"
 westonwi.gov,,us:place:5586025,fallback,hub_sweep_wo126,"coverage registry row us:place:5586025 (Weston village, WI); hub https://westonwi.gov/Calendar.aspx?EID=3766; meeting found via youtube at https://westonwi.gov/AgendaCenter"
 westperth.civicweb.net,,ca:csd:3531025,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv West Perth
-westport.civicweb.net,,ca:csd:1008093,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Westport
+westport.civicweb.net,,us:place:5377630,fallback,audit_rows_pins_2026-09-28,corrected from ca:csd:1008093: civicweb: City of Westport Regular City Council minutes 9/14/2026 name the Port of Grays Harbor and Grays Harbor Council of Governments; LTAC folder
 westvancouver.escribemeetings.com,,ca:csd:5915055,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv West Vancouver
 wetaskiwin.civicweb.net,,ca:csd:4811002,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Wetaskiwin
 weyburn.civicweb.net,,ca:csd:4702047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Weyburn
