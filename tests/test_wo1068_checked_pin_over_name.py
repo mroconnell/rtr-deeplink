@@ -278,7 +278,8 @@ def test_telvue_oshtemo_stays_blank_because_its_name_only_mints():
     # Meeting". The Census row is "Oshtemo charter township", and the
     # ladder does not match "Oshtemo Township, MI" to it (it mints), so
     # the name identifies nobody and the unpinned station stays blank.
-    match = _resolve("Oshtemo Township", _TELVUE, _KALAMAZOO + "1047784")
+    # Media id synthetic: the real 1047784 got its own pin in WO-1149.
+    match = _resolve("Oshtemo Township", _TELVUE, _KALAMAZOO + "1047799")
     assert match.gov_id == "rtr:unknown:videoplayer.telvue.com"
 
 
@@ -300,16 +301,18 @@ def test_telvue_pins_the_name_cannot_beat(name, path, gov_id):
     assert (match.gov_id, match.tier) == (gov_id, TIER_PINNED)
 
 
-def test_telvue_station_with_no_state_from_pins_stays_blank():
-    # RVTV's pins are playlist pins that carry no org token, so no state
-    # is fixed and the name is not used (tests/test_tenant_key.py's
-    # WO-1057 case, unchanged).
+def test_telvue_station_state_from_its_first_token_pin():
+    # RVTV's older pins were playlist pins carrying no org token, so no
+    # state was fixed and the name was not used. WO-1149 (TelVue census,
+    # 2026-09-27) added a per-video pin under its token (Ashland School
+    # District, OR), which fixes the state, so a title naming an Oregon
+    # town now resolves to it (tests/test_tenant_key.py's matching case).
     match = _resolve(
         "Grants Pass, OR",
         _TELVUE,
         "/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047347",
     )
-    assert match.gov_id == "rtr:unknown:videoplayer.telvue.com"
+    assert match.gov_id == "us:place:4130550"
 
 
 def test_other_multi_gov_hosts_keep_the_whole_tenant_pin_first():
