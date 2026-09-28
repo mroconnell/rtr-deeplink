@@ -910,3 +910,37 @@ https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/104
 https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/media/1040015	https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/videos	us:cousub:3402741362
 https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045756	https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/videos	us:cousub:2501379740
 https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/media/1008681	https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/videos	us:cousub:2501730700
+https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
+https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing		us:sd:4700330
+https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y		us:sd:4502340
+https://drive.google.com/file/d/1tbGdUyxCVOkvbPpzjmb8luAwd7HuZDZj/view?usp=sharing		us:sd:3407590
+http://reflect-bcsctv-brownsburg.cablecast.tv/internetchannel/show/2604?site=1		us:sd:1801020
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1367		us:sd:5101860
+https://drive.google.com/file/d/1NHqZRe6YxrU-O9rj06rZXkjVGvMbR0_d/view?usp=sharing		us:sd:5501770
+https://drive.google.com/file/d/1mSCm_XMEIoAlo8moh4bBxmZsDjaRh7HH/view?usp=sharing		us:place:3525800
+https://drive.google.com/file/d/145uuL5lD9eegC_6isH1Q1ZSJ8oP6V0fg/view?usp=drive_link		us:sd:3172390
+https://drive.google.com/file/d/1o9B15ypctQbk7eqabKTjXkW_pNCt8Jgi/view?usp=share_link		us:sd:2922530
+https://videoplayer.telvue.com/player/P-mhk-Tgy5BJ93MCiUrO5mHLhFBBvfk4/media/940002		us:cousub:4202977344
+https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
+https://moontv.cablecast.tv/CablecastPublicSite/show/2841?site=1		us:sd:4215830
+https://barnegatnj.new.swagit.com/videos/395110		us:cousub:3402903050
+https://farraguttn.portal.civicclerk.com/event/1811/media		us:place:4725760
+https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
+https://vimeo.com/1230000071/9594197ba7		us:sd:1302550
+https://vimeo.com/1225932215/3ff797b414	https://player.vimeo.com/video/1225932215?h=3ff797b414&autoplay=0&loop=0&title=0&byline=0&portrait=0&color&dnt=0	us:sd:1201740
+https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659		us:sd:3904348
+https://bsd405.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=683		us:sd:5300390
+https://lambton.civicweb.net/Portal/MeetingInformation.aspx?Id=1491		ca:cd:3538
+https://countyofrenfrew.diligent.community/Portal/MeetingInformation.aspx?Id=508		ca:cd:3547
+https://walton.civicweb.net/Portal/MeetingInformation.aspx?Id=7347		us:sd:1305390
+https://perthcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=669		ca:cd:3531
+https://worcester-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=288		us:sd:2400720
+https://sylvaniatownship.civicweb.net/Portal/MeetingInformation.aspx?Id=3882		us:cousub:3909576025
+https://vimeo.com/560179539		us:county:37139
+https://vimeo.com/272623353		us:place:0640704
+https://vimeo.com/1220931719/eb2fedccd3		us:sd:4807780
+https://vimeo.com/1220286460	https://vimeo.com/1220286460?share=copy&fl=sv&fe=ci	us:county:19099
+https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		us:sd:0805550
+https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
+https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
+https://vimeo.com/596543013/7c411dd1aa		us:county:13119
