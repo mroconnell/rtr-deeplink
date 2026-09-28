@@ -189,7 +189,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (25)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
@@ -202,7 +202,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   101 West Virginia towns/cities still carry a placeholder…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
-  Production actions only Ryan should take  (10)
+  Production actions only Ryan should take  (12)
     [HUMAN] Render account bandwidth hit its 25 GB/month Pro-plan cap on…
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
@@ -213,10 +213,13 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
+    [HUMAN] 4 TelVue channels' real residual "no government" count needs…
+    [HUMAN] Town Square Television's 3 leftover Cablecast rows need a…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (225)
+  [NEEDS-AUDIT] TelVue's playlist-address vs plain-media-address URLs…
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
   [NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions…
   [NEEDS-AUDIT] A real platform adapter's OWN aiohttp session still…
@@ -2433,6 +2436,19 @@ of human step they need.
   - **Constraint**: YouTube requests come from the drip Mac only. Three deletes in this group are approved, each on its own grounds: 6114 (a county-homepage intro video, not a meeting) and 6906 and 7086 (Ryan clicked both videos on 2026-09-21 and neither plays; 6906's approval is inferred and being confirmed). Neither 6906 nor 7086 runs until its replacement video (`yTeXBxcodt8`, `PveTE-5yFiU`) is on a live page under the same government. No other page in this group is approved, and none is named until a checked status file exists.
   - **History**: `BACKLOG_DONE.md` WO-934; gov-id enumeration audit, 2026-09-09.
 
+- **[HUMAN] 4 TelVue channels' real residual "no government" count needs a live Archive query, not a laptop guess.**
+  - **Issue**: a peer session's ledger (2026-09-27) found 73 meetings across 4 TelVue channel tokens (`2bm0gzQWeVRzdCgvjXziXKwO3icSKh05`, `gmcC3sJ6AGUdIb568B18VQd22AGea7RE`, `5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R`, `sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw`) rejected `no_government:blank`, filed before this repo's own WO-1100/WO-1149/WO-1150. Re-checked 2026-09-28 against the current checkout (c4da18b): all 4 tokens are now in `MULTI_GOVERNMENT_TENANTS` with 2-4 per-video pins each (`app/utils/jurisdiction_data/tenant_overrides.csv`, WO-1149/WO-1150) — the "no playlist pins at all" framing is stale. But no true per-*playlist* pin (like Centre County/Southern Oregon have) was added, so WO-1100's name-from-title logic plus the per-video pins cover an unknown fraction of the original 73, not necessarily all of it.
+  - **Impact**: unknown how many of the 73 are still genuinely unrouted — could be zero, could be most of them. Nobody should spend more effort pinning these 4 channels (playlist-wide or per-meeting) until the real residual count is known.
+  - **Next action**: from the Archive's Render Shell (never a laptop bulk query, per this file's own standing decision), query `meeting_pages` for these 4 tokens' pages still missing `gov_id`, then decide per-page whether WO-1100's `resolve --retry-no-government` already covers it or a new pin is needed.
+  - **History**: peer session ledger, 2026-09-27; `BACKLOG_DONE.md` WO-1149/WO-1150.
+
+- **[HUMAN] Town Square Television's 3 leftover Cablecast rows need a live Archive query to find and re-file.**
+  - **Issue**: a peer session's ledger found `reflect-tst-mn.cablecast.tv` (Town Square Television, a shared multi-site Cablecast host) still holds 3 meetings rejected `no_government:blank`, filed under the bare station tenant before WO-1059's `?site=N` exact-match fix (2026-09-25, `BACKLOG_DONE.md` — `_match_override()` used to match `site=8` by substring, which also fired on `site=80`/`site=150`). `tenant_overrides.csv` (~lines 5853-5855, WO-336) pins `site=6` (Inver Grove Heights), `site=8` (Mendota Heights), `site=15` (West St. Paul). The peer's message named the 3 specific rows: `/show/5977` (Mendota Heights City Council, re-listed as `?site=8`), `/show/6267` (West St. Paul EDA, re-listed as `?site=15`), and `/show/5979` (South St. Paul City Council — **no site pin exists for South St. Paul among 6/8/15**, so this one needs a live check before it can be pinned at all).
+  - **Impact**: 3 real pages sit misfiled under the station tenant instead of their real government. The old rows are harmless duplicates (per the peer), not actively wrong content, just unfiled.
+  - **Next action**: from the Archive's Render Shell, confirm these 3 rows exist and match this description, then re-file the 2 with a known site number; for South St. Paul, do a real live check of `reflect-tst-mn.cablecast.tv/?site=N` for whichever N is South St. Paul's before adding a 4th pin.
+  - **Constraint**: don't add a South St. Paul site pin without a live check — its site number isn't yet confirmed anywhere in this repo.
+  - **History**: peer session ledger, 2026-09-27; `BACKLOG_DONE.md` WO-336, WO-1059.
+
 ### Decisions about already-live content
 
 - **[NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population — residual work after the 2026-08-31 repair run.**
@@ -2456,6 +2472,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] TelVue's playlist-address vs plain-media-address URLs can file the same meeting twice — confirmed real at the code level, needs a fix before the TelVue ingest hold is lifted.**
+  - **Issue**: a TelVue meeting can be reached two ways — a bare `/player/{token}/media/{id}` URL, or a `/player/{token}/playlists/{n}/media/{id}` (or `/series/{n}/media/{id}`) URL for the identical underlying video (the playlist/series form is what WO-1149/WO-1150's playlist-pin identity logic depends on to name the government). Confirmed 2026-09-28: `app/utils/url_normalize.py`'s `normalize_url()` is deliberately conservative and never collapses these path variants; `app/platforms/telvue.py`'s `resolve()` sets `source_url=url` verbatim, no canonicalization; `queue_probe.canonical_video_key()` keys TelVue by the raw `path.strip("/")`. So the two address forms produce different `source_url_normalized`/dedup keys today. No concrete duplicate has been found yet, but nothing prevents one.
+  - **Impact**: ingesting a playlist/series-form URL for a meeting the Archive already holds under its plain-media-form URL (or vice versa) would file it twice, rather than being deduped as the same meeting. This is the reason TelVue ingests are on hold.
+  - **Next action**: design a fix that keeps BOTH properties true at once — dedup must treat `.../playlists/{n}/media/{id}` and `.../media/{id}` (same token+id) as the SAME meeting, while identity/gov_id resolution must still be able to read the playlist/series number when one is present (that number is the only thing WO-1149/WO-1150's pins key off). The likely shape: derive the dedup key from `token`+`id` alone (stripping any `playlists/{n}`/`series/{n}` segment), while keeping the full original URL (with its playlist/series number intact) for identity resolution. Build a real test with two URLs for the same real TelVue video id, confirmed to resolve to one Archive page, before lifting the hold.
+  - **Constraint**: this needs a code fix, not a data fix — don't lift the TelVue ingest hold on this finding alone without the fix landing first.
+  - **History**: peer session ledger/rtr-discovery finding, 2026-09-27 (their exact citation of "rtr-discovery FINDING-35" as recording this was checked 2026-09-28 and does not exist — rtr-discovery's `BACKLOG.md` tops out at FINDING-34, and the real TelVue finding, FINDING-26, covers wrong-government and missing-date cautions only, not duplicates — so this concern was previously undocumented anywhere until now).
 
 - **[NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone at the source — 24 Archive pages across 19 tenants now point at video that returns 404 (WO-1152).**
   - **Issue**: a local Whisper run (`scripts/transcribe_backlog_locally.py --urls-file`) over the Archive's non-Granicus, no-transcript pages reached 24 iQM2 pages. All 24 failed: 20 because the media file on `MediaHTTP.IQM2.com/<Tenant>/<id>_480.mp4` returns HTTP 404 (`application/xml`, i.e. a missing storage blob), 4 because the stored media is a 14-53 second clip or a 14-20 hour channel feed. The government's own iQM2 `SplitView.aspx` page still links the same dead file (checked by hand for Fort Myers Beach FL, MeetingID 1388), and the `_0`/`.mpeg4` variants 404 too. Tenants: Berkeley County SC, Capitola CA, El Cajon CA, Fort Myers Beach FL, Glen Ellyn IL, Grand Junction CO, Hartland Twp MI, Hernando County FL, Leonia NJ, Leon Valley TX, Lincoln RI, Maitland FL, Menifee CA, Meredith NH, Olmsted County MN, Prescott AZ, Redding CA, St. Lucie FL, Travis County TX.

@@ -1,5 +1,21 @@
 # Backlog — done
 
+## WO-1156: a CivicPlus AgendaCenter page with a same-page fragment "video" link no longer crashes the resolver [Done 2026-09-28]
+
+**Why this ran.** Ryan relayed a note from a peer session: "Inglewood CA crashed the resolver (a RecursionError) on an agenda page. It's a resolver bug, not a caption miss." Delegated to a background agent to find the real URL and reproduce it live rather than guess.
+
+**What was found.** The real page is `https://www.cityofinglewood.org/AgendaCenter/Construction-Appeals-Board-32` (`ca-inglewood.civicplus.com`, white-labeled). Reproduced live with a real traceback: `RecursionError`, ~745 identical 4-frame cycles between `CivicPlusAssetFinder.resolve()` (civicplus.py:264) and `resolve_via_platform()` (base.py:1134). Root cause: the page has 4 real (title+date) rows; exactly one has a `td.media` link, and it's `.../Construction-Appeals-Board-32/?#_09012026-4613` — a same-page fragment anchor, not a real video. `_is_real_video_link()` only checked `detect_platform(href) != "unknown"`; since this URL's own path also starts with `/AgendaCenter`, `detect_platform()` returns "civicplus" again, so it passed as real. `resolve()` then called `resolve_via_platform()` on it unconditionally, which re-detected civicplus, got the same finder class back, and called `.resolve()` on the identical URL — forever. `resolve()`'s own `final_platform not in ("unknown", "civicplus")` guard (line 197) already exists for exactly this self-recursion risk, but only covers the whole-page redirect case, not this per-row `td.media` extraction.
+
+**What was built.** `_is_real_video_link()` (`app/platforms/civicplus.py`) now also rejects `platform == "civicplus"`, the same guard `resolve()`'s own `final_platform` check already applies one level up — CivicPlus is never the video host itself (per the module docstring), so a `td.media` link that itself resolves as "civicplus" can never be a real video regardless of its exact shape.
+
+**Tests added.** A real, raw-saved fixture (`tests/fixtures/civicplus/inglewood_construction_appeals_board.html`, fetched live 2026-09-28, same script/style/comment stripping as the Durham/DeSoto fixtures) plus two tests in `tests/test_civicplus.py`: a full `resolve()` regression confirming the page now raises the ordinary `NoVideoCandidateFound` instead of crashing, and a unit test on `_is_real_video_link()` directly covering the self-referential link, a real non-video CivicPlus page, and a real video link on a different platform (unaffected).
+
+**Caution.** `resolve_via_platform()` itself still has no depth cap or visited-URL set — this fix closes the one real path into it that could self-delegate, but doesn't harden the function generically against a future accidental self-delegation from a different adapter.
+
+**Gates.** `ruff check`, `ruff format --check`, and the full `pytest` suite (7,921 passed, 19 skipped, 4 xfailed) all green. No schema change.
+
+**Deploy status.** Touches `app/` (the resolver service, `rtr-deeplink`) — needs a manual deploy before it's live in production.
+
 ## WO-1155: a direct ISI Live file now reads the caption file next to it [Done 2026-09-28]
 
 (Filed as WO-1151; renumbered WO-1155 in PR #1562.)
