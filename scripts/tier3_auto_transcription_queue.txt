@@ -911,7 +911,6 @@ https://reflect-bethelpark-cable.cablecast.tv/internetchannel/show/2651	https://
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18285	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:cousub:2612509110
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17861	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608640
 https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18268	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608160
-https://reflect-ccstv.cablecast.tv/internetchannel/show/6783	https://reflect-ccstv.cablecast.tv/CablecastPublicSite/	us:sd:3904371
 https://reflect-champaign.cablecast.tv/internetchannel/show/5891	https://reflect-champaign.cablecast.tv/CablecastPublicSite/	us:cousub:1701912398
 https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/show/2804?site=1	https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/	us:cousub:3301512100
 https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692	https://reflect-citylink-siouxfalls.cablecast.tv/CablecastPublicSite/	us:county:46099
@@ -1065,3 +1064,5 @@ https://resources.finalsite.net/videos/v1776459233/fargok12ndus/mzlf0zkbkygr1agz
 https://www.siskiyoucounty.gov/sites/default/files/fileattachments/planning_commission/meeting/33101/9-16-26_2.mp3		us:county:06093
 https://www.dropbox.com/scl/fi/rcfvo11lavfz6l23047hw/9-21-2026-Committee-Meeting.mp3?rlkey=fo0ihx2wdd206l6536341a3fk&st=hnwv1ryx&dl=0		us:place:3919778
 https://breckenridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:0808400
+https://brevardpublicschools.new.swagit.com/videos/372483		us:sd:1200150
+https://msdpiketownshipin.new.swagit.com/videos/237000		us:sd:1808910

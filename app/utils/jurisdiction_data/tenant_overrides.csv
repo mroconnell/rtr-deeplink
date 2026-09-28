@@ -222,7 +222,7 @@ ci.southbridge.ma.us,,us:place:2563345,fallback,identity_join+landing_page,"Sout
 city-slp-mn.cablecast.tv,,us:place:2757220,fallback,ryan_stated,"St Louis Park, MN -- us:place:2757220 St. Louis Park city matched with spacing ignored"
 citychannel-ia.cablecast.tv,,us:place:1922395,fallback,auto_derived+visual_confirmed,'CityChannel Dubuque ... local government programming'; about text names Iowa (landing.png) [reports/jurisdiction_screens/citychannel-ia.cablecast.tv/landing.png reports/jurisdiction_screens/citychannel-ia.cablecast.tv/meeting.png] -> place 1922395 -> registry: us_places.csv Dubuque city
 cityofavalon.gov,,us:place:0603274,fallback,hub_sweep_wo126,"coverage registry row us:place:0603274 (Avalon city, CA); hub https://cityofavalon.gov/AgendaCenter; meeting found via youtube at https://cityofavalon.gov/AgendaCenter"
-cityofbadger.civicweb.net,,ca:csd:1006026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Badger
+cityofbadger.civicweb.net,,us:place:2703160,fallback,audit_rows_pins_2026-09-28,corrected from ca:csd:1006026: civicweb: Regular Council agenda 7/23/2025 (Badger Community Center) pays Roseau County Highway Department and cites MN statute
 cityofbelmont.civicweb.net,,us:place:3704840,fallback,ryan_stated,"Belmont, NC -- us_places.csv Belmont city"
 cityofbrea.cablecast.tv,,us:place:0608100,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:0608100; 2 weak page(s) e.g. /m/2026-07-22-july-21-2026-brea-city-council-meeting
 cityofbrookings.granicus.com,,us:place:4607580,fallback,identity_join+landing_page,"Brookings (city), SD -- us_places.csv Brookings city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
@@ -263,7 +263,7 @@ cityofrehoboth.civicweb.net,,us:place:1060290,fallback,ryan_stated,"Rehoboth Bea
 cityofsalmonarm.escribemeetings.com,,ca:csd:5939032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Salmon Arm
 cityofsancarlos.primegov.com,,us:place:0665070,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0665070 match=exact -> registry: us_places.csv San Carlos city
 cityofstillwater.granicus.com,,us:place:2762824,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2762824; 1 weak page(s) e.g. /m/city-of-stillwater-2024-12-05-12-05-2024-2025-road-projects
-cityoftracy.primegov.com,,ca:csd:1303005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tracy
+cityoftracy.primegov.com,,us:place:0680238,fallback,audit_rows_pins_2026-09-28,"corrected from ca:csd:1303005: primegov: HTML agenda (Tracy Public Financing Authority, 5/19/2026) reads Tracy City Hall, 333 Civic Center Plaza, Tracy, California 95376"
 cityofventura.granicus.com,,us:place:0665042,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS says Ventura, CA for this host, and the seeding run resolved that string to Ventura COUNTY -- freezing into an authoritative pin the exact bug the curated us:place:0665042 row now fixes (Census names the city San Buenaventura (Ventura) city, so the place table keys no Ventura in CA). The host says cityofventura; ventura.primegov.com is the county and keeps us:county:06111."
 cityofvernon.primegov.com,,us:place:0682422,fallback,landing_page+wo1068,"Vernon, CA -- meeting agendas give 4305 Santa Fe Ave, Vernon, California (checked live 2026-09-25). Replaces a DNS-sweep name guess to Vernon, BC. WO-1068, 2026-09-25."
 cityofwalnut.granicus.com,,us:place:0683332,fallback,ryan_stated,"Walnut, CA -- us_places.csv Walnut city"
@@ -606,7 +606,7 @@ kirklandlake.civicweb.net,,ca:csd:3554068,fallback,wildcard_http_sweep_2,DNS res
 kitchener.escribemeetings.com,,ca:csd:3530013,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Kitchener
 kitimatstikine.civicweb.net,,ca:cd:5949,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Kitimat-Stikine
 kneehillcounty.escribemeetings.com,,ca:csd:4805041,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4805041 Kneehill County matched with spacing ignored
-knoxcounty.primegov.com,,us:county:48275,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Knox County
+knoxcounty.primegov.com,,us:county:47093,fallback,audit_rows_pins_2026-09-28,"corrected from us:county:48275: primegov: no meetings listed; portal logo is the seal reading Official Seal Knox County, Tenn."
 lacanadaflintridge-ca.granicus.com,,us:place:0639003,fallback,ryan_stated,"La Cañada Flintridge, CA -- us:place:0639003 La CaÃ±ada Flintridge city matched with spacing ignored"
 lacenter.civicweb.net,,us:place:5336710,fallback,ryan_stated,"La Center, WA -- us_places.csv La Center city"
 lacity.primegov.com,,us:place:0644000,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Los Angeles city
@@ -688,7 +688,7 @@ lsmo.granicus.com,,us:place:2941348,fallback,ryan_stated,"Lees Summit, MO -- us:
 lucanbiddulph.escribemeetings.com,,ca:csd:3539060,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lucan Biddulph
 lumby.civicweb.net,,ca:csd:5937005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lumby
 lwsd.granicus.com,,us:sd:5304230,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_school_districts.csv Lake Washington School District (unified)
-lyoncounty.primegov.com,,us:county:27083,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Lyon County
+lyoncounty.primegov.com,,us:county:32019,fallback,audit_rows_pins_2026-09-28,"corrected from us:county:27083: primegov: no meetings listed; portal logo reads Lyon County 1861 (Nevada Territory county formed 1861; the IA, KS, KY and MN Lyon Counties date from other years)"
 lytton.civicweb.net,,ca:csd:5933015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lytton
 lyttonbc.civicweb.net,,ca:csd:5933015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lytton
 machar.escribemeetings.com,,ca:csd:3549054,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Machar
@@ -756,7 +756,7 @@ middleton.civicweb.net,,ca:csd:1205016,fallback,wildcard_http_sweep_2,DNS resolv
 middletown.granicus.com,,us:place:0947290,fallback,ryan_stated,"Middletown, CT -- us_places.csv Middletown city"
 midland.civicweb.net,,ca:csd:3543074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Midland
 midland.granicus.com,,us:place:2653780,fallback,ryan_stated,"Midland, MI -- us_places.csv Midland city"
-midland.primegov.com,,ca:csd:3543074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Midland
+midland.primegov.com,,us:place:4848072,fallback,audit_rows_pins_2026-09-28,"corrected from ca:csd:3543074: primegov: 2025 meeting location reads Midland City Hall, 300 N. Loraine Street Midland Texas 79701"
 milfordct.us,,us:place:0947515,fallback,consolidated_government,Every archived page on this host keys to this consolidated city-county already (2026-09-10 audit of ~30 such governments); pinned so a re-spelling can never split it.
 millersburgoregon.gov,,us:place:4148300,fallback,ryan_stated,"Millersburg, OR -- us_places.csv Millersburg city"
 milpitasca.portal.civicclerk.com,,us:place:0647766,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Milpitas, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Milpitas city"
@@ -822,7 +822,7 @@ nevco.granicus.com,view_id=4,us:place:0630798,fallback,landing_page+wo1068,"Gras
 newark.granicus.com,,us:place:3451000,fallback,landing_page,"WRONG PIN (fixed 2026-09-03, rtr-discovery Phase 3 FINDING-9): the upcoming_roster pin below assumed this host was Newark, Alameda County, CA purely by matching the hostname text ""newark"" to the roster jurisdiction name -- the roster never lists newark.granicus.com as Newark, CA's calendar_url (that jurisdiction's real calendar_url is newark.legistar.com). Live-checked https://newark.granicus.com/ViewPublisher.php?view_id=2 -- page reads ""City of Newark, New Jersey - Live Proceedings"" / ""City of Newark, NJ Streaming Media Archive"" -> place 3451000 -> registry: us_places.csv Newark city, NJ. Prior (wrong) pin: gov_id=us:place:0650916, source=ryan_stated+upcoming_roster, evidence=rtr-upcoming roster: Newark, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Newark city"
 newburghny.new.swagit.com,,us:place:3650034,fallback,identity_join+landing_page,"Newburgh (city), NY -- us_places.csv Newburgh city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 newcarlisleohio.gov,,us:place:3954334,fallback,ryan_stated,"New Carlisle, OH -- us_places.csv New Carlisle city"
-newcastle.civicweb.net,,us:cousub:2301548645,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_cousubs.csv Newcastle town
+newcastle.civicweb.net,,us:place:5348645,fallback,audit_rows_pins_2026-09-28,"corrected from us:cousub:2301548645: civicweb: City Council minutes 10/21/2025 headed City of Newcastle, 12835 Newcastle Way, Newcastle, WA 98056"
 newmarket.escribemeetings.com,,ca:csd:3519048,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Newmarket
 newtecumseth.civicweb.net,,ca:csd:3543007,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv New Tecumseth
 newtonkansas.civicweb.net,,us:place:2050475,fallback,ryan_stated,"Newton, KS -- us_places.csv Newton city"
@@ -1075,7 +1075,7 @@ pub-palmdesert.escribemeetings.com,,us:place:0655184,fallback,archive_study_2026
 pub-paradise.escribemeetings.com,,ca:csd:1001517,fallback,ryan_stated,"Paradise, NL -- ca_csd.csv Paradise"
 pub-pickering.escribemeetings.com,,ca:csd:3518001,authoritative,manual_override,"was wrongly filed as Pickering, MO (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Pickering, ON. Backfilled 4 pages via POST /internal/jurisdiction/override, 2026-09-06."
 pub-pleasanthillca.escribemeetings.com,,us:place:0657764,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0657764 match=exact -> registry: us_places.csv Pleasant Hill city
-pub-rdco.escribemeetings.com,,rtr:ca:bc:regional-district-of-central-okanagan,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Central Okanagan, BC'"
+pub-rdco.escribemeetings.com,,ca:cd:5935,fallback,duplicate_id_audit_2026-09-28,"Regional District of Central Okanagan = Census division 5935 (Central Okanagan, BC); was the minted id rtr:ca:bc:regional-district-of-central-okanagan (pages 870, 2350 re-keyed on the worklist)"
 pub-richmond.escribemeetings.com,,us:place:0660620,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0660620 match=exact -> registry: us_places.csv Richmond city
 pub-richmondhill.escribemeetings.com,,ca:csd:3519038,fallback,visual_confirmed,"agenda 'Council Chambers, 225 East Beaver Creek Road, Richmond Hill, Ontario' (meeting.png) [reports/jurisdiction_screens/pub-richmondhill.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-richmondhill.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Richmond Hill"
 pub-rmow.escribemeetings.com,,ca:csd:5931020,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Whistler
@@ -1285,7 +1285,7 @@ stonyplain.escribemeetings.com,,ca:csd:4811048,fallback,wildcard_http_sweep_2,ba
 stpaul.escribemeetings.com,,ca:csd:4812018,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv St. Paul
 stpaul.granicus.com,,us:place:2758000,fallback,ryan_stated,"St Paul, MN -- us:place:2758000 St. Paul city matched with spacing ignored"
 stpete.granicus.com,,us:place:1263000,fallback,auto_derived+visual_confirmed,"logo alt text 'City of St. Petersburg, Fl' (landing.png) [reports/jurisdiction_screens/stpete.granicus.com/landing.png reports/jurisdiction_screens/stpete.granicus.com/meeting.png] -> place 1263000 -> registry: us_places.csv St. Petersburg city"
-stratford.civicweb.net,,ca:csd:2430110,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Stratford
+stratford.civicweb.net,,ca:csd:1102080,fallback,audit_dns_full_2026-09-28,corrected from ca:csd:2430110: agenda names the Town of Stratford and cites the Municipal Government Act R.S.P.E.I.
 stratford.escribemeetings.com,,ca:csd:2430110,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Stratford
 strathcona.escribemeetings.com,,ca:csd:4811052,fallback,wo1050_live_check,"Strathcona County, AB -- WO-1050: the sweep matched Strathcona Regional District, BC; pub-strathcona's agendas name Travel Alberta"
 strathmore.civicweb.net,,ca:csd:4805018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Strathmore
@@ -1510,7 +1510,7 @@ westlincoln.escribemeetings.com,,ca:csd:3526021,fallback,wildcard_http_sweep_2,b
 westlockcounty.civicweb.net,,rtr:ca:ab:westlock-county,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'Westlock County, AB'"
 westonwi.gov,,us:place:5586025,fallback,hub_sweep_wo126,"coverage registry row us:place:5586025 (Weston village, WI); hub https://westonwi.gov/Calendar.aspx?EID=3766; meeting found via youtube at https://westonwi.gov/AgendaCenter"
 westperth.civicweb.net,,ca:csd:3531025,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv West Perth
-westport.civicweb.net,,ca:csd:1008093,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Westport
+westport.civicweb.net,,us:place:5377630,fallback,audit_rows_pins_2026-09-28,corrected from ca:csd:1008093: civicweb: City of Westport Regular City Council minutes 9/14/2026 name the Port of Grays Harbor and Grays Harbor Council of Governments; LTAC folder
 westvancouver.escribemeetings.com,,ca:csd:5915055,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv West Vancouver
 wetaskiwin.civicweb.net,,ca:csd:4811002,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Wetaskiwin
 weyburn.civicweb.net,,ca:csd:4702047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Weyburn
@@ -9155,6 +9155,52 @@ wi-prescott.civicplus.com,,us:place:5565375,fallback,step0_dns_full_2026-09-27,"
 wy-laramie2.civicplus.com,,us:place:5645050,fallback,step0_dns_full_2026-09-27,"civicplus: title 'Laramie, WY - Official Website | Official Website'; named government is not the guess's candidate but shares its place name (Laramie County School District 2)"
 simivalley.granicus.com,clip_id=3006,us:sd:0636840,authoritative,wo1151_misfile,"Simi Valley Unified School District, CA -- WO-1151: page 11293 ""09-08-26 SVUSD BOE Regular Meeting"" is the school board, not the city; stored name ""City of Simi Valley, CA"" matches the city exactly, so this per-clip pin is authoritative"
 hamburgny.new.swagit.com,videos/398870,us:cousub:3602931654,authoritative,wo1151_misfile,"Hamburg town, NY -- WO-1151: page 9706 ""8-24-2026 TB Meeting"" is the Town Board (TB), not the village; stored name ""Hamburg, NY"" resolves to the village, so this per-video pin is authoritative"
+pub-sdgcounties.escribemeetings.com,,ca:cd:3501,fallback,audit_dns_full_2026-09-28,"escribe: agenda: United Counties of Stormont, Dundas & Glengarry, 26 Pitt Street, Cornwall ON"
+pub-ottawa.escribemeetings.com,,ca:csd:3506008,fallback,audit_dns_full_2026-09-28,"escribe: agenda: Ottawa City Council, 110 Laurier Avenue West"
+pub-hamilton.escribemeetings.com,,ca:csd:3525005,fallback,audit_dns_full_2026-09-28,"escribe: agenda: City of Hamilton, Hamilton City Hall, 71 Main Street West"
+pub-niagararegion.escribemeetings.com,,ca:cd:3526,fallback,audit_dns_full_2026-09-28,"escribe: agenda: The Regional Municipality of Niagara Council, 1815 Sir Isaac Brock Way, Thorold, ON"
+pub-champlain.escribemeetings.com,,ca:csd:3502010,fallback,audit_dns_full_2026-09-28,"escribe: agenda: Township of Champlain Regular Council, UCPR Council Chambers, 59 Court Street, L'Orignal"
+pub-cityofkingston.escribemeetings.com,,ca:csd:3510010,fallback,audit_dns_full_2026-09-28,escribe: agenda: City of Kingston Council; items cite the Province of Ontario and Eastern Ontario YMCA
+pub-lasalle.escribemeetings.com,,ca:csd:3537034,fallback,audit_dns_full_2026-09-28,"escribe: agenda: The Corporation of the Town of LaSalle, LaSalle Civic Centre, 5950 Malden Road"
+pub-echobay.escribemeetings.com,,ca:csd:3557051,fallback,audit_dns_full_2026-09-28,"escribe: agenda: Township of Macdonald, Meredith & Aberdeen Additional (Echo Bay hall)"
+ross.civicweb.net,,us:cousub:4200366264,fallback,audit_dns_full_2026-09-28,"civicweb: agenda: Environmental Advisory Council, 1000 Ross Municipal Drive (same address as Ross Township, Allegheny County, PA on its CivicPlus site)"
+pub-greenwood.escribemeetings.com,,ca:csd:5905042,fallback,audit_dns_full_2026-09-28,escribe: agenda: City of Greenwood; Syilx Okanagan and Metis Nation British Columbia acknowledgement
+pub-peachland.escribemeetings.com,,ca:csd:5935018,fallback,audit_dns_full_2026-09-28,"escribe: agenda: The District of Peachland Regular Council, 4450 6th Street, Peachland"
+pub-cityofdawson.escribemeetings.com,,ca:csd:6001029,fallback,audit_dns_full_2026-09-28,escribe: agenda: The City of Dawson Council Meeting
+pub-perry.escribemeetings.com,,us:place:1360340,fallback,audit_dns_full_2026-09-28,"escribe: agenda: Perry City Hall, 808 Carroll Street, Perry, GA 31069"
+pub-salem.escribemeetings.com,,us:place:4164900,fallback,audit_dns_full_2026-09-28,"escribe: agenda: City of Salem, 585 Liberty Street SE, Salem, OR 97301"
+pub-manchesterct.escribemeetings.com,,us:cousub:0911044700,fallback,audit_dns_full_2026-09-28,"escribe: agenda: Board of Directors, Feb 4 2025; items funded by Connecticut state departments"
+il-warrentownship.civicplus.com,,us:cousub:1709778877,fallback,audit_dns_full_2026-09-28,"civicplus: agenda: Warren Township Board, 17801 West Washington Street, Gurnee, IL 60031 (Lake County)"
+derrytownship.civicweb.net,,us:cousub:4204318936,fallback,audit_dns_full_2026-09-28,"civicweb: meeting location: 600 Clearwater Road, Hershey, Pennsylvania 17033 (Dauphin County)"
+me-rangeley.civicplus.com,,us:cousub:2300761840,fallback,audit_dns_full_2026-09-28,"civicplus: footer: Rangeley Town Office, 15 School St., Rangeley, ME 04970 (the town, not the plantation)"
+mi-watertowntownship.civicplus.com,,us:cousub:2603784400,fallback,audit_dns_full_2026-09-28,"civicplus: agenda: Board of Trustees, 12803 S. Wacousta Rd, Grand Ledge, MI 48837 (ZIP in Clinton and Eaton; only Clinton County has a Watertown township)"
+nj-mansfieldtownship.civicplus.com,,us:cousub:3400543290,fallback,audit_dns_full_2026-09-28,"civicplus: agenda header: 'Mansfield Township, Burlington County Joint Land Use Board'"
+nj-greenwichtownship.civicplus.com,,us:cousub:3401528185,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 420 Washington Street, Gibbstown, NJ 08027 (Gloucester County)"
+oh-greentownship.civicplus.com,,us:cousub:3906131752,fallback,audit_dns_full_2026-09-28,"civicplus: footer: Green Township, 6303 Harrison Ave, Cincinnati, OH 45247 (Hamilton County)"
+oh-coleraintownship.civicplus.com,,us:cousub:3906116616,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 4200 Springdale Road, Colerain Township, OH 45251 (Hamilton County); agenda: Board of Trustees"
+oh-clintontownship.civicplus.com,,us:cousub:3904916112,fallback,audit_dns_full_2026-09-28,"civicplus: footer and agenda: 3820 Cleveland Ave, Columbus, OH 43224 (Franklin County)"
+oh-prairietownship2.civicplus.com,,us:cousub:3904964570,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 23 Maple Drive, Columbus, OH 43228 (Franklin County); agenda: Board of Trustees"
+oh-miamitownship2.civicplus.com,,us:cousub:3911349392,fallback,audit_dns_full_2026-09-28,"civicplus: agenda: Miami Township Government Center, 2700 Lyons Road, OH 45342 (ZIP in Montgomery and Warren; only Montgomery has a Miami township)"
+pa-cumberlandtownship.civicplus.com,,us:cousub:4205917648,fallback,audit_dns_full_2026-09-28,"civicplus: footer: Municipal Building, 100 Municipal Rd, Carmichaels, PA 15320 (Greene County)"
+pa-richlandtownship.civicplus.com,,us:cousub:4200364528,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 4019 Dickey Road, Gibsonia, PA 15044 (ZIP in Allegheny and Butler; only Allegheny has a Richland township)"
+pa-rosstownship.civicplus.com,,us:cousub:4200366264,fallback,audit_dns_full_2026-09-28,"civicplus: agenda and footer: 1000 Ross Municipal Drive, Pittsburgh, PA 15237 (ZIP in Allegheny County)"
+pa-mariontownship.civicplus.com,,us:cousub:4201147440,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 4023 Conrad Weiser Parkway, Stouchsburg, PA 19567 (Berks County); agenda: BOS meeting"
+pa-girardtownship.civicplus.com,,us:cousub:4204929240,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 10140 Ridge Road, Girard, PA 16417 (Erie County)"
+pa-sugarloaf.civicplus.com,,us:cousub:4207975064,fallback,audit_dns_full_2026-09-28,"civicplus: footer: Sugarloaf Township Building, 858 Main Street, Sugarloaf, PA 18249 (Luzerne County)"
+pa-manheimtownship2.civicplus.com,,us:cousub:4207146896,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 1840 Municipal Drive, Lancaster, PA 17601 (Lancaster County)"
+pa-hempfieldtownship.civicplus.com,,us:cousub:4212933792,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 1132 Woodward Drive, Greensburg, PA 15601 (Westmoreland County)"
+pa-forkstownship.civicplus.com,,us:cousub:4209526728,fallback,audit_dns_full_2026-09-28,"civicplus: agenda header: 'Forks Township, Northampton County, Board of Supervisors'"
+wi-lawrence.civicplus.com,,us:cousub:5500942900,fallback,audit_dns_full_2026-09-28,"civicplus: agenda: Town of Lawrence, 2400 Shady Court, De Pere, WI 54115 (ZIP in Brown and Outagamie; only Brown has a Lawrence town)"
+cityofholland.civicweb.net,,us:place:2638640,fallback,audit_dns_full_2026-09-28,"civicweb: agenda: City of Holland, City Hall, 270 S. River Avenue, Holland, MI 49423"
+ca-king.civicplus.com,,us:place:0638520,fallback,audit_dns_full_2026-09-28,"civicplus: footer: 212 South Vanderhurst Avenue, King City, CA 93930; agenda: Airport Advisory Committee"
+pub-lynwood.escribemeetings.com,,us:place:0644574,fallback,audit_dns_full_2026-09-28,"escribe: agenda: City Council Regular Meeting, 11350 Bullis Road, Lynwood, CA 90262"
+cityoflonetree.civicweb.net,,us:place:0845955,fallback,audit_dns_full_2026-09-28,"civicweb: agenda: Lone Tree City Council, 8527 Lone Tree Parkway, Lone Tree, CO 80124"
+cityofwestminster.primegov.com,,us:place:0883835,fallback,audit_dns_full_2026-09-28,"primegov: agenda: City Council Study Session with a Jefferson County Public Schools update (Westminster, CO; the SC one has no such district)"
+nj-margate.civicplus.com,,us:place:3443890,fallback,audit_dns_full_2026-09-28,"civicplus: footer: City of Margate City Hall, 9001 Winchester Avenue, Margate, New Jersey 08402"
+pub-stclairsville.escribemeetings.com,,us:place:3969526,fallback,audit_dns_full_2026-09-28,escribe: agenda header 'St. Clairsville City Council' (the OH city; the PA one is a borough); agenda content is test text
+tx-reno2.civicplus.com,,us:place:4861592,fallback,audit_dns_full_2026-09-28,"civicplus: footer: City of Reno, 160 Blackburn Street, Reno, TX 75462 (the Lamar County Reno; census point 33.67N -95.48W)"
+tx-springvalley.civicplus.com,,us:place:4869830,fallback,audit_dns_full_2026-09-28,"civicplus: agenda: City of Spring Valley Village Board of Adjustment, 1025 Campbell Road, Houston, Texas 77055"
+wi-pewaukee2.civicplus.com,,us:place:5562240,fallback,audit_dns_full_2026-09-28,"civicplus: footer: City of Pewaukee, W240 N3065 Pewaukee Road, Pewaukee, WI 53072 (the city, not the village)"
 cloud.castus.tv,castus:amesbury:6a165228799500000296b684,us:place:2501185,fallback,wo1152_castus_census2,"Amesbury city -- WO-1152 Castus channel census round 2 (Ryan, 2026-09-27): channel amesbury; meeting ""Amesbury City Council Meeting of May 26, 2026""; per-video pin"
 cloud.castus.tv,castus:amesbury:68f7aa92aa1ade000281054d,us:sd:2501860,fallback,wo1152_castus_census2,"Amesbury School District -- WO-1152 Castus channel census round 2 (Ryan, 2026-09-27): channel amesbury; meeting ""Amesbury School Committee Meeting of 10/20/25""; per-video pin"
 cloud.castus.tv,castus:bath:6a29e1cb0876d80002297ab9,us:place:2303355,fallback,wo1152_castus_census2,"Bath city -- WO-1152 Castus channel census round 2 (Ryan, 2026-09-27): channel bath; meeting ""Bath City Council 06-10-26""; per-video pin"

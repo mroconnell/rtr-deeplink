@@ -167,11 +167,42 @@ GET also reads the first bytes and accepts a real container signature
 (the same `_classify_laserfiche_media()` check Laserfiche already uses).
 Only the first 1 KB is ever read, even if a host ignores `Range` and
 starts sending the whole file.
+
+iSiLIVE files and their caption file (WO-1155, 2026-09-28)
+----------------------------------------------------------
+iSiLIVE (ISI Live) hosts meeting video for eScribe customers and others.
+It keeps each recording's captions next to the file:
+`video.isilive.ca/{client}/{file}.vtt` (English) or `.{lang}.vtt`.
+`escribe.py` already read that file, but only when it reached the video
+through an eScribe meeting page. A bare iSiLIVE URL came here and got
+video with no captions. `parse_isilive_file_url()` now recognises five
+real shapes (all checked live 2026-09-28 on Miramichi NB's
+`miramichi/2026-05-19.mp4`, except the `.html` page, which Miramichi
+lacks and Whitehorse YT has):
+
+* `video.isilive.ca/download/{client}/{file}` -- the plain file.
+* `video.isilive.ca/{client}/{file}` -- the same file.
+* `video.isilive.ca/play/{client}/{file}` -- a small player page (HTML),
+  not the file. Before WO-1155 this failed the media check.
+* `video.isilive.ca/{client}/{file}.html` -- a per-file player page.
+* `cdn1.isilive.ca/vod/_definst_/mp4:{client}/{file}/playlist.m3u8` --
+  the HLS stream `escribe.py` itself builds.
+
+Every shape resolves to the `/download/` file as `video_url` (it answers
+HEAD with `Content-Type: video/mp4`), then the caption lookup runs with
+`escribe.py`'s own rule (`find_isilive_captions()`). When no caption
+file exists (Whitehorse YT, Nunavut: 404), the result is exactly the
+old plain-file result. `{file}` may hold subfolders (Nunavut's
+`2026/2026-05-22-eng.mp4`).
+
+The `{client}` folder is iSiLIVE's customer name. It is never used to
+name a government: `jurisdiction` stays unset, and the gov_id comes from
+the caller's research row.
 """
 
 import re
 from typing import List, Optional, Tuple
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlparse, urlunparse
 
 import aiohttp
 
@@ -233,6 +264,52 @@ _DRIVE_DOWNLOAD_ID_RE = re.compile(
     r"drive\.usercontent\.google\.com/download\?[^\s\"'<>]*\bid=([\w-]+)"
 )
 _DRIVE_UC_ID_RE = re.compile(r"drive\.google\.com/uc\?[^\s\"'<>]*\bid=([\w-]+)")
+
+
+# WO-1155: iSiLIVE hosts -- see module docstring's "iSiLIVE files" section.
+_ISILIVE_VIDEO_HOST = "video.isilive.ca"
+_ISILIVE_CDN_HOST_RE = re.compile(r"^cdn\d*\.isilive\.ca$")
+_ISILIVE_CDN_PATH_RE = re.compile(r"^/vod/_definst_/mp4:([^/]+)/(.+)/playlist\.m3u8$")
+# First path folders on video.isilive.ca that are not a customer: the
+# player's own assets, and the two prefixes that come before a customer.
+_ISILIVE_NON_CLIENT_FOLDERS = frozenset({"cdn"})
+_ISILIVE_PREFIX_FOLDERS = frozenset({"download", "play"})
+_ISILIVE_MEDIA_EXTENSIONS = (".mp4", ".m4v", ".mov", ".mp3", ".m4a", ".wav")
+
+
+def parse_isilive_file_url(url: str) -> Optional[Tuple[str, str]]:
+    """`(client, encoded_file)` for a recognised iSiLIVE file URL, else
+    None. `encoded_file` is the file path, percent-encoded one folder at
+    a time (a space becomes `%20`), the form iSiLIVE's own caption URLs
+    use. A live-stream player (`play/{client}/live`) has no media file
+    and returns None. See module docstring's "iSiLIVE files" section."""
+    parsed = urlparse(url)
+    netloc = parsed.netloc.lower()
+    if netloc == _ISILIVE_VIDEO_HOST:
+        parts = [p for p in parsed.path.split("/") if p]
+        if parts and parts[0].lower() in _ISILIVE_PREFIX_FOLDERS:
+            parts = parts[1:]
+        if len(parts) < 2 or parts[0].lower() in _ISILIVE_NON_CLIENT_FOLDERS:
+            return None
+        client, file_parts = parts[0], parts[1:]
+        if file_parts[-1].lower().endswith(".html"):
+            file_parts[-1] = file_parts[-1][: -len(".html")]
+    elif _ISILIVE_CDN_HOST_RE.match(netloc):
+        match = _ISILIVE_CDN_PATH_RE.match(parsed.path)
+        if not match:
+            return None
+        client, file_parts = match.group(1), match.group(2).split("/")
+    else:
+        return None
+    decoded = [unquote(p) for p in file_parts]
+    if not decoded[-1].lower().endswith(_ISILIVE_MEDIA_EXTENSIONS):
+        return None
+    return unquote(client), "/".join(quote(p, safe="") for p in decoded)
+
+
+def _isilive_download_url(client: str, encoded_file: str) -> str:
+    """The plain file behind any recognised iSiLIVE shape."""
+    return f"https://{_ISILIVE_VIDEO_HOST}/download/{client}/{encoded_file}"
 
 
 def _drive_file_id(url: str) -> Optional[str]:
@@ -386,6 +463,10 @@ def is_direct_file_url(url: str) -> bool:
         return True
     if is_laserfiche_url(url):
         return True
+    if parse_isilive_file_url(url) is not None:
+        # WO-1155: includes iSiLIVE's player pages, which carry no media
+        # extension of their own (see module docstring).
+        return True
     # A real video OR audio extension in the URL's own path -- covers a
     # bare first-party file (Palisade/Dundee/Cayuga Heights), Dropbox's
     # `/scl/fi/<id>/<filename>.mp4` shape (whose filename segment already
@@ -470,6 +551,9 @@ def _resolve_direct_media_url(url: str) -> str:
             "https://drive.usercontent.google.com/download"
             f"?id={file_id}&export=download&confirm=t"
         )
+    isilive = parse_isilive_file_url(url)
+    if isilive is not None:
+        return _isilive_download_url(*isilive)
     parsed = urlparse(url)
     if is_dropbox_url(url):
         # Dropbox's own documented direct-download flag -- confirmed live
@@ -529,7 +613,7 @@ class DirectFileAssetFinder(AssetFinder):
                     f"playable video or audio file (Content-Type: {content_type!r})"
                 ],
             )
-        return ResolvedMeeting(
+        resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=media_url,
@@ -539,6 +623,30 @@ class DirectFileAssetFinder(AssetFinder):
                 else _media_format(media_url, content_type)
             ),
         )
+        isilive = parse_isilive_file_url(url)
+        if isilive is not None:
+            await self._add_isilive_captions(resolved, *isilive)
+        return resolved
+
+    @staticmethod
+    async def _add_isilive_captions(
+        resolved: ResolvedMeeting, client: str, encoded_file: str
+    ) -> None:
+        """Attach the caption file iSiLIVE keeps next to this recording,
+        by `escribe.py`'s own rule (WO-1155). No caption file leaves
+        `resolved` exactly as the plain-file result."""
+        # Function-level: escribe.py pulls in bs4 and several adapters,
+        # none of which a plain-file resolve otherwise needs.
+        from .escribe import find_isilive_captions, isilive_caption_warnings
+
+        async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            chosen = await find_isilive_captions(session, client, encoded_file)
+        if not chosen:
+            return
+        _vtt_url, cues, language = chosen
+        resolved.segments = [TranscriptSegment(**cue) for cue in cues]
+        resolved.transcript_language = language
+        resolved.transcript_warnings = isilive_caption_warnings(cues, language)
 
     @staticmethod
     async def _probe_media(media_url: str) -> Tuple[Optional[str], Optional[str]]:
