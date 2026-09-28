@@ -357,6 +357,58 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Kalamazoo, MI's TelVue station: City of Kalamazoo committees and
         # the Kalamazoo County Board of Commissioners (WO-1060).
         ("videoplayer.telvue.com", "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05"),
+        # Access Framingham: Framingham School District, Framingham city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "0xevl1Y-G4MlrcS7VDCjMf9uhAElnooJ"),
+        # Weymouth, MA (unbranded org logo): Weymouth School District, Weymouth Town city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R"),
+        # WinCAM (Winchester, MA): Winchester School District, Winchester town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "7qWlRaZ6VN1bGk9m5qlLrPdu4-4i7cSa"),
+        # Natick Pegasus (Natick, MA): Natick School District, Natick town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "994DtmGEsi0VDYK3jJI2BJ72GfgNIpU2"),
+        # Mendham TV (NJ): Mendham borough, Mendham township (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm"),
+        # Eastside Rochester Cable Network (East Rochester / Pittsford: East Rochester village, Pittsford town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "FcqTL0OYMCGU6WlccUApyUL3twz4dm9V"),
+        # Yarmouth TV (Yarmouth, ME): Yarmouth, Yarmouth town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm"),
+        # Rice Lake TV, WI: Barron County, Rice Lake Area School District, Rice Lake city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA"),
+        # Stoneham, MA VOD Player: Stoneham School District, Stoneham town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "MYHMRKXBbGFaah07vKkZ_-J4SThODdPq"),
+        # South Portland Community TV, ME: South Portland, South Portland city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "NzN-Z2CpIDNbXMWB16nIzGKjRlHJozGq"),
+        # City of Rifle Community Access Multimedia -- RifleTV+ (CO): Colorado River Fire Rescue, Garfield County, Garfield County Libraries, Garfield School District RE-2, Rifle city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS"),
+        # Goffstown Community TV, NH: Goffstown School District, Goffstown town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "SzsDk6b45y6N97eOtbGQ_hsTcS0ZfQgT"),
+        # Newmarket TV, NH: Newmarket School District, Newmarket town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP"),
+        # High Five Access Media (Vail/Avon/Eagle County, CO): Avon town, Eagle County School District RE 50, Vail Local Housing Authority, Vail Recreation District, Vail town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "YGktjFZCLukJd_8Fx53BkVRk4tAZafS4"),
+        # (unbranded, Lincoln County ME area -- Alna/Bristol/Newcastle: Alna town, Bristol town, Damariscotta town, Newcastle town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG"),
+        # Open Stage Media / Collaborative Studios (Schenectady/Rotter: Albany city, Rotterdam town, Schenectady city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA"),
+        # City of Medina, OH: Medina City School District, Medina County, Medina city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9"),
+        # Somersworth, NH (unbranded org logo): Somersworth School District, Somersworth city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "c3u9LDqF4P2BmKomyp2Nfg8d-zRkKnkJ"),
+        # Rochester, NH (unbranded org logo): Rochester School District, Rochester city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu"),
+        # WBMA-TV (Bloomfield, NJ): Bloomfield Township School District, Bloomfield township (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "gmcC3sJ6AGUdIb568B18VQd22AGea7RE"),
+        # Shrewsbury Media Connection, MA: SELCO (Shrewsbury Electric & Cable Operations), Shrewsbury Housing Authority, Shrewsbury School District, Shrewsbury town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2"),
+        # West Bridgewater Community Access Television, MA: West Bridgewater School District, West Bridgewater town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N"),
+        # Dover TV, NH: Dover School District, Dover city (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt"),
+        # Billerica Access Television, MA: Billerica Housing Authority, Billerica School District, Billerica town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw"),
+        # Penfield Television, NY: Penfield town, Webster Central School District (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "talMNRSs41kuvSjXkD0nTr30kDZRGcjH"),
+        # Belmont Media Center, MA: Belmont Municipal Light Department, Belmont School District, Belmont town (WO-1149 TelVue census, 2026-09-27).
+        ("videoplayer.telvue.com", "uClcIN88BHKHJoveFoaVN_8_5Tg72P0o"),
         # Queen Anne's County, MD's station (QACTV): county commissioners
         # and Centreville's town council (rtr-discovery's saved
         # queenannes_videos.html, 2026-09-25; WO-1100).

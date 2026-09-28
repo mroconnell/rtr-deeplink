@@ -446,7 +446,7 @@ https://ontariocony.portal.civicclerk.com/event/2053/media		us:county:36069
 https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045524		us:sd:2505730
 https://cook-county.granicus.com/MediaPlayer.php?view_id=2&clip_id=5841		us:county:17031
 https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/1041008		us:place:3445330
-https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA/media/1029109		us:place:5518025
+https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA/media/1029109		us:place:5567350
 https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5554		us:place:4131250
 https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1052		us:place:0950370
 https://cloud.castus.tv/vod/somerset/video/6ab5dfca1932cf0002ef21f8?page=HOME		us:cousub:2500562430
@@ -836,3 +836,25 @@ https://cloud.castus.tv/vod/tbnk/video/67eea886ad6bc800084635e4	https://cloud.ca
 https://cloud.castus.tv/vod/tbnk/video/6a4fa05aaa1c4a0002e9119f	https://cloud.castus.tv/vod/tbnk	us:place:2175738
 https://cloud.castus.tv/vod/tbnk/video/69e0d7e741c3d895c3e5d5bc	https://cloud.castus.tv/vod/tbnk	us:place:2179698
 https://cloud.castus.tv/vod/tbnk/video/6ab3d202d159690002ec05aa	https://cloud.castus.tv/vod/tbnk	us:county:21117
+https://videoplayer.telvue.com/player/7qWlRaZ6VN1bGk9m5qlLrPdu4-4i7cSa/media/1036264	https://videoplayer.telvue.com/player/7qWlRaZ6VN1bGk9m5qlLrPdu4-4i7cSa/videos	us:sd:2513110
+https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/996629	https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/videos	us:cousub:3402745360
+https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA/media/1022385	https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA/videos	us:sd:5512810
+https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1047160	https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/videos	us:place:2578972
+https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1005075	https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/videos	us:sd:2512840
+https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/669858	https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/videos	us:sd:3305280
+https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/media/1023234	https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/videos	us:cousub:2301501010
+https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/media/1023228	https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/videos	us:cousub:2301507485
+https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/media/1014841	https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/videos	us:cousub:3609363935
+https://videoplayer.telvue.com/player/bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9/media/1021160	https://videoplayer.telvue.com/player/bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9/videos	us:county:39103
+https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/media/1032993	https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/videos	us:cousub:3401306260
+https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/media/1044889	https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/videos	us:sd:3401830
+https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1034110	https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/videos	us:sd:2510770
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1042105	https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/videos	us:county:36095
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1045990	https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/videos	us:cousub:3609516639
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1017414	https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/videos	us:place:3616628
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/996851	https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/videos	us:cousub:3609517651
+https://videoplayer.telvue.com/player/mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N/media/979542	https://videoplayer.telvue.com/player/mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N/videos	us:sd:2512420
+https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1044701	https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/videos	us:sd:2502670
+https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/media/1046648	https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/videos	us:sd:3630360
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1031182	https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/videos	us:sd:2502490
+https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1041493	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	us:sd:0620460

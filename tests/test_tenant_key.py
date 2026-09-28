@@ -579,19 +579,21 @@ TENANT_NAME_CASES = [
         "Maple Grove, MN",
         "us:place:2740166",
     ),
-    # Not trusted: TelVue at all (its adapter guesses the town from each
-    # meeting's title; Pacifica Coast TV, name from the 2026-09-09 archive
-    # export, also carries Half Moon Bay), a multi-government station
-    # (RVTV), a URL missing its key, and a host with no tenant key.
+    # TelVue: its adapter reads the town from each meeting's title. Once a
+    # customer has pins, they record its state, and the title's name
+    # resolves inside that state (WO-1100). Pacifica Coast TV and RVTV got
+    # per-video pins in WO-1149 (TelVue census, 2026-09-27), so these two
+    # now resolve by name. Still not trusted: a multi-government station's
+    # name with no pin, a URL missing its key, and a host with no tenant key.
     (
         "https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1042149",
         "Pacifica, CA",
-        "rtr:unknown:videoplayer.telvue.com",
+        "us:place:0654806",
     ),
     (
         "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047347",
         "Grants Pass, OR",
-        "rtr:unknown:videoplayer.telvue.com",
+        "us:place:4130550",
     ),
     (
         "https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986",
