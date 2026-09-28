@@ -97,6 +97,13 @@ _APPROVED_SCHOOL_BOARD_REKEYS = {
 }  # fmt: skip
 _APPROVED_MINT_REKEYS = {5945, 10852, 645, 2004, 5301}
 _APPROVED_RYAN_NAMED_REKEYS = {3367, 3453}  # Derry, NH and Hopkins, MN
+# Ryan, 2026-09-28: 19 pages filed under a second (minted) id for the same government,
+# re-keyed to the Census id (rtr-business followups/misfiled/duplicate_ids.csv), plus
+# page 3385 (Billerica, MA) under his "a nearby government is close enough" rule.
+_APPROVED_DUPLICATE_ID_REKEYS = {
+    466, 493, 535, 603, 606, 870, 1198, 1258, 1404, 1973, 2002, 2279, 2350,
+    2420, 3385, 5593, 5902, 10324, 11154, 11283,
+}  # fmt: skip
 _STILL_WAITING: set = set()
 
 
@@ -112,6 +119,7 @@ def test_the_approved_rows_are_exactly_the_ones_ryan_approved():
         _APPROVED_SCHOOL_BOARD_REKEYS
         | _APPROVED_MINT_REKEYS
         | _APPROVED_RYAN_NAMED_REKEYS
+        | _APPROVED_DUPLICATE_ID_REKEYS
         | {2504}
     )
     assert {r.page_id for r in rows if r.rejected} == _REJECTED
