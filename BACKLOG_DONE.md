@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1153: two rtr-discovery tenants filed under a far-away government get the right one [Done 2026-09-27]
+
+**What was done and why.** A slug reverse check in rtr-business (2026-09-27) found two vendor sites filed under a same-named government in the wrong place. Ryan's rule: a nearby government (a county and its city) is close enough; fix a wrong state or a far-away place. Both were checked live on 2026-09-27 before pinning.
+
+| Site | Was | Now | Evidence |
+| --- | --- | --- | --- |
+| `liveoakcity.primegov.com` | Live Oak, FL (`us:place:1240875`) | Live Oak city, CA (`us:place:0641936`) | Meeting page names "Live Oak, California 95953" |
+| `hermantownmn.portal.civicclerk.com` | Herman, MN (`us:place:2728646`) | Hermantown city, MN (`us:place:2728682`) | Event 1167: City Council at 5105 Maple Grove Road, Hermantown |
+
+Live Oak's wrong answer came from its own pin (a name-only DNS-sweep match), now corrected. Hermantown had no pin; it gets one.
+
+**Caution.** This changes where these sites' meetings are filed after a deploy. Archive pages already filed under the wrong place are on rtr-business's repair sheet (`research/slug_learning_2026-09-27/wrong_page_rekeys.csv`); this does not move them.
+
+**Tests.** `tests/test_wo1153_wrong_place_pins.py`.
+
 ## WO-1148: batch transcription top-up now runs from the worker itself, not from a GitHub Actions runner these hosts block [Done 2026-09-27]
 
 **Why this ran.** Ryan asked why the Render transcription workers looked idle again. Checking live (`GET /internal/transcription-queue-stats`) found `active_jobs: 0` against a healthy `backlog_no_transcript: 541` and `tier3_queue_remaining: 830` -- real work existed, but wasn't reaching the workers. The candidate feed the hourly top-up cron used (`GET /internal/transcription-backlog`) returned exactly **1** eligible candidate: nearly the entire backlog was sitting in `_in_auto_transcription_cooldown()`'s escalating (1-to-30-day) backoff. Ryan approved a same-day one-off manual recovery (re-checking feasibility from a home Mac instead of GitHub Actions, non-Granicus prioritized) that got `active_jobs` from 0 to 10 -- see BACKLOG.md's entry from earlier the same day for that recovery's own numbers -- then asked for the real, permanent repair rather than repeating the manual recovery each time this happens.
