@@ -999,6 +999,9 @@ https://reflect-westernhills.cablecast.tv/internetchannel/show/1665	https://refl
 https://cityofeuclid.cablecast.tv/internetchannel/show/1373	https://cityofeuclid.cablecast.tv/CablecastPublicSite/	us:place:3925704
 https://cityofrockymount.cablecast.tv/internetchannel/show/476	https://cityofrockymount.cablecast.tv/CablecastPublicSite/	us:place:3757500
 https://bloomfield-mi.cablecast.tv/show/2836?site=1	https://bloomfield-mi.cablecast.tv/	us:sd:2606090
+https://reflect-ontv.cablecast.tv/internetchannel/show/5748	https://reflect-ontv.cablecast.tv/CablecastPublicSite/	us:place:2644940
+http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/show/811?site=1	http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/	us:cousub:1701977018
+https://reflect-tacm.cablecast.tv/CablecastPublicSite/show/5307?site=1	https://reflect-tacm.cablecast.tv/CablecastPublicSite/	us:cousub:2605500200
 https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
 https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing		us:sd:4700330
 https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y		us:sd:4502340
