@@ -449,9 +449,28 @@ class CivicPlusAssetFinder(AssetFinder):
         this gap is specific to YouTube being a general-purpose host with
         non-video URL shapes on the same domain, not a property every
         platform shares.
+
+        WO-1156: also rejects `platform == "civicplus"` -- the identical
+        self-delegation guard `resolve()`'s own `final_platform` check
+        above already applies to a whole-page redirect, just missing here
+        for a per-row `td.media` link. Real, reproduced live 2026-09-28:
+        ca-inglewood.civicplus.com's Construction-Appeals-Board-32 page
+        has one row whose only `td.media` link is
+        `.../Construction-Appeals-Board-32/?#_09012026-4613` -- a
+        same-page fragment anchor, not a real video, but its path still
+        starts with `/AgendaCenter` so `detect_platform()` returns
+        "civicplus" and it passed as "real" before this fix.
+        `resolve_via_platform()` then re-detected civicplus, got this
+        same finder class back, and called `.resolve()` on the same URL
+        -- re-fetching the identical page, finding the identical single
+        candidate, forever: a real `RecursionError` crashed the resolver
+        (~745 identical 4-frame cycles before the stack gave out mid
+        socket-setup). Per the module docstring, CivicPlus is never the
+        video host itself, so a `td.media` link that itself resolves as
+        "civicplus" can never be a real video regardless of its shape.
         """
         platform = detect_platform(href)
-        if platform == "unknown":
+        if platform in ("unknown", "civicplus"):
             return False
         if platform == "youtube":
             return YouTubeAssetFinder.extract_video_id(href) is not None

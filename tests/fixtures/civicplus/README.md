@@ -65,3 +65,19 @@ wasting a request on CivicPlus's own corporate host (confirmed live: a
 nothing else recognizable on the page. The `ec1c24.com` gap is a
 separate, real platform-coverage gap, filed in `BACKLOG.md` rather than
 fixed here.
+
+**2026-09-28: `inglewood_construction_appeals_board.html`** — real,
+raw-saved live page (`ca-inglewood.civicplus.com`'s Construction-Appeals-
+Board-32 AgendaCenter listing, white-labeled on
+`www.cityofinglewood.org`, fetched live 2026-09-28, same
+`<script>`/`<style>`/comment stripping as Durham/DeSoto above). WO-1156's
+regression fixture: a real RecursionError crashed the resolver on this
+page because its one `td.media` link is a same-page fragment anchor
+(`.../Construction-Appeals-Board-32/?#_09012026-4613`) whose path still
+starts with `/AgendaCenter`, so `detect_platform()` said "civicplus" and
+`_is_real_video_link()` accepted it as real — `resolve_via_platform()`
+then delegated straight back into this same class's own `resolve()` on
+the identical URL, without bound. See
+`test_real_inglewood_page_does_not_recurse_on_a_same_page_fragment_link`
+in `tests/test_civicplus.py` and `_is_real_video_link()`'s own docstring
+in `app/platforms/civicplus.py`.

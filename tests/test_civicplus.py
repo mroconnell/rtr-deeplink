@@ -144,6 +144,56 @@ async def test_real_desoto_listing_page_raises_no_video_candidate_found():
     assert exc_info.value.jurisdiction_hint == "Desoto, KS"
 
 
+async def test_real_inglewood_page_does_not_recurse_on_a_same_page_fragment_link():
+    # Real, raw-saved live page -- ca-inglewood.civicplus.com's
+    # Construction-Appeals-Board-32 AgendaCenter listing, fetched live
+    # 2026-09-28. WO-1156: this is the real regression case for a
+    # RecursionError that crashed the resolver in production. 4
+    # tr.catAgendaRow rows, and the one row with a td.media link
+    # (2026-09-01 "CAB September - Resolution 2026") points at
+    # `.../Construction-Appeals-Board-32/?#_09012026-4613` -- a same-page
+    # fragment anchor, not a real video. Its path still starts with
+    # `/AgendaCenter`, so `detect_platform()` returned "civicplus" and it
+    # passed `_is_real_video_link()` before this fix -- `resolve()` then
+    # called `resolve_via_platform()` on it, which re-detected civicplus,
+    # got this same finder class back, and called `.resolve()` on the
+    # identical URL, forever (confirmed live: a real RecursionError,
+    # ~745 identical 4-frame cycles before the stack gave out).
+    #
+    # After the fix, this link is correctly rejected as not a real video,
+    # so the page has zero real video candidates and resolve() raises the
+    # same honest NoVideoCandidateFound a genuinely video-less page would
+    # -- not a crash, and not a fabricated ResolvedMeeting either.
+    url = "https://www.cityofinglewood.org/AgendaCenter/Construction-Appeals-Board-32"
+    html = load_fixture("civicplus", "inglewood_construction_appeals_board.html")
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        with pytest.raises(NoVideoCandidateFound) as exc_info:
+            await CivicPlusAssetFinder().resolve(url)
+
+    assert exc_info.value.candidates_checked == 4
+
+
+def test_self_referential_civicplus_link_is_not_a_real_video_link():
+    # Same bug, isolated to the unit under test rather than a full
+    # resolve() -- a td.media link whose own detect_platform() says
+    # "civicplus" can never be a real video (CivicPlus is never the video
+    # host itself, per the module docstring), regardless of its exact
+    # shape (fragment anchor, query string, or a plain AgendaCenter path).
+    assert not CivicPlusAssetFinder._is_real_video_link(
+        "https://www.cityofinglewood.org/AgendaCenter/Construction-Appeals-Board-32/?#_09012026-4613"
+    )
+    assert not CivicPlusAssetFinder._is_real_video_link(
+        "https://ks-desoto.civicplus.com/AgendaCenter"
+    )
+    # A real video link on a real platform is unaffected.
+    assert CivicPlusAssetFinder._is_real_video_link(
+        "https://durham.granicus.com/player/clip/3313"
+    )
+
+
 def test_category_panel_heading_becomes_meeting_body():
     # Real page (same fixture as the no-video test above), read directly
     # via _find_candidate_rows() rather than a full resolve() -- WO-904.
