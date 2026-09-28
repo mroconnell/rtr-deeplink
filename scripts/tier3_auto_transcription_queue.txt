@@ -999,6 +999,9 @@ https://reflect-westernhills.cablecast.tv/internetchannel/show/1665	https://refl
 https://cityofeuclid.cablecast.tv/internetchannel/show/1373	https://cityofeuclid.cablecast.tv/CablecastPublicSite/	us:place:3925704
 https://cityofrockymount.cablecast.tv/internetchannel/show/476	https://cityofrockymount.cablecast.tv/CablecastPublicSite/	us:place:3757500
 https://bloomfield-mi.cablecast.tv/show/2836?site=1	https://bloomfield-mi.cablecast.tv/	us:sd:2606090
+https://reflect-ontv.cablecast.tv/internetchannel/show/5748	https://reflect-ontv.cablecast.tv/CablecastPublicSite/	us:place:2644940
+http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/show/811?site=1	http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/	us:cousub:1701977018
+https://reflect-tacm.cablecast.tv/CablecastPublicSite/show/5307?site=1	https://reflect-tacm.cablecast.tv/CablecastPublicSite/	us:cousub:2605500200
 https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
 https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing		us:sd:4700330
 https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y		us:sd:4502340
@@ -1033,3 +1036,31 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		us:sd:08055
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
+https://cloud.castus.tv/vod/amesbury/video/6a165228799500000296b684?page=HOME	https://cloud.castus.tv/vod/amesbury	us:place:2501185
+https://cloud.castus.tv/vod/amesbury/video/68f7aa92aa1ade000281054d?page=HOME	https://cloud.castus.tv/vod/amesbury	us:sd:2501860
+https://cloud.castus.tv/vod/bath/video/6a29e1cb0876d80002297ab9?page=HOME	https://cloud.castus.tv/vod/bath	us:place:2303355
+https://cloud.castus.tv/vod/blackstone/video/6966deb634a25d00020a13d1?page=HOME	https://cloud.castus.tv/vod/blackstone	us:cousub:2502706015
+https://cloud.castus.tv/vod/burien/video/683e513a24f49f0008a043f7?page=HOME	https://cloud.castus.tv/vod/burien	us:place:5308850
+https://cloud.castus.tv/vod/epping/video/69dd7f3a39837e00023cf46c?page=HOME	https://cloud.castus.tv/vod/epping	us:cousub:3301524660
+https://cloud.castus.tv/vod/epping/video/69330ab999a61200026f5c7d?page=HOME	https://cloud.castus.tv/vod/epping	us:sd:3302880
+https://cloud.castus.tv/vod/hampsteadcabletv/video/6a906494a1c4f700029d755a?page=HOME	https://cloud.castus.tv/vod/hampsteadcabletv	us:sd:3303480
+https://cloud.castus.tv/vod/lrpatv/video/6ab3ac44e7ef41000275e866?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:county:33001
+https://cloud.castus.tv/vod/lrpatv/video/6a8f745de21d530002894fb7?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:cousub:3300128740
+https://cloud.castus.tv/vod/lrpatv/video/6ab3ac8ae7ef41000275e86a?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:place:3340180
+https://cloud.castus.tv/vod/manchestertv/video/6a7354f17b95c30002df7245?page=HOME	https://cloud.castus.tv/vod/manchestertv	us:place:3345140
+https://cloud.castus.tv/vod/manchestertv/video/695e92f45bae9b0002c25152?page=HOME	https://cloud.castus.tv/vod/manchestertv	us:sd:3304590
+https://cloud.castus.tv/vod/medford/video/6842098220602d0008ea7a05?page=HOME	https://cloud.castus.tv/vod/medford	us:sd:2507560
+https://cloud.castus.tv/vod/somerset/video/69d9828d3495dd0002897ac2?page=HOME	https://cloud.castus.tv/vod/somerset	us:sd:2500541
+https://cloud.castus.tv/vod/stpeters-mo/video/6a0675989d4bdc000200c40e?page=HOME	https://cloud.castus.tv/vod/stpeters-mo	us:place:2965126
+https://cloud.castus.tv/vod/sudbury/video/6a7f580b4f1e100002501245?page=HOME	https://cloud.castus.tv/vod/sudbury	us:sd:2506930
+https://cloud.castus.tv/vod/tyngsborough/video/67e42921b3359f0008d890fa?page=HOME	https://cloud.castus.tv/vod/tyngsborough	us:sd:2511760
+https://cloud.castus.tv/vod/west-boylston/video/699a6324544490000263bdc4?page=HOME	https://cloud.castus.tv/vod/west-boylston	us:cousub:2502775155
+https://cloud.castus.tv/vod/west-boylston/video/6913effabc4be7000247f113?page=HOME	https://cloud.castus.tv/vod/west-boylston	us:sd:2512390
+https://cloud.castus.tv/vod/weston/video/6a3a906970c97b000285f957?page=HOME	https://cloud.castus.tv/vod/weston	us:sd:2512750
+https://cloud.castus.tv/vod/wilmington/video/6a0341172dfcb20002e6a588?page=HOME	https://cloud.castus.tv/vod/wilmington	us:cousub:2501780230
+https://ggusd.us/assets/files/board/audio/2025/10-07-25.mp3	https://ggusd.us/	us:sd:0614880
+https://www.utah.gov/pmn/files/1485875.MP3	https://www.utah.gov/pmn/	us:place:4947290
+https://fiftylakesmn.com/wp-content/uploads/2026/09/9-21-23.mp3	https://fiftylakesmn.com/government-information/	us:place:2721032
+https://resources.finalsite.net/videos/v1776459233/fargok12ndus/mzlf0zkbkygr1agzta5y/April172026.mp3		us:sd:3806780
+https://www.siskiyoucounty.gov/sites/default/files/fileattachments/planning_commission/meeting/33101/9-16-26_2.mp3		us:county:06093
+https://www.dropbox.com/scl/fi/rcfvo11lavfz6l23047hw/9-21-2026-Committee-Meeting.mp3?rlkey=fo0ihx2wdd206l6536341a3fk&st=hnwv1ryx&dl=0		us:place:3919778
