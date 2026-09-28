@@ -906,6 +906,133 @@ https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
 https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
 https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
 https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236
+https://reflect-applevalley.cablecast.tv/internetchannel/show/753	https://reflect-applevalley.cablecast.tv/CablecastPublicSite/	us:place:0602364
+https://reflect-bethelpark-cable.cablecast.tv/internetchannel/show/2651	https://reflect-bethelpark-cable.cablecast.tv/CablecastPublicSite/	us:sd:4203510
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18285	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:cousub:2612509110
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17861	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608640
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/18268	https://reflect-bloomfield-community.cablecast.tv/CablecastPublicSite/	us:place:2608160
+https://reflect-ccstv.cablecast.tv/internetchannel/show/6783	https://reflect-ccstv.cablecast.tv/CablecastPublicSite/	us:sd:3904371
+https://reflect-champaign.cablecast.tv/internetchannel/show/5891	https://reflect-champaign.cablecast.tv/CablecastPublicSite/	us:cousub:1701912398
+https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/show/2804?site=1	https://reflect-chesterctv-from-nh.cablecast.tv/CablecastPublicSite/	us:cousub:3301512100
+https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692	https://reflect-citylink-siouxfalls.cablecast.tv/CablecastPublicSite/	us:county:46099
+https://reflect-cityofalbertlea.cablecast.tv/internetchannel/show/180	https://reflect-cityofalbertlea.cablecast.tv/CablecastPublicSite/	us:place:2700694
+https://reflect-cityofdayton.cablecast.tv/CablecastPublicSite/show/766?site=1	https://reflect-cityofdayton.cablecast.tv/CablecastPublicSite/	us:county:39113
+https://reflect-cityofloveland-co.cablecast.tv/internetchannel/show/732	https://reflect-cityofloveland-co.cablecast.tv/CablecastPublicSite/	us:place:0846465
+https://reflect-cumberlandcounty-govt.cablecast.tv/internetchannel/show/3320	https://reflect-cumberlandcounty-govt.cablecast.tv/CablecastPublicSite/	us:place:3764180
+https://reflect-dekalbschoolsga.cablecast.tv/internetchannel/show/1025	https://reflect-dekalbschoolsga.cablecast.tv/CablecastPublicSite/	us:sd:1301740
+https://reflect-dennis-yarmouth.cablecast.tv/internetchannel/show/573	https://reflect-dennis-yarmouth.cablecast.tv/CablecastPublicSite/	us:cousub:2500116775
+https://reflect-easthamptonmediatv.cablecast.tv/internetchannel/show/23870	https://reflect-easthamptonmediatv.cablecast.tv/CablecastPublicSite/	us:sd:2504590
+https://reflect-epsvision.cablecast.tv/internetchannel/show/193	https://reflect-epsvision.cablecast.tv/CablecastPublicSite/	us:sd:4010920
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3184	https://reflect-forestlake.cablecast.tv/CablecastPublicSite/	us:sd:2712270
+https://reflect-fredtv.cablecast.tv/internetchannel/show/8250	https://reflect-fredtv.cablecast.tv/CablecastPublicSite/	us:place:2523000
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1541	https://reflect-geauga-gtv.cablecast.tv/CablecastPublicSite/	us:place:3913554
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1559	https://reflect-geauga-gtv.cablecast.tv/CablecastPublicSite/	us:sd:3904718
+https://reflect-guilfordctv.cablecast.tv/CablecastPublicSite/show/3258?site=1	https://reflect-guilfordctv.cablecast.tv/CablecastPublicSite/	us:sd:0901800
+https://reflect-harwich-18.cablecast.tv/CablecastPublicSite/show/3761?site=1	https://reflect-harwich-18.cablecast.tv/CablecastPublicSite/	us:cousub:2500129020
+https://reflect-helena-civic.cablecast.tv/internetchannel/show/7255	https://reflect-helena-civic.cablecast.tv/CablecastPublicSite/	us:place:3035600
+https://reflect-hpat.cablecast.tv/CablecastPublicSite/show/30278?site=1	https://reflect-hpat.cablecast.tv/CablecastPublicSite/	us:place:2728790
+https://reflect-hullcommunitytv.cablecast.tv/CablecastPublicSite/show/3425?site=1	https://reflect-hullcommunitytv.cablecast.tv/CablecastPublicSite/	us:cousub:2502331645
+https://reflect-independence-tv-mi.cablecast.tv/internetchannel/show/5632	https://reflect-independence-tv-mi.cablecast.tv/CablecastPublicSite/	us:sd:2609900
+https://reflect-lakefront-leesburgflorida.cablecast.tv/internetchannel/show/9936	https://reflect-lakefront-leesburgflorida.cablecast.tv/CablecastPublicSite/	us:place:1239875
+https://reflect-leech-lake-tvaccess.cablecast.tv/CablecastPublicSite/show/1169?site=1	https://reflect-leech-lake-tvaccess.cablecast.tv/CablecastPublicSite/	us:sd:2702910
+https://reflect-livingstonnj-ltv.cablecast.tv/internetchannel/show/2241	https://reflect-livingstonnj-ltv.cablecast.tv/CablecastPublicSite/	us:cousub:3401340890
+https://reflect-lockport.cablecast.tv/internetchannel/show/14761	https://reflect-lockport.cablecast.tv/CablecastPublicSite/	us:sd:3631470
+https://reflect-lockport.cablecast.tv/internetchannel/show/14850	https://reflect-lockport.cablecast.tv/CablecastPublicSite/	us:sd:3617670
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21031	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002741275
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21125	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002147200
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21142	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002701300
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21162	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002712250
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21104	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002756050
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21155	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:cousub:5002758375
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21160	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:sd:5000393
+https://reflect-lpctv.cablecast.tv/internetchannel/show/20769	https://reflect-lpctv.cablecast.tv/CablecastPublicSite/	us:sd:5000427
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20194	https://reflect-miami-valley-cc.cablecast.tv/CablecastPublicSite/	us:place:3957764
+https://reflect-milford-nh.cablecast.tv/internetchannel/show/3190	https://reflect-milford-nh.cablecast.tv/CablecastPublicSite/	us:cousub:3301148020
+https://reflect-newport.cablecast.tv/internetchannel/show/17513	https://reflect-newport.cablecast.tv/CablecastPublicSite/	us:cousub:3301952580
+https://reflect-newport.cablecast.tv/internetchannel/show/17423	https://reflect-newport.cablecast.tv/CablecastPublicSite/	us:sd:3305310
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24133	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001124050
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24109	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001171725
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24117	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001133025
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24134	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001159125
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24132	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001105425
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24041	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001102500
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24011	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001164600
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24093	https://reflect-northwest-access.cablecast.tv/CablecastPublicSite/	us:cousub:5001125225
+https://reflect-nptv-school-dist.cablecast.tv/internetchannel/show/1706	https://reflect-nptv-school-dist.cablecast.tv/CablecastPublicSite/	us:sd:4217280
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/1436	http://reflect-origin-1119.cablecast.tv/CablecastPublicSite/	us:cousub:3602761357
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/3702	http://reflect-origin-1119.cablecast.tv/CablecastPublicSite/	us:place:3674023
+http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/show/798?site=1	http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/	us:place:1777005
+http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/show/505?site=1	http://reflect-origin-1440.cablecast.tv/CablecastPublicSite/	us:sd:1739960
+http://reflect-origin-888.cablecast.tv/internetchannel/show/2000	http://reflect-origin-888.cablecast.tv/CablecastPublicSite/	us:sd:3701380
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/2833?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:cousub:4200350784
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/51?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:place:4216144
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/35?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:cousub:4200317048
+https://reflect-rehobothtv.cablecast.tv/internetchannel/show/4611	https://reflect-rehobothtv.cablecast.tv/CablecastPublicSite/	us:cousub:2500556375
+https://reflect-rehobothtv.cablecast.tv/internetchannel/show/4610	https://reflect-rehobothtv.cablecast.tv/CablecastPublicSite/	us:sd:2504200
+https://reflect-sharoncommunity-live.cablecast.tv/internetchannel/show/15312	https://reflect-sharoncommunity-live.cablecast.tv/CablecastPublicSite/	us:sd:2510620
+https://reflect-sioux-falls-schooldistrict.cablecast.tv/internetchannel/show/4541	https://reflect-sioux-falls-schooldistrict.cablecast.tv/CablecastPublicSite/	us:sd:4666270
+https://reflect-smyrna.cablecast.tv/CablecastPublicSite/show/4112?site=1	https://reflect-smyrna.cablecast.tv/CablecastPublicSite/	us:place:4769420
+https://reflect-southborough.cablecast.tv/internetchannel/show/2467	https://reflect-southborough.cablecast.tv/CablecastPublicSite/	us:sd:2510980
+https://reflect-stlucie-ps-fl.cablecast.tv/internetchannel/show/1477	https://reflect-stlucie-ps-fl.cablecast.tv/CablecastPublicSite/	us:sd:1201770
+https://reflect-sttammany.cablecast.tv/internetchannel/show/3198	https://reflect-sttammany.cablecast.tv/CablecastPublicSite/	us:place:2218125
+https://reflect-tacm.cablecast.tv/CablecastPublicSite/show/5912?site=1	https://reflect-tacm.cablecast.tv/CablecastPublicSite/	us:county:26055
+https://reflect-tacm.cablecast.tv/CablecastPublicSite/show/5925?site=1	https://reflect-tacm.cablecast.tv/CablecastPublicSite/	us:cousub:2605531580
+https://reflect-tacoma.cablecast.tv/internetchannel/show/3549	https://reflect-tacoma.cablecast.tv/CablecastPublicSite/	us:sd:5308700
+https://reflect-trumbulltv.cablecast.tv/internetchannel/show/6652	https://reflect-trumbulltv.cablecast.tv/CablecastPublicSite/	us:cousub:0912077200
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10765?site=1	https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/	us:county:27075
+https://reflect-vod-cmac.cablecast.tv/internetchannel/show/22762	https://reflect-vod-cmac.cablecast.tv/CablecastPublicSite/	us:sd:0614550
+https://reflect-vod-cmac.cablecast.tv/internetchannel/show/21769	https://reflect-vod-cmac.cablecast.tv/CablecastPublicSite/	us:sd:0609030
+https://reflect-vod-cmac.cablecast.tv/internetchannel/show/21793	https://reflect-vod-cmac.cablecast.tv/CablecastPublicSite/	us:sd:0607970
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20377	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:sd:3625290
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20376	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:sd:3618240
+https://reflect-vod-northtv.cablecast.tv/internetchannel/show/9853	https://reflect-vod-northtv.cablecast.tv/CablecastPublicSite/	us:cousub:2502154100
+https://reflect-vod-northtv.cablecast.tv/internetchannel/show/9858	https://reflect-vod-northtv.cablecast.tv/CablecastPublicSite/	us:place:2546598
+https://reflect-vod-northtv.cablecast.tv/internetchannel/show/9364	https://reflect-vod-northtv.cablecast.tv/CablecastPublicSite/	us:sd:2508730
+https://reflect-watch-capitalcommunitymedia.cablecast.tv/internetchannel/show/27606	https://reflect-watch-capitalcommunitymedia.cablecast.tv/CablecastPublicSite/	us:county:41047
+https://reflect-watchncam.cablecast.tv/internetchannel/show/18540	https://reflect-watchncam.cablecast.tv/CablecastPublicSite/	us:cousub:2500946365
+https://reflect-watchncam.cablecast.tv/internetchannel/show/18506	https://reflect-watchncam.cablecast.tv/CablecastPublicSite/	us:sd:2508700
+https://reflect-wayzata.cablecast.tv/internetchannel/show/1544	https://reflect-wayzata.cablecast.tv/CablecastPublicSite/	us:place:2768818
+https://reflect-wctv-village-willmette.cablecast.tv/internetchannel/show/880	https://reflect-wctv-village-willmette.cablecast.tv/CablecastPublicSite/	us:place:1782075
+https://reflect-westernhills.cablecast.tv/internetchannel/show/2394	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:sd:2311670
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1813	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:cousub:2301749275
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1665	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:cousub:2301729710
+https://cityofeuclid.cablecast.tv/internetchannel/show/1373	https://cityofeuclid.cablecast.tv/CablecastPublicSite/	us:place:3925704
+https://cityofrockymount.cablecast.tv/internetchannel/show/476	https://cityofrockymount.cablecast.tv/CablecastPublicSite/	us:place:3757500
+https://bloomfield-mi.cablecast.tv/show/2836?site=1	https://bloomfield-mi.cablecast.tv/	us:sd:2606090
+https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
+https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing		us:sd:4700330
+https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y		us:sd:4502340
+https://drive.google.com/file/d/1tbGdUyxCVOkvbPpzjmb8luAwd7HuZDZj/view?usp=sharing		us:sd:3407590
+http://reflect-bcsctv-brownsburg.cablecast.tv/internetchannel/show/2604?site=1		us:sd:1801020
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1367		us:sd:5101860
+https://drive.google.com/file/d/1NHqZRe6YxrU-O9rj06rZXkjVGvMbR0_d/view?usp=sharing		us:sd:5501770
+https://drive.google.com/file/d/1mSCm_XMEIoAlo8moh4bBxmZsDjaRh7HH/view?usp=sharing		us:place:3525800
+https://drive.google.com/file/d/145uuL5lD9eegC_6isH1Q1ZSJ8oP6V0fg/view?usp=drive_link		us:sd:3172390
+https://drive.google.com/file/d/1o9B15ypctQbk7eqabKTjXkW_pNCt8Jgi/view?usp=share_link		us:sd:2922530
+https://videoplayer.telvue.com/player/P-mhk-Tgy5BJ93MCiUrO5mHLhFBBvfk4/media/940002		us:cousub:4202977344
+https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
+https://moontv.cablecast.tv/CablecastPublicSite/show/2841?site=1		us:sd:4215830
+https://barnegatnj.new.swagit.com/videos/395110		us:cousub:3402903050
+https://farraguttn.portal.civicclerk.com/event/1811/media		us:place:4725760
+https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
+https://vimeo.com/1230000071/9594197ba7		us:sd:1302550
+https://vimeo.com/1225932215/3ff797b414	https://player.vimeo.com/video/1225932215?h=3ff797b414&autoplay=0&loop=0&title=0&byline=0&portrait=0&color&dnt=0	us:sd:1201740
+https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659		us:sd:3904348
+https://bsd405.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=683		us:sd:5300390
+https://lambton.civicweb.net/Portal/MeetingInformation.aspx?Id=1491		ca:cd:3538
+https://countyofrenfrew.diligent.community/Portal/MeetingInformation.aspx?Id=508		ca:cd:3547
+https://walton.civicweb.net/Portal/MeetingInformation.aspx?Id=7347		us:sd:1305390
+https://perthcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=669		ca:cd:3531
+https://worcester-k12.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=288		us:sd:2400720
+https://sylvaniatownship.civicweb.net/Portal/MeetingInformation.aspx?Id=3882		us:cousub:3909576025
+https://vimeo.com/560179539		us:county:37139
+https://vimeo.com/272623353		us:place:0640704
+https://vimeo.com/1220931719/eb2fedccd3		us:sd:4807780
+https://vimeo.com/1220286460	https://vimeo.com/1220286460?share=copy&fl=sv&fe=ci	us:county:19099
+https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		us:sd:0805550
+https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
+https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
+https://vimeo.com/596543013/7c411dd1aa		us:county:13119
 https://cloud.castus.tv/vod/amesbury/video/6a165228799500000296b684?page=HOME	https://cloud.castus.tv/vod/amesbury	us:place:2501185
 https://cloud.castus.tv/vod/amesbury/video/68f7aa92aa1ade000281054d?page=HOME	https://cloud.castus.tv/vod/amesbury	us:sd:2501860
 https://cloud.castus.tv/vod/bath/video/6a29e1cb0876d80002297ab9?page=HOME	https://cloud.castus.tv/vod/bath	us:place:2303355
