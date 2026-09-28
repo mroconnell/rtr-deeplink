@@ -7885,3 +7885,11 @@ https://reflect-tvctv.cablecast.tv/internetchannel/show/32111,cablecast,hls-mast
 https://reflect-wausau-wi.cablecast.tv/internetchannel/show/2419,cablecast,hls-master+variant,4033.99,,,1,accept,,0.34,2026-09-28T04:10:37+00:00,bulk_ingest,0
 https://reflect-wausau-wi.cablecast.tv/internetchannel/show/2424,cablecast,hls-master+variant,3694.99,,,1,accept,,0.50,2026-09-28T04:20:47+00:00,bulk_ingest,0
 https://reflect-ccx.cablecast.tv/internetchannel/show/40970,cablecast,hls-master+variant,3524.99,,,1,accept,,0.50,2026-09-28T04:20:52+00:00,bulk_ingest,0
+https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-09-28T05:53:16+00:00,,0
+https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T05:53:18+00:00,,0
+https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T05:53:21+00:00,,0
+https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T05:53:23+00:00,,0
+https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-28T05:53:26+00:00,,0
+https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T05:53:29+00:00,,0
+https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T05:53:39+00:00,,0
+https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.18,2026-09-28T05:53:41+00:00,,0
