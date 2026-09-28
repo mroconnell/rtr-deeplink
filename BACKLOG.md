@@ -216,7 +216,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (23)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (223)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+  [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
   [NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions…
   [NEEDS-AUDIT] A real platform adapter's OWN aiohttp session still…
   [NEEDS-AUDIT] The new body-name/government-TYPE filter (WO-1078)…
@@ -2455,6 +2456,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone at the source — 24 Archive pages across 19 tenants now point at video that returns 404 (WO-1152).**
+  - **Issue**: a local Whisper run (`scripts/transcribe_backlog_locally.py --urls-file`) over the Archive's non-Granicus, no-transcript pages reached 24 iQM2 pages. All 24 failed: 20 because the media file on `MediaHTTP.IQM2.com/<Tenant>/<id>_480.mp4` returns HTTP 404 (`application/xml`, i.e. a missing storage blob), 4 because the stored media is a 14-53 second clip or a 14-20 hour channel feed. The government's own iQM2 `SplitView.aspx` page still links the same dead file (checked by hand for Fort Myers Beach FL, MeetingID 1388), and the `_0`/`.mpeg4` variants 404 too. Tenants: Berkeley County SC, Capitola CA, El Cajon CA, Fort Myers Beach FL, Glen Ellyn IL, Grand Junction CO, Hartland Twp MI, Hernando County FL, Leonia NJ, Leon Valley TX, Lincoln RI, Maitland FL, Menifee CA, Meredith NH, Olmsted County MN, Prescott AZ, Redding CA, St. Lucie FL, Travis County TX.
+  - **Impact**: these 24 pages show a video that no longer plays and can never get a transcript. Unknown whether this is only older recordings or iQM2 media hosting in general: a current meeting on a live tenant was not checked (the Calendar page renders its list in JavaScript).
+  - **Next action**: open one recent meeting on a live tenant in the headless browser and HEAD its `MediaHTTP.IQM2.com` file. If current media works, these are aged-out recordings: mark the 24 pages' video as gone (reader-facing warning) rather than retrying. If current media also 404s, iQM2 hosting is gone platform-wide and `app/platforms/iqm2.py` should stop offering its video as a transcription source.
+  - **Constraint**: don't delete the pages — the agenda and deep-link page still has value; only the video is gone.
+  - **History**: found 2026-09-27 in the local Whisper recovery run (conductor session). Same run: ChampDS pages that fail on the cloud worker transcribed fine locally (7 of 7).
 
 - **[NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions top-up cron's false failures still wait out their existing backoff.**
   - **Issue**: WO-1148 (`BACKLOG_DONE.md`) fixed the mechanism going forward — batch transcription top-up now runs from the worker's own IP (confirmed not blocked) instead of a GitHub Actions runner (confirmed blocked by a wide swath of hosts) — but doesn't retroactively clear cooldown state the retired cron already recorded. A page whose most recent recorded failure was actually a GitHub-IP connection error, not a real content problem, still waits out its full escalating backoff (up to 30 days) even though the worker would succeed on it immediately if retried today.
