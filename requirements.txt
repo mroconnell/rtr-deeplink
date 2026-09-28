@@ -126,7 +126,7 @@ slowapi==0.1.10
     # via -r requirements.in
 soupsieve==2.9.2
     # via beautifulsoup4
-sqlalchemy[asyncio]==2.0.52
+sqlalchemy[asyncio]==2.1.0
     # via
     #   -r requirements.in
     #   alembic
@@ -140,10 +140,7 @@ truststore==0.10.4
     # via -r requirements.in
 typing-extensions==4.16.0
     # via
-    #   aiohttp
-    #   aiosignal
     #   alembic
-    #   anyio
     #   beautifulsoup4
     #   fastapi
     #   limits
@@ -151,7 +148,6 @@ typing-extensions==4.16.0
     #   pydantic-core
     #   pyee
     #   sqlalchemy
-    #   starlette
     #   typing-inspection
 typing-inspection==0.4.4
     # via
@@ -173,11 +169,3 @@ wrapt==2.3.0
     # via deprecated
 yarl==1.24.5
     # via aiohttp
-
-# Deliberately unpinned (WO-11, 2026-08-16) -- YouTube actively breaks
-# scrapers and yt-dlp only works because it chases them; pinning it is a
-# bug, not hygiene. See requirements.in's matching comment. Re-add this
-# line after every `pip-compile requirements.in` re-run -- pip-compile
-# doesn't know about it since it's excluded from requirements.in on
-# purpose.
-yt-dlp
