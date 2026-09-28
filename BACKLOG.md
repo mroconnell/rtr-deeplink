@@ -123,7 +123,8 @@ Standing decisions — do NOT re-raise  (15)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (63)
+  WO-1151: a direct ISI Live file resolves with no captions, though a…
   Run Meeting Finder on the 7,599 never-checked and "no platform link…
   Pages whose stored source URL their own adapter can't re-resolve are…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
@@ -937,6 +938,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### WO-1151: a direct ISI Live file resolves with no captions, though a caption file sits next to it `[JUST-DO-IT]`
+
+- **Issue**: `app/platforms/escribe.py` finds ISI Live captions at `https://video.isilive.ca/{client}/{file}` + `.vtt` (or `.{lang}.vtt`), but only when it reaches the video through an eScribe meeting page. A bare ISI Live file (`video.isilive.ca/download/{client}/{file}`, `/play/{client}/{file}`, or `cdn1.isilive.ca/vod/_definst_/mp4:{client}/{file}/playlist.m3u8`) resolves as `direct_file` with no captions. Checked 2026-09-27: Miramichi NB (`miramichi/2026-05-19.mp4.vtt`, 73 KB), Bracebridge ON (25 KB) and Green Cove Springs FL (`greencovesprings/2025-09-16Council.mp4.vtt`, 241 KB) all return real captions; Whitehorse YT and Nunavut return 404.
+- **Impact**: ISI Live customers whose eScribe pages carry no video (or who have no eScribe at all) fall to tier 3 and are sent for paid transcription although captions exist. ISI Live has at least 312 customers (rtr-business `research/slug_learning_2026-09-27/isilive/`), and more are expected from folder-name guessing.
+- **Next action**: recognise ISI Live file URLs in `detect_platform()` and, for them, try the same sibling `.vtt` / `.{lang}.vtt` paths with `escribe.py`'s existing language rule (reuse its `_fetch_vtt` and `KNOWN_LANGUAGE_SUFFIXES`); fall back to `direct_file` when none exists. Add a test on the Miramichi file. Then ingest Miramichi, Bracebridge and Green Cove Springs as tier 1 with their gov_ids (ca:csd:1309050, ca:csd:3544018, us:place:1227400); their meeting URLs are in rtr-business `research/slug_learning_2026-09-27/isilive/INGEST_RESULTS.md`.
+- **Constraint**: the file path's first folder is ISI Live's customer name, not proof of the government; keep the gov_id from the audited research row, never derive it from the folder name.
+- **History**: found 2026-09-27 while auditing ISI Live's customer list (rtr-business §398); the three lines were taken out of the tier-3 queue in PR #1548 so they are not transcribed twice.
 
 ### Run Meeting Finder on the 7,599 never-checked and "no platform link found" governments `[JUST-DO-IT]` `[WAIT]`
 

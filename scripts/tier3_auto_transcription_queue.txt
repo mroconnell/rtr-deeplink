@@ -858,6 +858,8 @@ https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/104
 https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/media/1046648	https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/videos	us:sd:3630360
 https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1031182	https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/videos	us:sd:2502490
 https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1041493	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	us:sd:0620460
+https://video.isilive.ca/download/whitehorse/2026-09-14.mp4	https://video.isilive.ca/whitehorse/2026-09-14.mp4.html	ca:csd:6001009
+https://video.isilive.ca/download/nunavut/2026/2026-05-22-eng.mp4	https://www.assembly.nu.ca/webcasts	ca:pr:62
 https://wacatv.cablecast.tv/internetchannel/show/8714	https://wacatv.cablecast.tv/CablecastPublicSite/	us:cousub:2501702130
 https://reflect-cctv-vod.cablecast.tv/internetchannel/show/4339	https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/	us:cousub:2502111315
 https://reflect-dctv-18.cablecast.tv/internetchannel/show/14163	https://reflect-dctv-18.cablecast.tv/CablecastPublicSite/	us:cousub:2500516425
