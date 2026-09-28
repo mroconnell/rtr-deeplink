@@ -218,8 +218,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (25)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (225)
-  [NEEDS-AUDIT] TelVue's playlist-address vs plain-media-address URLs…
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
   [NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions…
   [NEEDS-AUDIT] A real platform adapter's OWN aiohttp session still…
@@ -2472,13 +2471,6 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
-
-- **[NEEDS-AUDIT] TelVue's playlist-address vs plain-media-address URLs can file the same meeting twice — confirmed real at the code level, needs a fix before the TelVue ingest hold is lifted.**
-  - **Issue**: a TelVue meeting can be reached two ways — a bare `/player/{token}/media/{id}` URL, or a `/player/{token}/playlists/{n}/media/{id}` (or `/series/{n}/media/{id}`) URL for the identical underlying video (the playlist/series form is what WO-1149/WO-1150's playlist-pin identity logic depends on to name the government). Confirmed 2026-09-28: `app/utils/url_normalize.py`'s `normalize_url()` is deliberately conservative and never collapses these path variants; `app/platforms/telvue.py`'s `resolve()` sets `source_url=url` verbatim, no canonicalization; `queue_probe.canonical_video_key()` keys TelVue by the raw `path.strip("/")`. So the two address forms produce different `source_url_normalized`/dedup keys today. No concrete duplicate has been found yet, but nothing prevents one.
-  - **Impact**: ingesting a playlist/series-form URL for a meeting the Archive already holds under its plain-media-form URL (or vice versa) would file it twice, rather than being deduped as the same meeting. This is the reason TelVue ingests are on hold.
-  - **Next action**: design a fix that keeps BOTH properties true at once — dedup must treat `.../playlists/{n}/media/{id}` and `.../media/{id}` (same token+id) as the SAME meeting, while identity/gov_id resolution must still be able to read the playlist/series number when one is present (that number is the only thing WO-1149/WO-1150's pins key off). The likely shape: derive the dedup key from `token`+`id` alone (stripping any `playlists/{n}`/`series/{n}` segment), while keeping the full original URL (with its playlist/series number intact) for identity resolution. Build a real test with two URLs for the same real TelVue video id, confirmed to resolve to one Archive page, before lifting the hold.
-  - **Constraint**: this needs a code fix, not a data fix — don't lift the TelVue ingest hold on this finding alone without the fix landing first.
-  - **History**: peer session ledger/rtr-discovery finding, 2026-09-27 (their exact citation of "rtr-discovery FINDING-35" as recording this was checked 2026-09-28 and does not exist — rtr-discovery's `BACKLOG.md` tops out at FINDING-34, and the real TelVue finding, FINDING-26, covers wrong-government and missing-date cautions only, not duplicates — so this concern was previously undocumented anywhere until now).
 
 - **[NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone at the source — 24 Archive pages across 19 tenants now point at video that returns 404 (WO-1152).**
   - **Issue**: a local Whisper run (`scripts/transcribe_backlog_locally.py --urls-file`) over the Archive's non-Granicus, no-transcript pages reached 24 iQM2 pages. All 24 failed: 20 because the media file on `MediaHTTP.IQM2.com/<Tenant>/<id>_480.mp4` returns HTTP 404 (`application/xml`, i.e. a missing storage blob), 4 because the stored media is a 14-53 second clip or a 14-20 hour channel feed. The government's own iQM2 `SplitView.aspx` page still links the same dead file (checked by hand for Fort Myers Beach FL, MeetingID 1388), and the `_0`/`.mpeg4` variants 404 too. Tenants: Berkeley County SC, Capitola CA, El Cajon CA, Fort Myers Beach FL, Glen Ellyn IL, Grand Junction CO, Hartland Twp MI, Hernando County FL, Leonia NJ, Leon Valley TX, Lincoln RI, Maitland FL, Menifee CA, Meredith NH, Olmsted County MN, Prescott AZ, Redding CA, St. Lucie FL, Travis County TX.

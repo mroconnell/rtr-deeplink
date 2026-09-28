@@ -707,6 +707,45 @@ def _org_token_from_url(url: str) -> Optional[str]:
     return telvue_org_token(url)
 
 
+# WO-1157: the same underlying video is reachable through two real,
+# different URL shapes -- a bare `/player/{token}/media/{id}` link (what
+# list_playlist_items() above returns, and what a page with no playlist
+# context serves) and a `/player/{token}/playlists/{n}/media/{id}` one (a
+# real shape confirmed live -- see scripts/hub_harvest.py's own href
+# regex and app/platforms/meeting_finder/resolve.py's real sample,
+# videoplayer.telvue.com/player/{token}/playlists/4807/media/698580).
+# tenant_overrides.csv's own TelVue pins already document that the
+# playlist-prefixed form is the common case (see its "media/1040134"
+# row's own comment: "an orphan media id with no playlist prefix"),
+# meaning a real duplicate is a live risk, not just a theoretical one, if
+# both forms of the same video ever get ingested separately.
+#
+# Fixed here, not in `source_url`/`source_url_normalized` -- those must
+# keep carrying the playlist number verbatim, since
+# `_resolve_page_government()`'s pin matching (`_match_override()` in
+# `app/utils/gov_registry/resolver.py`) depends on that exact substring
+# surviving in the stored path. Instead, this gives TelVue a real
+# `external_id`, the SAME already-existing, already-battle-tested dedup
+# mechanism Granicus/CivicClerk use for their own per-customer ids
+# (`_find_existing_page()` in `archive/db/crud.py` checks `external_id`
+# BEFORE falling back to an exact `source_url_normalized` match) --
+# namespaced by org token (TelVue's real tenant, not the shared host
+# every customer serves from) plus the numeric media id, which is present
+# in both URL shapes and is the one thing that actually identifies "this
+# specific video" independent of which playlist someone reached it
+# through.
+_MEDIA_ID_RE = re.compile(r"/media/(\d+)")
+
+
+def _external_id_for(org_token: Optional[str], final_url: str) -> Optional[str]:
+    if not org_token:
+        return None
+    match = _MEDIA_ID_RE.search(urlparse(final_url).path)
+    if not match:
+        return None
+    return f"telvue:{org_token}:{match.group(1)}"
+
+
 # WO-1038: TelVue's real "account" is per-org-TOKEN (`/player/{token}/`),
 # not per-host -- every real customer shares the SAME host
 # (videoplayer.telvue.com). Meeting Finder's generic `identify()` rule
@@ -908,11 +947,15 @@ class TelvueAssetFinder(AssetFinder):
                 final_url = str(response.url)
                 html = await response.text()
 
+            org_token = _org_token_from_url(final_url)
+            external_id = _external_id_for(org_token, final_url)
+
             entry = self._extract_playlist_entry(html)
             if not entry:
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
+                    external_id=external_id,
                     video_warnings=["No video found on this TelVue page."],
                 )
 
@@ -921,7 +964,6 @@ class TelvueAssetFinder(AssetFinder):
                 # WO-1100: every other shape the customers write, then the
                 # media page's own og:description.
                 date = meeting_date(entry.get("title"), _og_description(html))
-            org_token = _org_token_from_url(final_url)
             jurisdiction, meeting_body = meeting_name_from_title(title, org_token, html)
 
             video_url = entry.get("file")
@@ -978,6 +1020,7 @@ class TelvueAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
+            external_id=external_id,
             title=title,
             date=date,
             jurisdiction=jurisdiction,

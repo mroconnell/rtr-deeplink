@@ -1,4 +1,4 @@
-from app.platforms.telvue import TelvueAssetFinder
+from app.platforms.telvue import TelvueAssetFinder, _external_id_for
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -71,6 +71,84 @@ async def test_resolve_real_ashland_planning_commission_meeting():
 
     assert result.video_warnings == []
     assert result.transcript_warnings == []
+    # WO-1157: this exact media id is tenant_overrides.csv's own real
+    # documented "orphan media id with no playlist prefix" case -- so its
+    # external_id here has no bearing on any real pin, just confirms the
+    # ordinary bare-URL path gets one at all.
+    assert result.external_id == "telvue:w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP:1040134"
+
+
+# --- WO-1157: bare vs playlist-prefixed URLs for the SAME video dedupe --
+
+
+def test_external_id_for_bare_and_playlist_prefixed_urls_match():
+    # `_external_id_for()` in isolation: a real, confirmed URL shape
+    # (videoplayer.telvue.com/player/{token}/playlists/{n}/media/{id} --
+    # see app/platforms/meeting_finder/resolve.py's own real sample,
+    # playlists/4807/media/698580, and scripts/hub_harvest.py's href
+    # regex for the same shape) must produce the identical external_id as
+    # the bare /media/{id} form, since both name the same underlying
+    # video -- that's the whole point of giving TelVue a real
+    # tenant+media-id external_id instead of relying on
+    # source_url_normalized (which is deliberately left un-collapsed, see
+    # this function's own module comment, since gov-pin matching still
+    # needs the playlist number to survive in the stored path).
+    org_token = "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"
+    bare = f"https://videoplayer.telvue.com/player/{org_token}/media/698580"
+    playlist_prefixed = (
+        f"https://videoplayer.telvue.com/player/{org_token}/playlists/4807/media/698580"
+    )
+    assert _external_id_for(org_token, bare) == _external_id_for(
+        org_token, playlist_prefixed
+    )
+    assert _external_id_for(org_token, bare) == f"telvue:{org_token}:698580"
+
+
+def test_external_id_for_returns_none_without_org_token_or_media_id():
+    assert (
+        _external_id_for(None, "https://videoplayer.telvue.com/player/x/media/1")
+        is None
+    )
+    assert (
+        _external_id_for(
+            "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru",
+            "https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/playlists/4807",
+        )
+        is None
+    )
+
+
+async def test_resolve_gives_the_same_external_id_via_bare_or_playlist_prefixed_url():
+    # Full resolve() regression, reusing the real Ashland fixture content
+    # against two different real-shaped URLs (this exact media id has no
+    # real playlist prefix in production -- see the comment on the test
+    # above -- so the playlist-prefixed route here is a synthetic pairing
+    # of a real, independently-confirmed URL SHAPE with existing real
+    # fixture content, not a fabricated page).
+    html = load_fixture("telvue", "ashland_planning_1040134_page.html")
+    captions = load_fixture("telvue", "ashland_planning_1040134_captions.vtt")
+    chapters = load_fixture("telvue", "ashland_planning_1040134_chapters.vtt")
+
+    org_token = "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP"
+    playlist_url = f"https://videoplayer.telvue.com/player/{org_token}/playlists/4807/media/1040134"
+
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        playlist_url: FakeResponse(status=200, text=html, url=playlist_url),
+        CAPTIONS_URL: FakeResponse(status=200, text=captions, url=CAPTIONS_URL),
+        CHAPTERS_URL: FakeResponse(status=200, text=chapters, url=CHAPTERS_URL),
+    }
+
+    with mock_session(routes):
+        bare_result = await TelvueAssetFinder().resolve(PAGE_URL)
+        playlist_result = await TelvueAssetFinder().resolve(playlist_url)
+
+    assert bare_result.external_id == playlist_result.external_id
+    assert bare_result.external_id == f"telvue:{org_token}:1040134"
+    # source_url itself is untouched -- still the literal URL each was
+    # reached through, playlist number intact for gov-pin matching.
+    assert bare_result.source_url == PAGE_URL
+    assert playlist_result.source_url == playlist_url
 
 
 async def test_resolve_vtt_fetch_failure_is_logged(caplog):
