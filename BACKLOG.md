@@ -6232,8 +6232,8 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 - **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
 - **Impact**: known wrong names stay on the page. Example: `/m/city-ma-city-council-5-6-2025` (Whisper version 1762) reads "Grotten Hill Music Center"; it is Groton Hill.
-- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then fix only names confirmed against a real source (agenda or member list), not from the captions alone.
-- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed. Needs an Archive deploy.
+- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then take the correct spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing, so it is the source for each fix. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
+- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda. Needs an Archive deploy.
 - **History**: `BACKLOG_DONE.md` WO-1160, WO-1164.
 
 ### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
