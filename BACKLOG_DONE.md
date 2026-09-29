@@ -1,5 +1,27 @@
 # Backlog — done
 
+## WO-1167: pin 61 meeting sites linked from governments' own CivicPlus websites [Done 2026-09-29]
+
+**Why this ran.** rtr-discovery had 623 undecided CivicPlus tenants that list no meetings. Ryan's view: a real government website nearly always lists agendas and minutes, so "lists nothing" means we haven't found the real meeting platform. A pre-pass read each homepage once (one polite request per site) and collected links to meeting platforms elsewhere.
+
+**Result of the pre-pass.**
+
+| Result | Count of 623 |
+| --- | --- |
+| Linked a meeting site on a platform we walk, new to us | 61 hosts |
+| Linked a site we already track | 14 links |
+| Linked only YouTube (a drip lead) | 106 |
+| Linked other off-site meeting pages on platforms we don't recognize | 90 |
+| Blocked or failed | 14 |
+
+(Groups overlap.) New hosts by platform: CivicClerk 39, CivicWeb/Diligent 13, Granicus 3, Legistar 2, IQM2 2, Swagit 1, Viebit 1.
+
+**Owner proof (live, 2026-09-29).** Each new site was checked: CivicClerk through its Events API (a meeting address or body name), the others by page or feed title. 52 named their government outright; 6 more gave the county seat or a community within the government; Clermont FL and Gautier MS use CivicClerk's older site but their API gives Clermont and Gautier addresses, so they are pinned under the `portal.civicclerk.com` name the walker uses. Haledon NJ is left out: its events name no place.
+
+Also pinned: `www.newhaven.in.gov` to New Haven city, IN (it had no government ID).
+
+**Tests.** `tests/test_wo1167_civicplus_linked_meeting_sites.py`: all 61 resolve; all 61 fail without the rows.
+
 ## WO-1166: pin Manor TX's Swagit site [Done 2026-09-29]
 
 **Why this ran.** Manor's CivicPlus site (tx-manor.civicplus.com) is one of 623 undecided CivicPlus tenants that list no meetings. Ryan opened it by hand and found Manor's real meeting pages: agendas on Municode Meetings (`meetings.municode.com/PublishPage/index?cid=MANORTX`, "City of Manor Agenda & Minutes") and video on Swagit. The Swagit site was in no ledger, pin, Swagit view list or Archive page.
