@@ -603,6 +603,10 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         ("cloud.castus.tv", "west-boylston"),
         # Castus "weston": Weston School District, tier3 queue ownership audit (WO-1152 census, per-video pins).
         ("cloud.castus.tv", "weston"),
+        # Castus "kltv" (Kelso-Longview Television, Cowlitz County WA): Kelso,
+        # Longview, Kalama, Rainier cities and Cowlitz County, each its own
+        # playlist (rtr-business castus_renamed WO, 2026-09-29; per-video pins).
+        ("cloud.castus.tv", "kltv"),
     }
 )
 
