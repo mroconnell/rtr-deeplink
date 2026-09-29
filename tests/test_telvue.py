@@ -262,7 +262,11 @@ async def test_resolve_falls_back_to_known_org_token_for_leominster():
     with mock_session(routes):
         result = await TelvueAssetFinder().resolve(url)
 
-    assert result.jurisdiction == "Leominster, MA"
+    # 2026-09-29: this key is now on MULTI_GOVERNMENT_TENANTS (the station
+    # also films the Leominster School Committee), so the known-org
+    # fallback no longer names one city; the whole-key pin to Leominster
+    # city and a per-video pin for the school district name the government.
+    assert result.jurisdiction is None
 
 
 async def test_resolve_falls_back_to_known_org_token_for_royal_oak():
