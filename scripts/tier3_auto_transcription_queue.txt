@@ -5,13 +5,9 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://westseneca.granicus.com/MediaPlayer.php?view_id=1&clip_id=84
 https://wethersfieldct.granicus.com/MediaPlayer.php?view_id=1&clip_id=239
-https://willingboronj.granicus.com/MediaPlayer.php?view_id=1&clip_id=21
 https://wilson.granicus.com/MediaPlayer.php?view_id=2&clip_id=321
 https://cityofwinder.granicus.com/MediaPlayer.php?view_id=1&clip_id=1587
-https://winslowtownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=883
-https://winterparkcolorado.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
 https://yorktownny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2154
 https://video.scstatehouse.gov/mp4/20260811SJudiciaryFullCommittee16632_1.mp4
 https://video.scstatehouse.gov/mp4/20260811HGovtEfficiencyandLegOversightLawEnforcementCriminal16624_1.mp4
@@ -1154,3 +1150,79 @@ https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://rec
 https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4	https://malegislature.gov/Events/Sessions/Detail/7791	us:state:25
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:cousub:2501717475
+https://newberlinwi.portal.civicclerk.com/event/2025/media	https://newberlinwi.portal.civicclerk.com/event/2025/media	us:place:5556375
+https://taylortx.portal.civicclerk.com/event/2023/media	https://taylortx.portal.civicclerk.com/event/2023/media	us:county:48441
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	us:place:5587725
+https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
+https://townhallstreams.com/stream.php?location_id=69&id=35034	https://townhallstreams.com/stream.php?location_id=69&id=35034	us:cousub:0911044910
+https://townhallstreams.com/stream.php?location_id=72&id=75323	https://townhallstreams.com/stream.php?location_id=72&id=75323	us:cousub:3301137140
+https://townhallstreams.com/stream.php?location_id=73&id=43847	https://townhallstreams.com/stream.php?location_id=73&id=43847	us:cousub:3300300420
+https://townhallstreams.com/stream.php?location_id=90&id=76295	https://townhallstreams.com/stream.php?location_id=90&id=76295	us:place:0636056
+https://townhallstreams.com/stream.php?location_id=103&id=57839	https://townhallstreams.com/stream.php?location_id=103&id=57839	us:cousub:2302559005
+https://townhallstreams.com/stream.php?location_id=138&id=76117	https://townhallstreams.com/stream.php?location_id=138&id=76117	us:cousub:3602150452
+https://townhallstreams.com/stream.php?location_id=157&id=60590	https://townhallstreams.com/stream.php?location_id=157&id=60590	us:cousub:3301916340
+https://townhallstreams.com/stream.php?location_id=158&id=76011	https://townhallstreams.com/stream.php?location_id=158&id=76011	us:cousub:2303100275
+https://townhallstreams.com/stream.php?location_id=171&id=76094	https://townhallstreams.com/stream.php?location_id=171&id=76094	us:cousub:3608329674
+https://townhallstreams.com/stream.php?location_id=174&id=76216	https://townhallstreams.com/stream.php?location_id=174&id=76216	us:cousub:3301540100
+https://townhallstreams.com/stream.php?location_id=175&id=76135	https://townhallstreams.com/stream.php?location_id=175&id=76135	us:cousub:2302766635
+https://indianolaia.portal.civicclerk.com/event/2134/media	https://indianolaia.portal.civicclerk.com/event/2134/media	us:place:1938280
+https://shorewoodmn.portal.civicclerk.com/event/409/media	https://shorewoodmn.portal.civicclerk.com/event/409/media	us:place:2760016
+https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431	https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431	us:place:1378800
+https://play.champds.com/collegedaletn/event/50	https://play.champds.com/collegedaletn/event/50	us:place:4716300
+https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/1298/stream/67?autostart=false&showtabssearch=true&fullscreen=false	https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/1298/stream/67?autostart=false&showtabssearch=true&fullscreen=false	us:place:3454990
+https://vineyardut.portal.civicclerk.com/event/1453/media	https://vineyardut.portal.civicclerk.com/event/1453/media	us:place:4980420
+https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://jodaviesscoil.portal.civicclerk.com/event/2478/media	us:county:17085
+https://rowancountync.portal.civicclerk.com/event/419/media	https://rowancountync.portal.civicclerk.com/event/419/media	us:county:37159
+https://vimeo.com/646562708	https://vimeo.com/646562708	us:county:37013
+https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
+https://carljunctionmo.portal.civicclerk.com/event/1038/media	https://carljunctionmo.portal.civicclerk.com/event/1038/media	us:place:2911368
+https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	us:place:1369000
+https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
+https://southfultonga.portal.civicclerk.com/event/1775/media	https://southfultonga.portal.civicclerk.com/event/1775/media	us:place:1372122
+https://sjcity.granicus.com/MediaPlayer.php?view_id=3&clip_id=946	https://sjcity.granicus.com/MediaPlayer.php?view_id=3&clip_id=946	us:place:2670960
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
+https://vimeo.com/1103129533/8573f518c3?ts=0&share=copy	https://vimeo.com/1103129533/8573f518c3?ts=0&share=copy	ca:csd:2476030
+https://play.champds.com/bellemeadetn/event/200	https://play.champds.com/bellemeadetn/event/200	us:place:4704620
+https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.portal.civicclerk.com/event/176/media	us:place:4833212
+https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1917	https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1917	us:place:0619402
+http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21876	http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21876	us:county:27035
+https://townhallstreams.com/stream.php?location_id=54&id=76609	https://townhallstreams.com/stream.php?location_id=54&id=76609	us:cousub:3301108100
+https://hastingsonhudsonny.swagit.com/play/10102024-509	https://hastingsonhudsonny.swagit.com/play/10102024-509	us:place:3632710
+https://brooklinema.portal.civicclerk.com/event/16635/media	https://brooklinema.portal.civicclerk.com/event/16635/media	us:cousub:2502109175
+https://www.utah.gov/pmn/sitemap/notice/1098323.html	https://www.utah.gov/pmn/sitemap/notice/1098323.html	us:place:4919680
+https://www.utah.gov/pmn/sitemap/notice/1100859.html	https://www.utah.gov/pmn/sitemap/notice/1100859.html	us:place:4925290
+https://www.utah.gov/pmn/sitemap/notice/1100993.html	https://www.utah.gov/pmn/sitemap/notice/1100993.html	us:place:4929580
+https://www.utah.gov/pmn/sitemap/notice/1103933.html	https://www.utah.gov/pmn/sitemap/notice/1103933.html	us:place:4939370
+https://www.utah.gov/pmn/sitemap/notice/1106775.html	https://www.utah.gov/pmn/sitemap/notice/1106775.html	us:place:4946740
+https://www.utah.gov/pmn/sitemap/notice/1098611.html	https://www.utah.gov/pmn/sitemap/notice/1098611.html	us:place:4970850
+https://www.utah.gov/pmn/sitemap/notice/1100881.html	https://www.utah.gov/pmn/sitemap/notice/1100881.html	us:county:49047
+https://www.utah.gov/pmn/sitemap/notice/1065731.html	https://www.utah.gov/pmn/sitemap/notice/1065731.html	us:place:4906370
+https://www.utah.gov/pmn/sitemap/notice/1078997.html	https://www.utah.gov/pmn/sitemap/notice/1078997.html	us:place:4911320
+https://www.utah.gov/pmn/sitemap/notice/1092271.html	https://www.utah.gov/pmn/sitemap/notice/1092271.html	us:place:4914290
+https://www.utah.gov/pmn/sitemap/notice/1054853.html	https://www.utah.gov/pmn/sitemap/notice/1054853.html	us:place:4916270
+https://www.utah.gov/pmn/sitemap/notice/1073529.html	https://www.utah.gov/pmn/sitemap/notice/1073529.html	us:place:4922650
+https://www.utah.gov/pmn/sitemap/notice/1067625.html	https://www.utah.gov/pmn/sitemap/notice/1067625.html	us:place:4923750
+https://www.utah.gov/pmn/sitemap/notice/1064867.html	https://www.utah.gov/pmn/sitemap/notice/1064867.html	us:place:4925070
+https://www.utah.gov/pmn/sitemap/notice/1082545.html	https://www.utah.gov/pmn/sitemap/notice/1082545.html	us:place:4927930
+https://www.utah.gov/pmn/sitemap/notice/1066373.html	https://www.utah.gov/pmn/sitemap/notice/1066373.html	us:place:4934750
+https://www.utah.gov/pmn/sitemap/notice/1086577.html	https://www.utah.gov/pmn/sitemap/notice/1086577.html	us:place:4935740
+https://www.utah.gov/pmn/sitemap/notice/1096137.html	https://www.utah.gov/pmn/sitemap/notice/1096137.html	us:place:4935960
+https://www.utah.gov/pmn/sitemap/notice/1069761.html	https://www.utah.gov/pmn/sitemap/notice/1069761.html	us:place:4936620
+https://www.utah.gov/pmn/sitemap/notice/1074923.html	https://www.utah.gov/pmn/sitemap/notice/1074923.html	us:place:4980860
+https://www.utah.gov/pmn/sitemap/notice/1065203.html	https://www.utah.gov/pmn/sitemap/notice/1065203.html	us:place:4982510
+https://www.utah.gov/pmn/sitemap/notice/1071705.html	https://www.utah.gov/pmn/sitemap/notice/1071705.html	us:place:4982730
+https://vimeo.com/1029046024?share=copy#t=0	https://vimeo.com/1029046024?share=copy#t=0	us:place:1780242
+https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true	https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true	us:place:3622865
+https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
+https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907	https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907	us:cousub:2500182525
+https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	us:place:0600947
+https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	us:place:5501550
+https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	us:place:1822000
+https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	us:place:4730980
+https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	us:place:0633518
+https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	us:place:3125055
+https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=126	https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=126	us:place:4175650
+https://cityofclintoniowa.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=41661	https://cityofclintoniowa.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=41661	us:place:1914430
+https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108	https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108	us:place:5537825
+http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=	http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=	us:place:3651000
