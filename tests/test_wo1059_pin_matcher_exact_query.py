@@ -68,7 +68,7 @@ def test_the_counts_the_brief_names():
     by_key = {}
     for _h, _r, pairs in KV_ROWS:
         by_key[pairs[0][0]] = by_key.get(pairs[0][0], 0) + 1
-    assert by_key["location_id"] == 34
+    assert by_key["location_id"] == 35  # + Meredith NH, WO-1163
     assert by_key["id"] == 16
     assert by_key["site"] == 3
     assert by_key["clientid"] == 4  # + Leon County, WO-1066

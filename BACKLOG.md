@@ -190,7 +190,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
-  [HUMAN] WO-1160: relabel 3 hidden TelVue caption versions, then…
+  [HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely"…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
@@ -451,7 +451,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (11)
+Reliability, ops & cost  (12)
+  `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit…
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     [LATER] Tighten the two transcription workers to their real import
@@ -2098,10 +2099,10 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-- **[HUMAN] WO-1160: relabel 3 hidden TelVue caption versions, then ingest the 3 held two-track meetings.**
-  - **Issue**: WO-1160 fixed the TelVue adapter and the Archive's ingest, but nothing in production has changed. Three pages hold a hidden caption version that is not English but is labelled English: `city-ma-city-council-5-6-2025` (version 985, Spanish), `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` (3395, Farsi), `fps-school-committee-meeting-07-15-26` (3433, Portuguese). Three tier-1 meetings wait for the fix: TTUSD media 1044135, Tahoe Forest Hospital District media 1039955, Fitchburg SD media 1045663.
-  - **Impact**: all 3 pages show a correct English transcript; the picker offers the other one as "English (sourced)". The 3 held governments have no Archive page yet.
-  - **Next action**: (1) deploy the resolver and the Archive with WO-1160. (2) Relabel each version: `/admin/correct-transcript-language?url=<source URL>&language=<es|fa|pt>&version_id=<id>`. (3) Re-check each page (`/admin/recheck-archive-page?url=<source URL>`); the fixed adapter adds the real English captions as a version, and the other-language one should match the relabelled version (same language, source and text) rather than be copied, as long as TelVue's file has not changed; check each page's picker afterwards. (4) Ingest the 3 held meetings with their gov_ids (rtr-business `research/slug_learning_2026-09-27/telvue_offline_match/routing/results.csv`, decision "Held").
+- **[HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2 two-track pages for their Spanish version.**
+  - **Issue**: WO-1160 fixed the TelVue adapter and the Archive's ingest, but nothing in production has changed. Three pages hold a hidden caption version that is not English but is labelled English: `city-ma-city-council-5-6-2025` (version 985, Spanish), `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` (3395, Farsi), `fps-school-committee-meeting-07-15-26` (3433, Portuguese). The 3 held two-track meetings were ingested on 2026-09-29 (TelVue series census routing): TTUSD (media 1044135) and Fitchburg SD (1045663) while the Archive still ran 28853c1, so only their English track was stored; Tahoe Forest Hospital District (1039955) after the redeploy to 3110f29, with both.
+  - **Impact**: all 3 pages show a correct English transcript; the picker offers the other one as "English (sourced)". The TTUSD and Fitchburg SD pages lack the Spanish version.
+  - **Next action**: (1) deploy the resolver and the Archive with WO-1160. (2) Relabel each version: `/admin/correct-transcript-language?url=<source URL>&language=<es|fa|pt>&version_id=<id>`. (3) Re-check each page (`/admin/recheck-archive-page?url=<source URL>`); the fixed adapter adds the real English captions as a version, and the other-language one should match the relabelled version (same language, source and text) rather than be copied, as long as TelVue's file has not changed; check each page's picker afterwards. (4) Re-check the TTUSD and Fitchburg SD pages (`/admin/recheck-archive-page?url=<source URL>`) so the Spanish track is stored as a second version (rtr-business `research/slug_learning_2026-09-27/telvue_series_census/full/routing/results.csv`).
   - **Constraint**: relabel before the re-check, or the re-check stores a second copy of the other-language text. A re-check does not change the shown version (English replaces English only by hand, `POST /internal/transcript-version/promote`); whether sourced captions should replace our Whisper text on these 3 is Ryan's call.
   - **History**: `BACKLOG_DONE.md` WO-1160.
 
@@ -5908,6 +5909,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
 ## Reliability, ops & cost
+
+### `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit pages with no transcript, once the office's Granicus sweep is done (WO-1163)
+
+- **Issue**: 159 Archive pages whose video is served from `*.granicus.com` (Granicus and Swagit, whose media lives on `archive-stream.granicus.com`) have no transcript and sit in escalating cooldown: the cloud worker's first media pull fails on them (`archive-stream.granicus.com` is 439 of 650 all-time recorded transcription failures, mostly ffmpeg timeouts). The same hosts refuse GitHub's runners (WO-1143) and work from an office connection.
+- **Impact**: the largest remaining group of real, found meetings on the site with no transcript. The 2026-09-27 local recovery run (non-Granicus pages only) transcribed 18 of 106 pages that way, including 7/7 ChampDS and 8/18 Cablecast that had failed on the worker.
+- **Next action**: when no other session is running a Granicus sweep from the same office connection, rebuild the list (Archive pages with no default-version segments whose `video_url` or source host is `*.granicus.com`, excluding YouTube/Viebit) and run `scripts/transcribe_backlog_locally.py --urls-file` on the drip-free Mac, wrapped with `scripts/youtube_fetch_guard.install()`, under `caffeinate`. Then do the tier-3 queue's Granicus lines (121 on 2026-09-27; the feed tags them `NOT-REACHABLE-FROM-GITHUB`) the same way (run the feed by hand first, per `docs/YOUTUBE_DRIP_RUNBOOK.md`).
+- **Constraint**: one Granicus-heavy job per office connection at a time; the local script pulls one meeting's audio at a time, so it is gentle, but it stacks with any sweep. Expect ~30 min per real meeting on a 4-core Mac (Whisper `small`).
+- **History**: 2026-09-27 conductor session; the run's method and per-platform results are in WO-1152's entry above (iQM2) and this entry.
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
 
