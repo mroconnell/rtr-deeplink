@@ -1194,6 +1194,11 @@ https://burtonmi.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:26
 https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996		ca:csd:3506008
 https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860
-https://cloud.castus.tv/vod/waycam/video/6ab6b776d429e50002526374?page=HOME		us:cousub:2501773790
 https://copleytwpoh.portal.civicclerk.com/event/214/media		us:cousub:3915318658
 https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4537		us:county:27067
+https://cloud.castus.tv/vod/waycam/video/6a7e08d9b1e60900022c61d0?page=HOME	https://cloud.castus.tv/vod/waycam	us:cousub:2501773790
+https://cloud.castus.tv/vod/kltv/video/6a73ab0d86e7df000206fb37?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5335065
+https://cloud.castus.tv/vod/kltv/video/6a18ed58d163ee0002556777?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5340245
+https://cloud.castus.tv/vod/kltv/video/6a7543770dea380002b04f73?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5334645
+https://cloud.castus.tv/vod/kltv/video/692e55efafe2e200023a150e?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5357220
+https://cloud.castus.tv/vod/kltv/video/6a690e00752db40002bd5c9f?page=HOME	https://cloud.castus.tv/vod/kltv	us:county:53015
