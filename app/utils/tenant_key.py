@@ -410,6 +410,14 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         ("videoplayer.telvue.com", "sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw"),
         # Penfield Television, NY: Penfield town, Webster Central School District (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "talMNRSs41kuvSjXkD0nTr30kDZRGcjH"),
+        # Orange Government Access Television (OGAT), CT: Orange town
+        # (Board of Selectmen) and Orange School District (Board of
+        # Education) -- TelVue walk follow-up round 2, 2026-09-29.
+        ("videoplayer.telvue.com", "BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT"),
+        # Madison, NH channel: Madison town (Board of Selectmen), Madison
+        # School District (School Board) and the Village District of
+        # Eidelweiss -- TelVue walk follow-up round 2, 2026-09-29.
+        ("videoplayer.telvue.com", "YhjrGzjr53TBI-xqCQGATh6xTOfUjhiy"),
         # Belmont Media Center, MA: Belmont Municipal Light Department, Belmont School District, Belmont town (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "uClcIN88BHKHJoveFoaVN_8_5Tg72P0o"),
         # Queen Anne's County, MD's station (QACTV): county commissioners
