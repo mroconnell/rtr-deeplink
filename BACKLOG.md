@@ -106,7 +106,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (15)
+Standing decisions — do NOT re-raise  (16)
+  English Whisper stays shown over a station's English captions; fix…
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -469,7 +470,8 @@ Reliability, ops & cost  (12)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (30)
+Trust, safety & data quality  (31)
+  No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
@@ -564,6 +566,12 @@ Durable calls worth carrying into any session, not narrow one-offs.
 judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
 Standing decisions archive** instead; check there before assuming
 something hasn't been decided.
+
+### English Whisper stays shown over a station's English captions; fix wrong names instead `[STANDING]`
+
+- **Issue**: some pages hold two English versions: our Whisper transcript and the station's own captions. Whisper reads more cleanly. The captions are more word-for-word and sometimes get a name right that Whisper missed ("Groton Hill", not "Grotten Hill").
+- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word (see "Trust, safety & data quality": no endpoint can edit transcript words yet).
+- **History**: `BACKLOG_DONE.md` WO-1160 (the 3 TelVue pages, caption versions 12320, 12322, 12326 left hidden).
 
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
 
@@ -6219,6 +6227,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### No endpoint can correct a wrong word or name in a stored transcript
+
+- **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
+- **Impact**: known wrong names stay on the page. Example: `/m/city-ma-city-council-5-6-2025` (Whisper version 1762) reads "Grotten Hill Music Center"; it is Groton Hill.
+- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then fix only names confirmed against a real source (agenda or member list), not from the captions alone.
+- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed. Needs an Archive deploy.
+- **History**: `BACKLOG_DONE.md` WO-1160, WO-1164.
 
 ### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
 
