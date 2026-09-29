@@ -68,9 +68,69 @@ def detect_language_from_texts(texts: Iterable[str]) -> Optional[str]:
 
 # User-facing names for the version picker (meeting_page.html) -- raw
 # langdetect/source-provided codes aren't self-explanatory to a reader.
-# Only the two codes actually seen in practice so far; an unrecognized
-# code falls back to displaying itself rather than guessing.
-LANGUAGE_DISPLAY_NAMES = {"en": "English", "es": "Español"}
+# Each name is the language's own name for itself, the usual convention for
+# a language picker (a Spanish reader looks for "Español"). Covers every code
+# langdetect can return (its bundled profiles -- tests/test_language_display_names.py
+# checks that list against this one). WO-1164 (2026-09-29): Arabic and Farsi
+# first showed up as bare "ar"/"fa" on real TelVue pages. An unrecognized
+# code still falls back to displaying itself rather than guessing.
+LANGUAGE_DISPLAY_NAMES = {
+    "af": "Afrikaans",
+    "ar": "العربية",
+    "bg": "Български",
+    "bn": "বাংলা",
+    "ca": "Català",
+    "cs": "Čeština",
+    "cy": "Cymraeg",
+    "da": "Dansk",
+    "de": "Deutsch",
+    "el": "Ελληνικά",
+    "en": "English",
+    "es": "Español",
+    "et": "Eesti",
+    "fa": "فارسی",
+    "fi": "Suomi",
+    "fr": "Français",
+    "gu": "ગુજરાતી",
+    "he": "עברית",
+    "hi": "हिन्दी",
+    "hr": "Hrvatski",
+    "hu": "Magyar",
+    "id": "Bahasa Indonesia",
+    "it": "Italiano",
+    "ja": "日本語",
+    "kn": "ಕನ್ನಡ",
+    "ko": "한국어",
+    "lt": "Lietuvių",
+    "lv": "Latviešu",
+    "mk": "Македонски",
+    "ml": "മലയാളം",
+    "mr": "मराठी",
+    "ne": "नेपाली",
+    "nl": "Nederlands",
+    "no": "Norsk",
+    "pa": "ਪੰਜਾਬੀ",
+    "pl": "Polski",
+    "pt": "Português",
+    "ro": "Română",
+    "ru": "Русский",
+    "sk": "Slovenčina",
+    "sl": "Slovenščina",
+    "so": "Soomaali",
+    "sq": "Shqip",
+    "sv": "Svenska",
+    "sw": "Kiswahili",
+    "ta": "தமிழ்",
+    "te": "తెలుగు",
+    "th": "ไทย",
+    "tl": "Tagalog",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "ur": "اردو",
+    "vi": "Tiếng Việt",
+    "zh-cn": "中文（简体）",
+    "zh-tw": "中文（繁體）",
+}
 
 
 def language_display_name(code: Optional[str]) -> str:

@@ -106,7 +106,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (15)
+Standing decisions — do NOT re-raise  (16)
+  English Whisper stays shown over a station's English captions; fix…
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
   Guessing a bare tenant name for a small government is unsafe unless…
@@ -189,8 +190,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
-  [HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (26)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely"…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
@@ -470,7 +470,8 @@ Reliability, ops & cost  (12)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (30)
+Trust, safety & data quality  (31)
+  No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
   ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
@@ -565,6 +566,12 @@ Durable calls worth carrying into any session, not narrow one-offs.
 judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
 Standing decisions archive** instead; check there before assuming
 something hasn't been decided.
+
+### English Whisper stays shown over a station's English captions; fix wrong names instead `[STANDING]`
+
+- **Issue**: some pages hold two English versions: our Whisper transcript and the station's own captions. Whisper reads more cleanly. The captions are more word-for-word and sometimes get a name right that Whisper missed ("Groton Hill", not "Grotten Hill").
+- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word (see "Trust, safety & data quality": no endpoint can edit transcript words yet).
+- **History**: `BACKLOG_DONE.md` WO-1160 (the 3 TelVue pages, caption versions 12320, 12322, 12326 left hidden).
 
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
 
@@ -2098,13 +2105,6 @@ WO-932 and WO-913.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
-
-- **[HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2 two-track pages for their Spanish version.**
-  - **Issue**: WO-1160 fixed the TelVue adapter and the Archive's ingest, but nothing in production has changed. Three pages hold a hidden caption version that is not English but is labelled English: `city-ma-city-council-5-6-2025` (version 985, Spanish), `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` (3395, Farsi), `fps-school-committee-meeting-07-15-26` (3433, Portuguese). The 3 held two-track meetings were ingested on 2026-09-29 (TelVue series census routing): TTUSD (media 1044135) and Fitchburg SD (1045663) while the Archive still ran 28853c1, so only their English track was stored; Tahoe Forest Hospital District (1039955) after the redeploy to 3110f29, with both.
-  - **Impact**: all 3 pages show a correct English transcript; the picker offers the other one as "English (sourced)". The TTUSD and Fitchburg SD pages lack the Spanish version.
-  - **Next action**: (1) deploy the resolver and the Archive with WO-1160. (2) Relabel each version: `/admin/correct-transcript-language?url=<source URL>&language=<es|fa|pt>&version_id=<id>`. (3) Re-check each page (`/admin/recheck-archive-page?url=<source URL>`); the fixed adapter adds the real English captions as a version, and the other-language one should match the relabelled version (same language, source and text) rather than be copied, as long as TelVue's file has not changed; check each page's picker afterwards. (4) Re-check the TTUSD and Fitchburg SD pages (`/admin/recheck-archive-page?url=<source URL>`) so the Spanish track is stored as a second version (rtr-business `research/slug_learning_2026-09-27/telvue_series_census/full/routing/results.csv`).
-  - **Constraint**: relabel before the re-check, or the re-check stores a second copy of the other-language text. A re-check does not change the shown version (English replaces English only by hand, `POST /internal/transcript-version/promote`); whether sourced captions should replace our Whisper text on these 3 is Ryan's call.
-  - **History**: `BACKLOG_DONE.md` WO-1160.
 
 - **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
   - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
@@ -6227,6 +6227,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### No endpoint can correct a wrong word or name in a stored transcript
+
+- **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
+- **Impact**: known wrong names stay on the page. Example: `/m/city-ma-city-council-5-6-2025` (Whisper version 1762) reads "Grotten Hill Music Center"; it is Groton Hill.
+- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then take the correct spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing, so it is the source for each fix. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
+- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda. Needs an Archive deploy.
+- **History**: `BACKLOG_DONE.md` WO-1160, WO-1164.
 
 ### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
 

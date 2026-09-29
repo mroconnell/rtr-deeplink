@@ -1,5 +1,15 @@
 # Backlog — done
 
+## WO-1164: the Archive's version picker names every language the detector can return [Done 2026-09-29]
+
+**Why this ran.** After the WO-1160 repair, the picker on Alexandria City Public Schools' page listed two versions as "ar (sourced)" and "fa (sourced)". The name table in `archive/utils/language.py` held only English and Spanish.
+
+**The fix.** `LANGUAGE_DISPLAY_NAMES` now names all 55 codes langdetect can return, each in its own language, like the existing "Español". An unknown code still shows itself.
+
+**Tests.** `tests/test_language_display_names.py` checks the table against langdetect's own profile list, so a gap fails the build.
+
+**Caution.** This is Archive code. It shows only after an Archive deploy.
+
 ## WO-1163: pin nine meeting sites Meeting Finder found for governments whose IQM2 site died [Done 2026-09-29]
 
 **Why this ran.** rtr-discovery had 27 undecided IQM2 tenants with a government ID and no known current meeting site. Ryan chose Meeting Finder over an ad-hoc agent. It ran from each government's own website on 2026-09-29 and found a video meeting for 13. Nine are real, owner-proven, and not yet pinned; each owner was re-checked live before pinning.
@@ -114,6 +124,38 @@ Only one Archive page comes from the two stations named in the report (Fitchburg
 On all three, readers see our own English Whisper transcript. The picker lists the other-language captions as "English (sourced)". The repair is in `BACKLOG.md` (Needs a human).
 
 **Caution.** The per-page check ran against production, which runs an older build; the fix is not live until the resolver and the Archive are deployed.
+
+**Production repair (2026-09-29, after the deploy).** This closes the `BACKLOG.md` "Needs a human" entry. Each step was run on production and checked.
+
+Step 1: the 3 hidden versions were relabelled to their real language.
+
+| Page | Version | Old label | New label |
+| --- | --- | --- | --- |
+| `city-ma-city-council-5-6-2025` | 985 | en | es |
+| `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` | 3395 | en | fa |
+| `fps-school-committee-meeting-07-15-26` | 3433 | en | pt |
+
+Step 2: each page was re-checked, with its existing `gov_id` sent as a pin (`us:place:2523875`, `us:sd:5100120`, `us:sd:2504980`). The fixed adapter added the station's English captions and any new languages. Each page reused its relabelled version, so no text was stored twice.
+
+| Page | English captions added | Other languages added |
+| --- | --- | --- |
+| Fitchburg city council | 12320 | none |
+| Alexandria City Public Schools work session | 12322 | es 12323, ar 12324 |
+| Framingham school committee | 12326 | es 12327 |
+
+The shown version did not change on any page. Readers still see our English Whisper transcript.
+
+Alexandria's page (915214) has a fifth caption track; it looks like Amharic. The language detector cannot name it (langdetect has no Amharic profile), so the Archive skipped it, as designed. It is not stored.
+
+Step 3: the 3 held meetings were already ingested by another session (PR #1604), and correctly. Re-pushing them matched the stored text, so nothing changed. PR #1604 said TTUSD and Fitchburg SD had only English, because they were first ingested before the deploy. A live read of each page's picker (2026-09-29) shows all three have both:
+
+| Government | Archive page | Shown version | Hidden Spanish version |
+| --- | --- | --- | --- |
+| Tahoe-Truckee USD | 11431 | 12294 English (sourced) | 12295 |
+| Tahoe Forest Hospital District | 11442 | 12306 English (sourced) | 12307 |
+| Fitchburg SD | 11428 | 12290 English (sourced) | 12291 |
+
+**Follow-up.** The picker showed the new Arabic and Farsi versions as bare "ar" and "fa". WO-1164 names every language the detector can return. Still open, for Ryan: whether the 3 pages above should show the station's English captions (12320, 12322, 12326) instead of our Whisper transcript.
 
 ## WO-1159: pin Merrill WI and Moraine OH, the two CivicClerk successors WO-1158 left out [Done 2026-09-29]
 
