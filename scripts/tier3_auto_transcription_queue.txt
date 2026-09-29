@@ -1154,3 +1154,6 @@ https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://rec
 https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4	https://malegislature.gov/Events/Sessions/Detail/7791	us:state:25
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:cousub:2501717475
+https://reflect-chabot.cablecast.tv/internetchannel/show/18519		rtr:us:ca:chabot-las-positas-ccd
+https://collincollegetx.new.swagit.com/videos/401833		rtr:us:tx:collin-college
+https://polk.granicus.com/MediaPlayer.php?view_id=1&clip_id=1		rtr:us:fl:polk-state-college
