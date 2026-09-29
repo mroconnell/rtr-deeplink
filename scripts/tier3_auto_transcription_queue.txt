@@ -1074,3 +1074,17 @@ https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
 https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
 https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415
 https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1037788	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	us:sd:1713230
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1035594	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	us:sd:1713240
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1041517	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	us:sd:1734170
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1040858	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	rtr:us:il:fondulac-park-district
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1048323	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	rtr:us:il:fondulac-public-library-district
+https://videoplayer.telvue.com/player/quZf-EQCG6gA_HQ2TDTZJaPSGY50XqVy/media/1046520	https://videoplayer.telvue.com/player/quZf-EQCG6gA_HQ2TDTZJaPSGY50XqVy/videos	us:sd:4205860
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/media/1041037	https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/videos	us:sd:2504440
+https://videoplayer.telvue.com/player/ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL/media/1047863	https://videoplayer.telvue.com/player/ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL/videos	us:cousub:2502746820
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1042833	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:sd:5000425
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1018076	https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/videos	rtr:us:co:vail-park-and-recreation-district
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1046553	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/videos	rtr:us:pa:state-college-borough-water-authority
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1031147	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/videos	rtr:us:pa:university-area-joint-authority
+https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1029054	https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/videos	rtr:us:ma:shrewsbury-housing-authority
+https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/media/1044891	https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/videos	rtr:us:ma:fitchburg-housing-authority

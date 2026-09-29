@@ -8009,3 +8009,22 @@ https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986,granicus,hl
 https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-29T13:20:12+00:00,,0
 https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.02,2026-09-29T13:20:15+00:00,,0
 https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-29T13:20:34+00:00,,0
+https://videoplayer.telvue.com/player/OXn5XvCPQqemD7cvXwSX1qzONyLLA3Uq/media/1046244,telvue,telvue-page-json,3560.00,,,1,accept,,0.00,2026-09-29T15:10:43+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/724NwSAvTGO8fhle8zK5BSnF9sj3sFxN/media/1044814,telvue,telvue-page-json,1231.00,,,1,accept,,0.00,2026-09-29T15:10:56+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc/media/1044976,telvue,telvue-page-json,5405.00,,,1,accept,,0.00,2026-09-29T15:10:56+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj/media/1045964,telvue,telvue-page-json,4694.00,,,1,accept,,0.00,2026-09-29T15:10:57+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj/media/1047466,telvue,telvue-page-json,4182.00,,,1,accept,,0.00,2026-09-29T15:10:58+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1037788,telvue,telvue-page-json,2863.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1035594,telvue,telvue-page-json,2570.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1041517,telvue,telvue-page-json,1909.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1040858,telvue,telvue-page-json,609.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1048323,telvue,telvue-page-json,721.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/quZf-EQCG6gA_HQ2TDTZJaPSGY50XqVy/media/1046520,telvue,telvue-page-json,1511.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/media/1041037,telvue,telvue-page-json,1790.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL/media/1047863,telvue,telvue-page-json,2081.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1042833,telvue,telvue-page-json,8797.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1018076,telvue,telvue-page-json,2836.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1046553,telvue,telvue-page-json,2057.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1031147,telvue,telvue-page-json,3664.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1029054,telvue,telvue-page-json,1482.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0
+https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/media/1044891,telvue,telvue-page-json,618.00,,,1,accept,,0.00,2026-09-29T15:15:53+00:00,telvue_offline_match_2026-09-29,0

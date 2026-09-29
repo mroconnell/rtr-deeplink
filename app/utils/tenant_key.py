@@ -453,6 +453,33 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Regional School Committee and Wrentham town committees -- its own
         # videos search, read 2026-09-29.
         ("videoplayer.telvue.com", "LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui"),
+        # TelVue offline match routing, 2026-09-29 (rtr-business
+        # telvue_offline_match/routing): stations whose newest list page
+        # shows more than one government's meetings.
+        # East Side Community Media (East Peoria, IL): East Peoria city,
+        # School Districts 309, 86 and 85, Fondulac Park and Library.
+        ("videoplayer.telvue.com", "K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3"),
+        # Tahoe Truckee Media, CA: Truckee town, Tahoe-Truckee USD
+        # ("TTUSD Trustees") and Tahoe Forest Hospital District ("Tahoe
+        # Forest Health System Board").
+        ("videoplayer.telvue.com", "EdhI2xtM1vAxHWMytVkqEFJ6vUupMLaS"),
+        # Cumberland, ME channel: Cumberland town (Town Council, Planning
+        # Board) and the Cumberland Housing Authority.
+        ("videoplayer.telvue.com", "RVW_MGb8e118795O2RYhP8fLbPOZACgm"),
+        # NEAT, VT: Mt. Abraham USD ("MAUSD Board") and the towns it
+        # serves (Monkton, Lincoln and others in the titles).
+        ("videoplayer.telvue.com", "6t4JFD38pkivJz72qlakWmYVbn6wB-u_"),
+        # Northborough, MA channel: the town's boards, the Northborough
+        # School Committee and the regional school committee.
+        ("videoplayer.telvue.com", "ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL"),
+        # East Bridgewater Community Access Media, MA: the town's boards
+        # and the East Bridgewater School Committee.
+        ("videoplayer.telvue.com", "Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM"),
+        # Ware, MA channel: the Selectboard and the Ware School Committee.
+        ("videoplayer.telvue.com", "TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc"),
+        # Ludlow Community Television, MA (Ryan confirmed 2026-09-29): the
+        # town's boards and the Ludlow School Committee.
+        ("videoplayer.telvue.com", "dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj"),
         # ChampDS customers whose one CustomerName is applied to every
         # meeting, but whose own meeting-body list (playapi.champds.com/
         # {customer}/archive/1, read 2026-09-25) or archive search titles
