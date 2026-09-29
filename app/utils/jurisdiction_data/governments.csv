@@ -4118,3 +4118,4 @@ us:state:32,Nevada,state,us,NV,,,,,,"Nevada Legislature|Nevada Legislature, NV|S
 us:state:36,New York,state,us,NY,,,,,,State of New York,us_states.csv,
 us:state:47,Tennessee,state,us,TN,,,,,,State of Tennessee,us_states.csv,
 us:state:51,Virginia,state,us,VA,,,,,,"State of Virginia|Virginia|Virginia House of Delegates, VA|Virginia Senate",us_states.csv,
+rtr:us:mn:minnesota-public-utilities-commission,Minnesota Public Utilities Commission,special_district,us,MN,,,,,,,curated+ryan_stated,"Minnesota Public Utilities Commission, MN -- minted (Ryan, 2026-09-29): state agency; its own Granicus tenant minnesotapuc.granicus.com already has Archive page /m/minnesota-public-utilities-commission-2026-08-20-puc-agenda-meeting-on-2026-08-2 with no gov_id"

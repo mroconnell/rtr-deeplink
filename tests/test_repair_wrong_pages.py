@@ -196,15 +196,21 @@ def test_the_minted_rows_carry_the_minted_ids_and_say_the_deploy_comes_first():
         assert gov is not None and gov.source.startswith("curated")
 
 
-def test_page_2504_is_approved_to_move_to_unresolved_and_is_not_a_delete():
-    """Ryan: move it to unresolved like page 5816, do not delete it. No registry
-    id exists to write, so the row cannot run through the tool; it records the
-    path that does apply."""
+def test_page_2504_rekeys_to_the_minted_commission_and_is_not_a_delete():
+    """Ryan, 2026-09-21: move it off Beltrami County, do not delete it. Ryan,
+    2026-09-29: give the Minnesota Public Utilities Commission its own id. So
+    the row now runs through the tool like any other re-key."""
+    from app.utils.gov_registry import government_for_id
+
     row = {r.page_id: r for r in _sheet_rows()}[2504]
-    assert (row.action, row.target_gov_id, row.approved) == ("rekey", "", True)
-    assert "does NOT apply" in row.evidence  # the backfill path
-    assert "repoint_page.py" in row.evidence and "--dry-run" in row.evidence
-    assert "MediaPlayer.php?view_id=2&clip_id=2573" in row.evidence
+    assert (row.action, row.target_gov_id, row.approved) == (
+        "rekey",
+        "rtr:us:mn:minnesota-public-utilities-commission",
+        True,
+    )
+    gov = government_for_id(row.target_gov_id)
+    assert gov is not None and gov.source.startswith("curated")
+    assert "clip 2573" in row.evidence
 
 
 def test_the_two_kept_government_videos_talk_about_meeting_kind_not_a_new_column():
@@ -224,13 +230,14 @@ def test_deletes_always_wait_for_ryan_and_no_rekey_runs_without_evidence():
             assert row.action == "rekey" and row.target_gov_id, row.origin
 
 
-def test_the_only_row_with_no_target_is_the_one_with_no_id_to_write():
-    """A blank target is a finding, not a gap to fill from a guess: page 2504
-    (Ryan will not mint a state commission)."""
+def test_no_rekey_row_has_a_blank_target():
+    """A blank target is a finding, not a gap to fill from a guess. The one
+    such row, page 2504, got its id when Ryan minted the Minnesota Public
+    Utilities Commission on 2026-09-29."""
     blank = {
         r.page_id for r in _sheet_rows() if r.action == "rekey" and not r.target_gov_id
     }
-    assert blank == {2504}
+    assert blank == set()
     for row in _sheet_rows():
         if row.action == "rekey" and not row.target_gov_id:
             assert row.needs_ryan
@@ -1458,7 +1465,9 @@ async def test_page_2504_path_a_repush_under_the_commission_name_moves_a_page_to
 def test_page_2504_the_backfill_path_would_leave_it_under_beltrami():
     """The other half of the reasoning above, on the real stored name: the
     resolver, given what `backfill_gov_id.py` feeds it for page 2504, answers
-    Beltrami County again; given page 5816's stored name it stays unresolved."""
+    Beltrami County again, so page 2504 needs its sheet row. Given page 5816's
+    stored name, the host pin minted on 2026-09-29 files it under the
+    commission."""
     from app.utils.gov_registry import resolve_government
 
     host = "minnesotapuc.granicus.com"
@@ -1471,7 +1480,7 @@ def test_page_2504_the_backfill_path_would_leave_it_under_beltrami():
         tenant_host=host,
         path="/MediaPlayer.php?clip_id=2731&view_id=2",
     )
-    assert page_5816.gov_id == "" and page_5816.tier == "unresolved"
+    assert page_5816.gov_id == "rtr:us:mn:minnesota-public-utilities-commission"
 
 
 def _ingest_youtube(http, video_id):
