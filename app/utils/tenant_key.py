@@ -417,6 +417,11 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # King Philip Regional School District (its "KP School Committee"
         # playlist) -- read 2026-09-29. Also listed by PR #1584.
         ("videoplayer.telvue.com", "LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui"),
+        # Lowell TeleMedia Center, MA: Lowell city boards (City Council,
+        # Planning Board) and Lowell School District (School Committee and
+        # its subcommittees) -- its own videos list, read 2026-09-29
+        # (rtr-business telvue_keys_cdx/census).
+        ("videoplayer.telvue.com", "4jeRlBTetCoFJdyT5ssIvBrB9VUvRN0M"),
         # Penfield Television, NY: Penfield town, Webster Central School District (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "talMNRSs41kuvSjXkD0nTr30kDZRGcjH"),
         # Orange Government Access Television (OGAT), CT: Orange town
