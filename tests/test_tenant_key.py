@@ -142,6 +142,20 @@ SHARED_CASES = [
     ("https://public.destinyhosted.com/24263/agenda/", "24263"),
     ("https://public.destinyhosted.com/agenda_publish.cfm?id=24263", "24263"),
     ("https://public.destinyhosted.com/agenda_publish.cfm", None),
+    # CivicMedia -- tests/test_civicmedia.py. The embed names only the
+    # video; the stream address it hands out names the channel (Hobart,
+    # IN, tests/fixtures/civicmedia/). Channel 0 mixes many owners.
+    (
+        "https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=160547&autoplay=no",
+        None,
+    ),
+    (
+        "https://wms.civplus.tikiliveapi.com/vodhttporigin_civplustest/160547/"
+        "smil:civplustest/encoded_streams/0/928/160547.smil/playlist.m3u8"
+        "?p=vodcdn&chid=93145&ts_chunk_length=6&op_id=1&userId=0&videoId=160547",
+        "93145",
+    ),
+    ("https://wms.civplus.tikiliveapi.com/x/playlist.m3u8?chid=0&videoId=1", None),
     # SpectrumStream -- tests/test_spectrumstream.py.
     ("https://spectrumstream.com/streaming/gusd/2024_10_08.cfm", "gusd"),
     # Shared, but one listing: the whole host is the tenant.
@@ -766,3 +780,57 @@ def test_every_tenant_whose_pins_name_several_governments_is_listed():
             by_tenant[(host, key)].add(gov)
     several = {t for t, govs in by_tenant.items() if len(govs) > 1}
     assert several <= tk.MULTI_GOVERNMENT_TENANTS, several - tk.MULTI_GOVERNMENT_TENANTS
+
+
+# ---------------------------------------------------------------------------
+# CivicMedia channels (2026-09-29). A chid is learned from the embed page's
+# stream address (civicmedia.py's `video_channel`), and pins are
+# `channel=civicmedia:{chid}` on civplus.tikiliveapi.com.
+
+
+def test_a_civicmedia_channel_pin_names_its_tenant():
+    host = "civplus.tikiliveapi.com"
+    assert tk.pin_tenant_key(host, "channel=civicmedia:93145") == "93145"
+    assert tk.pin_tenant_key(host, "channel=civicmedia:0") is None
+    assert tk.pin_tenant_key("boxcast.tv", "channel=civicmedia:93145") is None
+
+
+def test_a_pinned_civicmedia_channel_resolves_to_its_government():
+    from app.utils.gov_registry.resolver import page_hints_for, resolve_government
+
+    # Channel 93145 is Hobart, IN: its own CivicMedia page embeds video
+    # 160547, whose stream carries chid=93145 (tests/fixtures/civicmedia/).
+    match = resolve_government(
+        None,
+        tenant_host="civplus.tikiliveapi.com",
+        path="/embed?scheme=embedVod&videoId=160547&autoplay=no",
+        page_hints=page_hints_for(
+            "civicmedia", "civicmedia:160547", channel="civicmedia:93145"
+        ),
+    )
+    assert match.gov_id == "us:place:1834114"
+    assert match.tier == "pinned"
+
+
+@pytest.mark.parametrize("channel", ["civicmedia:208", "civicmedia:0", None])
+def test_an_unpinned_civicmedia_channel_stays_unresolved(channel):
+    from app.utils.gov_registry.resolver import page_hints_for, resolve_government
+
+    # 208 is a TBD channel in the 2026-09-29 research (a library
+    # storytime, no place named), so it has no pin. Channel 0 mixes many
+    # owners and must never be pinned. None: the stream had no chid.
+    match = resolve_government(
+        None,
+        tenant_host="civplus.tikiliveapi.com",
+        path="/embed?scheme=embedVod&videoId=1&autoplay=no",
+        page_hints=page_hints_for("civicmedia", "civicmedia:1", channel=channel),
+    )
+    assert match.gov_id == "rtr:unknown:civplus.tikiliveapi.com"
+    assert match.tier == "blank"
+
+
+def test_no_civicmedia_pin_names_the_mixed_channel():
+    for host, match, _gov in _pins_in_scope():
+        if host == "civplus.tikiliveapi.com":
+            assert match.startswith("channel=civicmedia:"), match
+            assert match != "channel=civicmedia:0"

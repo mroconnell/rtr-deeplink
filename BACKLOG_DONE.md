@@ -1,5 +1,37 @@
 # Backlog — done
 
+## WO-1162: a CivicMedia channel is its own tenant, and 378 confirmed channels are pinned [Done 2026-09-29]
+
+**Why this ran.** CivicMedia is CivicPlus's video product, served by TikiLive at `civplus.tikiliveapi.com`. Every customer shares that one host. Each customer's videos sit in a channel with a number, the "chid". `tenant_key()` treated the whole host as one tenant, so no chid could be pinned, and a bare embed resolved to no government. An ingest had to send `gov_id` itself, as the Carlton County ingest did.
+
+**Where the chid comes from.** The embed address names only the video (`/embed?scheme=embedVod&videoId={n}`). The embed page hands out a signed stream address that does name the channel: Hobart, IN's video 160547 streams from `...playlist.m3u8?p=vodcdn&chid=93145&...` (the saved fixture `tests/fixtures/civicmedia/tikilive_embed_160547.html`). The adapter already fetched that page for the stream, so reading the chid needs no extra request.
+
+**What changed.** It follows BoxCast's channel pins, the one existing case where the address does not carry the tenant:
+
+1. `app/utils/tenant_key.py`: `civicmedia_chid()` reads `chid=` from an address. The two TikiLive hosts are keyed shared hosts. An embed with only `videoId=` has no key (None), like a BoxCast `/view/` link. `pin_tenant_key()` reads `channel=civicmedia:{chid}`.
+2. `app/platforms/civicmedia.py`: `resolve()` sets `video_channel` to `civicmedia:{chid}`, on a bare embed and on a government's own page.
+3. `app/utils/gov_registry/registry.py`: both TikiLive hosts are in `MULTI_GOV_HOSTS`. No pin can cover the whole host, and an embed with no matching channel pin gets no government, never a guess.
+4. `tenant_overrides.csv`: 378 pins, `civplus.tikiliveapi.com,channel=civicmedia:{chid},{gov_id},fallback,civicmedia_channels_2026-09-29,...`. The evidence column carries each row's own evidence from the research file.
+
+**Channel 0 is never a tenant.** The research found 884 videos from many owners in it. `tenant_key.CIVICMEDIA_MIXED_CHANNELS` drops it, and a test fails if any pin names it.
+
+**Pins added.** From rtr-business `research/slug_learning_2026-09-27/civicmedia_channels/channels.csv` (814 channels):
+
+| Research result | Channels | Pinned here |
+| --- | --- | --- |
+| Confirmed, with a registry row | 378 | 378 |
+| Confirmed, no registry row (91580, Roosevelt Island Operating Corporation) | 1 | 0 |
+| Likely | 191 | 0 |
+| TBD, not government, or mixed | 244 | 0 |
+| Total | 814 | 378 |
+
+The 378 pins name 195 governments; some governments have several channels.
+
+**Caution.** One change in behaviour: `queue_probe.has_owner()` now reports a bare TikiLive embed as not owned unless it has a pin it can see from the address. It cannot, because the chid is not in the address. Before, it reported "owned" on a host whose ingest landed on no government anyway. Callers that send `gov_id` (as the Carlton ingest did) are not affected. Existing Archive pages keep their `gov_id`; their `video_channel` is blank until they are re-ingested.
+
+**Tests.** `tests/test_tenant_key.py`: key from an embed (None), from a stream address (`93145`), from channel 0 (None); channel pins; a pinned chid resolves to Hobart, IN (`us:place:1834114`, tier `pinned`); an unpinned chid (208), channel 0 and a missing chid all stay unresolved (`rtr:unknown:civplus.tikiliveapi.com`, tier `blank`); no pin names channel 0. `tests/test_civicmedia.py`: `video_channel` is `civicmedia:93145` on the embed and on Hobart's own page, and None when there is no stream. Full suite: 8,345 passed (after rebasing on main).
+
+**Open.** The likely and TBD channels: `BACKLOG.md`'s WO-1162 entry.
 ## WO-1161: pin six organizations that left IQM2, old site and new, and fix West Basin's government [Done 2026-09-29]
 
 **Why this ran.** rtr-discovery had six undecided IQM2 tenants with no government ID. Ryan asked for them to be identified and their new meeting sites found. A research agent did that from each organization's own pages; this session re-checked every claim live before pinning.

@@ -142,6 +142,23 @@ async def test_tikilive_embed_url_resolved_directly_has_no_title():
     assert resolved.title is None
     assert resolved.video_url == M3U8_URL
     assert resolved.external_id == "civicmedia:160547"
+    # The channel, from the stream address's own `chid=93145`.
+    assert resolved.video_channel == "civicmedia:93145"
+
+
+async def test_government_page_carries_the_channel_too():
+    with mock_session(_routes(vtt_body=None)):
+        resolved = await CivicMediaAssetFinder().resolve(PAGE_URL)
+
+    assert resolved.video_channel == "civicmedia:93145"
+
+
+async def test_no_stream_means_no_channel():
+    routes = {EMBED_URL: FakeResponse(status=200, text="<html></html>", url=EMBED_URL)}
+    with mock_session(routes):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
+
+    assert resolved.video_channel is None
 
 
 async def test_no_iframe_found_is_an_honest_video_warning_not_a_crash():
