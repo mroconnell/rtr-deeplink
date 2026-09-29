@@ -5,52 +5,13 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://westseneca.granicus.com/MediaPlayer.php?view_id=1&clip_id=84
-https://wethersfieldct.granicus.com/MediaPlayer.php?view_id=1&clip_id=239
-https://willingboronj.granicus.com/MediaPlayer.php?view_id=1&clip_id=21
-https://wilson.granicus.com/MediaPlayer.php?view_id=2&clip_id=321
-https://cityofwinder.granicus.com/MediaPlayer.php?view_id=1&clip_id=1587
-https://winslowtownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=883
-https://winterparkcolorado.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
-https://yorktownny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2154
-https://video.scstatehouse.gov/mp4/20260811SJudiciaryFullCommittee16632_1.mp4
-https://video.scstatehouse.gov/mp4/20260811HGovtEfficiencyandLegOversightLawEnforcementCriminal16624_1.mp4
-https://sg001-harmony.sliq.net/00285/Harmony/en/PowerBrowser/PowerBrowserV3/20260911/-1/38038
-https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260916/-1/28467
-https://play.champds.com/yumacoaz/event/615
-https://sg001-harmony.sliq.net/00329/Harmony/en/PowerBrowser/PowerBrowserV3/20260827/-1/6728
-https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260903/-1/22755
-https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260901/-1/22728
-https://sg001-harmony.sliq.net/00283/Harmony/en/PowerBrowser/PowerBrowserV3/20260917/-1/56229
-https://sg001-harmony.sliq.net/00289/Harmony/en/PowerBrowser/PowerBrowserV3/20260915/-1/59079
-https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260921/-1/28474
-https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260911/-1/28464
-https://player.invintus.com/?clientID=2917038973&eventID=2026091015
-https://player.invintus.com/?clientID=2917038973&eventID=2026081016
-https://tuscaloosaal.suiteonemedia.com/event/?id=11029
-https://forestparkga.portal.civicclerk.com/event/1196/media
-https://coryellcountyclerk.com/Uploads/Comm-Court-2026-01-13-pt1.m4a		us:county:48099
-https://dunmorepa.gov/wp-content/themes/dunmore/videos/Dunmore+Council+Meeting+682020.mp4		us:place:4220352
-https://gagecountyne.gov/wp-content/uploads/sites/35/2026/09/bos-2026-09-16.mp3		us:county:31067
-http://whitleycountyfiscalcourt.com/FCVideos/2024-06-18 16-04-07.mp4		us:county:21235
 https://vimeo.com/922203074		us:place:3771220
-https://OLMOSPARKTX.portal.civicclerk.com/event/357/media	https://olmospark.org/
-https://byramms.portal.civicclerk.com/event/1040/media	https://byram-ms.us/
-https://stanwoodwa.portal.civicclerk.com/event/1007/media	https://stanwoodwa.org/
-https://reflect-wctv-village-willmette.cablecast.tv/internetchannel/show/887?site=1	https://wilmette.gov/
-https://reflect-vsctv.cablecast.tv/internetchannel/gallery/22?site=1	Old Saybrook CT (shared regional Cablecast host, gallery 22)
-https://reflect-vsctv.cablecast.tv/internetchannel/gallery/10?site=1	Haddam CT (shared regional Cablecast host, gallery 10)
-https://reflect-vsctv.cablecast.tv/internetchannel/gallery/9?site=1	Deep River CT (shared regional Cablecast host, gallery 9)
-https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1	Clinton CT (shared regional Cablecast host, gallery 3)
-https://townhallstreams.com/towns/chichester_nh	https://chichesternh.org/
-https://townhallstreams.com/towns/moultonborough_nh	https://moultonboroughnh.gov/
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
 https://player.vimeo.com/video/1183202055	https://www.cbsd.org/school-board/board-meeting-streams/board-meeting-stream-archiver	us:sd:4205310
 https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-council/	us:place:0546970
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://www.puc.pa.gov/media/1844/pm031022-audio.mp3		rtr:us:pa:pennsylvania-public-utility-commission
 https://www.kenedyisd.com/UserFiles/Servers/Server_55723/Media/School Board Audio/Kenedy ISD Board Meeting 4-1-2020.mp3		us:sd:4825440
 http://villageofparish-ny.us/wp-content/uploads/2025/01/Parish-village-board-meeting-Wednesday-January-15-2025-audio.mp3		us:place:3656341
 https://www.montagueisd.org/vimages/shared/vnews/stories/684733c1eb2e9/Board%20Mtg%209-15-25%20%281%29.mp3		us:sd:4831200
