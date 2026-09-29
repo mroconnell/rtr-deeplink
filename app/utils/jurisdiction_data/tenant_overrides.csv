@@ -113,7 +113,7 @@ bethanybeach.granicus.com,,us:place:1005690,fallback,identity_join+landing_page,
 beverlyhills.granicus.com,,us:place:0606308,fallback,ryan_stated,"Beverly Hills, CA -- us_places.csv Beverly Hills city"
 biddefordme.portal.civicclerk.com,,us:place:2304860,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_places.csv Biddeford city
 biglakescounty.escribemeetings.com,,ca:csd:4817027,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4817027 Big Lakes County matched with spacing ignored
-blackdiamond.civicweb.net,,ca:csd:4806011,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Black Diamond
+blackdiamond.civicweb.net,,rtr:ca:ab:diamond-valley,fallback,ryan_stated+dns_audit_2026-09-28,"Ryan 2026-09-29: Black Diamond and Turner Valley merged into the Town of Diamond Valley, AB (2023); DNS-run audit 2026-09-28 found these pages titled Diamond Valley"
 blacksburg.granicus.com,,us:place:5107784,fallback,auto_derived+visual_confirmed,"page title 'Town of Blacksburg, Va.: Blacksburg' (landing.png) [reports/jurisdiction_screens/blacksburg.granicus.com/landing.png reports/jurisdiction_screens/blacksburg.granicus.com/meeting.png] -> place 5107784 -> registry: us_places.csv Blacksburg town"
 blacksharbour.civicweb.net,,ca:csd:1302012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Blacks Harbour
 blandfordblenheim.escribemeetings.com,,ca:csd:3532045,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Blandford-Blenheim
@@ -1362,7 +1362,7 @@ tucsonaz.hylandcloud.com,,us:place:0477000,fallback,known_domains,app/utils/juri
 tudorandcashel.civicweb.net,,ca:csd:3512048,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tudor and Cashel
 tularecounty.primegov.com,,us:county:06107,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Tulare County
 tumblerridge.civicweb.net,,ca:csd:5955003,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tumbler Ridge
-turnervalley.civicweb.net,,ca:csd:4806009,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Turner Valley
+turnervalley.civicweb.net,,rtr:ca:ab:diamond-valley,fallback,ryan_stated+dns_audit_2026-09-28,"Ryan 2026-09-29: Black Diamond and Turner Valley merged into the Town of Diamond Valley, AB (2023); DNS-run audit 2026-09-28 found these pages titled Diamond Valley"
 tuscolacounty.civicweb.net,,us:county:26157,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Tuscola County
 tvhamilton.cablecast.tv,,us:place:3933012,fallback,ryan_stated,"Hamilton, OH -- us_places.csv Hamilton city"
 tweed.civicweb.net,,ca:csd:3512030,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tweed
@@ -6460,7 +6460,7 @@ videoplayer.telvue.com,player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/883851,us:c
 videoplayer.telvue.com,player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/media/1004188,us:cousub:3401306260,authoritative,wo1150_misfile,"Bloomfield township, NJ -- WO-1150: page 3371 ""First Ward Community Resource Mtg"" on WBMA-TV (Bloomfield, NJ) is Bloomfield's, not Pittsford (village), NY's"
 videoplayer.telvue.com,player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1039916,us:cousub:2501705070,authoritative,wo1150_misfile,"Belmont town, MA -- WO-1150: page 3415 ""Select Board - 08/10/26"" on Belmont Media Center is the Belmont Select Board; it sat on Pittsford (village), NY"
 videoplayer.telvue.com,player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1030573,us:place:2578972,authoritative,wo1150_misfile,"Weymouth Town city, MA -- WO-1150: page 3421 ""Town Council"" on Weymouth's channel is the Weymouth Town Council; it sat on Pittsford (village), NY"
-ab-blackdiamond.civicplus.com,,ca:csd:4806011,fallback,slug_reverse_check_2026-09-27,"slug fits exactly one government by the learned naming habit (state, kind or domain in the slug) -> Black Diamond, AB; found via certificate-log roster"
+ab-blackdiamond.civicplus.com,,rtr:ca:ab:diamond-valley,fallback,ryan_stated+dns_audit_2026-09-28,"Ryan 2026-09-29: Black Diamond and Turner Valley merged into the Town of Diamond Valley, AB (2023); DNS-run audit 2026-09-28 found these pages titled Diamond Valley"
 ab-highlevel.civicplus.com,,ca:csd:4817093,fallback,slug_reverse_check_2026-09-27,"slug fits exactly one government by the learned naming habit (state, kind or domain in the slug) -> High Level, AB; found via certificate-log roster"
 al-centerpoint.civicplus.com,,us:place:0113264,fallback,slug_reverse_check_2026-09-27,"slug fits exactly one government by the learned naming habit (state, kind or domain in the slug) -> Center Point city, AL; found via certificate-log roster"
 al-greenville.civicplus.com,,us:place:0131912,fallback,slug_reverse_check_2026-09-27,"slug fits exactly one government by the learned naming habit (state, kind or domain in the slug) -> Greenville city, AL; found via certificate-log roster"
