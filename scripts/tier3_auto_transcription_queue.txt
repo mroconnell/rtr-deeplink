@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780
-https://portorchard.granicus.com/MediaPlayer.php?view_id=1&clip_id=242
-https://libertytwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=331
-https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275
-https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
-https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
-https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415
-https://spaldingcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=416
-https://stormlake.granicus.com/MediaPlayer.php?view_id=1&clip_id=96
-https://summitcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=379
-https://swiftcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=188
-https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
 https://westseneca.granicus.com/MediaPlayer.php?view_id=1&clip_id=84
 https://wethersfieldct.granicus.com/MediaPlayer.php?view_id=1&clip_id=239
 https://willingboronj.granicus.com/MediaPlayer.php?view_id=1&clip_id=21
@@ -1080,3 +1068,9 @@ https://bv22.cablecast.tv/show/138	https://bv22.cablecast.tv/	us:sd:0802490
 https://cloud.castus.tv/vod/waterford-media/video/67b8873ec4729f0008416a96	https://cloud.castus.tv/vod/waterford-media	us:sd:2635310
 https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836816	https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/videos	us:sd:2504800
 https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/media/1042907	https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/videos	us:cousub:3301726020
+https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780
+https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275
+https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
+https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
+https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415
+https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209

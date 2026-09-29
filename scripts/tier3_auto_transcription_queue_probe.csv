@@ -8003,3 +8003,9 @@ https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/991
 https://bv22.cablecast.tv/show/138,cablecast,hls-master+variant,4523.50,,,1,accept,,0.74,2026-09-29T13:03:30+00:00,shortest_anyway_2026-09-29,0
 https://cloud.castus.tv/vod/waterford-media/video/67b8873ec4729f0008416a96,castus,hls-master+variant,6086.00,,,1,accept,,0.65,2026-09-29T13:03:38+00:00,shortest_anyway_2026-09-29,0
 https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836816,telvue,telvue-page-json,2411.00,,,1,accept,,0.36,2026-09-29T13:03:44+00:00,shortest_anyway_2026-09-29,0
+https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.11,2026-09-29T13:19:55+00:00,,0
+https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.07,2026-09-29T13:20:06+00:00,,0
+https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-29T13:20:09+00:00,,0
+https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-29T13:20:12+00:00,,0
+https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.02,2026-09-29T13:20:15+00:00,,0
+https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-29T13:20:34+00:00,,0
