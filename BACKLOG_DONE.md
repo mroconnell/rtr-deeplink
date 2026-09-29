@@ -1,5 +1,30 @@
 # Backlog — done
 
+## WO-1158: pin eight CivicClerk sites that replaced a dead IQM2 site [Done 2026-09-29]
+
+**Why this ran.** Ryan asked rtr-discovery to check its 44 undecided IQM2 tenants for a CivicClerk successor (rtr-discovery FINDING-6: most IQM2 customers moved to CivicClerk). A pin here is how a new site becomes an rtr-discovery tenant: its seed turns every whole-host US pin on a walkable platform into a tenant.
+
+**How they were found (live, 2026-09-29).** One to three CivicClerk names were guessed per IQM2 tenant and tested on `{name}.api.civicclerk.com/v1/Events`, one request at a time, 2 s apart, honest user agent. The API answers a real site with data and an unknown name with 404 (the portal page answers 200 for any name, so it proves nothing). 10 of 44 answered.
+
+**Owner proof.** A pin went in only when a recent meeting's address in the API names the place:
+
+| Site | Government | Address in the API |
+| --- | --- | --- |
+| fortmyersbeachfl | Fort Myers Beach town, FL | Town Hall, Fort Myers Beach FL 33931 |
+| bartletttn | Bartlett city, TN | 6400 Stage Road, Bartlett TN 38134 |
+| clarkstonga | Clarkston city, GA | 736 Park North Blvd, Clarkston GA 30021 |
+| hollyspringsga | Holly Springs city, GA | Public Safety Building, Holly Springs GA 30115 |
+| medfordma | Medford city, MA | Andrews Middle School, Medford MA 02155 |
+| smithtownny | Smithtown town, NY | 99 West Main Street, Smithtown NY |
+| mundeleinil | Mundelein village, IL | 300 Plaza Circle, Mundelein IL 60060 |
+| maitlandfl | Maitland city, FL | 1776 Independence Ln, Maitland |
+
+Not pinned: `merrillwi` and `moraineoh` answered, but no address names a city. They need a hand check.
+
+**Tests.** `tests/test_wo1158_civicclerk_successor_pins.py`: each host resolves to its government; all 8 fail without the new rows.
+
+**Deploy status.** Data only (`tenant_overrides.csv`). Takes effect for rtr-discovery at its next seed.
+
 ## WO-1157: TelVue gets a real external_id, so a bare and a playlist-prefixed URL for the same video no longer risk a duplicate Archive page [Done 2026-09-28]
 
 **Why this ran.** Filed the same day as a `[NEEDS-AUDIT]` entry (this session's TelVue investigation, from a peer session's ledger note): a TelVue meeting is reachable via two real URL shapes for the identical video -- a bare `/player/{token}/media/{id}` link, and a `/player/{token}/playlists/{n}/media/{id}` one -- and nothing unified them for dedup. Ryan asked for the fix directly. **Correction**: this session first said rtr-discovery's cited "FINDING-35" didn't exist -- that was checked against a stale rtr-discovery checkout (12 commits behind, same gap the rtr-deeplink checkout had earlier the same day). It's real: rtr-discovery `BACKLOG.md` line 2418, added by rtr-discovery PR #89 (2026-09-27) -- its own caution 2 is this exact duplicate-filing risk. Now cross-linked from both sides (rtr-discovery PR #101 notes this fix there).
