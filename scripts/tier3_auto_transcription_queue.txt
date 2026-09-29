@@ -1157,6 +1157,44 @@ https://cloud.castus.tv/vod/kltv/video/6a18ed58d163ee0002556777?page=HOME	https:
 https://cloud.castus.tv/vod/kltv/video/6a7543770dea380002b04f73?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5334645
 https://cloud.castus.tv/vod/kltv/video/692e55efafe2e200023a150e?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5357220
 https://cloud.castus.tv/vod/kltv/video/6a690e00752db40002bd5c9f?page=HOME	https://cloud.castus.tv/vod/kltv	us:county:53015
+https://villageofwestport.civicweb.net/Portal/MeetingInformation.aspx?Id=552		ca:csd:3507033
+https://townofprovost.civicweb.net/Portal/MeetingInformation.aspx?Id=101		ca:csd:4807002
+https://pub-princegeorge.escribemeetings.com/Meeting.aspx?Id=96cbc4c8-2d50-4caf-8e12-5ce5d803f220&Agenda=Agenda&lang=English		ca:csd:5953023
+https://blackgold.civicweb.net/Portal/MeetingInformation.aspx?Id=194		rtr:ca:ab:black-gold-school-division
+https://sd22bc.civicweb.net/Portal/MeetingInformation.aspx?Id=382		rtr:ca:bc:school-district-22-vernon
+https://bcsd28.civicweb.net/Portal/MeetingInformation.aspx?Id=866		rtr:ca:bc:school-district-28-quesnel
+https://bcsd73.civicweb.net/Portal/MeetingInformation.aspx?Id=2253		rtr:ca:bc:school-district-73-kamloops-thompson
+https://sd91.civicweb.net/Portal/MeetingInformation.aspx?Id=354		rtr:ca:bc:school-district-91-nechako-lakes
+https://rrpd.civicweb.net/Portal/MeetingInformation.aspx?Id=387		rtr:ca:mb:red-river-planning-district
+https://wifn.civicweb.net/Portal/MeetingInformation.aspx?Id=694		rtr:ca:on:walpole-island-first-nation
+https://yrdsb.civicweb.net/Portal/MeetingInformation.aspx?Id=2515		rtr:ca:on:york-region-district-school-board
+https://cosumnescommunityservices.portal.civicclerk.com/event/586/media		rtr:us:ca:cosumnes-community-services-district
+https://first5placer.civicweb.net/Portal/MeetingInformation.aspx?Id=6167		rtr:us:ca:first-5-placer-children-and-families-commission
+https://mercedid.civicweb.net/Portal/MeetingInformation.aspx?Id=1238		rtr:us:ca:merced-irrigation-district
+https://mrca.civicweb.net/Portal/MeetingInformation.aspx?Id=3818		rtr:us:ca:mountains-recreation-and-conservation-authority
+https://oroloma.civicweb.net/Portal/MeetingInformation.aspx?Id=711		rtr:us:ca:oro-loma-sanitary-district
+https://smmc.civicweb.net/Portal/MeetingInformation.aspx?Id=2546		rtr:us:ca:santa-monica-mountains-conservancy
+https://gorecreation.civicweb.net/Portal/MeetingInformation.aspx?Id=1152		rtr:us:ca:valley-wide-recreation-and-park-district
+https://rtcsnv.civicweb.net/Portal/MeetingInformation.aspx?Id=3469		rtr:us:nv:regional-transportation-commission-of-southern-nevada
+https://brushycreekmud.civicweb.net/Portal/MeetingInformation.aspx?Id=10884		rtr:us:tx:brushy-creek-municipal-utility-district
+https://fcwsa.civicweb.net/Portal/MeetingInformation.aspx?Id=144		rtr:us:va:fauquier-county-water-and-sanitation-authority
+https://prtctransit.civicweb.net/Portal/MeetingInformation.aspx?Id=1222		rtr:us:va:potomac-and-rappahannock-transportation-commission
+https://reflect-virgin-islands-stt.cablecast.tv/show/2007		rtr:us:vi:legislature-of-the-virgin-islands
+https://lummi-nsn.civicweb.net/Portal/MeetingInformation.aspx?Id=88		rtr:us:wa:lummi-nation
+https://sooscreek.civicweb.net/Portal/MeetingInformation.aspx?Id=210		rtr:us:wa:soos-creek-water-and-sewer-district
+https://cloud.castus.tv/vod/baldwin-co-al/video/6aabef0f2c49fe00020bc00f?page=HOME		us:county:01003
+https://coym.civicweb.net/Portal/MeetingInformation.aspx?Id=3291		us:county:27173
+https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=19463		us:county:55115
+https://cloud.castus.tv/vod/waterford-media/video/6abbc75c1a87fa0002bd580a?page=HOME		us:cousub:2612584240
+https://reflect-golden-co.cablecast.tv/internetchannel/show/2709		us:place:0830835
+https://opkansas.civicweb.net/Portal/MeetingInformation.aspx?Id=9937		us:place:2053775
+https://cloud.castus.tv/vod/fridley/video/6abb0659821ea200026ce67c?page=HOME		us:place:2722814
+https://reflect-jacksonville.cablecast.tv/internetchannel/show/5526		us:place:3734200
+https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=10982		us:place:4136150
+https://kiawahisland.cablecast.tv/show/16		us:place:4538162
+https://cloud.castus.tv/vod/tukwila/video/6abbf5bae029a300027fc0d7?page=HOME		us:place:5372625
+https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=5271		us:place:5550425
+https://villagenewburg.civicweb.net/Portal/MeetingInformation.aspx?Id=195		us:place:5556450
 https://slt.granicus.com/MediaPlayer.php?view_id=6&clip_id=2329		us:place:0673108
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English		us:place:4142600
