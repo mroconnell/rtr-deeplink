@@ -338,6 +338,14 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         "spectrumstream.com",
         #   ChampDS's VOD2 stream host: `/VOD/event/{Customer}/...` (WO-1045).
         "securestream10.champds.com",
+        # CivicMedia (CivicPlus video, served by TikiLive): every customer's
+        # videos on one host, the government a channel number (`chid`)
+        # that only the embed page's stream address carries. The
+        # 2026-09-29 number walk found 814 channels (rtr-business
+        # civicmedia_channels/). Pins are `match=channel=civicmedia:{chid}`,
+        # matched against civicmedia.py's `video_channel`.
+        "civplus.tikiliveapi.com",
+        "wms.civplus.tikiliveapi.com",
     }
 )
 

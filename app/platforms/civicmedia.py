@@ -99,8 +99,26 @@ reused from `civicplus.py`.
 
 A bare TikiLive embed URL (Rosetown, SK is the one in the Archive) has
 no government page to read -- the embed's own HTML names no tenant --
-so it still returns no jurisdiction. That is the honest answer; a caller
+so it still returns no jurisdiction. That is the honest answer. Its
+channel, below, lets a pin name the government; without a pin, a caller
 filing one must send a `gov_id`.
+
+## Which channel (2026-09-29)
+
+TikiLive files each customer's videos under a channel number, `chid`.
+The embed URL names only the video, but the signed stream address the
+embed page hands out carries the channel: Hobart, IN's video 160547
+streams from `...playlist.m3u8?p=vodcdn&chid=93145&...&videoId=160547`
+(`tests/fixtures/civicmedia/tikilive_embed_160547.html`). `resolve()`
+already fetches that page for the stream, so reading the chid costs no
+extra request. It goes out as `video_channel` = `civicmedia:{chid}`, the
+same pin hint BoxCast uses (`boxcast:{channel}`), and a
+`tenant_overrides.csv` row `civplus.tikiliveapi.com,channel=civicmedia:
+{chid},...` then names the government for a bare embed. Channel 0 is
+skipped: the 2026-09-29 number walk found videos from many owners in it
+(`tenant_key.CIVICMEDIA_MIXED_CHANNELS`). The pins came from that walk's
+channel matches, confirmed ones only (rtr-business
+`research/slug_learning_2026-09-27/civicmedia_channels/`).
 
 ## What's still unconfirmed
 
@@ -125,6 +143,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+from ..utils.tenant_key import civicmedia_chid
 from ..utils.url_guard import read_capped_text
 from ..utils.vtt_parser import (
     detect_language_from_texts,
@@ -313,6 +332,10 @@ class CivicMediaAssetFinder(AssetFinder):
             if m3u8_match:
                 video_url = m3u8_match.group(0)
 
+        # The customer's channel, from the stream address's own `chid=` --
+        # see "Which channel" in the module docstring. A pin hint only,
+        # never page identity, same as BoxCast's `video_channel`.
+        chid = civicmedia_chid(video_url) if video_url else None
         resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
@@ -321,6 +344,7 @@ class CivicMediaAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format="m3u8" if video_url else None,
+            video_channel=f"civicmedia:{chid}" if chid else None,
         )
         if video_url is None:
             resolved.video_warnings = [

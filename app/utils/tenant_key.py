@@ -15,12 +15,15 @@ those shows got no government for weeks.
     tenant_key(url)   ""    a single-website platform: the whole host
                             is the tenant
                       "..." the key on a shared website (the bare value:
-                            `atlantaga`, `4879615486`, `site=8`)
+                            `atlantaga`, `4879615486`, `site=8`, a
+                            CivicMedia chid `93145`)
                       None  no tenant defined: out of scope (YouTube,
                             Vimeo, file-sharing hosts), or a shared-host
                             URL that does not carry its key (a Cablecast
                             show URL with no `site=`, a BoxCast `/view/`
-                            link). None never means "the whole host".
+                            link, a CivicMedia embed with only
+                            `videoId=`). None never means "the whole
+                            host".
     tenant_name(url)  host, or `host#key`; None when tenant_key is None.
 
 Standard library only, so rtr-discovery can import it without pulling in
@@ -271,6 +274,30 @@ def _spectrumstream(url: str) -> Optional[str]:
     return match.group(1).lower() if match else None
 
 
+# --- CivicMedia (civicmedia.py): CivicPlus's video product, served by
+# TikiLive. Every customer's videos share `civplus.tikiliveapi.com`, and a
+# customer's videos sit in one channel, numbered `chid`. A video is
+# addressed by `videoId` alone (`/embed?scheme=embedVod&videoId={n}`), so
+# the embed URL does not carry its key -- None, like a BoxCast `/view/`
+# link. The chid appears in the signed stream address the embed page
+# hands out (`wms.civplus.tikiliveapi.com/...playlist.m3u8?...&chid=93145
+# &...&videoId=160547`, Hobart, IN, tests/fixtures/civicmedia/), and
+# civicmedia.py reads it there on every resolve. Channel 0 is not a
+# customer: the 2026-09-29 number walk (rtr-business
+# civicmedia_channels/README.md) found 884 videos from many owners in it.
+CIVICMEDIA_MIXED_CHANNELS: FrozenSet[str] = frozenset({"0"})
+
+
+def civicmedia_chid(url: str) -> Optional[str]:
+    """CivicMedia's channel number from any address carrying `chid=`, or
+    None (no `chid=`, not a number, or a mixed channel). The one
+    definition: civicmedia.py uses it for `video_channel`."""
+    chid = _query(url).get("chid", "")
+    if not chid.isdigit() or chid in CIVICMEDIA_MIXED_CHANNELS:
+        return None
+    return chid
+
+
 # Host -> key rule for every shared website with a defined key.
 KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "play.champds.com": _champds,
@@ -286,6 +313,8 @@ KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "townhallstreams.com": _townhallstreams,
     "public.destinyhosted.com": _destinyhosted,
     "spectrumstream.com": _spectrumstream,
+    "civplus.tikiliveapi.com": civicmedia_chid,
+    "wms.civplus.tikiliveapi.com": civicmedia_chid,
 }
 
 
@@ -578,12 +607,14 @@ _QUERY_PIN_PATH: Dict[str, str] = {
 }
 _TELVUE_BARE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
 _BOXCAST_CHANNEL_HINT_RE = re.compile(r"^channel=boxcast:(.+)$", re.IGNORECASE)
+_CIVICMEDIA_CHANNEL_HINT_RE = re.compile(r"^channel=civicmedia:(\d+)$", re.IGNORECASE)
 # How a pin may spell "exactly this tenant" in front of the bare key.
 _WHOLE_TENANT_PREFIXES = (
     "player/",
     "vod/",
     "channel/",
     "channel=boxcast:",
+    "channel=civicmedia:",
     "clientid=",
     "location_id=",
     "id=",
@@ -611,6 +642,13 @@ def pin_tenant_key(host: str, match: Optional[str]) -> Optional[str]:
     hint = _BOXCAST_CHANNEL_HINT_RE.match(match)
     if host == "boxcast.tv" and hint:
         return hint.group(1).lower()
+    hint = _CIVICMEDIA_CHANNEL_HINT_RE.match(match)
+    if host in ("civplus.tikiliveapi.com", "wms.civplus.tikiliveapi.com") and hint:
+        # CivicMedia's channel pin, `channel=civicmedia:{chid}`: matched
+        # against the adapter's `video_channel` page hint, since no embed
+        # URL carries the chid.
+        chid = hint.group(1)
+        return None if chid in CIVICMEDIA_MIXED_CHANNELS else chid
     if re.match(r"^[A-Za-z_]+=", match):
         url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"
     else:
