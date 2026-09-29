@@ -408,8 +408,25 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         ("videoplayer.telvue.com", "qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt"),
         # Billerica Access Television, MA: Billerica Housing Authority, Billerica School District, Billerica town (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw"),
+        # CVTV (Barre, VT): Barre city, Barre town, Barre Unified Union SD,
+        # Williamstown, Orange, Twinfield USD and First Branch USD -- its own
+        # Playlists and Videos pages, read 2026-09-29 (rtr-business
+        # telvue_followup/station_census). Also listed by PR #1584.
+        ("videoplayer.telvue.com", "QmEoa2JgDheIkFMCTDjUqAfKsczs17yp"),
+        # Wrentham Cable 8, MA: Wrentham town, Wrentham School District and
+        # King Philip Regional School District (its "KP School Committee"
+        # playlist) -- read 2026-09-29. Also listed by PR #1584.
+        ("videoplayer.telvue.com", "LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui"),
         # Penfield Television, NY: Penfield town, Webster Central School District (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "talMNRSs41kuvSjXkD0nTr30kDZRGcjH"),
+        # Orange Government Access Television (OGAT), CT: Orange town
+        # (Board of Selectmen) and Orange School District (Board of
+        # Education) -- TelVue walk follow-up round 2, 2026-09-29.
+        ("videoplayer.telvue.com", "BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT"),
+        # Madison, NH channel: Madison town (Board of Selectmen), Madison
+        # School District (School Board) and the Village District of
+        # Eidelweiss -- TelVue walk follow-up round 2, 2026-09-29.
+        ("videoplayer.telvue.com", "YhjrGzjr53TBI-xqCQGATh6xTOfUjhiy"),
         # Belmont Media Center, MA: Belmont Municipal Light Department, Belmont School District, Belmont town (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "uClcIN88BHKHJoveFoaVN_8_5Tg72P0o"),
         # Queen Anne's County, MD's station (QACTV): county commissioners

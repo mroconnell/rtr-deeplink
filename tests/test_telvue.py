@@ -500,7 +500,10 @@ async def test_resolve_falls_back_to_known_org_token_for_orange_ct():
     with mock_session(routes):
         result = await TelvueAssetFinder().resolve(url)
 
-    assert result.jurisdiction == "Orange, CT"
+    # 2026-09-29: this key is now on MULTI_GOVERNMENT_TENANTS (the station
+    # also films the school district), so the known-org fallback no longer
+    # names one town (Orange, CT); per-video pins name the right government.
+    assert result.jurisdiction is None
 
 
 async def test_resolve_falls_back_to_known_org_token_for_marlboro_township():
@@ -645,7 +648,10 @@ async def test_resolve_falls_back_to_known_org_token_for_madison_nh():
     with mock_session(routes):
         result = await TelvueAssetFinder().resolve(url)
 
-    assert result.jurisdiction == "Madison, NH"
+    # 2026-09-29: this key is now on MULTI_GOVERNMENT_TENANTS (the station
+    # also films the school district), so the known-org fallback no longer
+    # names one town (Madison, NH); per-video pins name the right government.
+    assert result.jurisdiction is None
 
 
 async def test_resolve_falls_back_to_known_org_token_for_tewksbury():
