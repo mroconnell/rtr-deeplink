@@ -190,7 +190,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
-  [HUMAN] WO-1160: relabel 3 hidden TelVue caption versions, then…
+  [HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely"…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
@@ -2099,10 +2099,10 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-- **[HUMAN] WO-1160: relabel 3 hidden TelVue caption versions, then ingest the 3 held two-track meetings.**
-  - **Issue**: WO-1160 fixed the TelVue adapter and the Archive's ingest, but nothing in production has changed. Three pages hold a hidden caption version that is not English but is labelled English: `city-ma-city-council-5-6-2025` (version 985, Spanish), `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` (3395, Farsi), `fps-school-committee-meeting-07-15-26` (3433, Portuguese). Three tier-1 meetings wait for the fix: TTUSD media 1044135, Tahoe Forest Hospital District media 1039955, Fitchburg SD media 1045663.
-  - **Impact**: all 3 pages show a correct English transcript; the picker offers the other one as "English (sourced)". The 3 held governments have no Archive page yet.
-  - **Next action**: (1) deploy the resolver and the Archive with WO-1160. (2) Relabel each version: `/admin/correct-transcript-language?url=<source URL>&language=<es|fa|pt>&version_id=<id>`. (3) Re-check each page (`/admin/recheck-archive-page?url=<source URL>`); the fixed adapter adds the real English captions as a version, and the other-language one should match the relabelled version (same language, source and text) rather than be copied, as long as TelVue's file has not changed; check each page's picker afterwards. (4) Ingest the 3 held meetings with their gov_ids (rtr-business `research/slug_learning_2026-09-27/telvue_offline_match/routing/results.csv`, decision "Held").
+- **[HUMAN] WO-1160: relabel 3 hidden TelVue caption versions; re-check 2 two-track pages for their Spanish version.**
+  - **Issue**: WO-1160 fixed the TelVue adapter and the Archive's ingest, but nothing in production has changed. Three pages hold a hidden caption version that is not English but is labelled English: `city-ma-city-council-5-6-2025` (version 985, Spanish), `nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` (3395, Farsi), `fps-school-committee-meeting-07-15-26` (3433, Portuguese). The 3 held two-track meetings were ingested on 2026-09-29 (TelVue series census routing): TTUSD (media 1044135) and Fitchburg SD (1045663) while the Archive still ran 28853c1, so only their English track was stored; Tahoe Forest Hospital District (1039955) after the redeploy to 3110f29, with both.
+  - **Impact**: all 3 pages show a correct English transcript; the picker offers the other one as "English (sourced)". The TTUSD and Fitchburg SD pages lack the Spanish version.
+  - **Next action**: (1) deploy the resolver and the Archive with WO-1160. (2) Relabel each version: `/admin/correct-transcript-language?url=<source URL>&language=<es|fa|pt>&version_id=<id>`. (3) Re-check each page (`/admin/recheck-archive-page?url=<source URL>`); the fixed adapter adds the real English captions as a version, and the other-language one should match the relabelled version (same language, source and text) rather than be copied, as long as TelVue's file has not changed; check each page's picker afterwards. (4) Re-check the TTUSD and Fitchburg SD pages (`/admin/recheck-archive-page?url=<source URL>`) so the Spanish track is stored as a second version (rtr-business `research/slug_learning_2026-09-27/telvue_series_census/full/routing/results.csv`).
   - **Constraint**: relabel before the re-check, or the re-check stores a second copy of the other-language text. A re-check does not change the shown version (English replaces English only by hand, `POST /internal/transcript-version/promote`); whether sourced captions should replace our Whisper text on these 3 is Ryan's call.
   - **History**: `BACKLOG_DONE.md` WO-1160.
 

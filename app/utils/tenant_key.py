@@ -509,6 +509,51 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Ludlow Community Television, MA (Ryan confirmed 2026-09-29): the
         # town's boards and the Ludlow School Committee.
         ("videoplayer.telvue.com", "dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj"),
+        # TelVue series census routing, 2026-09-29 (rtr-business
+        # telvue_series_census/full/routing): stations whose series and
+        # playlists hold more than one government's meetings.
+        # RRCTV (Rutland, VT): 11 towns' select boards, Rutland City,
+        # Otter Valley and Quarry Valley school boards, Southwest Vermont
+        # CESA.
+        ("videoplayer.telvue.com", "MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN"),
+        # MRVTV (Mad River Valley, VT): Waitsfield, Warren, Fayston,
+        # Harwood UUSD, Mad River Valley Planning and Recreation Districts.
+        ("videoplayer.telvue.com", "rb5Cd5C4A-90O1S3556SjZ8grdhFAYJy"),
+        # Waynesburg University (PA): university shows, Waynesburg Borough
+        # Council and Central Greene School Board (2011-2012).
+        ("videoplayer.telvue.com", "KMbmAuf4r8nSBbHRsA_yT9tSfELz0zVZ"),
+        # Metuchen, NJ: Council ("CM") and Board of Education ("B of Ed").
+        ("videoplayer.telvue.com", "yMkHiopinTok5E4gtc8XoQVILFe4zQUt"),
+        # Montclair TV34, NJ: Board of Education (key pin) and the
+        # township's Town Council (2015-2018).
+        ("videoplayer.telvue.com", "sIzQDLdmoESPXu-bj6RPf3cS7BMEteKV"),
+        # Framingham Public Schools' channel, MA: School Committee and the
+        # city's School Building Committee.
+        ("videoplayer.telvue.com", "BVZzsOwkEDxca5y_v_Nub8EKlqfYch_y"),
+        # Siskiyou Media Council, CA: Mt. Shasta and Weed City Councils.
+        ("videoplayer.telvue.com", "q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5"),
+        # Malden Access Television, MA: city events and the Malden School
+        # Committee.
+        ("videoplayer.telvue.com", "0l61qrd2cTIyQzYJ0oHNRYLt8lmyVn7U"),
+        # PACTV Prime (Plymouth, MA): Plymouth and Pembroke boards, the
+        # Silver Lake Regional School Committee.
+        ("videoplayer.telvue.com", "SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx"),
+        # APTV | Asbury Park TV, NJ: Asbury Park City Council and Planning
+        # Board, and the Deal Lake Commission.
+        ("videoplayer.telvue.com", "ta-8oL0q68i2d15NiIqIA62AjjgGbw7B"),
+        # Wellesley Media Corporation, MA: the town's boards and the
+        # Wellesley Housing Authority.
+        ("videoplayer.telvue.com", "LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ"),
+        # Leominster TV, MA: the city (key pin) and the School Committee.
+        ("videoplayer.telvue.com", "m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT"),
+        # LexMedia, MA: Lexington town (key pin) and the School Committee.
+        ("videoplayer.telvue.com", "c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L"),
+        # Town of Orleans, MA: the town's boards and the Orleans School
+        # Committee.
+        ("videoplayer.telvue.com", "zzV8HNURw1G02-ue3glR7BRTpI-bknlL"),
+        # Sun Prairie, WI station: the city (key pin) and the Sun Prairie
+        # Area School District board.
+        ("videoplayer.telvue.com", "O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS"),
         # ChampDS customers whose one CustomerName is applied to every
         # meeting, but whose own meeting-body list (playapi.champds.com/
         # {customer}/archive/1, read 2026-09-25) or archive search titles
