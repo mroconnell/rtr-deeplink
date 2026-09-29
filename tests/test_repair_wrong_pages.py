@@ -250,6 +250,26 @@ def test_wo932_pages_point_at_washington_county_arkansas():
         assert by_id[page_id].expected_current_gov_id == "us:county:01129"
 
 
+_IEUA_REKEYS = {2359, 5754}  # Ryan, 2026-09-29 (relayed): give IEUA a row
+
+
+def test_ieua_pages_rekey_to_the_new_ieua_government():
+    """Ryan, 2026-09-29 (relayed by the conductor, dead-end salvage): give
+    IEUA its own registry row and file its two orphaned pages under it.
+    Both rows are needs_ryan=no (high confidence, target already set), so
+    they run without waiting on `_APPROVED_...` like the yes/approve rows
+    above."""
+    by_id = {r.page_id: r for r in _sheet_rows()}
+    for page_id in _IEUA_REKEYS:
+        row = by_id[page_id]
+        assert row.action == "rekey"
+        assert row.target_gov_id == "rtr:us:ca:inland-empire-utilities-agency"
+        assert not row.needs_ryan
+        assert row.confidence == "high"
+    gov = government_for_id("rtr:us:ca:inland-empire-utilities-agency")
+    assert gov is not None and gov.source.startswith("curated")
+
+
 def test_the_washcoar_pins_no_longer_file_the_channel_under_alabama():
     pins = (
         REPO_ROOT / "app" / "utils" / "jurisdiction_data" / "tenant_overrides.csv"
