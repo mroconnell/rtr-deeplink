@@ -10176,6 +10176,12 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
+# Job states that mean work on the page is queued or underway (WO-1169).
+_LIVE_JOB_STATUSES = frozenset(
+    {"pending_confirmation", "queued", "in_progress", "retry_scheduled"}
+)
+
+
 def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
     """The escalating-backoff decision on a page's TranscriptionJob history
     -- `jobs_newest_first` is [(status, updated_at), ...] ordered by
@@ -10211,6 +10217,17 @@ def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
     """
     if jobs_newest_first and jobs_newest_first[0][0] == "completed":
         return now < _aware(jobs_newest_first[0][1]) + AUTO_TRANSCRIPTION_MAX_COOLDOWN
+
+    # WO-1169 (2026-09-29): a page whose newest job is still live is not a
+    # candidate either. Without this, the idle worker's single-candidate
+    # search kept returning the page the OTHER worker was already
+    # transcribing (create_transcription_job() just handed back the same
+    # job each time -- "created job 4782" three times in Render's log for
+    # yorktown-town-ny-2026-09-15), so it never reached a second page and
+    # the second worker sat idle. Not a backoff: it clears the moment the
+    # job finishes or fails, and the rules above take over from there.
+    if jobs_newest_first and jobs_newest_first[0][0] in _LIVE_JOB_STATUSES:
+        return True
 
     consecutive_failures = 0
     most_recent_failed_at = None
