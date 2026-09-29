@@ -1133,3 +1133,8 @@ https://videoplayer.telvue.com/player/rb5Cd5C4A-90O1S3556SjZ8grdhFAYJy/media/104
 https://videoplayer.telvue.com/player/KMbmAuf4r8nSBbHRsA_yT9tSfELz0zVZ/media/457092	https://videoplayer.telvue.com/player/KMbmAuf4r8nSBbHRsA_yT9tSfELz0zVZ/videos	us:place:4281832
 https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/media/744277	https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/videos	us:place:0683850
 https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1047807	https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/videos	rtr:us:ma:wellesley-housing-authority
+https://stcloudfl.gov/CivicMedia?VID=Injected_ccm12420191-909	https://stcloudfl.gov/CivicMedia?CID=St-Cloud-City-Council-Meetings-3	us:place:1262625
+https://www.westorange.org/CivicMedia?VID=Swearing-In-Reorganization-Meeting-July--6	https://www.westorange.org/CivicMedia?CID=Township-Council-Meetings-1	us:cousub:3401379800
+https://bayfieldcounty.wi.gov/CivicMedia?VID=August-9-2017-52	https://bayfieldcounty.wi.gov/CivicMedia?CID=Board-of-Supervisors-3	us:county:55007
+https://lagrangeil.gov/CivicMedia?VID=Village-of-La-Grange-Board-Meeting-April-216	https://lagrangeil.gov/CivicMedia?CID=Village-Board-1	us:place:1740767
+https://co.valencia.nm.us/CivicMedia?VID=20150909-Public-Hearing-Business-Meeting-4	https://co.valencia.nm.us/CivicMedia?CID=Board-of-County-Commissioners-1	us:county:35061
