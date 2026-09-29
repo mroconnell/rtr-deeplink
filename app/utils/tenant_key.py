@@ -428,6 +428,17 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # School Board (rtr-discovery's saved pierre_videos.html,
         # 2026-09-25; WO-1100).
         ("videoplayer.telvue.com", "5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq"),
+        # The Needham Channel, MA: Needham town (Select Board, Planning
+        # Board) and Needham School District (School Committee) -- its own
+        # videos search, read 2026-09-29 (rtr-business telvue_followup).
+        ("videoplayer.telvue.com", "O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2"),
+        # CVTV, VT: Barre City Council and Barre Town Selectboard on one
+        # channel -- its own videos search, read 2026-09-29.
+        ("videoplayer.telvue.com", "QmEoa2JgDheIkFMCTDjUqAfKsczs17yp"),
+        # Wrentham Cable 8, MA: Wrentham School Committee, King Philip
+        # Regional School Committee and Wrentham town committees -- its own
+        # videos search, read 2026-09-29.
+        ("videoplayer.telvue.com", "LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui"),
         # ChampDS customers whose one CustomerName is applied to every
         # meeting, but whose own meeting-body list (playapi.champds.com/
         # {customer}/archive/1, read 2026-09-25) or archive search titles
