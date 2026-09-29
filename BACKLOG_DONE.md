@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1159: pin Merrill WI and Moraine OH, the two CivicClerk successors WO-1158 left out [Done 2026-09-29]
+
+**Why this ran.** WO-1158 found 10 CivicClerk successors to dead IQM2 sites but pinned only the 8 whose event addresses named the place. Ryan asked for a hand check of the other two.
+
+**Owner proof (live, 2026-09-29).** Each site's agenda file, read as plain text through `GetMeetingFile(fileId=N,plainText=true)`:
+
+| Site | Government | Proof |
+| --- | --- | --- |
+| moraineoh | Moraine city, OH | Agenda of 2026-09-24: "4200 Dryden Rd, Moraine, OH 45439" |
+| merrillwi | Merrill city, WI | Agendas read "City of Merrill" with no state; one lists a "Lincoln County Economic Development update". Only Merrill WI, of the five US Merrills, is in a Lincoln County |
+
+**Caution.** Moraine's newest meeting video is a YouTube link, so it will likely be Tier 2.
+
+**Tests.** Both added to `tests/test_wo1158_civicclerk_successor_pins.py`.
+
 ## WO-1158: pin eight CivicClerk sites that replaced a dead IQM2 site [Done 2026-09-29]
 
 **Why this ran.** Ryan asked rtr-discovery to check its 44 undecided IQM2 tenants for a CivicClerk successor (rtr-discovery FINDING-6: most IQM2 customers moved to CivicClerk). A pin here is how a new site becomes an rtr-discovery tenant: its seed turns every whole-host US pin on a walkable platform into a tenant.
