@@ -147,13 +147,13 @@ The shown version did not change on any page. Readers still see our English Whis
 
 Alexandria's page (915214) has a fifth caption track; it looks like Amharic. The language detector cannot name it (langdetect has no Amharic profile), so the Archive skipped it, as designed. It is not stored.
 
-Step 3: the 3 held meetings were already ingested by another session after the deploy, and correctly. Re-pushing them matched the stored text, so nothing changed.
+Step 3: the 3 held meetings were already ingested by another session (PR #1604), and correctly. Re-pushing them matched the stored text, so nothing changed. PR #1604 said TTUSD and Fitchburg SD had only English, because they were first ingested before the deploy. A live read of each page's picker (2026-09-29) shows all three have both:
 
-| Government | Archive page | Versions |
-| --- | --- | --- |
-| Tahoe-Truckee USD | 11431 | English (sourced), hidden Spanish |
-| Tahoe Forest Hospital District | 11442 | English (sourced), hidden Spanish |
-| Fitchburg SD | 11428 | English (sourced), hidden Spanish |
+| Government | Archive page | Shown version | Hidden Spanish version |
+| --- | --- | --- | --- |
+| Tahoe-Truckee USD | 11431 | 12294 English (sourced) | 12295 |
+| Tahoe Forest Hospital District | 11442 | 12306 English (sourced) | 12307 |
+| Fitchburg SD | 11428 | 12290 English (sourced) | 12291 |
 
 **Follow-up.** The picker showed the new Arabic and Farsi versions as bare "ar" and "fa". WO-1164 names every language the detector can return. Still open, for Ryan: whether the 3 pages above should show the station's English captions (12320, 12322, 12326) instead of our Whisper transcript.
 
