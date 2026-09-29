@@ -862,6 +862,7 @@ https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/104
 https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/media/1040015	https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/videos	us:cousub:3402741362
 https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045756	https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/videos	us:cousub:2501379740
 https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/media/1008681	https://videoplayer.telvue.com/player/xbO3elifw5BX6MUx9hyY-92wV6x9VG7C/videos	us:cousub:2501730700
+https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1045680	https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/videos	us:sd:2506510
 https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
 https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
 https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
