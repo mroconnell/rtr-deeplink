@@ -6,23 +6,11 @@ https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
 https://vimeo.com/922203074		us:place:3771220
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
 https://player.vimeo.com/video/1183202055	https://www.cbsd.org/school-board/board-meeting-streams/board-meeting-stream-archiver	us:sd:4205310
 https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-council/	us:place:0546970
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://www.kenedyisd.com/UserFiles/Servers/Server_55723/Media/School Board Audio/Kenedy ISD Board Meeting 4-1-2020.mp3		us:sd:4825440
-http://villageofparish-ny.us/wp-content/uploads/2025/01/Parish-village-board-meeting-Wednesday-January-15-2025-audio.mp3		us:place:3656341
-https://www.montagueisd.org/vimages/shared/vnews/stories/684733c1eb2e9/Board%20Mtg%209-15-25%20%281%29.mp3		us:sd:4831200
-https://appleton.maine.gov/vertical/sites/%7B5CBE9B20-93F0-4ECA-B07C-188D88398A31%7D/uploads/250318_004.MP3		us:cousub:2301301465
-https://mwtown.gov/wp-content/uploads/2026/08/August-13-2026-TB-Meeting.mp3		us:cousub:5512548462
-https://resources.finalsite.net/videos/v1785243717/hersheyk12paus/ovw20gjiunk9zvstatzv/07282026-BoardMeeting.m4a		us:sd:4207590
-https://villageofnewhempstead.gov/wp-content/uploads/2026/03/BOT-3-24-2026-3.mp3		us:place:3650353
-https://files.smartsites.parentsquare.com/10055/260811_1800.mp3		us:sd:4822140
-https://townofkimball.com/audio/boma/2021/01072021.mp3		us:place:4739400
-https://www.mckellar.civikit.com/en/township-services/resources/08-31-21-August-31-2021-Special-Council-Meeting-Audio-Part-1.mp3		ca:csd:3549028
-https://rmwhitemouth.com/vertical/sites/%7BFB3226E4-3AD8-4680-8D53-E086B57111E0%7D/uploads/Regular_Council_Meeting_Sept_8_2026.mp3		ca:csd:4601046
 https://www.cityofgaston.com/vertical/sites/%7BA0E7BB59-BA39-470A-B0F2-FDC9E9A25A45%7D/uploads/GMT20210318-004941_March-17--.m4a		us:place:4128100
 https://northbonneville.net/wp-content/uploads/PlanningMeeting05.03.22.m4a		us:place:5349555
 https://albertonmontana.com/wp-content/uploads/2026/09/260915_1900.mp3		us:place:3000700
@@ -1183,3 +1171,28 @@ https://perrysburgoh.portal.civicclerk.com/event/5067/media		us:place:3962148
 https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899		us:place:2607660
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	us:place:2026875
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	rtr:us:la:shreve-memorial-library
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	us:place:2765956
+https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	us:county:42129
+https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
+https://ct-newington.civicplus.com/CivicMedia?VID=Newington-Town-Hall-and-Community-Center-3	https://ct-newington.civicplus.com/CivicMedia?VID=Newington-Town-Hall-and-Community-Center-3	us:cousub:0911052140
+https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	us:cousub:0913015350
+https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	us:cousub:3301104500
+https://townhallstreams.com/stream.php?location_id=55&id=76363	https://townhallstreams.com/stream.php?location_id=55&id=76363	us:cousub:3301127140
+https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	us:cousub:4209183696
+https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	us:cousub:4400977000
+https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-October-23-20-1003	https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-October-23-20-1003	us:place:1251650
+https://drive.google.com/file/d/1pIUHs_0GeIPuCbxGmI91WGdvtQ2li_30/view?usp=sharing	https://drive.google.com/file/d/1pIUHs_0GeIPuCbxGmI91WGdvtQ2li_30/view?usp=sharing	us:place:1832818
+https://wy-evanston2.civicplus.com/CivicMedia?VID=Evanston-City-Council-Meeting-10192021-16	https://wy-evanston2.civicplus.com/CivicMedia?VID=Evanston-City-Council-Meeting-10192021-16	us:place:5625620
+https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	us:place:0411300
+https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	us:place:3906068
+https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	us:place:2709154
+https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	us:place:5522850
+https://jason.granicus.com/MediaPlayer.php?view_id=1&clip_id=554	https://jason.granicus.com/MediaPlayer.php?view_id=1&clip_id=554	us:place:1837764
+https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	us:place:1742795
+https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
+https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
+https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
+https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing	https://ct-easthaven.civicplus.com/AgendaCenter	us:cousub:0917022910
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
