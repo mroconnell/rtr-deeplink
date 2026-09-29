@@ -1,3 +1,18 @@
+# RETIRED (WO-1168, 2026-09-29): Granicus/Cablecast -- most of this
+# queue -- refuse GitHub Actions' own IP addresses with an HTTP 403 even
+# with a correct Referer/User-Agent, confirmed live: this workflow's last
+# real run ingested 0 of 12 lines (6 NOT-REACHABLE-FROM-GITHUB, 6
+# genuine no-video skips). Both cloud transcription workers went idle as
+# a result (0 active jobs, 1 finished in 24h) since this was the only
+# thing feeding new non-YouTube meetings in. Replaced by
+# scripts/youtube_drip.py's own `direct` lane, run continuously and
+# demand-gated on the same always-on office Mac that already handles
+# YouTube for the identical reason -- see that script's module docstring,
+# docs/YOUTUBE_DRIP_RUNBOOK.md, and README.md's "On-demand transcription"
+# section. Left here, disabled, rather than deleted, in case this ever
+# needs to move again. Do not re-enable without checking whether
+# Granicus/Cablecast's block on GitHub's IPs is still in effect.
+#
 # Feeds 12 "tier 3" pages every 6 hours into the worker's existing
 # auto-transcription idle-time mechanism (worker/main.py's
 # maybe_generate_auto_job(), see BACKLOG_DONE.md's 2026-08-09 entry) --
