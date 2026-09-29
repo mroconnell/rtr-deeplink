@@ -5,18 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://kitcarsoncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1184
-https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
-https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
-https://leecountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=191
-https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
-https://lyonsga.granicus.com/MediaPlayer.php?view_id=1&clip_id=494
-https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
-https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
-https://townofmerrimac.granicus.com/MediaPlayer.php?view_id=1&clip_id=33
-https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
-https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1086
-https://townofpendleton.granicus.com/MediaPlayer.php?view_id=1&clip_id=176
 https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780
 https://portorchard.granicus.com/MediaPlayer.php?view_id=1&clip_id=242
 https://libertytwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=331
@@ -1056,3 +1044,9 @@ https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
 https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
 https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
 https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
+https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
+https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
+https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
+https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
+https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
+https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
