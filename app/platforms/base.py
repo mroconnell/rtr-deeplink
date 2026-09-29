@@ -399,6 +399,21 @@ def detect_platform(url: str) -> str:
         return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
+    if is_civicmedia_page_url(url):
+        # WO-341's CivicMedia path check (further below) never fires for a
+        # CivicMedia page hosted on the government's own *.civicplus.com
+        # tenant subdomain (e.g. pa-westmorelandcounty2.civicplus.com/
+        # CivicMedia?VID=...) -- confirmed live 2026-09-29 against exactly
+        # that URL -- because the netloc-based "civicplus.com" branch just
+        # below matches first and returns "civicplus" unconditionally,
+        # which then fails to resolve (CivicPlusAssetFinder expects
+        # AgendaCenter markup this page doesn't have). Checked here, ahead
+        # of the netloc branch, so a CivicMedia URL is classified correctly
+        # regardless of which domain it's hosted on. Only the government's-
+        # own-CivicMedia-page shape needs this early check (a path check);
+        # the bare TikiLive embed host (civplus.tikiliveapi.com) was never
+        # affected, since it doesn't contain "civicplus" in its netloc.
+        return "civicmedia"
     if "civicplus.com" in netloc or "civicplus" in netloc:
         # CivicPlus's own corporate/marketing hosts (connect.civicplus.com
         # etc.) already returned "unknown" above, via _ALL_CORPORATE_HOSTS

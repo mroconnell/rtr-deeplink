@@ -1566,12 +1566,12 @@ caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chu
   authoritative government caption) mislabel. Dedup is scoped by `source`
   too, so a repeat run against an already-transcribed meeting is a no-op
   rather than a duplicate version.
-- **Never touches `transcription_jobs`/`claim_next_chunk()`** — those are
-  explicitly single-worker-process-safe only (see `claim_next_chunk()`'s
-  own docstring), so this script discovers/pushes purely over the same
-  token-gated `/internal/*` HTTP surface `scripts/fetch_youtube_
-  transcripts.py` already established, and can safely run at the same
-  time as the real worker.
+- **Never touches `transcription_jobs`/`claim_next_chunk()`** — this
+  script is not a worker. It runs its own Whisper and never claims a
+  queued chunk. It discovers and pushes purely over the same token-gated
+  `/internal/*` HTTP surface `scripts/fetch_youtube_transcripts.py`
+  already established, so it can safely run at the same time as both
+  cloud workers.
 - **Built for an unattended overnight run someone who isn't a developer
   checks on, not just an interactive one** — added 2026-08-17 after a
   real multi-hour run showed zero output in its redirected log file
@@ -1654,45 +1654,70 @@ segments (starting "We're live." at 0:00, ending with real adjournment/
 motion dialogue) are live on the actual public page. The meeting no
 longer appears in a follow-up `/internal/transcription-backlog` call.
 
-**Giving both cloud workers real concurrent work, added 2026-08-21.**
-`worker/`'s own idle-time auto-generation (`maybe_generate_auto_job()`)
-only ever keeps ~1 job in flight at a time — it's only invoked once the
-entire active job table is empty. A single job's chunks are inherently
-serial (`claim_next_chunk()` claims one job's next chunk at a time), so a
-second worker (`rtr-transcription-worker-2`, see "Why this needs a third
-service" above) only gets real parallel throughput once ≥2 different jobs
-are queued at once. `scripts/bulk_queue_transcription_backlog.py` closes
-that gap: it pulls several candidates from the same
-`GET /internal/transcription-backlog` endpoint the script above uses and
-creates several real `TranscriptionJob` rows at once via
-`POST /internal/transcription/create-job`, at the low-priority tier that
-route now exposes (`priority`, added to `TranscriptionCreateJobRequest` —
-previously only `worker/main.py`'s own in-process auto-generation call
-could use `PRIORITY_LOW`).
+**Giving both cloud workers real concurrent work (2026-08-21; moved into
+the worker itself 2026-09-27, WO-1148).** The idle-time trickle
+(`maybe_generate_auto_job()`) adds one job at a time, and only when this
+worker finds nothing to claim. A single job's chunks run one after
+another, so the second worker (`rtr-transcription-worker-2`) only gets
+real parallel work once two or more different jobs are queued.
+
+The batch top-up closes that gap. `maybe_generate_batch_auto_jobs()`
+(`worker/main.py`) runs every 30 minutes on `rtr-transcription-worker`
+only, gated by `BULK_TOPUP_ENABLED` in `render.yaml`. Each pass pulls up
+to 100 candidates from `crud.list_transcription_backlog_candidates()`,
+runs the same live feasibility check the on-demand path uses, and creates
+up to 8 low-priority jobs. YouTube-backed pages are skipped: the cloud
+worker can't fetch YouTube (see "Permanent pages" above).
+
+Why it runs on the worker, not somewhere else. Until 2026-09-27 this ran
+as an hourly GitHub Actions cron
+(`.github/workflows/bulk-queue-transcription-backlog.yml`). Granicus,
+Cablecast, IQM2, ChampDS and CivicClerk all refused GitHub's servers with
+a 403, 404 or timeout, while serving the workers' own address normally.
+Each refusal was recorded as a failed probe, which puts a page into
+cooldown for 1 to 30 days. So the cron quietly cooled down most of the
+backlog while both workers sat idle. The workflow is now disabled in
+GitHub. Pages it cooled down still wait out their cooldown (see
+`BACKLOG.md`'s matching `[NEEDS-AUDIT]` entry).
+
+`scripts/bulk_queue_transcription_backlog.py` still exists for a manual
+or dry run:
 
 ```bash
 python scripts/bulk_queue_transcription_backlog.py --dry-run
-python scripts/bulk_queue_transcription_backlog.py
 python scripts/bulk_queue_transcription_backlog.py --limit 4
 ```
 
-Batch size defaults to 8, deliberately well under `archive/db/crud.py`'s
-global `MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15` (shared across every
-priority tier) — leaves real headroom so a live visitor's own
-transcription request never hits `too_many_active_jobs` during a catch-up
-run, and `PRIORITY_LOW` means a real request still jumps the queue ahead
-of whatever this script queued at the very next claim, regardless of how
-full the batch is. `clerk_verified=True` on each created job (this script
-holds `ARCHIVE_INGEST_TOKEN`, the same trusted-internal-caller position
-the resolver itself is in after its own real Clerk check) skips the
-confirmation-email step entirely — without it, a job would sit at
-`pending_confirmation` until someone clicked a link, defeating the
-purpose. Runs hourly via `.github/workflows/bulk-queue-transcription-
-backlog.yml` (also safe to run by hand any time — server-side dedup and
-the `too_many_active_jobs` early-stop are what make hourly safe, see the
-script's own module docstring) — tied to the backlog catch-up window this
-second worker exists for, and `BACKLOG.md` for the residual auto-
-generation race this pairs with.
+Run it from a Mac on a normal connection, never from GitHub Actions, for
+the reason above. Its batch size defaults to 8, well under
+`archive/db/crud.py`'s global `MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15`
+(shared across every priority tier). That leaves headroom, so a visitor's
+own request never hits `too_many_active_jobs`, and `PRIORITY_LOW` means a
+visitor's job still goes ahead at the next claim. `clerk_verified=True`
+on each created job skips the confirmation email: this script holds
+`ARCHIVE_INGEST_TOKEN`, the same trusted-caller position as the
+resolver. Without it, a job would wait at `pending_confirmation` until
+someone clicked a link.
+
+**New meetings now come in through the YouTube drip's `direct` lane, not
+GitHub, added 2026-09-29 (WO-1168).** The two paragraphs above keep the
+cloud workers *busy* once a meeting is on the site with no transcript.
+Something else has to put new meetings on the site in the first place.
+That used to be a GitHub Actions job
+(`.github/workflows/feed-tier3-transcription.yml`), feeding 12 lines from
+`scripts/tier3_auto_transcription_queue.txt` every 6 hours. On
+2026-09-29 both cloud workers sat idle — 0 active jobs, 1 finished in a
+day — because Granicus and Cablecast, most of that queue, refuse GitHub's
+own IP addresses with an outright "no" (HTTP 403), even with the same
+request headers that work fine from an office connection. The same push,
+run by hand from an office Mac that day, ingested 31 of 40 lines. So this
+now runs from `scripts/youtube_drip.py`'s own `direct` lane (see
+`docs/YOUTUBE_DRIP_RUNBOOK.md`) — the always-on Mac that already handles
+YouTube for the same "GitHub gets refused" reason. It only feeds while
+fewer than 10 (by default) non-YouTube, non-Vimeo pages are waiting for a
+transcript, so it tops the queue up instead of dumping hundreds of lines
+in at once. The GitHub workflow file stays in the repo, disabled, in case
+this ever needs to move again.
 
 **Daily activity report, added 2026-08-21.** `GET /internal/send-worker-
 daily-report` (Archive service, token-gated like every other

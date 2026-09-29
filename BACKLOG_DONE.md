@@ -1,5 +1,39 @@
 # Backlog — done
 
+## WO-1169: the idle worker skips a meeting another worker is already transcribing [Done 2026-09-29]
+
+**Why this ran.** Render's log on 2026-09-29 showed one worker transcribing Yorktown NY (job 4782) while the other sat idle. Every 5 minutes the idle worker's search picked Yorktown again, got the same job back ("created job 4782", three times), and stopped. It never reached a second meeting, so the second worker never had anything to claim. 27 other meetings were waiting at the time.
+
+**Cause.** `_cooldown_active()` (`archive/db/crud.py`) decides whether a page is skipped. It handled a newest job that was completed or failed, but not one still running, so a running page stayed "the oldest candidate".
+
+**Fix.** A page whose newest job is still live (`pending_confirmation`, `queued`, `in_progress` or `retry_scheduled`) is skipped. This is not a cooldown: it clears the moment the job ends. It also applies to `list_transcription_backlog_candidates()`, so the batch top-up, the local Whisper script and the drip's direct-lane gate stop counting in-flight pages as waiting.
+
+**Tests.** `test_cooldown_active_skips_a_page_whose_newest_job_is_live` (4 cases). Full suite: 8,543 passed.
+
+**Needs a deploy** of both workers to take effect.
+
+## WO-1167: pin 61 meeting sites linked from governments' own CivicPlus websites [Done 2026-09-29]
+
+**Why this ran.** rtr-discovery had 623 undecided CivicPlus tenants that list no meetings. Ryan's view: a real government website nearly always lists agendas and minutes, so "lists nothing" means we haven't found the real meeting platform. A pre-pass read each homepage once (one polite request per site) and collected links to meeting platforms elsewhere.
+
+**Result of the pre-pass.**
+
+| Result | Count of 623 |
+| --- | --- |
+| Linked a meeting site on a platform we walk, new to us | 61 hosts |
+| Linked a site we already track | 14 links |
+| Linked only YouTube (a drip lead) | 106 |
+| Linked other off-site meeting pages on platforms we don't recognize | 90 |
+| Blocked or failed | 14 |
+
+(Groups overlap.) New hosts by platform: CivicClerk 39, CivicWeb/Diligent 13, Granicus 3, Legistar 2, IQM2 2, Swagit 1, Viebit 1.
+
+**Owner proof (live, 2026-09-29).** Each new site was checked: CivicClerk through its Events API (a meeting address or body name), the others by page or feed title. 52 named their government outright; 6 more gave the county seat or a community within the government; Clermont FL and Gautier MS use CivicClerk's older site but their API gives Clermont and Gautier addresses, so they are pinned under the `portal.civicclerk.com` name the walker uses. Haledon NJ is left out: its events name no place.
+
+Also pinned: `www.newhaven.in.gov` to New Haven city, IN (it had no government ID).
+
+**Tests.** `tests/test_wo1167_civicplus_linked_meeting_sites.py`: all 61 resolve; all 61 fail without the rows.
+
 ## WO-1166: pin Manor TX's Swagit site [Done 2026-09-29]
 
 **Why this ran.** Manor's CivicPlus site (tx-manor.civicplus.com) is one of 623 undecided CivicPlus tenants that list no meetings. Ryan opened it by hand and found Manor's real meeting pages: agendas on Municode Meetings (`meetings.municode.com/PublishPage/index?cid=MANORTX`, "City of Manor Agenda & Minutes") and video on Swagit. The Swagit site was in no ledger, pin, Swagit view list or Archive page.

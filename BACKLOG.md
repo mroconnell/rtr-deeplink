@@ -222,7 +222,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (225)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (227)
+  [NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two…
+  [NEEDS-AUDIT] Several tier-3 feed lines land on the same or a…
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
   [NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions…
   [NEEDS-AUDIT] A real platform adapter's OWN aiohttp session still…
@@ -2507,6 +2509,20 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two Cablecast gallery URLs during today's manual tier-3 feed run (2026-09-29).**
+  - **Issue**: running `scripts/feed_tier3_auto_transcription.py`'s own push by hand from an office Mac (WO-1168's manual proof run), two lines failed with `[FAIL] ingest failed (500): Internal Server Error`: `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/9?site=1` and `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1`.
+  - **Impact**: these two lines never became Archive pages; they're a real ingest failure, not a probe rejection, so nothing distinguishes them from a transient blip without a look at the server-side error.
+  - **Next action**: reproduce with `_push_if_has_video()` against these two exact URLs and read the Archive's own traceback (Render logs or a local run against the same `resolve()` payload) to find what `crud.ingest_resolution()` chokes on — a Cablecast "gallery" URL (a channel listing, not a single show) resolving to a payload shape `/internal/ingest` doesn't expect is one plausible cause, not yet confirmed.
+  - **Constraint**: not investigated beyond the feed log's own `[FAIL]` line — don't assume the cause without reading the real 500 body/traceback first.
+  - **History**: found 2026-09-29 running the manual tier-3 feed proof for WO-1168 (`scripts/tier3_auto_transcription_queue_feed_log.csv`).
+
+- **[NEEDS-AUDIT] Several tier-3 feed lines land on the same or a dateless slug — possible page collisions or overwrites (2026-09-29).**
+  - **Issue**: in the same manual feed run, two different Pennsylvania PUC audio files (e.g. `https://www.puc.pa.gov/media/1844/pm031022-audio.mp3` and a second, different PUC audio URL) both ingested to the identical slug `/m/pennsylvania-public-utility-commission-pa`. Several other `[OK]` feeds that same run produced dateless slugs: `/m/coryell-county-tx`, `/m/dunmore-pa`, `/m/gage-county-ne`, `/m/whitley-county-ky`.
+  - **Impact**: if two distinct meetings really share one slug, the second ingest may be overwriting or shadowing the first's page rather than creating its own — unconfirmed. A dateless slug on its own may just mean the source page carries no date (not necessarily a bug), but it's worth checking whether any of these four are also collisions rather than single real pages.
+  - **Next action**: pull each of these five slugs' current `source_url_normalized`/`external_id`/`date` from the Archive (`GET /internal/export/pages` or a direct DB read) and check whether the two PUC audio URLs point at the same page (an overwrite) or two different pages (a false alarm from this read). Same check for the four dateless slugs: confirm each is one real meeting with no date on the source, not two meetings that collided.
+  - **Constraint**: not investigated beyond noticing the pattern in the feed log's `[OK] url -> page_url` lines — don't assume an overwrite happened without reading the actual stored rows.
+  - **History**: found 2026-09-29 running the manual tier-3 feed proof for WO-1168 (`scripts/tier3_auto_transcription_queue_feed_log.csv`).
 
 - **[NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone at the source — 24 Archive pages across 19 tenants now point at video that returns 404 (WO-1152).**
   - **Issue**: a local Whisper run (`scripts/transcribe_backlog_locally.py --urls-file`) over the Archive's non-Granicus, no-transcript pages reached 24 iQM2 pages. All 24 failed: 20 because the media file on `MediaHTTP.IQM2.com/<Tenant>/<id>_480.mp4` returns HTTP 404 (`application/xml`, i.e. a missing storage blob), 4 because the stored media is a 14-53 second clip or a 14-20 hour channel feed. The government's own iQM2 `SplitView.aspx` page still links the same dead file (checked by hand for Fort Myers Beach FL, MeetingID 1388), and the `_0`/`.mpeg4` variants 404 too. Tenants: Berkeley County SC, Capitola CA, El Cajon CA, Fort Myers Beach FL, Glen Ellyn IL, Grand Junction CO, Hartland Twp MI, Hernando County FL, Leonia NJ, Leon Valley TX, Lincoln RI, Maitland FL, Menifee CA, Meredith NH, Olmsted County MN, Prescott AZ, Redding CA, St. Lucie FL, Travis County TX.

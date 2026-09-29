@@ -669,8 +669,11 @@ def test_a_shared_hosts_dominant_government_is_never_borrowed():
     [
         ("https://townhallstreams.com/stream.php?location_id=200&id=900", True),
         ("https://play.champds.com/elpasococo/event/164", True),
+        # An unpinned video on RVTV, a multi-government station. (Media
+        # 1047565 was used here until 2026-09-29, when route_resolved pinned
+        # it to Jackson County, OR.)
         (
-            "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047565",
+            "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1047564",
             False,
         ),
         ("https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986", False),
