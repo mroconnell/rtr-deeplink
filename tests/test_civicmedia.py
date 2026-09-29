@@ -10,6 +10,7 @@ from app.platforms.civicmedia import (
     civicmedia_page_id,
     is_civicmedia_page_url,
     is_tikilive_embed_url,
+    looks_like_file_name,
     refresh_playlist_url,
 )
 
@@ -171,6 +172,147 @@ async def test_no_iframe_found_is_an_honest_video_warning_not_a_crash():
     assert resolved.video_warnings == [
         "This looks like a CivicMedia page, but we couldn't find its video player."
     ]
+
+
+# -- which title (WO-1165) ---------------------------------------------
+# Real government pages fetched live 2026-09-29, see
+# tests/fixtures/civicmedia/README.md. Each test serves an empty TikiLive
+# embed for the page's video, since only the title is under test.
+
+
+def _embed_for(video_id):
+    return (
+        "https://civplus.tikiliveapi.com/embed?scheme=embedVod"
+        f"&videoId={video_id}&autoplay=no"
+    )
+
+
+async def _resolve_page(url, fixture_name, video_id, html=None):
+    page_html = html if html is not None else load_fixture("civicmedia", fixture_name)
+    embed = _embed_for(video_id)
+    routes = {
+        url: FakeResponse(status=200, text=page_html, url=url),
+        embed: FakeResponse(status=200, text="<html></html>", url=embed),
+    }
+    with mock_session(routes):
+        return await CivicMediaAssetFinder().resolve(url)
+
+
+ISANTI_URL = "https://www.isanticountymn.gov/CivicMedia?VID=461"
+SEAGOVILLE_URL = (
+    "https://seagoville.us/CivicMedia?VID=20250519-Regular-Session-Part-2-719"
+)
+STJOSEPH_URL = (
+    "https://stjosephmo.gov/CivicMedia?VID=St-Joseph-Stormwater-Protection-and-Insp-1"
+)
+
+
+async def test_good_og_title_is_used():
+    # Real Hobart page: og:title and player title agree.
+    with mock_session(_routes(vtt_body=None)):
+        resolved = await CivicMediaAssetFinder().resolve(PAGE_URL)
+
+    assert resolved.title == "Park Board 08-10-26"
+
+
+async def test_file_name_player_title_loses_to_the_page_title():
+    # Real Isanti County, MN page. The player says "Video - Autorecord Jul
+    # 14 2026, 10:18 AM" (the recorder's default name); the county's own
+    # og:title names the meeting.
+    resolved = await _resolve_page(
+        ISANTI_URL, "isanti_civicmedia_vid461.html", "160294"
+    )
+
+    assert resolved.title == "Live Stream Committee of the Whole - July 14, 2026"
+    assert resolved.jurisdiction == "Isanti County, MN"
+
+
+async def test_part_number_comes_from_the_government_page():
+    # Real Seagoville, TX page. The city's page and its VID say Part 2; the
+    # TikiLive upload is named Part 3. Before WO-1165 the page got "Part 3".
+    resolved = await _resolve_page(
+        SEAGOVILLE_URL, "seagoville_civicmedia_vid719.html", "156829"
+    )
+
+    assert resolved.title == "2025-05-19 Regular Session (Part 2)"
+
+
+async def test_cut_off_og_title_takes_the_players_full_version():
+    # Real St. Joseph, MO page. CivicPlus cut og:title at 50 characters:
+    # "St. Joseph Stormwater Protection and Inspection Me". The player has
+    # the same words in full.
+    resolved = await _resolve_page(
+        STJOSEPH_URL, "stjoseph_civicmedia_vid1.html", "158548"
+    )
+
+    assert (
+        resolved.title == "St. Joseph Stormwater Protection and Inspection Meeting 2025"
+    )
+
+
+async def test_bare_embed_with_no_title_stays_untitled():
+    # A bare TikiLive embed has no government page and the embed names no
+    # video, so the title stays None (unchanged by WO-1165).
+    with mock_session(_routes(vtt_body=None)):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
+
+    assert resolved.title is None
+
+
+async def test_missing_og_title_falls_back_to_the_player():
+    # SYNTHETIC: the real Isanti page with its og:title tag removed. Real
+    # shape: Fort Madison, IA's VID=681 page has no og:title (routing round
+    # 2026-09-29). The <title> is CivicMedia boilerplate and is skipped, so
+    # the player's file-name title is kept rather than no title.
+    html = load_fixture("civicmedia", "isanti_civicmedia_vid461.html")
+    stripped = html.replace('property="og:title"', 'property="og:ignored"')
+    assert stripped != html
+    resolved = await _resolve_page(ISANTI_URL, None, "160294", html=stripped)
+
+    assert resolved.title == "Autorecord Jul 14 2026, 10:18 AM"
+
+
+async def test_every_title_a_file_name_keeps_the_government_one():
+    # SYNTHETIC page built from the real Northampton, MA values
+    # (northamptonma.gov/CivicMedia?VID=BOH_011923-13, routing round
+    # 2026-09-29): og:title "BOH_011923", player "DHHS_Amy_video060923".
+    html = (
+        "<html><head><title>CivicMedia\u2122 \u2022 Northampton, MA \u2022 "
+        "CivicEngage</title>"
+        '<meta property="og:title" content="BOH_011923" />'
+        '<meta property="og:site_name" content="Northampton, MA" /></head><body>'
+        '<iframe id="videoPlayer" title="Video - DHHS_Amy_video060923" '
+        'src="https://civplus.tikiliveapi.com/embed?scheme=embedVod'
+        '&videoId=152347&autoplay=yes"></iframe></body></html>'
+    )
+    url = "https://northamptonma.gov/CivicMedia?VID=BOH_011923-13"
+    resolved = await _resolve_page(url, None, "152347", html=html)
+
+    assert resolved.title == "BOH_011923"
+
+
+def test_looks_like_file_name_on_real_titles():
+    # Every string here is a real CivicMedia title (routing round
+    # 2026-09-29 and the Archive's own CivicMedia pages).
+    for name in (
+        "DHHS_Amy_video060923",
+        "BudgetHearing_11292022",
+        "cm011226",
+        "Pink Patch Project Meeting Irwindale 7-24-17.m4v",
+        "Autorecord Sep 22 2026, 08:08 AM",
+        "GMT20220519-000329_Recording_640x360",
+        "",
+        None,
+    ):
+        assert looks_like_file_name(name), name
+    for name in (
+        "Park Board 08-10-26",
+        "2025-05-19 Regular Session (Part 2)",
+        "City Council Meeting - Sep. 21, 2026",
+        "SWFRS Public Scoping Mtg Recording 05-13-23 (MP4)",
+        "20260908 Council Meeting",
+    ):
+        assert not looks_like_file_name(name), name
 
 
 # -- jurisdiction from the page's own site name (WO-1069) -------------

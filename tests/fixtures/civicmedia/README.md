@@ -32,3 +32,15 @@ so far (see `BACKLOG.md`'s entry this WO closes, and
   one CivicMedia tenant in the Archive whose site name carries no state;
   the state comes from the ZIP in the page's own footer address, so the
   body has to stay.
+
+## Title fixtures (WO-1165, 2026-09-29)
+
+Three government pages, fetched live 2026-09-29, `<script>`/`<style>`/
+comments stripped like the files above. Each shows a different way the
+TikiLive player's title differs from the government's own `og:title`.
+
+| File | Page | og:title | Player title |
+|---|---|---|---|
+| `isanti_civicmedia_vid461.html` | `https://www.isanticountymn.gov/CivicMedia?VID=461` | Live Stream Committee of the Whole - July 14, 2026 | Autorecord Jul 14 2026, 10:18 AM |
+| `seagoville_civicmedia_vid719.html` | `https://seagoville.us/CivicMedia?VID=20250519-Regular-Session-Part-2-719` | 2025-05-19 Regular Session (Part 2) | 2025-05-19 Regular Session (Part 3) |
+| `stjoseph_civicmedia_vid1.html` | `https://stjosephmo.gov/CivicMedia?VID=St-Joseph-Stormwater-Protection-and-Insp-1` | St. Joseph Stormwater Protection and Inspection Me (cut at 50 characters) | St. Joseph Stormwater Protection and Inspection Meeting 2025 |
