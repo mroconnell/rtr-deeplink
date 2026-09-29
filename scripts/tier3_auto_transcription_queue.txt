@@ -6,6 +6,7 @@ https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
 https://vimeo.com/922203074		us:place:3771220
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
 https://player.vimeo.com/video/1183202055	https://www.cbsd.org/school-board/board-meeting-streams/board-meeting-stream-archiver	us:sd:4205310
 https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-council/	us:place:0546970
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
@@ -1114,6 +1115,12 @@ https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://rec
 https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4	https://malegislature.gov/Events/Sessions/Detail/7791	us:state:25
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:cousub:2501717475
+https://reflect-wareham.cablecast.tv/internetchannel/show/12763?site=2	https://reflect-wareham.cablecast.tv/	us:cousub:2502372985
+https://reflect-ncmhub.cablecast.tv/internetchannel/show/13989	https://reflect-ncmhub.cablecast.tv/	us:place:2545245
+https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599	https://liveoaktx.granicus.com/ViewPublisher.php?view_id=1	us:place:4843096
+https://reflect-chabot.cablecast.tv/internetchannel/show/18519		rtr:us:ca:chabot-las-positas-ccd
+https://collincollegetx.new.swagit.com/videos/401833		rtr:us:tx:collin-college
+https://polk.granicus.com/MediaPlayer.php?view_id=1&clip_id=1		rtr:us:fl:polk-state-college
 https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20436	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:cousub:3611944842
 https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20434	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:place:3644831
 https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1008217	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:cousub:5000140075
@@ -1162,4 +1169,15 @@ https://cloud.castus.tv/vod/kltv/video/6a18ed58d163ee0002556777?page=HOME	https:
 https://cloud.castus.tv/vod/kltv/video/6a7543770dea380002b04f73?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5334645
 https://cloud.castus.tv/vod/kltv/video/692e55efafe2e200023a150e?page=HOME	https://cloud.castus.tv/vod/kltv	us:place:5357220
 https://cloud.castus.tv/vod/kltv/video/6a690e00752db40002bd5c9f?page=HOME	https://cloud.castus.tv/vod/kltv	us:county:53015
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
+https://slt.granicus.com/MediaPlayer.php?view_id=6&clip_id=2329		us:place:0673108
+https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English		us:place:4142600
+https://pub-maderacounty.escribemeetings.com/Meeting.aspx?Id=4f646bcf-763a-4344-866c-1781955a2173&Agenda=Agenda&lang=English		us:county:06039
+https://wichitafallstx.new.swagit.com/videos/398829		us:place:4879000
+https://aurora-il.granicus.com/MediaPlayer.php?view_id=1&clip_id=2229		us:place:1703012
+https://charlottesvilleva.portal.civicclerk.com/event/2617/media		us:place:5114968
+https://sedgwick.granicus.com/MediaPlayer.php?view_id=2&clip_id=6150		us:county:20173
+https://peoriail.portal.civicclerk.com/event/125/media		us:place:1759000
+https://eldoradoks.portal.civicclerk.com/event/1249/media		us:place:2020075
+https://perrysburgoh.portal.civicclerk.com/event/5067/media		us:place:3962148
+https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899		us:place:2607660

@@ -1,3 +1,12 @@
+# RETIRED 2026-09-27 (WO-1148) -- disabled in GitHub's Actions settings,
+# not deleted. GitHub's runner IPs get a 403/404/timeout from Granicus,
+# Cablecast, IQM2, ChampDS and CivicClerk, and each one was recorded as a
+# failed probe, cooling down most of the backlog. The same top-up now
+# runs inside rtr-transcription-worker (worker/main.py's
+# maybe_generate_batch_auto_jobs(), gated by BULK_TOPUP_ENABLED in
+# render.yaml). Don't re-enable this. The text below is the original
+# description, kept for history.
+#
 # Keeps the on-demand-transcription job queue topped up so both cloud
 # workers (rtr-transcription-worker / rtr-transcription-worker-2, see
 # render.yaml) always have real, independent work to grab -- not just the
