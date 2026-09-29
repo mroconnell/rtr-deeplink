@@ -1,5 +1,41 @@
 # Backlog — done
 
+## WO-1160: a TelVue page with English and Spanish captions kept the Spanish track and called it English; the Archive now stores both, English by default [Done 2026-09-29]
+
+**Why this ran.** A research run on 2026-09-29 held 3 tier-1 TelVue ingests (Tahoe-Truckee USD, Tahoe Forest Hospital District, Fitchburg SD). Their pages list two caption tracks. The adapter loaded the Spanish one and labelled it English. Ryan asked for the fix: grab both, store each under its real language, show English by default, and never mislabel a language.
+
+**The bug.** `app/platforms/telvue.py` looped over the caption tracks and replaced the transcript on each one, always setting the language to `"en"`. The last track won. One live read of TTUSD Trustees, Sept. 2, 2026 (media 1044135) confirmed the page shape: two `captions` tracks, labelled "English" then "Spanish", with no language code. Their signed links decode to `primary-en-captions-...vtt` and `secondary-es-captions-...vtt`. A second symptom: every held meeting also showed a false "garbled at the source" warning, because Spanish text was checked as English.
+
+**The fix.**
+
+1. The adapter reads every caption track and detects each one's language from its own text (`detect_language_from_texts`), never from the label. The English one is the transcript. The others go in `alternate_transcripts` under their detected language. If none reads as English, a track labelled English is preferred, then the first; its language stays what the text says, with the existing "captions appear to be in 'xx'" note.
+2. The Archive's `IngestRequest` gains `alternate_transcripts`. The resolver had always sent it; Pydantic dropped it. `crud._store_alternate_transcripts()` stores each as a non-default `TranscriptVersion`. It skips a track with no detected language, a track in the main track's language, a second track in the same language, and an identical version already on the page. The version picker already lists them ("Español (sourced)"). No migration: the table already has a language column.
+3. `crud._is_real_improvement()`: a new English version now replaces a default in another known language. A non-English version never replaces English.
+
+The 2026-08 note on the language picker (below) left alternates resolver-only on purpose, because the Archive "has its own mechanism" for languages. Nothing fed that mechanism from a second caption track. This does, through the same `TranscriptVersion` rows. It also applies to every adapter that already fills `alternate_transcripts` (Cablecast, Granicus, CivicClerk, SuiteOne, Sliq Harmony, 12 Miles Out).
+
+**Tests.** `tests/test_telvue.py`: three tests on the real TTUSD page (English kept and Spanish stored as an alternate; English wins when served second; a Spanish-only result is labelled `es`). All three fail on the old adapter. `tests/test_ingest_alternate_transcripts.py`: five Archive tests, including one through `/internal/ingest` and the rendered picker, and the two-step repair of a Spanish page labelled English. The fixture's English track reuses the real Ashland TelVue captions; its Spanish track is the TTUSD meeting's own first 10 real cues. Full suite: 7,943 passed; ruff, ruff format and both `alembic check` runs clean.
+
+**Existing Archive pages checked (2026-09-29).** All 151 TelVue pages were read from redtaperecordings.com, every version, and each version's language detected from its text.
+
+| Result | Count of 151 pages |
+| --- | --- |
+| Shown transcript is English, correctly labelled | 151 |
+| Shown transcript is another language | 0 |
+| Page has a hidden version that is another language labelled English | 3 |
+
+Only one Archive page comes from the two stations named in the report (Fitchburg Access TV, none from Tahoe Truckee Media). The 3 mislabelled hidden versions:
+
+| Page | Station | Hidden version | Real language |
+| --- | --- | --- | --- |
+| `/m/city-ma-city-council-5-6-2025` | Fitchburg Access TV | 985 | Spanish |
+| `/m/nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget` | Alexandria City Public Schools, VA | 3395 | Farsi |
+| `/m/fps-school-committee-meeting-07-15-26` | Access Framingham | 3433 | Portuguese |
+
+On all three, readers see our own English Whisper transcript. The picker lists the other-language captions as "English (sourced)". The repair is in `BACKLOG.md` (Needs a human).
+
+**Caution.** The per-page check ran against production, which runs an older build; the fix is not live until the resolver and the Archive are deployed.
+
 ## WO-1159: pin Merrill WI and Moraine OH, the two CivicClerk successors WO-1158 left out [Done 2026-09-29]
 
 **Why this ran.** WO-1158 found 10 CivicClerk successors to dead IQM2 sites but pinned only the 8 whose event addresses named the place. Ryan asked for a hand check of the other two.
