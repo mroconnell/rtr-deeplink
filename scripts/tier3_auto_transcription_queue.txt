@@ -1217,7 +1217,6 @@ https://lancastertx.new.swagit.com/videos/399578		us:place:4841212
 https://burtonmi.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:2612060
 https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996		ca:csd:3506008
-https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860
 https://copleytwpoh.portal.civicclerk.com/event/214/media		us:cousub:3915318658
 https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4537		us:county:27067
 https://cloud.castus.tv/vod/waycam/video/6a7e08d9b1e60900022c61d0?page=HOME	https://cloud.castus.tv/vod/waycam	us:cousub:2501773790
@@ -1301,5 +1300,4 @@ https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mat
 https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
 https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
-https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing	https://ct-easthaven.civicplus.com/AgendaCenter	us:cousub:0917022910
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
