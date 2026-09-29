@@ -16,6 +16,7 @@ all three jobs, slowly and steadily, so YouTube never sees a burst:
 | feed | the YouTube lines in `scripts/tier3_auto_transcription_queue.txt` (the GitHub feed leaves these alone, WO-1064) | turns each into a site page (same checks as the GitHub feed), then the captions lane fetches its captions next | same budget |
 | audio | pages marked "captions disabled" | downloads the audio and transcribes it with Whisper on this Mac | at most 3 downloads a day (raise only after a week without a block) |
 | vimeo | pages on the site waiting for a transcript, `video_format=vimeo` (WO-1147, 2026-09-27, **opt-in — not in the default `--lanes`**) | resolves the video locally through the Vimeo adapter, the same way a real browser would, and either puts the real captions on the page or records a permanent "no captions" marker | same shared spacing as the other lanes — **not** the same shared YouTube budget (see below) |
+| direct | the non-YouTube, non-Vimeo lines in `scripts/tier3_auto_transcription_queue.txt` (WO-1168, 2026-09-29, **opt-in — not in the default `--lanes`**) | turns each into a site page the same way the `feed` lane does, straight from this Mac's office connection — only while the cloud workers have fewer than `--direct-low-water` (default 10) non-YouTube, non-Vimeo pages still waiting for a transcript | same shared budget as captions/feed/audio (a fed page can itself embed YouTube) |
 
 Every YouTube request comes out of one shared budget: about one every
 three to four minutes. That pace ran five hours on 2026-09-11 with no
@@ -38,6 +39,27 @@ has its own independent block ladder, entirely separate from the
 YouTube-family one. **It is not in the default `--lanes` value** — add it
 explicitly the first time it's wanted:
 `--lanes captions,feed,audio,vimeo`.
+
+**Why there's a `direct` lane here at all.** As of 2026-09-29, most of
+`scripts/tier3_auto_transcription_queue.txt` is Granicus, Cablecast and
+similar hosts that refuse GitHub Actions' own IP addresses outright (HTTP
+403), even with the correct Referer/User-Agent — confirmed live: the
+GitHub workflow's last real run ingested 0 of 12 lines. That workflow was
+the only thing feeding new non-YouTube meetings onto the site, so both
+cloud transcription workers went idle (0 active jobs, 1 finished in a
+day) with real work still sitting in the queue. The same push, run from
+this Mac's office connection, works — the `direct` lane is that push,
+run continuously instead of once every 6 hours, and demand-gated
+(`--direct-low-water`, default 10) so it tops the queue up rather than
+feeding the whole remainder in one burst. It is **opt-in — add it
+explicitly**: `--lanes captions,feed,audio,direct` (or add `vimeo` too if
+that's also running: `--lanes captions,feed,audio,vimeo,direct`). Unlike
+`vimeo`, it shares the YouTube-family spacing and block ladder — a
+Granicus or CivicClerk page can itself embed a YouTube video, so a
+`direct` push can still trip a YouTube block. The GitHub feed workflow
+(`.github/workflows/feed-tier3-transcription.yml`) is retired in favor of
+this lane (see its own header comment) but stays in the repo, disabled,
+rather than deleted.
 
 **A line the GitHub feed keeps isn't always this Mac's job.** The feed
 tags a kept line in `tier3_auto_transcription_queue_feed_log.csv` two
@@ -234,10 +256,11 @@ blocks or none, and no day with zero actions while there was work.
 ## Options
 
 ```
---lanes captions,feed,audio,vimeo   run a subset (vimeo is opt-in, not in the default)
---spacing-seconds 180               seconds between requests (do not lower)
---audio-per-day 3                   audio downloads per day
---model-size small                  Whisper model for the audio lane (default: sized from RAM)
---dry-run                           do everything except write to the site
---once                              one step, then exit (for a quick check)
+--lanes captions,feed,audio,vimeo,direct   run a subset (vimeo and direct are opt-in, not in the default)
+--spacing-seconds 180                      seconds between requests (do not lower)
+--audio-per-day 3                          audio downloads per day
+--direct-low-water 10                      direct lane: feed while fewer than this many non-YouTube/non-Vimeo pages are waiting
+--model-size small                         Whisper model for the audio lane (default: sized from RAM)
+--dry-run                                  do everything except write to the site
+--once                                     one step, then exit (for a quick check)
 ```
