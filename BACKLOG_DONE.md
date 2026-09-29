@@ -1,5 +1,15 @@
 # Backlog — done
 
+## WO-1166: pin Manor TX's Swagit site [Done 2026-09-29]
+
+**Why this ran.** Manor's CivicPlus site (tx-manor.civicplus.com) is one of 623 undecided CivicPlus tenants that list no meetings. Ryan opened it by hand and found Manor's real meeting pages: agendas on Municode Meetings (`meetings.municode.com/PublishPage/index?cid=MANORTX`, "City of Manor Agenda & Minutes") and video on Swagit. The Swagit site was in no ledger, pin, Swagit view list or Archive page.
+
+**Proof (live, 2026-09-29).** `manortx.new.swagit.com/videos/400532` is titled "Sep 09, 2026 Planning and Zoning Commission - Manor, TX".
+
+**Not pinned.** The Municode PublishPage host serves many governments and is not a platform rtr-discovery walks.
+
+**Tests.** `tests/test_wo1166_manor_swagit_pin.py`; fails without the row.
+
 ## WO-1165: a government's CivicMedia page gives the meeting its own title, not the player's [Done 2026-09-29]
 
 **Why this ran.** The 2026-09-29 CivicMedia routing round (rtr-business `research/slug_learning_2026-09-27/civicmedia_channels/routing/`, "Cautions") found wrong titles. The adapter took the title from the TikiLive player, the iframe's `title` attribute. That is the upload's name. It can be an old file name ("DHHS_Amy_video060923"), a recorder's default ("Autorecord Sep 22 2026, 08:08 AM"), or the wrong part ("Part 3" on the Part 2 page). The government's own page names the meeting in its `og:title`. The round fixed 12 pages by hand; their addresses kept the old names.
