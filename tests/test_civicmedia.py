@@ -67,6 +67,24 @@ def test_detect_platform_recognizes_tikilive_embed_host():
     assert detect_platform(EMBED_URL) == "civicmedia"
 
 
+def test_detect_platform_recognizes_civicmedia_page_on_civicplus_subdomain():
+    # WO-341's original check only ever confirmed the government's-own-
+    # domain shape (cityofhobart.org). A CivicMedia page hosted on the
+    # government's own *.civicplus.com tenant subdomain -- confirmed live
+    # 2026-09-29 (pinned-only walk routing) against
+    # pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-
+    # 4262021-51 -- used to be misrouted to "civicplus", since the
+    # netloc-based "civicplus.com" branch in detect_platform() ran before
+    # this path-based CivicMedia check and matched first. That branch is
+    # now checked ahead of the netloc one.
+    assert (
+        detect_platform(
+            "https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51"
+        )
+        == "civicmedia"
+    )
+
+
 def test_detect_platform_ignores_civicmedia_page_with_no_vid():
     # A bare `/CivicMedia` with no `VID=` isn't a resolvable single video --
     # falls through to CivicPlus's own AgendaCenter-shaped/unknown checks,

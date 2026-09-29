@@ -7,6 +7,8 @@ run in any order without colliding (the fixture DB isn't reset per-test).
 
 import asyncio
 import contextlib
+
+import pytest
 from datetime import datetime, timedelta
 
 from archive.db import crud
@@ -2505,6 +2507,24 @@ def test_cooldown_active_still_escalates_on_consecutive_failures():
         ("failed", now - timedelta(hours=72)),
     ]
     assert _crud._cooldown_active(jobs_past, now) is False
+
+
+@pytest.mark.parametrize(
+    "status", ["pending_confirmation", "queued", "in_progress", "retry_scheduled"]
+)
+def test_cooldown_active_skips_a_page_whose_newest_job_is_live(status):
+    """WO-1169: the idle worker kept re-picking the page the other worker
+    was already transcribing (job 4782, Yorktown NY, 2026-09-29), so it
+    never created a second job. A live newest job must hide the page."""
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db import crud as _crud
+
+    now = datetime.now(timezone.utc)
+    assert _crud._cooldown_active([(status, now - timedelta(days=90))], now) is True
+    # An older failure streak behind a live job doesn't change the answer.
+    jobs = [(status, now), ("failed", now - timedelta(days=90))]
+    assert _crud._cooldown_active(jobs, now) is True
 
 
 def test_cooldown_active_is_false_with_no_job_history():

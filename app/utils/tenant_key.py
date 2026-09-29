@@ -597,12 +597,34 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         ("cloud.castus.tv", "hampsteadcabletv"),
         # Castus "lrpatv": Belknap County, Gilford town, Laconia city (WO-1152 census, per-video pins).
         ("cloud.castus.tv", "lrpatv"),
+        # Route-resolved leads, 2026-09-29 (rtr-business
+        # slug_learning_2026-09-27/route_resolved): stations that carry more
+        # than one government, so their new pins are per video.
+        # MetroEast Community Media (East Multnomah County, OR): Multnomah
+        # County, Gresham, Fairview, Troutdale, Wood Village, Reynolds SD.
+        ("videoplayer.telvue.com", "5QlcS026fQy98qR8aFzKSh5DvYNq1NKn"),
+        # Melrose Mass TV (MA): Melrose city, Melrose School District.
+        ("videoplayer.telvue.com", "9RIojWjXE_ZbteJMaQ07fpXeQY2rZ7Ar"),
+        # Waltham, MA station: Waltham city, Waltham School District.
+        ("videoplayer.telvue.com", "DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL"),
+        # Concord, NH station: Concord city, Concord School District.
+        ("videoplayer.telvue.com", "Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe"),
+        # Sandwich Community Television (MA): Sandwich town, Sandwich
+        # Housing Authority.
+        ("videoplayer.telvue.com", "bHwwzKX3TkapuHPqY4J6DEAclNWGbbch"),
+        # Gardner Educational Television (MA): Gardner city, Gardner School
+        # District.
+        ("videoplayer.telvue.com", "f8r896ULmGZtrF3mCzOdRbTTP_Wnx2Q1"),
         # Castus "manchestertv": Manchester School District, Manchester city (WO-1152 census, per-video pins).
         ("cloud.castus.tv", "manchestertv"),
         # Castus "west-boylston": West Boylston School District, West Boylston town (WO-1152 census, per-video pins).
         ("cloud.castus.tv", "west-boylston"),
         # Castus "weston": Weston School District, tier3 queue ownership audit (WO-1152 census, per-video pins).
         ("cloud.castus.tv", "weston"),
+        # Castus "kltv" (Kelso-Longview Television, Cowlitz County WA): Kelso,
+        # Longview, Kalama, Rainier cities and Cowlitz County, each its own
+        # playlist (rtr-business castus_renamed WO, 2026-09-29; per-video pins).
+        ("cloud.castus.tv", "kltv"),
     }
 )
 

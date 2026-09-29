@@ -738,7 +738,6 @@ https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2		rtr:u
 https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2		us:county:02195	Petersburg Borough, AK	0:09:13	
 https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings		Twpec	0:55:00	
 https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov		TV, NY	0:04:50	
-https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077	San Joaquin County, CA	1:00:28	
 https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036		us:county:06085	Santa Clara County, CA	1:15:04	
 https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655		us:cousub:3610368473	Town of Southampton, Long Island, NY	0:19:04	
 https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303		us:place:0668378	San Ramon, CA	1:33:22	

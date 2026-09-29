@@ -296,6 +296,12 @@ TENANT_GOV_IDS = {
     "00324": "us:state:32",  # Nevada
     "00325": "us:state:29",  # Missouri
     "00328": "us:state:42",  # Pennsylvania (House)
+    # State-level pass (2026-09-29): Arkansas's Bureau and Senate tenants,
+    # plus two tenants that are their own governments.
+    "00315": "us:state:05",  # Arkansas (Bureau committees)
+    "00316": "us:state:05",  # Arkansas (Senate)
+    "00280": "rtr:ca:nl:government-of-nunatsiavut",
+    "00346": "rtr:us:va:virginia-department-of-social-services",
 }
 
 

@@ -105,6 +105,18 @@ rtr-discovery's live re-check read each one's site title and found no
 meeting title naming another government. Every tenant in
 `TENANT_JURISDICTIONS` now has a path pin; `tests/test_sliq_harmony.py`
 checks the two lists stay equal.
+
+The state-level pass (2026-09-29, Ryan un-parked state-level work) pinned
+four more tenants from the 00001-00999 client walk
+(`rtr-business/research/slug_learning_2026-09-27/number_walks/sliq_walk/`):
+00315 and 00316 (Arkansas, under `us:state:05`), 00280 (Government of
+Nunatsiavut, its own `rtr:ca:nl:` id) and 00346 (Virginia Department of
+Social Services, its own `rtr:us:va:` id, a state agency per WO-220).
+00290 (Bermuda Parliament) stays unpinned: it is outside the US and
+Canada. Nunatsiavut's event pages are `PowerBrowserV2` addresses, which
+`_EVENT_RE` does not match (the V3 address for the same event 404s); the
+V2 page carries the same `dataModel` block, but reading it is left for a
+separate change.
 """
 
 import json
@@ -174,6 +186,16 @@ TENANT_JURISDICTIONS: Dict[str, str] = {
     "00325": "Missouri General Assembly",
     "00304": "Virginia General Assembly",
     "00328": "Pennsylvania House of Representatives",
+    # State-level pass (2026-09-29): four more tenants read live and pinned.
+    # 00315/00316 are Arkansas (D1: the Bureau's committees and the Senate
+    # are meeting bodies of the State of Arkansas). 00280 and 00346 are not
+    # legislatures: each is its own government (an Inuit self-government
+    # and a state agency). None listed a recording the adapter can read
+    # that day -- 00280's events use the older PowerBrowserV2 player.
+    "00315": "Arkansas State Legislature",
+    "00316": "Arkansas State Legislature",
+    "00280": "Government of Nunatsiavut",
+    "00346": "Virginia Department of Social Services",
 }
 
 # Placeholder stream Urls Sliq writes when a meeting has no recording.
