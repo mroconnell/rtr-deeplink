@@ -8123,3 +8123,9 @@ https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE/media/102
 https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1047619,telvue,telvue-page-json,2350.00,,,1,accept,,0.00,2026-09-29T17:06:50+00:00,bulk_ingest,0
 https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/969251,telvue,telvue-page-json,2003.00,,,1,accept,,0.00,2026-09-29T17:06:51+00:00,bulk_ingest,0
 https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/955676,telvue,telvue-page-json,3609.00,,,1,accept,,0.00,2026-09-29T17:06:52+00:00,bulk_ingest,0
+https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=649,granicus,hls-master+variant,2305.60,,,1,accept,,19.57,2026-09-29T19:50:45+00:00,stale_coverage_2026-09-29,0
+https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2722,granicus,hls-master+variant,1859.03,,,1,accept,,17.57,2026-09-29T19:51:02+00:00,stale_coverage_2026-09-29,0
+https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412,iqm2,hls-master+variant,1703.28,,,1,accept,,8.88,2026-09-29T19:51:11+00:00,stale_coverage_2026-09-29,0
+https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=746,granicus,hls-master+variant,2265.04,,,1,accept,,17.77,2026-09-29T19:51:29+00:00,stale_coverage_2026-09-29,0
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782,iqm2,hls-master+variant,1238.90,,,1,accept,,8.81,2026-09-29T19:51:38+00:00,stale_coverage_2026-09-29,0
+https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4,direct_file,head+ffprobe,2396.76,2026-09-22,377498445,1,accept,,1.16,2026-09-29T19:51:40+00:00,stale_coverage_2026-09-29,0
