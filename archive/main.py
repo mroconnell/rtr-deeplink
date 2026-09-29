@@ -2826,6 +2826,27 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # one page from `MediaPlayer.php?clip_id=`, one from `player/clip/`;
     # the `player/clip` page is kept.
     "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors-fcc9d9": "los-angeles-county-ca-2026-08-11-english-los-angeles-county-board-of-supervisors",
+    # 2026-09-29 (WO-1165 follow-up, Ryan approved): 15 CivicMedia pages whose
+    # address was built from a player file name, a recorder's name, the wrong
+    # part, or the place alone. Renamed with POST /internal/admin/reslug-page
+    # straight after this deploy (commands in the PR). Rosetown, East Baton
+    # Rouge and Fort Madison were re-ingested with a real title first; Isanti
+    # County is refreshed after the resolver deploy, before its rename.
+    "northampton-ma-dhhs-amy-video060923": "northampton-ma-boh-011923",
+    "davie-fl": "davie-fl-itn-rm-22-17-review-committee-meeting",
+    "archuleta-county-co": "archuleta-county-co-3-13-2023-health-department-transitional-committee",
+    "corsicana-tx": "corsicana-tx-city-council-meeting-sep-15-2026",
+    "grandview-tx": "grandview-tx-city-council-meeting-02-09-23",
+    "enumclaw-school-district-wa": "enumclaw-school-district-wa-august-17-2026-regular-meeting",
+    "rantoul-village-il": "rantoul-village-il-electoral-board-hearing-011723",
+    "st-clair-shores-mi-autorecord-sep-22-2026-08-08-am": "st-clair-shores-mi-city-council-meeting-sep-21-2026",
+    "phillipsburg-city-ks-autorecord-sep-08-2026-06-55-pm": "phillipsburg-city-ks-city-council-meeting-september-8-2026",
+    "seagoville-tx-2025-05-19-regular-session-part-3": "seagoville-tx-2025-05-19-regular-session-part-2",
+    "20260908-council-meeting": "englewood-oh-20260908-council-meeting",
+    "rosetown-sk": "rosetown-sk-june-1-2026-council-meeting",
+    "east-baton-rouge-parish-la": "east-baton-rouge-parish-la-metro-council-budget-hearing-november-29-2022",
+    "fort-madison-ia": "fort-madison-ia-city-council-meeting-september-1-2026",
+    "isanti-county-mn-autorecord-jul-14-2026-10-18-am": "isanti-county-mn-live-stream-committee-of-the-whole-july-14-2026",
 }
 
 
