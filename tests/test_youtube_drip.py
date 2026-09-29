@@ -6,6 +6,7 @@ their own tests."""
 import asyncio
 import csv
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -714,3 +715,260 @@ def test_safe_tick_reraises_for_a_one_shot_run(tmp_path, monkeypatch):
     monkeypatch.setattr(drip, "lane_captions", boom)
     with pytest.raises(ConnectionError):
         asyncio.run(drip.safe_tick(None, tmp_path / "daily.csv", reraise=True))
+
+
+# --- WO-1168: the direct lane -----------------------------------------------
+
+
+def test_direct_lane_takes_the_complement_of_the_feed_lanes_filter(
+    tmp_path, monkeypatch
+):
+    """The direct lane must never claim a YouTube or Vimeo line (or a
+    delegating-platform one) -- those stay lane_feed's job. A granicus
+    line, which _classify_queue_url() always skips, is exactly what the
+    direct lane should pick up."""
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text(
+        "https://www.youtube.com/watch?v=ax-OzF0VRk4\n"
+        "https://vimeo.com/1212025580\n"
+        "https://cityoftacoma.granicus.com/player/clip/7460\n"
+    )
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    drip.dry_run = False
+    monkeypatch.setattr(drip, "_direct_backlog_count", _async_const(0))
+
+    captured = {}
+
+    async def fake_push(
+        session, url, src=None, gov_id=None, *, probe_sidecar_path=None
+    ):
+        captured["url"] = url
+        return f"[OK] {url} -> /m/example"
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", fake_push)
+
+    touched, override = asyncio.run(drip.lane_direct(None))
+    assert touched is True and override is None
+    assert captured["url"] == "https://cityoftacoma.granicus.com/player/clip/7460"
+
+
+def _async_const(value):
+    async def f(*args, **kwargs):
+        return value
+
+    return f
+
+
+def test_direct_lane_ok_skip_fail_go_to_the_shared_fed_dict(tmp_path, monkeypatch):
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://cityoftacoma.granicus.com/player/clip/7460\n")
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    for outcome, expected_counter in (
+        ("[OK] u -> /m/x", "direct_ok"),
+        ("[SKIP] no video found on re-resolve: u", "direct_skipped"),
+        ("[FAIL] ingest failed: u (500)", "direct_skipped"),
+    ):
+        drip = _drip(tmp_path, lanes=("direct",))
+        drip.dry_run = False
+        monkeypatch.setattr(drip, "_direct_backlog_count", _async_const(0))
+        monkeypatch.setattr(feed_mod, "_push_if_has_video", _async_const(outcome))
+        touched, override = asyncio.run(drip.lane_direct(None))
+        assert touched is True and override is None
+        assert (
+            "https://cityoftacoma.granicus.com/player/clip/7460"
+            in drip.state.data["fed"]
+        )
+        assert drip.state.data["direct_parked"] == []
+        assert drip.state.data["today"].get(expected_counter, 0) == 1
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        "[NO-OWNER] no tenant_overrides.csv pin (u)",
+        "[NOT-REACHABLE-FROM-GITHUB] hls-403: HTTP 403 (u)",
+    ],
+)
+def test_direct_lane_parks_no_owner_and_not_reachable_instead_of_dropping(
+    tmp_path, monkeypatch, outcome
+):
+    """A [NO-OWNER] or route_kept_line()-kept result is a real, fixable
+    gap -- it must land in direct_parked (skipped, never dropped by
+    advance), not in the shared `fed` dict advance_queue_lines() drops
+    lines from."""
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://cityoftacoma.granicus.com/player/clip/7460\n")
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    drip.dry_run = False
+    monkeypatch.setattr(drip, "_direct_backlog_count", _async_const(0))
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", _async_const(outcome))
+
+    touched, override = asyncio.run(drip.lane_direct(None))
+    assert touched is True and override is None
+    assert drip.state.data["fed"] == {}
+    assert drip.state.data["direct_parked"] == [
+        "https://cityoftacoma.granicus.com/player/clip/7460"
+    ]
+    assert drip.state.data["today"]["direct_parked"] == 1
+
+    # A parked url survives advance_queue_lines() -- only the shared
+    # `fed` dict drops a line.
+    kept, dropped = yd.advance_queue_lines(
+        queue.read_text().splitlines(), set(drip.state.data["fed"])
+    )
+    assert dropped == 0
+    assert kept == ["https://cityoftacoma.granicus.com/player/clip/7460"]
+
+    # And the lane skips the same parked line on the next tick instead of
+    # retrying it -- with nothing else in the queue, there's no work left.
+    called = {"n": 0}
+
+    async def counting_push(
+        session, url, src=None, gov_id=None, *, probe_sidecar_path=None
+    ):
+        called["n"] += 1
+        return "[OK] u -> /m/x"
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", counting_push)
+    touched2, _ = asyncio.run(drip.lane_direct(None))
+    assert touched2 is False
+    assert called["n"] == 0
+
+
+def test_direct_lane_gate_closed_makes_no_push_and_is_not_touched(
+    tmp_path, monkeypatch
+):
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://cityoftacoma.granicus.com/player/clip/7460\n")
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    drip.dry_run = False
+    monkeypatch.setattr(
+        drip, "_direct_backlog_count", _async_const(drip.direct_low_water)
+    )
+
+    def boom(*args, **kwargs):
+        raise AssertionError("gate closed -- must not push")
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", boom)
+    assert asyncio.run(drip.lane_direct(None)) == (False, None)
+
+
+def test_direct_backlog_count_is_cached_for_30_minutes_and_decremented_on_ok(
+    tmp_path, monkeypatch
+):
+    import aiohttp
+
+    from tests.aiohttp_mock import FakeResponse, mock_session
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    from scripts import fetch_youtube_transcripts as fetch
+
+    url = f"{fetch._base_url()}/internal/transcription-backlog"
+    pages = {
+        "pages": [
+            {"platform": "granicus"},
+            {"platform": "granicus"},
+            {"platform": "youtube"},
+            {"platform": "vimeo"},
+            {"platform": "civicclerk"},
+        ]
+    }
+    import json as _json
+
+    async def run():
+        async with aiohttp.ClientSession() as session:
+            count = await drip._direct_backlog_count(session)
+            assert count == 3  # granicus x2 + civicclerk; youtube/vimeo excluded
+
+            drip.state.data["direct_backlog_count"] = 999  # would show if re-fetched
+            count2 = await drip._direct_backlog_count(session)
+            assert count2 == 999  # cache honoured within 30 min, no re-fetch
+
+    with mock_session({url: FakeResponse(200, text=_json.dumps(pages))}):
+        asyncio.run(run())
+
+
+def test_direct_backlog_count_decrements_locally_on_each_ok_feed(tmp_path, monkeypatch):
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text(
+        "https://cityoftacoma.granicus.com/player/clip/7460\n"
+        "https://antiochca.portal.civicclerk.com/event/18/media\n"
+    )
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    drip.dry_run = False
+    drip.state.data["direct_backlog_count"] = 5
+    drip.state.data["direct_backlog_checked_at"] = time.time()
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", _async_const("[OK] u -> /m/x"))
+    asyncio.run(drip.lane_direct(None))
+    assert drip.state.data["direct_backlog_count"] == 4
+
+
+def test_direct_lane_block_text_uses_the_youtube_ladder(tmp_path, monkeypatch):
+    """A Granicus/CivicClerk page can embed YouTube -- a block signal from
+    the direct lane's push must escalate the same shared YouTube-family
+    ladder lane_feed/lane_captions use, not a separate one."""
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://cityoftacoma.granicus.com/player/clip/7460\n")
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+
+    drip = _drip(tmp_path, lanes=("direct",))
+    drip.dry_run = False
+    monkeypatch.setattr(drip, "_direct_backlog_count", _async_const(0))
+    monkeypatch.setattr(
+        feed_mod,
+        "_push_if_has_video",
+        _async_const("ERROR: [youtube] abc: Sign in to confirm you're not a bot"),
+    )
+
+    touched, sleep_for = asyncio.run(drip.lane_direct(None))
+    assert touched is True
+    assert sleep_for == 900.0
+    assert drip.state.data["blocked_until"] > 0
+    assert drip.state.data["block_level"] == 1
+    assert drip.state.data["today"]["blocks"] == 1
+    assert drip.state.data["fed"] == {}
+    assert drip.state.data["direct_parked"] == []
+
+
+def test_tick_includes_direct_lane_only_when_enabled(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("direct",))
+    calls = []
+
+    async def direct(session):
+        calls.append("direct")
+        return False, None
+
+    monkeypatch.setattr(drip, "lane_direct", direct)
+    asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    assert calls == ["direct"]
+
+    drip2 = _drip(tmp_path, lanes=("captions",))  # direct not in lanes
+
+    async def should_not_run(session):
+        raise AssertionError("lane_direct must not run when not in --lanes")
+
+    monkeypatch.setattr(drip2, "lane_direct", should_not_run)
+    monkeypatch.setattr(drip2, "lane_captions", lambda session: _ok_no_work())
+    asyncio.run(drip2.tick(None, tmp_path / "daily.csv"))

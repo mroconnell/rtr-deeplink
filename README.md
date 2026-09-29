@@ -1694,6 +1694,26 @@ script's own module docstring) — tied to the backlog catch-up window this
 second worker exists for, and `BACKLOG.md` for the residual auto-
 generation race this pairs with.
 
+**New meetings now come in through the YouTube drip's `direct` lane, not
+GitHub, added 2026-09-29 (WO-1168).** The two paragraphs above keep the
+cloud workers *busy* once a meeting is on the site with no transcript.
+Something else has to put new meetings on the site in the first place.
+That used to be a GitHub Actions job
+(`.github/workflows/feed-tier3-transcription.yml`), feeding 12 lines from
+`scripts/tier3_auto_transcription_queue.txt` every 6 hours. On
+2026-09-29 both cloud workers sat idle — 0 active jobs, 1 finished in a
+day — because Granicus and Cablecast, most of that queue, refuse GitHub's
+own IP addresses with an outright "no" (HTTP 403), even with the same
+request headers that work fine from an office connection. The same push,
+run by hand from an office Mac that day, ingested 31 of 40 lines. So this
+now runs from `scripts/youtube_drip.py`'s own `direct` lane (see
+`docs/YOUTUBE_DRIP_RUNBOOK.md`) — the always-on Mac that already handles
+YouTube for the same "GitHub gets refused" reason. It only feeds while
+fewer than 10 (by default) non-YouTube, non-Vimeo pages are waiting for a
+transcript, so it tops the queue up instead of dumping hundreds of lines
+in at once. The GitHub workflow file stays in the repo, disabled, in case
+this ever needs to move again.
+
 **Daily activity report, added 2026-08-21.** `GET /internal/send-worker-
 daily-report` (Archive service, token-gated like every other
 `/internal/*` route) composes and emails a plain-text-style HTML digest —

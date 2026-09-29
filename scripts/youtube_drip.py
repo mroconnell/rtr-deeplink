@@ -51,6 +51,38 @@ tick retried five minutes later; the process never exits on one.
             challenge page on every Vimeo caption fetch, the same
             structural problem YouTube has always had here.
 
+  direct    (WO-1168, 2026-09-29, opt-in -- not in the default --lanes)
+            feeds the tier-3 queue's non-YouTube, non-Vimeo lines --
+            everything scripts/feed_tier3_auto_transcription.py's own
+            GitHub Actions run either can't reach (Granicus/Cablecast
+            403 GitHub's IP ranges even with a correct Referer, see that
+            script's WO-1143 handling) or never claims in the first
+            place -- straight to the Archive from this Mac's own office
+            connection, via feed._push_if_has_video(). Both cloud
+            transcription workers went idle 2026-09-29 (0 active jobs, 1
+            finished in 24h) because that GitHub run is the only thing
+            feeding new non-YouTube meetings in and its last run
+            ingested 0 of 12; the same push run by hand from an office
+            Mac that day ingested 31 of 40. This lane is that same push,
+            run continuously but demand-gated: it only feeds while
+            GET /internal/transcription-backlog reports fewer than
+            --direct-low-water (default 10) non-YouTube, non-Vimeo pages
+            still waiting for a transcript, so it tops the cloud queue
+            up rather than dumping the whole ~930-line remainder in at
+            once. That count is a full Archive scan, so it's cached 30
+            minutes and decremented locally by one per successful feed
+            in between real checks. Like the feed lane, a terminal
+            outcome (OK/SKIP/FAIL) lands in the shared `fed` dict so
+            `advance` drops that line from the queue file; a [NO-OWNER]
+            line, or one the feed lane's own route_kept_line() would
+            keep (a YouTube-bot-wall or GitHub-unreachable result), goes
+            into `direct_parked` instead -- skipped on later ticks but
+            never dropped by `advance`, since those are real, fixable
+            gaps, not dead lines. Shares the YouTube-family spacing and
+            block ladder like every lane except vimeo, since a Granicus
+            or CivicClerk page can itself embed a YouTube video this Mac
+            would then be fetching, sharing the same budget.
+
 State lives outside the repo (--state-dir, default ~/.rtr/youtube_drip),
 so a restart resumes. A lock file stops a second instance on the same
 machine -- two pingers on one address is what this replaces. No alert
@@ -149,6 +181,12 @@ SPACING_JITTER_SECONDS = 60.0
 BLOCK_SLEEPS_SECONDS = (900, 1800, 3600, 7200, 14400)
 IDLE_SLEEP_SECONDS = 900.0
 AUDIO_DOWNLOADS_PER_DAY = 3
+# WO-1168: how long the direct lane trusts its own cached backlog count
+# before re-checking GET /internal/transcription-backlog (a full Archive
+# scan -- not something to run every tick) -- decremented locally by one
+# per [OK] feed in between real checks.
+DIRECT_BACKLOG_CACHE_SECONDS = 1800.0
+DEFAULT_DIRECT_LOW_WATER = 10
 # A tick that raises (an Archive connection timeout, a DNS blip -- anything
 # that is not a YouTube block, which the lanes return rather than raise) is
 # logged and retried after this fixed pause. Not the block ladder: a flaky
@@ -588,6 +626,16 @@ def _empty_state() -> dict:
         "vimeo_done": {},
         "vimeo_blocked_until": 0.0,
         "vimeo_block_level": 0,
+        # WO-1168: the direct lane's own bookkeeping. `direct_parked`
+        # holds urls a [NO-OWNER]/route_kept_line() result kept in the
+        # queue -- skipped by the lane but never dropped by `advance`
+        # (unlike the shared `fed` dict above, which both lane_feed and
+        # lane_direct use for a terminal OK/SKIP/FAIL). The backlog count
+        # is cached (see DIRECT_BACKLOG_CACHE_SECONDS) rather than
+        # re-checked every tick.
+        "direct_parked": [],
+        "direct_backlog_count": 0,
+        "direct_backlog_checked_at": 0.0,
         "day": "",
         "today": {},
         "blocks_total": 0,
@@ -674,6 +722,7 @@ class Drip:
         spacing: float,
         model_size: Optional[str],
         cpu_threads: Optional[int],
+        direct_low_water: int = DEFAULT_DIRECT_LOW_WATER,
     ):
         self.state = state
         self.dry_run = dry_run
@@ -682,6 +731,7 @@ class Drip:
         self.spacing = spacing
         self.model_size = model_size
         self.cpu_threads = cpu_threads
+        self.direct_low_water = direct_low_water
         self.fed_pages_csv: Optional[Path] = None
         self.dead_videos_csv: Optional[Path] = None
         self.consecutive_errors = 0
@@ -886,6 +936,113 @@ class Drip:
                 )
         self.state.data["block_level"] = 0
         logger.info("feed     %s", result[:180])
+        return True, None
+
+    async def _direct_backlog_count(self, session: aiohttp.ClientSession) -> int:
+        """Cached (DIRECT_BACKLOG_CACHE_SECONDS) count of non-YouTube,
+        non-Vimeo pages waiting for a transcript, from GET
+        /internal/transcription-backlog -- a full Archive scan
+        (list_transcription_backlog_candidates(), see archive/db/crud.py),
+        so not something to run on every tick. worker/main.py's
+        maybe_generate_batch_auto_jobs() only skips a candidate outright
+        when `video_format == "youtube"` -- Vimeo isn't excluded there
+        today -- but a Vimeo page's captions can't be fetched from Render
+        either (CLAUDE.md: Vimeo is tier 2, same as YouTube, since
+        2026-09-26), so it's excluded from this count too rather than
+        counted as ready work the cloud worker can't actually finish."""
+        from scripts import fetch_youtube_transcripts as fetch
+
+        d = self.state.data
+        now = time.time()
+        if d.get("direct_backlog_checked_at", 0) + DIRECT_BACKLOG_CACHE_SECONDS > now:
+            return d["direct_backlog_count"]
+        async with session.get(
+            f"{fetch._base_url()}/internal/transcription-backlog",
+            headers=fetch._headers(),
+            timeout=aiohttp.ClientTimeout(total=120),
+        ) as r:
+            r.raise_for_status()
+            data = await r.json()
+        count = sum(
+            1
+            for p in data.get("pages", [])
+            if (p.get("platform") or "") not in ("youtube", "vimeo")
+        )
+        d["direct_backlog_count"] = count
+        d["direct_backlog_checked_at"] = now
+        return count
+
+    async def lane_direct(
+        self, session: aiohttp.ClientSession
+    ) -> Tuple[bool, Optional[float]]:
+        """WO-1168 (2026-09-29): feeds the tier-3 queue's non-YouTube,
+        non-Vimeo lines straight to the Archive from this Mac -- see this
+        module's own docstring for why (the GitHub feed can't reach most
+        of them). Demand-gated by `_direct_backlog_count()`: returns
+        (False, None) -- "not touched" -- whenever the cloud workers
+        already have `direct_low_water` or more non-YouTube, non-Vimeo
+        pages waiting, so other lanes get a turn and the tick idles as
+        normal rather than this lane always winning the race."""
+        from scripts import feed_tier3_auto_transcription as feed
+
+        if not QUEUE_FILE.exists():
+            return False, None
+
+        if await self._direct_backlog_count(session) >= self.direct_low_water:
+            return False, None
+
+        fed = self.state.data["fed"]
+        parked = self.state.data["direct_parked"]
+        todo = None
+        for raw in QUEUE_FILE.read_text().splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            url, src, gov_id = feed._parse_queue_line(line)
+            if url in fed or url in parked:
+                continue
+            keep, _ = _classify_queue_url(url)
+            if keep:
+                continue  # youtube/vimeo/delegating -- lane_feed's job, not this one
+            todo = (url, src, gov_id)
+            break
+        if todo is None:
+            return False, None
+
+        url, src, gov_id = todo
+        if self.dry_run:
+            result = f"[DRY-RUN] would feed {url}"
+        else:
+            result = await feed._push_if_has_video(
+                session,
+                url,
+                src,
+                gov_id,
+                probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH,
+            )
+        if is_block_text(result):
+            return True, self._block("blocked_until", "block_level", result)
+
+        # A [NO-OWNER] line or one route_kept_line() would keep (a
+        # YouTube-bot-wall or GitHub-unreachable result) is a real,
+        # fixable gap, not a dead line -- park it (skip, don't drop) the
+        # same way main() in feed_tier3_auto_transcription.py keeps these
+        # in its own queue rotation instead of dropping them.
+        if result.startswith("[NO-OWNER]") or feed.route_kept_line(result) is not None:
+            parked.append(url)
+            self.state.bump("direct_parked")
+            logger.info("direct   PARKED   %s", result[:180])
+        else:
+            fed[url] = result[:200]
+            if result.startswith("[OK]"):
+                self.state.bump("direct_ok")
+                self.state.data["direct_backlog_count"] = max(
+                    0, self.state.data.get("direct_backlog_count", 0) - 1
+                )
+            else:
+                self.state.bump("direct_skipped")
+            logger.info("direct   %s", result[:180])
+        self.state.data["block_level"] = 0
         return True, None
 
     async def _dead_video_followup(
@@ -1096,6 +1253,12 @@ class Drip:
             order.append(self.lane_vimeo)
         if "feed" in self.lanes:
             order.append(self.lane_feed)
+        # WO-1168: right after feed -- both work the same queue file, and
+        # feed (YouTube/Vimeo-shaped lines) should get first look on a
+        # tick where both have work, since only the drip Mac can claim
+        # those at all.
+        if "direct" in self.lanes:
+            order.append(self.lane_direct)
         if "audio" in self.lanes:
             order.append(self.lane_audio)
         if "leads" in self.lanes:
@@ -1289,6 +1452,7 @@ async def run(args) -> None:
         spacing=args.spacing_seconds,
         model_size=args.model_size,
         cpu_threads=args.cpu_threads,
+        direct_low_water=args.direct_low_water,
     )
     drip.fed_pages_csv = state_dir / "fed_pages.csv"
     drip.dead_videos_csv = state_dir / "dead_videos.csv"
@@ -1339,14 +1503,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--lanes",
         default="captions,feed,audio",
         help=(
-            "comma-separated subset of captions,feed,audio,leads,vimeo -- "
-            "vimeo (WO-1147) is opt-in and NOT in the default, since it is "
-            "a new lane Ryan should add explicitly the first time it's "
-            "wanted (e.g. --lanes captions,feed,audio,vimeo)"
+            "comma-separated subset of captions,feed,audio,leads,vimeo,direct "
+            "-- vimeo (WO-1147) and direct (WO-1168) are opt-in and NOT in "
+            "the default, since each is a new lane Ryan should add "
+            "explicitly the first time it's wanted (e.g. "
+            "--lanes captions,feed,audio,vimeo,direct)"
         ),
     )
     p.add_argument("--spacing-seconds", type=float, default=SPACING_SECONDS)
     p.add_argument("--audio-per-day", type=int, default=AUDIO_DOWNLOADS_PER_DAY)
+    p.add_argument(
+        "--direct-low-water",
+        type=int,
+        default=DEFAULT_DIRECT_LOW_WATER,
+        help=(
+            "direct lane only: feed while fewer than this many non-YouTube, "
+            "non-Vimeo pages are waiting for a transcript "
+            "(GET /internal/transcription-backlog)"
+        ),
+    )
     p.add_argument(
         "--model-size",
         default=None,
