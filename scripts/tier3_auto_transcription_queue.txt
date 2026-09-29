@@ -1088,3 +1088,5 @@ https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/104
 https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1031147	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/videos	rtr:us:pa:university-area-joint-authority
 https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1029054	https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/videos	rtr:us:ma:shrewsbury-housing-authority
 https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/media/1044891	https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/videos	rtr:us:ma:fitchburg-housing-authority
+https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1030659	https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/videos	rtr:us:ma:billerica-housing-authority
+https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1042146	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	rtr:us:ca:sewer-authority-mid-coastside
