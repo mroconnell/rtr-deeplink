@@ -1140,3 +1140,16 @@ https://lagrangeil.gov/CivicMedia?VID=Village-of-La-Grange-Board-Meeting-April-2
 https://co.valencia.nm.us/CivicMedia?VID=20150909-Public-Hearing-Business-Meeting-4	https://co.valencia.nm.us/CivicMedia?CID=Board-of-County-Commissioners-1	us:county:35061
 https://drive.usercontent.google.com/download?id=1dHIHjMENUePKxMLJI0woirgG0sidbTg3&export=download&confirm=t		us:sd:0903420
 https://drive.usercontent.google.com/download?id=1HZXugwu7qW5jH0CPvrMf3OLLzyqImOwp&export=download&confirm=t		us:sd:3414100
+https://danvilleva.portal.civicclerk.com/event/2582/media		us:place:5121344
+https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=649		us:place:2410900
+https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2722		us:place:1263700
+https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412		us:place:1608830
+https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932		us:cousub:3602725978
+https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171		us:place:0604030
+https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=746		us:place:0640032
+https://buffalony.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3434		us:place:3611000
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782		us:county:34011
+https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns-river-water-management-district
+https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301		us:cousub:3400372360
+https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://recordings.camdencountymo.gov/Recordings/View/1352	us:county:29029
+https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
