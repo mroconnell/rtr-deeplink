@@ -9,10 +9,15 @@ import aiohttp
 
 from .base import AssetFinder
 from .granicus import US_STATE_ABBREVIATIONS
-from .models import ResolvedMeeting, TranscriptSegment
+from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils.tenant_key import MULTI_GOVERNMENT_TENANTS, telvue_org_token
 from ..utils import jurisdiction_enrich
-from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    is_likely_garbled,
+    parse_vtt,
+)
 
 logger = logging.getLogger("rtr_deeplink.telvue")
 
@@ -971,7 +976,12 @@ class TelvueAssetFinder(AssetFinder):
 
             segments: List[TranscriptSegment] = []
             transcript_language: Optional[str] = None
+            alternate_transcripts: List[AlternateTranscript] = []
             agenda_items: List[TranscriptSegment] = []
+            # Every caption track with real cues, in page order:
+            # (cues, detected_language, page_label).
+            caption_candidates: List[Tuple[list, Optional[str], str]] = []
+            caption_track_seen = False
 
             for track in entry.get("tracks", []):
                 track_url = track.get("file")
@@ -979,6 +989,7 @@ class TelvueAssetFinder(AssetFinder):
                     continue
                 absolute_url = urljoin(final_url, track_url)
                 if track.get("kind") == "captions":
+                    caption_track_seen = True
                     cues = await self._fetch_vtt(session, absolute_url)
                     if cues:
                         for cue in cues:
@@ -989,16 +1000,17 @@ class TelvueAssetFinder(AssetFinder):
                             )
                         cues = [c for c in cues if c["text"]]
                     if cues:
-                        segments = [TranscriptSegment(**cue) for cue in cues]
-                        transcript_language = TARGET_LANGUAGE
-                        if is_likely_garbled(cues, lang=transcript_language):
-                            transcript_warnings.append(
-                                "This transcript looks garbled at the source (not a parsing "
-                                "bug on our end) -- treat it as approximate. You can request "
-                                "a transcript from the audio instead."
+                        # Language comes from the cue text, never from the
+                        # page's label -- same stance as every other adapter
+                        # (a Granicus track labelled English was really
+                        # Spanish, Simi Valley clip 2840).
+                        caption_candidates.append(
+                            (
+                                cues,
+                                detect_language_from_texts(c["text"] for c in cues),
+                                (track.get("label") or "").strip().lower(),
                             )
-                    else:
-                        transcript_warnings.append(_NO_CAPTIONS_WARNING)
+                        )
                 elif track.get("kind") == "chapters":
                     cues = await self._fetch_vtt(session, absolute_url)
                     for cue in cues or []:
@@ -1007,6 +1019,58 @@ class TelvueAssetFinder(AssetFinder):
                             agenda_items.append(
                                 TranscriptSegment(**{**cue, "text": text})
                             )
+
+            # A page can list more than one caption track. Tahoe Truckee
+            # Media and Fitchburg Access TV list "English" then "Spanish"
+            # (TTUSD Trustees, media 1044135, read live 2026-09-29). This
+            # loop used to overwrite the transcript per track and label
+            # each one English, so the last track -- Spanish -- won, marked
+            # "en". Now: the track whose text reads as English is the
+            # transcript; the others ride along as alternate_transcripts
+            # under their own detected language. If no track reads as
+            # English, a track the page labels English is preferred, then
+            # the first; its language stays whatever the text says (None
+            # when too short to tell), never the label.
+            if caption_candidates:
+                chosen = (
+                    next(
+                        (c for c in caption_candidates if c[1] == TARGET_LANGUAGE),
+                        None,
+                    )
+                    or next(
+                        (
+                            c
+                            for c in caption_candidates
+                            if c[1] is None and c[2].startswith("english")
+                        ),
+                        None,
+                    )
+                    or caption_candidates[0]
+                )
+                cues, transcript_language, _label = chosen
+                segments = [TranscriptSegment(**cue) for cue in cues]
+                if transcript_language and transcript_language != TARGET_LANGUAGE:
+                    transcript_warnings.append(
+                        f"These captions appear to be in '{transcript_language}', not "
+                        f"'{TARGET_LANGUAGE}' -- no matching-language track was found "
+                        "for this meeting."
+                    )
+                if is_likely_garbled(cues, lang=transcript_language):
+                    transcript_warnings.append(
+                        "This transcript looks garbled at the source (not a parsing "
+                        "bug on our end) -- treat it as approximate. You can request "
+                        "a transcript from the audio instead."
+                    )
+                alternate_transcripts = [
+                    AlternateTranscript(
+                        language=lang,
+                        segments=[TranscriptSegment(**cue) for cue in alt_cues],
+                    )
+                    for alt_cues, lang, _ in caption_candidates
+                    if alt_cues is not cues
+                ]
+            elif caption_track_seen:
+                transcript_warnings.append(_NO_CAPTIONS_WARNING)
 
             if not video_url:
                 video_warnings.append("No video found on this TelVue page.")
@@ -1030,6 +1094,7 @@ class TelvueAssetFinder(AssetFinder):
             segments=segments,
             agenda_items=agenda_items,
             transcript_language=transcript_language,
+            alternate_transcripts=alternate_transcripts,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )

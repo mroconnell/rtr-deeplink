@@ -1702,6 +1702,14 @@ class TranscriptSegmentIn(BaseModel):
     speaker: Optional[str] = None
 
 
+class AlternateTranscriptIn(BaseModel):
+    # Mirrors app/platforms/models.py's AlternateTranscript: a second
+    # caption track the resolver found but did not make the transcript
+    # (a Spanish track next to an English one, say).
+    language: Optional[str] = None
+    segments: List[TranscriptSegmentIn] = []
+
+
 class IngestRequest(BaseModel):
     platform: str
     source_url: str
@@ -1724,6 +1732,12 @@ class IngestRequest(BaseModel):
     agenda_items: List[TranscriptSegmentIn] = []
     transcript_language: Optional[str] = None
     transcript_warnings: List[str] = []
+    # Mirrors ResolvedMeeting.alternate_transcripts. The resolver has sent
+    # it since that field existed; until 2026-09-29 this model had no
+    # matching field, so Pydantic dropped it and only one language ever
+    # reached the Archive. crud.ingest_resolution() stores each one as a
+    # non-default TranscriptVersion (see _store_alternate_transcripts()).
+    alternate_transcripts: List[AlternateTranscriptIn] = []
     # Mirrors ResolvedMeeting (app/platforms/models.py) -- previously
     # silently dropped by Pydantic on every ingest since MeetingPage had
     # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).

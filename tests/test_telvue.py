@@ -1556,3 +1556,90 @@ async def test_wo1100_a_station_name_never_stands_in_on_a_multi_government_stati
     with mock_session(routes):
         result = await TelvueAssetFinder().resolve(url)
     assert result.jurisdiction is None
+
+
+# A TelVue page with two caption tracks. Tahoe Truckee Media and
+# Fitchburg Access TV list "English" then "Spanish". Until 2026-09-29 the
+# adapter overwrote the transcript per track and labelled each one "en",
+# so the Spanish track won, labelled English (3 tier-1 ingests held for
+# it, rtr-business research 2026-09-29).
+#
+# The page HTML is real: TTUSD Trustees, Sept. 2, 2026 (media 1044135),
+# read live 2026-09-29. Its two signed caption links decode to
+# "primary-en-captions-...vtt" and "secondary-es-captions-...vtt".
+# The caption files themselves were not fetched for this fixture:
+# - the Spanish track holds this meeting's own first 10 real cues (text
+#   and start times from the 2026-09-29 local resolve; end times set to
+#   the next cue's start);
+# - the English track reuses the real Ashland TelVue captions above -- a
+#   different meeting, standing in for this one's English track.
+TTUSD_PAGE_URL = "https://videoplayer.telvue.com/player/EdhI2xtM1vAxHWMytVkqEFJ6vUupMLaS/media/1044135"
+TTUSD_EN_URL = (
+    "https://videoplayer.telvue.com/closed_captions/"
+    "W1siZiIsIjcxMmM0ODgwLTBiYTUtMDEzMi0xODI0LTUyNTQwMDQ3MTQ4ZS9mNWMyZTYxMi04NjVmLTRkMmYtYTA0NS0zMmY0Yjk3N2RjMGIvY2xvc2VkX2NhcHRpb25zL3ByaW1hcnktZW4tY2FwdGlvbnMtMTc4ODQ3ODM1Ni52dHQiXV0"
+    "?sha=7ac445195a61aa6d"
+)
+TTUSD_ES_URL = (
+    "https://videoplayer.telvue.com/closed_captions/"
+    "W1siZiIsIjcxMmM0ODgwLTBiYTUtMDEzMi0xODI0LTUyNTQwMDQ3MTQ4ZS9mNWMyZTYxMi04NjVmLTRkMmYtYTA0NS0zMmY0Yjk3N2RjMGIvY2xvc2VkX2NhcHRpb25zL3NlY29uZGFyeS1lcy1jYXB0aW9ucy0xNzg4NDc4NTM4LnZ0dCJdXQ"
+    "?sha=1273089e55fb224e"
+)
+
+
+def _ttusd_routes(en_text, es_text):
+    html = load_fixture("telvue", "ttusd_trustees_1044135_page.html")
+    return {
+        TTUSD_PAGE_URL: FakeResponse(status=200, text=html, url=TTUSD_PAGE_URL),
+        TTUSD_EN_URL: FakeResponse(status=200, text=en_text, url=TTUSD_EN_URL),
+        TTUSD_ES_URL: FakeResponse(status=200, text=es_text, url=TTUSD_ES_URL),
+    }
+
+
+async def test_resolve_two_caption_tracks_keeps_english_and_spanish_as_alternate():
+    en = load_fixture("telvue", "ashland_planning_1040134_captions.vtt")
+    es = load_fixture("telvue", "ttusd_trustees_1044135_captions_es.vtt")
+
+    with mock_session(_ttusd_routes(en, es)):
+        result = await TelvueAssetFinder().resolve(TTUSD_PAGE_URL)
+
+    assert result.transcript_language == "en"
+    assert result.segments[0].text == "Recording in progress."
+    assert len(result.segments) == 30
+
+    assert len(result.alternate_transcripts) == 1
+    alt = result.alternate_transcripts[0]
+    assert alt.language == "es"
+    assert alt.segments[0].text == "Buenas noches y bienvenidos."
+    assert len(alt.segments) == 10
+
+    # Checking Spanish as if it were English is what raised a false
+    # "garbled" warning on all 3 held meetings.
+    assert result.transcript_warnings == []
+
+
+async def test_resolve_two_caption_tracks_english_second_still_wins():
+    # Track order must not decide: serve Spanish text on the page's
+    # first ("English") link and English on its second.
+    en = load_fixture("telvue", "ashland_planning_1040134_captions.vtt")
+    es = load_fixture("telvue", "ttusd_trustees_1044135_captions_es.vtt")
+
+    with mock_session(_ttusd_routes(es, en)):
+        result = await TelvueAssetFinder().resolve(TTUSD_PAGE_URL)
+
+    assert result.transcript_language == "en"
+    assert result.segments[0].text == "Recording in progress."
+    assert [a.language for a in result.alternate_transcripts] == ["es"]
+
+
+async def test_resolve_only_spanish_captions_is_never_labelled_english():
+    # The English file comes back empty: the only usable track is Spanish.
+    # It becomes the transcript, labelled "es", with the not-English note.
+    es = load_fixture("telvue", "ttusd_trustees_1044135_captions_es.vtt")
+
+    with mock_session(_ttusd_routes("WEBVTT\n\n", es)):
+        result = await TelvueAssetFinder().resolve(TTUSD_PAGE_URL)
+
+    assert result.transcript_language == "es"
+    assert result.segments[0].text == "Buenas noches y bienvenidos."
+    assert result.alternate_transcripts == []
+    assert any("appear to be in 'es'" in w for w in result.transcript_warnings)

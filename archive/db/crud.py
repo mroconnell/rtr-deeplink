@@ -1406,8 +1406,10 @@ def _is_real_improvement(
     """True if a freshly-created TranscriptVersion (which always has real
     segments -- ingest_resolution() only creates one `if segments:`) is a
     genuine improvement over the page's current default, and should be
-    promoted over it. Narrowly scoped to the two confirmed real cases
-    (see BACKLOG_DONE.md): the default had no real segments at all, or it
+    promoted over it. Narrowly scoped to three cases (see
+    BACKLOG_DONE.md): an English version over a non-English default
+    (2026-09-29, Ryan's "default to English" call), and the two confirmed
+    real bugs: the default had no real segments at all, or it
     had segments but no detected language and the fresh one has one
     (exactly the Dublin, CA bug -- a Swagit page ingested before language
     detection was wired up for that adapter). Deliberately *not* a
@@ -1418,7 +1420,73 @@ def _is_real_improvement(
     """
     if not current_default.segments:
         return True
+    # 2026-09-29 (Ryan): English is the default on an Archive page. A
+    # fresh English version replaces a default in another known language
+    # -- e.g. a Spanish TelVue track that was the only one stored. The
+    # reverse never happens: a non-English push never unseats English.
+    if new_language == "en" and current_default.language not in (None, "en"):
+        return True
     return not current_default.language and bool(new_language)
+
+
+async def _store_alternate_transcripts(
+    session,
+    page_id: int,
+    alternates: list,
+    primary_language: Optional[str],
+    source: str,
+) -> None:
+    """Store each extra caption track from a push (ResolvedMeeting.
+    alternate_transcripts) as a non-default TranscriptVersion, so the
+    page's version picker can offer it. Added 2026-09-29 for TelVue pages
+    with an English and a Spanish track (Tahoe Truckee Media, Fitchburg
+    Access TV); every adapter that fills alternate_transcripts benefits.
+
+    Kept narrow so the picker never shows a wrong or confusing label:
+    - a track with no detected language is skipped (never guessed);
+    - a track in the primary track's own language is skipped (two
+      "English (sourced)" entries would be indistinguishable);
+    - only the first track per language is kept;
+    - an identical version already on the page (same language, source and
+      content) is not stored twice;
+    - never is_default: the primary track's own rules pick the default.
+    """
+    seen = {primary_language} if primary_language else set()
+    for alt in alternates:
+        language = alt.get("language")
+        alt_segments = alt.get("segments") or []
+        if not language or not alt_segments or language in seen:
+            continue
+        seen.add(language)
+        content_hash = _content_hash(alt_segments)
+        exists = (
+            (
+                await session.execute(
+                    select(TranscriptVersion.id).where(
+                        TranscriptVersion.meeting_page_id == page_id,
+                        TranscriptVersion.language == language,
+                        TranscriptVersion.source == source,
+                        TranscriptVersion.content_hash == content_hash,
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if exists is not None:
+            continue
+        session.add(
+            TranscriptVersion(
+                meeting_page_id=page_id,
+                language=language,
+                source=source,
+                is_default=False,
+                segments=alt_segments,
+                transcript_warnings=[],
+                content_hash=content_hash,
+            )
+        )
+    await session.flush()
 
 
 # WO-925: two caption sets count as "the same source recording" when their
@@ -1843,6 +1911,15 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 already = duplicate.transcript_warnings or []
                 if early and not any(_EARLY_TRUNCATION_MARKER in w for w in already):
                     duplicate.transcript_warnings = [*already, early]
+
+        if segments:
+            await _store_alternate_transcripts(
+                session,
+                page.id,
+                payload.get("alternate_transcripts") or [],
+                payload.get("transcript_language"),
+                source,
+            )
 
         if current_default is not None:
             if new_version_id is not None and _is_real_improvement(
