@@ -1,4 +1,4 @@
-"""WO-1158: eight CivicClerk sites that replaced a dead IQM2 site.
+"""WO-1158 and WO-1159: ten CivicClerk sites that replaced a dead IQM2 site.
 
 rtr-discovery found each one on 2026-09-29 by guessing its CivicClerk name
 and asking the live Events API (a real site answers 200, an unknown name 404).
@@ -19,6 +19,9 @@ PINS = [
     ("smithtownny.portal.civicclerk.com", "us:cousub:3610368000"),
     ("mundeleinil.portal.civicclerk.com", "us:place:1751349"),
     ("maitlandfl.portal.civicclerk.com", "us:place:1242575"),
+    # WO-1159: owner proven from agenda files, not event addresses.
+    ("moraineoh.portal.civicclerk.com", "us:place:3952010"),
+    ("merrillwi.portal.civicclerk.com", "us:place:5551250"),
 ]
 
 
