@@ -1181,3 +1181,5 @@ https://peoriail.portal.civicclerk.com/event/125/media		us:place:1759000
 https://eldoradoks.portal.civicclerk.com/event/1249/media		us:place:2020075
 https://perrysburgoh.portal.civicclerk.com/event/5067/media		us:place:3962148
 https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899		us:place:2607660
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	us:place:2026875
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	rtr:us:la:shreve-memorial-library
