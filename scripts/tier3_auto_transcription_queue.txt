@@ -1154,3 +1154,46 @@ https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://rec
 https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4	https://malegislature.gov/Events/Sessions/Detail/7791	us:state:25
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:cousub:2501717475
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20436	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:cousub:3611944842
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20434	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:place:3644831
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1008217	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:cousub:5000140075
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1007780	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:cousub:5000145550
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1041367	https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/videos	us:place:0850920
+https://videoplayer.telvue.com/player/_bwOHY2RsBTo1g8bdjAUi0sT-J5Z17fY/media/1046230	https://videoplayer.telvue.com/player/_bwOHY2RsBTo1g8bdjAUi0sT-J5Z17fY/videos	us:cousub:3403179460
+https://videoplayer.telvue.com/player/ta-8oL0q68i2d15NiIqIA62AjjgGbw7B/media/1044923	https://videoplayer.telvue.com/player/ta-8oL0q68i2d15NiIqIA62AjjgGbw7B/playlists/3882	us:place:3401960
+https://play.champds.com/gillettewy/event/964	https://campbellcowy.portal.civicclerk.com/event/6860/media	us:county:56005
+https://vimeo.com/1229193513	https://rowancountync.portal.civicclerk.com/event/407/media	us:county:37159
+https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch/media/487457	https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch/playlists/6243	rtr:us:ma:sandwich-housing-authority
+https://video.isilive.ca/download/bracebridge/2024-08-09%20Committee%20of%20Adjustment%20for%20Minor%20Variances%20Meeting.mp4	https://video.isilive.ca/bracebridge/2024-08-09%20Committee%20of%20Adjustment%20for%20Minor%20Variances%20Meeting.mp4.html	ca:csd:3544018
+https://video.isilive.ca/download/greencovesprings/2025-09-16Council.mp4	https://video.isilive.ca/play/greencovesprings/2025-09-16Council.mp4	us:place:1227400
+https://video.isilive.ca/download/miramichi/2025-04-29.mp4	https://video.isilive.ca/play/miramichi/2025-04-29.mp4	ca:csd:1309050
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19629	https://reflect-miami-valley-cc.cablecast.tv/CablecastPublicSite/	us:place:3913190
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20087	https://reflect-miami-valley-cc.cablecast.tv/CablecastPublicSite/	us:place:3952010
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20085	https://reflect-miami-valley-cc.cablecast.tv/CablecastPublicSite/	us:place:3983090
+https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://reflect-portchesterny.cablecast.tv/CablecastPublicSite/	us:place:3659223
+https://reflect-witn.cablecast.tv/internetchannel/show/5103	https://reflect-witn.cablecast.tv/CablecastPublicSite/	us:place:1077580
+https://reflect-fitchburg.cablecast.tv/internetchannel/show/17775	https://reflect-fitchburg.cablecast.tv/CablecastPublicSite/	us:place:5525950
+https://reflect-communitytv.cablecast.tv/internetchannel/show/3446	https://reflect-communitytv.cablecast.tv/CablecastPublicSite/	us:place:0611040
+https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1047270	https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/videos	us:cousub:5002144125
+https://uplandca.new.swagit.com/videos/399307	https://uplandca.new.swagit.com/views/	us:place:0681344
+https://deerfield.granicus.com/MediaPlayer.php?view_id=8&clip_id=1151	https://deerfield.granicus.com/ViewPublisher.php?view_id=8	us:cousub:3916521238
+https://webstreaming.ctv15.org/meetings/AHEDA_2026-09-14.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8770	us:place:2702026
+https://webstreaming.ctv15.org/meetings/FHWS_2026-08-26.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8734	us:place:2720420
+https://webstreaming.ctv15.org/meetings/LDCC_2026-09-08.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8752	us:place:2735738
+https://webstreaming.ctv15.org/meetings/MVCH_2026-08-18.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8716	us:place:2744530
+https://webstreaming.ctv15.org/meetings/NBPC_2026-09-15.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8774	us:place:2745430
+https://webstreaming.ctv15.org/meetings/NOCC_2026-09-10.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8761	us:place:2747104
+https://webstreaming.ctv15.org/meetings/NSPHRA_2026-09-01.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8739	us:place:2747221
+https://webstreaming.ctv15.org/meetings/RVEDA_2026-09-21.mp4	https://webstreaming.ctv15.org/viewer.php?streamid=8787	us:place:2755852
+https://jacksonms.new.swagit.com/videos/400748		us:place:2836000
+https://pub-whiterockcity.escribemeetings.com/Meeting.aspx?Id=206c1a35-a76b-4cf2-a8cb-af37766e0e81		ca:csd:5915007
+https://gardenridgetx.portal.civicclerk.com/event/847/media		us:place:4828248
+https://howardlakemn.portal.civicclerk.com/event/1147/media		us:place:2730284
+https://lancastertx.new.swagit.com/videos/399578		us:place:4841212
+https://burtonmi.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:2612060
+https://belfastme.new.swagit.com/videos/354351		us:place:2303950
+https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996		ca:csd:3506008
+https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860
+https://cloud.castus.tv/vod/waycam/video/6ab6b776d429e50002526374?page=HOME		us:cousub:2501773790
+https://copleytwpoh.portal.civicclerk.com/event/214/media		us:cousub:3915318658
+https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4537		us:county:27067

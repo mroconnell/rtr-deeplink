@@ -692,7 +692,12 @@ async def test_resolve_falls_back_to_known_org_token_for_gardner_ma():
     with mock_session(routes):
         result = await TelvueAssetFinder().resolve(url)
 
-    assert result.jurisdiction == "Gardner, MA"
+    # 2026-09-29 (route_resolved): this key is now on MULTI_GOVERNMENT_TENANTS
+    # (Gardner Educational Television also carries the Gardner School
+    # Committee), so the known-org fallback no longer names one city; the
+    # whole-key pin to Gardner city and a per-video pin for the school
+    # district name the government. Same change as Leominster above.
+    assert result.jurisdiction is None
 
 
 async def test_resolve_falls_back_to_known_org_token_for_stoughton_wi():
