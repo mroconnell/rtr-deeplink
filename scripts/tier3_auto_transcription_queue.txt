@@ -1157,6 +1157,9 @@ https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:co
 https://reflect-wareham.cablecast.tv/internetchannel/show/12763?site=2	https://reflect-wareham.cablecast.tv/	us:cousub:2502372985
 https://reflect-ncmhub.cablecast.tv/internetchannel/show/13989	https://reflect-ncmhub.cablecast.tv/	us:place:2545245
 https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599	https://liveoaktx.granicus.com/ViewPublisher.php?view_id=1	us:place:4843096
+https://reflect-chabot.cablecast.tv/internetchannel/show/18519		rtr:us:ca:chabot-las-positas-ccd
+https://collincollegetx.new.swagit.com/videos/401833		rtr:us:tx:collin-college
+https://polk.granicus.com/MediaPlayer.php?view_id=1&clip_id=1		rtr:us:fl:polk-state-college
 https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20436	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:cousub:3611944842
 https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20434	https://reflect-vod-lmctv.cablecast.tv/CablecastPublicSite/	us:place:3644831
 https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1008217	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:cousub:5000140075
