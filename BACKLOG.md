@@ -190,8 +190,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (26)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
+  [HUMAN] WO-1165: 17 CivicMedia pages need a title refresh, a hand…
   [HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely"…
   [HUMAN] Decide which hidden transcript versions to promote (WO-928…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
@@ -220,7 +221,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (26)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (225)
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
   [NEEDS-AUDIT] Pages cooled down by the now-retired GitHub Actions…
   [NEEDS-AUDIT] A real platform adapter's OWN aiohttp session still…
@@ -393,7 +394,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (56)
+  Adapter & platform gaps  (57)
+    [NEEDS-AUDIT] A bare TikiLive embed still gets no title; the…
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -2112,6 +2114,13 @@ of human step they need.
   - **Next action**: deploy the Archive with WO-1055. Then, on the Archive's Render shell: `python scripts/wo1055_prepare_worklist.py` (read-only), `python scripts/repair_wrong_pages.py run reports/wo1055_worklist.csv` (dry run; Ryan approved all three deletes, 1171, 3964 and 5775, so the rows come out approved), then `run ... --apply --allow-deletes`, then one more `run` to see every row "already done".
   - **Constraint**: the rekeys to the new ids fail until the deploy is live (the Archive checks the id exists). Deletes go after the deploy so the `_SLUG_REDIRECTS` entries are already live.
   - **History**: `BACKLOG_DONE.md` WO-1055.
+
+- **[HUMAN] WO-1165: 17 CivicMedia pages need a title refresh, a hand title, or a new address after the resolver deploy.**
+  - **Issue**: WO-1165 makes a government's CivicMedia page give its own title. Pages already in the Archive keep their old title until re-resolved, and a page's address (slug) never changes on its own. `BACKLOG_DONE.md` WO-1165 lists the 17 pages with a proposed fix for each.
+  - **Impact**: 6 pages have no title or a file-name title (`/m/rosetown-sk` has none; `/m/east-baton-rouge-parish-la` reads "BudgetHearing_11292022"). 11 more have a right title under an address that reads wrong or is just the place (`/m/davie-fl`, `/m/seagoville-tx-2025-05-19-regular-session-part-3`).
+  - **Next action**: (1) deploy the resolver. (2) Refresh Isanti County's page (`POST /api/refresh-archived-page` with its source URL); optionally preview all 30 government-page CivicMedia pages with `scripts/backfill_archived_pages.py --platform civicmedia --dry-run`. (3) Ryan gives titles for the 3 untitled or file-name bare embeds (Rosetown, East Baton Rouge, Fort Madison); re-ingest each with that title, as the 2026-09-29 routing round did. (4) For each address change Ryan approves: add the old-to-new pair to `_SLUG_REDIRECTS` in `archive/main.py`, deploy the Archive, then run `POST /internal/admin/reslug-page` (dry run, then `dry_run=false`) straight after.
+  - **Constraint**: never deploy a `_SLUG_REDIRECTS` entry without running its rename straight after. `/m/{slug}` checks the redirect first, so the old address 301s to a new one that 404s until the rename runs. The rename preview does not check for a clash with another page's address (WO-942), so compare each result with its preview. Keep TikiLive requests few while the CivicMedia number walk runs: each refresh fetches one TikiLive page.
+  - **History**: `BACKLOG_DONE.md` WO-1165.
 
 - **[HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely" matches, 230 TBD, and one confirmed body with no registry row.**
   - **Issue**: WO-1162 made a CivicMedia channel number (chid) a tenant key and pinned the 378 channels the 2026-09-29 research confirmed. It left out every "likely" and TBD match, on purpose. The one confirmed channel it could not pin is 91580, the Roosevelt Island Operating Corporation (NY): it has no registry row.
@@ -5068,6 +5077,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `BACKLOG_DONE.md` since nothing is fixed yet.
 
 ### Adapter & platform gaps
+
+- **[NEEDS-AUDIT] A bare TikiLive embed still gets no title; the government's own title needs its `VID=` page, which the embed cannot name.**
+  - **Issue**: a bare embed (`civplus.tikiliveapi.com/embed?...videoId=`) names no video. WO-1165 left it untitled on purpose. Two possible sources: TikiLive's own `/video/{videoId}` page, whose `<title>` gave a name for all 287 videos the 2026-09-29 routing round read (one extra request, same host, but it is the upload's name and can be a file name), or the government's `/CivicMedia?VID=` page (the real title, but `VID=` is a separate id, so it needs the government's listing pages, which show only the newest few videos).
+  - **Impact**: every bare embed ingested without a hand title lands with no title and an address that is just the place (`/m/rosetown-sk`). 10 of the Archive's 40 CivicMedia pages are bare embeds.
+  - **Next action**: decide whether the TikiLive `/video/{id}` name, filtered by `looks_like_file_name()`, is better than no title. If yes, add that one fetch to `resolve()` for bare embeds only.
+  - **Constraint**: keep TikiLive requests low while a CivicMedia number walk is running on the same host.
+  - **History**: `BACKLOG_DONE.md` WO-1165; `app/platforms/civicmedia.py` "Which title".
 
 - **[JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured signals into a passive, one-fetch pass over the unknown-platform domains.**
   - **Note (WO-268, 2026-09-12)**: this entry's own heading named itself

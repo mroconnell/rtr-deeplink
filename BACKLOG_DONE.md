@@ -1,5 +1,83 @@
 # Backlog — done
 
+## WO-1165: a government's CivicMedia page gives the meeting its own title, not the player's [Done 2026-09-29]
+
+**Why this ran.** The 2026-09-29 CivicMedia routing round (rtr-business `research/slug_learning_2026-09-27/civicmedia_channels/routing/`, "Cautions") found wrong titles. The adapter took the title from the TikiLive player, the iframe's `title` attribute. That is the upload's name. It can be an old file name ("DHHS_Amy_video060923"), a recorder's default ("Autorecord Sep 22 2026, 08:08 AM"), or the wrong part ("Part 3" on the Part 2 page). The government's own page names the meeting in its `og:title`. The round fixed 12 pages by hand; their addresses kept the old names.
+
+**The fix.** `app/platforms/civicmedia.py`, new `_title_from_page()`. On a government's `/CivicMedia?VID=` page the title is, in order:
+
+1. The page's `og:title`. CivicPlus cuts it at 50 characters. When the player title is the same words, only longer, the player's full version is used.
+2. The page's `<title>`, minus " • {site} • CivicEngage". On every page seen so far this leaves only "CivicMedia™", which is skipped. It is a safety net.
+3. The player title, as before.
+
+A title that looks like a file name is skipped at each step (`looks_like_file_name()`): it has an underscore, has no space, carries a video or audio extension, or starts with "Autorecord". If all three look like file names, the first non-empty one is kept. A weak title beats none, because an untitled page gets an address that is just the place name.
+
+A bare TikiLive embed is unchanged: no title. Getting the government's title for one needs the government's `VID=` page, and the embed cannot name it. That is a follow-up in `BACKLOG.md`.
+
+**Tests.** `tests/test_civicmedia.py`, with three real government pages saved 2026-09-29 (`tests/fixtures/civicmedia/README.md`):
+
+| Test | Page | Title before | Title now |
+|---|---|---|---|
+| Good og:title | Hobart, IN | Park Board 08-10-26 | Park Board 08-10-26 |
+| File-name player title, good page title | Isanti County, MN | Autorecord Jul 14 2026, 10:18 AM | Live Stream Committee of the Whole - July 14, 2026 |
+| Part 2 / Part 3 mismatch | Seagoville, TX | 2025-05-19 Regular Session (Part 3) | 2025-05-19 Regular Session (Part 2) |
+| og:title cut at 50 characters | St. Joseph, MO | St. Joseph Stormwater Protection and Inspection Meeting 2025 | the same |
+| Bare embed | TikiLive video 160547 | none | none |
+
+Two synthetic tests cover a page with no `og:title` and a page where every title is a file name (Northampton, MA's real values). A table test runs `looks_like_file_name()` on 11 real titles. Full suite: 8,440 passed, 18 skipped, 4 xfailed. `ruff check` and `ruff format --check` pass.
+
+**Pages already in the Archive.** Read on 2026-09-29 from the Archive's read-only `/internal/pages/all-urls`: 40 CivicMedia pages, 30 from a government's page and 10 from a bare embed. The new addresses below are dry-run previews from `/internal/admin/reslug-page?dry_run=true`, built from each page's title today. Nothing was written.
+
+17 pages need something:
+
+| Page now | Title now | Problem | Proposed fix | New address (preview) |
+|---|---|---|---|---|
+| /m/rosetown-sk | none | Bare embed, no title; address is the place | Ryan gives a title; re-ingest with it; rename | preview after the new title |
+| /m/east-baton-rouge-parish-la | BudgetHearing_11292022 | Bare embed, file-name title; address is the place | Ryan gives a title; re-ingest with it; rename | preview after the new title |
+| /m/fort-madison-ia | Autorecord Sep 1, 2026 08:08 PM | Bare embed, recorder's name; address is the place | Ryan gives a title; re-ingest with it; rename | preview after the new title |
+| /m/isanti-county-mn-autorecord-jul-14-2026-10-18-am | Autorecord Jul 14 2026, 10:18 AM | Government page, player title | `/api/refresh-archived-page` after the deploy; then rename | preview after the refresh |
+| /m/chanute-ks-cm011226 | cm011226 | The city's own page title is the file name too | Leave, or Ryan gives a title | none |
+| /m/northampton-ma-dhhs-amy-video060923 | BOH_011923 | Title is the city's own; address from the old player name | Rename | northampton-ma-boh-011923 |
+| /m/davie-fl | ITN-RM-22-17 Review Committee Meeting | Address is the place | Rename | davie-fl-itn-rm-22-17-review-committee-meeting |
+| /m/archuleta-county-co | 3-13-2023 Health Department Transitional Committee | Address is the place | Rename | archuleta-county-co-3-13-2023-health-department-transitional-committee |
+| /m/corsicana-tx | City Council Meeting Sep 15 2026 | Address is the place | Rename | corsicana-tx-city-council-meeting-sep-15-2026 |
+| /m/grandview-tx | City Council Meeting 02.09.23 | Address is the place | Rename | grandview-tx-city-council-meeting-02-09-23 |
+| /m/enumclaw-school-district-wa | August 17, 2026 - Regular Meeting | Address is the place | Rename | enumclaw-school-district-wa-august-17-2026-regular-meeting |
+| /m/rantoul-village-il | Electoral Board Hearing 011723 | Address is the place | Rename | rantoul-village-il-electoral-board-hearing-011723 |
+| /m/st-clair-shores-mi-autorecord-sep-22-2026-08-08-am | City Council Meeting - Sep. 21, 2026 | Address from the recorder's name | Rename | st-clair-shores-mi-city-council-meeting-sep-21-2026 |
+| /m/phillipsburg-city-ks-autorecord-sep-08-2026-06-55-pm | City Council Meeting - September 8, 2026 | Address from the recorder's name | Rename | phillipsburg-city-ks-city-council-meeting-september-8-2026 |
+| /m/seagoville-tx-2025-05-19-regular-session-part-3 | 2025-05-19 Regular Session (Part 2) | Address says Part 3 | Rename | seagoville-tx-2025-05-19-regular-session-part-2 |
+| /m/20260908-council-meeting | 20260908 Council Meeting | Address has no place | Rename | englewood-oh-20260908-council-meeting |
+| /m/graham-county-az-swfrs-public-scoping-mtg-recording-05-13-23-mp4 | SWFRS Public Scoping Mtg Recording 05-13-23 (MP4) | Address ends "-mp4" (cosmetic) | Optional rename | no preview taken |
+
+The same 17, by fix:
+
+| Proposed fix | Count of 17 |
+|---|---|
+| Rename only | 11 |
+| Ryan gives a title, re-ingest, then rename | 3 |
+| Refresh after the deploy, then rename | 1 |
+| Rename only; title stays the city's own file name (Northampton) | 1 |
+| Leave, or Ryan gives a title (Chanute) | 1 |
+| **Total** | **17** |
+
+A refresh cannot fix a bare-embed page: it re-resolves the embed, gets no title, and the Archive keeps the old one (`page.title = payload.get("title") or page.title`). A re-ingest of the government's own `VID=` page would work too, if one is found: it matches the page by `external_id` (`civicmedia:{videoId}`) and updates its title.
+
+**Can an address change safely?** Yes, with the existing by-hand rename, as WO-941/942 did for 30 pages:
+
+1. `POST /internal/admin/reslug-page` (token-gated; dry run by default) rebuilds the address from the page's current place, date and title.
+2. An entry in `_SLUG_REDIRECTS` (`archive/main.py`) makes the old address answer 301 to the new one, so shared links and search results still land.
+3. Saved meetings point at the page id, not the address, so accounts are not affected.
+4. `hub_slug_aliases.csv` is for `/j/` government hub addresses, not `/m/` pages. It is not needed here.
+
+**Caution.** The order matters. `/m/{slug}` checks `_SLUG_REDIRECTS` first, so a deployed redirect sends readers to a new address that 404s until the rename runs. Deploy the redirects and run the renames together. The preview does not check for a clash with another page's address (WO-942), so compare each result with its preview. No redirect is added in this PR for that reason: the renames wait for Ryan.
+
+**Caution.** After the deploy, a refresh changes some titles that were fine. Willistown township, PA's page would go from "June 26, 2023 Special Meeting Regarding Sewer Studies" (player) to "June 26, 2023 Sewer Studies Special Meeting" (the township's own). The address does not change.
+
+**Live reads.** Five government pages, one at a time, at least 4 seconds apart, generic User-Agent: Isanti County, Chanute, Englewood, Seagoville, St. Joseph. No TikiLive request.
+
+**Open.** The page fixes: `BACKLOG.md`'s WO-1165 entry. A title for bare embeds: `BACKLOG.md`'s "A bare TikiLive embed still gets no title" entry.
+
 ## WO-1164: the Archive's version picker names every language the detector can return [Done 2026-09-29]
 
 **Why this ran.** After the WO-1160 repair, the picker on Alexandria City Public Schools' page listed two versions as "ar (sourced)" and "fa (sourced)". The name table in `archive/utils/language.py` held only English and Spanish.

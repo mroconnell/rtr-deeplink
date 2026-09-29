@@ -34,8 +34,10 @@ captioned meeting.
    fetching the page and reading its iframe: `<iframe id="videoPlayer"
    title="Video - Park Board 08-10-26" src="https://civplus.tikiliveapi.
    com/embed?scheme=embedVod&videoId=160547&autoplay=yes">` -- the
-   iframe's own `title` attribute is the real per-video title, no JS
-   execution needed to read either. The same page also lists up to
+   iframe's own `title` attribute is the TikiLive upload's name, no JS
+   execution needed to read either (the page's `og:title` is the
+   government's own name for the meeting and now comes first -- see
+   "Which title" below). The same page also lists up to
    several *other* recent CivicMedia videos on the same tenant as plain
    `<a href="/CivicMedia.aspx?VID=...">` links with real title+duration
    text (e.g. "55:04 HSD Meeting 7-28-2026") -- see `passive_verify.py`'s
@@ -120,6 +122,46 @@ skipped: the 2026-09-29 number walk found videos from many owners in it
 channel matches, confirmed ones only (rtr-business
 `research/slug_learning_2026-09-27/civicmedia_channels/`).
 
+## Which title (WO-1165, 2026-09-29)
+
+Until WO-1165 the title came from the player: the iframe's `title`
+attribute, "Video - {name}". That name is the TikiLive upload's name,
+not the government's. The 2026-09-29 CivicMedia routing round (rtr-
+business `research/slug_learning_2026-09-27/civicmedia_channels/
+routing/`) read 35 government `VID=` pages. On 11 of them both titles
+were present and they differed. Real cases:
+
+| Page | Government's og:title | Player title |
+|---|---|---|
+| Isanti County, MN, `VID=461` | Live Stream Committee of the Whole - July 14, 2026 | Autorecord Jul 14 2026, 10:18 AM |
+| Seagoville, TX, `VID=...-719` | 2025-05-19 Regular Session (Part 2) | 2025-05-19 Regular Session (Part 3) |
+| Northampton, MA, `VID=BOH_011923-13` | BOH_011923 | DHHS_Amy_video060923 |
+| St. Joseph, MO, `VID=...-1` | St. Joseph Stormwater Protection and Inspection Me | St. Joseph Stormwater Protection and Inspection Meeting 2025 |
+
+So `_title_from_page()` now takes, in order:
+
+1. The page's `og:title`. CivicPlus cuts it at 50 characters (St.
+   Joseph above), so when the player title is the same words, only
+   longer, the player's full version is used instead.
+2. The page's `<title>`, minus the " • {site} • CivicEngage" suffix. On
+   every page seen so far that leaves just "CivicMedia™", which is
+   boilerplate and is skipped, so this step is a safety net only.
+3. The player title, as before.
+
+A title that looks like a file name is skipped at each step
+(`looks_like_file_name()`): it has an underscore, has no space, carries a
+video or audio extension (".m4v", Irwindale's player title), or starts
+with "Autorecord" (a recorder's default name: Isanti, Fort Madison,
+Corsicana, St. Clair Shores, Phillipsburg). If every step looks like a
+file name, the first non-empty one is kept anyway. A weak title beats
+none: a page with no title gets a slug that is just the place name.
+
+A bare TikiLive embed has no government page, so its title is unchanged:
+none. The embed page itself names no video. Getting the government's
+title for one would need the government's `VID=` page, and `VID=` is not
+derivable from TikiLive's `videoId` (see above), so there is no cheap
+lookup. `BACKLOG.md` carries this as a follow-up.
+
 ## What's still unconfirmed
 
 The adapter was built from one real tenant (Hobart, IN). By 2026-09-25
@@ -176,6 +218,13 @@ _CIVICENGAGE_TITLE_RE = re.compile(
     r"<title>[^<]*?\u2022\s*([^<\u2022]+?)\s*\u2022\s*CivicEngage\s*</title>",
     re.IGNORECASE,
 )
+
+# Title rules -- see "Which title" in the module docstring.
+_FILE_EXTENSION_RE = re.compile(
+    r"\.(?:mp4|m4v|mov|wmv|avi|mpe?g|flv|mkv|webm|mp3|wav|m4a)\b", re.IGNORECASE
+)
+_AUTORECORD_RE = re.compile(r"auto\s*-?\s*record", re.IGNORECASE)
+_BOILERPLATE_PAGE_TITLE_RE = re.compile(r"^CivicMedia\W*$", re.IGNORECASE)
 
 _M3U8_RE = re.compile(r"https?://[^\"'\s]*\.m3u8[^\"'\s]*")
 _CAPTION_TRACK_RE = re.compile(r"https?://[^\"'\s]*/closed-captions/[^\"'\s]*\.vtt")
@@ -260,6 +309,67 @@ def _jurisdiction_from_page(html: str, url: str) -> Optional[str]:
     return CivicPlusAssetFinder._jurisdiction_from_subdomain(url)
 
 
+def _clean_title(text: Optional[str]) -> Optional[str]:
+    """Unescaped, whitespace collapsed, None when empty. Real case: St.
+    Clair Shores' og:title is "City Council Meeting -  Sep. 21, 2026",
+    with two spaces."""
+    if not text:
+        return None
+    cleaned = re.sub(r"\s+", " ", html_module.unescape(text)).strip()
+    return cleaned or None
+
+
+def looks_like_file_name(title: Optional[str]) -> bool:
+    """True for a title that is really an upload's file name or a
+    recorder's default name -- see "Which title" in the module docstring
+    for the real cases behind each rule. An empty title counts too."""
+    if not title:
+        return True
+    if "_" in title or not re.search(r"\s", title):
+        return True
+    if _FILE_EXTENSION_RE.search(title):
+        return True
+    return bool(_AUTORECORD_RE.match(title))
+
+
+def _title_from_page(soup: BeautifulSoup, iframe) -> Optional[str]:
+    """The meeting's title on a government's own CivicMedia page -- see
+    "Which title" in the module docstring for the order and why."""
+    og = soup.find("meta", attrs={"property": "og:title"})
+    og_title = _clean_title(og.get("content") if og else None)
+
+    page_title = None
+    head_title = soup.head.find("title") if soup.head else soup.find("title")
+    if head_title is not None:
+        # "{page} • {site name} • CivicEngage" -- keep only the page part.
+        first = _clean_title(head_title.get_text().split("•")[0])
+        if first and not _BOILERPLATE_PAGE_TITLE_RE.match(first):
+            page_title = first
+
+    player_title = _clean_title(
+        re.sub(r"^\s*Video\s*-\s*", "", iframe.get("title") or "")
+    )
+
+    # CivicPlus cuts og:title at 50 characters. When the player's title
+    # is the same words, only longer, the player's is the full version.
+    if (
+        og_title
+        and player_title
+        and len(player_title) > len(og_title)
+        and player_title.casefold().startswith(og_title.casefold())
+    ):
+        og_title = player_title
+
+    candidates = [og_title, page_title, player_title]
+    for candidate in candidates:
+        if not looks_like_file_name(candidate):
+            return candidate
+    # Every candidate looks like a file name: keep the first one anyway.
+    # A weak title still beats none, because a page with no title gets a
+    # slug that is just the place name.
+    return next((c for c in candidates if c), None)
+
+
 def _embed_url_for_video_id(video_id: str) -> str:
     return (
         f"https://{_TIKILIVE_HOST}/embed?scheme=embedVod&videoId={video_id}&autoplay=no"
@@ -281,8 +391,8 @@ class CivicMediaAssetFinder(AssetFinder):
 
         if not is_tikilive_embed_url(url):
             # The government's own CivicMedia page -- fetch it for the
-            # real per-video title (the iframe's own `title` attribute,
-            # see module docstring) before following through to TikiLive.
+            # meeting's title ("Which title" in the module docstring) and
+            # the player iframe before following through to TikiLive.
             html, err = await _fetch(url)
             if err or html is None:
                 return ResolvedMeeting(
@@ -305,11 +415,7 @@ class CivicMediaAssetFinder(AssetFinder):
                         "its video player."
                     ],
                 )
-            raw_title = (iframe.get("title") or "").strip()
-            # Confirmed real shape: "Video - Park Board 08-10-26" -- the
-            # "Video - " prefix is TikiLive's own boilerplate, not part of
-            # the meeting's real title.
-            title = re.sub(r"^Video\s*-\s*", "", raw_title).strip() or None
+            title = _title_from_page(soup, iframe)
             embed_src = iframe.get("src")
             if not video_id and embed_src:
                 video_id = _video_id_from_url(urljoin(url, embed_src))
