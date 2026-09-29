@@ -5,10 +5,7 @@
 https://minotnd.portal.civicclerk.com/event/1586/media		us:place:3853380	Minot, ND	3:36:14	City Council Meeting
 http://sanjoaquincountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1114&MinutesItemID=59851&Format=Minutes&MediaPosition=8570.969		us:county:06077	San Joaquin County, CA	6:03:10	Board of Supervisors Regular Meeting
 http://sccgov.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=16823&MediaPosition=&ID=126983&CssClass=		us:county:06085	The County of Santa Clara, California	7:01:01	Board of Supervisors Regular Meeting
-http://sjrwmd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1175&Format=Agenda		rtr:us:fl:st-johns-river-water-management-district-florida	St. Johns River Water Management District, Florida	2:39:44	Governing Board Regular Meeting - City of Apopka City Hall
-http://southamptonny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=8488&MediaPosition=&ID=39402&CssClass=		rtr:us:ny:southampton-long-island-town	Town of Southampton, Long Island, NY	3:01:50	Town Board Regular Town Board Meeting
 https://sanramonca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=5139&MediaPosition=409.779&ID=4653&CssClass=		us:place:0668378	San Ramon, CA	2:48:53	City Council Regular Meeting
-https://shelbytownmi.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1502&Format=Agenda		us:place:2672840	Charter Township of Shelby, Michigan	2:06:56	Board of Trustees Regular
 https://suttercountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3029&Format=Agenda		us:county:06101	Sutter County, California	2:14:46	Board of Supervisors Regular Session
 https://walworthcowi.portal.civicclerk.com/event/2098/media		us:county:55127	Walworth County	1:32:52	February 11, 2026 America's 250th Anniversary Celebrations Committee
 https://losaltoshillsca.portal.civicclerk.com/event/4525/media		us:place:0643294	Los Altos Hills, CA	1:58:16	History Committee Regular Meeting
@@ -21,14 +18,14 @@ https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2264				5:00:
 https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=602		us:place:0609780	California City, CA	8:19:57	CITY COUNCIL MEETING - Aug 25th, 2026
 https://chccs.granicus.com/viewpublisher.php?view_id=2		rtr:us:nc:chapel-hill-carrboro-city-schools-board-of-education	Chapel Hill-Carrboro City Schools Board of Education, NC	8:00:06	Chapel Hill-Carrboro City Schools Board of Education
 https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3503		us:county:06065	Riverside County, California	1:51:43	(LAFCO) Riverside Local Agency Formation Commission Regular Meeting
-https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2315		rtr:us:nj:teaneck-township-new-jersey	Teaneck Township, New Jersey	2:16:56	Board of Adjustment Regular Meeting
+https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2315		us:cousub:3400372360	Teaneck Township, New Jersey	2:16:56	Board of Adjustment Regular Meeting
 https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=286		us:place:0608058	Brawley CA	1:42:15	City Council Regular Meeting
 https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=565757fe-623f-4170-8317-5ad08ad66f3d		ca:csd:4811049	City of Spruce Grove, AB	4:25:42	Regular Council Meeting
 https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1047		us:county:51079	Greene County, VA	31:16:54	School Board Meeting - February 18, 2025
 https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2886		us:cousub:3611951693	Town of North Castle, NY	4:11:18	Planning Board Meeting
 https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4721		us:place:4869140	South Padre Island, TX	2:52:56	CITY COUNCIL - Sep 2nd, 2026
 https://jupiterislandfl.portal.civicclerk.com/event/280/media		rtr:us:fl:hobe-sound	Hobe Sound, FL	2:42:51	Development Review Board
-https://bucoks.granicus.com/player/clip/652		us:county:20155	Reno County, KS	2:03:28	Board of County Commissioners
+https://bucoks.granicus.com/player/clip/652		us:county:20015	Reno County, KS	2:03:28	Board of County Commissioners
 https://mcphersoncoks.portal.civicclerk.com/event/553/media		us:county:20113	McPherson County, KS	1:47:05	Board of County Commissioners
 https://hebercityut.portal.civicclerk.com/event/546/media		us:place:4934200	Heber City, UT	4:29:40	City Council Work Meeting - REINSTATED
 https://portagecowi.portal.civicclerk.com/event/9410/media		us:county:55097	Portage County, WI	1:54:35	Human Resources Committee
@@ -47,13 +44,12 @@ https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1098		us:place:
 https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1088		us:place:1245975	Miramar, FL	3:18:36	CITY COMMISSION REGULAR MEETING on 2026-09-02 7:00 PM - REVISED - Sep 2nd, 2026
 https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=4560		us:place:1250575	City of Oakland Park, FL	3:49:24	Special Magistrate Hearing - Aug 20th, 2026
 https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1237		us:place:1269700	City of Sunrise, FL	5:15:59	City Commission Meeting
-https://martin.granicus.com/MediaPlayer.php?view_id=2&clip_id=5771		rtr:us:fl:martin-county-florida	Martin County, Florida	3:36:34	Board of County Commissioners on 2026-08-25 9:00 AM
 https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=586		us:county:37071	Gaston County, NC	1:32:14	2026-09-08 6:00 PM - Work Session (Non-Voting) - Sep 8th, 2026
 https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1134		us:county:37133	Onslow County, NC	2:02:07	Onslow County Board of Commissioners Regular Meeting
 https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8462		us:county:36119	Westchester County, NY	1:39:27	Social Services, Disabilities & Human Rights on 2026-08-31 10:00 AM - Joint w /B&A and I&H
 https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=869		us:place:4964340	Riverton, UT	3:36:33	City Council
-https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1533		rtr:us:va:chesterfield-county-virginia	Chesterfield County, Virginia	5:51:31	Board of Supervisors Evening Session - December 11, 2019 - Dec 11th, 2019
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1369		rtr:us:va:harrisonburg-city	The City of Harrisonburg, VA	2:39:40	City Council on 2025-12-09 7:00 PM
+https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1533		us:county:51041	Chesterfield County, Virginia	5:51:31	Board of Supervisors Evening Session - December 11, 2019 - Dec 11th, 2019
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1369		us:place:5135624	The City of Harrisonburg, VA	2:39:40	City Council on 2025-12-09 7:00 PM
 https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=255		us:place:5320750	City of Edmonds, WA	3:46:59	City Council - Regular Meeting
 https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=793		us:place:5566000	City of Racine	1:55:50	City of Racine | Votecast Web Session #1
 https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6861		us:place:5584250	City of Waukesha, WI	2:23:28	Finance Committee on 2026-09-08 6:00 PM
@@ -71,23 +67,18 @@ https://bainbridgeislandwa.portal.civicclerk.com/event/1071/media		us:place:5303
 https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3142		us:place:0604030	City of Barstow, California	3:28:34	City Council Joint Meeting Council/BFPD
 https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=894		us:place:2406925	Berwyn Heights, MD	2:09:15	Worksession - Aug 17th, 2026
 https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4999		us:place:0613210	City of Chino, CA	4:11:35	City Council on 2026-09-01 6:00 PM - Regular Meeting
-https://cityfortbragg.granicus.com/MediaPlayer.php?view_id=1&clip_id=1565		rtr:us:ca:fort-bragg-city	The City of Fort Bragg, CA	5:59:59	Special City Council - Nov 10th, 2025
 https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=828		us:place:2408775	City of Bowie, MD	3:12:08	Regular City Council Meeting
 https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244		us:place:0647710	City of Mill Valley, CA	2:48:01	Regular City Council Meeting (Adjusted for Labor Day)
 https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1026		us:place:4449960	City of Newport, RI	2:09:55	Newport City Council Workshop Short Term Rentals- Follow up from March 11, 2026 Council Meeting
 https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3664		us:place:0662896	City of Rosemead, CA	3:02:10	City Council Regular Meeting - Sep 8th, 2026
-https://college-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1726		rtr:us:md:college-park-city	The City of College Park, MD	3:26:43	Mayor and Council Meeting Sep 1 - Sep 2nd, 2026
 https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=777		us:place:0668252	City of San Mateo, CA	3:47:40	Planning Commission on 2019-04-23 7:00 PM - Regular Meeting - Apr 25th, 2019
-https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1785		rtr:us:nj:cumberland-county-new-jersey	Cumberland County, New Jersey	1:40:18	Board of County Commissioners Regular Board Meeting
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1785		us:county:34011	Cumberland County, New Jersey	1:40:18	Board of County Commissioners Regular Board Meeting
 https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1532		us:place:0622230	City of El Monte, CA	4:31:08	City Council Meeting 08/26/26
-https://lakehavasucity.granicus.com/player/clip/1475?view_id=3		rtr:us:az:lake-havasu-city	City of Lake Havasu, AZ	3:32:37	City Council on 2026-09-08 5:30 PM - Regular Meeting
 https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6076		us:place:2017800	City of Derby	1:52:55	City Council - 25 Aug 2026
 https://imperial.granicus.com/player/clip/2496		us:county:06025	County of Imperial, CA	3:23:30	Board of Supervisors
 https://jacksoncomi.portal.civicclerk.com/event/1092/media		us:county:26075	Jackson County, MI	3:53:39	Board of Commissioners Meeting
 https://leacountynm.portal.civicclerk.com/event/187/media		us:county:35025	Lea County, NM	3:04:26	Lea County Board of County Commissioners January 16, 2025 Regular Meeting
 https://albemarle.granicus.com/player/clip/1452				5:04:40	
-https://redmond.granicus.com/player/clip/3124?view_id=2		rtr:us:wa:redmond-city	The City of Redmond, WA	1:38:50	City Council on 2025-06-03 7:00 PM - Business Meeting
-https://morgantown.granicus.com/player/clip/897?view_id=2		rtr:us:wv:morgantown-city	The City of Morgantown, WV	3:41:35	City Council Committee of the Whole
 https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=109ce607-21c0-4495-9bfc-e2024d85afac&Agenda=Agenda		us:place:0660620	Richmond, CA	8:57:58	Special Closed Session
 https://harrisoncountyin.portal.civicclerk.com/event/1068/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/	us:county:18061	Harrison County, IN	2:09:38	September 9, 2026 Council Budget Session
 https://guadalupe.granicus.com/ViewPublisher.php?view_id=1	https://www.guadalupetx.gov/page/commcourt.agendas	us:county:48187	Guadalupe County	2:33:34	Main View - Granicus Content
@@ -444,7 +435,6 @@ https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2433		us:place:4938
 https://sanfordnc.portal.civicclerk.com/event/2015/media		us:place:3759280	Sanford, NC	0:57:16	
 https://parkcityut.portal.civicclerk.com/event/3936/media		us:place:4958070	Park City, UT	0:45:38	
 # 2026-09-11 WO-211b: owner-body videos over 90 min, parked until a shorter meeting from the same channel is found
-https://www.youtube.com/watch?v=6N4jEHd7zw8		rtr:ca:nb:cap-acadie	Cap-Acadie, NB	2:15:29	Reunion ordinaire 2026-08-11
 https://www.youtube.com/watch?v=AumDIgXZnBc		rtr:ca:ns:municipality-of-the-county-of-pictou	Municipality of the County of Pictou, NS	1:48:25	Council meeting 2025-11-18
 https://www.utah.gov/pmn/sitemap/notice/1103283.html			Department of Agriculture and Food, Utah	2:24:19	Utah Horse Racing Commission Meeting
 https://www.utah.gov/pmn/sitemap/notice/1092969.html			Department of Commerce, Utah	1:51:15	Committee of Consumer Services Meeting
@@ -562,7 +552,7 @@ https://www.utah.gov/pmn/sitemap/notice/1065953.html			San Juan County Transport
 https://www.utah.gov/pmn/sitemap/notice/1068391.html			Southeast Utah Health Department, Utah	1:39:08	Southeast Utah Board of Health Meeting
 https://www.utah.gov/pmn/sitemap/notice/1053403.html			TriCounty Health, Utah	2:16:31	Board of Health Meeting
 https://www.utah.gov/pmn/sitemap/notice/1074791.html			North View Fire Agency, Utah	2:17:00	Board Meeting
-https://www.utah.gov/pmn/sitemap/notice/1077855.html		us:place:4977890	Uintah County Conservation District, Utah	1:49:25	Monthly Meeting and Budget Hearing
+https://www.utah.gov/pmn/sitemap/notice/1077855.html		rtr:us:ut:uintah-county-conservation-district	Uintah County Conservation District, Utah	1:49:25	Monthly Meeting and Budget Hearing
 https://www.utah.gov/pmn/sitemap/notice/1087761.html			Shambip Soil Conservation District, Utah	1:53:20	Shambip Soil Conservation Meeting
 https://www.utah.gov/pmn/sitemap/notice/1088515.html			Willard Precinct Cemetery Maintenance District, Utah	2:27:43	Cemetery Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1065107.html		us:county:49049	Utah Board of Higher Education > Davis Technical College, Utah	1:36:59	Davis Technical College Board of Trustees Meeting
@@ -571,7 +561,6 @@ https://www.utah.gov/pmn/sitemap/notice/1066719.html			Early Light Academy at Da
 https://www.utah.gov/pmn/sitemap/notice/1068535.html			Scholar Academy, Utah	1:52:15	Scholar Academy Board of Directors Meeting
 https://www.utah.gov/pmn/sitemap/notice/1064549.html			Beaver County School District, Utah	4:19:28	Board Meeting March 10, 2026
 https://www.utah.gov/pmn/sitemap/notice/1066677.html			Dairy Commission, Utah	1:45:11	Joint Meeting Notice Regular Meeting of the Idaho Dairy Products Commission, Oregon Dairy Products Commission, Utah Dairy Commission, Washington Dairy Products Commission, and the Dairy West Board of Directors
-https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=861		us:place:2730392	Hugo city, MN	02:06:52	WO-217 found-alternate lead, over 90 min
 https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy	https://www.acnj.gov/pages/meeting-recordings	us:place:3402080	City of Atlantic City, NJ	1:46:41	City Council Meeting 08/19/26
 # WO-266 (2026-09-12, Ryan): queue lines for governments whose tenant site already has a live page with a real transcript, parked for depth later (breadth rule: one meeting per government first). gov_id/jurisdiction are the live page's. The four shared hosts (vimeo.com, cloud.castus.tv, videoplayer.telvue.com, play.champds.com) were left in the queue.
 https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656		ca:csd:3514004	Brighton, ON		
@@ -601,7 +590,7 @@ https://stcroixcountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=
 https://texarkanacitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1079&MediaPosition=1944.848&ID=1545&CssClass=		us:place:4872368	Texarkana, TX	1:07:18	
 https://tompkinscountyny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4213&MediaPosition=&ID=13804&CssClass=		us:county:36109	Tompkins County, NY	3:22:33	
 https://yuccavalleyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1335&MediaPosition=2805.288&ID=2233&CssClass=		us:place:0687056	Yucca Valley, CA	1:04:26	
-https://walworthcowi.portal.civicclerk.com/event/2599/media		us:place:5583250	Walworth (village), WI	0:26:31	
+https://walworthcowi.portal.civicclerk.com/event/2599/media		us:county:55127	Walworth (village), WI	0:26:31	
 https://cosumnescommunityservices.portal.civicclerk.com/event/562/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:37:47	
 https://neoshomo.portal.civicclerk.com/event/1340/media		us:place:2951572	Neosho, MO	0:00:57	
 https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954		us:county:06025	Imperial County, CA	1:28:53	
@@ -621,7 +610,7 @@ https://payson.granicus.com/MediaPlayer.php?view_id=2&clip_id=1271		us:place:045
 https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1532			San Mateo County Transit District	1:57:51	
 https://villagenpb.new.swagit.com/videos/399555		us:place:1249600	North Palm Beach, FL	1:12:31	
 https://winterparkfl.portal.civicclerk.com/event/2729/media		us:place:1278300	Winter Park, FL	0:17:21	
-http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1		rtr:unknown:agawamvod.cablecast.tv		0:59:56	
+http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1		us:place:2500840		0:59:56	
 https://westfargond.portal.civicclerk.com/event/1044/media		us:place:3884780	West Fargo, ND	1:09:02	
 https://centervilleut.portal.civicclerk.com/event/1700/media		us:place:4911980	Centerville, UT		
 https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas	us:place:0680854	Tustin, CA	0:12:36	
@@ -680,7 +669,7 @@ https://marysville.granicus.com/MediaPlayer.php?view_id=2&clip_id=664		us:place:
 https://mukilteo-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=2022		us:place:5347735	Mukilteo, WA	0:37:25	
 https://olympia.granicus.com/MediaPlayer.php?view_id=2&clip_id=3013		us:place:5351300	Olympia, WA	0:11:05	
 https://cityofpt.granicus.com/MediaPlayer.php?view_id=2&clip_id=3908		us:place:5355855	Port Townsend, WA		
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405		rtr:us:wa:redmond	The City of Redmond, WA	1:11:37	
+https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405		us:place:5357535	The City of Redmond, WA	1:11:37	
 https://sequim-wa.granicus.com/MediaPlayer.php?view_id=1&clip_id=723		us:place:5363385	Sequim, WA	1:22:14	
 https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292		us:county:53061	Snohomish County, WA	0:03:12	
 https://cityoftacoma.granicus.com/MediaPlayer.php?view_id=2&clip_id=7795		us:place:5370000	Tacoma, WA	0:25:12	
@@ -692,11 +681,9 @@ https://salem.cablecast.tv/internetchannel/show/19115			Salem	0:12:37
 https://sanbenitotx.new.swagit.com/videos/135693		us:place:4865036	San Benito, TX	0:01:54	
 https://sanjoseca.new.swagit.com/videos/304643		us:place:0668000	San Jose, CA	0:53:24	
 https://sanpatriciocountytx.new.swagit.com/videos/353476		us:county:48409	San Patricio County, TX	1:16:35	
-https://sapatv.cablecast.tv/internetchannel/show/35396?site=2		rtr:unknown:sapatv.cablecast.tv		1:15:29	
 https://scarsdaleny.new.swagit.com/videos/249667		us:place:3665431	Scarsdale, NY	1:27:34	
 https://sccoe.new.swagit.com/videos/247894/transcript		us:county:06085	Santa Clara County, CA	2:09:57	
 https://sccwi.portal.civicclerk.com/event/923/media		us:county:55109	St. Croix County, WI		
-https://scgtv.new.swagit.com/videos/27666		rtr:unknown:scgtv.new.swagit.com		3:45:45	
 https://schertztx.new.swagit.com/videos/381442		us:place:4866128	Schertz, TX	1:18:58	
 https://seasideheightsnj.new.swagit.com/videos/267408/download_section		us:place:3466450	Seaside Heights, NJ	0:17:30	
 https://sedonaaz.new.swagit.com/videos/06302022-516		us:place:0465350	Sedona, AZ	0:02:48	
@@ -738,7 +725,6 @@ https://costamesa.granicus.com/MediaPlayer.php?view_id=4&clip_id=4427		us:place:
 https://danvilleva.portal.civicclerk.com/event/2582/media		us:place:5121344	Danville, VA	0:21:22	
 https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294		us:place:1623410	Eagle, ID	1:39:14	
 https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707		us:place:0622594	Emeryville, CA	0:16:28	
-https://huntingtonpark.granicus.com/player/clip/566?view_id=2		rtr:us:ca:huntington-park	The City of Huntington Park, CA	0:58:00	
 https://buttecoca.portal.civicclerk.com/event/140/media		us:county:06007	Butte County, CA	0:01:26	
 https://norwalk.primegov.com/Portal/Meeting?meetingTemplateId=7634		us:place:0652526	Norwalk, CA	1:09:13	
 https://blackfordcoin.portal.civicclerk.com/event/2157/media		us:county:18009	Blackford County, IN	0:46:55	
@@ -747,11 +733,9 @@ https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=910		ca:csd:590
 http://agawamvod.cablecast.tv/internetchannel/show/2912?site=1	http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1	rtr:unknown:agawamvod.cablecast.tv		0:23:14	
 https://longbeach.primegov.com/Portal/Meeting?meetingTemplateId=36784		us:place:0643000	Long Beach, CA		
 https://pub-lincoln.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=08e3d8fe-c855-4b61-9c1c-4a1bcec8fcab&lang=English		ca:csd:3526057	Lincoln, ON		
-http://colonieny.iqm2.com/Citizens/SplitView.aspx?Format=Minutes&MeetingID=1083&Mode=Video		us:place:3617332	Colonie (village), NY	0:39:03	
 https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=1998&Org=Cal		ca:csd:3526043	Niagara Falls, ON		
 https://whitehouse.civicweb.net/Portal/MeetingInformation.aspx?Id=5493		us:place:4878388	Whitehouse, TX		
 https://douglas-mi.municodemeetings.com/bc-citycouncil/page/regular-meeting-city-council-91		us:place:2622740	Douglas, MI		
-https://harrisonburg-va.granicus.com/player/clip/1234?view_id=4		rtr:us:va:harrisonburg	The City of Harrisonburg, VA	2:16:53	
 https://snohomish.granicus.com/player/clip/9589?view_id=18		us:county:53061	Snohomish County, WA	1:08:30	
 https://hartford.civicweb.net/Portal/MeetingInformation.aspx?Id=3385		us:place:0937000	Hartford, CT		
 https://watertown.civicweb.net/Portal/MeetingInformation.aspx?Id=117			Watertown		
@@ -759,16 +743,15 @@ https://laramiecounty.granicus.com/player/clip/841?view_id=1		us:county:56021	La
 https://pub-elgincounty.escribemeetings.com/Meeting.aspx?Id=401f3f40-356d-4776-bb76-b6061d58f2a5		ca:cd:3534	Elgin, ON	1:16:46	
 https://brewstercotx.portal.civicclerk.com/event/95/media	https://www.brewstercounty.gov/page/comm.court.home	us:county:48043	Brewster County, TX		
 https://polkcotx.portal.civicclerk.com/event/1892/media	https://www.polktx.gov	us:county:48373	Polk County, TX		
-https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/	rtr:us:az:lake-havasu	City of Lake Havasu, AZ	2:55:50	
+https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/	us:place:0439370	City of Lake Havasu, AZ	2:55:50	
 https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2		rtr:us:ca:huntington-park	The City of Huntington Park, CA	1:15:49	
 https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2		us:county:02195	Petersburg Borough, AK	0:09:13	
-https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8878?seekto=21&site=5&query=conservation+commission		rtr:unknown:reflect-townofmerrimack.cablecast.tv		1:09:57	
 https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings		Twpec	0:55:00	
 https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov		TV, NY	0:04:50	
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077	San Joaquin County, CA	1:00:28	
 https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036		us:county:06085	Santa Clara County, CA	1:15:04	
 https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns-river-water-management-district	St. Johns River Water Management District, FL	1:06:15	
-https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655		rtr:us:ny:southampton-long-island	Town of Southampton, Long Island, NY	0:19:04	
+https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655		us:cousub:3610368473	Town of Southampton, Long Island, NY	0:19:04	
 https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303		us:place:0668378	San Ramon, CA	1:33:22	
 https://shelbytownmi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1549		us:place:2672840	Shelby (village), MI	0:45:07	
 https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3027		us:county:06101	Sutter County, CA	1:15:00	
@@ -834,12 +817,10 @@ https://jacksoncomi.portal.civicclerk.com/event/1088/media		us:county:26075	Jack
 https://leacountynm.portal.civicclerk.com/event/593/media		us:county:35025	Lea County, NM	0:10:22	
 https://albemarle.granicus.com/MediaPlayer.php?view_id=1&clip_id=1530		us:county:51003	Albemarle County, VA	4:31:08	
 https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3406		rtr:us:wa:redmond	The City of Redmond, WA	0:20:50	
-https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395		rtr:us:wv:morgantown	The City of Morgantown, WV	1:50:20	
+https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395		us:place:5455756	The City of Morgantown, WV	1:50:20	
 https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=c3c39254-53cc-4461-9b85-041288171803&Agenda=Agenda&lang=English		us:place:0660620	Richmond, CA	2:09:07	
 https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1903		us:cousub:3602725978	Fishkill (town), NY	1:15:59	
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		rtr:us:nh:hooksett	The Town of Hooksett, NH	1:43:28	
-https://minnesotapuc.granicus.com/MediaPlayer.php?view_id=2&clip_id=2729		us:county:27007	Beltrami County, MN	1:08:29	
-https://reflect-vsctv.cablecast.tv/internetchannel/show/7442?site=1		rtr:unknown:reflect-vsctv.cablecast.tv		0:10:12	
+https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		us:cousub:3301337300	The Town of Hooksett, NH	1:43:28	
 https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=859		us:county:06033	Lake County, CA	0:42:17	
 https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true		us:county:32003	Clark County, NV	0:47:08	
 https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669	https://huntingtonpark.granicus.com/account/forgotpassword	rtr:us:ca:huntington-park	The City of Huntington Park, CA	0:30:34	
@@ -883,7 +864,6 @@ https://www.utah.gov/pmn/sitemap/notice/1100230.html		us:place:4971290	Spanish F
 https://www.utah.gov/pmn/sitemap/notice/1100234.html		us:place:4971840	Springdale, UT		
 https://www.utah.gov/pmn/sitemap/notice/1102267.html		us:place:4965330	St. George, UT		
 https://www.utah.gov/pmn/sitemap/notice/1096651.html		us:place:4976680	Tooele, UT		
-https://www.utah.gov/pmn/sitemap/notice/1100865.html		us:place:4937924	Interlaken, UT		
 https://www.utah.gov/pmn/sitemap/notice/1103677.html		rtr:us:ut:tooele-county-school-district	Tooele County School District, UT		
 https://www.utah.gov/pmn/sitemap/notice/1094777.html		us:county:49003	Box Elder County, UT		
 https://www.utah.gov/pmn/sitemap/notice/1091125.html		us:county:49027	Millard County, UT		
@@ -944,7 +924,6 @@ https://wrightcountymn.portal.civicclerk.com/event/1667/media		us:county:27171	W
 https://wrightcountymn.portal.civicclerk.com/event/2682/media		us:county:27171	Wright County, MN		
 https://wrightcountymn.portal.civicclerk.com/event/30/media		us:county:27171	Wright County, MN		
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238
-https://pub-edmonton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6f5d15ef-01bf-411b-8af1-0b22d2f92009&Item=54&Tab=attachments&lang=English		us:place:2123968		18:19:08
 https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	ca:cd:5917	Capital Regional District, BC	2:48:38	
 https://cloud.castus.tv/vod/littleton/video/6aa38884265b27000284bb5b	https://cloud.castus.tv/vod/littleton/?page=RECENT	us:cousub:2501735950	Littleton town, MA	2:06:44	School Committee
 https://playback.orionontv.org/internetchannel/show/5760?site=3	https://playback.orionontv.org/internetchannel/show/5760?site=3	us:cousub:2612561100	Orion charter township, MI	1:34:41	
@@ -969,9 +948,6 @@ https://shelby.granicus.com/ASX.php?clip_id=2899&sn=shelby.granicus.com&view_id=
 https://play.champds.com/elpasococo/event/166	https://clerkandrecorder.elpasoco.com/clerk-to-the-board/meeting-video-archives/	us:county:08041	El Paso County, CO	0:49:08	BOCC Regular Meeting (2026-09-15); parked WO-299: El Paso already has a transcript page (event 164, 1,110 lines)
 https://chesapeake.granicus.com/MediaPlayer.php?view_id=29&clip_id=9936	https://chesapeake.granicus.com/ViewPublisher.php?view_id=29	us:place:5116000	Chesapeake city, VA	2:59:00	Regular City Council Meeting (2026-09-08); swapped for the 30-min City Council Work Session (clip 9917), WO-1141
 https://cloud.castus.tv/vod/waterford-media/video/67b8873ec4729f0008416a96	https://cloud.castus.tv/vod/waterford-media	us:sd:2635310	Waterford School District	1:41:24	boardofEd2-20-25_0.mp4 (Board of Education, 2025-02-20); only 2025 board meetings found on the channel; parked for a shorter or newer one, WO-1148
-https://fcpsmd.new.swagit.com/videos/399290		us:sd:2400330	Frederick County Public Schools	2:21:06	Board of Education Meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
 https://bv22.cablecast.tv/show/113		us:sd:0802490	Boulder Valley School District RE-2	2:43:12	BVSD Board of Education Meeting April 14; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
 https://reflect-tacoma.cablecast.tv/internetchannel/show/3551?site=1		us:sd:5308700	Tacoma Public Schools	2:05:42	September 24, 2026 TPS Board Meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
-https://d1drabmetuo3qr.cloudfront.net/OWQ5ODU2N2U5ODJjMDhjYjIwMTU5OTdmN2EyYzkwYWM.highres.mp4?Expires=1790618103&Signature=IBUsAcC7cs0LVTmcyF6XbiaFd2Adn2mp7IqCoGsa1yCsYn1LqAaHmx38n5FU7HbCa5JHHDeTlJ4vkM1FnxAH6UhNfRCISjJ71L-XsIuFfWJia8fx4XWcEVeepv~rFEVsCgBRYeHl0eJQDycz67d9-LAGfBZ8Njh~1xLUbAhzWD7Db7TEUiqAoOaD7WUlD-yAZgBYnEQwlneDSl3bQ9TXSMLgdjv70SOEdv8bayABNsrRfnYmhBfdmRGzTyn-Zv2J-v2dPQVxufkguWxucq3qEQsu3aSzaCMuj9q3JDvG9wjpvPvVo~0IFCUW7AcUcYePlkz14rDLPCWXzm-KIZOvlg__&Key-Pair-Id=APKAI62FB7DDTEKY56BA		us:sd:0614400	Fremont Unified School District	1:34:06	meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
-https://drive.google.com/file/d/1nh6UQ5TOOMYytkdC-I9DUhkC7Q055dkj/view?usp=drivesdk		us:sd:5308610	Sumner School District	1:51:48	meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
 https://breckenridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=111		us:place:0808400	Breckenridge town, CO	1:47:12	6-26-2018 Town Council Regular Meeting; over 90 minutes, parked (2026-09-28 Granicus follow-ups)

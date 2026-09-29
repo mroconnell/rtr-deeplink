@@ -1056,6 +1056,9 @@ https://videoplayer.telvue.com/player/6GqoONF71Brj5QypAc3pNphQkW0tmYHo/media/104
 https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1038973	https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/videos	us:place:5003175
 https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/media/1042806	https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/videos	us:sd:2508370
 https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1045958	https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/videos	us:sd:2513290
+https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=865	https://hugomn.granicus.com/ViewPublisher.php?view_id=1	us:place:2730392
+https://www.utah.gov/pmn/sitemap/notice/1094847.html	https://www.utah.gov/pmn/sitemap/publicbody/5029.html	us:place:4937924
+https://fcpsmd.new.swagit.com/videos/393018	https://fcpsmd.new.swagit.com/views/221	us:sd:2400330
 https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1014570	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	us:place:1722164
 https://videoplayer.telvue.com/player/9RIojWjXE_ZbteJMaQ07fpXeQY2rZ7Ar/media/1014553	https://videoplayer.telvue.com/player/9RIojWjXE_ZbteJMaQ07fpXeQY2rZ7Ar/videos	us:sd:2507620
 https://videoplayer.telvue.com/player/ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL/media/1047855	https://videoplayer.telvue.com/player/ynZIPYXb0j-3U7JHnJ2bcE7NxvUrCLIL/videos	us:sd:2508880
