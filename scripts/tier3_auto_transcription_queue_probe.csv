@@ -8130,6 +8130,472 @@ https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=746,granic
 https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782,iqm2,hls-master+variant,1238.90,,,1,accept,,8.81,2026-09-29T19:51:38+00:00,stale_coverage_2026-09-29,0
 https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4,direct_file,head+ffprobe,2396.76,2026-09-22,377498445,1,accept,,1.16,2026-09-29T19:51:40+00:00,stale_coverage_2026-09-29,0
 https://lincolnri.portal.civicclerk.com/event/5479/media,civicclerk,head+ffprobe,2759.54,2026-09-15,1877124675,1,accept,,1.25,2026-09-29T19:55:41+00:00,stale_coverage_2026-09-29,0
+https://video.isilive.ca/cbrm/2026-01-20_0.mp4.html,direct_file,head+ffprobe,4064.63,2026-01-20,1017972342,1,accept,,24.34,2026-09-29T20:55:08+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:yorkregion/Encoder%202021_Regional%20Council_2023-12-21-08-39.mp4/media_w1128295685_7.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.94,2026-09-29T20:55:15+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:ottawa/Champlain%20Room%20-%20EN_PHC_2025-03-19-09-29.mp4/chunklist_w1815849705.m3u8,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T20:55:24+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/northumberland/New%20Encoder_SCC_2024-03-06-02-33.mp4,direct_file,head+ffprobe,4715.53,2024-03-06,691587740,1,accept,,3.39,2026-09-29T20:56:30+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/durham/TEC%20-%2007%20December%202022%20-%20FINAL.mp4,direct_file,head+ffprobe,6664.61,2022-12-13,1097711912,1,accept,,23.74,2026-09-29T20:57:38+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:peelregion/New%20Encoder_Regional%20Council_2026-04-23-09-29.mp4/media_w311331912_1111.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.95,2026-09-29T20:57:44+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/waterloo/iSi%20Live%20Encoder%20619_SID_2026-01-13-08-59.mp4,direct_file,head+ffprobe,32026.60,2026-01-13,4558062975,1,flag-long,"duration 8.90h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",4.17,2026-09-29T20:58:11+00:00,resolve_951_2026-09-29,0
+"https://cdn1.isilive.ca/vod/_definst_/mp4:elgincounty/Elgin%20County%20Council%20Meeting%20-%20April%2030,%202024.mp4/media_w1552540252_35.ts",unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T20:58:17+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:stjohns/iSi%20Live%20Encoder_RCM_2025-06-17-01-30.mp4/media_w1763851451_140.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.02,2026-09-29T20:58:26+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/lookup_stream?client_id=halifax&stream_name=Council%20Encoder%202024_Halifax%20Regional%20Council_2024-12-03-08-50.mp4,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.95,2026-09-29T20:58:33+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:fredericton/english_encoder_Regular%20City%20Council%20Meeting_2025-04-14-06-34_fr.mp4/chunklist_w1091758749.m3u8,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,2.94,2026-09-29T20:58:39+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:southstormont/lite_encoder_Regular%20Meeting_2024-04-24-05-00.mp4/media_w330232320_1.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T20:58:48+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/cornwall/Council%20Encoder%20with%20Social_Regular%20Meeting%20of%20Council_2025-09-22-07-07.mp4,direct_file,head+ffprobe,8562.23,2025-09-23,882993342,1,accept,,3.21,2026-09-29T20:59:12+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:ngrenville/Council%20Encoder_Council%20Meeting_2022-12-06-06-29.mp4/chunklist_w1998876523.m3u8,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,2.95,2026-09-29T20:59:18+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:mississippimills/lite_encoder_Special%20Council%20Meeting_2025-10-30-08-56.mp4/media_w1189165627_2.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T20:59:28+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/cobourg/New%20Encoder_RC_2024-06-26-04-02.mp4.vtt?_=1720473388194,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.37,2026-09-29T20:59:35+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/pboro/2023-12-11CCM.mp4.vtt?_=1706031665182,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.06,2026-09-29T20:59:44+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/whitby/New%20Encoder_RCM_2024-10-07-04-20.mp4?_=1,direct_file,head+ffprobe,4318.37,2024-10-07,554642061,1,accept,,24.30,2026-09-29T21:00:55+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/oshawa/COA_2025-09-17.mp4.html,direct_file,head+ffprobe,5945.63,2025-09-17,843436587,1,accept,,3.06,2026-09-29T21:01:19+00:00,resolve_951_2026-09-29,0
+https://cdn2.isilive.ca/vod/_definst_/mp4:vaughan/Committee%20of%20the%20Whole%20(WS)%202023-05-31.mp4/media_4.ts,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://cdn2.isilive.ca/vod/_definst_/mp4:vaughan/Committee%20of%20the%20Whole%20(WS)%202023-05-31.mp4/media_4.ts,3.05,2026-09-29T21:01:26+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/richmondhill/2019-09-25.mp4,direct_file,head+ffprobe,6079.67,2019-09-25,1101110754,1,accept,,3.39,2026-09-29T21:01:50+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:newmarket/New%20Encoder_COW_2020-01-13-12-21.mp4/media_w962094483_17.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T21:01:56+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:mississauga/Replacement%20Encoder_CC_2023-11-22-09-30.mp4/media_w568827088_1.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:02:05+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:brampton/iSi%20Live%20Encoder_CoA_2025-04-29-09-18.mp4/media_w1989836925_2.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.05,2026-09-29T21:02:14+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/nospace/hls/caledon/Compact-_-Encoder-_-1105_Planning-_-and-_-Development-_-Committee_2026-03-10-02-29.mp4/seg-8-v1-a1.ts,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://cdn1.isilive.ca/nospace/hls/caledon/Compact-_-Encoder-_-1105_Planning-_-and-_-Development-_-Committee_2026-03-10-02-29.mp4/seg-8-v1-a1.ts,2.72,2026-09-29T21:02:23+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:guelph/Council%20Encoder_CoW_2025-03-04-09-26.mp4/media_w1131320848_2.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.91,2026-09-29T21:02:32+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:oakville/New%20Encoder_CM_2021-06-21-06-09.mp4/media_w1069236202_18.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.93,2026-09-29T21:02:41+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:kitchener/Compact%20Encoder_CM_2026-02-02-07-34.mp4/media_w1212531608_0.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.94,2026-09-29T21:02:50+00:00,resolve_951_2026-09-29,0
+http://video.isilive.ca/stthomas/2020-11-16-full.mp4.html,direct_file,head+ffprobe,6379.95,2020-11-17,799496100,1,accept,,24.44,2026-09-29T21:03:59+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/london/Compact%20Encoder%201106_Council_2025-09-23-12-43.mp4.vtt?_=1759094998766,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:04:06+00:00,resolve_951_2026-09-29,0
+"https://video.isilive.ca/play/brockton/Council%20Meeting%20June%2010,%202025.mp4",direct_file,head+ffprobe,4519.57,2025-06-12,6476118515,1,accept,,23.99,2026-09-29T21:05:17+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/thebluemountains/Community%20Design%20Guidelines%20Open%20House-20260414_170908-Meeting%20Recording.mp4,direct_file,head+ffprobe,2341.31,2026-04-15,116492764,1,accept,,3.33,2026-09-29T21:05:40+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/bracebridge/2024-08-09%20Committee%20of%20Adjustment%20for%20Minor%20Variances%20Meeting.mp4.html,direct_file,head+ffprobe,1189.76,2024-08-09,107238885,1,accept,,3.25,2026-09-29T21:06:04+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/sudbury/COA_2025_11_12.mp4,direct_file,head+ffprobe,1694.00,2025-11-17,128685345,1,accept,,23.82,2026-09-29T21:07:14+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/lookup_stream?client_id=elliotlake&stream_name=New%20Encoder_COUNCIL_2025-01-27-06-58.mp4,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.02,2026-09-29T21:07:21+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/thunderbay/New%20Encoder_City%20Council_2022-11-28-06-21.mp4,direct_file,head+ffprobe,3803.53,2022-11-29,544841245,1,accept,,23.99,2026-09-29T21:08:33+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/kenora/2022-01-11.mp4.html,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T21:08:39+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:dryden/New%20Encoder_CM_2022-06-27-08-00.mp4/media_w311355504_319.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.93,2026-09-29T21:08:46+00:00,resolve_951_2026-09-29,0
+http://video.isilive.ca/moosejaw/2019-06-10.mp4.html,direct_file,head+ffprobe,8415.88,2019-06-11,950524563,1,accept,,23.87,2026-09-29T21:09:55+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:saskatoon/Council%20Chambers_EUCSP_2026-08-04-11-29.mp4/media_w89245699_70.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T21:10:01+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160679,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:10:02+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:rockyview/Main%20Encoder_Governance%20Committee_2023-09-12-10-52.mp4/media_w1499811155_5.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.06,2026-09-29T21:10:10+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:calgary/Council%20Primary_Regular%20Meeting%20of%20Council_2026-09-22-11-14.mp4/playlist.m3u8?_=1790219795817,direct_file,head+ffprobe,19986.77,2026-09-22,2651002571,1,accept,,24.85,2026-09-29T21:11:21+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:sprucegrove/Encoder%20549_Committee%20of%20the%20Whole%20Meeting_2023-01-16-07-59.mp4/chunklist_w523719225.m3u8,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,2.96,2026-09-29T21:11:28+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/lookup_stream?client_id=edmonton&stream_name=Encoder%201_CC_2025-09-16-10-39.mp4,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.08,2026-09-29T21:11:34+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:surreysb/June%20encoder_Regular%20Board%20Meeting_2021-11-17-09-59.mp4/playlist.m3u8,direct_file,head+ffprobe,3632.90,2021-11-18,410911468,1,accept,,24.10,2026-09-29T21:12:46+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/nospace/hls/whiterock/Primary-_-Encoder_RM_2026-06-22-07-15.mp4/seg-14-v1-a1.ts,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://cdn1.isilive.ca/nospace/hls/whiterock/Primary-_-Encoder_RM_2026-06-22-07-15.mp4/seg-14-v1-a1.ts,3.05,2026-09-29T21:12:52+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:burnaby/New%20Encoder_CM_2024-07-22-07-50.mp4/media_w117227948_267.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T21:13:01+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:newwestminster/iSiLIVE%20Encoder%20547_CM_2026-07-13-09-00.mp4/media_w1275251400_805.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T21:13:10+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:portmoody/New%20Encoder_Regular%20Council%20Meeting_2024-10-22-09-57.mp4/media_w839118979_1051.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:13:19+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:mapleridge/Encoder%20827_SCM_2025-11-18-08-59.mp4/media_w521218002_43.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:13:28+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:victoria/New%20Encoder_CTFCOTW_2026-07-09-02-40.mp4/media_w278193706_5.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:13:37+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:sechelt/isiLIVE%20Encoder%20755_RCM_2024-10-16-10-01.mp4/media_w1450454177_4.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T21:13:46+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/kelowna/encoder_Budget%20Deliberations_2025-12-04-12-00.mp4,direct_file,head+ffprobe,24816.01,2025-12-05,3201405824,1,flag-long,"duration 6.89h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",3.86,2026-09-29T21:14:13+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/lakecountry/iSiLIVE%20Encoder%20764_RCM_2024-02-06-09-57.mp4,direct_file,head+ffprobe,2719.04,2024-02-07,360962268,1,accept,,23.84,2026-09-29T21:15:20+00:00,resolve_951_2026-09-29,0
+http://video.isilive.ca/hamilton/Council%20Compact%20Encoder%201103_Council_2026-01-21-08-48.mp4.vtt?_=1769345703085,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.96,2026-09-29T21:15:29+00:00,resolve_951_2026-09-29,0
+http://video.isilive.ca/tcdsb/Communication/Li%20Video%204-V1.mp4.html,direct_file,head+ffprobe,211.18,2018-02-12,23995310,0,accept,,24.10,2026-09-29T21:16:44+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/tdsb/Others/SEAC/2025/2025-06-09-SEAC.mp4.html,direct_file,head+ffprobe,7277.64,2025-06-13,270090522,1,accept,,23.91,2026-09-29T21:17:53+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152433,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:17:55+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160657,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:17:56+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151912,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:17:56+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/bouldercounty/iSi%20Live%20Encoder%20572_PCRM_2023-03-15-03-32.mp4.vtt?_=1711381415069,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T21:18:03+00:00,resolve_951_2026-09-29,0
+https://gunnisoncounty.org/525/Meeting-Agendas-Portfolios-Minutes,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,6.01,2026-09-29T21:18:19+00:00,resolve_951_2026-09-29,0
+http://video.isilive.ca/play/tetoncounty/2024-11-13_16_39_20.mp4output.mp4,direct_file,head+ffprobe,2089.00,2024-11-19,345770891,1,accept,,24.62,2026-09-29T21:19:32+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:mchenry/New%20Boardroom%20Encoder_CB-Reg_2023-11-21-07-57.mp4/media_w1888004246_1.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.93,2026-09-29T21:19:39+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151072,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:19:40+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/5zr1gEmBEHjRb5JMcK5s98tSRSo884uuDlt3j1sotKhonrnW4Zg7C7hDWDReQ1pw._K1CmqN0Z_z4h2LM?startTime=1790200764000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:19:47+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153417,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:19:48+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/dctR-wr7P5VmzyuWuF9Bhg1WEvZ8etC21OigaW4BXwO-a7z3qkweE4CWokFMR0LX.qzF2blT1wqOFoy3F?startTime=1782927037000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.12,2026-09-29T21:19:56+00:00,resolve_951_2026-09-29,0
+https://sanderscounty-my.sharepoint.com/:v:/g/personal/meetings_sanderscounty_gov/IQCgGKWYJNmgTrw75AaYUvBHAZnw84k82ShK4UXi982E6uQ?e=7x7pBr&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVm,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.90,2026-09-29T21:20:30+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/manage/videos/870495254,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.09,2026-09-29T21:20:37+00:00,resolve_951_2026-09-29,0
+https://newhanover.primegov.com/Portal/Meeting?meetingTemplateId=340,primegov,resolve,,,,0,reject-dead,resolve returned no video_url,5.68,2026-09-29T21:20:54+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/157479,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:20:55+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153651,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:20:55+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1014641,telvue,telvue-page-json,4028.00,,,1,accept,,0.51,2026-09-29T21:21:07+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/156838,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:21:08+00:00,resolve_951_2026-09-29,0
+https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0,direct_file,ranged-get+ffprobe,4041.96,,3440269965,1,accept,,10.68,2026-09-29T21:21:29+00:00,resolve_951_2026-09-29,0
+https://loudoun.cablecast.tv/show/778?site=1,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,9.01,2026-09-29T21:21:54+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/158336,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:21:54+00:00,resolve_951_2026-09-29,0
+https://media.avcaptureall.cloud/meeting/cf763b17-97b6-41d1-84ab-bafcd5b8df18,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.00,2026-09-29T21:22:01+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153641,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:22:01+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/156570,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:22:24+00:00,resolve_951_2026-09-29,0
+https://portal.omt-appserver.com/public/oconto-county/oconto-county-board-of-supervisors/meeting/6185,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.05,2026-09-29T21:22:31+00:00,resolve_951_2026-09-29,0
+https://play.champds.com/gillettewy/event/918,champds,hls-master+variant,9929.43,,,1,accept,,5.83,2026-09-29T21:22:43+00:00,resolve_951_2026-09-29,0
+https://reflect-batv.cablecast.tv/internetchannel/show/3618,cablecast,hls-master+variant,3816.80,,,1,accept,,7.92,2026-09-29T21:23:01+00:00,resolve_951_2026-09-29,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/9.21.26+Board+of+Finance+Regular+Meeting-20260921_190101-Meeting+Recording+(1).mp4,direct_file,head+ffprobe,7045.95,2026-09-22,520402734,1,accept,,5.79,2026-09-29T21:23:15+00:00,resolve_951_2026-09-29,0
+https://reflect-glastonburyct.cablecast.tv/internetchannel/show/1070,cablecast,hls-master+variant,3329.06,,,1,accept,,3.32,2026-09-29T21:23:26+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/meetings/86761880605/invitations?signature=2xt7q_1qKI-Uj2QOeJj7k04Vev7WSYD-fDhCR8KADFQ,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.07,2026-09-29T21:23:32+00:00,resolve_951_2026-09-29,0
+https://reflect-vsctv.cablecast.tv/internetchannel/show/7467,cablecast,hls-master+variant,4093.92,,,1,accept,,8.74,2026-09-29T21:23:51+00:00,resolve_951_2026-09-29,0
+https://essexct.sharepoint.com/:v:/s/SelectmanOffice/IQCy0OkY3lxhTYpR6Q3wF-q9AX445acHbZMz36fJJVMDlZM?e=CHAB4C,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.84,2026-09-29T21:24:25+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/dpsCKG88qOtDskwxRh9zh4EUN7d-cNonUxgfgREI80wKgP09QSH14_nQPLZnB_SI.iqMk-T2vZGTHTlE8,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.74,2026-09-29T21:24:31+00:00,resolve_951_2026-09-29,0
+https://reflect-vsctv.cablecast.tv/internetchannel/show/7480,cablecast,hls-master+variant,2800.53,,,1,accept,,8.67,2026-09-29T21:24:49+00:00,resolve_951_2026-09-29,0
+https://www.westbrookct.us/DocumentCenter/View/5773/2021-10-07-224418-Affordable-Housing--Subcommittee-Meeting-Video,unknown,ranged-get+ffprobe,5250.00,,471292652,1,accept,,118.53,2026-09-29T21:28:56+00:00,resolve_951_2026-09-29,0
+https://burlingtonctus.sharepoint.com/:v:/s/TownofBurlingtonCTPublicSite/IQAQDK5VoPVlS5HD_WKqR6-xAf89ABibIKwkL8v1X2H3d9M?e=SdvLh3,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,12.05,2026-09-29T21:29:31+00:00,resolve_951_2026-09-29,0
+https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing,direct_file,head+ffprobe,9748.58,2020-09-11,66336503,1,accept,,7.32,2026-09-29T21:29:48+00:00,resolve_951_2026-09-29,0
+https://reflect-guilfordctv.cablecast.tv/internetchannel/show/3256,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.98,2026-09-29T21:30:22+00:00,resolve_951_2026-09-29,0
+https://bozrahct-my.sharepoint.com/:u:/g/personal/selectmansassistant_bozrahct_org/IQBZ66i5jKcWSZoKN0u9w93GAew0wIx4UumvwmpJLl6HEZQ?e=VWogLw,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.92,2026-09-29T21:30:57+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/71ZJNFeYUswh1sIkLblAvbmOTLGx4uHOLjCHeCO_pfPmuwESfvALqXhqK339OUlu.HlWeR9Rh-9dP8qyP,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.87,2026-09-29T21:31:03+00:00,resolve_951_2026-09-29,0
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6656,cablecast,hls-master+variant,3390.02,,,1,accept,,8.56,2026-09-29T21:31:27+00:00,resolve_951_2026-09-29,0
+https://reflect-cetv.cablecast.tv/internetchannel/show/1681,cablecast,hls-master+variant,2992.97,,,1,accept,,3.36,2026-09-29T21:31:40+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/RVW_MGb8e118795O2RYhP8fLbPOZACgm/media/1016131,telvue,telvue-page-json,5626.00,,,1,accept,,0.42,2026-09-29T21:31:49+00:00,resolve_951_2026-09-29,0
+https://reflect-fctv3.cablecast.tv/internetchannel/show/803,cablecast,hls-master+variant,2512.93,,,1,accept,,8.62,2026-09-29T21:32:07+00:00,resolve_951_2026-09-29,0
+https://www.townhallstreams.com/stream.php?location_id=62&id=76241,townhallstreams,hls-master+variant,7347.90,,,1,accept,,6.07,2026-09-29T21:32:22+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm/media/1014808,telvue,telvue-page-json,1561.00,,,1,accept,,8.89,2026-09-29T21:32:44+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/media/1021754,telvue,telvue-page-json,7395.00,,,1,accept,,5.87,2026-09-29T21:32:59+00:00,resolve_951_2026-09-29,0
+https://reflect-westernhills.cablecast.tv/internetchannel/show/2495,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.97,2026-09-29T21:33:05+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151128,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:33:05+00:00,resolve_951_2026-09-29,0
+https://reflect-bourne.cablecast.tv/internetchannel/show/27729,cablecast,hls-master+variant,2639.95,,,1,accept,,3.24,2026-09-29T21:33:16+00:00,resolve_951_2026-09-29,0
+https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/7564,cablecast,hls-master+variant,1702.72,,,1,accept,,8.67,2026-09-29T21:33:34+00:00,resolve_951_2026-09-29,0
+https://reflect-yarmouth.cablecast.tv/internetchannel/show/5268,cablecast,hls-master+variant,4818.16,,,1,accept,,8.64,2026-09-29T21:34:16+00:00,resolve_951_2026-09-29,0
+https://seekonk.cablecast.tv/internetchannel/show/9411,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.92,2026-09-29T21:34:32+00:00,resolve_951_2026-09-29,0
+https://boxford.vod.castus.tv/vod/?video=48377752-c611-44ec-aed5-2eec5ab3c905,castus,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:34:32+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160605,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:34:32+00:00,resolve_951_2026-09-29,0
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3773,cablecast,hls-master+variant,5275.84,,,1,accept,,8.56,2026-09-29T21:34:50+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj/media/1014601,telvue,telvue-page-json,8482.00,,,1,accept,,0.40,2026-09-29T21:35:00+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc/media/1014571,telvue,telvue-page-json,7298.00,,,1,accept,,6.04,2026-09-29T21:35:15+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155129,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:35:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1015133,telvue,telvue-page-json,8341.00,,,1,accept,,6.04,2026-09-29T21:35:30+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1014983,telvue,telvue-page-json,7315.00,,,1,accept,,6.22,2026-09-29T21:35:46+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L/media/1014579,telvue,telvue-page-json,13072.00,,,1,accept,,5.91,2026-09-29T21:36:00+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/994DtmGEsi0VDYK3jJI2BJ72GfgNIpU2/media/1014549,telvue,telvue-page-json,4381.00,,,1,accept,,0.41,2026-09-29T21:36:13+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/MYHMRKXBbGFaah07vKkZ_-J4SThODdPq/media/1014803,telvue,telvue-page-json,11716.00,,,1,accept,,5.99,2026-09-29T21:36:28+00:00,resolve_951_2026-09-29,0
+https://www.wayland.ma.us/1097/Public-Body-Meeting-Information-Remote-I,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,5.12,2026-09-29T21:36:46+00:00,resolve_951_2026-09-29,0
+https://reflect-holbrook.cablecast.tv/internetchannel/show/6447,cablecast,hls-master+variant,3054.96,,,1,accept,,3.20,2026-09-29T21:36:56+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/media/1014639,telvue,telvue-page-json,9931.00,,,1,accept,,0.38,2026-09-29T21:37:07+00:00,resolve_951_2026-09-29,0
+https://reflect-sharoncommunity-live.cablecast.tv/internetchannel/show/15314,cablecast,hls-master+variant,4185.27,,,1,accept,,8.62,2026-09-29T21:37:25+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1014578,telvue,telvue-page-json,11191.00,,,1,accept,,0.48,2026-09-29T21:37:34+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1014564,telvue,telvue-page-json,8502.00,,,1,accept,,5.96,2026-09-29T21:37:49+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/media/1014913,telvue,telvue-page-json,6606.00,,,1,accept,,5.32,2026-09-29T21:38:04+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx/playlists/1617/media/861273?fullscreen=false,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.99,2026-09-29T21:38:13+00:00,resolve_951_2026-09-29,0
+http://area58.tv/,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.95,2026-09-29T21:38:20+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N/media/1017573,telvue,telvue-page-json,198.00,,,0,accept,,5.93,2026-09-29T21:38:32+00:00,resolve_951_2026-09-29,0
+https://www.mrpc.org/montachusett-metropolitan-planning-organization-mmpo/events/131011,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.35,2026-09-29T21:38:39+00:00,resolve_951_2026-09-29,0
+https://reflect-hctv.cablecast.tv/internetchannel/show/5198,cablecast,hls-master+variant,3193.06,,,1,accept,,11.65,2026-09-29T21:39:06+00:00,resolve_951_2026-09-29,0
+https://millbury-public-access.vod.castus.tv/vod/,castus,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:39:06+00:00,resolve_951_2026-09-29,0
+https://reflect-townofoxfordma.cablecast.tv/internetchannel/show/2494,cablecast,hls-master+variant,5089.92,,,1,accept,,3.25,2026-09-29T21:39:17+00:00,resolve_951_2026-09-29,0
+https://reflect-southborough.cablecast.tv/internetchannel/show/2488,cablecast,hls-master+variant,10248.71,,,1,accept,,11.53,2026-09-29T21:39:44+00:00,resolve_951_2026-09-29,0
+https://westbrookfield.cablecast.tv/internetchannel/show/2007,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T21:39:50+00:00,resolve_951_2026-09-29,0
+https://reflect-clinton-twp.cablecast.tv/show/434?site=1,cablecast,hls-master+variant,5227.14,,,1,accept,,3.49,2026-09-29T21:40:07+00:00,resolve_951_2026-09-29,0
+https://reflect-ictv.cablecast.tv/show/33460?site=1,cablecast,hls-master+variant,1739.25,,,1,accept,,4.37,2026-09-29T21:40:24+00:00,resolve_951_2026-09-29,0
+https://lisbonnh-my.sharepoint.com/:u:/g/personal/adminassistant_lisbon_nh_gov/IQAfoehY_LF4Qbw8-AVs3hbMAeHxmU09sIN-ayBalq2bkrk?e=2b5UYc&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJ,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,12.07,2026-09-29T21:40:58+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2,cablecast,hls-master+variant,3104.02,,,1,accept,,8.80,2026-09-29T21:41:28+00:00,resolve_951_2026-09-29,0
+https://townhallstreams.com/portal/stream.php?location_id=55&id=77018,townhallstreams,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T21:41:35+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/SzsDk6b45y6N97eOtbGQ_hsTcS0ZfQgT/media/1014752,telvue,telvue-page-json,6975.00,,,1,accept,,0.45,2026-09-29T21:41:43+00:00,resolve_951_2026-09-29,0
+https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8921,cablecast,hls-master+variant,2104.65,,,1,accept,,8.80,2026-09-29T21:42:04+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/43hKLHCHQZWSVkdvjZNIkm6PwuLKWLSmmPHN6i0mCWxAHeRFNTBGcq8gEs-oU4eY.finSj2u9q2z4Wp7E,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T21:42:11+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/showcase/1930297?video=1189210033,vimeo,resolve,,,,0,reject-dead,resolve returned no video_url,2.90,2026-09-29T21:42:17+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/1014546,telvue,telvue-page-json,3524.00,,,1,accept,,0.45,2026-09-29T21:42:27+00:00,resolve_951_2026-09-29,0
+https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1985?site=1&query=master+plan,cablecast,hls-master+variant,5495.20,,,1,accept,,3.61,2026-09-29T21:42:36+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/1014905,telvue,telvue-page-json,8331.00,,,1,accept,,5.97,2026-09-29T21:42:49+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-salem.cablecast.tv/internetchannel/show/19788,cablecast,hls-master+variant,2918.92,,,1,accept,,8.54,2026-09-29T21:43:13+00:00,resolve_951_2026-09-29,0
+http://173.209.96.235/CablecastPublicSite/?channel=1,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,9.03,2026-09-29T21:43:37+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/_bwOHY2RsBTo1g8bdjAUi0sT-J5Z17fY/media/1014767,telvue,telvue-page-json,2122.00,,,1,accept,,5.97,2026-09-29T21:43:52+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn/media/1016458,telvue,telvue-page-json,10800.00,,,1,accept,,5.95,2026-09-29T21:44:07+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/lvaCg7Kr3jl7ZsMSDSyHpNlwayHh8l0R/stream/1009?fullscreen=false&showtabssearch=true&show_title_description_summary=true&autostart=true,telvue,telvue-page-json,,,,0,reject-dead,"TelVue duration is 0 -- a live placeholder, not an archived recording",5.99,2026-09-29T21:44:22+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/9GoxOSjmC7wxhZd_91MzDBO_wwXycvDQ/media/1021670,telvue,telvue-page-json,5395.00,,,1,accept,,0.35,2026-09-29T21:44:33+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/media/1014512,telvue,telvue-page-json,2526.00,,,1,accept,,0.37,2026-09-29T21:44:45+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1015224,telvue,telvue-page-json,2654.00,,,1,accept,,0.42,2026-09-29T21:44:55+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155168,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:44:55+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/a8bEka9Nj6XGik9GLw7Z1onI8ZJQFXYtnwQUvFukDjf6NkGqmTnXUdP2AKF-rs7U.615757q1RSCwrqSf?startTime=1787782208000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.73,2026-09-29T21:45:03+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151419,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:45:03+00:00,resolve_951_2026-09-29,0
+https://www.mamakating.gov/584/September-2026-Town-Board-Meeting,youtube,yt-dlp-metadata,,,,0,reject-dead,"yt-dlp: ERROR: [youtube] sisRupcqQno: Unable to download API page: HTTPSConnection(host='www.youtube.com', port=443): Failed to establish a new connection: refused: www.youtube.com is a YouTube host; YouTube ",2.90,2026-09-29T21:45:10+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20436,cablecast,hls-master+variant,1724.72,,,1,accept,,8.73,2026-09-29T21:45:29+00:00,resolve_951_2026-09-29,0
+https://greentwp.viebit.com/watch?hash=8MY41Gk7QsNfA0aO,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",5.97,2026-09-29T21:45:41+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/974716961,vimeo,vimeo-oembed,3469.00,2024-07-02,,1,accept,,7.85,2026-09-29T21:46:00+00:00,resolve_951_2026-09-29,0
+https://copley.oh.us/283/Community-Improvement-Corporation-CIC,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,5.86,2026-09-29T21:46:16+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/TeV1FUbGoh2yQhc1jqfCTi_BYxho_iUxX617WEm5O213VVze76umyuxfqMSn7H6y.tVAgWFWY1tYKQCNV?startTime=1789598057000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.13,2026-09-29T21:46:23+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1014636,telvue,telvue-page-json,4389.00,,,1,accept,,0.41,2026-09-29T21:46:30+00:00,resolve_951_2026-09-29,0
+https://jumpshare.com/share/k0H7NJplMVTssBbhscb2,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,6.78,2026-09-29T21:47:00+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/u_f0Z0oKDWL86cS8Fk1b3FOhI0iwRltryUbgkgYpfUnylwmbVc9p67bpxHrvnC3e.AcPDoFXiFlBkBcNn,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.99,2026-09-29T21:47:06+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/158786,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:47:11+00:00,resolve_951_2026-09-29,0
+https://drive.google.com/file/d/1E2cKR1bAyfTJQlEY9IfuMJLGTwzv0KJi/view?usp=drive_link,direct_file,resolve,,,,0,reject-dead,resolve returned no video_url,3.02,2026-09-29T21:47:18+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1040384,telvue,telvue-page-json,1015.00,,,1,accept,,5.93,2026-09-29T21:47:31+00:00,resolve_951_2026-09-29,0
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24142,cablecast,hls-master+variant,7696.96,,,1,accept,,8.64,2026-09-29T21:47:49+00:00,resolve_951_2026-09-29,0
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24140,cablecast,hls-master+variant,3384.65,,,1,accept,,8.75,2026-09-29T21:48:10+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1015986,telvue,telvue-page-json,8133.00,,,1,accept,,0.34,2026-09-29T21:48:20+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1046589,telvue,telvue-page-json,4279.00,,,1,accept,,5.97,2026-09-29T21:48:35+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1014569,telvue,telvue-page-json,3627.00,,,1,accept,,1.45,2026-09-29T21:48:44+00:00,resolve_951_2026-09-29,0
+https://reflect-catv.cablecast.tv/internetchannel/show/42180,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.08,2026-09-29T21:49:09+00:00,resolve_951_2026-09-29,0
+https://cityofkingman.granicus.com/MediaPlayer.php?view_id=1&clip_id=1101,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,18.05,2026-09-29T21:50:01+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/150341,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:50:02+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152174,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:50:02+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/OXn5XvCPQqemD7cvXwSX1qzONyLLA3Uq/media/1015750,telvue,telvue-page-json,2809.00,,,1,accept,,0.42,2026-09-29T21:50:10+00:00,resolve_951_2026-09-29,0
+https://reflect-harding.cablecast.tv/internetchannel/show/8769,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.97,2026-09-29T21:50:16+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/148796,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:50:17+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/159993,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:50:17+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-anaheim.cablecast.tv/internetchannel/show/525,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.90,2026-09-29T21:50:32+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:bakersfield/iSiLIVE%20Encoder%20760_CCDBP_2026-05-04-02-38.mp4/media_w1822231931_8.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T21:50:39+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-camarillo.cablecast.tv/internetchannel/show/1167,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T21:50:45+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/campbell/2025-11-06.mp4.html,direct_file,head+ffprobe,3710.26,2025-11-07,531035620,1,accept,,23.88,2026-09-29T21:51:55+00:00,resolve_951_2026-09-29,0
+https://reflect-communitytv.cablecast.tv/internetchannel/show/3660,cablecast,hls-master+variant,4146.19,,,1,accept,,8.90,2026-09-29T21:52:13+00:00,resolve_951_2026-09-29,0
+http://concord.cablecast.tv/internetchannel/show/917,cablecast,hls-master+variant,4274.92,,,1,accept,,3.42,2026-09-29T21:52:24+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151386,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:52:25+00:00,resolve_951_2026-09-29,0
+https://reflect-pcta-fountainvalley-vod.cablecast.tv/internetchannel/show/3792,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.04,2026-09-29T21:52:31+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1026368,telvue,telvue-page-json,12806.00,,,1,accept,,5.97,2026-09-29T21:52:43+00:00,resolve_951_2026-09-29,0
+http://reflect-origin-878.cablecast.tv/internetchannel/show/210,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.93,2026-09-29T21:52:50+00:00,resolve_951_2026-09-29,0
+https://cdn2.isilive.ca/vod/_definst_/mp4:imperialbeach/Encoder%20542_CCRM_2023-11-15-08-59.mp4/media_2.ts,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://cdn2.isilive.ca/vod/_definst_/mp4:imperialbeach/Encoder%20542_CCRM_2023-11-15-08-59.mp4/media_2.ts,2.92,2026-09-29T21:52:56+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/147799,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:52:56+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/148069,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:52:57+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/1227121178,vimeo,vimeo-oembed,3608.00,2026-09-15,,1,accept,,7.78,2026-09-29T21:53:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/nxgRww0afzGlqmpU3Ylgjl5EjjOiRjMT/media/1014585,telvue,telvue-page-json,17727.00,,,1,accept,,0.71,2026-09-29T21:53:23+00:00,resolve_951_2026-09-29,0
+https://reflect-pomona.cablecast.tv/internetchannel/show/312,cablecast,hls-master+variant,2742.03,,,1,accept,,3.26,2026-09-29T21:53:36+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofrc.cablecast.tv/internetchannel/show/675,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.99,2026-09-29T21:53:42+00:00,resolve_951_2026-09-29,0
+https://cityofredlands.cablecast.tv/show/538?site=1,cablecast,hls-master+variant,3801.79,,,1,accept,,4.54,2026-09-29T21:53:59+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/richmondca/Personnel_Board/2025-12-17_PB.mp4,direct_file,head+ffprobe,702.90,2025-12-19,454890719,1,accept,,23.90,2026-09-29T21:55:54+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/159170,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:55:54+00:00,resolve_951_2026-09-29,0
+https://reflect-communitytv.cablecast.tv/internetchannel/show/3663,cablecast,hls-master+variant,19622.32,,,1,accept,,8.87,2026-09-29T21:56:13+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:ccce/iSi%20Live%20Encoder%20685_Audit%20and%20Finance%20Committee_2023-06-21-12-00.mp4/media_w151869525_3.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T21:56:26+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofsantee.cablecast.tv/internetchannel/show/2317,cablecast,hls-master+variant,4364.11,,,1,accept,,3.52,2026-09-29T21:56:38+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/147937,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:56:38+00:00,resolve_951_2026-09-29,0
+https://reflect-temecula.cablecast.tv/internetchannel/show/694,cablecast,hls-master+variant,5459.62,,,1,accept,,3.46,2026-09-29T21:56:50+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/EdhI2xtM1vAxHWMytVkqEFJ6vUupMLaS/media/1014671,telvue,telvue-page-json,15604.00,,,1,accept,,0.41,2026-09-29T21:57:01+00:00,resolve_951_2026-09-29,0
+https://walnutcreek.cablecast.tv/internetchannel/show/2161,cablecast,hls-master+variant,1676.01,,,1,accept,,3.38,2026-09-29T21:57:14+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:watsonville/New%20Encoder_PC_2023-11-07-09-05.mp4/media_w39550970_6.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.02,2026-09-29T21:57:20+00:00,resolve_951_2026-09-29,0
+https://reflect-pcta-westminster-vod.cablecast.tv/internetchannel/show/1867,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.97,2026-09-29T21:57:26+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151838,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:58:43+00:00,resolve_951_2026-09-29,0
+https://reflect-broomfield.cablecast.tv/internetchannel/show/1691,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.72,2026-09-29T21:58:59+00:00,resolve_951_2026-09-29,0
+https://www.cherryhillsvillage.com/501/City-Meeting-Videos,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,6.00,2026-09-29T21:59:17+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-fcgov.cablecast.tv/internetchannel/show/3057,cablecast,hls-master+variant,1415.99,,,1,accept,,3.69,2026-09-29T21:59:28+00:00,resolve_951_2026-09-29,0
+https://reflect-live8fd-lakewood.cablecast.tv/internetchannel/show/1839,cablecast,hls-master+variant,5022.92,,,1,accept,,11.49,2026-09-29T21:59:55+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/158895,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T21:59:55+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS/media/1015681,telvue,telvue-page-json,4176.00,,,1,accept,,0.43,2026-09-29T22:00:09+00:00,resolve_951_2026-09-29,0
+https://reflect-thornton.cablecast.tv/internetchannel/show/1761,cablecast,hls-master+variant,4073.93,,,1,accept,,3.39,2026-09-29T22:00:24+00:00,resolve_951_2026-09-29,0
+https://bristolct-gov.zoom.us/rec/play/8LsPI67qAHKq_hNHMDu4WInXZR0Tqy_bWU-7TR_TQ3oOXSFtdwCoTHB0xCX8dhR1JmYu-47RwAA-prLN.Rdfe1ySOFanWmRus?canPlayFromShare=true&from=share_recording_detail&continueMode=true&componentName=rec-play&originRequestUrl=https%3A%2,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.84,2026-09-29T22:00:31+00:00,resolve_951_2026-09-29,0
+https://danbury.granicus.com/player/clip/3837?redirect=true,granicus,hls-master+variant,4386.28,,,1,accept,,9.81,2026-09-29T22:00:59+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/ngKsmvOplIehacsLE9KAR_RKX5OityeV/media/1022240,telvue,telvue-page-json,10083.00,,,1,accept,,5.78,2026-09-29T22:01:12+00:00,resolve_951_2026-09-29,0
+https://reflect-witn.cablecast.tv/internetchannel/show/5154,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:01:18+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/148910,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:01:19+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/greencovesprings/2025-09-16Council.mp4,direct_file,head+ffprobe,12515.80,2025-09-17,2507392097,1,accept,,3.29,2026-09-29T22:01:43+00:00,resolve_951_2026-09-29,0
+https://netorg7539331-my.sharepoint.com/:u:/g/personal/clerk_townofmarineland_org/IQBAxGgFpcyJTJR0OHXeg0fyAZwapSZOrj9axz_KOdqG-kc?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsT,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,12.13,2026-09-29T22:02:17+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152882,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:02:17+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/159948,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:02:17+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/150748,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:02:17+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160435,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:02:17+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-cityoftybee.cablecast.tv/internetchannel/show/9695,cablecast,hls-master+variant,4960.30,,,1,accept,,8.74,2026-09-29T22:02:36+00:00,resolve_951_2026-09-29,0
+https://login.imagesilo.com/PVEsearchURL.aspx?EntID=8454&UserName=Council&password=Jerome@2014&ProjId=10&IndexFields=Date&IndexValues=09/15/2026&ResultsType=List,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:02:43+00:00,resolve_951_2026-09-29,0
+https://reflect-champaign.cablecast.tv/internetchannel/show/6013,cablecast,hls-master+variant,3852.51,,,1,accept,,3.49,2026-09-29T22:03:04+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160727,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:04+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/148210,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:04+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155465,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:06+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160527,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:06+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/158950,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:06+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/parkforestil,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.89,2026-09-29T22:03:13+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151439,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:03:13+00:00,resolve_951_2026-09-29,0
+https://reflect-channel18vod-springfield-il-us.cablecast.tv/internetchannel/show/8811,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:03:19+00:00,resolve_951_2026-09-29,0
+https://woodstockil.granicus.com/MediaPlayer.php?clip_id=510,granicus,hls-master+variant,6947.01,,,1,accept,,13.01,2026-09-29T22:03:57+00:00,resolve_951_2026-09-29,0
+https://brownsburgin.new.swagit.com/videos/398881,swagit,hls-master+variant,10730.31,,,1,accept,,5.85,2026-09-29T22:04:12+00:00,resolve_951_2026-09-29,0
+https://reflect-carmeltv-carmel-in.cablecast.tv/internetchannel/show/816,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.20,2026-09-29T22:04:28+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/64sW2bueXIv-4sLooFRspCCeZbhCW7rFJGLU4-2LO6D1D1yoQjqBrvamYGm9opcI.eEWx5IDlUIlEehe_,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.76,2026-09-29T22:04:35+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/149137,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:04:36+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155859,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:04:36+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/kVRyZ255ROrhseWd4rSE11pqH4I0Te-dDeZPT7kaKXHQxR5ihofrzmi4JnUQDcwI.ZXN0YTnApy7sxgwE?startTime=1789428869000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.79,2026-09-29T22:04:43+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/play/3989wi90Ja57P61Av2x7fNDic0E9rFLxrllCj4Tn3P47iCfZpmfetwWWhplSMSd030NBlSNlESVamzeh.NsXSazrULze1zguH?accessLevel=meeting&canPlayFromShare=true&from=share_recording_detail&continueMode=true&oldStyle=true&componentName=rec-play,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.10,2026-09-29T22:04:52+00:00,resolve_951_2026-09-29,0
+https://mountvernonin-my.sharepoint.com/personal/sloehr_mountvernon-in_com/_layouts/15/stream.aspx?id=%2Fpersonal%2Fsloehr_mountvernon-in_com%2FDocuments%2FAttachments%2F2026-09-16+18-30-03.mkv&referrer=StreamWebApp.Web&referrerScenario=AddressBarCopied.v,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,8.89,2026-09-29T22:05:17+00:00,resolve_951_2026-09-29,0
+https://plainfieldtown.sharepoint.com/:v:/s/MeetingMinutes/IQBzchY64sapQ4-d6pefxUKXAaNC5A6SkeaTrrrSqAstKb4?e=a7Hi4g,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.97,2026-09-29T22:05:50+00:00,resolve_951_2026-09-29,0
+https://spaces.hightail.com/space/32KVcGmmMD,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.89,2026-09-29T22:05:57+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160615,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:05:57+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/167935270,vimeo,vimeo-oembed,54.00,2016-05-24,,0,reject-short,duration 54.0s is below the 60s meeting-plausibility floor,7.68,2026-09-29T22:06:15+00:00,resolve_951_2026-09-29,0
+https://www.icgov.org/government/departments-and-divisions/cable-tv/video-library,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T22:06:22+00:00,resolve_951_2026-09-29,0
+https://www.facebook.com/cityofgreatbend/videos/1482145130159968,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:06:28+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/159757,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:06:28+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-salinaks.cablecast.tv/internetchannel/show/26954,cablecast,hls-master+variant,1301.01,,,1,accept,,3.59,2026-09-29T22:06:42+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152966,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:06:43+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/bXxXltthCNyrIR5scw76WkIXWalzCaq6/media/1028969,telvue,telvue-page-json,1700.00,,,1,accept,,5.96,2026-09-29T22:06:55+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/3j7kLdRvXoLQkVgYZ92AoEuGSMrQXrBe/media/1045822,telvue,telvue-page-json,8175.00,,,1,accept,,0.40,2026-09-29T22:07:06+00:00,resolve_951_2026-09-29,0
+https://reflect-sttammany.cablecast.tv/internetchannel/show/2740,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:07:12+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151393,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:07:12+00:00,resolve_951_2026-09-29,0
+https://reflect-sttammany.cablecast.tv/internetchannel/show/3174,cablecast,hls-master+variant,1206.74,,,1,accept,,8.80,2026-09-29T22:07:33+00:00,resolve_951_2026-09-29,0
+https://townhallstreams.com/stream.php?location_id=160&id=76298,townhallstreams,hls-master+variant,6146.53,,,1,accept,,7.15,2026-09-29T22:07:54+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/NzN-Z2CpIDNbXMWB16nIzGKjRlHJozGq/media/1014628,telvue,telvue-page-json,13572.00,,,1,accept,,0.35,2026-09-29T22:08:04+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/2SF2eErWgPYctF9VuTavwGzn6jDsprg2/media/1015693,telvue,telvue-page-json,11057.00,,,1,accept,,0.38,2026-09-29T22:08:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/AbfNhigIqnG-4roGCxaFupXEKfme9dfT/media/1015135,telvue,telvue-page-json,1906.00,,,1,accept,,5.99,2026-09-29T22:08:30+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/bolKjl_hz0AKcKTLs9dB2G-jOsX57rR8/media/1045221,telvue,telvue-page-json,1891.00,,,1,accept,,5.94,2026-09-29T22:08:45+00:00,resolve_951_2026-09-29,0
+https://reflect-video-ondemand-cpsd.cablecast.tv/internetchannel/show/10668,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T22:08:51+00:00,resolve_951_2026-09-29,0
+https://reflect-easthamptonmediatv.cablecast.tv/internetchannel/show/23814,cablecast,hls-master+variant,4918.55,,,1,accept,,8.65,2026-09-29T22:09:09+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb/media/1014674,telvue,telvue-page-json,2358.00,,,1,accept,,0.42,2026-09-29T22:09:18+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/media/1014555,telvue,telvue-page-json,957.00,,,1,accept,,0.42,2026-09-29T22:09:35+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-framingham.cablecast.tv/internetchannel/show/3771,cablecast,hls-master+variant,1924.62,,,1,accept,,3.21,2026-09-29T22:09:47+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/f8r896ULmGZtrF3mCzOdRbTTP_Wnx2Q1/media/1016079,telvue,telvue-page-json,740.00,,,1,accept,,5.94,2026-09-29T22:10:00+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT/media/1021051,telvue,telvue-page-json,4653.00,,,1,accept,,6.05,2026-09-29T22:10:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/4jeRlBTetCoFJdyT5ssIvBrB9VUvRN0M/media/1014583,telvue,telvue-page-json,2829.00,,,1,accept,,6.09,2026-09-29T22:10:30+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/9RIojWjXE_ZbteJMaQ07fpXeQY2rZ7Ar/media/1018907,telvue,telvue-page-json,5049.00,,,1,accept,,0.40,2026-09-29T22:10:41+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/7hdULuL3ugjD0foxEgfiYHcCpVR47uduGBT5TJN9f5WQ68pjloYc3VYZX_J26uIa.LJZe8Zp89o19jSjY,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.97,2026-09-29T22:10:48+00:00,resolve_951_2026-09-29,0
+https://reflect-southbridgectv.cablecast.tv/internetchannel/show/3826,cablecast,hls-master+variant,4727.67,,,1,accept,,8.72,2026-09-29T22:11:06+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/media/1014662,telvue,telvue-page-json,2627.00,,,1,accept,,5.78,2026-09-29T22:11:18+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1014917,telvue,telvue-page-json,5928.00,,,1,accept,,5.91,2026-09-29T22:11:33+00:00,resolve_951_2026-09-29,0
+https://reflect-ctn.cablecast.tv/internetchannel/show/11073,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.07,2026-09-29T22:11:40+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1017104,telvue,telvue-page-json,8209.00,,,1,accept,,0.46,2026-09-29T22:11:53+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1016999,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key EJtfn8ou cap (5) reached,0.00,2026-09-29T22:12:08+00:00,resolve_951_2026-09-29,0
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17885,cablecast,hls-master+variant,4006.53,,,1,accept,,8.51,2026-09-29T22:12:26+00:00,resolve_951_2026-09-29,0
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17791,cablecast,hls-master+variant,5267.96,,,1,accept,,8.64,2026-09-29T22:12:47+00:00,resolve_951_2026-09-29,0
+https://reflect-detroit-vod.cablecast.tv/internetchannel/show/15395,cablecast,hls-master+variant,3588.08,,,1,accept,,8.70,2026-09-29T22:13:05+00:00,resolve_951_2026-09-29,0
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17862,cablecast,hls-master+variant,2715.16,,,1,accept,,8.65,2026-09-29T22:13:23+00:00,resolve_951_2026-09-29,0
+https://mctv.midland-mi.org/internetchannel/show/12126?channel=2,cablecast,hls-master+variant,3470.03,,,1,accept,,5.59,2026-09-29T22:13:37+00:00,resolve_951_2026-09-29,0
+https://reflect-monroe-mi-ci.cablecast.tv/internetchannel/show/87,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.95,2026-09-29T22:13:52+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/bXdwUSrnr6QUGN4_JWYERXfbtl3o_jt2/media/1015674,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key bXdwUSrn cap (5) reached,0.00,2026-09-29T22:14:05+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/aOt1iJYvW4IQawSCE8Goebgvo0CdBFwN/media/349557,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key aOt1iJYv cap (5) reached,0.00,2026-09-29T22:14:20+00:00,resolve_951_2026-09-29,0
+https://reflect-southfield.cablecast.tv/internetchannel/show/2163,cablecast,hls-master+variant,13496.13,,,1,accept,,3.45,2026-09-29T22:14:32+00:00,resolve_951_2026-09-29,0
+https://reflect-tacm.cablecast.tv/internetchannel/show/5759,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.16,2026-09-29T22:14:48+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/1231121652?fl=pl&fe=sh,vimeo,vimeo-oembed,3853.00,2026-09-28,,1,accept,,0.08,2026-09-29T22:14:54+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152527,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:15:03+00:00,resolve_951_2026-09-29,0
+https://buffalo.viebit.com/watch?hash=HrLrbQJkaGLRE54P,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",6.02,2026-09-29T22:15:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/SOo9xB79JT5PvzfNWZDUiimCHptQM83H/media/950553,telvue,telvue-page-json,3820.00,,,1,accept,,6.03,2026-09-29T22:15:28+00:00,resolve_951_2026-09-29,0
+https://reflect-ictv.cablecast.tv/show/33407?site=1,cablecast,hls-master+variant,1694.41,,,1,accept,,3.15,2026-09-29T22:15:43+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-eagan.cablecast.tv/internetchannel/show/13136,cablecast,hls-master+variant,1743.32,,,1,accept,,3.37,2026-09-29T22:15:55+00:00,resolve_951_2026-09-29,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3760,cablecast,hls-master+variant,4445.36,,,1,accept,,8.05,2026-09-29T22:16:13+00:00,resolve_951_2026-09-29,0
+https://reflect-tst-mn.cablecast.tv/show/5981?site=1,cablecast,hls-master+variant,2599.98,,,1,accept,,3.13,2026-09-29T22:16:26+00:00,resolve_951_2026-09-29,0
+https://bit.ly/lscc_260928,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.84,2026-09-29T22:16:34+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC/media/1015980,telvue,telvue-page-json,2021.00,,,1,accept,,6.03,2026-09-29T22:16:47+00:00,resolve_951_2026-09-29,0
+https://reflect-smsu.cablecast.tv/internetchannel/show/12424,cablecast,hls-master+variant,2301.89,,,1,accept,,3.31,2026-09-29T22:16:59+00:00,resolve_951_2026-09-29,0
+https://monticello.viebit.com/player.php?hash=tLJa0f8OHncMjO0Q,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",5.93,2026-09-29T22:17:11+00:00,resolve_951_2026-09-29,0
+https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005,granicus,hls-master+variant,2841.41,,,1,accept,,16.23,2026-09-29T22:18:12+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofowatonna.cablecast.tv/internetchannel/show/5661,cablecast,hls-master+variant,3925.90,,,1,accept,,3.36,2026-09-29T22:18:23+00:00,resolve_951_2026-09-29,0
+https://reflect-two-harbors.cablecast.tv/internetchannel/show/10678,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,5.98,2026-09-29T22:18:39+00:00,resolve_951_2026-09-29,0
+https://webstreaming.ctv15.org/regionview.php?regionid=100,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.00,2026-09-29T22:18:45+00:00,resolve_951_2026-09-29,0
+https://watertown.viebit.com/watch?hash=vlYc5PVhRErzkBaB,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",6.02,2026-09-29T22:18:57+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofwillmar.cablecast.tv/internetchannel/show/9765,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.20,2026-09-29T22:19:13+00:00,resolve_951_2026-09-29,0
+https://www.fergusoncity.com/952/Council-Meeting-Videos,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,5.96,2026-09-29T22:19:28+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-ofallon.cablecast.tv/internetchannel/show/5327,cablecast,hls-master+variant,3203.99,,,1,accept,,3.28,2026-09-29T22:19:39+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/158548,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:19:40+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/152040,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:19:40+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/nospace/hls/missoula/Virtual-_-Encoder-_-1_HPC_2026-09-02-07-53.mp4/seg-74-v1-a1.ts,unknown,,,,,0,reject-dead,no probe recipe for this media shape: https://cdn1.isilive.ca/nospace/hls/missoula/Virtual-_-Encoder-_-1_HPC_2026-09-02-07-53.mp4/seg-74-v1-a1.ts,3.03,2026-09-29T22:19:46+00:00,resolve_951_2026-09-29,0
+https://reflect-lnktv-lincoln.cablecast.tv/show/4452?site=1,cablecast,hls-master+variant,5083.65,,,1,accept,,3.21,2026-09-29T22:20:03+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe/media/1015851,telvue,telvue-page-json,10723.00,,,1,accept,,5.98,2026-09-29T22:20:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/oezu732FQzGpB16PUuA7b6RtwYcz9P4s/media/1046772,telvue,telvue-page-json,900.00,,,1,accept,,5.96,2026-09-29T22:20:30+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu/media/1014540,telvue,telvue-page-json,1887.00,,,1,accept,,0.52,2026-09-29T22:20:42+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/c3u9LDqF4P2BmKomyp2Nfg8d-zRkKnkJ/media/1017006,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.89,2026-09-29T22:20:51+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/xAkU_1Eb4e9C1-YCioqZmvaGx4GumMyB/media/1014586,telvue,telvue-page-json,12204.00,,,1,accept,,0.34,2026-09-29T22:21:03+00:00,resolve_951_2026-09-29,0
+https://reflect-fairlawntv-nj.cablecast.tv/internetchannel/show/24548,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.00,2026-09-29T22:21:09+00:00,resolve_951_2026-09-29,0
+https://bolp-my.sharepoint.com/:u:/g/personal/cfitzpatrick_bolp_org/IQDzEXtV0xPLQrmL8Zwcuj6DAZN7ZvmxKpq1-uYvdVaiIK8?e=dyedbT,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.98,2026-09-29T22:21:43+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/aUdH330Hl5wGb8G3rUD6mAqMwr2LEyfn/media/1019258,telvue,telvue-page-json,3886.00,,,1,accept,,5.97,2026-09-29T22:21:55+00:00,resolve_951_2026-09-29,0
+https://reflect-city-rahway-nj.cablecast.tv/internetchannel/show/24,cablecast,hls-master+variant,3078.71,,,1,accept,,8.54,2026-09-29T22:22:15+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2/media/1014531,telvue,telvue-page-json,18638.00,,,1,accept,,6.03,2026-09-29T22:22:27+00:00,resolve_951_2026-09-29,0
+https://destinyhosted.com/agenda_publish.cfm?id=76793&mt=AAC&vl=true&get_month=3&get_year=2026&dsp=ag&seq=342,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.12,2026-09-29T22:22:35+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/media/1014554,telvue,telvue-page-json,11131.00,,,1,accept,,6.02,2026-09-29T22:22:48+00:00,resolve_951_2026-09-29,0
+https://wavefarm.org/,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T22:22:54+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1015382,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key FcqTL0OY cap (5) reached,0.00,2026-09-29T22:23:01+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-lmctv.cablecast.tv/internetchannel/show/20437,cablecast,hls-master+variant,,,,0,reject-dead,HLS variant playlist returned HTTP 503,11.11,2026-09-29T22:23:26+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/share/x-5yLPpQwTOQo0mjTrqj0_T6L1bOyqCX005oHAAuKYTcQagFUVs8816Q8splHLEM.W8UKs1mhguAmhMaH,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.88,2026-09-29T22:23:33+00:00,resolve_951_2026-09-29,0
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/3659,cablecast,hls-master+variant,7250.71,,,1,accept,,5.31,2026-09-29T22:23:46+00:00,resolve_951_2026-09-29,0
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/3707,cablecast,hls-master+variant,4950.52,,,1,accept,,5.66,2026-09-29T22:23:58+00:00,resolve_951_2026-09-29,0
+https://www.sleepyhollowny.gov/878/01-15-2026-Planning-Board-Worksession,youtube,yt-dlp-metadata,,,,0,reject-dead,"yt-dlp: ERROR: [youtube] h7T4k6Bk-N8: Unable to download API page: HTTPSConnection(host='www.youtube.com', port=443): Failed to establish a new connection: refused: www.youtube.com is a YouTube host; YouTube ",3.11,2026-09-29T22:24:05+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/lookup_stream?client_id=greensboro&stream_name=GTN,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.91,2026-09-29T22:24:13+00:00,resolve_951_2026-09-29,0
+https://reflect-cumberlandcounty-govt.cablecast.tv/internetchannel/show/3906,cablecast,hls-master+variant,1971.23,,,1,accept,,3.29,2026-09-29T22:24:26+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155726,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:24:29+00:00,resolve_951_2026-09-29,0
+https://reflect-wstv-cityofws.cablecast.tv/internetchannel/show/3025,cablecast,hls-master+variant,3662.96,,,1,accept,,3.38,2026-09-29T22:24:40+00:00,resolve_951_2026-09-29,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19925,cablecast,hls-master+variant,3929.95,,,1,accept,,8.50,2026-09-29T22:24:59+00:00,resolve_951_2026-09-29,0
+https://bit.ly/2026MeetingRecordingsSP,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.94,2026-09-29T22:25:33+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/pqymTsQuiPi5J-e7yYT1TfzKXSIV055q/media/710581,telvue,telvue-page-json,3784.00,,,1,accept,,5.88,2026-09-29T22:25:46+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofdayton.cablecast.tv/internetchannel/show/763,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.07,2026-09-29T22:26:02+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160718,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:26:03+00:00,resolve_951_2026-09-29,0
+https://www.icrctv.com/community/harrison,youtube,yt-dlp-metadata,,,,0,reject-dead,"yt-dlp: ERROR: [youtube] Or1Ph3Yi9mg: Unable to download API page: HTTPSConnection(host='www.youtube.com', port=443): Failed to establish a new connection: refused: www.youtube.com is a YouTube host; YouTube ",3.07,2026-09-29T22:26:12+00:00,resolve_951_2026-09-29,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20248,cablecast,hls-master+variant,3085.71,,,1,accept,,8.68,2026-09-29T22:26:30+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9/media/1015803,telvue,telvue-page-json,1709.00,,,1,accept,,5.94,2026-09-29T22:26:42+00:00,resolve_951_2026-09-29,0
+https://www.glwb.net/vow_videos.php?date=01-18-22,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-29T22:26:49+00:00,resolve_951_2026-09-29,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20250,cablecast,hls-master+variant,3799.96,,,1,accept,,8.01,2026-09-29T22:27:07+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153041,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:27:07+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/724NwSAvTGO8fhle8zK5BSnF9sj3sFxN/media/1014516,telvue,telvue-page-json,10799.00,,,1,accept,,0.34,2026-09-29T22:27:16+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160442,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:27:16+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1014663,telvue,telvue-page-json,12980.00,,,1,accept,,0.45,2026-09-29T22:27:31+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1015849,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key w9sPsSE7 cap (5) reached,0.00,2026-09-29T22:27:34+00:00,resolve_951_2026-09-29,0
+https://tinyurl.com/VenetaBudget,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.00,2026-09-29T22:27:42+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/5QlcS026fQy98qR8aFzKSh5DvYNq1NKn/media/1016088,telvue,telvue-page-json,4878.00,,,1,accept,,0.40,2026-09-29T22:27:56+00:00,resolve_951_2026-09-29,0
+https://reflect-bethelpark-cable.cablecast.tv/internetchannel/show/2865,cablecast,hls-master+variant,3027.95,,,1,accept,,8.65,2026-09-29T22:28:15+00:00,resolve_951_2026-09-29,0
+https://reflect-catv-erie.cablecast.tv/internetchannel/show/9347,cablecast,hls-master+variant,4700.14,,,1,accept,,3.22,2026-09-29T22:28:27+00:00,resolve_951_2026-09-29,0
+https://www.communitymedia.net/gov/hanover/borough-council-meeting-09-23-2026/,vimeo,vimeo-oembed,4221.00,2026-09-01,,1,accept,,0.08,2026-09-29T22:28:35+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/155443,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:28:35+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151265,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:28:36+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/KhA_ULGx1UdtbPSnwHPL0t1TrYm6rQSe/media/1014573,telvue,telvue-page-json,8131.00,,,1,accept,,5.96,2026-09-29T22:28:48+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq/media/1014689,telvue,telvue-page-json,2289.00,,,1,accept,,5.98,2026-09-29T22:29:03+00:00,resolve_951_2026-09-29,0
+https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/4334,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,3.05,2026-09-29T22:29:09+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-murfreesborotn.cablecast.tv/show/5568?site=1,cablecast,hls-master+variant,6721.89,,,1,accept,,3.21,2026-09-29T22:29:28+00:00,resolve_951_2026-09-29,0
+https://reflect-actv-city-allen.cablecast.tv/internetchannel/show/4373,cablecast,hls-master+variant,3716.94,,,1,accept,,3.30,2026-09-29T22:29:38+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153117,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:29:38+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160589,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:29:38+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151940,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:29:38+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/lookup_stream?client_id=lamesa&stream_name=Encoder%20546_CCM_2024-01-23-08-58.mp4,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.86,2026-09-29T22:29:45+00:00,resolve_951_2026-09-29,0
+https://www.cityofolneytx.com/citycouncil/page/regular-meeting-city-council-162,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-29T22:30:02+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/151873,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:30:02+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/156923,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:30:02+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160641,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:30:03+00:00,resolve_951_2026-09-29,0
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24157,cablecast,hls-master+variant,4673.60,,,1,accept,,8.63,2026-09-29T22:30:23+00:00,resolve_951_2026-09-29,0
+https://us06web.zoom.us/rec/share/ym95Gfd10HvU7YcDb461ElTguj-31esxXVgdEogfsxyiiUWD2L1Flfs5wpu7FpR3.0d3DdgvHsHoF9n0Y?startTime=1768426160000,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.16,2026-09-29T22:30:30+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160597,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:30:30+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/rec/play/W5J06wpaN1BNnQwwfCaVXpm49SCdm4v4xQf3qLTDgVQ73a7g5jhvaFL_ub0wta_BpK-VHTgNRA9IIEME.yac-ZoNEgLgZJMXe,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.10,2026-09-29T22:30:36+00:00,resolve_951_2026-09-29,0
+https://burlingtonwa-my.sharepoint.com/:v:/g/personal/sarahw_burlingtonwa_gov/IQC5_Y_3mTT2R5i-zpyN3dYtAeC77oOW3CHmC_neYX28n6k?e=zE6e23,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,12.07,2026-09-29T22:31:10+00:00,resolve_951_2026-09-29,0
+https://www.cityofcheney.org/DocumentCenter/View/4905/9-22-26-Recording,unknown,ranged-get+ffprobe,8696.62,,192702306,1,accept,,8.90,2026-09-29T22:31:29+00:00,resolve_951_2026-09-29,0
+https://cityofchewelah.sharepoint.com/:v:/s/PublicRecordsRequests/IQD2pHnOyGgwT5Wv45SpqYxQATrZjqRmETka2Y_9fytZHXc?e=eaZIXH,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,11.93,2026-09-29T22:32:03+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160737,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:32:03+00:00,resolve_951_2026-09-29,0
+https://us02web.zoom.us/s/83998182308#success,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.99,2026-09-29T22:32:10+00:00,resolve_951_2026-09-29,0
+https://cesa10.mediaspace.kaltura.com/media/t/1_yerskzxa,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.01,2026-09-29T22:32:17+00:00,resolve_951_2026-09-29,0
+https://reflect-fitchburg.cablecast.tv/internetchannel/show/17780,cablecast,hls-master+variant,4109.73,,,1,accept,,8.61,2026-09-29T22:32:35+00:00,resolve_951_2026-09-29,0
+https://reflect-tvschedule-cityofmadison.cablecast.tv/internetchannel/show/5344,cablecast,hls-master+variant,3633.39,,,1,accept,,3.35,2026-09-29T22:32:47+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/145211,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:32:47+00:00,resolve_951_2026-09-29,0
+https://menomonielibrary.org/library-board-of-trustees-meeting-minutes/,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,3.71,2026-09-29T22:32:59+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/fSUt1ChllWIwWn_g28Mu3g-avz7I94a_/media/1015089,telvue,telvue-page-json,3551.00,,,1,accept,,0.33,2026-09-29T22:33:10+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS/media/1014862,telvue,telvue-page-json,2400.00,,,1,accept,,0.38,2026-09-29T22:33:23+00:00,resolve_951_2026-09-29,0
+https://reflect-champaign.cablecast.tv/internetchannel/show/5592,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.92,2026-09-29T22:33:30+00:00,resolve_951_2026-09-29,0
+https://reflect-ctn.cablecast.tv/internetchannel/show/11078,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,2.97,2026-09-29T22:33:46+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1/media/1015680,telvue,telvue-page-json,11975.00,,,1,accept,,0.43,2026-09-29T22:33:57+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/o6Qh7LIjgTymwx6gz6NDiPtbRpz9SB6B/media/1016814,telvue,telvue-page-json,5368.00,,,1,accept,,6.02,2026-09-29T22:34:32+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH/media/1017776,telvue,telvue-page-json,14443.00,,,1,accept,,5.88,2026-09-29T22:34:54+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/horryschools/New%20Encoder_BM_2020-10-19-05-59-V3.mp4,direct_file,head+ffprobe,9682.57,2020-10-20,1367697022,1,accept,,3.24,2026-09-29T22:35:17+00:00,resolve_951_2026-09-29,0
+https://vbschools.cablecast.tv/show/227?site=1,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,6.00,2026-09-29T22:35:33+00:00,resolve_951_2026-09-29,0
+https://civplus.tikiliveapi.com/video/160493,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:35:33+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/northumberland/New%20Encoder_SCC_2024-03-06-02-33.mp4,direct_file,head+ffprobe,4715.53,2024-03-06,691587740,1,accept,,3.36,2026-09-29T22:37:25+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/waterloo/iSi%20Live%20Encoder%20619_SID_2026-01-13-08-59.mp4,direct_file,head+ffprobe,32026.60,2026-01-13,4558062975,1,flag-long,"duration 8.90h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",4.62,2026-09-29T22:37:53+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/cornwall/Council%20Encoder%20with%20Social_Regular%20Meeting%20of%20Council_2025-09-22-07-07.mp4,direct_file,head+ffprobe,8562.23,2025-09-23,882993342,1,accept,,3.19,2026-09-29T22:38:18+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/oshawa/COA_2025-09-17.mp4.html,direct_file,head+ffprobe,5945.63,2025-09-17,843436587,1,accept,,4.72,2026-09-29T22:38:44+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/richmondhill/2019-09-25.mp4,direct_file,head+ffprobe,6079.67,2019-09-25,1101110754,1,accept,,2.98,2026-09-29T22:39:09+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/thebluemountains/Community%20Design%20Guidelines%20Open%20House-20260414_170908-Meeting%20Recording.mp4,direct_file,head+ffprobe,2341.31,2026-04-15,116492764,1,accept,,3.29,2026-09-29T22:39:32+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/bracebridge/2024-08-09%20Committee%20of%20Adjustment%20for%20Minor%20Variances%20Meeting.mp4.html,direct_file,head+ffprobe,1189.76,2024-08-09,107238885,1,accept,,3.18,2026-09-29T22:39:56+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/kelowna/encoder_Budget%20Deliberations_2025-12-04-12-00.mp4,direct_file,head+ffprobe,24816.01,2025-12-05,3201405824,1,flag-long,"duration 6.89h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",3.85,2026-09-29T22:40:23+00:00,resolve_951_2026-09-29,0
+https://reflect-glastonburyct.cablecast.tv/internetchannel/show/1070,cablecast,hls-master+variant,3329.06,,,1,accept,,3.38,2026-09-29T22:40:35+00:00,resolve_951_2026-09-29,0
+https://reflect-cetv.cablecast.tv/internetchannel/show/1681,cablecast,hls-master+variant,2992.97,,,1,accept,,3.17,2026-09-29T22:40:45+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/RVW_MGb8e118795O2RYhP8fLbPOZACgm,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key RVW_MGb8 cap (5) reached,0.00,2026-09-29T22:40:49+00:00,resolve_951_2026-09-29,0
+https://reflect-bourne.cablecast.tv/internetchannel/show/27729,cablecast,hls-master+variant,2639.95,,,1,accept,,3.31,2026-09-29T22:40:59+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj/media/1014601,telvue,telvue-page-json,8482.00,,,1,accept,,1.04,2026-09-29T22:41:05+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/994DtmGEsi0VDYK3jJI2BJ72GfgNIpU2/media/1014549,telvue,telvue-page-json,4381.00,,,1,accept,,1.01,2026-09-29T22:41:14+00:00,resolve_951_2026-09-29,0
+https://reflect-holbrook.cablecast.tv/internetchannel/show/6447,cablecast,hls-master+variant,3054.96,,,1,accept,,3.18,2026-09-29T22:41:25+00:00,resolve_951_2026-09-29,0
+https://reflect-townofoxfordma.cablecast.tv/internetchannel/show/2494,cablecast,hls-master+variant,5089.92,,,1,accept,,3.28,2026-09-29T22:41:52+00:00,resolve_951_2026-09-29,0
+https://reflect-clinton-twp.cablecast.tv/show/434?site=1,cablecast,hls-master+variant,5227.14,,,1,accept,,3.41,2026-09-29T22:42:06+00:00,resolve_951_2026-09-29,0
+https://reflect-ictv.cablecast.tv/show/33460?site=1,cablecast,hls-master+variant,1739.25,,,1,accept,,3.17,2026-09-29T22:42:19+00:00,resolve_951_2026-09-29,0
+https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1985?site=1&query=master+plan,cablecast,hls-master+variant,5495.20,,,1,accept,,3.27,2026-09-29T22:42:36+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/9GoxOSjmC7wxhZd_91MzDBO_wwXycvDQ/media/1021670,telvue,telvue-page-json,5395.00,,,1,accept,,1.52,2026-09-29T22:42:43+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/OXn5XvCPQqemD7cvXwSX1qzONyLLA3Uq/media/1015750,telvue,telvue-page-json,2809.00,,,1,accept,,1.38,2026-09-29T22:43:01+00:00,resolve_951_2026-09-29,0
+http://concord.cablecast.tv/internetchannel/show/917,cablecast,hls-master+variant,4274.92,,,1,accept,,3.23,2026-09-29T22:43:09+00:00,resolve_951_2026-09-29,0
+https://videoplayer.telvue.com/player/nxgRww0afzGlqmpU3Ylgjl5EjjOiRjMT/media/1014585,telvue,telvue-page-json,17727.00,,,1,accept,,1.89,2026-09-29T22:43:17+00:00,resolve_951_2026-09-29,0
+https://reflect-pomona.cablecast.tv/internetchannel/show/312,cablecast,hls-master+variant,2742.03,,,1,accept,,4.49,2026-09-29T22:43:33+00:00,resolve_951_2026-09-29,0
+https://cityofredlands.cablecast.tv/show/538?site=1,cablecast,hls-master+variant,3801.79,,,1,accept,,3.17,2026-09-29T22:43:48+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofsantee.cablecast.tv/internetchannel/show/2317,cablecast,hls-master+variant,4364.11,,,1,accept,,3.62,2026-09-29T22:44:00+00:00,resolve_951_2026-09-29,0
+https://reflect-temecula.cablecast.tv/internetchannel/show/694,cablecast,hls-master+variant,5459.62,,,1,accept,,3.20,2026-09-29T22:44:08+00:00,resolve_951_2026-09-29,0
+https://walnutcreek.cablecast.tv/internetchannel/show/2161,cablecast,hls-master+variant,1676.01,,,1,accept,,3.28,2026-09-29T22:44:27+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-fcgov.cablecast.tv/internetchannel/show/3057,cablecast,hls-master+variant,1415.99,,,1,accept,,3.47,2026-09-29T22:44:39+00:00,resolve_951_2026-09-29,0
+https://reflect-thornton.cablecast.tv/internetchannel/show/1761,cablecast,hls-master+variant,4073.93,,,1,accept,,3.27,2026-09-29T22:44:51+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/greencovesprings/2025-09-16Council.mp4,direct_file,head+ffprobe,12515.80,2025-09-17,2507392097,1,accept,,3.23,2026-09-29T22:45:15+00:00,resolve_951_2026-09-29,0
+https://reflect-champaign.cablecast.tv/internetchannel/show/6013,cablecast,hls-master+variant,3852.51,,,1,accept,,3.16,2026-09-29T22:45:34+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-salinaks.cablecast.tv/internetchannel/show/26954,cablecast,hls-master+variant,1301.01,,,1,accept,,3.38,2026-09-29T22:45:44+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-framingham.cablecast.tv/internetchannel/show/3771,cablecast,hls-master+variant,1924.62,,,1,accept,,3.24,2026-09-29T22:46:12+00:00,resolve_951_2026-09-29,0
+https://reflect-southfield.cablecast.tv/internetchannel/show/2163,cablecast,hls-master+variant,13496.13,,,1,accept,,3.41,2026-09-29T22:46:30+00:00,resolve_951_2026-09-29,0
+https://vimeo.com/1231121652?fl=pl&fe=sh,vimeo,vimeo-oembed,3853.00,2026-09-28,,1,accept,,0.08,2026-09-29T22:46:37+00:00,resolve_951_2026-09-29,0
+https://reflect-ictv.cablecast.tv/show/33407?site=1,cablecast,hls-master+variant,1694.41,,,1,accept,,3.32,2026-09-29T22:46:50+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-eagan.cablecast.tv/internetchannel/show/13136,cablecast,hls-master+variant,1743.32,,,1,accept,,3.53,2026-09-29T22:46:59+00:00,resolve_951_2026-09-29,0
+https://reflect-tst-mn.cablecast.tv/show/5981?site=1,cablecast,hls-master+variant,2599.98,,,1,accept,,3.55,2026-09-29T22:47:12+00:00,resolve_951_2026-09-29,0
+https://reflect-smsu.cablecast.tv/internetchannel/show/12424,cablecast,hls-master+variant,2301.89,,,1,accept,,3.58,2026-09-29T22:47:23+00:00,resolve_951_2026-09-29,0
+https://reflect-cityofowatonna.cablecast.tv/internetchannel/show/5661,cablecast,hls-master+variant,3925.90,,,1,accept,,3.26,2026-09-29T22:47:33+00:00,resolve_951_2026-09-29,0
+https://reflect-city-of-ofallon.cablecast.tv/internetchannel/show/5327,cablecast,hls-master+variant,3203.99,,,1,accept,,18.61,2026-09-29T22:48:20+00:00,resolve_951_2026-09-29,0
+https://reflect-lnktv-lincoln.cablecast.tv/show/4452?site=1,cablecast,hls-master+variant,5083.65,,,1,accept,,4.16,2026-09-29T22:48:34+00:00,resolve_951_2026-09-29,0
+https://reflect-cumberlandcounty-govt.cablecast.tv/internetchannel/show/3906,cablecast,hls-master+variant,1971.23,,,1,accept,,3.19,2026-09-29T22:48:53+00:00,resolve_951_2026-09-29,0
+https://reflect-wstv-cityofws.cablecast.tv/internetchannel/show/3025,cablecast,hls-master+variant,3662.96,,,1,accept,,3.30,2026-09-29T22:49:04+00:00,resolve_951_2026-09-29,0
+https://reflect-catv-erie.cablecast.tv/internetchannel/show/9347,cablecast,hls-master+variant,4700.14,,,1,accept,,3.29,2026-09-29T22:49:18+00:00,resolve_951_2026-09-29,0
+https://www.communitymedia.net/gov/hanover/borough-council-meeting-09-23-2026/,vimeo,vimeo-oembed,4221.00,2026-09-01,,1,accept,,0.08,2026-09-29T22:49:25+00:00,resolve_951_2026-09-29,0
+https://reflect-vod-murfreesborotn.cablecast.tv/show/5568?site=1,cablecast,hls-master+variant,6721.89,,,1,accept,,3.46,2026-09-29T22:49:39+00:00,resolve_951_2026-09-29,0
+https://reflect-actv-city-allen.cablecast.tv/internetchannel/show/4373,cablecast,hls-master+variant,3716.94,,,1,accept,,3.34,2026-09-29T22:49:51+00:00,resolve_951_2026-09-29,0
+https://reflect-tvschedule-cityofmadison.cablecast.tv/internetchannel/show/5344,cablecast,hls-master+variant,3633.39,,,1,accept,,3.33,2026-09-29T22:50:01+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/play/horryschools/New%20Encoder_BM_2020-10-19-05-59-V3.mp4,direct_file,head+ffprobe,9682.57,2020-10-20,1367697022,1,accept,,2.99,2026-09-29T22:50:37+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:burlington/Council%20Encoder_8%2013%202020%20Corporate%20Services%20Strategy%20Risk%20and%20Accountability%20Committee.mp4/media_w764905935_20.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.99,2026-09-29T23:14:44+00:00,resolve_951_2026-09-29,0
+https://video.isilive.ca/peachland/2025-12-09%20COTW.mp4.html,direct_file,head+ffprobe,4997.57,2025-12-09,3229496293,1,accept,,3.55,2026-09-29T23:15:46+00:00,resolve_951_2026-09-29,0
+https://cdn1.isilive.ca/vod/_definst_/mp4:vermilion/32-Regular-Council-Meeting-2026-8-18-23-49.mp4/media_w505690044_9.ts,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.92,2026-09-29T23:15:52+00:00,resolve_951_2026-09-29,0
+https://brunswick-md.granicus.com/MediaPlayer.php?view_id=2&clip_id=649,granicus,hls-master+variant,2305.60,,,1,accept,,19.57,2026-09-29T19:50:45+00:00,stale_coverage_2026-09-29,0
+https://mysanibel.granicus.com/MediaPlayer.php?view_id=1&clip_id=2722,granicus,hls-master+variant,1859.03,,,1,accept,,17.57,2026-09-29T19:51:02+00:00,stale_coverage_2026-09-29,0
+https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412,iqm2,hls-master+variant,1703.28,,,1,accept,,8.88,2026-09-29T19:51:11+00:00,stale_coverage_2026-09-29,0
+https://cityoflamirada.granicus.com/MediaPlayer.php?view_id=1&clip_id=746,granicus,hls-master+variant,2265.04,,,1,accept,,17.77,2026-09-29T19:51:29+00:00,stale_coverage_2026-09-29,0
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782,iqm2,hls-master+variant,1238.90,,,1,accept,,8.81,2026-09-29T19:51:38+00:00,stale_coverage_2026-09-29,0
+https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4,direct_file,head+ffprobe,2396.76,2026-09-22,377498445,1,accept,,1.16,2026-09-29T19:51:40+00:00,stale_coverage_2026-09-29,0
+https://lincolnri.portal.civicclerk.com/event/5479/media,civicclerk,head+ffprobe,2759.54,2026-09-15,1877124675,1,accept,,1.25,2026-09-29T19:55:41+00:00,stale_coverage_2026-09-29,0
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4,direct_file,head+ffprobe,576.94,2026-09-21,268739982,1,accept,,1.36,2026-09-29T20:23:10+00:00,state_level_2026-09-29,0
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME,castus,hls-master+variant,1676.00,,,1,accept,,3.10,2026-09-29T21:05:00+00:00,deadend_salvage_2026-09-29,0
 https://cosumnescommunityservices.portal.civicclerk.com/event/586/media,civicclerk,head+ffprobe,6414.73,2026-09-03,3194677050,1,accept,,2.56,2026-09-29T22:26:27+00:00,walk_236_2026-09-29,0

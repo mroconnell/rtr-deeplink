@@ -1101,6 +1101,75 @@ https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns
 https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301		us:cousub:3400372360
 https://recordings.camdencountymo.gov/Recordings/Videos/09-22-26.mp4	https://recordings.camdencountymo.gov/Recordings/View/1352	us:county:29029
 https://lincolnri.portal.civicclerk.com/event/5479/media	https://www.lincolnri.gov	us:cousub:4400741500
+https://video.isilive.ca/play/whitby/New%20Encoder_RCM_2024-10-07-04-20.mp4?_=1		ca:csd:3518009
+https://video.isilive.ca/play/brockton/Council%20Meeting%20June%2010,%202025.mp4		ca:csd:3541032
+https://video.isilive.ca/play/sudbury/COA_2025_11_12.mp4		ca:csd:3553005
+https://video.isilive.ca/play/thunderbay/New%20Encoder_City%20Council_2022-11-28-06-21.mp4		ca:csd:3558004
+https://cdn1.isilive.ca/vod/_definst_/mp4:surreysb/June%20encoder_Regular%20Board%20Meeting_2021-11-17-09-59.mp4/playlist.m3u8		ca:csd:5915004
+https://video.isilive.ca/play/lakecountry/iSiLIVE%20Encoder%20764_RCM_2024-02-06-09-57.mp4		ca:csd:5935016
+http://video.isilive.ca/tcdsb/Communication/Li%20Video%204-V1.mp4.html		rtr:ca:on:toronto-catholic-district-school-board
+http://video.isilive.ca/play/tetoncounty/2024-11-13_16_39_20.mp4output.mp4		us:county:16081
+https://reflect-batv.cablecast.tv/internetchannel/show/3618		us:cousub:0911005910
+https://reflect-vsctv.cablecast.tv/internetchannel/show/7480		us:cousub:0913057320
+https://www.westbrookct.us/DocumentCenter/View/5773/2021-10-07-224418-Affordable-Housing--Subcommittee-Meeting-Video		us:cousub:0913081680
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6656		us:cousub:2300508430
+https://reflect-fctv3.cablecast.tv/internetchannel/show/803		us:cousub:2300526525
+https://videoplayer.telvue.com/player/GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm/media/1014808		us:cousub:2300587845
+https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/7564		us:cousub:2500174385
+https://reflect-yarmouth.cablecast.tv/internetchannel/show/5268		us:cousub:2500182525
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3773		us:cousub:2500968645
+https://reflect-sharoncommunity-live.cablecast.tv/internetchannel/show/15314		us:cousub:2502160785
+https://videoplayer.telvue.com/player/mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N/media/1017573		us:cousub:2502375260
+https://reflect-hctv.cablecast.tv/internetchannel/show/5198		us:cousub:2502730560
+https://reflect-townofmerrimack.cablecast.tv/internetchannel/show/8921		us:cousub:3301147540
+https://reflect-vod-salem.cablecast.tv/internetchannel/show/19788		us:cousub:3301566660
+https://greentwp.viebit.com/watch?hash=8MY41Gk7QsNfA0aO		us:cousub:3906131752
+https://vimeo.com/974716961		us:cousub:3906176028
+https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1040384		us:cousub:5000109025
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24140		us:cousub:5001161750
+https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1046589		us:cousub:5002107750
+https://video.isilive.ca/campbell/2025-11-06.mp4.html		us:place:0610345
+https://vimeo.com/1227121178		us:place:0656112
+https://video.isilive.ca/play/richmondca/Personnel_Board/2025-12-17_PB.mp4		us:place:0660620
+https://reflect-live8fd-lakewood.cablecast.tv/internetchannel/show/1839		us:place:0843000
+https://danbury.granicus.com/player/clip/3837?redirect=true		us:place:0918430
+https://reflect-vod-cityoftybee.cablecast.tv/internetchannel/show/9695		us:place:1378036
+https://videoplayer.telvue.com/player/bXxXltthCNyrIR5scw76WkIXWalzCaq6/media/1028969		us:place:2148006
+https://reflect-sttammany.cablecast.tv/internetchannel/show/3174		us:place:2270805
+https://videoplayer.telvue.com/player/AbfNhigIqnG-4roGCxaFupXEKfme9dfT/media/1015135		us:place:2414950
+https://videoplayer.telvue.com/player/bolKjl_hz0AKcKTLs9dB2G-jOsX57rR8/media/1045221		us:place:2469925
+https://reflect-easthamptonmediatv.cablecast.tv/internetchannel/show/23814		us:place:2519365
+https://videoplayer.telvue.com/player/f8r896ULmGZtrF3mCzOdRbTTP_Wnx2Q1/media/1016079		us:place:2525485
+https://videoplayer.telvue.com/player/m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT/media/1021051		us:place:2535075
+https://videoplayer.telvue.com/player/4jeRlBTetCoFJdyT5ssIvBrB9VUvRN0M/media/1014583		us:place:2537000
+https://reflect-southbridgectv.cablecast.tv/internetchannel/show/3826		us:place:2563345
+https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/media/1014662		us:place:2572600
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17885		us:place:2608460
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17791		us:place:2609180
+https://reflect-detroit-vod.cablecast.tv/internetchannel/show/15395		us:place:2622000
+https://reflect-bloomfield-community.cablecast.tv/internetchannel/show/17862		us:place:2630340
+https://mctv.midland-mi.org/internetchannel/show/12126?channel=2		us:place:2653780
+https://buffalo.viebit.com/watch?hash=HrLrbQJkaGLRE54P		us:place:2708452
+https://videoplayer.telvue.com/player/SOo9xB79JT5PvzfNWZDUiimCHptQM83H/media/950553		us:place:2708794
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3760		us:place:2721770
+https://videoplayer.telvue.com/player/yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC/media/1015980		us:place:2738564
+https://monticello.viebit.com/player.php?hash=tLJa0f8OHncMjO0Q		us:place:2743774
+https://watertown.viebit.com/watch?hash=vlYc5PVhRErzkBaB		us:place:2768548
+https://videoplayer.telvue.com/player/oezu732FQzGpB16PUuA7b6RtwYcz9P4s/media/1046772		us:place:3350260
+https://videoplayer.telvue.com/player/aUdH330Hl5wGb8G3rUD6mAqMwr2LEyfn/media/1019258		us:place:3444880
+https://reflect-city-rahway-nj.cablecast.tv/internetchannel/show/24		us:place:3461530
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/3707		us:place:3661346
+https://videoplayer.telvue.com/player/pqymTsQuiPi5J-e7yYT1TfzKXSIV055q/media/710581		us:place:3916000
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20248		us:place:3940040
+https://videoplayer.telvue.com/player/bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9/media/1015803		us:place:3948790
+https://reflect-bethelpark-cable.cablecast.tv/internetchannel/show/2865		us:place:4206064
+https://videoplayer.telvue.com/player/5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq/media/1014689		us:place:4649600
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24157		us:place:5024025
+https://videoplayer.telvue.com/player/o6Qh7LIjgTymwx6gz6NDiPtbRpz9SB6B/media/1016814		us:sd:3904438
+https://videoplayer.telvue.com/player/P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS/media/1015681		us:place:0864255
+https://videoplayer.telvue.com/player/dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu/media/1014540		us:place:3365140
+https://video.isilive.ca/cbrm/2026-01-20_0.mp4.html		ca:csd:1217030
+https://video.isilive.ca/peachland/2025-12-09%20COTW.mp4.html		ca:csd:5935018
 https://prodarchivevideo.blob.core.windows.net/video/2026/Sessions/House/September/212026_09_21_House_Session.mp4	https://malegislature.gov/Events/Sessions/Detail/7791	us:state:25
 https://cloud.castus.tv/vod/datv/video/6a5ff724871155000287af5c?page=HOME		us:cousub:2501717475
 https://reflect-wareham.cablecast.tv/internetchannel/show/12763?site=2	https://reflect-wareham.cablecast.tv/	us:cousub:2502372985
@@ -1148,7 +1217,6 @@ https://lancastertx.new.swagit.com/videos/399578		us:place:4841212
 https://burtonmi.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:2612060
 https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996		ca:csd:3506008
-https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860
 https://copleytwpoh.portal.civicclerk.com/event/214/media		us:cousub:3915318658
 https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4537		us:county:27067
 https://cloud.castus.tv/vod/waycam/video/6a7e08d9b1e60900022c61d0?page=HOME	https://cloud.castus.tv/vod/waycam	us:cousub:2501773790
@@ -1232,5 +1300,4 @@ https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mat
 https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
 https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
-https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing	https://ct-easthaven.civicplus.com/AgendaCenter	us:cousub:0917022910
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/

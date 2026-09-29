@@ -933,3 +933,40 @@ https://play.champds.com/elpasococo/event/166	https://clerkandrecorder.elpasoco.
 https://chesapeake.granicus.com/MediaPlayer.php?view_id=29&clip_id=9936	https://chesapeake.granicus.com/ViewPublisher.php?view_id=29	us:place:5116000	Chesapeake city, VA	2:59:00	Regular City Council Meeting (2026-09-08); swapped for the 30-min City Council Work Session (clip 9917), WO-1141
 https://reflect-tacoma.cablecast.tv/internetchannel/show/3551?site=1		us:sd:5308700	Tacoma Public Schools	2:05:42	September 24, 2026 TPS Board Meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
 https://breckenridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=111		us:place:0808400	Breckenridge town, CO	1:47:12	6-26-2018 Town Council Regular Meeting; over 90 minutes, parked (2026-09-28 Granicus follow-ups)
+https://video.isilive.ca/play/durham/TEC%20-%2007%20December%202022%20-%20FINAL.mp4		ca:cd:3518	Durham (ON)	1:51:05	
+http://video.isilive.ca/stthomas/2020-11-16-full.mp4.html		ca:csd:3534021	St. Thomas (ON)	1:46:20	
+http://video.isilive.ca/moosejaw/2019-06-10.mp4.html		ca:csd:4707039	Moose Jaw (SK)	2:20:16	
+https://cdn1.isilive.ca/vod/_definst_/mp4:calgary/Council%20Primary_Regular%20Meeting%20of%20Council_2026-09-22-11-14.mp4/playlist.m3u8?_=1790219795817		ca:csd:4806016	Calgary (AB)	5:33:07	
+https://video.isilive.ca/tdsb/Others/SEAC/2025/2025-06-09-SEAC.mp4.html		rtr:ca:on:toronto-district-school-board	Toronto District School Board (ON)	2:01:18	
+https://play.champds.com/gillettewy/event/918		us:county:56005	Campbell County, WY	2:45:29	
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/9.21.26+Board+of+Finance+Regular+Meeting-20260921_190101-Meeting+Recording+(1).mp4		us:cousub:0911012270	Canton town, CT	1:57:26	
+https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing		us:cousub:0917022910	East Haven town, CT	2:42:29	
+https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860	North Yarmouth town, ME	2:02:28	
+https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/media/1021754		us:cousub:2301548645	Newcastle town, ME	2:03:15	
+https://videoplayer.telvue.com/player/TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc/media/1014571		us:cousub:2501572880	Ware town, MA	2:01:38	
+https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1015133		us:cousub:2501705070	Belmont town, MA	2:19:01	
+https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1014983		us:cousub:2501705805	Billerica town, MA	2:01:55	
+https://videoplayer.telvue.com/player/c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L/media/1014579		us:cousub:2501735215	Lexington town, MA	3:37:52	
+https://videoplayer.telvue.com/player/MYHMRKXBbGFaah07vKkZ_-J4SThODdPq/media/1014803		us:cousub:2501767665	Stoneham town, MA	3:15:16	
+https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1014564		us:cousub:2502182315	Wrentham town, MA	2:21:42	
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/media/1014913		us:cousub:2502318455	East Bridgewater town, MA	1:50:06	
+https://reflect-southborough.cablecast.tv/internetchannel/show/2488		us:cousub:2502763165	Southborough town, MA	2:50:49	
+https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/1014905		us:cousub:3301552340	Newmarket town, NH	2:18:51	
+https://videoplayer.telvue.com/player/GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn/media/1016458		us:cousub:3403576940	Warren township, NJ	3:00:00	
+https://reflect-northwest-access.cablecast.tv/internetchannel/show/24142		us:cousub:5001145850	Montgomery town, VT	2:08:17	
+https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1026368		us:place:0631708	Half Moon Bay city, CA	3:33:26	
+https://reflect-communitytv.cablecast.tv/internetchannel/show/3663		us:place:0669112	Santa Cruz city, CA	5:27:02	
+https://videoplayer.telvue.com/player/ngKsmvOplIehacsLE9KAR_RKX5OityeV/media/1022240		us:place:1021200	Dover city, DE	2:48:03	
+https://woodstockil.granicus.com/MediaPlayer.php?clip_id=510		us:place:1783349	Woodstock city, IL	1:55:47	
+https://brownsburgin.new.swagit.com/videos/398881		us:place:1808416	Brownsburg town, IN	2:58:50	
+https://townhallstreams.com/stream.php?location_id=160&id=76298		us:place:2306925	Brewer city, ME	1:42:27	
+https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1014917		us:place:2578972	Weymouth Town city, MA	1:38:48	
+https://videoplayer.telvue.com/player/Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe/media/1015851		us:place:3314200	Concord city, NH	2:58:43	
+https://videoplayer.telvue.com/player/_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2/media/1014531		us:place:3471430	Summit city, NJ	5:10:38	
+https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/media/1014554		us:place:3601000	Albany city, NY	3:05:31	
+http://reflect-origin-1119.cablecast.tv/internetchannel/show/3659		us:place:3660895	Red Hook village, NY	2:00:51	
+https://videoplayer.telvue.com/player/KhA_ULGx1UdtbPSnwHPL0t1TrYm6rQSe/media/1014573		us:place:4500550	Aiken city, SC	2:15:31	
+https://www.cityofcheney.org/DocumentCenter/View/4905/9-22-26-Recording		us:place:5311825	Cheney city, WA	2:24:57	
+https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH/media/1017776		us:sd:4218990	Philadelphia City School District, PA	4:00:43	
+https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1017104		us:place:2604105	Auburn Hills city, MI	2:16:49	
+https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1/media/1015680		us:sd:2629940	Rochester Community School District, MI	3:19:35	
