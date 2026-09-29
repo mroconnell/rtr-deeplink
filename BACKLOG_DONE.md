@@ -1,5 +1,17 @@
 # Backlog — done
 
+## WO-1169: the idle worker skips a meeting another worker is already transcribing [Done 2026-09-29]
+
+**Why this ran.** Render's log on 2026-09-29 showed one worker transcribing Yorktown NY (job 4782) while the other sat idle. Every 5 minutes the idle worker's search picked Yorktown again, got the same job back ("created job 4782", three times), and stopped. It never reached a second meeting, so the second worker never had anything to claim. 27 other meetings were waiting at the time.
+
+**Cause.** `_cooldown_active()` (`archive/db/crud.py`) decides whether a page is skipped. It handled a newest job that was completed or failed, but not one still running, so a running page stayed "the oldest candidate".
+
+**Fix.** A page whose newest job is still live (`pending_confirmation`, `queued`, `in_progress` or `retry_scheduled`) is skipped. This is not a cooldown: it clears the moment the job ends. It also applies to `list_transcription_backlog_candidates()`, so the batch top-up, the local Whisper script and the drip's direct-lane gate stop counting in-flight pages as waiting.
+
+**Tests.** `test_cooldown_active_skips_a_page_whose_newest_job_is_live` (4 cases). Full suite: 8,543 passed.
+
+**Needs a deploy** of both workers to take effect.
+
 ## WO-1167: pin 61 meeting sites linked from governments' own CivicPlus websites [Done 2026-09-29]
 
 **Why this ran.** rtr-discovery had 623 undecided CivicPlus tenants that list no meetings. Ryan's view: a real government website nearly always lists agendas and minutes, so "lists nothing" means we haven't found the real meeting platform. A pre-pass read each homepage once (one polite request per site) and collected links to meeting platforms elsewhere.
