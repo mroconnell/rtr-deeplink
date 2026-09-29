@@ -7970,3 +7970,24 @@ https://ames.granicus.com/MediaPlayer.php?view_id=1&clip_id=2046,granicus,hls-ma
 https://lancasterisdtx.new.swagit.com/videos/277660,swagit,hls-master+variant,7636.14,,,1,accept,,0.15,2026-09-28T13:07:16+00:00,bulk_ingest,0
 https://brevardpublicschools.new.swagit.com/videos/372483,swagit,hls-master+variant,4193.34,,,1,accept,,2.35,2026-09-28T13:07:40+00:00,swagit_isi_followups_2026-09-28,0
 https://msdpiketownshipin.new.swagit.com/videos/237000,swagit,hls-master+variant,2956.87,,,1,accept,,1.48,2026-09-28T13:07:45+00:00,swagit_isi_followups_2026-09-28,0
+https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.09,2026-09-28T14:29:20+00:00,,0
+https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:24+00:00,,0
+https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:30+00:00,,0
+https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:34+00:00,,0
+https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:41+00:00,,0
+https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:44+00:00,,0
+https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:47+00:00,,0
+https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T14:29:51+00:00,,0
+https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.18,2026-09-28T23:30:55+00:00,,0
+https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T23:31:01+00:00,,0
+https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T23:31:09+00:00,,0
+https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T23:31:12+00:00,,0
+https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T23:31:17+00:00,,0
+https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-28T23:31:21+00:00,,0
+https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-28T23:31:26+00:00,,0
+https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.15,2026-09-29T06:13:14+00:00,,0
+https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-29T06:13:18+00:00,,0
+https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-29T06:13:25+00:00,,0
+https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-09-29T06:13:33+00:00,,0
+https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-29T06:13:35+00:00,,0
+https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-09-29T06:13:43+00:00,,0

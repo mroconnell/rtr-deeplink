@@ -357,6 +357,9 @@ MULTI_GOVERNMENT_TENANTS: FrozenSet[Tuple[str, str]] = frozenset(
         # Kalamazoo, MI's TelVue station: City of Kalamazoo committees and
         # the Kalamazoo County Board of Commissioners (WO-1060).
         ("videoplayer.telvue.com", "2bm0gzQWeVRzdCgvjXziXKwO3icSKh05"),
+        # Fitchburg, MA station: the city and the Fitchburg Housing Authority
+        # (WO-1153 special districts, 2026-09-28).
+        ("videoplayer.telvue.com", "yycCAZPb0NN3zj2o5qio-YFMNC43NjCG"),
         # Access Framingham: Framingham School District, Framingham city (WO-1149 TelVue census, 2026-09-27).
         ("videoplayer.telvue.com", "0xevl1Y-G4MlrcS7VDCjMf9uhAElnooJ"),
         # Weymouth, MA (unbranded org logo): Weymouth School District, Weymouth Town city (WO-1149 TelVue census, 2026-09-27).

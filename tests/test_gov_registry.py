@@ -3479,7 +3479,12 @@ def test_halfmoon_telvue_playlist_pin_preserves_bellefonte():
         tenant_host=host,
         path=prefix + "playlists/4999/media/1006347",
     )
-    assert other.tier == resolver.TIER_BLANK
+    # WO-1153 (2026-09-28) added C-NET's first per-video pins under its org
+    # token (PA special districts), which fix the customer's state, so a
+    # title naming a Pennsylvania town now resolves to it (WO-1100's rule)
+    # instead of staying blank. The playlist pins above still win.
+    assert other.gov_id == "us:cousub:4202731992"
+    assert other.tier == resolver.TIER_REGISTRY
 
 
 def test_merrimack_cablecast_town_show_does_not_claim_vault():

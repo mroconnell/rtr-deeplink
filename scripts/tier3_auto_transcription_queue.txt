@@ -5,42 +5,6 @@ https://www.youtube.com/watch?v=wx052VhC1I8		us:sd:3631440
 https://www.youtube.com/watch?v=jdX2Ffjr8Kc		us:place:2035450
 https://www.youtube.com/watch?v=9s12LJu37O0		us:sd:2507770
 https://www.youtube.com/watch?v=svn0FA-R4EE		us:place:4172500
-https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
-https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
-https://buckeyeaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=610
-https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
-https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
-https://claytownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=309
-https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
-https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
-https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
-https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
-https://dorchester.granicus.com/MediaPlayer.php?view_id=1&clip_id=746
-https://eastfishkillny.granicus.com/MediaPlayer.php?view_id=1&clip_id=11
-https://eastjordancity.granicus.com/MediaPlayer.php?view_id=1&clip_id=160
-https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
-https://empiremn.granicus.com/MediaPlayer.php?view_id=1&clip_id=136
-https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
-https://graymaine.granicus.com/MediaPlayer.php?view_id=1&clip_id=1117
-https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
-https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
-https://hartsvillesc.granicus.com/MediaPlayer.php?view_id=1&clip_id=245
-https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
-https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
-https://humble-tx.granicus.com/MediaPlayer.php?view_id=1&clip_id=74
-https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
-https://kitcarsoncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1184
-https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
-https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
-https://leecountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=191
-https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
-https://lyonsga.granicus.com/MediaPlayer.php?view_id=1&clip_id=494
-https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
-https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
-https://townofmerrimac.granicus.com/MediaPlayer.php?view_id=1&clip_id=33
-https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
-https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1086
-https://townofpendleton.granicus.com/MediaPlayer.php?view_id=1&clip_id=176
 https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780
 https://portorchard.granicus.com/MediaPlayer.php?view_id=1&clip_id=242
 https://libertytwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=331
@@ -1066,3 +1030,24 @@ https://www.dropbox.com/scl/fi/rcfvo11lavfz6l23047hw/9-21-2026-Committee-Meeting
 https://breckenridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=312		us:place:0808400
 https://brevardpublicschools.new.swagit.com/videos/372483		us:sd:1200150
 https://msdpiketownshipin.new.swagit.com/videos/237000		us:sd:1808910
+https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
+https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
+https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
+https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
+https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
+https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
+https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
+https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
+https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
+https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
+https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
+https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
+https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
+https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
+https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
+https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
+https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
+https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
+https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
+https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
+https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
