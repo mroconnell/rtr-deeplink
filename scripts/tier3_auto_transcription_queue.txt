@@ -1079,3 +1079,4 @@ https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/102
 https://bv22.cablecast.tv/show/138	https://bv22.cablecast.tv/	us:sd:0802490
 https://cloud.castus.tv/vod/waterford-media/video/67b8873ec4729f0008416a96	https://cloud.castus.tv/vod/waterford-media	us:sd:2635310
 https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836816	https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/videos	us:sd:2504800
+https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/media/1042907	https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/videos	us:cousub:3301726020
