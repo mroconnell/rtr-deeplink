@@ -1,5 +1,30 @@
 # Backlog — done
 
+## WO-1161: pin six organizations that left IQM2, old site and new, and fix West Basin's government [Done 2026-09-29]
+
+**Why this ran.** rtr-discovery had six undecided IQM2 tenants with no government ID. Ryan asked for them to be identified and their new meeting sites found. A research agent did that from each organization's own pages; this session re-checked every claim live before pinning.
+
+**What was found.**
+
+| Organization | Old IQM2 site | New meeting site | Video |
+| --- | --- | --- | --- |
+| West Basin Municipal Water District, CA | wbmwdca | westbasin.portal.civicclerk.com | Own player |
+| Capital Metropolitan Transportation Authority, TX | capmetrotx | capmetrotx.legistar.com, video on capmetrotx.granicus.com | Own player |
+| West County Wastewater District, CA | wcwdca | wcwd.civicweb.net | YouTube |
+| Cape Fear Public Utility Authority, NC | cfpua | cfpuanc.portal.civicclerk.com | Own player until Jan 2022, YouTube since |
+| Park Ridge Park District, IL | prparkdistrictil | prparks.org (not a walkable platform) | YouTube |
+| Syosset Central School District, NY | syossetsdny | BoardDocs (not a walkable platform) | YouTube |
+
+Each old IQM2 site's live title names its organization (e.g. "Meeting Portal - West Basin Municipal Water District, CA"). Each new site's proof is quoted in its row.
+
+**The fix inside it.** rtr-discovery's ledger had `westbasin.portal.civicclerk.com`, a Tier 1 tenant, filed under Carson city (us:place:0611530), the city of the district's office. The pin now names the district. Archive pages already filed under Carson are not changed here.
+
+**Source label.** Rows use `landing_page+...`: a pin to an `rtr:` id needs a human-checked source, or the loader drops it silently.
+
+**Registry duplicates seen, not fixed.** West County Wastewater also has `rtr:us:xx:west-county-wastewater`; Syosset also has `rtr:us:xx:syosset-school-district`; Capital Metro has two more minted rows. Worth merging separately.
+
+**Tests.** `tests/test_wo1161_iqm2_special_district_pins.py`: 11 hosts resolve to their government; all 11 fail without the rows. Full suite: 7,954 passed.
+
 ## WO-1160: a TelVue page with English and Spanish captions kept the Spanish track and called it English; the Archive now stores both, English by default [Done 2026-09-29]
 
 **Why this ran.** A research run on 2026-09-29 held 3 tier-1 TelVue ingests (Tahoe-Truckee USD, Tahoe Forest Hospital District, Fitchburg SD). Their pages list two caption tracks. The adapter loaded the Spanish one and labelled it English. Ryan asked for the fix: grab both, store each under its real language, show English by default, and never mislabel a language.
