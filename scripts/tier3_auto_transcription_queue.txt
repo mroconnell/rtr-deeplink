@@ -1186,7 +1186,6 @@ https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021
 https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
 https://ct-newington.civicplus.com/CivicMedia?VID=Newington-Town-Hall-and-Community-Center-3	https://ct-newington.civicplus.com/CivicMedia?VID=Newington-Town-Hall-and-Community-Center-3	us:cousub:0911052140
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	us:cousub:0913015350
-https://cloud.castus.tv/vod/waycam/video/6ab6b776d429e50002526374?page=HOME	https://cloud.castus.tv/vod/waycam/video/6ab6b776d429e50002526374?page=HOME	us:cousub:2501773790
 https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
 https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	us:cousub:3301104500
 https://townhallstreams.com/stream.php?location_id=55&id=76363	https://townhallstreams.com/stream.php?location_id=55&id=76363	us:cousub:3301127140
@@ -1204,3 +1203,5 @@ https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemon
 https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
 https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
+https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
+https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing	https://ct-easthaven.civicplus.com/AgendaCenter	us:cousub:0917022910
