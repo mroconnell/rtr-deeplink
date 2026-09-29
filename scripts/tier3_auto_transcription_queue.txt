@@ -1076,3 +1076,4 @@ https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch/media/104
 https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1017026	https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/videos	us:place:2675700
 https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/media/1046433	https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/videos	us:sd:2512000
 https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1021210	https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/videos	us:sd:2512270
+https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/media/1042907	https://videoplayer.telvue.com/player/Jq5K5vRnEU-4AylP41KZwRNIKALAUtP2/videos	us:cousub:3301726020
