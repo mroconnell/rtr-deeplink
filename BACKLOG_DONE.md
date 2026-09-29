@@ -1,5 +1,27 @@
 # Backlog — done
 
+## WO-1163: pin nine meeting sites Meeting Finder found for governments whose IQM2 site died [Done 2026-09-29]
+
+**Why this ran.** rtr-discovery had 27 undecided IQM2 tenants with a government ID and no known current meeting site. Ryan chose Meeting Finder over an ad-hoc agent. It ran from each government's own website on 2026-09-29 and found a video meeting for 13. Nine are real, owner-proven, and not yet pinned; each owner was re-checked live before pinning.
+
+| Government | New site | Finder tier |
+| --- | --- | --- |
+| San Bernardino city, CA | sanbernardino.cablecast.tv | 1 |
+| St. Lucie County, FL | stluciecofl.portal.civicclerk.com | 1 |
+| Clovis city, NM | cityofclovis.granicus.com | 3 |
+| Modoc County, CA | modoccoca.portal.civicclerk.com | 3 |
+| Alpine County, CA | alpinecoca.portal.civicclerk.com | 3 |
+| Charles Town city, WV | charlestownwv.granicus.com | 3 |
+| Ranson, WV | ransonwv.granicus.com | 3 |
+| Hancock County, MS | hancockcoms.portal.civicclerk.com | 3 |
+| Meredith town, NH | townhallstreams.com, location_id=168 | 3 |
+
+**Not pinned.** Bay St. Louis MS's hit was Hancock County's site (the city linked the county). Leonia NJ's was a Google Drive file. Pinellas schools' was an 18-second clip. Crow Wing County's was its old IQM2 site, already known.
+
+**Caution.** Ranson's finder verdict said "disagrees" only because the resolver named the minted duplicate `rtr:us:wv:ranson`; this pins the national id `us:place:5466988`. The duplicate is not merged here.
+
+**Tests.** `tests/test_wo1163_meeting_finder_iqm2_pins.py`: all 9 resolve; all 9 fail without the rows.
+
 ## WO-1162: a CivicMedia channel is its own tenant, and 378 confirmed channels are pinned [Done 2026-09-29]
 
 **Why this ran.** CivicMedia is CivicPlus's video product, served by TikiLive at `civplus.tikiliveapi.com`. Every customer shares that one host. Each customer's videos sit in a channel with a number, the "chid". `tenant_key()` treated the whole host as one tenant, so no chid could be pinned, and a bare embed resolved to no government. An ingest had to send `gov_id` itself, as the Carlton County ingest did.

@@ -451,7 +451,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (224)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (11)
+Reliability, ops & cost  (12)
+  `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit…
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     [LATER] Tighten the two transcription workers to their real import
@@ -5908,6 +5909,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
 ## Reliability, ops & cost
+
+### `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit pages with no transcript, once the office's Granicus sweep is done (WO-1163)
+
+- **Issue**: 159 Archive pages whose video is served from `*.granicus.com` (Granicus and Swagit, whose media lives on `archive-stream.granicus.com`) have no transcript and sit in escalating cooldown: the cloud worker's first media pull fails on them (`archive-stream.granicus.com` is 439 of 650 all-time recorded transcription failures, mostly ffmpeg timeouts). The same hosts refuse GitHub's runners (WO-1143) and work from an office connection.
+- **Impact**: the largest remaining group of real, found meetings on the site with no transcript. The 2026-09-27 local recovery run (non-Granicus pages only) transcribed 18 of 106 pages that way, including 7/7 ChampDS and 8/18 Cablecast that had failed on the worker.
+- **Next action**: when no other session is running a Granicus sweep from the same office connection, rebuild the list (Archive pages with no default-version segments whose `video_url` or source host is `*.granicus.com`, excluding YouTube/Viebit) and run `scripts/transcribe_backlog_locally.py --urls-file` on the drip-free Mac, wrapped with `scripts/youtube_fetch_guard.install()`, under `caffeinate`. Then do the tier-3 queue's Granicus lines (121 on 2026-09-27; the feed tags them `NOT-REACHABLE-FROM-GITHUB`) the same way (run the feed by hand first, per `docs/YOUTUBE_DRIP_RUNBOOK.md`).
+- **Constraint**: one Granicus-heavy job per office connection at a time; the local script pulls one meeting's audio at a time, so it is gentle, but it stacks with any sweep. Expect ~30 min per real meeting on a 4-core Mac (Whisper `small`).
+- **History**: 2026-09-27 conductor session; the run's method and per-platform results are in WO-1152's entry above (iQM2) and this entry.
 
 ### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
 
