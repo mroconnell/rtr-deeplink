@@ -1138,3 +1138,5 @@ https://www.westorange.org/CivicMedia?VID=Swearing-In-Reorganization-Meeting-Jul
 https://bayfieldcounty.wi.gov/CivicMedia?VID=August-9-2017-52	https://bayfieldcounty.wi.gov/CivicMedia?CID=Board-of-Supervisors-3	us:county:55007
 https://lagrangeil.gov/CivicMedia?VID=Village-of-La-Grange-Board-Meeting-April-216	https://lagrangeil.gov/CivicMedia?CID=Village-Board-1	us:place:1740767
 https://co.valencia.nm.us/CivicMedia?VID=20150909-Public-Hearing-Business-Meeting-4	https://co.valencia.nm.us/CivicMedia?CID=Board-of-County-Commissioners-1	us:county:35061
+https://drive.usercontent.google.com/download?id=1dHIHjMENUePKxMLJI0woirgG0sidbTg3&export=download&confirm=t		us:sd:0903420
+https://drive.usercontent.google.com/download?id=1HZXugwu7qW5jH0CPvrMf3OLLzyqImOwp&export=download&confirm=t		us:sd:3414100
