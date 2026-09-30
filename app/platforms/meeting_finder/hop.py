@@ -395,6 +395,51 @@ _GOVERNING_BODY_TEXT_RE = re.compile(
 )
 _GOVERNING_BODY_BONUS = 26.0
 
+# --- Ryan 2026-09-30 (hand-reviewing blocked school-district sites):
+# school sites rarely say "Government". The nav is "Board" / "Board of
+# Education" / "School Board", then "Board Meetings", "Meeting
+# Recordings", "Watch meetings online", "Agendas & Minutes",
+# "Livestream". Real paths: asdk12.org/school-board/board-meetings,
+# svusd.org/board/meeting-recordings, wccusd.net/fs/pages/14775 (a
+# Finalsite path -- only the anchor text carries the signal there).
+# HAND-SET (not from hop_link_weights_school.csv, which is regenerated
+# by scripts/wo292_derive_school_hop_weights.py and would overwrite
+# hand rows). Applied ONLY when `rank_hops(school=True)`; city/county
+# scoring is untouched. The weighted scorer drops a link whose PATH has
+# no vocabulary evidence, so a same-site link matching here is also
+# rescued when it scored nothing at all.
+_SCHOOL_MEETING_PHRASE_RE = re.compile(
+    r"\bboard[\s_-]+meetings?\b|\bmeeting[\s_-]+recordings?\b"
+    r"|\bwatch[\s_-]+(?:board[\s_-]+)?meetings?\b|\bagendas?[\s_-]*(?:&|and|-)?[\s_-]*minutes\b"
+    r"|\blive[\s_-]?stream(?:ing)?\b|\bmeeting[\s_-]+videos?\b"
+    r"|\bboard[\s_-]+(?:agendas?|videos?|recordings?)\b",
+    re.IGNORECASE,
+)
+_SCHOOL_MEETING_PHRASE_BONUS = 16.0
+_SCHOOL_BOARD_NAV_RE = re.compile(
+    r"^\s*(?:the\s+)?(?:(?:school|governing|education)\s+)?board"
+    r"(?:\s+of\s+(?:education|trustees|directors|school\s+directors))?\s*$"
+    r"|\bschool\s+board\b|\bboard\s+of\s+(?:education|trustees|school\s+directors)\b",
+    re.IGNORECASE,
+)
+_SCHOOL_BOARD_NAV_BONUS = 10.0
+
+
+def _school_vocabulary_bonus(text: str, full_url: str) -> float:
+    """Hand-set school-district nav boost (see the comment above).
+    Meeting phrase in the anchor text or URL path, or a bare
+    Board/School Board/Board of Education anchor. Phrase wins over the
+    board-nav bonus; the two never stack."""
+    path = urlparse(full_url).path
+    if _SCHOOL_MEETING_PHRASE_RE.search(text or "") or _SCHOOL_MEETING_PHRASE_RE.search(
+        path
+    ):
+        return _SCHOOL_MEETING_PHRASE_BONUS
+    if _SCHOOL_BOARD_NAV_RE.search(text or ""):
+        return _SCHOOL_BOARD_NAV_BONUS
+    return 0.0
+
+
 # --- WO-1044 item 4: news/event articles and site chrome -- ranked down,
 # not excluded (below a real hub link, still reachable as a last resort).
 # Real Suffolk County NY shapes: `/Events/ArtMID/585/ArticleID/...`,
@@ -968,6 +1013,14 @@ def rank_hops(
             )
         if score is None:
             score = _rescue_link_context_broadcast_score(tag, full, base_netloc)
+        school_bonus = _school_vocabulary_bonus(text, full) if school else 0.0
+        if (
+            score is None
+            and school_bonus
+            and urlparse(full).netloc.lower() == base_netloc
+            and not _is_non_page_resource(full)
+        ):
+            score = _nav_position_bonus(tag)
         if score is None and is_known_platform_link:
             # WO-1037 item 5 / WO-1038 fix: applies to a DIRECT
             # `detect_platform()` match too, not just the (weaker)
@@ -1005,6 +1058,7 @@ def rank_hops(
             # gets `_TARGET_SHAPE_BONUS`/`_HOST_FALLBACK_VENDOR_BONUS`,
             # which is the stronger, more specific signal.
             score += _NAV_HUB_LABEL_BONUS
+        score += school_bonus
         if prefer_vendor and resolved_platform == prefer_vendor:
             score += _PREFER_VENDOR_BONUS
         if prefer_video and _VIDEO_SEEKING_RE.search(f"{text} {href}"):
