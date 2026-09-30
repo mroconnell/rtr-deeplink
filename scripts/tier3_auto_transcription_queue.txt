@@ -1359,3 +1359,5 @@ https://hunterdonconj.portal.civicclerk.com/event/1483/media	meeting_finder_grou
 https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/Zoom-Video_Planning-Commission_01.06.2026.mp4	meeting_finder_group4	us:place:0856970
 https://boxcast.tv/view/9282026---legal-finance-vygewwbbbhjwlxtgct03	meeting_finder_group4	us:place:4604380
 https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1	meeting_finder_group4	us:cousub:3905553340
+https://reflect-ccx.cablecast.tv/show/41030	https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows	us:place:2745628
+https://nctpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=115	https://nctpa.granicus.com/ViewPublisher.php?view_id=1	rtr:us:ca:napa-valley-transportation-authority
