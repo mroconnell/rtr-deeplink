@@ -239,7 +239,7 @@ async def test_confirm_not_audio_only_true_for_real_video_content_type():
 async def test_confirm_not_audio_only_treats_failed_head_as_audio():
     # HEAD fails (unmocked route -> mock raises, `_confirm_not_audio_only`
     # catches it) -- the extension alone is strong evidence, so the safer
-    # wrong answer (treat as audio, don't wrongly queue it) wins.
+    # wrong answer (label it audio) wins.
     url = "https://example.gov/files/meeting123.mp3"
     with mock_session({}, head_routes={}):
         assert await _confirm_not_audio_only(url) is False

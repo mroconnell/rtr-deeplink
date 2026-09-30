@@ -206,6 +206,15 @@ class VerifyResult:
     sweep can count them as findings. A "cannot_tell" video is real but
     unverified: `video_found` stays True, `meeting_found` is False, so
     `tier` is None and no caller credits it as a meeting by accident.
+
+    `audio_only` (2026-09-30): True when the resolved media file is audio
+    with no video (an `.mp3` and the like). Ryan's rule since 2026-09-22
+    is that audio-only meetings become Archive pages, so this is a
+    label, not a refusal: `video_found` is True and `tier` is computed as
+    for any other find. A caller that needs to count audio-only finds
+    separately reads this flag (same idea as Meeting Finder's
+    `audio_only`, WO-1035 item 3). For a deep walk, each entry of
+    `video_candidates` carries its own `audio_only` key.
     """
 
     meeting_found: bool
@@ -222,6 +231,7 @@ class VerifyResult:
     video_gate: str = ""
     video_gate_reason: str = ""
     rejected_video_links: List[dict] = field(default_factory=list)
+    audio_only: bool = False
 
     @property
     def tier(self) -> Optional[int]:
@@ -2204,7 +2214,13 @@ def _looks_like_audio_only_url(url: str) -> bool:
 
 
 async def _confirm_not_audio_only(url: str) -> bool:
-    """WO-347 finding, fixed here: a resolved `video_url` can be a real,
+    """Whether a resolved `video_url` has video (True) or is audio-only
+    (False). Since 2026-09-30 a False answer is a LABEL, not a refusal:
+    audio-only meetings are in scope (Ryan, 2026-09-22 and 2026-09-30),
+    so the walkers credit the find and set `audio_only=True` on the
+    result. Before that, a False answer made the walkers skip the file.
+
+    WO-347 finding, the origin of this check: a resolved `video_url` can be a real,
     live audio-only file -- confirmed live, Olmos Park city TX's
     CivicClerk listing walker returned a `video_url` ending in `.mp3`
     whose own `Content-Type: audio/mp3` header confirms it (a real 58 MB
@@ -2223,9 +2239,8 @@ async def _confirm_not_audio_only(url: str) -> bool:
                 content_type = (response.headers.get("Content-Type") or "").lower()
     except Exception:  # noqa: BLE001
         # HEAD failed -- the extension alone is already real evidence of
-        # audio; treat as audio (the safer wrong answer: a missed real
-        # video, not a wrongly-queued audio-only file -- Ryan's "only
-        # meetings with video become pages" rule).
+        # audio; label it audio. Either way the find is credited now, so
+        # the only cost of a wrong label is a wrong "audio only" note.
         return False
     return not content_type.startswith("audio/")
 
@@ -2373,7 +2388,15 @@ async def _try_listing_walker(
 
 
 def _candidate_summary(
-    *, title, date, url, platform, captions_found, duration=None, lead=False
+    *,
+    title,
+    date,
+    url,
+    platform,
+    captions_found,
+    duration=None,
+    lead=False,
+    audio_only=False,
 ) -> dict:
     """One entry of `VerifyResult.video_candidates` -- see that field's
     docstring for the shape. `duration` is whatever the listing candidate
@@ -2387,6 +2410,7 @@ def _candidate_summary(
         "captions_found": captions_found,
         "duration": duration,
         "lead": lead,
+        "audio_only": audio_only,
     }
 
 
@@ -2532,11 +2556,13 @@ async def _walk_candidates(
                     }
                 )
                 continue
-        if resolved.video_url and not await _confirm_not_audio_only(resolved.video_url):
-            # WO-347/WO-348: a real, live audio-only file (e.g. a
-            # CivicClerk `.mp3`), not video -- keep walking rather than
-            # crediting it as a found video.
-            continue
+        # WO-347/WO-348 found real audio-only files (e.g. a CivicClerk
+        # `.mp3`) and this walk used to skip them. Since 2026-09-30 they
+        # are credited as a real find and labelled `audio_only`: audio-only
+        # meetings become Archive pages (Ryan, 2026-09-22 and 2026-09-30).
+        audio_only = bool(resolved.video_url) and not await _confirm_not_audio_only(
+            resolved.video_url
+        )
         if resolved.video_url:
             # Report the candidate's OWN resolved platform, not the
             # listing's -- a generic-link-scan or CalendarPageError walk
@@ -2553,6 +2579,7 @@ async def _walk_candidates(
                     platform=resolved.platform or candidate_platform,
                     captions_found=bool(resolved.segments),
                     duration=duration,
+                    audio_only=audio_only,
                 )
             )
             if not deep_walk or len(collected) >= collect_limit:
@@ -2576,6 +2603,7 @@ async def _walk_candidates(
                         ),
                         candidates_checked=checked,
                         video_candidates=collected if deep_walk else [],
+                        audio_only=first["audio_only"],
                     )
                 )
             continue
@@ -2598,6 +2626,7 @@ async def _walk_candidates(
                 ),
                 candidates_checked=checked,
                 video_candidates=collected,
+                audio_only=first["audio_only"],
             )
         )
     return _finish(
@@ -2755,13 +2784,14 @@ async def _resolve_and_walk(
             evidence=f"{type(e).__name__}: {e}",
         )
 
-    video_confirmed = bool(resolved.video_url) and await _confirm_not_audio_only(
+    video_confirmed = bool(resolved.video_url)
+    # WO-347/WO-348 found real audio-only files (e.g. a CivicClerk `.mp3`)
+    # and this used to fall through to the "no video" handling. Since
+    # 2026-09-30 audio-only is a real find, labelled `audio_only` (same
+    # rule as `_walk_candidates()`).
+    audio_only = video_confirmed and not await _confirm_not_audio_only(
         resolved.video_url
     )
-    # WO-347/WO-348: a real, live audio-only file (e.g. a CivicClerk
-    # `.mp3`), not video -- fall through to the "no video" handling below
-    # rather than crediting a video verdict (same guard `_walk_candidates()`
-    # applies).
 
     if video_confirmed:
         # Same "report the actual resolved platform, not the one that was
@@ -2782,12 +2812,16 @@ async def _resolve_and_walk(
             meeting_url=resolved.source_url or url,
             platform=resolved.platform or platform,
             verdict="resolved",
-            evidence="resolve() found real video directly",
+            evidence=(
+                "resolve() found real audio directly (audio only, no video)"
+                if audio_only
+                else "resolve() found real video directly"
+            ),
             video_title=resolved.title,
+            audio_only=audio_only,
         )
 
-    # resolve() succeeded but found no video (or found one that turned out
-    # to be audio-only). Could be a genuine single meeting with no video
+    # resolve() succeeded but found no video or audio. Could be a genuine single meeting with no video
     # yet (real title/agenda present), or -- the WO-331 finding -- a
     # listing/hub page whose resolve() quietly returned empty because it
     # was never given one specific meeting.

@@ -222,7 +222,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (227)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (228)
+  `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
   [NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two…
   [NEEDS-AUDIT] Several tier-3 feed lines land on the same or a…
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
@@ -723,7 +724,8 @@ something hasn't been decided.
 ### Bulk sweeps ingest only meetings that have video — agenda-only meetings are not ingested (Ryan's rule, 2026-09-09) `[STANDING]`
 
 - **Issue:** Ryan's rule, 2026-09-09, for every enumeration/ingest sweep:
-  only meetings WITH video become Archive pages. Tier 1/2 (captions
+  only meetings WITH video become Archive pages. Audio-only recordings
+  count as video here (Ryan, 2026-09-22 and 2026-09-30). Tier 1/2 (captions
   reachable) ingest with segments; tier 3 (video, no captions) goes to
   the cloud auto-transcription queue and drips in; agenda-only meetings
   are NOT ingested.
@@ -2509,6 +2511,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **`[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve, but the in-browser player and the download-then-transcribe path are not yet checked with one.**
+  - **Issue**: `direct_file.py` now resolves `https://<tenant>.sharepoint.com/:v:/s/<site>/<token>` to the share URL plus `&download=1` (the file URL alone fails without the guest cookie). ffprobe and `follow_with_cookies()` handle that; a browser `<video>` tag and the worker's ffmpeg chunk pull on a real transcription job were not run.
+  - **Impact**: a Yakima page may show video that will not play for a visitor, or a job may fail at chunk time, even though the ingest dry-run is clean.
+  - **Next action**: ingest the Yakima link for real (Ryan's call), open the page, and watch the first transcription chunk complete.
+  - **Constraint**: do not cache the final `.mp4` URL; it redirects to Microsoft sign-in without the cookie.
+  - **History**: 2026-09-30 PR for audio-only walkers, SharePoint `:v:` and DNN LinkClick links; `direct_file.py` module docstring.
 
 - **[NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two Cablecast gallery URLs during today's manual tier-3 feed run (2026-09-29).**
   - **Issue**: running `scripts/feed_tier3_auto_transcription.py`'s own push by hand from an office Mac (WO-1168's manual proof run), two lines failed with `[FAIL] ingest failed (500): Internal Server Error`: `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/9?site=1` and `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1`.
