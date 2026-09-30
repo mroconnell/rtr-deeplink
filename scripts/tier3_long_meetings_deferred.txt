@@ -970,3 +970,5 @@ https://www.cityofcheney.org/DocumentCenter/View/4905/9-22-26-Recording		us:plac
 https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH/media/1017776		us:sd:4218990	Philadelphia City School District, PA	4:00:43	
 https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1017104		us:place:2604105	Auburn Hills city, MI	2:16:49	
 https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1/media/1015680		us:sd:2629940	Rochester Community School District, MI	3:19:35	
+http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40	http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40	ca:csd:5915051	North Vancouver (BC)	2:51:32	
+https://video.isilive.ca/yorkton/2025-12-08.mp4.html	https://video.isilive.ca/yorkton/2025-12-08.mp4.html	ca:csd:4709012	Yorkton (SK)	3:07:11	
