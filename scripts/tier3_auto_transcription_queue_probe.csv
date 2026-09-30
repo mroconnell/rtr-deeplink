@@ -9032,3 +9032,16 @@ https://winterparkcolorado.granicus.com/MediaPlayer.php?view_id=1&clip_id=95,gra
 http://a2gov.legistar.com/MeetingDetail.aspx?ID=750169&GUID=A02363A4-7CBE-40AF-9763-78F1AB70D308&Options=info%7C&Search=,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:44:09+00:00,tier3_recovery_2026-09-29,0
 https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108,granicus,hls-master+variant,3052.01,,,1,accept,,5.27,2026-09-29T22:44:17+00:00,tier3_recovery_2026-09-29,0
 http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=,viebit,resolve,,,,0,reject-dead,resolve returned no video_url,0.98,2026-09-29T22:44:18+00:00,tier3_recovery_2026-09-29,0
+https://sapatv.cablecast.tv/internetchannel/show/43889?site=2,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.08,2026-09-30T13:00:51+00:00,,0
+https://darlingtoncountysc.new.swagit.com/videos/392710,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.11,2026-09-30T13:00:54+00:00,,0
+https://tsp.granicus.com/MediaPlayer.php?view_id=1&clip_id=431,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T13:00:58+00:00,,0
+https://wyomingmn.portal.civicclerk.com/event/666/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-09-30T13:01:05+00:00,,0
+https://videoplayer.telvue.com/player/k83q0qZsxB_6dlk4EjvYfv9xDQOqNH9z/media/1017095,telvue,telvue-page-json,3227.00,,,1,accept,,0.31,2026-09-30T13:01:07+00:00,,0
+https://aledotx.portal.civicclerk.com/event/75/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-09-30T13:01:11+00:00,,0
+https://imperialca.portal.civicclerk.com/event/32/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-09-30T13:01:21+00:00,,0
+https://katyisdtx.new.swagit.com/videos/400838,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T13:01:23+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME,castus,hls-master+variant,9851.00,,,1,accept,,0.57,2026-09-30T13:01:26+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME,castus,hls-master+variant,9851.00,,,1,accept,,0.37,2026-09-30T13:01:26+00:00,feed_tier3_auto_transcription,0
+https://washingtonin.granicus.com/MediaPlayer.php?view_id=1&clip_id=164,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-30T13:01:29+00:00,,0
+https://d3id26kdqbehod.cloudfront.net/ROBSTOWN-D/2026/01/29/4fU6tICmSG7lhyhf1GnchPAboQkOF6AH3CjQ92ogd8EKmqj90IXOWSRN4ELj/January+2026+-+State+of+the+Budget+Intro+%281%29-480p.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-09-30T13:01:31+00:00,,0
+https://cpmedia.azureedge.net/stillwatercomt/f885eb43-f102-4f38-acbd-d7edf64d28e6.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.01,2026-09-30T13:01:33+00:00,,0
