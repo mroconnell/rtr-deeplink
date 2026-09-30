@@ -1,5 +1,26 @@
 # Backlog — done
 
+## WO-1172: CivicMedia resolves TikiLive `/video/{id}` links and gives embed links a title [Done 2026-09-30]
+
+**Why this ran.** The CivicMedia number walk collected `https://civplus.tikiliveapi.com/video/{id}` links. The resolver took only the embed form, so every one failed with "couldn't find a real video id". The embed form worked, but its page has no title, so those pages would have been untitled. Ryan approved the fix 2026-09-30.
+
+**Fix.** `app/platforms/civicmedia.py`: `_video_id_from_url()` now reads the id from `/video/{id}` too. For either TikiLive form, one extra request reads the `/video/{id}` page, and its `og:title` (else `<title>`) becomes the title. If that request fails, the title stays empty and nothing else changes. The channel (`chid`) still comes from the embed's stream; the video page's stream is the fallback. Captions and stream behavior are unchanged. A government `VID=` page keeps its own title rules (WO-1165).
+
+**Caution.** The title is kept as the page has it, with its leading counter ("260 - City Council Meeting 12.17.20."). Nothing else in this adapter strips counters, so none is stripped. Some titles are file names (video 151072 reads "198 - BudgetHearing_11292022"). The WO-1165 file-name rule is not applied here, because the video page offers no second title to prefer.
+
+**Tests.** `tests/test_civicmedia.py`, real pages fetched live 2026-09-30 (`tikilive_video_144112.html`, `tikilive_embed_144112.html`): video page resolves with title and channel 146; embed form now returns the title; `og:title` missing falls back to `<title>`; a failed video page keeps the rest of the resolve; `refresh_playlist_url()` accepts the video page form.
+
+**Verified live, read-only, both URL forms.** Both forms gave the same result for all six.
+
+| Video | Title | Segments | Tier |
+| --- | --- | --- | --- |
+| 144112 | 260 - City Council Meeting 12.17.20. | 0 | Video only (no captions) |
+| 160679 | 134 - Council Meeting Minutes August 17, 2026 | 1583 | 1 |
+| 151072 | 198 - BudgetHearing_11292022 | 2782 | 1 |
+| 153417 | 6 - Public Listening Session - Judicial Center and Jail - 12.12.23 AM | 1824 | 1 |
+| 158786 | 1009 - 2026 Proposed Budget Presentation | 722 | 1 |
+| 151439 | 5 - Electoral Board Hearing 011723 | 1080 | 1 |
+
 ## WO-1170: pin 6 meeting sites Meeting Finder found for CivicPlus governments [Done 2026-09-30]
 
 **Why this ran.** 534 undecided CivicPlus governments listed no meetings and linked no known platform from their homepage. Ryan approved a Meeting Finder run from each government's own website (rtr-discovery, 2026-09-29 overnight, concurrency 3).

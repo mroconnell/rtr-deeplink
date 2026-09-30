@@ -7,6 +7,7 @@ from app.platforms.base import detect_platform
 from app.platforms.civicmedia import (
     CivicMediaAssetFinder,
     _jurisdiction_from_page,
+    _video_id_from_url,
     civicmedia_page_id,
     is_civicmedia_page_url,
     is_tikilive_embed_url,
@@ -151,10 +152,10 @@ async def test_civicmedia_page_with_no_captions_warns_honestly():
     ]
 
 
-async def test_tikilive_embed_url_resolved_directly_has_no_title():
-    # A bare TikiLive embed URL (no parent CivicMedia page) carries no
-    # title of its own -- see module docstring, "no title info in the
-    # TikiLive embed page itself" finding.
+async def test_tikilive_embed_url_with_no_video_page_has_no_title():
+    # The embed page carries no title. With the video page unreachable
+    # (unmocked here, so the fetch fails) the title stays None and the
+    # rest of the resolve is unchanged (WO-1172).
     with mock_session(_routes(vtt_body=None)):
         resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
 
@@ -268,13 +269,16 @@ async def test_cut_off_og_title_takes_the_players_full_version():
     )
 
 
-async def test_bare_embed_with_no_title_stays_untitled():
-    # A bare TikiLive embed has no government page and the embed names no
-    # video, so the title stays None (unchanged by WO-1165).
-    with mock_session(_routes(vtt_body=None)):
+async def test_bare_embed_with_failed_video_page_stays_untitled():
+    # A 404 on the video page is handled the same as an unreachable one.
+    routes = _routes(vtt_body=None)
+    page = "https://civplus.tikiliveapi.com/video/160547"
+    routes[page] = FakeResponse(status=404, text="", url=page)
+    with mock_session(routes):
         resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
 
     assert resolved.title is None
+    assert resolved.video_url == M3U8_URL
 
 
 async def test_missing_og_title_falls_back_to_the_player():
@@ -414,3 +418,89 @@ async def test_refresh_playlist_url_returns_none_on_fetch_failure():
         fresh = await refresh_playlist_url(PAGE_URL)
 
     assert fresh is None
+
+
+# -- TikiLive /video/{id} page (WO-1172) -------------------------------
+# Real fixtures, fetched live 2026-09-30: video 144112, "260 - City
+# Council Meeting 12.17.20.", channel 146.
+
+VIDEO_PAGE_URL = "https://civplus.tikiliveapi.com/video/144112"
+EMBED_144112_URL = (
+    "https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no"
+)
+TITLE_144112 = "260 - City Council Meeting 12.17.20."
+
+
+def _routes_144112():
+    return {
+        VIDEO_PAGE_URL: FakeResponse(
+            status=200,
+            text=load_fixture("civicmedia", "tikilive_video_144112.html"),
+            url=VIDEO_PAGE_URL,
+        ),
+        EMBED_144112_URL: FakeResponse(
+            status=200,
+            text=load_fixture("civicmedia", "tikilive_embed_144112.html"),
+            url=EMBED_144112_URL,
+        ),
+    }
+
+
+def test_video_page_url_is_recognized_and_gives_the_video_id():
+    assert detect_platform(VIDEO_PAGE_URL) == "civicmedia"
+    assert _video_id_from_url(VIDEO_PAGE_URL) == "144112"
+    assert _video_id_from_url(VIDEO_PAGE_URL + "/") == "144112"
+    assert _video_id_from_url(EMBED_144112_URL) == "144112"
+    assert _video_id_from_url("https://civplus.tikiliveapi.com/video/abc") is None
+
+
+async def test_video_page_url_resolves_with_title_and_channel():
+    with mock_session(_routes_144112()):
+        resolved = await CivicMediaAssetFinder().resolve(VIDEO_PAGE_URL)
+
+    assert resolved.title == TITLE_144112
+    assert resolved.external_id == "civicmedia:144112"
+    assert resolved.video_url and "videoId=144112" in resolved.video_url
+    assert resolved.video_format == "m3u8"
+    assert resolved.video_channel == "civicmedia:146"
+    assert not resolved.video_warnings
+
+
+async def test_embed_url_now_gets_the_title_from_the_video_page():
+    with mock_session(_routes_144112()):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title == TITLE_144112
+    assert resolved.external_id == "civicmedia:144112"
+    assert resolved.video_channel == "civicmedia:146"
+
+
+async def test_embed_url_title_falls_back_to_html_title_without_og_title():
+    routes = _routes_144112()
+    routes[VIDEO_PAGE_URL] = FakeResponse(
+        status=200,
+        text="<html><head><title>Some Meeting</title></head></html>",
+        url=VIDEO_PAGE_URL,
+    )
+    with mock_session(routes):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title == "Some Meeting"
+
+
+async def test_video_page_fetch_failure_leaves_embed_resolve_intact():
+    routes = _routes_144112()
+    routes[VIDEO_PAGE_URL] = FakeResponse(status=500, text="", url=VIDEO_PAGE_URL)
+    with mock_session(routes):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title is None
+    assert resolved.video_url and "videoId=144112" in resolved.video_url
+    assert resolved.video_channel == "civicmedia:146"
+
+
+async def test_refresh_playlist_url_works_from_a_video_page_url():
+    with mock_session(_routes_144112()):
+        fresh = await refresh_playlist_url(VIDEO_PAGE_URL)
+
+    assert fresh and "videoId=144112" in fresh
