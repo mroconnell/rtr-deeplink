@@ -9074,3 +9074,13 @@ https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57858?site=2,cablecast,re
 https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1,cablecast,hls-master+variant,3213.98,,,1,accept,,0.74,2026-09-30T14:50:19+00:00,,0
 http://66.161.199.50/CablecastPublicSite/show/27907?channel=4,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.60,2026-09-30T14:50:19+00:00,,0
 https://drive.google.com/file/d/1hzvIekxAJBEuzZHg5I54WPegCfrQnvkM/preview,direct_file,head+ffprobe,405.94,2025-06-10,1005232274,0,accept,,2.71,2026-09-30T14:50:20+00:00,,0
+https://vimeo.com/922203074,vimeo,vimeo-oembed,12673.00,2024-03-11,,1,accept,,0.05,2026-09-30T12:18:22+00:00,feed_tier3_auto_transcription,0
+https://www.cbsd.org/school-board/board-meeting-streams/board-meeting-stream-archiver,vimeo,vimeo-oembed,1100.00,2026-04-14,,1,accept,,0.07,2026-09-30T12:21:46+00:00,feed_tier3_auto_transcription,0
+https://cityofmorrilton.com/city-council/,vimeo,vimeo-oembed,1940.00,2023-11-20,,1,accept,,0.06,2026-09-30T12:25:30+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/1046555783?h=e7e369fca2,vimeo,vimeo-oembed,3670.00,2025-01-13,,1,accept,,0.05,2026-09-30T12:29:21+00:00,feed_tier3_auto_transcription,0
+https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video,vimeo,vimeo-oembed,3718.00,2022-08-11,,1,accept,,0.06,2026-09-30T12:36:48+00:00,feed_tier3_auto_transcription,0
+https://twp.columbia.mi.us/meeting-videos/,vimeo,vimeo-oembed,1777.00,2021-11-15,,1,accept,,0.06,2026-09-30T13:05:36+00:00,feed_tier3_auto_transcription,0
+https://wheatlandtownship.com/,vimeo,vimeo-oembed,2478.00,2025-01-03,,1,accept,,0.07,2026-09-30T13:09:25+00:00,feed_tier3_auto_transcription,0
+https://reddeercounty.civicweb.net/Portal/MeetingInformation.aspx?Id=1162,youtube,yt-dlp-metadata,8672.00,2026-09-02,84054511,1,accept,,2.15,2026-09-30T13:47:15+00:00,feed_tier3_auto_transcription,0
+https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2270,youtube,yt-dlp-metadata,5306.00,2026-09-09,81373059,1,accept,,1.73,2026-09-30T14:14:02+00:00,feed_tier3_auto_transcription,0
+https://adamscounty.primegov.com/Portal/Meeting?meetingTemplateId=9697,youtube,yt-dlp-metadata,5385.00,2026-09-23,137555963,1,accept,,1.69,2026-09-30T14:39:19+00:00,feed_tier3_auto_transcription,0
