@@ -8937,3 +8937,22 @@ https://files.smartsites.parentsquare.com/10055/260811_1800.mp3,direct_file,head
 https://townofkimball.com/audio/boma/2021/01072021.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.29,2026-09-29T22:37:28+00:00,,0
 https://www.mckellar.civikit.com/en/township-services/resources/08-31-21-August-31-2021-Special-Council-Meeting-Audio-Part-1.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.61,2026-09-29T22:37:31+00:00,,0
 https://rmwhitemouth.com/vertical/sites/%7BFB3226E4-3AD8-4680-8D53-E086B57111E0%7D/uploads/Regular_Council_Meeting_Sept_8_2026.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-09-29T22:37:33+00:00,,0
+https://reflect-dennis.cablecast.tv/internetchannel/show/3206,cablecast,hls-master+variant,1962.99,,,1,accept,,0.66,2026-09-30T00:46:27+00:00,stage5_route,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3728,cablecast,hls-master+variant,4372.30,,,1,accept,,1.54,2026-09-30T00:46:29+00:00,stage5_route,0
+https://reflect-peg-westonfl.cablecast.tv/show/220?site=1,cablecast,hls-master+variant,30.03,,,0,reject-short,duration 30.0s is below the 60s meeting-plausibility floor,0.19,2026-09-30T00:46:38+00:00,stage5_route,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20249,cablecast,hls-master+variant,2831.31,,,1,accept,,0.52,2026-09-30T00:49:25+00:00,stage5_route,0
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701,cablecast,hls-master+variant,4238.97,,,1,accept,,0.54,2026-09-30T00:49:29+00:00,stage5_route,0
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701,cablecast,hls-master+variant,4238.97,,,1,accept,,0.28,2026-09-30T00:49:29+00:00,stage5_route,0
+https://pub-salem.escribemeetings.com/Meeting.aspx?Id=a8121347-41fc-4f48-9d36-a3a6d2074f4d,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] W2ye9-_-CAw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.05,2026-09-30T00:49:41+00:00,stage5_route,0
+https://pub-salem.escribemeetings.com/Meeting.aspx?Id=a8121347-41fc-4f48-9d36-a3a6d2074f4d,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] W2ye9-_-CAw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.05,2026-09-30T00:49:41+00:00,stage5_route,0
+https://suffolkva.granicus.com/ViewPublisher.php?view_id=2,granicus,head+ffprobe,1536.33,2022-08-15,216148228,1,accept,,1.05,2026-09-30T00:49:46+00:00,stage5_route,0
+https://suffolkva.granicus.com/ViewPublisher.php?view_id=2,granicus,head+ffprobe,2982.07,2022-08-15,134124071,1,accept,,2.54,2026-09-30T00:49:47+00:00,stage5_route,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.46,2026-09-30T00:50:06+00:00,stage5_route,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.46,2026-09-30T00:50:06+00:00,stage5_route,0
+http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40,direct_file,head+ffprobe,10291.64,2020-04-21,1461754795,1,accept,,2.76,2026-09-30T00:50:44+00:00,stage5_route,0
+http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40,direct_file,head+ffprobe,10291.64,2020-04-21,1461754795,1,accept,,2.89,2026-09-30T00:50:45+00:00,stage5_route,0
+https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4,direct_file,head+ffprobe,3842.97,2026-03-06,409073024,1,accept,,2.86,2026-09-30T00:50:53+00:00,stage5_route,0
+https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4,direct_file,head+ffprobe,3842.97,2026-03-06,409073024,1,accept,,2.66,2026-09-30T00:50:54+00:00,stage5_route,0
+https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,3.12,2026-09-30T00:51:04+00:00,stage5_route,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.39,2026-09-30T00:51:13+00:00,stage5_route,0
+https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,12.31,2026-09-30T00:51:13+00:00,stage5_route,0
