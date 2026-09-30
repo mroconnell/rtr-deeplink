@@ -1,0 +1,1106 @@
+[
+ {
+  "title": "Sep 17, 2024 Candidate Forum",
+  "true": "us:place:2712700",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Jan 12, 2026 Candidates Forum",
+  "true": "rtr:us:tx:grand-prairie-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Mar 26, 2026 Zoning Board Meeting - Hastings-on",
+  "true": "us:place:3635969",
+  "got": "us:cousub:3607532688",
+  "why": "body_word:zoning;place_match:Hastings town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Oct 16, 2024 League of Women Voters Candidate Forum",
+  "true": "us:place:0639290",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "1. Public Hearing to Consider the Acquisition of 1950 Meadow Lane, in the Village of Southampton and Amend CPF Project Plan and the CPF Management and Stewardship Plan to Include the Property - Town Board Regular Meeting",
+  "true": "us:cousub:3610368473",
+  "got": "us:place:3668462",
+  "why": "body_word:town board;place_match:Southampton village:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Mar 18, 2026 Board of Trustees MacEachron Park Meeting - Hastings-on",
+  "true": "us:place:3635969",
+  "got": "us:cousub:3607532688",
+  "why": "body_word:board of trustees;place_match:Hastings town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Public Forums & Events Election/Candidate",
+  "true": "us:cousub:2300528870",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Eden Prairie Music Dept. Concert",
+  "true": "rtr:unknown:edina-mn.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "2024 State of the City Address by Mayor Alan Hallman.",
+  "true": "us:place:1336472",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Common Council 2015 State of the City Address",
+  "true": "us:place:3656979",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Bristol RI Town Council Meeting June 24, 2026",
+  "true": "us:county:44001",
+  "got": "us:cousub:4400109280",
+  "why": "body_word:town council;place_match:Bristol town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "03-05-2026 Commissioners Candidates Debate",
+  "true": "us:place:1270075",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "CHS Girls hockey vs Westwood Jan. 22, 2025",
+  "true": "rtr:unknown:cctv-vod.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "Pittsfield City Council Meeting 6/25/24",
+  "true": "us:place:1735866",
+  "got": "us:place:1760222",
+  "why": "body_word:city council;place_match:Pittsfield city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Spring 2026 Commencement: Session 1",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Spring 2026 Commencement: Session 2",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Herb Brooks National Hockey Center Renovation Update - Main Rink Concrete Pour",
+  "true": "rtr:unknown:utvs.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "St Louis Park High School Wind Ensemble Concert Dec. 11, 2025",
+  "true": "us:place:2757220",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "2025 Pace Center for Girls Graduation Ceremony",
+  "true": "rtr:unknown:metvweb.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Wheat Ridge Candidate Forum 9-23-25",
+  "true": "us:place:0884440",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "SGA Election Executive Branch Debate",
+  "true": "rtr:unknown:fsusga.portal.civicclerk.com",
+  "got": "MEETING=False",
+  "why": "non_meeting:debate"
+ },
+ {
+  "title": "Oct 16, 2024 Candidates Forum",
+  "true": "us:place:2712160",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Meet the Candidates",
+  "true": "us:place:4816468",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Apr 23, 2025 School Board Candidate Forum",
+  "true": "rtr:us:tx:cedar-hill-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Leadership Golden Candidate Forum",
+  "true": "us:place:0830835",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "9/15/25 Joint Meeting with Mansfield Independent School District Board of Directors",
+  "true": "us:place:4846452",
+  "got": "us:sd:4828920",
+  "why": "body_word:board of directors;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Sep 30, 2024 Candidate Forum Democratic Club of Amelia Island",
+  "true": "us:place:1222175",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "Mokena Christmas Parade 2021",
+  "true": "us:place:1749854",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Meet The Candidates - 2023",
+  "true": "us:sd:3621180",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Eagle Chamber's Town Council Candidate Forum",
+  "true": "us:place:0822200",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "League of Women Voters - City of Shoreview Candidate Forum - Mayor and City Council",
+  "true": "us:place:2759998",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "1-13-2026 Red Hook Town Board Meeting",
+  "true": "us:place:3660895",
+  "got": "us:cousub:3602760905",
+  "why": "body_word:town board;place_match:Red Hook town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Johnston Co. Board of Commissioners/Selma Town Council Special Meeting- May 2, 2024",
+  "true": "us:county:37101",
+  "got": "us:place:3760320",
+  "why": "body_word:board of commissioners;place_match:Selma town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Garfield County Sheriff Candidate Forum \u2022 hosted by the CRV Chamber at the Ute \u2022 Jun 3, 2026",
+  "true": "us:place:0864255",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Aja Vu Concert 8-27-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "May 23, 2025 Early College High School Graduation",
+  "true": "rtr:us:tx:round-rock-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Court n' Disaster Concert 7-29-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Green-182 Concert 7-23-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Zepparella Concert 7-16-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Edina High School 2026 Commencement",
+  "true": "us:place:2718188",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Boys Basketball: Eden Prairie vs Park Center",
+  "true": "us:place:2718188",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "City Council on 2026-08-27 1:00 PM - Marco Island City Council & Collier County Commission Joint Workshop",
+  "true": "us:place:1243083",
+  "got": "us:county:12021",
+  "why": "soft_non_meeting:workshop;place_match:Collier County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "The MacArthur Memorial Presents: Philippine-American Heritage in Washington, D.C.",
+  "true": "us:place:5157000",
+  "got": "MEETING=False",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "title": "8-11-2026 Red Hook Town Board Meeting",
+  "true": "us:place:3660895",
+  "got": "us:cousub:3602760905",
+  "why": "body_word:town board;place_match:Red Hook town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Schenectady 2023 State of the City Address",
+  "true": "us:place:3665508",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Schenectady Mayor Gary R. McCarthy 2022 State of the City Address",
+  "true": "us:place:3665508",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Brea Talks Summer Fire Safety, Home Hardening & Fireworks",
+  "true": "us:place:0608100",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "The Redlands Christmas Parade - December 4, 2021",
+  "true": "us:place:0659962",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Haywood County Commissioners Meeting 01-19-2021",
+  "true": "us:place:3771500",
+  "got": "us:county:37087",
+  "why": "body_word:commissioners;place_match:Haywood County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "2026 Summer Commencement",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "fike basketball with coach lofton.movie",
+  "true": "rtr:unknown:wilson-co-schools.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "Town of Bristol RI Town Council   Wednesday August 19 2026",
+  "true": "us:county:44001",
+  "got": "us:cousub:4400109280",
+  "why": "body_word:town council;place_match:Bristol town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Aug 26, 2026 Town of Bluffton Planning Commission",
+  "true": "us:county:45013",
+  "got": "us:place:4507210",
+  "why": "body_word:planning commission;place_match:Bluffton town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Salem School Committee Superintendent Candidate Interview - Dr. Jorge Allen - 7/7/2026",
+  "true": "us:place:2559105",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "City Council Retreat Workshop 8-19-26",
+  "true": "us:place:4838776",
+  "got": "us:place:4861616",
+  "why": "soft_non_meeting:workshop;place_match:Retreat town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Lenox Candidates Forum, presented by the League of Women Voters, May 4, 2026",
+  "true": "rtr:unknown:reflect-ctsbtv.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Surry County Board of Commissioners Meeting June 17, 2024",
+  "true": "us:place:3720620",
+  "got": "us:county:37171",
+  "why": "body_word:board of commissioners;place_match:Surry County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Tybee City Council Candidate Forum 10/4/2021",
+  "true": "us:place:1378036",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Wheat Ridge Candidate Forum 9-23-25",
+  "true": "us:place:0884440",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Dixon USD Board Meeting",
+  "true": "us:place:0619402",
+  "got": "us:sd:0611280",
+  "why": "body_word:board;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "CMP Graduation - Aug 28th, 2026",
+  "true": "rtr:us:ar:arkansas-supreme-court",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Marion County Election Board",
+  "true": "us:place:1836003",
+  "got": "us:county:18097",
+  "why": "weak_body_word:board;place_match:Marion County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Space Beauty Spa Ribbon Cutting Ceremony - Sep 3rd, 2026",
+  "true": "us:place:3650617",
+  "got": "MEETING=False",
+  "why": "non_meeting:ribbon cutting"
+ },
+ {
+  "title": "Mouse River Enhanced Flood Protection Project Meeting",
+  "true": "us:place:3853380",
+  "got": "us:cousub:3804954980",
+  "why": "meeting_word_only;place_match:Mouse River township:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Bristol RI Town Council Meeting - Wednesday, June 3, 2026",
+  "true": "us:county:44001",
+  "got": "us:cousub:4400109280",
+  "why": "body_word:town council;place_match:Bristol town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "The Mayor Feinen Podcast - Council Member Bob Pollett",
+  "true": "us:place:1712385",
+  "got": "MEETING=False",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "title": "Danvers School Committee Meeting - 2/25/26",
+  "true": "us:cousub:2500916250",
+  "got": "us:sd:2503990",
+  "why": "body_word:school committee;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "AMADOR CITY, REGULAR CITY COUNCIL MEETING 6/09/2026",
+  "true": "us:county:06005",
+  "got": "us:place:0601514",
+  "why": "body_word:city council;place_match:Amador City city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Middleborough Public Schools School Committee Meeting - April 9, 2026",
+  "true": "us:cousub:2502340850",
+  "got": "us:sd:2507770",
+  "why": "body_word:school committee;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "5 Qs with Council: Mayor Theresa Rich",
+  "true": "us:place:2627440",
+  "got": "us:cousub:2608768160",
+  "why": "body_word:council;bare_council;place_match:Rich township:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Joint Meeting Avery County Commissioners & Board of Education 6/23/2020",
+  "true": "us:county:37011",
+  "got": "us:sd:3700300",
+  "why": "body_word:commissioners;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Canton Town Board Meeting - 9.9.2026",
+  "true": "us:place:3612331",
+  "got": "us:cousub:3608912342",
+  "why": "body_word:town board;place_match:Canton town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Board of Education - Regular Meeting - May 12, 2026",
+  "true": "us:cousub:0916086440",
+  "got": "us:sd:0905160",
+  "why": "body_word:board of education;school_body_district_from_channel_name:unique_name_in_state"
+ },
+ {
+  "title": "Norfolk Planning Board Meeting - September 8, 2026",
+  "true": "us:county:25021",
+  "got": "us:cousub:2502146050",
+  "why": "body_word:planning board;place_match:Norfolk town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "2026-03-05 Special Anthon Townhall Meeting",
+  "true": "us:county:19193",
+  "got": "us:place:1902350",
+  "why": "meeting_word_only;place_match:Anthon city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "8-19-2026 Rhinebeck Town Zoning Board Meeting",
+  "true": "us:place:3661346",
+  "got": "us:cousub:3602761357",
+  "why": "body_word:zoning;place_match:Rhinebeck town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "The Municipal District of Taber 2026 Annual General Meeting",
+  "true": "ca:csd:4802021",
+  "got": "MEETING=False",
+  "why": "non_meeting:annual general meeting (an organization's own)"
+ },
+ {
+  "title": "Addison Newsmakers Mental Health Board \u201cMeet & Greet\u201d",
+  "true": "us:cousub:1704300250",
+  "got": "us:place:1700243",
+  "why": "weak_body_word:board;place_match:Addison village:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Rockland School Committee - September 8, 2026",
+  "true": "us:cousub:2502357775",
+  "got": "us:sd:2510170",
+  "why": "body_word:school committee;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Augusta Charter Township BOT Meeting 8/25/26 5 of 5 MVI 0131",
+  "true": "us:cousub:2616104180",
+  "got": "us:place:2604160",
+  "why": "meeting_word_only;place_match:Augusta village:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Plymouth Charter Review Committee: 8/27/24",
+  "true": "us:county:25023",
+  "got": "us:cousub:2502354310",
+  "why": "weak_body_word:committee;place_match:Plymouth town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Hudson Highlands Fjord Trail Joint Public Session Monday, May 8, 2023",
+  "true": "us:place:3649781",
+  "got": "us:place:3635969",
+  "why": "meeting_word_only;place_match:Hudson city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Hyde Park Town Meeting 2026",
+  "true": "us:place:5034975",
+  "got": "us:cousub:5001535050",
+  "why": "body_word:town meeting;place_match:Hyde Park town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Mountain Iron City Council | September 8th, 2026",
+  "true": "us:place:2702872",
+  "got": "us:place:2744548",
+  "why": "body_word:city council;place_match:Mountain Iron city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Joint Middlesex County Candidate Information Session - 2026 Municipal Election",
+  "true": "ca:csd:3539033",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Village of Niles Town Hall Meeting October 2025 with Mayor Alpogianis",
+  "true": "us:place:1753000",
+  "got": "MEETING=False",
+  "why": "non_meeting:politician town hall"
+ },
+ {
+  "title": "Devine School Board votes to expand health care education- July 20, 2026",
+  "true": "us:place:4820152",
+  "got": "us:sd:4816950",
+  "why": "body_word:school board;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "9-8-2026 Red Hook Town Board",
+  "true": "us:place:3660895",
+  "got": "us:cousub:3602760905",
+  "why": "body_word:town board;place_match:Red Hook town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Thayer Town Hall Meeting With Ballot Forum And Meet The Candidate Speeches",
+  "true": "us:place:2972826",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Northshore Democratic Women's Society Monthly Meeting 11-15-2022",
+  "true": "us:place:2200240",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "Town and Village of Pawling Proposed Consolidation Joint Meeting",
+  "true": "us:cousub:3602756825",
+  "got": "us:place:3656814",
+  "why": "meeting_word_only;place_match:Pawling village:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Allen County Monroeville Town Board September 2 2026",
+  "true": "us:place:1850562",
+  "got": "us:county:18003",
+  "why": "body_word:town board;place_match:Allen County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "New Trier Township Board Meeting September 8, 2026",
+  "true": "us:place:1782530",
+  "got": "us:cousub:1703152909",
+  "why": "body_word:board;place_match:New Trier township:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Lenoir City Council Meeting 9/1/26",
+  "true": "us:county:37027",
+  "got": "us:place:3737760",
+  "why": "body_word:city council;place_match:Lenoir city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "SEMCOG General Assembly, March 2026, Panel Discussion",
+  "true": "us:place:2677860",
+  "got": "us:state:26",
+  "why": "body_word:assembly;state_body;state_body_maps_to_state"
+ },
+ {
+  "title": "08-11-2026 Cullman County Commission Meeting",
+  "true": "us:place:0125384",
+  "got": "us:county:01043",
+  "why": "body_word:commission;place_match:Cullman County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "West Hartford Public Schools: Deaf & Hard Of Hearing Mural Project",
+  "true": "us:cousub:0911082590",
+  "got": "us:sd:0904920",
+  "why": "meeting_word_only;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "2026 Candidate Information Session - Local General Election",
+  "true": "ca:csd:5923019",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "260831 VoLB Candidate Information Session",
+  "true": "ca:csd:5915065",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Essex Financial Committee Forum | January 11, 2024",
+  "true": "us:county:25009",
+  "got": "us:cousub:2500921850",
+  "why": "weak_body_word:committee;place_match:Essex town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Columbus GA Planning Advisiory Comm  Meeting 06-03-2026",
+  "true": "us:county:13215",
+  "got": "us:place:1319000",
+  "why": "meeting_word_only;place_match:Columbus city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Knox Co Board Meeting July 23, 2025",
+  "true": "us:county:17095",
+  "got": "us:cousub:1709540403",
+  "why": "body_word:board;place_match:Knox township:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "San Jacinto Redevelopment Board Meeting 8/19/20",
+  "true": "us:place:4847700",
+  "got": "us:place:4837156",
+  "why": "body_word:board;special_district_filed_under_local_government"
+ },
+ {
+  "title": "Town of Lewiston Town of Board Meeting, June 22, 2026",
+  "true": "us:place:3642147",
+  "got": "us:cousub:3606342158",
+  "why": "body_word:board;place_match:Lewiston town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "2026 Townshend Town Meeting 3/3/26",
+  "true": "us:cousub:5002507900",
+  "got": "us:cousub:5002573300",
+  "why": "body_word:town meeting;place_match:Townshend town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "City of Madison Historic District Board of Review - May 26, 2026",
+  "true": "us:county:18095",
+  "got": "us:place:1845990",
+  "why": "body_word:board of review;place_match:Madison city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "2025 Northglenn City Council Candidates",
+  "true": "us:place:0854330",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Forsyth County Schools | Board of Education Regular Meeting | February 17, 2026",
+  "true": "us:county:13117",
+  "got": "us:sd:1302220",
+  "why": "body_word:board of education;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Town of Talking Rock Council | March 5, 2026",
+  "true": "us:county:13227",
+  "got": "us:place:1375272",
+  "why": "body_word:council;place_match:Talking Rock town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Democratic Candidates for DuPage County Forest Preserve Board of Commissioners",
+  "true": "us:place:1723620",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "Granby MA School Council 05-29-2024",
+  "true": "us:cousub:2501526535",
+  "got": "us:sd:2505400",
+  "why": "body_word:council;bare_council;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "2025 Westland City Council Candidates",
+  "true": "us:place:2686000",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "ISD 832 Public Comment Mahtomedi School Board Meeting May 10 2018",
+  "true": "us:place:2725334",
+  "got": "us:sd:2718750",
+  "why": "body_word:school board;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "12.01.2025 Marshall Public Schools Board Meeting",
+  "true": "us:place:2740688",
+  "got": "us:sd:2718940",
+  "why": "body_word:board;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Kershaw County Council 11.21.2024",
+  "true": "us:place:4538095",
+  "got": "us:county:45055",
+  "why": "body_word:county council;place_match:Kershaw County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "2019 Highland City Council Candidates - Tim Ball",
+  "true": "us:place:4935190",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "St. Mary (Mo, USA) Board of Aldermen, Tax Hearing August 31, 2026",
+  "true": "us:place:2964180",
+  "got": "us:place:2965034",
+  "why": "body_word:board of aldermen;place_match:St. Mary city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Town of Kinderhook || Board Meeting || August 1st, 2022",
+  "true": "us:place:3639562",
+  "got": "us:cousub:3602139573",
+  "why": "body_word:board;place_match:Kinderhook town:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Troy BOE Meeting March 2015",
+  "true": "us:place:3977588",
+  "got": "us:sd:3904492",
+  "why": "body_word:boe;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "OUHSD Board Meetings - NEW \u2014 Ventura County Meeting - 2026-06-24",
+  "true": "us:sd:0629270",
+  "got": "us:county:06111",
+  "why": "body_word:board;place_match:Ventura County:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Economic Development, Workforce and Tourism 2ND REVISED",
+  "true": "us:state:40",
+  "got": "MEETING=False",
+  "why": "non_meeting:tourism"
+ },
+ {
+  "title": "Oceanside BOE : June 10 Regular Meeting",
+  "true": "us:place:0653322",
+  "got": "us:sd:0628250",
+  "why": "body_word:boe;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "title": "Carroll Valley Borough Council Meeting - 09/15/2026",
+  "true": "us:place:4232448",
+  "got": "us:place:4211472",
+  "why": "body_word:borough council;place_match:Carroll Valley borough:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "City of Grass Valley City Council Meeting",
+  "true": "us:county:06057",
+  "got": "us:place:0630798",
+  "why": "body_word:city council;place_match:Grass Valley city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Aug 04, 2026 Board Meeting - Placentia",
+  "true": "us:sd:0630660",
+  "got": "us:place:0657526",
+  "why": "body_word:board;place_match:Placentia city:unique_name_in_state;place_in_title"
+ },
+ {
+  "title": "Sep 17, 2024 Candidate Forum",
+  "true": "us:place:2712700",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Jan 12, 2026 Candidates Forum",
+  "true": "rtr:us:tx:grand-prairie-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Oct 16, 2024 League of Women Voters Candidate Forum",
+  "true": "us:place:0639290",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Public Forums & Events Election/Candidate",
+  "true": "us:cousub:2300528870",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Eden Prairie Music Dept. Concert",
+  "true": "rtr:unknown:edina-mn.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "2024 State of the City Address by Mayor Alan Hallman.",
+  "true": "us:place:1336472",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Common Council 2015 State of the City Address",
+  "true": "us:place:3656979",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "03-05-2026 Commissioners Candidates Debate",
+  "true": "us:place:1270075",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "CHS Girls hockey vs Westwood Jan. 22, 2025",
+  "true": "rtr:unknown:cctv-vod.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "Spring 2026 Commencement: Session 1",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Spring 2026 Commencement: Session 2",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Herb Brooks National Hockey Center Renovation Update - Main Rink Concrete Pour",
+  "true": "rtr:unknown:utvs.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "St Louis Park High School Wind Ensemble Concert Dec. 11, 2025",
+  "true": "us:place:2757220",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "2025 Pace Center for Girls Graduation Ceremony",
+  "true": "rtr:unknown:metvweb.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Wheat Ridge Candidate Forum 9-23-25",
+  "true": "us:place:0884440",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "SGA Election Executive Branch Debate",
+  "true": "rtr:unknown:fsusga.portal.civicclerk.com",
+  "got": "MEETING=False",
+  "why": "non_meeting:debate"
+ },
+ {
+  "title": "Oct 16, 2024 Candidates Forum",
+  "true": "us:place:2712160",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Meet the Candidates",
+  "true": "us:place:4816468",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Apr 23, 2025 School Board Candidate Forum",
+  "true": "rtr:us:tx:cedar-hill-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Leadership Golden Candidate Forum",
+  "true": "us:place:0830835",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Sep 30, 2024 Candidate Forum Democratic Club of Amelia Island",
+  "true": "us:place:1222175",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "Mokena Christmas Parade 2021",
+  "true": "us:place:1749854",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Meet The Candidates - 2023",
+  "true": "us:sd:3621180",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Eagle Chamber's Town Council Candidate Forum",
+  "true": "us:place:0822200",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "League of Women Voters - City of Shoreview Candidate Forum - Mayor and City Council",
+  "true": "us:place:2759998",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Garfield County Sheriff Candidate Forum \u2022 hosted by the CRV Chamber at the Ute \u2022 Jun 3, 2026",
+  "true": "us:place:0864255",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Aja Vu Concert 8-27-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "May 23, 2025 Early College High School Graduation",
+  "true": "rtr:us:tx:round-rock-isd",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Court n' Disaster Concert 7-29-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Green-182 Concert 7-23-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Zepparella Concert 7-16-26",
+  "true": "us:place:0616000",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Edina High School 2026 Commencement",
+  "true": "us:place:2718188",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Boys Basketball: Eden Prairie vs Park Center",
+  "true": "us:place:2718188",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "The MacArthur Memorial Presents: Philippine-American Heritage in Washington, D.C.",
+  "true": "us:place:5157000",
+  "got": "MEETING=False",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "title": "Schenectady 2023 State of the City Address",
+  "true": "us:place:3665508",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Schenectady Mayor Gary R. McCarthy 2022 State of the City Address",
+  "true": "us:place:3665508",
+  "got": "MEETING=False",
+  "why": "non_meeting:state of the city"
+ },
+ {
+  "title": "Brea Talks Summer Fire Safety, Home Hardening & Fireworks",
+  "true": "us:place:0608100",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "The Redlands Christmas Parade - December 4, 2021",
+  "true": "us:place:0659962",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "2026 Summer Commencement",
+  "true": "rtr:unknown:trojanvision.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "fike basketball with coach lofton.movie",
+  "true": "rtr:unknown:wilson-co-schools.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:sports"
+ },
+ {
+  "title": "Salem School Committee Superintendent Candidate Interview - Dr. Jorge Allen - 7/7/2026",
+  "true": "us:place:2559105",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Lenox Candidates Forum, presented by the League of Women Voters, May 4, 2026",
+  "true": "rtr:unknown:reflect-ctsbtv.cablecast.tv",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Tybee City Council Candidate Forum 10/4/2021",
+  "true": "us:place:1378036",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Wheat Ridge Candidate Forum 9-23-25",
+  "true": "us:place:0884440",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "CMP Graduation - Aug 28th, 2026",
+  "true": "rtr:us:ar:arkansas-supreme-court",
+  "got": "MEETING=False",
+  "why": "non_meeting:event"
+ },
+ {
+  "title": "Space Beauty Spa Ribbon Cutting Ceremony - Sep 3rd, 2026",
+  "true": "us:place:3650617",
+  "got": "MEETING=False",
+  "why": "non_meeting:ribbon cutting"
+ },
+ {
+  "title": "The Mayor Feinen Podcast - Council Member Bob Pollett",
+  "true": "us:place:1712385",
+  "got": "MEETING=False",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "title": "The Municipal District of Taber 2026 Annual General Meeting",
+  "true": "ca:csd:4802021",
+  "got": "MEETING=False",
+  "why": "non_meeting:annual general meeting (an organization's own)"
+ },
+ {
+  "title": "Joint Middlesex County Candidate Information Session - 2026 Municipal Election",
+  "true": "ca:csd:3539033",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Village of Niles Town Hall Meeting October 2025 with Mayor Alpogianis",
+  "true": "us:place:1753000",
+  "got": "MEETING=False",
+  "why": "non_meeting:politician town hall"
+ },
+ {
+  "title": "Thayer Town Hall Meeting With Ballot Forum And Meet The Candidate Speeches",
+  "true": "us:place:2972826",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Northshore Democratic Women's Society Monthly Meeting 11-15-2022",
+  "true": "us:place:2200240",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "2026 Candidate Information Session - Local General Election",
+  "true": "ca:csd:5923019",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "260831 VoLB Candidate Information Session",
+  "true": "ca:csd:5915065",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "2025 Northglenn City Council Candidates",
+  "true": "us:place:0854330",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Democratic Candidates for DuPage County Forest Preserve Board of Commissioners",
+  "true": "us:place:1723620",
+  "got": "MEETING=False",
+  "why": "non_meeting:party"
+ },
+ {
+  "title": "2025 Westland City Council Candidates",
+  "true": "us:place:2686000",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "2019 Highland City Council Candidates - Tim Ball",
+  "true": "us:place:4935190",
+  "got": "MEETING=False",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "title": "Economic Development, Workforce and Tourism 2ND REVISED",
+  "true": "us:state:40",
+  "got": "MEETING=False",
+  "why": "non_meeting:tourism"
+ }
+]
