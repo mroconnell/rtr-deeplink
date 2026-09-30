@@ -970,3 +970,6 @@ https://www.cityofcheney.org/DocumentCenter/View/4905/9-22-26-Recording		us:plac
 https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH/media/1017776		us:sd:4218990	Philadelphia City School District, PA	4:00:43	
 https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1017104		us:place:2604105	Auburn Hills city, MI	2:16:49	
 https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1/media/1015680		us:sd:2629940	Rochester Community School District, MI	3:19:35	
+https://pub-sturgeoncounty.escribemeetings.com/Meeting.aspx?Id=a2e9c4e5-b967-41d3-b8b5-3c343aeeb83f&Agenda=Agenda&lang=English		ca:csd:4811059	Sturgeon County, AB	1:42:44	
+https://northkingstown.granicus.com/MediaPlayer.php?view_id=3&clip_id=1597		us:cousub:4400951580	North Kingstown town, RI	1:30:48	
+https://oakridgetn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1129		us:place:4755120	Oak Ridge city, TN	1:51:03	
