@@ -1302,3 +1302,19 @@ https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://wi
 https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
 https://tx-selma.civicplus.com/CivicMedia?VID=6		us:place:4866704
+https://reflect-dennis.cablecast.tv/internetchannel/show/3206	https://reflect-dennis.cablecast.tv/internetchannel/show/3206	us:cousub:2500116775
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	us:place:2712718
+https://reflect-communitytv.cablecast.tv/internetchannel/show/3660	https://reflect-communitytv.cablecast.tv/internetchannel/show/3660	us:place:0611040
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19925	https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19925	us:place:3913190
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20249	https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20249	us:place:3952010
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20250	https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20250	us:place:3983090
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701	https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701	us:sd:2511430
+https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	us:cousub:0913015350
+https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	us:county:51031
+https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	us:place:5176432
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	us:cousub:3301104500
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	us:place:4142600
+https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	ca:pr:62
+https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	us:place:2745430
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341	rtr:us:pa:university-area-joint-authority
+https://videoplayer.telvue.com/player/_bwOHY2RsBTo1g8bdjAUi0sT-J5Z17fY/media/1014767	https://videoplayer.telvue.com/player/_bwOHY2RsBTo1g8bdjAUi0sT-J5Z17fY/media/1014767	us:cousub:3403179460
