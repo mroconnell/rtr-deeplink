@@ -8967,3 +8967,9 @@ https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4,direct_file,head+f
 https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,3.12,2026-09-30T00:51:04+00:00,stage5_route,0
 https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.39,2026-09-30T00:51:13+00:00,stage5_route,0
 https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,12.31,2026-09-30T00:51:13+00:00,stage5_route,0
+https://videoplayer.telvue.com/player/0l61qrd2cTIyQzYJ0oHNRYLt8lmyVn7U/playlists/6926,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,3.87,2026-09-30T01:38:55+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/playlists/7117,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,1.42,2026-09-30T01:39:00+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/3102,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.91,2026-09-30T01:39:05+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/3101,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key Q88UlDYm cap reached,0.00,2026-09-30T01:39:09+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx/playlists/1617,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-30T01:39:15+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt/playlists/11884,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.92,2026-09-30T01:39:21+00:00,route_stage3_A_2026-09-29,0
