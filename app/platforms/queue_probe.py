@@ -88,6 +88,7 @@ from .base import (
 from .champds import vod2_stream_for_download_url
 from .direct_file import (
     follow_with_cookies,
+    is_civicplus_file_library_url,
     is_dropbox_url,
     is_laserfiche_url,
     is_sharepoint_share_url,
@@ -1195,6 +1196,7 @@ async def probe_queue_entry(
         or (video_format and f".{video_format.lower()}" in _DIRECT_FILE_EXTENSIONS)
         or _CHAMPDS_DIRECT_MEDIA_MARKER in media_path
         or _CIVICPLUS_DOCUMENT_CENTER_MARKER in media_path
+        or is_civicplus_file_library_url(video_url)
     ):
         return await _probe_direct_file(
             url, resolved_platform, video_url, source_page_url, start
