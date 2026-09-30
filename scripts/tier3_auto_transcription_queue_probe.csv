@@ -9045,3 +9045,32 @@ https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME,cas
 https://washingtonin.granicus.com/MediaPlayer.php?view_id=1&clip_id=164,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-30T13:01:29+00:00,,0
 https://d3id26kdqbehod.cloudfront.net/ROBSTOWN-D/2026/01/29/4fU6tICmSG7lhyhf1GnchPAboQkOF6AH3CjQ92ogd8EKmqj90IXOWSRN4ELj/January+2026+-+State+of+the+Budget+Intro+%281%29-480p.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-09-30T13:01:31+00:00,,0
 https://cpmedia.azureedge.net/stillwatercomt/f885eb43-f102-4f38-acbd-d7edf64d28e6.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.01,2026-09-30T13:01:33+00:00,,0
+https://www.bb-sd.com/Downloads/Brentwood%20School%20Board%20Meeting%2004_20_2020.mp3,direct_file,head+ffprobe,4484.90,2020-05-01,101108471,1,accept,,0.81,2026-09-30T14:49:56+00:00,,0
+https://drive.google.com/file/d/1uo9Zw3WfvgW0ZG8IbnuLmJdCPb4GMs_y/view?usp=sharing,direct_file,head+ffprobe,2403.47,2025-11-12,6045935313,1,accept,,2.03,2026-09-30T14:50:00+00:00,,0
+https://ramcountrytv.cablecast.tv/show/27,cablecast,hls-master+variant,1400.01,,,1,accept,,2.04,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1I22Kd5i4CJvr1FI9U43zvoXodz5gTEl3/view?usp=drive_link,direct_file,head+ffprobe,1571.20,2024-01-25,720331784,1,accept,,2.87,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing,direct_file,head+ffprobe,6875.20,2026-03-17,42996200,1,accept,,7.39,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1LnJIGAxGc0DNfzrcs022elV_BD7qDuW-/view?usp=sharing,direct_file,head+ffprobe,937.13,2026-08-19,12578256,1,accept,,6.10,2026-09-30T14:50:03+00:00,,0
+https://antigowi.portal.civicclerk.com/event/2220/media,civicclerk,head+ffprobe,3528.32,2026-09-09,2766820543,1,accept,,2.08,2026-09-30T14:50:04+00:00,,0
+https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451,granicus,hls-master+variant,1212.42,,,1,accept,,3.01,2026-09-30T14:50:06+00:00,,0
+https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021,granicus,hls-master+variant,1914.55,,,1,accept,,5.22,2026-09-30T14:50:08+00:00,,0
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995,granicus,hls-master+variant,1721.00,,,1,accept,,6.95,2026-09-30T14:50:09+00:00,,0
+https://bvcsd.granicus.com/MediaPlayer.php?view_id=1&clip_id=733,granicus,hls-master+variant,350.78,,,0,accept,,5.76,2026-09-30T14:50:10+00:00,,0
+https://www.cityofleonard.net/upload/page/0075/docs/05-08-18_City_Council_Meeting.mp3,direct_file,head+ffprobe,1846.37,2018-05-09,22156488,1,accept,,1.45,2026-09-30T14:50:11+00:00,,0
+https://www.barnescounty.us/wp-content/uploads/2026/08/07.07.2026-Full-Commission-Meeting.mp3,direct_file,head+ffprobe,2627.89,2026-08-06,42047300,1,accept,,1.79,2026-09-30T14:50:13+00:00,,0
+https://ashtabulaoh.portal.civicclerk.com/event/675/media,civicclerk,hls-master+variant,6044.54,,,1,accept,,2.74,2026-09-30T14:50:13+00:00,,0
+https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483,granicus,hls-master+variant,2786.94,,,1,accept,,5.78,2026-09-30T14:50:13+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17012?site=3&query=aquinnah,cablecast,hls-master+variant,5379.13,,,1,accept,,0.81,2026-09-30T14:50:13+00:00,,0
+https://portcanaveral.granicus.com/MediaPlayer.php?view_id=2&clip_id=973,granicus,hls-master+variant,3182.07,,,1,accept,,8.36,2026-09-30T14:50:14+00:00,,0
+https://www.elkrapids.com/uploads/4/6/4/5/46455369/zba_04132026_audio.mp3,direct_file,head+ffprobe,974.71,2026-04-16,11696521,1,accept,,0.73,2026-09-30T14:50:14+00:00,,0
+https://pinecitymn.gov/vertical/sites/%7B6C78F918-835C-4B30-A7AF-EAF471BF7BB3%7D/uploads/6-24-21_City_Council_Audio_(1st_half).mp3,direct_file,head+ffprobe,2620.04,2021-06-29,48247793,1,accept,,2.27,2026-09-30T14:50:15+00:00,,0
+https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/Zoom-Video_Planning-Commission_01.06.2026.mp4,direct_file,head+ffprobe,1397.65,2026-06-25,39294454,1,accept,,1.78,2026-09-30T14:50:17+00:00,,0
+https://hunterdonconj.portal.civicclerk.com/event/1483/media,civicclerk,head+ffprobe,2296.89,2026-08-21,36751852,1,accept,,3.18,2026-09-30T14:50:17+00:00,,0
+https://rushvillein.suiteonemedia.com/event/?id=1084,suiteone,head+ffprobe,1841.50,2026-09-23,31204103,1,accept,,3.95,2026-09-30T14:50:18+00:00,,0
+https://boxcast.tv/view/9282026---legal-finance-vygewwbbbhjwlxtgct03,boxcast,hls-master+variant,694.06,,,1,accept,,1.27,2026-09-30T14:50:18+00:00,,0
+https://d3id26kdqbehod.cloudfront.net/RWLND/2026/09/11/c9B9L0qb04IFxKZ7dNwaQX677PxsmFUxc8kTvavrRBtNVUuxEDz8ACd8iHjX/Board+Meeting+and+NHS+Aquatics+V3-480p.mp4,direct_file,head+ffprobe,120.85,2026-09-11,14590071,0,accept,,0.46,2026-09-30T14:50:18+00:00,,0
+https://drive.google.com/file/d/1VlSpOCb1oj1pASMXHNQ8s3GXG2hs4Kl5/view?usp=sharing,direct_file,head+ffprobe,1407.54,2026-08-03,387153142,1,accept,,5.22,2026-09-30T14:50:19+00:00,,0
+https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57858?site=2,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.85,2026-09-30T14:50:19+00:00,,0
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1,cablecast,hls-master+variant,3213.98,,,1,accept,,0.74,2026-09-30T14:50:19+00:00,,0
+http://66.161.199.50/CablecastPublicSite/show/27907?channel=4,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.60,2026-09-30T14:50:19+00:00,,0
+https://drive.google.com/file/d/1hzvIekxAJBEuzZHg5I54WPegCfrQnvkM/preview,direct_file,head+ffprobe,405.94,2025-06-10,1005232274,0,accept,,2.71,2026-09-30T14:50:20+00:00,,0
