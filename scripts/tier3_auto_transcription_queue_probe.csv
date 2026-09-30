@@ -8944,3 +8944,4 @@ https://oakridgetn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1129,granicus,
 https://diamondvalley.civicweb.net/Portal/MeetingInformation.aspx?Id=860,civicweb,resolve,,,,0,reject-dead,resolve returned no video_url,8.97,2026-09-30T03:22:46+00:00,playbook_2026-09-29_stage12,0
 https://muhlenbergtwp.primegov.com/Portal/Meeting?meetingTemplateId=240,primegov,resolve,,,,0,reject-dead,resolve returned no video_url,8.90,2026-09-30T03:24:18+00:00,playbook_2026-09-29_stage12,0
 https://victoriatx.civicweb.net/Portal/MeetingInformation.aspx?Id=3893,civicweb,resolve,,,,0,reject-dead,resolve returned no video_url,9.00,2026-09-30T03:26:18+00:00,playbook_2026-09-29_stage12,0
+https://vista.granicus.com/MediaPlayer.php?view_id=2&clip_id=1818,granicus,head+ffprobe,1532.04,2022-08-02,409965401,1,accept,,2.63,2026-09-30T03:51:35+00:00,playbook_2026-09-29_stage12,0
