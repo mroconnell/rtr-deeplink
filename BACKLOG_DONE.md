@@ -1,5 +1,28 @@
 # Backlog — done
 
+## WO-1170: Cablecast's newer portal blocks scripted show pages; `resolve()` now falls back to its JSON API [Done 2026-09-29]
+
+**Why this ran.** On Cablecast's newer portal template, a bare `/show/{id}` page answers a script with `202`, an empty body and `x-amzn-waf-action: challenge` (the AWS bot check). `resolve()` already retried the site root, then the FastBoot `/embed/vod?show={id}&site=1` path, then gave up. The rtr-business stage-3 class-A pass found 33 of 93 governments stuck this way — a title on their own station listing named their own body, but nothing resolved.
+
+**Fix.** `app/platforms/cablecast.py`'s `resolve()`: when the bare `/show/{id}` path finds no show after the root retry AND the FastBoot `/embed/vod` endpoint is itself unreachable (not just reachable-but-video-less), it now tries the same host's separate CablecastPublicSite JSON API — `GET /cablecastapi/v1/shows/{id}`, then `/cablecastapi/v1/vods/{id}` — the same two endpoints `_resolve_publicsite()` already reads for the Urbana/Smyrna/CCX tenants, reused as-is. This never touches the challenged show page itself (Standing decisions: don't try to solve a human-verification gate) — it's a wholly separate, unchallenged endpoint. `_resolve_fastboot_embed()` now returns `(result, embed_reachable)` so `resolve()` can tell "FastBoot answered but this show has no video" (Dyersville-style, real no-video case — API fallback would be inventing a video that was never confirmed) apart from "FastBoot endpoint itself didn't answer" (only case the API fallback is tried).
+
+**Tests.** `test_resolve_newer_template_falls_back_to_json_api_when_root_also_fails` (Brooklyn Center, MN show 41024 — real, unmodified `cablecastapi/v1/shows|vods` JSON fixtures fetched live 2026-09-29/30) and a companion negative test confirming the API is never even reached when the root-page retry already finds the show. Full suite: 8,583 passed, 18 skipped, 4 xfailed.
+
+**Verified against the real 33.** Recovered each government's candidate show URL(s) from the stage-3 class-A pass's cached `cablecastapi/v1/shows` listing (`research/slug_learning_2026-09-27/funnel_audit/playbook_2026-09-29/stage3_classA/state.json`, rtr-business) and re-resolved them live with the fixed adapter (read-only GETs, 2.5 s apart per host, capped at 3 candidates per government). Written to that folder's `cablecast_api_recheck.csv`.
+
+| Result | Count of 33 |
+| --- | --- |
+| Resolved with real video | 24 |
+| Show found, but genuinely no video attached | 9 |
+
+**The 9 with no video are a real, separate fact, not a bug in this fix.** Their titles and dates show why: most are meetings still in the future as of 2026-09-29/30 (Cablecast lists a scheduled meeting before it's recorded — e.g. Little Canada's newest matches are dated 10/14, 10/28 and 11/5/2026, Bismarck's are dated into 2027). Berkeley and Hayward's are past meetings whose shows never got a vod attached. None of the 9 are blocked by the WAF challenge anymore — the API answers for all of them, it just has no video to report yet.
+
+**Caution.** The candidate list for each government came from the stage-3 pass's own title-matching (unchanged in this PR) — it can match a related but different body sharing the same host. Aspen, CO's top candidate resolved to "APCHA... Aspen Pitkin County Housing Authority," not a City Council meeting; the coordinator should check each `title` in `cablecast_api_recheck.csv` before routing.
+
+**Next action**: the coordinator routes the 24 resolved governments under §398i from `cablecast_api_recheck.csv`; this PR does not ingest or queue anything.
+
+**PR**: rtr-deeplink #1637 (not merged).
+
 ## WO-1169: the idle worker skips a meeting another worker is already transcribing [Done 2026-09-29]
 
 **Why this ran.** Render's log on 2026-09-29 showed one worker transcribing Yorktown NY (job 4782) while the other sat idle. Every 5 minutes the idle worker's search picked Yorktown again, got the same job back ("created job 4782", three times), and stopped. It never reached a second meeting, so the second worker never had anything to claim. 27 other meetings were waiting at the time.
