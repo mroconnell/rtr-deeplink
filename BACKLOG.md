@@ -124,7 +124,8 @@ Standing decisions — do NOT re-raise  (16)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (63)
+  `swagit.py`'s title parser cuts a hyphenated place name in half,…
   Run Meeting Finder on the 7,599 never-checked and "no platform link…
   Pages whose stored source URL their own adapter can't re-resolve are…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
@@ -953,6 +954,14 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `swagit.py`'s title parser cuts a hyphenated place name in half, filing the meeting under the wrong government `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `_extract_metadata()`'s title regex (`^(.*)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$`) deliberately backtracks from the end to find the *last* " - " before ", {State}$" — a fix (2026-08-13) for titles carrying a "- Revised -" marker before the real city. But `\s*-\s*` also matches a bare hyphen with no surrounding spaces, so it fires again on a hyphenated place name's own internal hyphen. Confirmed live 2026-09-29: `hastingsonhudsonny.swagit.com`'s real title "Oct 08, 2024 Information Session on the Plus One ADU Program - Hastings-on-Hudson, NY" lands on the hyphen inside "Hastings-on-Hudson" itself, extracting `jurisdiction="Hudson, NY"` — a real, different government (Hudson city, NY) — at `resolve_government()`'s full **registry** confidence, not a low-confidence miss that would get caught downstream.
+- **Impact**: any Swagit tenant whose city/town name contains its own hyphen (e.g. Winston-Salem, Wilkes-Barre) is at risk of being confidently filed under the wrong government. Scope beyond this one confirmed case is unmeasured — found while hand-verifying one line of the tier-3 local-batch recovery (this PR), not from a dedicated sweep.
+- **Next action**: require at least one real space on both sides of the separator hyphen (`\s+-\s+` instead of `\s*-\s*`) in the backtracking half of the regex, so a same-word hyphen (no surrounding space) can't satisfy it. Re-run against the "Revised -"/"Closed Session -" cases already in the adapter's own test fixtures to confirm both stay fixed. Add a regression test for a real hyphenated-place title (Hastings-on-Hudson's is real and available).
+- **Constraint**: none known — this is a stricter version of the same pattern already in use, so it can only reject false matches the loose version wrongly accepted.
+- **History**: this PR's `reports/tier3_recovery/` README has the full recovery-task writeup; the one affected line was hand-corrected there (`us:place:3635969` → `us:place:3632710`) rather than left on the wrong government.
 
 ### Run Meeting Finder on the 7,599 never-checked and "no platform link found" governments `[JUST-DO-IT]` `[WAIT]`
 
