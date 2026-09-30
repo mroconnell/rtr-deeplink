@@ -11,18 +11,6 @@ https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-counci
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://sapatv.cablecast.tv/internetchannel/show/43889?site=2	https://springfieldvt.gov/	us:cousub:5002769550
-https://darlingtoncountysc.new.swagit.com/videos/392710	https://darcosc.com/	us:county:45031
-https://tsp.granicus.com/MediaPlayer.php?view_id=1&clip_id=431	https://www.sewallspoint.org/government/town-clerk/meeting-agendas-recordings	us:place:1265225
-https://wyomingmn.portal.civicclerk.com/event/666/media	https://www.wyomingmn.org/agendasminutes	us:place:2772022
-https://videoplayer.telvue.com/player/k83q0qZsxB_6dlk4EjvYfv9xDQOqNH9z/media/1017095	https://hopewelltwp.org/	us:cousub:3402133180
-https://aledotx.portal.civicclerk.com/event/75/media	https://aledotx.gov/departments/city_secretary_office/agendas_and_minutes.php	us:place:4801744
-https://imperialca.portal.civicclerk.com/event/32/media	https://cityofimperial.org/	us:place:0636280
-https://katyisdtx.new.swagit.com/videos/400838	https://www.katyisd.org/board/board/board-meeting-videos	us:sd:4825170
-https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME	https://lincolntown.org/	us:cousub:2501735425
-https://washingtonin.granicus.com/MediaPlayer.php?view_id=1&clip_id=164	https://washingtonin.us/	us:place:1880504
-https://d3id26kdqbehod.cloudfront.net/ROBSTOWN-D/2026/01/29/4fU6tICmSG7lhyhf1GnchPAboQkOF6AH3CjQ92ogd8EKmqj90IXOWSRN4ELj/January+2026+-+State+of+the+Budget+Intro+%281%29-480p.mp4		us:sd:4837440
-https://cpmedia.azureedge.net/stillwatercomt/f885eb43-f102-4f38-acbd-d7edf64d28e6.mp4	https://www.stillwatercountymt.gov/166/Board-of-County-Commissioners	us:county:30095
 https://drive.usercontent.google.com/download?id=1fYFTvRfEQEpZxdCAfeiJNEHjS5rdmmjB&export=download&confirm=t	https://martin.k12.mn.us/	us:sd:2718960
 https://drive.usercontent.google.com/download?id=1CR3RJlO2wxSBU420_vUs9d3m0wN3r4mk&export=download&confirm=t	https://peacham.net/	us:cousub:5000554400
 https://drive.usercontent.google.com/download?id=16Jf3dFWx88bJ0f2zqTKnoIQqmAp5l83a&export=download&confirm=t	https://alamosacounty.org/	us:county:08003
@@ -1340,3 +1328,9 @@ https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=126	http
 https://cityofclintoniowa.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=41661	https://cityofclintoniowa.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=41661	us:place:1914430
 https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108	https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108	us:place:5537825
 http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=	http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=	us:place:3651000
+https://videoplayer.telvue.com/player/k83q0qZsxB_6dlk4EjvYfv9xDQOqNH9z/media/1017095	https://hopewelltwp.org/	us:cousub:3402133180
+https://sapatv.cablecast.tv/internetchannel/show/43889?site=2	https://springfieldvt.gov/	us:cousub:5002769550
+https://darlingtoncountysc.new.swagit.com/videos/392710	https://darcosc.com/	us:county:45031
+https://tsp.granicus.com/MediaPlayer.php?view_id=1&clip_id=431	https://www.sewallspoint.org/government/town-clerk/meeting-agendas-recordings	us:place:1265225
+https://katyisdtx.new.swagit.com/videos/400838	https://www.katyisd.org/board/board/board-meeting-videos	us:sd:4825170
+https://washingtonin.granicus.com/MediaPlayer.php?view_id=1&clip_id=164	https://washingtonin.us/	us:place:1880504
