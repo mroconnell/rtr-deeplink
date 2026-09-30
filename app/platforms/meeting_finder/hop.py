@@ -416,28 +416,114 @@ _SCHOOL_MEETING_PHRASE_RE = re.compile(
     re.IGNORECASE,
 )
 _SCHOOL_MEETING_PHRASE_BONUS = 16.0
+# School-district hop eval, 2026-09-30 (250 real districts, Ryan's
+# research/school_hop_eval_2026-09-30 and its rerun_2026-09-30): the bare
+# "Board" bonus used to match "school board" ANYWHERE in an anchor, so
+# "School Board Policy", "Contact the School Board" and "Student School
+# Board Members" all got +10 (Menomonee Falls' real "Meetings" link fell
+# from 2nd to 6th). It now applies only when the WHOLE trimmed anchor is
+# a board name (optional trailing arrow/colon chrome).
 _SCHOOL_BOARD_NAV_RE = re.compile(
     r"^\s*(?:the\s+)?(?:(?:school|governing|education)\s+)?board"
-    r"(?:\s+of\s+(?:education|trustees|directors|school\s+directors))?\s*$"
-    r"|\bschool\s+board\b|\bboard\s+of\s+(?:education|trustees|school\s+directors)\b",
+    r"(?:\s+of\s+(?:education|trustees|directors|school\s+directors"
+    r"|school\s+trustees|governors))?\s*[\u00bb\u203a>:|]*\s*$",
     re.IGNORECASE,
 )
 _SCHOOL_BOARD_NAV_BONUS = 10.0
+# Same eval: the plain anchor "Meetings" is on 22 winning paths but got no
+# school bonus at all. Whole anchor only ("Meetings"/"Meeting"); a longer
+# anchor is judged by `_SCHOOL_MEETING_PHRASE_RE` above. ("Meeting
+# Videos" is already in that regex; a test pins it.)
+_SCHOOL_MEETINGS_ANCHOR_RE = re.compile(
+    r"^\s*meetings?\s*[\u00bb\u203a>:|]*\s*$", re.IGNORECASE
+)
+# Same eval: board-area links that are never the meeting hub outranked the
+# real one once the wide bonus applied. Penalized ONLY with school=True and
+# only when the link did not earn a meeting-phrase bonus (so "Board Meeting
+# Calendar" is left alone). Matched on anchor text and on URL path words.
+_SCHOOL_NOT_MEETINGS_RE = re.compile(
+    r"(?<![a-z])(?:policy|policies|contact(?:s|-us)?|members?|bios?|biograph(?:y|ies)"
+    r"|elections?|calendars?|(?:public[\s_-]+)?records?|open[\s_-]+records"
+    r"|employment|budgets?|bonds?)(?![a-z])",
+    re.IGNORECASE,
+)
+_SCHOOL_NOT_MEETINGS_PENALTY = -10.0
+
+
+def _school_not_meetings_penalty(text: str, full_url: str) -> float:
+    """School-mode-only penalty for policy/contact/members/elections/
+    calendar/records/employment/budget/bond links (see the comment above).
+    0.0 when the anchor or path carries a meeting phrase."""
+    path = urlparse(full_url).path
+    if _SCHOOL_MEETING_PHRASE_RE.search(text or "") or _SCHOOL_MEETING_PHRASE_RE.search(
+        path
+    ):
+        return 0.0
+    if _SCHOOL_MEETINGS_ANCHOR_RE.search(text or ""):
+        return 0.0
+    if _SCHOOL_NOT_MEETINGS_RE.search(text or "") or _SCHOOL_NOT_MEETINGS_RE.search(
+        path
+    ):
+        return _SCHOOL_NOT_MEETINGS_PENALTY
+    return 0.0
 
 
 def _school_vocabulary_bonus(text: str, full_url: str) -> float:
     """Hand-set school-district nav boost (see the comment above).
-    Meeting phrase in the anchor text or URL path, or a bare
-    Board/School Board/Board of Education anchor. Phrase wins over the
-    board-nav bonus; the two never stack."""
+    Meeting phrase in the anchor text or URL path, a whole-anchor
+    "Meetings", or a whole-anchor Board/School Board/Board of Education.
+    Phrase wins over the board-nav bonus; the two never stack."""
     path = urlparse(full_url).path
-    if _SCHOOL_MEETING_PHRASE_RE.search(text or "") or _SCHOOL_MEETING_PHRASE_RE.search(
-        path
+    if (
+        _SCHOOL_MEETING_PHRASE_RE.search(text or "")
+        or _SCHOOL_MEETING_PHRASE_RE.search(path)
+        or _SCHOOL_MEETINGS_ANCHOR_RE.search(text or "")
     ):
         return _SCHOOL_MEETING_PHRASE_BONUS
     if _SCHOOL_BOARD_NAV_RE.search(text or ""):
         return _SCHOOL_BOARD_NAV_BONUS
     return 0.0
+
+
+# School-district hop eval, 2026-09-30: a homepage hero/background video
+# (`<video src="x.mp4">`, `<source src>`, `<embed src>` with no link text)
+# scored 47-50 and sat in the top 3 for 33 of 199 readable districts
+# (Bellevue, Broward, Northside ISD, Maine SAD 75), spending hop slots on a
+# file that is not a page. Penalized for EVERYONE (not only school mode),
+# unless the host is a recognized meeting vendor or the file name/path
+# looks like a meeting recording.
+_BARE_VIDEO_TAGS = frozenset({"video", "source", "embed"})
+_BARE_VIDEO_FILE_RE = re.compile(r"\.(?:mp4|webm|m4v)$", re.IGNORECASE)
+_MEETING_LOOKING_FILE_RE = re.compile(
+    r"board|meeting|council|session|regular|special|agenda|minutes|hearing"
+    r"|(?<!\d)\d{1,2}[-_.]\d{1,2}[-_.]\d{2,4}(?!\d)"
+    r"|(?<!\d)\d{4}[-_.]\d{1,2}[-_.]\d{1,2}(?!\d)"
+    r"|(?<!\d)(?:19|20)\d{6}(?!\d)",
+    re.IGNORECASE,
+)
+_BARE_VIDEO_FILE_PENALTY = -40.0
+
+
+def _is_bare_video_file_embed(
+    tag, text: str, full_url: str, resolved_platform: Optional[str] = None
+) -> bool:
+    """True for a `<video>`/`<source>`/`<embed>` whose src is a bare
+    .mp4/.webm/.m4v file with no anchor text, on a host that is not a
+    recognized meeting vendor, and a path that does not look like a meeting
+    (see the comment above). `detect_platform()` calls any such file
+    "direct_file", which earns the +30 known-platform bonus; a file on a
+    real vendor host resolves to that vendor instead and is left alone."""
+    if tag.name not in _BARE_VIDEO_TAGS or (text or "").strip():
+        return False
+    if resolved_platform not in (None, "direct_file"):
+        return False
+    host_platform, host_supported = host_recognition.platform_for_url(full_url)
+    if host_platform and host_supported:
+        return False
+    path = urlparse(full_url).path
+    if not _BARE_VIDEO_FILE_RE.search(path):
+        return False
+    return not _MEETING_LOOKING_FILE_RE.search(path)
 
 
 # --- WO-1044 item 4: news/event articles and site chrome -- ranked down,
@@ -1059,6 +1145,10 @@ def rank_hops(
             # which is the stronger, more specific signal.
             score += _NAV_HUB_LABEL_BONUS
         score += school_bonus
+        if school and not is_known_platform_link:
+            score += _school_not_meetings_penalty(text, full)
+        if _is_bare_video_file_embed(tag, text, full, resolved_platform):
+            score += _BARE_VIDEO_FILE_PENALTY
         if prefer_vendor and resolved_platform == prefer_vendor:
             score += _PREFER_VENDOR_BONUS
         if prefer_video and _VIDEO_SEEKING_RE.search(f"{text} {href}"):
