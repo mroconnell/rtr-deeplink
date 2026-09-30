@@ -21,6 +21,8 @@
 
 **Next action**: the coordinator routes the 24 resolved governments under §398i from `cablecast_api_recheck.csv`; this PR does not ingest or queue anything.
 
+**PR**: rtr-deeplink #1637 (not merged).
+
 ## WO-1169: the idle worker skips a meeting another worker is already transcribing [Done 2026-09-29]
 
 **Why this ran.** Render's log on 2026-09-29 showed one worker transcribing Yorktown NY (job 4782) while the other sat idle. Every 5 minutes the idle worker's search picked Yorktown again, got the same job back ("created job 4782", three times), and stopped. It never reached a second meeting, so the second worker never had anything to claim. 27 other meetings were waiting at the time.
