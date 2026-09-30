@@ -355,6 +355,16 @@ def _tier2_lead_kind(result) -> str:
     return "youtube"
 
 
+def _is_school_input(finder_input: FinderInput) -> bool:
+    """True when the input government is a US school district (gov_id
+    `us:sd:...`), so every `rank_hops()` call uses the school vocabulary
+    (Ryan, 2026-09-30: school sites say "Board" / "Board Meetings" /
+    "Meeting Recordings", not "Government"). No Canadian school-board id
+    prefix exists in the registry (`ca:` ids are csd/cd/pr only), so
+    only `us:sd:` qualifies today."""
+    return (finder_input.gov_id or "").startswith("us:sd:")
+
+
 def _government_for_input(finder_input: FinderInput) -> Optional[Government]:
     gov_id = finder_input.gov_id
     if not gov_id:
@@ -1085,7 +1095,12 @@ async def _shallow_step(
         and OUTCOME_MEETING_WITHOUT_VIDEO in state.outcomes
     ):
         followed = 0
-        for hop in rank_hops(ident.page, prefer_video=True, limit=_HOP_CANDIDATE_LIMIT):
+        for hop in rank_hops(
+            ident.page,
+            prefer_video=True,
+            school=_is_school_input(finder_input),
+            limit=_HOP_CANDIDATE_LIMIT,
+        ):
             if followed >= _VIDEO_FOLLOW_LIMIT or state.done:
                 break
             if not _VIDEO_WORDS_RE.search(f"{hop.anchor} {hop.url}"):
@@ -1202,7 +1217,12 @@ async def _deep_step(
         # early try -- anything else still goes through the ordinary hop
         # loop below (or the meeting-page-links loop right after this).
         if not state.done and hops_left > 0:
-            for hop in rank_hops(page, prefer_vendor=prefer_vendor, limit=3):
+            for hop in rank_hops(
+                page,
+                prefer_vendor=prefer_vendor,
+                school=_is_school_input(finder_input),
+                limit=3,
+            ):
                 if _norm_url(hop.url) in seen:
                     continue
                 if is_youtube_host(urlparse(hop.url).hostname or ""):
@@ -1265,7 +1285,12 @@ async def _deep_step(
         # own-site meeting-agendas page, which would never even appear in
         # the returned list at the default limit, let alone survive the
         # exclusion filter below).
-        hops = rank_hops(page, prefer_vendor=prefer_vendor, limit=_HOP_CANDIDATE_LIMIT)
+        hops = rank_hops(
+            page,
+            prefer_vendor=prefer_vendor,
+            school=_is_school_input(finder_input),
+            limit=_HOP_CANDIDATE_LIMIT,
+        )
         state.reach("hop")
 
         # WO-1035 item 7: a recognized video-vendor link within a small
@@ -1376,7 +1401,12 @@ async def _deep_step(
         # this a one-time rescue for the whole government, not a second
         # `max_hops`; the nested `_walk_from()` call gets `hops_left=0` so
         # it can't chain into a second bonus hop of its own.
-        for hop in rank_hops(page, prefer_video=True, limit=_HOP_CANDIDATE_LIMIT):
+        for hop in rank_hops(
+            page,
+            prefer_video=True,
+            school=_is_school_input(finder_input),
+            limit=_HOP_CANDIDATE_LIMIT,
+        ):
             if _norm_url(hop.url) in seen:
                 continue
             if is_youtube_host(urlparse(hop.url).hostname or ""):
@@ -1495,7 +1525,9 @@ async def _second_pass_for_youtube_only(
         if page is None or not page.html:
             continue
         followed = 0
-        for hop in rank_hops(page, limit=_HOP_CANDIDATE_LIMIT):
+        for hop in rank_hops(
+            page, school=_is_school_input(finder_input), limit=_HOP_CANDIDATE_LIMIT
+        ):
             if state.done or followed >= _SECOND_PASS_LINKS_PER_PAGE:
                 break
             if _norm_url(hop.url) in seen:
