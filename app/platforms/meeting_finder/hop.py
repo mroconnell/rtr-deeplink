@@ -439,6 +439,7 @@ def _school_vocabulary_bonus(text: str, full_url: str) -> float:
         return _SCHOOL_BOARD_NAV_BONUS
     return 0.0
 
+
 # --- WO-1044 item 4: news/event articles and site chrome -- ranked down,
 # not excluded (below a real hub link, still reachable as a last resort).
 # Real Suffolk County NY shapes: `/Events/ArtMID/585/ArticleID/...`,

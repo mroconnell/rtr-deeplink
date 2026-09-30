@@ -87,8 +87,12 @@ def test_school_false_does_not_rescue_finalsite_anchor_only_links():
 
 def test_runner_is_school_input():
     f = runner.FinderInput
-    assert runner._is_school_input(f(url="https://x.org", entry="resolve", gov_id="us:sd:0601234"))
-    assert not runner._is_school_input(f(url="https://x.gov", entry="resolve", gov_id="us:mu:123"))
+    assert runner._is_school_input(
+        f(url="https://x.org", entry="resolve", gov_id="us:sd:0601234")
+    )
+    assert not runner._is_school_input(
+        f(url="https://x.gov", entry="resolve", gov_id="us:mu:123")
+    )
     assert not runner._is_school_input(f(url="https://x.gov", entry="resolve"))
 
 
@@ -97,9 +101,10 @@ def test_every_runner_rank_hops_call_passes_school():
     calls = [
         n
         for n in ast.walk(ast.parse(src))
-        if isinstance(n, ast.Call)
-        and getattr(n.func, "id", None) == "rank_hops"
+        if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "rank_hops"
     ]
     assert len(calls) >= 5
     for c in calls:
-        assert any(k.arg == "school" for k in c.keywords), ast.get_source_segment(src, c)
+        assert any(k.arg == "school" for k in c.keywords), ast.get_source_segment(
+            src, c
+        )
