@@ -124,9 +124,10 @@ Standing decisions — do NOT re-raise  (16)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (62)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (63)
   Run Meeting Finder on the 7,599 never-checked and "no platform link…
   Pages whose stored source URL their own adapter can't re-resolve are…
+  Cablecast's newer portal blocks scripted show pages; its JSON API…
   Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
   Very long Cablecast meetings whose audio is split into many files…
   Some tier-3 lines need YouTube but the drip Mac can't claim them, so…
@@ -969,6 +970,16 @@ WO-932 and WO-913.
 - **Next action**: deploy this PR (worker + archive services) — `app/platforms/reresolve.py`'s `reresolve_for_transcription()` falls back to a page's stored `video_url` when its `source_url` can't be re-resolved, and the upstream override bug is fixed. Once live, the ~58 affected pages come back for auto-transcription on their next cooldown expiry with no manual re-ingest needed.
 - **Constraint**: the ~58 pages' stored `source_url_normalized` is still wrong for their own "View original source" link — this fix only unblocks transcription, it doesn't repair the stored URL. Fixing that is a data change, Ryan's call.
 - **History**: `app/platforms/reresolve.py`'s own module docstring has the full Mary Esther, FL writeup.
+
+### Cablecast's newer portal blocks scripted show pages; its JSON API still answers, so `resolve()` should fall back to it `[JUST-DO-IT]`
+
+- **Issue**: on Cablecast's newer portal template, a bare `/show/{id}` page answers a script with `202`, an empty body and `x-amzn-waf-action: challenge` (the AWS bot check). `resolve()` then retries the site root, whose catalog holds only "related shows", then the FastBoot `/embed/vod?show={id}&site=1` path, which 404s. It gives up. Checked 2026-09-29 on `reflect-ccx.cablecast.tv/show/41024` ("Brooklyn Center City Council 9/28/2026"). On the same host, the JSON API answers normally with no challenge:
+  1. `GET /cablecastapi/v1/shows/41024` returns the title, `eventDate` and `vods: [13099]`.
+  2. `GET /cablecastapi/v1/vods/13099` returns the direct `.../vod.mp4` address and its length (8,063 s).
+- **Impact**: in the stage-3 class-A pass (rtr-business `research/slug_learning_2026-09-27/funnel_audit/playbook_2026-09-29/stage3_classA/results.csv`), 33 of 93 governments had a title on their own station listing naming their own body, but none resolved. The hosts hit include `reflect-ccx`, `reflect-trms-northmetro`, `reflect-tvctv`, `reflect-live-grassrootstv`, `reflect-vod-scctv`, `reflect-dakotamediaaccess` and `reflect-govedtv`. Any other lead on this template fails the same way.
+- **Next action**: in `app/platforms/cablecast.py`, when the bare `/show/{id}` path finds no show after the root and FastBoot fallbacks, try the API next: `cablecastapi/v1/shows/{id}`, then `cablecastapi/v1/vods/{first vod id}`. `_resolve_publicsite()` already reads these two endpoints and can likely be reused. Add a test with the captured Brooklyn Center responses. Then re-run the 33 "resolve failed" governments in that results.csv and route them under §398i.
+- **Constraint**: this does not solve or get around the challenge. The show page stays untouched; the API is a separate public endpoint that isn't challenged (see Standing decisions on human-verification gates). Try HTTPS first; some tenants answer the API only on one scheme (module note, 2026-08-29).
+- **History**: found by the rtr-business stage-3 class-A pass, 2026-09-29 (Ryan asked for this backlog item).
 
 ### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
 
