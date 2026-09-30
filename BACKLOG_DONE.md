@@ -1,5 +1,17 @@
 # Backlog — done
 
+## WO-1170: pin 6 meeting sites Meeting Finder found for CivicPlus governments [Done 2026-09-30]
+
+**Why this ran.** 534 undecided CivicPlus governments listed no meetings and linked no known platform from their homepage. Ryan approved a Meeting Finder run from each government's own website (rtr-discovery, 2026-09-29 overnight, concurrency 3).
+
+**Finder result, 534 governments.** No meeting or video 194; YouTube lead only 125; Cloudflare challenge 89; timeouts 50; meetings without video 30; video found 25; other 21.
+
+Of the 25 video finds, 7 were on a platform rtr-discovery walks and new to us. Each was re-checked live. Six are pinned here: South Kingstown RI, Juno Beach FL and Maumee OH (CivicClerk addresses), Beloit WI and St. Joseph MI (Granicus feed titles), Commerce CA (Legistar, linked from commerceca.gov). Black Diamond WA is left out: its events name no place.
+
+**Caution.** St. Joseph's view 2 is staff training videos; its meeting view is still to be found by the walker's probe.
+
+**Tests.** `tests/test_wo1170_meeting_finder_civicplus_pins.py`; each fails without its row.
+
 ## WO-1170: Cablecast's newer portal blocks scripted show pages; `resolve()` now falls back to its JSON API [Done 2026-09-29]
 
 **Why this ran.** On Cablecast's newer portal template, a bare `/show/{id}` page answers a script with `202`, an empty body and `x-amzn-waf-action: challenge` (the AWS bot check). `resolve()` already retried the site root, then the FastBoot `/embed/vod?show={id}&site=1` path, then gave up. The rtr-business stage-3 class-A pass found 33 of 93 governments stuck this way — a title on their own station listing named their own body, but nothing resolved.
