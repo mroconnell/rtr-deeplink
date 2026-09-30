@@ -8945,3 +8945,191 @@ https://diamondvalley.civicweb.net/Portal/MeetingInformation.aspx?Id=860,civicwe
 https://muhlenbergtwp.primegov.com/Portal/Meeting?meetingTemplateId=240,primegov,resolve,,,,0,reject-dead,resolve returned no video_url,8.90,2026-09-30T03:24:18+00:00,playbook_2026-09-29_stage12,0
 https://victoriatx.civicweb.net/Portal/MeetingInformation.aspx?Id=3893,civicweb,resolve,,,,0,reject-dead,resolve returned no video_url,9.00,2026-09-30T03:26:18+00:00,playbook_2026-09-29_stage12,0
 https://vista.granicus.com/MediaPlayer.php?view_id=2&clip_id=1818,granicus,head+ffprobe,1532.04,2022-08-02,409965401,1,accept,,2.63,2026-09-30T03:51:35+00:00,playbook_2026-09-29_stage12,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no,civicmedia,hls-master+variant,1548.19,,,1,accept,,10.07,2026-09-29T22:30:23+00:00,civicmedia_postwalk_2026-09-29,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no,civicmedia,hls-master+variant,2861.65,,,1,accept,,9.52,2026-09-29T22:30:42+00:00,civicmedia_postwalk_2026-09-29,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147936&autoplay=no,civicmedia,hls-master+variant,1675.25,,,1,accept,,5.22,2026-09-29T22:31:05+00:00,bulk_ingest,0
+https://player.vimeo.com/video/1227154918?h=e23f72d18b&autoplay=0&loop=0&title=0&byline=0&portrait=0&color&dnt=0,vimeo,vimeo-oembed,6436.00,2026-09-15,,1,accept,,0.08,2026-09-29T21:19:33+00:00,bulk_ingest,0
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1,cablecast,head+ffprobe,1058.02,2026-08-11,427753531,1,accept,,1.49,2026-09-29T22:24:58+00:00,pinned_only_walk_routing,0
+https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51,civicmedia,hls-master+variant,618.32,,,1,accept,,0.68,2026-09-29T22:25:02+00:00,pinned_only_walk_routing,0
+https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0,direct_file,ranged-get+ffprobe,2207.31,,1045468527,1,accept,,4.45,2026-09-29T22:25:09+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/9.21.26+Board+of+Finance+Regular+Meeting-20260921_190101-Meeting+Recording+(1).mp4,direct_file,head+ffprobe,7045.95,2026-09-22,520402734,1,accept,,1.26,2026-09-29T22:25:13+00:00,pinned_only_walk_routing,0
+https://ct-newington.civicplus.com/CivicMedia?VID=Newington-Town-Hall-and-Community-Center-3,civicmedia,hls-master+variant,60.37,,,0,accept,,0.82,2026-09-29T22:25:17+00:00,pinned_only_walk_routing,0
+https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council,cablecast,hls-master+variant,635.03,,,1,accept,,0.79,2026-09-29T22:25:20+00:00,pinned_only_walk_routing,0
+https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing,direct_file,head+ffprobe,9748.58,2020-09-11,66336503,1,accept,,3.77,2026-09-29T22:25:27+00:00,pinned_only_walk_routing,0
+https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358,civicmedia,hls-master+variant,3020.79,,,1,accept,,0.56,2026-09-29T22:25:33+00:00,pinned_only_walk_routing,0
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2,cablecast,hls-master+variant,1939.02,,,1,accept,,0.49,2026-09-29T22:25:35+00:00,pinned_only_walk_routing,0
+https://townhallstreams.com/stream.php?location_id=55&id=76363,townhallstreams,hls-master+variant,1786.78,,,1,accept,,0.64,2026-09-29T22:25:38+00:00,pinned_only_walk_routing,0
+https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1973?channel=1,cablecast,hls-master+variant,6241.42,,,1,accept,,0.58,2026-09-29T22:25:41+00:00,pinned_only_walk_routing,0
+https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3,civicmedia,hls-master+variant,4916.80,,,1,accept,,1.21,2026-09-29T22:25:46+00:00,pinned_only_walk_routing,0
+https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1,civicmedia,hls-master+variant,5073.01,,,1,accept,,0.47,2026-09-29T22:25:49+00:00,pinned_only_walk_routing,0
+https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-October-23-20-1003,civicmedia,hls-master+variant,3866.76,,,1,accept,,0.69,2026-09-29T22:25:53+00:00,pinned_only_walk_routing,0
+https://drive.google.com/file/d/1pIUHs_0GeIPuCbxGmI91WGdvtQ2li_30/view?usp=sharing,direct_file,head+ffprobe,838.25,2026-07-22,230764710,1,accept,,4.36,2026-09-29T22:26:00+00:00,pinned_only_walk_routing,0
+https://wy-evanston2.civicplus.com/CivicMedia?VID=Evanston-City-Council-Meeting-10192021-16,civicmedia,hls-master+variant,399.40,,,0,accept,,0.76,2026-09-29T22:26:03+00:00,pinned_only_walk_routing,0
+https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2,civicmedia,hls-master+variant,4319.40,,,1,accept,,0.51,2026-09-29T22:26:07+00:00,pinned_only_walk_routing,0
+https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346,granicus,head+ffprobe,2067.11,2022-09-22,189960313,1,accept,,1.39,2026-09-29T22:26:12+00:00,pinned_only_walk_routing,0
+https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369,granicus,hls-master+variant,1845.00,,,1,accept,,1.95,2026-09-29T22:26:20+00:00,pinned_only_walk_routing,0
+https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222,granicus,hls-master+variant,1145.41,,,1,accept,,0.78,2026-09-29T22:26:25+00:00,pinned_only_walk_routing,0
+https://flowerybranchga.granicus.com/MediaPlayer.php?view_id=1&clip_id=493,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.62,2026-09-29T22:26:31+00:00,pinned_only_walk_routing,0
+https://jason.granicus.com/MediaPlayer.php?view_id=1&clip_id=554,granicus,hls-master+variant,1200.01,,,1,accept,,2.88,2026-09-29T22:26:38+00:00,pinned_only_walk_routing,0
+https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141,granicus,hls-master+variant,1322.04,,,1,accept,,1.41,2026-09-29T22:26:45+00:00,pinned_only_walk_routing,0
+https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797,granicus,hls-master+variant,684.96,,,1,accept,,2.80,2026-09-29T22:26:52+00:00,pinned_only_walk_routing,0
+https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268,granicus,head+ffprobe,1134.05,2022-09-20,104883798,1,accept,,1.08,2026-09-29T22:26:56+00:00,pinned_only_walk_routing,0
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260,granicus,hls-master+variant,3601.14,,,1,accept,,7.92,2026-09-29T22:27:10+00:00,pinned_only_walk_routing,0
+http://westminsterco.cablecast.tv/show/213?site=1,cablecast,hls-master+variant,5576.95,,,1,accept,,0.21,2026-09-29T22:27:51+00:00,bulk_ingest,0
+https://ar-siloamsprings.civicplus.com/CivicMedia?VID=Comprehensive-Plan-2040-Final-Meeting-Vi-6,civicmedia,hls-master+variant,167.62,,,0,accept,,0.79,2026-09-29T22:28:20+00:00,bulk_ingest,0
+https://ky-jeffersontown2.civicplus.com/CivicMedia?VID=September-3-2026-Planning-Commission-Mee-21,civicmedia,hls-master+variant,7652.88,,,1,accept,,0.66,2026-09-29T22:28:28+00:00,bulk_ingest,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Selectmen/2026/06.16.26+Board+of+Selectmen+Special+Meeting.mp4,direct_file,head+ffprobe,5638.14,2026-06-17,755705885,1,accept,,1.16,2026-09-29T22:34:37+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Selectmen+-+Public+Safety+Subcommittee/2026/08.05.26+BOS+Public+Safety+Subcommittee+Meeting+Recording.mp4,direct_file,head+ffprobe,4206.46,2026-08-06,565702666,1,accept,,1.18,2026-09-29T22:34:41+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4,direct_file,head+ffprobe,1399.31,2026-09-02,188670624,1,accept,,1.06,2026-09-29T22:34:46+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/06.08.2026+Board+of+Finance+Special+Meeting-20260608_180207-Meeting+Recording.mp4,direct_file,head+ffprobe,8056.51,2026-06-09,1068602131,1,accept,,1.24,2026-09-29T22:34:50+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Commission+on+Aging/2026/COAMeeting8.3.26.mp4,direct_file,head+ffprobe,3013.28,2026-08-04,77535761,1,accept,,1.90,2026-09-29T22:34:55+00:00,pinned_only_walk_routing,0
+https://townmeetings.s3.us-east-2.amazonaws.com/CIP+Subcommittee/2026/Capital+Improvement+Plan+Joint+Subcommittee+Meeting-20260818_143200-Meeting+Recording.mp4,direct_file,head+ffprobe,2391.25,2026-08-24,319410383,1,accept,,1.17,2026-09-29T22:35:00+00:00,pinned_only_walk_routing,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no,civicmedia,hls-master+variant,182.98,,,0,accept,,0.93,2026-09-29T22:37:11+00:00,,0
+https://www.kenedyisd.com/UserFiles/Servers/Server_55723/Media/School Board Audio/Kenedy ISD Board Meeting 4-1-2020.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.10,2026-09-29T22:37:13+00:00,,0
+http://villageofparish-ny.us/wp-content/uploads/2025/01/Parish-village-board-meeting-Wednesday-January-15-2025-audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.38,2026-09-29T22:37:16+00:00,,0
+https://www.montagueisd.org/vimages/shared/vnews/stories/684733c1eb2e9/Board%20Mtg%209-15-25%20%281%29.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.13,2026-09-29T22:37:18+00:00,,0
+https://appleton.maine.gov/vertical/sites/%7B5CBE9B20-93F0-4ECA-B07C-188D88398A31%7D/uploads/250318_004.MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.04,2026-09-29T22:37:19+00:00,,0
+https://mwtown.gov/wp-content/uploads/2026/08/August-13-2026-TB-Meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-09-29T22:37:21+00:00,,0
+https://resources.finalsite.net/videos/v1785243717/hersheyk12paus/ovw20gjiunk9zvstatzv/07282026-BoardMeeting.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-09-29T22:37:23+00:00,,0
+https://villageofnewhempstead.gov/wp-content/uploads/2026/03/BOT-3-24-2026-3.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-09-29T22:37:24+00:00,,0
+https://files.smartsites.parentsquare.com/10055/260811_1800.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-09-29T22:37:26+00:00,,0
+https://townofkimball.com/audio/boma/2021/01072021.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.29,2026-09-29T22:37:28+00:00,,0
+https://www.mckellar.civikit.com/en/township-services/resources/08-31-21-August-31-2021-Special-Council-Meeting-Audio-Part-1.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.61,2026-09-29T22:37:31+00:00,,0
+https://rmwhitemouth.com/vertical/sites/%7BFB3226E4-3AD8-4680-8D53-E086B57111E0%7D/uploads/Regular_Council_Meeting_Sept_8_2026.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-09-29T22:37:33+00:00,,0
+https://www.wellesleymedia.org/live-streaming.html,unknown,resolve,,,,0,reject-dead,resolve returned no video_url,2.98,2026-09-30T00:48:14+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1014634,telvue,telvue-page-json,10116.00,,,1,accept,,1.51,2026-09-30T00:49:14+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1000783,telvue,telvue-page-json,8246.00,,,1,accept,,3.04,2026-09-30T00:49:35+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1008345,telvue,telvue-page-json,9077.00,,,1,accept,,1.00,2026-09-30T00:49:44+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1026124,telvue,telvue-page-json,7476.00,,,1,accept,,2.91,2026-09-30T00:51:06+00:00,resolve_stage34_2026-09-29,0
+https://in-hobart2.civicplus.com/CivicMedia?VID=326,civicmedia,hls-master+variant,1858.60,,,1,accept,,3.11,2026-09-30T00:53:00+00:00,resolve_stage34_2026-09-29,0
+https://mn-biglake.civicplus.com/CivicMedia?VID=289,civicmedia,hls-master+variant,4517.28,,,1,accept,,3.12,2026-09-30T00:54:56+00:00,resolve_stage34_2026-09-29,0
+https://civplus.tikiliveapi.com/video/153404,civicmedia,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-30T00:55:02+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/media/1015671,telvue,telvue-page-json,2322.00,,,1,accept,,2.90,2026-09-30T00:56:12+00:00,resolve_stage34_2026-09-29,0
+https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1015849,telvue,telvue-page-json,17961.00,,,1,accept,,0.43,2026-09-30T00:57:12+00:00,resolve_stage34_2026-09-29,0
+https://tx-selma.civicplus.com/CivicMedia?VID=6,civicmedia,hls-master+variant,594.87,,,1,accept,,5.69,2026-09-30T00:57:53+00:00,resolve_stage34_2026-09-29,0
+https://reflect-dennis.cablecast.tv/internetchannel/show/3206,cablecast,hls-master+variant,1962.99,,,1,accept,,0.66,2026-09-30T00:46:27+00:00,stage5_route,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3728,cablecast,hls-master+variant,4372.30,,,1,accept,,1.54,2026-09-30T00:46:29+00:00,stage5_route,0
+https://reflect-peg-westonfl.cablecast.tv/show/220?site=1,cablecast,hls-master+variant,30.03,,,0,reject-short,duration 30.0s is below the 60s meeting-plausibility floor,0.19,2026-09-30T00:46:38+00:00,stage5_route,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/20249,cablecast,hls-master+variant,2831.31,,,1,accept,,0.52,2026-09-30T00:49:25+00:00,stage5_route,0
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701,cablecast,hls-master+variant,4238.97,,,1,accept,,0.54,2026-09-30T00:49:29+00:00,stage5_route,0
+https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701,cablecast,hls-master+variant,4238.97,,,1,accept,,0.28,2026-09-30T00:49:29+00:00,stage5_route,0
+https://pub-salem.escribemeetings.com/Meeting.aspx?Id=a8121347-41fc-4f48-9d36-a3a6d2074f4d,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] W2ye9-_-CAw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.05,2026-09-30T00:49:41+00:00,stage5_route,0
+https://pub-salem.escribemeetings.com/Meeting.aspx?Id=a8121347-41fc-4f48-9d36-a3a6d2074f4d,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] W2ye9-_-CAw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.05,2026-09-30T00:49:41+00:00,stage5_route,0
+https://suffolkva.granicus.com/ViewPublisher.php?view_id=2,granicus,head+ffprobe,1536.33,2022-08-15,216148228,1,accept,,1.05,2026-09-30T00:49:46+00:00,stage5_route,0
+https://suffolkva.granicus.com/ViewPublisher.php?view_id=2,granicus,head+ffprobe,2982.07,2022-08-15,134124071,1,accept,,2.54,2026-09-30T00:49:47+00:00,stage5_route,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.46,2026-09-30T00:50:06+00:00,stage5_route,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.46,2026-09-30T00:50:06+00:00,stage5_route,0
+http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40,direct_file,head+ffprobe,10291.64,2020-04-21,1461754795,1,accept,,2.76,2026-09-30T00:50:44+00:00,stage5_route,0
+http://video.isilive.ca/play/cnv/2020-04-20.mp4?start_time=00:17:08&stop_time=00:32:40,direct_file,head+ffprobe,10291.64,2020-04-21,1461754795,1,accept,,2.89,2026-09-30T00:50:45+00:00,stage5_route,0
+https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4,direct_file,head+ffprobe,3842.97,2026-03-06,409073024,1,accept,,2.86,2026-09-30T00:50:53+00:00,stage5_route,0
+https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4,direct_file,head+ffprobe,3842.97,2026-03-06,409073024,1,accept,,2.66,2026-09-30T00:50:54+00:00,stage5_route,0
+https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,3.12,2026-09-30T00:51:04+00:00,stage5_route,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.39,2026-09-30T00:51:13+00:00,stage5_route,0
+https://video.isilive.ca/yorkton/2025-12-08.mp4.html,direct_file,head+ffprobe,11231.47,2025-12-09,2086368584,1,accept,,12.31,2026-09-30T00:51:13+00:00,stage5_route,0
+https://videoplayer.telvue.com/player/0l61qrd2cTIyQzYJ0oHNRYLt8lmyVn7U/playlists/6926,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,3.87,2026-09-30T01:38:55+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/playlists/7117,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,1.42,2026-09-30T01:39:00+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/3102,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.91,2026-09-30T01:39:05+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/3101,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key Q88UlDYm cap reached,0.00,2026-09-30T01:39:09+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx/playlists/1617,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-30T01:39:15+00:00,route_stage3_A_2026-09-29,0
+https://videoplayer.telvue.com/player/qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt/playlists/11884,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.92,2026-09-30T01:39:21+00:00,route_stage3_A_2026-09-29,0
+https://www.cityofgaston.com/vertical/sites/%7BA0E7BB59-BA39-470A-B0F2-FDC9E9A25A45%7D/uploads/GMT20210318-004941_March-17--.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.42,2026-09-30T05:59:21+00:00,,0
+https://northbonneville.net/wp-content/uploads/PlanningMeeting05.03.22.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.39,2026-09-30T05:59:24+00:00,,0
+https://albertonmontana.com/wp-content/uploads/2026/09/260915_1900.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.30,2026-09-30T05:59:26+00:00,,0
+https://www.derrytownship.org/wp-content/uploads/2024/10/ZHB-10-15-24-mtg-audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.83,2026-09-30T05:59:29+00:00,,0
+https://nevco.granicus.com/MediaPlayer.php?view_id=2&clip_id=8371,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.14,2026-09-30T05:59:31+00:00,,0
+https://nevco.granicus.com/MediaPlayer.php?view_id=4&clip_id=7853,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:49+00:00,,0
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:52+00:00,,0
+https://justintx.new.swagit.com/videos/308727,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:54+00:00,,0
+http://mosineecitywi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3491,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:56+00:00,,0
+https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:00+00:00,,0
+https://boxelder.granicus.com/MediaPlayer.php?view_id=6&clip_id=1431,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:04+00:00,,0
+https://midlothianisdtx.new.swagit.com/videos/399554,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:06+00:00,,0
+https://hcpss-org.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=2700,swagit,hls-master+variant,6152.97,,,1,accept,,1.61,2026-09-26T17:01:39+00:00,feed_tier3_auto_transcription,0
+https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5554,swagit,hls-master+variant,3077.36,,,1,accept,,0.62,2026-09-26T17:05:31+00:00,feed_tier3_auto_transcription,0
+https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=26025,granicus,hls-master+variant,1676.25,,,1,accept,,0.10,2026-09-26T17:09:17+00:00,feed_tier3_auto_transcription,0
+https://hastingsonhudsonny.swagit.com/play/10102024-509,swagit,hls-master+variant,1938.29,,,1,accept,,3.07,2026-09-29T22:40:12+00:00,tier3_recovery_2026-09-29,0
+https://acworth-ga.granicus.com/MediaPlayer.php?view_id=1&clip_id=203,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.93,2026-09-29T22:40:16+00:00,tier3_recovery_2026-09-29,0
+https://bristolva.granicus.com/MediaPlayer.php?view_id=1&clip_id=527,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.27,2026-09-29T22:40:21+00:00,tier3_recovery_2026-09-29,0
+https://franklintn.granicus.com/MediaPlayer.php?view_id=1&clip_id=775,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.29,2026-09-29T22:40:26+00:00,tier3_recovery_2026-09-29,0
+https://granbyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=26,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.53,2026-09-29T22:40:32+00:00,tier3_recovery_2026-09-29,0
+https://cityofgriffin.granicus.com/MediaPlayer.php?view_id=1&clip_id=336,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.77,2026-09-29T22:40:40+00:00,tier3_recovery_2026-09-29,0
+https://livermore.granicus.com/MediaPlayer.php?view_id=1&clip_id=710,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.77,2026-09-29T22:40:46+00:00,tier3_recovery_2026-09-29,0
+https://lyonco.granicus.com/MediaPlayer.php?view_id=1&clip_id=502,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.90,2026-09-29T22:40:52+00:00,tier3_recovery_2026-09-29,0
+https://palmertwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=290,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.21,2026-09-29T22:40:56+00:00,tier3_recovery_2026-09-29,0
+https://cityofsouthgate.granicus.com/MediaPlayer.php?view_id=1&clip_id=706,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.80,2026-09-29T22:41:04+00:00,tier3_recovery_2026-09-29,0
+https://suisuncityca.granicus.com/MediaPlayer.php?view_id=1&clip_id=624,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.27,2026-09-29T22:41:08+00:00,tier3_recovery_2026-09-29,0
+https://two-rivers.granicus.com/MediaPlayer.php?view_id=1&clip_id=152,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.59,2026-09-29T22:41:16+00:00,tier3_recovery_2026-09-29,0
+https://vailgov.granicus.com/MediaPlayer.php?view_id=1&clip_id=80,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.59,2026-09-29T22:41:22+00:00,tier3_recovery_2026-09-29,0
+https://abingtonpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=752,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.70,2026-09-29T22:41:27+00:00,tier3_recovery_2026-09-29,0
+https://ashwaubenon.granicus.com/MediaPlayer.php?view_id=1&clip_id=5162,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.01,2026-09-29T22:41:32+00:00,tier3_recovery_2026-09-29,0
+https://atlastownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=27,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.18,2026-09-29T22:41:38+00:00,tier3_recovery_2026-09-29,0
+https://buckeyeaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=610,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.16,2026-09-29T22:41:44+00:00,tier3_recovery_2026-09-29,0
+https://claytownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=309,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.68,2026-09-29T22:41:52+00:00,tier3_recovery_2026-09-29,0
+https://dorchester.granicus.com/MediaPlayer.php?view_id=1&clip_id=746,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.84,2026-09-29T22:41:58+00:00,tier3_recovery_2026-09-29,0
+https://eastfishkillny.granicus.com/MediaPlayer.php?view_id=1&clip_id=11,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,4.00,2026-09-29T22:42:04+00:00,tier3_recovery_2026-09-29,0
+https://eastjordancity.granicus.com/MediaPlayer.php?view_id=1&clip_id=160,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.17,2026-09-29T22:42:08+00:00,tier3_recovery_2026-09-29,0
+https://empiremn.granicus.com/MediaPlayer.php?view_id=1&clip_id=136,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.85,2026-09-29T22:42:16+00:00,tier3_recovery_2026-09-29,0
+https://graymaine.granicus.com/MediaPlayer.php?view_id=1&clip_id=1117,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.69,2026-09-29T22:42:22+00:00,tier3_recovery_2026-09-29,0
+https://hartsvillesc.granicus.com/MediaPlayer.php?view_id=1&clip_id=245,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.74,2026-09-29T22:42:28+00:00,tier3_recovery_2026-09-29,0
+https://humble-tx.granicus.com/MediaPlayer.php?view_id=1&clip_id=74,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.21,2026-09-29T22:42:32+00:00,tier3_recovery_2026-09-29,0
+https://kitcarsoncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1184,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.52,2026-09-29T22:42:39+00:00,tier3_recovery_2026-09-29,0
+https://leecountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=191,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.28,2026-09-29T22:42:45+00:00,tier3_recovery_2026-09-29,0
+https://lyonsga.granicus.com/MediaPlayer.php?view_id=1&clip_id=494,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.55,2026-09-29T22:42:52+00:00,tier3_recovery_2026-09-29,0
+https://townofmerrimac.granicus.com/MediaPlayer.php?view_id=1&clip_id=33,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.86,2026-09-29T22:42:58+00:00,tier3_recovery_2026-09-29,0
+https://narragansettri.granicus.com/MediaPlayer.php?view_id=1&clip_id=1086,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.51,2026-09-29T22:43:03+00:00,tier3_recovery_2026-09-29,0
+https://townofpendleton.granicus.com/MediaPlayer.php?view_id=1&clip_id=176,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.29,2026-09-29T22:43:09+00:00,tier3_recovery_2026-09-29,0
+https://portorchard.granicus.com/MediaPlayer.php?view_id=1&clip_id=242,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.62,2026-09-29T22:43:16+00:00,tier3_recovery_2026-09-29,0
+https://libertytwp.granicus.com/MediaPlayer.php?view_id=1&clip_id=331,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.53,2026-09-29T22:43:22+00:00,tier3_recovery_2026-09-29,0
+https://spaldingcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=416,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.48,2026-09-29T22:43:27+00:00,tier3_recovery_2026-09-29,0
+https://stormlake.granicus.com/MediaPlayer.php?view_id=1&clip_id=96,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,2.18,2026-09-29T22:43:32+00:00,tier3_recovery_2026-09-29,0
+https://summitcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=379,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,4.02,2026-09-29T22:43:40+00:00,tier3_recovery_2026-09-29,0
+https://swiftcounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=188,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.64,2026-09-29T22:43:46+00:00,tier3_recovery_2026-09-29,0
+https://westseneca.granicus.com/MediaPlayer.php?view_id=1&clip_id=84,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.59,2026-09-29T22:43:52+00:00,tier3_recovery_2026-09-29,0
+https://willingboronj.granicus.com/MediaPlayer.php?view_id=1&clip_id=21,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,1.71,2026-09-29T22:43:56+00:00,tier3_recovery_2026-09-29,0
+https://winslowtownship.granicus.com/MediaPlayer.php?view_id=1&clip_id=883,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.79,2026-09-29T22:44:04+00:00,tier3_recovery_2026-09-29,0
+https://winterparkcolorado.granicus.com/MediaPlayer.php?view_id=1&clip_id=95,granicus,resolve,,,,0,reject-dead,resolve returned no video_url,3.49,2026-09-29T22:44:09+00:00,tier3_recovery_2026-09-29,0
+http://a2gov.legistar.com/MeetingDetail.aspx?ID=750169&GUID=A02363A4-7CBE-40AF-9763-78F1AB70D308&Options=info%7C&Search=,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.00,2026-09-29T22:44:09+00:00,tier3_recovery_2026-09-29,0
+https://janesville.granicus.com/MediaPlayer.php?view_id=5&clip_id=5108,granicus,hls-master+variant,3052.01,,,1,accept,,5.27,2026-09-29T22:44:17+00:00,tier3_recovery_2026-09-29,0
+http://legistar.council.nyc.gov/MeetingDetail.aspx?ID=201886&GUID=73F657A2-52F0-4453-9E01-33BF6F19BCB7&Search=,viebit,resolve,,,,0,reject-dead,resolve returned no video_url,0.98,2026-09-29T22:44:18+00:00,tier3_recovery_2026-09-29,0
+https://sapatv.cablecast.tv/internetchannel/show/43889?site=2,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.08,2026-09-30T13:00:51+00:00,,0
+https://darlingtoncountysc.new.swagit.com/videos/392710,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.11,2026-09-30T13:00:54+00:00,,0
+https://tsp.granicus.com/MediaPlayer.php?view_id=1&clip_id=431,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T13:00:58+00:00,,0
+https://wyomingmn.portal.civicclerk.com/event/666/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-09-30T13:01:05+00:00,,0
+https://videoplayer.telvue.com/player/k83q0qZsxB_6dlk4EjvYfv9xDQOqNH9z/media/1017095,telvue,telvue-page-json,3227.00,,,1,accept,,0.31,2026-09-30T13:01:07+00:00,,0
+https://aledotx.portal.civicclerk.com/event/75/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-09-30T13:01:11+00:00,,0
+https://imperialca.portal.civicclerk.com/event/32/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-09-30T13:01:21+00:00,,0
+https://katyisdtx.new.swagit.com/videos/400838,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T13:01:23+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME,castus,hls-master+variant,9851.00,,,1,accept,,0.57,2026-09-30T13:01:26+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aac81591e86e8000203688c?page=HOME,castus,hls-master+variant,9851.00,,,1,accept,,0.37,2026-09-30T13:01:26+00:00,feed_tier3_auto_transcription,0
+https://washingtonin.granicus.com/MediaPlayer.php?view_id=1&clip_id=164,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-09-30T13:01:29+00:00,,0
+https://d3id26kdqbehod.cloudfront.net/ROBSTOWN-D/2026/01/29/4fU6tICmSG7lhyhf1GnchPAboQkOF6AH3CjQ92ogd8EKmqj90IXOWSRN4ELj/January+2026+-+State+of+the+Budget+Intro+%281%29-480p.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-09-30T13:01:31+00:00,,0
+https://cpmedia.azureedge.net/stillwatercomt/f885eb43-f102-4f38-acbd-d7edf64d28e6.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.01,2026-09-30T13:01:33+00:00,,0
+https://www.bb-sd.com/Downloads/Brentwood%20School%20Board%20Meeting%2004_20_2020.mp3,direct_file,head+ffprobe,4484.90,2020-05-01,101108471,1,accept,,0.81,2026-09-30T14:49:56+00:00,,0
+https://drive.google.com/file/d/1uo9Zw3WfvgW0ZG8IbnuLmJdCPb4GMs_y/view?usp=sharing,direct_file,head+ffprobe,2403.47,2025-11-12,6045935313,1,accept,,2.03,2026-09-30T14:50:00+00:00,,0
+https://ramcountrytv.cablecast.tv/show/27,cablecast,hls-master+variant,1400.01,,,1,accept,,2.04,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1I22Kd5i4CJvr1FI9U43zvoXodz5gTEl3/view?usp=drive_link,direct_file,head+ffprobe,1571.20,2024-01-25,720331784,1,accept,,2.87,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing,direct_file,head+ffprobe,6875.20,2026-03-17,42996200,1,accept,,7.39,2026-09-30T14:50:02+00:00,,0
+https://drive.google.com/file/d/1LnJIGAxGc0DNfzrcs022elV_BD7qDuW-/view?usp=sharing,direct_file,head+ffprobe,937.13,2026-08-19,12578256,1,accept,,6.10,2026-09-30T14:50:03+00:00,,0
+https://antigowi.portal.civicclerk.com/event/2220/media,civicclerk,head+ffprobe,3528.32,2026-09-09,2766820543,1,accept,,2.08,2026-09-30T14:50:04+00:00,,0
+https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451,granicus,hls-master+variant,1212.42,,,1,accept,,3.01,2026-09-30T14:50:06+00:00,,0
+https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021,granicus,hls-master+variant,1914.55,,,1,accept,,5.22,2026-09-30T14:50:08+00:00,,0
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995,granicus,hls-master+variant,1721.00,,,1,accept,,6.95,2026-09-30T14:50:09+00:00,,0
+https://bvcsd.granicus.com/MediaPlayer.php?view_id=1&clip_id=733,granicus,hls-master+variant,350.78,,,0,accept,,5.76,2026-09-30T14:50:10+00:00,,0
+https://www.cityofleonard.net/upload/page/0075/docs/05-08-18_City_Council_Meeting.mp3,direct_file,head+ffprobe,1846.37,2018-05-09,22156488,1,accept,,1.45,2026-09-30T14:50:11+00:00,,0
+https://www.barnescounty.us/wp-content/uploads/2026/08/07.07.2026-Full-Commission-Meeting.mp3,direct_file,head+ffprobe,2627.89,2026-08-06,42047300,1,accept,,1.79,2026-09-30T14:50:13+00:00,,0
+https://ashtabulaoh.portal.civicclerk.com/event/675/media,civicclerk,hls-master+variant,6044.54,,,1,accept,,2.74,2026-09-30T14:50:13+00:00,,0
+https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483,granicus,hls-master+variant,2786.94,,,1,accept,,5.78,2026-09-30T14:50:13+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17012?site=3&query=aquinnah,cablecast,hls-master+variant,5379.13,,,1,accept,,0.81,2026-09-30T14:50:13+00:00,,0
+https://portcanaveral.granicus.com/MediaPlayer.php?view_id=2&clip_id=973,granicus,hls-master+variant,3182.07,,,1,accept,,8.36,2026-09-30T14:50:14+00:00,,0
+https://www.elkrapids.com/uploads/4/6/4/5/46455369/zba_04132026_audio.mp3,direct_file,head+ffprobe,974.71,2026-04-16,11696521,1,accept,,0.73,2026-09-30T14:50:14+00:00,,0
+https://pinecitymn.gov/vertical/sites/%7B6C78F918-835C-4B30-A7AF-EAF471BF7BB3%7D/uploads/6-24-21_City_Council_Audio_(1st_half).mp3,direct_file,head+ffprobe,2620.04,2021-06-29,48247793,1,accept,,2.27,2026-09-30T14:50:15+00:00,,0
+https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/Zoom-Video_Planning-Commission_01.06.2026.mp4,direct_file,head+ffprobe,1397.65,2026-06-25,39294454,1,accept,,1.78,2026-09-30T14:50:17+00:00,,0
+https://hunterdonconj.portal.civicclerk.com/event/1483/media,civicclerk,head+ffprobe,2296.89,2026-08-21,36751852,1,accept,,3.18,2026-09-30T14:50:17+00:00,,0
+https://rushvillein.suiteonemedia.com/event/?id=1084,suiteone,head+ffprobe,1841.50,2026-09-23,31204103,1,accept,,3.95,2026-09-30T14:50:18+00:00,,0
+https://boxcast.tv/view/9282026---legal-finance-vygewwbbbhjwlxtgct03,boxcast,hls-master+variant,694.06,,,1,accept,,1.27,2026-09-30T14:50:18+00:00,,0
+https://d3id26kdqbehod.cloudfront.net/RWLND/2026/09/11/c9B9L0qb04IFxKZ7dNwaQX677PxsmFUxc8kTvavrRBtNVUuxEDz8ACd8iHjX/Board+Meeting+and+NHS+Aquatics+V3-480p.mp4,direct_file,head+ffprobe,120.85,2026-09-11,14590071,0,accept,,0.46,2026-09-30T14:50:18+00:00,,0
+https://drive.google.com/file/d/1VlSpOCb1oj1pASMXHNQ8s3GXG2hs4Kl5/view?usp=sharing,direct_file,head+ffprobe,1407.54,2026-08-03,387153142,1,accept,,5.22,2026-09-30T14:50:19+00:00,,0
+https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57858?site=2,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.85,2026-09-30T14:50:19+00:00,,0
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1,cablecast,hls-master+variant,3213.98,,,1,accept,,0.74,2026-09-30T14:50:19+00:00,,0
+http://66.161.199.50/CablecastPublicSite/show/27907?channel=4,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.60,2026-09-30T14:50:19+00:00,,0
+https://drive.google.com/file/d/1hzvIekxAJBEuzZHg5I54WPegCfrQnvkM/preview,direct_file,head+ffprobe,405.94,2025-06-10,1005232274,0,accept,,2.71,2026-09-30T14:50:20+00:00,,0

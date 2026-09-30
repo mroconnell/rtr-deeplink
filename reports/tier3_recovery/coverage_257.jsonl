@@ -1,0 +1,165 @@
+{"gov_id": "ca:csd:2476030", "gov_name": "Mille-Isles", "state": "QC", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:06087", "gov_name": "Santa Cruz County", "state": "CA", "has_page": true, "hub_link": "/j/santa-cruz-county-ca", "newest_page_date": "2026-01-13", "stale": false}
+{"gov_id": "us:county:08039", "gov_name": "Elbert County", "state": "CO", "has_page": true, "hub_link": "/j/elbert-county-co", "newest_page_date": "2025-08-13", "stale": false}
+{"gov_id": "us:county:08063", "gov_name": "Kit Carson County", "state": "CO", "has_page": true, "hub_link": "/j/kit-carson-county-co", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:08101", "gov_name": "Pueblo County", "state": "CO", "has_page": true, "hub_link": "/j/pueblo-county-co", "newest_page_date": "2026-09-08", "stale": false}
+{"gov_id": "us:county:08117", "gov_name": "Summit County", "state": "CO", "has_page": true, "hub_link": "/j/summit-county-co", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:12039", "gov_name": "Gadsden County", "state": "FL", "has_page": true, "hub_link": "/j/gadsden-county-fl", "newest_page_date": "2026-09-14", "stale": false}
+{"gov_id": "us:county:13115", "gov_name": "Floyd County", "state": "GA", "has_page": true, "hub_link": "/j/floyd-county-ga", "newest_page_date": "2026-01-27", "stale": false}
+{"gov_id": "us:county:13127", "gov_name": "Glynn County", "state": "GA", "has_page": true, "hub_link": "/j/glynn-county-ga", "newest_page_date": "2026-09-03", "stale": false}
+{"gov_id": "us:county:13157", "gov_name": "Jackson County", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:13255", "gov_name": "Spalding County", "state": "GA", "has_page": true, "hub_link": "/j/spalding-county-ga", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:17085", "gov_name": "Jo Daviess County", "state": "IL", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:24019", "gov_name": "Dorchester County", "state": "MD", "has_page": true, "hub_link": "/j/dorchester-county-md", "newest_page_date": "2026-09-02", "stale": false}
+{"gov_id": "us:county:27035", "gov_name": "Crow Wing County", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:27083", "gov_name": "Lyon County", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:27151", "gov_name": "Swift County", "state": "MN", "has_page": true, "hub_link": "/j/swift-county-mn", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:32015", "gov_name": "Lander County", "state": "NV", "has_page": true, "hub_link": "/j/lander-county-nv", "newest_page_date": "2026-08-27", "stale": false}
+{"gov_id": "us:county:35009", "gov_name": "Curry County", "state": "NM", "has_page": true, "hub_link": "/j/curry-county-nm", "newest_page_date": "2026-09-10", "stale": false}
+{"gov_id": "us:county:37013", "gov_name": "Beaufort County", "state": "NC", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:37087", "gov_name": "Haywood County", "state": "NC", "has_page": true, "hub_link": "/j/haywood-county-nc", "newest_page_date": "2026-08-03", "stale": false}
+{"gov_id": "us:county:37105", "gov_name": "Lee County", "state": "NC", "has_page": true, "hub_link": "/j/lee-county-nc", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:37159", "gov_name": "Rowan County", "state": "NC", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:39049", "gov_name": "Franklin County", "state": "OH", "has_page": true, "hub_link": "/j/franklin-county-oh", "newest_page_date": "2025-04-17", "stale": false}
+{"gov_id": "us:county:45035", "gov_name": "Dorchester County", "state": "SC", "has_page": true, "hub_link": "/j/dorchester-county-sc", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:48249", "gov_name": "Jim Wells County", "state": "TX", "has_page": true, "hub_link": "/j/jim-wells-county-tx", "newest_page_date": "2026-09-11", "stale": false}
+{"gov_id": "us:county:48441", "gov_name": "Taylor County", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:county:49001", "gov_name": "Beaver County", "state": "UT", "has_page": true, "hub_link": "/j/beaver-county-ut", "newest_page_date": "2026-08-17", "stale": false}
+{"gov_id": "us:county:49029", "gov_name": "Morgan County", "state": "UT", "has_page": true, "hub_link": "/j/morgan-county-ut", "newest_page_date": "2026-02-26", "stale": false}
+{"gov_id": "us:county:49035", "gov_name": "Salt Lake County", "state": "UT", "has_page": true, "hub_link": "/j/salt-lake-county-ut", "newest_page_date": "2026-08-27", "stale": false}
+{"gov_id": "us:county:49047", "gov_name": "Uintah County", "state": "UT", "has_page": true, "hub_link": "/j/uintah-county-ut", "newest_page_date": null, "stale": null}
+{"gov_id": "us:county:49049", "gov_name": "Utah County", "state": "UT", "has_page": true, "hub_link": "/j/utah-county-ut", "newest_page_date": "2026-09-09", "stale": false}
+{"gov_id": "us:county:49057", "gov_name": "Weber County", "state": "UT", "has_page": true, "hub_link": "/j/weber-county-ut", "newest_page_date": "2026-03-17", "stale": false}
+{"gov_id": "us:county:53053", "gov_name": "Pierce County", "state": "WA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:0911044910", "gov_name": "Mansfield town", "state": "CT", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:0918042600", "gov_name": "Ledyard town", "state": "CT", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2300528870", "gov_name": "Gray town", "state": "ME", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2302559005", "gov_name": "Pittsfield town", "state": "ME", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2302766635", "gov_name": "Searsport town", "state": "ME", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2303100275", "gov_name": "Acton town", "state": "ME", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2500182525", "gov_name": "Yarmouth town", "state": "MA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2500940430", "gov_name": "Merrimac town", "state": "MA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2501125730", "gov_name": "Gill town", "state": "MA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2502109175", "gov_name": "Brookline town", "state": "MA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2604904000", "gov_name": "Atlas township", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:2614716180", "gov_name": "Clay township", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3300300420", "gov_name": "Albany town", "state": "NH", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3301108100", "gov_name": "Brookline town", "state": "NH", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3301137140", "gov_name": "Hollis town", "state": "NH", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3301540100", "gov_name": "Kingston town", "state": "NH", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3301916340", "gov_name": "Croydon town", "state": "NH", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3400581440", "gov_name": "Willingboro township", "state": "NJ", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3400781740", "gov_name": "Winslow township", "state": "NJ", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3602150452", "gov_name": "New Lebanon town", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3602721996", "gov_name": "East Fishkill town", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3602980918", "gov_name": "West Seneca town", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3607529729", "gov_name": "Granby town", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3608329674", "gov_name": "Grafton town", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:3611905320", "gov_name": "Bedford town", "state": "NY", "has_page": true, "hub_link": "/j/bedford-town-ny", "newest_page_date": "2021-01-25", "stale": true}
+{"gov_id": "us:cousub:3611984077", "gov_name": "Yorktown town", "state": "NY", "has_page": true, "hub_link": "/j/yorktown-town-ny", "newest_page_date": "2026-09-15", "stale": false}
+{"gov_id": "us:cousub:4209100156", "gov_name": "Abington township", "state": "PA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:4209557672", "gov_name": "Palmer township", "state": "PA", "has_page": false, "hub_link": null}
+{"gov_id": "us:cousub:4400948340", "gov_name": "Narragansett town", "state": "RI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0407940", "gov_name": "Buckeye city", "state": "AZ", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0600947", "gov_name": "Aliso Viejo city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0619402", "gov_name": "Dixon city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0633518", "gov_name": "Hidden Hills city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0636056", "gov_name": "Huntington Park city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0641936", "gov_name": "Live Oak city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0641992", "gov_name": "Livermore city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0657526", "gov_name": "Placentia city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0665000", "gov_name": "San Bernardino city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0673080", "gov_name": "South Gate city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0675630", "gov_name": "Suisun City city", "state": "CA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0833695", "gov_name": "Gypsum town", "state": "CO", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0880040", "gov_name": "Vail town", "state": "CO", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:0885705", "gov_name": "Winter Park town", "state": "CO", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1264975", "gov_name": "Seminole city", "state": "FL", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1276658", "gov_name": "West Park city", "state": "FL", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1300408", "gov_name": "Acworth city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1335324", "gov_name": "Griffin city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1348232", "gov_name": "Lyons city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1369000", "gov_name": "Savannah city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1372122", "gov_name": "South Fulton city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1378800", "gov_name": "Valdosta city", "state": "GA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1706613", "gov_name": "Bloomington city", "state": "IL", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1780242", "gov_name": "Western Springs village", "state": "IL", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1822000", "gov_name": "Evansville city", "state": "IN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1914430", "gov_name": "Clinton city", "state": "IA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1933105", "gov_name": "Grinnell city", "state": "IA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1938280", "gov_name": "Indianola city", "state": "IA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:1975630", "gov_name": "Storm Lake city", "state": "IA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2540115", "gov_name": "Melrose city", "state": "MA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2603000", "gov_name": "Ann Arbor city", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2615020", "gov_name": "Chelsea city", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2624020", "gov_name": "East Jordan city", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2670960", "gov_name": "St. Joseph city", "state": "MI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2708452", "gov_name": "Buffalo city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2715022", "gov_name": "Dayton city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2715454", "gov_name": "Delano city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2719358", "gov_name": "Empire city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2743774", "gov_name": "Monticello city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2747068", "gov_name": "North Mankato city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2760016", "gov_name": "Shorewood city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2765956", "gov_name": "Two Harbors city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2768548", "gov_name": "Watertown city", "state": "MN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2881520", "gov_name": "Yazoo City city", "state": "MS", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:2911368", "gov_name": "Carl Junction city", "state": "MO", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3032800", "gov_name": "Great Falls city", "state": "MT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3125055", "gov_name": "Kearney city", "state": "NE", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3454990", "gov_name": "Oradell borough", "state": "NJ", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3608103", "gov_name": "Briarcliff Manor village", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3622865", "gov_name": "East Rochester village", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3635969", "gov_name": "Hudson city", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3651000", "gov_name": "New York city", "state": "NY", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3738060", "gov_name": "Lexington city", "state": "NC", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3936651", "gov_name": "Hudson city", "state": "OH", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3964486", "gov_name": "Powell city", "state": "OH", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4175650", "gov_name": "Umatilla city", "state": "OR", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4532245", "gov_name": "Hardeeville city", "state": "SC", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4532560", "gov_name": "Hartsville city", "state": "SC", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4555645", "gov_name": "Pendleton town", "state": "SC", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4704620", "gov_name": "Belle Meade city", "state": "TN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4716300", "gov_name": "Collegedale city", "state": "TN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4727740", "gov_name": "Franklin city", "state": "TN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4730980", "gov_name": "Greeneville town", "state": "TN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4769420", "gov_name": "Smyrna town", "state": "TN", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4833212", "gov_name": "Henderson city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4835348", "gov_name": "Humble city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4846440", "gov_name": "Manor city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4846452", "gov_name": "Mansfield city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4849068", "gov_name": "Mont Belvieu city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4864112", "gov_name": "Saginaw city", "state": "TX", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4906370", "gov_name": "Blanding city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4911320", "gov_name": "Cedar City city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4914290", "gov_name": "Clinton city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4916270", "gov_name": "Cottonwood Heights city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4919680", "gov_name": "Deweyville town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4922650", "gov_name": "Elsinore town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4923750", "gov_name": "Escalante city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4925070", "gov_name": "Fayette town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4925290", "gov_name": "Fielding town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4927930", "gov_name": "Garden City town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4929580", "gov_name": "Glenwood town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4934750", "gov_name": "Henrieville town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4935740", "gov_name": "Hinckley town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4935960", "gov_name": "Holden town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4936620", "gov_name": "Howell town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4939370", "gov_name": "Joseph town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4946740", "gov_name": "Lynndyl town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4967440", "gov_name": "Sandy city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4970850", "gov_name": "South Jordan city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4980420", "gov_name": "Vineyard town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4980860", "gov_name": "Wales town", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4982510", "gov_name": "Wellington city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:4982730", "gov_name": "Wendover city", "state": "UT", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5109816", "gov_name": "Bristol city", "state": "VA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5355785", "gov_name": "Port Orchard city", "state": "WA", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5501550", "gov_name": "Altoona city", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5503425", "gov_name": "Ashwaubenon village", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5537825", "gov_name": "Janesville city", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5556375", "gov_name": "New Berlin city", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5566000", "gov_name": "Racine city", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5581325", "gov_name": "Two Rivers city", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:5587725", "gov_name": "Windsor village", "state": "WI", "has_page": false, "hub_link": null}
+{"gov_id": "us:place:3632710", "gov_name": "Hastings-on-Hudson village", "state": "NY", "has_page": false, "hub_link": null}
