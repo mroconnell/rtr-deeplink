@@ -328,6 +328,91 @@ def test_extract_show_id_recognizes_newer_template_bare_show_path():
     )
 
 
+async def test_resolve_newer_template_falls_back_to_json_api_when_root_also_fails():
+    # BACKLOG.md "Cablecast's newer portal blocks scripted show pages..."
+    # (2026-09-29): on some tenants of this same newer-portal template,
+    # `test_resolve_newer_template_show_url_falls_back_to_root`'s own
+    # root-page fallback doesn't save the day either -- confirmed live
+    # 2026-09-29/30 on reflect-ccx.cablecast.tv/show/41024 (Brooklyn
+    # Center, MN City Council 9/28/2026, found via a rtr-business
+    # research pass's stage-3 class-A run): the direct show fetch gets
+    # the same 202/empty-body AWS WAF challenge, but this host's root
+    # page redirects (302 to /FrontDoor/) instead of serving a usable
+    # catalog, and the FastBoot `/embed/vod` path 404s too. The *same
+    # host's* separate CablecastPublicSite JSON API -- the one
+    # `_resolve_publicsite()` already reads for the Urbana/Smyrna/CCX
+    # tests above -- answers normally with no challenge at all. Fixtures
+    # are the real, unmodified `cablecastapi/v1/shows|vods` JSON
+    # responses fetched live for this show.
+    show_json = load_fixture(
+        "cablecast", "ccx_brooklyncenter_publicsite_show_41024.json"
+    )
+    vod_json = load_fixture("cablecast", "ccx_brooklyncenter_publicsite_vod_13099.json")
+    url = "https://reflect-ccx.cablecast.tv/show/41024"
+    direct_url = "http://reflect-ccx.cablecast.tv/show/41024"
+    root_url = "http://reflect-ccx.cablecast.tv/"
+    embed_url = "http://reflect-ccx.cablecast.tv/embed/vod?show=41024&site=1"
+
+    routes = {
+        direct_url: FakeResponse(status=202, text=""),
+        root_url: FakeResponse(status=302, text=""),
+        embed_url: FakeResponse(status=404, text=""),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows/41024": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/vods/13099": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    assert result.title == "Brooklyn Center City Council 9/28/2026"
+    assert result.date == "2026-09-28"
+    assert result.video_url == (
+        "https://reflect-ccx.cablecast.tv/store-17/"
+        "41024-Brooklyn-Center-City-v3/vod.mp4"
+    )
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []
+    # This bare "/show/{id}" URL carries no "site=" query param (unlike
+    # the "/CablecastPublicSite/show/{id}?site=X" shape the CCX tests
+    # above use), so neither `_ccx_media_jurisdiction()` nor the
+    # known-domain registry (this shared 9-city host isn't in it, see
+    # `_CCX_MEDIA_HOST`'s module comment) can tell which of the 9 real
+    # CCX cities this show belongs to -- jurisdiction genuinely isn't
+    # known from this URL shape alone, not silently dropped.
+    assert result.jurisdiction is None
+    # No confirmed transcript source for this template yet, same as the
+    # other `_resolve_publicsite()` paths.
+    assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+async def test_resolve_newer_template_json_api_fallback_not_tried_when_root_finds_show():
+    # Companion negative case for the fallback above: when the root-page
+    # retry DOES find the show (this test's own real Satellite Beach
+    # fixture), the JSON API is never even reached -- no route registered
+    # for it here, so `mock_session` would raise on any such call.
+    url = "https://satellitebeach.cablecast.tv/show/535"
+    direct_url = "http://satellitebeach.cablecast.tv/show/535"
+    root_url = "http://satellitebeach.cablecast.tv/"
+    challenge_html = load_fixture("cablecast", "satellitebeach_waf_challenge.html")
+    root_html = load_fixture("cablecast", "satellitebeach_root.html")
+
+    routes = {
+        direct_url: FakeResponse(status=202, text=challenge_html, url=direct_url),
+        root_url: FakeResponse(status=200, text=root_html, url=root_url),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.title == "City Council Workshop 08-05-2026"
+    assert result.video_url is not None
+
+
 def test_find_show_matches_string_showid_against_int_lookup():
     # Real type mismatch found 2026-08-18 (see
     # test_resolve_newer_template_show_url_falls_back_to_root): the

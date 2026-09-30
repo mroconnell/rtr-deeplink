@@ -461,11 +461,53 @@ class CablecastAssetFinder(AssetFinder):
             # real confirmed customer (Dyersville, IA) -- the older
             # "/internetchannel/show/{id}" shape has no confirmed FastBoot
             # example.
-            fastboot_result = await self._resolve_fastboot_embed(
+            fastboot_result, embed_reachable = await self._resolve_fastboot_embed(
                 fetch_url, show_id, jurisdiction
             )
             if fastboot_result is not None:
                 return fastboot_result
+
+            if not embed_reachable:
+                # Root and FastBoot fallbacks both failed to find this
+                # show -- on the newer portal template, the bare
+                # "/show/{id}" page itself is behind an AWS WAF JS
+                # challenge (202, empty body, `x-amzn-waf-action:
+                # challenge`) that this adapter never tries to solve
+                # (CLAUDE.md/BACKLOG.md Standing decisions). The *same
+                # host's* separate CablecastPublicSite JSON API answers
+                # normally with no challenge -- confirmed live 2026-09-29
+                # on reflect-ccx.cablecast.tv/show/41024 (Brooklyn Center,
+                # MN City Council). `_resolve_publicsite()` already reads
+                # exactly these two endpoints (shows/{id}, then
+                # vods/{id}) and tries HTTPS before HTTP, so it's reused
+                # as-is rather than duplicating that logic here.
+                #
+                # Only tried when the FastBoot `/embed/vod` endpoint
+                # itself was unreachable (`embed_reachable` False) --
+                # when it answered but simply had no `<source>` tag
+                # (Dyersville-style genuinely video-less show,
+                # `embed_reachable` True), this really is that template
+                # confirming no video, and the API would just be a
+                # different endpoint for the same non-existent video.
+                #
+                # Only returned when it actually found the show -- if the
+                # API also comes up empty, fall through to this method's
+                # own standard no-video response below so the caller sees
+                # one consistent shape rather than the API's own
+                # differently-worded warning.
+                api_result = await self._resolve_publicsite(url, show_id)
+                if api_result.title is not None:
+                    if api_result.jurisdiction is None and jurisdiction is not None:
+                        # Keep jurisdiction extraction consistent with the
+                        # other paths here: prefer whatever this method's
+                        # own Remix-based `_extract_jurisdiction()` already
+                        # found (from a partial direct/root fetch) over
+                        # letting a real result go out with no
+                        # jurisdiction at all.
+                        api_result = api_result.model_copy(
+                            update={"jurisdiction": jurisdiction}
+                        )
+                    return api_result
 
         if not show or not show.get("vodUrl"):
             # Real bug found 2026-08-29 investigating a user report on
@@ -685,13 +727,14 @@ class CablecastAssetFinder(AssetFinder):
             jurisdiction = f"{known.name}, {known.state}"
 
         origin = f"{parsed.scheme}://{parsed.netloc}"
-        return await self._resolve_fastboot_embed(
+        result, _ = await self._resolve_fastboot_embed(
             f"{origin}/show/{show_id}",
             show_id,
             jurisdiction,
             record_url=url,
             site_override=site,
         )
+        return result
 
     @staticmethod
     async def _resolve_fastboot_embed(
@@ -701,16 +744,27 @@ class CablecastAssetFinder(AssetFinder):
         *,
         record_url: Optional[str] = None,
         site_override: Optional[str] = None,
-    ) -> Optional[ResolvedMeeting]:
+    ) -> "tuple[Optional[ResolvedMeeting], bool]":
         """WO-344: the third real Cablecast template's own resolve path --
         see `_FASTBOOT_EMBED_SHOW_TITLE_RE`'s module docstring for the
-        real investigation this is built on. Returns `None` (not a
-        video-less `ResolvedMeeting`) when the embed endpoint itself
+        real investigation this is built on. Returns `(None, embed_reachable)`
+        (not a video-less `ResolvedMeeting`) when the embed endpoint itself
         doesn't answer with the expected shape, so `resolve()`'s caller
         falls through to its own standard "no video found" response
         rather than this function inventing one -- this only returns a
         real `ResolvedMeeting` once it has confirmed this tenant really is
         this template.
+
+        The second element, `embed_reachable`, is `False` only when the
+        `/embed/vod` endpoint itself couldn't be fetched at all (network
+        failure, 404, WAF block) -- distinct from "this endpoint answered,
+        but this specific show really has no video" (embed reachable, no
+        `<source>` tag, e.g. a genuinely video-less FastBoot show). WO-1170
+        (2026-09-29): `resolve()`'s own JSON-API fallback (see the
+        `_SHOW_ID_SHORT_RE` branch below) only makes sense in the former
+        case -- when this FastBoot embed genuinely has no video, trying a
+        *different* API for the same show would be inventing a video that
+        was never confirmed, not recovering a blocked one.
 
         `record_url`/`site_override` (WO-1036, 2026-09-23): the "Cablecast
         Connect" WordPress plugin's own `/watch-vod-embed?showId=&site=`
@@ -728,7 +782,7 @@ class CablecastAssetFinder(AssetFinder):
         embed_url = f"{origin}/embed/vod?show={show_id}&site={site}"
         embed_html = await CablecastAssetFinder._fetch_html(embed_url)
         if embed_html is None:
-            return None
+            return None, False
 
         title_match = _FASTBOOT_EMBED_SHOW_TITLE_RE.search(embed_html)
         source_match = _FASTBOOT_EMBED_SOURCE_RE.search(embed_html)
@@ -737,7 +791,7 @@ class CablecastAssetFinder(AssetFinder):
             # template's shape after all, or a genuinely video-less show
             # (no confirmed real example of the latter yet). Let the
             # caller's standard no-video response handle it.
-            return None
+            return None, True
 
         raw_title = title_match.group(1).replace("\\'", "'") if title_match else None
         date = None
@@ -782,20 +836,23 @@ class CablecastAssetFinder(AssetFinder):
         else:
             transcript_warnings.append("No transcript found for this event.")
 
-        return ResolvedMeeting(
-            platform=CablecastAssetFinder.platform_name,
-            source_url=record_url or fetch_url,
-            # Same host-namespaced external_id shape as the Remix/
-            # PublicSite paths above -- see their own comments for the
-            # real duplicate-page bug this avoids.
-            external_id=f"cablecast:{parsed.netloc.lower()}:{show_id}",
-            title=raw_title,
-            date=date,
-            jurisdiction=jurisdiction,
-            video_url=video_url,
-            video_format="m3u8",
-            segments=segments,
-            transcript_warnings=transcript_warnings,
+        return (
+            ResolvedMeeting(
+                platform=CablecastAssetFinder.platform_name,
+                source_url=record_url or fetch_url,
+                # Same host-namespaced external_id shape as the Remix/
+                # PublicSite paths above -- see their own comments for the
+                # real duplicate-page bug this avoids.
+                external_id=f"cablecast:{parsed.netloc.lower()}:{show_id}",
+                title=raw_title,
+                date=date,
+                jurisdiction=jurisdiction,
+                video_url=video_url,
+                video_format="m3u8",
+                segments=segments,
+                transcript_warnings=transcript_warnings,
+            ),
+            True,
         )
 
     @staticmethod
