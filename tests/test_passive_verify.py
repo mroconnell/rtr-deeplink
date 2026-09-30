@@ -1601,3 +1601,109 @@ async def test_real_dyersville_cablecast_hub_walks_to_video_and_captions():
     assert result.platform == "cablecast"
     assert result.tier == 1
     assert result.meeting_url == f"{origin}/show/3660?site=1"
+
+
+# --- audio-only is a find, not a skip (2026-09-30) -----------------------
+#
+# Ryan, 2026-09-22 and 2026-09-30: audio-only meetings become Archive
+# pages. The walkers used to skip a resolved `.mp3` (WO-347/WO-348); they
+# now credit it and set `audio_only`. Shape is the real Olmos Park, TX
+# CivicClerk `.mp3` WO-347 found (HEAD answers `Content-Type: audio/mp3`).
+
+_AUDIO_URL = "https://cdn.example.test/olmos-park-council.mp3"
+
+
+async def test_single_resolve_credits_an_audio_only_file_and_labels_it():
+    fake = _FakeFinder(
+        {
+            "https://example.test/hub": _resolved(
+                video_url=_AUDIO_URL, title="City Council"
+            ),
+        }
+    )
+    register(fake)
+    routes = {
+        "https://example.test/hub": FakeResponse(status=200, text=_BLAND_HUB_HTML)
+    }
+    with mock_session(
+        routes,
+        head_routes={_AUDIO_URL: FakeResponse(headers={"Content-Type": "audio/mp3"})},
+    ):
+        result = await verify_hub(
+            "https://example.test/hub", platform_hint="fake_platform"
+        )
+
+    assert result.video_found is True
+    assert result.meeting_found is True
+    assert result.audio_only is True
+    assert result.verdict == "resolved"
+    assert result.tier == 3
+    assert "audio" in result.evidence
+
+
+async def test_single_resolve_of_a_real_video_is_not_labelled_audio_only():
+    fake = _FakeFinder(
+        {
+            "https://example.test/hub": _resolved(
+                video_url="https://cdn.example.test/v.mp4"
+            ),
+        }
+    )
+    register(fake)
+    routes = {
+        "https://example.test/hub": FakeResponse(status=200, text=_BLAND_HUB_HTML)
+    }
+    with mock_session(routes):
+        result = await verify_hub(
+            "https://example.test/hub", platform_hint="fake_platform"
+        )
+
+    assert result.video_found is True
+    assert result.audio_only is False
+
+
+async def test_walk_credits_an_audio_only_candidate_instead_of_skipping_it():
+    fake = _FakeFinder(
+        {
+            "https://example.test/hub": CalendarPageError(
+                "listing",
+                candidates=[
+                    {
+                        "title": "Newest",
+                        "date": "2026-09-01",
+                        "url": "https://example.test/m1",
+                    },
+                    {
+                        "title": "Older",
+                        "date": "2026-08-01",
+                        "url": "https://example.test/m2",
+                    },
+                ],
+            ),
+            "https://example.test/m1": _resolved(
+                video_url=_AUDIO_URL, source_url="https://example.test/m1"
+            ),
+            "https://example.test/m2": _resolved(
+                video_url="https://cdn.example.test/v.mp4",
+                source_url="https://example.test/m2",
+            ),
+        }
+    )
+    register(fake)
+    routes = {
+        "https://example.test/hub": FakeResponse(status=200, text=_BLAND_HUB_HTML)
+    }
+    with mock_session(
+        routes,
+        head_routes={_AUDIO_URL: FakeResponse(headers={"Content-Type": "audio/mp3"})},
+    ):
+        result = await verify_hub(
+            "https://example.test/hub", platform_hint="fake_platform"
+        )
+
+    # The newest meeting is audio-only and is now the find (before, the
+    # walk skipped it and landed on m2).
+    assert result.video_found is True
+    assert result.meeting_url == "https://example.test/m1"
+    assert result.audio_only is True
+    assert result.candidates_checked == 1

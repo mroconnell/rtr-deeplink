@@ -426,7 +426,8 @@ parked-domain page, a "coming soon" placeholder, or a page that plainly
 names a different government (WO-186, 2026-09-10).
 
 **Ryan's ingest rule, verbatim in spirit:** only meetings with video
-become pages. Tier 1 (captions the server can fetch) and tier 2 (captions exist, but only a local run can read them: YouTube,
+or audio become pages (audio-only is in scope, Ryan 2026-09-22 and
+2026-09-30; `passive_verify.py` now credits it and sets `audio_only`). Tier 1 (captions the server can fetch) and tier 2 (captions exist, but only a local run can read them: YouTube,
 and Vimeo since 2026-09-26) ingest with segments, from the drip Mac: YouTube through its
 caption lanes, Vimeo through its Vimeo lane (WO-1147). Meeting Finder
 labels a Vimeo find with captions tier 2 (WO-1146). Tier 3 (video, no
