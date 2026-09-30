@@ -8973,3 +8973,15 @@ https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/31
 https://videoplayer.telvue.com/player/Q88UlDYmxPJcLEwBkva9uJNWQzIzRD2W/series/3101,telvue,resolve,,,,0,reject-dead,resolve raised: telvue key Q88UlDYm cap reached,0.00,2026-09-30T01:39:09+00:00,route_stage3_A_2026-09-29,0
 https://videoplayer.telvue.com/player/SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx/playlists/1617,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,3.03,2026-09-30T01:39:15+00:00,route_stage3_A_2026-09-29,0
 https://videoplayer.telvue.com/player/qApKJJVzUoBgvQ1NP9H9TJF8dI9OzVxt/playlists/11884,telvue,resolve,,,,0,reject-dead,resolve returned no video_url,2.92,2026-09-30T01:39:21+00:00,route_stage3_A_2026-09-29,0
+https://www.cityofgaston.com/vertical/sites/%7BA0E7BB59-BA39-470A-B0F2-FDC9E9A25A45%7D/uploads/GMT20210318-004941_March-17--.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.42,2026-09-30T05:59:21+00:00,,0
+https://northbonneville.net/wp-content/uploads/PlanningMeeting05.03.22.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.39,2026-09-30T05:59:24+00:00,,0
+https://albertonmontana.com/wp-content/uploads/2026/09/260915_1900.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.30,2026-09-30T05:59:26+00:00,,0
+https://www.derrytownship.org/wp-content/uploads/2024/10/ZHB-10-15-24-mtg-audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.83,2026-09-30T05:59:29+00:00,,0
+https://nevco.granicus.com/MediaPlayer.php?view_id=2&clip_id=8371,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.14,2026-09-30T05:59:31+00:00,,0
+https://nevco.granicus.com/MediaPlayer.php?view_id=4&clip_id=7853,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:49+00:00,,0
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:52+00:00,,0
+https://justintx.new.swagit.com/videos/308727,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:54+00:00,,0
+http://mosineecitywi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3491,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T05:59:56+00:00,,0
+https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:00+00:00,,0
+https://boxelder.granicus.com/MediaPlayer.php?view_id=6&clip_id=1431,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:04+00:00,,0
+https://midlothianisdtx.new.swagit.com/videos/399554,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:06+00:00,,0
