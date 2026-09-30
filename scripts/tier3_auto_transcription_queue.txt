@@ -1301,6 +1301,7 @@ https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://po
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
 https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
+https://tx-selma.civicplus.com/CivicMedia?VID=6		us:place:4866704
 https://reflect-dennis.cablecast.tv/internetchannel/show/3206	https://reflect-dennis.cablecast.tv/internetchannel/show/3206	us:cousub:2500116775
 https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	us:place:2712718
 https://reflect-communitytv.cablecast.tv/internetchannel/show/3660	https://reflect-communitytv.cablecast.tv/internetchannel/show/3660	us:place:0611040
