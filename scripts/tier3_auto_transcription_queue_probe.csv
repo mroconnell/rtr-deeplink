@@ -8985,3 +8985,6 @@ http://mosineecitywi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3491,iqm2,hls-mast
 https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:00+00:00,,0
 https://boxelder.granicus.com/MediaPlayer.php?view_id=6&clip_id=1431,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:04+00:00,,0
 https://midlothianisdtx.new.swagit.com/videos/399554,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-09-30T06:00:06+00:00,,0
+https://hcpss-org.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=2700,swagit,hls-master+variant,6152.97,,,1,accept,,1.61,2026-09-26T17:01:39+00:00,feed_tier3_auto_transcription,0
+https://gresham.primegov.com/Portal/Meeting?meetingTemplateId=5554,swagit,hls-master+variant,3077.36,,,1,accept,,0.62,2026-09-26T17:05:31+00:00,feed_tier3_auto_transcription,0
+https://laplata.primegov.com/Portal/Meeting?meetingTemplateId=26025,granicus,hls-master+variant,1676.25,,,1,accept,,0.10,2026-09-26T17:09:17+00:00,feed_tier3_auto_transcription,0
