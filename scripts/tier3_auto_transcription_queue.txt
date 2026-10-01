@@ -1371,3 +1371,5 @@ https://borough-ketchikan.granicus.com/MediaPlayer.php?view_id=2&clip_id=2359	ht
 https://reflect-collier-countyboc.cablecast.tv/show/2277	https://reflect-collier-countyboc.cablecast.tv/	us:county:12021
 https://stbernardtv.sbpg.net/internetchannel/show/764?site=1	https://stbernardtv.sbpg.net/internetchannel/	us:county:22087
 https://civplus.tikiliveapi.com/video/134864	https://civplus.tikiliveapi.com/video/134864	us:place:1262625
+https://civplus.tikiliveapi.com/video/138138	https://civplus.tikiliveapi.com/video/138138	us:place:0509460
+https://civplus.tikiliveapi.com/video/134542	https://civplus.tikiliveapi.com/video/134542	rtr:us:ny:great-neck-park-district
