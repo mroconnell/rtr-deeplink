@@ -1152,7 +1152,7 @@ https://peoriail.portal.civicclerk.com/event/125/media		us:place:1759000
 https://eldoradoks.portal.civicclerk.com/event/1249/media		us:place:2020075
 https://perrysburgoh.portal.civicclerk.com/event/5067/media		us:place:3962148
 https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899		us:place:2607660
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	us:place:2026875
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	us:place:2606020
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	rtr:us:la:shreve-memorial-library
 https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	us:place:2765956
 https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	us:county:42129
@@ -1381,3 +1381,4 @@ https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16395	https://re
 https://reflect-lpctv.cablecast.tv/internetchannel/show/21090	https://reflect-lpctv.cablecast.tv/	us:sd:5000422
 https://reflect-sapatv.cablecast.tv/internetchannel/show/43448	https://reflect-sapatv.cablecast.tv/internetchannel/gallery/17	us:sd:5007530
 http://krvm-1.shs.lane.edu/4j_board_meetings/Board_Special_20250402.mp3	https://4j.lane.edu/boardmeetings	us:sd:4104740
+https://civplus.tikiliveapi.com/video/141454	https://civplus.tikiliveapi.com/video/141454	us:place:2024575
