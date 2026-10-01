@@ -162,6 +162,26 @@ title for one would need the government's `VID=` page, and `VID=` is not
 derivable from TikiLive's `videoId` (see above), so there is no cheap
 lookup. `BACKLOG.md` carries this as a follow-up.
 
+## Which title (video page, WO-1172, 2026-09-30)
+
+TikiLive's own video page, `https://civplus.tikiliveapi.com/video/{id}`,
+has the title the embed page lacks. Checked live 2026-09-30 on video
+144112: `<title>260 - City Council Meeting 12.17.20.</title>`, repeated in
+`og:title`. The page also holds the HLS stream, `chid=146` and
+`videoId=144112` in its address (fixtures `tikilive_video_144112.html`
+and `tikilive_embed_144112.html`). The CivicMedia number walk collected
+`/video/{id}` links, so this form must resolve.
+
+- A `/video/{id}` URL is accepted and gives the same `videoId` as the
+  embed form. Stream and captions still come from the embed page.
+- For either TikiLive form, one extra request reads the video page for
+  its title. If that request fails, the title stays None and nothing
+  else changes. A government `VID=` page keeps its own title rules above.
+- The title is kept as the page has it, leading "260 - " counter
+  included: nothing else in this adapter strips counters.
+- The channel comes from the embed stream's `chid`; when the embed has no
+  stream, the video page's stream is tried.
+
 ## Category pages (`?CID=`, WO-1173, 2026-09-30)
 
 `https://{tenant}.civicplus.com/CivicMedia?CID={n-or-slug}` is a CATEGORY
@@ -249,6 +269,14 @@ _FILE_EXTENSION_RE = re.compile(
 _AUTORECORD_RE = re.compile(r"auto\s*-?\s*record", re.IGNORECASE)
 _BOILERPLATE_PAGE_TITLE_RE = re.compile(r"^CivicMedia\W*$", re.IGNORECASE)
 
+# TikiLive's own video page: /video/{id}. Same videoId as the embed form.
+_VIDEO_PAGE_PATH_RE = re.compile(r"^/video/(\d+)/?$")
+_OG_TITLE_RE = re.compile(
+    r"<meta\s+[^>]*property=[\"']og:title[\"'][^>]*content=[\"']([^\"']*)[\"']",
+    re.IGNORECASE,
+)
+_HTML_TITLE_RE = re.compile(r"<title>([^<]*)</title>", re.IGNORECASE)
+
 _M3U8_RE = re.compile(r"https?://[^\"'\s]*\.m3u8[^\"'\s]*")
 _CAPTION_TRACK_RE = re.compile(r"https?://[^\"'\s]*/closed-captions/[^\"'\s]*\.vtt")
 
@@ -305,10 +333,29 @@ def _video_id_from_url(url: str) -> Optional[str]:
     embed URL's own `videoId=` query param (see `civicmedia_page_id()`'s
     docstring for why a CivicMedia page's `VID=` can't be used as a
     shortcut for this). None for a CivicMedia page URL -- the caller must
-    fetch the page and read its iframe `src` instead."""
+    fetch the page and read its iframe `src` instead. Two TikiLive forms
+    carry it: the embed's `videoId=` and the video page's `/video/{id}`
+    path (WO-1172)."""
     if not is_tikilive_embed_url(url):
         return None
-    return (parse_qs(urlparse(url).query).get("videoId") or [None])[0]
+    parsed = urlparse(url)
+    page_match = _VIDEO_PAGE_PATH_RE.match(parsed.path)
+    if page_match:
+        return page_match.group(1)
+    return (parse_qs(parsed.query).get("videoId") or [None])[0]
+
+
+def _video_page_url(video_id: str) -> str:
+    return f"https://{_TIKILIVE_HOST}/video/{video_id}"
+
+
+def _title_from_video_page(html: str) -> Optional[str]:
+    """The title on TikiLive's own `/video/{id}` page -- see "Which title
+    (video page)" in the module docstring. `og:title`, else `<title>`.
+    Kept exactly as the page has it (a leading "260 - " counter stays:
+    this adapter normalizes no counters anywhere else)."""
+    match = _OG_TITLE_RE.search(html) or _HTML_TITLE_RE.search(html)
+    return _clean_title(match.group(1)) if match else None
 
 
 async def _fetch(url: str) -> Tuple[Optional[str], Optional[str]]:
@@ -525,6 +572,14 @@ class CivicMediaAssetFinder(AssetFinder):
                 ],
             )
 
+        # TikiLive's own video page carries the title the embed lacks
+        # (WO-1172). A failed fetch just leaves the title as it was.
+        page_html: Optional[str] = None
+        if is_tikilive_embed_url(url):
+            page_html, _page_err = await _fetch(_video_page_url(video_id))
+            if page_html:
+                title = _title_from_video_page(page_html)
+
         embed_html, embed_err = await _fetch(_embed_url_for_video_id(video_id))
         video_url: Optional[str] = None
         if not embed_err and embed_html:
@@ -536,6 +591,9 @@ class CivicMediaAssetFinder(AssetFinder):
         # see "Which channel" in the module docstring. A pin hint only,
         # never page identity, same as BoxCast's `video_channel`.
         chid = civicmedia_chid(video_url) if video_url else None
+        if not chid and page_html:
+            page_m3u8 = _M3U8_RE.search(page_html)
+            chid = civicmedia_chid(page_m3u8.group(0)) if page_m3u8 else None
         resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,

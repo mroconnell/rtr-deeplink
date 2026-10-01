@@ -45,6 +45,15 @@ TikiLive player's title differs from the government's own `og:title`.
 | `seagoville_civicmedia_vid719.html` | `https://seagoville.us/CivicMedia?VID=20250519-Regular-Session-Part-2-719` | 2025-05-19 Regular Session (Part 2) | 2025-05-19 Regular Session (Part 3) |
 | `stjoseph_civicmedia_vid1.html` | `https://stjosephmo.gov/CivicMedia?VID=St-Joseph-Stormwater-Protection-and-Insp-1` | St. Joseph Stormwater Protection and Inspection Me (cut at 50 characters) | St. Joseph Stormwater Protection and Inspection Meeting 2025 |
 
+## TikiLive video page fixtures (WO-1172, 2026-09-30)
+
+Raw saves, fetched live 2026-09-30, for video 144112 (channel 146).
+
+| File | Address | What it shows |
+|---|---|---|
+| `tikilive_video_144112.html` | `https://civplus.tikiliveapi.com/video/144112` | `<title>` and `og:title` "260 - City Council Meeting 12.17.20."; the stream with `chid=146` |
+| `tikilive_embed_144112.html` | `https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no` | The same video's embed: stream with `chid=146`, no title, no caption track |
+
 ## Category-page fixtures (WO-1173, 2026-09-30)
 
 Two `?CID=` category pages, fetched live 2026-09-30 with a generic browser
