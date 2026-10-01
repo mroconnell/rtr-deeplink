@@ -510,7 +510,8 @@ Trust, safety & data quality  (31)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (37)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (38)
+  A hub with its own meetings still shows the site's generic share…
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
   `[IMPROVEMENT-ROUND]` A list of regional TV hubs and the governments…
@@ -6884,6 +6885,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md`'s WO-338 entry.
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
+
+### A hub with its own meetings still shows the site's generic share image until its thumbnail is warmed `[IMPROVEMENT-ROUND]`
+
+- **Issue**: hub pages (`/j/*`) with no warmed thumbnail of their own fall back to the site-wide generic card (`_GENERIC_CARD_SLUG` in `archive/main.py`, WO-90): a frame from Indianapolis's Property Tax Assessment Board of Appeals, 2026-08-28. That is deliberate for pages with no video. But a hub that does have its own meeting shows it too. Seen 2026-10-01: `/j/paulding-county-ga` (1 meeting) carries the Indianapolis frame as its `og:image`, so a shared Paulding link previews an Indianapolis meeting. A research agent read this as a mis-filed page; page 3652 is correctly filed under Indianapolis.
+- **Impact**: cosmetic, but misleading in link previews for small hubs.
+- **Next action**: when a hub has at least one meeting, use its newest meeting's card (`/m/{slug}/card.jpg`), or warm that thumbnail when the hub is built. Keep the generic card only for hubs with no meetings.
+- **Constraint**: never stock art (WO-90's rule: every og:image is a real frame).
+- **History**: found 2026-10-01 by the rtr-business CivicMedia uploader-rule pass; Ryan asked for it to be filed.
 
 **Architectural context:** anything about content/audience rather than
 resolving (permanent pages, search, accounts/billing, email alerts, the
