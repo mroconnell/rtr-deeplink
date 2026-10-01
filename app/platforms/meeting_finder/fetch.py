@@ -408,6 +408,9 @@ def _looks_like_challenge(body: str | None) -> bool:
     return is_challenge(body) or _is_akamai_block(body)
 
 
+_WAYBACK_MAX_READS = 3
+
+
 def _challenge_outcome(body: str | None) -> str:
     if _is_akamai_block(body or ""):
         return "blocked-waf-akamai"
@@ -643,18 +646,32 @@ class Fetcher:
             rows = json.loads(resp.text)[1:]
         except (ValueError, TypeError):
             rows = []
-        best = newest_capture(rows)
-        if not best:
-            return None, None
-        original_url, timestamp = best
-        body = await asyncio.to_thread(wayback_id_read, original_url, timestamp)
-        if body is None:
-            return None, timestamp
-        try:
-            html: str | None = body.decode("utf-8", errors="replace")
-        except (UnicodeDecodeError, LookupError):
-            html = None
-        return html, timestamp
+        # Newest first. A capture that is itself a bot-challenge page (Finalsite
+        # sites are often archived mid-challenge, 2026-09-30) has no links, so
+        # step back to the next older capture instead of returning it. At most
+        # `_WAYBACK_MAX_READS` reads per page.
+        candidates: list = []
+        remaining = list(rows)
+        while remaining and len(candidates) < _WAYBACK_MAX_READS:
+            best = newest_capture(remaining)
+            if not best:
+                break
+            candidates.append(best)
+            remaining = [r for r in remaining if r[1] != best[1]]
+        first_ts: str | None = None
+        for original_url, timestamp in candidates:
+            first_ts = first_ts or timestamp
+            body = await asyncio.to_thread(wayback_id_read, original_url, timestamp)
+            if body is None:
+                continue
+            try:
+                html = body.decode("utf-8", errors="replace")
+            except (UnicodeDecodeError, LookupError):
+                continue
+            if is_challenge(html):
+                continue
+            return html, timestamp
+        return None, first_ts
 
     def _result(
         self,

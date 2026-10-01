@@ -62,6 +62,14 @@ CHALLENGE_MARKERS = (
     "radware block page",
     "perfdrive.com",
     "shieldsquare",
+    # 2026-09-30: a short "Client Challenge" page served to scripts with a
+    # real HTTP 200 and no links: 37 of 250 school-district homepages in the
+    # 2026-09-30 hop eval. Confirmed live on nassau.k12.fl.us (3,038 bytes):
+    # the title is "Client Challenge" and every asset sits under
+    # `/_fs-ch-<token>/`. The eval called it a Finalsite page; that is
+    # unverified for most of the 37 (see tests/fixtures/finalsite/README.md).
+    "/_fs-ch-",
+    "<title>client challenge</title>",
 )
 
 

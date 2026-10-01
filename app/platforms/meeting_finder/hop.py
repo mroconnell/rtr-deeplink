@@ -380,7 +380,16 @@ _TRACKING_ANALYTICS_HOST_RE = re.compile(
     re.IGNORECASE,
 )
 _NON_PAGE_ASSET_PATH_RE = re.compile(
-    r"/common/controls/|/assets/scripts/", re.IGNORECASE
+    r"/common/controls/|/assets/scripts/|/_fs-ch-", re.IGNORECASE
+)
+# Finalsite (the biggest school-district site builder, 98 of 201 district
+# homepages in the 2026-09-30 eval) serves every image, video and uploaded
+# file from `resources.finalsite.net` (`/images/v<n>/<site>/<id>/<name>`,
+# `/videos/...`, `/documents/...`), often with no file extension. It is a
+# file store, never a page to hop to. Real pages are on the district's own
+# domain (`/fs/pages/<n>`, or a named path like `/district/<site>/...`).
+_FINALSITE_RESOURCE_HOST_RE = re.compile(
+    r"(?:^|\.)resources\.finalsite\.net$", re.IGNORECASE
 )
 
 # --- WO-1044 item 3: a link naming the government's own legislative/
@@ -894,6 +903,12 @@ def _is_calendar_hub_dead_end(url: str) -> bool:
     return "eid" not in qs
 
 
+def _is_finalsite_resource_url(url: str) -> bool:
+    """True for a link on Finalsite's file host, `resources.finalsite.net`."""
+    host = urlparse(url).netloc.lower().rsplit("@", 1)[-1].split(":")[0]
+    return bool(_FINALSITE_RESOURCE_HOST_RE.search(host))
+
+
 def _is_non_page_resource(url: str) -> bool:
     """WO-1044 item 2: True for a stylesheet/script/image/font/data asset,
     a tracking/analytics host, or a first-party asset path -- never a real
@@ -904,6 +919,8 @@ def _is_non_page_resource(url: str) -> bool:
     if _NON_PAGE_ASSET_EXTENSION_RE.search(parsed.path):
         return True
     if _TRACKING_ANALYTICS_HOST_RE.search(parsed.netloc.lower()):
+        return True
+    if _is_finalsite_resource_url(url):
         return True
     if _NON_PAGE_ASSET_PATH_RE.search(parsed.path.lower()):
         return True
@@ -1069,6 +1086,11 @@ def rank_hops(
             # so it's never worth spending a hop/fetch on. The page's
             # other embeds (its real showcases) and archive links are
             # scored normally below.
+            continue
+        if _is_finalsite_resource_url(full):
+            # Finalsite's file store (images, hero videos, uploaded
+            # files) is never a page to hop to, even a bare .mp4 that
+            # would otherwise read as a "direct_file" platform link.
             continue
         resolved_platform, is_host_fallback = _resolved_platform_for(full)
         # WO-1038: a link to a real, known meeting/video platform -- per
