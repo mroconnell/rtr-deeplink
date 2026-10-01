@@ -19,6 +19,27 @@
 
 **Tests.** `tests/test_civicmedia.py` (category section), with raw real pages in `tests/fixtures/civicmedia/` (`evergreen_civicmedia_cid3.html`, `hobart_civicmedia_cid_public_meetings.html`).
 
+## WO-1171: CivicPlus file-library recordings resolve as direct media, not as pages [Done 2026-09-30]
+
+**Why this ran.** CivicPlus sites keep meeting recordings in their file library (`/DocumentCenter/View/{id}/{name}`, sometimes `Archive.aspx?ADID=`/`AMID=`). The resolver fetched them as web pages, hit its size cap and failed with "Response too large". Woodford County, IL's Board of Health recording (27 May 2026) is a real case: a 27 MB file.
+
+**Fix.** `probe_civicplus_file()` in `app/platforms/direct_file.py`. `CivicPlusAssetFinder.resolve()` calls it first. It makes one GET, reads the headers only and closes the stream, so the body is never downloaded. (HEAD is not used: these servers answer HEAD with a 404 HTML page.) Audio or video content type counts. So does `application/octet-stream` when the download filename or URL path has a media extension. A match returns a direct-file result: `video_format` is the real extension (`m4a`, `mp3`, `wma`, `mp4`), no captions, so tier 3. Audio-only files still resolve and are marked by their audio `video_format`. An HTML page keeps today's behavior. `queue_probe.probe_queue_entry()` now also routes `Archive.aspx?ADID=|AMID=` media to the direct-file probe, which reads the duration with ffprobe.
+
+**Verified live 2026-09-30 (read-only, 2.5 s between requests).**
+
+| Link | Content type | Result | Duration | Audio only |
+| --- | --- | --- | --- | --- |
+| Woodford IL `View/11529` | octet-stream, `.m4a` | accept | 2,590 s | Yes |
+| Park CO `View/10002` | octet-stream, `.m4a` | accept | 4,539 s | Yes |
+| White Pine NV `View/14094` | octet-stream, `.mp4` | accept | 4,230 s | No (mp4 by name) |
+| New Scotland NY `View/2013` | octet-stream, `.mp4` | accept | 4,437 s | No (mp4 by name) |
+| Montville NJ `View/14273` | `audio/x-ms-wma` | resolves; reject-short | 29 s | Yes |
+| Preble OH `Archive.aspx?AMID=415` | `text/html` | not a file; old behavior | none | n/a |
+
+**Caution.** Montville's file is a 29-second "recording malfunction" notice, so the queue probe rejects it as too short. That is correct. Preble's link is an archive listing page, not a file. "No" under audio only means the file name says mp4; the streams were not inspected.
+
+**Tests.** `tests/test_direct_file.py` (WO-1171 block: octet-stream with disposition, text/html, audio content type, non-media octet-stream, URL shapes, CivicPlus finder hand-off) and `tests/test_queue_probe.py` (`Archive.aspx` dispatch).
+
 ## WO-1170: pin 6 meeting sites Meeting Finder found for CivicPlus governments [Done 2026-09-30]
 
 **Why this ran.** 534 undecided CivicPlus governments listed no meetings and linked no known platform from their homepage. Ryan approved a Meeting Finder run from each government's own website (rtr-discovery, 2026-09-29 overnight, concurrency 3).
