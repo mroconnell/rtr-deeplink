@@ -418,6 +418,31 @@ def _rule_townweb(
     return None
 
 
+def _rule_finalsite(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # Finalsite -- the biggest school-district site builder (98 of 201
+    # district homepages in the 2026-09-30 hop eval, rtr-business
+    # research/school_hop_eval_2026-09-30). Three signals, all seen live
+    # 2026-09-30: the file host `resources.finalsite.net` (isd623.org,
+    # svusd.org, link75.org: every image and hero video), the opaque page
+    # path `/fs/pages/<n>` (isd623.org, asdk12.org, wccusd.net), the
+    # resource-manager path `/fs/resource-manager/`. The bot "Client
+    # Challenge" page (`/_fs-ch-<token>/`) is deliberately NOT a Finalsite
+    # signal: archived copies of 30 districts that serve it showed no
+    # Finalsite marker at all (nassau.k12.fl.us's was Apptegy).
+    # Runs before WordPress: some Finalsite pages also mention /wp-content/.
+    if "resources.finalsite.net" in lower_html:
+        return FingerprintResult(
+            "finalsite", "finalsite-resources-host", "resources.finalsite.net", url
+        )
+    if re.search(r"/fs/(?:pages|resource-manager)/\d*", lower_html):
+        return FingerprintResult(
+            "finalsite", "finalsite-fs-path", "/fs/pages/ or /fs/resource-manager/", url
+        )
+    return None
+
+
 def _rule_wordpress(
     html: str, lower_html: str, netloc: str, url: str
 ) -> Optional[FingerprintResult]:
@@ -516,6 +541,7 @@ RULES = [
     _rule_revize,
     _rule_municode_web,
     _rule_townweb,
+    _rule_finalsite,
     _rule_civicplus,
     _rule_wordpress,
 ]

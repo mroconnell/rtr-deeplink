@@ -123,6 +123,16 @@ from conftest import load_fixture
             "/Portal/MeetingInformation.aspx?Org=Cal&Id=1",
             "civicweb",
         ),
+        # Older HighBond address of the same Diligent Community portal.
+        ("https://rjuhsd.community.highbond.com/Portal/", "civicweb"),
+        (
+            "https://redrocktownship.community-ca.highbond.com"
+            "/Portal/MeetingInformation.aspx?Org=Cal&Id=1",
+            "civicweb",
+        ),
+        ("https://highbond.com/", "unknown"),
+        ("https://www.highbond.com/", "unknown"),
+        ("https://community.highbond.com/", "unknown"),
         ("https://iqm2.com/", "unknown"),
         ("https://www.iqm2.com/", "unknown"),
         ("https://atlantacityga.iqm2.com/Detail_Meeting.aspx?ID=1", "iqm2"),
