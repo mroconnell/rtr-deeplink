@@ -75,6 +75,10 @@ class FingerprintResult:
     evidence: str
     url: str = ""
     headers_used: List[str] = field(default_factory=list)
+    # Added 2026-10-01 for the Functional Gov family: how sure the rule is
+    # ("confirmed", "very likely", "likely", "coursevector customer"). Blank
+    # for the older families, whose rules are all treated as deterministic.
+    confidence: str = ""
 
 
 def fetch_once(url: str, timeout: int = REQUEST_TIMEOUT):
@@ -418,6 +422,75 @@ def _rule_townweb(
     return None
 
 
+# Functional Gov branding (secondary signal) and government-identity words
+# (Ryan 2026-10-01, write-up sections 4 and 6).
+_FG_BRANDING_RE = re.compile(
+    r"coursevector|website\s?for\s?gov|functional\s?gov(?![a-z-])", re.IGNORECASE
+)
+_FG_GOV_IDENTITY_RE = re.compile(
+    r"\b(?:borough|township|town|village|city|municipal(?:ity)?|council"
+    r"|board of (?:supervisors|trustees)|planning commission|authority)\b",
+    re.IGNORECASE,
+)
+
+
+def _rule_functionalgov(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # CourseVector's "Functional Gov" WordPress plugin (sold as
+    # WebsiteForGov; dense among Pennsylvania boroughs, also seen in MI,
+    # NY, VA). Ryan's write-up 2026-10-01, kept in rtr-business
+    # research/COURSEVECTOR_FUNCTIONAL_GOV.md. Real pages fetched once
+    # 2026-10-01: brookhavenboro.com, jonestownpa.org, louisava.gov.
+    # Scoring follows the write-up's section 8, strongest first. A bare
+    # `/document_type/` link is a weak lead and NEVER tags on its own.
+    # Runs before Finalsite/WordPress/CivicPlus: it is a WordPress build,
+    # and the more specific family must win.
+    if "/wp-content/plugins/functional-gov-wp/" in lower_html or re.search(
+        r"functional-gov-wp-[a-z0-9-]*script2?-js", lower_html
+    ):
+        return FingerprintResult(
+            "functionalgov",
+            "functionalgov-plugin",
+            "/wp-content/plugins/functional-gov-wp/ or functional-gov-wp script id",
+            url,
+            confidence="confirmed",
+        )
+    branded = bool(_FG_BRANDING_RE.search(lower_html))
+    if (
+        "/document_type/" in lower_html
+        and "click the title to view the pdf" in lower_html
+        and _FG_GOV_IDENTITY_RE.search(lower_html)
+    ):
+        return FingerprintResult(
+            "functionalgov",
+            "functionalgov-document-type-pdf-text",
+            "/document_type/ links + 'Click the title to view the PDF.' + "
+            "government wording",
+            url,
+            confidence="very likely",
+        )
+    fg_urls = set(re.findall(r"/document(?:_type)?/[a-z0-9][a-z0-9_-]*", lower_html))
+    if branded and len(fg_urls) >= 2:
+        return FingerprintResult(
+            "functionalgov",
+            "functionalgov-document-urls-branding",
+            f"{len(fg_urls)} /document/ or /document_type/ paths + "
+            "CourseVector/WebsiteForGov branding",
+            url,
+            confidence="likely",
+        )
+    if branded:
+        return FingerprintResult(
+            "coursevector",
+            "coursevector-branding",
+            "CourseVector/WebsiteForGov branding, no Functional Gov signal",
+            url,
+            confidence="coursevector customer",
+        )
+    return None
+
+
 def _rule_finalsite(
     html: str, lower_html: str, netloc: str, url: str
 ) -> Optional[FingerprintResult]:
@@ -541,6 +614,7 @@ RULES = [
     _rule_revize,
     _rule_municode_web,
     _rule_townweb,
+    _rule_functionalgov,
     _rule_finalsite,
     _rule_civicplus,
     _rule_wordpress,
