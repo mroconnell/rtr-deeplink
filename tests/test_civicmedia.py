@@ -17,6 +17,7 @@ from app.platforms.civicmedia import (
     is_tikilive_embed_url,
     looks_like_file_name,
     refresh_playlist_url,
+    strip_upload_counter,
 )
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -432,7 +433,7 @@ VIDEO_PAGE_URL = "https://civplus.tikiliveapi.com/video/144112"
 EMBED_144112_URL = (
     "https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no"
 )
-TITLE_144112 = "260 - City Council Meeting 12.17.20."
+TITLE_144112 = "City Council Meeting 12.17.20."  # page reads "260 - ..."
 
 
 def _routes_144112():
@@ -630,3 +631,40 @@ async def test_meeting_finder_list_step_learns_category_pages():
 
     # A single-video page is not a listing: no fetch, nothing to add.
     assert await _list_via_calendar_page_error("civicmedia", PAGE_URL, 15) is None
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("260 - City Council Meeting 12.17.20.", "City Council Meeting 12.17.20."),
+        ("198 - BudgetHearing_11292022", "BudgetHearing_11292022"),
+        (
+            "1009 - 2026 Proposed Budget Presentation",
+            "2026 Proposed Budget Presentation",
+        ),
+        ("2026 - Budget", "Budget"),
+        ("1999 - Budget", "Budget"),
+        (
+            "  6 -  Public Listening Session - 12.12.23",
+            "Public Listening Session - 12.12.23",
+        ),
+        ("5 - 6 - Joint Meeting", "6 - Joint Meeting"),
+        ("City Council Meeting", "City Council Meeting"),
+        ("2026 Proposed Budget", "2026 Proposed Budget"),
+        ("Budget 2026 - Draft", "Budget 2026 - Draft"),
+        ("BudgetHearing_11292022", "BudgetHearing_11292022"),
+        ("12 - ", "12 - "),
+        ("12 -", "12 -"),
+        ("", ""),
+        (None, None),
+    ],
+)
+def test_strip_upload_counter(raw, expected):
+    assert strip_upload_counter(raw) == expected
+
+
+async def test_video_page_title_loses_its_counter_end_to_end():
+    html = "<html><head><title>198 - BudgetHearing_11292022</title></head></html>"
+    from app.platforms.civicmedia import _title_from_video_page
+
+    assert _title_from_video_page(html) == "BudgetHearing_11292022"
