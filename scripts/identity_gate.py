@@ -192,6 +192,8 @@ _TENANT_SUFFIXES = (
     ".primegov.com",
     ".civicweb.net",
     ".diligent.community",
+    ".community.highbond.com",
+    ".community-ca.highbond.com",
     ".swagit.com",
     ".iqm2.com",
     ".cablecast.tv",
