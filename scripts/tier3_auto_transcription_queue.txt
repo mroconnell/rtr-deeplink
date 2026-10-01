@@ -1380,3 +1380,9 @@ https://reflect-ontv.cablecast.tv/internetchannel/show/5111	https://reflect-ontv
 https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16395	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/gallery/15?site=3	us:sd:3301740
 https://reflect-lpctv.cablecast.tv/internetchannel/show/21090	https://reflect-lpctv.cablecast.tv/	us:sd:5000422
 https://reflect-sapatv.cablecast.tv/internetchannel/show/43448	https://reflect-sapatv.cablecast.tv/internetchannel/gallery/17	us:sd:5007530
+https://il-woodfordcounty.civicplus.com/DocumentCenter/View/11529/May-27-2026-BOH-Recording		us:county:17203
+https://co-parkcounty2.civicplus.com/DocumentCenter/View/10002/GMT20260522-200246_Recording		us:county:08093
+https://nv-whitepinecounty2.civicplus.com/DocumentCenter/View/14094/Local-Emergency-Planning-Committee-20260827-Meeting-Recording		us:county:32033
+https://ny-newscotland.civicplus.com/DocumentCenter/View/2013/GMT20240424-230053_Recording_1920x1080		us:cousub:3600150672
+https://il-northriverside.civicplus.com/Archive.aspx?ADID=429		us:place:1754144
+https://oh-bayvillage.civicplus.com/Archive.aspx?ADID=736		us:place:3904416
