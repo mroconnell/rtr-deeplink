@@ -177,8 +177,8 @@ and `tikilive_embed_144112.html`). The CivicMedia number walk collected
 - For either TikiLive form, one extra request reads the video page for
   its title. If that request fails, the title stays None and nothing
   else changes. A government `VID=` page keeps its own title rules above.
-- The title is kept as the page has it, leading "260 - " counter
-  included: nothing else in this adapter strips counters.
+- The leading "260 - " upload counter is stripped from the title (WO-1174,
+  `strip_upload_counter()`); the rest is kept as the page has it.
 - The channel comes from the embed stream's `chid`; when the embed has no
   stream, the video page's stream is tried.
 
@@ -349,13 +349,39 @@ def _video_page_url(video_id: str) -> str:
     return f"https://{_TIKILIVE_HOST}/video/{video_id}"
 
 
+_UPLOAD_COUNTER_RE = re.compile(r"^\s*\d+\s*-\s+")
+
+
+def strip_upload_counter(title: Optional[str]) -> Optional[str]:
+    """Drop the leading "NNN - " upload counter from a TikiLive title
+    (WO-1174). TikiLive numbers each channel's uploads and puts the number
+    first: "260 - City Council Meeting 12.17.20.", "1009 - 2026 Proposed
+    Budget Presentation". The number says nothing about the meeting.
+
+    Only the first "NNN - " goes, so a year that follows the counter stays
+    ("1009 - 2026 Proposed Budget Presentation" -> "2026 Proposed Budget
+    Presentation"). A 4-digit number such as "2026" or "1999" in the
+    counter position is still a counter and is stripped: counters pass
+    1000 on busy channels, so a year-shaped number cannot be told apart
+    from one, and treating all digits the same keeps the rule consistent
+    ("2026 - Budget" -> "Budget"). A number inside the title ("Budget 2026
+    - Draft") is not leading, so it stays. A title with no counter, or one
+    that would be empty after stripping ("12 - "), is returned unchanged.
+    File-name titles ("BudgetHearing_11292022") are left alone on purpose.
+    Used for TikiLive titles only; a government `VID=` page's title rules
+    (WO-1165) never call this."""
+    if not title:
+        return title
+    stripped = _UPLOAD_COUNTER_RE.sub("", title, count=1).strip()
+    return stripped or title
+
+
 def _title_from_video_page(html: str) -> Optional[str]:
     """The title on TikiLive's own `/video/{id}` page -- see "Which title
-    (video page)" in the module docstring. `og:title`, else `<title>`.
-    Kept exactly as the page has it (a leading "260 - " counter stays:
-    this adapter normalizes no counters anywhere else)."""
+    (video page)" in the module docstring. `og:title`, else `<title>`,
+    with the leading upload counter stripped (`strip_upload_counter`)."""
     match = _OG_TITLE_RE.search(html) or _HTML_TITLE_RE.search(html)
-    return _clean_title(match.group(1)) if match else None
+    return strip_upload_counter(_clean_title(match.group(1))) if match else None
 
 
 async def _fetch(url: str) -> Tuple[Optional[str], Optional[str]]:

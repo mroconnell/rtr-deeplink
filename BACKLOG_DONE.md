@@ -1,5 +1,13 @@
 # Backlog — done
 
+## WO-1174: CivicMedia strips the upload counter from TikiLive titles [Done 2026-09-30]
+
+**Why this ran.** WO-1172 kept TikiLive titles as the page has them, with a leading upload counter ("260 - City Council Meeting 12.17.20."). The counter is the channel's upload number and says nothing about the meeting. Ryan decided 2026-09-30 to strip it.
+
+**Fix.** `app/platforms/civicmedia.py`: new `strip_upload_counter()`, used by `_title_from_video_page()`. It removes only the first `^\s*\d+\s*-\s+`. A year after the counter stays ("1009 - 2026 Proposed Budget Presentation" becomes "2026 Proposed Budget Presentation"). A 4-digit number in the counter position is still a counter ("2026 - Budget" becomes "Budget"), because counters pass 1000. A title with no counter, or one that would be empty ("12 - "), is unchanged. File-name titles ("BudgetHearing_11292022") are unchanged: Ryan chose counter stripping only. A government `VID=` page's title rules (WO-1165) are not touched.
+
+**Tests.** `tests/test_civicmedia.py`: the examples above, no counter, only a counter, year-shaped counter, number inside the title, and the video page fixture end to end.
+
 ## WO-1172: CivicMedia resolves TikiLive `/video/{id}` links and gives embed links a title [Done 2026-09-30]
 
 **Why this ran.** The CivicMedia number walk collected `https://civplus.tikiliveapi.com/video/{id}` links. The resolver took only the embed form, so every one failed with "couldn't find a real video id". The embed form worked, but its page has no title, so those pages would have been untitled. Ryan approved the fix 2026-09-30.
