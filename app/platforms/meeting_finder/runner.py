@@ -202,6 +202,12 @@ _SCAN_LINK_FOLLOW_LIMIT = 3
 # this is a safety net for when the top pick doesn't pan out, not a
 # license to explore every hop on every page.
 _MAX_SIBLING_HOPS_PER_PAGE = 3
+# School-district hop eval (2026-09-30, 250 real districts): for 10 of the
+# 20 districts where a real path to the meetings existed, the winning first
+# hop was ranked 4th-8th, so following only 3 pages missed it. School
+# inputs try up to 5 same-page hops. Two more fetches, inside the adaptive
+# fetch budget.
+_MAX_SIBLING_HOPS_PER_PAGE_SCHOOL = 5
 # A recognized video-vendor link (`detect_platform()` resolves it) within
 # this many points of the top-ranked hop's own score is followed FIRST,
 # even when it isn't the literal top score -- `rank_hops()`'s own path/
@@ -1380,7 +1386,11 @@ async def _deep_step(
             # nowhere. Bounded by `_MAX_SIBLING_HOPS_PER_PAGE` and by
             # `hops_left` (each sibling still spends one hop of budget) so
             # this stays a safety net, not unbounded exploration.
-            if state.done or siblings_tried >= _MAX_SIBLING_HOPS_PER_PAGE:
+            if state.done or siblings_tried >= (
+                _MAX_SIBLING_HOPS_PER_PAGE_SCHOOL
+                if _is_school_input(finder_input)
+                else _MAX_SIBLING_HOPS_PER_PAGE
+            ):
                 break
 
     elif (
