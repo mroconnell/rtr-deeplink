@@ -232,6 +232,8 @@ from scripts.wo147_access_ladder_sweep import (  # noqa: E402
     looks_french,
 )
 
+from scripts.cms_fingerprint import classify as _classify_site_builder
+
 from .fetch import FetchResult
 from .identify import _SCAN_TAGS
 
@@ -391,6 +393,62 @@ _NON_PAGE_ASSET_PATH_RE = re.compile(
 _FINALSITE_RESOURCE_HOST_RE = re.compile(
     r"(?:^|\.)resources\.finalsite\.net$", re.IGNORECASE
 )
+
+# --- Ryan 2026-10-01: CourseVector "Functional Gov" sites (WordPress plugin
+# `functional-gov-wp`, mostly Pennsylvania boroughs; research/
+# COURSEVECTOR_FUNCTIONAL_GOV.md). Their agendas and minutes are PDFs under
+# `/document_type/<taxonomy>/`; recordings, when they exist, sit on a
+# separate page that usually links YouTube. Real shapes fetched 2026-10-01:
+# brookhavenboro.com `/recordings-council-meetings/` and `/documents/
+# recordings-council-meetings/`, louisava.gov "Meeting Videos" (anchor
+# only, off-site YouTube). Applied ONLY on a page `scripts.cms_fingerprint`
+# recognizes as Functional Gov, so city/school/county weights are untouched.
+# A recordings link outranks the PDF taxonomy hubs, which stay hubs for
+# agendas.
+_FG_RECORDINGS_PATH_RE = re.compile(
+    r"^/(?:(?:documents|document_type)/)?"
+    r"(?:recordings?|videos?|meeting-videos?|council-recordings?"
+    r"|recordings-council-meetings?|council-meeting-recordings?)/?$"
+    r"|^/document_type/[^/]*(?:recording|video)[^/]*/?$"
+    r"|^/documents?/[^/]*(?:recording|video)[^/]*/?$",
+    re.IGNORECASE,
+)
+_FG_RECORDINGS_ANCHOR_RE = re.compile(
+    r"\bmeeting\s+videos?\b|\bcouncil\s+meeting\s+recordings?\b|\brecordings?\b"
+    r"|^\s*videos?\s*$",
+    re.IGNORECASE,
+)
+_FG_PDF_TAXONOMY_PATH_RE = re.compile(
+    r"^/document_type/[^/]+/?$|^/documents/[^/]+/?$", re.IGNORECASE
+)
+_FG_RECORDINGS_BONUS = 45.0
+_FG_PDF_HUB_BONUS = 14.0
+
+
+def _is_functional_gov_page(html: str, url: str) -> bool:
+    """True when the shared fingerprint puts this page in the Functional
+    Gov family (confirmed, very likely or likely; a bare CourseVector
+    footer is the separate `coursevector` family and does not count)."""
+    try:
+        return _classify_site_builder(html, url=url).family == "functionalgov"
+    except Exception:  # noqa: BLE001 -- ranking must never fail on this
+        return False
+
+
+def _functional_gov_bonus(text: str, full_url: str, base_netloc: str) -> float:
+    """Ryan 2026-10-01: recordings paths/anchors first, then the PDF
+    taxonomies (council-minutes, council-agenda, newsletter, public-notice,
+    ordinance, years) as agenda hubs. 0.0 for anything else."""
+    parsed = urlparse(full_url)
+    same_site = parsed.netloc.lower() == base_netloc
+    if same_site and _FG_RECORDINGS_PATH_RE.search(parsed.path):
+        return _FG_RECORDINGS_BONUS
+    if _FG_RECORDINGS_ANCHOR_RE.search(text or "") and len(text or "") <= 80:
+        return _FG_RECORDINGS_BONUS
+    if same_site and _FG_PDF_TAXONOMY_PATH_RE.search(parsed.path):
+        return _FG_PDF_HUB_BONUS
+    return 0.0
+
 
 # --- WO-1044 item 3: a link naming the government's own legislative/
 # governing body -- worth a hop even off-site (a governing body routinely
@@ -1062,6 +1120,7 @@ def rank_hops(
     if soup is None:
         return []
     base_netloc = urlparse(final_url).netloc.lower()
+    is_functional_gov = _is_functional_gov_page(html, final_url)
 
     # (score, doc_order, url, anchor, resolved_platform)
     scored: List[tuple[float, int, str, str, Optional[str]]] = []
@@ -1121,6 +1180,12 @@ def rank_hops(
             )
         if score is None:
             score = _rescue_link_context_broadcast_score(tag, full, base_netloc)
+        fg_bonus = (
+            _functional_gov_bonus(text, full, base_netloc) if is_functional_gov else 0.0
+        )
+        if score is None and fg_bonus:
+            score = _nav_position_bonus(tag)
+        score = None if score is None else score + fg_bonus
         school_bonus = _school_vocabulary_bonus(text, full) if school else 0.0
         if (
             score is None
