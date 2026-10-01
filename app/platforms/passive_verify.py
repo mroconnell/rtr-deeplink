@@ -434,7 +434,7 @@ _CIVICWEB_IDS_TO_CHECK = 8
 # tenant is always the FIRST dns label regardless of which shape it is,
 # so one regex covers all three rather than hardcoding `.civicweb.net`.
 _CIVICWEB_ANY_TENANT_RE = re.compile(
-    r"^([^.]+)\.(?:civicweb\.net|community\.diligentoneplatform\.com|diligent\.community)$"
+    r"^([^.]+)\.(?:civicweb\.net|community\.diligentoneplatform\.com|diligent\.community|community\.highbond\.com|community-ca\.highbond\.com)$"
 )
 
 # WO-348 (2026-09-13): confirmed live that a real tenant's own meeting

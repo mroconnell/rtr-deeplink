@@ -458,6 +458,13 @@ def detect_platform(url: str) -> str:
         # eatwp.diligent.community (Eatwp township, PA) -- see
         # CORPORATE_HOSTS_BY_PLATFORM's "civicweb" entry above for detail.
         or "diligent.community" in netloc
+        # 2026-09-30: the product's OLDER address -- the same Diligent
+        # Community portal under Diligent's earlier "HighBond" brand --
+        # `<tenant>.community.highbond.com` (and Canada,
+        # `<tenant>.community-ca.highbond.com`). Same /Portal/ paths.
+        # Only tenant subdomains match; bare highbond.com is a vendor
+        # site and stays unknown.
+        or netloc.endswith((".community.highbond.com", ".community-ca.highbond.com"))
     ):
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
