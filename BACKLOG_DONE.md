@@ -1,5 +1,24 @@
 # Backlog — done
 
+## WO-1173: a CivicMedia category page lists its videos and offers only the meetings [Done 2026-09-30]
+
+**Why this ran.** A CivicPlus site has two kinds of CivicMedia page. `CivicMedia?VID=...` is one video and already resolved. `CivicMedia?CID=...` is a category that lists many videos, and it failed with "found no real video link". Ryan approved the fix on 2026-09-30.
+
+**The trap.** A category page also embeds one player, for whatever video is "Now Playing". On Evergreen Park, IL's `CID=3` that is "Preschool Welcome Video", a parks promo. Taking the player would file a promo as a meeting. The fix never reads the player.
+
+**Fix.** `app/platforms/civicmedia.py` now recognizes `?CID=` (`is_civicmedia_category_url()`), and `detect_platform()` routes it to CivicMedia instead of the AgendaCenter adapter. `resolve()` lists the page's videos, newest first, and keeps only meeting-like titles. It uses the repo's existing rules: `looks_like_real_meeting(..., require_allowlist=True)` plus `pick._looks_like_a_real_meeting_candidate`. It raises `CalendarPageError` with those as the pick-list. When none qualifies, the error has no candidates and says "This CivicMedia category lists N videos, none looks like a meeting." Meeting Finder's List step (lister c) now includes CivicMedia, for `?CID=` addresses only, and keeps that plain reason as its note. The passive_verify CivicPlus walker was left alone: it never listed CivicMedia pages.
+
+**Real pages, checked 2026-09-30.**
+
+| Page | Videos listed | Meeting candidates | Result |
+| --- | --- | --- | --- |
+| Evergreen Park, IL `CID=3` (parks and recreation) | 8 | 0 | "lists 8 videos, none looks like a meeting"; the promo is not picked |
+| Hobart, IN `CID=City-of-Hobart-Public-Meetings-4` | 8 | 8 | HSD, Unsafe Building Hearing Authority, RDC, Council, Historic Preservation, Fire Commission meetings |
+
+**Caution.** The page gives no dates, so "newest first" is the page's own order, confirmed against the `VID` ids. Each page shows only its first 8 videos; older ones load through a postback this code does not follow. The "Now Playing" video has no link, so its address is the page's `og:url`.
+
+**Tests.** `tests/test_civicmedia.py` (category section), with raw real pages in `tests/fixtures/civicmedia/` (`evergreen_civicmedia_cid3.html`, `hobart_civicmedia_cid_public_meetings.html`).
+
 ## WO-1171: CivicPlus file-library recordings resolve as direct media, not as pages [Done 2026-09-30]
 
 **Why this ran.** CivicPlus sites keep meeting recordings in their file library (`/DocumentCenter/View/{id}/{name}`, sometimes `Archive.aspx?ADID=`/`AMID=`). The resolver fetched them as web pages, hit its size cap and failed with "Response too large". Woodford County, IL's Board of Health recording (27 May 2026) is a real case: a 27 MB file.

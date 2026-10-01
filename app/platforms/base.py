@@ -353,7 +353,7 @@ def detect_platform(url: str) -> str:
     # (see its case below for why), and that parsing belongs with the
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
-    from .civicmedia import is_civicmedia_page_url
+    from .civicmedia import is_civicmedia_category_url, is_civicmedia_page_url
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
     from .invintus import is_invintus_meeting_url
     from .az_legislature import is_az_legislature_video_url
@@ -399,7 +399,9 @@ def detect_platform(url: str) -> str:
         return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
-    if is_civicmedia_page_url(url):
+    if is_civicmedia_page_url(url) or is_civicmedia_category_url(url):
+        # (WO-1173: a `?CID=` category page is claimed here too, so it
+        # lists its videos instead of failing as an AgendaCenter page.)
         # WO-341's CivicMedia path check (further below) never fires for a
         # CivicMedia page hosted on the government's own *.civicplus.com
         # tenant subdomain (e.g. pa-westmorelandcounty2.civicplus.com/
@@ -688,7 +690,11 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
-    if netloc == "civplus.tikiliveapi.com" or is_civicmedia_page_url(url):
+    if (
+        netloc == "civplus.tikiliveapi.com"
+        or is_civicmedia_page_url(url)
+        or is_civicmedia_category_url(url)
+    ):
         # CivicPlus's own "CivicMedia" video widget (TikiLive-hosted) --
         # confirmed live 2026-09-13 (WO-341) against Hobart, IN
         # (`cityofhobart.org/CivicMedia?VID=326`), a real meeting video

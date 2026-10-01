@@ -157,6 +157,7 @@ from app.platforms.cablecast import (
     CablecastAssetFinder,
     list_gallery_shows,
 )
+from app.platforms.civicmedia import is_civicmedia_category_url
 from app.platforms.direct_file import is_direct_file_url
 from app.platforms.swagit import known_views_for
 from app.utils.tenant_key import tenant_name
@@ -186,7 +187,7 @@ from .pick import (
 # Adapters whose resolve() answers a listing page with a CalendarPageError
 # pick-list (lister c) rather than resolving straight to one meeting.
 _CALENDAR_PAGE_ERROR_PLATFORMS = frozenset(
-    {"legistar", "municode_meetings", "vimeo", "wistia", "tampa"}
+    {"legistar", "municode_meetings", "vimeo", "wistia", "tampa", "civicmedia"}
 )
 
 # Adapters that walk a hub/listing themselves and resolve straight
@@ -1071,6 +1072,10 @@ async def _list_via_calendar_page_error(
 ) -> Optional[ListResult]:
     if platform not in _CALENDAR_PAGE_ERROR_PLATFORMS:
         return None
+    if platform == "civicmedia" and not is_civicmedia_category_url(account_url):
+        # WO-1173: only a `?CID=` category page is a listing; a single
+        # video page would be a full resolve for nothing.
+        return None
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
@@ -1087,6 +1092,12 @@ async def _list_via_calendar_page_error(
             page_url=page_url,
         )
         if not candidates:
+            if platform == "civicmedia":
+                # WO-1173: keep the plain reason ("category lists N videos,
+                # none looks like a meeting") instead of dropping it.
+                return ListResult(
+                    candidates=[], lister="adapter_list", outcome=None, note=str(e)
+                )
             return None
         return ListResult(candidates=candidates, lister="adapter_list", outcome=None)
     except YouTubeResolveBlocked:
