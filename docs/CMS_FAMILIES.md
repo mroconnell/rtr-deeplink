@@ -322,6 +322,56 @@ pattern in this sample to name a third portal family — they fall back
 to fingerprint-first-then-generic-list, same as any other unrecognised
 site.
 
+### Finalsite
+
+Added 2026-09-30 (PR #1664). Finalsite is the most common school-district
+site builder in our samples: 98 of 201 readable district homepages in
+the 2026-09-30 school hop eval
+(`research/school_hop_eval_2026-09-30/README.md` in rtr-business). The
+rules look for the file host `resources.finalsite.net` or the opaque page
+path `/fs/pages/<number>` (also `/fs/resource-manager/`). Seen live on
+isd623.org, svusd.org, link75.org and asdk12.org.
+
+There is no readable meetings path. Page addresses are numbers, so the
+board page is found by its link text on the homepage, not by a guessed
+path. No video platform is dominant. Precision and recall have not been
+measured.
+
+Caution: the "Client Challenge" bot page (`/_fs-ch-<token>/`) is NOT a
+Finalsite signal. The first eval labelled 37 such pages Finalsite from page
+size alone. Archived copies of 30 of them showed no Finalsite marker, and
+one (Nassau County FL) was Apptegy. The correction is at the end of the
+eval README.
+
+### Functional Gov (CourseVector)
+
+Added 2026-10-01 (PR #1675). Functional Gov is CourseVector's WordPress
+plugin, sold as WebsiteForGov. It is dense among Pennsylvania boroughs and
+also seen in MI, NY and VA. The fingerprint is Ryan's write-up of
+2026-10-01 (`research/COURSEVECTOR_FUNCTIONAL_GOV.md` in rtr-business).
+
+The detector reports a confidence level. "Confirmed" means the plugin
+path `/wp-content/plugins/functional-gov-wp/` or its script ids.
+"Very likely" means `/document_type/` links plus the sentence "Click the
+title to view the PDF." plus government wording. "Likely" means two or
+more `/document/` or `/document_type/` paths plus CourseVector branding. A
+bare `/document_type/` link never tags on its own.
+
+Agendas and minutes are PDFs under `/document_type/<slug>/`. Recordings,
+when they exist, sit on a separate page (for example
+`/recordings-council-meetings/` or `/meeting-videos/`) and usually link
+YouTube. First use on 81 listed governments found recordings on 3
+(Brookhaven PA, Jonestown PA, Louisa VA), all YouTube. So for us this
+family is mostly a hub and domain source, not a video source. Precision
+and recall have not been measured.
+
+### CourseVector customer
+
+Added 2026-10-01 (PR #1675). A page with CourseVector or WebsiteForGov
+branding but no Functional Gov signal is reported as family
+`coursevector`, confidence "coursevector customer". It says the site is a
+CourseVector customer. It says nothing about where the meetings are.
+
 ### Streamline
 
 **Not built.** About 240 real government pages were checked for
@@ -334,6 +384,14 @@ nobody has actually seen. See `BACKLOG.md` for the open item.
 
 ## What this can't see yet
 
+- Other school-district builders are not in the detector yet. The
+  2026-09-30 school hop eval and the site-builder tagging script
+  (`research/apply_site_builder_schools_2026-09-30.py` in rtr-business)
+  recognise them by URL shape only: Edlio (`/apps/pages/`, 13 homepages
+  in the eval), SharpSchool (`/cms/One.aspx`, 12), Blackboard / Schoolwires
+  (`/Page/<n>`, `/domain/<n>`, about 12) and Apptegy (`/o/<slug>/page/`,
+  plus thrillshare, 3). These are not detector families and have no rows
+  in `cms_families.csv`.
 - A government whose site loaded fine in the training/negative fetch
   but returned a family none of these rules recognise (WordPress with a
   generic theme, Drupal, Wix, a hand-built site, or a real vendor this
