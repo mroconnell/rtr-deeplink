@@ -27,8 +27,13 @@ pattern (checked against TWO independent real meetings, not one).
 
 import pytest
 
+from app.platforms import direct_file
+from app.platforms.base import detect_platform
 from app.platforms.direct_file import (
     DirectFileAssetFinder,
+    follow_with_cookies,
+    is_dnn_linkclick_url,
+    is_sharepoint_share_url,
     _classify_laserfiche_media,
     _is_laserfiche_edoc_url,
     _is_laserfiche_weblink_url,
@@ -647,3 +652,298 @@ async def test_resolve_confirms_a_dropbox_mp4_by_ranged_get_not_head():
     assert result.video_url == INGHAM_DROPBOX_DL_URL
     assert result.video_format == "mp4"
     assert result.video_warnings == []
+
+
+# --- SharePoint anonymous share links and DNN LinkClick (2026-09-30) -----
+#
+# Real fixtures, both confirmed live 2026-09-30 by HEAD: Yakima County,
+# WA's BOCC Work Session share link (302 + guest cookie, then a 200
+# `video/mp4` of 136,192,827 bytes) and Sangamon County, IL's County Board
+# Special Meeting LinkClick (302 to a 200 `audio/mpeg` of 24,352,200 bytes).
+
+SHAREPOINT_URL = (
+    "https://yakimacounty.sharepoint.com/:v:/s/yakimacountyextranet/"
+    "IQCvEWddt4MgQLOvO8JPKDPTAY-8xOCWZ3HUkbW7ZLt4R74?e=Vi4xhw"
+)
+SHAREPOINT_DOWNLOAD_URL = SHAREPOINT_URL + "&download=1"
+SANGAMON_LINKCLICK_URL = (
+    "https://sangamonil.gov/LinkClick.aspx?fileticket=Wce-T7AM6YM%3d&portalid=0"
+)
+
+
+def test_is_direct_file_url_recognizes_a_sharepoint_video_share_link():
+    assert is_direct_file_url(SHAREPOINT_URL) is True
+
+
+def test_is_direct_file_url_leaves_other_sharepoint_shapes_alone():
+    # `stream.aspx` needs an organisation sign-in; a site page is HTML;
+    # `/:v:/r/` (a signed-in share) was not confirmed anonymous.
+    assert (
+        is_direct_file_url(
+            "https://plainfieldtown.sharepoint.com/sites/MeetingMinutes/"
+            "_layouts/15/stream.aspx?id=%2Fsites%2Fx%2Fa.mp4&ga=1"
+        )
+        is False
+    )
+    assert (
+        is_direct_file_url("https://yakimacounty.sharepoint.com/sites/x/Pages/a.aspx")
+        is False
+    )
+    assert (
+        is_direct_file_url("https://yakimacounty.sharepoint.com/:v:/r/sites/x/a.mp4")
+        is True  # its own `.mp4` extension, unrelated to the share shape
+    )
+    assert (
+        is_sharepoint_share_url("https://yakimacounty.sharepoint.com/:v:/r/sites/x/a")
+        is False
+    )
+
+
+def test_detect_platform_routes_sharepoint_and_linkclick_to_direct_file():
+    assert detect_platform(SHAREPOINT_URL) == "direct_file"
+    assert detect_platform(SANGAMON_LINKCLICK_URL) == "direct_file"
+
+
+def test_resolve_direct_media_url_appends_download_1_to_a_sharepoint_link():
+    assert _resolve_direct_media_url(SHAREPOINT_URL) == SHAREPOINT_DOWNLOAD_URL
+
+
+def test_resolve_direct_media_url_replaces_an_existing_sharepoint_download_param():
+    assert (
+        _resolve_direct_media_url(SHAREPOINT_URL + "&download=0")
+        == SHAREPOINT_DOWNLOAD_URL
+    )
+
+
+async def test_resolve_a_sharepoint_share_link_keeps_the_share_url_not_the_final_file(
+    monkeypatch,
+):
+    # The final `.mp4` URL fails cookie-less (sign-in redirect), so the
+    # resolved video_url must stay the share URL + download=1.
+    seen = []
+
+    async def fake_follow(url, *, method="HEAD"):
+        seen.append(url)
+        return 200, "video/mp4", 136192827
+
+    monkeypatch.setattr(direct_file, "follow_with_cookies", fake_follow)
+    result = await DirectFileAssetFinder().resolve(SHAREPOINT_URL)
+    assert seen == [SHAREPOINT_DOWNLOAD_URL]
+    assert result.platform == "direct_file"
+    assert result.source_url == SHAREPOINT_URL
+    assert result.video_url == SHAREPOINT_DOWNLOAD_URL
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []
+
+
+async def test_resolve_a_sharepoint_link_that_lands_on_sign_in_warns(monkeypatch):
+    async def fake_follow(url, *, method="HEAD"):
+        return 200, "text/html; charset=utf-8", None  # Microsoft sign-in page
+
+    monkeypatch.setattr(direct_file, "follow_with_cookies", fake_follow)
+    result = await DirectFileAssetFinder().resolve(SHAREPOINT_URL)
+    assert result.video_url is None
+    assert "text/html" in result.video_warnings[0]
+
+
+async def test_follow_with_cookies_sends_the_cookie_back_unquoted():
+    """The real failure: SharePoint's `FedAuth` value holds `/`, `=` and
+    `+`. aiohttp's own cookie jar re-sends such a value wrapped in quotes
+    and SharePoint refuses it. This server behaves like SharePoint: the
+    first request 302s with the cookie; the next one only gets the file
+    when the cookie comes back byte for byte."""
+    from aiohttp import web
+    from aiohttp.test_utils import TestServer
+
+    cookie_value = "77u/PD94bWwg+dmVyc2lvbj0i=="
+
+    async def share(request):
+        resp = web.Response(status=302, headers={"Location": "/file.mp4"})
+        resp.headers.add("Set-Cookie", f"FedAuth={cookie_value}; path=/; secure")
+        return resp
+
+    async def media(request):
+        if request.headers.get("Cookie") != f"FedAuth={cookie_value}":
+            return web.Response(status=302, headers={"Location": "/signin"})
+        return web.Response(status=200, headers={"Content-Type": "video/mp4"})
+
+    async def signin(request):
+        return web.Response(status=200, text="sign in", content_type="text/html")
+
+    app = web.Application()
+    app.router.add_route("*", "/share", share)
+    app.router.add_route("*", "/file.mp4", media)
+    app.router.add_route("*", "/signin", signin)
+    server = TestServer(app)
+    await server.start_server()
+    try:
+        status, content_type, _length = await follow_with_cookies(
+            str(server.make_url("/share"))
+        )
+    finally:
+        await server.close()
+    assert status == 200
+    assert content_type == "video/mp4"
+
+
+def test_is_direct_file_url_recognizes_a_dnn_linkclick_fileticket_link():
+    assert is_direct_file_url(SANGAMON_LINKCLICK_URL) is True
+    assert is_dnn_linkclick_url(SANGAMON_LINKCLICK_URL) is True
+    # A LinkClick with no fileticket (DNN also uses `?link=`) is not claimed.
+    assert is_dnn_linkclick_url("https://example.gov/LinkClick.aspx?link=12") is False
+
+
+async def test_resolve_a_dnn_linkclick_follows_the_redirect_to_audio():
+    # The mocked HEAD stands in for aiohttp following the 302 to the real
+    # `/Portals/0/TempAudio/SoundFile/...mp3` file.
+    routes = {
+        SANGAMON_LINKCLICK_URL: FakeResponse(
+            status=200, headers={"Content-Type": "audio/mpeg"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await DirectFileAssetFinder().resolve(SANGAMON_LINKCLICK_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == SANGAMON_LINKCLICK_URL
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+
+
+async def test_resolve_a_dnn_linkclick_to_a_pdf_is_not_credited():
+    routes = {
+        SANGAMON_LINKCLICK_URL: FakeResponse(
+            status=200, headers={"Content-Type": "application/pdf"}
+        )
+    }
+    with mock_session({}, head_routes=routes):
+        result = await DirectFileAssetFinder().resolve(SANGAMON_LINKCLICK_URL)
+    assert result.video_url is None
+    assert "application/pdf" in result.video_warnings[0]
+
+
+# --- WO-1171: CivicPlus file-library recordings ---------------------------
+#
+# Real headers captured live 2026-09-30 (GET, headers only; HEAD answers a
+# generic 404 HTML page on these tenants, so the probe uses one GET and
+# closes the stream).
+
+CP_OCTET_URL = (
+    "https://il-woodfordcounty.civicplus.com/DocumentCenter/View/11529/"
+    "May-27-2026-BOH-Recording"
+)
+CP_WMA_URL = (
+    "https://nj-montvilletownship.civicplus.com/DocumentCenter/View/14273/"
+    "Audio-Recording-Malfunction-3-24-2026"
+)
+CP_PAGE_URL = "https://oh-preblecounty.civicplus.com/Archive.aspx?AMID=415"
+
+
+async def test_civicplus_octet_stream_with_media_disposition_is_a_direct_file():
+    routes = {
+        CP_OCTET_URL: FakeResponse(
+            status=200,
+            url=CP_OCTET_URL,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": (
+                    "inline;filename=GMT20260325-223151_Recording%20%281%29.m4a"
+                ),
+                "Content-Length": "27332436",
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await direct_file.probe_civicplus_file(CP_OCTET_URL)
+    assert result is not None
+    assert result.platform == "direct_file"
+    assert result.video_url == CP_OCTET_URL
+    # The download's own extension marks it audio only.
+    assert result.video_format == "m4a"
+    assert result.segments == []
+
+
+async def test_civicplus_html_page_is_left_alone():
+    routes = {
+        CP_PAGE_URL: FakeResponse(
+            status=200,
+            url=CP_PAGE_URL,
+            headers={"Content-Type": "text/html; charset=utf-8"},
+        )
+    }
+    with mock_session(routes):
+        assert await direct_file.probe_civicplus_file(CP_PAGE_URL) is None
+    # Same path shape as a recording, but an HTML page.
+    html_doc = CP_OCTET_URL.replace("11529", "99")
+    routes = {
+        html_doc: FakeResponse(
+            status=200, url=html_doc, headers={"Content-Type": "text/html"}
+        )
+    }
+    with mock_session(routes):
+        assert await direct_file.probe_civicplus_file(html_doc) is None
+
+
+async def test_civicplus_audio_content_type_is_a_direct_audio_file():
+    routes = {
+        CP_WMA_URL: FakeResponse(
+            status=200,
+            url=CP_WMA_URL,
+            headers={
+                "Content-Type": "audio/x-ms-wma",
+                "Content-Disposition": (
+                    "inline;filename=Audio%20Recording%20Malfunction%203-24-2026.wma"
+                ),
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await direct_file.probe_civicplus_file(CP_WMA_URL)
+    assert result is not None
+    assert result.video_format == "wma"
+
+
+def test_civicplus_octet_stream_without_media_name_is_not_media():
+    assert (
+        direct_file.classify_file_library_media(
+            "application/octet-stream",
+            "inline;filename=Agenda.pdf",
+            "https://x.civicplus.com/DocumentCenter/View/1/Agenda",
+        )
+        is None
+    )
+    assert (
+        direct_file.classify_file_library_media(
+            "application/pdf", None, "https://x.civicplus.com/DocumentCenter/View/1/A"
+        )
+        is None
+    )
+
+
+def test_civicplus_file_library_url_shapes():
+    assert direct_file.is_civicplus_file_library_url(CP_OCTET_URL)
+    assert direct_file.is_civicplus_file_library_url(CP_PAGE_URL)
+    assert not direct_file.is_civicplus_file_library_url(
+        "https://x.civicplus.com/AgendaCenter/ViewFile/Agenda/1"
+    )
+    assert not direct_file.is_civicplus_file_library_url(
+        "https://example.gov/DocumentCenter/View/1/x"
+    )
+
+
+async def test_civicplus_finder_hands_recording_to_direct_file(monkeypatch):
+    from app.platforms.civicplus import CivicPlusAssetFinder
+
+    routes = {
+        CP_OCTET_URL: FakeResponse(
+            status=200,
+            url=CP_OCTET_URL,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": "inline;filename=May%2027.mp4",
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(CP_OCTET_URL)
+    assert result.platform == "direct_file"
+    assert result.video_format == "mp4"

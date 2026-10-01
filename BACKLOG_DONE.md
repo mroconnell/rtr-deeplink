@@ -1,5 +1,66 @@
 # Backlog — done
 
+## WO-1172: CivicMedia resolves TikiLive `/video/{id}` links and gives embed links a title [Done 2026-09-30]
+
+**Why this ran.** The CivicMedia number walk collected `https://civplus.tikiliveapi.com/video/{id}` links. The resolver took only the embed form, so every one failed with "couldn't find a real video id". The embed form worked, but its page has no title, so those pages would have been untitled. Ryan approved the fix 2026-09-30.
+
+**Fix.** `app/platforms/civicmedia.py`: `_video_id_from_url()` now reads the id from `/video/{id}` too. For either TikiLive form, one extra request reads the `/video/{id}` page, and its `og:title` (else `<title>`) becomes the title. If that request fails, the title stays empty and nothing else changes. The channel (`chid`) still comes from the embed's stream; the video page's stream is the fallback. Captions and stream behavior are unchanged. A government `VID=` page keeps its own title rules (WO-1165).
+
+**Caution.** The title is kept as the page has it, with its leading counter ("260 - City Council Meeting 12.17.20."). Nothing else in this adapter strips counters, so none is stripped. Some titles are file names (video 151072 reads "198 - BudgetHearing_11292022"). The WO-1165 file-name rule is not applied here, because the video page offers no second title to prefer.
+
+**Tests.** `tests/test_civicmedia.py`, real pages fetched live 2026-09-30 (`tikilive_video_144112.html`, `tikilive_embed_144112.html`): video page resolves with title and channel 146; embed form now returns the title; `og:title` missing falls back to `<title>`; a failed video page keeps the rest of the resolve; `refresh_playlist_url()` accepts the video page form.
+
+**Verified live, read-only, both URL forms.** Both forms gave the same result for all six.
+
+| Video | Title | Segments | Tier |
+| --- | --- | --- | --- |
+| 144112 | 260 - City Council Meeting 12.17.20. | 0 | Video only (no captions) |
+| 160679 | 134 - Council Meeting Minutes August 17, 2026 | 1583 | 1 |
+| 151072 | 198 - BudgetHearing_11292022 | 2782 | 1 |
+| 153417 | 6 - Public Listening Session - Judicial Center and Jail - 12.12.23 AM | 1824 | 1 |
+| 158786 | 1009 - 2026 Proposed Budget Presentation | 722 | 1 |
+| 151439 | 5 - Electoral Board Hearing 011723 | 1080 | 1 |
+
+## WO-1173: a CivicMedia category page lists its videos and offers only the meetings [Done 2026-09-30]
+
+**Why this ran.** A CivicPlus site has two kinds of CivicMedia page. `CivicMedia?VID=...` is one video and already resolved. `CivicMedia?CID=...` is a category that lists many videos, and it failed with "found no real video link". Ryan approved the fix on 2026-09-30.
+
+**The trap.** A category page also embeds one player, for whatever video is "Now Playing". On Evergreen Park, IL's `CID=3` that is "Preschool Welcome Video", a parks promo. Taking the player would file a promo as a meeting. The fix never reads the player.
+
+**Fix.** `app/platforms/civicmedia.py` now recognizes `?CID=` (`is_civicmedia_category_url()`), and `detect_platform()` routes it to CivicMedia instead of the AgendaCenter adapter. `resolve()` lists the page's videos, newest first, and keeps only meeting-like titles. It uses the repo's existing rules: `looks_like_real_meeting(..., require_allowlist=True)` plus `pick._looks_like_a_real_meeting_candidate`. It raises `CalendarPageError` with those as the pick-list. When none qualifies, the error has no candidates and says "This CivicMedia category lists N videos, none looks like a meeting." Meeting Finder's List step (lister c) now includes CivicMedia, for `?CID=` addresses only, and keeps that plain reason as its note. The passive_verify CivicPlus walker was left alone: it never listed CivicMedia pages.
+
+**Real pages, checked 2026-09-30.**
+
+| Page | Videos listed | Meeting candidates | Result |
+| --- | --- | --- | --- |
+| Evergreen Park, IL `CID=3` (parks and recreation) | 8 | 0 | "lists 8 videos, none looks like a meeting"; the promo is not picked |
+| Hobart, IN `CID=City-of-Hobart-Public-Meetings-4` | 8 | 8 | HSD, Unsafe Building Hearing Authority, RDC, Council, Historic Preservation, Fire Commission meetings |
+
+**Caution.** The page gives no dates, so "newest first" is the page's own order, confirmed against the `VID` ids. Each page shows only its first 8 videos; older ones load through a postback this code does not follow. The "Now Playing" video has no link, so its address is the page's `og:url`.
+
+**Tests.** `tests/test_civicmedia.py` (category section), with raw real pages in `tests/fixtures/civicmedia/` (`evergreen_civicmedia_cid3.html`, `hobart_civicmedia_cid_public_meetings.html`).
+
+## WO-1171: CivicPlus file-library recordings resolve as direct media, not as pages [Done 2026-09-30]
+
+**Why this ran.** CivicPlus sites keep meeting recordings in their file library (`/DocumentCenter/View/{id}/{name}`, sometimes `Archive.aspx?ADID=`/`AMID=`). The resolver fetched them as web pages, hit its size cap and failed with "Response too large". Woodford County, IL's Board of Health recording (27 May 2026) is a real case: a 27 MB file.
+
+**Fix.** `probe_civicplus_file()` in `app/platforms/direct_file.py`. `CivicPlusAssetFinder.resolve()` calls it first. It makes one GET, reads the headers only and closes the stream, so the body is never downloaded. (HEAD is not used: these servers answer HEAD with a 404 HTML page.) Audio or video content type counts. So does `application/octet-stream` when the download filename or URL path has a media extension. A match returns a direct-file result: `video_format` is the real extension (`m4a`, `mp3`, `wma`, `mp4`), no captions, so tier 3. Audio-only files still resolve and are marked by their audio `video_format`. An HTML page keeps today's behavior. `queue_probe.probe_queue_entry()` now also routes `Archive.aspx?ADID=|AMID=` media to the direct-file probe, which reads the duration with ffprobe.
+
+**Verified live 2026-09-30 (read-only, 2.5 s between requests).**
+
+| Link | Content type | Result | Duration | Audio only |
+| --- | --- | --- | --- | --- |
+| Woodford IL `View/11529` | octet-stream, `.m4a` | accept | 2,590 s | Yes |
+| Park CO `View/10002` | octet-stream, `.m4a` | accept | 4,539 s | Yes |
+| White Pine NV `View/14094` | octet-stream, `.mp4` | accept | 4,230 s | No (mp4 by name) |
+| New Scotland NY `View/2013` | octet-stream, `.mp4` | accept | 4,437 s | No (mp4 by name) |
+| Montville NJ `View/14273` | `audio/x-ms-wma` | resolves; reject-short | 29 s | Yes |
+| Preble OH `Archive.aspx?AMID=415` | `text/html` | not a file; old behavior | none | n/a |
+
+**Caution.** Montville's file is a 29-second "recording malfunction" notice, so the queue probe rejects it as too short. That is correct. Preble's link is an archive listing page, not a file. "No" under audio only means the file name says mp4; the streams were not inspected.
+
+**Tests.** `tests/test_direct_file.py` (WO-1171 block: octet-stream with disposition, text/html, audio content type, non-media octet-stream, URL shapes, CivicPlus finder hand-off) and `tests/test_queue_probe.py` (`Archive.aspx` dispatch).
+
 ## WO-1170: pin 6 meeting sites Meeting Finder found for CivicPlus governments [Done 2026-09-30]
 
 **Why this ran.** 534 undecided CivicPlus governments listed no meetings and linked no known platform from their homepage. Ryan approved a Meeting Finder run from each government's own website (rtr-discovery, 2026-09-29 overnight, concurrency 3).

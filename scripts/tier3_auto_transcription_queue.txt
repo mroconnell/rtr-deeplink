@@ -11,18 +11,6 @@ https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-counci
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://drive.usercontent.google.com/download?id=1fYFTvRfEQEpZxdCAfeiJNEHjS5rdmmjB&export=download&confirm=t	https://martin.k12.mn.us/	us:sd:2718960
-https://drive.usercontent.google.com/download?id=1CR3RJlO2wxSBU420_vUs9d3m0wN3r4mk&export=download&confirm=t	https://peacham.net/	us:cousub:5000554400
-https://drive.usercontent.google.com/download?id=16Jf3dFWx88bJ0f2zqTKnoIQqmAp5l83a&export=download&confirm=t	https://alamosacounty.org/	us:county:08003
-https://drive.usercontent.google.com/download?id=1bpsT8tXOos43ab0Eym6RiqBx0J5vuI54&export=download&confirm=t	https://millsapisd.net/	us:sd:4830870
-https://drive.usercontent.google.com/download?id=1FKGoQGLITXyr7bCbrArkzTdajuCsRIem&export=download&confirm=t	https://chehalisschools.org/	us:sd:5301170
-https://drive.usercontent.google.com/download?id=1SEVt56Jb1BjU8LaK9ggX8zPvo_PvWbTv&export=download&confirm=t	https://frrsd.org/	us:sd:2513321
-https://drive.usercontent.google.com/download?id=1M3zUtl6tMILmNlsTugUQ6pkFbhjlXtDs&export=download&confirm=t	https://paoli.k12.in.us/	us:sd:1808640
-https://drive.usercontent.google.com/download?id=1ckmF_Xxrt2JU0Evd8Il7O1syjzCl_gFY&export=download&confirm=t	https://allentownship.org/	us:cousub:4209500948
-https://drive.usercontent.google.com/download?id=1GJa4Y_333w7YVje84Y8W49djV7CQEeUM&export=download&confirm=t	https://sands.esc17.net/	us:sd:4839120
-https://drive.usercontent.google.com/download?id=14HK3ysq_ekMUVwcW5AuplBnGjX6fEOdG&export=download&confirm=t	https://twisd.us/	us:sd:4842720
-https://drive.usercontent.google.com/download?id=1Dk06Gdq5l-h_B4Q5ZBUOhtXzErF-cw2X&export=download&confirm=t	https://dickinsontownship.org/	us:cousub:4204119144
-https://drive.usercontent.google.com/download?id=1e4cQm5QoiqMAFZhg-3GAWWUX1oLKPjxe&export=download&confirm=t	https://schodack.k12.ny.us/	us:sd:3626070
 https://cloud.castus.tv/vod/kltv/video/6aa8a85969c0dd0002f149b3?page=HOME	https://cityofrainier.com/	us:place:4160850
 https://shelby.granicus.com/ASX.php?clip_id=2869&sn=shelby.granicus.com&view_id=4	https://www.shelbycountytn.gov/1218/Archived-Meeting-Audio	us:county:47157
 https://borough-ketchikan.granicus.com/MediaPlayer.php?view_id=2&clip_id=2359	https://www.kgbak.us/	us:county:02130
@@ -1370,3 +1358,25 @@ https://reflect-haverhillcommunity.cablecast.tv/show/48079	https://reflect-haver
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=91048&autoplay=yes	https://co-burlington2.civicplus.com/MediaCenter.aspx	us:place:0810600
 https://reflect-thurston.cablecast.tv/show/31110	https://reflect-thurston.cablecast.tv/	us:county:53067
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=143756&autoplay=yes		us:place:0640004
+https://reflect-lpctv.cablecast.tv/internetchannel/show/20939	https://reflect-lpctv.cablecast.tv/	us:place:5041200
+https://reflect-willinet.cablecast.tv/internetchannel/show/13195	https://reflect-willinet.cablecast.tv/	us:cousub:2500344385
+https://reflect-sttammany.cablecast.tv/internetchannel/show/2842	https://reflect-sttammany.cablecast.tv/	us:place:2248225
+https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6525	https://reflect-brunswick-me.cablecast.tv/internetchannel/gallery/5	us:sd:2303780
+https://reflect-vod-spencer.cablecast.tv/internetchannel/show/1471	https://reflect-vod-spencer.cablecast.tv/	us:sd:2500002
+https://reflect-awcm.cablecast.tv/internetchannel/show/6770	https://reflect-awcm.cablecast.tv/internetchannel/gallery/124?site=10	us:sd:2502040
+https://reflect-brookline-interactive-group.cablecast.tv/internetchannel/show/8977	https://reflect-brookline-interactive-group.cablecast.tv/internetchannel/gallery/7?site=2	us:sd:2503150
+https://reflect-dctv-18.cablecast.tv/internetchannel/show/13676	https://reflect-dctv-18.cablecast.tv/internetchannel/gallery/12	us:sd:2504020
+https://reflect-brewster-ma.cablecast.tv/internetchannel/show/8302	https://reflect-brewster-ma.cablecast.tv/internetchannel/gallery/21	us:sd:2504560
+https://reflect-falmouth.cablecast.tv/internetchannel/show/22736	https://reflect-falmouth.cablecast.tv/	us:sd:2504860
+https://reflect-mansfield.cablecast.tv/internetchannel/show/9590	https://reflect-mansfield.cablecast.tv/internetchannel/gallery/6	us:sd:2507230
+https://reflect-ncmhub.cablecast.tv/internetchannel/show/13523	https://reflect-ncmhub.cablecast.tv/internetchannel/gallery/7	us:sd:2508580
+https://reflect-npa.cablecast.tv/internetchannel/show/14076	https://reflect-npa.cablecast.tv/internetchannel/gallery/50?site=3	us:sd:2509060
+https://reflect-vod-northtv.cablecast.tv/internetchannel/show/9504	https://reflect-vod-northtv.cablecast.tv/	us:sd:2509690
+https://reflect-southbridgectv.cablecast.tv/internetchannel/show/3054	https://reflect-southbridgectv.cablecast.tv/internetchannel/gallery/31?site=3	us:sd:2511010
+https://reflect-wareham.cablecast.tv/internetchannel/show/12594	https://reflect-wareham.cablecast.tv/internetchannel/gallery/22?site=3	us:sd:2512060
+https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/7225	https://reflect-townofwellfleet.cablecast.tv/internetchannel/gallery/28	us:sd:2512300
+https://winchendon.cablecast.tv/internetchannel/show/422	https://winchendon.cablecast.tv/internetchannel/gallery/5	us:sd:2513080
+https://reflect-ontv.cablecast.tv/internetchannel/show/5111	https://reflect-ontv.cablecast.tv/internetchannel/gallery/11?site=2	us:sd:2620730
+https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16395	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/gallery/15?site=3	us:sd:3301740
+https://reflect-lpctv.cablecast.tv/internetchannel/show/21090	https://reflect-lpctv.cablecast.tv/	us:sd:5000422
+https://reflect-sapatv.cablecast.tv/internetchannel/show/43448	https://reflect-sapatv.cablecast.tv/internetchannel/gallery/17	us:sd:5007530

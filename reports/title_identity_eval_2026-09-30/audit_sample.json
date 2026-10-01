@@ -1,0 +1,962 @@
+[
+ {
+  "group": "settled_no",
+  "title": "2025 E\u2022Media Annual Meeting",
+  "census_gov": "us:place:2519365",
+  "got": null,
+  "station": "yt:@easthamptonmedia",
+  "why": "non_meeting:the access station's own annual meeting"
+ },
+ {
+  "group": "settled_no",
+  "title": "2026 Meet the Candidates: Village Council",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-ontv.cablecast.tv",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "group": "settled_no",
+  "title": "Candidate Forums",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-govedtv.cablecast.tv",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "group": "settled_no",
+  "title": "Gavin's Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "Monona Grove School District String Festival 3/14/16",
+  "census_gov": "us:sd:5509810",
+  "got": null,
+  "station": "yt:user/mononatv",
+  "why": "non_meeting:event"
+ },
+ {
+  "group": "settled_no",
+  "title": "Bristol County Sheriff Office",
+  "census_gov": "us:county:25005",
+  "got": null,
+  "station": "cablecast:reflect-fredtv.cablecast.tv",
+  "why": "non_meeting:sheriff"
+ },
+ {
+  "group": "settled_no",
+  "title": "Bill Hernandez Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "John Honner Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "A Road Less Traveled Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "This Week in East Brunswick 2018",
+  "census_gov": "us:cousub:3402319000",
+  "got": null,
+  "station": "yt:@ebtv26",
+  "why": "non_meeting:this week in"
+ },
+ {
+  "group": "settled_no",
+  "title": "Windsor County Republicans",
+  "census_gov": "us:cousub:5002784925",
+  "got": null,
+  "station": "cablecast:reflect-lpctv.cablecast.tv",
+  "why": "non_meeting:party"
+ },
+ {
+  "group": "settled_no",
+  "title": "Carson Mischel Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Eduardo Corona Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Don's Workshop",
+  "census_gov": "us:cousub:3402359010",
+  "got": null,
+  "station": "yt:c/piscatawaycommunitytv",
+  "why": "non_meeting:possessive workshop (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Okello Obwona Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Easthampton Electoral Candidates Block 2021",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "group": "settled_no",
+  "title": "Two Hungry Teachers Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "Mitch Priestley Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "2021 Marathon Cup Hockey",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "non_meeting:sports"
+ },
+ {
+  "group": "settled_no",
+  "title": "High School Basketball",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "non_meeting:sports"
+ },
+ {
+  "group": "settled_no",
+  "title": "Kelly Frank Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Easthampton Year In Review",
+  "census_gov": "us:place:2519365",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "non_meeting:year in review"
+ },
+ {
+  "group": "settled_no",
+  "title": "Gregor Hinckley Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Church of the Nazarene",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-cetv.cablecast.tv",
+  "why": "non_meeting:church"
+ },
+ {
+  "group": "settled_no",
+  "title": "EnRich Your Life Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "Apocalypse Phoenix Says Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "New England Coalition Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "yt:@brattleborocommunitytv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Roger Holden Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "\"Recent Shows\"",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-independence-tv-mi.cablecast.tv",
+  "why": "non_meeting:generic listing name"
+ },
+ {
+  "group": "settled_no",
+  "title": "Dr Jay's Movie Imaginarium Podcast",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "Sports",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-lockport.cablecast.tv",
+  "why": "non_meeting:sports"
+ },
+ {
+  "group": "settled_no",
+  "title": "Yakima City council podcast test",
+  "census_gov": "us:place:5380010",
+  "got": null,
+  "station": "cablecast:videos.yakimawa.gov",
+  "why": "non_meeting:podcast"
+ },
+ {
+  "group": "settled_no",
+  "title": "Berwick Public Library presents The Paranormal Couple: When Objects Talk Back",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Easthampton Government Candidates Statements 2019",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "group": "settled_no",
+  "title": "David Shambry Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "PSA - Ad Council and Other National Sources -",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:psa"
+ },
+ {
+  "group": "settled_no",
+  "title": "Elyse Schrock Presents",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "non_meeting:presents (a show)"
+ },
+ {
+  "group": "settled_no",
+  "title": "Quincy Recreation Department",
+  "census_gov": "us:place:2555745",
+  "got": null,
+  "station": "yt:@quincyaccesstv",
+  "why": "non_meeting:recreation department"
+ },
+ {
+  "group": "settled_no",
+  "title": "CANDIDATE FORUMS",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-ccx.cablecast.tv",
+  "why": "non_meeting:candidate"
+ },
+ {
+  "group": "settled_no",
+  "title": "Welcome to Worship at Larchmont Ave Church",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "non_meeting:church"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Champlin City Council",
+  "census_gov": "us:place:2710846",
+  "got": "us:place:2710846",
+  "station": "cablecast:reflect-qctv.cablecast.tv",
+  "why": "body_word:city council;place_match:Champlin city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Wausau Solar Array Task Force Meeting",
+  "census_gov": "us:place:5584475",
+  "got": "us:place:5584475",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:task force;place_match:Wausau city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Van Buren Planning Board",
+  "census_gov": "us:cousub:3606776760",
+  "got": "us:cousub:3606776760",
+  "station": "yt:@pacbtv",
+  "why": "body_word:planning board;place_match:Van Buren town:unique_name_in_state;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Alexandria City Council",
+  "census_gov": "us:place:2100802",
+  "got": "us:place:2100802",
+  "station": "cablecast:reflect-campbellcounty.cablecast.tv",
+  "why": "body_word:city council;place_match:Alexandria city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Columbus City Council Meetings",
+  "census_gov": "us:place:2712718",
+  "got": "us:place:2712718",
+  "station": "cablecast:reflect-forestlake.cablecast.tv",
+  "why": "body_word:city council;place_match:Columbus city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Michigan City Board of Zoning Appeals",
+  "census_gov": "us:place:1848798",
+  "got": "us:place:1848798",
+  "station": "yt:@accesslaportecountymedia",
+  "why": "body_word:city board;place_match:Michigan City city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Salina City Commission Meetings",
+  "census_gov": "us:place:2062700",
+  "got": "us:place:2062700",
+  "station": "cablecast:reflect-city-of-salinaks.cablecast.tv",
+  "why": "body_word:city commission;place_match:Salina city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Forest Lake City Council Meetings",
+  "census_gov": "us:place:2721770",
+  "got": "us:place:2721770",
+  "station": "cablecast:reflect-forestlake.cablecast.tv",
+  "why": "body_word:city council;place_match:Forest Lake city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Germantown City Council",
+  "census_gov": "us:place:3929932",
+  "got": "us:place:3929932",
+  "station": "cablecast:reflect-miami-valley-cc.cablecast.tv",
+  "why": "body_word:city council;place_match:Germantown city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Tualatin City Council Mtg -",
+  "census_gov": "us:place:4174950",
+  "got": "us:place:4174950",
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "body_word:city council;place_match:Tualatin city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Canandaigua City Planning Commission",
+  "census_gov": "us:place:3612144",
+  "got": "us:place:3612144",
+  "station": "cablecast:reflect-fingerlakestv.cablecast.tv",
+  "why": "body_word:planning commission;place_match:Canandaigua city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "City of Leesburg Commission Meetings",
+  "census_gov": "us:place:1239875",
+  "got": "us:place:1239875",
+  "station": "cablecast:reflect-lakefront-leesburgflorida.cablecast.tv",
+  "why": "body_word:commission;place_match:Leesburg city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Anoka County Board Meetings",
+  "census_gov": "us:county:27003",
+  "got": "us:county:27003",
+  "station": "cablecast:trms.northmetrotv.com",
+  "why": "body_word:board;place_match:Anoka County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Lysander Town Planning Board",
+  "census_gov": "us:cousub:3606744039",
+  "got": "us:cousub:3606744039",
+  "station": "cablecast:baldwinsvilleny.cablecast.tv",
+  "why": "body_word:planning board;place_match:Lysander town:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "County of Santa Clara Children, Seniors and Families Committee Meeting",
+  "census_gov": "us:county:06085",
+  "got": "us:county:06085",
+  "station": "cablecast:reflect-creatv.cablecast.tv",
+  "why": "body_word:committee;place_match:Santa Clara County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Andover Town Meeting",
+  "census_gov": "us:cousub:5002701300",
+  "got": "us:cousub:5002701300",
+  "station": "cablecast:reflect-lpctv.cablecast.tv",
+  "why": "body_word:town meeting;place_match:Andover town:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Wausau School Board Meetings",
+  "census_gov": "us:sd:5515900",
+  "got": "us:sd:5515900",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:school board;school_body_name_match:in_known_gov_ids"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Wausau Rules Review Committee Meeting",
+  "census_gov": "us:place:5584475",
+  "got": "us:place:5584475",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:committee;place_match:Wausau city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Ludlow Planning Commission",
+  "census_gov": "us:cousub:5002741275",
+  "got": "us:cousub:5002741275",
+  "station": "cablecast:reflect-lpctv.cablecast.tv",
+  "why": "body_word:planning commission;place_match:Ludlow town:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "LaPorte County Convention and Visitors Bureau Board of Managers",
+  "census_gov": "rtr:us:in:laporte-county-convention-and-visitors-bureau-board-of-managers",
+  "got": "us:county:18091",
+  "station": "yt:@accesslaportecountymedia",
+  "why": "body_word:board of managers;place_match:LaPorte County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Cornelius City Council Mtg",
+  "census_gov": "us:place:4115550",
+  "got": "us:place:4115550",
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "body_word:city council;place_match:Cornelius city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Bloomfield Township Lake Board Meetings",
+  "census_gov": "us:cousub:2612509110",
+  "got": "us:cousub:2612509110",
+  "station": "cablecast:reflect-bloomfield-community.cablecast.tv",
+  "why": "body_word:board;place_match:Bloomfield charter township:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Wausau Economic Development Committee Meeting",
+  "census_gov": "us:place:5584475",
+  "got": "us:place:5584475",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:committee;place_match:Wausau city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Mandeville City Council Meeting",
+  "census_gov": "us:place:2248225",
+  "got": "us:place:2248225",
+  "station": "cablecast:reflect-sttammany.cablecast.tv",
+  "why": "body_word:city council;place_match:Mandeville city:unique_name_in_state;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Town of Kensington Council Meetings",
+  "census_gov": "us:place:2443500",
+  "got": "us:place:2443500",
+  "station": "yt:@montgomerymunicipalcable",
+  "why": "body_word:council;place_match:Kensington town:unique_name_in_state;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Senate Committee on Ways and Means 2026",
+  "census_gov": "us:state:20",
+  "got": "us:state:20",
+  "station": "yt:UC_0NO-Pb96CFABvxDwXAq8A",
+  "why": "body_word:senate;state_body;state_body_maps_to_state"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Chardon Board of Education",
+  "census_gov": "us:sd:3904718",
+  "got": "us:sd:3904718",
+  "station": "cablecast:reflect-geauga-gtv.cablecast.tv",
+  "why": "body_word:board of education;school_body_name_match:in_known_gov_ids"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Village of Mamaroneck Zoning Board Meetings",
+  "census_gov": "us:place:3644831",
+  "got": "us:place:3644831",
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "body_word:zoning;place_match:Mamaroneck village:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Wausau CISM Committee Meeting",
+  "census_gov": "us:place:5584475",
+  "got": "us:place:5584475",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:committee;place_match:Wausau city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Lino Lakes Planning & Zoning Commission Meetings",
+  "census_gov": "us:place:2737322",
+  "got": "us:place:2737322",
+  "station": "cablecast:reflect-trms-northmetro.cablecast.tv",
+  "why": "body_word:planning & zoning;place_match:Lino Lakes city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Marathon County Board Meetings",
+  "census_gov": "us:county:55073",
+  "got": "us:county:55073",
+  "station": "cablecast:reflect-wausau-wi.cablecast.tv",
+  "why": "body_word:board;place_match:Marathon County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Hamilton County Council",
+  "census_gov": "us:county:18057",
+  "got": "us:county:18057",
+  "station": "yt:@hamiltoncountytelevsion",
+  "why": "body_word:county council;place_match:Hamilton County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Orange Town Meeting",
+  "census_gov": "us:cousub:2501151265",
+  "got": "us:cousub:2501151265",
+  "station": "cablecast:reflect-vod-athol.cablecast.tv",
+  "why": "body_word:town meeting;place_match:Orange town:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Norwell's Zoning Board of Appeals",
+  "census_gov": "us:cousub:2502350145",
+  "got": "us:cousub:2502350145",
+  "station": "cablecast:reflect-nstv.cablecast.tv",
+  "why": "body_word:zoning;place_match:Norwell town:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Stratton School Board",
+  "census_gov": "us:sd:5007860",
+  "got": "us:sd:5007860",
+  "station": "yt:@brattleborocommunitytv",
+  "why": "body_word:school board;school_body_name_match:unique_name_in_state"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Village of Larchmont Board of Trustees",
+  "census_gov": "us:place:3641333",
+  "got": "us:place:3641333",
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "body_word:board of trustees;place_match:Larchmont village:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Clackamas County Board of Commissioners Mtg -",
+  "census_gov": "us:county:41005",
+  "got": "us:county:41005",
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "body_word:board of commissioners;place_match:Clackamas County:unique_name_in_state;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Senate Select Committee on Veterans Affairs 2025",
+  "census_gov": "us:state:20",
+  "got": "us:state:20",
+  "station": "yt:UC_0NO-Pb96CFABvxDwXAq8A",
+  "why": "body_word:senate;state_body;state_body_maps_to_state"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Midland City Council",
+  "census_gov": "us:place:2653780",
+  "got": "us:place:2653780",
+  "station": "cablecast:reflect-mctv-midland-mi.cablecast.tv",
+  "why": "body_word:city council;place_match:Midland city:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "settled_yes_with_government",
+  "title": "Anoka County Board Meetings",
+  "census_gov": "us:county:27003",
+  "got": "us:county:27003",
+  "station": "cablecast:trms.northmetrotv.com",
+  "why": "body_word:board;place_match:Anoka County:in_known_gov_ids;place_in_title"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Tai Chi Chasers",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Truth Seekers",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Misc. Education",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-ctsbtv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Curious",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Salem Community Television Show Downloads",
+  "census_gov": "us:cousub:3301566660",
+  "got": null,
+  "station": "cablecast:reflect-vod-salem.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Holiday Music Performances",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Easthampton Events",
+  "census_gov": "us:place:2519365",
+  "got": null,
+  "station": "cablecast:reflect-easthamptonmediatv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Community Resource Center",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Fresno Flavor",
+  "census_gov": "us:place:0627000",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "PACE Senior Shows",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "WaCo Gang Intervention \"Parent Night\"",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Video Voters Guide",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "TVWD",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Hingham CARES",
+  "census_gov": "us:cousub:2502330210",
+  "got": null,
+  "station": "cablecast:reflect-harbor-media.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Mamaroneck Coalition For Affordable Housing",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Bernie's Stuff",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Programming from Portland Community College - (503) 977-4402 (PCC)",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "That's so Chratheist",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Downloads",
+  "census_gov": "us:cousub:3301566660",
+  "got": null,
+  "station": "cablecast:reflect-vod-salem.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Kansas Appleseed",
+  "census_gov": "us:place:2036000",
+  "got": null,
+  "station": "cablecast:reflect-city-of-salinaks.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Breath California",
+  "census_gov": "us:place:0609780",
+  "got": null,
+  "station": "cablecast:reflect-communitytv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "STPSO Funeral Services",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-sttammany.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Five Towns: One Book",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Sharon Helps",
+  "census_gov": "us:cousub:2502160785",
+  "got": null,
+  "station": "cablecast:reflect-sharoncommunity-live.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Robbinsdale",
+  "census_gov": "us:place:2754808",
+  "got": null,
+  "station": "cablecast:reflect-ccx.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Tuality Health Care",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Rick Smith",
+  "census_gov": "us:cousub:2019365900",
+  "got": null,
+  "station": "cablecast:reflect-city-of-salinaks.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "TV Toastmasters",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "The Hidden Truth",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Special Events",
+  "census_gov": "us:cousub:0911031240",
+  "got": null,
+  "station": "cablecast:reflect-glastonburyct.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "A Town & Village Two",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Faces of Fresno State",
+  "census_gov": "us:place:0627000",
+  "got": null,
+  "station": "cablecast:reflect-vod-cmac.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Unpaused",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Movie Shorts",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "League of Women Voters",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-vod-lmctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Outreach-Tualatin",
+  "census_gov": "us:place:4174950",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Main Street",
+  "census_gov": "us:cousub:2502111315",
+  "got": null,
+  "station": "cablecast:reflect-cctv-vod.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Specials",
+  "census_gov": "us:cousub:2301754000",
+  "got": null,
+  "station": "cablecast:reflect-npctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "County Talk",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ },
+ {
+  "group": "no_evidence",
+  "title": "Tualatin's Our Home, Our Health",
+  "census_gov": "",
+  "got": null,
+  "station": "cablecast:reflect-tvctv.cablecast.tv",
+  "why": "no_body_or_meeting_word"
+ }
+]

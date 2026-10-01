@@ -222,7 +222,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (27)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (227)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (228)
+  `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
   [NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two…
   [NEEDS-AUDIT] Several tier-3 feed lines land on the same or a…
   [NEEDS-AUDIT] Every stored iQM2 recording tried on 2026-09-27 is gone…
@@ -398,7 +399,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (227)
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
   Adapter & platform gaps  (57)
-    [NEEDS-AUDIT] A bare TikiLive embed still gets no title; the…
+    [NEEDS-AUDIT] A bare TikiLive embed's title is the upload's name, and…
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
@@ -723,7 +724,8 @@ something hasn't been decided.
 ### Bulk sweeps ingest only meetings that have video — agenda-only meetings are not ingested (Ryan's rule, 2026-09-09) `[STANDING]`
 
 - **Issue:** Ryan's rule, 2026-09-09, for every enumeration/ingest sweep:
-  only meetings WITH video become Archive pages. Tier 1/2 (captions
+  only meetings WITH video become Archive pages. Audio-only recordings
+  count as video here (Ryan, 2026-09-22 and 2026-09-30). Tier 1/2 (captions
   reachable) ingest with segments; tier 3 (video, no captions) goes to
   the cloud auto-transcription queue and drips in; agenda-only meetings
   are NOT ingested.
@@ -2509,6 +2511,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **`[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve, but the in-browser player and the download-then-transcribe path are not yet checked with one.**
+  - **Issue**: `direct_file.py` now resolves `https://<tenant>.sharepoint.com/:v:/s/<site>/<token>` to the share URL plus `&download=1` (the file URL alone fails without the guest cookie). ffprobe and `follow_with_cookies()` handle that; a browser `<video>` tag and the worker's ffmpeg chunk pull on a real transcription job were not run.
+  - **Impact**: a Yakima page may show video that will not play for a visitor, or a job may fail at chunk time, even though the ingest dry-run is clean.
+  - **Next action**: ingest the Yakima link for real (Ryan's call), open the page, and watch the first transcription chunk complete.
+  - **Constraint**: do not cache the final `.mp4` URL; it redirects to Microsoft sign-in without the cookie.
+  - **History**: 2026-09-30 PR for audio-only walkers, SharePoint `:v:` and DNN LinkClick links; `direct_file.py` module docstring.
 
 - **[NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two Cablecast gallery URLs during today's manual tier-3 feed run (2026-09-29).**
   - **Issue**: running `scripts/feed_tier3_auto_transcription.py`'s own push by hand from an office Mac (WO-1168's manual proof run), two lines failed with `[FAIL] ingest failed (500): Internal Server Error`: `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/9?site=1` and `https://reflect-vsctv.cablecast.tv/internetchannel/gallery/3?site=1`.
@@ -5104,12 +5113,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Adapter & platform gaps
 
-- **[NEEDS-AUDIT] A bare TikiLive embed still gets no title; the government's own title needs its `VID=` page, which the embed cannot name.**
-  - **Issue**: a bare embed (`civplus.tikiliveapi.com/embed?...videoId=`) names no video. WO-1165 left it untitled on purpose. Two possible sources: TikiLive's own `/video/{videoId}` page, whose `<title>` gave a name for all 287 videos the 2026-09-29 routing round read (one extra request, same host, but it is the upload's name and can be a file name), or the government's `/CivicMedia?VID=` page (the real title, but `VID=` is a separate id, so it needs the government's listing pages, which show only the newest few videos).
-  - **Impact**: every bare embed ingested without a hand title lands with no title and an address that is just the place (`/m/rosetown-sk`). 10 of the Archive's 40 CivicMedia pages are bare embeds.
-  - **Next action**: decide whether the TikiLive `/video/{id}` name, filtered by `looks_like_file_name()`, is better than no title. If yes, add that one fetch to `resolve()` for bare embeds only.
+- **[NEEDS-AUDIT] A bare TikiLive embed's title is the upload's name, and can be a file name.**
+  - **Issue**: WO-1172 gives a bare embed (and a `/video/{id}` link) the title from TikiLive's own `/video/{id}` page, kept as is. That is the upload's name, with a leading counter ("198 - BudgetHearing_11292022") and sometimes a file name. `looks_like_file_name()` is not applied, because no second title exists to prefer. The government's own title needs its `VID=` page, and `VID=` is a separate id that the embed cannot name.
+  - **Impact**: a bare embed's page can carry a counter or file-name title. Better than none, worse than the government's title.
+  - **Next action**: decide whether to strip the "NNN - " counter and whether a file-name title should be dropped rather than kept. Do not guess: measure both on the walk's `/video/{id}` pages first.
   - **Constraint**: keep TikiLive requests low while a CivicMedia number walk is running on the same host.
-  - **History**: `BACKLOG_DONE.md` WO-1165; `app/platforms/civicmedia.py` "Which title".
+  - **History**: `BACKLOG_DONE.md` WO-1165 and WO-1172; `app/platforms/civicmedia.py` "Which title".
 
 - **[JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured signals into a passive, one-fetch pass over the unknown-platform domains.**
   - **Note (WO-268, 2026-09-12)**: this entry's own heading named itself

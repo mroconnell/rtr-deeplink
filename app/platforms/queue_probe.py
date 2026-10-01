@@ -86,7 +86,13 @@ from .base import (
     is_multi_gov_host,
 )
 from .champds import vod2_stream_for_download_url
-from .direct_file import is_dropbox_url, is_laserfiche_url
+from .direct_file import (
+    follow_with_cookies,
+    is_civicplus_file_library_url,
+    is_dropbox_url,
+    is_laserfiche_url,
+    is_sharepoint_share_url,
+)
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
 from .viebit import ViebitAssetFinder
@@ -929,9 +935,17 @@ async def _probe_direct_file(
     headers = _aiohttp_headers(source_page_url)
     laserfiche = is_laserfiche_url(video_url)
     skip_head = laserfiche or is_dropbox_url(video_url)
+    sharepoint = is_sharepoint_share_url(video_url)
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            if skip_head:
+            if sharepoint:
+                # A SharePoint share link needs its guest cookie sent back
+                # by hand across the redirects -- see direct_file.py's
+                # "SharePoint anonymous share links" section.
+                method = "head-with-cookies+ffprobe"
+                status, _ct, size_bytes = await follow_with_cookies(video_url)
+                response_headers = {}
+            elif skip_head:
                 method = "ranged-get+ffprobe"
                 async with session.get(
                     video_url,
@@ -969,7 +983,8 @@ async def _probe_direct_file(
                     start,
                     f"HEAD/ranged-GET on the media file returned HTTP {status}",
                 )
-            size_bytes = _size_from_headers(response_headers)
+            if not sharepoint:
+                size_bytes = _size_from_headers(response_headers)
             last_modified = response_headers.get("Last-Modified")
             if last_modified:
                 date = _date_from_http_date(last_modified)
@@ -1181,6 +1196,7 @@ async def probe_queue_entry(
         or (video_format and f".{video_format.lower()}" in _DIRECT_FILE_EXTENSIONS)
         or _CHAMPDS_DIRECT_MEDIA_MARKER in media_path
         or _CIVICPLUS_DOCUMENT_CENTER_MARKER in media_path
+        or is_civicplus_file_library_url(video_url)
     ):
         return await _probe_direct_file(
             url, resolved_platform, video_url, source_page_url, start

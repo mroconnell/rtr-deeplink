@@ -3,11 +3,16 @@ WO-341). Real, raw-saved fixtures from Hobart, IN (`cityofhobart.org`) --
 see `tests/fixtures/civicmedia/README.md` for what was fetched and why.
 """
 
-from app.platforms.base import detect_platform
+import pytest
+
+from app.platforms.base import CalendarPageError, detect_platform
 from app.platforms.civicmedia import (
     CivicMediaAssetFinder,
+    _category_videos,
     _jurisdiction_from_page,
+    _video_id_from_url,
     civicmedia_page_id,
+    is_civicmedia_category_url,
     is_civicmedia_page_url,
     is_tikilive_embed_url,
     looks_like_file_name,
@@ -151,10 +156,10 @@ async def test_civicmedia_page_with_no_captions_warns_honestly():
     ]
 
 
-async def test_tikilive_embed_url_resolved_directly_has_no_title():
-    # A bare TikiLive embed URL (no parent CivicMedia page) carries no
-    # title of its own -- see module docstring, "no title info in the
-    # TikiLive embed page itself" finding.
+async def test_tikilive_embed_url_with_no_video_page_has_no_title():
+    # The embed page carries no title. With the video page unreachable
+    # (unmocked here, so the fetch fails) the title stays None and the
+    # rest of the resolve is unchanged (WO-1172).
     with mock_session(_routes(vtt_body=None)):
         resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
 
@@ -268,13 +273,16 @@ async def test_cut_off_og_title_takes_the_players_full_version():
     )
 
 
-async def test_bare_embed_with_no_title_stays_untitled():
-    # A bare TikiLive embed has no government page and the embed names no
-    # video, so the title stays None (unchanged by WO-1165).
-    with mock_session(_routes(vtt_body=None)):
+async def test_bare_embed_with_failed_video_page_stays_untitled():
+    # A 404 on the video page is handled the same as an unreachable one.
+    routes = _routes(vtt_body=None)
+    page = "https://civplus.tikiliveapi.com/video/160547"
+    routes[page] = FakeResponse(status=404, text="", url=page)
+    with mock_session(routes):
         resolved = await CivicMediaAssetFinder().resolve(EMBED_URL)
 
     assert resolved.title is None
+    assert resolved.video_url == M3U8_URL
 
 
 async def test_missing_og_title_falls_back_to_the_player():
@@ -414,3 +422,211 @@ async def test_refresh_playlist_url_returns_none_on_fetch_failure():
         fresh = await refresh_playlist_url(PAGE_URL)
 
     assert fresh is None
+
+
+# -- TikiLive /video/{id} page (WO-1172) -------------------------------
+# Real fixtures, fetched live 2026-09-30: video 144112, "260 - City
+# Council Meeting 12.17.20.", channel 146.
+
+VIDEO_PAGE_URL = "https://civplus.tikiliveapi.com/video/144112"
+EMBED_144112_URL = (
+    "https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no"
+)
+TITLE_144112 = "260 - City Council Meeting 12.17.20."
+
+
+def _routes_144112():
+    return {
+        VIDEO_PAGE_URL: FakeResponse(
+            status=200,
+            text=load_fixture("civicmedia", "tikilive_video_144112.html"),
+            url=VIDEO_PAGE_URL,
+        ),
+        EMBED_144112_URL: FakeResponse(
+            status=200,
+            text=load_fixture("civicmedia", "tikilive_embed_144112.html"),
+            url=EMBED_144112_URL,
+        ),
+    }
+
+
+def test_video_page_url_is_recognized_and_gives_the_video_id():
+    assert detect_platform(VIDEO_PAGE_URL) == "civicmedia"
+    assert _video_id_from_url(VIDEO_PAGE_URL) == "144112"
+    assert _video_id_from_url(VIDEO_PAGE_URL + "/") == "144112"
+    assert _video_id_from_url(EMBED_144112_URL) == "144112"
+    assert _video_id_from_url("https://civplus.tikiliveapi.com/video/abc") is None
+
+
+async def test_video_page_url_resolves_with_title_and_channel():
+    with mock_session(_routes_144112()):
+        resolved = await CivicMediaAssetFinder().resolve(VIDEO_PAGE_URL)
+
+    assert resolved.title == TITLE_144112
+    assert resolved.external_id == "civicmedia:144112"
+    assert resolved.video_url and "videoId=144112" in resolved.video_url
+    assert resolved.video_format == "m3u8"
+    assert resolved.video_channel == "civicmedia:146"
+    assert not resolved.video_warnings
+
+
+async def test_embed_url_now_gets_the_title_from_the_video_page():
+    with mock_session(_routes_144112()):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title == TITLE_144112
+    assert resolved.external_id == "civicmedia:144112"
+    assert resolved.video_channel == "civicmedia:146"
+
+
+async def test_embed_url_title_falls_back_to_html_title_without_og_title():
+    routes = _routes_144112()
+    routes[VIDEO_PAGE_URL] = FakeResponse(
+        status=200,
+        text="<html><head><title>Some Meeting</title></head></html>",
+        url=VIDEO_PAGE_URL,
+    )
+    with mock_session(routes):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title == "Some Meeting"
+
+
+async def test_video_page_fetch_failure_leaves_embed_resolve_intact():
+    routes = _routes_144112()
+    routes[VIDEO_PAGE_URL] = FakeResponse(status=500, text="", url=VIDEO_PAGE_URL)
+    with mock_session(routes):
+        resolved = await CivicMediaAssetFinder().resolve(EMBED_144112_URL)
+
+    assert resolved.title is None
+    assert resolved.video_url and "videoId=144112" in resolved.video_url
+    assert resolved.video_channel == "civicmedia:146"
+
+
+async def test_refresh_playlist_url_works_from_a_video_page_url():
+    with mock_session(_routes_144112()):
+        fresh = await refresh_playlist_url(VIDEO_PAGE_URL)
+
+    assert fresh and "videoId=144112" in fresh
+
+
+# -- Category pages (`?CID=`, WO-1173) ----------------------------------
+# Two real pages fetched live 2026-09-30, raw-saved (see the fixtures
+# README): Evergreen Park, IL's parks-and-recreation channel (no
+# meetings; its embedded player is "Preschool Welcome Video") and Hobart,
+# IN's "City of Hobart Public Meetings" channel.
+
+EVERGREEN_CID_URL = "https://il-evergreenpark2.civicplus.com/CivicMedia?CID=3"
+HOBART_CID_URL = (
+    "https://www.cityofhobart.org/CivicMedia?CID=City-of-Hobart-Public-Meetings-4"
+)
+
+
+def _cid_routes(url, fixture):
+    return {
+        url: FakeResponse(status=200, text=load_fixture("civicmedia", fixture), url=url)
+    }
+
+
+def test_category_url_is_its_own_shape_not_a_video_page():
+    assert is_civicmedia_category_url(EVERGREEN_CID_URL)
+    assert is_civicmedia_category_url(HOBART_CID_URL)
+    assert is_civicmedia_category_url("https://x.gov/CivicMedia.aspx?CID=")
+    assert not is_civicmedia_category_url(PAGE_URL)
+    assert not is_civicmedia_category_url("https://x.gov/CivicMedia")
+    assert not is_civicmedia_category_url("https://x.gov/CivicMedia?CID=3&VID=9")
+    assert not is_civicmedia_page_url(EVERGREEN_CID_URL)
+    assert detect_platform(EVERGREEN_CID_URL) == "civicmedia"
+    assert detect_platform(HOBART_CID_URL) == "civicmedia"
+
+
+async def test_evergreen_park_category_has_no_meeting_and_never_picks_the_promo():
+    with mock_session(_cid_routes(EVERGREEN_CID_URL, "evergreen_civicmedia_cid3.html")):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicMediaAssetFinder().resolve(EVERGREEN_CID_URL)
+    assert exc.value.candidates == []
+    assert "none looks like a meeting" in str(exc.value)
+    assert "lists 8 videos" in str(exc.value)
+    assert "Evergreen Park" in (exc.value.jurisdiction_hint or "")
+
+
+def test_evergreen_park_category_lists_every_video_including_now_playing():
+    html = load_fixture("civicmedia", "evergreen_civicmedia_cid3.html")
+    videos = _category_videos(html, EVERGREEN_CID_URL)
+    titles = [t for t, _ in videos]
+    assert len(videos) == 8
+    assert "Preschool Welcome Video" in titles
+    assert "EPRD Preschool Graduation 2024" in titles
+    urls = [u for _, u in videos]
+    assert (
+        "https://il-evergreenpark2.civicplus.com/CivicMedia.aspx"
+        "?VID=2024-Evergreen-Park-Independence-Day-Par-129"
+    ) in urls
+    # Newest first: the "Now Playing" block (no link of its own) takes the
+    # page's og:url, VID=147, and sorts to the top.
+    assert urls[0].endswith("CivicMedia?VID=147")
+    ids = [int(civicmedia_page_id(u)) for u in urls]
+    assert ids == sorted(ids, reverse=True)
+
+
+async def test_hobart_category_offers_its_meetings_newest_first():
+    with mock_session(
+        _cid_routes(HOBART_CID_URL, "hobart_civicmedia_cid_public_meetings.html")
+    ):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicMediaAssetFinder().resolve(HOBART_CID_URL)
+    candidates = exc.value.candidates
+    assert [c["title"] for c in candidates] == [
+        "HSD Meeting 9-22-2026",
+        "Unsafe Building Hearing Authority- 9/21/26",
+        "RDC Regular Meeting 9-21-2026",
+        "Council Meeting 09-16-2026",
+        "Historic Preservation Commission 09-15-2026",
+        "Fire Commission Meeting 9-10-26",
+        "HSD Meeting 7-28-2026",
+        "HSD Meeting 8-25-2026",
+    ]
+    # The playing video has no link on the page; its URL is og:url.
+    assert candidates[0]["url"] == "https://www.cityofhobart.org/CivicMedia?VID=339"
+    assert candidates[3]["url"] == (
+        "https://www.cityofhobart.org/CivicMedia.aspx?VID=Council-Meeting-09162026-336"
+    )
+    assert all(detect_platform(c["url"]) == "civicmedia" for c in candidates)
+    assert exc.value.jurisdiction_hint == "Hobart, IN"
+
+
+async def test_category_page_that_cannot_be_read_is_an_honest_error():
+    routes = {
+        EVERGREEN_CID_URL: FakeResponse(status=500, text="", url=EVERGREEN_CID_URL)
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicMediaAssetFinder().resolve(EVERGREEN_CID_URL)
+    assert exc.value.candidates == []
+    assert "couldn't read" in str(exc.value)
+
+
+async def test_meeting_finder_list_step_learns_category_pages():
+    from app.platforms import register_all_finders
+    from app.platforms.meeting_finder.listing import _list_via_calendar_page_error
+
+    register_all_finders()
+
+    with mock_session(
+        _cid_routes(HOBART_CID_URL, "hobart_civicmedia_cid_public_meetings.html")
+    ):
+        result = await _list_via_calendar_page_error("civicmedia", HOBART_CID_URL, 15)
+    assert result is not None
+    assert len(result.candidates) == 8
+    assert result.candidates[0].platform == "civicmedia"
+
+    with mock_session(_cid_routes(EVERGREEN_CID_URL, "evergreen_civicmedia_cid3.html")):
+        result = await _list_via_calendar_page_error(
+            "civicmedia", EVERGREEN_CID_URL, 15
+        )
+    assert result is not None
+    assert result.candidates == []
+    assert "none looks like a meeting" in result.note
+
+    # A single-video page is not a listing: no fetch, nothing to add.
+    assert await _list_via_calendar_page_error("civicmedia", PAGE_URL, 15) is None

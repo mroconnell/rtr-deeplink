@@ -44,3 +44,22 @@ TikiLive player's title differs from the government's own `og:title`.
 | `isanti_civicmedia_vid461.html` | `https://www.isanticountymn.gov/CivicMedia?VID=461` | Live Stream Committee of the Whole - July 14, 2026 | Autorecord Jul 14 2026, 10:18 AM |
 | `seagoville_civicmedia_vid719.html` | `https://seagoville.us/CivicMedia?VID=20250519-Regular-Session-Part-2-719` | 2025-05-19 Regular Session (Part 2) | 2025-05-19 Regular Session (Part 3) |
 | `stjoseph_civicmedia_vid1.html` | `https://stjosephmo.gov/CivicMedia?VID=St-Joseph-Stormwater-Protection-and-Insp-1` | St. Joseph Stormwater Protection and Inspection Me (cut at 50 characters) | St. Joseph Stormwater Protection and Inspection Meeting 2025 |
+
+## TikiLive video page fixtures (WO-1172, 2026-09-30)
+
+Raw saves, fetched live 2026-09-30, for video 144112 (channel 146).
+
+| File | Address | What it shows |
+|---|---|---|
+| `tikilive_video_144112.html` | `https://civplus.tikiliveapi.com/video/144112` | `<title>` and `og:title` "260 - City Council Meeting 12.17.20."; the stream with `chid=146` |
+| `tikilive_embed_144112.html` | `https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no` | The same video's embed: stream with `chid=146`, no title, no caption track |
+
+## Category-page fixtures (WO-1173, 2026-09-30)
+
+Two `?CID=` category pages, fetched live 2026-09-30 with a generic browser
+User-Agent and saved raw (scripts kept, nothing stripped).
+
+| File | Page | What it shows |
+|---|---|---|
+| `evergreen_civicmedia_cid3.html` | `https://il-evergreenpark2.civicplus.com/CivicMedia?CID=3` | Parks and recreation channel, 8 videos, none a meeting. Its embedded player is "Preschool Welcome Video" (`videoId=160184`), which must never be picked. |
+| `hobart_civicmedia_cid_public_meetings.html` | `https://www.cityofhobart.org/CivicMedia?CID=City-of-Hobart-Public-Meetings-4` | "City of Hobart Public Meetings" channel, 8 videos on the first page, all meetings. The playing video (`VID=339`) has no link; its URL is the page's `og:url`. |

@@ -198,11 +198,61 @@ old plain-file result. `{file}` may hold subfolders (Nunavut's
 The `{client}` folder is iSiLIVE's customer name. It is never used to
 name a government: `jurisdiction` stays unset, and the gov_id comes from
 the caller's research row.
+
+SharePoint anonymous share links and DNN LinkClick links (2026-09-30)
+---------------------------------------------------------------------
+Two more share-link shapes, each confirmed live 2026-09-30 by HEAD.
+
+1. **SharePoint** `https://<tenant>.sharepoint.com/:v:/s/<site>/<token>?e=<code>`
+   (Yakima County, WA's BOCC Work Session). The share page itself is
+   HTML. Adding `&download=1` (SharePoint's own flag, same idea as
+   Dropbox's `dl=1`) makes the first request answer 302, and that
+   response sets a guest cookie. Following the redirect WITH that cookie
+   reaches `/sites/<site>/<folder>/<file>.mp4?ga=1`, which answers 200
+   `video/mp4` (136 MB on the Yakima file). Without the cookie, SharePoint
+   redirects to Microsoft's sign-in page. The final `.mp4` URL on its own
+   is no use either: a cookie-less HEAD of it also redirects to sign-in.
+   **aiohttp's built-in cookie jar cannot do this.** The guest cookie
+   (`FedAuth`) holds base64 characters (`/`, `=`, `+`); aiohttp re-sends
+   such a value wrapped in quotes, SharePoint rejects it, and the chain
+   ends at Microsoft sign-in (confirmed 2026-09-30). `follow_with_cookies()`
+   below follows the redirects by hand and sends each cookie back
+   exactly as received.
+   So `video_url` is the share URL with `download=1`, never the final
+   file URL. Every reader of `video_url` must keep cookies across the
+   redirect: this module and `queue_probe.py` use `follow_with_cookies()`,
+   and ffmpeg/ffprobe (what the transcription worker and
+   `media_probe.py` run) also keep cookies across an HTTP redirect --
+   confirmed 2026-09-30: `ffprobe` on the share URL + `download=1` read
+   the real 4,079-second duration with no extra options. Limitation: the
+   guest cookie is per request chain, so a plain cookie-less download
+   tool (curl without a cookie jar, a browser `<video>` tag on another
+   origin) will land on the sign-in page. `stream.aspx` links and
+   `/:v:/r/` links need an organisation sign-in and stay unsupported
+   (only the anonymous `/:v:/s/` shape is recognised).
+
+2. **DNN LinkClick** `https://<host>/LinkClick.aspx?fileticket=<ticket>&portalid=0`
+   (Sangamon County, IL's County Board Special Meeting recording). DNN
+   (DotNetNuke) sites serve uploaded files through this link. It answers
+   302 to the real file (`/Portals/0/TempAudio/SoundFile/...mp3`,
+   `Content-Type: audio/mpeg`). The URL has no media extension, so the
+   format comes from the Content-Type. The ordinary HEAD check below
+   already follows redirects; only the URL-shape recognition was missing.
+   A LinkClick ticket for a PDF or other non-media file fails the same
+   video/audio Content-Type check and is reported as unconfirmed.
 """
 
 import re
 from typing import List, Optional, Tuple
-from urllib.parse import parse_qsl, quote, unquote, urlencode, urlparse, urlunparse
+from urllib.parse import (
+    parse_qsl,
+    quote,
+    unquote,
+    urlencode,
+    urljoin,
+    urlparse,
+    urlunparse,
+)
 
 import aiohttp
 
@@ -276,6 +326,15 @@ _ISILIVE_NON_CLIENT_FOLDERS = frozenset({"cdn"})
 _ISILIVE_PREFIX_FOLDERS = frozenset({"download", "play"})
 _ISILIVE_MEDIA_EXTENSIONS = (".mp4", ".m4v", ".mov", ".mp3", ".m4a", ".wav")
 
+# 2026-09-30: SharePoint anonymous video share link -- see module
+# docstring's "SharePoint anonymous share links" section. Only the
+# `/:v:/s/<site>/<token>` shape confirmed live (Yakima County, WA).
+_SHAREPOINT_VIDEO_SHARE_RE = re.compile(r"^/:v:/s/[^/]+/[^/]+/?$", re.IGNORECASE)
+
+# 2026-09-30: DNN (DotNetNuke) file link -- see module docstring's "DNN
+# LinkClick" section (Sangamon County, IL).
+_DNN_LINKCLICK_PATH_RE = re.compile(r"/LinkClick\.aspx$", re.IGNORECASE)
+
 
 def parse_isilive_file_url(url: str) -> Optional[Tuple[str, str]]:
     """`(client, encoded_file)` for a recognised iSiLIVE file URL, else
@@ -310,6 +369,72 @@ def parse_isilive_file_url(url: str) -> Optional[Tuple[str, str]]:
 def _isilive_download_url(client: str, encoded_file: str) -> str:
     """The plain file behind any recognised iSiLIVE shape."""
     return f"https://{_ISILIVE_VIDEO_HOST}/download/{client}/{encoded_file}"
+
+
+_MAX_COOKIE_REDIRECTS = 8
+
+
+async def follow_with_cookies(
+    url: str, *, method: str = "HEAD"
+) -> Tuple[int, Optional[str], Optional[int]]:
+    """`(status, content_type, content_length)` of the final response
+    after following redirects by hand, sending back every cookie the
+    chain sets, byte for byte. Needed for a SharePoint share link (module
+    docstring): aiohttp's own jar re-quotes the `FedAuth` value and
+    SharePoint then refuses it. Raises `aiohttp.ClientError` /
+    `TimeoutError` like any other probe; the caller decides what a
+    failure means."""
+    jar: dict = {}
+    current = url
+    async with aiohttp.ClientSession(
+        headers={"User-Agent": _UA}, cookie_jar=aiohttp.DummyCookieJar()
+    ) as session:
+        for _hop in range(_MAX_COOKIE_REDIRECTS + 1):
+            headers = {}
+            if jar:
+                headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in jar.items())
+            async with session.request(
+                method,
+                current,
+                headers=headers,
+                allow_redirects=False,
+                timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
+            ) as resp:
+                for raw in resp.headers.getall("Set-Cookie", []):
+                    name, _sep, rest = raw.partition("=")
+                    jar[name.strip()] = rest.split(";", 1)[0]
+                location = resp.headers.get("Location")
+                if resp.status in (301, 302, 303, 307, 308) and location:
+                    current = urljoin(current, location)
+                    continue
+                length = resp.headers.get("Content-Length")
+                return (
+                    resp.status,
+                    resp.headers.get("Content-Type"),
+                    int(length) if length and length.isdigit() else None,
+                )
+    raise aiohttp.ClientError("too many redirects")
+
+
+def is_sharepoint_share_url(url: str) -> bool:
+    """True for a SharePoint anonymous video share link,
+    `https://<tenant>.sharepoint.com/:v:/s/<site>/<token>` -- see module
+    docstring's "SharePoint anonymous share links" section. Callers that
+    fetch such a link themselves must keep cookies across redirects."""
+    parsed = urlparse(url)
+    netloc = parsed.netloc.lower()
+    if not netloc.endswith(".sharepoint.com"):
+        return False
+    return bool(_SHAREPOINT_VIDEO_SHARE_RE.match(parsed.path))
+
+
+def is_dnn_linkclick_url(url: str) -> bool:
+    """True for a DNN `LinkClick.aspx?fileticket=...` file link -- see
+    module docstring's "DNN LinkClick" section."""
+    parsed = urlparse(url)
+    if not _DNN_LINKCLICK_PATH_RE.search(parsed.path):
+        return False
+    return any(k.lower() == "fileticket" for k, _v in parse_qsl(parsed.query))
 
 
 def _drive_file_id(url: str) -> Optional[str]:
@@ -467,6 +592,9 @@ def is_direct_file_url(url: str) -> bool:
         # WO-1155: includes iSiLIVE's player pages, which carry no media
         # extension of their own (see module docstring).
         return True
+    if is_sharepoint_share_url(url) or is_dnn_linkclick_url(url):
+        # 2026-09-30: neither carries a media extension in its URL.
+        return True
     # A real video OR audio extension in the URL's own path -- covers a
     # bare first-party file (Palisade/Dundee/Cayuga Heights), Dropbox's
     # `/scl/fi/<id>/<filename>.mp4` shape (whose filename segment already
@@ -476,6 +604,125 @@ def is_direct_file_url(url: str) -> bool:
     # an audio-only direct file is recognized the same way utah_pmn.py's
     # own bare-file case already is for a different platform.
     return media_type(url) in ("video", "audio")
+
+
+# WO-1171 (2026-09-30): CivicPlus keeps meeting recordings in its file
+# library, `https://{tenant}.civicplus.com/DocumentCenter/View/{id}/{name}`
+# (and sometimes `Archive.aspx?ADID=`/`AMID=`). The URL never carries a
+# media extension, and HEAD answers a generic 404 HTML page, so the only
+# way to tell a recording from a PDF or page is one GET that reads the
+# response headers and closes the stream. Confirmed live on six real
+# tenants (Woodford IL, Park CO, White Pine NV, New Scotland NY,
+# Montville NJ, Preble OH): a recording answers 200 with
+# `application/octet-stream` and `Content-Disposition: inline;filename=
+# ....m4a` (or `audio/x-ms-wma`); the Preble `Archive.aspx?AMID=` link is
+# an ordinary HTML page.
+_CIVICPLUS_FILE_PATH_RE = re.compile(
+    r"^/(documentcenter/(view|download)/\d+|archive\.aspx$)", re.IGNORECASE
+)
+_FILE_LIBRARY_MEDIA_EXTENSIONS = {
+    "mp4": "mp4",
+    "m4v": "mp4",
+    "mov": "mp4",
+    "webm": "webm",
+    "mp3": "mp3",
+    "m4a": "m4a",
+    "wav": "wav",
+    "wma": "wma",
+    "aac": "aac",
+    "ogg": "ogg",
+}
+_FILE_LIBRARY_AUDIO_FORMATS = ("mp3", "m4a", "wav", "wma", "aac", "ogg")
+_DISPOSITION_FILENAME_RE = re.compile(
+    r"""filename\*?=(?:UTF-8'')?"?([^";\r\n]+)"?""", re.IGNORECASE
+)
+
+
+def is_civicplus_file_library_url(url: str) -> bool:
+    """True for a CivicPlus file-library link that might be a recording
+    -- `/DocumentCenter/View|Download/{id}/...` or `/Archive.aspx?ADID=|
+    AMID=` on a `*.civicplus.com` tenant. Only says the link COULD be a
+    file; `probe_civicplus_file()` reads the headers to find out."""
+    parsed = urlparse(url)
+    if not parsed.netloc.lower().endswith("civicplus.com"):
+        return False
+    if not _CIVICPLUS_FILE_PATH_RE.match(parsed.path):
+        return False
+    if parsed.path.lower().startswith("/archive.aspx"):
+        return any(k.lower() in ("adid", "amid") for k, _v in parse_qsl(parsed.query))
+    return True
+
+
+def classify_file_library_media(
+    content_type: Optional[str], content_disposition: Optional[str], url: str
+) -> Optional[str]:
+    """The media `video_format` ("mp4", "m4a", "wma", ...) when these
+    response headers say the file is audio or video, else `None`. An
+    `audio/` or `video/` content type counts. A generic
+    `application/octet-stream` counts only when the download filename (or,
+    failing that, the URL path) carries a real media extension. An HTML
+    page, a PDF and anything else return `None`."""
+    main_type = (content_type or "").split(";", 1)[0].strip().lower()
+    filename = None
+    match = _DISPOSITION_FILENAME_RE.search(content_disposition or "")
+    if match:
+        filename = unquote(match.group(1).strip())
+    ext = None
+    for candidate in (filename, urlparse(url).path):
+        if candidate and "." in candidate:
+            tail = candidate.rsplit(".", 1)[-1].lower()
+            if tail in _FILE_LIBRARY_MEDIA_EXTENSIONS:
+                ext = tail
+                break
+    if main_type.startswith(("audio/", "video/")):
+        if ext:
+            return _FILE_LIBRARY_MEDIA_EXTENSIONS[ext]
+        if main_type.startswith("video/"):
+            return "mp4"
+        return _media_format(url, main_type)
+    if main_type in ("application/octet-stream", "application/binary") and ext:
+        return _FILE_LIBRARY_MEDIA_EXTENSIONS[ext]
+    return None
+
+
+async def probe_civicplus_file(url: str) -> Optional[ResolvedMeeting]:
+    """A direct-file `ResolvedMeeting` when a CivicPlus file-library link
+    is a recording, else `None` (so the caller keeps treating it as a
+    page). One GET that reads the headers only and closes the stream --
+    the body is never read, so a 200 MB recording that ignores `Range`
+    costs a few hundred bytes. HEAD is not used: these servers answer it
+    with a 404 HTML page (see the WO-1171 note above). The duration is
+    left to the existing ffprobe step (`media_probe`/`queue_probe`).
+    Audio-only files resolve too; `video_format` ("m4a", "mp3", "wma")
+    is what marks them, as for any other direct audio file. No captions,
+    so tier 3."""
+    if not is_civicplus_file_library_url(url):
+        return None
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with guarded_get(
+                session,
+                url,
+                timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                media_url = str(resp.url)
+                fmt = classify_file_library_media(
+                    resp.headers.get("Content-Type"),
+                    resp.headers.get("Content-Disposition"),
+                    media_url,
+                )
+    except (aiohttp.ClientError, TimeoutError, ValueError):
+        return None
+    if fmt is None:
+        return None
+    return ResolvedMeeting(
+        platform="direct_file",
+        source_url=url,
+        video_url=media_url,
+        video_format=fmt,
+    )
 
 
 def _is_laserfiche_weblink_url(url: str) -> bool:
@@ -555,6 +802,15 @@ def _resolve_direct_media_url(url: str) -> str:
     if isilive is not None:
         return _isilive_download_url(*isilive)
     parsed = urlparse(url)
+    if is_sharepoint_share_url(url):
+        # SharePoint's own download flag; the guest cookie the first 302
+        # sets must be kept across the redirect by whoever fetches this
+        # (module docstring). Any existing `download` param is replaced.
+        query_pairs = [
+            (k, v) for k, v in parse_qsl(parsed.query) if k.lower() != "download"
+        ]
+        query_pairs.append(("download", "1"))
+        return urlunparse(parsed._replace(query=urlencode(query_pairs)))
     if is_dropbox_url(url):
         # Dropbox's own documented direct-download flag -- confirmed live
         # 2026-09-12 to change a share page's response from its ordinary
@@ -654,7 +910,14 @@ class DirectFileAssetFinder(AssetFinder):
         before; `media_kind` is only ever set by the ranged-GET fallback
         (see module docstring's "HEAD refused, or unusable" section), which
         runs for a Dropbox link, a HEAD answering 403/405/501, or a HEAD
-        the client can't even parse."""
+        the client can't even parse. A SharePoint share link uses
+        `follow_with_cookies()` instead (module docstring)."""
+        if is_sharepoint_share_url(media_url):
+            try:
+                status, content_type, _length = await follow_with_cookies(media_url)
+            except (aiohttp.ClientError, TimeoutError):
+                return None, None
+            return (content_type if status == 200 else None), None
         if not is_dropbox_url(media_url):
             try:
                 async with aiohttp.ClientSession(

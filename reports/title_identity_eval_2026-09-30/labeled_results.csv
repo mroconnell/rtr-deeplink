@@ -1,0 +1,349 @@
+run,label,reason,title,proposed_gov_id,meeting,gov_id,confidence,why
+run1,accept,,Haddam Meetings,us:cousub:0913035230,True,us:cousub:0913035230,medium,meeting_word_only;place_match:Haddam town:unique_name_in_state;place_in_title
+run1,reject_wrong_gov,"Center City Authority (Midland MI), not Center township",Center City Authority,us:cousub:2604714300,True,,low,weak_body_word:authority;place_unresolved:center:cue_city_matches_no_candidate;no_place_in_title
+run1,accept,,Plainville School Committee,us:sd:2509690,True,us:sd:2509690,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run1,accept,,School Board Meetings,us:sd:2620730,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,Springfield School Board,us:sd:5007530,True,us:sd:5007530,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Estacada School District Board Meeting,us:sd:4104700,True,,low,body_word:board;school_body_no_district_matched
+run1,accept,,Oregon City School District,us:sd:4109330,,,low,no_body_or_meeting_word
+run1,accept,,Springboro City Council,us:place:3974076,True,us:place:3974076,high,body_word:city council;place_match:Springboro city:unique_name_in_state;place_in_title
+run1,accept,,Silver Grove City Council,us:place:2170644,True,us:place:2170644,high,body_word:city council;place_match:Silver Grove city:unique_name_in_state;place_in_title
+run1,reject_wrong_gov,"state river conservancy, not San Joaquin city",San Joaquin River Conservancy Board,us:place:0667126,True,,low,weak_body_word:board;no_place_in_title
+run1,accept,,Mandeville City Council Meeting,us:place:2248225,True,us:place:2248225,high,body_word:city council;place_match:Mandeville city:unique_name_in_state;place_in_title
+run1,reject_non_meeting,'On The Agenda' is a show,On The Agenda,us:place:2000475,False,,high,non_meeting:on the agenda (a show)
+run1,accept,,ISD 197 School Board,us:sd:2742270,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,South St. Paul School Board,us:sd:2733270,True,us:sd:2733270,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Monson School Committee Meetings,us:sd:2508040,True,us:sd:2508040,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run1,accept,,School Board Meetings,us:sd:2733510,True,us:sd:2733510,medium,body_word:school board;school_body_district_from_channel_name:unique_name_in_state
+run1,accept,,Cabarrus School Board Mtg,us:sd:3700530,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,AWRSD School Committee Meetings,us:sd:2502040,True,,low,body_word:school committee;school_body_no_district_matched
+run1,accept,,KW School Board,us:sd:2717100,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,School Board Meetings,us:sd:3301740,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,Dartmouth School Committee Meetings,us:sd:2504020,True,us:sd:2504020,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run1,held,hold: school building committee may be the town's,Norwell School Building Committee,us:sd:2509030,True,us:cousub:2502350145,medium,weak_body_word:committee;place_match:Norwell town:in_known_gov_ids;place_in_title
+run1,accept,,School Committee Meetings,us:sd:2505500,True,,low,body_word:school committee;school_body_no_district_matched
+run1,accept,,Springfield School Board,us:sd:5007530,True,us:sd:5007530,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Alum Rock Union Elementary School District Board Meeting,us:sd:0602310,True,us:sd:0602310,high,body_word:board;school_body_name_match:unique_name_in_state
+run1,reject_wrong_gov,"county board of education, not Santa Clara USD",County of Santa Clara Board of Education,us:sd:0635430,True,,low,body_word:board of education;county_board_of_education_is_not_the_local_district;no_district_for_county_board
+run1,reject_non_meeting,Elizabeth Warren town hall,Elizabeth Warren Exeter Town Hall,us:place:0623126,False,,high,non_meeting:politician town hall
+run1,accept,,St. Albans City Council,us:place:5061675,True,us:place:5061675,high,body_word:city council;place_match:St. Albans city:unique_name_in_state;place_in_title
+run1,accept,,Swanton Village Trustees,us:place:5071650,True,us:place:5071650,high,body_word:trustees;place_match:Swanton village:unique_name_in_state;place_in_title
+run1,held,hold: 'MV Schools 20' is a channel name,MV Schools 20,us:sd:2722950,,,low,no_body_or_meeting_word
+run1,held,hold: 'St. Anthony 16' is a channel name,St. Anthony 16,us:place:2756698,,,low,no_body_or_meeting_word
+run1,accept,,Green Mountain Care Board,us:state:50,True,,low,weak_body_word:board;no_place_in_title
+run1,accept,,Ludlow Elementary School Board,us:sd:5000422,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,Village of Ludlow Annual Meeting,us:place:5041200,True,us:place:5041200,medium,meeting_word_only;place_match:Ludlow village:unique_name_in_state;place_in_title
+run1,reject_non_meeting,"sheriff's department, not a meeting body",Oakland County Sheriffs Department,us:county:26125,False,,high,non_meeting:sheriff
+run1,accept,,LaPorte County Animal Shelter Advisory Committee,us:county:18091,True,us:county:18091,medium,weak_body_word:committee;place_match:LaPorte County:in_known_gov_ids;place_in_title
+run1,accept,,Michigan City Sola Economic Improvement District Board,us:place:1848798,True,us:place:1848798,medium,weak_body_word:board;place_match:Michigan City city:in_known_gov_ids;place_in_title
+run1,accept,,Kingsford Heights Town Council,us:place:1839852,True,us:place:1839852,high,body_word:town council;place_match:Kingsford Heights town:in_known_gov_ids;place_in_title
+run1,accept,,Long Beach Public Works Committee,us:place:1844784,True,us:place:1844784,medium,weak_body_word:committee;place_match:Long Beach town:in_known_gov_ids;place_in_title
+run1,accept,,Michiana Shores Town Council,us:place:1848744,True,us:place:1848744,high,body_word:town council;place_match:Michiana Shores town:in_known_gov_ids;place_in_title
+run1,accept,,Trail Creek Town Council,us:place:1876328,True,us:place:1876328,high,body_word:town council;place_match:Trail Creek town:in_known_gov_ids;place_in_title
+run1,accept,,Berkshire Selectboard,us:cousub:5001105425,True,us:cousub:5001105425,medium,body_word:selectboard;place_match:Berkshire town:unique_name_in_state;place_in_title
+run1,accept,,St. Albans City Police Advisory Board,us:place:5061675,True,us:place:5061675,medium,weak_body_word:board;place_match:St. Albans city:in_known_gov_ids;place_in_title
+run1,accept,,Fairfield Selectboard,us:cousub:5001125225,True,us:cousub:5001125225,medium,body_word:selectboard;place_match:Fairfield town:unique_name_in_state;place_in_title
+run1,accept,,Bakersfield Selectboard,us:cousub:5001102500,True,us:cousub:5001102500,medium,body_word:selectboard;place_match:Bakersfield town:unique_name_in_state;place_in_title
+run1,accept,,Swanton Town Selectboard,us:cousub:5001171725,True,us:cousub:5001171725,high,body_word:selectboard;place_match:Swanton town:unique_name_in_state;place_in_title
+run1,accept,,Sheldon Town Selectboard,us:cousub:5001164600,True,us:cousub:5001164600,high,body_word:selectboard;place_match:Sheldon town:unique_name_in_state;place_in_title
+run1,accept,,Enosburgh Town Selectboard,us:cousub:5001124050,True,us:cousub:5001124050,high,body_word:selectboard;place_match:Enosburgh town:unique_name_in_state;place_in_title
+run1,reject_wrong_gov,"school district board, not the town",Enosburg-Richford UUSD Board Meetings,us:cousub:5001159125,True,,low,body_word:board;school_body_no_district_matched
+run1,accept,,Missisquoi Valley School District,us:sd:5000433,,,low,no_body_or_meeting_word
+run1,accept,,Richford School Board,us:sd:5000444,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,Swanton Village Trustees,us:place:5071650,True,us:place:5071650,high,body_word:trustees;place_match:Swanton village:unique_name_in_state;place_in_title
+run1,accept,,Maple Run Unified School District,us:sd:5000399,,,low,no_body_or_meeting_word
+run1,accept,,Highgate Selectboard,us:cousub:5001133025,True,us:cousub:5001133025,medium,body_word:selectboard;place_match:Highgate town:unique_name_in_state;place_in_title
+run1,accept,,Lebanon Government Meetings,us:place:3942364,True,us:place:3942364,medium,meeting_word_only;place_match:Lebanon city:unique_name_in_state;place_in_title
+run1,accept,,Little Miami School District Board of Education Meeting,us:sd:3905044,True,us:sd:3905044,high,body_word:board of education;school_body_name_match:unique_name_in_state
+run1,accept,,Village of Fairfax Government Meetings,us:place:3925942,True,us:place:3925942,medium,meeting_word_only;place_match:Fairfax village:unique_name_in_state;place_in_title
+run1,accept,,Village of Terrace Park Government Meetings,us:place:3976428,True,us:place:3976428,medium,meeting_word_only;place_match:Terrace Park village:unique_name_in_state;place_in_title
+run1,accept,,Village of Woodlawn Government Meetings,us:place:3986366,True,us:place:3986366,medium,meeting_word_only;place_match:Woodlawn village:unique_name_in_state;place_in_title
+run1,accept,,Mason School Board Meetings,us:sd:3905045,True,us:sd:3905045,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,City of North College Hill Government Meetings,us:place:3956322,True,us:place:3956322,medium,meeting_word_only;place_match:North College Hill city:unique_name_in_state;place_in_title
+run1,accept,,Mt. Healthy School Board Meetings,us:sd:3904441,True,us:sd:3904441,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,City of Mt. Healthy Government Meetings,us:place:3952752,True,us:place:3952752,medium,meeting_word_only;place_match:Mount Healthy city:unique_name_in_state;place_in_title
+run1,accept,,City of Springdale Government Meetings,us:place:3974104,True,us:place:3974104,medium,meeting_word_only;place_match:Springdale city:unique_name_in_state;place_in_title
+run1,accept,,City of Sharonville Government Meetings,us:place:3971892,True,us:place:3971892,medium,meeting_word_only;place_match:Sharonville city:unique_name_in_state;place_in_title
+run1,accept,,City of Mason Government Meetings,us:place:3948188,True,us:place:3948188,medium,meeting_word_only;place_match:Mason city:unique_name_in_state;place_in_title
+run1,accept,,Village of Mariemont Government Meetings,us:place:3947600,True,us:place:3947600,medium,meeting_word_only;place_match:Mariemont village:unique_name_in_state;place_in_title
+run1,accept,,Village of Lincoln Heights Government Meetings,us:place:3943722,True,us:place:3943722,medium,meeting_word_only;place_match:Lincoln Heights village:unique_name_in_state;place_in_title
+run1,accept,,City of Harrison Government Meetings,us:place:3933838,True,us:place:3933838,medium,meeting_word_only;place_match:Harrison city:unique_name_in_state;place_in_title
+run1,accept,,Village of Glendale Government Meetings,us:place:3930380,True,us:place:3930380,medium,meeting_word_only;place_match:Glendale village:unique_name_in_state;place_in_title
+run1,accept,,Village of Evendale Government Meetings,us:place:3925802,True,us:place:3925802,medium,meeting_word_only;place_match:Evendale village:unique_name_in_state;place_in_title
+run1,accept,,Village of St. Bernard Government Meetings,us:place:3969470,True,us:place:3969470,medium,meeting_word_only;place_match:St. Bernard village:in_known_gov_ids;place_in_title
+run1,accept,,Milford School Board Meetings,us:sd:3904550,True,,low,body_word:school board;school_body_no_district_matched
+run1,accept,,Crosby Township Government Meetings,us:cousub:3906119470,True,us:cousub:3906119470,medium,meeting_word_only;place_match:Crosby township:unique_name_in_state;place_in_title
+run1,accept,,Princeton School Board Meetings,us:sd:3904467,True,us:sd:3904467,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,reject_non_meeting,tourism playlist,Trip Planning & Itineraries,us:place:0550450,False,,high,non_meeting:tourism
+run1,reject_non_meeting,"county Democrats caucus, not a government",Chittenden County Democrats Reorganization Caucus - 10/24/2023,us:cousub:5002114350,False,,high,non_meeting:party
+run1,held,hold: 'Commissioners' Corner' may be a show,Burlington School Commissioners' Corner,us:sd:5002820,False,,high,non_meeting:corner (a show)
+run1,accept,,2017 Vermont Legislative Session,us:state:50,True,,low,meeting_word_only;legislative_could_be_state_or_county
+run1,accept,,Town of Kensington Council Meetings,us:place:2443500,True,us:place:2443500,high,body_word:council;place_match:Kensington town:unique_name_in_state;place_in_title
+run1,accept,,Stratton School Board,us:sd:5007860,True,us:sd:5007860,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Windham Town Meeting,us:cousub:5002584850,True,us:cousub:5002584850,high,body_word:town meeting;place_match:Windham town:unique_name_in_state;place_in_title
+run1,accept,,Dummerston Conservation Commission,us:cousub:5002518325,True,us:cousub:5002518325,medium,weak_body_word:commission;place_match:Dummerston town:unique_name_in_state;place_in_title
+run1,accept,,Windham School District Board,us:sd:5009270,True,us:sd:5009270,medium,weak_body_word:board;school_body_name_match:unique_name_in_state
+run1,accept,,Vernon Town Meeting,us:cousub:5002574800,True,us:cousub:5002574800,high,body_word:town meeting;place_match:Vernon town:unique_name_in_state;place_in_title
+run1,accept,,Vermont Legislative Hearings,us:state:50,True,,low,meeting_word_only;legislative_could_be_state_or_county
+run1,accept,,Townshend Town Meeting,us:cousub:5002573300,True,us:cousub:5002573300,high,body_word:town meeting;place_match:Townshend town:unique_name_in_state;place_in_title
+run1,accept,,Jamaica Town Meeting,us:cousub:5002536175,True,us:cousub:5002536175,high,body_word:town meeting;place_match:Jamaica town:unique_name_in_state;place_in_title
+run1,accept,,Marlboro Elementary School Board,us:sd:5005400,True,us:sd:5005400,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Vernon School Board,us:sd:5008310,True,us:sd:5008310,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,River Valleys Unified School District,us:sd:5000447,,,low,no_body_or_meeting_word
+run1,accept,,School Committee,us:sd:2508250,True,,low,body_word:school committee;school_body_no_district_matched
+run1,accept,,Van Buren Planning Board,us:cousub:3606776760,True,us:cousub:3606776760,high,body_word:planning board;place_match:Van Buren town:unique_name_in_state;place_in_title
+run1,accept,,Lysander Town Planning Board,us:cousub:3606744039,True,us:cousub:3606744039,high,body_word:planning board;place_match:Lysander town:in_known_gov_ids;place_in_title
+run1,accept,,Baldwinsville School Board,us:sd:3603870,True,us:sd:3603870,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Baldwinsville Village Board,us:place:3604198,True,us:place:3604198,high,body_word:village board;place_match:Baldwinsville village:in_known_gov_ids;place_in_title
+run1,accept,,Town of Tuxedo Planning Board,us:cousub:3607175781,True,us:cousub:3607175781,high,body_word:planning board;place_match:Tuxedo town:in_known_gov_ids;place_in_title
+run1,reject_wrong_gov,"Salmon Arm, BC channel, not Council ID",2023 City Council Videos,us:place:1618820,True,us:place:1671650,medium,body_word:city council;generic_body_single_known_government
+run1,accept,,Red Hook Central School District,us:sd:3624240,,,low,no_body_or_meeting_word
+run1,accept,,Tivoli Meetings - ARCHIVED,us:place:3674023,True,us:place:3674023,medium,meeting_word_only;place_match:Tivoli village:unique_name_in_state;place_in_title
+run1,reject_non_meeting,school campus tours,District 96 Campus Tours,us:place:1710916,False,,high,non_meeting:tour
+run1,accept,,District 96 Board of Education meetings,us:sd:1733990,True,,low,body_word:board of education;school_body_no_district_matched
+run1,accept,,Hamilton City Council,us:place:0132848,True,us:place:0132848,high,body_word:city council;place_match:Hamilton city:unique_name_in_state;place_in_title
+run1,accept,,City Council,us:place:1319000,True,us:place:1319000,medium,body_word:city council;generic_body_single_known_government
+run1,held,hold: unknown channel,Board of Trustees-2019,us:cousub:2604933300,True,,low,body_word:board of trustees;no_place_in_title
+run1,held,hold: unknown channel,Public Hearing 10/2014,us:cousub:3602520137,True,,low,meeting_word_only;no_place_in_title
+run1,accept,,Health Insurance Affordability Task Force,us:state:56,True,us:place:5683040,medium,body_word:task force;generic_body_single_known_government
+run1,held,hold: unknown channel,Board Meetings | 2025-2026,us:place:5615325,True,us:place:5615325,medium,body_word:board;generic_body_single_known_government
+run1,reject_wrong_gov,"Philadelphia council committee, not Economy PA",Committee on Global Opportunities and the Creative Economy,us:place:4222264,True,,low,weak_body_word:committee;no_place_in_title
+run1,reject_non_meeting,"sheriff outreach, not a board meeting",Siskiyou Sheriff Town Hall meetings,us:county:06093,False,,high,non_meeting:sheriff
+run1,accept,,Weed City Meetings,us:place:0683850,True,us:place:0683850,medium,meeting_word_only;place_match:Weed city:unique_name_in_state;place_in_title
+run1,accept,,Dunsmuir City Meetings,us:place:0620242,True,us:place:0620242,medium,meeting_word_only;place_match:Dunsmuir city:in_known_gov_ids;place_in_title
+run1,accept,,Mt. Shasta City Meetings,us:place:0649852,True,us:place:0649852,medium,meeting_word_only;place_match:Mount Shasta city:unique_name_in_state;place_in_title
+run1,accept,,Blue Lake Planning Commission Meetings,us:place:0607162,True,us:place:0607162,high,body_word:planning commission;place_match:Blue Lake city:unique_name_in_state;place_in_title
+run1,accept,,Trinidad City Council Meetings,us:place:0680448,True,us:place:0680448,high,body_word:city council;place_match:Trinidad city:unique_name_in_state;place_in_title
+run1,reject_wrong_gov,"City of North Miami channel, not Hall County TX",Town Hall - Biscayne Landing 10-09-2014,us:county:48191,,,low,no_body_or_meeting_word
+run1,accept,,MMUUSD Meetings,us:sd:5000443,True,,low,meeting_word_only;school_body_no_district_matched
+run1,accept,,Underhill Meetings,us:cousub:5000773975,True,us:cousub:5000773975,medium,meeting_word_only;place_match:Underhill town:unique_name_in_state;place_in_title
+run1,accept,,Richmond Meetings,us:cousub:5000759275,True,us:cousub:5000759275,medium,meeting_word_only;place_match:Richmond town:unique_name_in_state;place_in_title
+run1,accept,,County Budget Hearings,us:county:18041,True,,low,meeting_word_only;no_place_in_title
+run1,accept,,School Board,us:sd:1803510,True,us:sd:1803510,medium,body_word:school board;school_body_single_known_district
+run1,accept,,School Board Meetings,us:sd:4101120,True,us:sd:4101120,medium,body_word:school board;school_body_single_known_district
+run1,accept,,Salisbury Conservation Commission,us:cousub:5000162575,True,us:cousub:5000162575,medium,weak_body_word:commission;place_match:Salisbury town:unique_name_in_state;place_in_title
+run1,held,"hold: Richmond city or township, MN",Richmond Meetings,us:cousub:2716954286,True,us:place:2754268,medium,meeting_word_only;place_match:Richmond city:unique_name_in_state;place_in_title
+run1,accept,,ROCORI School Board Meetings,us:sd:2709440,True,us:sd:2709440,high,body_word:school board;school_body_name_match:unique_name_in_state
+run1,accept,,Board of Education Meetings,us:sd:1302220,True,us:sd:1302220,medium,body_word:board of education;school_body_single_known_district
+run1,accept,,Greenfield School Committee Meetings,us:sd:2505490,True,us:sd:2505490,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run1,accept,,Town Meetings,us:cousub:0918055500,True,,low,meeting_word_only;no_place_in_title
+run1,accept,,Board of Education Meetings,us:sd:0903060,True,us:sd:0903060,medium,body_word:board of education;school_body_single_known_district
+run1,reject_wrong_gov,"school district board, not the town",WNUESD (Grafton) Board and Committee Meetings,us:cousub:5002528900,True,,low,body_word:board;school_body_no_district_matched
+run1,accept,,WNESU Board and Committee Meetings,us:sd:5000446,True,,low,body_word:board;no_place_in_title
+run1,accept,,Rockingham Board and Committee Meetings,us:cousub:5002560250,True,us:cousub:5002560250,medium,body_word:board;place_match:Rockingham town:unique_name_in_state;place_in_title
+run1,accept,,BFUHS Board and Committee Meetings,us:sd:5008246,True,,low,body_word:board;no_place_in_title
+run1,accept,,State Board of Education,us:state:48,True,us:state:48,medium,body_word:board of education;state_body;state_body_maps_to_state
+run1,accept,,2007-08 Woodbridge Board of Ed,us:sd:0905310,True,us:sd:0905310,medium,body_word:board of ed;school_body_name_match:unique_name_in_state
+run1,accept,,McSherrystown Borough Council,us:place:4246376,True,us:place:4246376,high,body_word:borough council;place_match:McSherrystown borough:unique_name_in_state;place_in_title
+run1,accept,,Show Low School District Board Meetings,us:sd:0407700,True,us:sd:0407700,high,body_word:board;school_body_name_match:unique_name_in_state
+run1,accept,,"Humboldt Bay Harbor, Recreation & Conservation District Meeting",rtr:us:ca:humboldt-bay-harbor-recreation-and-conservation-district,True,,low,special_district_or_coa_words;special_district_no_place_named
+run1,accept,,RCEA Board of Directors Meetings,rtr:us:ca:redwood-coast-energy-authority,True,,low,body_word:board of directors;no_place_in_title
+run1,accept,,LaPorte County Soil & Water Conservation District Board,rtr:us:in:laporte-county-soil-and-water-conservation-district,True,rtr:us:in:laporte-county-swcd,medium,weak_body_word:board;registry_special_district:LaPorte County Soil and Water Conservation District;existing_special_district_id
+run1,held,hold: may be an info show,Windham Solid Waste Management District Presents,rtr:us:vt:windham-solid-waste-management-district,False,,high,non_meeting:presents (a show)
+run1,accept,,County Council,us:county:18041,True,,low,body_word:county council;no_place_in_title
+run1,reject_wrong_gov,"City of North Miami channel, not Hall County TX","Open Forum - Town Hall Meeting - November 14, 2013",us:county:48191,True,,low,meeting_word_only;no_place_in_title
+run1,accept,,Planning Commission,us:place:5374060,True,us:place:5374060,medium,body_word:planning commission;generic_body_single_known_government
+run2,accept,,School Committee,us:sd:2510620,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Board Meetings,us:sd:3303930,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,School Board Meetings,us:sd:3303930,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Southbridge School Committee Meetings,us:sd:2511010,True,us:sd:2511010,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2503780,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Pentucket School Committee,us:sd:2509450,True,us:sd:2509450,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee Mtgs,us:sd:2510920,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Board,us:sd:2303780,True,us:sd:2303780,medium,body_word:school board;school_body_district_from_channel_name:unique_name_in_state
+run2,accept,,Elementary School Committee,us:sd:2512300,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,RCS Board of Education,us:sd:2630090,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Rialto USD Board of Education Meetings,us:sd:0632370,True,us:sd:0632370,high,body_word:board of education;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2512180,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,City School Board,us:sd:4703150,True,us:sd:4703150,medium,body_word:school board;school_body_district_from_channel_name:unique_name_in_state
+run2,accept,,School Meetings,us:sd:2502820,True,,low,meeting_word_only;school_body_no_district_matched
+run2,accept,,Brewster School Committee,us:sd:2502970,True,us:sd:2502970,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Nauset Regional School Committee,us:sd:2504560,True,us:sd:2504560,medium,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee meetings,us:sd:2506150,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee Meetings,us:sd:2509270,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Board Meetings,us:sd:0634170,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Mt. Greylock RSD School Committee Mtg,us:sd:2508160,True,us:sd:2508160,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,New Ashford Municipal Meetings,us:cousub:2500344385,True,us:cousub:2500344385,medium,meeting_word_only;place_match:New Ashford town:unique_name_in_state;place_in_title
+run2,accept,,North Adams Municipal Meetings,us:place:2546225,True,us:place:2546225,medium,meeting_word_only;place_match:North Adams city:unique_name_in_state;place_in_title
+run2,accept,,Falmouth School Committee,us:sd:2504860,True,us:sd:2504860,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2509060,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee,us:sd:2500002,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee,us:sd:2505370,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Pentucket School Committee,us:sd:2509450,True,us:sd:2509450,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2507230,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee,us:sd:2511460,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Recently Added School Committee Meetings,us:sd:2513080,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Hayward Unified School District Meeting,us:sd:0616740,True,us:sd:0616740,medium,meeting_word_only;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2508580,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Board of Education,us:sd:2602820,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,East Bay Township Zoning Ordinance Subcommittee,us:cousub:2605523800,True,us:cousub:2605523800,high,body_word:zoning;place_match:East Bay township:unique_name_in_state;place_in_title
+run2,accept,,Cabarrus School Board Mtg,us:sd:3700530,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Board of Education - OCS BOE,us:sd:3703450,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Abington School Committee,us:sd:2501650,True,us:sd:2501650,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Massachusetts Legislature & Hearings,us:state:25,True,us:state:25,high,body_word:legislature;state_body;state_body_maps_to_state
+run2,accept,,Brookline School Committee Meetings,us:sd:2503150,True,us:sd:2503150,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2512060,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Urbana School District 116 Board of Education,us:sd:1739960,True,us:sd:1739960,high,body_word:board of education;school_body_name_match:unique_name_in_state
+run2,accept,,Arts and Culture Commission,us:place:1777005,True,us:place:1777005,medium,weak_body_word:commission;generic_body_single_known_government
+run2,accept,,School Board Meetings,us:sd:0634170,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,School Committee,us:sd:2500002,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Hamilton Board of Health,us:cousub:2500927900,True,,low,body_word:board of health;no_place_in_title
+run2,accept,,School Committee,us:sd:2505670,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee,us:sd:2502580,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Hartford Public School Board of Education Meetings,us:sd:0901920,True,us:sd:0901920,medium,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,2026 Columbus City Council Meetings,us:place:2712718,True,us:place:2712718,high,body_word:city council;place_match:Columbus city:unique_name_in_state;place_in_title
+run2,accept,,2022 School Board,us:sd:2712270,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Board of Education Meetings,us:sd:2400540,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Southbridge School Committee Meetings,us:sd:2511010,True,us:sd:2511010,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee (2025-2026),us:sd:2507530,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Somerset Schools Redistricting Committee,us:sd:2510860,True,us:sd:2510860,medium,weak_body_word:committee;school_body_name_match:unique_name_in_state
+run2,accept,,Somerset Berkley Regional School Committee,us:sd:2500541,True,us:sd:2500541,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Board of Education Meetings,us:sd:3416800,True,us:sd:3416800,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Revere Public School Meetings,us:sd:2510050,True,us:sd:2510050,medium,meeting_word_only;school_body_name_match:unique_name_in_state
+run2,accept,,Joint Meetings of the Holyoke City Council and School Committee,us:sd:2506270,True,us:sd:2506270,medium,body_word:city council;school_body_name_match:unique_name_in_state
+run2,accept,,School Board,us:sd:2707500,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Millbrae School District Board of Trustees,us:sd:0624900,True,us:sd:0624900,high,body_word:board of trustees;school_body_name_match:unique_name_in_state
+run2,accept,,Southampton Annual Town Meeting 2026,us:cousub:2501562745,True,us:cousub:2501562745,medium,body_word:town meeting;place_match:Southampton town:unique_name_in_state;place_in_title
+run2,accept,,Southampton School Committee 2026,us:sd:2510950,True,us:sd:2510950,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Easthampton School Committee 2026,us:sd:2504590,True,us:sd:2504590,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Salem School Committee Meetings,us:sd:2510380,True,us:sd:2510380,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2501740,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Belchertown School Committee,us:sd:2502430,True,us:sd:2502430,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Bedford School Committee Meetings,us:sd:2502400,True,us:sd:2502400,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Tewksbury School Committee,us:sd:2511580,True,us:sd:2511580,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Walpole School Committee,us:sd:2511970,True,us:sd:2511970,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2510770,True,,low,body_word:school committee;school_body_no_district_matched
+run2,held,hold: id not yet in governments.csv,Lake Quinsigamond Commission,rtr:us:ma:lake-quinsigamond-commission,True,us:cousub:2502761800,medium,weak_body_word:commission;generic_body_single_known_government
+run2,accept,,School Committee,us:sd:2511400,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Committee Meetings,us:sd:2507680,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,School Board,us:sd:3304350,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,School Board Meetings,us:sd:3408100,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Clark Township Board of Education Meetings,us:sd:3403150,True,us:sd:3403150,high,body_word:board of education;school_body_name_match:unique_name_in_state
+run2,accept,,Clinton School Committee,us:sd:2503750,True,us:sd:2503750,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Montague School Board Meetings,us:sd:2624180,True,us:sd:2624180,high,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee,us:sd:2507080,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Board of Education,us:sd:0904110,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Easton Public School Meetings,us:sd:2504620,True,us:sd:2504620,medium,meeting_word_only;school_body_name_match:unique_name_in_state
+run2,accept,,Mountain Iron City Council,us:place:2744548,True,us:place:2744548,high,body_word:city council;place_match:Mountain Iron city:unique_name_in_state;place_in_title
+run2,accept,,Mountain Iron School Board,us:sd:2700001,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Chisholm City Council,us:place:2711386,True,us:place:2711386,high,body_word:city council;place_match:Chisholm city:unique_name_in_state;place_in_title
+run2,accept,,Town of Rome Board Meeting,us:cousub:5500169275,True,us:cousub:5500169275,high,body_word:board;place_match:Rome town:unique_name_in_state;place_in_title
+run2,accept,,Village of Port Edwards Meetings,us:place:5564175,True,us:place:5564175,medium,meeting_word_only;place_match:Port Edwards village:unique_name_in_state;place_in_title
+run2,accept,,Port Edwards School Board Meeting,us:sd:5511970,True,us:sd:5511970,high,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,Nekoosa Common Council Meetings,us:place:5555875,True,us:place:5555875,medium,body_word:common council;place_match:Nekoosa city:unique_name_in_state;place_in_title
+run2,accept,,Nekoosa School Board Meetings,us:sd:5510380,True,us:sd:5510380,high,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,Grand Rapids Town Board Meetings,us:cousub:5514130125,True,us:cousub:5514130125,high,body_word:town board;place_match:Grand Rapids town:unique_name_in_state;place_in_title
+run2,accept,,Ripon Area School District - Board Meetings,us:sd:5513020,True,us:sd:5513020,medium,body_word:board;school_body_name_match:unique_name_in_state
+run2,reject_non_meeting,'Council Debrief' is a recap show,Neepawa Council Debrief,ca:csd:4615020,False,,high,non_meeting:debrief (a recap show)
+run2,accept,,North Cypress-Langford Council,ca:csd:4607066,True,,low,body_word:council;bare_council;no_place_in_title
+run2,accept,,Monona Grove School Board,us:sd:5509810,True,us:sd:5509810,high,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,York County Commissioners’ Meetings,us:county:42133,True,us:county:42133,high,body_word:commissioners;place_match:York County:unique_name_in_state;place_in_title
+run2,accept,,Board of Education 2019,us:sd:3407170,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Revere Public School Meetings,us:sd:2510050,True,us:sd:2510050,medium,meeting_word_only;school_body_name_match:unique_name_in_state
+run2,accept,,School Committee Archive 2023,us:sd:2505400,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Milford School Committee Meetings,us:sd:2507860,True,us:sd:2507860,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Winthrop School Committee Meetings 2026,us:sd:2513170,True,us:sd:2513170,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Fairfax City Council Meetings,us:place:2720222,True,us:place:2720222,high,body_word:city council;place_match:Fairfax city:unique_name_in_state;place_in_title
+run2,accept,,Arlington City Council Meetings,us:place:2702152,True,us:place:2702152,high,body_word:city council;place_match:Arlington city:unique_name_in_state;place_in_title
+run2,accept,,2018 HEVS Board of Education Meetings,us:sd:3904541,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,2019 School Board Meetings,us:sd:4700360,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Quincy School Committee,us:sd:2509870,True,us:sd:2509870,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Conneaut Area City Schools - Board of Education,us:sd:3904381,True,us:sd:3904381,medium,body_word:board of education;school_body_name_match:unique_name_in_state
+run2,accept,,City Council & Commission Meetings,us:place:3918350,True,us:place:3918350,medium,body_word:city council;generic_body_single_known_government
+run2,accept,,Worcester School Committee,us:sd:2513230,True,us:sd:2513230,high,body_word:school committee;school_body_name_match:in_known_gov_ids
+run2,accept,,Wetlands Board Meetings,us:cousub:2612509110,True,us:cousub:2612509110,medium,body_word:board;generic_body_single_known_government
+run2,reject_non_meeting,"neighborhood meetings, not council",Neighborhood Meetings,us:place:1254200,False,,high,non_meeting:neighborhood meetings
+run2,accept,,2026 City Council Meetings,us:place:0645022,True,us:place:0645022,medium,body_word:city council;generic_body_single_known_government
+run2,accept,,Planning and Zoning,us:cousub:0914014160,True,us:cousub:0914014160,medium,body_word:planning and zoning;generic_body_single_known_government
+run2,accept,,Whitman Bylaw Study Committee,us:cousub:2502379530,True,us:cousub:2502379530,medium,weak_body_word:committee;place_match:Whitman town:in_known_gov_ids;place_in_title
+run2,accept,,Hanson Parks & Fields Committee,us:cousub:2502328495,True,us:cousub:2502328495,medium,weak_body_word:committee;place_match:Hanson town:unique_name_in_state;place_in_title
+run2,accept,,Whitman-Hanson Regional School Committee Meetings,us:sd:2512930,True,us:sd:2512930,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Local Historic District Study Committee,us:cousub:2500945175,True,us:cousub:2500945175,medium,weak_body_word:committee;generic_body_single_known_government
+run2,accept,,Planning Board 01.24.19,us:cousub:2502731435,True,us:cousub:2502731435,medium,body_word:planning board;generic_body_single_known_government
+run2,accept,,Westborough School Committee,us:sd:2512600,True,us:sd:2512600,high,body_word:school committee;school_body_name_match:unique_name_in_state
+run2,accept,,Shade Tree Commission,us:cousub:3403915640,True,us:cousub:3403915640,medium,weak_body_word:commission;generic_body_single_known_government
+run2,accept,,Cranford Board of Education Meetings,us:sd:3403570,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,Board of Education Meetings,us:sd:2400540,True,,low,body_word:board of education;school_body_no_district_matched
+run2,reject_non_meeting,'Don's Workshop' is a show,Don's Workshop,us:cousub:3402359010,False,,high,non_meeting:possessive workshop (a show)
+run2,reject_wrong_gov,"regional health department, not West Allis",Southwest Suburban Health Department,us:place:5585300,,,low,no_body_or_meeting_word
+run2,reject_non_meeting,county executive show,A Day In District with Executive Ryan Mello,us:county:53053,,,low,no_body_or_meeting_word
+run2,accept,,MUNICIPAL BROADBAND ADVISORY COMMITTEE,us:cousub:2500516425,True,us:cousub:2500516425,medium,weak_body_word:committee;generic_body_single_known_government
+run2,accept,,Shade Tree Commission,us:cousub:3403915640,True,us:cousub:3403915640,medium,weak_body_word:commission;generic_body_single_known_government
+run2,accept,,Cranford Board of Education Meetings,us:sd:3403570,True,,low,body_word:board of education;school_body_no_district_matched
+run2,accept,,NPSD School Board Meetings Archives,us:sd:4217280,True,us:sd:4217280,medium,body_word:school board;school_body_single_known_district
+run2,accept,,Plans and Plats Review Committee,us:place:1276600,True,us:place:1276600,medium,weak_body_word:committee;generic_body_single_known_government
+run2,reject_wrong_gov,"Indiana Court of Appeals, not Wayne County",IN Court Of Appeals,us:county:18177,,,low,no_body_or_meeting_word
+run2,accept,,Board of Education,us:sd:4702220,True,us:sd:4702220,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Hastings Planning Commission meetings,us:place:2637120,True,us:place:2637120,high,body_word:planning commission;place_match:Hastings city:in_known_gov_ids;place_in_title
+run2,reject_non_meeting,the access station's own annual meeting,ACMi Annual General Meeting,us:cousub:2501701605,False,,high,non_meeting:annual general meeting (an organization's own)
+run2,accept,,Gov - School Committee,us:sd:2501980,True,,low,body_word:school committee;school_body_no_district_matched
+run2,accept,,Board of Education Meetings,us:sd:3626010,True,us:sd:3626010,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,2026-2027 School Board Meetings,us:sd:5101890,True,us:sd:5101890,medium,body_word:school board;school_body_single_known_district
+run2,accept,,School Board Meetings,us:sd:0102370,True,us:sd:0102370,medium,body_word:school board;school_body_single_known_district
+run2,accept,,Buckland Select Board,us:cousub:2501109595,True,us:cousub:2501109595,medium,body_word:select board;place_match:Buckland town:unique_name_in_state;place_in_title
+run2,accept,,Shelburne Selectboard,us:cousub:2501161135,True,us:cousub:2501161135,high,body_word:selectboard;place_match:Shelburne town:in_known_gov_ids;place_in_title
+run2,accept,,Metuchen BOE,us:sd:3409990,True,,low,body_word:boe;school_body_no_district_matched
+run2,accept,,Swain County Board of Education,us:sd:3704440,True,us:sd:3704440,high,body_word:board of education;school_body_name_match:in_known_gov_ids
+run2,accept,,Board of Education Meetings,us:sd:5502790,True,us:sd:5502790,medium,body_word:board of education;school_body_single_known_district
+run2,reject_wrong_gov,"Lake County IL department, not Green Oaks","Planning, Building, and Development",us:place:1731446,,,low,no_body_or_meeting_word
+run2,accept,,Board of Ed Meetings,us:sd:0902940,True,,low,body_word:board of ed;school_body_no_district_matched
+run2,accept,,Board of Education Meetings,us:sd:5515780,True,us:sd:5515780,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,October 20265 USBE Meetings,us:state:49,True,,low,meeting_word_only;no_place_in_title
+run2,accept,,Board of Education Meetings,us:sd:3702400,True,us:sd:3702400,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,SCS Board of Education Meetings,us:sd:3910003,True,us:sd:3910003,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,St. Lucie Public Schools Board Meetings,us:sd:1201770,True,us:sd:1201770,medium,body_word:board;school_body_single_known_district
+run2,accept,,"City Council Meetings - City of Weed, Ca.",us:place:0683850,True,us:place:0683850,high,body_word:city council;place_match:Weed city:in_known_gov_ids;place_in_title
+run2,accept,,Board of Education Meetings - 25-26,us:sd:2912010,True,us:sd:2912010,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Board of Education Meetings - 25-26,us:sd:2912010,True,us:sd:2912010,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Shelton School Board,us:sd:5307900,True,us:sd:5307900,high,body_word:school board;school_body_name_match:in_known_gov_ids
+run2,accept,,North Mason School Board,us:sd:5305790,True,us:sd:5305790,high,body_word:school board;school_body_name_match:unique_name_in_state
+run2,accept,,School Board Meetings,us:sd:3408100,True,us:sd:3408100,medium,body_word:school board;school_body_single_known_district
+run2,accept,,2024 School Board Meetings,us:sd:2916400,True,us:sd:2916400,medium,body_word:school board;school_body_single_known_district
+run2,accept,,JUHSD - Jefferson Union High School District Meetings,us:sd:0618930,True,,low,meeting_word_only;school_body_no_district_matched
+run2,accept,,PSD - Pacifica School District Meetings,us:sd:0620460,True,us:sd:0620460,medium,meeting_word_only;school_body_name_match:unique_name_in_state
+run2,held,hold: id not yet in governments.csv,MCC - Midcoast Community Council Meetings,rtr:us:ca:midcoast-community-council,True,,low,body_word:council;no_place_in_title
+run2,accept,,CUSD - Cabrillo Unified School District Meetings,us:sd:0606780,True,us:sd:0606780,medium,meeting_word_only;school_body_name_match:in_known_gov_ids
+run2,held,hold: id not yet in governments.csv,CCWD - Coastside County Water District Meetings,rtr:us:ca:coastside-county-water-district,True,,low,special_district_or_coa_words;special_district_no_place_named
+run2,held,hold: id not yet in governments.csv,MWSD - Montara Water & Sanitary District Meetings,rtr:us:ca:montara-water-and-sanitary-district,True,,low,special_district_or_coa_words;special_district_no_place_named
+run2,accept,,Regular School Board Meetings,us:sd:2732390,True,us:sd:2732390,medium,body_word:school board;school_body_single_known_district
+run2,accept,,26-27 Board of Education Meetings,us:sd:2928410,True,us:sd:2928410,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,BOE Meetings,us:sd:3418300,True,us:sd:3418300,medium,body_word:boe;school_body_single_known_district
+run2,accept,,Lakeville Select Board,us:cousub:2502333920,True,us:cousub:2502333920,medium,body_word:select board;place_match:Lakeville town:unique_name_in_state;place_in_title
+run2,accept,,Monona Grove School Board,us:sd:5509810,True,us:sd:5509810,high,body_word:school board;school_body_name_match:in_known_gov_ids
+run2,accept,,Woodman School Board Meetings,us:sd:3028650,True,us:sd:3028650,high,body_word:school board;school_body_name_match:in_known_gov_ids
+run2,reject_non_meeting,"parent meetings, not the board",Richmond Community Schools RtSP Parent Meetings,us:sd:2629670,False,,high,non_meeting:parent meetings
+run2,accept,,Richmond City Council Meetings,us:place:2668380,True,us:place:2668380,high,body_word:city council;place_match:Richmond city:unique_name_in_state;place_in_title
+run2,accept,,School Board,us:sd:4839450,True,us:sd:4839450,medium,body_word:school board;school_body_single_known_district
+run2,accept,,Glen Rock Board of Education,us:sd:3405970,True,us:sd:3405970,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Board of Education Meetings and Events | 2026-2027,us:sd:3629880,True,us:sd:3629880,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,NHSD Board of Education Meetings,us:sd:4217220,True,us:sd:4217220,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Board of Education Meetings,us:sd:3413080,True,us:sd:3413080,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,School Board Meetings,us:sd:2700108,True,us:sd:2700108,medium,body_word:school board;school_body_single_known_district
+run2,accept,,2025 School Board Meetings,us:sd:5303150,True,us:sd:5303150,medium,body_word:school board;school_body_single_known_district
+run2,accept,,Board of Education Meetings,us:sd:4020970,True,us:sd:4020970,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,BOE MEETINGS,us:sd:3629460,True,us:sd:3629460,medium,body_word:boe;school_body_single_known_district
+run2,accept,,Superintendent Search Liaison Subcommittee,us:sd:2512930,True,us:sd:2512930,medium,body_word:subcommittee;school_body_single_known_district
+run2,accept,,Board of Education Meetings,us:sd:2000023,True,us:sd:2000023,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,BOE Meetings 2022-23,us:sd:0905130,True,us:sd:0905130,medium,body_word:boe;school_body_single_known_district
+run2,accept,,School Board Meetings,us:sd:2718240,True,us:sd:2718240,medium,body_word:school board;school_body_single_known_district
+run2,accept,,Board Of Education Meeting (Spanish),us:sd:3612180,True,us:sd:3612180,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,BOE 2024-25,us:sd:4017250,True,us:sd:4017250,medium,body_word:boe;school_body_single_known_district
+run2,accept,,School Committee,us:sd:2506240,True,us:sd:2506240,medium,body_word:school committee;school_body_single_known_district
+run2,accept,,School Committee Meetings,us:sd:2502640,True,us:sd:2502640,medium,body_word:school committee;school_body_single_known_district
+run2,reject_non_meeting,council on aging programs,Wenham Council On Aging,us:cousub:2500974595,True,us:cousub:2500974595,medium,body_word:council;bare_council;place_match:Wenham town:unique_name_in_state;place_in_title
+run2,accept,,BOARD OF EDUCATION,us:sd:3606060,True,us:sd:3606060,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,NRCSD Board of Education Monthly Meetings,us:sd:3614010,True,us:sd:3614010,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,Board of Education,us:sd:3904660,True,us:sd:3904660,medium,body_word:board of education;school_body_single_known_district
+run2,accept,,PBC Zoning Commission Meetings,us:county:12099,True,,low,body_word:zoning;no_place_in_title
+run2,accept,,Planning Meetings,us:place:3972928,True,,low,meeting_word_only;no_place_in_title
+run2,reject_non_meeting,recreation department programs,Fairhaven Recreation Department,us:cousub:2500522130,False,,high,non_meeting:recreation department
+run2,accept,,Criminal Justice Coordinating Council,us:county:24003,True,,low,body_word:council;bare_council;no_place_in_title
+run2,accept,,North Hudson Park Board,us:place:5558050,True,,low,weak_body_word:board;no_place_in_title
+run2,accept,,Hudson School Board,us:sd:5506690,True,,low,body_word:school board;school_body_no_district_matched
+run2,accept,,Hudson City Council,us:place:5536250,True,,low,body_word:city council;no_place_in_title
+run2,held,hold: id not yet in governments.csv,Bedford Housing Authority,rtr:us:ma:bedford-housing-authority,True,us:cousub:2501704615,medium,weak_body_word:authority;special_district_filed_under_local_government
+run2,held,hold: id not yet in governments.csv,Shrewsbury Housing Authority,rtr:us:ma:shrewsbury-housing-authority,True,rtr:us:ma:shrewsbury-housing-authority,medium,weak_body_word:authority;registry_special_district:Shrewsbury Housing Authority;existing_special_district_id
+run2,held,hold: id not yet in governments.csv,Whitman Housing Authority,rtr:us:ma:whitman-housing-authority,True,us:cousub:2502379530,medium,weak_body_word:authority;special_district_filed_under_local_government
+run2,held,hold: id not yet in governments.csv,Muleshoe Area Hospital District,rtr:us:tx:muleshoe-area-hospital-district,True,us:place:4849968,medium,special_district_or_coa_words;special_district_filed_under_local_government
+run2,accept,,Hanson's Camp Kiwanee Commission,us:cousub:2502328495,True,us:cousub:2502328495,medium,weak_body_word:commission;place_match:Hanson town:unique_name_in_state;place_in_title
+run2,accept,,North Hudson Plan Commission,us:place:5558050,True,,low,weak_body_word:commission;no_place_in_title
