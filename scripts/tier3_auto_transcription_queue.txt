@@ -1380,3 +1380,4 @@ https://reflect-ontv.cablecast.tv/internetchannel/show/5111	https://reflect-ontv
 https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16395	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/gallery/15?site=3	us:sd:3301740
 https://reflect-lpctv.cablecast.tv/internetchannel/show/21090	https://reflect-lpctv.cablecast.tv/	us:sd:5000422
 https://reflect-sapatv.cablecast.tv/internetchannel/show/43448	https://reflect-sapatv.cablecast.tv/internetchannel/gallery/17	us:sd:5007530
+http://krvm-1.shs.lane.edu/4j_board_meetings/Board_Special_20250402.mp3	https://4j.lane.edu/boardmeetings	us:sd:4104740
