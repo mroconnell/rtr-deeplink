@@ -1994,3 +1994,24 @@ async def test_probe_direct_file_dropbox_skips_head_and_uses_ranged_get(
     assert result.probe_method == "ranged-get+ffprobe"
     assert result.size_bytes == 259815205
     assert result.duration_seconds == 3424.533333
+
+
+async def test_wo1160_civicplus_archive_file_dispatches_to_direct_file(monkeypatch):
+    """A CivicPlus `Archive.aspx?ADID=` media file has no media extension
+    and no `/documentcenter/view/` path; it must still reach the
+    direct-file probe (WO-1171)."""
+    from app.platforms import queue_probe
+
+    seen = {}
+
+    async def fake_direct(url, platform, video_url, source_page_url, start):
+        seen["video_url"] = video_url
+        return "sentinel"
+
+    monkeypatch.setattr(queue_probe, "_probe_direct_file", fake_direct)
+    media = "https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77"
+    result = await queue_probe.probe_queue_entry(
+        media, video_url=media, video_format="wma"
+    )
+    assert result == "sentinel"
+    assert seen["video_url"] == media

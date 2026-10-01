@@ -606,6 +606,125 @@ def is_direct_file_url(url: str) -> bool:
     return media_type(url) in ("video", "audio")
 
 
+# WO-1171 (2026-09-30): CivicPlus keeps meeting recordings in its file
+# library, `https://{tenant}.civicplus.com/DocumentCenter/View/{id}/{name}`
+# (and sometimes `Archive.aspx?ADID=`/`AMID=`). The URL never carries a
+# media extension, and HEAD answers a generic 404 HTML page, so the only
+# way to tell a recording from a PDF or page is one GET that reads the
+# response headers and closes the stream. Confirmed live on six real
+# tenants (Woodford IL, Park CO, White Pine NV, New Scotland NY,
+# Montville NJ, Preble OH): a recording answers 200 with
+# `application/octet-stream` and `Content-Disposition: inline;filename=
+# ....m4a` (or `audio/x-ms-wma`); the Preble `Archive.aspx?AMID=` link is
+# an ordinary HTML page.
+_CIVICPLUS_FILE_PATH_RE = re.compile(
+    r"^/(documentcenter/(view|download)/\d+|archive\.aspx$)", re.IGNORECASE
+)
+_FILE_LIBRARY_MEDIA_EXTENSIONS = {
+    "mp4": "mp4",
+    "m4v": "mp4",
+    "mov": "mp4",
+    "webm": "webm",
+    "mp3": "mp3",
+    "m4a": "m4a",
+    "wav": "wav",
+    "wma": "wma",
+    "aac": "aac",
+    "ogg": "ogg",
+}
+_FILE_LIBRARY_AUDIO_FORMATS = ("mp3", "m4a", "wav", "wma", "aac", "ogg")
+_DISPOSITION_FILENAME_RE = re.compile(
+    r"""filename\*?=(?:UTF-8'')?"?([^";\r\n]+)"?""", re.IGNORECASE
+)
+
+
+def is_civicplus_file_library_url(url: str) -> bool:
+    """True for a CivicPlus file-library link that might be a recording
+    -- `/DocumentCenter/View|Download/{id}/...` or `/Archive.aspx?ADID=|
+    AMID=` on a `*.civicplus.com` tenant. Only says the link COULD be a
+    file; `probe_civicplus_file()` reads the headers to find out."""
+    parsed = urlparse(url)
+    if not parsed.netloc.lower().endswith("civicplus.com"):
+        return False
+    if not _CIVICPLUS_FILE_PATH_RE.match(parsed.path):
+        return False
+    if parsed.path.lower().startswith("/archive.aspx"):
+        return any(k.lower() in ("adid", "amid") for k, _v in parse_qsl(parsed.query))
+    return True
+
+
+def classify_file_library_media(
+    content_type: Optional[str], content_disposition: Optional[str], url: str
+) -> Optional[str]:
+    """The media `video_format` ("mp4", "m4a", "wma", ...) when these
+    response headers say the file is audio or video, else `None`. An
+    `audio/` or `video/` content type counts. A generic
+    `application/octet-stream` counts only when the download filename (or,
+    failing that, the URL path) carries a real media extension. An HTML
+    page, a PDF and anything else return `None`."""
+    main_type = (content_type or "").split(";", 1)[0].strip().lower()
+    filename = None
+    match = _DISPOSITION_FILENAME_RE.search(content_disposition or "")
+    if match:
+        filename = unquote(match.group(1).strip())
+    ext = None
+    for candidate in (filename, urlparse(url).path):
+        if candidate and "." in candidate:
+            tail = candidate.rsplit(".", 1)[-1].lower()
+            if tail in _FILE_LIBRARY_MEDIA_EXTENSIONS:
+                ext = tail
+                break
+    if main_type.startswith(("audio/", "video/")):
+        if ext:
+            return _FILE_LIBRARY_MEDIA_EXTENSIONS[ext]
+        if main_type.startswith("video/"):
+            return "mp4"
+        return _media_format(url, main_type)
+    if main_type in ("application/octet-stream", "application/binary") and ext:
+        return _FILE_LIBRARY_MEDIA_EXTENSIONS[ext]
+    return None
+
+
+async def probe_civicplus_file(url: str) -> Optional[ResolvedMeeting]:
+    """A direct-file `ResolvedMeeting` when a CivicPlus file-library link
+    is a recording, else `None` (so the caller keeps treating it as a
+    page). One GET that reads the headers only and closes the stream --
+    the body is never read, so a 200 MB recording that ignores `Range`
+    costs a few hundred bytes. HEAD is not used: these servers answer it
+    with a 404 HTML page (see the WO-1171 note above). The duration is
+    left to the existing ffprobe step (`media_probe`/`queue_probe`).
+    Audio-only files resolve too; `video_format` ("m4a", "mp3", "wma")
+    is what marks them, as for any other direct audio file. No captions,
+    so tier 3."""
+    if not is_civicplus_file_library_url(url):
+        return None
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with guarded_get(
+                session,
+                url,
+                timeout=aiohttp.ClientTimeout(total=_HEAD_TIMEOUT_SECONDS),
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                media_url = str(resp.url)
+                fmt = classify_file_library_media(
+                    resp.headers.get("Content-Type"),
+                    resp.headers.get("Content-Disposition"),
+                    media_url,
+                )
+    except (aiohttp.ClientError, TimeoutError, ValueError):
+        return None
+    if fmt is None:
+        return None
+    return ResolvedMeeting(
+        platform="direct_file",
+        source_url=url,
+        video_url=media_url,
+        video_format=fmt,
+    )
+
+
 def _is_laserfiche_weblink_url(url: str) -> bool:
     """True for a Laserfiche WebLink `ElectronicFile.aspx` download link
     -- see module docstring's "Laserfiche WebLink" section for why this
