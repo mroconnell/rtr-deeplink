@@ -1350,6 +1350,14 @@ https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1	meeting
 https://reflect-ccx.cablecast.tv/show/41030	https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows	us:place:2745628
 https://nctpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=115	https://nctpa.granicus.com/ViewPublisher.php?view_id=1	rtr:us:ca:napa-valley-transportation-authority
 https://sangamonil.gov/Portals/0/TempAudio/SoundFile/County%20Board%20Meeting%2010-14-25%20(2).mp3	https://sangamonil.gov/departments/a-c/county-clerk/vital-records/county-board/audio-minutes/play?AudioId=105	us:county:17167
+https://reflect-merrimac-access.cablecast.tv/show/3686	https://reflect-merrimac-access.cablecast.tv/	us:cousub:2500940430
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=146677&autoplay=yes		us:place:1740767
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1014748		rtr:us:co:eagle-valley-transportation-authority
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1031326		rtr:us:co:eaglevail-metropolitan-district
+https://reflect-haverhillcommunity.cablecast.tv/show/48079	https://reflect-haverhillcommunity.cablecast.tv/cablecastapi/v1/shows	us:place:2529405
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=91048&autoplay=yes	https://co-burlington2.civicplus.com/MediaCenter.aspx	us:place:0810600
+https://reflect-thurston.cablecast.tv/show/31110	https://reflect-thurston.cablecast.tv/	us:county:53067
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=143756&autoplay=yes		us:place:0640004
 https://reflect-lpctv.cablecast.tv/internetchannel/show/20939	https://reflect-lpctv.cablecast.tv/	us:place:5041200
 https://reflect-willinet.cablecast.tv/internetchannel/show/13195	https://reflect-willinet.cablecast.tv/	us:cousub:2500344385
 https://reflect-sttammany.cablecast.tv/internetchannel/show/2842	https://reflect-sttammany.cablecast.tv/	us:place:2248225
