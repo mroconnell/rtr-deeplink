@@ -53,3 +53,13 @@ Raw saves, fetched live 2026-09-30, for video 144112 (channel 146).
 |---|---|---|
 | `tikilive_video_144112.html` | `https://civplus.tikiliveapi.com/video/144112` | `<title>` and `og:title` "260 - City Council Meeting 12.17.20."; the stream with `chid=146` |
 | `tikilive_embed_144112.html` | `https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=144112&autoplay=no` | The same video's embed: stream with `chid=146`, no title, no caption track |
+
+## Category-page fixtures (WO-1173, 2026-09-30)
+
+Two `?CID=` category pages, fetched live 2026-09-30 with a generic browser
+User-Agent and saved raw (scripts kept, nothing stripped).
+
+| File | Page | What it shows |
+|---|---|---|
+| `evergreen_civicmedia_cid3.html` | `https://il-evergreenpark2.civicplus.com/CivicMedia?CID=3` | Parks and recreation channel, 8 videos, none a meeting. Its embedded player is "Preschool Welcome Video" (`videoId=160184`), which must never be picked. |
+| `hobart_civicmedia_cid_public_meetings.html` | `https://www.cityofhobart.org/CivicMedia?CID=City-of-Hobart-Public-Meetings-4` | "City of Hobart Public Meetings" channel, 8 videos on the first page, all meetings. The playing video (`VID=339`) has no link; its URL is the page's `og:url`. |

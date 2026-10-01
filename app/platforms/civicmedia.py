@@ -182,6 +182,29 @@ and `tikilive_embed_144112.html`). The CivicMedia number walk collected
 - The channel comes from the embed stream's `chid`; when the embed has no
   stream, the video page's stream is tried.
 
+## Category pages (`?CID=`, WO-1173, 2026-09-30)
+
+`https://{tenant}.civicplus.com/CivicMedia?CID={n-or-slug}` is a CATEGORY
+page: a list of videos in one channel, not one video. Until WO-1173 it
+was not recognised as CivicMedia at all, fell through to the CivicPlus
+AgendaCenter adapter and failed with "found no real video link".
+
+The page embeds ONE player (whichever video is "Now Playing") and lists
+the rest as `div.video` blocks: an `<a href="/CivicMedia.aspx?VID=...">`
+with the title in an `<h3>`. The "Now Playing" block has no link; its own
+`VID=` is the page's `og:url`. Real trap, confirmed live 2026-09-30:
+Evergreen Park, IL's `CID=3` is a parks-and-recreation channel, and the
+video its player loads is "Preschool Welcome Video". So `resolve()` never
+reads the player on a category page. It lists the videos, keeps only
+those whose title looks like a meeting (`looks_like_real_meeting()` with
+the allowlist, plus Meeting Finder's own weak-title check), and raises
+`CalendarPageError` with those as the pick-list. When none qualifies the
+error carries no candidates and says "category lists N videos, none looks
+like a meeting". Hobart, IN's `CID=City-of-Hobart-Public-Meetings-4`
+lists council, commission and board meetings (8 videos on the first
+page; the page goes further back through a postback this adapter does not
+follow). The page gives no dates; the order is newest first by `VID` id.
+
 ## What's still unconfirmed
 
 The adapter was built from one real tenant (Hobart, IN). By 2026-09-25
@@ -202,7 +225,7 @@ from urllib.parse import parse_qs, urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarCandidate, CalendarPageError
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.tenant_key import civicmedia_chid
@@ -269,6 +292,18 @@ def is_civicmedia_page_url(url: str) -> bool:
     if not (path == "/civicmedia" or path == "/civicmedia.aspx"):
         return False
     return bool(parse_qs(parsed.query).get("VID") or parse_qs(parsed.query).get("vid"))
+
+
+def is_civicmedia_category_url(url: str) -> bool:
+    """A `/CivicMedia` or `/CivicMedia.aspx` CATEGORY page (`?CID=`) with
+    no `VID=`: a list of videos, not one video. See "Category pages" in
+    the module docstring. `CID=` with an empty value still counts (real:
+    `CivicMedia?CID=` on several tenants)."""
+    parsed = urlparse(url)
+    if parsed.path.lower() not in ("/civicmedia", "/civicmedia.aspx"):
+        return False
+    query = {k.lower() for k in parse_qs(parsed.query, keep_blank_values=True)}
+    return "cid" in query and "vid" not in query
 
 
 def is_tikilive_embed_url(url: str) -> bool:
@@ -417,6 +452,63 @@ def _title_from_page(soup: BeautifulSoup, iframe) -> Optional[str]:
     return next((c for c in candidates if c), None)
 
 
+def _category_videos(html: str, page_url: str) -> List[Tuple[str, str]]:
+    """`(title, url)` for every video a category page lists, newest first
+    (by `VID` page id, the order the page itself uses). Includes the
+    "Now Playing" block, which has no link: its URL is the page's
+    `og:url`. Never reads the embedded player -- see "Category pages"."""
+    soup = BeautifulSoup(html, "html.parser")
+    og_url = soup.find("meta", attrs={"property": "og:url"})
+    now_playing_url = og_url.get("content") if og_url else None
+    videos: List[Tuple[str, str]] = []
+    seen: set = set()
+    for block in soup.select("div.video"):
+        heading = block.find("h3")
+        title = _clean_title(heading.get_text() if heading else None)
+        link = block.find("a", href=re.compile(r"VID=", re.IGNORECASE))
+        if link is not None:
+            url = urljoin(page_url, link["href"].split("#")[0])
+        elif now_playing_url and is_civicmedia_page_url(now_playing_url):
+            url = now_playing_url
+        else:
+            continue
+        if not title or url in seen:
+            continue
+        seen.add(url)
+        videos.append((title, url))
+    videos.sort(key=lambda v: -int(civicmedia_page_id(v[1]) or 0))
+    return videos
+
+
+def _looks_like_meeting_title(title: str) -> bool:
+    """Meeting Finder's own title rules, not new ones: a governing-body
+    word (`looks_like_real_meeting(..., require_allowlist=True)`, the same
+    strict check used for a generic scan of a video host) and not a
+    minutes link or a demo row (`pick._looks_like_a_real_meeting_candidate`).
+    Strict on purpose: a category is a channel of anything the government
+    films (parades, graduations), so no governing-body word means no."""
+    # Local import: meeting_finder pulls in most of the platform package.
+    from .meeting_finder.pick import _looks_like_a_real_meeting_candidate
+    from ..utils.video_hand_check import looks_like_real_meeting
+
+    return looks_like_real_meeting(
+        title, require_allowlist=True
+    ) and _looks_like_a_real_meeting_candidate(title)
+
+
+def category_candidates(
+    html: str, page_url: str
+) -> Tuple[int, List[CalendarCandidate]]:
+    """`(how many videos the category lists, the meeting-like ones)`."""
+    videos = _category_videos(html, page_url)
+    meetings = [
+        CalendarCandidate(title=title, date="", url=url)
+        for title, url in videos
+        if _looks_like_meeting_title(title)
+    ]
+    return len(videos), meetings
+
+
 def _embed_url_for_video_id(video_id: str) -> str:
     return (
         f"https://{_TIKILIVE_HOST}/embed?scheme=embedVod&videoId={video_id}&autoplay=no"
@@ -432,6 +524,8 @@ class CivicMediaAssetFinder(AssetFinder):
     platform_name = "civicmedia"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if is_civicmedia_category_url(url):
+            await self._raise_category_listing(url)
         title: Optional[str] = None
         jurisdiction: Optional[str] = None
         video_id = _video_id_from_url(url)
@@ -541,6 +635,31 @@ class CivicMediaAssetFinder(AssetFinder):
                 "We couldn't find captions for this meeting on CivicMedia."
             ]
         return resolved
+
+    @staticmethod
+    async def _raise_category_listing(url: str) -> None:
+        """A `?CID=` category page lists videos; it is never one video.
+        Always raises `CalendarPageError` (see "Category pages")."""
+        html, err = await _fetch(url)
+        if err or html is None:
+            raise CalendarPageError(
+                f"We couldn't read this CivicMedia category page ({err}).", []
+            )
+        total, meetings = category_candidates(html, url)
+        hint = _jurisdiction_from_page(html, url)
+        if not meetings:
+            raise CalendarPageError(
+                f"This CivicMedia category lists {total} videos, none looks "
+                "like a meeting.",
+                [],
+                jurisdiction_hint=hint,
+            )
+        raise CalendarPageError(
+            f"This CivicMedia category lists {total} videos, "
+            f"{len(meetings)} look like meetings. Pick one.",
+            meetings,
+            jurisdiction_hint=hint,
+        )
 
     @staticmethod
     async def _fetch_captions(

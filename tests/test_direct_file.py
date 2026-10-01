@@ -819,3 +819,131 @@ async def test_resolve_a_dnn_linkclick_to_a_pdf_is_not_credited():
         result = await DirectFileAssetFinder().resolve(SANGAMON_LINKCLICK_URL)
     assert result.video_url is None
     assert "application/pdf" in result.video_warnings[0]
+
+
+# --- WO-1171: CivicPlus file-library recordings ---------------------------
+#
+# Real headers captured live 2026-09-30 (GET, headers only; HEAD answers a
+# generic 404 HTML page on these tenants, so the probe uses one GET and
+# closes the stream).
+
+CP_OCTET_URL = (
+    "https://il-woodfordcounty.civicplus.com/DocumentCenter/View/11529/"
+    "May-27-2026-BOH-Recording"
+)
+CP_WMA_URL = (
+    "https://nj-montvilletownship.civicplus.com/DocumentCenter/View/14273/"
+    "Audio-Recording-Malfunction-3-24-2026"
+)
+CP_PAGE_URL = "https://oh-preblecounty.civicplus.com/Archive.aspx?AMID=415"
+
+
+async def test_civicplus_octet_stream_with_media_disposition_is_a_direct_file():
+    routes = {
+        CP_OCTET_URL: FakeResponse(
+            status=200,
+            url=CP_OCTET_URL,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": (
+                    "inline;filename=GMT20260325-223151_Recording%20%281%29.m4a"
+                ),
+                "Content-Length": "27332436",
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await direct_file.probe_civicplus_file(CP_OCTET_URL)
+    assert result is not None
+    assert result.platform == "direct_file"
+    assert result.video_url == CP_OCTET_URL
+    # The download's own extension marks it audio only.
+    assert result.video_format == "m4a"
+    assert result.segments == []
+
+
+async def test_civicplus_html_page_is_left_alone():
+    routes = {
+        CP_PAGE_URL: FakeResponse(
+            status=200,
+            url=CP_PAGE_URL,
+            headers={"Content-Type": "text/html; charset=utf-8"},
+        )
+    }
+    with mock_session(routes):
+        assert await direct_file.probe_civicplus_file(CP_PAGE_URL) is None
+    # Same path shape as a recording, but an HTML page.
+    html_doc = CP_OCTET_URL.replace("11529", "99")
+    routes = {
+        html_doc: FakeResponse(
+            status=200, url=html_doc, headers={"Content-Type": "text/html"}
+        )
+    }
+    with mock_session(routes):
+        assert await direct_file.probe_civicplus_file(html_doc) is None
+
+
+async def test_civicplus_audio_content_type_is_a_direct_audio_file():
+    routes = {
+        CP_WMA_URL: FakeResponse(
+            status=200,
+            url=CP_WMA_URL,
+            headers={
+                "Content-Type": "audio/x-ms-wma",
+                "Content-Disposition": (
+                    "inline;filename=Audio%20Recording%20Malfunction%203-24-2026.wma"
+                ),
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await direct_file.probe_civicplus_file(CP_WMA_URL)
+    assert result is not None
+    assert result.video_format == "wma"
+
+
+def test_civicplus_octet_stream_without_media_name_is_not_media():
+    assert (
+        direct_file.classify_file_library_media(
+            "application/octet-stream",
+            "inline;filename=Agenda.pdf",
+            "https://x.civicplus.com/DocumentCenter/View/1/Agenda",
+        )
+        is None
+    )
+    assert (
+        direct_file.classify_file_library_media(
+            "application/pdf", None, "https://x.civicplus.com/DocumentCenter/View/1/A"
+        )
+        is None
+    )
+
+
+def test_civicplus_file_library_url_shapes():
+    assert direct_file.is_civicplus_file_library_url(CP_OCTET_URL)
+    assert direct_file.is_civicplus_file_library_url(CP_PAGE_URL)
+    assert not direct_file.is_civicplus_file_library_url(
+        "https://x.civicplus.com/AgendaCenter/ViewFile/Agenda/1"
+    )
+    assert not direct_file.is_civicplus_file_library_url(
+        "https://example.gov/DocumentCenter/View/1/x"
+    )
+
+
+async def test_civicplus_finder_hands_recording_to_direct_file(monkeypatch):
+    from app.platforms.civicplus import CivicPlusAssetFinder
+
+    routes = {
+        CP_OCTET_URL: FakeResponse(
+            status=200,
+            url=CP_OCTET_URL,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": "inline;filename=May%2027.mp4",
+            },
+        )
+    }
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(CP_OCTET_URL)
+    assert result.platform == "direct_file"
+    assert result.video_format == "mp4"

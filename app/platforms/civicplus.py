@@ -126,6 +126,16 @@ class CivicPlusAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        # WO-1171: a DocumentCenter/Archive link can be a recording in
+        # CivicPlus's file library, not a page. One headers-only GET tells
+        # which; a recording goes to the direct-file path (never read as
+        # HTML, so no "Response too large"), anything else falls through.
+        from .direct_file import probe_civicplus_file
+
+        direct = await probe_civicplus_file(url)
+        if direct is not None:
+            return direct
+
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(
                 url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
