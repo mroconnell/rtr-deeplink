@@ -11,18 +11,6 @@ https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-counci
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://colton.12milesout.com/video/meeting/f05e0cf7-b4b1-4447-ad51-96b4a73f3453	https://colton.12milesout.com/	us:place:0614890
-https://covina.12milesout.com/meeting/79bed72e-ca6d-4ad0-ad18-7b275caac901	https://covina.12milesout.com/	us:place:0616742
-https://spectrumstream.com/streaming/south_pasadena/2026_09_22.cfm	https://spectrumstream.com/streaming/south_pasadena/	us:place:0673220
-https://drive.usercontent.google.com/download?id=1te2fJqf4xPckmFv_wfweG-BbV9CHk4fS&export=download&confirm=t	https://arundel.ca/en/publications/agenda-and-minutes/	ca:csd:2478060
-https://files.smartsites.parentsquare.com/9059/regular_school_board_meeting_09-15-25.mp3	https://files.smartsites.parentsquare.com/9059/regular_school_board_meeting_09-15-25.mp3	us:sd:4820760
-https://peruvt.org/wp-content/uploads/2026/09/09.16.2026-SB-mtg-part-1.m4a	https://peruvt.org/wp-content/uploads/2026/09/09.16.2026-SB-mtg-part-1.m4a	us:cousub:5000355000
-http://bethlehemga.org/assets/Feb. 2, 2026 meeting audio.mp3	http://bethlehemga.org/assets/Feb. 2, 2026 meeting audio.mp3	us:place:1307612
-https://drive.usercontent.google.com/download?id=1iR1qnejaMvrJu0pZ4aWPBygFDGLTyojh&export=download&confirm=t	https://drive.google.com/file/d/1iR1qnejaMvrJu0pZ4aWPBygFDGLTyojh/view?usp=sharing	us:cousub:5000941425
-https://drive.usercontent.google.com/download?id=1affodoIsgIKb2aFlQZoQFJXI0Z2eORTb&export=download&confirm=t	https://drive.google.com/file/d/1affodoIsgIKb2aFlQZoQFJXI0Z2eORTb/view?usp=sharing	us:place:0812900
-https://drive.usercontent.google.com/download?id=1ZXRHwzEFlorhxVH-KurMLXIRgKaPZTxG&export=download&confirm=t	https://drive.google.com/file/d/1ZXRHwzEFlorhxVH-KurMLXIRgKaPZTxG/view?usp=sharing	us:sd:5513800
-https://easthelenamt.us/AgendaMinutes/20260303.m4a	https://easthelenamt.us/AgendaMinutes/20260303.m4a	us:place:3023125
-https://boe.nutleyschools.org/sites/default/files/boeagendas/2017-10-30-audio-show_9813061_2017_03_03_17_03_05.mp3	https://boe.nutleyschools.org/sites/default/files/boeagendas/2017-10-30-audio-show_9813061_2017_03_03_17_03_05.mp3	us:sd:3411880
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3675/Wls/8b869eb2-7c47-40de-8332-c2708532138d/Audio_12_07_2019.mp3?disposition=inline	https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3675/Wls/8b869eb2-7c47-40de-8332-c2708532138d/Audio_12_07_2019.mp3?disposition=inline	us:sd:3904823
 http://village.longview.ab.ca/wordpress/wp-content/uploads/2025/02/01-30-2025-Special-Closed-Council-Meeting-audio-.mp3?_=3	http://village.longview.ab.ca/wordpress/wp-content/uploads/2025/02/01-30-2025-Special-Closed-Council-Meeting-audio-.mp3?_=3	ca:csd:4806008
 https://reservetwp.com/wp-content/uploads/2026/09/GMT20260902-225543_Recording.cutfile.20260903142711208_640x360.mp4	https://reservetwp.com/wp-content/uploads/2026/09/GMT20260902-225543_Recording.cutfile.20260903142711208_640x360.mp4	us:cousub:4200364240
