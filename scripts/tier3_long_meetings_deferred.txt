@@ -2,436 +2,24 @@
 # url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>title -- gov_id blank when the identity ladder declined; probe rows stay in tier3_auto_transcription_queue_probe.csv.
 # Ryan's re-queue policy (WO-299, 2026-09-12): parked lines are re-queued only when the tier-3 queue is completely depleted; a parked line is not rejected, it waits. This applies to every line here, not just the long-meeting ones this file started with -- WO-299 also parked lines here whose government already had a live page with a real transcript, and single-tenant-host lines set aside for breadth (one meeting per government in the queue).
 # Standing rule (Ryan, 2026-09-13, WO-356): a line belongs here ONLY when a SHORTER meeting from the same government was queued in its place (this file's original purpose), or for WO-266-style parking of a government that already has a transcript elsewhere -- never for length alone. A tier-3 video over 90 minutes with no shorter on-mission alternative on the same tenant is queued directly, not parked here (CLAUDE.md's "long-only videos" rule). WO-356 moved two lines that had been parked for length alone back to the queue: Cudahy city, CA and Port Orchard city, WA.
-https://minotnd.portal.civicclerk.com/event/1586/media		us:place:3853380	Minot, ND	3:36:14	City Council Meeting
 http://sanjoaquincountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1114&MinutesItemID=59851&Format=Minutes&MediaPosition=8570.969		us:county:06077	San Joaquin County, CA	6:03:10	Board of Supervisors Regular Meeting
-http://sccgov.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=16823&MediaPosition=&ID=126983&CssClass=		us:county:06085	The County of Santa Clara, California	7:01:01	Board of Supervisors Regular Meeting
 https://sanramonca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=5139&MediaPosition=409.779&ID=4653&CssClass=		us:place:0668378	San Ramon, CA	2:48:53	City Council Regular Meeting
-https://suttercountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3029&Format=Agenda		us:county:06101	Sutter County, California	2:14:46	Board of Supervisors Regular Session
-https://walworthcowi.portal.civicclerk.com/event/2098/media		us:county:55127	Walworth County	1:32:52	February 11, 2026 America's 250th Anniversary Celebrations Committee
-https://losaltoshillsca.portal.civicclerk.com/event/4525/media		us:place:0643294	Los Altos Hills, CA	1:58:16	History Committee Regular Meeting
-https://neoshomo.portal.civicclerk.com/event/1283/media		us:place:2951572	Neosho, Missouri	1:57:24	August 5, 2025 Council Meeting
-https://mabletonga.portal.civicclerk.com/event/611/media		us:place:1348288	Mableton, GA	2:43:24	City Council- Second Wednesday - 6:30 PM - Epi Center
-https://hobbsnm.portal.civicclerk.com/event/182/media		us:place:3532520	Hobbs, NM	1:35:04	City Commission Meeting
-https://manliusny.portal.civicclerk.com/event/1036/media		us:place:3645018	Fayetteville, NY	1:59:32	Town Board Meeting
-https://spearfishsd.portal.civicclerk.com/event/2212/media		us:place:4660020	Spearfish, SD	1:37:20	Planning Commission Meeting
 https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2264				5:00:03	
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=602		us:place:0609780	California City, CA	8:19:57	CITY COUNCIL MEETING - Aug 25th, 2026
-https://chccs.granicus.com/viewpublisher.php?view_id=2		rtr:us:nc:chapel-hill-carrboro-city-schools-board-of-education	Chapel Hill-Carrboro City Schools Board of Education, NC	8:00:06	Chapel Hill-Carrboro City Schools Board of Education
-https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3503		us:county:06065	Riverside County, California	1:51:43	(LAFCO) Riverside Local Agency Formation Commission Regular Meeting
 https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2315		us:cousub:3400372360	Teaneck Township, New Jersey	2:16:56	Board of Adjustment Regular Meeting
 https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=286		us:place:0608058	Brawley CA	1:42:15	City Council Regular Meeting
-https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=565757fe-623f-4170-8317-5ad08ad66f3d		ca:csd:4811049	City of Spruce Grove, AB	4:25:42	Regular Council Meeting
-https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1047		us:county:51079	Greene County, VA	31:16:54	School Board Meeting - February 18, 2025
-https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2886		us:cousub:3611951693	Town of North Castle, NY	4:11:18	Planning Board Meeting
-https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4721		us:place:4869140	South Padre Island, TX	2:52:56	CITY COUNCIL - Sep 2nd, 2026
 https://jupiterislandfl.portal.civicclerk.com/event/280/media		rtr:us:fl:hobe-sound	Hobe Sound, FL	2:42:51	Development Review Board
-https://bucoks.granicus.com/player/clip/652		us:county:20015	Reno County, KS	2:03:28	Board of County Commissioners
-https://mcphersoncoks.portal.civicclerk.com/event/553/media		us:county:20113	McPherson County, KS	1:47:05	Board of County Commissioners
-https://hebercityut.portal.civicclerk.com/event/546/media		us:place:4934200	Heber City, UT	4:29:40	City Council Work Meeting - REINSTATED
-https://portagecowi.portal.civicclerk.com/event/9410/media		us:county:55097	Portage County, WI	1:54:35	Human Resources Committee
-https://portervilleca.portal.civicclerk.com/event/542/media	https://www.ci.porterville.ca.us/government/city_council/meeting_agendas___minutes.php	us:place:0658240	Porterville, California	4:00:43	City Council Meeting
-https://rollinghillsca.portal.civicclerk.com/event/833/media	https://www.rolling-hills.org/	us:place:0662602	Rolling Hills, CA	2:06:58	City Council Meeting
-https://parkcityut.portal.civicclerk.com/event/3725/media		us:place:4958070	PARK CITY, UT	2:51:37	City Council Meeting
-https://ivins.granicus.com/player/clip/2395?view_id=2&redirect=true		us:place:4938710	Ivins City, UT	1:36:08	City Council and Planning Commission Joint Work Meeting
-https://fernleynv.portal.civicclerk.com/event/480/media	http://www.cityoffernley.org	us:place:3224900	Fernley, NV	3:02:48	Fernley City Council
-https://cityofmaricopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=1532		us:place:0444410	City of Maricopa, AZ	1:36:38	City Council Regular Meeting on 2026-09-01 6:00 PM
-https://danbury.granicus.com/MediaPlayer.php?view_id=2&clip_id=3826		us:place:0918430	City of Danbury, CT	2:00:10	City Council Meeting  09.01.2026
-https://bethanybeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1227		us:place:1005690	The Town of Bethany Beach, DE	2:01:32	Bicycle & Pedestrian Safety Committee Meeting 08-27-2026 10:00 AM - Aug 27th, 2026
-https://deltona.granicus.com/MediaPlayer.php?view_id=1&clip_id=1712		us:place:1217200	City of Deltona, Florida	1:55:18	City Commission Workshop on 2026-08-31 5:30 PM - Joint Meeting with P&Z Board
-https://dunedin.granicus.com/MediaPlayer.php?view_id=2&clip_id=3626		us:place:1218575	City of Dunedin, Florida	3:59:57	CITY COMMISSION REGULAR MEETING
-https://city-lighthousepoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=849		us:place:1240450	Lighthouse Point, FL	2:05:44	Planning & Zoning Board
-https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1098		us:place:1243125	Margate, FL	4:28:24	9/2/26 Regular City Commission Meeting
-https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1088		us:place:1245975	Miramar, FL	3:18:36	CITY COMMISSION REGULAR MEETING on 2026-09-02 7:00 PM - REVISED - Sep 2nd, 2026
-https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=4560		us:place:1250575	City of Oakland Park, FL	3:49:24	Special Magistrate Hearing - Aug 20th, 2026
-https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1237		us:place:1269700	City of Sunrise, FL	5:15:59	City Commission Meeting
-https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=586		us:county:37071	Gaston County, NC	1:32:14	2026-09-08 6:00 PM - Work Session (Non-Voting) - Sep 8th, 2026
-https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1134		us:county:37133	Onslow County, NC	2:02:07	Onslow County Board of Commissioners Regular Meeting
-https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8462		us:county:36119	Westchester County, NY	1:39:27	Social Services, Disabilities & Human Rights on 2026-08-31 10:00 AM - Joint w /B&A and I&H
-https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=869		us:place:4964340	Riverton, UT	3:36:33	City Council
-https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1533		us:county:51041	Chesterfield County, Virginia	5:51:31	Board of Supervisors Evening Session - December 11, 2019 - Dec 11th, 2019
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1369		us:place:5135624	The City of Harrisonburg, VA	2:39:40	City Council on 2025-12-09 7:00 PM
-https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=255		us:place:5320750	City of Edmonds, WA	3:46:59	City Council - Regular Meeting
-https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=793		us:place:5566000	City of Racine	1:55:50	City of Racine | Votecast Web Session #1
-https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6861		us:place:5584250	City of Waukesha, WI	2:23:28	Finance Committee on 2026-09-08 6:00 PM
-https://rowletttx.new.swagit.com/videos/385912		us:place:4863572	Rowlett, TX	2:57:24	May 05, 2026 City Council Meetings
-https://saltlakecounty.portal.civicclerk.com/event/38/media		us:county:49035	Salt Lake County, UT	5:06:50	County Council Meeting
-https://sandyspringsga.portal.civicclerk.com/event/1864/media		us:place:1368516	Sandy Springs, GA	2:17:02	City Council Meeting
-https://sanjuancowa.portal.civicclerk.com/event/4015/media		us:county:53055	San Juan County, WA	1:54:52	Council Retreat video Part 2
-https://santarosacofl.portal.civicclerk.com/event/1247/media		us:county:12113	Santa Rosa County, FL	2:11:27	Regular Meeting
 https://saratogaspringsny.new.swagit.com/videos/389959		us:place:3665255	Saratoga Springs, NY	2:06:41	Jun 02, 2026 City Council
-https://anacorteswa.portal.civicclerk.com/event/1452/media		us:place:5301990	Anacortes, WA	2:15:39	City Council Meeting
 https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3665				8:26:52	
-https://annapolismd.granicus.com/MediaPlayer.php?view_id=1&clip_id=1597		us:place:2401600	Annapolis, MD	1:58:00	Rules and City Government Committee - Regular Meeting
-https://antiochca.portal.civicclerk.com/event/12/media		us:place:0602252	Antioch	2:17:41	City Council Meeting
-https://bainbridgeislandwa.portal.civicclerk.com/event/1071/media		us:place:5303736	Bainbridge Island, WA	2:25:42	City Council Business Meeting
 https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=894		us:place:2406925	Berwyn Heights, MD	2:09:15	Worksession - Aug 17th, 2026
-https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4999		us:place:0613210	City of Chino, CA	4:11:35	City Council on 2026-09-01 6:00 PM - Regular Meeting
-https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=828		us:place:2408775	City of Bowie, MD	3:12:08	Regular City Council Meeting
-https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244		us:place:0647710	City of Mill Valley, CA	2:48:01	Regular City Council Meeting (Adjusted for Labor Day)
-https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1026		us:place:4449960	City of Newport, RI	2:09:55	Newport City Council Workshop Short Term Rentals- Follow up from March 11, 2026 Council Meeting
-https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3664		us:place:0662896	City of Rosemead, CA	3:02:10	City Council Regular Meeting - Sep 8th, 2026
-https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=777		us:place:0668252	City of San Mateo, CA	3:47:40	Planning Commission on 2019-04-23 7:00 PM - Regular Meeting - Apr 25th, 2019
 https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1785		us:county:34011	Cumberland County, New Jersey	1:40:18	Board of County Commissioners Regular Board Meeting
-https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1532		us:place:0622230	City of El Monte, CA	4:31:08	City Council Meeting 08/26/26
-https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6076		us:place:2017800	City of Derby	1:52:55	City Council - 25 Aug 2026
 https://imperial.granicus.com/player/clip/2496		us:county:06025	County of Imperial, CA	3:23:30	Board of Supervisors
-https://jacksoncomi.portal.civicclerk.com/event/1092/media		us:county:26075	Jackson County, MI	3:53:39	Board of Commissioners Meeting
-https://leacountynm.portal.civicclerk.com/event/187/media		us:county:35025	Lea County, NM	3:04:26	Lea County Board of County Commissioners January 16, 2025 Regular Meeting
 https://albemarle.granicus.com/player/clip/1452				5:04:40	
-https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=109ce607-21c0-4495-9bfc-e2024d85afac&Agenda=Agenda		us:place:0660620	Richmond, CA	8:57:58	Special Closed Session
-https://harrisoncountyin.portal.civicclerk.com/event/1068/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/	us:county:18061	Harrison County, IN	2:09:38	September 9, 2026 Council Budget Session
-https://guadalupe.granicus.com/ViewPublisher.php?view_id=1	https://www.guadalupetx.gov/page/commcourt.agendas	us:county:48187	Guadalupe County	2:33:34	Main View - Granicus Content
 https://stjosephmo.portal.civicclerk.com/event/1310/media			City of St. Joseph	1:31:57	One Time Event
-https://grantconm.portal.civicclerk.com/event/883/media		us:county:35017	Grant County	2:34:28	Board of Commissioners - 2nd  Regular Meeting
-https://lantanafl.granicus.com/MediaPlayer.php?view_id=1&clip_id=257		us:place:1239375	Town of Lantana, FL	1:35:24	Town Council Meeting
-https://ottawaks.portal.civicclerk.com/event/1023/media		us:place:2053550	Ottawa, KS	1:58:31	City Commission Meeting - 1st Wednesday
-https://richfieldmn.portal.civicclerk.com/event/2593/media		us:place:2754214	Richfield, MN	2:07:49	City Council Meeting
 https://hcnv.granicus.com/MediaPlayer.php?clip_id=44&view_id=2		us:county:32013	Humboldt County, NV	1:35:36	Humboldt County NV | Post Meeting Steps
-https://hooksett.granicus.com/MediaPlayer.php?clip_id=2917&view_id=2		us:cousub:3301337300	The Town of Hooksett, NH	1:43:28	Town Council - Sep 9th, 2026
-https://levycofl.portal.civicclerk.com/event/2038/media		us:county:12075	Levy County, FL	3:15:46	Planning Commission Meeting/Comprehensive Plan Workshop #2
 https://minnesotapuc.granicus.com/MediaPlayer.php?clip_id=27			Minnesota Public Utilities Commission	5:49:34	PUC Agenda Meeting on 2013-06-06 9:30 AM
-https://brecksvilleoh.portal.civicclerk.com/event/1389/media	https://brecksville.oh.us	us:place:3908364	Brecksville, OH	1:33:18	City Council Committee Meeting
-https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1372		us:place:4858280	pleasanton, tx	3:43:32	City Council Regular Session
-https://lakecounty.granicus.com/player/clip/848?view_id=1&redirect=true		us:county:06033	Lake County	1:47:50	Planning Commission on 2026-06-25 9:00 AM - Please see agenda for public participation information and eComment submission on any agenda item.
-https://pembrokeparkfl.portal.civicclerk.com/event/2040/media		us:place:1255750	Pembroke Park, FL	1:46:05	Regular Commission Meeting
-https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=0a99c7a9-840b-4a61-832d-b6975a2855e5&Agenda=PostMinutes&lang=English		ca:csd:5905032	City of Grand Forks	2:40:59	Regular Meeting
 https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3676			Capital Regional District	2:48:38	Capital Regional District Board on 2026-09-09 12:10 PM COPY
 # WO-213 (2026-09-11, Ryan): the extra meetings of four governments our own bulk tools queued in volume (#443, #794), trimmed to one governing-body meeting each; any length. Re-queue for depth later.
-https://walworthcowi.portal.civicclerk.com/event/2446/media		us:county:55127	Walworth County, WI	0:46:30	
-https://walworthcowi.portal.civicclerk.com/event/2550/media		us:county:55127	Walworth County, WI	0:42:21	
-https://walworthcowi.portal.civicclerk.com/event/2498/media		us:county:55127	Walworth County, WI	0:42:35	
-https://walworthcowi.portal.civicclerk.com/event/2656/media		us:county:55127	Walworth County, WI	0:53:20	
-https://walworthcowi.portal.civicclerk.com/event/2115/media		us:county:55127	Walworth County, WI		
-https://walworthcowi.portal.civicclerk.com/event/2499/media		us:county:55127	Walworth County, WI	0:07:43	
-https://walworthcowi.portal.civicclerk.com/event/2447/media		us:county:55127	Walworth County, WI	1:31:43	
-https://losaltoshillsca.portal.civicclerk.com/event/4274/media		us:place:0643294	Los Altos Hills, CA	1:14:45	
-https://walworthcowi.portal.civicclerk.com/event/2657/media		us:county:55127	Walworth County, WI	1:16:05	
-https://walworthcowi.portal.civicclerk.com/event/2561/media		us:county:55127	Walworth County, WI	0:17:19	
-https://losaltoshillsca.portal.civicclerk.com/event/4273/media		us:place:0643294	Los Altos Hills, CA	1:40:50	
-https://walworthcowi.portal.civicclerk.com/event/2122/media		us:county:55127	Walworth County, WI	1:48:59	
-https://losaltoshillsca.portal.civicclerk.com/event/4519/media		us:place:0643294	Los Altos Hills, CA	1:56:00	
-https://walworthcowi.portal.civicclerk.com/event/2500/media		us:county:55127	Walworth County, WI	2:26:52	
-https://walworthcowi.portal.civicclerk.com/event/2460/media		us:county:55127	Walworth County, WI	0:20:30	
-https://losaltoshillsca.portal.civicclerk.com/event/4520/media		us:place:0643294	Los Altos Hills, CA	0:11:14	
-https://losaltoshillsca.portal.civicclerk.com/event/4275/media		us:place:0643294	Los Altos Hills, CA	0:41:33	
-https://walworthcowi.portal.civicclerk.com/event/2563/media		us:county:55127	Walworth County, WI	0:53:04	
-https://walworthcowi.portal.civicclerk.com/event/2658/media		us:county:55127	Walworth County, WI	1:03:08	
-https://losaltoshillsca.portal.civicclerk.com/event/4526/media		us:place:0643294	Los Altos Hills, CA	1:23:14	
-https://walworthcowi.portal.civicclerk.com/event/2127/media		us:county:55127	Walworth County, WI	1:46:44	
-https://walworthcowi.portal.civicclerk.com/event/2564/media		us:county:55127	Walworth County, WI	1:49:41	
-https://walworthcowi.portal.civicclerk.com/event/2659/media		us:county:55127	Walworth County, WI	1:30:42	
-https://losaltoshillsca.portal.civicclerk.com/event/4094/media		us:place:0643294	Los Altos Hills, CA		
-https://losaltoshillsca.portal.civicclerk.com/event/4315/media		us:place:0643294	Los Altos Hills, CA	1:35:15	
-https://walworthcowi.portal.civicclerk.com/event/2461/media		us:county:55127	Walworth County, WI	0:34:28	
-https://losaltoshillsca.portal.civicclerk.com/event/4529/media		us:place:0643294	Los Altos Hills, CA	3:28:37	
-https://walworthcowi.portal.civicclerk.com/event/2501/media		us:county:55127	Walworth County, WI	0:01:39	
-https://walworthcowi.portal.civicclerk.com/event/2145/media		us:county:55127	Walworth County, WI	1:47:34	
-https://walworthcowi.portal.civicclerk.com/event/2462/media		us:county:55127	Walworth County, WI	0:30:53	
-https://losaltoshillsca.portal.civicclerk.com/event/4314/media		us:place:0643294	Los Altos Hills, CA	1:36:01	
-https://walworthcowi.portal.civicclerk.com/event/2506/media		us:county:55127	Walworth County, WI	1:39:39	
-https://losaltoshillsca.portal.civicclerk.com/event/4316/media		us:place:0643294	Los Altos Hills, CA	2:18:19	
-https://losaltoshillsca.portal.civicclerk.com/event/4530/media		us:place:0643294	Los Altos Hills, CA	0:59:44	
-https://walworthcowi.portal.civicclerk.com/event/2463/media		us:county:55127	Walworth County, WI	0:34:40	
-https://walworthcowi.portal.civicclerk.com/event/2179/media		us:county:55127	Walworth County, WI	1:50:54	
-https://walworthcowi.portal.civicclerk.com/event/2507/media		us:county:55127	Walworth County, WI	0:38:47	
-https://walworthcowi.portal.civicclerk.com/event/2573/media		us:county:55127	Walworth County, WI	1:26:28	
-https://losaltoshillsca.portal.civicclerk.com/event/4318/media		us:place:0643294	Los Altos Hills, CA	2:09:59	
-https://losaltoshillsca.portal.civicclerk.com/event/4567/media		us:place:0643294	Los Altos Hills, CA	6:38:02	
-https://walworthcowi.portal.civicclerk.com/event/2279/media		us:county:55127	Walworth County, WI	1:27:12	
-https://walworthcowi.portal.civicclerk.com/event/2464/media		us:county:55127	Walworth County, WI	0:23:45	
-https://walworthcowi.portal.civicclerk.com/event/2575/media		us:county:55127	Walworth County, WI	1:07:34	
-https://losaltoshillsca.portal.civicclerk.com/event/4321/media		us:place:0643294	Los Altos Hills, CA	1:27:35	
-https://losaltoshillsca.portal.civicclerk.com/event/4568/media		us:place:0643294	Los Altos Hills, CA	1:18:23	
-https://walworthcowi.portal.civicclerk.com/event/2315/media		us:county:55127	Walworth County, WI	0:53:48	
-https://walworthcowi.portal.civicclerk.com/event/2465/media		us:county:55127	Walworth County, WI	1:12:47	
-https://walworthcowi.portal.civicclerk.com/event/2576/media		us:county:55127	Walworth County, WI	0:50:21	
-https://losaltoshillsca.portal.civicclerk.com/event/4570/media		us:place:0643294	Los Altos Hills, CA	2:16:05	
-https://walworthcowi.portal.civicclerk.com/event/2316/media		us:county:55127	Walworth County, WI	1:08:47	
-https://walworthcowi.portal.civicclerk.com/event/2466/media		us:county:55127	Walworth County, WI	0:45:46	
-https://walworthcowi.portal.civicclerk.com/event/2585/media		us:county:55127	Walworth County, WI	0:22:10	
-https://losaltoshillsca.portal.civicclerk.com/event/4203/media		us:place:0643294	Los Altos Hills, CA	2:10:03	
-https://losaltoshillsca.portal.civicclerk.com/event/4356/media		us:place:0643294	Los Altos Hills, CA		
-https://losaltoshillsca.portal.civicclerk.com/event/4571/media		us:place:0643294	Los Altos Hills, CA	2:09:53	
-https://walworthcowi.portal.civicclerk.com/event/2586/media		us:county:55127	Walworth County, WI	0:41:45	
-https://walworthcowi.portal.civicclerk.com/event/2467/media		us:county:55127	Walworth County, WI	0:49:12	
-https://walworthcowi.portal.civicclerk.com/event/2319/media		us:county:55127	Walworth County, WI	0:39:04	
-https://losaltoshillsca.portal.civicclerk.com/event/4574/media		us:place:0643294	Los Altos Hills, CA	2:22:14	
-https://walworthcowi.portal.civicclerk.com/event/2342/media		us:county:55127	Walworth County, WI	0:14:20	
-https://losaltoshillsca.portal.civicclerk.com/event/4358/media		us:place:0643294	Los Altos Hills, CA	0:17:42	
-https://walworthcowi.portal.civicclerk.com/event/2475/media		us:county:55127	Walworth County, WI	1:26:29	
-https://losaltoshillsca.portal.civicclerk.com/event/4206/media		us:place:0643294	Los Altos Hills, CA	3:34:27	
-https://losaltoshillsca.portal.civicclerk.com/event/4215/media		us:place:0643294	Los Altos Hills, CA	2:35:49	
-https://walworthcowi.portal.civicclerk.com/event/2343/media		us:county:55127	Walworth County, WI	0:27:32	
-https://walworthcowi.portal.civicclerk.com/event/2587/media		us:county:55127	Walworth County, WI	0:32:14	
-https://losaltoshillsca.portal.civicclerk.com/event/4359/media		us:place:0643294	Los Altos Hills, CA	2:57:37	
-https://losaltoshillsca.portal.civicclerk.com/event/4577/media		us:place:0643294	Los Altos Hills, CA	0:04:05	
-https://walworthcowi.portal.civicclerk.com/event/2476/media		us:county:55127	Walworth County, WI	0:25:24	
-https://losaltoshillsca.portal.civicclerk.com/event/4216/media		us:place:0643294	Los Altos Hills, CA	2:17:37	
-https://walworthcowi.portal.civicclerk.com/event/2596/media		us:county:55127	Walworth County, WI	2:09:55	
-https://losaltoshillsca.portal.civicclerk.com/event/4360/media		us:place:0643294	Los Altos Hills, CA	4:17:57	
-https://losaltoshillsca.portal.civicclerk.com/event/4578/media		us:place:0643294	Los Altos Hills, CA	2:05:15	
-https://walworthcowi.portal.civicclerk.com/event/2344/media		us:county:55127	Walworth County, WI	0:22:25	
-https://walworthcowi.portal.civicclerk.com/event/2597/media		us:county:55127	Walworth County, WI	1:23:14	
-https://walworthcowi.portal.civicclerk.com/event/2477/media		us:county:55127	Walworth County, WI	0:44:52	
-https://losaltoshillsca.portal.civicclerk.com/event/4217/media		us:place:0643294	Los Altos Hills, CA	2:00:04	
-https://losaltoshillsca.portal.civicclerk.com/event/4361/media		us:place:0643294	Los Altos Hills, CA	0:52:53	
-https://walworthcowi.portal.civicclerk.com/event/2345/media		us:county:55127	Walworth County, WI	0:21:55	
-https://losaltoshillsca.portal.civicclerk.com/event/4580/media		us:place:0643294	Los Altos Hills, CA	2:37:25	
-https://walworthcowi.portal.civicclerk.com/event/2478/media		us:county:55127	Walworth County, WI	0:13:37	
-https://walworthcowi.portal.civicclerk.com/event/2598/media		us:county:55127	Walworth County, WI	1:19:00	
-https://losaltoshillsca.portal.civicclerk.com/event/4243/media		us:place:0643294	Los Altos Hills, CA	2:00:04	
-https://losaltoshillsca.portal.civicclerk.com/event/4362/media		us:place:0643294	Los Altos Hills, CA	3:54:11	
-https://walworthcowi.portal.civicclerk.com/event/2346/media		us:county:55127	Walworth County, WI	0:32:00	
-https://walworthcowi.portal.civicclerk.com/event/2479/media		us:county:55127	Walworth County, WI	0:26:08	
-https://walworthcowi.portal.civicclerk.com/event/2517/media		us:county:55127	Walworth County, WI	0:23:08	
-https://losaltoshillsca.portal.civicclerk.com/event/4218/media		us:place:0643294	Los Altos Hills, CA	2:10:15	
-https://losaltoshillsca.portal.civicclerk.com/event/4368/media		us:place:0643294	Los Altos Hills, CA	1:55:11	
-https://walworthcowi.portal.civicclerk.com/event/2480/media		us:county:55127	Walworth County, WI	0:50:37	
-https://walworthcowi.portal.civicclerk.com/event/2518/media		us:county:55127	Walworth County, WI	1:02:59	
-https://walworthcowi.portal.civicclerk.com/event/2600/media		us:county:55127	Walworth County, WI	0:51:09	
-https://losaltoshillsca.portal.civicclerk.com/event/4221/media		us:place:0643294	Los Altos Hills, CA	2:22:01	
-https://walworthcowi.portal.civicclerk.com/event/2386/media		us:county:55127	Walworth County, WI	0:48:12	
-https://losaltoshillsca.portal.civicclerk.com/event/4369/media		us:place:0643294	Los Altos Hills, CA	2:09:28	
-https://walworthcowi.portal.civicclerk.com/event/2481/media		us:county:55127	Walworth County, WI	1:32:45	
-https://walworthcowi.portal.civicclerk.com/event/2601/media		us:county:55127	Walworth County, WI	0:57:02	
-https://losaltoshillsca.portal.civicclerk.com/event/4222/media		us:place:0643294	Los Altos Hills, CA	2:30:59	
-https://losaltoshillsca.portal.civicclerk.com/event/4382/media		us:place:0643294	Los Altos Hills, CA	1:02:36	
-https://walworthcowi.portal.civicclerk.com/event/2519/media		us:county:55127	Walworth County, WI	1:24:35	
-https://walworthcowi.portal.civicclerk.com/event/2482/media		us:county:55127	Walworth County, WI	1:30:55	
-https://walworthcowi.portal.civicclerk.com/event/2387/media		us:county:55127	Walworth County, WI	0:23:21	
-https://walworthcowi.portal.civicclerk.com/event/2602/media		us:county:55127	Walworth County, WI	1:00:09	
-https://losaltoshillsca.portal.civicclerk.com/event/4228/media		us:place:0643294	Los Altos Hills, CA	1:59:16	
-https://walworthcowi.portal.civicclerk.com/event/2520/media		us:county:55127	Walworth County, WI	1:23:15	
-https://losaltoshillsca.portal.civicclerk.com/event/4437/media		us:place:0643294	Los Altos Hills, CA	2:15:57	
-https://walworthcowi.portal.civicclerk.com/event/2388/media		us:county:55127	Walworth County, WI	1:53:34	
-https://walworthcowi.portal.civicclerk.com/event/2483/media		us:county:55127	Walworth County, WI	1:28:33	
-https://walworthcowi.portal.civicclerk.com/event/2521/media		us:county:55127	Walworth County, WI	1:12:48	
-https://walworthcowi.portal.civicclerk.com/event/2621/media		us:county:55127	Walworth County, WI	0:57:07	
-https://losaltoshillsca.portal.civicclerk.com/event/4229/media		us:place:0643294	Los Altos Hills, CA	2:23:09	
-https://losaltoshillsca.portal.civicclerk.com/event/4438/media		us:place:0643294	Los Altos Hills, CA	2:07:28	
-https://walworthcowi.portal.civicclerk.com/event/2522/media		us:county:55127	Walworth County, WI	1:30:14	
-https://walworthcowi.portal.civicclerk.com/event/2484/media		us:county:55127	Walworth County, WI	2:54:30	
-https://walworthcowi.portal.civicclerk.com/event/2391/media		us:county:55127	Walworth County, WI	1:14:36	
-https://walworthcowi.portal.civicclerk.com/event/2626/media		us:county:55127	Walworth County, WI	0:25:45	
-https://losaltoshillsca.portal.civicclerk.com/event/4231/media		us:place:0643294	Los Altos Hills, CA	2:02:28	
-https://losaltoshillsca.portal.civicclerk.com/event/4439/media		us:place:0643294	Los Altos Hills, CA	5:09:43	
-https://walworthcowi.portal.civicclerk.com/event/2392/media		us:county:55127	Walworth County, WI	0:33:32	
-https://walworthcowi.portal.civicclerk.com/event/2523/media		us:county:55127	Walworth County, WI	0:17:12	
-https://walworthcowi.portal.civicclerk.com/event/2485/media		us:county:55127	Walworth County, WI	1:16:03	
-https://walworthcowi.portal.civicclerk.com/event/2627/media		us:county:55127	Walworth County, WI	0:42:16	
-https://walworthcowi.portal.civicclerk.com/event/2394/media		us:county:55127	Walworth County, WI	0:27:49	
-https://losaltoshillsca.portal.civicclerk.com/event/4441/media		us:place:0643294	Los Altos Hills, CA	1:03:59	
-https://losaltoshillsca.portal.civicclerk.com/event/4232/media		us:place:0643294	Los Altos Hills, CA	2:22:14	
-https://walworthcowi.portal.civicclerk.com/event/2486/media		us:county:55127	Walworth County, WI	1:05:22	
-https://walworthcowi.portal.civicclerk.com/event/2524/media		us:county:55127	Walworth County, WI	1:21:23	
-https://losaltoshillsca.portal.civicclerk.com/event/4455/media		us:place:0643294	Los Altos Hills, CA	0:03:16	
-https://losaltoshillsca.portal.civicclerk.com/event/4242/media		us:place:0643294	Los Altos Hills, CA	1:49:30	
-https://walworthcowi.portal.civicclerk.com/event/2632/media		us:county:55127	Walworth County, WI	2:31:48	
-https://walworthcowi.portal.civicclerk.com/event/2487/media		us:county:55127	Walworth County, WI	1:03:47	
-https://walworthcowi.portal.civicclerk.com/event/2397/media		us:county:55127	Walworth County, WI	0:41:19	
-https://walworthcowi.portal.civicclerk.com/event/2525/media		us:county:55127	Walworth County, WI	0:49:47	
-https://walworthcowi.portal.civicclerk.com/event/2633/media		us:county:55127	Walworth County, WI	1:43:02	
-https://losaltoshillsca.portal.civicclerk.com/event/4257/media		us:place:0643294	Los Altos Hills, CA	1:49:22	
-https://losaltoshillsca.portal.civicclerk.com/event/4458/media		us:place:0643294	Los Altos Hills, CA	0:01:27	
-https://walworthcowi.portal.civicclerk.com/event/2398/media		us:county:55127	Walworth County, WI	0:37:05	
-https://walworthcowi.portal.civicclerk.com/event/2634/media		us:county:55127	Walworth County, WI	1:04:13	
-https://losaltoshillsca.portal.civicclerk.com/event/4461/media		us:place:0643294	Los Altos Hills, CA	1:11:58	
-https://walworthcowi.portal.civicclerk.com/event/2526/media		us:county:55127	Walworth County, WI	0:22:30	
-https://losaltoshillsca.portal.civicclerk.com/event/4259/media		us:place:0643294	Los Altos Hills, CA	1:31:35	
-https://walworthcowi.portal.civicclerk.com/event/2399/media		us:county:55127	Walworth County, WI	0:46:40	
-https://walworthcowi.portal.civicclerk.com/event/2527/media		us:county:55127	Walworth County, WI	1:03:50	
-https://walworthcowi.portal.civicclerk.com/event/2643/media		us:county:55127	Walworth County, WI	1:15:25	
-https://losaltoshillsca.portal.civicclerk.com/event/4463/media		us:place:0643294	Los Altos Hills, CA	1:13:07	
-https://walworthcowi.portal.civicclerk.com/event/2400/media		us:county:55127	Walworth County, WI	1:37:59	
-https://losaltoshillsca.portal.civicclerk.com/event/4260/media		us:place:0643294	Los Altos Hills, CA	1:24:42	
-https://walworthcowi.portal.civicclerk.com/event/2528/media		us:county:55127	Walworth County, WI	0:53:38	
-https://walworthcowi.portal.civicclerk.com/event/2644/media		us:county:55127	Walworth County, WI	1:11:23	
-https://walworthcowi.portal.civicclerk.com/event/2408/media		us:county:55127	Walworth County, WI	1:27:40	
-https://losaltoshillsca.portal.civicclerk.com/event/4485/media		us:place:0643294	Los Altos Hills, CA	5:56:19	
-https://losaltoshillsca.portal.civicclerk.com/event/4261/media		us:place:0643294	Los Altos Hills, CA	1:54:13	
-https://walworthcowi.portal.civicclerk.com/event/2529/media		us:county:55127	Walworth County, WI	1:57:26	
-https://walworthcowi.portal.civicclerk.com/event/2645/media		us:county:55127	Walworth County, WI	0:09:40	
-https://losaltoshillsca.portal.civicclerk.com/event/4262/media		us:place:0643294	Los Altos Hills, CA	1:45:26	
-https://losaltoshillsca.portal.civicclerk.com/event/4500/media		us:place:0643294	Los Altos Hills, CA	0:01:05	
-https://walworthcowi.portal.civicclerk.com/event/2537/media		us:county:55127	Walworth County, WI	0:53:56	
-https://walworthcowi.portal.civicclerk.com/event/2409/media		us:county:55127	Walworth County, WI	0:47:53	
-https://walworthcowi.portal.civicclerk.com/event/2494/media		us:county:55127	Walworth County, WI	1:28:11	
-https://walworthcowi.portal.civicclerk.com/event/2646/media		us:county:55127	Walworth County, WI	1:20:56	
-https://losaltoshillsca.portal.civicclerk.com/event/4263/media		us:place:0643294	Los Altos Hills, CA	1:34:46	
-https://losaltoshillsca.portal.civicclerk.com/event/4504/media		us:place:0643294	Los Altos Hills, CA	4:51:35	
-https://walworthcowi.portal.civicclerk.com/event/2414/media		us:county:55127	Walworth County, WI	1:45:18	
-https://walworthcowi.portal.civicclerk.com/event/2538/media		us:county:55127	Walworth County, WI	1:05:34	
-https://walworthcowi.portal.civicclerk.com/event/2647/media		us:county:55127	Walworth County, WI	0:07:54	
-https://losaltoshillsca.portal.civicclerk.com/event/4506/media		us:place:0643294	Los Altos Hills, CA	1:57:35	
-https://losaltoshillsca.portal.civicclerk.com/event/4271/media		us:place:0643294	Los Altos Hills, CA	0:57:21	
-https://walworthcowi.portal.civicclerk.com/event/2443/media		us:county:55127	Walworth County, WI	1:33:50	
-https://walworthcowi.portal.civicclerk.com/event/2539/media		us:county:55127	Walworth County, WI	0:59:08	
-https://walworthcowi.portal.civicclerk.com/event/2496/media		us:county:55127	Walworth County, WI	1:41:17	
-https://walworthcowi.portal.civicclerk.com/event/2648/media		us:county:55127	Walworth County, WI	0:58:45	
-https://losaltoshillsca.portal.civicclerk.com/event/4272/media		us:place:0643294	Los Altos Hills, CA	0:57:19	
-https://losaltoshillsca.portal.civicclerk.com/event/4507/media		us:place:0643294	Los Altos Hills, CA	1:58:24	
-https://walworthcowi.portal.civicclerk.com/event/2497/media		us:county:55127	Walworth County, WI	0:43:41	
-https://walworthcowi.portal.civicclerk.com/event/2444/media		us:county:55127	Walworth County, WI	1:00:39	
-https://walworthcowi.portal.civicclerk.com/event/2649/media		us:county:55127	Walworth County, WI	0:43:53	
-https://walworthcowi.portal.civicclerk.com/event/2548/media		us:county:55127	Walworth County, WI	0:24:37	
-https://losaltoshillsca.portal.civicclerk.com/event/4509/media		us:place:0643294	Los Altos Hills, CA	2:04:38	
-https://walworthcowi.portal.civicclerk.com/event/2549/media		us:county:55127	Walworth County, WI	1:11:01	
-https://summitcounty.granicus.com/player/clip/1441		us:county:49043	Summit County, UT	3:37:07	
-https://summitcounty.granicus.com/player/clip/1444		us:county:49043	Summit County, UT	8:04:25	
-https://summitcounty.granicus.com/player/clip/1451		us:county:49043	Summit County, UT	3:03:19	
-https://summitcounty.granicus.com/player/clip/1456		us:county:49043	Summit County, UT	9:33:53	
-https://summitcounty.granicus.com/player/clip/1448		us:county:49043	Summit County, UT	2:23:11	
-https://summitcounty.granicus.com/player/clip/1439		us:county:49043	Summit County, UT	0:56:31	
-https://summitcounty.granicus.com/player/clip/1450		us:county:49043	Summit County, UT	2:59:59	
-https://summitcounty.granicus.com/player/clip/1458		us:county:49043	Summit County, UT	1:45:10	
-https://hebercityut.portal.civicclerk.com/event/535/media		us:place:4934200	Heber City, UT	6:47:59	
-https://hebercityut.portal.civicclerk.com/event/491/media		us:place:4934200	Heber City, UT	1:56:27	
-https://hebercityut.portal.civicclerk.com/event/587/media		us:place:4934200	Heber City, UT	1:12:03	
-https://summitcounty.granicus.com/player/clip/1264		us:county:49043	Summit County, UT	5:03:32	
-https://summitcounty.granicus.com/player/clip/1269		us:county:49043	Summit County, UT	6:56:48	
-https://summitcounty.granicus.com/player/clip/1273		us:county:49043	Summit County, UT	3:35:53	
-https://summitcounty.granicus.com/player/clip/1274		us:county:49043	Summit County, UT	6:26:42	
-https://summitcounty.granicus.com/player/clip/1297		us:county:49043	Summit County, UT	5:34:38	
-https://summitcounty.granicus.com/player/clip/1329		us:county:49043	Summit County, UT	4:08:09	
-https://summitcounty.granicus.com/player/clip/1342		us:county:49043	Summit County, UT	4:25:29	
-https://summitcounty.granicus.com/player/clip/1347		us:county:49043	Summit County, UT	5:28:09	
-https://summitcounty.granicus.com/player/clip/1350		us:county:49043	Summit County, UT	3:20:04	
-https://summitcounty.granicus.com/player/clip/1351		us:county:49043	Summit County, UT	0:03:44	
-https://summitcounty.granicus.com/player/clip/1370		us:county:49043	Summit County, UT	2:40:35	
-https://summitcounty.granicus.com/player/clip/1376		us:county:49043	Summit County, UT	2:10:23	
-https://summitcounty.granicus.com/player/clip/1378		us:county:49043	Summit County, UT	3:53:38	
-https://summitcounty.granicus.com/player/clip/1391		us:county:49043	Summit County, UT	5:28:35	
-https://summitcounty.granicus.com/player/clip/1394		us:county:49043	Summit County, UT	0:32:19	
-https://summitcounty.granicus.com/player/clip/1396		us:county:49043	Summit County, UT	0:49:27	
-https://summitcounty.granicus.com/player/clip/1397		us:county:49043	Summit County, UT	3:09:45	
-https://summitcounty.granicus.com/player/clip/1401		us:county:49043	Summit County, UT	1:15:41	
-https://summitcounty.granicus.com/player/clip/1409		us:county:49043	Summit County, UT	4:00:37	
-https://summitcounty.granicus.com/player/clip/1434		us:county:49043	Summit County, UT	5:54:46	
-https://summitcounty.granicus.com/player/clip/1263		us:county:49043	Summit County, UT	2:33:18	
-https://summitcounty.granicus.com/player/clip/1270		us:county:49043	Summit County, UT	1:42:35	
-https://summitcounty.granicus.com/player/clip/1272		us:county:49043	Summit County, UT	2:03:51	
-https://summitcounty.granicus.com/player/clip/1276		us:county:49043	Summit County, UT	2:02:20	
-https://summitcounty.granicus.com/player/clip/1304		us:county:49043	Summit County, UT	1:39:31	
-https://summitcounty.granicus.com/player/clip/1287		us:county:49043	Summit County, UT	2:39:25	
-https://summitcounty.granicus.com/player/clip/1332		us:county:49043	Summit County, UT	1:29:06	
-https://summitcounty.granicus.com/player/clip/1344		us:county:49043	Summit County, UT	4:46:29	
-https://summitcounty.granicus.com/player/clip/1346		us:county:49043	Summit County, UT	2:29:24	
-https://summitcounty.granicus.com/player/clip/1355		us:county:49043	Summit County, UT	2:14:14	
-https://summitcounty.granicus.com/player/clip/1361		us:county:49043	Summit County, UT	0:54:12	
-https://summitcounty.granicus.com/player/clip/1399		us:county:49043	Summit County, UT	1:18:41	
-https://summitcounty.granicus.com/player/clip/1393		us:county:49043	Summit County, UT	2:11:34	
-https://summitcounty.granicus.com/player/clip/1398		us:county:49043	Summit County, UT	5:01:12	
-https://summitcounty.granicus.com/player/clip/1402		us:county:49043	Summit County, UT	1:30:47	
-https://summitcounty.granicus.com/player/clip/1438		us:county:49043	Summit County, UT	3:05:38	
-https://summitcounty.granicus.com/player/clip/1365		us:county:49043	Summit County, UT	1:54:23	
-https://summitcounty.granicus.com/player/clip/1293		us:county:49043	Summit County, UT	1:36:25	
-https://summitcounty.granicus.com/player/clip/1305		us:county:49043	Summit County, UT	1:13:39	
-https://summitcounty.granicus.com/player/clip/1348		us:county:49043	Summit County, UT	1:58:10	
-https://summitcounty.granicus.com/player/clip/1377		us:county:49043	Summit County, UT	2:00:56	
-https://hebercityut.portal.civicclerk.com/event/421/media		us:place:4934200	Heber City, UT	1:39:12	
-https://hebercityut.portal.civicclerk.com/event/434/media		us:place:4934200	Heber City, UT	4:45:16	
-https://hebercityut.portal.civicclerk.com/event/422/media		us:place:4934200	Heber City, UT	3:20:05	
-https://hebercityut.portal.civicclerk.com/event/529/media		us:place:4934200	Heber City, UT	3:56:46	
-https://hebercityut.portal.civicclerk.com/event/528/media		us:place:4934200	Heber City, UT	3:27:49	
-https://hebercityut.portal.civicclerk.com/event/423/media		us:place:4934200	Heber City, UT	6:32:03	
-https://hebercityut.portal.civicclerk.com/event/583/media		us:place:4934200	Heber City, UT	0:56:28	
-https://hebercityut.portal.civicclerk.com/event/436/media		us:place:4934200	Heber City, UT	4:11:25	
-https://hebercityut.portal.civicclerk.com/event/437/media		us:place:4934200	Heber City, UT	6:09:53	
-https://hebercityut.portal.civicclerk.com/event/534/media		us:place:4934200	Heber City, UT	4:01:49	
-https://hebercityut.portal.civicclerk.com/event/438/media		us:place:4934200	Heber City, UT	3:56:08	
-https://hebercityut.portal.civicclerk.com/event/584/media		us:place:4934200	Heber City, UT	2:35:11	
-https://hebercityut.portal.civicclerk.com/event/446/media		us:place:4934200	Heber City, UT	1:42:38	
-https://hebercityut.portal.civicclerk.com/event/486/media		us:place:4934200	Heber City, UT	1:45:08	
-https://hebercityut.portal.civicclerk.com/event/447/media		us:place:4934200	Heber City, UT	0:40:05	
-https://hebercityut.portal.civicclerk.com/event/448/media		us:place:4934200	Heber City, UT	2:44:58	
-https://hebercityut.portal.civicclerk.com/event/488/media		us:place:4934200	Heber City, UT	1:21:27	
-https://hebercityut.portal.civicclerk.com/event/449/media		us:place:4934200	Heber City, UT	0:18:43	
-https://hebercityut.portal.civicclerk.com/event/450/media		us:place:4934200	Heber City, UT	1:46:01	
-https://hebercityut.portal.civicclerk.com/event/490/media		us:place:4934200	Heber City, UT	2:00:02	
-https://hebercityut.portal.civicclerk.com/event/531/media		us:place:4934200	Heber City, UT	2:33:09	
-https://hebercityut.portal.civicclerk.com/event/523/media		us:place:4934200	Heber City, UT	0:57:13	
-https://hebercityut.portal.civicclerk.com/event/515/media		us:place:4934200	Heber City, UT	1:15:23	
-https://hebercityut.portal.civicclerk.com/event/514/media		us:place:4934200	Heber City, UT	1:15:09	
-https://walworthcowi.portal.civicclerk.com/event/2509/media		us:county:55127	Walworth County, WI	0:29:49	
-https://hebercityut.portal.civicclerk.com/event/586/media		us:place:4934200	Heber City, UT	0:39:04	
 # WO-213 part 2 (2026-09-11, Ryan): six more governments our bulk tools queued in volume (#443, #794, #798), trimmed to one governing-body meeting each; any length. Re-queue for depth later.
-https://cosumnescommunityservices.portal.civicclerk.com/event/615/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:59:15	
-https://cosumnescommunityservices.portal.civicclerk.com/event/614/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:46:19	
-https://sanfordnc.portal.civicclerk.com/event/2025/media		us:place:3759280	Sanford, NC	1:15:46	
-https://sanfordnc.portal.civicclerk.com/event/2026/media		us:place:3759280	Sanford, NC	0:48:41	
-https://sanfordnc.portal.civicclerk.com/event/2038/media		us:place:3759280	Sanford, NC	0:54:24	
-https://sanfordnc.portal.civicclerk.com/event/2039/media		us:place:3759280	Sanford, NC	0:54:06	
-https://sanfordnc.portal.civicclerk.com/event/2040/media		us:place:3759280	Sanford, NC	0:52:50	
-https://sanfordnc.portal.civicclerk.com/event/2041/media		us:place:3759280	Sanford, NC	0:47:37	
-https://cosumnescommunityservices.portal.civicclerk.com/event/560/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	1:51:19	
-https://sanfordnc.portal.civicclerk.com/event/2048/media		us:place:3759280	Sanford, NC	1:35:03	
-https://sanfordnc.portal.civicclerk.com/event/2050/media		us:place:3759280	Sanford, NC	0:52:46	
-https://cosumnescommunityservices.portal.civicclerk.com/event/561/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:56:32	
-https://sanfordnc.portal.civicclerk.com/event/2051/media		us:place:3759280	Sanford, NC	4:18:22	
-https://cosumnescommunityservices.portal.civicclerk.com/event/527/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	1:41:51	
-https://sanfordnc.portal.civicclerk.com/event/2052/media		us:place:3759280	Sanford, NC	2:09:08	
-https://sanfordnc.portal.civicclerk.com/event/2053/media		us:place:3759280	Sanford, NC	2:15:42	
-https://cosumnescommunityservices.portal.civicclerk.com/event/564/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	2:00:20	
-https://cosumnescommunityservices.portal.civicclerk.com/event/572/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:56:56	
-https://sanfordnc.portal.civicclerk.com/event/2059/media		us:place:3759280	Sanford, NC	0:44:14	
-https://cosumnescommunityservices.portal.civicclerk.com/event/573/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:47:50	
-https://sanfordnc.portal.civicclerk.com/event/2066/media		us:place:3759280	Sanford, NC	0:59:42	
-https://sanfordnc.portal.civicclerk.com/event/2067/media		us:place:3759280	Sanford, NC	1:56:44	
-https://cosumnescommunityservices.portal.civicclerk.com/event/598/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	2:40:03	
-https://cosumnescommunityservices.portal.civicclerk.com/event/574/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:45:59	
-https://sanfordnc.portal.civicclerk.com/event/2068/media		us:place:3759280	Sanford, NC	0:51:15	
-https://cosumnescommunityservices.portal.civicclerk.com/event/599/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	1:08:09	
-https://sanfordnc.portal.civicclerk.com/event/2117/media		us:place:3759280	Sanford, NC	1:24:14	
-https://cosumnescommunityservices.portal.civicclerk.com/event/612/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	1:16:04	
-https://ivins.granicus.com/player/clip/2420?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:11:26	
-https://kaysvilleut.portal.civicclerk.com/event/1169/media		us:place:4940360	Kaysville, UT	2:40:14	
-https://kaysvilleut.portal.civicclerk.com/event/1157/media		us:place:4940360	Kaysville, UT	0:50:21	
-https://parkcityut.portal.civicclerk.com/event/3726/media		us:place:4958070	Park City, UT	1:56:52	
-https://vineyardut.portal.civicclerk.com/event/1441/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1650/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1515/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1661/media		us:place:4980420	Vineyard, UT		
-https://ivins.granicus.com/player/clip/2403?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:47:14	
-https://ivins.granicus.com/player/clip/2408?view_id=2&redirect=true		us:place:4938710	Ivins, UT	2:46:02	
-https://ivins.granicus.com/player/clip/2410?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:30:58	
-https://ivins.granicus.com/player/clip/2415?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:04:10	
-https://ivins.granicus.com/player/clip/2417?view_id=2&redirect=true		us:place:4938710	Ivins, UT	3:39:52	
-https://ivins.granicus.com/player/clip/2376?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:09:30	
-https://ivins.granicus.com/player/clip/2386?view_id=2&redirect=true		us:place:4938710	Ivins, UT	1:20:42	
-https://ivins.granicus.com/player/clip/2397?view_id=2&redirect=true		us:place:4938710	Ivins, UT	0:59:56	
-https://kaysvilleut.portal.civicclerk.com/event/1164/media		us:place:4940360	Kaysville, UT	2:36:54	
-https://kaysvilleut.portal.civicclerk.com/event/1165/media		us:place:4940360	Kaysville, UT	0:58:36	
-https://kaysvilleut.portal.civicclerk.com/event/1248/media		us:place:4940360	Kaysville, UT	1:48:43	
-https://kaysvilleut.portal.civicclerk.com/event/1166/media		us:place:4940360	Kaysville, UT	3:36:25	
-https://kaysvilleut.portal.civicclerk.com/event/1154/media		us:place:4940360	Kaysville, UT	2:08:55	
-https://kaysvilleut.portal.civicclerk.com/event/1167/media		us:place:4940360	Kaysville, UT	1:36:30	
-https://kaysvilleut.portal.civicclerk.com/event/1168/media		us:place:4940360	Kaysville, UT	3:22:21	
-https://kaysvilleut.portal.civicclerk.com/event/1156/media		us:place:4940360	Kaysville, UT	1:12:54	
-https://parkcityut.portal.civicclerk.com/event/3704/media		us:place:4958070	Park City, UT	5:49:31	
-https://parkcityut.portal.civicclerk.com/event/3707/media		us:place:4958070	Park City, UT	3:00:20	
-https://parkcityut.portal.civicclerk.com/event/3710/media		us:place:4958070	Park City, UT	5:07:23	
-https://parkcityut.portal.civicclerk.com/event/3711/media		us:place:4958070	Park City, UT	4:07:53	
-https://parkcityut.portal.civicclerk.com/event/3713/media		us:place:4958070	Park City, UT	2:28:33	
-https://parkcityut.portal.civicclerk.com/event/3929/media		us:place:4958070	Park City, UT	4:52:56	
-https://parkcityut.portal.civicclerk.com/event/3930/media		us:place:4958070	Park City, UT	2:52:51	
-https://parkcityut.portal.civicclerk.com/event/3720/media		us:place:4958070	Park City, UT	4:12:42	
-https://parkcityut.portal.civicclerk.com/event/3934/media		us:place:4958070	Park City, UT	0:05:02	
-https://parkcityut.portal.civicclerk.com/event/3813/media		us:place:4958070	Park City, UT	1:06:10	
-https://parkcityut.portal.civicclerk.com/event/3814/media		us:place:4958070	Park City, UT	1:26:05	
-https://vineyardut.portal.civicclerk.com/event/1580/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1450/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1439/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1634/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1451/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1616/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1617/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1633/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1638/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1656/media		us:place:4980420	Vineyard, UT		
-https://vineyardut.portal.civicclerk.com/event/1657/media		us:place:4980420	Vineyard, UT		
-https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2433		us:place:4938710	Ivins, UT	1:34:02	
-https://sanfordnc.portal.civicclerk.com/event/2015/media		us:place:3759280	Sanford, NC	0:57:16	
-https://parkcityut.portal.civicclerk.com/event/3936/media		us:place:4958070	Park City, UT	0:45:38	
 # 2026-09-11 WO-211b: owner-body videos over 90 min, parked until a shorter meeting from the same channel is found
 https://www.youtube.com/watch?v=AumDIgXZnBc		rtr:ca:ns:municipality-of-the-county-of-pictou	Municipality of the County of Pictou, NS	1:48:25	Council meeting 2025-11-18
 https://www.utah.gov/pmn/sitemap/notice/1103283.html			Department of Agriculture and Food, Utah	2:24:19	Utah Horse Racing Commission Meeting
@@ -441,51 +29,13 @@ https://www.utah.gov/pmn/sitemap/notice/1102999.html			Department of Public Safe
 https://www.utah.gov/pmn/sitemap/notice/1101513.html			Governor's Office > Office of Economic Development (GOED), Utah	1:54:44	Utah Board of Tourism Development Meeting
 https://www.utah.gov/pmn/sitemap/notice/1098651.html			Lieutenant Governor, Utah	1:30:12	UServeUtah Commission Meeting
 https://www.utah.gov/pmn/sitemap/notice/1100659.html			School and Institutional Trust Lands Administration, Utah	2:48:32	Trust Lands Administration Board of Trustees Meeting
-https://www.utah.gov/pmn/sitemap/notice/1103475.html		us:county:49049	Utah Board of Higher Education, Utah	4:58:04	Weber State University Board of Trustees Meeting, August 27, 2026
 https://www.utah.gov/pmn/sitemap/notice/1101167.html			Department of Criminal Justice, Utah	1:37:14	Commission on Criminal and Juvenile Justice
 https://www.utah.gov/pmn/sitemap/notice/1102325.html			Department of Commerce > Division of Professional Licensing (DOPL), Utah	1:33:52	Alarm Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1100997.html			Department of Cultural and Community Engagement > Division of Arts and Museums, Utah	1:43:10	Utah Arts & Museums Advisory Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1101033.html			State Board of Education > State Charter School Board, Utah	5:58:07	State Charter School Board Meeting
-https://www.utah.gov/pmn/sitemap/notice/1100358.html		us:county:49013	Duchesne County, Utah	2:10:55	NOTICE OF COMBINED WORKING & REGULAR MEETING OF THE BOARD OF DUCHESNE COUNTY COMMISSIONERS
-https://www.utah.gov/pmn/sitemap/notice/1102483.html		us:county:49015	Emery County, Utah	1:56:06	Emery County Commission Meeting
-https://www.utah.gov/pmn/sitemap/notice/1100143.html		us:county:49019	Grand County, Utah	2:07:58	Planning Commission Regular Meeting - August 10, 2026
-https://www.utah.gov/pmn/sitemap/notice/1099845.html		us:county:49021	Iron County, Utah	3:09:57	Iron County Commission Meeting
-https://www.utah.gov/pmn/sitemap/notice/1101573.html		us:county:49037	San Juan County, Utah	2:51:20	San Juan County Planning Commission
-https://www.utah.gov/pmn/sitemap/notice/1105341.html		us:county:49039	Sanpete County, Utah	1:57:48	Sanpete County Planning Commission Meeting
-https://www.utah.gov/pmn/sitemap/notice/1103333.html		us:place:4914840	Coalville, Utah	2:38:58	Coalville City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1101843.html		us:place:4920340	Duchesne City, Utah	1:52:24	Duchesne City Council Work Meeting Agenda 08/17/2026
-https://www.utah.gov/pmn/sitemap/notice/1099999.html		us:place:4924410	Fairfield, Utah	2:20:22	Regular Session / Public Hearing
-https://www.utah.gov/pmn/sitemap/notice/1101089.html		us:place:4925180	Ferron, Utah	2:02:27	Agenda Council Meeting 8.12.2026
-https://www.utah.gov/pmn/sitemap/notice/1103073.html		us:place:4926720	Fountain Green, Utah	2:33:48	City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1100175.html		us:place:4931120	Grantsville, Utah	3:56:51	Planning Commission Regular Meeting August 18, 2026
-https://www.utah.gov/pmn/sitemap/notice/1100059.html		us:place:4933540	Harrisville, Utah	3:12:50	Harrisville City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1099535.html		us:place:4937390	Hyde Park, Utah	1:50:02	City Council
-https://www.utah.gov/pmn/sitemap/notice/1100392.html		us:place:4939920	Kanab, Utah	2:23:37	City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1099861.html		us:place:4947620	Manila, Utah	1:42:38	Town of Manila Public Hearing & Regular Meeting Agenda and Minutes
-https://www.utah.gov/pmn/sitemap/notice/1101553.html		us:place:4949820	Midway, Utah	1:51:13	Midway City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1099987.html		us:place:4950700	Moab, Utah	2:42:34	Regular City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1101735.html		us:place:4953010	Mount Pleasant, Utah	2:56:15	Notice of Public Meeting Planning Commission August 18 2026
-https://www.utah.gov/pmn/sitemap/notice/1102791.html		us:place:4954990	North Logan, Utah	2:04:59	CC Meeting
-https://www.utah.gov/pmn/sitemap/notice/1101899.html		us:place:4955100	North Ogden, Utah	1:36:40	Planning Commission Meeting
-https://www.utah.gov/pmn/sitemap/notice/1105409.html		us:place:4957080	Orderville, Utah	3:08:29	Board Meeting Agenda
-https://www.utah.gov/pmn/sitemap/notice/1100733.html		us:place:4958510	Parowan, Utah	1:31:19	Parowan City Council Special Work Meeting Agenda for 8-13-2026
-https://www.utah.gov/pmn/sitemap/notice/1097129.html		us:place:4961150	Pleasant View, Utah	2:51:11	City Council
-https://www.utah.gov/pmn/sitemap/notice/1098231.html		us:place:4962470	Provo, Utah	3:02:50	Planning Commission - August 12, 2026
-https://www.utah.gov/pmn/sitemap/notice/1099957.html		us:place:4967660	Santa Clara, Utah	2:21:32	Notice of Meeting
-https://www.utah.gov/pmn/sitemap/notice/1105893.html		us:place:4971730	Spring City, Utah	1:40:50	Spring City City Council
-https://www.utah.gov/pmn/sitemap/notice/1100637.html		us:place:4976680	Tooele, Utah	1:35:57	Tooele City Planning Commission Business Meeting
-https://www.utah.gov/pmn/sitemap/notice/1076447.html		us:place:4977230	Trenton, Utah	2:05:02	Regular Town Council meeting
-https://www.utah.gov/pmn/sitemap/notice/1099935.html		us:place:4981960	Washington City, Utah	1:39:19	Workshop Meeting Agenda
-https://www.utah.gov/pmn/sitemap/notice/1101775.html		us:place:4982070	Washington Terrace, Utah	1:49:59	City Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1100260.html		us:place:4983390	West Point, Utah	1:30:51	August 13, 2026 Planning Commission Meeting Notice and Packet
-https://www.utah.gov/pmn/sitemap/notice/1095715.html		us:place:4984710	Willard, Utah	1:53:38	City Council Meeting
 https://www.utah.gov/pmn/sitemap/notice/1100559.html			Kearns, Utah	1:31:05	Kearns City Council Meeting
 https://www.utah.gov/pmn/sitemap/notice/1105715.html			White City, Utah	3:12:29	White City Council Meeting
 https://www.utah.gov/pmn/sitemap/notice/1102671.html			Copperton, Utah	1:34:14	Copperton Town Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1100536.html		us:place:4906700	Bluff, Utah	1:55:56	Bluff Town Council Work Session August 11, 2026
-https://www.utah.gov/pmn/sitemap/notice/1100545.html		us:place:4908570	Brighton, Utah	1:48:05	Town of Brighton Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1102641.html		us:place:4923640	Erda, Utah	1:54:50	Erda City Council Meeting (Rescheduled from 8-13-26)
-https://www.utah.gov/pmn/sitemap/notice/1100815.html		us:place:4942010	Lake Point, Utah	4:21:43	Lake Point City Council Business Meeting
 https://www.utah.gov/pmn/sitemap/notice/1101449.html			Solid Waste Special Service District #1, Utah	1:52:27	08.19.2026 Public Hearing and Regular Meeting
 https://www.utah.gov/pmn/sitemap/notice/1103709.html			Grand County Recreation Special Service District No. 1, Utah	1:46:45	7.15.26 Meeting Minutes
 https://www.utah.gov/pmn/sitemap/notice/1102023.html			Grand Water and Sewer Service Agency, Utah	1:58:12	GWSSA FULL BOARD AND DISTRICT MEETINGS
@@ -496,12 +46,9 @@ https://www.utah.gov/pmn/sitemap/notice/1027939.html			Beaver County > Milford A
 https://www.utah.gov/pmn/sitemap/notice/1100543.html			South Davis Recreation District, Utah	1:36:44	August 10, 2026 Regular Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1102025.html			Spanish Valley Water and Sewer Improvement District, Utah	1:58:12	GWSSA FULL BOARD AND DISTRICT MEETINGS
 https://www.utah.gov/pmn/sitemap/notice/1102211.html			Stansbury Park Improvement District, Utah	1:43:05	STANSBURY PARK IMPROVEMENT DISTRICT BOARD MEETING AGENDA -8-18-26
-https://www.utah.gov/pmn/sitemap/notice/1104237.html		us:county:49043	Summit County Service Area 3, Utah	1:50:34	Audio, 24 August 2026 Service Area 3 Public Hearing & Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1100216.html			Utah Transit Authority, Utah	2:04:47	Regular Meeting of the Utah Transit Authority Transit Commission
-https://www.utah.gov/pmn/sitemap/notice/1100571.html		us:place:4955980	Ogden Valley Parks Service Area, Utah	3:24:53	OVPSA Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1099581.html			Southwest Utah Public Health Department, Utah	1:49:49	Southwest Utah Board of Health Meeting Revised
 https://www.utah.gov/pmn/sitemap/notice/1102017.html			Grand County Special Service Water District, Utah	1:58:12	GWSSA FULL BOARD AND DISTRICT MEETINGS
-https://www.utah.gov/pmn/sitemap/notice/1103823.html		us:place:4920340	Duchesne County Conservation District, Utah	1:38:30	Duchesne Conservation District Meeting 8.26.26
 https://www.utah.gov/pmn/sitemap/notice/1099817.html			Cache Metropolitan Planning Organization, Utah	1:50:08	Cache Technical Advisory Committee Meeting
 https://www.utah.gov/pmn/sitemap/notice/1097963.html			Jordan River Commission, Utah	1:34:03	Technical Advisory Committee Meeting
 https://www.utah.gov/pmn/sitemap/notice/1100348.html			Central Wasatch Commission, Utah	4:31:29	CWC Board Retreat
@@ -515,13 +62,10 @@ https://www.utah.gov/pmn/sitemap/notice/1102879.html			Providence Hall, Utah	3:0
 https://www.utah.gov/pmn/sitemap/notice/1103767.html			Excelsior Academy, Utah	1:36:31	Excelsior Academy Board Of Trustees Public Meeting August 27,2026
 https://www.utah.gov/pmn/sitemap/notice/1102855.html			Promontory School of Expeditionary Learning, Utah	2:35:58	Governing Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1103189.html			Valley Academy Charter School, Utah	1:56:57	VAC August 2026 School Board Meeting
-https://www.utah.gov/pmn/sitemap/notice/627707.html		us:county:49049	Utah International Charter School, Utah	1:53:55	August 2026 Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1102255.html			Mountain West Montessori Academy, Utah	1:42:37	MWMA Board of Directors Meeting
 https://www.utah.gov/pmn/sitemap/notice/1102229.html			Mountain Sunrise Academy, Utah	1:41:34	Board Meeting 9/18/2026
 https://www.utah.gov/pmn/sitemap/notice/1102959.html			Summit Academy, Utah	1:53:00	Summit Academy Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1091787.html			Grand County School District, Utah	2:39:18	Regular Board Meeting & Public Hearing (Budget Hearing)
-https://www.utah.gov/pmn/sitemap/notice/1099215.html		us:sd:4900360	Granite School District, Utah	1:59:07	Board of Education Meeting, Truth in Taxation Hearing, August 18, 2026
-https://www.utah.gov/pmn/sitemap/notice/1073815.html		us:sd:4900630	Nebo School District, Utah	2:45:54	School Board Meeting (General Session)
 https://www.utah.gov/pmn/sitemap/notice/1100019.html			Provo City School District, Utah	2:51:41	Provo City Board of Education, Study Session and Business Meeting
 https://www.utah.gov/pmn/sitemap/notice/1099083.html			Tooele County School District, Utah	2:44:02	Board of Education Meeting
 https://www.utah.gov/pmn/sitemap/notice/1093955.html			Uintah County School District, Utah	1:43:12	Work Session
@@ -533,14 +77,7 @@ https://www.utah.gov/pmn/sitemap/notice/1104077.html			Utah Housing Corporation,
 https://www.utah.gov/pmn/sitemap/notice/1102425.html			Military Installation Development Authority, Utah	1:51:34	MIDA Board meeting
 https://www.utah.gov/pmn/sitemap/notice/1095231.html			Department of Financial Institutions, Utah	1:49:31	MEETING OF THE BOARD OF FINANCIAL INSTITUTIONS
 https://www.utah.gov/pmn/sitemap/notice/1065055.html			State Board of Education, Utah	3:58:14	Utah State Board of Education Meeting
-https://www.utah.gov/pmn/sitemap/notice/1072099.html		us:county:49049	Utah Navajo Trust Fund, Utah	1:46:39	UNTF Board of Trustees Meeting
 https://www.utah.gov/pmn/sitemap/notice/1067421.html			Department of Natural Resources (DNR) > Colorado River Authority of Utah, Utah	1:36:08	Colorado River Authority of Utah Board Meeting
-https://www.utah.gov/pmn/sitemap/notice/1070287.html		us:county:49023	Juab County, Utah	1:59:20	Commission Meeting -- April 6, 2026
-https://www.utah.gov/pmn/sitemap/notice/1080247.html		us:county:49033	Rich County, Utah	2:34:26	Rich County Commission Meeting Agenda
-https://www.utah.gov/pmn/sitemap/notice/1066957.html		us:place:4928810	Genola, Utah	2:25:00	Town Council Meeting
-https://www.utah.gov/pmn/sitemap/notice/1064353.html		us:place:4952130	Moroni, Utah	1:40:52	Moroni City Council Work Meeting
-https://www.utah.gov/pmn/sitemap/notice/1062445.html		us:place:4967000	Salt Lake City, Utah	1:56:27	Salt Lake Art Design Board Meeting - March 11, 2026
-https://www.utah.gov/pmn/sitemap/notice/1067375.html		us:place:4980970	Wallsburg, Utah	1:50:34	Wallsburg Town Council Monthly Work Meeting
 https://www.utah.gov/pmn/sitemap/notice/1065915.html			Spring Lake, Utah	2:09:10	Notice of Planning Commission Meeting
 https://www.utah.gov/pmn/sitemap/notice/1068627.html			Gunlock Special Service District, Utah	1:46:03	April Public meeting
 https://www.utah.gov/pmn/sitemap/notice/1074091.html			Intermountain Power Agency, Utah	1:42:57	Intermountain Power Agency Board Meeting
@@ -553,422 +90,96 @@ https://www.utah.gov/pmn/sitemap/notice/1074791.html			North View Fire Agency, U
 https://www.utah.gov/pmn/sitemap/notice/1077855.html		rtr:us:ut:uintah-county-conservation-district	Uintah County Conservation District, Utah	1:49:25	Monthly Meeting and Budget Hearing
 https://www.utah.gov/pmn/sitemap/notice/1087761.html			Shambip Soil Conservation District, Utah	1:53:20	Shambip Soil Conservation Meeting
 https://www.utah.gov/pmn/sitemap/notice/1088515.html			Willard Precinct Cemetery Maintenance District, Utah	2:27:43	Cemetery Board Meeting
-https://www.utah.gov/pmn/sitemap/notice/1065107.html		us:county:49049	Utah Board of Higher Education > Davis Technical College, Utah	1:36:59	Davis Technical College Board of Trustees Meeting
 https://www.utah.gov/pmn/sitemap/notice/1073251.html			Timpanogos Academy, Utah	1:38:23	School Board Meeting
 https://www.utah.gov/pmn/sitemap/notice/1066719.html			Early Light Academy at Daybreak, Utah	1:52:27	ELA Board of Directors Meeting
 https://www.utah.gov/pmn/sitemap/notice/1068535.html			Scholar Academy, Utah	1:52:15	Scholar Academy Board of Directors Meeting
 https://www.utah.gov/pmn/sitemap/notice/1064549.html			Beaver County School District, Utah	4:19:28	Board Meeting March 10, 2026
 https://www.utah.gov/pmn/sitemap/notice/1066677.html			Dairy Commission, Utah	1:45:11	Joint Meeting Notice Regular Meeting of the Idaho Dairy Products Commission, Oregon Dairy Products Commission, Utah Dairy Commission, Washington Dairy Products Commission, and the Dairy West Board of Directors
-https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy	https://www.acnj.gov/pages/meeting-recordings	us:place:3402080	City of Atlantic City, NJ	1:46:41	City Council Meeting 08/19/26
 # WO-266 (2026-09-12, Ryan): queue lines for governments whose tenant site already has a live page with a real transcript, parked for depth later (breadth rule: one meeting per government first). gov_id/jurisdiction are the live page's. The four shared hosts (vimeo.com, cloud.castus.tv, videoplayer.telvue.com, play.champds.com) were left in the queue.
-https://brighton.civicweb.net/Portal/MeetingInformation.aspx?Id=1656		ca:csd:3514004	Brighton, ON		
 https://cialbionmius.civicweb.net/Portal/MeetingInformation.aspx?Id=375			City of Albion	0:38:53	
 https://cityofspringtown.civicweb.net/Portal/MeetingInformation.aspx?Id=2268			Spring Town	1:59:34	
-https://clearwatercounty.civicweb.net/Portal/MeetingInformation.aspx?Id=490		ca:csd:4809002	Clearwater County, AB	0:29:00	
-https://eastgwillimbury.civicweb.net/Portal/MeetingInformation.aspx?Id=2010		ca:csd:3519054	East Gwillimbury, ON	0:36:18	
-https://georgianbay.civicweb.net/Portal/MeetingInformation.aspx?Id=1887		ca:csd:3544065	Georgian Bay, ON	1:53:50	
-https://greyhighlands.civicweb.net/Portal/MeetingInformation.aspx?Id=3178		ca:csd:3542015	Grey Highlands, ON	1:53:25	
-https://hubbardcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=6037		us:county:27057	Hubbard County, MN	1:29:36	
-https://montesereno.civicweb.net/Portal/MeetingInformation.aspx?Id=7472		us:place:0648956	Monte Sereno, CA	3:39:54	
-https://nelson.civicweb.net/Portal/MeetingInformation.aspx?Id=2083		ca:csd:5903015	Nelson, BC	1:43:29	
-https://townofchenango.civicweb.net/Portal/MeetingInformation.aspx?Id=2287		us:cousub:3600715110	Chenango Town, NY	1:59:28	
-https://umatilla.civicweb.net/Portal/MeetingInformation.aspx?Id=2339		us:place:4175650	Umatilla, OR	0:05:46	
-http://sancarlosca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1050&Format=Agenda		us:place:0665070	San Carlos, CA	4:21:21	
-http://santapaulaca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1351&Format=Agenda		us:place:0670042	Santa Paula, CA	2:12:21	
-http://sfwmd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1598&Format=None&MediaFileFormat=wmv		rtr:us:fl:south-florida-water-management	South Florida Water Management District, FL	3:06:18	
 http://victoriacountytx.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1314&MinutesID=1329&FileFormat=pdf&Format=Minutes&MediaFileFormat=mpeg4		us:county:48469	Victoria County, TX	1:46:11	
-http://wacocitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3347&MediaPosition=2761.611&ID=8728&CssClass=		us:place:4876000	Waco, TX	1:46:14	
 http://wappingertownny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1563&MediaPosition=&ID=5704&CssClass=		us:cousub:3602778157	Wappinger Town, NY	1:24:20	
-http://washingtoncountyva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2231&MediaPosition=&ID=2391&CssClass=		us:county:51191	Washington County, VA	4:53:12	
 http://wentzvillemo.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2112&MediaPosition=&ID=7899&CssClass=		us:place:2978442	Wentzville, MO	1:29:48	
-http://westwendovernv.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2378&MediaPosition=7273.254&ID=2368&CssClass=		us:place:3283730	West Wendover, NV	3:19:09	
-http://winchesterva.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1774&MediaPosition=&ID=2024&CssClass=		us:place:5186720	Winchester, VA	0:52:45	
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1881&MediaPosition=10535.215&ID=10968&CssClass=		us:county:06087	Santa Cruz County, CA	5:08:19	
-https://stcroixcountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3661&MediaPosition=8924.113&ID=10801&CssClass=		us:county:55109	St. Croix County, WI	2:31:05	
-https://texarkanacitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1079&MediaPosition=1944.848&ID=1545&CssClass=		us:place:4872368	Texarkana, TX	1:07:18	
-https://tompkinscountyny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4213&MediaPosition=&ID=13804&CssClass=		us:county:36109	Tompkins County, NY	3:22:33	
-https://yuccavalleyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1335&MediaPosition=2805.288&ID=2233&CssClass=		us:place:0687056	Yucca Valley, CA	1:04:26	
-https://walworthcowi.portal.civicclerk.com/event/2599/media		us:county:55127	Walworth (village), WI	0:26:31	
-https://cosumnescommunityservices.portal.civicclerk.com/event/562/media		rtr:us:ca:cosumnes-community-services-district	Cosumnes Community Services District, CA	0:37:47	
-https://neoshomo.portal.civicclerk.com/event/1340/media		us:place:2951572	Neosho, MO	0:00:57	
 https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954		us:county:06025	Imperial County, CA	1:28:53	
 https://winchendon.cablecast.tv/CablecastPublicSite/gallery/5?site=1		us:cousub:2502780405	Winchendon, MA	0:44:36	
-https://agourahills.granicus.com/MediaPlayer.php?view_id=2&clip_id=2084		us:place:0600394	Agoura Hills, CA	1:26:51	
 https://bchd.granicus.com/MediaPlayer.php?view_id=2&clip_id=766		rtr:us:ca:beach-cities-health-district	Beach Cities Health District, CA	1:05:03	
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2656		us:county:06077	San Joaquin County, CA	1:12:16	
-https://washingtoncountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3494		us:county:51191	Washington County, VA	0:01:30	
-https://chanhassen.granicus.com/MediaPlayer.php?view_id=1&clip_id=2065		us:place:2710918	Chanhassen, MN	0:07:49	
-https://pub-guelph.escribemeetings.com/Meeting.aspx?Id=77aa8796-b281-43d5-a540-833c5c73e18a		ca:csd:3523008	Guelph, ON	0:20:55	
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4241		us:county:19103	Johnson County, IA	1:08:35	
-https://metro.granicus.com/MediaPlayer.php?view_id=2&clip_id=4243		rtr:us:ca:los-angeles-county-metropolitan-transportation-authority	Los Angeles County Metropolitan Transportation Authority, CA	1:20:32	
 https://payson.granicus.com/MediaPlayer.php?view_id=2&clip_id=1271		us:place:0453700	Payson, AZ	0:02:51	
 https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1532			San Mateo County Transit District	1:57:51	
-https://villagenpb.new.swagit.com/videos/399555		us:place:1249600	North Palm Beach, FL	1:12:31	
-https://winterparkfl.portal.civicclerk.com/event/2729/media		us:place:1278300	Winter Park, FL	0:17:21	
-http://agawamvod.cablecast.tv/internetchannel/show/2894?site=1		us:place:2500840		0:59:56	
-https://westfargond.portal.civicclerk.com/event/1044/media		us:place:3884780	West Fargo, ND	1:09:02	
-https://centervilleut.portal.civicclerk.com/event/1700/media		us:place:4911980	Centerville, UT		
-https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas	us:place:0680854	Tustin, CA	0:12:36	
-https://southelmonteca.portal.civicclerk.com/event/582/media	https://www.cityofsouthelmonte.org/129/Meeting-Agendas-Minutes	us:place:0672996	South El Monte, CA	0:59:21	
-https://eagle-id.granicus.com/ViewPublisher.php?view_id=1	https://www.cityofeagle.org/	us:place:1623410	Eagle, ID	4:27:29	
-https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php	us:place:0654274	Orland, CA		
-https://kaysvilleut.portal.civicclerk.com/event/1264/media		us:place:4940360	Kaysville, UT	0:31:31	
-https://summitcounty.granicus.com/player/clip/1286		us:county:49043	Summit County, UT	0:22:38	
-https://hebercityut.portal.civicclerk.com/event/527/media		us:place:4934200	Heber, UT	0:38:10	
-https://parkcityut.portal.civicclerk.com/event/3931/media		us:place:4958070	Park City, UT	1:11:38	
-https://wasatchcout.portal.civicclerk.com/event/1618/media		us:county:49051	Wasatch County, UT	0:27:18	
-https://wasatchcout.portal.civicclerk.com/event/1619/media		us:county:49051	Wasatch County, UT	0:16:52	
-https://wasatchcout.portal.civicclerk.com/event/1620/media		us:county:49051	Wasatch County, UT	0:44:08	
-https://wasatchcout.portal.civicclerk.com/event/1812/media		us:county:49051	Wasatch County, UT	0:02:58	
-https://wasatchcout.portal.civicclerk.com/event/1621/media		us:county:49051	Wasatch County, UT	0:17:33	
-https://churchillconv.portal.civicclerk.com/event/4000/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	0:46:11	
-https://churchillconv.portal.civicclerk.com/event/3990/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	0:42:43	
-https://churchillconv.portal.civicclerk.com/event/3900/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	2:08:56	
-https://churchillconv.portal.civicclerk.com/event/3850/media	https://churchillcountynv.gov	us:county:32001	Churchill County, NV	1:17:34	
-https://cityofstamford.granicus.com/MediaPlayer.php?view_id=2&clip_id=9691		us:place:0973000	Stamford, CT	1:14:50	
 https://bocaraton.granicus.com/MediaPlayer.php?view_id=3&clip_id=546		us:place:1207300	Boca Raton, FL	0:00:45	
-https://coralgables.granicus.com/MediaPlayer.php?view_id=2&clip_id=4044		us:place:1214250	Coral Gables, FL	0:29:57	
-https://cityofdoral.granicus.com/MediaPlayer.php?view_id=2&clip_id=848		us:place:1217935	Doral, FL	0:12:47	
-https://dunnellon.granicus.com/MediaPlayer.php?view_id=1&clip_id=561		us:place:1218675	Dunnellon, FL	0:46:41	
 https://citynmb.granicus.com/MediaPlayer.php?view_id=1&clip_id=2042		us:place:1249475	North Miami Beach, FL	0:28:06	
-https://pinecrest.granicus.com/MediaPlayer.php?view_id=2&clip_id=834		us:place:1256625	Pinecrest, FL	0:49:56	
-https://pompano.granicus.com/MediaPlayer.php?view_id=2&clip_id=2651		us:place:1258050	Pompano Beach, FL	2:17:15	
-https://puntagorda.granicus.com/MediaPlayer.php?view_id=1&clip_id=1371		us:place:1259200	Punta Gorda, FL	0:21:26	
-https://townofsurfsidefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=542		us:place:1270075	Surfside, FL	1:20:13	
-https://brevardfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=638		us:county:12009	Brevard County, FL	0:49:26	
-https://hernandoschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=472		us:county:12053	Hernando County, FL	1:22:38	
-https://manateeschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=346		us:sd:1201230	Manatee County School District, FL	1:00:20	
-https://nassaufl.granicus.com/MediaPlayer.php?view_id=2&clip_id=2416		us:county:12089	Nassau County, FL	0:23:50	
-https://mauicounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490		us:county:15009	Maui County, HI	2:28:19	
-https://johnson-county.granicus.com/MediaPlayer.php?view_id=1&clip_id=4246		us:county:19103	Johnson County, IA	1:02:46	
 https://cityofmalden.granicus.com/MediaPlayer.php?view_id=2&clip_id=275		us:place:2537875	Malden, MA	1:11:42	
-https://ravalli-mt.granicus.com/MediaPlayer.php?view_id=1&clip_id=2559		us:county:30081	Ravalli County, MT	0:14:22	
-https://cityofstillwater.granicus.com/MediaPlayer.php?view_id=3&clip_id=1895		us:place:2762824	Stillwater (city), MN	1:12:44	
-https://ashecounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=678		us:county:37009	Ashe County, NC	0:48:49	
-https://chathamnc.granicus.com/MediaPlayer.php?view_id=2&clip_id=576		us:county:37037	Chatham County, NC	8:27:42	
 https://mecklenburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=3281		us:county:37119	Mecklenburg County, NC	2:47:07	
-https://chemungny.granicus.com/MediaPlayer.php?view_id=1&clip_id=878		us:county:36015	Chemung County, NY	1:03:18	
-https://sullivancountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2239		us:county:36105	Sullivan County, NY	0:49:51	
-https://allegheny.granicus.com/MediaPlayer.php?view_id=2&clip_id=1052		us:county:42003	Allegheny County, PA	1:04:27	
 https://lackawanna.granicus.com/MediaPlayer.php?view_id=2&clip_id=503		us:county:42069	Lackawanna County, PA	1:23:44	
-https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790		us:place:5103368	Ashland, VA	0:34:18	
-https://fallschurch-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=3513		us:place:5127200	Falls Church, VA	0:32:56	
-https://leesburgva.granicus.com/MediaPlayer.php?view_id=2&clip_id=2981		us:place:5144984	Leesburg, VA	1:04:07	
-https://richmondva.granicus.com/MediaPlayer.php?view_id=1&clip_id=5000		us:place:5167000	Richmond, VA	0:05:06	
-https://vienna-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1994		us:place:5181072	Vienna, VA	0:24:43	
-https://clallam.granicus.com/MediaPlayer.php?view_id=2&clip_id=2181		us:county:53009	Clallam County, WA	1:00:16	
-https://whatcom.granicus.com/MediaPlayer.php?view_id=1&clip_id=1569		us:county:53073	Whatcom County, WA	0:59:29	
 https://longview-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=207		us:place:5340245	Longview, WA	0:18:47	
-https://marysville.granicus.com/MediaPlayer.php?view_id=2&clip_id=664		us:place:5343955	Marysville, WA	1:28:52	
 https://mukilteo-wa.granicus.com/MediaPlayer.php?view_id=2&clip_id=2022		us:place:5347735	Mukilteo, WA	0:37:25	
-https://olympia.granicus.com/MediaPlayer.php?view_id=2&clip_id=3013		us:place:5351300	Olympia, WA	0:11:05	
-https://cityofpt.granicus.com/MediaPlayer.php?view_id=2&clip_id=3908		us:place:5355855	Port Townsend, WA		
-https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3405		us:place:5357535	The City of Redmond, WA	1:11:37	
 https://sequim-wa.granicus.com/MediaPlayer.php?view_id=1&clip_id=723		us:place:5363385	Sequim, WA	1:22:14	
-https://snohomish.granicus.com/MediaPlayer.php?view_id=2&clip_id=9292		us:county:53061	Snohomish County, WA	0:03:12	
-https://cityoftacoma.granicus.com/MediaPlayer.php?view_id=2&clip_id=7795		us:place:5370000	Tacoma, WA	0:25:12	
-https://sauk.granicus.com/MediaPlayer.php?view_id=2&clip_id=2950		us:county:55111	Sauk County, WI	0:00:08	
 https://ryeny.new.swagit.com/videos/80201		us:place:3664309	Rye (city), NY	0:21:19	
 https://sachsetx.new.swagit.com/videos/01192022-801		us:place:4864064	Sachse, TX	0:18:02	
 https://salem.cablecast.tv/internetchannel/show/19115			Salem	0:12:37	
 https://sanbenitotx.new.swagit.com/videos/135693		us:place:4865036	San Benito, TX	0:01:54	
-https://sanjoseca.new.swagit.com/videos/304643		us:place:0668000	San Jose, CA	0:53:24	
-https://sanpatriciocountytx.new.swagit.com/videos/353476		us:county:48409	San Patricio County, TX	1:16:35	
 https://scarsdaleny.new.swagit.com/videos/249667		us:place:3665431	Scarsdale, NY	1:27:34	
-https://sccoe.new.swagit.com/videos/247894/transcript		us:county:06085	Santa Clara County, CA	2:09:57	
-https://sccwi.portal.civicclerk.com/event/923/media		us:county:55109	St. Croix County, WI		
-https://schertztx.new.swagit.com/videos/381442		us:place:4866128	Schertz, TX	1:18:58	
 https://seasideheightsnj.new.swagit.com/videos/267408/download_section		us:place:3466450	Seaside Heights, NJ	0:17:30	
-https://sedonaaz.new.swagit.com/videos/06302022-516		us:place:0465350	Sedona, AZ	0:02:48	
-https://sedrowoolleywa.portal.civicclerk.com/event/184/media		us:place:5363210	Sedro-Woolley, WA		
-https://sewardcountyks.new.swagit.com/videos/364518		us:county:20175	Seward County, KS	2:20:40	
-https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731		us:place:0600674	Albany, CA	1:00:01	
-https://arvin.granicus.com/MediaPlayer.php?view_id=2&clip_id=346		us:place:0602924	Arvin, CA		
-https://atherton.primegov.com/Portal/Meeting?meetingTemplateId=2464		us:place:0603092	Atherton, CA	1:42:00	
-https://auburn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1687		us:place:0603204	Auburn, CA	0:01:03	
-https://bcnv.primegov.com/Portal/Meeting?meetingTemplateId=3504		us:place:3206500	Boulder City, NV	1:31:00	
-https://belleplaine.granicus.com/MediaPlayer.php?view_id=2&clip_id=954		us:place:2704834	Belle Plaine (city), MN	0:58:19	
-https://berkeley.granicus.com/MediaPlayer.php?view_id=2&clip_id=5700		us:place:0606000	Berkeley, CA	0:53:39	
-https://brokenarrow.granicus.com/MediaPlayer.php?view_id=2&clip_id=2614		us:place:4009050	Broken Arrow, OK	0:58:44	
-https://buttecoca.portal.civicclerk.com/event/1078/media		us:county:06007	Butte County, CA	1:22:02	
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=603		us:place:0609780	California City, CA		
-https://calumetcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=3281		us:county:55015	Calumet County, WI	0:44:04	
-https://camarillo.primegov.com/Portal/Meeting?meetingTemplateId=7030		us:place:0610046	Camarillo, CA	1:07:25	
-https://carpinteria.granicus.com/MediaPlayer.php?view_id=2&clip_id=1783		us:place:0611446	Carpinteria, CA	4:30:03	
-https://casselberryfl.portal.civicclerk.com/event/524/media		us:place:1211050	Casselberry, FL	1:18:03	
-https://cathedralcity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2898		us:place:0612048	Cathedral City, CA	0:10:46	
-https://chaffeecoco.portal.civicclerk.com/event/1671/media		us:county:08015	Chaffee County, CO	1:27:39	
-https://charlestonwv.portal.civicclerk.com/event/3736/media		us:place:5414600	Charleston, WV	0:00:02	
-https://chinohills.granicus.com/MediaPlayer.php?view_id=2&clip_id=702		us:place:0613214	Chino Hills, CA	1:40:08	
-https://churchillconv.portal.civicclerk.com/event/4243/media		us:county:32001	Churchill County, NV	0:21:38	
-https://citwentynine-palmsca.civicweb.net/Portal/MeetingInformation.aspx?Id=10712		us:place:0680994	Twentynine Palms, CA	1:20:15	
-https://cityofdhs.civicweb.net/Portal/MeetingInformation.aspx?Id=4455		us:place:0618996	Desert Hot Springs, CA	0:40:05	
-https://cityoflawton.granicus.com/MediaPlayer.php?view_id=1&clip_id=2104		us:place:4041850	Lawton, OK	0:01:26	
-https://cityofmerced.granicus.com/MediaPlayer.php?view_id=1&clip_id=1153		us:place:0646898	Merced, CA	3:35:34	
-https://cityoforange.granicus.com/MediaPlayer.php?view_id=2&clip_id=1037		us:place:0653980	Orange, CA	1:32:52	
-https://cityofoviedo.primegov.com/Portal/Meeting?meetingTemplateId=10905		us:place:1253575	Oviedo, FL	0:41:25	
-https://cityofrehoboth.civicweb.net/Portal/MeetingInformation.aspx?Id=14580		us:place:1060290	Rehoboth Beach, DE		
-https://cityofrsm.granicus.com/MediaPlayer.php?view_id=2&clip_id=979		us:place:0659587	Rancho Santa Margarita, CA	0:00:39	
-https://cityofventura.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		us:place:0665042	Ventura, CA	4:24:24	
-https://claremontca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1912		us:place:0613756	Claremont, CA	0:46:07	
-https://cobergennj.granicus.com/MediaPlayer.php?view_id=1&clip_id=428		us:county:34003	Bergen County, NJ	0:40:19	
-https://costamesa.granicus.com/MediaPlayer.php?view_id=4&clip_id=4427		us:place:0616532	Costa Mesa, CA	0:35:50	
-https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294		us:place:1623410	Eagle, ID	1:39:14	
-https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707		us:place:0622594	Emeryville, CA	0:16:28	
-https://buttecoca.portal.civicclerk.com/event/140/media		us:county:06007	Butte County, CA	0:01:26	
-https://norwalk.primegov.com/Portal/Meeting?meetingTemplateId=7634		us:place:0652526	Norwalk, CA	1:09:13	
-https://blackfordcoin.portal.civicclerk.com/event/2157/media		us:county:18009	Blackford County, IN	0:46:55	
-https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=586		us:place:5317635	Des Moines, WA		
-https://princeton.civicweb.net/Portal/MeetingInformation.aspx?Id=910		ca:csd:5907024	Princeton, BC	0:43:22	
 http://agawamvod.cablecast.tv/internetchannel/show/2912?site=1	http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1	rtr:unknown:agawamvod.cablecast.tv		0:23:14	
-https://longbeach.primegov.com/Portal/Meeting?meetingTemplateId=36784		us:place:0643000	Long Beach, CA		
-https://pub-lincoln.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=08e3d8fe-c855-4b61-9c1c-4a1bcec8fcab&lang=English		ca:csd:3526057	Lincoln, ON		
-https://niagarafalls.civicweb.net/Portal/MeetingInformation.aspx?Id=1998&Org=Cal		ca:csd:3526043	Niagara Falls, ON		
-https://whitehouse.civicweb.net/Portal/MeetingInformation.aspx?Id=5493		us:place:4878388	Whitehouse, TX		
-https://douglas-mi.municodemeetings.com/bc-citycouncil/page/regular-meeting-city-council-91		us:place:2622740	Douglas, MI		
-https://snohomish.granicus.com/player/clip/9589?view_id=18		us:county:53061	Snohomish County, WA	1:08:30	
 https://hartford.civicweb.net/Portal/MeetingInformation.aspx?Id=3385		us:place:0937000	Hartford, CT		
 https://watertown.civicweb.net/Portal/MeetingInformation.aspx?Id=117			Watertown		
-https://laramiecounty.granicus.com/player/clip/841?view_id=1		us:county:56021	Laramie County, WY	1:00:27	
-https://pub-elgincounty.escribemeetings.com/Meeting.aspx?Id=401f3f40-356d-4776-bb76-b6061d58f2a5		ca:cd:3534	Elgin, ON	1:16:46	
-https://brewstercotx.portal.civicclerk.com/event/95/media	https://www.brewstercounty.gov/page/comm.court.home	us:county:48043	Brewster County, TX		
-https://polkcotx.portal.civicclerk.com/event/1892/media	https://www.polktx.gov	us:county:48373	Polk County, TX		
 https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838	https://lakehavasucity.granicus.com/account/login?ReturnUrl=/	us:place:0439370	City of Lake Havasu, AZ	2:55:50	
 https://huntingtonpark.granicus.com/MediaPlayer.php?clip_id=652&view_id=2		rtr:us:ca:huntington-park	The City of Huntington Park, CA	1:15:49	
 https://petersburg.granicus.com/MediaPlayer.php?clip_id=2235&view_id=2		us:county:02195	Petersburg Borough, AK	0:09:13	
 https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings		Twpec	0:55:00	
 https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov		TV, NY	0:04:50	
-https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18036		us:county:06085	Santa Clara County, CA	1:15:04	
-https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9655		us:cousub:3610368473	Town of Southampton, Long Island, NY	0:19:04	
 https://sanramonca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5303		us:place:0668378	San Ramon, CA	1:33:22	
 https://shelbytownmi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1549		us:place:2672840	Shelby (village), MI	0:45:07	
-https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3027		us:county:06101	Sutter County, CA	1:15:00	
-https://losaltoshillsca.portal.civicclerk.com/event/4638/media		us:place:0643294	Los Altos Hills, CA	1:05:50	
-https://neoshomo.portal.civicclerk.com/event/1339/media		us:place:2951572	Neosho, MO	0:21:10	
-https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=600		us:place:0609780	California City, CA	1:19:06	
-https://chccs.granicus.com/MediaPlayer.php?view_id=2&clip_id=787		rtr:us:nc:chapel-hill-carrboro-city-schools-board-of-education	Chapel Hill-Carrboro City Schools Board of Education, NC	0:22:36	
-https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3500		us:county:06065	Riverside County, CA	0:45:14	
 https://brawley-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=285		us:place:0608058	Brawley, CA	0:09:50	
-https://pub-sprucegrove.escribemeetings.com/Meeting.aspx?Id=f2ac295e-a967-4c2b-a06d-e176120a9db8&Agenda=Agenda&lang=English		ca:csd:4811049	Spruce Grove, AB	3:04:12	
-https://gcva.granicus.com/MediaPlayer.php?view_id=1&clip_id=1007		us:county:51079	Greene County, VA	0:21:05	
-https://northcastleny.granicus.com/MediaPlayer.php?view_id=2&clip_id=2872		us:cousub:3611951693	North Castle Town, NY	1:34:20	
-https://townspi.granicus.com/MediaPlayer.php?view_id=4&clip_id=4714		us:place:4869140	South Padre Island, TX	1:35:42	
-https://bucoks.granicus.com/MediaPlayer.php?view_id=1&clip_id=649		us:county:20015	Butler County, KS	0:54:39	
-https://portagecowi.portal.civicclerk.com/event/9367/media		us:county:55097	Portage County, WI	0:21:18	
-https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2424		us:place:4938710	Ivins, UT	0:35:00	
-https://cityofmaricopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=643		us:place:0444410	Maricopa, AZ	1:13:41	
-https://danbury.granicus.com/MediaPlayer.php?view_id=2&clip_id=3779		us:place:0918430	Danbury, CT	0:51:18	
-https://bethanybeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1223		us:place:1005690	Bethany Beach, DE	0:55:36	
-https://deltona.granicus.com/MediaPlayer.php?view_id=1&clip_id=1714		us:place:1217200	Deltona, FL	1:20:49	
-https://dunedin.granicus.com/MediaPlayer.php?view_id=2&clip_id=1007		us:place:1218575	Dunedin, FL	2:40:25	
-https://city-lighthousepoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=812		us:place:1240450	Lighthouse Point, FL	0:51:10	
-https://margatefl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1092		us:place:1243125	Margate, FL	0:23:44	
-https://miramar.granicus.com/MediaPlayer.php?view_id=1&clip_id=1085		us:place:1245975	Miramar, FL	1:35:09	
-https://oaklandparkfl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1414		us:place:1250575	Oakland Park, FL	0:20:16	
-https://sunrisefl.granicus.com/MediaPlayer.php?view_id=2&clip_id=1228		us:place:1269700	Sunrise, FL	1:03:48	
-https://martin.granicus.com/MediaPlayer.php?view_id=2&clip_id=5762		us:county:12085	Martin County, FL	3:22:25	
-https://gaston.granicus.com/MediaPlayer.php?view_id=1&clip_id=584		us:county:37071	Gaston County, NC	1:23:02	
-https://onslow.granicus.com/MediaPlayer.php?view_id=3&clip_id=1116		us:county:37133	Onslow County, NC	1:07:22	
-https://westchestercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=8468		us:county:36119	Westchester County, NY	1:15:40	
-https://rivertoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=865		us:place:4964340	Riverton, UT	2:46:49	
-https://chesterfieldva.granicus.com/MediaPlayer.php?view_id=2&clip_id=1529		us:county:51041	Chesterfield County, VA	2:08:16	
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1359		rtr:us:va:harrisonburg	The City of Harrisonburg, VA	2:05:15	
-https://edmondswa.granicus.com/MediaPlayer.php?view_id=1&clip_id=248		us:place:5320750	Edmonds, WA	0:15:32	
-https://waukesha.granicus.com/MediaPlayer.php?view_id=1&clip_id=6854		us:place:5584250	Waukesha (city), WI	0:28:06	
-https://rowletttx.new.swagit.com/videos/35358		us:place:4863572	Rowlett, TX	0:31:03	
-https://saltlakecounty.portal.civicclerk.com/event/4172/media		us:place:4967000	Salt Lake City, UT	0:39:43	
-https://sandyspringsga.portal.civicclerk.com/event/2144/media		us:place:1368516	Sandy Springs, GA	0:34:03	
-https://sanjuancowa.portal.civicclerk.com/event/4366/media		us:county:53055	San Juan County, WA	0:44:23	
-https://anacorteswa.portal.civicclerk.com/event/1447/media		us:place:5301990	Anacortes, WA	0:39:24	
-https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3663		us:place:0602000	Anaheim, CA	0:39:46	
-https://annapolismd.granicus.com/MediaPlayer.php?view_id=1&clip_id=1596		us:place:2401600	Annapolis, MD	0:57:56	
-https://antiochca.portal.civicclerk.com/event/1088/media		us:place:0602252	Antioch, CA	1:23:07	
-https://bainbridgeislandwa.portal.civicclerk.com/event/1109/media		us:place:5303736	Bainbridge Island, WA	1:10:43	
 https://berwynheights.granicus.com/MediaPlayer.php?view_id=1&clip_id=893		us:place:2406925	Berwyn Heights, MD	0:33:20	
-https://chino.granicus.com/MediaPlayer.php?view_id=1&clip_id=4991		us:place:0613210	Chino, CA	3:02:24	
-https://cityfortbragg.granicus.com/MediaPlayer.php?view_id=1&clip_id=1556		us:place:0625058	Fort Bragg, CA	4:12:12	
-https://cityofbowie.granicus.com/MediaPlayer.php?view_id=2&clip_id=826		us:place:2408775	Bowie, MD	1:06:47	
-https://cityofmillvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=2235		us:place:0647710	Mill Valley, CA	1:55:29	
-https://cityofnewport.granicus.com/MediaPlayer.php?view_id=1&clip_id=1024		us:place:4449960	Newport, RI	1:15:28	
-https://cityofrosemead.granicus.com/MediaPlayer.php?view_id=2&clip_id=3649		us:place:0662896	Rosemead, CA	0:24:59	
-https://college-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1717		us:place:2418750	College Park, MD	2:01:18	
-https://cosm.granicus.com/MediaPlayer.php?view_id=1&clip_id=759		us:place:0668252	San Mateo, CA	2:19:16	
-https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1525		us:place:0622230	El Monte, CA	0:54:51	
 https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1833		rtr:us:az:lake-havasu	City of Lake Havasu, AZ	0:50:36	
-https://derby.civicweb.net/Portal/MeetingInformation.aspx?Id=6006		us:place:2017800	Derby, KS	0:44:24	
 https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2947		us:county:06025	Imperial County, CA	3:13:40	
-https://jacksoncomi.portal.civicclerk.com/event/1088/media		us:county:26075	Jackson County, MI	0:29:00	
-https://leacountynm.portal.civicclerk.com/event/593/media		us:county:35025	Lea County, NM	0:10:22	
-https://albemarle.granicus.com/MediaPlayer.php?view_id=1&clip_id=1530		us:county:51003	Albemarle County, VA	4:31:08	
 https://redmond.granicus.com/MediaPlayer.php?view_id=2&clip_id=3406		rtr:us:wa:redmond	The City of Redmond, WA	0:20:50	
-https://morgantown.granicus.com/MediaPlayer.php?view_id=2&clip_id=1395		us:place:5455756	The City of Morgantown, WV	1:50:20	
-https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=c3c39254-53cc-4461-9b85-041288171803&Agenda=Agenda&lang=English		us:place:0660620	Richmond, CA	2:09:07	
 https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1903		us:cousub:3602725978	Fishkill (town), NY	1:15:59	
-https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2917		us:cousub:3301337300	The Town of Hooksett, NH	1:43:28	
-https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=859		us:county:06033	Lake County, CA	0:42:17	
-https://clark.granicus.com/player/clip/6905?view_id=14&redirect=true		us:county:32003	Clark County, NV	0:47:08	
 https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669	https://huntingtonpark.granicus.com/account/forgotpassword	rtr:us:ca:huntington-park	The City of Huntington Park, CA	0:30:34	
 https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hooksett.granicus.com/ViewPublisher.php?view_id=2	rtr:us:nh:hooksett	The Town of Hooksett, NH	0:50:01	
-https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9		us:cousub:2300140770	Livermore Falls, ME	0:18:48	
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council		rtr:unknown:reflect-vsctv.cablecast.tv		1:39:34	
 https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1			Town of Brunswick	3:57:51	
-https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter	us:cousub:2300140770	Livermore Falls, ME	0:51:33	
-https://townhallstreams.com/stream.php?location_id=94&id=75799		us:cousub:2300140035	Lisbon, ME
 https://townhallstreams.com/stream.php?location_id=47&id=21880					
 https://townhallstreams.com/stream.php?location_id=108&id=35970			New Boston		
-https://townhallstreams.com/stream.php?location_id=169&id=67490		us:cousub:3300577380	Troy, NH		
 https://townhallstreams.com/stream.php?location_id=47&id=76243					
-https://townhallstreams.com/stream.php?location_id=94&id=76283		us:cousub:2300140035	Lisbon, ME		
 https://townhallstreams.com/stream.php?location_id=108&id=76123			New Boston		
-https://townhallstreams.com/stream.php?location_id=169&id=75941		us:cousub:3300577380	Troy, NH		
 https://www.utah.gov/pmn/sitemap/notice/1035147.html		rtr:us:ut:department-of-commerce	Department of Commerce, UT		
-https://www.utah.gov/pmn/sitemap/notice/1102583.html		rtr:us:ut:department-of-natural-resources-dnr	Department of Natural Resources (DNR), UT		
-https://www.utah.gov/pmn/sitemap/notice/1098005.html		rtr:us:ut:department-of-natural-resources-dnr-division-of-forestry-fire-and-state-lands	Department of Natural Resources (DNR) > Division of Forestry, Fire and State Lands, UT		
-https://www.utah.gov/pmn/sitemap/notice/1097079.html		us:county:49019	Grand County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1094395.html		us:county:49021	Iron County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1041417.html		us:county:49035	Salt Lake County, UT		
 https://www.utah.gov/pmn/sitemap/notice/1099107.html		us:county:49047	Uintah County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1100915.html		us:county:49049	Utah County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1102545.html		us:county:49053	Washington County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1097711.html		us:place:4911000	Castle Valley, UT		
-https://www.utah.gov/pmn/sitemap/notice/1102185.html		us:place:4911980	Centerville, UT		
-https://www.utah.gov/pmn/sitemap/notice/1097333.html		us:place:4931120	Grantsville, UT		
-https://www.utah.gov/pmn/sitemap/notice/1098501.html		us:place:4933540	Harrisville, UT		
-https://www.utah.gov/pmn/sitemap/notice/1092293.html		us:place:4950700	Moab, UT		
-https://www.utah.gov/pmn/sitemap/notice/1105389.html		us:place:4954990	North Logan, UT		
-https://www.utah.gov/pmn/sitemap/notice/1076929.html		us:place:4955100	North Ogden, UT		
-https://www.utah.gov/pmn/sitemap/notice/1101851.html		us:place:4957300	Orem, UT		
-https://www.utah.gov/pmn/sitemap/notice/1103991.html		us:place:4958510	Parowan, UT		
-https://www.utah.gov/pmn/sitemap/notice/1100861.html		us:place:4958730	Payson, UT		
-https://www.utah.gov/pmn/sitemap/notice/1077183.html		us:place:4961150	Pleasant View, UT		
-https://www.utah.gov/pmn/sitemap/notice/1097203.html		us:place:4962470	Provo, UT		
-https://www.utah.gov/pmn/sitemap/notice/1103087.html		us:place:4967770	Santaquin, UT		
-https://www.utah.gov/pmn/sitemap/notice/1098077.html		us:place:4967825	Saratoga Springs, UT		
-https://www.utah.gov/pmn/sitemap/notice/1100230.html		us:place:4971290	Spanish Fork, UT		
-https://www.utah.gov/pmn/sitemap/notice/1100234.html		us:place:4971840	Springdale, UT		
-https://www.utah.gov/pmn/sitemap/notice/1102267.html		us:place:4965330	St. George, UT		
-https://www.utah.gov/pmn/sitemap/notice/1096651.html		us:place:4976680	Tooele, UT		
 https://www.utah.gov/pmn/sitemap/notice/1103677.html		rtr:us:ut:tooele-county-school-district	Tooele County School District, UT		
-https://www.utah.gov/pmn/sitemap/notice/1094777.html		us:county:49003	Box Elder County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1091125.html		us:county:49027	Millard County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1066341.html		us:county:49043	Summit County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1073435.html		us:county:49051	Wasatch County, UT		
-https://www.utah.gov/pmn/sitemap/notice/1004884.html		us:place:4900650	Alta, UT		
-https://www.utah.gov/pmn/sitemap/notice/1065787.html		us:place:4901905	Apple Valley, UT		
-https://www.utah.gov/pmn/sitemap/notice/1090913.html		us:place:4926940	Francis, UT		
-https://www.utah.gov/pmn/sitemap/notice/1070155.html		us:place:4936400	Hooper, UT		
-https://www.utah.gov/pmn/sitemap/notice/1069021.html		us:place:4945090	Lindon, UT		
-https://www.utah.gov/pmn/sitemap/notice/1071327.html		us:place:4954660	Nibley, UT		
-https://www.utah.gov/pmn/sitemap/notice/1092383.html		us:place:4962360	Providence, UT		
-https://www.utah.gov/pmn/sitemap/notice/1080145.html		us:place:4964340	Riverton, UT		
-https://www.utah.gov/pmn/sitemap/notice/1098397.html		us:place:4967000	Salt Lake City, UT		
-https://www.utah.gov/pmn/sitemap/notice/1074021.html		us:place:4967440	Sandy, UT		
-https://www.utah.gov/pmn/sitemap/notice/1098733.html		us:place:4971070	South Salt Lake, UT		
-https://www.utah.gov/pmn/sitemap/notice/1087919.html		us:place:4980420	Vineyard, UT		
-https://www.utah.gov/pmn/sitemap/notice/1096823.html		us:place:4982950	West Jordan, UT		
-https://www.utah.gov/pmn/sitemap/notice/1081913.html		us:place:4913850	Clearfield, UT		
-https://calhouncotx.portal.civicclerk.com/event/5480/media		us:county:48057	Calhoun County, TX		
-https://cantonoh.portal.civicclerk.com/event/2105/media		us:place:3912000	Canton (city), OH		
-https://crestviewfl.portal.civicclerk.com/event/1370/media		us:place:1215475	Crestview, FL		
-https://frasermi.portal.civicclerk.com/event/1035/media		us:place:2630420	Fraser (city), MI		
-https://godleytx.portal.civicclerk.com/event/6070/media		us:place:4829972	Godley, TX		
 https://grantconm.portal.civicclerk.com/event/704/media					
-https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1		us:county:48187	Guadalupe County, TX		
-https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1168		us:county:48187	Guadalupe County, TX		
-https://guadalupe.granicus.com/player/clip/1160?view_id=1&redirect=true		us:county:48187	Guadalupe County, TX		
-https://harrisoncountyin.portal.civicclerk.com/event/1066/media		us:county:18061	Harrison County, IN		
-https://harrisoncountyin.portal.civicclerk.com/event/1067/media		us:county:18061	Harrison County, IN		
 https://hcnv.granicus.com/player/clip/44?view_id=2&redirect=true					
 https://hobbsnm.portal.civicclerk.com/event/212/media					
-https://howardcotx.portal.civicclerk.com/event/179/media		us:county:48227	Howard County, TX		
 https://kenmorewa.portal.civicclerk.com/event/1802/media					
-https://kentcountymd.portal.civicclerk.com/event/859/media		us:county:24029	Kent County, MD		
-https://kentcountymd.portal.civicclerk.com/event/1037/media		us:county:24029	Kent County, MD		
-https://levycofl.portal.civicclerk.com/event/2039/media		us:county:12075	Levy County, FL		
-https://lumbertonnc.portal.civicclerk.com/event/263/media		us:place:3739700	Lumberton, NC		
-https://lynnhavenfl.portal.civicclerk.com/event/2112/media		us:place:1241825	Lynn Haven, FL		
-https://madisoncoil.portal.civicclerk.com/event/560/media		us:county:17119	Madison County, IL		
-https://madisoncoil.portal.civicclerk.com/event/417/media		us:county:17119	Madison County, IL		
 https://northwoodoh.portal.civicclerk.com/event/309/media					
-https://ottawaks.portal.civicclerk.com/event/1101/media		us:place:2053550	Ottawa (city), KS		
-https://prairievillageks.portal.civicclerk.com/event/684/media		us:place:2057575	Prairie Village (city), KS		
-https://prosserwa.portal.civicclerk.com/event/203/media		us:place:5356450	Prosser, WA		
-https://pueblococo.portal.civicclerk.com/event/10402/media		us:county:08101	Pueblo County, CO		
-https://rockawaybeachor.portal.civicclerk.com/event/2070/media		us:place:4162900	Rockaway Beach, OR		
-https://rockporttx.portal.civicclerk.com/event/1102/media		us:place:4862804	Rockport, TX		
 https://saratogaspringsny.new.swagit.com/videos/306992					
-https://seadrifttx.portal.civicclerk.com/event/5/media		us:place:4866416	Seadrift, TX		
-https://seadrifttx.portal.civicclerk.com/event/21/media		us:place:4866416	Seadrift, TX		
-https://waycrossga.portal.civicclerk.com/event/308/media		us:place:1380956	Waycross, GA		
 https://whiteville.granicus.com/player/clip/388?view_id=1&redirect=true					
 https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1					
 https://winterhaven-fl.granicus.com/player/clip/616?view_id=1&redirect=true					
 https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616					
-https://wrightcountymn.portal.civicclerk.com/event/1667/media		us:county:27171	Wright County, MN		
-https://wrightcountymn.portal.civicclerk.com/event/2682/media		us:county:27171	Wright County, MN		
-https://wrightcountymn.portal.civicclerk.com/event/30/media		us:county:27171	Wright County, MN		
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238
 https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	https://www.crd.ca/government-administration/boards-committees/committees-commissions/capital-regional-district-board	ca:cd:5917	Capital Regional District, BC	2:48:38	
-https://cloud.castus.tv/vod/littleton/video/6aa38884265b27000284bb5b	https://cloud.castus.tv/vod/littleton/?page=RECENT	us:cousub:2501735950	Littleton town, MA	2:06:44	School Committee
-https://playback.orionontv.org/internetchannel/show/5760?site=3	https://playback.orionontv.org/internetchannel/show/5760?site=3	us:cousub:2612561100	Orion charter township, MI	1:34:41	
 https://oakgrove.granicus.com/MediaPlayer.php?view_id=2&clip_id=759	https://oakgrove.granicus.com/MediaPlayer.php?view_id=2&clip_id=759	us:place:2747690	Oak Grove city, MN	1:48:33	
-https://pub-chocolatetown.escribemeetings.com/Meeting.aspx?Id=d540b019-0bd2-407b-90dd-42946b167ba1	https://pub-chocolatetown.escribemeetings.com/Meeting.aspx?Id=d540b019-0bd2-407b-90dd-42946b167ba1	ca:csd:1302037	St. Stephen, NB	2:14:00	Committee of the Whole
-https://townhallstreams.com/stream.php?location_id=144&id=76256	https://townofpittsboro.org/	us:place:1860192	Pittsboro, IN	2:11:06	Plan Commission
-https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	https://pub-llbc.escribemeetings.com/Meeting.aspx?Id=fc0c4b34-d5b2-46cf-a689-096772e92068	ca:csd:4812037	Lac la Biche County, AB	4:41:52	Regular Council Meeting
-https://www.townhallstreams.com/stream.php?location_id=107&id=73417	https://hamptonfalls.org/	us:cousub:3301533460	Hampton Falls, NH	1:48:34	Capital Improvement Committee
-https://live.pomonaca.gov/internetchannel/show/320		us:place:0658072	Pomona, CA	4:54:25	Pomona City Council Meeting 09-14-2026
-https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13425	https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13425	us:state:32	Nevada Legislature	9:00:01	Senate Floor Session - Jul 8th, 2020
-https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13426	https://nvleg.granicus.com/MediaPlayer.php?view_id=14&clip_id=13426	us:state:32	Nevada Legislature	9:00:00	Assembly Floor Session - Jul 8th, 2020
-https://play.champds.com/yumacoaz/event/637		us:county:04027	Yuma County, AZ	1:41:48	Planning & Zoning Meeting 8/25/2026
-https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260903/-1/22701	https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260903/-1/22701	us:state:20	Kansas State Legislature	6:32:41	House Select Committee on Government Oversight
-https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260904/-1/22661	https://sg001-harmony.sliq.net/00287/Harmony/en/PowerBrowser/PowerBrowserV3/20260904/-1/22661	us:state:20	Kansas State Legislature	3:59:27	Legislative Budget Committee
-https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260921/-1/28473	https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260921/-1/28473	us:state:23	Maine State Legislature	1:32:52	State and Local Government
-https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260909/-1/28462	https://sg001-harmony.sliq.net/00281/Harmony/en/PowerBrowser/PowerBrowserV3/20260909/-1/28462	us:state:23	Maine State Legislature	4:10:55	House Ethics Committee
-https://sg001-harmony.sliq.net/00285/Harmony/en/PowerBrowser/PowerBrowserV3/20260914/-1/38039	https://sg001-harmony.sliq.net/00285/Harmony/en/PowerBrowser/PowerBrowserV3/20260914/-1/38039	us:state:19	Iowa State Legislature	1:56:13	Administrative Rules Review Committee
-https://borough-ketchikan.granicus.com/MediaPlayer.php?view_id=2&clip_id=2398	https://www.kgbak.us/	us:county:02130	Ketchikan Gateway Borough, AK	3:49:40	Assembly - Regular - Sep 21st, 2026
-https://stbernardtv.sbpg.net/internetchannel/show/774?site=1	https://stbernardtv.sbpg.net/internetchannel/	us:county:22087	St. Bernard Parish, LA	2:14:48	Council Meeting - 9/15/2026
 https://tazewellcountyva.org/wp-content/uploads/2026/09/09-01-2026-BOS-Audio.mp3	https://tazewellcountyva.org/government/boards-and-commissions/board-of-supervisors/	us:county:51185	Tazewell County, VA	2:58:01	09-01-2026 BOS Audio
-https://shelby.granicus.com/ASX.php?clip_id=2899&sn=shelby.granicus.com&view_id=4	https://www.shelbycountytn.gov/1218/Archived-Meeting-Audio	us:county:47157	Shelby County, TN	3:14:22	Shelby County Commission (clip 2899)
-https://play.champds.com/elpasococo/event/166	https://clerkandrecorder.elpasoco.com/clerk-to-the-board/meeting-video-archives/	us:county:08041	El Paso County, CO	0:49:08	BOCC Regular Meeting (2026-09-15); parked WO-299: El Paso already has a transcript page (event 164, 1,110 lines)
-https://chesapeake.granicus.com/MediaPlayer.php?view_id=29&clip_id=9936	https://chesapeake.granicus.com/ViewPublisher.php?view_id=29	us:place:5116000	Chesapeake city, VA	2:59:00	Regular City Council Meeting (2026-09-08); swapped for the 30-min City Council Work Session (clip 9917), WO-1141
 https://reflect-tacoma.cablecast.tv/internetchannel/show/3551?site=1		us:sd:5308700	Tacoma Public Schools	2:05:42	September 24, 2026 TPS Board Meeting; over 90 minutes, parked (2026-09-27 25,000+ Meeting Finder run, WO-1151)
 https://breckenridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=111		us:place:0808400	Breckenridge town, CO	1:47:12	6-26-2018 Town Council Regular Meeting; over 90 minutes, parked (2026-09-28 Granicus follow-ups)
-https://video.isilive.ca/play/durham/TEC%20-%2007%20December%202022%20-%20FINAL.mp4		ca:cd:3518	Durham (ON)	1:51:05	
-http://video.isilive.ca/stthomas/2020-11-16-full.mp4.html		ca:csd:3534021	St. Thomas (ON)	1:46:20	
-http://video.isilive.ca/moosejaw/2019-06-10.mp4.html		ca:csd:4707039	Moose Jaw (SK)	2:20:16	
-https://cdn1.isilive.ca/vod/_definst_/mp4:calgary/Council%20Primary_Regular%20Meeting%20of%20Council_2026-09-22-11-14.mp4/playlist.m3u8?_=1790219795817		ca:csd:4806016	Calgary (AB)	5:33:07	
 https://video.isilive.ca/tdsb/Others/SEAC/2025/2025-06-09-SEAC.mp4.html		rtr:ca:on:toronto-district-school-board	Toronto District School Board (ON)	2:01:18	
 https://play.champds.com/gillettewy/event/918		us:county:56005	Campbell County, WY	2:45:29	
 https://townmeetings.s3.us-east-2.amazonaws.com/Board+of+Finance/2026/9.21.26+Board+of+Finance+Regular+Meeting-20260921_190101-Meeting+Recording+(1).mp4		us:cousub:0911012270	Canton town, CT	1:57:26	
 https://drive.google.com/file/d/1_qKxrNQ0l_12IWaDr7ziKjuQ2UQFyedy/view?usp=sharing		us:cousub:0917022910	East Haven town, CT	2:42:29	
 https://www.townhallstreams.com/stream.php?location_id=62&id=76241		us:cousub:2300553860	North Yarmouth town, ME	2:02:28	
-https://videoplayer.telvue.com/player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG/media/1021754		us:cousub:2301548645	Newcastle town, ME	2:03:15	
 https://videoplayer.telvue.com/player/TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc/media/1014571		us:cousub:2501572880	Ware town, MA	2:01:38	
-https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1015133		us:cousub:2501705070	Belmont town, MA	2:19:01	
-https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1014983		us:cousub:2501705805	Billerica town, MA	2:01:55	
 https://videoplayer.telvue.com/player/c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L/media/1014579		us:cousub:2501735215	Lexington town, MA	3:37:52	
 https://videoplayer.telvue.com/player/MYHMRKXBbGFaah07vKkZ_-J4SThODdPq/media/1014803		us:cousub:2501767665	Stoneham town, MA	3:15:16	
-https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1014564		us:cousub:2502182315	Wrentham town, MA	2:21:42	
 https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/media/1014913		us:cousub:2502318455	East Bridgewater town, MA	1:50:06	
-https://reflect-southborough.cablecast.tv/internetchannel/show/2488		us:cousub:2502763165	Southborough town, MA	2:50:49	
 https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/1014905		us:cousub:3301552340	Newmarket town, NH	2:18:51	
 https://videoplayer.telvue.com/player/GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn/media/1016458		us:cousub:3403576940	Warren township, NJ	3:00:00	
-https://reflect-northwest-access.cablecast.tv/internetchannel/show/24142		us:cousub:5001145850	Montgomery town, VT	2:08:17	
-https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1026368		us:place:0631708	Half Moon Bay city, CA	3:33:26	
-https://reflect-communitytv.cablecast.tv/internetchannel/show/3663		us:place:0669112	Santa Cruz city, CA	5:27:02	
 https://videoplayer.telvue.com/player/ngKsmvOplIehacsLE9KAR_RKX5OityeV/media/1022240		us:place:1021200	Dover city, DE	2:48:03	
-https://woodstockil.granicus.com/MediaPlayer.php?clip_id=510		us:place:1783349	Woodstock city, IL	1:55:47	
-https://brownsburgin.new.swagit.com/videos/398881		us:place:1808416	Brownsburg town, IN	2:58:50	
-https://townhallstreams.com/stream.php?location_id=160&id=76298		us:place:2306925	Brewer city, ME	1:42:27	
-https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R/media/1014917		us:place:2578972	Weymouth Town city, MA	1:38:48	
-https://videoplayer.telvue.com/player/Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe/media/1015851		us:place:3314200	Concord city, NH	2:58:43	
-https://videoplayer.telvue.com/player/_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2/media/1014531		us:place:3471430	Summit city, NJ	5:10:38	
-https://videoplayer.telvue.com/player/bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA/media/1014554		us:place:3601000	Albany city, NY	3:05:31	
-http://reflect-origin-1119.cablecast.tv/internetchannel/show/3659		us:place:3660895	Red Hook village, NY	2:00:51	
 https://videoplayer.telvue.com/player/KhA_ULGx1UdtbPSnwHPL0t1TrYm6rQSe/media/1014573		us:place:4500550	Aiken city, SC	2:15:31	
 https://www.cityofcheney.org/DocumentCenter/View/4905/9-22-26-Recording		us:place:5311825	Cheney city, WA	2:24:57	
 https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH/media/1017776		us:sd:4218990	Philadelphia City School District, PA	4:00:43	
-https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1017104		us:place:2604105	Auburn Hills city, MI	2:16:49	
 https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1/media/1015680		us:sd:2629940	Rochester Community School District, MI	3:19:35	
 https://pub-sturgeoncounty.escribemeetings.com/Meeting.aspx?Id=a2e9c4e5-b967-41d3-b8b5-3c343aeeb83f&Agenda=Agenda&lang=English		ca:csd:4811059	Sturgeon County, AB	1:42:44	
 https://oakridgetn.granicus.com/MediaPlayer.php?view_id=1&clip_id=1129		us:place:4755120	Oak Ridge city, TN	1:51:03	
