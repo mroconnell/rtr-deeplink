@@ -1,0 +1,148 @@
+{
+ "Customer": {
+  "CustomerName": "Signal Mountain TN",
+  "CustomerAccessID": "signalmountaintn",
+  "CustomerTimezone": "America/New_York",
+  "ServiceGroupID": 1,
+  "CustomerEventAreaMask": 15359,
+  "CustomerOtherAreaMask": 16383
+ },
+ "Event": {
+  "CustomerEventID": 365,
+  "EventTitle": "Town Council Meeting; 9/28/26, 6pm",
+  "EventDateTimeCustomerLocal": "2026-09-28 18:00:00",
+  "EventMediaTargetID": 1610
+ },
+ "Board": {
+  "CustomerBoardID": 1,
+  "CustomerBoardIDParent": 0,
+  "BoardName": "Town Council",
+  "BoardDescription": "",
+  "VisibilityMask": 0,
+  "FeatureMask": 0,
+  "BoardTypeID": 0,
+  "LastModifyDateTimeUTC": null,
+  "OrderOrdinal": 0,
+  "PositionCountMin": 0,
+  "PositionCountMax": 0
+ },
+ "Agenda": {
+  "Attachments": []
+ },
+ "MediaInfo": {
+  "MediaType": "VOD",
+  "MediaID": 1610,
+  "MediaPath": "/2026-09/53ceb45f11b086da77bf996cb885bc66649d802c.mp4",
+  "VOD2": "/VOD/event/SignalMountainTN/365/1790688112000/PTMr8Sv53oYf29EOjI97ug/master.m3u8",
+  "Captions": [],
+  "AudioDescriptions": []
+ },
+ "ServicesAndMachineInfo": {
+  "4": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "SignalMountainTN OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 4,
+   "URLBase": "rtmp://144.168.37.20/SignalMountainTNOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "256": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "SignalMountainTN OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 256,
+   "URLBase": "https://securestream7.champds.com/SignalMountainTNOD/_definst_",
+   "URLFilename": "%MEDIA_PATH%/medialist.smil?PLAY"
+  },
+  "0": [
+   {
+    "CustomerServiceID": 1,
+    "ServiceNickName": "SignalMountainTN OD",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/SignalMountainTNOD/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 2,
+    "ServiceNickName": "SignalMountainTN ATT",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/SignalMountainTNATT/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 3,
+    "ServiceNickName": "SignalMountainTN WEBMEDIA",
+    "ServicePlaybackMask": 0,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/SignalMountainTNWEBMEDIA/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   },
+   {
+    "CustomerServiceID": 5,
+    "ServiceNickName": "SignalMountainTN LIVE",
+    "ServicePlaybackMask": 14,
+    "ServiceTypeID": 0,
+    "URLBase": "https://securestream7.champds.com/SignalMountainTNLIVE/_definst_",
+    "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+   }
+  ],
+  "8": {
+   "CustomerServiceID": 1,
+   "ServiceNickName": "SignalMountainTN OD",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 8,
+   "URLBase": "https://securestream10.champds.com",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "16": {
+   "CustomerServiceID": 2,
+   "ServiceNickName": "SignalMountainTN ATT",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 16,
+   "URLBase": "https://http://play.champds.com/webmedia/att/SignalMountainTNATT",
+   "URLFilename": "%MEDIA_PATH%"
+  },
+  "32": {
+   "CustomerServiceID": 3,
+   "ServiceNickName": "SignalMountainTN WEBMEDIA",
+   "ServicePlaybackMask": 0,
+   "ServiceTypeID": 32,
+   "URLBase": "http://http://play.champds.com/SignalMountainTNWEBMEDIA",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "1": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "SignalMountainTN LIVE",
+   "ServicePlaybackMask": 14,
+   "ServiceTypeID": 1,
+   "URLBase": "rtmp://144.168.37.20/SignalMountainTNLIVE/_definst_",
+   "URLFilename": "%MEDIA_PATH%?PLAY"
+  },
+  "2": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "SignalMountainTN LIVE",
+   "ServicePlaybackMask": 14,
+   "ServiceTypeID": 2,
+   "URLBase": "http://144.168.37.20/SignalMountainTNLIVE/_definst_",
+   "URLFilename": "%MEDIA_PATH%/playlist.m3u8?PLAY"
+  },
+  "64": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "SignalMountainTN LIVE",
+   "ServicePlaybackMask": 14,
+   "ServiceTypeID": 64,
+   "URLBase": "http://144.168.37.20/SignalMountainTNLIVE/_definst_",
+   "URLFilename": "amlst:streams.smil/medialist.smil?PLAY"
+  },
+  "128": {
+   "CustomerServiceID": 5,
+   "ServiceNickName": "SignalMountainTN LIVE",
+   "ServicePlaybackMask": 14,
+   "ServiceTypeID": 128,
+   "URLBase": "https://securestream9.champds.com/LIVE/SignalMountainTNLIVE",
+   "URLFilename": "%CUSTOMER_SERVICE_NAME%.m3u8?PLAY&v=new"
+  }
+ }
+}

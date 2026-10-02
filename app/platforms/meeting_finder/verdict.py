@@ -64,7 +64,7 @@ CSV_FIELDS = [
 # date, url, hub host) is JSONL-only, same as `leads`/`path` -- WO-1058.
 _DATACLASS_FIELDS = {f.name for f in fields(VerdictRow)}
 _CSV_ONLY = {"leads_count", "other_gov_leads_count", "listed_count"}
-_DATACLASS_ONLY = {"leads", "other_gov_leads", "listed"}
+_DATACLASS_ONLY = {"leads", "other_gov_leads", "meeting_date", "listed"}
 assert (set(CSV_FIELDS) - _CSV_ONLY) | _DATACLASS_ONLY == _DATACLASS_FIELDS, (
     "verdict.CSV_FIELDS drifted from models.VerdictRow -- update both"
 )

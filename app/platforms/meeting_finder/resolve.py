@@ -818,7 +818,26 @@ async def _resolve_candidates_with_meeting(
                         )
             continue
 
-        if best_no_video is None and (result.agenda_items or result.agenda_link):
+        if getattr(result, "server_media_url", None) and not result.video_url:
+            # ChampDS's VOD2: a recording our transcription can read but a
+            # reader's player can't (WO-1045). Not counted as video here;
+            # said out loud so the row doesn't read like "no recording".
+            reasons.append(
+                f"{cand.url}: stream-only recording (VOD2), no playable video"
+            )
+        # 2026-10-02 (ChampDS listing): a row a LISTER already marked
+        # `has_video_hint=False` is a confirmed real meeting even with no
+        # agenda attached -- the same trust the `ResolveError` branch above
+        # gives it. Confirmed live: Largo FL's and Signal Mountain TN's
+        # ChampDS events resolve with a real title and date but no agenda
+        # attachment, so without this an account full of meetings read
+        # `no-meeting-nor-video`.
+        lister_confirmed_meeting = cand.has_video_hint is False and bool(
+            result.title or cand.title
+        )
+        if best_no_video is None and (
+            result.agenda_items or result.agenda_link or lister_confirmed_meeting
+        ):
             best_no_video = (cand, result)
 
     if probed:

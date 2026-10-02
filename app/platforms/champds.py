@@ -109,6 +109,64 @@ _DEFAULT_LISTING_SEARCH_TERMS = (
 )
 
 
+# ChampDS listing (2026-10-02): `EventMediaClassID` on each search row
+# says whether the event has a recording at all. Confirmed live on Signal
+# Mountain TN by resolving 10 events across all three values: 2 = a
+# recording exists (4 of 4 had a VOD2 stream); 0 and 1 = no recording
+# (6 of 6 had neither a download link nor a VOD2 stream; 1 is an event
+# scheduled on a live channel, 0 has no media target). Class 2 does NOT
+# mean a playable download: Signal Mountain has 193 class-2 events and
+# only 5 download links. Nothing in a search row tells the two apart --
+# see `event_has_download()`.
+MEDIA_CLASS_RECORDED = 2
+
+_NOT_A_CUSTOMER_SEGMENTS = frozenset(
+    {"caption", "att", "download-media", "vod", "_common", "event", "archive", "live"}
+)
+
+
+def parse_account_url(url: str) -> Optional[tuple]:
+    """`(customer, archive_id)` for any ChampDS page that names a customer,
+    or None. Every shape below was confirmed live 2026-10-02:
+    `play.champds.com/largofl` (the bare account page),
+    `/thompsonsstationtn/archive/1` (an archive page; its id is kept --
+    Atlanta GA, Fulton County GA and Lincolnwood IL also have
+    `/archive/2`), `/signalmountaintn/live/5` (a live channel page -- the
+    number is a channel, not an archive, so archive 1 is used), and
+    `/{customer}/event/{id}` (one meeting). `playapi.champds.com` paths
+    take the same shape. A path that starts with a ChampDS file prefix
+    (`/CAPTION/`, `/ATT/`, `/DOWNLOAD-MEDIA/`, `/VOD/`, `/_COMMON/`) names
+    no account page and returns None."""
+    parsed = urlparse(url if "://" in url else f"https://{url}")
+    host = parsed.netloc.lower().split(":")[0]
+    if host not in ("play.champds.com", "playapi.champds.com"):
+        return None
+    segs = [s for s in parsed.path.split("/") if s]
+    if not segs or segs[0].lower() in _NOT_A_CUSTOMER_SEGMENTS:
+        return None
+    archive_id = 1
+    if len(segs) >= 3 and segs[1].lower() == "archive" and segs[2].isdigit():
+        archive_id = int(segs[2])
+    return segs[0].lower(), archive_id
+
+
+async def event_has_download(customer: str, event_id) -> Optional[bool]:
+    """True when the event's own API record carries a `DownloadURL` (the
+    MP4 a reader's player can play -- see ChampDSAssetFinder), False when
+    it answers without one, None when the API could not be read. One
+    request. The search listing has no such field (checked on a real
+    download event, Signal Mountain 152, against its neighbour 151: the
+    two search rows differ only in ids and dates), so this is the only
+    way to find the few downloadable events in an account whose
+    recordings are mostly VOD2-only."""
+    api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
+    async with aiohttp.ClientSession(headers=ChampDSAssetFinder().headers) as session:
+        data, _reason = await ChampDSAssetFinder._fetch_json(session, api_url)
+    if not data:
+        return None
+    return bool((data.get("MediaInfo") or {}).get("DownloadURL"))
+
+
 async def list_archive_events(
     customer: str,
     *,
@@ -117,16 +175,19 @@ async def list_archive_events(
     search_terms: tuple = _DEFAULT_LISTING_SEARCH_TERMS,
 ) -> List[dict]:
     """Recent events for a ChampDS customer, newest first --
-    `{"event_id", "title", "date", "event_datetime_local", "event_url"}`
-    per item, `event_url` ready to feed straight into
+    `{"event_id", "title", "date", "event_datetime_local", "event_url",
+    "media_class_id"}` per item, `event_url` ready to feed straight into
     `ChampDSAssetFinder.resolve()`. See the module-level comment above
     this function for the real API shape and its three confirmed quirks
-    (no "list all" call, unsorted results, two different id fields).
+    (no "list all" call, unsorted results, two different id fields), and
+    `MEDIA_CLASS_RECORDED` for what `media_class_id` means.
     Skips any search term whose request fails, times out, or comes back
     as `{"Error": ...}` (e.g. a too-short term) rather than raising --
     one bad term should not lose the others."""
     seen: dict = {}
-    async with aiohttp.ClientSession() as session:
+    # 2026-10-02: the same browser User-Agent the event resolve already
+    # sends (the search calls had aiohttp's default one).
+    async with aiohttp.ClientSession(headers=ChampDSAssetFinder().headers) as session:
         for term in search_terms:
             url = (
                 f"https://playapi.champds.com/{customer}/archive/{archive_id}"
@@ -158,6 +219,7 @@ async def list_archive_events(
                     "date": (local_dt or "")[:10] or None,
                     "event_datetime_local": local_dt,
                     "event_url": f"https://play.champds.com/{customer}/event/{event_id}",
+                    "media_class_id": event.get("EventMediaClassID"),
                 }
     items = sorted(
         seen.values(),

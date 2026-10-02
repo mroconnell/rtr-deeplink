@@ -456,6 +456,10 @@ class _WalkState:
     # one call). Used as the FINAL result only if nothing clean ever
     # resolves anywhere in the walk (see run_one()).
     low_confidence: Optional[tuple] = None
+    # 2026-10-02 (ChampDS listing): the first real meeting row Resolve
+    # reported as `meeting-without-video`, so the Verdict row can name it
+    # (url, title, date) instead of only the outcome code.
+    no_video_candidate: Optional[Candidate] = None
     # WO-1035 item 5: per-government "don't re-try the same thing" caches.
     # `listed_accounts` keys are (platform, normalized account url) --
     # List is never run twice for the same account across forks/hops
@@ -981,6 +985,12 @@ async def _try_resolve(
     # no video yet found; give this government's own walk more room to
     # keep looking (item 2's own extra hop) rather than stopping at the
     # ordinary default.
+    if (
+        result.outcome == OUTCOME_MEETING_WITHOUT_VIDEO
+        and result.candidate is not None
+        and state.no_video_candidate is None
+    ):
+        state.no_video_candidate = result.candidate
     if fetcher is not None and result.outcome == OUTCOME_MEETING_WITHOUT_VIDEO:
         _maybe_raise_budget(fetcher, state, reason="meeting-without-video listing")
     return False
@@ -1823,6 +1833,7 @@ async def run_one(
             result_url=result.video_url,
             meeting_url=result.candidate.url if result.candidate else None,
             meeting_title=result.candidate.title if result.candidate else None,
+            meeting_date=result.candidate.date if result.candidate else None,
             platform=result.platform,
             tier=result.tier,
             duration_seconds=result.duration_seconds,
@@ -1891,6 +1902,7 @@ async def run_one(
     handcheck_lead = ""
     meeting_url: Optional[str] = None
     meeting_title: Optional[str] = None
+    meeting_date: Optional[str] = None
     blocked_url = ""
     if result is not None:
         outcome = None
@@ -1903,6 +1915,7 @@ async def run_one(
         if result.candidate is not None:
             meeting_url = result.candidate.url
             meeting_title = result.candidate.title
+            meeting_date = result.candidate.date
         if result.tier == 2 and result.candidate is not None:
             state.leads.append(
                 {"kind": _tier2_lead_kind(result), "url": result.candidate.url}
@@ -1936,6 +1949,7 @@ async def run_one(
             else:
                 meeting_url = lc_result.candidate.url
             meeting_title = lc_result.candidate.title
+            meeting_date = lc_result.candidate.date
         # WO-1058 item 3: every weak-lead row gets a hand-check verdict --
         # see `_handcheck_lead()`'s own docstring for the rule.
         lead_flag, lead_note = _handcheck_lead(meeting_title, duration_seconds)
@@ -2045,6 +2059,13 @@ async def run_one(
                 for o, u in dict.fromkeys(secondary_blocks)
             )
             note = f"{note}; {secondary_text}" if note else secondary_text
+        # 2026-10-02: a meeting-without-video verdict names the real row
+        # it found (before, these fields stayed blank for this outcome).
+        if outcome == OUTCOME_MEETING_WITHOUT_VIDEO and state.no_video_candidate:
+            meeting_url = state.no_video_candidate.url
+            meeting_title = state.no_video_candidate.title
+            meeting_date = state.no_video_candidate.date
+            platform = state.no_video_candidate.platform
 
     # WO-1076 items 1/3: "log when it's used" -- append regardless of
     # which branch above produced `note`, a clean find included (the
@@ -2066,6 +2087,7 @@ async def run_one(
         result_url=result_url,
         meeting_url=meeting_url,
         meeting_title=meeting_title,
+        meeting_date=meeting_date,
         platform=platform,
         tier=tier,
         duration_seconds=duration_seconds,

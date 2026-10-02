@@ -67,6 +67,9 @@ gives, stopping at the first that returns candidates:
      _generic_link_scan_walker()` (also routed through the same
      `fetch_override()`).
 
+A ChampDS account (2026-10-02) is answered by its own lister before (a)
+and by nothing else -- see `_list_via_champds()`.
+
 Before (a), a bare Vimeo video link is listed as its OWNER's account
 (`_list_via_vimeo_owner()`, 2026-10-02) -- see that lister's own comment.
 
@@ -160,6 +163,10 @@ from app.platforms.cablecast import (
     CablecastAssetFinder,
     list_gallery_shows,
 )
+from app.platforms.champds import MEDIA_CLASS_RECORDED
+from app.platforms.champds import event_has_download as champds_event_has_download
+from app.platforms.champds import list_archive_events as champds_list_archive_events
+from app.platforms.champds import parse_account_url as champds_parse_account_url
 from app.platforms.civicmedia import is_civicmedia_category_url
 from app.platforms.direct_file import is_direct_file_url
 from app.platforms.swagit import known_views_for
@@ -838,6 +845,154 @@ async def _list_via_wordpress(
             else f"no video-bearing post found on {origin}",
         )
     return ListResult(candidates=candidates, lister="wordpress_rest", outcome=None)
+
+
+# --- Lister (a-ch): a ChampDS account, listed directly (2026-10-02) ---
+#
+# A ChampDS account page (`play.champds.com/{customer}`, its `/archive/{n}`
+# and `/live/{n}` pages, or one `/event/{id}` page) is a JavaScript shell;
+# the meetings live behind `champds.list_archive_events()`'s keyword
+# search on `playapi.champds.com`. passive_verify's own ChampDS walker
+# (lister a) already called it, but two real gaps made Meeting Finder say
+# `no-meeting-nor-video` on accounts full of meetings (confirmed live
+# 2026-10-02 on Largo FL, Signal Mountain TN, Thompson's Station TN and
+# Yuba County CA -- see BACKLOG_DONE.md's "ChampDS listing" entry):
+#
+#   1. The walker needed a slash after the customer, so the bare account
+#      page listed nothing (fixed in passive_verify too).
+#   2. It handed Resolve the 10 newest events. On most accounts those
+#      recordings are VOD2-only (no download link, so no playable
+#      `video_url`) or have no recording at all, and they carry no agenda
+#      attachment -- so Resolve kept none of them, not even as a
+#      meeting-without-video. The few downloadable events sit far down the
+#      list (Thompson's Station's newest is the 29th newest recording;
+#      Signal Mountain's the 113th).
+#
+# So this lister lists up to `_CHAMPDS_LIST_LIMIT` events, then checks
+# the newest recordings (`EventMediaClassID` 2) one event call each for a
+# download link, up to `_CHAMPDS_DOWNLOAD_CHECK_LIMIT` calls and stopping
+# after `_CHAMPDS_DOWNLOADS_WANTED` finds. Found downloads are the
+# candidates (`has_video_hint=True`). With none found, every listed event
+# is handed back as a real meeting row: `has_video_hint=False` when the
+# event has no recording or was checked and has no download, `None` for a
+# recording past the check limit -- Resolve then reports
+# meeting-without-video with that row's title and date.
+_CHAMPDS_LIST_LIMIT = 400
+_CHAMPDS_DOWNLOAD_CHECK_LIMIT = 40
+_CHAMPDS_DOWNLOADS_WANTED = 3
+_CHAMPDS_EVENT_ID_RE = re.compile(r"/event/(\d+)", re.I)
+
+
+def _champds_candidate(
+    event: dict, *, account_url: str, has_video_hint: Optional[bool]
+) -> Candidate:
+    return Candidate(
+        url=event["event_url"],
+        title=event.get("title") or None,
+        date=event.get("date"),
+        platform="champds",
+        source_phase="list",
+        lister="champds_archive",
+        source_url=account_url,
+        has_video_hint=has_video_hint,
+    )
+
+
+async def _list_via_champds(
+    platform: str, account_url: str, limit: int
+) -> Optional[ListResult]:
+    if platform != "champds":
+        return None
+    account = champds_parse_account_url(account_url)
+    if account is None:
+        return None
+    customer, archive_id = account
+    try:
+        events = await champds_list_archive_events(
+            customer, archive_id=archive_id, limit=_CHAMPDS_LIST_LIMIT
+        )
+    except Exception as e:  # noqa: BLE001
+        return ListResult(
+            candidates=[],
+            lister="champds_archive",
+            outcome=None,
+            note=f"ChampDS listing raised {type(e).__name__}: {e}",
+        )
+    where = f"ChampDS {customer} archive {archive_id}"
+    if not events:
+        return ListResult(
+            candidates=[],
+            lister="champds_archive",
+            outcome=None,
+            note=f"{where}: the archive search found no events",
+        )
+    recorded = [e for e in events if e.get("media_class_id") == MEDIA_CLASS_RECORDED]
+    checked_no_download: set = set()
+    downloads: List[dict] = []
+    checks = 0
+    # The event page the walk was handed is checked first, whatever its
+    # age: confirmed live, Yuba County CA's `/event/31` (2023, the
+    # account's only download) was otherwise never looked at -- 76 newer
+    # recordings sit ahead of it.
+    given = _CHAMPDS_EVENT_ID_RE.search(urlparse(account_url).path)
+    if given:
+        given_id = int(given.group(1))
+        given_row = next(
+            (e for e in events if e["event_id"] == given_id),
+            {
+                "event_id": given_id,
+                "title": None,
+                "date": None,
+                "event_url": f"https://play.champds.com/{customer}/event/{given_id}",
+                "media_class_id": None,
+            },
+        )
+        checks += 1
+        has_download = await champds_event_has_download(customer, given_id)
+        if has_download:
+            downloads.append(given_row)
+        elif has_download is False:
+            checked_no_download.add(given_id)
+    for event in recorded:
+        if checks >= _CHAMPDS_DOWNLOAD_CHECK_LIMIT:
+            break
+        if len(downloads) >= _CHAMPDS_DOWNLOADS_WANTED:
+            break
+        if event["event_id"] in checked_no_download or event in downloads:
+            continue
+        checks += 1
+        has_download = await champds_event_has_download(customer, event["event_id"])
+        if has_download:
+            downloads.append(event)
+        elif has_download is False:
+            checked_no_download.add(event["event_id"])
+    counts = (
+        f"{where}: {len(events)} events listed, {len(recorded)} with a "
+        f"recording; checked {checks} recordings (newest first) for a "
+        f"download link, found {len(downloads)}"
+    )
+    if downloads:
+        candidates = [
+            _champds_candidate(e, account_url=account_url, has_video_hint=True)
+            for e in downloads[:limit]
+        ]
+        return ListResult(
+            candidates=candidates, lister="champds_archive", outcome=None, note=counts
+        )
+    candidates = []
+    for event in events[:limit]:
+        if event.get("media_class_id") != MEDIA_CLASS_RECORDED:
+            hint: Optional[bool] = False
+        elif event["event_id"] in checked_no_download:
+            hint = False
+        else:
+            hint = None
+        candidates.append(
+            _champds_candidate(event, account_url=account_url, has_video_hint=hint)
+        )
+    return ListResult(
+        candidates=candidates, lister="champds_archive", outcome=None, note=counts
+    )
 
 
 # --- Lister (a2): a known Swagit /views/{id} page, listed directly ---
@@ -1834,6 +1989,22 @@ async def list_account(
             )
         if h.note:
             notes.append(h.note)
+
+    # A ChampDS account answers here and nowhere else: lister (a)'s own
+    # ChampDS walker would only repeat the same archive search, and the
+    # page itself is a JavaScript shell with nothing for (e) to scan.
+    ch = await _list_via_champds(platform, account_url, limit)
+    if ch is not None:
+        if ch.candidates:
+            return _apply_gov_filter(
+                ch, gov_name, account_url, gov_state=gov_state, gov_type=gov_type
+            )
+        return ListResult(
+            candidates=[],
+            lister=ch.lister,
+            outcome=OUTCOME_NO_MEETING_NOR_VIDEO,
+            note="; ".join(notes + [ch.note]) if ch.note else "",
+        )
 
     v = await _list_via_vimeo_owner(platform, account_url, limit, page_url=page_url)
     if v is not None:

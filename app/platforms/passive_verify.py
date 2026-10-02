@@ -401,17 +401,18 @@ async def _granicus_walker(hub_url: str) -> List[dict]:
     return await list_recent_video_meetings(hub_url)
 
 
-_CHAMPDS_CUSTOMER_RE = re.compile(r"^/([^/]+)/")
-
-
 async def _champds_walker(hub_url: str) -> List[dict]:
-    from .champds import list_archive_events
+    from .champds import list_archive_events, parse_account_url
 
-    match = _CHAMPDS_CUSTOMER_RE.match(urlparse(hub_url).path)
-    if not match:
+    # 2026-10-02: was `^/([^/]+)/`, which needed a slash after the
+    # customer -- so the bare account page `play.champds.com/largofl`
+    # listed nothing (confirmed live). `parse_account_url()` also keeps an
+    # `/archive/{n}` page's own archive id.
+    account = parse_account_url(hub_url)
+    if account is None:
         return []
-    customer = match.group(1)
-    events = await list_archive_events(customer)
+    customer, archive_id = account
+    events = await list_archive_events(customer, archive_id=archive_id)
     return [
         {
             "title": e.get("title") or "",

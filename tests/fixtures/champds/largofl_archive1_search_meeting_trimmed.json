@@ -1,0 +1,45 @@
+{
+ "Customer": {
+  "CustomerName": "Largo FL",
+  "CustomerAccessID": "largofl",
+  "CustomerTimezone": "America/New_York",
+  "ServiceGroupID": 1,
+  "CustomerEventAreaMask": 65535,
+  "CustomerOtherAreaMask": 16383
+ },
+ "Archive": {
+  "CustomerArchiveID": 1,
+  "ArchiveTitle": "Main",
+  "ArchiveDescription": "",
+  "DisplayTypeID": 2,
+  "LastModifyDateTimeUTC": "2026-09-10 19:29:15"
+ },
+ "SearchType": "ARCHIVE",
+ "SearchText": "meeting",
+ "SearchResult": {
+  "Events": [
+   {
+    "CustomerEventID": 341,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-09-15 22:00:00",
+    "EventTitle": "Largo City Commission Meeting",
+    "EventDescription": "",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-09-16 15:12:37",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 724,
+    "EventDateTimeLocal": "2026-09-15 18:00:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 0,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   }
+  ]
+ }
+}

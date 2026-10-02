@@ -1,5 +1,45 @@
 # Backlog — done
 
+## ChampDS listing: Meeting Finder lists ChampDS accounts, finds their downloadable video, and names the meeting when there is none [Done 2026-10-02]
+
+**Why this ran.** A government-first run in rtr-findmeeting (2026-10-02) found that rtr-deeplink's own ChampDS lister saw real video Meeting Finder missed: Signal Mountain TN, Thompson's Station TN and Yuba County CA. The older `scripts/meeting_finder.py` also said `no-meeting-nor-video` on the control, Largo FL, whose account has meetings through 2026-09-24.
+
+**What failed, reproduced live with `run_one`.** Two separate gaps, on every entry shape tried (bare account page, `/archive/1`, `/live/5`, `/event/{id}`; `entry=identify` and `entry=list`). Before the fix, all 10 runs said `no-meeting-nor-video`.
+
+1. The bare account page (`play.champds.com/largofl`) listed nothing. passive_verify's ChampDS walker read the customer with `^/([^/]+)/`, which needs a slash after it.
+2. The other shapes listed the 10 newest events, and Resolve kept none of them. Most ChampDS recordings are VOD2-only: no download link, so no playable `video_url`. Events also carry no agenda attachment. Resolve kept a no-video meeting only when it had an agenda, so it reported "nothing resolved".
+
+A ChampDS event "has video" here when its record has a download link (`MediaInfo.DownloadURL`), the same test the peer session used. The search rows cannot tell: `EventMediaClassID` 2 means "has a recording" (10 of 10 sampled events matched), but most of those are VOD2-only. On Signal Mountain, 193 events have a recording and 5 have a download link. A full scan of two accounts found the downloads scattered across bodies and years, with no pattern to aim at.
+
+**Fix.**
+- `app/platforms/champds.py`: `parse_account_url()` reads the customer and archive id from every page shape; `event_has_download()` checks one event; listed events now carry `media_class_id`; the search calls send the same browser User-Agent as the event call.
+- `app/platforms/passive_verify.py`: the walker uses `parse_account_url()`.
+- `app/platforms/meeting_finder/listing.py`: a ChampDS lister, tried first and alone for ChampDS. It lists up to 400 events. It checks a given `/event/{id}` page first, then the newest recordings, for a download link: at most 40 checks, stopping after 3 finds. Finds become the candidates. With none, every listed event goes back as a real meeting row.
+- `app/platforms/meeting_finder/resolve.py`: a row the lister marked no-video, with a title, counts as `meeting-without-video` even with no agenda. A VOD2-only recording is named in the note.
+- `runner.py`/`models.py`/`verdict.py`: a `meeting-without-video` verdict now fills `meeting_url`, `meeting_title` and `platform` (they were blank for this outcome on every platform). New `meeting_date` field, JSONL only, so a resumed verdict CSV keeps its header.
+
+**Result, live 2026-10-02, after the fix.** Each run below is one `run_one` call.
+
+| Input | Entry | Result | Meeting found |
+|---|---|---|---|
+| `largofl` (bare) | identify, list | tier 1 | event 327, Largo City Commission Meeting |
+| `largofl/archive/1` | identify | tier 1 | event 327 |
+| `largofl/event/342` | list | tier 1 | event 327 |
+| `thompsonsstationtn/archive/1` | identify | tier 3 | event 336, Planning Commission, 2026-03-24 |
+| `yubacoca/event/31` | list | tier 3 | event 31, BOS Meeting, 2023-07-25 |
+| `yubacoca` (bare) | list | meeting-without-video | event 118, BOS Meeting, 2026-09-22 |
+| `signalmountaintn/live/5` | identify | meeting-without-video | event 366, Planning Commission, 2026-10-01 |
+| `waldentn` (bare) | list | meeting-without-video | event 110, Regular Meeting, 2026-09-24 |
+
+**Caution.**
+- Signal Mountain's newest download is its 113th newest recording, and Yuba's (from the bare page) its 77th. The 40-check limit does not reach them. Each check is one request, paced 2.5 s per host, so 40 checks is about 100 s. Reaching 120 would cost about 5 minutes per account, mostly on accounts with no download at all. Left as a decision in `BACKLOG.md`.
+- VOD2-only recordings are not counted as video. Our transcription can read them (WO-1045), but a reader's page has no player. Same decision entry.
+- Archive ids beyond 1 are passed through. Fulton County GA's `/archive/2` search returned the same 154 events as archive 1, so the id changed nothing on the one real customer checked. Atlanta's `/archive/2` and `/archive/3` now answer `{}`.
+
+**Tests.** `tests/test_meeting_finder_champds_listing.py` (22), on real responses captured 2026-10-02 (`tests/fixtures/champds/largofl_*`, `signalmountaintn_*`, `fultoncoga_*`).
+
+**For rtr-findmeeting.** Call `run_one(FinderInput(url=<any ChampDS page>, entry="identify"))`, or `entry="list"` with `platform_hint="champds"`. Both reach the new lister.
+
 ## WO-1174: CivicMedia strips the upload counter from TikiLive titles [Done 2026-09-30]
 
 **Why this ran.** WO-1172 kept TikiLive titles as the page has them, with a leading upload counter ("260 - City Council Meeting 12.17.20."). The counter is the channel's upload number and says nothing about the meeting. Ryan decided 2026-09-30 to strip it.
