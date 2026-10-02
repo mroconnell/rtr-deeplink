@@ -1357,3 +1357,5 @@ https://play.champds.com/falmouthme/event/3405	https://play.champds.com/falmouth
 https://play.champds.com/thompsonsstationtn/event/161	https://play.champds.com/thompsonsstationtn/event/161	us:place:4773900
 https://play.champds.com/signalmountaintn/event/13	https://play.champds.com/signalmountaintn/event/13	us:place:4768540
 https://play.champds.com/yubacoca/event/31	https://play.champds.com/yubacoca/event/31	us:county:06115
+https://lonestargcd.new.swagit.com/videos/400293	https://lonestargcd.new.swagit.com/views/58	rtr:us:tx:lone-star-groundwater-conservation-district
+https://scgtv.new.swagit.com/videos/19946	https://scgtv.new.swagit.com/views/11	rtr:us:ga:supreme-court-of-georgia
