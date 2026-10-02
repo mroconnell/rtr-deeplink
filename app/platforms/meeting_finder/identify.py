@@ -80,6 +80,7 @@ from bs4 import BeautifulSoup
 
 from app.platforms import host_recognition
 from app.platforms.base import _ALL_CORPORATE_HOSTS, _REGISTRY, detect_platform
+from app.platforms.vimeo import is_vimeo_listing, parse_vimeo_video
 from app.utils.tenant_key import tenant_key
 from app.platforms.youtube_ids import extract_video_id
 from app.utils.video_hand_check import prescreen_homepage_link, same_organization_flag
@@ -375,6 +376,16 @@ def _account_url_for_platform(platform: Optional[str], final_url: str) -> str:
     if platform == "swagit" and _SWAGIT_SPECIFIC_PATH_RE.search(path):
         return final_url
     if platform == "cablecast" and _CABLECAST_GALLERY_PATH_RE.search(path):
+        return final_url
+    if platform == "vimeo" and (
+        parse_vimeo_video(final_url) is not None or is_vimeo_listing(final_url)
+    ):
+        # 2026-10-02 (rtr-findmeeting request): a Vimeo video link is the
+        # entry point to its OWNER's account -- List reads the owner off
+        # the video (oEmbed) and lists that account. A showcase/channel
+        # link is itself the listing. The bare `vimeo.com/` host names no
+        # account at all, so collapsing to it threw both away (List then
+        # had nothing to list).
         return final_url
     if tenant_key(final_url):
         # A shared website (ChampDS, Castus, TelVue, BoardDocs, ...): the

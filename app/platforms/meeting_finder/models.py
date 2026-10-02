@@ -314,4 +314,12 @@ class VerdictRow:
     # `note` for every secondary refusal this walk also saw). Blank
     # whenever `outcome` isn't block-like.
     blocked_url: str = ""
+    # 2026-10-02 (rtr-findmeeting request): every account List actually
+    # listed in this walk -- `{"platform", "account_url", "lister",
+    # "outcome", "note", "candidates": [{"url", "title", "date"}, ...]}`,
+    # one entry per account (a cached re-list is not repeated). Lets a
+    # caller keep the whole pick-list, e.g. every other video on the
+    # Vimeo account behind a weak Vimeo find, not just the one Resolve
+    # picked. JSONL only; the CSV carries `listed_count`.
+    listed: List[Dict[str, Any]] = field(default_factory=list)
     finished_at: str = ""
