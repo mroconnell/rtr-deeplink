@@ -11,18 +11,6 @@ https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-counci
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://irp.cdn-website.com/7cf15fcf/files/uploaded/1-21-25_Brd._Work_Mtg..MP3	https://irp.cdn-website.com/7cf15fcf/files/uploaded/1-21-25_Brd._Work_Mtg..MP3	us:sd:4900570
-https://drive.usercontent.google.com/download?id=1OWAWdBszw_7vGzmSDnNjcslk2i6icJAg&export=download&confirm=t	https://drive.google.com/file/d/1OWAWdBszw_7vGzmSDnNjcslk2i6icJAg/view?usp=sharing	us:sd:3406270
-https://www.municipalityofshelburne.ca/wp-content/uploads/2026/06/2026.06.10_Recording.mp3	https://www.municipalityofshelburne.ca/wp-content/uploads/2026/06/2026.06.10_Recording.mp3	ca:csd:1201006
-https://files.smartsites.parentsquare.com/4331/brdmeet_2025_oct6.mp3	https://files.smartsites.parentsquare.com/4331/brdmeet_2025_oct6.mp3	us:sd:4815480
-https://klondike.esc17.net/upload/common/Bd%20Meeting%20Pt1.mp3	https://klondike.esc17.net/upload/common/Bd%20Meeting%20Pt1.mp3	us:sd:4825790
-https://files.smartsites.parentsquare.com/10108/audio09212026.mp3	https://files.smartsites.parentsquare.com/10108/audio09212026.mp3	us:sd:3631290
-https://drive.usercontent.google.com/download?id=1CVeRVpK9I06fHc_x2z0qLfyBa9dtRw0C&export=download&confirm=t	https://drive.google.com/file/d/1CVeRVpK9I06fHc_x2z0qLfyBa9dtRw0C/view?usp=sharing	us:sd:2703870
-https://dennistwp.org/wp-content/audio/Committee/2026/1.6.26%20ReOrg.mp3?_=1	https://dennistwp.org/wp-content/audio/Committee/2026/1.6.26%20ReOrg.mp3?_=1	us:cousub:3400917560
-https://resources.finalsite.net/videos/t_video_mp4_480/v1747850136/esd20org/b8jthy7b7ultajiluyc6/15MAY2025BOARDOFEDUCATIONREGULARMEETINGPart2.mp4	https://resources.finalsite.net/videos/t_video_mp4_480/v1747850136/esd20org/b8jthy7b7ultajiluyc6/15MAY2025BOARDOFEDUCATIONREGULARMEETINGPart2.mp4	us:sd:1720880
-https://drive.usercontent.google.com/download?id=116ru3koIoZQylHqODVdVoQmBj16tj1vi&export=download&confirm=t	https://drive.google.com/file/d/116ru3koIoZQylHqODVdVoQmBj16tj1vi/view?usp=sharing	us:cousub:0911006260
-https://chathamborough.granicus.com/MediaPlayer.php?view_id=1&clip_id=554		us:place:3412100
-https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77		us:place:2232930
 https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4		us:county:22109
 https://wintergardenfl.portal.civicclerk.com/event/516/media		us:place:1278250
 https://videoplayer.telvue.com/player/DPyuEDJjWk7UkJ6KIJCC97gq5-5RKKsb/media/1044687?showtabssearch=true&fullscreen=false		us:place:3464620
@@ -1367,3 +1355,5 @@ https://chesterheights.org/wp-content/uploads/2026/08/2026.08.17_16.48_01.mp3	ht
 https://honesdaleborough.com/wp-content/uploads/2026/09/09-28-2026-Liquor-License-Hearing-Hearing-GMT20260928-213319_Recording.mp3	https://honesdaleborough.com/departments-and-services/government/agenda-deadlines/	us:place:4235520
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
+https://chathamborough.granicus.com/MediaPlayer.php?view_id=1&clip_id=554		us:place:3412100
+https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77		us:place:2232930
