@@ -1049,6 +1049,155 @@ async def _probe_direct_file(
 # --- Entry point ---------------------------------------------------------
 
 
+# --- robots.txt guard on media paths (Ryan, 2026-10-02) ------------------
+#
+# Some vendor hosts disallow crawlers from the media files themselves
+# (Cablecast stations: `Disallow: /*.m3u8$`, `/*.ts$`, `/*.mp4$`, `/*.vtt$`
+# on both the web host and the vod host). The HLS and direct-file recipes
+# below read exactly those files, so they must not run on such a host.
+# Where the platform publishes the length on an allowed path, use that: a
+# Cablecast station's own API carries `totalRunTime` (seconds) on the show
+# record. Where it publishes none, the probe says so and does not read the
+# media. Survey 2026-10-02: Granicus, Swagit, CivicClerk, PrimeGov and
+# ChampDS hosts disallow no media; only Cablecast hosts did.
+
+_ROBOTS_CACHE: dict = {}
+_CABLECAST_SHOW_ID_RE = re.compile(r"/(?:show|vod)/(\d+)")
+
+
+def _robots_rules(robots_text: str) -> tuple:
+    """(disallow patterns, allow patterns) of the `User-agent: *` group."""
+    disallow, allow = [], []
+    in_star = False
+    seen_rule = False
+    for raw in robots_text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        field, value = (x.strip() for x in line.split(":", 1))
+        field = field.lower()
+        if field == "user-agent":
+            if seen_rule:
+                in_star = False
+                seen_rule = False
+            if value == "*":
+                in_star = True
+        elif field in ("disallow", "allow"):
+            seen_rule = True
+            if in_star and value:
+                (disallow if field == "disallow" else allow).append(value)
+    return disallow, allow
+
+
+def _robots_pattern_matches(pattern: str, path_and_query: str) -> bool:
+    regex = re.escape(pattern).replace(r"\*", ".*")
+    if regex.endswith(r"\$"):
+        regex = regex[: -2] + "$"
+    return re.match(regex, path_and_query) is not None
+
+
+# Only a Disallow rule that names a media file type counts (Cablecast's
+# `/*.m3u8$`). A rule that blocks a page path (CivicPlus's `/Archive.aspx`,
+# which also serves files) is a page-crawl rule, not a media rule, and is
+# out of this guard's scope.
+_MEDIA_RULE_RE = re.compile(r"\.(m3u8|ts|mp4|m4s|m4a|mov|mp3|webm|vtt)(\b|\$|\?)", re.I)
+
+
+def media_disallowed_by_robots_text(robots_text: str, media_url: str) -> bool:
+    """True when the host's robots.txt (the `*` group) has a MEDIA rule that
+    disallows `media_url`. The longest matching rule wins; an Allow of
+    equal length wins a tie."""
+    parts = urlparse(media_url)
+    target = parts.path + (f"?{parts.query}" if parts.query else "")
+    disallow, allow = _robots_rules(robots_text)
+    disallow = [r for r in disallow if _MEDIA_RULE_RE.search(r)]
+    best_dis = max((len(r) for r in disallow if _robots_pattern_matches(r, target)), default=-1)
+    best_allow = max((len(r) for r in allow if _robots_pattern_matches(r, target)), default=-1)
+    return best_dis >= 0 and best_dis > best_allow
+
+
+async def media_disallowed_by_robots(media_url: str) -> bool:
+    """One cached robots.txt read per host. An unreadable robots.txt (no
+    file, timeout, error) is not a block: it returns False, as before."""
+    parts = urlparse(media_url)
+    if not parts.scheme or not parts.netloc:
+        return False
+    host = f"{parts.scheme}://{parts.netloc}"
+    if host not in _ROBOTS_CACHE:
+        text = ""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{host}/robots.txt", timeout=aiohttp.ClientTimeout(total=8)
+                ) as response:
+                    if response.status == 200:
+                        text = await response.text()
+        except Exception:
+            text = ""
+        _ROBOTS_CACHE[host] = text
+    return media_disallowed_by_robots_text(_ROBOTS_CACHE[host], media_url)
+
+
+async def _probe_cablecast_api(
+    url: str,
+    platform: Optional[str],
+    video_url: str,
+    source_page_url: Optional[str],
+    start: float,
+) -> ProbeResult:
+    """Length from the station's own API (`/cablecastapi/v1/shows/{id}`,
+    field `totalRunTime`, seconds), for a host whose robots.txt disallows
+    the media files. Reads no media."""
+    method = "cablecast-api"
+    show_id = None
+    for candidate in (source_page_url, video_url, url):
+        m = _CABLECAST_SHOW_ID_RE.search(urlparse(candidate or "").path)
+        if m:
+            show_id = m.group(1)
+            break
+    if not show_id:
+        return _dead(url, platform, method, start, "no Cablecast show id in the address")
+    # The station's API answers on its web host (`reflect-x.cablecast.tv`),
+    # not on the media host (`x-cablecast.cablecast.tv`, a 404 for the API).
+    # Try each Cablecast host the entry names, then the web-host twin of a
+    # media host.
+    netlocs = []
+    for candidate in (source_page_url, url, video_url):
+        netloc = urlparse(candidate or "").netloc.lower()
+        if netloc.endswith(".cablecast.tv") and netloc not in netlocs:
+            netlocs.append(netloc)
+        twin = re.match(r"^(.+)-cablecast\.cablecast\.tv$", netloc)
+        if twin and f"reflect-{twin.group(1)}.cablecast.tv" not in netlocs:
+            netlocs.append(f"reflect-{twin.group(1)}.cablecast.tv")
+    if not netlocs:
+        return _dead(url, platform, method, start, "no Cablecast host in the address")
+    data = None
+    last_error = ""
+    try:
+        async with aiohttp.ClientSession(headers=_aiohttp_headers(source_page_url)) as session:
+            for netloc in netlocs:
+                api_url = f"https://{netloc}/cablecastapi/v1/shows/{show_id}"
+                try:
+                    async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                        if response.status != 200:
+                            last_error = _http_dead_reason("Cablecast API show record", response.status)
+                            continue
+                        data = await response.json(content_type=None)
+                        break
+                except (asyncio.TimeoutError, ValueError) as e:
+                    last_error = f"Cablecast API fetch failed: {e}"
+    except aiohttp.ClientError as e:
+        return _dead(url, platform, method, start, f"Cablecast API fetch failed: {e}")
+    if data is None:
+        return _dead(url, platform, method, start, last_error or "Cablecast API gave no record")
+    show = (data or {}).get("show") or {}
+    runtime = show.get("totalRunTime")
+    if not isinstance(runtime, (int, float)) or runtime <= 0:
+        return _dead(url, platform, method, start, "Cablecast API show record carried no runtime")
+    date = (show.get("eventDate") or "")[:10] or None
+    return _finish(url, platform, method, float(runtime), date, None, start)
+
+
 async def probe_queue_entry(
     url: str,
     *,
@@ -1185,6 +1334,25 @@ async def probe_queue_entry(
         suiteone_video.path.lower().endswith(_DIRECT_FILE_EXTENSIONS)
     ):
         return await _probe_suiteone(url, video_url, source_page_url, start)
+
+    # Ryan, 2026-10-02: never read media files from a host whose robots.txt
+    # disallows them. Cablecast publishes the length in its own API; any
+    # other such host has no length source, so the probe says so.
+    if await media_disallowed_by_robots(video_url):
+        if ".cablecast.tv" in urlparse(video_url).netloc.lower() or (
+            resolved_platform == "cablecast"
+        ):
+            return await _probe_cablecast_api(
+                url, resolved_platform, video_url, source_page_url, start
+            )
+        return _dead(
+            url,
+            resolved_platform,
+            "robots",
+            start,
+            "robots.txt disallows this media path and the platform publishes "
+            f"no length we can read: {video_url}",
+        )
 
     media_path = urlparse(video_url).path.lower()
     if media_probe.is_hls(video_url):
