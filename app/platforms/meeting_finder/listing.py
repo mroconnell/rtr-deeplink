@@ -775,6 +775,7 @@ async def _list_via_wordpress(
 _CHAMPDS_LIST_LIMIT = 400
 _CHAMPDS_DOWNLOAD_CHECK_LIMIT = 40
 _CHAMPDS_DOWNLOADS_WANTED = 3
+_CHAMPDS_EVENT_ID_RE = re.compile(r"/event/(\d+)", re.I)
 
 
 def _champds_candidate(
@@ -824,11 +825,36 @@ async def _list_via_champds(
     checked_no_download: set = set()
     downloads: List[dict] = []
     checks = 0
+    # The event page the walk was handed is checked first, whatever its
+    # age: confirmed live, Yuba County CA's `/event/31` (2023, the
+    # account's only download) was otherwise never looked at -- 76 newer
+    # recordings sit ahead of it.
+    given = _CHAMPDS_EVENT_ID_RE.search(urlparse(account_url).path)
+    if given:
+        given_id = int(given.group(1))
+        given_row = next(
+            (e for e in events if e["event_id"] == given_id),
+            {
+                "event_id": given_id,
+                "title": None,
+                "date": None,
+                "event_url": f"https://play.champds.com/{customer}/event/{given_id}",
+                "media_class_id": None,
+            },
+        )
+        checks += 1
+        has_download = await champds_event_has_download(customer, given_id)
+        if has_download:
+            downloads.append(given_row)
+        elif has_download is False:
+            checked_no_download.add(given_id)
     for event in recorded:
         if checks >= _CHAMPDS_DOWNLOAD_CHECK_LIMIT:
             break
         if len(downloads) >= _CHAMPDS_DOWNLOADS_WANTED:
             break
+        if event["event_id"] in checked_no_download or event in downloads:
+            continue
         checks += 1
         has_download = await champds_event_has_download(customer, event["event_id"])
         if has_download:
@@ -837,8 +863,8 @@ async def _list_via_champds(
             checked_no_download.add(event["event_id"])
     counts = (
         f"{where}: {len(events)} events listed, {len(recorded)} with a "
-        f"recording; checked the newest {checks} recordings for a download "
-        f"link, found {len(downloads)}"
+        f"recording; checked {checks} recordings (newest first) for a "
+        f"download link, found {len(downloads)}"
     )
     if downloads:
         candidates = [

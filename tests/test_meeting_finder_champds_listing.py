@@ -327,3 +327,23 @@ async def test_run_one_list_entry_names_the_meeting_row():
     assert row.meeting_title == "Largo Code Board"
     assert row.meeting_date == "2026-09-24"
     assert row.platform == "champds"
+
+
+async def test_the_given_event_page_is_checked_first(monkeypatch):
+    """Yuba County CA's live shape: the event page handed in (here Signal
+    Mountain's real download event 152) is checked before any newer
+    recording, so a check limit of 1 still finds it."""
+    monkeypatch.setattr(listing, "_CHAMPDS_DOWNLOAD_CHECK_LIMIT", 1)
+    routes = {
+        **_search_routes("signalmountaintn", SIGNAL_MOUNTAIN_SEARCH),
+        **_event_route("signalmountaintn", 152, "signalmountaintn_event_152.json"),
+    }
+    with mock_session(routes):
+        result = await listing._list_via_champds(
+            "champds", "https://play.champds.com/signalmountaintn/event/152", 15
+        )
+    assert [c.url for c in result.candidates] == [
+        "https://play.champds.com/signalmountaintn/event/152"
+    ]
+    assert result.candidates[0].has_video_hint is True
+    assert "checked 1 recordings" in result.note
