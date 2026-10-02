@@ -103,16 +103,20 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import logging
 from dataclasses import dataclass, field
-from typing import Dict, Iterator, Optional
+from typing import Dict, Iterator, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
 
 from scripts.youtube_fetch_guard import YouTubeFetchRefused, is_youtube_host
 
+from ...utils import robots_check
 from . import fetch as fetch_module
 from .fetch import Fetcher
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -126,10 +130,18 @@ class RequestStats:
 
     requests_total: int = 0
     requests_by_host: Dict[str, int] = field(default_factory=dict)
+    # Ryan, 2026-10-02 (robots.txt, staged): requests the host's robots.txt
+    # disallows for us. In log-only mode (the default) these requests were
+    # still made; in enforce mode (`ROBOTS_ENFORCE=1`) they were refused.
+    # Each entry is (host, path, the Disallow pattern that matched).
+    robots_would_skip: List[Tuple[str, str, str]] = field(default_factory=list)
 
     def record(self, host: str) -> None:
         self.requests_total += 1
         self.requests_by_host[host] = self.requests_by_host.get(host, 0) + 1
+
+    def record_robots(self, host: str, path: str, pattern: str) -> None:
+        self.robots_would_skip.append((host, path, pattern))
 
 
 @dataclass
@@ -189,6 +201,25 @@ def _install_wrapper() -> None:
                 f"refused: {host} is a YouTube host; YouTube is fetched only by "
                 "the drip Mac (CLAUDE.md)"
             )
+
+        # robots.txt (Ryan, 2026-10-02: honor any matching Disallow, staged).
+        # Log-only by default: record what the host's robots.txt disallows
+        # for us and carry on. With ROBOTS_ENFORCE=1 refuse BEFORE reserving a
+        # pacer slot or touching the network. A read of /robots.txt itself and
+        # a loopback host are never checked (see robots_check.py).
+        if not robots_check.is_robots_txt_url(str_or_url):
+            allowed, rule = await robots_check.check_url(str(str_or_url))
+            if not allowed:
+                path = urlparse(str(str_or_url)).path or "/"
+                ctx.stats.record_robots(host, path, rule.pattern if rule else "")
+                if robots_check.enforcing():
+                    raise robots_check.RobotsDisallowedError(str(str_or_url), rule)
+                logger.info(
+                    "robots.txt disallows %s%s (%s): log-only, request still made",
+                    host,
+                    path,
+                    rule.pattern if rule else "",
+                )
 
         # `fetcher`'s own session already paces (and budgets) its own
         # requests via `Fetcher._wait_for_host()` -- see this module's

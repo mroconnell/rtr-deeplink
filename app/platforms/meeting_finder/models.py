@@ -281,6 +281,12 @@ class VerdictRow:
     # WO-1031: every HTTP request the walk made, adapters' own included
     # (pacing.py's RequestStats). `fetches` counts only the 12-fetch budget.
     requests_total: int = 0
+    # Ryan, 2026-10-02 (robots.txt, staged): requests the host's robots.txt
+    # disallows for us, as (host, path, matching Disallow pattern). In
+    # log-only mode (the default) the requests were still made; with
+    # ROBOTS_ENFORCE=1 they were refused. JSONL carries the full list; the
+    # CSV carries the count.
+    robots_would_skip: List[Any] = field(default_factory=list)
     note: str = ""
     # WO-1031 (Ryan, 2026-09-23): every failure says what to try next, so
     # misses are easy to revisit. Empty when something resolved.

@@ -2101,6 +2101,7 @@ async def run_one(
         forks=state.forks,
         fetches=fetcher.fetches_used,
         requests_total=request_stats.requests_total,
+        robots_would_skip=[list(x) for x in request_stats.robots_would_skip],
         note=note,
         low_confidence_reason=low_confidence_reason,
         audio_only=audio_only,
