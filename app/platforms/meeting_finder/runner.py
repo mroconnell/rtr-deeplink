@@ -488,6 +488,9 @@ class _WalkState:
     # OWN walk ever finds a clean result, and folded into the final
     # `VerdictRow.other_gov_leads`.
     other_gov_leads: List[Dict[str, Any]] = field(default_factory=list)
+    # 2026-10-02: every account List actually listed (`_listed_entry()`'s
+    # shape), folded into the final `VerdictRow.listed`.
+    listed: List[Dict[str, Any]] = field(default_factory=list)
     # WO-1076: adaptive-budget/second-pass configuration for this walk
     # (set once, from `run_one()`'s own params, before the phase loop
     # starts) plus the bookkeeping each feature needs to fire at most
@@ -765,7 +768,25 @@ async def _cached_list_account(
         gov_type=gov_type,
     )
     state.listed_accounts[key] = result
+    state.listed.append(_listed_entry(platform, account_url, result))
     return result
+
+
+def _listed_entry(
+    platform: str, account_url: str, result: ListResult
+) -> Dict[str, Any]:
+    """One `VerdictRow.listed` entry: the account, which lister answered,
+    and every candidate it handed to Resolve (url/title/date)."""
+    return {
+        "platform": platform,
+        "account_url": account_url,
+        "lister": result.lister,
+        "outcome": result.outcome,
+        "note": result.note,
+        "candidates": [
+            {"url": c.url, "title": c.title, "date": c.date} for c in result.candidates
+        ],
+    }
 
 
 def _meeting_key(url: str) -> str:
@@ -1601,6 +1622,9 @@ async def _run_phase_loop(
             return state
         state.reach("list")
         state.path.append(finder_input.url)
+        state.listed.append(
+            _listed_entry(finder_input.platform_hint, finder_input.url, list_result)
+        )
         _record_outcome(state, list_result.outcome, finder_input.url)
         if list_result.foreign_leads:
             state.other_gov_leads.extend(list_result.foreign_leads)
@@ -2082,6 +2106,7 @@ async def run_one(
         audio_only=audio_only,
         handcheck_lead=handcheck_lead,
         other_gov_leads=state.other_gov_leads,
+        listed=state.listed,
         blocked_url=blocked_url,
         try_next=_try_next(outcome, state.budget_exhausted),
         finished_at=_now_iso(),
@@ -2114,6 +2139,7 @@ def _timeout_verdict_row(
         identity_expected_gov_id=finder_input.gov_id,
         fetches=fetches,
         other_gov_leads=list(state.other_gov_leads) if state is not None else [],
+        listed=list(state.listed) if state is not None else [],
         note=(
             f"internal-timeout: this government's walk was still running past "
             f"{minutes_text} minute(s) wall-clock and was abandoned (not "

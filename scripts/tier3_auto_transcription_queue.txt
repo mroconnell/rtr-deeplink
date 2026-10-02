@@ -11,20 +11,8 @@ https://player.vimeo.com/video/886620566	https://cityofmorrilton.com/city-counci
 https://player.vimeo.com/video/1046555783?h=e7e369fca2		us:sd:1703840
 https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcase/5409976	us:cousub:0918066210
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
-https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4		us:county:22109
-https://wintergardenfl.portal.civicclerk.com/event/516/media		us:place:1278250
-https://videoplayer.telvue.com/player/DPyuEDJjWk7UkJ6KIJCC97gq5-5RKKsb/media/1044687?showtabssearch=true&fullscreen=false		us:place:3464620
-https://townhallstreams.com/stream.php?location_id=108&id=76489		us:cousub:3301150740
-https://townofcanandaiguany.portal.civicclerk.com/event/189/media		us:cousub:3606912155
-https://pub-oliver.escribemeetings.com/Meeting.aspx?Id=cd8c9657-543e-4291-9deb-c42d3c684b78		us:county:38065
-https://cityofkm.granicus.com/MediaPlayer.php?view_id=1&clip_id=129		us:place:3735880
-https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=f22822c4-1b08-4d14-a3eb-85ea68f6063c		ca:csd:5937014
 https://vimeo.com/1215957780/e421c4fb81		us:sd:3624630
-https://play.champds.com/augustaga/event/669		us:place:1304204
 https://vimeo.com/946425462/b95b8652b3		us:place:2283405
-https://garlandisdtx.new.swagit.com/videos/400264		us:sd:4820340
-https://videoplayer.telvue.com/player/Ba_iz22BDdj-q51Xx8u--VZN0oq18h1i/media/1038987?showtabssearch=true&fullscreen=false		us:sd:3407830
-https://trms.northmetrotv.com/internetchannel/show/34123?site=8		us:place:2736836
 https://pelhampublicschoolsny.new.swagit.com/videos/400529		us:sd:3622680
 https://cityofgahanna.granicus.com/player/clip/630?view_id=1&redirect=true		us:place:3929106
 https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
@@ -1119,7 +1107,6 @@ https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-Oct
 https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	us:place:0411300
 https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	us:place:3906068
 https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	us:place:2709154
-https://jason.granicus.com/MediaPlayer.php?view_id=1&clip_id=554	https://jason.granicus.com/MediaPlayer.php?view_id=1&clip_id=554	us:place:1837764
 https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	us:place:1742795
 https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
 https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
@@ -1357,3 +1344,16 @@ https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJ
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://chathamborough.granicus.com/MediaPlayer.php?view_id=1&clip_id=554		us:place:3412100
 https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77		us:place:2232930
+https://videoplayer.telvue.com/player/DPyuEDJjWk7UkJ6KIJCC97gq5-5RKKsb/media/1044687?showtabssearch=true&fullscreen=false		us:place:3464620
+https://videoplayer.telvue.com/player/Ba_iz22BDdj-q51Xx8u--VZN0oq18h1i/media/1038987?showtabssearch=true&fullscreen=false		us:sd:3407830
+https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4		us:county:22109
+https://cityofkm.granicus.com/MediaPlayer.php?view_id=1&clip_id=129		us:place:3735880
+https://garlandisdtx.new.swagit.com/videos/400264		us:sd:4820340
+https://trms.northmetrotv.com/internetchannel/show/34123?site=8		us:place:2736836
+https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	us:place:5522850
+https://drive.usercontent.google.com/download?id=1ihL3lIhjtgxhc4jJ8aq487LGx9Q0QYV0&export=download&confirm=t	https://drive.google.com/file/d/1ihL3lIhjtgxhc4jJ8aq487LGx9Q0QYV0/view?usp=sharing	us:place:1832818
+https://townhallstreams.com/stream.php?location_id=62&id=76248		us:cousub:2300553860
+https://play.champds.com/falmouthme/event/3405	https://play.champds.com/falmouthme/event/3405	us:cousub:2300524495
+https://play.champds.com/thompsonsstationtn/event/161	https://play.champds.com/thompsonsstationtn/event/161	us:place:4773900
+https://play.champds.com/signalmountaintn/event/13	https://play.champds.com/signalmountaintn/event/13	us:place:4768540
+https://play.champds.com/yubacoca/event/31	https://play.champds.com/yubacoca/event/31	us:county:06115

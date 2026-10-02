@@ -70,6 +70,9 @@ gives, stopping at the first that returns candidates:
 A ChampDS account (2026-10-02) is answered by its own lister before (a)
 and by nothing else -- see `_list_via_champds()`.
 
+Before (a), a bare Vimeo video link is listed as its OWNER's account
+(`_list_via_vimeo_owner()`, 2026-10-02) -- see that lister's own comment.
+
 Nothing found by any lister: `OUTCOME_NO_MEETING_NOR_VIDEO`. No adapter
 registered for the platform at all (and no passive_verify walker, no
 rtr-discovery enumerator): `OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER`.
@@ -167,7 +170,13 @@ from app.platforms.champds import parse_account_url as champds_parse_account_url
 from app.platforms.civicmedia import is_civicmedia_category_url
 from app.platforms.direct_file import is_direct_file_url
 from app.platforms.swagit import known_views_for
+from app.platforms.vimeo import (
+    VimeoOwnerListing,
+    list_owner_videos,
+    parse_vimeo_video,
+)
 from app.utils.tenant_key import tenant_name
+from app.utils.video_hand_check import looks_like_real_meeting
 
 from .fetch import BudgetExceeded, Fetcher
 from .models import Candidate
@@ -301,6 +310,102 @@ def _candidates_from_dicts(
         if candidate is not None:
             out.append(candidate)
     return out
+
+
+# --- Lister (a-vimeo): a bare Vimeo video's OWNER account -------------
+#
+# 2026-10-02 (rtr-findmeeting request, Ryan: "never silently drop a
+# video; look beside it"): a weak Vimeo find -- a parade, a promo -- often
+# sits on an account whose other videos are the real meetings. Identify
+# now hands List the video link itself (`identify._account_url_for_
+# platform()`), and this lister lists the account that owns it through
+# `vimeo.list_owner_videos()` (oEmbed for the owner, then Vimeo's public
+# video list; see that module's comment block for what was confirmed
+# live). It returns the account's newest videos in the usual Candidate
+# shape, with meeting-looking titles first so a `limit` cut never drops a
+# meeting for a parade, and the input video always kept in the list.
+# Ordering, not dropping: `pick.py` still makes the final call, and a
+# non-meeting title stays in the list behind the meetings.
+#
+# When the owner can't be learned (the owner hid it: Tarentum PA's
+# `391007677`), the input video comes back as the one candidate with a
+# note, so Resolve still sees it -- the "never drop a video" half.
+# A showcase/channel listing link is not handled here; lister (c) reads
+# its own JSON-LD pick-list, unchanged.
+_VIMEO_OWNER_LISTER = "vimeo_owner"
+
+
+def _vimeo_title_looks_like_meeting(title: Optional[str]) -> bool:
+    # `require_allowlist=True` is the gate's own setting for "one video on
+    # a general-purpose video host" -- see `looks_like_real_meeting()`.
+    return looks_like_real_meeting(title or "", require_allowlist=True)
+
+
+def _order_vimeo_owner_rows(
+    rows: List[dict], input_video_id: Optional[str], input_row: dict, limit: int
+) -> List[dict]:
+    """Meeting-looking titles first (newest first, the account's own
+    order), then the input video, then everything else -- cut to
+    `limit`. The input video is added when the account's list didn't
+    carry it (e.g. it is older than the 60 newest)."""
+    meetings: List[dict] = []
+    others: List[dict] = []
+    listed_input: Optional[dict] = None
+    for row in rows:
+        parsed = parse_vimeo_video(row.get("url") or "")
+        if parsed and input_video_id and parsed[0] == input_video_id:
+            listed_input = row
+        elif _vimeo_title_looks_like_meeting(row.get("title")):
+            meetings.append(row)
+        else:
+            others.append(row)
+    if listed_input is not None:
+        input_row = listed_input
+    ordered = meetings[: max(limit - 1, 0)] + [input_row] + others
+    return ordered[:limit]
+
+
+async def _list_via_vimeo_owner(
+    platform: str, account_url: str, limit: int, *, page_url: Optional[str] = None
+) -> Optional[ListResult]:
+    if platform != "vimeo" or parse_vimeo_video(account_url) is None:
+        return None
+
+    def _enough(rows: List[dict]) -> bool:
+        return (
+            sum(_vimeo_title_looks_like_meeting(r.get("title")) for r in rows) >= limit
+        )
+
+    try:
+        owner = await list_owner_videos(account_url, enough=_enough)
+    except Exception as e:  # noqa: BLE001 -- the input video is still kept below
+        owner = VimeoOwnerListing(
+            note=f"Vimeo owner listing raised {type(e).__name__}: {e}"
+        )
+    lister = owner.source or _VIMEO_OWNER_LISTER
+    rows = [dict(row, has_video_hint=True) for row in owner.candidates]
+    input_row = {
+        "url": account_url,
+        "title": owner.video_title,
+        "date": owner.video_date,
+        "has_video_hint": True,
+    }
+    ordered = _order_vimeo_owner_rows(rows, owner.video_id, input_row, limit)
+    candidates = _candidates_from_dicts(
+        ordered,
+        platform=platform,
+        account_url=account_url,
+        lister=lister,
+        page_url=page_url,
+    )
+    meeting_count = sum(_vimeo_title_looks_like_meeting(r.get("title")) for r in rows)
+    if rows:
+        note = (
+            f"{owner.note}; {meeting_count} of {len(rows)} title(s) look like a meeting"
+        )
+    else:
+        note = f"{owner.note}; kept the input video as the only candidate"
+    return ListResult(candidates=candidates, lister=lister, outcome=None, note=note)
 
 
 # --- Lister (a): passive_verify's registered listing walkers ---------
@@ -1899,6 +2004,13 @@ async def list_account(
             lister=ch.lister,
             outcome=OUTCOME_NO_MEETING_NOR_VIDEO,
             note="; ".join(notes + [ch.note]) if ch.note else "",
+        )
+
+    v = await _list_via_vimeo_owner(platform, account_url, limit, page_url=page_url)
+    if v is not None:
+        # Always has at least the input video, so it always answers.
+        return _apply_gov_filter(
+            v, gov_name, account_url, gov_state=gov_state, gov_type=gov_type
         )
 
     a = await _list_via_passive_verify_walker(platform, account_url, fetcher, limit)

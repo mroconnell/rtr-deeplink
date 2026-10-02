@@ -44,8 +44,11 @@ fetchable 200s whose raw HTML embeds a real JSON-LD `ItemList` of
 `VideoObject`s (name + url/embedUrl + uploadDate) -- enough for a real
 `CalendarPageError` pick-list rather than a bare failure. A bare user
 page (`vimeo.com/rocklandmaine`) is NOT: confirmed live to be fully
-client-rendered with zero video ids in the raw HTML, so it is
-deliberately left to `generic_fallback.py`.
+client-rendered with zero video ids in the raw HTML, so `resolve()`
+deliberately leaves it to `generic_fallback.py`. The ACCOUNT behind a
+video can still be listed, through Vimeo's public v2 API rather than the
+user page -- see `list_owner_videos()` at the end of this module
+(2026-10-02, used by Meeting Finder's List step).
 
 ## What a plain HTTP client CANNOT get -- captions and audio
 
@@ -188,8 +191,11 @@ import asyncio
 import json
 import logging
 import re
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
+from email.utils import parsedate_to_datetime
+from typing import Callable, List, Optional, Tuple
 from urllib.parse import parse_qs, quote, urlparse
+from xml.etree import ElementTree
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -1125,3 +1131,255 @@ class VimeoAssetFinder(AssetFinder):
         except Exception:
             logger.warning("Vimeo fetch failed for %s", url, exc_info=True)
             return None
+
+
+# --- Listing a video's OWNER account (2026-10-02, rtr-findmeeting request) ---
+#
+# A bare Vimeo video link (`vimeo.com/{id}`, `vimeo.com/{id}/{hash}`,
+# `player.vimeo.com/video/{id}`) is often a weak find -- a parade, a promo
+# -- while the same account carries the real meetings. These functions
+# list that account so Meeting Finder's List step can look beside the
+# weak video. Every step was confirmed live 2026-10-02 before it was
+# written, from an office Mac, with the module's own `_UA`, one request
+# at a time:
+#
+# 1. oEmbed's `author_url` names the owner (`_owner_slug()`), e.g.
+#    `player.vimeo.com/video/168650512` -> `https://vimeo.com/malvernetv`.
+#    When the owner hid the video from Vimeo (Tarentum PA's `391007677`),
+#    oEmbed answers 200 with NO title and NO author -- and both
+#    `vimeo.com/391007677` and the player page answer with a real
+#    "verify you're a human" / Turnstile page. Per CLAUDE.md that is
+#    where we stop: the owner is unknown, and nothing tries to pass it.
+# 2. Vimeo's old public "simple API",
+#    `vimeo.com/api/v2/{owner}/videos.json?page=N`, still answers a plain
+#    unauthenticated GET with real JSON: 20 newest videos per page (id,
+#    title, url, upload_date, duration, embed_privacy). Pages 1-3 work;
+#    page 4 is a 403 "You are not permitted" page (MalverneTV, which has
+#    387 videos), so 60 newest is the ceiling. A missing owner is a 404.
+# 3. Fallback when (2) fails: the owner's RSS feed,
+#    `vimeo.com/{owner}/videos/rss` -- 200 `application/rss+xml`, the 10
+#    newest, each with title, `pubDate`, `vimeo.com/{id}` link and a
+#    `player.vimeo.com/video/{id}?h={hash}` player URL.
+# 4. NOT used: the owner's page (`vimeo.com/{owner}` and `/videos`). Its
+#    raw HTML JSON-LD carries video ids but no titles, so it is worse than
+#    (2) and (3); and no headless render is needed while (2)/(3) work.
+#
+# Only JSON/RSS is parsed, so a challenge page (HTML) on any step simply
+# reads as "nothing listed" -- never something this code tries to get past.
+_V2_VIDEOS_URL = "https://vimeo.com/api/v2/{owner}/videos.json?page={page}"
+_V2_PAGE_SIZE = 20
+_V2_MAX_PAGES = 3
+_USER_RSS_URL = "https://vimeo.com/{owner}/videos/rss"
+# A Vimeo account slug as `author_url` carries it: letters, digits,
+# underscore (`malvernetv`, `user142310876`, `ncf`). Anything else (a
+# path, a reserved word) is not an owner this code will build a URL for.
+_OWNER_SLUG_RE = re.compile(r"^[a-z0-9_]{2,64}$")
+_RESERVED_OWNER_SLUGS = frozenset(
+    {"api", "channels", "showcase", "groups", "album", "event", "video", "videos"}
+)
+
+_MEDIA_RSS_NS = "http://search.yahoo.com/mrss/"
+
+LISTER_V2_API = "vimeo_owner_v2_api"
+LISTER_RSS = "vimeo_owner_rss"
+
+
+@dataclass
+class VimeoOwnerListing:
+    """What `list_owner_videos()` found. `candidates` uses the same
+    `CalendarCandidate` shape (title/date/url) as every `CalendarPageError`
+    pick-list, newest first, the input video included when the owner's
+    list carries it. `source` is `LISTER_V2_API`, `LISTER_RSS`, or None
+    when nothing was listed; `note` says why in plain words."""
+
+    video_id: Optional[str] = None
+    # The input video's own title and date, from the same oEmbed call --
+    # so a caller can keep the input video as a real, titled candidate
+    # even when the owner's list doesn't reach it.
+    video_title: Optional[str] = None
+    video_date: Optional[str] = None
+    owner_slug: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_url: Optional[str] = None
+    source: Optional[str] = None
+    pages_read: int = 0
+    candidates: List[CalendarCandidate] = field(default_factory=list)
+    note: str = ""
+
+
+def _candidate_from_parts(
+    video_id: str, privacy_hash: Optional[str], title: str, fallback_date: str
+) -> CalendarCandidate:
+    title = (title or "").strip()
+    return CalendarCandidate(
+        title=title or f"Vimeo video {video_id}",
+        date=_date_from_title(title) or (fallback_date or "")[:10],
+        url=canonical_video_url(video_id, privacy_hash),
+    )
+
+
+def parse_v2_videos_json(body: Optional[str]) -> Optional[List[CalendarCandidate]]:
+    """One page of `vimeo.com/api/v2/{owner}/videos.json` -> candidates,
+    in the API's own newest-first order. None when the body is not that
+    JSON list at all (a 403/404 HTML page, a challenge page); `[]` for a
+    real but empty page."""
+    if not body:
+        return None
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return None
+    if not isinstance(payload, list):
+        return None
+    out: List[CalendarCandidate] = []
+    for row in payload:
+        if not isinstance(row, dict):
+            continue
+        parsed = parse_vimeo_video(str(row.get("url") or ""))
+        video_id = parsed[0] if parsed else str(row.get("id") or "")
+        if not re.fullmatch(_ID, video_id):
+            continue
+        out.append(
+            _candidate_from_parts(
+                video_id,
+                parsed[1] if parsed else None,
+                str(row.get("title") or ""),
+                str(row.get("upload_date") or ""),
+            )
+        )
+    return out
+
+
+def parse_user_rss(body: Optional[str]) -> Optional[List[CalendarCandidate]]:
+    """`vimeo.com/{owner}/videos/rss` -> candidates, newest first. The
+    privacy hash is read off each item's `media:player` URL (`?h=`), so a
+    hashed video keeps the URL its player needs. None when the body is
+    not an RSS feed (a 403/404 page, a challenge page)."""
+    if not body or "<rss" not in body[:500]:
+        return None
+    try:
+        root = ElementTree.fromstring(body)
+    except ElementTree.ParseError:
+        return None
+    out: List[CalendarCandidate] = []
+    for item in root.iter("item"):
+        player = item.find(f"{{{_MEDIA_RSS_NS}}}content/{{{_MEDIA_RSS_NS}}}player")
+        parsed = (
+            parse_vimeo_video(player.get("url", "")) if player is not None else None
+        )
+        parsed = parsed or parse_vimeo_video((item.findtext("link") or "").strip())
+        if not parsed:
+            continue
+        pub_date = ""
+        try:
+            pub_date = parsedate_to_datetime(
+                (item.findtext("pubDate") or "").strip()
+            ).strftime("%Y-%m-%d")
+        except (TypeError, ValueError):
+            pub_date = ""
+        out.append(
+            _candidate_from_parts(
+                parsed[0], parsed[1], item.findtext("title") or "", pub_date
+            )
+        )
+    return out
+
+
+def owner_slug_from_author_url(author_url: Optional[str]) -> Optional[str]:
+    """`https://vimeo.com/malvernetv` -> `malvernetv`, or None for
+    anything that is not a plain one-segment Vimeo account URL."""
+    if not author_url:
+        return None
+    parsed = urlparse(author_url)
+    if not is_vimeo_host(parsed.netloc):
+        return None
+    slug = parsed.path.strip("/").lower()
+    if not _OWNER_SLUG_RE.match(slug) or slug in _RESERVED_OWNER_SLUGS:
+        return None
+    return slug
+
+
+async def list_owner_videos(
+    url: str,
+    *,
+    max_pages: int = _V2_MAX_PAGES,
+    enough: Optional[Callable[[List[CalendarCandidate]], bool]] = None,
+    domain_hint: Optional[str] = None,
+) -> VimeoOwnerListing:
+    """List the account that owns the Vimeo video at `url` -- see the
+    comment block above for every step and what was confirmed live.
+
+    Reads up to `max_pages` (at most 3, Vimeo's own limit) pages of the
+    owner's newest videos, stopping early when a page is short (the end of
+    the account) or `enough(candidates_so_far)` says the caller has what
+    it needs. Falls back to the owner's RSS feed only when the first API
+    page cannot be read. Never raises for an ordinary failure: an empty
+    `candidates` list with a plain `note` is the answer then."""
+    parsed = parse_vimeo_video(url)
+    if parsed is None:
+        return VimeoOwnerListing(note="not a single Vimeo video link")
+    video_id, privacy_hash = parsed
+    listing = VimeoOwnerListing(video_id=video_id)
+
+    oembed = await VimeoAssetFinder._fetch_oembed(video_id, privacy_hash, domain_hint)
+    if oembed is None:
+        listing.note = "Vimeo's oEmbed lookup failed, so the owner is unknown"
+        return listing
+    author_url = (oembed.get("author_url") or "").strip() or None
+    listing.video_title = (oembed.get("title") or "").strip() or None
+    listing.video_date = _date_from_title(
+        listing.video_title
+    ) or VimeoAssetFinder._upload_date(oembed)
+    listing.owner_name = (oembed.get("author_name") or "").strip() or None
+    listing.owner_slug = owner_slug_from_author_url(author_url)
+    if listing.owner_slug is None:
+        listing.note = (
+            "Vimeo's oEmbed names no owner for this video (the owner hid it), "
+            "so the account can't be listed"
+        )
+        return listing
+    listing.owner_url = f"https://vimeo.com/{listing.owner_slug}"
+
+    candidates: List[CalendarCandidate] = []
+    seen: set[str] = set()
+    pages = max(1, min(max_pages, _V2_MAX_PAGES))
+    for page in range(1, pages + 1):
+        body = await VimeoAssetFinder._fetch(
+            _V2_VIDEOS_URL.format(owner=listing.owner_slug, page=page)
+        )
+        rows = parse_v2_videos_json(body)
+        if rows is None:
+            break
+        listing.pages_read = page
+        listing.source = LISTER_V2_API
+        for row in rows:
+            key = parse_vimeo_video(row["url"])[0]
+            if key not in seen:
+                seen.add(key)
+                candidates.append(row)
+        if len(rows) < _V2_PAGE_SIZE or (enough is not None and enough(candidates)):
+            break
+
+    if listing.source is None:
+        rss_rows = parse_user_rss(
+            await VimeoAssetFinder._fetch(
+                _USER_RSS_URL.format(owner=listing.owner_slug)
+            )
+        )
+        if rss_rows is not None:
+            listing.source = LISTER_RSS
+            candidates = rss_rows
+
+    listing.candidates = candidates
+    if listing.source is None:
+        listing.note = (
+            f"owner {listing.owner_slug} found, but neither Vimeo's public video "
+            "list nor its RSS feed could be read"
+        )
+    else:
+        listing.note = (
+            f"owner {listing.owner_slug} ({listing.owner_name or 'no name'}): "
+            f"{len(candidates)} newest video(s) listed via "
+            f"{'the public v2 API' if listing.source == LISTER_V2_API else 'RSS'}"
+        )
+    return listing

@@ -9249,3 +9249,19 @@ https://resources.finalsite.net/videos/t_video_mp4_480/v1747850136/esd20org/b8jt
 https://drive.usercontent.google.com/download?id=116ru3koIoZQylHqODVdVoQmBj16tj1vi&export=download&confirm=t,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.23,2026-10-02T06:13:57+00:00,,0
 https://chathamborough.granicus.com/MediaPlayer.php?view_id=1&clip_id=554,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.14,2026-10-02T06:14:00+00:00,,0
 https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-10-02T06:14:03+00:00,,0
+https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.08,2026-10-02T13:11:40+00:00,,0
+https://wintergardenfl.portal.civicclerk.com/event/516/media,civicclerk,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.42,2026-10-02T13:11:50+00:00,,0
+https://videoplayer.telvue.com/player/DPyuEDJjWk7UkJ6KIJCC97gq5-5RKKsb/media/1044687?showtabssearch=true&fullscreen=false,telvue,telvue-page-json,3970.00,,,1,accept,,0.28,2026-10-02T13:11:52+00:00,,0
+https://townhallstreams.com/stream.php?location_id=108&id=76489,townhallstreams,hls-master+variant,252.74,,,0,accept,,1.64,2026-10-02T13:11:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=108&id=76489,townhallstreams,hls-master+variant,252.74,,,0,accept,,0.46,2026-10-02T13:11:56+00:00,feed_tier3_auto_transcription,0
+https://townofcanandaiguany.portal.civicclerk.com/event/189/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-10-02T13:12:02+00:00,,0
+https://pub-oliver.escribemeetings.com/Meeting.aspx?Id=cd8c9657-543e-4291-9deb-c42d3c684b78,escribe,hls-master+variant,1727.21,,,1,accept,,0.40,2026-10-02T13:12:05+00:00,,0
+https://pub-oliver.escribemeetings.com/Meeting.aspx?Id=cd8c9657-543e-4291-9deb-c42d3c684b78,escribe,hls-master+variant,1727.21,,,1,accept,,0.31,2026-10-02T13:12:06+00:00,feed_tier3_auto_transcription,0
+https://cityofkm.granicus.com/MediaPlayer.php?view_id=1&clip_id=129,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-02T13:12:10+00:00,,0
+https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=f22822c4-1b08-4d14-a3eb-85ea68f6063c,escribe,hls-master+variant,6638.93,,,1,accept,,0.51,2026-10-02T13:12:14+00:00,,0
+https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=f22822c4-1b08-4d14-a3eb-85ea68f6063c,escribe,hls-master+variant,6638.93,,,1,accept,,0.37,2026-10-02T13:12:14+00:00,feed_tier3_auto_transcription,0
+https://play.champds.com/augustaga/event/669,champds,hls-master+variant,678.98,,,1,accept,,0.87,2026-10-02T13:12:18+00:00,,0
+https://play.champds.com/augustaga/event/669,champds,head+champds-vod2,678.98,2026-09-18,896441770,1,accept,,1.01,2026-10-02T13:12:19+00:00,feed_tier3_auto_transcription,0
+https://garlandisdtx.new.swagit.com/videos/400264,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-02T13:12:22+00:00,,0
+https://videoplayer.telvue.com/player/Ba_iz22BDdj-q51Xx8u--VZN0oq18h1i/media/1038987?showtabssearch=true&fullscreen=false,telvue,telvue-page-json,8338.00,,,1,accept,,0.30,2026-10-02T13:12:24+00:00,,0
+https://trms.northmetrotv.com/internetchannel/show/34123?site=8,cablecast,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-02T13:12:26+00:00,,0

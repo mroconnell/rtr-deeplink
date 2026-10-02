@@ -52,6 +52,7 @@ CSV_FIELDS = [
     "handcheck_lead",
     "other_gov_leads_count",
     "blocked_url",
+    "listed_count",
     "finished_at",
 ]
 
@@ -62,8 +63,8 @@ CSV_FIELDS = [
 # CSV. `other_gov_leads`' own full detail (named place, body words, title,
 # date, url, hub host) is JSONL-only, same as `leads`/`path` -- WO-1058.
 _DATACLASS_FIELDS = {f.name for f in fields(VerdictRow)}
-_CSV_ONLY = {"leads_count", "other_gov_leads_count"}
-_DATACLASS_ONLY = {"leads", "other_gov_leads", "meeting_date"}
+_CSV_ONLY = {"leads_count", "other_gov_leads_count", "listed_count"}
+_DATACLASS_ONLY = {"leads", "other_gov_leads", "meeting_date", "listed"}
 assert (set(CSV_FIELDS) - _CSV_ONLY) | _DATACLASS_ONLY == _DATACLASS_FIELDS, (
     "verdict.CSV_FIELDS drifted from models.VerdictRow -- update both"
 )
@@ -132,6 +133,7 @@ def append_verdict(csv_path: Path, row: VerdictRow) -> None:
                 "handcheck_lead": row.handcheck_lead,
                 "other_gov_leads_count": len(row.other_gov_leads),
                 "blocked_url": row.blocked_url,
+                "listed_count": len(row.listed),
                 "finished_at": row.finished_at,
             }
         )
