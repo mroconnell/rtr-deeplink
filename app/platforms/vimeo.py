@@ -44,8 +44,11 @@ fetchable 200s whose raw HTML embeds a real JSON-LD `ItemList` of
 `VideoObject`s (name + url/embedUrl + uploadDate) -- enough for a real
 `CalendarPageError` pick-list rather than a bare failure. A bare user
 page (`vimeo.com/rocklandmaine`) is NOT: confirmed live to be fully
-client-rendered with zero video ids in the raw HTML, so it is
-deliberately left to `generic_fallback.py`.
+client-rendered with zero video ids in the raw HTML, so `resolve()`
+deliberately leaves it to `generic_fallback.py`. The ACCOUNT behind a
+video can still be listed, through Vimeo's public v2 API rather than the
+user page -- see `list_owner_videos()` at the end of this module
+(2026-10-02, used by Meeting Finder's List step).
 
 ## What a plain HTTP client CANNOT get -- captions and audio
 

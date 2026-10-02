@@ -374,7 +374,7 @@ government on the guess-ladder queue (see Follow-ups).
 `list_account(platform, account_url, fetcher, *, limit=15,
 platform_params=None) -> ListResult` turns a known account into a list of
 candidate meetings, newest-first. It only lists -- Resolve is still the
-only place an adapter's `resolve()` runs to pick and confirm one. Seven
+only place an adapter's `resolve()` runs to pick and confirm one. Eight
 listers, tried in order, stopping at the first that returns candidates:
 
 | | Lister | Example |
@@ -386,6 +386,25 @@ listers, tried in order, stopping at the first that returns candidates:
 | e | Generic: `passive_verify._generic_link_scan_walker()` on links that look like one meeting | a TelVue listing page with no bespoke walker |
 | f | "Cablecast Connect" (WO-1054): a WordPress plugin whose page IS already a real listing -- reads its own `.gc-cc-card` markup, topped up via its `wp-json/cablecast/v1/recent-shows` REST route, then unwraps each show page's own `watch-vod-embed` iframe into a real, resolvable Cablecast candidate | `townsquare.tv/programs/site/mendota-heights-8/` (Mendota Heights, MN) |
 | g | A plain WordPress site (WO-1054): searches `wp-json/wp/v2/posts?search=meeting`/`?search=video` for a post that embeds a real video | tried on Wilder, KY per Ryan's own brief -- came back empty there (its real video is found a different way, a direct homepage link) |
+| h | A bare Vimeo video link (2026-10-02): the account that OWNS the video. Vimeo's public oEmbed names the owner; Vimeo's public v2 API (`vimeo.com/api/v2/{owner}/videos.json`, 20 per page, 3 pages at most) lists that owner's newest videos, with the owner's RSS feed as the fallback. Meeting-looking titles go first, and the input video is always kept. Tried before (a); a showcase/channel link still goes to (c) | `player.vimeo.com/video/168650512` (Malverne NY's "Memorial Day - 2016") lists `vimeo.com/malvernetv`: 21 of its 60 newest titles are Board of Trustees meetings or hearings |
+
+**Vimeo: how a weak video becomes an account (2026-10-02).** Identify
+keeps a Vimeo video or showcase/channel link as the account URL (before
+this it collapsed to the bare `vimeo.com/` host, which names no account).
+Lister (h) then works in three steps, each confirmed live:
+
+1. oEmbed gives the owner (`author_url`). If the owner hid the video,
+   oEmbed gives no owner, and Vimeo's own pages answer with a "verify
+   you're a human" check. We stop there; the input video is kept as the
+   only candidate.
+2. The v2 API lists the owner's newest videos. It needs no token. Page 4
+   is refused (403), so 60 is the ceiling.
+3. If the API can't be read, the owner's RSS feed gives the 10 newest.
+
+The owner's own page (`vimeo.com/{owner}`) is not used: its raw HTML has
+video ids but no titles. No headless browser is used. Captions are
+unchanged: a Vimeo find is still tier 2, ingested by the drip's Vimeo
+lane (WO-1146/1147).
 
 If the platform has no adapter at all (no passive_verify walker, no
 rtr-discovery enumerator, no registered `AssetFinder`), the outcome is
@@ -917,6 +936,7 @@ nothing is ingested or queued from here.
 | Identity | agrees / disagrees (points to …) / page says nothing |
 | Leads found on the way | YouTube channels, other governments' accounts |
 | Budget used | hops, forks, fetches |
+| Accounts listed (2026-10-02) | `listed` (JSONL; the CSV has `listed_count`) — one entry per account List read: platform, account URL, lister, note, and every candidate's url/title/date. Keeps the whole pick-list, e.g. the other videos on a weak Vimeo find's account |
 | Refused URL (WO-1122, block-like outcomes only) | `blocked_url` — the URL actually refused, always on the government's own host (a secondary host's own refusal never becomes the verdict — see "Verdict's outcome choice" above); every secondary refusal is still in `note` |
 
 Ingesting, queuing tier 3 and writing the research row stay separate

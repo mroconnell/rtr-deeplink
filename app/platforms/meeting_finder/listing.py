@@ -67,6 +67,9 @@ gives, stopping at the first that returns candidates:
      _generic_link_scan_walker()` (also routed through the same
      `fetch_override()`).
 
+Before (a), a bare Vimeo video link is listed as its OWNER's account
+(`_list_via_vimeo_owner()`, 2026-10-02) -- see that lister's own comment.
+
 Nothing found by any lister: `OUTCOME_NO_MEETING_NOR_VIDEO`. No adapter
 registered for the platform at all (and no passive_verify walker, no
 rtr-discovery enumerator): `OUTCOME_UNSUPPORTED_PLATFORM_NO_ADAPTER`.

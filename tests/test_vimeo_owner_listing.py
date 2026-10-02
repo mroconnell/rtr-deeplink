@@ -26,6 +26,9 @@ finds rtr-findmeeting's pipe reported:
 - `video_page_391007677_human_check.html` -- `vimeo.com/391007677` itself:
   a real "Verify to continue ... confirm that you're a human" page. Kept to
   prove the parsers read it as "nothing", never as something to get past.
+  **Secret-scan note**: it carries Cloudflare Turnstile's `sitekey` and the
+  word "token" in its page script. A Turnstile sitekey is public -- served
+  to every visitor -- and is not a credential of ours.
 """
 
 from types import SimpleNamespace
