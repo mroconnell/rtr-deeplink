@@ -2017,68 +2017,35 @@ async def test_wo1160_civicplus_archive_file_dispatches_to_direct_file(monkeypat
     assert seen["video_url"] == media
 
 
-# --- Ryan 2026-10-02: no media reads on a host whose robots.txt disallows media ---
-
-_CABLECAST_ROBOTS = """# Let bots crawl pages, but not media files/streams.
-User-agent: *
-Disallow: /*.m3u8$
-Disallow: /*.m3u8?
-Disallow: /*.ts$
-Disallow: /*.mp4$
-Disallow: /*.vtt$
-"""
-
-_CIVICPLUS_ROBOTS = """User-agent: *
-Disallow: /Archive.aspx
-Disallow: /Search.aspx
-"""
+# --- Ryan 2026-10-02: honor any matching robots.txt Disallow (one rule, both repos) ---
 
 
-def test_robots_media_rule_blocks_a_cablecast_vod_file():
-    from app.platforms import queue_probe as qp
+@pytest.fixture(autouse=True)
+def _no_live_robots_reads(monkeypatch):
+    """Every probe test runs without a live robots.txt read: allowed, unless a
+    test below says otherwise."""
+    from app.utils import robots_check
 
-    url = "https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.mp4"
-    assert qp.media_disallowed_by_robots_text(_CABLECAST_ROBOTS, url) is True
-    assert (
-        qp.media_disallowed_by_robots_text(
-            _CABLECAST_ROBOTS, url.replace("vod.mp4", "vod.m3u8?x=1")
-        )
-        is True
-    )
+    async def allowed(url):
+        return True, None
 
-
-def test_robots_media_rule_ignores_a_page_path_rule():
-    """CivicPlus disallows /Archive.aspx (a page path that also serves files):
-    not a media rule, so the file probe still runs."""
-    from app.platforms import queue_probe as qp
-
-    url = "https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77"
-    assert qp.media_disallowed_by_robots_text(_CIVICPLUS_ROBOTS, url) is False
+    monkeypatch.setattr(robots_check, "check_url", allowed)
 
 
-def test_robots_media_rule_empty_or_other_agent_blocks_nothing():
-    from app.platforms import queue_probe as qp
+def _blocked(pattern):
+    from app.utils.robots_rules import Rule
 
-    url = "https://example.gov/a/video.mp4"
-    assert qp.media_disallowed_by_robots_text("", url) is False
-    other = "User-agent: Googlebot\nDisallow: /*.mp4$\n"
-    assert qp.media_disallowed_by_robots_text(other, url) is False
+    async def check(url):
+        return False, Rule(False, pattern)
 
-
-def test_robots_allow_of_equal_length_beats_the_disallow():
-    from app.platforms import queue_probe as qp
-
-    text = "User-agent: *\nDisallow: /*.mp4$\nAllow: /*.mp4$\n"
-    assert qp.media_disallowed_by_robots_text(text, "https://x.gov/a.mp4") is False
+    return check
 
 
 def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
     import asyncio
 
     from app.platforms import queue_probe as qp
-
-    async def disallowed(url):
-        return True
+    from app.utils import robots_check
 
     seen = {}
 
@@ -2091,34 +2058,35 @@ def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
     async def must_not_run(*a, **k):
         raise AssertionError("the media recipe must not run on a disallowed host")
 
-    monkeypatch.setattr(qp, "media_disallowed_by_robots", disallowed)
+    monkeypatch.setattr(robots_check, "check_url", _blocked("/*.m3u8$"))
     monkeypatch.setattr(qp, "_probe_cablecast_api", fake_api)
     monkeypatch.setattr(qp, "_probe_hls", must_not_run)
     monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
     result = asyncio.run(
         qp.probe_queue_entry(
             "https://reflect-champaign.cablecast.tv/internetchannel/show/6013",
-            video_url="https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.mp4",
+            video_url="https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.m3u8",
             source_page_url="https://reflect-champaign.cablecast.tv/internetchannel/show/6013",
             platform="cablecast",
         )
     )
     assert seen.get("called") and result.verdict == "accept"
-    assert result.duration_seconds == 3853.0 and result.probe_method == "cablecast-api"
+    assert result.duration_seconds == 3853.0
+    assert result.probe_method == "cablecast-api"
 
 
-def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(monkeypatch):
+def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(
+    monkeypatch,
+):
     import asyncio
 
     from app.platforms import queue_probe as qp
-
-    async def disallowed(url):
-        return True
+    from app.utils import robots_check
 
     async def must_not_run(*a, **k):
         raise AssertionError("the media recipe must not run on a disallowed host")
 
-    monkeypatch.setattr(qp, "media_disallowed_by_robots", disallowed)
+    monkeypatch.setattr(robots_check, "check_url", _blocked("/a/"))
     monkeypatch.setattr(qp, "_probe_hls", must_not_run)
     result = asyncio.run(
         qp.probe_queue_entry(
@@ -2128,6 +2096,31 @@ def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(monkeyp
             platform="granicus",
         )
     )
-    assert result.verdict == "reject-dead" and "robots.txt disallows" in (
-        result.reason or ""
+    assert result.verdict == "reject-dead"
+    assert "robots.txt disallows" in (result.reason or "")
+    assert "/a/" in (result.reason or "")
+
+
+def test_probe_skips_a_page_path_disallow_too(monkeypatch):
+    """One rule: not only media rules. A CivicPlus /Archive.aspx Disallow blocks the file probe."""
+    import asyncio
+
+    from app.platforms import queue_probe as qp
+    from app.utils import robots_check
+
+    async def must_not_run(*a, **k):
+        raise AssertionError("the file recipe must not run on a disallowed path")
+
+    monkeypatch.setattr(robots_check, "check_url", _blocked("/Archive.aspx"))
+    monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
+    result = asyncio.run(
+        qp.probe_queue_entry(
+            "https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
+            video_url="https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
+            source_page_url="https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
+            platform="civicplus",
+            video_format="mp4",
+        )
     )
+    assert result.verdict == "reject-dead"
+    assert "/Archive.aspx" in (result.reason or "")
