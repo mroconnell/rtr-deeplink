@@ -2015,3 +2015,119 @@ async def test_wo1160_civicplus_archive_file_dispatches_to_direct_file(monkeypat
     )
     assert result == "sentinel"
     assert seen["video_url"] == media
+
+
+# --- Ryan 2026-10-02: no media reads on a host whose robots.txt disallows media ---
+
+_CABLECAST_ROBOTS = """# Let bots crawl pages, but not media files/streams.
+User-agent: *
+Disallow: /*.m3u8$
+Disallow: /*.m3u8?
+Disallow: /*.ts$
+Disallow: /*.mp4$
+Disallow: /*.vtt$
+"""
+
+_CIVICPLUS_ROBOTS = """User-agent: *
+Disallow: /Archive.aspx
+Disallow: /Search.aspx
+"""
+
+
+def test_robots_media_rule_blocks_a_cablecast_vod_file():
+    from app.platforms import queue_probe as qp
+
+    url = "https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.mp4"
+    assert qp.media_disallowed_by_robots_text(_CABLECAST_ROBOTS, url) is True
+    assert (
+        qp.media_disallowed_by_robots_text(
+            _CABLECAST_ROBOTS, url.replace("vod.mp4", "vod.m3u8?x=1")
+        )
+        is True
+    )
+
+
+def test_robots_media_rule_ignores_a_page_path_rule():
+    """CivicPlus disallows /Archive.aspx (a page path that also serves files):
+    not a media rule, so the file probe still runs."""
+    from app.platforms import queue_probe as qp
+
+    url = "https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77"
+    assert qp.media_disallowed_by_robots_text(_CIVICPLUS_ROBOTS, url) is False
+
+
+def test_robots_media_rule_empty_or_other_agent_blocks_nothing():
+    from app.platforms import queue_probe as qp
+
+    url = "https://example.gov/a/video.mp4"
+    assert qp.media_disallowed_by_robots_text("", url) is False
+    other = "User-agent: Googlebot\nDisallow: /*.mp4$\n"
+    assert qp.media_disallowed_by_robots_text(other, url) is False
+
+
+def test_robots_allow_of_equal_length_beats_the_disallow():
+    from app.platforms import queue_probe as qp
+
+    text = "User-agent: *\nDisallow: /*.mp4$\nAllow: /*.mp4$\n"
+    assert qp.media_disallowed_by_robots_text(text, "https://x.gov/a.mp4") is False
+
+
+def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
+    import asyncio
+
+    from app.platforms import queue_probe as qp
+
+    async def disallowed(url):
+        return True
+
+    seen = {}
+
+    async def fake_api(url, platform, video_url, source_page_url, start):
+        seen["called"] = True
+        return qp._finish(
+            url, platform, "cablecast-api", 3853.0, "2026-09-22", None, start
+        )
+
+    async def must_not_run(*a, **k):
+        raise AssertionError("the media recipe must not run on a disallowed host")
+
+    monkeypatch.setattr(qp, "media_disallowed_by_robots", disallowed)
+    monkeypatch.setattr(qp, "_probe_cablecast_api", fake_api)
+    monkeypatch.setattr(qp, "_probe_hls", must_not_run)
+    monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
+    result = asyncio.run(
+        qp.probe_queue_entry(
+            "https://reflect-champaign.cablecast.tv/internetchannel/show/6013",
+            video_url="https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.mp4",
+            source_page_url="https://reflect-champaign.cablecast.tv/internetchannel/show/6013",
+            platform="cablecast",
+        )
+    )
+    assert seen.get("called") and result.verdict == "accept"
+    assert result.duration_seconds == 3853.0 and result.probe_method == "cablecast-api"
+
+
+def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(monkeypatch):
+    import asyncio
+
+    from app.platforms import queue_probe as qp
+
+    async def disallowed(url):
+        return True
+
+    async def must_not_run(*a, **k):
+        raise AssertionError("the media recipe must not run on a disallowed host")
+
+    monkeypatch.setattr(qp, "media_disallowed_by_robots", disallowed)
+    monkeypatch.setattr(qp, "_probe_hls", must_not_run)
+    result = asyncio.run(
+        qp.probe_queue_entry(
+            "https://example.gov/meeting/1",
+            video_url="https://media.example.gov/a/vod.m3u8",
+            source_page_url="https://example.gov/meeting/1",
+            platform="granicus",
+        )
+    )
+    assert result.verdict == "reject-dead" and "robots.txt disallows" in (
+        result.reason or ""
+    )
