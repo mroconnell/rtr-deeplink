@@ -65343,3 +65343,51 @@ No meeting minted an `rtr:us:wa:*` id. One caution: "Flood Control District" eve
 **Tests.** Real `Event/getDetailed` fixtures, captured 2026-09-25 and trimmed to the fields the adapter reads: DuPont, CVTV Vancouver, Fife (body first) and Tac-PC Board of Health, plus DuPont's first 20 real caption cues. Full suite: 7,425 passed; the one failure (`test_youtube_fetch_guard.py::test_yt_dlp_metadata_call_is_refused_before_any_connection`) fails the same way on unchanged code in this container.
 
 **Caution.** CVTV meetings have no `captionPath`, so a correct government alone does not give them a transcript.
+
+## [Done 2026-10-02] Meeting Finder: list the Vimeo account behind a bare Vimeo video link
+
+**What was asked.** rtr-findmeeting's pipe kept ending on weak Vimeo finds: a parade, a promo clip. The real meetings often sit on the same Vimeo account. Ryan's rule: never silently drop a video; look beside it. The request is in rtr-findmeeting's `BACKLOG.md`, "rtr-deeplink request: list a Vimeo account from a bare Vimeo video link".
+
+**What was wrong.** Two things. First, Identify turned any Vimeo link into the bare `https://vimeo.com/` host, which names no account. So List had nothing to list (this also hit a showcase link entered directly). Second, nothing could list a Vimeo user. A user's own page is built by JavaScript, so a plain request sees no titles.
+
+**What was tested, live, before any code (2026-10-02, office Mac, one request at a time, the adapter's own User-Agent).**
+
+1. Vimeo's public oEmbed gives the owner of a video (`author_url`).
+2. Vimeo's old public "simple API", `vimeo.com/api/v2/{owner}/videos.json?page=N`, still answers without a token. It returns real JSON: 20 newest videos per page, with title, link and upload date. Pages 1 to 3 work. Page 4 is refused (a 403 "You are not permitted" page). So 60 newest is the ceiling.
+3. The owner's RSS feed, `vimeo.com/{owner}/videos/rss`, also works: the 10 newest, with titles and dates.
+4. The owner's page (`vimeo.com/{owner}/videos`) has video ids in its raw HTML but no titles, so it was not used. No headless browser was needed.
+
+**The fix.**
+
+- Identify keeps a Vimeo video link (or a showcase/channel link) as the account URL.
+- List has a new first step for a Vimeo video link, `_list_via_vimeo_owner()`. It calls the new `vimeo.list_owner_videos()`: oEmbed for the owner, then the v2 API (stopping early once it has enough meeting-looking titles), then RSS if the API fails.
+- Results come back in the usual pick-list shape (title, date, URL). Titles that pass the repo's own meeting check (`looks_like_real_meeting(..., require_allowlist=True)`) go first. The weak input video is always kept, with its oEmbed title and date. Nothing else is dropped; `pick.py` still decides.
+- When the owner can't be learned, the input video comes back as the only candidate, with a note saying why.
+- `VerdictRow` gains `listed`: one entry per account List read, with every candidate. The CSV gets `listed_count`. A caller can now save the whole list.
+- Captions are unchanged. A Vimeo find is still tier 2 and goes to the drip's Vimeo lane (WO-1146/1147).
+
+**Result on the five weak finds.** "Videos listed" counts what List read from the owner. "Look like a meeting" counts titles passing the repo's meeting check.
+
+| Weak find | Owner | Videos listed | Look like a meeting |
+|---|---|---|---|
+| Malverne NY, `player.vimeo.com/video/168650512` ("Memorial Day - 2016") | `malvernetv` (MalverneTV) | 60 | 21 |
+| Clinton MO, `player.vimeo.com/video/575538718` ("Wine Stroll with VO.mov") | `user142310876` ("keith stidham") | 14 | 0 |
+| Clinton MO, `vimeo.com/575516842` ("Outdoors with VO.mov") | same owner | 14 | 0 |
+| Howells NE, `player.vimeo.com/video/200384043` ("Howells Community Fund") | `ncf` (Nebraska Community Foundation) | 60 | 1 |
+| Tarentum PA, `player.vimeo.com/video/391007677` | unknown | 0 | 0 |
+
+Malverne's 21 are real "Village of Malverne - Meeting of the Board of Trustees" and "Public Hearing" videos. A live `run_one(entry="identify")` on the Malverne link picked the September 2, 2026 Board of Trustees meeting (10 requests in all).
+
+Clinton's owner is a videographer's account of short promo clips. Not a government account.
+
+Howells' one "meeting" is a false positive: "FAC Member Orientation, Session 2" is a foundation training, not a public meeting. The repo's meeting check passes it because of a word in the title.
+
+Tarentum: oEmbed answers with no title and no owner (the owner hid the video). Both `vimeo.com/391007677` and the player page answer with a "verify you're a human" check. We stopped there, as CLAUDE.md requires. The input video is kept as the only candidate.
+
+**Cautions.**
+
+- The v2 API is Vimeo's old simple API. It works today without a token, but nothing promises it will keep working. If it stops, the RSS fallback still gives the 10 newest.
+- Only the 60 newest videos are reachable. An account with old meetings and many newer non-meeting videos will hide them.
+- An owner can be a shared account (a state agency, a regional TV station, a foundation). The shared-hub government filter in `list_account()` still runs on the list.
+
+**Tests.** `tests/test_vimeo_owner_listing.py`, 28 tests, all from real, unmodified captures taken 2026-10-02 (`tests/fixtures/vimeo/oembed_{malverne,clinton,howells,tarentum}_*.json`, `v2_videos_*.json`, `rss_malvernetv.xml`, the page-4 403 page, and the human-check page). Full suite: 9,313 passed, 18 skipped, 4 xfailed.
