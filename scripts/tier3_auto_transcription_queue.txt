@@ -1359,3 +1359,7 @@ https://cityofharahan.granicus.com/MediaPlayer.php?view_id=1&clip_id=77		us:plac
 https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	us:place:5522850
 https://drive.usercontent.google.com/download?id=1ihL3lIhjtgxhc4jJ8aq487LGx9Q0QYV0&export=download&confirm=t	https://drive.google.com/file/d/1ihL3lIhjtgxhc4jJ8aq487LGx9Q0QYV0/view?usp=sharing	us:place:1832818
 https://townhallstreams.com/stream.php?location_id=62&id=76248		us:cousub:2300553860
+https://play.champds.com/falmouthme/event/3405	https://play.champds.com/falmouthme/event/3405	us:cousub:2300524495
+https://play.champds.com/thompsonsstationtn/event/161	https://play.champds.com/thompsonsstationtn/event/161	us:place:4773900
+https://play.champds.com/signalmountaintn/event/13	https://play.champds.com/signalmountaintn/event/13	us:place:4768540
+https://play.champds.com/yubacoca/event/31	https://play.champds.com/yubacoca/event/31	us:county:06115
