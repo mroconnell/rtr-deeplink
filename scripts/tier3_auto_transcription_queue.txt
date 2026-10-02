@@ -11,21 +11,9 @@ https://player.vimeo.com/video/1225772839?h=d31966abc7	https://vimeo.com/showcas
 https://player.vimeo.com/video/738677688	https://www.bsd2.org/about-bsd21/board-of-education/agendas-briefs-minutes-video	us:sd:1705910
 https://vimeo.com/1215957780/e421c4fb81		us:sd:3624630
 https://vimeo.com/946425462/b95b8652b3		us:place:2283405
-https://pelhampublicschoolsny.new.swagit.com/videos/400529		us:sd:3622680
-https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
-https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
-https://drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB&export=download&confirm=t	https://drive.google.com/file/d/1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB/view?usp=drive_link	us:place:2904248
-https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3	https://boundbrook-nj.org/wp-content/uploads/2025/02/1-7-2025-Bound-Brook-Borough-Reorganization-Meeting-1.mp3	us:place:3406790
-https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
-https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	https://wellsvt.com/wp-content/uploads/2025/05/Public-Hearing__-1.mp3	us:cousub:5002177950
-https://jeffersoncountytx.gov/jcagenda/CourtVideo.aspx?f=JCCC092226	https://jeffersoncountytx.gov/jcagenda/default.aspx	us:county:48245
-https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065
-https://codington.sdcounty.gov/wp-content/uploads/2017/06/20170627-CCJAC-64kbps.mp3		us:county:46029
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
-https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
 https://www.chelseavt.org/wp/wp-content/uploads/2026/09/BOA-1-260922_0433.mp3		us:cousub:5001713525
 https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
 https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
@@ -1157,3 +1145,9 @@ https://play.champds.com/yubacoca/event/31	https://play.champds.com/yubacoca/eve
 https://lonestargcd.new.swagit.com/videos/400293	https://lonestargcd.new.swagit.com/views/58	rtr:us:tx:lone-star-groundwater-conservation-district
 https://scgtv.new.swagit.com/videos/19946	https://scgtv.new.swagit.com/views/11	rtr:us:ga:supreme-court-of-georgia
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
+https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
+https://pelhampublicschoolsny.new.swagit.com/videos/400529		us:sd:3622680
+https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
+https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
+https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
