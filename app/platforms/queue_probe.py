@@ -1092,7 +1092,7 @@ def _robots_rules(robots_text: str) -> tuple:
 def _robots_pattern_matches(pattern: str, path_and_query: str) -> bool:
     regex = re.escape(pattern).replace(r"\*", ".*")
     if regex.endswith(r"\$"):
-        regex = regex[: -2] + "$"
+        regex = regex[:-2] + "$"
     return re.match(regex, path_and_query) is not None
 
 
@@ -1111,8 +1111,12 @@ def media_disallowed_by_robots_text(robots_text: str, media_url: str) -> bool:
     target = parts.path + (f"?{parts.query}" if parts.query else "")
     disallow, allow = _robots_rules(robots_text)
     disallow = [r for r in disallow if _MEDIA_RULE_RE.search(r)]
-    best_dis = max((len(r) for r in disallow if _robots_pattern_matches(r, target)), default=-1)
-    best_allow = max((len(r) for r in allow if _robots_pattern_matches(r, target)), default=-1)
+    best_dis = max(
+        (len(r) for r in disallow if _robots_pattern_matches(r, target)), default=-1
+    )
+    best_allow = max(
+        (len(r) for r in allow if _robots_pattern_matches(r, target)), default=-1
+    )
     return best_dis >= 0 and best_dis > best_allow
 
 
@@ -1156,7 +1160,9 @@ async def _probe_cablecast_api(
             show_id = m.group(1)
             break
     if not show_id:
-        return _dead(url, platform, method, start, "no Cablecast show id in the address")
+        return _dead(
+            url, platform, method, start, "no Cablecast show id in the address"
+        )
     # The station's API answers on its web host (`reflect-x.cablecast.tv`),
     # not on the media host (`x-cablecast.cablecast.tv`, a 404 for the API).
     # Try each Cablecast host the entry names, then the web-host twin of a
@@ -1174,13 +1180,19 @@ async def _probe_cablecast_api(
     data = None
     last_error = ""
     try:
-        async with aiohttp.ClientSession(headers=_aiohttp_headers(source_page_url)) as session:
+        async with aiohttp.ClientSession(
+            headers=_aiohttp_headers(source_page_url)
+        ) as session:
             for netloc in netlocs:
                 api_url = f"https://{netloc}/cablecastapi/v1/shows/{show_id}"
                 try:
-                    async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                    async with session.get(
+                        api_url, timeout=aiohttp.ClientTimeout(total=15)
+                    ) as response:
                         if response.status != 200:
-                            last_error = _http_dead_reason("Cablecast API show record", response.status)
+                            last_error = _http_dead_reason(
+                                "Cablecast API show record", response.status
+                            )
                             continue
                         data = await response.json(content_type=None)
                         break
@@ -1189,11 +1201,15 @@ async def _probe_cablecast_api(
     except aiohttp.ClientError as e:
         return _dead(url, platform, method, start, f"Cablecast API fetch failed: {e}")
     if data is None:
-        return _dead(url, platform, method, start, last_error or "Cablecast API gave no record")
+        return _dead(
+            url, platform, method, start, last_error or "Cablecast API gave no record"
+        )
     show = (data or {}).get("show") or {}
     runtime = show.get("totalRunTime")
     if not isinstance(runtime, (int, float)) or runtime <= 0:
-        return _dead(url, platform, method, start, "Cablecast API show record carried no runtime")
+        return _dead(
+            url, platform, method, start, "Cablecast API show record carried no runtime"
+        )
     date = (show.get("eventDate") or "")[:10] or None
     return _finish(url, platform, method, float(runtime), date, None, start)
 

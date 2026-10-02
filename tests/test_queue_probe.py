@@ -2039,7 +2039,12 @@ def test_robots_media_rule_blocks_a_cablecast_vod_file():
 
     url = "https://champaign-cablecast.cablecast.tv/vod/6013-City-Council-9-22-26-v3/vod.mp4"
     assert qp.media_disallowed_by_robots_text(_CABLECAST_ROBOTS, url) is True
-    assert qp.media_disallowed_by_robots_text(_CABLECAST_ROBOTS, url.replace("vod.mp4", "vod.m3u8?x=1")) is True
+    assert (
+        qp.media_disallowed_by_robots_text(
+            _CABLECAST_ROBOTS, url.replace("vod.mp4", "vod.m3u8?x=1")
+        )
+        is True
+    )
 
 
 def test_robots_media_rule_ignores_a_page_path_rule():
@@ -2079,7 +2084,9 @@ def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
 
     async def fake_api(url, platform, video_url, source_page_url, start):
         seen["called"] = True
-        return qp._finish(url, platform, "cablecast-api", 3853.0, "2026-09-22", None, start)
+        return qp._finish(
+            url, platform, "cablecast-api", 3853.0, "2026-09-22", None, start
+        )
 
     async def must_not_run(*a, **k):
         raise AssertionError("the media recipe must not run on a disallowed host")
@@ -2121,4 +2128,6 @@ def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(monkeyp
             platform="granicus",
         )
     )
-    assert result.verdict == "reject-dead" and "robots.txt disallows" in (result.reason or "")
+    assert result.verdict == "reject-dead" and "robots.txt disallows" in (
+        result.reason or ""
+    )
