@@ -262,6 +262,10 @@ class VerdictRow:
     # had one (a List/Scan hit), `None` for a bare input URL.
     meeting_url: Optional[str] = None
     meeting_title: Optional[str] = None
+    # 2026-10-02: the meeting row's own date (YYYY-MM-DD when the lister
+    # had one). JSONL only -- not added to verdict.CSV_FIELDS, so an
+    # existing verdict CSV being resumed keeps a matching header.
+    meeting_date: Optional[str] = None
     platform: Optional[str] = None
     tier: Optional[int] = None
     duration_seconds: Optional[float] = None

@@ -1,0 +1,89 @@
+{
+ "Customer": {
+  "CustomerName": "Fulton County GA",
+  "CustomerAccessID": "fultoncoga",
+  "CustomerTimezone": "America/New_York",
+  "ServiceGroupID": 1,
+  "CustomerEventAreaMask": 15359,
+  "CustomerOtherAreaMask": 16383
+ },
+ "Archive": {
+  "CustomerArchiveID": 2,
+  "ArchiveTitle": "Board of Commissioners",
+  "ArchiveDescription": "",
+  "DisplayTypeID": 1,
+  "LastModifyDateTimeUTC": "2019-12-09 17:55:00"
+ },
+ "SearchType": "ARCHIVE",
+ "SearchText": "meeting",
+ "SearchResult": {
+  "Events": [
+   {
+    "CustomerEventID": 199,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-09-16 14:00:00",
+    "EventTitle": "SECOND REGULAR MEETING",
+    "EventDescription": "<p>Fulton County Government Center<br />Assembly Hall<br />141 Pryor Street SW<br />Atlanta, Georgia 30303</p>",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-09-18 13:33:46",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 595,
+    "EventDateTimeLocal": "2026-09-16 10:00:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 5,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   },
+   {
+    "CustomerEventID": 197,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-09-02 14:00:00",
+    "EventTitle": "FIRST REGULAR MEETING",
+    "EventDescription": "<p>Fulton County Government Center<br />Assembly Hall<br />141 Pryor Street SW<br />Atlanta, Georgia 30303</p>",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-09-16 13:28:14",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 589,
+    "EventDateTimeLocal": "2026-09-02 10:00:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 5,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   },
+   {
+    "CustomerEventID": 195,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-08-19 14:00:00",
+    "EventTitle": "SECOND REGULAR MEETING",
+    "EventDescription": "<p>Fulton County Government Center<br />Assembly Hall<br />141 Pryor Street SW<br />Atlanta, Georgia 30303</p>",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-08-23 13:17:01",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 583,
+    "EventDateTimeLocal": "2026-08-19 10:00:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 4,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   }
+  ]
+ }
+}

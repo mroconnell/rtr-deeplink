@@ -1,0 +1,67 @@
+{
+ "Customer": {
+  "CustomerName": "Largo FL",
+  "CustomerAccessID": "largofl",
+  "CustomerTimezone": "America/New_York",
+  "ServiceGroupID": 1,
+  "CustomerEventAreaMask": 65535,
+  "CustomerOtherAreaMask": 16383
+ },
+ "Archive": {
+  "CustomerArchiveID": 1,
+  "ArchiveTitle": "Main",
+  "ArchiveDescription": "",
+  "DisplayTypeID": 2,
+  "LastModifyDateTimeUTC": "2026-09-10 19:29:15"
+ },
+ "SearchType": "ARCHIVE",
+ "SearchText": "board",
+ "SearchResult": {
+  "Events": [
+   {
+    "CustomerEventID": 342,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-09-24 17:30:00",
+    "EventTitle": "Largo Code Board",
+    "EventDescription": "",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-09-24 19:50:17",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 726,
+    "EventDateTimeLocal": "2026-09-24 13:30:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 0,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   },
+   {
+    "CustomerEventID": 340,
+    "CustomerUUID": "",
+    "EventTypeID": 0,
+    "EventDateTimeUTC": "2026-09-10 22:00:00",
+    "EventTitle": "Largo Planning Board",
+    "EventDescription": "",
+    "EventLocation": "",
+    "EventPublishStatusID": 2,
+    "AgendaStyleMask": 0,
+    "MinutesStyleMask": 0,
+    "IndexPointsStyleMask": 0,
+    "EventExternalID": "",
+    "LastModifyDateTimeUTC": "2026-09-10 23:12:37",
+    "EventMediaClassID": 2,
+    "EventMediaTargetID": 722,
+    "EventDateTimeLocal": "2026-09-10 18:00:00",
+    "IsEventHit": true,
+    "AgendaItemHits": 1,
+    "MinuteHits": 0,
+    "TimelineHits": 0
+   }
+  ]
+ }
+}
