@@ -1,7 +1,7 @@
 import html
 import re
 import xml.etree.ElementTree as ET
-from typing import Iterable, List, Dict, Any, Optional
+from typing import Iterable, List, Dict, Any, Optional, Tuple
 
 from langdetect import DetectorFactory, detect as _detect_language, LangDetectException
 
@@ -910,6 +910,46 @@ _GARBLED_JUNK_RATIO_MAX = 0.06
 # is_likely_garbled docstring for why a single leading prefix isn't enough.
 _GARBLED_SAMPLE_OFFSETS = (0.0, 0.25, 0.5, 0.75)
 _GARBLED_SAMPLE_SLICE_CHARS = 1000
+
+
+# Speaker tags some caption feeds emit on their own ("S1:", "s4:", "Speaker 2:").
+_SPEAKER_TAG_RE = re.compile(r"^(?:[Ss]\d+|[Ss]peaker\s*\d+):?$")
+
+# Real captioned meetings run about 110 to 360 words a minute (265 Cablecast
+# pages measured 2026-10-02, median 136). A feed with a few words an hour is
+# an empty one (label-only captions), not a quiet meeting.
+SPARSE_MIN_SPAN_SECONDS = 600
+SPARSE_MAX_WORDS_PER_MINUTE = 8.0
+
+
+def caption_text_is_sparse(
+    cues: List[Dict[str, Any]],
+    *,
+    min_span_seconds: float = SPARSE_MIN_SPAN_SECONDS,
+    max_words_per_minute: float = SPARSE_MAX_WORDS_PER_MINUTE,
+) -> Tuple[bool, int, float]:
+    """(sparse, words, minutes): do these captions carry almost no words for
+    how long they run?
+
+    Speaker tags are not words. The span is the last cue's start. A feed under
+    `max_words_per_minute` over at least `min_span_seconds` is sparse. A short
+    span is never sparse (a two-minute clip can be mostly silent). Ryan,
+    2026-10-02: label-only Cablecast captions (50 of 265 stored pages) passed as
+    good transcripts because the only gate was "has segments"."""
+    if not cues:
+        return False, 0, 0.0
+    span = max((float(c.get("start") or 0.0) for c in cues), default=0.0)
+    words = 0
+    for c in cues:
+        for token in str(c.get("text") or "").split():
+            if _SPEAKER_TAG_RE.match(token):
+                continue
+            if re.search(r"[A-Za-z0-9]", token):
+                words += 1
+    minutes = span / 60.0
+    if span < min_span_seconds:
+        return False, words, minutes
+    return (words / minutes) < max_words_per_minute, words, minutes
 
 
 def is_likely_garbled(cues: List[Dict[str, Any]], lang: Optional[str] = None) -> bool:
