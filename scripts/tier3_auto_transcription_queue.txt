@@ -1203,3 +1203,14 @@ https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778		us:place:
 https://baycitytx.portal.civicclerk.com/event/1202/media		us:place:4805984
 https://lovelandoh.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2038		us:place:3945108
 http://altuscityok.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2242		us:place:4001700
+https://player.vimeo.com/video/205208966		us:place:4238248
+https://vimeo.com/1225414475/f4353a4457		us:cousub:5513328487
+https://vimeo.com/1226952611/624e278e19		us:place:4831928
+https://vimeo.com/1206005514?fl=pl&fe=sh		us:place:3648890
+https://vimeo.com/1225805009		us:place:3907300
+https://vimeo.com/1182804943/1387309dde		us:place:3625076
+https://vimeo.com/showcase/11871214/embed2?video=1204021565		us:place:5074650
+https://vimeo.com/949562199?share=copy		us:place:5320645
+https://player.vimeo.com/video/1084066560?h=a09d87caf9		us:place:1714351
+https://vimeo.com/1223368476		us:place:3758860
+https://vimeo.com/384766771		us:place:2116372
