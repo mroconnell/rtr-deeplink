@@ -241,7 +241,28 @@ reviews that file and writes pins — how, in
 `daily_status.csv` shows 200–400 captions or feed actions a day, a few
 blocks or none, and no day with zero actions while there was work.
 
+## One bad item never holds the drip (WO-1175)
+
+A lane that raises on the same item twice, or is blocked on it three times,
+pushes that item to the back of its queue: it is skipped for 4 hours, then
+8, 16 and so on up to 48. The other lanes keep their turns in the meantime.
+Each push-back writes one line to `~/.rtr/youtube_drip/alerts.log`, logs an
+`!!! DRIP ALERT` at ERROR level and raises a macOS notification. A failure
+before any item is picked (the Archive down) still pauses the whole drip
+for 5 minutes, as before. The strike counts live in `state.json`
+(`strikes`, `deferred_until`); a success clears an item's strikes.
+
+The drip also puts its `drip.log` handler back if a library removes it. The
+audio lane's import of `transcribe_backlog_locally.py` does exactly that
+(`logging.basicConfig(force=True)`); on 2026-10-03 it left the drip working
+but silent for 11 hours. That event now raises an alert too.
+
+**Start it with its output captured**, not sent to `/dev/null`:
+`... youtube_drip.py --lanes ... > ~/.rtr/youtube_drip/stdout.log 2>&1`.
+
 ## When to tell Ryan
+
+- Any new line in `alerts.log` that you cannot explain.
 
 - A block that lasts more than 24 hours (the log shows repeated
   `BLOCK ... sleeping 240 min` with nothing between).

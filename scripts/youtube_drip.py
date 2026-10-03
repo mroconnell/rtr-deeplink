@@ -135,6 +135,13 @@ from app.platforms.youtube import YOUTUBE_CAPTIONS_DISABLED_MARKER  # noqa: E402
 
 logger = logging.getLogger("youtube_drip")
 
+# WO-1175: the drip's own drip.log handler, kept so tick() can put it back.
+# Found live 2026-10-03: importing scripts/transcribe_backlog_locally.py (the
+# audio lane does, on first use) runs logging.basicConfig(force=True), which
+# silently removed this handler -- the drip kept working for 11+ hours with
+# an empty log and nobody could tell it from a stall.
+_DRIP_FILE_HANDLER: Optional[logging.Handler] = None
+
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 # WO-1016: this script's own three `_parse_queue_line()` call sites now
 # unpack a 3-tuple (url, source_url, gov_id) -- that function is a thin
@@ -180,6 +187,16 @@ SPACING_SECONDS = 180.0
 SPACING_JITTER_SECONDS = 60.0
 BLOCK_SLEEPS_SECONDS = (900, 1800, 3600, 7200, 14400)
 IDLE_SLEEP_SECONDS = 900.0
+
+# WO-1175: one bad item must never hold the whole drip. A lane that raises on
+# (or is blocked by) the same item repeatedly gets that item pushed to the
+# back: skipped for STRIKE_RETRY_BASE_SECONDS * 2^(strikes-threshold), capped,
+# then tried again. The first failure is only logged -- a transient outage
+# (the Archive answering 502) should not penalize a healthy item.
+STRIKE_DEFER_AFTER_ERRORS = 2
+STRIKE_DEFER_AFTER_BLOCKS = 3
+STRIKE_RETRY_BASE_SECONDS = 4 * 3600.0
+STRIKE_RETRY_MAX_SECONDS = 48 * 3600.0
 AUDIO_DOWNLOADS_PER_DAY = 3
 # WO-1168: how long the direct lane trusts its own cached backlog count
 # before re-checking GET /internal/transcription-backlog (a full Archive
@@ -636,6 +653,9 @@ def _empty_state() -> dict:
         "direct_parked": [],
         "direct_backlog_count": 0,
         "direct_backlog_checked_at": 0.0,
+        # WO-1175: per-item failure bookkeeping, keyed "lane|item".
+        "strikes": {},
+        "deferred_until": {},
         "day": "",
         "today": {},
         "blocks_total": 0,
@@ -656,6 +676,30 @@ class State:
 
     def bump(self, key: str, n: int = 1) -> None:
         self.data["today"][key] = self.data["today"].get(key, 0) + n
+
+    def is_deferred(self, key: str) -> bool:
+        return self.data.setdefault("deferred_until", {}).get(key, 0.0) > time.time()
+
+    def clear_strikes(self, key: str) -> None:
+        self.data.setdefault("strikes", {}).pop(key, None)
+        self.data.setdefault("deferred_until", {}).pop(key, None)
+
+    def add_strike(self, key: str, defer_after: int) -> Tuple[int, Optional[float]]:
+        """Counts a failure. Returns (strikes, retry_at or None): retry_at is
+        set once the item has failed `defer_after` times, and doubles per
+        further strike up to STRIKE_RETRY_MAX_SECONDS."""
+        strikes = self.data.setdefault("strikes", {})
+        strikes[key] = strikes.get(key, 0) + 1
+        n = strikes[key]
+        if n < defer_after:
+            return n, None
+        delay = min(
+            STRIKE_RETRY_BASE_SECONDS * (2 ** (n - defer_after)),
+            STRIKE_RETRY_MAX_SECONDS,
+        )
+        retry_at = time.time() + delay
+        self.data.setdefault("deferred_until", {})[key] = retry_at
+        return n, retry_at
 
     def rollover(self, status_csv: Path, today: Optional[str] = None) -> None:
         today = today or date.today().isoformat()
@@ -736,6 +780,8 @@ class Drip:
         self.dead_videos_csv: Optional[Path] = None
         self.consecutive_errors = 0
         self._engine = None
+        self.alerts_path: Optional[Path] = None
+        self.current_item: Optional[str] = None
 
     # -- block bookkeeping
     def _block(
@@ -761,19 +807,90 @@ class Drip:
         )
         return float(sleep)
 
+    # -- WO-1175: loud failures and "push the bad one to the back"
+    def _alert(self, message: str) -> None:
+        """A failure a person should see: ERROR-level banner in the log and
+        stdout, one line appended to alerts.log, and a macOS notification
+        (best effort -- never allowed to raise)."""
+        logger.error("!!! DRIP ALERT: %s", message)
+        if self.alerts_path is not None:
+            try:
+                with self.alerts_path.open("a", encoding="utf-8") as f:
+                    f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {message}\n")
+            except OSError:
+                pass
+        if sys.platform == "darwin" and not self.dry_run:
+            try:
+                import subprocess
+
+                subprocess.run(
+                    [
+                        "osascript",
+                        "-e",
+                        "display notification "
+                        + json.dumps(message[:180])
+                        + ' with title "youtube_drip alert"',
+                    ],
+                    timeout=5,
+                    capture_output=True,
+                )
+            except Exception:
+                pass
+
+    def _item_failed(self, what: str, detail: str, defer_after: int) -> None:
+        """Counts a failure against whatever item the lane was working on.
+        Once it has failed `defer_after` times it is deferred (back of the
+        queue, retried later with growing delay) and an alert is raised."""
+        item = self.current_item
+        if not item:
+            self._alert(f"{what} with no identifiable item: {detail[:200]}")
+            return
+        n, retry_at = self.state.add_strike(item, defer_after)
+        if retry_at is None:
+            logger.error(
+                "item failure %d/%d (%s) %s: %s",
+                n,
+                defer_after,
+                what,
+                item,
+                detail[:200],
+            )
+            return
+        hours = (retry_at - time.time()) / 3600.0
+        self._alert(
+            f"{item} failed {n}x ({what}); pushed to the back, retry in {hours:.0f}h: "
+            f"{detail[:160]}"
+        )
+
+    def _ensure_log_handlers(self) -> None:
+        if _DRIP_FILE_HANDLER is None:
+            return
+        root = logging.getLogger()
+        if _DRIP_FILE_HANDLER not in root.handlers:
+            root.addHandler(_DRIP_FILE_HANDLER)
+            self._alert(
+                "a library removed the drip.log handler (logging.basicConfig force=True "
+                "on import); put it back"
+            )
+
     # -- lanes: each returns (did_touch_youtube, sleep_override or None)
     async def lane_captions(
         self, session: aiohttp.ClientSession
     ) -> Tuple[bool, Optional[float]]:
         from scripts import fetch_youtube_transcripts as fetch
 
-        pages = await fetch._get_wanted(session)
+        pages = [
+            p
+            for p in await fetch._get_wanted(session)
+            if not self.state.is_deferred(f"captions|{p.get('slug')}")
+        ]
         page = pick_caption_page(
             pages, self.state.data["captions_done"], self.state.data["prefer"]
         )
         if page is None:
             return False, None
         slug = page["slug"]
+        self.current_item = f"captions|{slug}"
         try:
             result = await fetch.process_one(session, page, dry_run=self.dry_run)
         except Exception as e:  # a block is raised, not returned, by process_one
@@ -838,13 +955,18 @@ class Drip:
         bookkeeping cost."""
         from scripts import fetch_vimeo_transcripts as vimeo_fetch
 
-        pages = await vimeo_fetch._get_wanted(session)
+        pages = [
+            p
+            for p in await vimeo_fetch._get_wanted(session)
+            if not self.state.is_deferred(f"vimeo|{p.get('slug')}")
+        ]
         page = pick_caption_page(
             pages, self.state.data["vimeo_done"], self.state.data["prefer"]
         )
         if page is None:
             return False, None
         slug = page["slug"]
+        self.current_item = f"vimeo|{slug}"
         try:
             result = await vimeo_fetch.process_one(session, page, dry_run=self.dry_run)
         except Exception as e:
@@ -888,11 +1010,12 @@ class Drip:
         todo = [
             t
             for t in youtube_queue_lines(QUEUE_FILE.read_text().splitlines())
-            if t[1] not in fed
+            if t[1] not in fed and not self.state.is_deferred(f"feed|{t[1]}")
         ]
         if not todo:
             return False, None
         line, url, src = todo[0]
+        self.current_item = f"feed|{url}"
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
         else:
@@ -999,7 +1122,7 @@ class Drip:
             if not line or line.startswith("#"):
                 continue
             url, src, gov_id = feed._parse_queue_line(line)
-            if url in fed or url in parked:
+            if url in fed or url in parked or self.state.is_deferred(f"direct|{url}"):
                 continue
             keep, _ = _classify_queue_url(url)
             if keep:
@@ -1010,6 +1133,7 @@ class Drip:
             return False, None
 
         url, src, gov_id = todo
+        self.current_item = f"direct|{url}"
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
         else:
@@ -1117,7 +1241,17 @@ class Drip:
             return False, None
         if d["audio_blocked_until"] > time.time():
             return False, None
-        page = d["audio_queue"][0]
+        page = next(
+            (
+                p
+                for p in d["audio_queue"]
+                if not self.state.is_deferred(f"audio|{p['slug']}")
+            ),
+            None,
+        )
+        if page is None:
+            return False, None
+        self.current_item = f"audio|{page['slug']}"
         self.state.bump("audio_downloads")
         result = await tbl.process_one(
             session,
@@ -1135,7 +1269,7 @@ class Drip:
             return True, self._block(
                 "audio_blocked_until", "audio_block_level", f"{page['slug']}: {detail}"
             )
-        d["audio_queue"].pop(0)
+        d["audio_queue"].remove(page)
         d["audio_done"][page["slug"]] = status
         d["audio_block_level"] = 0
         self.state.bump("audio_done" if status == "ingested" else "audio_failed")
@@ -1175,11 +1309,13 @@ class Drip:
                 for r in rows
                 if r["channel_url"] not in done
                 and (r.get("gov_id") or "") not in passed_govs
+                and not self.state.is_deferred(f"leads|{r['channel_url']}")
             ),
             None,
         )
         if row is None:
             return False, None
+        self.current_item = f"leads|{row['channel_url']}"
 
         verdict = process_row(row)
 
@@ -1237,6 +1373,7 @@ class Drip:
     async def tick(self, session: aiohttp.ClientSession, status_csv: Path) -> float:
         """One scheduling step. Returns how long to sleep before the next."""
         self.state.rollover(status_csv)
+        self._ensure_log_handlers()
         now = time.time()
         if self.state.data["blocked_until"] > now:
             return self.state.data["blocked_until"] - now
@@ -1265,10 +1402,34 @@ class Drip:
             order.append(self.lane_leads)
         try:
             for lane in order:
-                touched, override = await lane(session)
+                self.current_item = None
+                try:
+                    touched, override = await lane(session)
+                except Exception as e:
+                    # A failure before any item was picked (the Archive down,
+                    # a bad token) is an outage, not a bad item: let safe_tick
+                    # pause the whole drip as before. A failure ON an item must
+                    # not starve the other lanes, nor retry that same item
+                    # first forever (WO-1175).
+                    if not self.current_item:
+                        raise
+                    logger.exception("lane %s raised", lane.__name__)
+                    self._item_failed(
+                        f"{lane.__name__} {type(e).__name__}",
+                        str(e),
+                        STRIKE_DEFER_AFTER_ERRORS,
+                    )
+                    continue
                 if override is not None:
+                    self._item_failed(
+                        f"{lane.__name__} blocked",
+                        "block signature",
+                        STRIKE_DEFER_AFTER_BLOCKS,
+                    )
                     return override
                 if touched:
+                    if self.current_item:
+                        self.state.clear_strikes(self.current_item)
                     return self.spacing + random.uniform(0, SPACING_JITTER_SECONDS)
         finally:
             self.state.save()
@@ -1424,14 +1585,13 @@ async def run(args) -> None:
         sys.exit(
             "another youtube_drip is already running on this machine -- one per address, see the runbook"
         )
+    global _DRIP_FILE_HANDLER
+    _DRIP_FILE_HANDLER = logging.FileHandler(state_dir / "drip.log")
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(state_dir / "drip.log"),
-        ],
+        handlers=[logging.StreamHandler(sys.stdout), _DRIP_FILE_HANDLER],
     )
     state = State(state_dir / "state.json")
     status_csv = state_dir / "daily_status.csv"
@@ -1456,6 +1616,7 @@ async def run(args) -> None:
     )
     drip.fed_pages_csv = state_dir / "fed_pages.csv"
     drip.dead_videos_csv = state_dir / "dead_videos.csv"
+    drip.alerts_path = state_dir / "alerts.log"
     async with aiohttp.ClientSession() as session:
         if args.seed_audio_from_site:
             logger.info(
