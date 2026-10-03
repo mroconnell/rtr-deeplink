@@ -396,6 +396,14 @@ under everything else. This repo extracts and fixes just that part.
   (identity) before writing any ingest wrapper, and see BACKLOG.md's
   "The Archive files a page under whatever `gov_id` a sweep sends" entry.
   `app/platforms/queue_probe.py`'s `has_owner()` cites this rule.
+- **A tier-3 queue line is `url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body`
+  (columns 4-6 optional, WO-1176).** Read it only with
+  `queue_probe.parse_queue_entry()` and write or rewrite it only with
+  `append_queue_line()` / `swap_queue_line_url()`. Never copy queue lines
+  into a bare-URL list: on 2026-10-02/03 a local Whisper batch did that,
+  dropped the `gov_id`, and 70 live pages landed with no government (see
+  `BACKLOG_DONE.md`'s WO-1176 entry). `scripts/transcribe_backlog_locally.py
+  --urls-file` takes whole queue lines for this reason.
 - **We query sites politely — and "politely" means following a host's
   house rules, not avoiding every technical measure they've put up.** A
   realistic `Referer`/User-Agent so a naive hotlink check doesn't
