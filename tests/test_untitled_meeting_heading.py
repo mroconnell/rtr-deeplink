@@ -51,7 +51,10 @@ async def test_untitled_page_with_a_government_reads_government_meeting():
     assert "Untitled meeting" not in html
     assert _h1(html).endswith(" meeting")
     assert "Fresno" in _h1(html)
-    assert re.search(r"<title>[^<]*Fresno[^<]* meeting", html)
+    # The browser tab keeps "Meeting — <government>": the government is
+    # already after the dash, so repeating it before reads as a stutter.
+    title = re.search(r"<title>([^<]*)</title>", html).group(1)
+    assert title.startswith("Meeting — ") and title.count("Fresno") == 1
 
 
 async def test_titled_page_keeps_its_own_title():

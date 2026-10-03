@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ page.title or (page.jurisdiction_display ~ " meeting" if page.jurisdiction else "Meeting") }}{% if page.jurisdiction %} — {{ page.jurisdiction_display }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
+{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction_display }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
 {# data-version-id: read by /shared-static/deep_link.js so a line=seg-N
    deep link is only trusted when it was generated from this exact
    TranscriptVersion -- empty when there's no active_version at all
