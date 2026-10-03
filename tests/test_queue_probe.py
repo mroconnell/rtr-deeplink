@@ -2017,41 +2017,14 @@ async def test_wo1160_civicplus_archive_file_dispatches_to_direct_file(monkeypat
     assert seen["video_url"] == media
 
 
-# --- Ryan 2026-10-02: honor any matching robots.txt Disallow (one rule, both repos) ---
+# --- Ryan 2026-10-03: the tier-3 queue is hand-approved meetings, not crawling,
+# so robots.txt is NOT enforced by the queue probe (Meeting Finder still does) ---
 
 
-@pytest.fixture(autouse=True)
-def _no_live_robots_reads(monkeypatch):
-    """Every probe test runs without a live robots.txt read: allowed, unless a
-    test below says otherwise."""
-    from app.utils import canonical_host, robots_check
-    from app.utils.canonical_host import Recovery
-
-    async def allowed(url):
-        return True, None
-
-    async def no_twin(url, candidates, **kwargs):
-        # canonical-host recovery reads the network; none of these tests may.
-        return Recovery(url, reason="stubbed: no recovery in this test")
-
-    monkeypatch.setattr(robots_check, "check_url", allowed)
-    monkeypatch.setattr(canonical_host, "recover_civicplus", no_twin)
-
-
-def _blocked(pattern):
-    from app.utils.robots_rules import Rule
-
-    async def check(url):
-        return False, Rule(False, pattern)
-
-    return check
-
-
-def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
+def test_probe_uses_the_cablecast_api_for_a_cablecast_entry(monkeypatch):
     import asyncio
 
     from app.platforms import queue_probe as qp
-    from app.utils import robots_check
 
     seen = {}
 
@@ -2062,9 +2035,8 @@ def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
         )
 
     async def must_not_run(*a, **k):
-        raise AssertionError("the media recipe must not run on a disallowed host")
+        raise AssertionError("a Cablecast entry takes its length from the API")
 
-    monkeypatch.setattr(robots_check, "check_url", _blocked("/*.m3u8$"))
     monkeypatch.setattr(qp, "_probe_cablecast_api", fake_api)
     monkeypatch.setattr(qp, "_probe_hls", must_not_run)
     monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
@@ -2081,19 +2053,22 @@ def test_probe_uses_the_cablecast_api_when_media_is_disallowed(monkeypatch):
     assert result.probe_method == "cablecast-api"
 
 
-def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(
-    monkeypatch,
-):
+def test_probe_never_reads_robots_txt(monkeypatch):
+    """The queue probe no longer imports or calls the robots check at all: a
+    path a robots.txt would disallow is probed like any other."""
     import asyncio
 
     from app.platforms import queue_probe as qp
-    from app.utils import robots_check
 
-    async def must_not_run(*a, **k):
-        raise AssertionError("the media recipe must not run on a disallowed host")
+    assert not hasattr(qp, "robots_check")
+    assert not hasattr(qp, "media_disallowed_by_robots")
+    seen = {}
 
-    monkeypatch.setattr(robots_check, "check_url", _blocked("/a/"))
-    monkeypatch.setattr(qp, "_probe_hls", must_not_run)
+    async def fake_hls(url, platform, video_url, source_page_url, start):
+        seen["hls"] = True
+        return qp._finish(url, platform, "hls", 3600.0, None, None, start)
+
+    monkeypatch.setattr(qp, "_probe_hls", fake_hls)
     result = asyncio.run(
         qp.probe_queue_entry(
             "https://example.gov/meeting/1",
@@ -2102,97 +2077,4 @@ def test_probe_rejects_with_a_reason_when_media_is_disallowed_and_no_api(
             platform="granicus",
         )
     )
-    assert result.verdict == "reject-dead"
-    assert "robots.txt disallows" in (result.reason or "")
-    assert "/a/" in (result.reason or "")
-
-
-def test_probe_skips_a_page_path_disallow_too(monkeypatch):
-    """One rule: not only media rules. A CivicPlus /Archive.aspx Disallow blocks the file probe."""
-    import asyncio
-
-    from app.platforms import queue_probe as qp
-    from app.utils import robots_check
-
-    async def must_not_run(*a, **k):
-        raise AssertionError("the file recipe must not run on a disallowed path")
-
-    monkeypatch.setattr(robots_check, "check_url", _blocked("/Archive.aspx"))
-    monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
-    result = asyncio.run(
-        qp.probe_queue_entry(
-            "https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
-            video_url="https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
-            source_page_url="https://oh-preblecounty.civicplus.com/Archive.aspx?ADID=77",
-            platform="civicplus",
-            video_format="mp4",
-        )
-    )
-    assert result.verdict == "reject-dead"
-    assert "/Archive.aspx" in (result.reason or "")
-
-
-async def test_a_disallowed_civicplus_vendor_file_is_probed_on_the_governments_own_domain(
-    monkeypatch,
-):
-    """Ryan, 2026-10-03: the vendor address disallows every crawler; the same file on the
-    government's own domain is probed instead, when the helper finds it there."""
-    from app.platforms import queue_probe as qp
-    from app.utils import canonical_host, robots_check
-    from app.utils.canonical_host import Recovery
-    from app.utils.robots_rules import Rule
-
-    vendor = "https://ga-jackson.civicplus.com/DocumentCenter/View/123/Audio"
-    own = "https://cityofjacksonga.com/DocumentCenter/View/123/Audio"
-
-    async def check(url):
-        if "civicplus.com" in url:
-            return False, Rule(False, "/")
-        return True, None
-
-    async def recover(url, candidates, **kwargs):
-        return Recovery(url, own, "cityofjacksonga.com", "fetched")
-
-    seen = {}
-
-    async def fake_direct(url, platform, video_url, source_page_url, start):
-        seen["video_url"] = video_url
-        return qp._finish(url, platform, "direct-file", 1800.0, None, None, start)
-
-    monkeypatch.setattr(robots_check, "check_url", check)
-    monkeypatch.setattr(canonical_host, "recover_civicplus", recover)
-    monkeypatch.setattr(qp, "_probe_direct_file", fake_direct)
-
-    result = await qp.probe_queue_entry(
-        vendor, video_url=vendor, source_page_url=vendor, platform="civicplus"
-    )
-    assert seen["video_url"] == own
-    assert result.verdict == "accept"
-
-
-async def test_a_disallowed_civicplus_vendor_file_with_no_twin_is_rejected(monkeypatch):
-    from app.platforms import queue_probe as qp
-    from app.utils import canonical_host, robots_check
-    from app.utils.canonical_host import Recovery
-    from app.utils.robots_rules import Rule
-
-    vendor = "https://ga-jackson.civicplus.com/DocumentCenter/View/123/Audio"
-
-    async def check(url):
-        return False, Rule(False, "/")
-
-    async def nothing(url, candidates, **kwargs):
-        return Recovery(url, reason="no candidate domain for this government")
-
-    async def must_not_run(*a, **k):
-        raise AssertionError("the file recipe must not run on a disallowed address")
-
-    monkeypatch.setattr(robots_check, "check_url", check)
-    monkeypatch.setattr(canonical_host, "recover_civicplus", nothing)
-    monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
-
-    result = await qp.probe_queue_entry(
-        vendor, video_url=vendor, source_page_url=vendor, platform="civicplus"
-    )
-    assert result.verdict == "reject-dead"
-    assert "robots.txt disallows" in (result.reason or "")
+    assert seen.get("hls") and result.verdict == "accept"

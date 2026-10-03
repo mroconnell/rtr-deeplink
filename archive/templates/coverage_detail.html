@@ -79,7 +79,7 @@
             <td>{{ row.video_platform }}</td>
             <td>{{ row.outcome_label }}</td>
             <td>{{ row.last_verified.strftime('%Y-%m-%d') }}</td>
-            <td class="coverage-title-col"><a href="/m/{{ row.example.slug }}" title="{{ row.example.title or 'Untitled meeting' }}">{{ row.example.title or "Untitled meeting" }}</a></td>
+            <td class="coverage-title-col"><a href="/m/{{ row.example.slug }}" title="{{ row.example.title or (row.jurisdiction|jurisdiction_display ~ ' meeting' if row.jurisdiction else 'Untitled meeting') }}">{{ row.example.title or (row.jurisdiction|jurisdiction_display ~ " meeting" if row.jurisdiction else "Untitled meeting") }}</a></td>
           </tr>
           {% endfor %}
         </tbody>

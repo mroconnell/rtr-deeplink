@@ -97,8 +97,12 @@ Usage (from the repo root, with the venv active):
     # non-default version nothing points to. See --promote's own --help text.
     python scripts/transcribe_backlog_locally.py --url "https://example.com/meeting" --promote
     # A specific, pre-filtered candidate list (WO-136, 2026-09-09) -- one
-    # URL per line, bypassing the oldest-first backlog queue the same way
-    # --url does, but for many meetings in one run instead of one.
+    # line per meeting, bypassing the oldest-first backlog queue the same
+    # way --url does, but for many meetings in one run instead of one.
+    # WO-1176: pass FULL tier-3 queue lines (url<TAB>source_url<TAB>gov_id
+    # <TAB>title<TAB>date<TAB>meeting_body), not bare URLs, so the
+    # government is kept -- a bare URL on a shared host (drive.google.com,
+    # dropbox.com, ...) is filed as rtr:unknown:<host>.
     python scripts/transcribe_backlog_locally.py --urls-file /tmp/wo136_candidates.txt --cpu-threads 2 --chunk-cooldown-seconds 30
 
 **Thermal pacing, for a real unattended run against a 1000+-meeting queue
@@ -177,6 +181,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    BARE_VIDEO_LINK_PLATFORMS,
+    apply_queue_metadata,
+    parse_queue_entry,
+)
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
@@ -1609,7 +1618,71 @@ async def transcribe_meeting(
         "title": result.title,
         "date": result.date,
         "jurisdiction": result.jurisdiction,
+        "meeting_body": getattr(result, "meeting_body", None),
     }
+
+
+def _page_from_queue_line(line: str) -> dict:
+    """One `--urls-file` line -> the page dict `process_one()` takes (WO-1176).
+    A full tier-3 queue line (`url<TAB>source_url<TAB>gov_id<TAB>title<TAB>
+    date<TAB>meeting_body`, see `queue_probe.parse_queue_entry()`) keeps the
+    government and metadata a bare file link's own resolver cannot supply; a
+    bare-URL line still works, it just carries none of it. The
+    `source_url` column is applied the way the feed applies it: only when
+    the URL is itself a bare video link (`BARE_VIDEO_LINK_PLATFORMS`)."""
+    entry = parse_queue_entry(line)
+    normalized = normalize_url(entry.url)
+    platform = detect_platform(entry.url)
+    source_url = (
+        normalize_url(entry.source_url)
+        if entry.source_url and platform in BARE_VIDEO_LINK_PLATFORMS
+        else None
+    )
+    return {
+        "slug": normalized,
+        "platform": platform,
+        "external_id": None,
+        "source_url_normalized": normalized,
+        "video_url": None,
+        "video_format": None,
+        "source_url_override": source_url,
+        "gov_id": entry.gov_id,
+        "queue_title": entry.title,
+        "queue_date": entry.date,
+        "queue_meeting_body": entry.meeting_body,
+    }
+
+
+def _ingest_payload_fields(page: dict, result: dict) -> dict:
+    """The ingest payload for a finished transcription (WO-1176): the
+    resolver's own title/date/meeting_body win when non-blank, the queue
+    line's fill a blank one, a still-untitled page gets a title built from
+    the meeting body, and the queue line's `gov_id` and source-URL override
+    ride along (so a page on a shared host such as drive.google.com is not
+    filed as rtr:unknown:<host>)."""
+    payload = {
+        "platform": result["platform"],
+        "source_url": page.get("source_url_override") or page["source_url_normalized"],
+        "external_id": result.get("external_id") or page.get("external_id"),
+        "title": result.get("title"),
+        "date": result.get("date"),
+        "jurisdiction": result.get("jurisdiction"),
+        "meeting_body": result.get("meeting_body"),
+        "video_url": result["video_url"],
+        "video_format": result["video_format"],
+        "segments": result["segments"],
+        "transcript_language": result["language"],
+        "transcript_warnings": result["transcript_warnings"],
+    }
+    if page.get("gov_id"):
+        payload["gov_id"] = page["gov_id"]
+    apply_queue_metadata(
+        payload,
+        title=page.get("queue_title"),
+        date=page.get("queue_date"),
+        meeting_body=page.get("queue_meeting_body"),
+    )
+    return payload
 
 
 def _resolve_chunk_seconds(
@@ -1740,19 +1813,7 @@ async def process_one(
             f"(language={result['language']}){hallucinated_note}",
         }
 
-    payload = {
-        "platform": result["platform"],
-        "source_url": page["source_url_normalized"],
-        "external_id": result.get("external_id") or page.get("external_id"),
-        "title": result.get("title"),
-        "date": result.get("date"),
-        "jurisdiction": result.get("jurisdiction"),
-        "video_url": result["video_url"],
-        "video_format": result["video_format"],
-        "segments": result["segments"],
-        "transcript_language": result["language"],
-        "transcript_warnings": result["transcript_warnings"],
-    }
+    payload = _ingest_payload_fields(page, result)
     # Built here, before the ingest call, rather than inside _ingest() --
     # so that on a failure below, the exact dict handed to
     # _save_local_backup() is already the complete POST body (WO-82,
@@ -1835,7 +1896,10 @@ async def main() -> None:
     parser.add_argument(
         "--urls-file",
         default=None,
-        help="Transcribe every URL in this file (one per line; blank lines and lines starting "
+        help="Transcribe every meeting in this file (one per line -- pass FULL tier-3 queue lines, "
+        "url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body, not bare URLs, so the "
+        "government is kept and a shared host such as drive.google.com is not filed as "
+        "rtr:unknown:<host>; a bare URL still works; blank lines and lines starting "
         "with '#' are skipped), bypassing the oldest-first backlog queue the same way --url "
         "does -- for a specific, pre-filtered candidate list (e.g. WO-136's 'YouTube pages with "
         "no transcript and no captions available' list) rather than either one URL or the whole "
@@ -2117,17 +2181,10 @@ async def main() -> None:
                     "%s has no URLs to process -- nothing to do.", args.urls_file
                 )
                 return
-            pages = [
-                {
-                    "slug": normalize_url(u),
-                    "platform": detect_platform(u),
-                    "external_id": None,
-                    "source_url_normalized": normalize_url(u),
-                    "video_url": None,
-                    "video_format": None,
-                }
-                for u in urls
-            ]
+            # WO-1176: each line is parsed as a full tier-3 queue line, so
+            # gov_id/title/date/meeting_body (and the source_url override)
+            # reach the ingest payload; a bare-URL line still works.
+            pages = [_page_from_queue_line(u) for u in urls]
         else:
             # Retries transient failures internally (see _request_json());
             # if it still fails after those retries, this is a real outage

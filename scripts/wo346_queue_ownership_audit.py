@@ -168,8 +168,11 @@ UNSAFE_OUTCOME_MARKERS = (
 
 
 def parse_queue_line(line: str) -> tuple[str, Optional[str]]:
-    url, _, source_url = line.partition("\t")
-    return url.strip(), (source_url.strip() or None)
+    # WO-1176: a queue line can carry up to six tab columns; only the first
+    # two matter to this audit (the old partition glued the rest on).
+    parts = line.split("\t")
+    source_url = parts[1] if len(parts) > 1 else ""
+    return parts[0].strip(), (source_url.strip() or None)
 
 
 def parse_deferred_line(line: str) -> dict:

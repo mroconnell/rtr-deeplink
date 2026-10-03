@@ -18,7 +18,7 @@
           <div class="saved-item-row" data-saved-item-id="{{ m.id }}">
             <button type="button" class="cassette-btn-outline unsave-btn unsave-meeting-btn" data-slug="{{ m.slug }}">Unsave</button>
             <div class="saved-item-main">
-              <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+              <a href="/m/{{ m.slug }}">{{ m.title or (m.jurisdiction_display ~ " meeting" if m.jurisdiction else "Untitled meeting") }}</a>
               <span class="calendar-candidate-date">
                 {%- if m.meeting_body %}{{ m.meeting_body }}{% if m.jurisdiction %} &middot; {% endif %}{% endif -%}
                 {%- if m.jurisdiction %}{{ m.jurisdiction_display }}{% endif -%}

@@ -96,7 +96,7 @@
       {%- endif %}
       {%- else %}
       <p class="context-mentions-meta">
-        {{- entry.title or "Untitled meeting" -}}
+        {{- entry.title or (entry.jurisdiction_display ~ " meeting" if entry.jurisdiction_display else "Untitled meeting") -}}
         {%- if show_jurisdiction and entry.hub_slug %} &middot; <a href="/j/{{ entry.hub_slug }}">{{ entry.jurisdiction_display }}</a>{% endif -%}
         {%- if entry.date_html %} &middot; {{ entry.date_html|safe }}{% endif -%}
       </p>

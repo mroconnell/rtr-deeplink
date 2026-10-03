@@ -64,13 +64,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
 import yt_dlp
 
-from ..utils import canonical_host, robots_check
 from ..utils.gov_registry.registry import match_shape_problem
 from ..utils.gov_registry.resolver import (
     _matched_multi_gov_pin_row,
@@ -1050,28 +1049,17 @@ async def _probe_direct_file(
 # --- Entry point ---------------------------------------------------------
 
 
-# --- robots.txt guard (Ryan, 2026-10-02) ------------------------------------
+# --- Cablecast length from the station's own API ----------------------------
 #
-# Honor any matching Disallow, in both repos, as one rule. The matcher and the
-# cached read live in `app/utils/robots_rules.py` and `app/utils/robots_check.py`
-# (same rules as rtr-findmeeting's). The HLS and direct-file recipes below read
-# media files, so they must not run when the host's robots.txt disallows the
-# media address (Cablecast stations disallow `/*.m3u8$`, `/*.ts$`, `/*.mp4$`,
-# `/*.vtt$`). Where the platform publishes the length on an allowed path, use
-# that: a Cablecast station's own API carries `totalRunTime` (seconds) on the
-# show record. Where it publishes none, the probe says so and does not read the
-# media. This guard always enforces (the staged log-only mode is for the
-# adapters, in meeting_finder/pacing.py). Survey 2026-10-02: Granicus, Swagit,
-# CivicClerk, PrimeGov and ChampDS hosts disallow no media.
+# Ryan, 2026-10-03: the tier-3 queue is a list of specific, hand-approved
+# meetings, not crawling, so robots.txt does not apply to this probe (it was
+# briefly enforced here, 2026-10-02, PR #1692/#1693; Meeting Finder IS
+# crawling and still honors it, see meeting_finder/pacing.py). What stays:
+# a Cablecast station's own API carries `totalRunTime` (seconds) on the show
+# record, so a Cablecast entry takes its length from there and reads no
+# media file at all (cheaper, and every station tested publishes it).
 
 _CABLECAST_SHOW_ID_RE = re.compile(r"/(?:show|vod)/(\d+)")
-
-
-async def media_disallowed_by_robots(media_url: str) -> tuple:
-    """(True, the matching Disallow pattern) when the host's robots.txt disallows
-    `media_url` for us, else (False, ""). An unreadable robots.txt is not a block."""
-    allowed, rule = await robots_check.check_url(media_url)
-    return (not allowed), (rule.pattern if rule else "")
 
 
 async def _probe_cablecast_api(
@@ -1283,33 +1271,13 @@ async def probe_queue_entry(
     ):
         return await _probe_suiteone(url, video_url, source_page_url, start)
 
-    # Ryan, 2026-10-02: never read media files from a host whose robots.txt
-    # disallows them. Cablecast publishes the length in its own API; any
-    # other such host has no length source, so the probe says so.
-    blocked, pattern = await media_disallowed_by_robots(video_url)
-    if blocked and canonical_host.is_civicplus_vendor_url(video_url):
-        # A CivicPlus vendor address is disallowed; the government's own domain serves the same
-        # site (canonical_host.py). Probe that address when the same meeting is found there.
-        found = await canonical_host.recover_civicplus(
-            video_url, canonical_host.authorities_for_tenant(video_url)
-        )
-        if found.recovered:
-            video_url = found.recovered_url
-            blocked, pattern = await media_disallowed_by_robots(video_url)
-    if blocked:
-        if ".cablecast.tv" in urlparse(video_url).netloc.lower() or (
-            resolved_platform == "cablecast"
-        ):
-            return await _probe_cablecast_api(
-                url, resolved_platform, video_url, source_page_url, start
-            )
-        return _dead(
-            url,
-            resolved_platform,
-            "robots",
-            start,
-            f"robots.txt disallows this media path ({pattern}) and the platform "
-            f"publishes no length we can read: {video_url}",
+    # Cablecast publishes the length in its own API (see the section comment
+    # above), so no media file is read for it.
+    if ".cablecast.tv" in urlparse(video_url).netloc.lower() or (
+        resolved_platform == "cablecast"
+    ):
+        return await _probe_cablecast_api(
+            url, resolved_platform, video_url, source_page_url, start
         )
 
     media_path = urlparse(video_url).path.lower()
@@ -1541,7 +1509,10 @@ def _first_field_urls(path: Path) -> set[str]:
 # own `url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>
 # title` layout -- so a line moved between the two files (as
 # `wo356_item4_move_long.py` already does by hand) keeps its first three
-# columns meaning the same thing in both places. Why gov_id belongs on
+# columns meaning the same thing in both places (WO-1176 added queue columns
+# 4-6: title, date, meeting body -- see `parse_queue_entry()`; the deferred
+# file uses 4-6 for jurisdiction/duration/title, so only the first three
+# columns line up between the two files now). Why gov_id belongs on
 # the QUEUE LINE at all, not just derived at feed time from
 # `has_owner()`'s `tenant_overrides.csv` pin: a research sweep often
 # already knows the government (it found this meeting BECAUSE it was
@@ -1561,24 +1532,160 @@ def _first_field_urls(path: Path) -> set[str]:
 # three columns and ignores the rest, so this is also safe to call on a
 # deferred-file line, though `append_deferred_line()`'s own writer stays
 # the source of truth for that file's full shape.
+# WO-1073: the platforms a queue line's second (source_url override)
+# column was designed for -- a QUEUED url that is itself a bare video link
+# with no meeting-page structure of its own, found via a different real
+# page. Applied to a real meeting-page platform it would discard the one
+# URL that platform's own adapter can re-resolve. Shared (WO-1176) by the
+# feed and the local Whisper script.
+BARE_VIDEO_LINK_PLATFORMS = frozenset({"youtube", "vimeo", "direct_file"})
+
+
+class QueueLine(NamedTuple):
+    """One parsed tier-3 queue line (WO-1176 added the last three fields).
+    A blank or missing column is `None`, never `""`."""
+
+    url: str
+    source_url: Optional[str] = None
+    gov_id: Optional[str] = None
+    title: Optional[str] = None
+    date: Optional[str] = None  # always YYYY-MM-DD when present
+    meeting_body: Optional[str] = None
+
+
+_QUEUE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def clean_queue_field(value: Optional[str]) -> str:
+    """A value fit to write into one tab-separated column: tabs and
+    newlines become single spaces, ends trimmed."""
+    return re.sub(r"\s+", " ", (value or "").replace("\t", " ")).strip()
+
+
+def valid_queue_date(value: Optional[str]) -> Optional[str]:
+    """`value` when it is a real YYYY-MM-DD calendar date, else None."""
+    text = (value or "").strip()
+    if not _QUEUE_DATE_RE.match(text):
+        return None
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return text
+
+
+def parse_queue_entry(line: str) -> QueueLine:
+    """The one parser for a tier-3 queue line (WO-1176; WO-1016 added the
+    3rd column):
+
+        url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body
+
+    Only `url` is required; trailing empty columns may be omitted, so a
+    bare URL, a 2-column and a 3-column line parse exactly as before.
+    `date` must be YYYY-MM-DD; an unparseable one is treated as blank (a
+    warning is logged, the line is not failed). Does not strip a `#`
+    comment or skip a blank line -- every call site filters those first.
+    Note `tier3_long_meetings_deferred.txt` uses columns 4-6 for
+    jurisdiction/duration/title instead (see `append_deferred_line()`);
+    read that file with its own parser, not this one."""
+    parts = [p.strip() for p in line.split("\t")]
+    parts += [""] * (6 - len(parts))
+    url, source_url, gov_id, title, raw_date, body = parts[:6]
+    date = valid_queue_date(raw_date)
+    if raw_date and not date:
+        logger.warning(
+            "queue line has an unparseable date %r; treating as blank", raw_date
+        )
+    return QueueLine(
+        url,
+        source_url or None,
+        gov_id or None,
+        title or None,
+        date,
+        body or None,
+    )
+
+
 def parse_queue_line(line: str) -> tuple[str, Optional[str], Optional[str]]:
-    """(url, source_url, gov_id) -- see this section's own module comment
-    above for the queue line format this parses. Every existing reader
-    used to do its own `line.partition("\\t")` (only 2 fields, unsafe:
-    a 3rd tab-separated field glues onto `source_url` wholesale) or
-    `line.split("\\t")` (already tolerant, but reimplemented per file) --
-    this is the one place that shape lives now (WO-1016). `source_url`
-    and `gov_id` come back as `None`, never `""`, when their column is
-    absent or blank, matching every existing caller's own "empty means
-    None" convention (e.g. `_parse_queue_line()`'s pre-WO-1016 behavior).
-    Does not strip a leading `#` comment or skip a blank line -- every
-    call site already filters those out before calling this, same as
-    before."""
-    parts = line.split("\t")
-    url = parts[0].strip()
-    source_url = parts[1].strip() if len(parts) > 1 else ""
-    gov_id = parts[2].strip() if len(parts) > 2 else ""
-    return url, (source_url or None), (gov_id or None)
+    """(url, source_url, gov_id) -- the first three columns of
+    `parse_queue_entry()`, for callers that only need those (WO-1016;
+    kept as a 3-tuple so every existing unpack keeps working). `source_url`
+    and `gov_id` come back as `None`, never `""`, when absent or blank."""
+    entry = parse_queue_entry(line)
+    return entry.url, entry.source_url, entry.gov_id
+
+
+def format_queue_line(entry: QueueLine) -> str:
+    """The inverse of `parse_queue_entry()` (WO-1176): tab-joined columns,
+    trailing empty ones omitted. Used when a tool rewrites an existing
+    line and must keep every column it is not changing."""
+    cols = [
+        entry.url,
+        clean_queue_field(entry.source_url),
+        clean_queue_field(entry.gov_id),
+        clean_queue_field(entry.title),
+        valid_queue_date(entry.date) or "",
+        clean_queue_field(entry.meeting_body),
+    ]
+    while len(cols) > 1 and not cols[-1]:
+        cols.pop()
+    return "\t".join(cols)
+
+
+def swap_queue_line_url(line: str, new_url: str) -> str:
+    """`line` with its video URL replaced by `new_url` (WO-1176). Keeps
+    source_url, gov_id and meeting_body (the government and body do not
+    change when a shorter meeting from the same government is swapped in).
+    Drops title and date when the URL really changes, since they describe
+    the old video; keeps them when the URL is unchanged."""
+    entry = parse_queue_entry(line)
+    if new_url == entry.url:
+        return format_queue_line(entry)
+    return format_queue_line(entry._replace(url=new_url, title=None, date=None))
+
+
+_TITLE_ENDINGS = ("meeting", "meetings", "session", "hearing")
+
+
+def built_title(
+    title: Optional[str], resolver_title: Optional[str], meeting_body: Optional[str]
+) -> Optional[str]:
+    """Title for an ingest payload (WO-1176). The resolver's own title wins
+    when non-blank, then the queue line's `title`. When still untitled but
+    a meeting body is known, the title is the body, with " meeting" added
+    unless it already ends in meeting/meetings/session/hearing (Ryan:
+    building one is fine when it is untitled). No body either: None, and
+    the page template shows "<government> meeting" instead."""
+    for candidate in (resolver_title, title):
+        if candidate and candidate.strip():
+            return candidate.strip()
+    body = (meeting_body or "").strip()
+    if not body:
+        return None
+    if body.lower().endswith(_TITLE_ENDINGS):
+        return body
+    return f"{body} meeting"
+
+
+def apply_queue_metadata(
+    payload: dict,
+    *,
+    title: Optional[str] = None,
+    date: Optional[str] = None,
+    meeting_body: Optional[str] = None,
+) -> dict:
+    """Fill an ingest payload's blank title/date/meeting_body from a queue
+    line (WO-1176). The resolver's own non-blank value always wins; the
+    queue line only fills a blank. A still-blank title is then built from
+    the meeting body (`built_title()`). Mutates and returns `payload`."""
+    if not (payload.get("date") or "").strip() and date:
+        payload["date"] = date
+    if not (payload.get("meeting_body") or "").strip() and meeting_body:
+        payload["meeting_body"] = meeting_body
+    built = built_title(title, payload.get("title"), payload.get("meeting_body"))
+    if built:
+        payload["title"] = built
+    return payload
 
 
 # WO-1016: `append_queue_line()`/`finish_candidate()` below can write a
@@ -1734,27 +1841,44 @@ def append_queue_line(
     source_url: Optional[str] = None,
     *,
     gov_id: str = "",
+    title: str = "",
+    date: str = "",
+    meeting_body: str = "",
     queue_path: Path = TIER3_QUEUE_FILE,
 ) -> bool:
-    """Appends `meeting_url[\\tsource_url[\\tgov_id]]` to the tier-3 queue
-    file -- the exact 1/2-field line shape every wo1XX_finish_tier3*.py
-    script already writes (`url<TAB>source_url` when the source page
-    differs from the video URL itself, a bare `url` otherwise), plus the
-    optional 3rd `gov_id` field this function CAN write once
-    `EMIT_GOV_ID_IN_QUEUE_LINES` is flipped True (see that constant's own
-    comment -- WO-1016. Left off in this PR: a `gov_id` argument is
-    accepted and threaded through unconditionally so a caller doesn't
-    need to know about the flag, but it is only actually written to disk
-    once the flag says every live reader is ready). Dedupe-checked
-    against the file's current contents first, by `canonical_video_key()`
-    (WO-937) so a same-video duplicate under a differently-formatted URL
-    is caught too, not just an exact string match -- same rule
-    `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`
-    enforces. Returns True only when a new line was actually written --
-    never rewrites or reorders an existing line, append-only throughout."""
+    """Appends `meeting_url[\\tsource_url[\\tgov_id[\\ttitle\\tdate\\tmeeting_body]]]`
+    to the tier-3 queue file (format: `parse_queue_entry()`). A bare `url`
+    when nothing else is known; `url<TAB>source_url` when the source page
+    differs from the video URL; the 3rd `gov_id` field only once
+    `EMIT_GOV_ID_IN_QUEUE_LINES` says every live reader is ready (WO-1016);
+    and, as of WO-1176, optional `title`, `date` (YYYY-MM-DD; an invalid
+    one is dropped) and `meeting_body` columns for a meeting whose own
+    link (a bare file) carries none -- tabs/newlines in them become
+    spaces and trailing empty columns are omitted. Dedupe-checked against
+    the file's current contents first, by `canonical_video_key()` (WO-937)
+    so a same-video duplicate under a differently-formatted URL is caught
+    too -- same rule `wo134_confirmed_hits_ingest.py`'s
+    `_existing_tier3_queue_urls()` enforces. Returns True only when a new
+    line was actually written -- never rewrites or reorders an existing
+    line, append-only throughout."""
     if _dedupe_key(meeting_url) in _existing_keys(queue_path):
         return False
-    if gov_id and EMIT_GOV_ID_IN_QUEUE_LINES:
+    title = clean_queue_field(title)
+    body = clean_queue_field(meeting_body)
+    date = valid_queue_date(date) or ""
+    if title or date or body:
+        cols = [
+            meeting_url,
+            clean_queue_field(source_url),
+            clean_queue_field(gov_id) if EMIT_GOV_ID_IN_QUEUE_LINES else "",
+            title,
+            date,
+            body,
+        ]
+        while len(cols) > 1 and not cols[-1]:
+            cols.pop()
+        line = "\t".join(cols)
+    elif gov_id and EMIT_GOV_ID_IN_QUEUE_LINES:
         line = f"{meeting_url}\t{source_url or ''}\t{gov_id}"
     elif source_url and source_url != meeting_url:
         line = f"{meeting_url}\t{source_url}"

@@ -98,7 +98,10 @@ from app.platforms.base import (  # noqa: E402
     get_finder,
 )
 from app.platforms.media_probe import binary_versions, probe_duration  # noqa: E402
-from app.platforms.queue_probe import parse_queue_line  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    parse_queue_line,
+    swap_queue_line_url,
+)
 
 load_dotenv()
 
@@ -1786,7 +1789,10 @@ def cmd_apply(args) -> None:
                 and sub not in used
             ):
                 used.add(sub)
-                out_lines.append(f"{sub}\t{src}" if src else sub)
+                # WO-1176: keep the line's gov_id and meeting_body (the old
+                # `sub\tsrc` rewrite dropped gov_id); title/date describe the
+                # old video, so they go.
+                out_lines.append(swap_queue_line_url(stripped, sub))
                 swapped.append(
                     (url, sub, secs, float(search["substitute_duration_seconds"]))
                 )

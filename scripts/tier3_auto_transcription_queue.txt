@@ -1214,3 +1214,13 @@ https://vimeo.com/949562199?share=copy		us:place:5320645
 https://player.vimeo.com/video/1084066560?h=a09d87caf9		us:place:1714351
 https://vimeo.com/1223368476		us:place:3758860
 https://vimeo.com/384766771		us:place:2116372
+https://drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB&export=download&confirm=t	https://drive.google.com/file/d/1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB/view?usp=drive_link	us:place:2904248
+https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065
+https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
+https://pinawa.municipalwebsites.ca/UploadFiles/Meetings/Special_Meeting_ff94e251-4bb5-48b0-8004-2f8c00e0988f.mp3		ca:csd:4601051
+https://www.dropbox.com/scl/fi/vn0nl3sh20qa9rkiwku50/2025-05-19-City-Council.mp4?rlkey=igmbxbkex2mcqufuvtoowefza&st=vzjajper&dl=0		us:place:4123500
+https://www.dropbox.com/scl/fi/prd0to1fe7nq8joms0z8p/08-04-26-CC.mp3?rlkey=df5g7jxkoxyi3x3joxjenhclh&dl=0		us:place:4137000
+https://drive.google.com/file/d/1xChnnEf10drYwHHCHUJ15bJLNoYRRoB0/preview		ca:csd:2498040
+https://drive.google.com/file/d/16NTyzSwCva2k1-3d9iwJfw9ijV-QVCKj/view?usp=share_link		us:place:5642005
+https://drive.google.com/file/d/1vWbfAJ-ffQBVV_Iy5sVhACM9GJHPwtPt/view?usp=sharing		us:cousub:3602116045
+https://drive.google.com/file/d/1E_UL8fAg4XCCDhWJagb1LqaHDEJSY623/view?usp=sharing		us:place:3924234
