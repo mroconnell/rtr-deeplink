@@ -14,18 +14,6 @@ https://vimeo.com/946425462/b95b8652b3		us:place:2283405
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://www.chelseavt.org/wp/wp-content/uploads/2026/09/BOA-1-260922_0433.mp3		us:cousub:5001713525
-https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
-https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
-https://mcdn.podbean.com/mf/web/dar24wknnj375gmx/GMT20260922-150435_Recording_640x360.mp4		us:county:08107
-https://simmesportla.com/wp-content/uploads/2023/11/novembertownmeeting11_13_23_01.mp3		us:place:2270525
-https://cloud.castus.tv/vod/taunton/video/6ab5cb2394fdb60002544713?page=HOME		us:place:2569170
-https://pinawa.municipalwebsites.ca/UploadFiles/Meetings/Special_Meeting_ff94e251-4bb5-48b0-8004-2f8c00e0988f.mp3		ca:csd:4601051
-https://www.roundupmontana.net/uploads/6/9/4/0/69402541/june_16_2026.mp3		us:place:3064525
-https://www.dropbox.com/scl/fi/vn0nl3sh20qa9rkiwku50/2025-05-19-City-Council.mp4?rlkey=igmbxbkex2mcqufuvtoowefza&st=vzjajper&dl=0		us:place:4123500
-https://pub-king.escribemeetings.com/Meeting.aspx?Id=ad3c4f10-532c-4181-84d7-0ff71200f9f8		ca:csd:3519049
-https://www.dropbox.com/scl/fi/prd0to1fe7nq8joms0z8p/08-04-26-CC.mp3?rlkey=df5g7jxkoxyi3x3joxjenhclh&dl=0		us:place:4137000
-https://drive.google.com/file/d/1xChnnEf10drYwHHCHUJ15bJLNoYRRoB0/preview		ca:csd:2498040
 https://windberboro.com/wp-content/uploads/2020/12/December-8-2020-meeting-minutes.mp3		us:place:4285632
 https://rmofrosthern.ca/audio/2026AugMeeting.mp3		ca:csd:4715031
 https://www.utah.gov/pmn/files/1465887.MP3		us:place:4922875
@@ -1151,3 +1139,4 @@ https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
 https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
+https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
