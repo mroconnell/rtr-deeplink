@@ -34,8 +34,12 @@ CivicPlus (1,297 government-owned hosts seen carrying CivicPlus paths) and barel
 from __future__ import annotations
 
 import asyncio
+import csv
 import re
+import time
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 from typing import Awaitable, Callable, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -81,12 +85,46 @@ class Recovery:
         return self.recovered_url is not None
 
 
+_TOKEN_ANY_RE = re.compile(r"_\d{8}-\d+")
+_LISTING_TTL_S = 3600.0
+_LISTING_MAX = 2000
+
+
+@dataclass
+class _Listing:
+    """What one authority's /AgendaCenter page told us: not the page, only its meeting tokens
+    and whether it has CivicPlus's agenda-list structure. Kept for an hour, so a long-running
+    server neither holds whole pages in memory nor misses a newly posted meeting forever."""
+
+    at: float
+    is_civicplus: bool
+    tokens: frozenset
+
+
 @dataclass
 class _Cache:
-    # authority -> the text of its /AgendaCenter page ("" when it had none).
-    listings: Dict[str, str] = field(default_factory=dict)
+    listings: Dict[str, _Listing] = field(default_factory=dict)
     # tenant host -> the authority that proved to be the same site.
     authority_for: Dict[str, str] = field(default_factory=dict)
+
+    def listing(self, authority: str) -> Optional[_Listing]:
+        got = self.listings.get(authority)
+        if got is None or time.monotonic() - got.at > _LISTING_TTL_S:
+            self.listings.pop(authority, None)
+            return None
+        return got
+
+    def put(self, authority: str, text: str) -> _Listing:
+        if len(self.listings) >= _LISTING_MAX:
+            oldest = min(self.listings, key=lambda a: self.listings[a].at)
+            self.listings.pop(oldest, None)
+        entry = _Listing(
+            time.monotonic(),
+            bool(_STRUCTURE_RE.search(text)),
+            frozenset(_TOKEN_ANY_RE.findall(text)),
+        )
+        self.listings[authority] = entry
+        return entry
 
 
 _CACHE = _Cache()
@@ -95,6 +133,34 @@ _CACHE = _Cache()
 def clear_cache() -> None:
     _CACHE.listings.clear()
     _CACHE.authority_for.clear()
+
+
+_AUTHORITIES_CSV = (
+    Path(__file__).resolve().parent / "jurisdiction_data" / "civicplus_authorities.csv"
+)
+
+
+@lru_cache(maxsize=1)
+def _authority_table() -> Dict[str, List[str]]:
+    """tenant host -> the government's own domains, from `civicplus_authorities.csv` (built from
+    the research files by rtr-business `research/build_civicplus_authorities.py`)."""
+    table: Dict[str, List[str]] = {}
+    try:
+        with _AUTHORITIES_CSV.open(newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                table[row["tenant_host"].strip().lower()] = [
+                    d for d in row["own_domains"].split(";") if d
+                ]
+    except FileNotFoundError:
+        pass
+    return table
+
+
+def authorities_for_tenant(host_or_url: str) -> List[str]:
+    """The own domains on file for a CivicPlus vendor address (empty when none). Accepts a host
+    or a full address."""
+    h = (urlparse(host_or_url).hostname or host_or_url or "").lower()
+    return list(_authority_table().get(h, []))
 
 
 def is_civicplus_vendor_url(url: str) -> bool:
@@ -189,7 +255,8 @@ async def recover_civicplus(
             skipped.append((auth, f"robots.txt disallows {tail} ({pattern})"))
             continue
 
-        if auth not in cache.listings:
+        listing = cache.listing(auth)
+        if listing is None:
             listing_url = f"https://{auth}/AgendaCenter"
             ok, _ = await robots(listing_url)
             text = ""
@@ -199,9 +266,8 @@ async def recover_civicplus(
                 got = await fetch(listing_url)
                 if got is not None and got.status == 200:
                     text = got.text
-            cache.listings[auth] = text
-        listing = cache.listings[auth]
-        is_civicplus = bool(_STRUCTURE_RE.search(listing))
+            listing = cache.put(auth, text)
+        is_civicplus = listing.is_civicplus
 
         if not is_civicplus:
             skipped.append((auth, "no CivicPlus AgendaCenter page found there"))
@@ -209,7 +275,7 @@ async def recover_civicplus(
         if is_listing:
             cache.authority_for[tenant] = auth
             return Recovery(url, rebuilt, auth, "structure", tuple(skipped))
-        if token and token in listing:
+        if token and token in listing.tokens:
             cache.authority_for[tenant] = auth
             return Recovery(url, rebuilt, auth, "listed", tuple(skipped))
 

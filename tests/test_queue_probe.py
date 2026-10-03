@@ -2024,12 +2024,18 @@ async def test_wo1160_civicplus_archive_file_dispatches_to_direct_file(monkeypat
 def _no_live_robots_reads(monkeypatch):
     """Every probe test runs without a live robots.txt read: allowed, unless a
     test below says otherwise."""
-    from app.utils import robots_check
+    from app.utils import canonical_host, robots_check
+    from app.utils.canonical_host import Recovery
 
     async def allowed(url):
         return True, None
 
+    async def no_twin(url, candidates, **kwargs):
+        # canonical-host recovery reads the network; none of these tests may.
+        return Recovery(url, reason="stubbed: no recovery in this test")
+
     monkeypatch.setattr(robots_check, "check_url", allowed)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", no_twin)
 
 
 def _blocked(pattern):
@@ -2124,3 +2130,69 @@ def test_probe_skips_a_page_path_disallow_too(monkeypatch):
     )
     assert result.verdict == "reject-dead"
     assert "/Archive.aspx" in (result.reason or "")
+
+
+async def test_a_disallowed_civicplus_vendor_file_is_probed_on_the_governments_own_domain(
+    monkeypatch,
+):
+    """Ryan, 2026-10-03: the vendor address disallows every crawler; the same file on the
+    government's own domain is probed instead, when the helper finds it there."""
+    from app.platforms import queue_probe as qp
+    from app.utils import canonical_host, robots_check
+    from app.utils.canonical_host import Recovery
+    from app.utils.robots_rules import Rule
+
+    vendor = "https://ga-jackson.civicplus.com/DocumentCenter/View/123/Audio"
+    own = "https://cityofjacksonga.com/DocumentCenter/View/123/Audio"
+
+    async def check(url):
+        if "civicplus.com" in url:
+            return False, Rule(False, "/")
+        return True, None
+
+    async def recover(url, candidates, **kwargs):
+        return Recovery(url, own, "cityofjacksonga.com", "fetched")
+
+    seen = {}
+
+    async def fake_direct(url, platform, video_url, source_page_url, start):
+        seen["video_url"] = video_url
+        return qp._finish(url, platform, "direct-file", 1800.0, None, None, start)
+
+    monkeypatch.setattr(robots_check, "check_url", check)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", recover)
+    monkeypatch.setattr(qp, "_probe_direct_file", fake_direct)
+
+    result = await qp.probe_queue_entry(
+        vendor, video_url=vendor, source_page_url=vendor, platform="civicplus"
+    )
+    assert seen["video_url"] == own
+    assert result.verdict == "accept"
+
+
+async def test_a_disallowed_civicplus_vendor_file_with_no_twin_is_rejected(monkeypatch):
+    from app.platforms import queue_probe as qp
+    from app.utils import canonical_host, robots_check
+    from app.utils.canonical_host import Recovery
+    from app.utils.robots_rules import Rule
+
+    vendor = "https://ga-jackson.civicplus.com/DocumentCenter/View/123/Audio"
+
+    async def check(url):
+        return False, Rule(False, "/")
+
+    async def nothing(url, candidates, **kwargs):
+        return Recovery(url, reason="no candidate domain for this government")
+
+    async def must_not_run(*a, **k):
+        raise AssertionError("the file recipe must not run on a disallowed address")
+
+    monkeypatch.setattr(robots_check, "check_url", check)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", nothing)
+    monkeypatch.setattr(qp, "_probe_direct_file", must_not_run)
+
+    result = await qp.probe_queue_entry(
+        vendor, video_url=vendor, source_page_url=vendor, platform="civicplus"
+    )
+    assert result.verdict == "reject-dead"
+    assert "robots.txt disallows" in (result.reason or "")

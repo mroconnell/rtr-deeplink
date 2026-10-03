@@ -737,3 +737,100 @@ async def test_resolve_non_utf8_response_degrades_instead_of_crashing():
         # the honest, typed "no video here" result, not a crash.
         with pytest.raises(NoVideoCandidateFound):
             await CivicPlusAssetFinder().resolve(url)
+
+
+# --- Ryan 2026-10-03: read a robots-disallowed vendor address through the government's own domain ---
+
+
+def _recovery_to(own_url, vendor_url):
+    from app.utils.canonical_host import Recovery
+
+    async def recover(url, candidates, **kwargs):
+        return Recovery(url, own_url, "ipswichma.gov", "listed")
+
+    return recover
+
+
+async def _disallow_all(url):
+    from app.utils.robots_rules import Rule
+
+    return False, Rule(False, "/")
+
+
+async def test_a_disallowed_vendor_address_is_read_on_the_governments_own_domain(
+    monkeypatch,
+):
+    from app.utils import canonical_host, robots_check
+
+    vendor = "https://ma-ipswich.civicplus.com/AgendaCenter"
+    own = "https://ipswichma.gov/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_listing.html")
+
+    monkeypatch.setattr(robots_check, "check_url", _disallow_all)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", _recovery_to(own, vendor))
+
+    # Only the government's own address is mocked: a request to the vendor address fails the test.
+    with mock_session({own: FakeResponse(status=200, text=html, url=own)}):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicPlusAssetFinder().resolve(vendor)
+
+    assert len(exc_info.value.candidates) == 2
+
+
+async def test_a_disallowed_vendor_address_with_no_own_domain_found_is_read_as_before(
+    monkeypatch,
+):
+    from app.utils import canonical_host, robots_check
+    from app.utils.canonical_host import Recovery
+
+    vendor = "https://ma-ipswich.civicplus.com/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_listing.html")
+
+    async def nothing(url, candidates, **kwargs):
+        return Recovery(url, reason="no candidate domain for this government")
+
+    monkeypatch.setattr(robots_check, "check_url", _disallow_all)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", nothing)
+
+    with mock_session({vendor: FakeResponse(status=200, text=html, url=vendor)}):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicPlusAssetFinder().resolve(vendor)
+
+    assert len(exc_info.value.candidates) == 2
+
+
+async def test_an_allowed_vendor_address_is_not_redirected(monkeypatch):
+    from app.utils import canonical_host, robots_check
+
+    vendor = "https://ma-ipswich.civicplus.com/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_listing.html")
+
+    async def allowed(url):
+        return True, None
+
+    async def must_not_run(url, candidates, **kwargs):
+        raise AssertionError("recovery must not run for an allowed address")
+
+    monkeypatch.setattr(robots_check, "check_url", allowed)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", must_not_run)
+
+    with mock_session({vendor: FakeResponse(status=200, text=html, url=vendor)}):
+        with pytest.raises(CalendarPageError):
+            await CivicPlusAssetFinder().resolve(vendor)
+
+
+async def test_a_recovery_error_never_breaks_the_resolve(monkeypatch):
+    from app.utils import canonical_host, robots_check
+
+    vendor = "https://ma-ipswich.civicplus.com/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_listing.html")
+
+    async def boom(url, candidates, **kwargs):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(robots_check, "check_url", _disallow_all)
+    monkeypatch.setattr(canonical_host, "recover_civicplus", boom)
+
+    with mock_session({vendor: FakeResponse(status=200, text=html, url=vendor)}):
+        with pytest.raises(CalendarPageError):
+            await CivicPlusAssetFinder().resolve(vendor)
