@@ -1261,3 +1261,7 @@ https://vimeo.com/1196671672		us:cousub:4209179136
 https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3	https://www.alamoheightstx.gov/government/city-council/meeting-videos/	us:place:4801600
 https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=ade7f018-eaeb-4f82-a7f7-d7e78df0bcac	https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=391cef43-1fa3-46cb-8442-adb1690c79dc&Agenda=Agenda	us:place:3677112
 https://marpletwppa.portal.civicclerk.com/event/1269/media	https://marpletwp.com/217	us:cousub:4204547616
+https://pgcpsmd.new.swagit.com/videos/392681	https://www.pgcps.org/offices/board-of-education/video	us:sd:2400510	Board Business Meeting	2026-06-11	Board of Education
+https://resources.finalsite.net/videos/v1787173310/detroitk12org/qum4h7qglz0c3doy55mi/BoardMemberAppointmentinterviews81926audio.mp3	https://www.detroitk12.org/board-of-education	us:sd:2601103	Board Member Appointment Interviews	2026-08-19	Board of Education
+https://drive.google.com/file/d/1Agjd9nb21PimL4iOB7qnQ4XNpl7Nj_sy/view?usp=sharing	https://www.milwaukeepublicschools.org/about/board/previous-meetings	us:sd:5509600	Regular Monthly Board Meeting	2026-06-18	Board of School Directors
+https://www.snwa.com/app-data/media/audio/snwa/snwa-2026-08-20_7112.mp4	https://www.snwa.com/apps/snwa-agendas/index.cfml?lang=en	rtr:us:nv:southern-nevada-water-authority	SNWA Board Meeting	2026-08-20	SNWA Board
