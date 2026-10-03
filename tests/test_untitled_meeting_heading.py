@@ -60,3 +60,20 @@ async def test_untitled_page_with_a_government_reads_government_meeting():
 async def test_titled_page_keeps_its_own_title():
     slug = await _page("titled", title="Regular City Council Meeting")
     assert _h1(archive_client.get(f"/m/{slug}").text) == "Regular City Council Meeting"
+
+
+async def test_search_meetings_list_row_reads_government_meeting():
+    """The /meetings list row (archive/templates/meeting_list.html) uses the
+    same fallback as the page heading -- it was missed in the first pass
+    because it formats the government with the jurisdiction_display filter,
+    not a page field."""
+    slug = await _page(
+        "list-row", segments=[{"start": 0.0, "end": 5.0, "text": "Call to order."}]
+    )
+    html = archive_client.get("/meetings").text
+    m = re.search(
+        rf'href="/m/{slug}"[^>]*>\s*<span class="result-title-text">([^<]*)</span>',
+        html,
+    )
+    assert m, "the untitled page should be listed"
+    assert m.group(1).endswith(" meeting") and "Fresno" in m.group(1)
