@@ -1128,3 +1128,78 @@ https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
 https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
+http://cityofhamburgmn.com/Meetings/9_22_2026_RM.mp3	http	us:place:2726666
+https://greenmountainfalls.colorado.gov/sites/g/files/lrnvjt1201/files/2023-01-24%20Planning%20Commission%20Meeting.mp4	https	us:place:0832650
+https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1	https	us:place:3222500
+https://s3.us-east-2.amazonaws.com/city-of-cheboygan/brownfield-redevelopment-20190812.mp3	https	us:place:2615000
+https://www.newhamptonia.com/wp-content/uploads/2026/08/City-council-8.27.26.m4a?_=2	https	us:place:1956100
+https://marshvillenc.portal.civicclerk.com/event/162/media		us:place:3741640
+https://neptunebeachfl.portal.civicclerk.com/event/2226/media		us:place:1248100
+https://play.champds.com/mentoroh/event/310		us:place:3949056
+https://schedule.hanoverctv.org/internetchannel/show/4038?channel=3		us:cousub:2502328285
+https://kirbytx.new.swagit.com/videos/402036		us:place:4839448
+https://hollyhillfl.portal.civicclerk.com/event/157/media		us:place:1231350
+https://greenfieldin.portal.civicclerk.com/event/35/media		us:place:1829520
+https://greenfieldwi.portal.civicclerk.com/event/2114/media		us:place:5531175
+https://greeceny.new.swagit.com/videos/401409		us:cousub:3605530290
+https://www.harpersferrywv.us/council/audiovisual/2026/20260713-council-audio.m4a	https	us:place:5435284
+https://boxcast.tv/view/planning-board-meeting-9-14-26-hxbud6ujs7oywhlrlyq6		us:place:3714700
+https://bristolct.portal.civicclerk.com/event/4452/media		us:place:0908420
+https://delriotx.new.swagit.com/videos/402013		us:place:4819792
+https://play.champds.com/auburnny/event/739		us:place:3603078
+https://pub-cityofbaraboo.escribemeetings.com/Meeting.aspx?Id=33a3c81e-312f-4e93-a0f4-93b99e0ba699		us:place:5504625
+https://scottsbluffne.portal.civicclerk.com/event/915/media		us:place:3144245
+https://flowerybranchga.portal.civicclerk.com/event/266/media		us:place:1330340
+https://charlestownwv.granicus.com/MediaPlayer.php?view_id=1&clip_id=2174		us:place:5414610
+https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191		us:place:3746000
+https://rockymountva.portal.civicclerk.com/event/639/media		us:place:5168496
+https://www.townoflaurel.net/pdfs/M&C_Meeting_9-21-26.m4a	https	us:place:1041310
+https://gibsonburgohio.org/wp-content/uploads/2026/09/9.3.26-COUNCIL-MTG.mp3	https	us:place:3930072
+https://townoflakeview.org/wp-content/uploads/2026/04/4-26-2026-Town-Hall-Meeting-Marc-test.mp4	https	us:place:4140700
+https://pub-hollister.escribemeetings.com/Meeting.aspx?Id=ff199408-dab8-4d7a-97bd-c35fc71fd3ee		us:place:2932662
+https://trollway.tv/internetchannel/show/2786?site=1		us:place:5554725
+https://boxcast.tv/view/city-of-parma-budget-hearings-session-2-xlroiqjr7vdxxvbgmxev		us:place:3961000
+https://bellca.new.swagit.com/videos/401321		us:place:0604870
+https://cityofwalnut.granicus.com/MediaPlayer.php?view_id=2&clip_id=352		us:place:0683332
+https://ennistx.new.swagit.com/videos/396054		us:place:4824348
+https://glennheightstx.new.swagit.com/videos/401002		us:place:4829840
+https://www.cityofbarberton.com/wp-content/uploads/2026/03/2-4-2026.mp3?_=2	https	us:place:3903828
+http://www.valleycity.us/wp-content/uploads/2025/03/3.18.2025-Commission-Meeting.mp4?_=1	https	us:place:3881180
+https://villageofnewhempstead.gov/wp-content/uploads/2026/09/BOT-7-30-2026.mp3	https	us:place:3650353
+https://la-habra-heights.granicus.com/MediaPlayer.php?view_id=4&clip_id=1172		us:place:0639304
+https://columbiacity.net/wp-content/uploads/2026/08/Board-of-Works-07-28-2026.mp3	https	us:place:1814716
+https://vantx.portal.civicclerk.com/event/720/media		us:place:4874912
+https://irvingtx.new.swagit.com/videos/349424		us:place:4837000
+https://conroetx.new.swagit.com/videos/402706		us:place:4816432
+https://applevalleymn.new.swagit.com/videos/325468		us:place:2701900
+https://cleburnetx.new.swagit.com/videos/400296		us:place:4815364
+https://bartlesvilleok.new.swagit.com/videos/237889		us:place:4004450
+https://raytownmo.new.swagit.com/videos/401217		us:place:2960788
+https://fatetx.new.swagit.com/videos/312091		us:place:4825572
+https://lodinj.new.swagit.com/videos/395922		us:place:3441100
+https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383		us:place:3744520
+http://108.20.229.83/CablecastPublicSite/show/2040?channel=2	https	us:place:2556000
+https://highlandvillagetx.new.swagit.com/videos/395828		us:place:4833848
+https://beachwoodoh.new.swagit.com/videos/391053		us:place:3904500
+https://belgrademt.new.swagit.com/videos/396395		us:place:3004975
+https://amherstoh.new.swagit.com/videos/402513		us:place:3901798
+https://thecolony.granicus.com/MediaPlayer.php?view_id=3&clip_id=1524		us:place:4872530
+https://elginvideo.cityofelgin.org/internetchannel/show/694?site=1		us:place:1723074
+https://cityofdeerpark.legistar.com/MeetingDetail.aspx?LEGID=3346&GID=325&G=49659AA2-821F-4242-8BE9-62747C4A02D2		us:place:4819624
+https://lucastx.new.swagit.com/videos/399295		us:place:4845012
+https://canfieldoh.new.swagit.com/videos/392540		us:place:3911360
+https://prairieviewtx.new.swagit.com/videos/360389		us:place:4859336
+https://amblerpa.new.swagit.com/videos/386011		us:place:4202264
+https://codywy.new.swagit.com/videos/401969		us:place:5615760
+https://altavistava.new.swagit.com/videos/387275		us:place:5101528
+https://rockwalltx.new.swagit.com/videos/395048		us:place:4862828
+https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685		us:place:1367284
+https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802		us:place:2917218
+https://bonneylakewa.portal.civicclerk.com/event/1259/media		us:place:5307170
+http://vod.mvcc.video:8080/internetchannel/show/20085?site=2&channel=2		us:place:3983090
+https://pub-indianwells.escribemeetings.com/Meeting.aspx?Id=6783fa50-d0b6-476b-85e6-11bb86ac94ac		us:place:0636434
+https://api.clydeohio.org/documents/council/2026-09-01-rs.mp3	https	us:place:3916308
+https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778		us:place:0449640
+https://baycitytx.portal.civicclerk.com/event/1202/media		us:place:4805984
+https://lovelandoh.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2038		us:place:3945108
+http://altuscityok.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2242		us:place:4001700

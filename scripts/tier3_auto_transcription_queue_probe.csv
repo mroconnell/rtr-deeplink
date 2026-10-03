@@ -9729,3 +9729,131 @@ https://drive.google.com/file/d/1vWbfAJ-ffQBVV_Iy5sVhACM9GJHPwtPt/view?usp=shari
 https://cloud.castus.tv/vod/durham/video/6ab489ee34b85800029a4edb?page=HOME,castus,hls-master+variant,10834.00,,,1,accept,,0.22,2026-10-03T12:02:45+00:00,,0
 https://cloud.castus.tv/vod/durham/video/6ab489ee34b85800029a4edb?page=HOME,castus,hls-master+variant,10834.00,,,1,accept,,0.12,2026-10-03T12:02:45+00:00,feed_tier3_auto_transcription,0
 https://drive.google.com/file/d/1E_UL8fAg4XCCDhWJagb1LqaHDEJSY623/view?usp=sharing,direct_file,robots,,,,0,reject-dead,robots.txt disallows this media path (/) and the platform publishes no length we can read: https://drive.usercontent.google.com/download?id=1E_UL8fAg4XCCDhWJagb1LqaHDEJSY623&export=download&confirm=t,0.00,2026-10-03T12:02:48+00:00,,0
+https://clutetx.new.swagit.com/videos/402687,swagit,hls-master+variant,3137.79,,,1,accept,,1.11,2026-10-03T14:34:59+00:00,bulk_ingest,0
+https://sullivansislandsc.suiteonemedia.com/event/?id=1064,suiteone,head+ffprobe,50.43,2026-09-10,4003784,0,reject-short,duration 50.4s is below the 60s meeting-plausibility floor,1.18,2026-10-03T14:35:05+00:00,bulk_ingest,0
+https://edinburgtx.new.swagit.com/videos/401013,swagit,hls-master+variant,14980.46,,,1,accept,,2.57,2026-10-03T14:35:13+00:00,bulk_ingest,0
+https://nacogdochestx.new.swagit.com/videos/401171,swagit,hls-master+variant,1432.12,,,1,accept,,0.25,2026-10-03T14:35:18+00:00,bulk_ingest,0
+https://florenceaz.new.swagit.com/videos/401008,swagit,hls-master+variant,7219.06,,,1,accept,,1.09,2026-10-03T14:35:25+00:00,bulk_ingest,0
+https://tarponspringsfl.portal.civicclerk.com/event/1322/media,civicclerk,head+ffprobe,3479.13,2026-09-21,1850861953,1,accept,,1.16,2026-10-03T14:35:30+00:00,bulk_ingest,0
+https://vermilionoh.suiteonemedia.com/event/?id=1383,suiteone,head+ffprobe,4981.58,2026-09-30,544579555,1,accept,,2.17,2026-10-03T14:35:39+00:00,bulk_ingest,0
+https://hutchinstx.new.swagit.com/videos/401707,swagit,hls-master+variant,5528.26,,,1,accept,,0.30,2026-10-03T14:35:45+00:00,bulk_ingest,0
+https://alvaradotx.new.swagit.com/videos/402084,swagit,hls-master+variant,245.86,,,0,accept,,0.25,2026-10-03T14:35:50+00:00,bulk_ingest,0
+https://wilmertx.new.swagit.com/videos/402806,swagit,hls-master+variant,2324.00,,,1,accept,,0.11,2026-10-03T14:35:54+00:00,bulk_ingest,0
+https://indiantownfl.new.swagit.com/videos/402177,swagit,hls-master+variant,2243.67,,,1,accept,,0.53,2026-10-03T14:35:59+00:00,bulk_ingest,0
+https://lakejacksontx.new.swagit.com/videos/401702,swagit,hls-master+variant,4221.44,,,1,accept,,0.99,2026-10-03T14:36:10+00:00,bulk_ingest,0
+https://palmertx.new.swagit.com/videos/401446,swagit,hls-master+variant,1931.52,,,1,accept,,0.12,2026-10-03T14:36:16+00:00,bulk_ingest,0
+https://scottsdale.granicus.com/MediaPlayer.php?view_id=125&clip_id=13555,granicus,hls-master+variant,6959.08,,,1,accept,,0.81,2026-10-03T14:36:24+00:00,bulk_ingest,0
+https://pub-lamesa.escribemeetings.com/Meeting.aspx?Id=54b0c5ec-bc6c-4580-917e-682a662d84ef,escribe,hls-master+variant,5817.83,,,1,accept,,0.78,2026-10-03T14:36:31+00:00,bulk_ingest,0
+https://fulsheartx.new.swagit.com/videos/402200,swagit,hls-master+variant,7880.25,,,1,accept,,2.08,2026-10-03T14:36:43+00:00,bulk_ingest,0
+https://jupiterfl.new.swagit.com/videos/401860,swagit,hls-master+variant,4582.89,,,1,accept,,0.12,2026-10-03T14:36:48+00:00,bulk_ingest,0
+https://waxahachietx.new.swagit.com/videos/400945,swagit,hls-master+variant,9620.53,,,1,accept,,0.15,2026-10-03T14:36:58+00:00,bulk_ingest,0
+https://torrance.granicus.com/MediaPlayer.php?view_id=8&clip_id=14765,granicus,hls-master+variant,22579.02,,,1,flag-long,"duration 6.27h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",1.87,2026-10-03T14:37:07+00:00,bulk_ingest,0
+https://cedarhilltx.new.swagit.com/videos/401949,swagit,hls-master+variant,2221.93,,,1,accept,,0.97,2026-10-03T14:37:14+00:00,bulk_ingest,0
+https://midlothiantx.new.swagit.com/videos/401938,swagit,hls-master+variant,8146.11,,,1,accept,,1.83,2026-10-03T14:37:22+00:00,bulk_ingest,0
+https://rosenbergtx.new.swagit.com/videos/401974,swagit,hls-master+variant,2599.51,,,1,accept,,0.14,2026-10-03T14:37:27+00:00,bulk_ingest,0
+https://parklandfl.new.swagit.com/videos/402061,swagit,hls-master+variant,2780.80,,,1,accept,,0.78,2026-10-03T14:37:32+00:00,bulk_ingest,0
+https://marysvilleoh.new.swagit.com/videos/399657,swagit,hls-master+variant,1591.23,,,1,accept,,0.68,2026-10-03T14:37:37+00:00,bulk_ingest,0
+https://columbiaheightsmn.new.swagit.com/videos/338236,swagit,hls-master+variant,3499.86,,,1,accept,,0.13,2026-10-03T14:37:42+00:00,bulk_ingest,0
+https://dickinsontx.new.swagit.com/videos/402633,swagit,hls-master+variant,5580.45,,,1,accept,,1.79,2026-10-03T14:37:51+00:00,bulk_ingest,0
+https://angletontx.new.swagit.com/videos/402623,swagit,hls-master+variant,5962.17,,,1,accept,,1.88,2026-10-03T14:38:01+00:00,bulk_ingest,0
+https://lagovistatx.new.swagit.com/videos/372643,swagit,hls-master+variant,2521.39,,,1,accept,,0.11,2026-10-03T14:38:06+00:00,bulk_ingest,0
+https://moorpark.granicus.com/MediaPlayer.php?view_id=166&clip_id=3152,granicus,hls-master+variant,8595.01,,,1,accept,,0.21,2026-10-03T14:38:10+00:00,bulk_ingest,0
+https://newalbanyoh.new.swagit.com/videos/400877,swagit,hls-master+variant,2099.99,,,1,accept,,0.17,2026-10-03T14:38:15+00:00,bulk_ingest,0
+https://decaturtx.new.swagit.com/videos/401725,swagit,hls-master+variant,1981.61,,,1,accept,,0.51,2026-10-03T14:38:20+00:00,bulk_ingest,0
+https://cheverlymd.new.swagit.com/videos/400682,swagit,hls-master+variant,1111.96,,,1,accept,,0.11,2026-10-03T14:38:24+00:00,bulk_ingest,0
+https://meadowsplacetx.new.swagit.com/videos/392026,swagit,hls-master+variant,6491.58,,,1,accept,,1.46,2026-10-03T14:38:38+00:00,bulk_ingest,0
+https://westlaketx.new.swagit.com/videos/395178,swagit,hls-master+variant,7525.22,,,1,accept,,1.23,2026-10-03T14:38:45+00:00,bulk_ingest,0
+https://www.orchardparkny.gov/wp-content/uploads/2020/04/Orchard-Park-Work-Session_04_01_20.mp4,direct_file,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.41,2026-10-03T14:40:10+00:00
+https://cms8.revize.com/revize/pattonvillage/Document%20Center/Recording/2021/Jul_29th_Special_Council_Meeting.mp3,direct_file,robots,,,,0,reject-dead,robots.txt disallows this media path (/) and the platform publishes no length we can read: https://cms8.revize.com/revize/pattonvillage/Document%20Center/Recording/2021/Jul_29th_Special_Council_Meeting.mp3,0.30,2026-10-03T14:40:10+00:00
+https://saintfrancismn.portal.civicclerk.com/event/1659/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/@saintfrancismn2028/streams,4.38,2026-10-03T14:40:14+00:00
+http://cityofhamburgmn.com/Meetings/9_22_2026_RM.mp3,direct_file,head+ffprobe,1578.56,2026-09-23,16153041,1,accept,,1.59,2026-10-03T14:40:16+00:00
+https://greenmountainfalls.colorado.gov/sites/g/files/lrnvjt1201/files/2023-01-24%20Planning%20Commission%20Meeting.mp4,direct_file,head+ffprobe,5640.12,2023-02-14,204519453,1,accept,,1.60,2026-10-03T14:40:18+00:00
+https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1,hyland,hls-master+variant,3471.21,,,1,accept,,3.86,2026-10-03T14:40:22+00:00
+https://s3.us-east-2.amazonaws.com/city-of-cheboygan/brownfield-redevelopment-20190812.mp3,direct_file,head+ffprobe,1395.12,2020-08-08,11161006,1,accept,,1.29,2026-10-03T14:40:25+00:00
+https://www.newhamptonia.com/wp-content/uploads/2026/08/City-council-8.27.26.m4a?_=2,direct_file,head+ffprobe,3920.66,2026-08-22,19727784,1,accept,,2.50,2026-10-03T14:40:28+00:00
+https://marshvillenc.portal.civicclerk.com/event/162/media,civicclerk,head+ffprobe,2422.00,2026-09-15,340502383,1,accept,,2.80,2026-10-03T14:40:34+00:00
+https://www.augustamaine.gov/corecode/uploads/document6/uploaded_pdfs/Public Meeting_1776360266.mp4,direct_file,robots,,,,0,reject-dead,robots.txt disallows this media path (/corecode/*) and the platform publishes no length we can read: https://www.augustamaine.gov/corecode/uploads/document6/uploaded_pdfs/Public Meeting_1776360266.mp4,1.44,2026-10-03T14:40:38+00:00
+https://neptunebeachfl.portal.civicclerk.com/event/2226/media,civicclerk,head+ffprobe,646.02,2026-09-21,253206832,1,accept,,5.29,2026-10-03T14:40:43+00:00
+https://play.champds.com/mentoroh/event/310,champds,hls-master+variant,1771.00,,,1,accept,,0.94,2026-10-03T14:40:44+00:00
+https://schedule.hanoverctv.org/internetchannel/show/4038?channel=3,cablecast,hls-master+variant,3326.04,,,1,accept,,1.62,2026-10-03T14:40:46+00:00
+https://kirbytx.new.swagit.com/videos/402036,swagit,hls-master+variant,1004.19,,,1,accept,,2.01,2026-10-03T14:40:48+00:00
+https://hollyhillfl.portal.civicclerk.com/event/157/media,civicclerk,head+ffprobe,2063.62,2026-09-09,685369620,1,accept,,3.55,2026-10-03T14:40:55+00:00
+https://greenfieldin.portal.civicclerk.com/event/35/media,civicclerk,hls-master+variant,2293.35,,,1,accept,,3.60,2026-10-03T14:40:59+00:00
+https://greenfieldwi.portal.civicclerk.com/event/2114/media,civicclerk,head+ffprobe,2548.10,2026-09-22,549856912,1,accept,,5.40,2026-10-03T14:41:04+00:00
+https://greeceny.new.swagit.com/videos/401409,swagit,hls-master+variant,2882.25,,,1,accept,,1.74,2026-10-03T14:41:09+00:00
+https://www.harpersferrywv.us/council/audiovisual/2026/20260713-council-audio.m4a,direct_file,head+ffprobe,1733.01,2026-08-09,29111591,1,accept,,1.14,2026-10-03T14:41:10+00:00
+https://gulfportms.portal.civicclerk.com/event/1687/media,civicclerk,head+ffprobe,176.94,2026-09-30,33749234,0,accept,,3.04,2026-10-03T14:41:13+00:00
+https://boxcast.tv/view/planning-board-meeting-9-14-26-hxbud6ujs7oywhlrlyq6,boxcast,hls-master+variant,1757.30,,,1,accept,,1.56,2026-10-03T14:41:14+00:00
+https://bristolct.portal.civicclerk.com/event/4452/media,civicclerk,head+ffprobe,1922.88,2026-10-02,70691878,1,accept,,2.36,2026-10-03T14:41:17+00:00
+https://delriotx.new.swagit.com/videos/402013,swagit,hls-master+variant,588.09,,,1,accept,,1.50,2026-10-03T14:41:18+00:00
+https://www.simpsonville.com/wp-content/uploads/2026/09/2026-09-22_Committee.mp3,direct_file,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.48,2026-10-03T14:41:19+00:00
+https://play.champds.com/auburnny/event/739,champds,hls-master+variant,2884.00,,,1,accept,,0.71,2026-10-03T14:45:12+00:00
+https://pub-cityofbaraboo.escribemeetings.com/Meeting.aspx?Id=33a3c81e-312f-4e93-a0f4-93b99e0ba699,escribe,hls-master+variant,9615.23,,,1,accept,,2.68,2026-10-03T14:41:25+00:00
+https://scottsbluffne.portal.civicclerk.com/event/915/media,civicclerk,head+ffprobe,1913.82,2026-09-15,512088755,1,accept,,2.75,2026-10-03T14:41:27+00:00
+https://flowerybranchga.portal.civicclerk.com/event/266/media,civicclerk,head+ffprobe,527.15,2026-08-06,377541905,0,accept,,2.05,2026-10-03T14:41:29+00:00
+https://charlestownwv.granicus.com/MediaPlayer.php?view_id=1&clip_id=2174,granicus,hls-master+variant,1221.05,,,1,accept,,4.02,2026-10-03T14:41:33+00:00
+https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191,granicus,hls-master+variant,2953.47,,,1,accept,,4.72,2026-10-03T14:41:38+00:00
+https://rockymountva.portal.civicclerk.com/event/639/media,civicclerk,head+ffprobe,1480.80,2026-09-15,23692851,1,accept,,5.84,2026-10-03T14:41:44+00:00
+https://www.townoflaurel.net/pdfs/M&C_Meeting_9-21-26.m4a,direct_file,head+ffprobe,3940.25,2026-09-22,34978782,1,accept,,2.05,2026-10-03T14:41:46+00:00
+https://gibsonburgohio.org/wp-content/uploads/2026/09/9.3.26-COUNCIL-MTG.mp3,direct_file,head+ffprobe,2633.00,2026-09-15,42128865,1,accept,,3.33,2026-10-03T14:41:49+00:00
+https://townoflakeview.org/wp-content/uploads/2026/04/4-26-2026-Town-Hall-Meeting-Marc-test.mp4,direct_file,head+ffprobe,639.06,2026-04-27,16134661,1,accept,,0.91,2026-10-03T14:41:50+00:00
+https://pub-hollister.escribemeetings.com/Meeting.aspx?Id=ff199408-dab8-4d7a-97bd-c35fc71fd3ee,escribe,hls-master+variant,1721.88,,,1,accept,,1.97,2026-10-03T14:41:53+00:00
+https://trollway.tv/internetchannel/show/2786?site=1,cablecast,cablecast-api,1739.00,2026-09-22,,1,accept,,1.44,2026-10-03T14:42:06+00:00
+https://sidneymt.portal.civicclerk.com/event/2511/media,civicclerk,robots,,,,0,reject-dead,robots.txt disallows this media path (/rec/*) and the platform publishes no length we can read: https://us06web.zoom.us/rec/share/CgvcJgv57Wt5pR4qSFae_32Wh4bg5prvquNECqGXp7P6bKSeci9bymncN1kFc-Fp.AH84e3UKU1HEp0z1,2.36,2026-10-03T14:42:09+00:00
+https://sanmarcos.granicus.com/MediaPlayer.php?view_id=3&clip_id=1068,granicus,hls-master+variant,329.95,,,0,accept,,2.75,2026-10-03T14:42:13+00:00
+https://boxcast.tv/view/city-of-parma-budget-hearings-session-2-xlroiqjr7vdxxvbgmxev,boxcast,hls-master+variant,5614.51,,,1,accept,,1.39,2026-10-03T14:45:13+00:00
+https://bellca.new.swagit.com/videos/401321,swagit,hls-master+variant,2398.86,,,1,accept,,2.08,2026-10-03T14:42:19+00:00
+https://www.atwater.org/wp-content/uploads/2026/05/City-Council-Special-meeting-5-18-26.m4a,direct_file,head+ffprobe,229.61,2026-05-26,1967271,0,accept,,0.63,2026-10-03T14:42:20+00:00
+https://cityofwalnut.granicus.com/MediaPlayer.php?view_id=2&clip_id=352,granicus,head+ffprobe,3304.70,2026-08-27,54688502,1,accept,,2.45,2026-10-03T14:42:22+00:00
+https://ennistx.new.swagit.com/videos/396054,swagit,hls-master+variant,953.75,,,1,accept,,1.85,2026-10-03T14:42:24+00:00
+https://glennheightstx.new.swagit.com/videos/401002,swagit,hls-master+variant,9386.49,,,1,accept,,3.71,2026-10-03T14:42:28+00:00
+https://www.cityofbarberton.com/wp-content/uploads/2026/03/2-4-2026.mp3?_=2,direct_file,head+ffprobe,2061.32,2026-03-04,24736336,1,accept,,1.42,2026-10-03T14:42:29+00:00
+http://www.valleycity.us/wp-content/uploads/2025/03/3.18.2025-Commission-Meeting.mp4?_=1,direct_file,head+ffprobe,1130.40,2025-03-18,52979604,1,accept,,2.44,2026-10-03T14:42:32+00:00
+https://villageofnewhempstead.gov/wp-content/uploads/2026/09/BOT-7-30-2026.mp3,direct_file,head+ffprobe,2132.85,2026-09-24,34127067,1,accept,,1.59,2026-10-03T14:42:33+00:00
+https://la-habra-heights.granicus.com/MediaPlayer.php?view_id=4&clip_id=1172,granicus,hls-master+variant,2184.70,,,1,accept,,9.29,2026-10-03T14:42:42+00:00
+https://columbiacity.net/wp-content/uploads/2026/08/Board-of-Works-07-28-2026.mp3,direct_file,head+ffprobe,1687.94,2026-08-04,13503488,1,accept,,1.84,2026-10-03T14:42:45+00:00
+https://vantx.portal.civicclerk.com/event/720/media,civicclerk,head+ffprobe,1348.57,2026-09-10,580430818,1,accept,,2.25,2026-10-03T14:42:48+00:00
+https://irvingtx.new.swagit.com/videos/349424,swagit,hls-master+variant,3414.84,,,1,accept,,2.30,2026-10-03T14:42:52+00:00
+https://conroetx.new.swagit.com/videos/402706,swagit,hls-master+variant,1206.47,,,1,accept,,2.08,2026-10-03T14:42:54+00:00
+https://stcharles-mo.cablecast.tv/show/3415,cablecast,cablecast-api,,,,0,reject-dead,Cablecast API show record returned HTTP 404,0.79,2026-10-03T14:42:55+00:00
+https://littleelmtx.new.swagit.com/videos/266275,swagit,hls-master+variant,70.45,,,0,accept,,1.42,2026-10-03T14:42:57+00:00
+https://flagstaffaz.new.swagit.com/videos/54175,swagit,hls-master+variant,60.39,,,0,accept,,1.24,2026-10-03T14:42:58+00:00
+https://applevalleymn.new.swagit.com/videos/325468,swagit,hls-master+variant,1343.58,,,1,accept,,2.68,2026-10-03T14:43:00+00:00
+https://grapevinetx.new.swagit.com/videos/143694,swagit,hls-master+variant,84.03,,,0,accept,,1.71,2026-10-03T14:43:02+00:00
+https://cleburnetx.new.swagit.com/videos/400296,swagit,hls-master+variant,1668.79,,,1,accept,,1.35,2026-10-03T14:43:04+00:00
+https://bartlesvilleok.new.swagit.com/videos/237889,swagit,hls-master+variant,494.38,,,0,accept,,1.46,2026-10-03T14:43:05+00:00
+https://raytownmo.new.swagit.com/videos/401217,swagit,hls-master+variant,2586.61,,,1,accept,,2.36,2026-10-03T14:43:07+00:00
+https://fatetx.new.swagit.com/videos/312091,swagit,hls-master+variant,5335.95,,,1,accept,,2.51,2026-10-03T14:43:10+00:00
+https://lodinj.new.swagit.com/videos/395922,swagit,hls-master+variant,573.28,,,1,accept,,1.74,2026-10-03T14:43:12+00:00
+https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383,granicus,hls-master+variant,7224.56,,,1,accept,,4.14,2026-10-03T14:43:17+00:00
+https://bemidjimn.portal.civicclerk.com/event/1374/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://cityofbemidjigbajpb.my.webex.com/cityofbemidjigbajpb.my/j.php?MTID=m52a63a81f8f7ccb045a8e2f25e1ce1c1,5.92,2026-10-03T14:43:23+00:00
+https://painesvilleoh.new.swagit.com/videos/367026,swagit,hls-master+variant,451.42,,,0,accept,,1.63,2026-10-03T14:43:24+00:00
+http://108.20.229.83/CablecastPublicSite/show/2040?channel=2,cablecast,head+ffprobe,13694.40,2019-09-10,9487182572,1,accept,,38.08,2026-10-03T14:44:02+00:00
+https://highlandvillagetx.new.swagit.com/videos/395828,swagit,hls-master+variant,7820.81,,,1,accept,,2.35,2026-10-03T14:44:05+00:00
+https://beachwoodoh.new.swagit.com/videos/391053,swagit,hls-master+variant,1632.69,,,1,accept,,1.84,2026-10-03T14:44:07+00:00
+https://belgrademt.new.swagit.com/videos/396395,swagit,hls-master+variant,1159.10,,,1,accept,,1.81,2026-10-03T14:44:08+00:00
+https://amherstoh.new.swagit.com/videos/402513,swagit,hls-master+variant,1385.26,,,1,accept,,1.78,2026-10-03T14:44:10+00:00
+https://thecolony.granicus.com/MediaPlayer.php?view_id=3&clip_id=1524,granicus,hls-master+variant,1534.27,,,1,accept,,3.05,2026-10-03T14:44:13+00:00
+https://elginvideo.cityofelgin.org/internetchannel/show/694?site=1,cablecast,hls-master+variant,4942.96,,,1,accept,,1.37,2026-10-03T14:44:15+00:00
+https://cityofdeerpark.legistar.com/MeetingDetail.aspx?LEGID=3346&GID=325&G=49659AA2-821F-4242-8BE9-62747C4A02D2,legistar,hls-master+variant,2245.03,,,1,accept,,5.04,2026-10-03T14:44:20+00:00
+https://lucastx.new.swagit.com/videos/399295,swagit,hls-master+variant,1215.14,,,1,accept,,1.98,2026-10-03T14:44:22+00:00
+https://canfieldoh.new.swagit.com/videos/392540,swagit,hls-master+variant,3599.33,,,1,accept,,2.11,2026-10-03T14:44:24+00:00
+https://prairieviewtx.new.swagit.com/videos/360389,swagit,hls-master+variant,4486.52,,,1,accept,,2.61,2026-10-03T14:44:26+00:00
+https://amblerpa.new.swagit.com/videos/386011,swagit,hls-master+variant,3449.07,,,1,accept,,2.18,2026-10-03T14:44:29+00:00
+https://codywy.new.swagit.com/videos/401969,swagit,hls-master+variant,2301.70,,,1,accept,,1.65,2026-10-03T14:44:30+00:00
+https://altavistava.new.swagit.com/videos/387275,swagit,hls-master+variant,1491.47,,,1,accept,,1.28,2026-10-03T14:44:31+00:00
+https://davenportia.portal.civicclerk.com/event/4547/media,civicclerk,head+ffprobe,172.07,2026-09-30,127214711,0,accept,,2.53,2026-10-03T14:44:34+00:00
+https://mcallentx.new.swagit.com/videos/117398,swagit,hls-master+variant,120.00,,,0,accept,,1.16,2026-10-03T14:44:35+00:00
+https://rockwalltx.new.swagit.com/videos/395048,swagit,hls-master+variant,2533.39,,,1,accept,,2.21,2026-10-03T14:44:37+00:00
+https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685,iqm2,hls-master+variant,6410.96,,,1,accept,,2.35,2026-10-03T14:44:40+00:00
+https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802,granicus,hls-master+variant,1293.82,,,1,accept,,1.83,2026-10-03T14:44:42+00:00
+https://bonneylakewa.portal.civicclerk.com/event/1259/media,civicclerk,head+ffprobe,1144.19,2026-09-09,18307030,1,accept,,4.93,2026-10-03T14:44:46+00:00
+http://vod.mvcc.video:8080/internetchannel/show/20085?site=2&channel=2,cablecast,cablecast-api,908.00,2026-08-10,,1,accept,,0.87,2026-10-03T14:44:47+00:00
+https://graniteshoalstx.portal.civicclerk.com/event/227/media,civicclerk,robots,,,,0,reject-dead,robots.txt disallows this media path (/j/*) and the platform publishes no length we can read: https://us02web.zoom.us/j/85696859847,2.08,2026-10-03T14:44:49+00:00
+https://pub-indianwells.escribemeetings.com/Meeting.aspx?Id=6783fa50-d0b6-476b-85e6-11bb86ac94ac,escribe,hls-master+variant,7293.25,,,1,accept,,2.26,2026-10-03T14:44:52+00:00
+https://www.dropbox.com/scl/fi/csfp43pxu471kb033ezc6/Rogers-City-Council-2026-09-22.mp4?rlkey=uy4xerlglybjw0qywmskqajxi&st=u7skua95&dl=0,direct_file,robots,,,,0,reject-dead,robots.txt disallows this media path (/scl/) and the platform publishes no length we can read: https://www.dropbox.com/scl/fi/csfp43pxu471kb033ezc6/Rogers-City-Council-2026-09-22.mp4?rlkey=uy4xerlglybjw0qywmskqajxi&st=u7skua95&dl=1,0.92,2026-10-03T14:44:53+00:00
+https://api.clydeohio.org/documents/council/2026-09-01-rs.mp3,direct_file,head+ffprobe,1188.87,2026-09-01,4729320,1,accept,,2.20,2026-10-03T14:44:55+00:00
+https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778,granicus,hls-master+variant,1350.30,,,1,accept,,4.57,2026-10-03T14:44:59+00:00
+https://baycitytx.portal.civicclerk.com/event/1202/media,civicclerk,head+ffprobe,7902.50,2026-09-16,4261370753,1,accept,,6.15,2026-10-03T14:45:06+00:00
+https://lovelandoh.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2038,iqm2,hls-master+variant,1614.97,,,1,accept,,2.29,2026-10-03T14:45:09+00:00
+http://altuscityok.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2242,iqm2,hls-master+variant,2515.97,,,1,accept,,2.19,2026-10-03T14:45:11+00:00
