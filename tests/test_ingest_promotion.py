@@ -707,3 +707,116 @@ async def test_ingest_keeps_the_adapters_raw_jurisdiction_string():
     await crud.ingest_resolution(payload, url)
     page = await crud.get_page_by_slug(page["slug"])
     assert page["jurisdiction_raw"] == "County of Fresno, CA"
+
+
+def _quiet_segments(count=21, step=120.0, text="S1:"):
+    """A 40-minute transcript of bare speaker tags: segments, but no words."""
+    return [
+        {"start": i * step, "end": (i + 1) * step, "text": text} for i in range(count)
+    ]
+
+
+def _real_segments(count=400, step=6.0):
+    return [
+        {
+            "start": i * step,
+            "end": (i + 1) * step,
+            "text": "Good evening and welcome to the regular meeting of the council",
+        }
+        for i in range(count)
+    ]
+
+
+async def test_a_label_only_default_is_replaced_by_a_fresh_push_with_real_words():
+    """Ryan, 2026-10-03: a default of speaker tags and almost no words has segments but no
+    real transcript. A fresh push with real words must become the shown version."""
+    url = "https://example.cablecast.tv/show/promo-sparse-default"
+    external_id = "cablecast:promo-sparse-default"
+
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=_quiet_segments(),
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=_real_segments(),
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+    assert len(page["versions"]) == 2
+    shown = next(v for v in page["versions"] if v["is_default"])
+    assert any("welcome to the regular meeting" in s["text"] for s in shown["segments"])
+
+
+async def test_a_sparse_fresh_push_does_not_replace_a_sparse_default():
+    url = "https://example.cablecast.tv/show/promo-sparse-both"
+    external_id = "cablecast:promo-sparse-both"
+
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=_quiet_segments(),
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=_quiet_segments(text="S2:"),
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+    first = next(v for v in page["versions"] if v["is_default"])
+    assert all(s["text"] == "S1:" for s in first["segments"])
+
+
+async def test_a_normal_default_is_left_alone_by_a_fresh_push():
+    url = "https://example.cablecast.tv/show/promo-normal-default"
+    external_id = "cablecast:promo-normal-default"
+
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=_real_segments(),
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    other = _real_segments()
+    other[0]["text"] = "A slightly different opening line"
+    await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=other,
+            transcript_language="en",
+            platform="cablecast",
+        ),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+    shown = next(v for v in page["versions"] if v["is_default"])
+    assert shown["segments"][0]["text"].startswith("Good evening")
