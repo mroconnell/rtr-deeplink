@@ -5,6 +5,7 @@ for the decision, and returns one Verdict. No network call happens inside
 judge.py itself -- this is the only place that touches YouTube.
 """
 
+import csv
 import json
 import re
 import subprocess
@@ -47,6 +48,144 @@ HOMEPAGE_WALK_SOURCES = {
 # government's own homepage). meeting-finder-2026-09-24-run3 is NOT in
 # this set -- unconfirmed provenance, so identity can only reach Medium
 # from name-match alone unless the video/channel's own page confirms it.
+
+
+FINDMEETING_PREFIX = "findmeeting_"
+HAND_REVIEW_PREFIX = "hand_review_"
+LEADS_CSV = (
+    Path.home()
+    / "Documents"
+    / "rtr-business"
+    / "research"
+    / "youtube_channel_leads.csv"
+)
+
+_YT_ID_RES = (
+    re.compile(r"youtu\.be/([\w-]{6,})", re.I),
+    re.compile(r"[?&]v=([\w-]{6,})", re.I),
+    re.compile(r"/(?:embed|v|shorts)/([\w-]{6,})", re.I),
+    re.compile(r"/channel/([\w-]+)", re.I),
+    re.compile(r"/@([^/?#]+)", re.I),
+    re.compile(r"/(?:user|c)/([^/?#]+)", re.I),
+)
+
+
+def address_key(url):
+    """One comparable key per YouTube address (video id, channel id or
+    handle, lower-cased). Falls back to the lower-cased url minus its
+    scheme, so a Vimeo address still compares with itself."""
+    u = (url or "").strip()
+    for rx in _YT_ID_RES:
+        m = rx.search(u)
+        if m:
+            return m.group(1).lower()
+    return re.sub(r"^https?://(www\.)?", "", u.lower()).rstrip("/")
+
+
+_STATE_NAMES = (
+    "AL alabama,AK alaska,AZ arizona,AR arkansas,CA california,CO colorado,"
+    "CT connecticut,DE delaware,DC district of columbia,FL florida,GA georgia,"
+    "HI hawaii,ID idaho,IL illinois,IN indiana,IA iowa,KS kansas,KY kentucky,"
+    "LA louisiana,ME maine,MD maryland,MA massachusetts,MI michigan,"
+    "MN minnesota,MS mississippi,MO missouri,MT montana,NE nebraska,NV nevada,"
+    "NH new hampshire,NJ new jersey,NM new mexico,NY new york,"
+    "NC north carolina,ND north dakota,OH ohio,OK oklahoma,OR oregon,"
+    "PA pennsylvania,RI rhode island,SC south carolina,SD south dakota,"
+    "TN tennessee,TX texas,UT utah,VT vermont,VA virginia,WA washington,"
+    "WV west virginia,WI wisconsin,WY wyoming"
+)
+_STATE_BY_CODE = {
+    x[:2].lower(): x[3:] for x in _STATE_NAMES.split(",")
+}  # "ny" -> "new york"
+
+# Template embeds Ryan named on 2026-10-03, always shared. The leads file
+# holds each address once, so it cannot show these on its own. The Wix
+# entries are the Wix addresses seen in that file; confirm the list.
+KNOWN_TEMPLATE_ADDRESSES = {
+    "bqlup7guutg",
+    "dewi11channel",
+    "wix",
+    "wixstudio",
+    "wixmypage",
+}
+
+_URL_RE = re.compile(r"https?://[^\s|;,]+")
+_SHARED_ADDRESSES_CACHE = {}
+
+
+def _norm_state(st):
+    st = (st or "").strip().lower()
+    return _STATE_BY_CODE.get(st, st)
+
+
+def _handoff_csvs():
+    return sorted((REPO / "reports").glob("drip_handoff_*/leads.csv"))
+
+
+def shared_addresses(path=None, extra_paths=None):
+    """Addresses that appear for governments in two or more different
+    states. Those are website-template embeds, not a government's own
+    channel. Sources: the leads file (channel_url + state), the drip
+    handoff files in reports/ (lead_url and every address in
+    all_youtube_addresses_seen, with the row's state), and
+    KNOWN_TEMPLATE_ADDRESSES. Read once per run per path.
+    Returns None when the leads file cannot be read; callers then give no
+    credit. Limit: it only sees addresses in those files."""
+    path = Path(path) if path else LEADS_CSV
+    extra = _handoff_csvs() if extra_paths is None else list(extra_paths)
+    key = (path, tuple(extra))
+    if key in _SHARED_ADDRESSES_CACHE:
+        return _SHARED_ADDRESSES_CACHE[key]
+    states = {}
+
+    def note(url, st):
+        st = _norm_state(st)
+        if st and url:
+            states.setdefault(address_key(url), set()).add(st)
+
+    try:
+        with path.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(ln for ln in f if not ln.startswith("#")):
+                note(r.get("channel_url"), r.get("state"))
+    except OSError:
+        _SHARED_ADDRESSES_CACHE[key] = None
+        return None
+    for ep in extra:
+        try:
+            with Path(ep).open(newline="", encoding="utf-8") as f:
+                for r in csv.DictReader(f):
+                    note(r.get("lead_url"), r.get("state"))
+                    for u in _URL_RE.findall(r.get("all_youtube_addresses_seen") or ""):
+                        note(u, r.get("state"))
+        except OSError:
+            continue
+    shared = {k for k, v in states.items() if len(v) >= 2}
+    shared |= KNOWN_TEMPLATE_ADDRESSES
+    _SHARED_ADDRESSES_CACHE[key] = shared
+    return shared
+
+
+def is_linked_from_gov_site(source_wo, url, leads_path=None, extra_paths=None):
+    """True when the lead's source means "found by walking the
+    government's own website". WO families: exact list. Find Meeting
+    (`findmeeting_*`): yes, unless the address is a template embed seen
+    for governments in different states (or the leads file is unreadable,
+    which fails closed)."""
+    source_wo = source_wo or ""
+    if source_wo in HOMEPAGE_WALK_SOURCES:
+        return True
+    if source_wo.startswith(FINDMEETING_PREFIX):
+        shared = shared_addresses(leads_path, extra_paths)
+        return shared is not None and address_key(url) not in shared
+    return False
+
+
+def is_person_confirmed(row):
+    """A `hand_review_*` row Ryan marked verified=true: a person already
+    confirmed the identity."""
+    return (row.get("source_wo") or "").startswith(HAND_REVIEW_PREFIX) and (
+        str(row.get("verified") or "").strip().lower() == "true"
+    )
 
 
 @dataclass
@@ -165,7 +304,8 @@ def process_row(row) -> Verdict:
     gov = government_for_id(gid) if gid else None
     gov_kind = gov.gov_type if gov else None
 
-    linked_from_gov_site = source_wo in HOMEPAGE_WALK_SOURCES
+    linked_from_gov_site = is_linked_from_gov_site(source_wo, url)
+    confirmed_by_person = is_person_confirmed(row)
 
     def base(v, reason, **kw):
         return Verdict(url, gid, gov_name, kind, v, reason, **kw)
@@ -192,6 +332,7 @@ def process_row(row) -> Verdict:
             gov_kind=gov_kind,
             linked_from_gov_site=linked_from_gov_site,
             kind=kind,
+            confirmed_by_person=confirmed_by_person,
         )
         if idv.tier == "wrong-government":
             return base("wrong-government", idv.reason, identity_tier=idv.tier)
@@ -236,6 +377,7 @@ def process_row(row) -> Verdict:
             url,
             linked_from_gov_site,
             base,
+            confirmed_by_person=confirmed_by_person,
             seed_title=title,
             seed_channel_title=channel_title,
         )
@@ -252,6 +394,7 @@ def process_row(row) -> Verdict:
         url,
         linked_from_gov_site,
         base,
+        confirmed_by_person=confirmed_by_person,
     )
 
 
@@ -267,6 +410,7 @@ def _walk_channel(
     base,
     seed_title=None,
     seed_channel_title=None,
+    confirmed_by_person=False,
 ):
     data, err = yt_dump(chan_url, playlist_end=MIN_CANDIDATES_BEFORE_REJECT + 5)
     if err == "BLOCK":
@@ -298,6 +442,7 @@ def _walk_channel(
         gov_kind=gov_kind,
         linked_from_gov_site=linked_from_gov_site,
         kind=kind,
+        confirmed_by_person=confirmed_by_person,
     )
     if idv.tier == "wrong-government":
         return base("wrong-government", idv.reason, identity_tier=idv.tier)
