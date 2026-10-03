@@ -1019,8 +1019,16 @@ class Drip:
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
         else:
+            entry = feed.parse_queue_entry(line)
             result = await feed._push_if_has_video(
-                session, url, src, probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH
+                session,
+                url,
+                src,
+                entry.gov_id,
+                probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH,
+                queue_title=entry.title,
+                queue_date=entry.date,
+                queue_meeting_body=entry.meeting_body,
             )
         if is_block_text(result):
             return True, self._block("blocked_until", "block_level", result)
@@ -1121,18 +1129,19 @@ class Drip:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
-            url, src, gov_id = feed._parse_queue_line(line)
+            entry = feed.parse_queue_entry(line)
+            url, src, gov_id = entry.url, entry.source_url, entry.gov_id
             if url in fed or url in parked or self.state.is_deferred(f"direct|{url}"):
                 continue
             keep, _ = _classify_queue_url(url)
             if keep:
                 continue  # youtube/vimeo/delegating -- lane_feed's job, not this one
-            todo = (url, src, gov_id)
+            todo = (url, src, gov_id, entry)
             break
         if todo is None:
             return False, None
 
-        url, src, gov_id = todo
+        url, src, gov_id, entry = todo
         self.current_item = f"direct|{url}"
         if self.dry_run:
             result = f"[DRY-RUN] would feed {url}"
@@ -1143,6 +1152,9 @@ class Drip:
                 src,
                 gov_id,
                 probe_sidecar_path=LOCAL_PROBE_SIDECAR_PATH,
+                queue_title=entry.title,
+                queue_date=entry.date,
+                queue_meeting_body=entry.meeting_body,
             )
         if is_block_text(result):
             return True, self._block("blocked_until", "block_level", result)
@@ -1531,11 +1543,18 @@ async def advance(state: State) -> None:
             line = line.strip()
             if not line:
                 continue
-            parts = line.split("\t")
-            url = parts[0]
-            source = parts[1] if len(parts) > 1 and parts[1] else None
-            gid = parts[2] if len(parts) > 2 else ""
-            if append_queue_line(url, source, gov_id=gid, queue_path=QUEUE_FILE):
+            from app.platforms.queue_probe import parse_queue_entry
+
+            entry = parse_queue_entry(line)
+            if append_queue_line(
+                entry.url,
+                entry.source_url,
+                gov_id=entry.gov_id or "",
+                title=entry.title or "",
+                date=entry.date or "",
+                meeting_body=entry.meeting_body or "",
+                queue_path=QUEUE_FILE,
+            ):
                 leads_folded += 1
         LOCAL_LEADS_QUEUE_BUFFER.unlink()
         print(

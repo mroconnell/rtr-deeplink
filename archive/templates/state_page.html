@@ -147,7 +147,7 @@
           {% for m in recent_pages %}
           <div class="calendar-candidate meeting-result-row">
             <div class="calendar-candidate-main">
-              <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+              <a href="/m/{{ m.slug }}">{{ m.title or (m.jurisdiction_display ~ " meeting" if m.jurisdiction else "Untitled meeting") }}</a>
               <span class="calendar-candidate-date">
                 {%- if m.jurisdiction %}{{ m.jurisdiction_display }}{% endif -%}
                 {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}

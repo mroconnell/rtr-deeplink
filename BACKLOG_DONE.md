@@ -1,5 +1,31 @@
 # Backlog — done
 
+## WO-1176: queue lines carry title, date and meeting body; local Whisper run keeps gov_id; tier-3 queue exempt from robots.txt [Done 2026-10-03]
+
+**Why this ran.** Pages ingested from the tier-3 queue for bare file links (Google Drive, .mp3/.mp4, Dropbox) landed with no title, no date and sometimes no government. A file link's resolver returns none of those. The local Whisper batch (`transcribe_backlog_locally.py --urls-file`) read bare URLs and never sent a `gov_id`, so shared-host pages were filed as `rtr:unknown:<host>` (70 live pages repaired by hand on 2026-10-03). The feed bounced a Drive line as `[NO-OWNER]` before looking at its own `gov_id`. And since 2026-10-02 the queue probe enforced robots.txt, so Drive lines were dropped as `reject-dead`.
+
+**Root cause.** The local Whisper batch fed bare URLs, so `--urls-file` sent no `gov_id`. 80 recent Whisper-made pages had an unknown government. 70 of them matched a queue line that carried a `gov_id`.
+
+**The repair.** All 70 were re-keyed in production with `/internal/jurisdiction/override` on 2026-10-03, dry run first. The pages were not reslugged, at Ryan's request.
+
+**Ryan's decisions.** robots.txt does not apply to the tier-3 queue. Titles come from the link text, or are built from the meeting body when untitled. Future slugs should be search-engine friendly: the built title is set in the payload before ingest, so a new page's slug reads `<government>-<yyyy-mm-dd>-<title words>` (tested), and a line with only a `gov_id` still gets a government slug.
+
+**Still open.** 10 Cablecast pages on shared cable-channel hosts with no pin are still unidentified. That is a separate cause; see its own entry in `BACKLOG.md`.
+
+**Fix.**
+- Queue line format: `url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body`; columns 4-6 optional. One parser, `queue_probe.parse_queue_entry()` (returns a `QueueLine`); `parse_queue_line()` and the feed's `_parse_queue_line()` still return the first three. `append_queue_line()` takes `title=`, `date=`, `meeting_body=`. A bad date is read as blank with a warning.
+- Precedence: the resolver's own value wins; the queue line fills a blank. A still-untitled page gets its meeting body plus " meeting" (not added when the body already ends in meeting, meetings, session or hearing). `queue_probe.apply_queue_metadata()` does this for the feed and the local script.
+- Feed: a line with its own `gov_id` counts as owned (the disagreement check against a `tenant_overrides.csv` pin still applies). The drip's feed lanes (`youtube_drip.py`) now pass the line's `gov_id` and the new columns too.
+- `drive.usercontent.google.com` added to `MULTI_GOV_HOSTS`.
+- Local script: `--urls-file` parses full queue lines and sends `gov_id`, the `source_url` override (only for bare video links, as the feed does) and the metadata.
+- Meeting page: an untitled page reads "<government> meeting" (heading, `<title>`, JSON-LD name). "Untitled meeting" stays only with no government. Same rule in the list templates where a government name was already in context.
+- robots.txt removed from the queue probe (Ryan, 2026-10-03; see Standing decisions). A Cablecast entry still takes its length from the station's own API, now always, with no media read.
+
+- `find_tier3_short_meeting_substitutes.py --apply` used to rewrite a swapped line as `url<TAB>source` only, dropping `gov_id`. It now uses `queue_probe.swap_queue_line_url()`: keeps source, `gov_id` and meeting body; drops title and date when the video changes.
+- Restored to the queue: the 10 lines the feed dropped for a robots.txt reason on 2026-10-02/03, each with its original `gov_id` (recovered from the queue file's git history).
+
+**Caution.** `tier3_long_meetings_deferred.txt` uses columns 4-6 for jurisdiction, duration and title. Do not move a deferred line into the queue by hand. `archive/` and `app/` changes are on `main` but not live until a deploy.
+
 ## ChampDS listing: Meeting Finder lists ChampDS accounts, finds their downloadable video, and names the meeting when there is none [Done 2026-10-02]
 
 **Why this ran.** A government-first run in rtr-findmeeting (2026-10-02) found that rtr-deeplink's own ChampDS lister saw real video Meeting Finder missed: Signal Mountain TN, Thompson's Station TN and Yuba County CA. The older `scripts/meeting_finder.py` also said `no-meeting-nor-video` on the control, Largo FL, whose account has meetings through 2026-09-24.

@@ -62,6 +62,7 @@ OUT_OF_SCOPE_HOSTS: FrozenSet[str] = frozenset(
         "livestream.com",
         "soundcloud.com",
         "drive.google.com",
+        "drive.usercontent.google.com",  # Drive's file download host (WO-1176)
         "dropbox.com",
         "sharepoint.com",
     }

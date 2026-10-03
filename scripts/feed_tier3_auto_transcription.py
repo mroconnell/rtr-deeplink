@@ -120,9 +120,12 @@ from app.platforms.base import (
     CalendarPageError,
 )  # noqa: E402
 from app.platforms.queue_probe import (  # noqa: E402
+    BARE_VIDEO_LINK_PLATFORMS,
     DEFAULT_SIDECAR_PATH,
     append_probe_row,
+    apply_queue_metadata,
     has_owner,
+    parse_queue_entry,
     parse_queue_line,
     probe_queue_entry,
 )
@@ -146,7 +149,7 @@ BATCH_SIZE = 12
 # (url)` is one of these; see that function's own WO-1073 comment for
 # why applying it to a real meeting-page platform (CivicClerk, CivicWeb,
 # Granicus, ...) is the bug this closes.
-_BARE_VIDEO_LINK_PLATFORMS = frozenset({"youtube", "vimeo", "direct_file"})
+_BARE_VIDEO_LINK_PLATFORMS = BARE_VIDEO_LINK_PLATFORMS  # WO-1176: shared
 
 # WO-1143: a `reject-dead` probe result whose real cause is "GitHub
 # Actions' runner IPs can't reach this," not "this meeting is dead" --
@@ -257,7 +260,10 @@ def _parse_queue_line(line: str) -> Tuple[str, Optional[str], Optional[str]]:
     reader's "View original source" link should point at the government
     page the video was found on, not the video host). The third field, a
     gov_id, is handled by `_push_if_has_video()`'s own precedence rule
-    against `has_owner()`'s pin -- see that function's docstring.
+    against `has_owner()`'s pin -- see that function's docstring. WO-1176
+    added optional 4th-6th columns (title, date, meeting body), read with
+    `queue_probe.parse_queue_entry()` (what `main()` uses); this wrapper
+    keeps returning only the first three.
 
     This is now a thin wrapper over `app.platforms.queue_probe.
     parse_queue_line()` (WO-1016) -- kept as a module-level name here,
@@ -281,6 +287,9 @@ async def _push_if_has_video(
     line_gov_id: Optional[str] = None,
     *,
     probe_sidecar_path: Path = DEFAULT_SIDECAR_PATH,
+    queue_title: Optional[str] = None,
+    queue_date: Optional[str] = None,
+    queue_meeting_body: Optional[str] = None,
 ) -> str:
     """`probe_sidecar_path` defaults to the tracked CSV (this script's own
     GitHub Actions run and every other caller). WO-248: the always-on
@@ -384,8 +393,13 @@ async def _push_if_has_video(
     # tenant host from. This line is put BACK into the queue (not
     # dropped) so it can still ingest once a pin exists -- see main()'s
     # own handling of a [NO-OWNER] result below.
+    #
+    # WO-1176: a line that carries its OWN gov_id counts as owned -- the
+    # sweep that queued it already named the government, which is exactly
+    # what a shared host (drive.google.com, ...) lacks. The disagreement
+    # check against a tenant_overrides.csv pin below still applies.
     owned, owner_gov_id, reason = has_owner(result.source_url)
-    if not owned:
+    if not owned and not line_gov_id:
         return f"[NO-OWNER] {reason} ({url})"
 
     # WO-1016: a queue line can now carry its OWN gov_id (a research
@@ -440,6 +454,15 @@ async def _push_if_has_video(
         payload = result.model_dump()
         if final_gov_id:
             payload["gov_id"] = final_gov_id
+        # WO-1176: a bare file link's resolver returns no title/date/body;
+        # the queue line fills blanks only (resolver's own value wins), and
+        # a still-untitled page gets one built from the meeting body.
+        apply_queue_metadata(
+            payload,
+            title=queue_title,
+            date=queue_date,
+            meeting_body=queue_meeting_body,
+        )
         response = await _ingest(
             session,
             payload,
@@ -554,10 +577,21 @@ async def main() -> None:
     not_reachable_lines: list[str] = []
     async with aiohttp.ClientSession() as session:
         for i, line in enumerate(batch):
-            url, source_url_override, line_gov_id = _parse_queue_line(line)
+            entry = parse_queue_entry(line)
+            url, source_url_override, line_gov_id = (
+                entry.url,
+                entry.source_url,
+                entry.gov_id,
+            )
             refused_before = len(youtube_fetch_guard.REFUSED)
             result = await _push_if_has_video(
-                session, url, source_url_override, line_gov_id
+                session,
+                url,
+                source_url_override,
+                line_gov_id,
+                queue_title=entry.title,
+                queue_date=entry.date,
+                queue_meeting_body=entry.meeting_body,
             )
             if needed_youtube(result, refused_before, len(youtube_fetch_guard.REFUSED)):
                 result = f"[YOUTUBE] needs YouTube, left in the queue: {url} ({result})"
