@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse
@@ -5,6 +6,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
+from ..utils import canonical_host, robots_check
 from .base import (
     AssetFinder,
     CalendarPageError,
@@ -17,6 +19,9 @@ from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import read_capped_text
+
+
+logger = logging.getLogger("rtr_deeplink.civicplus")
 
 
 class CivicPlusAssetFinder(AssetFinder):
@@ -125,20 +130,45 @@ class CivicPlusAssetFinder(AssetFinder):
             ),
         }
 
+    @staticmethod
+    async def _address_to_fetch(url: str) -> str:
+        """The address to actually read for `url` (Ryan, 2026-10-03). A CivicPlus vendor address
+        (`ma-ipswich.civicplus.com`) disallows every crawler in its robots.txt, while the
+        government's own domain serves the same site and allows it. When the vendor address is
+        disallowed and the same meeting is found on the government's own domain, read that one.
+        Only the fetch moves: the page's identity (`source_url`, jurisdiction, `origin_host`) stays
+        the address we were given. Any failure falls back to `url` as before."""
+        try:
+            if not canonical_host.is_civicplus_vendor_url(url):
+                return url
+            allowed, _ = await robots_check.check_url(url)
+            if allowed:
+                return url
+            found = await canonical_host.recover_civicplus(
+                url, canonical_host.authorities_for_tenant(url)
+            )
+            return found.recovered_url if found.recovered else url
+        except Exception:
+            logger.exception("canonical-host recovery failed for %s", url)
+            return url
+
     async def resolve(self, url: str) -> ResolvedMeeting:
+        fetch_url = await self._address_to_fetch(url)
         # WO-1171: a DocumentCenter/Archive link can be a recording in
         # CivicPlus's file library, not a page. One headers-only GET tells
         # which; a recording goes to the direct-file path (never read as
         # HTML, so no "Response too large"), anything else falls through.
         from .direct_file import probe_civicplus_file
 
-        direct = await probe_civicplus_file(url)
+        direct = await probe_civicplus_file(fetch_url)
         if direct is not None:
             return direct
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(
-                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+                fetch_url,
+                allow_redirects=True,
+                timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 response.raise_for_status()
                 final_url = str(response.url)

@@ -181,3 +181,37 @@ async def test_the_default_fetch_reads_a_long_page_to_the_end():
         await server.close()
     assert got is not None and got.status == 200
     assert token in got.text
+
+
+def test_the_authority_table_finds_a_governments_own_domain():
+    assert "ipswichma.gov" in ch.authorities_for_tenant("ma-ipswich.civicplus.com")
+    assert "ipswichma.gov" in ch.authorities_for_tenant(
+        "https://ma-ipswich.civicplus.com/AgendaCenter"
+    )
+    assert ch.authorities_for_tenant("no-such-place.civicplus.com") == []
+
+
+async def test_the_cache_keeps_tokens_not_whole_pages_and_expires(monkeypatch):
+    net = Net({"https://ipswichma.gov/AgendaCenter": html(LISTING)})
+    cache = ch._Cache()
+    await run(net, cache=cache)
+    entry = cache.listings["ipswichma.gov"]
+    assert "_09082026-8562" in entry.tokens and entry.is_civicplus
+    assert not hasattr(entry, "text")
+
+    fetched_before = net.fetched.count("https://ipswichma.gov/AgendaCenter")
+    await run(net, cache=cache)  # inside the hour: no second read
+    assert net.fetched.count("https://ipswichma.gov/AgendaCenter") == fetched_before
+
+    real = ch.time.monotonic
+    monkeypatch.setattr(ch.time, "monotonic", lambda: real() + 4000)
+    await run(net, cache=cache)  # after the hour: read again
+    assert net.fetched.count("https://ipswichma.gov/AgendaCenter") == fetched_before + 1
+
+
+def test_the_cache_is_capped(monkeypatch):
+    monkeypatch.setattr(ch, "_LISTING_MAX", 3)
+    cache = ch._Cache()
+    for i in range(6):
+        cache.put(f"gov{i}.example", LISTING)
+    assert len(cache.listings) == 3

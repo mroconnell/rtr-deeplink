@@ -70,7 +70,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yt_dlp
 
-from ..utils import robots_check
+from ..utils import canonical_host, robots_check
 from ..utils.gov_registry.registry import match_shape_problem
 from ..utils.gov_registry.resolver import (
     _matched_multi_gov_pin_row,
@@ -1287,6 +1287,15 @@ async def probe_queue_entry(
     # disallows them. Cablecast publishes the length in its own API; any
     # other such host has no length source, so the probe says so.
     blocked, pattern = await media_disallowed_by_robots(video_url)
+    if blocked and canonical_host.is_civicplus_vendor_url(video_url):
+        # A CivicPlus vendor address is disallowed; the government's own domain serves the same
+        # site (canonical_host.py). Probe that address when the same meeting is found there.
+        found = await canonical_host.recover_civicplus(
+            video_url, canonical_host.authorities_for_tenant(video_url)
+        )
+        if found.recovered:
+            video_url = found.recovered_url
+            blocked, pattern = await media_disallowed_by_robots(video_url)
     if blocked:
         if ".cablecast.tv" in urlparse(video_url).netloc.lower() or (
             resolved_platform == "cablecast"
