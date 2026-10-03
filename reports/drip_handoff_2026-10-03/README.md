@@ -35,3 +35,9 @@ The same rows were added to the rtr-business drip list with `verified=false`.
 3. Verify through the drip's normal `leads` lane. Record "no channel" or "no meetings" as findings with a reason.
 
 Push results to this branch under this folder. Don't merge; the coordinator folds them into the rtr-business drip list.
+
+## Update 2026-10-03: the 17 Vimeo rows moved to the tier 3 queue
+
+The 17 rows with `lane=vimeo` (all `single_video`) were moved out of this handoff. The leads lane has no Vimeo code, so it should skip every `lane=vimeo` row.
+Ryan decided single Vimeo videos go to the drip queue keyed by gov_id, so the feed lane picks them up from `scripts/tier3_auto_transcription_queue.txt`.
+Of the 17, 11 were queued. The other 6 were not: 1 dead video and 5 under 8 minutes. `leads.csv` is unchanged.
