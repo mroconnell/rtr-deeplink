@@ -15,6 +15,7 @@ from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     detect_language_from_texts,
+    caption_text_is_sparse,
     normalize_shouting_caption,
     parse_vtt,
 )
@@ -561,6 +562,17 @@ class CablecastAssetFinder(AssetFinder):
                 if isinstance(result, Exception) or not result:
                     continue
                 normalize_shouting_caption(result)
+                # Label-only or near-empty captions (the station's feed holds
+                # speaker tags and almost no words) are not a transcript:
+                # treat the meeting as having none, so it goes to audio
+                # transcription instead of passing as tier 1.
+                sparse, sparse_words, sparse_minutes = caption_text_is_sparse(result)
+                if sparse:
+                    transcript_warnings.append(
+                        f"The station's captions hold only {sparse_words} words "
+                        f"over {sparse_minutes:.0f} minutes, so they were not used."
+                    )
+                    continue
                 lang = detect_language_from_texts(c["text"] for c in result)
                 candidates.append((result, lang))
 
@@ -831,7 +843,14 @@ class CablecastAssetFinder(AssetFinder):
         segments: List[TranscriptSegment] = []
         transcript_warnings: List[str] = []
         cues = await CablecastAssetFinder._fetch_fastboot_captions(video_url)
-        if cues:
+        sparse, sparse_words, sparse_minutes = caption_text_is_sparse(cues or [])
+        if sparse:
+            transcript_warnings.append(
+                f"The station's captions hold only {sparse_words} words "
+                f"over {sparse_minutes:.0f} minutes, so they were not used."
+            )
+            transcript_warnings.append("No transcript found for this event.")
+        elif cues:
             segments = [TranscriptSegment(**cue) for cue in cues]
         else:
             transcript_warnings.append("No transcript found for this event.")

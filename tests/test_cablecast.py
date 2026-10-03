@@ -1598,3 +1598,34 @@ def test_show_date_keeps_event_date_when_the_title_has_no_full_date():
         )
         == "2026-08-29"
     )
+
+
+async def test_near_empty_station_captions_are_not_used_as_a_transcript():
+    """Ryan, 2026-10-02: a station feed with a handful of words and speaker tags over
+    a 40-minute meeting is not a transcript. (A source of bare speaker tags with no
+    words at all already parses to no cues; this covers the near-empty feed.) It used
+    to pass as tier 1 because the only gate was "has segments"; now the meeting
+    resolves with no segments, so it goes to audio transcription."""
+    html = load_fixture("cablecast", "charlotte_show_2451.html")
+    fetch_url = "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"
+    near_empty = "\r\n\r\n".join(
+        [
+            "00:00:19,000\tWelcome everyone.",
+            "00:00:36,000\tYay! S1:",
+            "00:40:00,000\tThank you, goodnight.",
+        ]
+    )
+
+    routes = {
+        fetch_url: FakeResponse(status=200, text=html, url=fetch_url),
+        CHARLOTTE_TRANSCRIPT_URL: FakeResponse(
+            status=200, text=near_empty, url=CHARLOTTE_TRANSCRIPT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(CHARLOTTE_PORTAL_URL)
+
+    assert result.segments == []
+    assert any("hold only" in w for w in result.transcript_warnings)
+    assert "No transcript found for this event." in result.transcript_warnings
