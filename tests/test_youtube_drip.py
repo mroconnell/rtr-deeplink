@@ -972,3 +972,133 @@ def test_tick_includes_direct_lane_only_when_enabled(tmp_path, monkeypatch):
     monkeypatch.setattr(drip2, "lane_direct", should_not_run)
     monkeypatch.setattr(drip2, "lane_captions", lambda session: _ok_no_work())
     asyncio.run(drip2.tick(None, tmp_path / "daily.csv"))
+
+
+# --- WO-1175: a bad item goes to the back, failures are loud ------------------
+
+
+def test_add_strike_defers_after_the_threshold_and_doubles(tmp_path):
+    state = yd.State(tmp_path / "state.json")
+    assert state.add_strike("feed|u", 2) == (1, None)
+    assert not state.is_deferred("feed|u")
+    n, retry_at = state.add_strike("feed|u", 2)
+    assert n == 2 and retry_at is not None
+    assert state.is_deferred("feed|u")
+    first = retry_at - time.time()
+    n, retry_at = state.add_strike("feed|u", 2)
+    assert (retry_at - time.time()) > first * 1.9  # doubled
+    state.clear_strikes("feed|u")
+    assert not state.is_deferred("feed|u")
+    assert state.data["strikes"] == {}
+
+
+def test_add_strike_delay_is_capped(tmp_path):
+    state = yd.State(tmp_path / "state.json")
+    for _ in range(30):
+        _, retry_at = state.add_strike("k", 1)
+    assert retry_at - time.time() <= yd.STRIKE_RETRY_MAX_SECONDS + 1
+
+
+def test_a_lane_that_keeps_raising_on_one_item_defers_it_and_loudly_alerts(
+    tmp_path, monkeypatch, caplog
+):
+    drip = _drip(tmp_path, lanes=("feed", "captions"))
+    drip.alerts_path = tmp_path / "alerts.log"
+    ran = []
+
+    async def feed(session):
+        drip.current_item = "feed|https://bad.example/v"
+        raise RuntimeError("probe exploded")
+
+    async def captions(session):
+        ran.append("captions")
+        return False, None
+
+    monkeypatch.setattr(drip, "lane_feed", feed)
+    monkeypatch.setattr(drip, "lane_captions", captions)
+
+    asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    # first failure: logged, not yet deferred, and the next lane still ran
+    assert not drip.state.is_deferred("feed|https://bad.example/v")
+    assert ran == ["captions"]
+    assert not (tmp_path / "alerts.log").exists()
+
+    asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    assert drip.state.is_deferred("feed|https://bad.example/v")
+    assert "!!! DRIP ALERT" in caplog.text
+    assert "pushed to the back" in (tmp_path / "alerts.log").read_text()
+
+
+def test_feed_lane_skips_a_deferred_url_and_takes_the_next(tmp_path, monkeypatch):
+    import scripts.feed_tier3_auto_transcription as feed_mod
+
+    queue = tmp_path / "queue.txt"
+    queue.write_text(
+        "https://www.youtube.com/watch?v=aaaaaaaaaaa\n"
+        "https://www.youtube.com/watch?v=bbbbbbbbbbb\n"
+    )
+    monkeypatch.setattr(yd, "QUEUE_FILE", queue)
+    seen = []
+
+    async def fake_push(session, url, src, **kw):
+        seen.append(url)
+        return "[OK] x -> /m/slug"
+
+    monkeypatch.setattr(feed_mod, "_push_if_has_video", fake_push)
+    drip = _drip(tmp_path, lanes=("feed",))
+    drip.dry_run = False
+    drip.fed_pages_csv = None
+    for _ in range(2):
+        drip.state.add_strike("feed|https://www.youtube.com/watch?v=aaaaaaaaaaa", 2)
+    monkeypatch.setattr(yd, "lookup_recent_page", _async_const(None))
+    asyncio.run(drip.lane_feed(None))
+    assert seen == ["https://www.youtube.com/watch?v=bbbbbbbbbbb"]
+
+
+def test_a_success_clears_the_items_strikes(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("feed",))
+
+    async def feed(session):
+        drip.current_item = "feed|u"
+        return True, None
+
+    monkeypatch.setattr(drip, "lane_feed", feed)
+    drip.state.add_strike("feed|u", 5)
+    asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    assert drip.state.data["strikes"] == {}
+
+
+def test_a_repeated_block_on_one_item_eventually_defers_it(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("feed",))
+    drip.alerts_path = tmp_path / "alerts.log"
+
+    async def feed(session):
+        drip.current_item = "feed|u"
+        return True, 60.0  # a block override
+
+    monkeypatch.setattr(drip, "lane_feed", feed)
+    for _ in range(yd.STRIKE_DEFER_AFTER_BLOCKS):
+        asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+    assert drip.state.is_deferred("feed|u")
+
+
+def test_the_drip_log_handler_is_put_back_if_a_library_removes_it(
+    tmp_path, monkeypatch
+):
+    """transcribe_backlog_locally.py runs logging.basicConfig(force=True) at
+    import; the audio lane imports it, which used to silence drip.log."""
+    import logging
+
+    handler = logging.FileHandler(tmp_path / "drip.log")
+    monkeypatch.setattr(yd, "_DRIP_FILE_HANDLER", handler)
+    root = logging.getLogger()
+    root.removeHandler(handler)
+    drip = _drip(tmp_path, lanes=())
+    drip.alerts_path = tmp_path / "alerts.log"
+    try:
+        asyncio.run(drip.tick(None, tmp_path / "daily.csv"))
+        assert handler in root.handlers
+        assert "removed the drip.log handler" in (tmp_path / "alerts.log").read_text()
+    finally:
+        root.removeHandler(handler)
+        handler.close()
