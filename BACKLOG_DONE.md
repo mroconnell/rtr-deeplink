@@ -1,5 +1,21 @@
 # Backlog — done
 
+## WO-1177: drip leads lane gives Find Meeting addresses the "linked from the government's own site" credit [Done 2026-10-03]
+
+**Why this ran.** Find Meeting finds YouTube addresses by walking the government's own site. The drip leads lane (`scripts/youtube_leads_fetch.py`) only gave that credit to a fixed list of WO numbers (`HOMEPAGE_WALK_SOURCES`). A `findmeeting_*` lead got a name match only, so its identity stopped at medium.
+
+**What changed.**
+- A `source_wo` that starts with `findmeeting_` now counts as found on the government's own site. Identity can reach strong when the channel name also matches.
+- Guard: a website-template embed is not proof. If the same address appears for governments in two or more different states, it gets no credit and stays name-match only. The lane reads the leads file (`research/youtube_channel_leads.csv`) and the `reports/drip_handoff_*/leads.csv` files (including `all_youtube_addresses_seen`). It reads them once per run. State codes and full names count as the same state.
+- A short fixed list, `KNOWN_TEMPLATE_ADDRESSES`, always gets no credit: embed `bqLUp7GuUTg`, `@dewi11Channel`, and three Wix addresses seen in the leads file. The leads file holds each address once, so the list is needed for the cases Ryan named.
+- If the leads file cannot be read, a `findmeeting_*` lead gets no credit.
+- A `hand_review_*` row with `verified=true` is treated as identity already confirmed by a person: `assess_identity(confirmed_by_person=True)` returns strong and skips the name checks. This was the smallest change.
+- The listed WO sources and every other label behave as before.
+
+**Limit.** The guard only sees addresses in those files. A template embed used by governments in different states that no file lists together gets credit until it shows up. Confirm the Wix list.
+
+**Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
+
 ## WO-1176: queue lines carry title, date and meeting body; local Whisper run keeps gov_id; tier-3 queue exempt from robots.txt [Done 2026-10-03]
 
 **Why this ran.** Pages ingested from the tier-3 queue for bare file links (Google Drive, .mp3/.mp4, Dropbox) landed with no title, no date and sometimes no government. A file link's resolver returns none of those. The local Whisper batch (`transcribe_backlog_locally.py --urls-file`) read bare URLs and never sent a `gov_id`, so shared-host pages were filed as `rtr:unknown:<host>` (70 live pages repaired by hand on 2026-10-03). The feed bounced a Drive line as `[NO-OWNER]` before looking at its own `gov_id`. And since 2026-10-02 the queue probe enforced robots.txt, so Drive lines were dropped as `reject-dead`.
