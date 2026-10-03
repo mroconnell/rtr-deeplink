@@ -57,6 +57,7 @@ from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video
 # invoked by worker/main.py, so importing this name doesn't pull any heavy
 # per-request work into the Archive process.
 from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_MARKER
+from app.utils.vtt_parser import caption_text_is_sparse
 
 from ..utils.date_status import (
     iso_meeting_date,
@@ -1401,7 +1402,9 @@ async def _find_or_create_page(
 
 
 def _is_real_improvement(
-    current_default: TranscriptVersion, new_language: Optional[str]
+    current_default: TranscriptVersion,
+    new_language: Optional[str],
+    new_segments: Optional[list] = None,
 ) -> bool:
     """True if a freshly-created TranscriptVersion (which always has real
     segments -- ingest_resolution() only creates one `if segments:`) is a
@@ -1419,6 +1422,16 @@ def _is_real_improvement(
     flip-flopping the default unpredictably.
     """
     if not current_default.segments:
+        return True
+    # Ryan, 2026-10-03: a default that holds only speaker tags and almost no
+    # words (label-only captions from a station feed, 50 Cablecast pages found
+    # 2026-10-02) has "segments" but no real transcript. It counts as no
+    # transcript here, so a fresh push with real words replaces it. A fresh
+    # push that is itself sparse does not.
+    sparse_default = caption_text_is_sparse(list(current_default.segments or []))[0]
+    if sparse_default and not (
+        new_segments is not None and caption_text_is_sparse(list(new_segments or []))[0]
+    ):
         return True
     # 2026-09-29 (Ryan): English is the default on an Archive page. A
     # fresh English version replaces a default in another known language
@@ -1923,7 +1936,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
 
         if current_default is not None:
             if new_version_id is not None and _is_real_improvement(
-                current_default, payload.get("transcript_language")
+                current_default, payload.get("transcript_language"), segments
             ):
                 await promote_transcript_version(session, page.id, new_version_id)
             elif new_version_id is not None or duplicate_is_hidden:
