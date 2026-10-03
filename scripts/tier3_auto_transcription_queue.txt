@@ -699,7 +699,6 @@ https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
 https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
 https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
 https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
-https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1038973	https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/videos	us:place:5003175
 https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/media/1042806	https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/videos	us:sd:2508370
 https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1045958	https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/videos	us:sd:2513290
 https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=865	https://hugomn.granicus.com/ViewPublisher.php?view_id=1	us:place:2730392
@@ -1224,3 +1223,41 @@ https://drive.google.com/file/d/1xChnnEf10drYwHHCHUJ15bJLNoYRRoB0/preview		ca:cs
 https://drive.google.com/file/d/16NTyzSwCva2k1-3d9iwJfw9ijV-QVCKj/view?usp=share_link		us:place:5642005
 https://drive.google.com/file/d/1vWbfAJ-ffQBVV_Iy5sVhACM9GJHPwtPt/view?usp=sharing		us:cousub:3602116045
 https://drive.google.com/file/d/1E_UL8fAg4XCCDhWJagb1LqaHDEJSY623/view?usp=sharing		us:place:3924234
+https://vimeo.com/729707486		us:cousub:3602705452
+https://www.ci.westfir.or.us/wp-content/uploads/2026/08/August-3-2026-Council-Meeting.mp3	https://www.ci.westfir.or.us/?page_id=623	us:place:4179950
+https://flinttownshipmi.portal.civicclerk.com/event/1297/media		us:cousub:2604929020
+https://www.byramtwp.org/useruploads/councilonly/TC_09-15-2026_Recording.MP3	https://www.byramtwp.org/index.php/town_hall/meetings_agendas_minutes	us:cousub:3403709160
+https://taghkanic.gov/zoom/TB/260805 Zoning Review.mp4	https://taghkanic.gov/minutes	us:cousub:3602173077
+https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	us:place:2644480
+https://lewisberryborough.org/wp-content/uploads/2020/04/2020-04-06-1908-New-Meeting.mp4	https://lewisberryborough.org/residents/meeting-agendas-and-minutes/	us:place:4242968
+https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1		us:cousub:2500170605
+https://vod.lcac.tv/CablecastPublicSite/show/6691?site=1	https://leicesterma.org/459/Past-Meeting-Recordings	us:cousub:2502734795
+https://warnernh.gov/meetings/minutes/town/2021-TownMeetingMinutes-v3.mp3	https://warnernh.gov/minutes/	us:cousub:3301378580
+https://mountolivetownshipnj.new.swagit.com/videos/393713		us:cousub:3402749080
+https://www.boontontownship.com/media/MeetingRecordings/tc_20260713_184325__sel_19-05-05_to_19-25-42.m4a	https://www.boontontownship.com/meeting-recordings	us:cousub:3402706640
+https://player.vimeo.com/video/268318865?byline=0		us:cousub:3402542990
+https://cloud.castus.tv/vod/pepperell/video/6abeb5170628810002cb2a81?page=HOME		us:cousub:2501752805
+https://player.vimeo.com/video/1150665534?dnt=1&app_id=122963		us:cousub:3602758156
+https://vimeo.com/1220959316		us:place:2723948
+https://www.edenvt.org/wp-content/uploads/2026/04/Cemetery-4-7-26.m4a?_=1	https://www.edenvt.org/boards_commissions/298-2/cemetery-commission/cemetery-commission-minutes-2/	us:cousub:5001523500
+https://warringtonpa.new.swagit.com/videos/387621		us:cousub:4201781048
+https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
+https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
+https://www.fairviewnc.gov/upload/page/0043/docs/Council_Meeting_03_10_26.MP3	https://www.fairviewnc.gov/page/council.audiofiles	us:place:3722500
+https://aftonwy.portal.civicclerk.com/event/66/media		us:place:5600245
+https://www.cityofeastdubuque.com/media/cms/06_FE174898FE1FC.mp3	https://www.cityofeastdubuque.com/hopepage/east-dubuque-meeting-videos	us:place:1721683
+https://town.centerville.in.us/wp-content/uploads/2026/09/September-8-2026-Zoom.mp4	https://town.centerville.in.us/town-council/	us:place:1811836
+https://lysanderny.gov/sites/default/files/2026-05/260402_163419_00.mp3	https://lysanderny.gov/board-meetings	us:cousub:3606744039
+https://vimeo.com/565286481		us:cousub:3607939331
+https://twp.jerusalem.oh.us/wp-content/uploads/2026/06/06232026162400_DN-700R.mp3	https://twp.jerusalem.oh.us/trustees/	us:cousub:3909539116
+https://www.enochcityut.gov/uploads/3/0/3/1/30314955/cc_recording_09-16-2026.mp3	https://www.enochcityut.gov/city-council-agenda--minutes.html	us:place:4923200
+https://washingtonpa.us/wp-content/uploads/2020/04/City-Council-Meeting-4-2-2020-audio.mp3	https://washingtonpa.us/audio-recordings-of-city-council-meetings/	us:place:4281328
+https://denisonia.com/wp-content/uploads/July_22_2026_Second_Regular_Council_Meeting.mp3	https://denisonia.com/?page_id=832	us:place:1919945
+https://irvingtonny.portal.civicclerk.com/event/2040/media		us:place:3637803
+https://ferristx.new.swagit.com/videos/400983		us:place:4825752
+https://northbraddockborough.com/wp-content/uploads/2021/04/Council-MTG-Audio-3-16-21.mp3?_=1	https://northbraddockborough.com/notices-base/council-meeting-audio/	us:place:4254816
+https://pub-winona.escribemeetings.com/Meeting.aspx?Id=d519c703-a847-436b-b7de-0c9b74550d61		us:place:2980512
+https://vimeo.com/1196671672		us:cousub:4209179136
+https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3	https://www.alamoheightstx.gov/government/city-council/meeting-videos/	us:place:4801600
+https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=ade7f018-eaeb-4f82-a7f7-d7e78df0bcac	https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=391cef43-1fa3-46cb-8442-adb1690c79dc&Agenda=Agenda	us:place:3677112
+https://marpletwppa.portal.civicclerk.com/event/1269/media	https://marpletwp.com/217	us:cousub:4204547616
