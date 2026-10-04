@@ -161,7 +161,7 @@ _HALLUCINATION_MARKER = "hallucinated by the transcription model"
 # root cause (a third-party vendor's own truncation, not our own
 # extraction/model failure).
 _GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
-# WO-1179 (2026-10-04): a sourced (station-caption) default transcript that
+# WO-1181 (2026-10-04): a sourced (station-caption) default transcript that
 # holds almost no words for the meeting's length (Caroline County MD: 501
 # words over 104 minutes). It is NOT a truncation (content is missing, but
 # the text is not cut off) and not garbled, so it has its own marker and
@@ -6534,7 +6534,7 @@ _OUTCOME_LABELS: dict[str, str] = {
     # Granicus page. Add new forms by extending _TRUNCATION_MARKERS
     # below rather than by minting a parallel bucket.
     "truncated_transcript": "Truncated transcript",
-    # WO-1179: station captions with almost no words for the meeting's
+    # WO-1181: station captions with almost no words for the meeting's
     # length. Own bucket: the text is real but nearly empty, which is neither
     # garbled nor cut off.
     "sparse_captions": "Captions near-empty at the source",
@@ -6565,7 +6565,7 @@ _OUTCOME_RANK: dict[str, int] = {
     "garbled_transcript": 2,
     "truncated_transcript": 3,
     # Near-empty captions are worse than a cut-off transcript, better than
-    # nothing but an agenda (WO-1179).
+    # nothing but an agenda (WO-1181).
     "sparse_captions": 4,
     "agenda_fallback": 5,
     "blank_transcript": 6,

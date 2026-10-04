@@ -2938,7 +2938,7 @@ async def test_probe_failure_recording_removes_candidate_from_next_backlog_call(
 
 
 async def test_has_good_transcript_treats_sparse_captions_as_not_good():
-    # WO-1179: _SPARSE_CAPTIONS_MARKER. Same "SQL predicate and per-page
+    # WO-1181: _SPARSE_CAPTIONS_MARKER. Same "SQL predicate and per-page
     # helper must agree" shape as the tests above. Wording is the by-hand
     # correct-warnings text planned for Caroline County MD's page.
     from archive.db.engine import async_session

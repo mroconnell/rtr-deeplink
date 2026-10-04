@@ -702,7 +702,7 @@ def test_extract_balanced_json_array_handles_brackets_inside_a_title():
     assert result == '[{"title": "Item [Continued]"}, {"title": "Second"}]'
 
 
-# WO-1179 -- synthetic HTML (no real Swagit page is checked in for this); the
+# WO-1181 -- synthetic HTML (no real Swagit page is checked in for this); the
 # facts come from a real case: Caroline County MD's Feb 12, 2026 meeting held
 # 501 words over 104 minutes of station captions (4.8 words/minute). Same
 # `#transcript-fragments` shape the real Dublin CA fixtures above use. No

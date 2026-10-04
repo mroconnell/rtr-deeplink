@@ -1,6 +1,6 @@
 # Backlog — done
 
-## WO-1179: Swagit drops near-empty station captions; a near-empty-captions marker; Big Horn County MT pin [Done 2026-10-04]
+## WO-1181: Swagit drops near-empty station captions; a near-empty-captions marker; Big Horn County MT pin [Done 2026-10-04]
 
 **Why this ran.** One Swagit page (Caroline County MD, Feb 12 2026 Administrative Charging Committee, page id 12372) held 501 words of station captions over 104 minutes (4.8 words a minute). It was stored as a good sourced transcript, so Whisper never picked it up. A scan of all 448 stored Swagit sourced pages found only this one under 8 words a minute (1 of 448). Cablecast already had the guard (PR #1699); Swagit did not.
 

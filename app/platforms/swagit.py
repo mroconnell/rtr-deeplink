@@ -699,7 +699,7 @@ class SwagitAssetFinder(AssetFinder):
                         f"read at all yet — you can view it directly: {caption_urls[0]}"
                     )
 
-        # WO-1179: near-empty station captions (a 104-minute Caroline County
+        # WO-1181: near-empty station captions (a 104-minute Caroline County
         # MD meeting held 501 words) are not a transcript. Same gate Cablecast
         # uses: drop them so the page goes to audio transcription instead of
         # passing as a good sourced transcript. Covers every source above
