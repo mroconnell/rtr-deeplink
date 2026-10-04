@@ -14,18 +14,6 @@ https://vimeo.com/946425462/b95b8652b3		us:place:2283405
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://pewaukeewi.portal.civicclerk.com/event/1177/media		us:place:5562240
-https://media.cmsmax.cloud/lv20xzze8ydi4trylfuou/Town%20Board%20Audio%2081425_1.mp3		us:cousub:3606311803
-https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
-https://aiscrawfordstorage.blob.core.windows.net/website/QuorumCourt/2026/QC_Meeting_3-16-2026_Audio.mp3		us:county:05033
-http://whitleycountyfiscalcourt.com/FCVideos/2023-08-15 16-07-55.mp4		us:county:21235
-https://dakotacounty.ne.gov/wp-content/uploads/sites/77/2026/09/2026-0914-EC.mp3		us:county:31043
-https://parkhillsmo.net/media/1653/regular-session-4-14-2020-part-2.mp4		us:place:2956272
-https://iqaluit.ca/sites/default/files/city_council_meeting_11_september_22_2026_eng.mp3		ca:csd:6204003
-https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspringsny.new.swagit.com/videos/401181/embed	us:place:3665255
-https://www.ci.owosso.mi.us/Portals/0/Audio/260921CouncilAudio.MP3?ver=2026-09-22-092734-557		us:place:2661940
-https://middletowndelcopa.gov/vertical/sites/%7BE08CD8FE-6BF2-4104-AF8F-C16770381A63%7D/uploads/Middletown_Council_Mtg_8-6-25_audio.m4a		us:place:4249128
-https://drive.google.com/file/d/1CCplXjwkmOUVb-kncr0UND5Or5A-blsK/preview		us:sd:3006112
 https://drive.google.com/file/d/1fkfV-e7hCldnQ-F_1Owq1Ijftk2AXiFx/view?usp=sharing		us:sd:0604530
 https://pub-currituckcountync.escribemeetings.com/Meeting.aspx?Id=d059d738-d9ca-43dc-9625-c247bf9f5266		us:sd:3701080
 https://drive.google.com/file/d/1GzTstDqfY_9-DzLNlYfpNYBVHad7Cc06/view?usp=sharing		us:sd:4809410
@@ -1279,3 +1267,5 @@ https://townofcrownpointny.gov/wp-content/uploads/2026/08/Town-Board-meeting-081
 https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	us:cousub:3610118267
 https://colonieny.portal.civicclerk.com/event/101/media		us:cousub:3600117343
 https://videos.files.wordpress.com/OtvroHpW/gmt20260928-230114_recording_1280x720.mp4	https://tatetownship.org/trustees-and-clerk/meeting-minutes/2026-trustee-meeting-agendas-minutes-videos/	us:cousub:3902576155	Trustees Public Hearing: Zoning Case RZC-2026-801, Zoning Text Amendment	2026-09-28	Board of Trustees
+https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
+https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspringsny.new.swagit.com/videos/401181/embed	us:place:3665255
