@@ -283,3 +283,24 @@ def test_env_var_sets_leads_path(tmp_path, monkeypatch):
     )
     monkeypatch.delenv("RTR_LEADS_CSV")
     assert f.leads_csv_path() == f.DEFAULT_LEADS_CSV
+
+
+def test_low_confidence_findmeeting_gets_no_credit(tmp_path):
+    h = _handoff(
+        tmp_path,
+        [
+            "g1,A,Ohio,youtube,https://www.youtube.com/@low,channel,,findmeeting_low_confidence_2026-10-03,\n",
+            "g2,B,Ohio,youtube,https://www.youtube.com/@ok,channel,,findmeeting_conflict_accepted_2026-10-03,\n",
+        ],
+    )
+    missing = tmp_path / "nope.csv"
+    low = "https://www.youtube.com/@low"
+    assert not f.is_linked_from_gov_site(
+        "findmeeting_low_confidence_2026-10-03", low, missing, [h]
+    )
+    assert not f.is_linked_from_gov_site("", low, missing, [h])
+    ok = "https://www.youtube.com/@ok"
+    assert f.is_linked_from_gov_site(
+        "findmeeting_conflict_accepted_2026-10-03", ok, missing, [h]
+    )
+    assert f.is_linked_from_gov_site("", ok, missing, [h])

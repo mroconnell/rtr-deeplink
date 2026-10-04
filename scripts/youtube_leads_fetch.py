@@ -61,6 +61,9 @@ HAND_REVIEW_PREFIX = "hand_review_"
 # of these prefixes means the same thing as a `findmeeting_*` source: the
 # address was found on the government's own website. `hand_review_*` is not
 # here: those rows are Ryan's hand decisions, handled by is_person_confirmed.
+# Low-confidence rows are passed on by design although the handle names
+# another body; they never get the credit.
+LOW_CONFIDENCE_PREFIX = "findmeeting_low_confidence"
 HANDOFF_RUN_PREFIXES = (FINDMEETING_PREFIX, "run_govs_", "group4_")
 LEADS_CSV_ENV = "RTR_LEADS_CSV"
 DEFAULT_LEADS_CSV = (
@@ -234,6 +237,8 @@ def is_linked_from_gov_site(source_wo, url, leads_path=None, extra_paths=None):
     source_wo = (source_wo or "").strip()
     if source_wo in HOMEPAGE_WALK_SOURCES:
         return True
+    if source_wo.startswith(LOW_CONFIDENCE_PREFIX):
+        return False
     if source_wo.startswith(HANDOFF_RUN_PREFIXES):
         g = _load_guard(leads_path, extra_paths)
         return g is not None and address_key(url) not in g["shared"]
@@ -244,7 +249,11 @@ def is_linked_from_gov_site(source_wo, url, leads_path=None, extra_paths=None):
         k = address_key(url)
         if k in g["shared"]:
             return False
-        return any(r.startswith(HANDOFF_RUN_PREFIXES) for r in g["runs"].get(k, ()))
+        return any(
+            r.startswith(HANDOFF_RUN_PREFIXES)
+            and not r.startswith(LOW_CONFIDENCE_PREFIX)
+            for r in g["runs"].get(k, ())
+        )
     return False
 
 
