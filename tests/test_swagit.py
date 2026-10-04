@@ -700,3 +700,49 @@ def test_extract_balanced_json_array_handles_brackets_inside_a_title():
     text = '[{"title": "Item [Continued]"}, {"title": "Second"}]TRAILING'
     result = _extract_balanced_json_array(text, 0)
     assert result == '[{"title": "Item [Continued]"}, {"title": "Second"}]'
+
+
+# WO-1179 -- synthetic HTML (no real Swagit page is checked in for this); the
+# facts come from a real case: Caroline County MD's Feb 12, 2026 meeting held
+# 501 words over 104 minutes of station captions (4.8 words/minute). Same
+# `#transcript-fragments` shape the real Dublin CA fixtures above use. No
+# second real sparse Swagit page exists (1 of 448 stored sourced pages).
+def _fragments_html(word_count: int, seconds_apart: int) -> str:
+    fragments = "".join(
+        f'<a data-ts="{i * seconds_apart}">word{i}</a>' for i in range(word_count)
+    )
+    return (
+        "<html><head><title>Feb 12, 2026 Committee - Example, MD</title></head><body>"
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        f'<div id="transcript-fragments">{fragments}</div>'
+        "</body></html>"
+    )
+
+
+async def test_resolve_drops_near_empty_station_captions():
+    # 60 words over 100 minutes = 0.6 words/minute: sparse.
+    html = _fragments_html(60, 100)
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
+    assert any(
+        "hold only 60 words" in w and "so they were not used" in w
+        for w in result.transcript_warnings
+    )
+    assert not any("No transcript found" in w for w in result.transcript_warnings)
+
+
+async def test_resolve_keeps_normal_density_captions_over_a_long_meeting():
+    # 1,200 words over 100 minutes = 12 words/minute: above the 8/minute line.
+    html = _fragments_html(1200, 5)
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments
+    assert not any("so they were not used" in w for w in result.transcript_warnings)

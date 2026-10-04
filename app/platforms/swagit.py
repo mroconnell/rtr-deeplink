@@ -18,6 +18,7 @@ from ..utils import jurisdiction_enrich
 
 logger = logging.getLogger("rtr_deeplink.swagit")
 from ..utils.vtt_parser import (
+    caption_text_is_sparse,
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
     detect_language_from_texts,
@@ -698,7 +699,25 @@ class SwagitAssetFinder(AssetFinder):
                         f"read at all yet — you can view it directly: {caption_urls[0]}"
                     )
 
-        if not segments:
+        # WO-1179: near-empty station captions (a 104-minute Caroline County
+        # MD meeting held 501 words) are not a transcript. Same gate Cablecast
+        # uses: drop them so the page goes to audio transcription instead of
+        # passing as a good sourced transcript. Covers every source above
+        # (download, #transcript-fragments, caption file).
+        sparse_dropped = False
+        if segments:
+            sparse, sparse_words, sparse_minutes = caption_text_is_sparse(
+                [{"start": s.start, "text": s.text} for s in segments]
+            )
+            if sparse:
+                transcript_warnings.append(
+                    f"The station's captions hold only {sparse_words} words "
+                    f"over {sparse_minutes:.0f} minutes, so they were not used."
+                )
+                segments = []
+                sparse_dropped = True
+
+        if not segments and not sparse_dropped:
             transcript_warnings.append("No transcript found for this event.")
 
         # Never previously detected -- every real segment source above

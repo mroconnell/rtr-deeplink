@@ -161,6 +161,16 @@ _HALLUCINATION_MARKER = "hallucinated by the transcription model"
 # root cause (a third-party vendor's own truncation, not our own
 # extraction/model failure).
 _GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
+# WO-1179 (2026-10-04): a sourced (station-caption) default transcript that
+# holds almost no words for the meeting's length (Caroline County MD: 501
+# words over 104 minutes). It is NOT a truncation (content is missing, but
+# the text is not cut off) and not garbled, so it has its own marker and
+# its own `sparse_captions` bucket. The marker is NOT written by any
+# adapter: Swagit/Cablecast now drop such captions at resolve time with
+# "...so they were not used." wording. It exists for EXISTING stored pages,
+# set by hand via POST /internal/transcript-version/correct-warnings, so the
+# page stops counting as having a good transcript and Whisper can pick it up.
+_SPARSE_CAPTIONS_MARKER = "near-empty at the source"
 # A transcription job that exhausted its retries partway through, whose
 # already-finished chunks are published rather than discarded (2026-08-24,
 # see _publish_partial_transcript()). Before that, such a job wrote no
@@ -266,14 +276,25 @@ _TRUNCATION_MARKERS = (
 )
 
 
+# Every marker that makes a default version "not a good transcript". Both the
+# Python helper and the raw-SQL twin below read this one tuple.
+_NOT_GOOD_MARKERS = (
+    _GARBLED_MARKER,
+    _HALLUCINATION_MARKER,
+    _SPARSE_CAPTIONS_MARKER,
+    *_TRUNCATION_MARKERS,
+)
+
+
 def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
     """True if none of `warnings` mark this version as garbled-at-source,
     likely-hallucinated, or a truncated Granicus scraped caption -- the
     shared "is this actually a good transcript" check every call site
     below needs, factored out so a new quality marker never again needs
     updating in four separate places."""
-    markers = (_GARBLED_MARKER, _HALLUCINATION_MARKER, *_TRUNCATION_MARKERS)
-    return not any(marker in w for w in (warnings or []) for marker in markers)
+    return not any(
+        marker in w for w in (warnings or []) for marker in _NOT_GOOD_MARKERS
+    )
 
 
 # sha256 of the empty string: what _content_hash() yields for a version
@@ -312,16 +333,7 @@ def _good_default_transcript_exists():
             # was hand-written and lacked _PARTIAL_TRANSCRIPTION_MARKER,
             # so a page marked "the transcription was interrupted" was
             # correctly "not good" in Python and wrongly "good" here.
-            and_(
-                *(
-                    ~warnings_text.like(f"%{marker}%")
-                    for marker in (
-                        _GARBLED_MARKER,
-                        _HALLUCINATION_MARKER,
-                        *_TRUNCATION_MARKERS,
-                    )
-                )
-            ),
+            and_(*(~warnings_text.like(f"%{marker}%") for marker in _NOT_GOOD_MARKERS)),
         ),
     )
 
@@ -6522,6 +6534,10 @@ _OUTCOME_LABELS: dict[str, str] = {
     # Granicus page. Add new forms by extending _TRUNCATION_MARKERS
     # below rather than by minting a parallel bucket.
     "truncated_transcript": "Truncated transcript",
+    # WO-1179: station captions with almost no words for the meeting's
+    # length. Own bucket: the text is real but nearly empty, which is neither
+    # garbled nor cut off.
+    "sparse_captions": "Captions near-empty at the source",
     "non_english_transcript": "Transcript (non-English)",
     "success": "Transcript (English)",
     # Added 2026-09-09 (WO-135) alongside the two YouTube permanent-
@@ -6548,13 +6564,16 @@ _OUTCOME_RANK: dict[str, int] = {
     "non_english_transcript": 1,
     "garbled_transcript": 2,
     "truncated_transcript": 3,
-    "agenda_fallback": 4,
-    "blank_transcript": 5,
+    # Near-empty captions are worse than a cut-off transcript, better than
+    # nothing but an agenda (WO-1179).
+    "sparse_captions": 4,
+    "agenda_fallback": 5,
+    "blank_transcript": 6,
     # Ranked worse than blank_transcript (which might still improve on its
     # own) but better than no_video (there's at least a real, playable
     # video here) -- added WO-135, 2026-09-09.
-    "captions_disabled": 6,
-    "no_video": 7,
+    "captions_disabled": 7,
+    "no_video": 8,
 }
 
 
@@ -6596,6 +6615,10 @@ def _classify_page_outcome(
         for marker in _TRUNCATION_MARKERS
     ):
         return "truncated_transcript"
+    if default_transcript_warnings and any(
+        _SPARSE_CAPTIONS_MARKER in w for w in default_transcript_warnings
+    ):
+        return "sparse_captions"
     if default_transcript_language and default_transcript_language != "en":
         return "non_english_transcript"
     return "success"

@@ -112,7 +112,8 @@ berthoud.org,,us:place:0806255,fallback,hub_sweep_wo126,"coverage registry row u
 bethanybeach.granicus.com,,us:place:1005690,fallback,identity_join+landing_page,"Bethany Beach, DE -- us_places.csv Bethany Beach town [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 beverlyhills.granicus.com,,us:place:0606308,fallback,ryan_stated,"Beverly Hills, CA -- us_places.csv Beverly Hills city"
 biddefordme.portal.civicclerk.com,,us:place:2304860,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_places.csv Biddeford city
-biglakescounty.escribemeetings.com,,ca:csd:4817027,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4817027 Big Lakes County matched with spacing ignored
+bighorncomt.portal.civicclerk.com,,us:county:30003,fallback,ryan_stated,"Big Horn County, MT -- CivicClerk tenant returns a blank location; page 10155 re-keyed by hand 2026-10-04 (Ryan)"
+biglakescounty.escribemeetings.com,,ca:csd:4817027,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4817027 Big Lakes Countymatched with spacing ignored
 blackdiamond.civicweb.net,,rtr:ca:ab:diamond-valley,fallback,ryan_stated+dns_audit_2026-09-28,"Ryan 2026-09-29: Black Diamond and Turner Valley merged into the Town of Diamond Valley, AB (2023); DNS-run audit 2026-09-28 found these pages titled Diamond Valley"
 blacksburg.granicus.com,,us:place:5107784,fallback,auto_derived+visual_confirmed,"page title 'Town of Blacksburg, Va.: Blacksburg' (landing.png) [reports/jurisdiction_screens/blacksburg.granicus.com/landing.png reports/jurisdiction_screens/blacksburg.granicus.com/meeting.png] -> place 5107784 -> registry: us_places.csv Blacksburg town"
 blacksharbour.civicweb.net,,ca:csd:1302012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Blacks Harbour
