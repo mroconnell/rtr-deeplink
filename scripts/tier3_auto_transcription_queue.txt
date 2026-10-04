@@ -1257,3 +1257,6 @@ https://colonieny.portal.civicclerk.com/event/101/media		us:cousub:3600117343
 https://videos.files.wordpress.com/OtvroHpW/gmt20260928-230114_recording_1280x720.mp4	https://tatetownship.org/trustees-and-clerk/meeting-minutes/2026-trustee-meeting-agendas-minutes-videos/	us:cousub:3902576155	Trustees Public Hearing: Zoning Case RZC-2026-801, Zoning Text Amendment	2026-09-28	Board of Trustees
 https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
 https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspringsny.new.swagit.com/videos/401181/embed	us:place:3665255
+https://drive.google.com/file/d/1wTmxlcMak0A3kh5H8Ri06yI3nGtly3HY/view?usp=sharing	https://www.rushcity.k12.mn.us/apps/pages/index.jsp?uREC_ID=4433742&type=d&pREC_ID=2674229	us:sd:2732550	Board Meeting: Work Session	2026-08-05
+https://loganschools.org/37273_3	https://loganschools.org/37273_3	us:sd:4900510	Board Audio Recordings
+http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3	http://tv.dsctv.com/CablecastPublicSite/search?channel=3&query=school%20committee	us:sd:2504290	Dover School Committee Meeting	2026-09-22

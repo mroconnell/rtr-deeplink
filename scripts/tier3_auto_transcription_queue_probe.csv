@@ -9951,3 +9951,6 @@ https://files.smartsites.parentsquare.com/8165/november2023_online-audio-convert
 https://4.files.edl.io/6242/09/03/25/164427-1a0b107d-a92e-4281-b56e-74962e58882b.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-10-04T12:52:15+00:00,,0
 https://drive.google.com/file/d/1k6AmO8awLkiLtoYjbo3dfcOJYS6hII_8/preview,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.85,2026-10-04T12:52:18+00:00,,0
 https://files.smartsites.parentsquare.com/12465/march_17_2021_board_of_education_meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.01,2026-10-04T12:52:20+00:00,,0
+https://drive.google.com/file/d/1wTmxlcMak0A3kh5H8Ri06yI3nGtly3HY/view?usp=sharing,direct_file,head+ffprobe,2285.88,2026-09-14,280417451,1,accept,,5.05,2026-10-04T05:52:24+00:00
+https://loganschools.org/37273_3,unknown,head+ffprobe,3004.37,2026-09-25,72108952,1,accept,,1.29,2026-10-04T05:52:30+00:00
+http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3,cablecast,head+ffprobe,3600.05,2026-09-23,279959646,1,accept,,38.79,2026-10-04T05:57:43+00:00
