@@ -1,4 +1,4 @@
-# Drip handoff 2026-10-04 (modes pilot): 59 leads for 57 governments
+# Drip handoff 2026-10-04 (modes pilot): 52 leads for 50 governments
 
 These come from the county and school-district pilot (100 counties and 200 school districts), re-applied with the new owner-check rules
 (rtr-findmeeting main 60a2bcc, PR #8). For each government below, the pilot walk found a YouTube link on the government's own website.
@@ -15,18 +15,18 @@ or more states were left out. The same rows were added to the rtr-business drip 
 
 `leads.csv`, one row per address. Same columns as the earlier handoffs.
 
-| Lane | Kind | Count of 59 |
+| Lane | Kind | Count of 52 |
 |---|---|---|
-| youtube | channel | 48 |
+| youtube | channel | 41 |
 | youtube | single_video | 10 |
 | youtube | playlist | 1 |
 
-| Does the government's meeting source have no video? | Count of 59 |
+| Does the government's meeting source have no video? | Count of 52 |
 |---|---|
-| no | 50 |
+| no | 43 |
 | yes (a Find Video government) | 9 |
 
-11 of the 59 rows sit alongside another route for the same government (9 Find Video governments and Osborne County KS, whose tier 3 file is held).
+11 of the 52 rows sit alongside another route for the same government (9 Find Video governments and Osborne County KS, whose tier 3 file is held).
 
 ## What was left out
 
@@ -43,10 +43,9 @@ Dover School District MA, and the handle names neither clearly. Dover-Sherborn's
 
 ## Caution
 
-Read the channel name first. These channel names look like a team, a student group or an event channel rather than the district's board:
-`@fpstigerpride` (Fremont Public Schools), `@eastonjaguars` (Easton), `@TritonTrojans` (Triton), `@cgbrockets5466` (Cedar Grove-Belgium),
-`c/SkagwaySchoolEvents` (Skagway), `@MIARadio4015` (Montgomery County SD), `@NH_SAU9` (Conway). Skip a channel that has no board meetings. Skip
-any video of students, 911, police, body cameras or a jail.
+Skip a channel that has no board meetings. Skip any video of students, 911, police, body cameras or a jail.
+
+Seven student, sports or event channels were taken out of this file on 2026-10-04 (standing rule: never route anything likely to show minors): `@fpstigerpride`, `@eastonjaguars`, `@TritonTrojans`, `@cgbrockets5466`, `c/SkagwaySchoolEvents`, `@MIARadio4015`, `@NH_SAU9`.
 
 Clay County WV was found with three channels. Only one (an unnamed channel id) is in this file. The other two are named for the West Virginia
 legislature and a state environment agency, and apply did not add them.
