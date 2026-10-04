@@ -1261,3 +1261,9 @@ https://vimeo.com/1196671672		us:cousub:4209179136
 https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3	https://www.alamoheightstx.gov/government/city-council/meeting-videos/	us:place:4801600
 https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=ade7f018-eaeb-4f82-a7f7-d7e78df0bcac	https://pub-vernon.escribemeetings.com/Meeting.aspx?Id=391cef43-1fa3-46cb-8442-adb1690c79dc&Agenda=Agenda	us:place:3677112
 https://marpletwppa.portal.civicclerk.com/event/1269/media	https://marpletwp.com/217	us:cousub:4204547616
+http://reflect-northwest-access.cablecast.tv/internetchannel/show/22808?site=2	https://reflect-northwest-access.cablecast.tv/internetchannel/gallery/9?site=2	us:place:5071650
+https://reflect-vsctv.cablecast.tv/internetchannel/show/4964	https://reflect-vsctv.cablecast.tv/internetchannel/gallery/10	us:cousub:0913035230
+https://videos.files.wordpress.com/R2Th69fp/city-council-may-19th-2026.mov		us:place:3969834
+https://charlestonvt.org/wp-content/uploads/2026/09/SB-Mtg-9.8.2026-260908_1813.mp3	https://charlestonvt.org/departments/selectboard/selectboard-minutes/	us:cousub:5001913150
+https://cityofronan.org/city-audio/09-02-2026_special-mtg.mp4	https://cityofronan.org/your-government/city-of-ronan-audio-recordings/	us:place:3064150
+https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
