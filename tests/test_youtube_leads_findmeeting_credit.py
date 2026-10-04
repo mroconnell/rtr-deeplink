@@ -63,7 +63,7 @@ def test_same_address_in_same_state_keeps_credit(tmp_path):
 def test_unreadable_leads_file_gives_no_findmeeting_credit(tmp_path):
     f._SHARED_ADDRESSES_CACHE.clear()
     assert not f.is_linked_from_gov_site(
-        "findmeeting_a", "https://www.youtube.com/@x", tmp_path / "missing.csv"
+        "findmeeting_a", "https://www.youtube.com/@x", tmp_path / "missing.csv", []
     )
 
 
@@ -161,3 +161,125 @@ def test_named_template_embeds_never_get_credit(tmp_path):
     assert not f.is_linked_from_gov_site(
         "findmeeting_a", "https://www.youtube.com/embed/bqLUp7GuUTg?rel=0", p, []
     )
+
+
+# --- research file missing (the drip Mac): handoff leads.csv files alone ---
+
+HANDOFF_HEADER = (
+    "gov_id,government,state,lane,lead_url,kind,meeting_source_has_no_video,"
+    "run,all_youtube_addresses_seen\n"
+)
+
+
+def _handoff(tmp_path, rows, name="handoff.csv"):
+    h = tmp_path / name
+    h.write_text(HANDOFF_HEADER + "".join(rows))
+    f._SHARED_ADDRESSES_CACHE.clear()
+    return h
+
+
+def test_missing_research_file_uses_handoff_files_alone(tmp_path, caplog):
+    h = _handoff(
+        tmp_path,
+        [
+            "g1,A,Ohio,youtube,https://www.youtube.com/@own,channel,no,run_govs_01,\n",
+            "g2,B,Ohio,youtube,https://www.youtube.com/@same,channel,no,run_govs_01,\n",
+            "g3,C,Ohio,youtube,https://www.youtube.com/@same,channel,no,run_govs_01,\n",
+            "g4,D,Texas,youtube,https://www.youtube.com/@cross,channel,no,run_govs_01,\n",
+            "g5,E,Iowa,youtube,https://www.youtube.com/@cross,channel,no,run_govs_01,\n",
+        ],
+    )
+    missing = tmp_path / "nope.csv"
+    with caplog.at_level("INFO", logger=f.logger.name):
+        # no research file, so same-state and unseen addresses are credited
+        assert f.is_linked_from_gov_site(
+            "findmeeting_a", "https://www.youtube.com/@same", missing, [h]
+        )
+        # cross-state address is refused
+        assert not f.is_linked_from_gov_site(
+            "findmeeting_a", "https://www.youtube.com/@cross", missing, [h]
+        )
+        # template address is refused
+        assert not f.is_linked_from_gov_site(
+            "findmeeting_a", "https://www.youtube.com/@dewi11Channel", missing, [h]
+        )
+    lines = [
+        r.getMessage() for r in caplog.records if "leads guard source" in r.getMessage()
+    ]
+    assert len(lines) == 1
+    assert "handoff leads.csv only" in lines[0]
+
+
+def test_research_file_present_is_named_in_the_log(tmp_path, caplog):
+    p = _leads(
+        tmp_path,
+        ["https://www.youtube.com/@a,g1,A,Ohio,findmeeting_a,channel,false,\n"],
+    )
+    with caplog.at_level("INFO", logger=f.logger.name):
+        f.is_linked_from_gov_site("findmeeting_a", "https://www.youtube.com/@a", p, [])
+    assert any("research leads file" in r.getMessage() for r in caplog.records)
+
+
+def test_nothing_readable_gives_no_credit_even_for_handoff_run(tmp_path):
+    f._SHARED_ADDRESSES_CACHE.clear()
+    missing = tmp_path / "nope.csv"
+    assert not f.is_linked_from_gov_site(
+        "run_govs_01", "https://www.youtube.com/@x", missing, [tmp_path / "gone.csv"]
+    )
+    assert not f.is_linked_from_gov_site(
+        "", "https://www.youtube.com/@x", missing, [tmp_path / "gone.csv"]
+    )
+
+
+def test_handoff_run_prefixes_get_credit_as_source(tmp_path):
+    h = _handoff(
+        tmp_path,
+        ["g1,A,Ohio,youtube,https://www.youtube.com/@own,channel,no,run_govs_01,\n"],
+    )
+    missing = tmp_path / "nope.csv"
+    u = "https://www.youtube.com/@own"
+    for src in ("run_govs_02", "group4_final_run", "findmeeting_low_x"):
+        assert f.is_linked_from_gov_site(src, u, missing, [h])
+    # hand_review is Ryan's own decision path, not this credit
+    assert not f.is_linked_from_gov_site("hand_review_2026-10-03", u, missing, [h])
+    assert not f.is_linked_from_gov_site("WO-1131", u, missing, [h])
+
+
+def test_blank_source_is_looked_up_by_handoff_run(tmp_path):
+    h = _handoff(
+        tmp_path,
+        [
+            "g1,A,Ohio,youtube,https://www.youtube.com/@own,channel,no,group4_final_run,\n",
+            "g2,B,Ohio,vimeo,https://vimeo.com/user1,channel,yes,hand_review_2026-10-03,\n",
+            "g3,C,Texas,youtube,https://www.youtube.com/@x,channel,no,run_govs_01,\n",
+            "g4,D,Iowa,youtube,https://www.youtube.com/@x,channel,no,run_govs_01,\n",
+        ],
+    )
+    missing = tmp_path / "nope.csv"
+    assert f.is_linked_from_gov_site("", "https://www.youtube.com/@own", missing, [h])
+    # unknown address: no run known, no credit
+    assert not f.is_linked_from_gov_site(
+        "", "https://www.youtube.com/@zzz", missing, [h]
+    )
+    # hand-review run: no credit through this path
+    assert not f.is_linked_from_gov_site("", "https://vimeo.com/user1", missing, [h])
+    # cross-state still refused
+    assert not f.is_linked_from_gov_site("", "https://www.youtube.com/@x", missing, [h])
+
+
+def test_env_var_sets_leads_path(tmp_path, monkeypatch):
+    p = _leads(
+        tmp_path,
+        [
+            "https://www.youtube.com/@cross,g1,A,Ohio,findmeeting_a,channel,false,\n",
+            "https://www.youtube.com/@cross,g2,B,Texas,findmeeting_a,channel,false,\n",
+        ],
+    )
+    monkeypatch.setenv("RTR_LEADS_CSV", str(p))
+    assert f.leads_csv_path() == p
+    f._SHARED_ADDRESSES_CACHE.clear()
+    assert not f.is_linked_from_gov_site(
+        "findmeeting_a", "https://www.youtube.com/@cross", None, []
+    )
+    monkeypatch.delenv("RTR_LEADS_CSV")
+    assert f.leads_csv_path() == f.DEFAULT_LEADS_CSV
