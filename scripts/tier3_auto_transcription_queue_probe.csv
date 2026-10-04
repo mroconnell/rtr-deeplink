@@ -9986,3 +9986,16 @@ https://sedgwick.granicus.com/MediaPlayer.php?view_id=34&clip_id=6159,granicus,,
 https://dentoncounty.granicus.com/MediaPlayer.php?view_id=26&clip_id=2075,granicus,,,,,0,accept,length probe blocked by robots.txt; queued with length unknown (Ryan 2026-10-04),,2026-10-04T20:40:15+00:00
 https://parker.granicus.com/MediaPlayer.php?view_id=1&clip_id=945,granicus,,,,,0,accept,length probe blocked by robots.txt; queued with length unknown (Ryan 2026-10-04),,2026-10-04T20:40:15+00:00
 https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807,granicus,,,,,0,accept,length probe blocked by robots.txt; queued with length unknown (Ryan 2026-10-04),,2026-10-04T20:40:15+00:00
+https://files.smartsites.parentsquare.com/12403/shacmeeting2021-12-15_1.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-10-04T21:56:53+00:00,,0
+https://drive.google.com/file/d/17NUNBQcaUoE6iakusf_cE-DlzQfO42tu/view?usp=drive_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.87,2026-10-04T21:56:56+00:00,,0
+https://files.smartsites.parentsquare.com/11657/november_15_2022_shac_meeting_audio_recording.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.08,2026-10-04T21:56:58+00:00,,0
+https://cloud.castus.tv/vod/leon/video/6ab319601bb1cf00023e857c?page=HOME,castus,hls-master+variant,4776.00,,,1,accept,,0.34,2026-10-04T21:57:00+00:00,,0
+https://cloud.castus.tv/vod/leon/video/6ab319601bb1cf00023e857c?page=HOME,castus,hls-master+variant,4776.00,,,1,accept,,0.29,2026-10-04T21:57:01+00:00,feed_tier3_auto_transcription,0
+https://files.smartsites.parentsquare.com/12456/special_board_meeting_250423_004.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.11,2026-10-04T21:57:04+00:00,,0
+https://www.mabankisd.net/upload/page/0076/docs/Audio/2026-08-24-CallToMeeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.22,2026-10-04T21:57:06+00:00,,0
+https://resources.finalsite.net/videos/t_video_mp4_480/v1787768097/txkisdnet/cnblu0h5ecyif1yr4bjh/TISDbotm_082526.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.13,2026-10-04T21:57:08+00:00,,0
+https://drive.google.com/file/d/1rAyUIue4ZjZgpvkH45C7tIBai2gC9VBj/view?usp=drive_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.66,2026-10-04T21:57:11+00:00,,0
+https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.19,2026-10-04T21:57:14+00:00,,0
+https://littleelmisdtx.new.swagit.com/videos/391803,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-04T21:57:16+00:00,,0
+https://drive.google.com/file/d/1-4OTXoDL56oIV_JRUlRgMVBwcf8J8uaO/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.75,2026-10-04T21:57:20+00:00,,0
+https://drive.google.com/file/d/1EXvCSKyv25ygCAFQkQfhumYXv1XaNOzJ/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.89,2026-10-04T21:57:25+00:00,,0

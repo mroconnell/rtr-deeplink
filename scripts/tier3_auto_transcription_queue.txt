@@ -14,18 +14,6 @@ https://vimeo.com/946425462/b95b8652b3		us:place:2283405
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://files.smartsites.parentsquare.com/12403/shacmeeting2021-12-15_1.mp3		us:sd:4834260
-https://drive.google.com/file/d/17NUNBQcaUoE6iakusf_cE-DlzQfO42tu/view?usp=drive_link		us:sd:4828890
-https://files.smartsites.parentsquare.com/11657/november_15_2022_shac_meeting_audio_recording.mp3		us:sd:4837740
-https://cloud.castus.tv/vod/leon/video/6ab319601bb1cf00023e857c?page=HOME		us:sd:1201110
-https://files.smartsites.parentsquare.com/12456/special_board_meeting_250423_004.mp3		us:sd:4107200
-https://www.mabankisd.net/upload/page/0076/docs/Audio/2026-08-24-CallToMeeting.mp3		us:sd:4828680
-https://resources.finalsite.net/videos/t_video_mp4_480/v1787768097/txkisdnet/cnblu0h5ecyif1yr4bjh/TISDbotm_082526.mp4		us:sd:4842480
-https://drive.google.com/file/d/1rAyUIue4ZjZgpvkH45C7tIBai2gC9VBj/view?usp=drive_link		us:sd:0638790
-https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
-https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
-https://drive.google.com/file/d/1-4OTXoDL56oIV_JRUlRgMVBwcf8J8uaO/view?usp=sharing		us:sd:3622020
-https://drive.google.com/file/d/1EXvCSKyv25ygCAFQkQfhumYXv1XaNOzJ/view?usp=sharing		us:sd:0630720
 https://drive.google.com/file/d/1Dl76W-PxyMWJq8W0NrQ5kP8hBpaLrJ1t/view?usp=sharing		us:sd:4704200
 https://drive.google.com/file/d/1WMMJT3ezOZLFVZUfNIxEVZC8s0tLxfr0/view?usp=drive_link		us:sd:4811220
 https://drive.google.com/file/d/1-8WGOgfH5-HUhbgx3wRmESNo7IBXjji3/view?usp=sharing		us:sd:0620310
@@ -1292,3 +1280,5 @@ https://sedgwick.granicus.com/MediaPlayer.php?view_id=34&clip_id=6159		us:county
 https://dentoncounty.granicus.com/MediaPlayer.php?view_id=26&clip_id=2075		us:county:48121
 https://parker.granicus.com/MediaPlayer.php?view_id=1&clip_id=945		us:county:48367
 https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
+https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
+https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
