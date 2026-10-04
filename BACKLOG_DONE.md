@@ -1,5 +1,20 @@
 # Backlog — done
 
+## WO-1178: drip leads guard works on the drip Mac without the research file [Done 2026-10-03]
+
+**Why this ran.** WO-1177 gives `findmeeting_*` leads the "linked from the government's own site" credit, guarded against template embeds. The guard read `~/Documents/rtr-business/research/youtube_channel_leads.csv` and gave no credit if it could not read it. Ol McClaude reported that the drip Mac has no `rtr-business` git repo and no `research/` folder, so the credit would never apply there.
+
+**What changed.**
+- The research file path can be set with the environment variable `RTR_LEADS_CSV`. Unset, the old default is used.
+- If the research file is missing, the guard is built from the `reports/drip_handoff_*/leads.csv` files alone, plus `KNOWN_TEMPLATE_ADDRESSES`. An address seen for governments in two or more states, or in the known list, still gets no credit. A same-state address is credited. Only when no research file and no handoff file can be read is credit refused.
+- The guard logs one line per run naming the source it used ("research leads file ... + N handoff leads.csv" or "N handoff leads.csv only").
+- Credit by `run`: handoff rows have a `run` column (`run_govs_01`..`03`, `group4_pilot300_run`, `group4_batch2_run`, `group4_final_run`, `findmeeting_*`) and no `source_wo`. A source or run starting with `findmeeting_`, `run_govs_` or `group4_` now gets the same credit and the same guard. A blank source is looked up in the handoff files by address and credited when its run has one of those prefixes. `findmeeting_low_confidence_*` is excluded (low confidence by design: the handle names another body), by source and by run lookup. `hand_review_*` is not in the list: those are Ryan's hand decisions. `process_row` uses `run` when a row has no `source_wo`.
+- One existing test now passes `[]` as the handoff list, so it still means "nothing readable".
+
+**Not determined.** How a handoff `leads.csv` row reaches the drip Mac's `leads_queue.csv`. The lane reads `channel_url`, `gov_id`, `source_wo` and `verified`; handoff files use `lead_url` and `run`. No script in this repo converts one to the other; the runbook calls the queue a snapshot Ryan supplied.
+
+**Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
+
 ## WO-1177: drip leads lane gives Find Meeting addresses the "linked from the government's own site" credit [Done 2026-10-03]
 
 **Why this ran.** Find Meeting finds YouTube addresses by walking the government's own site. The drip leads lane (`scripts/youtube_leads_fetch.py`) only gave that credit to a fixed list of WO numbers (`HOMEPAGE_WALK_SOURCES`). A `findmeeting_*` lead got a name match only, so its identity stopped at medium.

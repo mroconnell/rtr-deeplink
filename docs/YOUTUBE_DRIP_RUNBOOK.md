@@ -299,3 +299,16 @@ but silent for 11 hours. That event now raises an alert too.
 --dry-run                                  do everything except write to the site
 --once                                     one step, then exit (for a quick check)
 ```
+
+## Leads lane: where the identity guard reads (WO-1178)
+
+The leads lane's "linked from the government's own site" credit refuses
+addresses seen for governments in two or more states. It reads, once per run:
+
+- the research leads file: `$RTR_LEADS_CSV` if set, else
+  `~/Documents/rtr-business/research/youtube_channel_leads.csv`;
+- every `reports/drip_handoff_*/leads.csv` in this checkout.
+
+If the research file is missing (the drip Mac has no `rtr-business` repo), the
+handoff files alone are used. The log has one line, "leads guard source: ...",
+saying which. Set `RTR_LEADS_CSV` only if you keep a copy of the research file.
