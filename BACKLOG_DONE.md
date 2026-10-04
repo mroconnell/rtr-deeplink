@@ -15,6 +15,37 @@
 
 **Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
 
+## WO-1179: pin 14 government sites from rtr-discovery's government queue [Done 2026-10-03]
+
+**Why this ran.** rtr-discovery's breadth pass found captioned meetings on 120 tenants that have no government name (`government-queue`). Ryan asked for pins on the top of that list. 39 of the 120 already had a pin; the rest needed one.
+
+**What changed.** 14 pins in `tenant_overrides.csv`, each a whole-site pin (no `match`), strength `fallback`, source `ryan_stated+proposal`. Ryan said "ok" to all 14 on 2026-10-03.
+
+| Site | Government |
+| --- | --- |
+| coffeecountytn.gov | Coffee County, TN |
+| norwichct.gov | Norwich city, CT |
+| coldspringny.gov | Cold Spring village, NY |
+| cumberlandcountypa.gov | Cumberland County, PA |
+| www.wyandottemi.gov | Wyandotte city, MI |
+| in-leocedarville.civicplus.com | Leo-Cedarville town, IN |
+| bossiercity.org | Bossier City, LA |
+| ks-prattcounty2.civicplus.com | Pratt County, KS |
+| cortlandny.gov | Cortland city, NY |
+| www.canaannh.gov | Canaan town, NH |
+| dallascountyiowa.gov | Dallas County, IA |
+| camdencountyga.gov | Camden County, GA |
+| grandcountyutah.gov | Grand County, UT |
+| ma-southbridge.civicplus.com | Southbridge town, MA |
+
+**Limit.** The proposals came from each site's domain and example meeting titles, run through the registry. The sites themselves were not opened. Norwich, CT is the weakest: its titles say only "Regular Meeting", so city versus town rests on the registry listing it as a city. `stcema.org` was left out because its domain does not name a government.
+
+**Not done.** The three TelVue stations in the top 20 (State College PA, Kalamazoo MI, Jackson County MI) need per-video pins, not site pins. The Cablecast tenants whose pin matches one show still need pins for the show rtr-discovery found.
+
+**Effect.** A merge ships nothing: pins are data files in the image and need a deploy. rtr-discovery re-checks with `resolve --retry-no-government` after deploy.
+
+**Tests.** `tests/test_wo1179_discovery_queue_pins.py`: each host resolves to the expected government id. No network.
+
 ## WO-1180: 147 per-video and per-show pins for TelVue and Cablecast meetings with no government [Done 2026-10-03]
 
 **Why this ran.** rtr-discovery's government queue listed captioned TelVue and Cablecast meetings with no government. Those stations carry several governments, so a whole-site pin would be wrong. Ryan said "ok" on 2026-10-03 to every proposal that resolved in the registry.
