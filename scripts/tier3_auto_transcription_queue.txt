@@ -1260,3 +1260,27 @@ https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspr
 https://drive.google.com/file/d/1wTmxlcMak0A3kh5H8Ri06yI3nGtly3HY/view?usp=sharing	https://www.rushcity.k12.mn.us/apps/pages/index.jsp?uREC_ID=4433742&type=d&pREC_ID=2674229	us:sd:2732550	Board Meeting: Work Session	2026-08-05
 https://loganschools.org/37273_3	https://loganschools.org/37273_3	us:sd:4900510	Board Audio Recordings
 http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3	http://tv.dsctv.com/CablecastPublicSite/search?channel=3&query=school%20committee	us:sd:2504290	Dover School Committee Meeting	2026-09-22
+https://pascocofl.portal.civicclerk.com/event/2982/media		us:county:12101
+https://bentoncowa.portal.civicclerk.com/event/1309/media		us:county:53005	Benton-Franklin Behavioral Health Advisory Committee
+https://casscoin.portal.civicclerk.com/event/1271/media		us:county:18017
+https://isleofwightcova.portal.civicclerk.com/event/659/media		us:county:51093
+https://desmoinescounty.iowa.gov/files/meetings/audio/2026-09-15_audio_6837.mp3	https://desmoinescounty.iowa.gov/board_of_supervisors/meetings_minutes/	us:county:19057
+https://drive.google.com/file/d/1fng7j-rKDCn0XJW__6x6l7eVNnwIGZhm/view?usp=sharing	https://www.wascocountyor.gov/departments/board_of_county_commissioners/agendas,_board_packets,_minutes.php	us:county:41065
+http://carrollcounty.us/SiteMedia/audio/2026/2026May19QCMtg.MP3	http://carrollcounty.us/QuorumCourt/Agenda	us:county:05015
+http://www.co.bertie.nc.us/commissioners/meetings/2025/audio/01-13-25audio.mp3	http://www.co.bertie.nc.us/commissioners/meetings/minutes.html	us:county:37015
+https://drive.google.com/file/d/1zOsR93keJglYXoh5ZVevik-R43musOgv/view?usp=sharing	https://keithcountyne.gov/residents/2026_board_meeting_minutes-agendas-claims-audio.php	us:county:31101
+https://charlescitycova.portal.civicclerk.com/event/237/media		us:county:51036	Board of Supervisors Work Session
+https://collincountytx.new.swagit.com/videos/355402		us:county:48085
+https://crcog.org/wp-content/uploads/2023/10/EV-Event-20231018_081648-Meeting-Recording-1.mp3	https://crcogct.gov/meetings-and-events/	us:county:09110
+https://meetings.christiancountymo.gov/videos/2026-10-01.mp4	https://meetings.christiancountymo.gov	us:county:29043
+https://jamescitycova.portal.civicclerk.com/event/2687/media		us:county:51095	Board of Supervisors Regular Meeting
+https://cecilcomd.portal.civicclerk.com/event/5902/media		us:county:24015	County Council Work Session
+https://www.columbiacountyor.gov/media/Board/BOC/BOC Video/01.02.19_BOC_Meeting.m4v	https://www.columbiacountyor.gov/board-of-commissioner-meeting-videos	us:county:41009
+https://play.champds.com/shenandoahcova/event/229		us:county:51171
+https://s3.us-east-1.amazonaws.com/BZA/BZA+2026/August+26%2C+2026+BZA+Recording.MP3	https://browncounty-in.gov/182/County-Council	us:county:18013	County Council
+https://video.wixstatic.com/video/7a3db8_1a1221f91cc5445dabd8ad351d46140d/720p/mp4/file.mp4	https://www.bensoncountynd.com/government	us:county:38005
+https://eriecountyny.new.swagit.com/videos/402767		us:county:36029
+https://bellcountytx.new.swagit.com/videos/396877		us:county:48027
+https://sandovalcountynm.new.swagit.com/videos/402685		us:county:35043
+https://wallercountytx.new.swagit.com/videos/402671		us:county:48473
+https://modoccountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3830		us:county:06049
