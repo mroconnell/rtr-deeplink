@@ -1,0 +1,53 @@
+gov_id,government,state,lane,lead_url,kind,meeting_source_has_no_video,run,all_youtube_addresses_seen
+us:county:36099,Seneca County,NY,youtube,https://www.youtube.com/channel/UCQvnobx8G-6CJzoa8UWJzyg,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCQvnobx8G-6CJzoa8UWJzyg
+us:county:34015,Gloucester County,NJ,youtube,https://www.youtube.com/watch?v=XJCtkTKD0rA,single_video,yes,modes_pilot_2026-10-03,https://www.youtube.com/watch?v=XJCtkTKD0rA
+us:county:55017,Chippewa County,WI,youtube,https://www.youtube.com/channel/UCIZ-HWrJJGANNP_QbxeeATw,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCIZ-HWrJJGANNP_QbxeeATw
+us:sd:2010290,Osborne County Unified School District 392,KS,youtube,https://www.youtube.com/@usd392,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@usd392 https://www.youtube.com/channel/UCOqF5L7lxWVRc-OLvmtVFOQ
+us:sd:2010290,Osborne County Unified School District 392,KS,youtube,https://www.youtube.com/channel/UCOqF5L7lxWVRc-OLvmtVFOQ,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@usd392 https://www.youtube.com/channel/UCOqF5L7lxWVRc-OLvmtVFOQ
+us:sd:3630540,West Babylon Union Free School District,NY,youtube,https://www.youtube.com/@westbabylonschooldistrict3616/streams,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/@westbabylonschooldistrict3616/streams
+us:sd:2200870,Lafayette Parish School District,LA,youtube,https://www.youtube.com/channel/UCI1Nw2GLcWcQkq39XT3z_1g,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCI1Nw2GLcWcQkq39XT3z_1g
+us:sd:2400600,St. Marys County Public Schools,MD,youtube,https://www.youtube.com/channel/UCaLZ5g1qwH-8vEtMnIoZcDw,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCaLZ5g1qwH-8vEtMnIoZcDw https://www.youtube.com/@smcps/featured
+us:sd:2400600,St. Marys County Public Schools,MD,youtube,https://www.youtube.com/@smcps/featured,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCaLZ5g1qwH-8vEtMnIoZcDw https://www.youtube.com/@smcps/featured
+us:sd:2200300,Caddo Parish School District,LA,youtube,https://www.youtube.com/c/CaddoParishPublicSchools/featured,channel,yes,modes_pilot_2026-10-03,https://www.youtube.com/c/CaddoParishPublicSchools/featured
+us:county:54015,Clay County,WV,youtube,https://www.youtube.com/channel/UCW84nM-EAuCsIO7jHRtnOwg,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCW84nM-EAuCsIO7jHRtnOwg https://www.youtube.com/user/WVEnvironment https://www.youtube.com/@wvlegislature
+us:county:33013,Merrimack County,NH,youtube,https://www.youtube.com/embed/aBzPYRkbKWo,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/embed/aBzPYRkbKWo
+us:sd:4501250,Calhoun County School District,SC,youtube,https://youtube.com/@ccpsyoutube?si=Q2TjD8nxsyGgcTGr,channel,yes,modes_pilot_2026-10-03,https://youtube.com/@ccpsyoutube?si=Q2TjD8nxsyGgcTGr
+us:county:37115,Madison County,NC,youtube,https://www.youtube.com/channel/UC3fo0X9iGqyU5ZRs0f7DTnA,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UC3fo0X9iGqyU5ZRs0f7DTnA
+us:county:16031,Cassia County,ID,youtube,https://www.youtube.com/watch?v=hkNToQTFoyM&feature=youtu.be,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/watch?v=hkNToQTFoyM&feature=youtu.be
+us:sd:1304380,Richmond County School District,GA,youtube,https://www.youtube.com/playlist?list=PLHfvgHEKxszWvmFYOFB2sRd70KUyxdmZy,playlist,no,modes_pilot_2026-10-03,https://www.youtube.com/playlist?list=PLHfvgHEKxszWvmFYOFB2sRd70KUyxdmZy
+us:sd:2201740,Terrebonne Parish School District,LA,youtube,https://www.youtube.com/@TerrebonneParishSchoolBoard/videos,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@TerrebonneParishSchoolBoard/videos
+us:county:51013,Arlington County,VA,youtube,https://www.youtube.com/user/arlingtoncounty,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/user/arlingtoncounty
+us:sd:2400030,Allegany County Public Schools,MD,youtube,https://www.youtube.com/@acpsmd/featured,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@acpsmd/featured
+us:sd:0200810,Wrangell School District,AK,youtube,https://www.youtube.com/@WPSD_Streaming,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@WPSD_Streaming
+us:sd:2012510,Valley Center Public Schools Unified School District 262,KS,youtube,https://www.youtube.com/channel/UCD8AdyKpM44gpFzqIqBG9tw,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCD8AdyKpM44gpFzqIqBG9tw
+us:sd:0102640,Ozark City School District,AL,youtube,https://www.youtube.com/@ozarkcityschools198?app=desktop,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@ozarkcityschools198?app=desktop
+us:sd:1726310,Minooka Community Consolidated School District 201,IL,youtube,https://www.youtube.com/@livestream7671,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@livestream7671
+us:sd:2101650,Elizabethtown Independent School District,KY,youtube,https://www.youtube.com/channel/UC_tqXarChaXR_9V-yNb8_NQ,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UC_tqXarChaXR_9V-yNb8_NQ
+us:sd:1602640,Pocatello School District 25,ID,youtube,https://www.youtube.com/user/SchoolDistrict025/featured,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/user/SchoolDistrict025/featured
+us:sd:1300840,Carroll County School District,GA,youtube,https://www.youtube.com/@carrollcoschools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@carrollcoschools
+us:sd:0102580,Opelika City School District,AL,youtube,https://www.youtube.com/@OpelikaSchools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@OpelikaSchools
+us:sd:2201200,Ouachita Parish School District,LA,youtube,https://www.youtube.com/@OuachitaParishSchools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@OuachitaParishSchools
+us:sd:1601770,Kuna Joint School District 3,ID,youtube,https://www.youtube.com/channel/UC3sn1nuR8bfREYuRf9_Xyhg,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UC3sn1nuR8bfREYuRf9_Xyhg https://www.youtube.com/@kunaschooldistrict8386
+us:sd:3100016,Grand Island Public Schools,NE,youtube,https://www.youtube.com/@grandislandpublicschools8228,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@grandislandpublicschools8228
+us:sd:2200840,Jefferson Parish School District,LA,youtube,https://www.youtube.com/@JeffersonParishSchools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@JeffersonParishSchools
+us:sd:4702820,McMinn County School District,TN,youtube,https://www.youtube.com/c/McMinnCountySchools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/c/McMinnCountySchools
+us:sd:1000790,Lake Forest School District,DE,youtube,https://www.youtube.com/@lakeforestschooldistrict-f7410,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@lakeforestschooldistrict-f7410 https://www.youtube.com/channel/UCvTy15yfJNzxO-jc9RoZnYg
+us:sd:5510320,Neenah School District,WI,youtube,https://www.youtube.com/watch?v=7EYTTEUZIuU&t=1s,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/watch?v=7EYTTEUZIuU&t=1s
+us:sd:0100194,Pelham City School District,AL,youtube,https://youtube.com/live/vxrARKaCLB4?feature=share,single_video,no,modes_pilot_2026-10-03,https://youtube.com/live/vxrARKaCLB4?feature=share
+us:sd:2200330,Calcasieu Parish School District,LA,youtube,https://www.youtube.com/@CPSBschools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@CPSBschools
+us:sd:2620550,Laingsburg Community School District,MI,youtube,https://youtu.be/5K2mYeib7I4?si=jkd19Km-lVueDdD6,single_video,no,modes_pilot_2026-10-03,https://youtu.be/5K2mYeib7I4?si=jkd19Km-lVueDdD6
+us:sd:4009570,Deer Creek Public Schools,OK,youtube,http://www.youtube.com/@dcaddeercreek7948,channel,no,modes_pilot_2026-10-03,http://www.youtube.com/@dcaddeercreek7948
+us:sd:2200090,Ascension Parish School District,LA,youtube,https://www.youtube.com/c/AscensionPublicSchools,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/c/AscensionPublicSchools
+us:sd:0806690,Valley School District RE-1,CO,youtube,https://youtu.be/Y_PsJMzKsAo?feature=shared,single_video,no,modes_pilot_2026-10-03,https://youtu.be/Y_PsJMzKsAo?feature=shared
+us:sd:1921000,North Tama County Community School District,IA,youtube,https://www.youtube.com/@NorthTama,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@NorthTama
+us:sd:1303210,Lamar County School District,GA,youtube,https://www.youtube.com/channel/UCeyu-Tll8VnEXB6xAT-o9Cg,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCeyu-Tll8VnEXB6xAT-o9Cg
+us:sd:0200030,Bristol Bay Borough School District,AK,youtube,https://www.youtube.com/watch?v=oHe6EmYqmp4,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/watch?v=oHe6EmYqmp4
+us:county:72097,Mayagüez Municipio,PR,youtube,https://www.youtube.com/user/municipiodemayaguez,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/user/municipiodemayaguez
+us:sd:1928230,Underwood Community School District,IA,youtube,https://www.youtube.com/@underwood8640,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@underwood8640
+us:sd:0100190,Alabaster City School District,AL,youtube,https://www.youtube.com/@alabastercityschools?app=desktop,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@alabastercityschools?app=desktop
+us:sd:5307950,Skamania School District,WA,youtube,https://www.youtube.com/embed/Q2eKFYRpcto?feature=oembed,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/embed/Q2eKFYRpcto?feature=oembed
+us:sd:4503540,Spartanburg School District 3,SC,youtube,https://www.youtube.com/live/OM20mPCroWQ,single_video,no,modes_pilot_2026-10-03,https://www.youtube.com/live/OM20mPCroWQ
+us:sd:2791446,Tri-County School District,MN,youtube,https://youtube.com/@tri-countyschool9196,channel,no,modes_pilot_2026-10-03,https://youtube.com/@tri-countyschool9196
+us:sd:1806120,Madison Consolidated Schools,IN,youtube,https://www.youtube.com/@MCSCStream,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@MCSCStream
+us:sd:2101350,Covington Independent School District,KY,youtube,https://www.youtube.com/@cipsboardmeetings1574,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/@cipsboardmeetings1574
+us:sd:4400210,Coventry School District,RI,youtube,https://www.youtube.com/channel/UCTcm2TB52qZajUDvyz-76vQ,channel,no,modes_pilot_2026-10-03,https://www.youtube.com/channel/UCTcm2TB52qZajUDvyz-76vQ
