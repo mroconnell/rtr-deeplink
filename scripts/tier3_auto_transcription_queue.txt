@@ -1287,3 +1287,4 @@ https://modoccountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3830		us:county:0
 https://www.indianacountypa.gov/wp-content/uploads/CommMtg92326.mp3	https://www.indianacountypa.gov/forms/	us:county:42063
 https://boxcast.tv/view/jackson-county-board-of-supervisors-special-meeting-91426-ajw3wocv7sixvpkl6oaf		us:county:28059
 https://vimeo.com/499615398		us:county:51063
+https://pub-missoula.escribemeetings.com/Meeting.aspx?Id=5161072f-8df8-4697-8c3c-b6e3cad455b8		us:place:3050200
