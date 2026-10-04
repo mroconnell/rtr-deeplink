@@ -42,6 +42,12 @@
 
 **Caution.** `tier3_long_meetings_deferred.txt` uses columns 4-6 for jurisdiction, duration and title. Do not move a deferred line into the queue by hand. `archive/` and `app/` changes are on `main` but not live until a deploy.
 
+**Follow-ups (2026-10-04).**
+- The Search meetings list row was missed by the first pass (#1712); it now reads "<government> meeting" too.
+- Nine more pages re-keyed with Ryan's go-ahead, found by the Find Meeting routing of 2026-10-03 plus the same Cablecast channel: Tate Township OH (`meeting-7792b4`), Haddam CT (2: the 2020 Board of Finance meeting and the 2024 elementary school session, filed under the town), Clinton CT (2), Old Saybrook CT (2), Deep River CT (1), and page 678 from Owen, WI to Owen Sound, ON. The six `reflect-vsctv` pages already had per-video pins in `tenant_overrides.csv` for three of them and were still unidentified; not investigated.
+- Page 678 reslugged to `owen-sound-on-2022-04-25-council-meeting-regular` (its old slug named the wrong place; Ryan approved), with a `_SLUG_REDIRECTS` entry.
+- Queued Tate's 2026-09-28 Trustees public hearing (95 min, own-site WordPress video) as a 6-column line, the first hand-queued line using the WO-1176 title/date/body columns.
+
 ## ChampDS listing: Meeting Finder lists ChampDS accounts, finds their downloadable video, and names the meeting when there is none [Done 2026-10-02]
 
 **Why this ran.** A government-first run in rtr-findmeeting (2026-10-02) found that rtr-deeplink's own ChampDS lister saw real video Meeting Finder missed: Signal Mountain TN, Thompson's Station TN and Yuba County CA. The older `scripts/meeting_finder.py` also said `no-meeting-nor-video` on the control, Largo FL, whose account has meetings through 2026-09-24.
