@@ -15,6 +15,31 @@
 
 **Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
 
+## WO-1180: 147 per-video and per-show pins for TelVue and Cablecast meetings with no government [Done 2026-10-03]
+
+**Why this ran.** rtr-discovery's government queue listed captioned TelVue and Cablecast meetings with no government. Those stations carry several governments, so a whole-site pin would be wrong. Ryan said "ok" on 2026-10-03 to every proposal that resolved in the registry.
+
+**What changed.** 147 rows in `tenant_overrides.csv`: 106 TelVue (one per video, `player/<id>/media/<n>`) and 41 Cablecast (one per show, `cablecast:<host>:<show>`). Strength `fallback`, source `ryan_stated+proposal`. Each row's evidence starts "WO-1180:" and quotes the meeting title.
+
+| Station | Governments pinned |
+| --- | --- |
+| Kalamazoo TelVue | Kalamazoo city, Kalamazoo County, Oshtemo and Comstock townships, Kalamazoo Township, Kalamazoo Public School District |
+| State College TelVue | Centre County, State College borough and area schools, Bellefonte area schools and borough, College, Harris, Patton and Halfmoon townships |
+| Jackson County TelVue (Oregon) | Jackson County, Ashland, Grants Pass, Ashland School District 5 |
+| 14 Cablecast stations | Savage, Albert Lea, Champaign, Fort Collins, Larimer County, St. Tammany Parish, Spencer, Rehoboth, Tacoma Public Schools, and others |
+
+**How the names were made.** A title-to-government rule table (one rule per station), then each name through the registry's own-name check. Two names were retyped as the registry spells them, and one was pinned by the id the registry itself suggested (Brownsburg Community School Corporation, `us:sd:1801020`).
+
+**Not pinned (left for Ryan).** 38 TelVue and 18 Cablecast meetings where no government was identified (two unidentified TelVue stations, `gmcC3sJ6` and `5ZgpAPx0`); 10 whose title does not settle one government; 10 whose government is not in the national table (Groton-Dunstable Regional School District MA needs an "ok mint"; two PA townships share the name Ferguson). Shows that are not meetings were skipped.
+
+**Left out on purpose.** Three Town Square MN shows (`reflect-tst-mn.cablecast.tv`: South St. Paul, Mendota Heights, West St. Paul city councils). That host's pins are keyed by `site=N`, and `tests/test_tenant_key.py` refuses a per-show pin it cannot place in a tenant. They need a `site=` pin.
+
+**Limit.** The title is the only evidence. The stations were not opened.
+
+**Effect.** A merge ships nothing; pins are data files and need a deploy. Then `resolve --retry-no-government` in rtr-discovery. This PR and WO-1179 both append to the end of `tenant_overrides.csv`, so the second to merge needs a rebase.
+
+**Tests.** `tests/test_wo1180_telvue_cablecast_per_show_pins.py` reads the 147 rows back and checks each resolves to its id through the real resolver. No network.
+
 ## WO-1177: drip leads lane gives Find Meeting addresses the "linked from the government's own site" credit [Done 2026-10-03]
 
 **Why this ran.** Find Meeting finds YouTube addresses by walking the government's own site. The drip leads lane (`scripts/youtube_leads_fetch.py`) only gave that credit to a fixed list of WO numbers (`HOMEPAGE_WALK_SOURCES`). A `findmeeting_*` lead got a name match only, so its identity stopped at medium.
