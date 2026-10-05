@@ -5,7 +5,13 @@ from urllib.parse import urlparse
 
 import aiohttp
 
-from .base import AssetFinder, detect_platform, resolve_via_platform
+from .base import (
+    AssetFinder,
+    CalendarCandidate,
+    CalendarPageError,
+    detect_platform,
+    resolve_via_platform,
+)
 from .boxcast import BoxcastAssetFinder, parse_boxcast_id
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
@@ -21,6 +27,20 @@ from ..utils.vtt_parser import (
 logger = logging.getLogger("rtr_deeplink.civicclerk")
 
 TARGET_LANGUAGE = "en"
+
+# Portal-root pick-list (a government page that iframes the bare portal,
+# e.g. vallejo.gov -> vallejoca.portal.civicclerk.com/, 2026-10-05): how
+# many of the newest past events to scan, and how many to offer.
+_PORTAL_LISTING_SCAN = 100
+_PORTAL_LISTING_MAX = 25
+# Event fields that mean a recording exists. Same signals resolve() reads.
+_EVENT_VIDEO_FIELDS = (
+    "mediaSourcePath",
+    "mediaStreamPath",
+    "mediaSourcePathMp4",
+    "externalMediaUrl",
+    "youtubeVideoId",
+)
 
 # Events/{id}'s own categoryName is a real, independent grouping of the
 # committee/body -- confirmed live across multiple customers (WO-904):
@@ -165,7 +185,9 @@ class CivicClerkAssetFinder(AssetFinder):
 
         match = re.search(r"/event/(\d+)", parsed.path)
         if not match:
-            raise ValueError(f"Could not find an event ID in URL path: {parsed.path}")
+            # A portal root (or any non-event page) is a listing, not one
+            # meeting -- offer the recent meetings as a pick-list.
+            await self._raise_portal_listing(url, subdomain, api_base)
         event_id = match.group(1)
 
         segments: List[TranscriptSegment] = []
@@ -724,6 +746,49 @@ class CivicClerkAssetFinder(AssetFinder):
                 exc_info=True,
             )
             return None
+
+    async def _raise_portal_listing(
+        self, url: str, subdomain: str, api_base: str
+    ) -> None:
+        """Always raises: `CalendarPageError` with the tenant's newest past
+        events that have a recording (falling back to the newest past events
+        of any kind when none do), or `ValueError` when the tenant has no
+        events at all or the API can't be read."""
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        params = {
+            "$top": str(_PORTAL_LISTING_SCAN),
+            "$orderby": "startDateTime desc",
+            "$filter": f"startDateTime lt {now}",
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{api_base}/Events",
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                resp.raise_for_status()
+                events = (await resp.json()).get("value") or []
+
+        def candidate(e: dict) -> CalendarCandidate:
+            return {
+                "title": (e.get("eventName") or "").strip() or "Meeting",
+                "date": (e.get("eventDate") or e.get("startDateTime") or "")[:10],
+                "url": f"https://{subdomain}.portal.civicclerk.com/event/{e['id']}/media",
+            }
+
+        with_video = [e for e in events if any(e.get(f) for f in _EVENT_VIDEO_FIELDS)]
+        chosen = (with_video or events)[:_PORTAL_LISTING_MAX]
+        if not chosen:
+            raise ValueError(f"No meetings found on CivicClerk portal {url}")
+        raise CalendarPageError(
+            message=(
+                "This is a CivicClerk portal home page with multiple meetings, "
+                "not a link to one specific meeting."
+            ),
+            candidates=[candidate(e) for e in chosen],
+        )
 
     @staticmethod
     async def _fetch_json_pair(session: aiohttp.ClientSession, url_a: str, url_b: str):

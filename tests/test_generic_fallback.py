@@ -7,7 +7,8 @@ the exact string detect_platform() returns for anything unmatched.
 import pytest
 import yt_dlp
 
-from app.platforms.base import register
+from app.platforms.base import CalendarPageError, register
+from app.platforms.civicclerk import CivicClerkAssetFinder
 from app.platforms.generic_fallback import GenericFallbackAssetFinder
 from app.platforms.vimeo import VimeoAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
@@ -1379,3 +1380,28 @@ async def test_html_page_whose_url_ends_in_mp4_is_still_parsed_as_a_page():
         result = await GenericFallbackAssetFinder().resolve(url)
 
     assert result.video_url == "https://cdn.example.gov/real-video.mp4"
+
+
+async def test_government_page_iframing_civicclerk_portal_root_returns_pick_list():
+    # The iframe tag is copied verbatim from vallejo.gov's real city-agendas
+    # page (fetched in a browser 2026-10-05); the page around it is
+    # synthetic because the city's Cloudflare 403s a plain server fetch.
+    # Events listing is the real Vallejo fixture.
+    page_url = "https://www.vallejo.gov/our_city/departments_divisions/city_manager/city_clerk/city_agendas_videos"
+    html = (
+        "<html><head><title>City Agendas</title></head><body>"
+        '<iframe src="https://vallejoca.portal.civicclerk.com/" '
+        'title="Meetings &amp; Agendas" loading="lazy"></iframe></body></html>'
+    )
+    register(CivicClerkAssetFinder())
+    routes = {
+        page_url: FakeResponse(status=200, text=html),
+        "https://vallejoca.api.civicclerk.com/v1/Events": FakeResponse(
+            status=200, text=load_fixture("civicclerk", "vallejoca_events_listing.json")
+        ),
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await GenericFallbackAssetFinder().resolve(page_url)
+    urls = [c["url"] for c in exc_info.value.candidates]
+    assert "https://vallejoca.portal.civicclerk.com/event/9046/media" in urls
