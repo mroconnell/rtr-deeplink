@@ -298,13 +298,9 @@ def test_deferred_match_is_robust_to_url_form_not_just_exact_string() -> None:
     slash, query params reordered) must still be caught. A bare string
     compare would miss every one of these; normalize_url() must not.
     """
-    real_deferred_line = next(
-        ln
-        for ln in DEFERRED_FILE.read_text(encoding="utf-8").split("\n")
-        if "lakehavasucity.granicus.com" in ln and "clip_id=1838" in ln
-    )
-    real_url = real_deferred_line.split("\t", 1)[0].strip()
-    assert real_url == (
+    # The real deferred line was removed from the file on 2026-10-05 (Lake Havasu
+    # City is covered), so the URL is written out here instead of read from it.
+    real_url = (
         "https://lakehavasucity.granicus.com/MediaPlayer.php?view_id=2&clip_id=1838"
     )
 

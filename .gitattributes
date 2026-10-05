@@ -1,0 +1,37 @@
+# WO-1184: merge rules for record-style files that many parallel branches
+# touch. Only a *local* `git merge` / `git rebase` reads this; GitHub's own
+# server-side merge ignores it (see CLAUDE.md). Run
+# scripts/setup_merge_drivers.sh once per clone for the `lineset` driver;
+# `union` is built into git and needs no setup.
+
+# union = keep both sides' added lines. Safe only for add-only files.
+# Entries are added at the top and rarely edited; worst case on a same-spot
+# edit is the old and new copy of that line both staying, never a lost line.
+# scripts/check_backlog_done_headings.py still guards the headings.
+BACKLOG_DONE.md merge=union
+# Append-only log: the feed script only appends (git history: 49 commits,
+# none removed a line).
+scripts/tier3_auto_transcription_queue_feed_log.csv merge=union
+# Append-only seen-ledger (scripts/inbox_triage_ledger.py): 34 commits, none
+# removed a line.
+CLAUDE_INBOX_TRIAGE_SEEN.txt merge=union
+
+# lineset = scripts/merge_line_set.py: one record per line, keyed. Used where
+# lines are also removed (the feed consumes queue lines) or edited, which
+# union would undo or duplicate.
+# key = URL (column 1)
+scripts/tier3_auto_transcription_queue.txt merge=lineset
+scripts/tier3_long_meetings_deferred.txt merge=lineset
+# key = tenant_host + match. 39 keys repeat today, so the driver falls back
+# to the normal text merge for this file until those are cleaned up.
+app/utils/jurisdiction_data/tenant_overrides.csv merge=lineset
+# key = gov_id; unique and one line per row (checked 2026-10-05).
+app/utils/jurisdiction_data/curated_governments.csv merge=lineset
+app/utils/jurisdiction_data/governments.csv merge=lineset
+
+# NOT listed on purpose:
+# scripts/tier3_auto_transcription_queue_probe.csv: 45 of 292 commits rewrote
+# or removed rows, and 1,351 URLs repeat, so union would bring deleted rows
+# back and a keyed merge would always fall back.
+# BACKLOG.md: multi-line entries edited and moved in place (see its backlog
+# entry about generating it).

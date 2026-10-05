@@ -1077,3 +1077,64 @@ def test_a_kept_403_line_goes_to_the_end_not_the_front_of_the_next_batch():
     assert kept_403_line not in batch
     assert batch == fresh_lines[:12]
     assert remainder == fresh_lines[12:] + [kept_403_line]
+
+
+async def test_push_if_has_video_accepts_cablecast_when_length_lookup_404s(monkeypatch):
+    """Ryan 2026-10-05: Cablecast accepts a meeting when the probe fails
+    (Weston FL shape: Reflect API answers 404)."""
+    import scripts.feed_tier3_auto_transcription as mod
+    from tests.aiohttp_mock import FakeResponse, mock_session
+
+    page = "https://reflect-peg-westonfl.cablecast.tv/show/221?site=1"
+    video = "https://peg-westonfl-cablecast.cablecast.tv/vod/221-Commission/vod.m3u8"
+    result = _FakeResolvedMeeting(video_url=video, source_url=page)
+    monkeypatch.setattr(mod, "detect_platform", lambda url: "cablecast")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    async def _fake_ingest(
+        session, payload, input_url_normalized, *, already_probed=False, caller=""
+    ):
+        return {"url": "/m/example-page"}
+
+    monkeypatch.setattr(mod, "_ingest", _fake_ingest)
+    routes = {
+        "https://reflect-peg-westonfl.cablecast.tv/cablecastapi/v1/shows/221": FakeResponse(
+            status=404, text=""
+        ),
+        "https://peg-westonfl-cablecast.cablecast.tv/cablecastapi/v1/shows/221": FakeResponse(
+            status=404, text=""
+        ),
+    }
+    with mock_session(routes, post_routes={}):
+        outcome = await _push_if_has_video(session=None, url=page)
+    assert "[OK]" in outcome
+
+
+async def test_push_if_has_video_still_skips_non_cablecast_dead_link(monkeypatch):
+    import scripts.feed_tier3_auto_transcription as mod
+
+    url = "https://example.granicus.com/player/clip/1"
+    result = _FakeResolvedMeeting(video_url=url, source_url=url)
+    monkeypatch.setattr(mod, "detect_platform", lambda u: "granicus")
+    monkeypatch.setattr(mod, "get_finder", lambda platform: _FakeFinder(result))
+    monkeypatch.setattr(mod, "append_probe_row", _noop_append_probe_row)
+
+    async def _dead(
+        url, *, video_url=None, source_page_url=None, platform=None, video_format=None
+    ):
+        return ProbeResult(
+            url=url,
+            platform=platform,
+            probe_method="t",
+            duration_seconds=None,
+            date=None,
+            size_bytes=None,
+            verdict="reject-dead",
+            reason="HTTP 404",
+            probe_seconds=0.01,
+        )
+
+    monkeypatch.setattr(mod, "probe_queue_entry", _dead)
+    outcome = await _push_if_has_video(session=None, url=url)
+    assert outcome.startswith("[SKIP] reject-dead")

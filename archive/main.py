@@ -2861,6 +2861,10 @@ _SLUG_REDIRECTS: dict[str, str] = {
     "santa-clara-valley-water-district-2023-11-06-closed-session-and-regular-meeting": "santa-clara-valley-water-district-ca-2024-04-09-closed-session-and-regular-meeti",
     "santa-clara-valley-water-district-2025-10-20-closed-session-and-regular-meeting": "santa-clara-valley-water-district-ca-2025-10-14-closed-session-and-regular-meeti",
     "oliver-county-nd-2026-08-31-committee-of-the-whole": "oliver-bc-2026-08-31-committee-of-the-whole",
+    # 2026-10-05 (WO-1184): a Sherborn, MA meeting whose slug named Dover
+    # (a wrong second pin on the shared Dover-Sherborn channel). gov_id was
+    # already Sherborn; reslugged by hand (Ryan).
+    "dover-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-2025": "sherborn-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-202",
 }
 
 
