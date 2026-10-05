@@ -1,5 +1,21 @@
 # Backlog — done
 
+## WO-1181: Swagit drops near-empty station captions; a near-empty-captions marker; Big Horn County MT pin [Done 2026-10-04]
+
+**Why this ran.** One Swagit page (Caroline County MD, Feb 12 2026 Administrative Charging Committee, page id 12372) held 501 words of station captions over 104 minutes (4.8 words a minute). It was stored as a good sourced transcript, so Whisper never picked it up. A scan of all 448 stored Swagit sourced pages found only this one under 8 words a minute (1 of 448). Cablecast already had the guard (PR #1699); Swagit did not.
+
+**What changed.**
+- `app/platforms/swagit.py`: after every segment source (transcript download, `#transcript-fragments`, caption file), `caption_text_is_sparse()` runs. If sparse, the segments are dropped and the page gets "The station's captions hold only N words over M minutes, so they were not used." (same sentence as Cablecast, unchanged). The "No transcript found" line is skipped in that case. Tests are synthetic and commented as such (`tests/test_swagit.py`): one sparse case, one normal-density case over a long meeting.
+- `archive/db/crud.py`: new `_SPARSE_CAPTIONS_MARKER = "near-empty at the source"`. It is in a new `_NOT_GOOD_MARKERS` tuple that both `_has_real_warning_free_transcript()` and the raw-SQL `_good_default_transcript_exists()` read, so the two cannot drift. It has its own report bucket `sparse_captions` ("Captions near-empty at the source"), ranked between `truncated_transcript` and `agenda_fallback` (later ranks shifted by one). No adapter writes this marker. `manually_promote_transcript_version(clear_warnings=True)` does not strip it. Tests: `tests/test_transcription_jobs.py` (SQL and Python helper agree; bucket and label).
+- `tenant_overrides.csv`: `bighorncomt.portal.civicclerk.com` pinned to `us:county:30003` (Big Horn County, MT), whole-site, strength `fallback`, source `ryan_stated`. That CivicClerk tenant returns a blank location. Page 10155 was re-keyed by hand to `us:county:30003` on 2026-10-04.
+
+**Still to do, by hand, after deploy.** `POST /internal/transcript-version/correct-warnings` for page 12372 (it replaces the whole warnings list, it does not append) with `["Transcript source note: This transcript was compiled from uncorrected Closed Captioning.", "The station's captions hold only 501 words over 104 minutes, so they are near-empty at the source."]`. The page then stops counting as having a good transcript and Whisper can take it.
+
+**Deploy.** `app/` and `archive/` changes are on `main` but not live until a deploy.
+- Also pinned `parker.granicus.com` to Parker County, TX (us:county:48367), Ryan 2026-10-04: page 5871 had landed under Parker city. Pages 5871, 5443 and 2722 (Sedgwick, whose pin postdates them) were re-keyed by hand the same day.
+- Also (Ryan, 2026-10-05): a caller-supplied `gov_id` naming the county row of a consolidated city-county is now redirected through `consolidated_governments.csv` (`crud._canonical_gov_id()`, used by ingest and `/internal/jurisdiction/override`). Seven pages had landed under the county id this way (Nashville, Indianapolis, Lexington, Columbus GA, the Bronx, Baton Rouge x2) and were re-keyed by hand the same day, and a later ingest naming the county for a page already under the city no longer gets a 409.
+- Pinned `dixon-ca.granicus.com` `view_id=3` to Dixon Unified School District (us:sd:0611280); the whole-host city pin stays for other views. Page 5308 re-keyed by hand the same day.
+
 ## WO-1178: drip leads guard works on the drip Mac without the research file [Done 2026-10-03]
 
 **Why this ran.** WO-1177 gives `findmeeting_*` leads the "linked from the government's own site" credit, guarded against template embeds. The guard read `~/Documents/rtr-business/research/youtube_channel_leads.csv` and gave no credit if it could not read it. Ol McClaude reported that the drip Mac has no `rtr-business` git repo and no `research/` folder, so the credit would never apply there.
