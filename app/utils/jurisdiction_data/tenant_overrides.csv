@@ -360,6 +360,7 @@ dfps.new.swagit.com,,rtr:us:tx:texas,fallback,known_domains+visual_confirmed,"ap
 didsbury.escribemeetings.com,,ca:csd:4806032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Didsbury
 dieppe.escribemeetings.com,,ca:csd:1307045,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Dieppe
 dixon-ca.granicus.com,,us:place:0619402,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Dixon, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Dixon city"
+dixon-ca.granicus.com,view_id=3,us:sd:0611280,fallback,ryan_stated,"Dixon Unified School District, CA -- view 3 holds the district's board meetings (clip 1913, ""Dixon USD Board Meeting""); page 5308 had landed under Dixon city and was re-keyed by hand 2026-10-05 (Ryan)"
 dms.missionviejo.gov,,us:place:0648256,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Mission Viejo city
 docs.medicinehat.ca,,ca:csd:4801006,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Medicine Hat
 docs.santabarbaraca.gov,,us:place:0669070,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Santa Barbara city

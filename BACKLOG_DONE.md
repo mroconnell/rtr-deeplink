@@ -13,6 +13,8 @@
 
 **Deploy.** `app/` and `archive/` changes are on `main` but not live until a deploy.
 - Also pinned `parker.granicus.com` to Parker County, TX (us:county:48367), Ryan 2026-10-04: page 5871 had landed under Parker city. Pages 5871, 5443 and 2722 (Sedgwick, whose pin postdates them) were re-keyed by hand the same day.
+- Also (Ryan, 2026-10-05): a caller-supplied `gov_id` naming the county row of a consolidated city-county is now redirected through `consolidated_governments.csv` (`crud._canonical_gov_id()`, used by ingest and `/internal/jurisdiction/override`). Seven pages had landed under the county id this way (Nashville, Indianapolis, Lexington, Columbus GA, the Bronx, Baton Rouge x2) and were re-keyed by hand the same day, and a later ingest naming the county for a page already under the city no longer gets a 409.
+- Pinned `dixon-ca.granicus.com` `view_id=3` to Dixon Unified School District (us:sd:0611280); the whole-host city pin stays for other views. Page 5308 re-keyed by hand the same day.
 
 ## WO-1178: drip leads guard works on the drip Mac without the research file [Done 2026-10-03]
 

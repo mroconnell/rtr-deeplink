@@ -43,6 +43,7 @@ from app.utils.gov_registry import (
 from app.utils.gov_registry.classify import NON_PLACE_TYPES
 from app.utils.gov_registry import display_name as gov_display_name
 from app.utils.gov_registry import government_for_id as registry_government_for_id
+from app.utils.gov_registry.registry import consolidated as registry_consolidated
 from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
 from app.utils.gov_registry import state_gov_id
@@ -907,6 +908,21 @@ class GovernmentMismatch(ValueError):
         self.supplied_gov_id = supplied
 
 
+def _canonical_gov_id(gov_id: Optional[str]) -> Optional[str]:
+    """A caller-supplied gov_id, redirected through
+    `consolidated_governments.csv` when it names the second Census row of a
+    consolidated city-county (WO-1181, 2026-10-05). The resolver already
+    does this for every id it derives (`resolver._as_government()`), but a
+    caller's id skipped it: seven pages landed under the county id
+    (Davidson County TN for Nashville's Metropolitan Council, Marion County
+    IN for Indianapolis, ...), and a later ingest naming the county for a
+    page already under the city was refused with a 409."""
+    gov_id = (gov_id or "").strip()
+    if not gov_id:
+        return None
+    return registry_consolidated().get(gov_id, gov_id)
+
+
 def _caller_pinned_match(gov_id: str, split_body: Optional[str]) -> GovernmentMatch:
     """A `pinned`-tier match for an id the ingest caller supplied -- the
     same shape the ladder's rung 1 produces for a `tenant_overrides.csv`
@@ -1108,11 +1124,11 @@ async def _find_or_create_page(
         meeting_location=payload.get("meeting_location"),
         title=payload.get("title"),
         video_channel=payload.get("video_channel"),
-        caller_gov_id=payload.get("gov_id"),
+        caller_gov_id=_canonical_gov_id(payload.get("gov_id")),
         split_body=jx_result.meeting_body,
         origin_host=payload.get("origin_host"),
     )
-    caller_gov_id = payload.get("gov_id") or None
+    caller_gov_id = _canonical_gov_id(payload.get("gov_id"))
     # A caller-supplied id counts as "identity supplied" for the update
     # gates below, exactly like a jurisdiction string does (WO-102's
     # truthy gate exists so a transcript-only push, which carries
@@ -4172,7 +4188,7 @@ async def override_jurisdiction(
         raise ValueError("ids is required and must contain at least one id")
     if len(ids) > _JURISDICTION_OVERRIDE_MAX_IDS:
         raise ValueError(f"at most {_JURISDICTION_OVERRIDE_MAX_IDS} ids per call")
-    gov_id = (gov_id or "").strip()
+    gov_id = _canonical_gov_id(gov_id)
     if not gov_id:
         raise ValueError("gov_id is required and must be non-blank")
     gov = registry_government_for_id(gov_id)
