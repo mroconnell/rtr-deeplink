@@ -14,19 +14,7 @@ https://vimeo.com/946425462/b95b8652b3		us:place:2283405
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://drive.google.com/file/d/1Dl76W-PxyMWJq8W0NrQ5kP8hBpaLrJ1t/view?usp=sharing		us:sd:4704200
-https://drive.google.com/file/d/1WMMJT3ezOZLFVZUfNIxEVZC8s0tLxfr0/view?usp=drive_link		us:sd:4811220
-https://drive.google.com/file/d/1-8WGOgfH5-HUhbgx3wRmESNo7IBXjji3/view?usp=sharing		us:sd:0620310
-https://rockwallisdtx.new.swagit.com/videos/393332		us:sd:4837650
-https://files.smartsites.parentsquare.com/10784/january_19_2026_pt_2.mp3		us:sd:4818330
-https://d16k74nzx9emoe.cloudfront.net/f08a3f98-88c4-470b-a01f-a7ad8a9fb58e/WSD-BOE-06182026.mp3		us:sd:0642330
-https://www.brockisd.net/ourpages/auto/2025/12/13/33364866/12-25BoardMeeting2.MP4?rnd=1765639429675		us:sd:4811460
-https://drive.google.com/file/d/1FxzkUeiNDtdgydr5z3dqRP_AR1ALFeuM/view?usp=sharing		us:sd:3615510
-https://ssanpete.org/images/stories/DO/Minutes/FY_25_Minutes/11_12_25.mp3		us:sd:4900960
-https://s3.amazonaws.com/scschoolfiles/3657/pv5enktqgz23cl8onusmtxoquvvxqg9ht0nvbquunljqo1xm.mp3		us:sd:3602580
 https://vimeo.com/879928833		us:sd:2314809
-https://resources.finalsite.net/videos/t_video_mp4_480/v1779378950/fsisdnet/dirjskhmmkcporfjyqjh/SchoolHealthAdvisoryCouncilSHACMeeting3-2026_05_2017_30CDT-Recording.mp4		us:sd:4820190
-https://drive.google.com/file/d/1BDxdYqPIrRTlPurcYZj8W5EUG6c6KRAe/preview		us:sd:2711370
 https://files.smartsites.parentsquare.com/8371/08_17_2026_special_meeting_1.mp3		us:sd:4815510
 https://4.files.edl.io/7227/08/21/26/200320-f694ee39-28c3-49da-bc91-57485c5ad2a4.mp4		us:sd:4113080
 https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
@@ -1282,3 +1270,4 @@ https://parker.granicus.com/MediaPlayer.php?view_id=1&clip_id=945		us:county:483
 https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
 https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
 https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
+https://rockwallisdtx.new.swagit.com/videos/393332		us:sd:4837650
