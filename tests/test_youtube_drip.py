@@ -320,7 +320,9 @@ def test_lane_feed_sends_the_local_probe_buffer_not_the_tracked_sidecar(
 
     captured = {}
 
-    async def fake_push(session, url, src=None, *, probe_sidecar_path=None):
+    async def fake_push(
+        session, url, src=None, gov_id=None, *, probe_sidecar_path=None, **_meta
+    ):
         captured["probe_sidecar_path"] = probe_sidecar_path
         return f"[OK] {url} -> /m/example"
 
@@ -744,7 +746,7 @@ def test_direct_lane_takes_the_complement_of_the_feed_lanes_filter(
     captured = {}
 
     async def fake_push(
-        session, url, src=None, gov_id=None, *, probe_sidecar_path=None
+        session, url, src=None, gov_id=None, *, probe_sidecar_path=None, **_meta
     ):
         captured["url"] = url
         return f"[OK] {url} -> /m/example"
@@ -835,7 +837,7 @@ def test_direct_lane_parks_no_owner_and_not_reachable_instead_of_dropping(
     called = {"n": 0}
 
     async def counting_push(
-        session, url, src=None, gov_id=None, *, probe_sidecar_path=None
+        session, url, src=None, gov_id=None, *, probe_sidecar_path=None, **_meta
     ):
         called["n"] += 1
         return "[OK] u -> /m/x"
@@ -1040,7 +1042,7 @@ def test_feed_lane_skips_a_deferred_url_and_takes_the_next(tmp_path, monkeypatch
     monkeypatch.setattr(yd, "QUEUE_FILE", queue)
     seen = []
 
-    async def fake_push(session, url, src, **kw):
+    async def fake_push(session, url, src, gov_id=None, **kw):
         seen.append(url)
         return "[OK] x -> /m/slug"
 

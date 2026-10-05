@@ -14,55 +14,7 @@ https://vimeo.com/946425462/b95b8652b3		us:place:2283405
 https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id=58479		us:place:1331908
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
-https://pewaukeewi.portal.civicclerk.com/event/1177/media		us:place:5562240
-https://media.cmsmax.cloud/lv20xzze8ydi4trylfuou/Town%20Board%20Audio%2081425_1.mp3		us:cousub:3606311803
-https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
-https://aiscrawfordstorage.blob.core.windows.net/website/QuorumCourt/2026/QC_Meeting_3-16-2026_Audio.mp3		us:county:05033
-http://whitleycountyfiscalcourt.com/FCVideos/2023-08-15 16-07-55.mp4		us:county:21235
-https://dakotacounty.ne.gov/wp-content/uploads/sites/77/2026/09/2026-0914-EC.mp3		us:county:31043
-https://parkhillsmo.net/media/1653/regular-session-4-14-2020-part-2.mp4		us:place:2956272
-https://iqaluit.ca/sites/default/files/city_council_meeting_11_september_22_2026_eng.mp3		ca:csd:6204003
-https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspringsny.new.swagit.com/videos/401181/embed	us:place:3665255
-https://www.ci.owosso.mi.us/Portals/0/Audio/260921CouncilAudio.MP3?ver=2026-09-22-092734-557		us:place:2661940
-https://middletowndelcopa.gov/vertical/sites/%7BE08CD8FE-6BF2-4104-AF8F-C16770381A63%7D/uploads/Middletown_Council_Mtg_8-6-25_audio.m4a		us:place:4249128
-https://drive.google.com/file/d/1CCplXjwkmOUVb-kncr0UND5Or5A-blsK/preview		us:sd:3006112
-https://drive.google.com/file/d/1fkfV-e7hCldnQ-F_1Owq1Ijftk2AXiFx/view?usp=sharing		us:sd:0604530
-https://pub-currituckcountync.escribemeetings.com/Meeting.aspx?Id=d059d738-d9ca-43dc-9625-c247bf9f5266		us:sd:3701080
-https://drive.google.com/file/d/1GzTstDqfY_9-DzLNlYfpNYBVHad7Cc06/view?usp=sharing		us:sd:4809410
-https://files.smartsites.parentsquare.com/13854/september_16_2026.mp3		us:sd:4823370
-https://prod.galenaparkisd.com/departments/botBios/documents/botVideos/2025/GPISD%20Board%20of%20Trustees%20Meeting%20February%202025%20Edit.mp4		us:sd:4820250
-https://drive.google.com/file/d/18cSNCRhc5jrFUMR7bagCjeBkgdBVqll1/view?usp=drive_link		us:sd:4218840
-https://drive.google.com/file/d/1oBCnUxtiUMbXqE2Pzl39Ys5pT7D_mN_i/view?usp=drivesdk		us:sd:4702340
-https://resources.finalsite.net/videos/v1776455695/elcosdorg/i3rguaqssvanshy2aeur/26-03-16-BoardMeeting.mp3		us:sd:4208460
-https://files.smartsites.parentsquare.com/8165/november2023_online-audio-convertercom.mp3		us:sd:4827390
-https://4.files.edl.io/6242/09/03/25/164427-1a0b107d-a92e-4281-b56e-74962e58882b.mp4		us:sd:4839300
-https://drive.google.com/file/d/1k6AmO8awLkiLtoYjbo3dfcOJYS6hII_8/preview		us:sd:5004590
-https://files.smartsites.parentsquare.com/12465/march_17_2021_board_of_education_meeting.mp3		us:sd:3610950
-https://files.smartsites.parentsquare.com/12403/shacmeeting2021-12-15_1.mp3		us:sd:4834260
-https://drive.google.com/file/d/17NUNBQcaUoE6iakusf_cE-DlzQfO42tu/view?usp=drive_link		us:sd:4828890
-https://files.smartsites.parentsquare.com/11657/november_15_2022_shac_meeting_audio_recording.mp3		us:sd:4837740
-https://cloud.castus.tv/vod/leon/video/6ab319601bb1cf00023e857c?page=HOME		us:sd:1201110
-https://files.smartsites.parentsquare.com/12456/special_board_meeting_250423_004.mp3		us:sd:4107200
-https://www.mabankisd.net/upload/page/0076/docs/Audio/2026-08-24-CallToMeeting.mp3		us:sd:4828680
-https://resources.finalsite.net/videos/t_video_mp4_480/v1787768097/txkisdnet/cnblu0h5ecyif1yr4bjh/TISDbotm_082526.mp4		us:sd:4842480
-https://drive.google.com/file/d/1rAyUIue4ZjZgpvkH45C7tIBai2gC9VBj/view?usp=drive_link		us:sd:0638790
-https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
-https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
-https://drive.google.com/file/d/1-4OTXoDL56oIV_JRUlRgMVBwcf8J8uaO/view?usp=sharing		us:sd:3622020
-https://drive.google.com/file/d/1EXvCSKyv25ygCAFQkQfhumYXv1XaNOzJ/view?usp=sharing		us:sd:0630720
-https://drive.google.com/file/d/1Dl76W-PxyMWJq8W0NrQ5kP8hBpaLrJ1t/view?usp=sharing		us:sd:4704200
-https://drive.google.com/file/d/1WMMJT3ezOZLFVZUfNIxEVZC8s0tLxfr0/view?usp=drive_link		us:sd:4811220
-https://drive.google.com/file/d/1-8WGOgfH5-HUhbgx3wRmESNo7IBXjji3/view?usp=sharing		us:sd:0620310
-https://rockwallisdtx.new.swagit.com/videos/393332		us:sd:4837650
-https://files.smartsites.parentsquare.com/10784/january_19_2026_pt_2.mp3		us:sd:4818330
-https://d16k74nzx9emoe.cloudfront.net/f08a3f98-88c4-470b-a01f-a7ad8a9fb58e/WSD-BOE-06182026.mp3		us:sd:0642330
-https://www.brockisd.net/ourpages/auto/2025/12/13/33364866/12-25BoardMeeting2.MP4?rnd=1765639429675		us:sd:4811460
-https://drive.google.com/file/d/1FxzkUeiNDtdgydr5z3dqRP_AR1ALFeuM/view?usp=sharing		us:sd:3615510
-https://ssanpete.org/images/stories/DO/Minutes/FY_25_Minutes/11_12_25.mp3		us:sd:4900960
-https://s3.amazonaws.com/scschoolfiles/3657/pv5enktqgz23cl8onusmtxoquvvxqg9ht0nvbquunljqo1xm.mp3		us:sd:3602580
 https://vimeo.com/879928833		us:sd:2314809
-https://resources.finalsite.net/videos/t_video_mp4_480/v1779378950/fsisdnet/dirjskhmmkcporfjyqjh/SchoolHealthAdvisoryCouncilSHACMeeting3-2026_05_2017_30CDT-Recording.mp4		us:sd:4820190
-https://drive.google.com/file/d/1BDxdYqPIrRTlPurcYZj8W5EUG6c6KRAe/preview		us:sd:2711370
 https://files.smartsites.parentsquare.com/8371/08_17_2026_special_meeting_1.mp3		us:sd:4815510
 https://4.files.edl.io/7227/08/21/26/200320-f694ee39-28c3-49da-bc91-57485c5ad2a4.mp4		us:sd:4113080
 https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
@@ -502,7 +454,6 @@ https://reflect-midvalley.cablecast.tv/internetchannel/show/1081	https://reflect
 https://reflect-npctv.cablecast.tv/internetchannel/show/10573	https://reflect-npctv.cablecast.tv/CablecastPublicSite/	us:cousub:2301754000
 https://reflect-pinellas-park-fl.cablecast.tv/internetchannel/show/632	https://reflect-pinellas-park-fl.cablecast.tv/CablecastPublicSite/	us:place:1256975
 https://reflect-surryco-nc.cablecast.tv/internetchannel/show/2008	https://reflect-surryco-nc.cablecast.tv/CablecastPublicSite/	us:county:37171
-https://reflect-surryco-nc.cablecast.tv/internetchannel/show/1954	https://reflect-surryco-nc.cablecast.tv/CablecastPublicSite/	us:place:3751820
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22369	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:cousub:2712369916
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22406	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:place:2739428
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22411	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:place:2769970
@@ -699,7 +650,6 @@ https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
 https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
 https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
 https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
-https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/media/1038973	https://videoplayer.telvue.com/player/QmEoa2JgDheIkFMCTDjUqAfKsczs17yp/videos	us:place:5003175
 https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/media/1042806	https://videoplayer.telvue.com/player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2/videos	us:sd:2508370
 https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/media/1045958	https://videoplayer.telvue.com/player/LEFTt0-lrx6nz0SEg8dynDnJ6DmlvOui/videos	us:sd:2513290
 https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=865	https://hugomn.granicus.com/ViewPublisher.php?view_id=1	us:place:2730392
@@ -906,7 +856,6 @@ https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021
 https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	us:cousub:0913015350
 https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
-https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	us:cousub:3301104500
 https://townhallstreams.com/stream.php?location_id=55&id=76363	https://townhallstreams.com/stream.php?location_id=55&id=76363	us:cousub:3301127140
 https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	us:cousub:4209183696
 https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	us:cousub:4400977000
@@ -930,7 +879,6 @@ https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701	https://refl
 https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	us:cousub:0913015350
 https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	us:county:51031
 https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	us:place:5176432
-https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	us:cousub:3301104500
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	us:place:4142600
 https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	ca:pr:62
 https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	us:place:2745430
@@ -990,7 +938,6 @@ https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://jodaviessco
 https://rowancountync.portal.civicclerk.com/event/419/media	https://rowancountync.portal.civicclerk.com/event/419/media	us:county:37159
 https://vimeo.com/646562708	https://vimeo.com/646562708	us:county:37013
 https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
-https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	us:place:1369000
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
 https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.portal.civicclerk.com/event/176/media	us:place:4833212
@@ -1214,3 +1161,289 @@ https://vimeo.com/949562199?share=copy		us:place:5320645
 https://player.vimeo.com/video/1084066560?h=a09d87caf9		us:place:1714351
 https://vimeo.com/1223368476		us:place:3758860
 https://vimeo.com/384766771		us:place:2116372
+https://drive.usercontent.google.com/download?id=1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB&export=download&confirm=t	https://drive.google.com/file/d/1GgmbtthXToVwIcy2p6xeEyVZj7OI0erB/view?usp=drive_link	us:place:2904248
+https://www.dropbox.com/scl/fi/9qi96bax8d2qvzbiwb5cq/9.22.26-BOC.mp4?rlkey=mw0v13mqiogaz6u0hp2ep12ew&st=k693mj6p&dl=0	https://www.ingham.org/departments_and_officials/county_clerk/board_of_commissioners.php	us:county:26065
+https://www.dropbox.com/scl/fi/91x9d8f1kpu30krosyzmy/2026-08-03-BoS-Meeting-Video.mp4?rlkey=zlq7iezxfp9g9gttb5gvuw3mk&st=semkgcrw&dl=1		us:cousub:0914046940
+https://pinawa.municipalwebsites.ca/UploadFiles/Meetings/Special_Meeting_ff94e251-4bb5-48b0-8004-2f8c00e0988f.mp3		ca:csd:4601051
+https://www.dropbox.com/scl/fi/vn0nl3sh20qa9rkiwku50/2025-05-19-City-Council.mp4?rlkey=igmbxbkex2mcqufuvtoowefza&st=vzjajper&dl=0		us:place:4123500
+https://www.dropbox.com/scl/fi/prd0to1fe7nq8joms0z8p/08-04-26-CC.mp3?rlkey=df5g7jxkoxyi3x3joxjenhclh&dl=0		us:place:4137000
+https://drive.google.com/file/d/1xChnnEf10drYwHHCHUJ15bJLNoYRRoB0/preview		ca:csd:2498040
+https://drive.google.com/file/d/16NTyzSwCva2k1-3d9iwJfw9ijV-QVCKj/view?usp=share_link		us:place:5642005
+https://drive.google.com/file/d/1vWbfAJ-ffQBVV_Iy5sVhACM9GJHPwtPt/view?usp=sharing		us:cousub:3602116045
+https://drive.google.com/file/d/1E_UL8fAg4XCCDhWJagb1LqaHDEJSY623/view?usp=sharing		us:place:3924234
+https://vimeo.com/729707486		us:cousub:3602705452
+https://www.ci.westfir.or.us/wp-content/uploads/2026/08/August-3-2026-Council-Meeting.mp3	https://www.ci.westfir.or.us/?page_id=623	us:place:4179950
+https://flinttownshipmi.portal.civicclerk.com/event/1297/media		us:cousub:2604929020
+https://www.byramtwp.org/useruploads/councilonly/TC_09-15-2026_Recording.MP3	https://www.byramtwp.org/index.php/town_hall/meetings_agendas_minutes	us:cousub:3403709160
+https://taghkanic.gov/zoom/TB/260805 Zoning Review.mp4	https://taghkanic.gov/minutes	us:cousub:3602173077
+https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	us:place:2644480
+https://lewisberryborough.org/wp-content/uploads/2020/04/2020-04-06-1908-New-Meeting.mp4	https://lewisberryborough.org/residents/meeting-agendas-and-minutes/	us:place:4242968
+https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1		us:cousub:2500170605
+https://vod.lcac.tv/CablecastPublicSite/show/6691?site=1	https://leicesterma.org/459/Past-Meeting-Recordings	us:cousub:2502734795
+https://warnernh.gov/meetings/minutes/town/2021-TownMeetingMinutes-v3.mp3	https://warnernh.gov/minutes/	us:cousub:3301378580
+https://mountolivetownshipnj.new.swagit.com/videos/393713		us:cousub:3402749080
+https://www.boontontownship.com/media/MeetingRecordings/tc_20260713_184325__sel_19-05-05_to_19-25-42.m4a	https://www.boontontownship.com/meeting-recordings	us:cousub:3402706640
+https://player.vimeo.com/video/268318865?byline=0		us:cousub:3402542990
+https://cloud.castus.tv/vod/pepperell/video/6abeb5170628810002cb2a81?page=HOME		us:cousub:2501752805
+https://player.vimeo.com/video/1150665534?dnt=1&app_id=122963		us:cousub:3602758156
+https://vimeo.com/1220959316		us:place:2723948
+https://www.edenvt.org/wp-content/uploads/2026/04/Cemetery-4-7-26.m4a?_=1	https://www.edenvt.org/boards_commissions/298-2/cemetery-commission/cemetery-commission-minutes-2/	us:cousub:5001523500
+https://warringtonpa.new.swagit.com/videos/387621		us:cousub:4201781048
+https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
+https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
+https://www.fairviewnc.gov/upload/page/0043/docs/Council_Meeting_03_10_26.MP3	https://www.fairviewnc.gov/page/council.audiofiles	us:place:3722500
+https://aftonwy.portal.civicclerk.com/event/66/media		us:place:5600245
+https://www.cityofeastdubuque.com/media/cms/06_FE174898FE1FC.mp3	https://www.cityofeastdubuque.com/hopepage/east-dubuque-meeting-videos	us:place:1721683
+https://town.centerville.in.us/wp-content/uploads/2026/09/September-8-2026-Zoom.mp4	https://town.centerville.in.us/town-council/	us:place:1811836
+https://lysanderny.gov/sites/default/files/2026-05/260402_163419_00.mp3	https://lysanderny.gov/board-meetings	us:cousub:3606744039
+https://vimeo.com/565286481		us:cousub:3607939331
+https://twp.jerusalem.oh.us/wp-content/uploads/2026/06/06232026162400_DN-700R.mp3	https://twp.jerusalem.oh.us/trustees/	us:cousub:3909539116
+https://www.enochcityut.gov/uploads/3/0/3/1/30314955/cc_recording_09-16-2026.mp3	https://www.enochcityut.gov/city-council-agenda--minutes.html	us:place:4923200
+https://washingtonpa.us/wp-content/uploads/2020/04/City-Council-Meeting-4-2-2020-audio.mp3	https://washingtonpa.us/audio-recordings-of-city-council-meetings/	us:place:4281328
+https://denisonia.com/wp-content/uploads/July_22_2026_Second_Regular_Council_Meeting.mp3	https://denisonia.com/?page_id=832	us:place:1919945
+https://irvingtonny.portal.civicclerk.com/event/2040/media		us:place:3637803
+https://ferristx.new.swagit.com/videos/400983		us:place:4825752
+https://northbraddockborough.com/wp-content/uploads/2021/04/Council-MTG-Audio-3-16-21.mp3?_=1	https://northbraddockborough.com/notices-base/council-meeting-audio/	us:place:4254816
+https://pub-winona.escribemeetings.com/Meeting.aspx?Id=d519c703-a847-436b-b7de-0c9b74550d61		us:place:2980512
+https://vimeo.com/1196671672		us:cousub:4209179136
+https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3	https://www.alamoheightstx.gov/government/city-council/meeting-videos/	us:place:4801600
+https://marpletwppa.portal.civicclerk.com/event/1269/media	https://marpletwp.com/217	us:cousub:4204547616
+http://reflect-northwest-access.cablecast.tv/internetchannel/show/22808?site=2	https://reflect-northwest-access.cablecast.tv/internetchannel/gallery/9?site=2	us:place:5071650
+https://reflect-vsctv.cablecast.tv/internetchannel/show/4964	https://reflect-vsctv.cablecast.tv/internetchannel/gallery/10	us:cousub:0913035230
+https://videos.files.wordpress.com/R2Th69fp/city-council-may-19th-2026.mov		us:place:3969834
+https://charlestonvt.org/wp-content/uploads/2026/09/SB-Mtg-9.8.2026-260908_1813.mp3	https://charlestonvt.org/departments/selectboard/selectboard-minutes/	us:cousub:5001913150
+https://cityofronan.org/city-audio/09-02-2026_special-mtg.mp4	https://cityofronan.org/your-government/city-of-ronan-audio-recordings/	us:place:3064150
+https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
+https://pgcpsmd.new.swagit.com/videos/392681	https://www.pgcps.org/offices/board-of-education/video	us:sd:2400510	Board Business Meeting	2026-06-11	Board of Education
+https://resources.finalsite.net/videos/v1787173310/detroitk12org/qum4h7qglz0c3doy55mi/BoardMemberAppointmentinterviews81926audio.mp3	https://www.detroitk12.org/board-of-education	us:sd:2601103	Board Member Appointment Interviews	2026-08-19	Board of Education
+https://drive.google.com/file/d/1Agjd9nb21PimL4iOB7qnQ4XNpl7Nj_sy/view?usp=sharing	https://www.milwaukeepublicschools.org/about/board/previous-meetings	us:sd:5509600	Regular Monthly Board Meeting	2026-06-18	Board of School Directors
+https://www.snwa.com/app-data/media/audio/snwa/snwa-2026-08-20_7112.mp4	https://www.snwa.com/apps/snwa-agendas/index.cfml?lang=en	rtr:us:nv:southern-nevada-water-authority	SNWA Board Meeting	2026-08-20	SNWA Board
+http://www.fromberg-mt.com/tcmd/202606230000_recording.mp3	http://www.fromberg-mt.com/council	us:place:3029575	Council
+https://townofheath.org/files/SB_2026-08-11-26_Audio.mp3	https://townofheath.org/p/67/Audio-Recordings	us:cousub:2501129650
+https://franklin-townshipohio.gov/wp-content/uploads/2026/08/July-24th-2026-Tax-Budget-Meeting.mp3	https://franklin-townshipohio.gov/government/	us:cousub:3904928280
+https://milantownship.org/wp-content/uploads/2022/03/gmt20210212-003805_milan-town_640x360.mp4	https://milantownship.org/agenda-and-minutes/	us:cousub:2611553900	Board of Trustees
+https://townofcrownpointny.gov/wp-content/uploads/2026/08/Town-Board-meeting-08132026.mp3	https://townofcrownpointny.gov/board-meetings-minutes/	us:cousub:3603119246
+https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	us:cousub:3610118267
+https://colonieny.portal.civicclerk.com/event/101/media		us:cousub:3600117343
+https://videos.files.wordpress.com/OtvroHpW/gmt20260928-230114_recording_1280x720.mp4	https://tatetownship.org/trustees-and-clerk/meeting-minutes/2026-trustee-meeting-agendas-minutes-videos/	us:cousub:3902576155	Trustees Public Hearing: Zoning Case RZC-2026-801, Zoning Text Amendment	2026-09-28	Board of Trustees
+https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
+https://saratogaspringsny.new.swagit.com/videos/401181/embed	https://saratogaspringsny.new.swagit.com/videos/401181/embed	us:place:3665255
+https://drive.google.com/file/d/1wTmxlcMak0A3kh5H8Ri06yI3nGtly3HY/view?usp=sharing	https://www.rushcity.k12.mn.us/apps/pages/index.jsp?uREC_ID=4433742&type=d&pREC_ID=2674229	us:sd:2732550	Board Meeting: Work Session	2026-08-05
+https://loganschools.org/37273_3	https://loganschools.org/37273_3	us:sd:4900510	Board Audio Recordings
+http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3	http://tv.dsctv.com/CablecastPublicSite/search?channel=3&query=school%20committee	us:sd:2504290	Dover School Committee Meeting	2026-09-22
+https://pascocofl.portal.civicclerk.com/event/2982/media		us:county:12101
+https://bentoncowa.portal.civicclerk.com/event/1309/media		us:county:53005	Benton-Franklin Behavioral Health Advisory Committee
+https://casscoin.portal.civicclerk.com/event/1271/media		us:county:18017
+https://isleofwightcova.portal.civicclerk.com/event/659/media		us:county:51093
+https://desmoinescounty.iowa.gov/files/meetings/audio/2026-09-15_audio_6837.mp3	https://desmoinescounty.iowa.gov/board_of_supervisors/meetings_minutes/	us:county:19057
+https://drive.google.com/file/d/1fng7j-rKDCn0XJW__6x6l7eVNnwIGZhm/view?usp=sharing	https://www.wascocountyor.gov/departments/board_of_county_commissioners/agendas,_board_packets,_minutes.php	us:county:41065
+http://carrollcounty.us/SiteMedia/audio/2026/2026May19QCMtg.MP3	http://carrollcounty.us/QuorumCourt/Agenda	us:county:05015
+http://www.co.bertie.nc.us/commissioners/meetings/2025/audio/01-13-25audio.mp3	http://www.co.bertie.nc.us/commissioners/meetings/minutes.html	us:county:37015
+https://drive.google.com/file/d/1zOsR93keJglYXoh5ZVevik-R43musOgv/view?usp=sharing	https://keithcountyne.gov/residents/2026_board_meeting_minutes-agendas-claims-audio.php	us:county:31101
+https://charlescitycova.portal.civicclerk.com/event/237/media		us:county:51036	Board of Supervisors Work Session
+https://collincountytx.new.swagit.com/videos/355402		us:county:48085
+https://crcog.org/wp-content/uploads/2023/10/EV-Event-20231018_081648-Meeting-Recording-1.mp3	https://crcogct.gov/meetings-and-events/	us:county:09110
+https://meetings.christiancountymo.gov/videos/2026-10-01.mp4	https://meetings.christiancountymo.gov	us:county:29043
+https://jamescitycova.portal.civicclerk.com/event/2687/media		us:county:51095	Board of Supervisors Regular Meeting
+https://cecilcomd.portal.civicclerk.com/event/5902/media		us:county:24015	County Council Work Session
+https://www.columbiacountyor.gov/media/Board/BOC/BOC Video/01.02.19_BOC_Meeting.m4v	https://www.columbiacountyor.gov/board-of-commissioner-meeting-videos	us:county:41009
+https://play.champds.com/shenandoahcova/event/229		us:county:51171
+https://s3.us-east-1.amazonaws.com/BZA/BZA+2026/August+26%2C+2026+BZA+Recording.MP3	https://browncounty-in.gov/182/County-Council	us:county:18013	County Council
+https://video.wixstatic.com/video/7a3db8_1a1221f91cc5445dabd8ad351d46140d/720p/mp4/file.mp4	https://www.bensoncountynd.com/government	us:county:38005
+https://eriecountyny.new.swagit.com/videos/402767		us:county:36029
+https://bellcountytx.new.swagit.com/videos/396877		us:county:48027
+https://sandovalcountynm.new.swagit.com/videos/402685		us:county:35043
+https://wallercountytx.new.swagit.com/videos/402671		us:county:48473
+https://modoccountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3830		us:county:06049
+https://www.indianacountypa.gov/wp-content/uploads/CommMtg92326.mp3	https://www.indianacountypa.gov/forms/	us:county:42063
+https://boxcast.tv/view/jackson-county-board-of-supervisors-special-meeting-91426-ajw3wocv7sixvpkl6oaf		us:county:28059
+https://vimeo.com/499615398		us:county:51063
+https://pub-missoula.escribemeetings.com/Meeting.aspx?Id=5161072f-8df8-4697-8c3c-b6e3cad455b8		us:place:3050200
+https://sedgwick.granicus.com/MediaPlayer.php?view_id=34&clip_id=6159		us:county:20173
+https://dentoncounty.granicus.com/MediaPlayer.php?view_id=26&clip_id=2075		us:county:48121
+https://parker.granicus.com/MediaPlayer.php?view_id=1&clip_id=945		us:county:48367
+https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
+https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
+https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
+https://rockwallisdtx.new.swagit.com/videos/393332		us:sd:4837650
+https://player.vimeo.com/video/66344864		us:sd:4827030	Learn more about the Board Elections
+https://ccsdschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=132		us:sd:4501440
+https://resources.finalsite.net/videos/t_video_mp4_1080/v1746806883/claytonk12gaus/rafcnvp3lwowhbgybtci/GMT20250507-230038_Recording_1920x1080.mp4	https://www.clayton.k12.ga.us/administration/board-of-education	us:sd:1301230	Board of Education
+https://video.collierschools.com/Panopto/Content/Sessions/3ca0ec12-f333-4cd2-955c-b4c701394dea/e6bf5779-32c6-4f1b-818b-b4c701394df8-615517a7-8997-4376-b676-b4c70147bae7.mp4	https://www.collierschools.com/exploreccps/school-board	us:sd:1200330	School Board
+https://www.tempeunion.org/about-tuhsd/governing-board/governing-board-long-term-budget-planning-committee-meetings	https://www.tempeunion.org/about-tuhsd/governing-board/governing-board-long-term-budget-planning-committee-meetings	us:sd:0408340	Governing Board Long-Term Budget Planning Committee Meetings
+https://gastoncoschools.cablecast.tv/show/826		us:sd:3701620	Televised Board Meetings
+https://irvingisdtx.new.swagit.com/videos/401720		us:sd:4824420
+https://drive.google.com/file/d/1kT412mlgwo6zJEF9REdcJqheEvMUwq-n/view?usp=drive_link	https://www.washk12.org/district/board-of-education/	us:sd:4901140	Board of Education
+https://pusd.granicus.com/MediaPlayer.php?view_id=15&clip_id=986		us:sd:0629940
+https://player.vimeo.com/video/1065982250?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:4703150
+https://resources.finalsite.net/videos/t_video_mp4_480/v1717521584/puyallupk12waus/ayqpddxsmt7yrizmbhve/BoardMeetingSCUTReport-June32024.mp4	https://www.puyallupsd.org/about-us/departments/capital-projects/community-participation/school-capacity-and-utilization-task-force-scut/school-capacity-and-utilization-task-force-scut-meetings	us:sd:5306960
+https://drive.google.com/file/d/1OIrMxRwKwVLL2ZLlHEP9DPWDeXHFQ8ly/view?usp=sharing	https://www.fcboe.org/departments/public-relations/board-meeting-recordings	us:sd:1302130	Board Meeting Recordings(opens in new window/tab)
+https://wichitafallsisdtx.new.swagit.com/videos/401663		us:sd:4845780	School Board
+https://player.vimeo.com/video/1181201857?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:2508610	Meeting Materials, Budget, Fiscal & Operations, & Archived Reports
+https://www.jsd.k12.ca.us/files/user/21/file/Board-Audio-Files/02_26_20-(audio).MP3	https://www.jsd.k12.ca.us/District/147214-Board-Actions-Meeting-Recordings.html	us:sd:0618870	Board Actions
+https://drive.google.com/file/d/1FKVRKSJ9SlREsVCHgAUUfB7GyBjnFsY2/view?usp=sharing	https://www.sd129.org/district/board-of-education	us:sd:1704710	Board of Education
+https://mankatoaps.new.swagit.com/videos/401668		us:sd:2718780	School Board
+https://www.magnoliaisd.org/district/school-board/board-elections	https://www.magnoliaisd.org/district/school-board/board-elections	us:sd:4828740	Board Elections
+https://skschools.org/school-board	https://skschools.org/school-board	us:sd:5308160	School Board
+https://alamedausdca.new.swagit.com/videos/259035		us:sd:0601770	A group of community members at a public meeting
+https://drive.google.com/file/d/1hkQKCDZnjE3yFRCyKKvZQjz42oJNtynv/view?usp=drive_link	https://www.mcisd.net/apps/pages/index.jsp?uREC_ID=217519&type=d&pREC_ID=526112	us:sd:4831040
+https://vimeo.com/1223404594		us:sd:0622110
+https://vimeo.com/1203684350/36740eaa6a		us:sd:2708190	School Board
+https://drive.google.com/file/d/1CkueunHAZX4vlDUQ4-HNHRHBwKBWY_Uf/view?usp=sharing	https://haverhill-ps.org/consentino-school-building-committe	us:sd:2505970
+https://resources.finalsite.net/videos/t_video_mp4_480/v1765313769/edenprorg/m1jxn6qredzzqvzavkzv/ALCSchoolBoard.mp4	https://team.edenpr.org/careers	us:sd:2714220	Job Board
+https://vimeo.com/1200185258/15024681b7		us:sd:3904445	Board of Education
+https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeting-agendas-minutes-2020	us:sd:0901860
+https://drive.google.com/file/d/1K3kT_MNQsazHJ8Ju42HCplF03v3ykqPc/view?usp=sharing	https://www.gcssk12.net/board-of-education	us:sd:1302310	Board of Education
+https://vimeo.com/1226794798/7146e7ed27		us:sd:2625740	School Board
+https://vimeo.com/1210517080		us:sd:0621690	Board Meeting Recordings
+https://www.winonaschools.org/school-board/board-committees	https://www.winonaschools.org/school-board/board-committees	us:sd:2744070	Board Committees
+https://drive.google.com/file/d/18y7v1kxpgWxl_EbS0hv5O0APo5F06zYy/view?usp=sharing	https://www.whitehallcoplay.org/departments/food-service/wellness-committee-meeting-minutes	us:sd:4226250
+https://drive.google.com/file/d/1n6SCuIee0ZHuHk6OKzU5eqekiulHuWnp/view?usp=drive_link	https://www.hssdschools.org/district/board-of-education	us:sd:5506630	Board of Education
+https://vimeo.com/652083906/721342eeb9		us:sd:4219290
+https://drive.google.com/file/d/1lGpK-s2T6x1AZ3OYgFuiLxO3f8c7oOPI/view?usp=sharing	https://www.normandysc.org/about-nsc/jegb/board-meeting-recordings	us:sd:2922650	Board Meeting Recordings
+https://vimeo.com/1209877446		us:sd:2715030	School Board
+https://www.wlake.org/uploaded/Board_of_Education/2020_Recordings/Track_001_01-13-20_Org_.MP3	https://www.wlake.org/board-of-education/meeting-schedule	us:sd:3904506
+https://vimeo.com/1208629392		us:sd:0634290
+https://drive.google.com/file/d/19Bdaz_KUkzBNB7ijRKOpmNsVyvPLT6QS/view?usp=sharing	https://www.halifax.k12.nc.us/about/board-of-education	us:sd:3701950	Board of Education
+https://spusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=387		us:sd:0637500	Board of Education
+https://boxcast.tv/view/district-special-called-meeting-bbcdv1b0xz2lujdpkpdw		us:sd:2800198	Board Members
+https://vimeo.com/963645675/b12ae62e00		us:sd:1719290	Board of Education
+https://www.stma.k12.mn.us/our-district-new/school-board/election-information/vote2025	https://www.stma.k12.mn.us/our-district-new/school-board/election-information/vote2025	us:sd:2733790	2025 Special Election
+https://resources.finalsite.net/videos/v1786456790/hersheyk12paus/lhifwayhl9qeqdgo6dyg/08102026-BoardMeeting.m4a	https://www.hershey.k12.pa.us/school-board/board-meetings/board-minutes-and-recordings/2026-2027-school-board-meeting-minutes	us:sd:4207590
+https://drive.google.com/file/d/1joxXIO9ObnCubpa7kesq3h0eDGl2SCnn/view?usp=sharing	https://www.willardschools.net/leadership/board-of-education/board-meeting-recordings	us:sd:2932010	Board Meeting Recordings
+https://www.d57.org/Podcasts/District%2057%20Board%20of%20Education%20Meeting%201_7_2021.m4a	https://www.d57.org/BoardofEducation.aspx	us:sd:1727210	Board of Education
+https://drive.google.com/file/d/1dcYSaumotBIM3BlcNrq4iCxTvBJK3KN2/view?usp=sharing	https://www.cortez.k12.co.us/our-district/board-of-education/index	us:sd:0803090	Board of Education
+https://vimeo.com/1208112286		us:sd:3613620	Board of Education
+https://drive.google.com/file/d/1gRPMRPTtWYtwI--i6AEjqtIqWiLsv1JH/view?usp=sharing	https://www.smasd.org/apps/pages/index.jsp?uREC_ID=450807&type=d&pREC_ID=972159	us:sd:4220640
+https://drive.google.com/file/d/11gKrj_CzLgdpM44QhyxYkGSjxxCqrNPQ/view?usp=sharing	https://www.talladega-cs.net/apps/pages/index.jsp?uREC_ID=779043&type=d&pREC_ID=1588441	us:sd:0103150
+https://drive.google.com/file/d/1dTxvz7NFdnkKWiuANqqebRjfCpom6G9_/preview	https://www.buckeyeschools.org/board-of-education	us:sd:3904847	Board of Education
+https://drive.google.com/file/d/1pDUCRs8GhYLbqBuNRRE05R96UsTZT_X2/view?usp=sharing	https://www.mifflinburg.org/our-district/school-board-information/recorded-board-meetings	us:sd:4226010	Recorded Board Meetings
+https://vimeo.com/672636196/6d763e448f		us:sd:3626370	BUDGET
+https://www.rossfordschools.org/Downloads/July 2026 BOE audio.mp3	https://www.rossfordschools.org/BoardofEducation.aspx	us:sd:3904560
+https://vimeo.com/1226697028		us:sd:4824630	Board of Trustees
+https://www.nortonschools.org/Downloads/Reg%20Mtg%203_23_2026.mp4	https://www.nortonschools.org/BoardofEducation.aspx	us:sd:3904455	Board of Education
+https://drive.google.com/file/d/1MxvA82SOVJbft6f0tcuu60-uKkLoF9EO/view	https://www.berkshireschools.org/board-of-education/board-of-education-contact-information	us:sd:3904716	Board of Education
+https://drive.google.com/file/d/1fEVynlAjN1h4uvtnIyGgkfMH4_hloYLk/view?usp=sharing	https://wyandanch.k12.ny.us/98815_2	us:sd:3631800	Board of Education
+https://resources.finalsite.net/videos/t_video_mp4_480/v1706618113/npsdk12njus/lirzkodsmjpafzboiwz6/v7fcdf8a2a650e47cf3b1highres_1.mp4	https://www.npsd.k12.nj.us/district12/2022-bond-referendum-information/board-of-education-meeting-presentation-83022	us:sd:3411310	Board of Education Meeting Presentation - 8/30/22
+https://drive.google.com/file/d/1BKL8yBlixm-vVs4-KI9Iy7XeKeGr0gBW/view?usp=sharing	https://fernridge.k12.or.us/school-board	us:sd:4104950	School Board
+https://drive.google.com/file/d/19NOlRVEFbzVhea7cqszIC-0qCSpBNDIJ/view?usp=sharing	https://www.delano.k12.mn.us/our-district/school-board/meeting-webcasts	us:sd:2710170	Meeting Webcasts
+https://www.ctreg14.org/board-of-education/neat-tv-plus-boe	https://www.ctreg14.org/board-of-education/neat-tv-plus-boe	us:sd:0903536	NEAT-TV Plus BOE
+https://drive.google.com/file/d/1QxPfWQ08HXPZqXJMBA3lxFQIKP2TOCnG/view?usp=sharing	https://www.tarkingtonisd.net/school-board/board-meetings	us:sd:4842210	Board Meeting Recordings
+https://resources.finalsite.net/videos/v1659958224/hitchcockisdorg/qx2w3nfo7tatjtrigdfy/GMT20210210-003725_Head-Start.mp4	https://www.hitchcockisd.org/main-district/board-of-trustees/agendas-minutes	us:sd:4823310
+https://drive.google.com/file/d/1_e_wJjuV1EEjKUYKQF5sgRBUnXJykGDU/view?usp=sharing	https://camdenschools.org/board-of-education-2	us:sd:3606240	Board of Education
+https://www.babylon.k12.ny.us/151862_2	https://www.babylon.k12.ny.us/151862_2	us:sd:3603720	BOE Presentations and Recordings
+https://drive.google.com/file/d/14ceMPIvbWnXbxglyaJNLgSFM2YvK5XwW/view?usp=sharing	https://www.wm.k12.mn.us/about-us/school-board/meeting-info	us:sd:2741910
+https://boxcast.tv/view/8-10-2026-regular-voting-meeting-rgkrzndhporlygngaudo		us:sd:4220430	School Board
+https://drive.google.com/file/d/1Vo-beHXku6JdMTVhLytwRqFsbDpFvZBf/view	https://www.itasca10.org/apps/pages/index.jsp?uREC_ID=4380150&type=d&pREC_ID=2584245	us:sd:1720220	School Board
+https://vimeo.com/440063667		us:sd:1715630
+https://drive.google.com/file/d/1RzIRCcM_faD0IcpJGaNfa8pFFunSTE15/view?usp=sharing	https://www.baugo.org/school_board/online_board_meetings	us:sd:1800420	Online Board Meetings
+https://drive.google.com/file/d/1g0Vo6eFODFCO2dfQWPHxa8M-3lAfihH_/view?usp=sharing	https://wellsvilleschools.org/11729_4	us:sd:3630480
+https://drive.google.com/file/d/1PwTtyylujs6Z58vu1VG0KtQQpkCMwKJa/view?usp=sharing	https://www.dodgevilleschools.org/district/meeting-notes.cfm	us:sd:5503690	Meeting Videos & Notes
+https://www.comfort.txed.net/188534_3	https://www.comfort.txed.net/188534_3	us:sd:4814790	2025 - 2026 SHAC Meetings
+https://drive.google.com/file/d/10KnJjMtSLxrqStAtxFa_uvKlB9B76EzL/view?usp=sharing	https://www.nekoosasd.net/district/board-of-education.cfm	us:sd:5510380	Board of Education
+https://drive.google.com/file/d/1e6JsPLreMHwWgYB9ZJMmrJPb-mr3smrU/view?usp=sharing	https://www.gallatin.kyschools.us/our-district/board-of-education	us:sd:2102130	Board of Education
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3783/Sisd/03e1f6e4-69a1-4af3-b244-10dd739dd0b0/SHAC_Meeting_2-20231018_084547-Meeting_Recordi.mp4?disposition=inline	https://www.sisd.net/documents/about-us/district-transparency/school-health-advisory-council-/meeting-recordings/483845	us:sd:4840710
+https://drive.google.com/file/d/19M3LfscTrJCM_it0ZXp1oxBZ6O3hQzkS/view?usp=drive_link	https://www.camphillsd.k12.pa.us/board/board-meeting-information	us:sd:4204860
+https://provo.edu/january-13-2026-timpview-high-study-session-video/	https://provo.edu/january-13-2026-timpview-high-study-session-video/	us:sd:4900810
+https://vimeo.com/1138505216		us:sd:4502580	See All Posts
+https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4557/Aisd/118236d9-28a1-41e2-ae7e-4349899f43ad/2.2.26-SLAC-Meeting-Recording.mp3?disposition=inline	https://www.abileneisd.org/documents/departments/library-services/slac/recordings/861535	us:sd:4807440
+https://www.nhvweb.net/wp-content/uploads/2020/01/DPM-0115.mp3	https://www.nhvweb.net/index.php/boe-agendas-minutes-and-recordings/	us:sd:3411610
+https://cvisd.new.swagit.com/videos/394211		us:sd:4813590
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3116/Rgccisd/9a9ad80c-c078-4bc1-a7b2-26244d6e45af/rgccisd_special_board_meeting_1-28-2019.mp4?disposition=inline	https://www.myrgcgisd.org/documents/board/board-meeting-videos-archive/2018-2019/353882	us:sd:4837140
+https://drive.google.com/file/d/1h4rMRhl4nsIBc92OYukjSIeNoo_-IBjW/view?usp=sharing	https://www.lawrence.org/live-feed/	us:sd:3616830	See All Posts
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2418/Mhsd/35c64f4f-82d9-4656-a4b5-0166fd0e4e22/06.27.23_Special_Work_Session.mp3?disposition=inline	https://www.mhbombers.com/documents/website-required-documents/school-board-meeting-recordings/2022-2023/405058	us:sd:0500043
+https://www.ortn.edu/audio/01_08_24.mp3	https://www.ortn.edu/central-office/board-of-education/audio/	us:sd:4703240	Meeting Audio
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5468/Clsd/50ff8a64-d5d9-4a9b-aa50-a420113496fc/Open_Enrollment_Meeting_RX_nGO-Meeting_Recordi.mp4?disposition=inline	https://www.clsd.k12.pa.us/documents/human-resources/videos/852711	us:sd:4206840
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3707/Swsd/765362d6-8793-4622-86eb-bca53986c508/10.8.24_Special_Board_Meeting_Recording.mp4?disposition=inline	https://www.swsd.k12.wa.us/documents/district/school-board-information/2024-2025-board-documents/2024-2025-board-meeting-recording/694276	us:sd:5307740
+https://drive.google.com/file/d/1DTbUEcy7o4u84TN76Ivxd5VO8IB66M0h/view?usp=sharing	https://scsd2.com/board-meeting-minutes	us:sd:5605695
+https://drive.google.com/file/d/19F4gJas0QcSt8h1bex8n6wR8xHEv8vfd/view?usp=sharing	https://www.dist102.k12.il.us/page/board-of-information	us:sd:1721600	Board of Education
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3162/Ucs/e002a7f6-ac82-4485-a2c3-4df1cca5e759/Board_Meeting_3_24_25.mp4?disposition=inline	https://www.union.k12.sc.us/documents/videos/422382	us:sd:4503750
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2486/Gccs/0fce3d78-7b09-4049-bb26-865d6ebf4c5f/Regular_Board_Meeting_1.6.26.mp4?disposition=inline	https://www.gccs.k12.nm.us/documents/board-of-education/board-meeting-recordings/2026-recordings/866201	us:sd:3501170
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3172/Besd/94f7bfd3-3999-4cd3-a74e-6afa67055516/9.25.2023_Board_Meeting.mp3?disposition=inline	https://www.be.wednet.edu/documents/school--board/board-meeting-recordings/525382	us:sd:5300780
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2468/Ncs/142cd233-3406-454b-a0ce-d4e95b9511df/9_8_2025_Regular_Board_Meeting-20250908_170011.mp4?disposition=inline	https://boe.nich.k12.wv.us/documents/board-members/notice-of-meetings,-minutes,-recordings,-and-agendas/school-year-2025-2026-recordings/841914	us:sd:5401020
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3723/Cwcps/636eaae9-f14b-478c-8988-b9f16660376d/February_8__2021_Meeting.mp4?disposition=inline	https://www.cwcboe.org/documents/board-of-education/meeting-minutes-prior-years/2021-2022-school-year/meeting-recordings-2020-2021-school-year/478581	us:sd:3402580
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3962/Rufsd/2e3922b2-37c4-4d1f-a8c0-68f87fde239c/Virtual_Video_Emergency_Meeting_7-10-2020.mp4?disposition=inline	https://www.rooseveltufsd.org/documents/board/meeting-recordings/469790	us:sd:3624990
+https://mvrhs.org/mvyouth-scholarship-information-session-november-29th-2022/	https://mvrhs.org/mvyouth-scholarship-information-session-november-29th-2022/	us:sd:2507380
+https://drive.google.com/file/d/1DCA_CQQQkmxpYDHzZkDZDU_tckn76Svt/view?usp=drive_link	https://scsd2.k12.in.us/about/board	us:sd:1810020	School board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3682/Dps/12b59789-02f7-442a-956f-4235aba83bad/04112024_SCMeetingRecording.mp4?disposition=inline	https://www.duxbury.k12.ma.us/documents/school-committee/videos-(non-streaming-meetings)/608856	us:sd:2504410
+https://westmorelandcova.portal.civicclerk.com/event/2130/media		us:sd:5103980
+https://townhallstreams.com/stream.php?location_id=142&id=48836	https://msad15.org/school-board	us:sd:2310710	School Board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3476/Csisd/a06bf421-086c-4472-9c88-934e30072c36/9-18-23_Board_Meeting.mp3?disposition=inline	https://www.chinaspringisd.net/documents/about-us/school-board/school-board-meeting-recordings/2023/760172	us:sd:4813960
+https://drive.google.com/file/d/1hZ_vQNouCZR4SQxRd1bTi-xx-BBiDwGX/view	https://www.fpsd91.org/page/board-of-education	us:sd:1715450	Standards Based Grading
+https://townhallstreams.com/stream.php?location_id=162&id=75662	https://www.ichabodcrane.org/board-of-education/	us:sd:3615210	Board of Education
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1632/Fps/e4843055-6297-41db-964c-0d26abbd7c92/Feb_Special_Board_Meeting_-_2_10_22__12.29_PM.mp3?disposition=inline	https://www.farmcards.org/documents/school-board-meeting-recordings/292959	us:sd:0506090
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/825/Royal_Isd/e3be915d-fe27-46e0-ad2b-63382df2eaf5/8.22.2022_Special_Board_Meeting.mp4?disposition=inline	https://www.royal-isd.net/documents/required-postings/school-board-meeting-recordings/2022-board-meeting-recordings/282259	us:sd:4838190
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2495/Dpsd/5132aa1d-8b31-47df-a683-48da76abe8b3/2025-09-22_BoardMTG-video.mp4?disposition=inline	https://www.dpsd.org/documents/board-of-directors/board-meeting-recordings/779915	us:sd:5302070
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/209/District/9a3b5ce2-e30a-45e0-a4c1-48d07a408da5/8_27_2025_Regular_Board_Meeting.mp4?disposition=inline	https://www.bishopschools.org/documents/school-board/board-meeting-recordings-(archived)/2025-2026-board-meeting-recordings/836138	us:sd:0601409
+https://drive.google.com/file/d/10xgZaCXbx5zD0lm90-Q7mAlzsHlzkNto/view?usp=drive_link	https://www.sharonsd.org/page/board-of-education	us:sd:4221330	Board of Education
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2770/Scsd2/5caf8acd-1e9c-4c40-ab32-c1cef570b282/September_17__2025_Special_Board_Meeting_-_Aud.mp3?disposition=inline	https://www.swcsd2.org/documents/community/alumni/board/board-audio-/-video-files/2025-2026-school-year/835359	us:sd:5605762
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1969/Northamptoncps/ae16b753-9c34-4cc7-8f92-9eb6f78395e1/SB_Recording_for_May_19_2021_School_Renovation.mp3?disposition=inline	https://www.ncpsk12.com/documents/school-board/school-board-meeting-recordings-/200256	us:sd:5102710
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/837/Ringwood_Schools/f1476624-4379-4d36-9974-5de0ae89eb24/Student-Presentation-BOE-Meeting-03-18-2026.mp4?disposition=inline	https://www.njrps.org/documents/board-of-education/agendas-&-minutes/board-meeting-recording-/177905	us:sd:3413860
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3211/Mssd/d893aecb-bc29-42dd-8600-6e8518d37648/August-2026-Board-Meeting.mp3?disposition=inline	https://www.milanssd.org/documents/board/board-meetings/audio/588225	us:sd:4702970	Board Meeting Audio
+https://drive.google.com/file/d/1VPLr1La_gy1Hv3ULXqkdYyvftutK_EtK/view?ts=60ffff0f	https://millstone.k12.nj.us/board_of_education/board_of_education_members/2021-2022_board_meeting_agendas__minutes_and_videos	us:sd:3410230
+https://drive.google.com/file/d/1Mc6tfjKiBod0Hwe6DAUcmFU1hWuc-aud/view?usp=drive_link	https://www.kelloggschools.org/o/kjd/page/school-board	us:sd:1601650	School Board
+https://drive.google.com/file/d/11yvfVWlySXDoyjEIa3LVfnM4EdFpPamz/view?usp=drive_link	https://www.armadaschools.org/our-district/board-of-education/boe-meeting-recordings/	us:sd:2603240	Board Meeting Recordings
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2145/Rochester3_A/b86b8af2-d660-45b0-ac4b-314a1fe5da33/2020-Aug-17_Board_of_Education_Meeting.mp4?disposition=inline	https://www.rochester3a.net/documents/district/3a-board/board-meeting-recordings/board-meeting-recordings-2020---2021/224065	us:sd:1734320
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4347/Sisd/b1042a90-2ba6-43fa-9745-58aa833a9aaf/Shepherd_ISD_Board_Meeting__March_27__2020_.mp4?disposition=inline	https://www.shepherdisd.net/documents/school-board/board-meeting-recordings/533958	us:sd:4840020
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5160/Aps/e97d7dbb-3eeb-4c21-8878-109115151c68/2023_061423_learning_report_at_boe_meeting.mp4?disposition=inline	https://www.abileneschools.org/documents/board-of-education/meeting-minutes/video-summaries/708596	us:sd:2003180
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3855/Oisd/24def9c8-0cec-48e4-b1f4-ea6f6376c15b/10.10.22_SHAC_Meeting_Recording.mp3?disposition=inline	https://www.orangefieldisd.net/documents/oisd-departments/curriculum-and-instruction/shac/meeting-agendas,-minutes,-&-recordings/shac-2022-2023/582275	us:sd:4833780
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3469/Svls/65c3647c-6292-4336-96d8-94c7d587b0ea/2023-01-10_Board_Meeting_Audio_Part_2.mp3?disposition=inline	https://www.piketon.k12.oh.us/documents/board-of-education/board-minutes/2023-board-minutes/audio-recordings/419123	us:sd:3904913
+https://elfridaschools.org/files/user/1/file/March-Board-Meeting-1.mp4	https://elfridaschools.org/District/1112-Governing-Board.html	us:sd:0402760	Governing Board
+https://drive.google.com/file/d/10NkySDoKw0EzkTFnNr0l2LmhxRHPsxhY/view?usp=drive_link	https://dekalbeastern.com/about/school-board	us:sd:1803060	School Board
+https://drive.google.com/file/d/1nFkwMZredR-CrnRC0ZURhsDxRZRCSEdM/view	https://www.millbrookcsd.org/our-district1/board-of-education1	us:sd:3619380	Board of Education
+https://drive.google.com/file/d/1py4gz95heUCKSzaufDFYwB_nVgbW1kex/view?usp=sharing	https://www.mcswain.k12.ca.us/apps/pages/index.jsp?uREC_ID=1061728&type=d&pREC_ID=2723112	us:sd:0624360
+https://drive.google.com/file/d/1yrxEhvjnBBNdI8dzewIz6T3Z3El9uzYY/view?usp=sharing	https://www.maplelake.k12.mn.us/about-us/school-board/maple-lake-school-board	us:sd:2718810	School Board
+http://cctv.chatfieldschools.com/internetchannel/show/3758?channel=1		us:sd:2708220	School Board
+https://drive.google.com/file/d/1rcQtDdmm7h_by0Ibv4ElXLU5dOqqQBV9/view?usp=drive_link	https://camcosd.org/332010_2	us:sd:4204830	School Board
+https://drive.google.com/file/d/1wvWIi8kOctSiwmnP7apzHRihVKr8VKG5/view?usp=sharing	https://www.richfieldcsd.org/boe-transcriptions-and-recordings	us:sd:3624570
+https://drive.google.com/file/d/1XXdm3g-1ArvjFYFn2TWdVsCJAXpsKb2Y/view?usp=drive_link	https://www.riverdaleschool.com/about-us/school-board-policy	us:sd:4110560	School Board & Policy
+https://drive.google.com/file/d/1L2NO7QolB4AIL0HHM-fldwg93mjxInZ4/view?usp=sharing	https://www.madisoncentralny.org/board-of-education/index	us:sd:3618080	Board of Education
+https://drive.google.com/file/d/1OOZ3WJNStJ0jVYN4b_rjI4pTR8wylxFt/view?usp=sharing	https://www.lapoynorisd.net/boardoftrustees	us:sd:4826220	Board of Trustees
+https://www.springlake-earth.org/board/recordings/9-8-25.m4a	http://www.springlake-earth.org/board.html	us:sd:4841250	Members
+https://drive.google.com/file/d/1T5iFYqI4YhHTTA3Tb1mI2NNkJp_IFeGM/view?usp=drive_link	https://www.fruitvaleisd.com/page/Board	us:sd:4820070	School Board
+https://vid.cdn-website.com/d2ec6038/videos/Board+Mtg+2025-01-27+18-59-38-v.mp4	https://www.powersschools.org/page/school-board-meeting-recording	us:sd:4110080	School Board Meeting Recording
+https://drive.google.com/file/d/1wYclgIBiyB0dQvejnRL5XAHffDaVjEwg/view?usp=sharing	https://www.verdenschools.org/vnews/display.v/SEC/Administration%7CBoard%20of%20Education	us:sd:4031080	Administration - Board of Education
+https://drive.google.com/file/d/1o-MzT5Hn8G3kJ1pVWVyTTNE-8n_tM79i/view?usp=sharing	https://gustine.esc14.net/19938_4	us:sd:4821990	SHAC Minutes and Recordings 2024/2025
+https://drive.google.com/file/d/1W0Bsw6DnawTTV_ugSkHqAvtysmGD1LKY/view?usp=sharing	https://www.flasher.k12.nd.us/schoolboard	us:sd:3806930	School Board
+https://www.sanjonschools.com/august-14th-meeting-recording	https://www.sanjonschools.com/august-14th-meeting-recording	us:sd:3502340
+https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2755/Ccsd/798cf29d-dfbc-47a3-89c6-31fa943d02f0/July_7__2025_Annual_Reorganizational_Board_of_.mp4?disposition=inline	https://www.corinthcsd.org/documents/school-board/school-board-meeting-recordings/2025-2026-recordings/833452	us:sd:3608370
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1043/Hsd/3b22223b-c1ee-4116-9e4e-997329f5e072/2023-11-06_0HSCmtg.MP3?disposition=inline	https://www.hsd.hermon.net/documents/school-committee/recordings/542853	us:sd:2306510
+https://www.centrallinn.k12.or.us/media/2026/09/GMT20260915-000624_Recording_640x360.mp4	https://www.centrallinn.k12.or.us/district/board/	us:sd:4102910	School Board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2681/Ncsd/079da117-d189-46e7-87c3-f2cc9307f200/BOE_Meeting_9.5.2024__2_.mp3?disposition=inline	https://www.newfieldschools.org/documents/--board-of-education/meeting-recordings/706707	us:sd:3620790
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3801/Cscsd/4cdfe347-0df5-45de-b04d-02eb53cd6d3c/May_10_2021_21-22_Budget_Hearing_Recording.mp4?disposition=inline	https://www.cscsd.org/documents/board-of-education/board-meeting-recordings/479418	us:sd:3600020
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5728/Ndisd/a21143ae-73d7-4dff-a9f3-783b9f4f3e8d/02-16-2022_SHAC_Meeting__2_.mp3?disposition=inline	https://www.ndisd.org/documents/parents/community/health-and-wellness-information/shac/meeting-recordings/834583	us:sd:4832460
+https://drive.google.com/file/d/12DdBL9atkwsgb9au0qKVSfR70q4Xutri/view?usp=sharing	https://www.kingsland.k12.mn.us/page/3047	us:sd:2700007	School Board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4831/Ats/515440b5-21c8-4c94-a6e4-a59f1bf038a5/260826_0306.MP3?disposition=inline	https://www.alexandriaschools.org/documents/board-of-ed/meeting-recordings/618434	us:sd:3400690	Meeting Recordings
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/196/District/349e1b65-466d-41b1-873d-a4797f023fab/SHAC_Meeting_11.13.23AudioReccording__2_.mp3?disposition=inline	https://www.nixonsmiley.net/documents/departments/health-and-wellness/shac-minutes-and-recordings/shac-meetings-2023-2024/543805	us:sd:4832740
+https://midlandschools.org/wp-content/uploads/2021/03/February-Meeting.mp3	https://midlandschools.org/board-recordings/	us:sd:0500020
+https://drive.google.com/file/d/1c3KijWuk48iEwIGgN21h4YIMAjl2ZM_B/view?usp=sharing	https://www.frankstonisd.net/boardoftrustees	us:sd:4819770	Board of Trustees
+https://townhallstreams.com/stream.php?location_id=78&id=75544	https://www.richmondpk12.org/documents/24-25-school-commitee-meeting-agendas-%26-minutes/684286	us:sd:2314844
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4083/Csd/8a37349d-2322-4030-ad3c-4fb80ac28df2/CSC_Zoom_December_8__2021.mp4?disposition=inline	https://www.calaisschools.org/page/school-board	us:sd:2303870	School board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/613/Crosbyton_Cisd/bba54e5b-d506-4da1-ab16-baa658126d6b/GMT20200512-172822_Special-Me_640x360.mp4?disposition=inline	https://www.crosbyton.k12.tx.us/documents/board-meeting-videos/124876	us:sd:4800001
+https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
+https://drive.google.com/file/d/1GEnQbHNS7pDo-AMfOZpmKTKgj5obrQYK/view?usp=sharing	https://www.amsterdamschool.org/board-meetings	us:sd:3001980
+https://drive.google.com/file/d/1WAeRdjx2dWjZK9-xg-OKwRjRxeZBidkQ/view?ts=6a343c1a	https://www.isd100.org/school-board	us:sd:2744190	School Board
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5705/Scisd/fa562d9e-a4d7-486f-825c-53858a957aac/April_5__2024_Meeting_Recording.mp3?disposition=inline	https://www.sterlingcityisd.net/documents/our-district/required-postings/shac/shac-agendas,-minutes,-and-meeting-recordings/834466	us:sd:4841550
+https://drive.google.com/file/d/1PVI8cDZGRbyFt5aJ2_owJB-SsjXmCxT4/view?usp=sharing	https://www.potomacschoolmontana.us/general-5-1	us:sd:3021330
+https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3702/Exsu19/835166c8-8066-4719-a95c-7e529c23b678/NEK_spec_meeting_2025-01-23.mp3?disposition=inline	https://www.ensuvt.org/documents/school-boards/nek-choice-board/board-meeting-recordings/661777	us:sd:5000415
+http://loraine.esc14.net/uploads/1/0/5/2/105225727/september_22_2025.mp3	http://loraine.esc14.net/board-agendasminutes.html	us:sd:4828170
+https://drive.google.com/file/d/1lyDpxBL7HsN61jURil3Peqjd2mNRlqh8/view?usp=sharing	https://dossccsd.org/board-of-trustees/	us:sd:4817400	Board of Trustees
+https://cloud.castus.tv/vod/westfordcat/video/642321b1a13afb00082e2394?page=ALL		us:cousub:2501776135
+https://wacatv.cablecast.tv/internetchannel/show/8316?site=1		us:sd:2502100
+https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045		us:place:0950370
+https://play.champds.com/lincolnwoodil/event/92		us:place:1743744
+https://greenecova.portal.civicclerk.com/event/1313/media		us:county:51079
+https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1860		us:sd:0611280
+https://www.orchardparkny.gov/wp-content/uploads/2020/04/Orchard-Park-Work-Session_04_01_20.mp4		us:place:3655266
+https://cms8.revize.com/revize/pattonvillage/Document%20Center/Recording/2021/Jul_29th_Special_Council_Meeting.mp3		us:place:4856156
+https://www.augustamaine.gov/corecode/uploads/document6/uploaded_pdfs/Public%20Meeting_1776360266.mp4		us:place:2302100
+https://www.simpsonville.com/wp-content/uploads/2026/09/2026-09-22_Committee.mp3		us:place:4566580
+https://www.dropbox.com/scl/fi/csfp43pxu471kb033ezc6/Rogers-City-Council-2026-09-22.mp4?rlkey=uy4xerlglybjw0qywmskqajxi&st=u7skua95&dl=0		us:place:0560410
+https://us06web.zoom.us/rec/share/CgvcJgv57Wt5pR4qSFae_32Wh4bg5prvquNECqGXp7P6bKSeci9bymncN1kFc-Fp.AH84e3UKU1HEp0z1		us:place:3067900
+https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/media/1044901	https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/videos	us:cousub:2500151440
+https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1017026	https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/videos	us:place:2675700
+https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://reflect-portchesterny.cablecast.tv/CablecastPublicSite/	us:place:3659223
+https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
+https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215

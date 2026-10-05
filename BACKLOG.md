@@ -106,7 +106,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (16)
+Standing decisions — do NOT re-raise  (17)
+  The tier-3 queue is hand-approved meetings, not crawling: robots.txt…
   English Whisper stays shown over a station's English captions; fix…
   No Viebit meeting can get a real transcript today -- confirmed at…
   Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`…
@@ -224,7 +225,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (29)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (228)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (230)
+  [NEEDS-AUDIT] Near-empty station captions are only guarded on…
+  [NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have…
   `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
   [NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two…
   [NEEDS-AUDIT] Several tier-3 feed lines land on the same or a…
@@ -575,6 +578,12 @@ Durable calls worth carrying into any session, not narrow one-offs.
 judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
 Standing decisions archive** instead; check there before assuming
 something hasn't been decided.
+
+### The tier-3 queue is hand-approved meetings, not crawling: robots.txt does not apply to it `[STANDING]`
+
+- **Issue**: on 2026-10-02 the queue-acceptance probe (`app/platforms/queue_probe.py`, PRs #1692/#1693) began always enforcing robots.txt. Google Drive lines were then logged `reject-dead: robots.txt disallows...` and dropped.
+- **What this means**: Ryan, 2026-10-03: every line in `scripts/tier3_auto_transcription_queue.txt` is a specific meeting a person approved. That is not crawling, so robots.txt does not apply to the queue probe. The probe no longer reads it (WO-1176). Meeting Finder IS crawling and still honors it (`app/utils/robots_check.py`, hook in `meeting_finder/pacing.py`). Do not re-add the rule to the queue path.
+- **History**: `BACKLOG_DONE.md` WO-1176 (same PR also lets a queue line carry title, date and meeting body, and stops the feed bouncing a shared-host line that has its own gov_id).
 
 ### English Whisper stays shown over a station's English captions; fix wrong names instead `[STANDING]`
 
@@ -2530,6 +2539,20 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Near-empty station captions are only guarded on Cablecast and Swagit (found 2026-10-04, WO-1181).**
+  - **Issue**: `caption_text_is_sparse()` gates Cablecast and (WO-1181) Swagit. Granicus, eScribe, CivicClerk, TelVue and the other caption platforms have no such gate, and only Swagit's stored pages were scanned (1 of 448 under 8 words a minute).
+  - **Impact**: unknown. A near-empty caption feed on those platforms still passes as a good transcript and is never sent to Whisper. About 7,171 sourced pages are stored in total.
+  - **Next action**: scan all sourced default versions for words a minute under 8 (span 10+ minutes) from the Render shell, not from a laptop. Report counts per platform, then gate the adapters that show hits and mark existing pages by hand with `_SPARSE_CAPTIONS_MARKER` via `correct-warnings`.
+  - **Constraint**: the scan reads every `segments` blob; run it on Render, per the bulk-sweep rule. Page 12372's marker is a separate manual step after deploy.
+  - **History**: WO-1181 in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have no government (found 2026-10-03, WO-1176).**
+  - **Issue**: while re-keying 70 Whisper-made pages that had an unknown government, 10 more were Cablecast pages on a shared cable-channel host with no `tenant_overrides.csv` pin. A different cause from the missing `gov_id` WO-1176 fixed: no queue line names their government.
+  - **Impact**: those 10 pages stay filed as `rtr:unknown:<host>` (no hub, no identity).
+  - **Next action**: census each channel (one meeting per government, per-video pins, see the shared-host channel census rule), write the pins, then re-key the 10 with `/internal/jurisdiction/override` (dry run first).
+  - **Constraint**: do not reslug existing pages (Ryan, 2026-10-03). A pin needs a real source.
+  - **History**: `BACKLOG_DONE.md` WO-1176.
 
 - **`[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve, but the in-browser player and the download-then-transcribe path are not yet checked with one.**
   - **Issue**: `direct_file.py` now resolves `https://<tenant>.sharepoint.com/:v:/s/<site>/<token>` to the share URL plus `&download=1` (the file URL alone fails without the guest cookie). ffprobe and `follow_with_cookies()` handle that; a browser `<video>` tag and the worker's ffmpeg chunk pull on a real transcription job were not run.

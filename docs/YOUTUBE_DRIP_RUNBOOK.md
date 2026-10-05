@@ -180,13 +180,27 @@ folds that buffer into the tracked file once, right here, then empties
 it. **After this lands, `git pull` on this Mac once more; every pull
 after that is clean.**
 
-**WO-1016 (2026-09-23): the queue file's line format.** A line is
+**WO-1016 (2026-09-23), extended WO-1176 (2026-10-03): the queue file's line format.** A line is
 `URL`, `URL<TAB>SOURCE_URL`, or, as of this WO, `URL<TAB>SOURCE_URL
 <TAB>GOV_ID` (SOURCE_URL may be blank when only GOV_ID is known:
 `URL\t\tGOV_ID`). `app.platforms.queue_probe.parse_queue_line()` is the
 one place this shape is parsed — `scripts/feed_tier3_auto_
 transcription.py`'s `_parse_queue_line()` and this script's own three
-call sites of that name all delegate to it. Writers that know a
+call sites of that name all delegate to it.
+
+**WO-1176 (2026-10-03) added three optional columns:** `URL<TAB>SOURCE_URL
+<TAB>GOV_ID<TAB>TITLE<TAB>DATE<TAB>MEETING_BODY` (DATE is `YYYY-MM-DD`; a
+bad date is read as blank, with a warning). They exist for a bare file
+link (Google Drive, a `.mp4`, Dropbox), whose resolver returns no title,
+date or body. The resolver's own value wins; the queue line only fills a
+blank. A still-untitled page gets its meeting body plus " meeting" as a
+title. `queue_probe.parse_queue_entry()` is the one parser (it returns a
+`QueueLine`); `parse_queue_line()` still returns the first three columns.
+`queue_probe.append_queue_line()` takes `title=`, `date=`, `meeting_body=`.
+The drip's feed lanes pass the new columns through. Note
+`tier3_long_meetings_deferred.txt` uses columns 4-6 for jurisdiction,
+duration and title instead, so never move a deferred line into the queue
+by hand; use `append_queue_line()`. Writers that know a
 government emit the 3rd field since 2026-09-23
 (`queue_probe.EMIT_GOV_ID_IN_QUEUE_LINES = True`), flipped only after
 this Mac confirmed it runs the tolerant readers.
@@ -285,3 +299,16 @@ but silent for 11 hours. That event now raises an alert too.
 --dry-run                                  do everything except write to the site
 --once                                     one step, then exit (for a quick check)
 ```
+
+## Leads lane: where the identity guard reads (WO-1178)
+
+The leads lane's "linked from the government's own site" credit refuses
+addresses seen for governments in two or more states. It reads, once per run:
+
+- the research leads file: `$RTR_LEADS_CSV` if set, else
+  `~/Documents/rtr-business/research/youtube_channel_leads.csv`;
+- every `reports/drip_handoff_*/leads.csv` in this checkout.
+
+If the research file is missing (the drip Mac has no `rtr-business` repo), the
+handoff files alone are used. The log has one line, "leads guard source: ...",
+saying which. Set `RTR_LEADS_CSV` only if you keep a copy of the research file.

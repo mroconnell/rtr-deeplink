@@ -1,5 +1,140 @@
 # Backlog — done
 
+## WO-1181: Swagit drops near-empty station captions; a near-empty-captions marker; Big Horn County MT pin [Done 2026-10-04]
+
+**Why this ran.** One Swagit page (Caroline County MD, Feb 12 2026 Administrative Charging Committee, page id 12372) held 501 words of station captions over 104 minutes (4.8 words a minute). It was stored as a good sourced transcript, so Whisper never picked it up. A scan of all 448 stored Swagit sourced pages found only this one under 8 words a minute (1 of 448). Cablecast already had the guard (PR #1699); Swagit did not.
+
+**What changed.**
+- `app/platforms/swagit.py`: after every segment source (transcript download, `#transcript-fragments`, caption file), `caption_text_is_sparse()` runs. If sparse, the segments are dropped and the page gets "The station's captions hold only N words over M minutes, so they were not used." (same sentence as Cablecast, unchanged). The "No transcript found" line is skipped in that case. Tests are synthetic and commented as such (`tests/test_swagit.py`): one sparse case, one normal-density case over a long meeting.
+- `archive/db/crud.py`: new `_SPARSE_CAPTIONS_MARKER = "near-empty at the source"`. It is in a new `_NOT_GOOD_MARKERS` tuple that both `_has_real_warning_free_transcript()` and the raw-SQL `_good_default_transcript_exists()` read, so the two cannot drift. It has its own report bucket `sparse_captions` ("Captions near-empty at the source"), ranked between `truncated_transcript` and `agenda_fallback` (later ranks shifted by one). No adapter writes this marker. `manually_promote_transcript_version(clear_warnings=True)` does not strip it. Tests: `tests/test_transcription_jobs.py` (SQL and Python helper agree; bucket and label).
+- `tenant_overrides.csv`: `bighorncomt.portal.civicclerk.com` pinned to `us:county:30003` (Big Horn County, MT), whole-site, strength `fallback`, source `ryan_stated`. That CivicClerk tenant returns a blank location. Page 10155 was re-keyed by hand to `us:county:30003` on 2026-10-04.
+
+**Still to do, by hand, after deploy.** `POST /internal/transcript-version/correct-warnings` for page 12372 (it replaces the whole warnings list, it does not append) with `["Transcript source note: This transcript was compiled from uncorrected Closed Captioning.", "The station's captions hold only 501 words over 104 minutes, so they are near-empty at the source."]`. The page then stops counting as having a good transcript and Whisper can take it.
+
+**Deploy.** `app/` and `archive/` changes are on `main` but not live until a deploy.
+- Also pinned `parker.granicus.com` to Parker County, TX (us:county:48367), Ryan 2026-10-04: page 5871 had landed under Parker city. Pages 5871, 5443 and 2722 (Sedgwick, whose pin postdates them) were re-keyed by hand the same day.
+- Also (Ryan, 2026-10-05): a caller-supplied `gov_id` naming the county row of a consolidated city-county is now redirected through `consolidated_governments.csv` (`crud._canonical_gov_id()`, used by ingest and `/internal/jurisdiction/override`). Seven pages had landed under the county id this way (Nashville, Indianapolis, Lexington, Columbus GA, the Bronx, Baton Rouge x2) and were re-keyed by hand the same day, and a later ingest naming the county for a page already under the city no longer gets a 409.
+- Pinned `dixon-ca.granicus.com` `view_id=3` to Dixon Unified School District (us:sd:0611280); the whole-host city pin stays for other views. Page 5308 re-keyed by hand the same day.
+
+## WO-1178: drip leads guard works on the drip Mac without the research file [Done 2026-10-03]
+
+**Why this ran.** WO-1177 gives `findmeeting_*` leads the "linked from the government's own site" credit, guarded against template embeds. The guard read `~/Documents/rtr-business/research/youtube_channel_leads.csv` and gave no credit if it could not read it. Ol McClaude reported that the drip Mac has no `rtr-business` git repo and no `research/` folder, so the credit would never apply there.
+
+**What changed.**
+- The research file path can be set with the environment variable `RTR_LEADS_CSV`. Unset, the old default is used.
+- If the research file is missing, the guard is built from the `reports/drip_handoff_*/leads.csv` files alone, plus `KNOWN_TEMPLATE_ADDRESSES`. An address seen for governments in two or more states, or in the known list, still gets no credit. A same-state address is credited. Only when no research file and no handoff file can be read is credit refused.
+- The guard logs one line per run naming the source it used ("research leads file ... + N handoff leads.csv" or "N handoff leads.csv only").
+- Credit by `run`: handoff rows have a `run` column (`run_govs_01`..`03`, `group4_pilot300_run`, `group4_batch2_run`, `group4_final_run`, `findmeeting_*`) and no `source_wo`. A source or run starting with `findmeeting_`, `run_govs_` or `group4_` now gets the same credit and the same guard. A blank source is looked up in the handoff files by address and credited when its run has one of those prefixes. `findmeeting_low_confidence_*` is excluded (low confidence by design: the handle names another body), by source and by run lookup. `hand_review_*` is not in the list: those are Ryan's hand decisions. `process_row` uses `run` when a row has no `source_wo`.
+- One existing test now passes `[]` as the handoff list, so it still means "nothing readable".
+
+**Not determined.** How a handoff `leads.csv` row reaches the drip Mac's `leads_queue.csv`. The lane reads `channel_url`, `gov_id`, `source_wo` and `verified`; handoff files use `lead_url` and `run`. No script in this repo converts one to the other; the runbook calls the queue a snapshot Ryan supplied.
+
+**Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
+
+## WO-1179: pin 14 government sites from rtr-discovery's government queue [Done 2026-10-03]
+
+**Why this ran.** rtr-discovery's breadth pass found captioned meetings on 120 tenants that have no government name (`government-queue`). Ryan asked for pins on the top of that list. 39 of the 120 already had a pin; the rest needed one.
+
+**What changed.** 14 pins in `tenant_overrides.csv`, each a whole-site pin (no `match`), strength `fallback`, source `ryan_stated+proposal`. Ryan said "ok" to all 14 on 2026-10-03.
+
+| Site | Government |
+| --- | --- |
+| coffeecountytn.gov | Coffee County, TN |
+| norwichct.gov | Norwich city, CT |
+| coldspringny.gov | Cold Spring village, NY |
+| cumberlandcountypa.gov | Cumberland County, PA |
+| www.wyandottemi.gov | Wyandotte city, MI |
+| in-leocedarville.civicplus.com | Leo-Cedarville town, IN |
+| bossiercity.org | Bossier City, LA |
+| ks-prattcounty2.civicplus.com | Pratt County, KS |
+| cortlandny.gov | Cortland city, NY |
+| www.canaannh.gov | Canaan town, NH |
+| dallascountyiowa.gov | Dallas County, IA |
+| camdencountyga.gov | Camden County, GA |
+| grandcountyutah.gov | Grand County, UT |
+| ma-southbridge.civicplus.com | Southbridge town, MA |
+
+**Limit.** The proposals came from each site's domain and example meeting titles, run through the registry. The sites themselves were not opened. Norwich, CT is the weakest: its titles say only "Regular Meeting", so city versus town rests on the registry listing it as a city. `stcema.org` was left out because its domain does not name a government.
+
+**Not done.** The three TelVue stations in the top 20 (State College PA, Kalamazoo MI, Jackson County MI) need per-video pins, not site pins. The Cablecast tenants whose pin matches one show still need pins for the show rtr-discovery found.
+
+**Effect.** A merge ships nothing: pins are data files in the image and need a deploy. rtr-discovery re-checks with `resolve --retry-no-government` after deploy.
+
+**Tests.** `tests/test_wo1179_discovery_queue_pins.py`: each host resolves to the expected government id. No network.
+
+## WO-1180: 147 per-video and per-show pins for TelVue and Cablecast meetings with no government [Done 2026-10-03]
+
+**Why this ran.** rtr-discovery's government queue listed captioned TelVue and Cablecast meetings with no government. Those stations carry several governments, so a whole-site pin would be wrong. Ryan said "ok" on 2026-10-03 to every proposal that resolved in the registry.
+
+**What changed.** 147 rows in `tenant_overrides.csv`: 106 TelVue (one per video, `player/<id>/media/<n>`) and 41 Cablecast (one per show, `cablecast:<host>:<show>`). Strength `fallback`, source `ryan_stated+proposal`. Each row's evidence starts "WO-1180:" and quotes the meeting title.
+
+| Station | Governments pinned |
+| --- | --- |
+| Kalamazoo TelVue | Kalamazoo city, Kalamazoo County, Oshtemo and Comstock townships, Kalamazoo Township, Kalamazoo Public School District |
+| State College TelVue | Centre County, State College borough and area schools, Bellefonte area schools and borough, College, Harris, Patton and Halfmoon townships |
+| Jackson County TelVue (Oregon) | Jackson County, Ashland, Grants Pass, Ashland School District 5 |
+| 14 Cablecast stations | Savage, Albert Lea, Champaign, Fort Collins, Larimer County, St. Tammany Parish, Spencer, Rehoboth, Tacoma Public Schools, and others |
+
+**How the names were made.** A title-to-government rule table (one rule per station), then each name through the registry's own-name check. Two names were retyped as the registry spells them, and one was pinned by the id the registry itself suggested (Brownsburg Community School Corporation, `us:sd:1801020`).
+
+**Not pinned (left for Ryan).** 38 TelVue and 18 Cablecast meetings where no government was identified (two unidentified TelVue stations, `gmcC3sJ6` and `5ZgpAPx0`); 10 whose title does not settle one government; 10 whose government is not in the national table (Groton-Dunstable Regional School District MA needs an "ok mint"; two PA townships share the name Ferguson). Shows that are not meetings were skipped.
+
+**Left out on purpose.** Three Town Square MN shows (`reflect-tst-mn.cablecast.tv`: South St. Paul, Mendota Heights, West St. Paul city councils). That host's pins are keyed by `site=N`, and `tests/test_tenant_key.py` refuses a per-show pin it cannot place in a tenant. They need a `site=` pin.
+
+**Limit.** The title is the only evidence. The stations were not opened.
+
+**Effect.** A merge ships nothing; pins are data files and need a deploy. Then `resolve --retry-no-government` in rtr-discovery. This PR and WO-1179 both append to the end of `tenant_overrides.csv`, so the second to merge needs a rebase.
+
+**Tests.** `tests/test_wo1180_telvue_cablecast_per_show_pins.py` reads the 147 rows back and checks each resolves to its id through the real resolver. No network.
+
+## WO-1177: drip leads lane gives Find Meeting addresses the "linked from the government's own site" credit [Done 2026-10-03]
+
+**Why this ran.** Find Meeting finds YouTube addresses by walking the government's own site. The drip leads lane (`scripts/youtube_leads_fetch.py`) only gave that credit to a fixed list of WO numbers (`HOMEPAGE_WALK_SOURCES`). A `findmeeting_*` lead got a name match only, so its identity stopped at medium.
+
+**What changed.**
+- A `source_wo` that starts with `findmeeting_` now counts as found on the government's own site. Identity can reach strong when the channel name also matches.
+- Guard: a website-template embed is not proof. If the same address appears for governments in two or more different states, it gets no credit and stays name-match only. The lane reads the leads file (`research/youtube_channel_leads.csv`) and the `reports/drip_handoff_*/leads.csv` files (including `all_youtube_addresses_seen`). It reads them once per run. State codes and full names count as the same state.
+- A short fixed list, `KNOWN_TEMPLATE_ADDRESSES`, always gets no credit: embed `bqLUp7GuUTg`, `@dewi11Channel`, and three Wix addresses seen in the leads file. The leads file holds each address once, so the list is needed for the cases Ryan named.
+- If the leads file cannot be read, a `findmeeting_*` lead gets no credit.
+- A `hand_review_*` row with `verified=true` is treated as identity already confirmed by a person: `assess_identity(confirmed_by_person=True)` returns strong and skips the name checks. This was the smallest change.
+- The listed WO sources and every other label behave as before.
+
+**Limit.** The guard only sees addresses in those files. A template embed used by governments in different states that no file lists together gets credit until it shows up. Confirm the Wix list.
+
+**Tests.** `tests/test_youtube_leads_findmeeting_credit.py`. No network.
+
+## WO-1176: queue lines carry title, date and meeting body; local Whisper run keeps gov_id; tier-3 queue exempt from robots.txt [Done 2026-10-03]
+
+**Why this ran.** Pages ingested from the tier-3 queue for bare file links (Google Drive, .mp3/.mp4, Dropbox) landed with no title, no date and sometimes no government. A file link's resolver returns none of those. The local Whisper batch (`transcribe_backlog_locally.py --urls-file`) read bare URLs and never sent a `gov_id`, so shared-host pages were filed as `rtr:unknown:<host>` (70 live pages repaired by hand on 2026-10-03). The feed bounced a Drive line as `[NO-OWNER]` before looking at its own `gov_id`. And since 2026-10-02 the queue probe enforced robots.txt, so Drive lines were dropped as `reject-dead`.
+
+**Root cause.** The local Whisper batch fed bare URLs, so `--urls-file` sent no `gov_id`. 80 recent Whisper-made pages had an unknown government. 70 of them matched a queue line that carried a `gov_id`.
+
+**The repair.** All 70 were re-keyed in production with `/internal/jurisdiction/override` on 2026-10-03, dry run first. The pages were not reslugged, at Ryan's request.
+
+**Ryan's decisions.** robots.txt does not apply to the tier-3 queue. Titles come from the link text, or are built from the meeting body when untitled. Future slugs should be search-engine friendly: the built title is set in the payload before ingest, so a new page's slug reads `<government>-<yyyy-mm-dd>-<title words>` (tested), and a line with only a `gov_id` still gets a government slug.
+
+**Still open.** 10 Cablecast pages on shared cable-channel hosts with no pin are still unidentified. That is a separate cause; see its own entry in `BACKLOG.md`.
+
+**Fix.**
+- Queue line format: `url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body`; columns 4-6 optional. One parser, `queue_probe.parse_queue_entry()` (returns a `QueueLine`); `parse_queue_line()` and the feed's `_parse_queue_line()` still return the first three. `append_queue_line()` takes `title=`, `date=`, `meeting_body=`. A bad date is read as blank with a warning.
+- Precedence: the resolver's own value wins; the queue line fills a blank. A still-untitled page gets its meeting body plus " meeting" (not added when the body already ends in meeting, meetings, session or hearing). `queue_probe.apply_queue_metadata()` does this for the feed and the local script.
+- Feed: a line with its own `gov_id` counts as owned (the disagreement check against a `tenant_overrides.csv` pin still applies). The drip's feed lanes (`youtube_drip.py`) now pass the line's `gov_id` and the new columns too.
+- `drive.usercontent.google.com` added to `MULTI_GOV_HOSTS`.
+- Local script: `--urls-file` parses full queue lines and sends `gov_id`, the `source_url` override (only for bare video links, as the feed does) and the metadata.
+- Meeting page: an untitled page reads "<government> meeting" (heading, `<title>`, JSON-LD name). "Untitled meeting" stays only with no government. Same rule in the list templates where a government name was already in context.
+- robots.txt removed from the queue probe (Ryan, 2026-10-03; see Standing decisions). A Cablecast entry still takes its length from the station's own API, now always, with no media read.
+
+- `find_tier3_short_meeting_substitutes.py --apply` used to rewrite a swapped line as `url<TAB>source` only, dropping `gov_id`. It now uses `queue_probe.swap_queue_line_url()`: keeps source, `gov_id` and meeting body; drops title and date when the video changes.
+- Restored to the queue: the 10 lines the feed dropped for a robots.txt reason on 2026-10-02/03, each with its original `gov_id` (recovered from the queue file's git history).
+
+**Caution.** `tier3_long_meetings_deferred.txt` uses columns 4-6 for jurisdiction, duration and title. Do not move a deferred line into the queue by hand. `archive/` and `app/` changes are on `main` but not live until a deploy.
+
+**Follow-ups (2026-10-04).**
+- The Search meetings list row was missed by the first pass (#1712); it now reads "<government> meeting" too.
+- Nine more pages re-keyed with Ryan's go-ahead, found by the Find Meeting routing of 2026-10-03 plus the same Cablecast channel: Tate Township OH (`meeting-7792b4`), Haddam CT (2: the 2020 Board of Finance meeting and the 2024 elementary school session, filed under the town), Clinton CT (2), Old Saybrook CT (2), Deep River CT (1), and page 678 from Owen, WI to Owen Sound, ON. The six `reflect-vsctv` pages already had per-video pins in `tenant_overrides.csv` for three of them and were still unidentified; not investigated.
+- Page 678 reslugged to `owen-sound-on-2022-04-25-council-meeting-regular` (its old slug named the wrong place; Ryan approved), with a `_SLUG_REDIRECTS` entry.
+- Queued Tate's 2026-09-28 Trustees public hearing (95 min, own-site WordPress video) as a 6-column line, the first hand-queued line using the WO-1176 title/date/body columns.
+
 ## ChampDS listing: Meeting Finder lists ChampDS accounts, finds their downloadable video, and names the meeting when there is none [Done 2026-10-02]
 
 **Why this ran.** A government-first run in rtr-findmeeting (2026-10-02) found that rtr-deeplink's own ChampDS lister saw real video Meeting Finder missed: Signal Mountain TN, Thompson's Station TN and Yuba County CA. The older `scripts/meeting_finder.py` also said `no-meeting-nor-video` on the control, Largo FL, whose account has meetings through 2026-09-24.

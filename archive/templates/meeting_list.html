@@ -148,7 +148,7 @@
                the "Play from 56:04" clean off the end of the row (caught
                in-browser, not by a test, which is why this markup looks
                heavier than it reads). -#}
-            <span class="result-title-text">{{ m.title or "Untitled meeting" }}</span>
+            <span class="result-title-text">{{ m.title or ((m.jurisdiction|jurisdiction_display) ~ " meeting" if m.jurisdiction else "Untitled meeting") }}</span>
             {%- if m.deep_link %}<span class="result-title-jump"><span class="result-title-sep" aria-hidden="true">&mdash;</span> <span aria-hidden="true">&#9654;</span> Play from {{ m.timestamp_label }}</span>{% endif -%}
           </a>
           <span class="calendar-candidate-date">

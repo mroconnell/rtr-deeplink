@@ -176,11 +176,16 @@ def assess_identity(
     gov_kind,
     linked_from_gov_site: bool,
     kind: str,
+    confirmed_by_person: bool = False,
 ) -> IdentityVerdict:
     """Step 2. `linked_from_gov_site` is True when the lead's own provenance
     (source_wo / note) already establishes it was found by walking the
     government's own website -- callers derive this from the CSV row, not
     from a network call."""
+    if confirmed_by_person:
+        # A person (Ryan's hand review, verified=true) already confirmed
+        # this address is the government's own. Skip every name check.
+        return IdentityVerdict("strong", "confirmed by a person (hand review)")
     ct = channel_title or ""
     ct_low = ct.lower()
     desc_low = (channel_description or "").lower()

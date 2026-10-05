@@ -2847,6 +2847,10 @@ _SLUG_REDIRECTS: dict[str, str] = {
     "east-baton-rouge-parish-la": "east-baton-rouge-parish-la-metro-council-budget-hearing-november-29-2022",
     "fort-madison-ia": "fort-madison-ia-city-council-meeting-september-1-2026",
     "isanti-county-mn-autorecord-jul-14-2026-10-18-am": "isanti-county-mn-live-stream-committee-of-the-whole-july-14-2026",
+    # 2026-10-04 (WO-1176 follow-up): an Owen Sound, ON eScribe meeting
+    # filed under Owen, WI by a wrong-domain research row. gov_id corrected
+    # by /internal/jurisdiction/override, then reslugged by hand (Ryan).
+    "owen-wi-2022-04-25-council-meeting-regular": "owen-sound-on-2022-04-25-council-meeting-regular",
 }
 
 

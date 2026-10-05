@@ -124,7 +124,7 @@
   {
     "@context": "https://schema.org",
     "@type": "VideoObject",
-    "name": {{ (page.title or "Meeting")|tojson }},
+    "name": {{ (page.title or (page.jurisdiction_display ~ " meeting" if page.jurisdiction else "Meeting"))|tojson }},
     "description": {{ description|tojson }},
     {#- "vimeo" and "viebit" belong on the embedUrl side for the same
        reason "youtube" does: vimeo.py stores a player.vimeo.com/video/{id}
@@ -226,7 +226,7 @@
   {
     "@context": "https://schema.org",
     "@type": "Event",
-    "name": {{ (page.title or "Meeting")|tojson }},
+    "name": {{ (page.title or (page.jurisdiction_display ~ " meeting" if page.jurisdiction else "Meeting"))|tojson }},
     {#- Same validated value as uploadDate above -- schema.org startDate is
        an ISO 8601 Date/DateTime, so a free-string date can't go in raw
        here either. Kept as a bare date (no synthetic T00:00:00Z) because
@@ -338,7 +338,7 @@
   <main class="meeting-page">
     <div class="meta">
       <h1>
-        {{ page.title or "Untitled meeting" }}
+        {{ page.title or (page.jurisdiction_display ~ " meeting" if page.jurisdiction else "Untitled meeting") }}
         {% if active_account %}
         <button type="button" id="saveMeetingIconBtn" class="bookmark-icon-btn save-meeting-control" data-slug="{{ page.slug }}" data-saved="{{ 'true' if meeting_saved else 'false' }}" title="{{ 'Click to unsave this meeting' if meeting_saved else 'Click to save this meeting on your account profile' }}">
           <svg class="bookmark-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>

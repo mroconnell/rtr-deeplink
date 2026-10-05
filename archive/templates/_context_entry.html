@@ -92,7 +92,7 @@
        else the matched meeting's title (get_public_context_entry()
        guarantees has_meeting=true here, so entry.title is never None).
        Never a link: a permalink page doesn't link to itself. -#}
-    <h1 class="context-headline">{{ entry.headline or entry.title or "Untitled meeting" }}</h1>
+    <h1 class="context-headline">{{ entry.headline or entry.title or (entry.jurisdiction_display ~ " meeting" if entry.jurisdiction_display else "Untitled meeting") }}</h1>
     {% if entry.published_at %}
     {#- A visible publish date (WO-946), right under the headline --
        article:published_time (meta block) and BlogPosting's
@@ -147,7 +147,7 @@
     </p>
     {% if entry.has_meeting %}
     <h3 class="featured-title">
-      <a href="/m/{{ entry.slug }}">{{ entry.title or "Untitled meeting" }}</a>
+      <a href="/m/{{ entry.slug }}">{{ entry.title or (entry.jurisdiction_display ~ " meeting" if entry.jurisdiction_display else "Untitled meeting") }}</a>
     </h3>
     <p class="featured-where">
       {%- if entry.jurisdiction -%}

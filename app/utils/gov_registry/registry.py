@@ -214,6 +214,8 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         "livestream.com",
         "soundcloud.com",
         "drive.google.com",
+        # Google Drive's file download host; same shared shape as drive.google.com.
+        "drive.usercontent.google.com",
         "dropbox.com",
         "sharepoint.com",
         # Lake Minnetonka Communications Commission's shared Cablecast

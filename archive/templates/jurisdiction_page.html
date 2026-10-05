@@ -142,7 +142,7 @@
       {% for m in pages %}
       <div class="calendar-candidate meeting-result-row">
         <div class="calendar-candidate-main">
-          <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+          <a href="/m/{{ m.slug }}">{{ m.title or (display ~ " meeting" if display else "Untitled meeting") }}</a>
           <span class="calendar-candidate-date">
             {%- if m.meeting_body %}{{ m.meeting_body }}{% endif -%}
             {#- Semantic <time> on the meeting date -- see meeting_date_html()
