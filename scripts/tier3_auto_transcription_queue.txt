@@ -1437,6 +1437,12 @@ https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045		us:place
 https://play.champds.com/lincolnwoodil/event/92		us:place:1743744
 https://greenecova.portal.civicclerk.com/event/1313/media		us:county:51079
 https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1860		us:sd:0611280
+https://www.orchardparkny.gov/wp-content/uploads/2020/04/Orchard-Park-Work-Session_04_01_20.mp4		us:place:3655266
+https://cms8.revize.com/revize/pattonvillage/Document%20Center/Recording/2021/Jul_29th_Special_Council_Meeting.mp3		us:place:4856156
+https://www.augustamaine.gov/corecode/uploads/document6/uploaded_pdfs/Public%20Meeting_1776360266.mp4		us:place:2302100
+https://www.simpsonville.com/wp-content/uploads/2026/09/2026-09-22_Committee.mp3		us:place:4566580
+https://www.dropbox.com/scl/fi/csfp43pxu471kb033ezc6/Rogers-City-Council-2026-09-22.mp4?rlkey=uy4xerlglybjw0qywmskqajxi&st=u7skua95&dl=0		us:place:0560410
+https://us06web.zoom.us/rec/share/CgvcJgv57Wt5pR4qSFae_32Wh4bg5prvquNECqGXp7P6bKSeci9bymncN1kFc-Fp.AH84e3UKU1HEp0z1		us:place:3067900
 https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/media/1044901	https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/videos	us:cousub:2500151440
 https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1017026	https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/videos	us:place:2675700
 https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://reflect-portchesterny.cablecast.tv/CablecastPublicSite/	us:place:3659223
