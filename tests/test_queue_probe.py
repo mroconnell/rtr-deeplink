@@ -2078,3 +2078,33 @@ def test_probe_never_reads_robots_txt(monkeypatch):
         )
     )
     assert seen.get("hls") and result.verdict == "accept"
+
+
+def test_cablecast_api_is_tried_on_a_custom_domain_station_host():
+    """A station on its own domain (not .cablecast.tv), known to be Cablecast
+    from the adapter, gets the same /cablecastapi/v1/shows/{id} lookup. The
+    media host is never tried."""
+    import asyncio
+    import json
+
+    from app.platforms import queue_probe as qp
+    from tests.aiohttp_mock import FakeResponse, mock_session
+
+    class _JsonResponse(FakeResponse):
+        async def json(self, content_type=None):
+            return json.loads(self._text)
+
+    api = "https://vod.maplewoodmn.gov/cablecastapi/v1/shows/812"
+    body = json.dumps({"show": {"totalRunTime": 5400, "eventDate": "2026-09-22T19:00"}})
+    with mock_session({api: _JsonResponse(status=200, text=body)}, post_routes={}):
+        result = asyncio.run(
+            qp.probe_queue_entry(
+                "https://vod.maplewoodmn.gov/CablecastPublicSite/show/812?site=1",
+                video_url="https://media.example-cdn.net/vod/812/vod.m3u8",
+                source_page_url="https://vod.maplewoodmn.gov/CablecastPublicSite/show/812?site=1",
+                platform="cablecast",
+            )
+        )
+    assert result.probe_method == "cablecast-api"
+    assert result.duration_seconds == 5400.0
+    assert result.verdict == "accept"

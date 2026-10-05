@@ -1092,6 +1092,16 @@ async def _probe_cablecast_api(
         netloc = urlparse(candidate or "").netloc.lower()
         if netloc.endswith(".cablecast.tv") and netloc not in netlocs:
             netlocs.append(netloc)
+        elif (
+            platform == "cablecast"
+            and netloc
+            and candidate != video_url
+            and netloc not in netlocs
+        ):
+            # A station on its own domain (e.g. vod.maplewoodmn.gov), already
+            # known to be Cablecast (adapter/pin). Same API path; the media
+            # host (video_url) is never tried and no media is fetched.
+            netlocs.append(netloc)
         twin = re.match(r"^(.+)-cablecast\.cablecast\.tv$", netloc)
         if twin and f"reflect-{twin.group(1)}.cablecast.tv" not in netlocs:
             netlocs.append(f"reflect-{twin.group(1)}.cablecast.tv")
