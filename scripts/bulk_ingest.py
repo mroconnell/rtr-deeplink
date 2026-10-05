@@ -52,6 +52,7 @@ import argparse
 import asyncio
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
@@ -184,6 +185,17 @@ class IngestGateRejected(RuntimeError):
     without needing its own except clause."""
 
 
+def _captions_length(segments) -> Optional[float]:
+    """Last caption end time in seconds, or None when there are no real
+    caption segments."""
+    ends = []
+    for seg in segments or []:
+        end = seg.get("end") if isinstance(seg, dict) else getattr(seg, "end", None)
+        if isinstance(end, (int, float)) and end > 0:
+            ends.append(float(end))
+    return max(ends) if ends else None
+
+
 async def _ingest(
     session: aiohttp.ClientSession,
     payload: dict,
@@ -247,6 +259,25 @@ async def _ingest(
             # `video_format` parameter exists for (see its docstring).
             video_format=payload.get("video_format"),
         )
+        # Tier 1 (real captions came with the video) is allowed at any
+        # length. A length lookup that failed or came back unknown
+        # ("reject-dead", e.g. a Cablecast Reflect host whose
+        # /cablecastapi/v1/shows/{id} answers 404) must not refuse a
+        # captioned payload: the captions ARE the proof the media played.
+        # Use the last caption end time as the length instead. A measured
+        # "reject-short" is still honored, and an uncaptioned (tier 3)
+        # payload with a dead lookup is still refused.
+        caption_length = _captions_length(payload.get("segments"))
+        if caption_length and (
+            probe.verdict == "reject-dead" or probe.probe_method == "unknown-accepted"
+        ):
+            probe = replace(
+                probe,
+                probe_method="captions",
+                duration_seconds=caption_length,
+                verdict="flag-long" if caption_length > 4 * 3600 else "accept",
+                reason=f"length lookup failed ({probe.reason}); used last caption end",
+            )
         append_probe_row(DEFAULT_SIDECAR_PATH, probe, caller=caller)
         if probe.verdict.startswith("reject-"):
             raise IngestGateRejected(f"[SKIP] {probe.verdict}: {probe.reason}")

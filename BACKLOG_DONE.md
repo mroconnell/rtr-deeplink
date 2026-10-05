@@ -29,6 +29,19 @@
 **Rule 3 filed, not built.** BACKLOG.md stays on the normal merge; see its "Make BACKLOG.md a generated doc" entry.
 
 **Also (Ryan, 2026-10-05).** `tenant_overrides.csv` had 39 repeated (tenant_host, match) pairs, which made the line-set driver fall back for the whole file. 38 repeated the same government and were collapsed to one row each. One disagreed: YouTube `v6SgCZWsqD8` ("Sherborn Planning Board of Appeals Meeting October 17, 2025") was pinned to both Sherborn and Dover, MA; the Dover row was removed. The live page was already under Sherborn; its slug (which named Dover) was changed with a redirect. `tests/test_tenant_overrides_unique_keys.py` now fails on any repeat.
+## Pin precedence: a per-show pin naming the page's own external id beats the station's name [Done 2026-10-05]
+
+**Why this ran.** Archive page 12060, "6-29-26 Pilot Mountain Board Meeting" (Cablecast show 1954 on reflect-surryco-nc.cablecast.tv), was filed under Elkin NC on 2026-10-03 although a per-show pin to Pilot Mountain NC had existed since 2026-09-27 (#1552). Ryan approved the trace as a strategic item.
+
+**Cause.** The station's site names "Town of Elkin, NC" for every show. The resolver's rung 4 matched that name to Elkin in the national table. The pin is `fallback` strength, so it waited for rung 5 and never got a turn. Rung 1b's "a matching per-page pin wins first" rule (WO-221) runs only on `MULTI_GOV_HOSTS`, and a Cablecast station host is not one. The ingest carried no `gov_id` (it did not come through the tier-3 feeder, whose line did carry Pilot Mountain's id). `test_wo1180_telvue_cablecast_per_show_pins.py` missed it because it resolves each pin with no name at all.
+
+**Fix.** New rung 1a in `_resolve_government_ladder()`: on a host that is not a `MULTI_GOV_HOSTS` host, a `tenant_overrides.csv` row whose `match` equals the page's own `external_id` exactly wins at any strength. It can reach only the one page it names. Shared hosts keep rung 1b's order unchanged.
+
+**Effect, measured on all 11,791 Archive pages (export 2026-10-05).** The resolver's answer changes for 6 pages: 3 already right by hand or by ingest `gov_id` (11363, 11568, 12060) and 3 still wrong today (12059 Surry County NC, 12086 Minnehaha County SD, 12151 Elkin City Schools NC). No other page changes.
+
+**Tests.** `tests/test_exact_external_id_pin_beats_name.py`: the four real pages with the name they carried; an unpinned show keeps the station name; show 19540 does not borrow show 1954's pin; shared hosts never run rung 1a; every per-show Cablecast pin beats another town's name.
+
+**Still to do after deploy.** Re-key pages 12059, 12086 and 12151 (dry-run commands in rtr-business `research/robots_skips_2026-10-05/pin_failure/README.md`).
 
 ## WO-1182: unidentified-page review pass; mint Santa Clara Valley Water District; pin Floresville TX and Valley Water; queue Floresville's Oct 2 council meeting [Done 2026-10-05]
 

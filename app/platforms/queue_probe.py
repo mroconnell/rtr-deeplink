@@ -1062,6 +1062,29 @@ async def _probe_direct_file(
 _CABLECAST_SHOW_ID_RE = re.compile(r"/(?:show|vod)/(\d+)")
 
 
+def _unknown_accepted(
+    url: str, platform: Optional[str], start: float, why: str
+) -> ProbeResult:
+    """Ryan's rule (2026-10-05): a Cablecast meeting is accepted when the
+    length LOOKUP fails or is unknown (API 404/unreachable, no host, no show
+    id). Only a measured too-short length, or the platform positively saying
+    the show is gone (HTTP 410, empty show record), still refuses. Length is
+    recorded as unknown (None); bulk_ingest swaps in the last caption end
+    time when captions exist."""
+    return ProbeResult(
+        url=url,
+        platform=platform,
+        probe_method="unknown-accepted",
+        duration_seconds=None,
+        date=None,
+        size_bytes=None,
+        verdict="accept",
+        reason=f"length unknown, accepted (Cablecast): {why}",
+        probe_seconds=time.monotonic() - start,
+        over_nine_minutes=False,
+    )
+
+
 async def _probe_cablecast_api(
     url: str,
     platform: Optional[str],
@@ -1080,8 +1103,8 @@ async def _probe_cablecast_api(
             show_id = m.group(1)
             break
     if not show_id:
-        return _dead(
-            url, platform, method, start, "no Cablecast show id in the address"
+        return _unknown_accepted(
+            url, platform, start, "no Cablecast show id in the address"
         )
     # The station's API answers on its web host (`reflect-x.cablecast.tv`),
     # not on the media host (`x-cablecast.cablecast.tv`, a 404 for the API).
@@ -1092,12 +1115,25 @@ async def _probe_cablecast_api(
         netloc = urlparse(candidate or "").netloc.lower()
         if netloc.endswith(".cablecast.tv") and netloc not in netlocs:
             netlocs.append(netloc)
+        elif (
+            platform == "cablecast"
+            and netloc
+            and candidate != video_url
+            and netloc not in netlocs
+        ):
+            # A station on its own domain (e.g. vod.maplewoodmn.gov), already
+            # known to be Cablecast (adapter/pin). Same API path; the media
+            # host (video_url) is never tried and no media is fetched.
+            netlocs.append(netloc)
         twin = re.match(r"^(.+)-cablecast\.cablecast\.tv$", netloc)
         if twin and f"reflect-{twin.group(1)}.cablecast.tv" not in netlocs:
             netlocs.append(f"reflect-{twin.group(1)}.cablecast.tv")
     if not netlocs:
-        return _dead(url, platform, method, start, "no Cablecast host in the address")
+        return _unknown_accepted(
+            url, platform, start, "no Cablecast host in the address"
+        )
     data = None
+    gone = False
     last_error = ""
     try:
         async with aiohttp.ClientSession(
@@ -1109,6 +1145,13 @@ async def _probe_cablecast_api(
                     async with session.get(
                         api_url, timeout=aiohttp.ClientTimeout(total=15)
                     ) as response:
+                        if response.status == 410:
+                            # The platform positively says it was removed.
+                            gone = True
+                            last_error = _http_dead_reason(
+                                "Cablecast API show record", 410
+                            )
+                            break
                         if response.status != 200:
                             last_error = _http_dead_reason(
                                 "Cablecast API show record", response.status
@@ -1119,16 +1162,25 @@ async def _probe_cablecast_api(
                 except (asyncio.TimeoutError, ValueError) as e:
                     last_error = f"Cablecast API fetch failed: {e}"
     except aiohttp.ClientError as e:
-        return _dead(url, platform, method, start, f"Cablecast API fetch failed: {e}")
+        return _unknown_accepted(
+            url, platform, start, f"Cablecast API fetch failed: {e}"
+        )
+    if gone:
+        return _dead(url, platform, method, start, last_error)
     if data is None:
-        return _dead(
-            url, platform, method, start, last_error or "Cablecast API gave no record"
+        return _unknown_accepted(
+            url, platform, start, last_error or "Cablecast API gave no record"
         )
     show = (data or {}).get("show") or {}
+    if not show:
+        # 200 but an empty show record: the platform says there is no such show.
+        return _dead(
+            url, platform, method, start, "Cablecast API says the show does not exist"
+        )
     runtime = show.get("totalRunTime")
     if not isinstance(runtime, (int, float)) or runtime <= 0:
-        return _dead(
-            url, platform, method, start, "Cablecast API show record carried no runtime"
+        return _unknown_accepted(
+            url, platform, start, "Cablecast API show record carried no runtime"
         )
     date = (show.get("eventDate") or "")[:10] or None
     return _finish(url, platform, method, float(runtime), date, None, start)
