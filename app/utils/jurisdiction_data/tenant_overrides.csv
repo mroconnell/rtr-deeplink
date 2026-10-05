@@ -906,6 +906,7 @@ paradise.escribemeetings.com,,ca:csd:1001517,fallback,wildcard_http_sweep_2,bare
 paramountcity.primegov.com,,us:place:0655618,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Paramount city
 parksville.civicweb.net,,ca:csd:5921018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Parksville
 pasadena.civicweb.net,,ca:csd:1005012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Pasadena
+parker.granicus.com,,us:county:48367,fallback,ryan_stated,"Parker County, TX -- Granicus clips 719 and 941 are ""Commissioners Court""; page 5871 had landed under Parker city and was re-keyed by hand 2026-10-04 (Ryan)"
 pasadena.granicus.com,,us:place:0656000,fallback,ryan_stated,"Pasadena, CA -- us_places.csv Pasadena city"
 passaiccountynj.granicus.com,,us:county:34031,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Passaic County
 passaiccountynj.legistar.com,,us:county:34031,fallback,wildcard_http_sweep_1,HTTP 200 len=186131 -> registry: us_counties.csv Passaic County

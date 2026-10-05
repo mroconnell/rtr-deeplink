@@ -12,6 +12,7 @@
 **Still to do, by hand, after deploy.** `POST /internal/transcript-version/correct-warnings` for page 12372 (it replaces the whole warnings list, it does not append) with `["Transcript source note: This transcript was compiled from uncorrected Closed Captioning.", "The station's captions hold only 501 words over 104 minutes, so they are near-empty at the source."]`. The page then stops counting as having a good transcript and Whisper can take it.
 
 **Deploy.** `app/` and `archive/` changes are on `main` but not live until a deploy.
+- Also pinned `parker.granicus.com` to Parker County, TX (us:county:48367), Ryan 2026-10-04: page 5871 had landed under Parker city. Pages 5871, 5443 and 2722 (Sedgwick, whose pin postdates them) were re-keyed by hand the same day.
 
 ## WO-1178: drip leads guard works on the drip Mac without the research file [Done 2026-10-03]
 
