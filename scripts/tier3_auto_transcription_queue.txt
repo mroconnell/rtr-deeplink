@@ -1271,3 +1271,7 @@ https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county
 https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
 https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
 https://rockwallisdtx.new.swagit.com/videos/393332		us:sd:4837650
+https://cloud.castus.tv/vod/westfordcat/video/642321b1a13afb00082e2394?page=ALL		us:cousub:2501776135
+https://wacatv.cablecast.tv/internetchannel/show/8316?site=1		us:sd:2502100
+https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045		us:place:0950370
+https://play.champds.com/lincolnwoodil/event/92		us:place:1743744

@@ -10011,3 +10011,7 @@ https://ssanpete.org/images/stories/DO/Minutes/FY_25_Minutes/11_12_25.mp3,direct
 https://s3.amazonaws.com/scschoolfiles/3657/pv5enktqgz23cl8onusmtxoquvvxqg9ht0nvbquunljqo1xm.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-05T06:14:16+00:00,,0
 https://resources.finalsite.net/videos/t_video_mp4_480/v1779378950/fsisdnet/dirjskhmmkcporfjyqjh/SchoolHealthAdvisoryCouncilSHACMeeting3-2026_05_2017_30CDT-Recording.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-10-05T06:14:18+00:00,,0
 https://drive.google.com/file/d/1BDxdYqPIrRTlPurcYZj8W5EUG6c6KRAe/preview,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,2.52,2026-10-05T06:14:30+00:00,,0
+https://cloud.castus.tv/vod/westfordcat/video/642321b1a13afb00082e2394?page=ALL,castus,hls-master+variant,6606.30,,,1,accept,,1.13,2026-10-05T13:00:53+00:00
+https://wacatv.cablecast.tv/internetchannel/show/8316?site=1,cablecast,hls-master+variant,3200.77,,,1,accept,,2.93,2026-10-05T13:00:59+00:00
+https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045,granicus,,,,,0,accept,length probe blocked by robots.txt; queued with length unknown (Ryan 2026-10-04),,2026-10-05T13:01:00+00:00
+https://play.champds.com/lincolnwoodil/event/92,champds,hls-master+variant,1231.00,,,1,accept,,0.85,2026-10-05T13:01:04+00:00
