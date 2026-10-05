@@ -1439,3 +1439,5 @@ https://cloud.castus.tv/vod/westfordcat/video/642321b1a13afb00082e2394?page=ALL	
 https://wacatv.cablecast.tv/internetchannel/show/8316?site=1		us:sd:2502100
 https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045		us:place:0950370
 https://play.champds.com/lincolnwoodil/event/92		us:place:1743744
+https://greenecova.portal.civicclerk.com/event/1313/media		us:county:51079
+https://dixon-ca.granicus.com/MediaPlayer.php?view_id=3&clip_id=1860		us:sd:0611280
