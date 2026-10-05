@@ -42,6 +42,22 @@
 **Tests.** `tests/test_exact_external_id_pin_beats_name.py`: the four real pages with the name they carried; an unpinned show keeps the station name; show 19540 does not borrow show 1954's pin; shared hosts never run rung 1a; every per-show Cablecast pin beats another town's name.
 
 **Still to do after deploy.** Re-key pages 12059, 12086 and 12151 (dry-run commands in rtr-business `research/robots_skips_2026-10-05/pin_failure/README.md`).
+## WO-1183: eScribe filing fixes, OWASA and 3CE minted, Valley Water dates fixed [Done 2026-10-05]
+
+**Why this ran.** The Find Meeting eScribe audit (rtr-findmeeting `analysis/escribe_audit_2026-10-05/archive_pages_to_review.csv`) listed 12 Archive pages filed wrong, and WO-1182 left the Santa Clara Valley Water District pages to finish after deploy. Ryan approved all of it 2026-10-05.
+
+**Done in production.**
+- Re-keyed: page 1047 Salmon, ID to Salmon Arm, BC; 3244 to Vernon, BC; 3285 to King, ON; 849 and 12185 Lamesa, TX to La Mesa, CA (the pub-lamesa portal names La Mesa and California, never Texas).
+- Deleted page 6726, a duplicate of 3244 (same eScribe meeting Id).
+- Valley Water: 7 pages re-keyed to the new id. 5 had wrong stored dates (each title carries the right one; Ryan confirmed April 9, 2024 for one). Fixed by re-ingesting with only `date` and `gov_id` set; every update in that path is truthy-gated, so transcripts, video and agenda stayed as they were (checked: same segment counts, one version each).
+- Reslugged the 5 Valley Water pages and the Oliver, BC page (slug named Oliver County ND).
+
+**This PR.**
+- `_SLUG_REDIRECTS` for the 6 old addresses.
+- Pins for the `pub-` forms of salmonarm, vernon and king (only the bare hosts were pinned) and for pub-lamesa.
+- Minted Orange Water and Sewer Authority, NC (COG 205092) and Central Coast Community Energy, CA (COG 251576), with pins for pub-owasa and pub-3ce.
+
+**Still to do after deploy.** Re-key pages 1045 and 4133 to OWASA and 811 and 2220 to 3CE.
 
 ## WO-1182: unidentified-page review pass; mint Santa Clara Valley Water District; pin Floresville TX and Valley Water; queue Floresville's Oct 2 council meeting [Done 2026-10-05]
 
