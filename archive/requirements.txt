@@ -36,7 +36,7 @@ click==8.4.2
     # via uvicorn
 cryptography==50.0.0
     # via clerk-backend-api
-fastapi==0.141.1
+fastapi==0.142.2
     # via -r requirements.in
 frozenlist==1.8.0
     # via
@@ -75,6 +75,8 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
+opentelemetry-api==1.45.0
+    # via fastapi
 propcache==0.5.2
     # via
     #   aiohttp
@@ -112,6 +114,7 @@ typing-extensions==4.16.0
     #   alembic
     #   beautifulsoup4
     #   fastapi
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
