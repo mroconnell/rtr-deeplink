@@ -238,7 +238,7 @@ rich==15.0.0
     # via pip-audit
 ruff==0.16.7
     # via -r requirements-dev.in
-sentry-sdk==2.69.2
+sentry-sdk==2.71.0
     # via -r requirements.txt
 six==1.17.0
     # via
@@ -271,6 +271,8 @@ tomli==2.4.1
     # via pip-audit
 tomli-w==1.2.0
     # via pip-audit
+truststore==0.10.4
+    # via -r requirements.txt
 typing-extensions==4.16.0
     # via
     #   -r requirements.txt
@@ -319,8 +321,6 @@ yarl==1.24.5
     # via
     #   -r requirements.txt
     #   aiohttp
-yt-dlp==2026.8.19
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
