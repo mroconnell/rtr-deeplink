@@ -15,18 +15,6 @@ https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://vimeo.com/879928833		us:sd:2314809
-https://files.smartsites.parentsquare.com/8371/08_17_2026_special_meeting_1.mp3		us:sd:4815510
-https://4.files.edl.io/7227/08/21/26/200320-f694ee39-28c3-49da-bc91-57485c5ad2a4.mp4		us:sd:4113080
-https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
-https://drive.google.com/file/d/1aJloSqfnMm-gdRRpG3LtvVqBQQxbZZwc/view?usp=sharing		us:sd:3410530
-https://4.files.edl.io/fedc/05/19/21/192818-a8a9a3ca-3a1b-497b-9097-97692fe4fc22.mp3		us:sd:0614370
-https://allenisd.new.swagit.com/videos/400821		us:sd:4807890
-https://www.treynorschools.org/vimages/shared/vnews/stories/587539236e063/Regular%20Board%20Meeting%2007-13-2026.mp3		us:sd:1927960
-https://files.smartsites.parentsquare.com/6510/shac-2-10-2026_mp3.mp3		us:sd:4834290
-https://media.isd623.org/index.php/video-category/meetings/		us:sd:2732430
-https://files.smartsites.parentsquare.com/6564/august_2026_regular.mp3		us:sd:0506270
-https://drive.google.com/file/d/11L4Drvx1bFF45dGP43cwmW4QRcN7NhyZ/view		us:sd:2101860
-http://boe.syntaxny.com/BOEAssets/114/2022-2023_BOE_Meeting_Audio-Video/92222_Special_Audio.mp3		us:sd:3602940
 https://drive.google.com/file/d/1B_ysNuK6si1PWEeYASdmXLIbEYjAGM-z/view?ts=5e39808f		us:sd:3405310
 https://cloud.castus.tv/vod/lincoln/video/6aa41d6f6e26d70002ad5235?page=HOME		us:sd:2506900
 https://files.smartsites.parentsquare.com/9558/sheridanst_1.mp4		us:sd:4818390
@@ -1448,3 +1436,5 @@ https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://refl
 https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
 https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
 https://play.champds.com/lakezurichil/event/206	https://lakezurich.org/260/On-Demand-Meeting-Recordings	us:place:1741742
+https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
+https://allenisd.new.swagit.com/videos/400821		us:sd:4807890
