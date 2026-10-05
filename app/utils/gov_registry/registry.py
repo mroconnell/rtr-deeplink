@@ -431,6 +431,45 @@ def _has_human_source(source: str) -> bool:
     )
 
 
+# Source words that mean the pin was GUESSED from a name, not checked:
+# rtr-discovery's two, and the `wildcard_http_sweep_*` runs (their own
+# evidence column reads "unverified: minted from '<name>'"). A pin
+# carrying one of these may never point at a minted `rtr:` id unless a
+# human word is also present.
+MACHINE_GUESS_PIN_SOURCES = (
+    "auto_derived",
+    "inferred_unique_name",
+    "wildcard_http_sweep",
+)
+
+
+def _has_machine_guess_source(source: str) -> bool:
+    return any(
+        tok.strip().startswith(MACHINE_GUESS_PIN_SOURCES)
+        for tok in (source or "").split("+")
+        if tok.strip()
+    )
+
+
+def _pin_may_use_minted_gov(source: str, gov_id: str) -> bool:
+    """May a `tenant_overrides.csv` row with this `source` point at the
+    minted `rtr:` id `gov_id`?
+
+    Yes when a person's word is in `source`. Also yes when the row
+    names a workflow (`telvue_offline_match_*`, `civicmedia_*`,
+    `wo201_mint`, ...) rather than a machine guess, AND the government
+    already has a row in the committed registry. The pin cannot invent
+    an identity then: the government was minted and committed on its own.
+    A pin to an `rtr:` id with no registry row stays refused, and so
+    does any row carrying a machine-guess word with no human word.
+    """
+    if _has_human_source(source):
+        return True
+    if _has_machine_guess_source(source):
+        return False
+    return gov_id in governments()
+
+
 _VIMEO_HOSTS: FrozenSet[str] = frozenset(
     {"vimeo.com", "player.vimeo.com", "www.vimeo.com"}
 )
@@ -491,7 +530,15 @@ def _load_tenant_overrides() -> Tuple[
         gov_id = (r.get("gov_id") or "").strip()
         if not host or not gov_id:
             continue
-        if gov_id.startswith("rtr:") and not _has_human_source(r.get("source") or ""):
+        if gov_id.startswith("rtr:") and not _pin_may_use_minted_gov(
+            r.get("source") or "", gov_id
+        ):
+            logger.warning(
+                "tenant_overrides.csv: dropping row -- minted id %r has no "
+                "registry row, or the source is a machine guess: %s",
+                gov_id,
+                r,
+            )
             # A machine may not MINT a government for a tenant. Pinning
             # to a national id is a claim a table can be checked against;
             # pinning to an `rtr:` id invents an identity, and a pin is
