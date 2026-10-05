@@ -4,14 +4,24 @@
 # directory's requirements.in via pip-compile). One entry per service,
 # matching the three independently-deployed Render services.
 #
-# yt-dlp/faster-whisper/youtube-transcript-api are deliberately left
-# unpinned in the compiled requirements.txt files (see those files' own
-# comments) -- Dependabot has nothing to bump for a bare, versionless
-# line, so it naturally leaves them alone without any extra config here.
+# yt-dlp/faster-whisper are deliberately left unpinned, appended by hand
+# to the bottom of the compiled root and worker requirements.txt files
+# (see those files' own comments).
+#
+# Why "/" and "/worker" have open-pull-requests-limit: 0 (2026-10-05):
+# for any bump, Dependabot re-runs pip-compile and REWRITES the whole
+# requirements.txt. pip-compile does not know about the hand-appended
+# bare lines, so every root/worker PR deleted yt-dlp and faster-whisper
+# (and their comment), and tests failed with ModuleNotFoundError: yt_dlp
+# (e.g. closed PR #1755). An `ignore` entry would not help: it only skips
+# bumping that package, the file is still rewritten for other packages.
+# Bump root/worker by hand instead: pip-compile, then re-append the
+# unpinned lines. /archive has no unpinned lines, so it stays automatic.
 version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "weekly"
 
@@ -22,5 +32,6 @@ updates:
 
   - package-ecosystem: "pip"
     directory: "/worker"
+    open-pull-requests-limit: 0
     schedule:
       interval: "weekly"
