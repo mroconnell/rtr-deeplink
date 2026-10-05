@@ -12,7 +12,7 @@ langdetect>=1.0.9
 # one. Same pin as requirements.in's copy for the resolver, which already
 # has this dependency because its own platform adapters use bs4 directly.
 beautifulsoup4>=4.12
-sqlalchemy[asyncio]>=2.0.54
+sqlalchemy[asyncio]>=2.1.2
 asyncpg>=0.29
 aiosqlite>=0.20
 python-dotenv>=1.0
