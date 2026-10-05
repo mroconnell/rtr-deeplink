@@ -1669,11 +1669,17 @@ def test_a_machine_derived_pin_may_not_mint_a_government():
     assert registry._has_human_source("architecture_doc_1_3") is True
     assert registry._has_human_source("auto_derived") is False
     assert registry._has_human_source("auto_derived+inferred_unique_name") is False
-    # ...and the loader drops such a row entirely.
+    # ...and the loader drops such a row entirely. A minted-id pin loads
+    # only with a human word, or with a workflow word AND a government
+    # row in the registry (see the tests below); never a machine guess.
     for rows in registry.tenant_overrides().values():
         for override in rows:
             if override.gov_id.startswith("rtr:"):
-                assert registry._has_human_source(override.source), override
+                assert not (
+                    registry._has_machine_guess_source(override.source)
+                    and not registry._has_human_source(override.source)
+                ), override
+                assert registry.government_for_id(override.gov_id), override
 
 
 def test_king_county_resolves_to_washington():
@@ -4124,3 +4130,88 @@ def test_page_3367s_media_is_the_districts_and_the_towns_media_is_not():
         path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/playlists/4824/media/951693",
     )
     assert playlist.gov_id == _DERRY_COOP
+
+
+# --- Pins with a workflow source word (not a person's, not a machine guess) ---
+
+_WORKFLOW_PIN_SOURCES = [
+    "telvue_offline_match_2026-09-29",
+    "civicmedia_uploader_rule_2026-10-01",
+    "civicmedia_routing_2026-09-29",
+    "civicmedia_corrected_2026-09-29",
+    "wo201_mint",
+    "wo211_owner_channels",
+    "rtr_business_public_colleges_2026-09-29",
+]
+
+
+def _write_pin_fixture(tmp_path, source, gov_row=True, match=""):
+    (tmp_path / "tenant_overrides.csv").write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        f"pins.example.org,{match},rtr:us:zz:pinned-district,fallback,{source},x\n",
+        encoding="utf-8",
+    )
+    header = (
+        "gov_id,gov_name,gov_type,country,state,place_geoid,county_fips,"
+        "sgc_code,nces_lea_id,cog_id,aliases,source,evidence\n"
+    )
+    row = (
+        "rtr:us:zz:pinned-district,Pinned District,special_district,us,ZZ,,,,,,,minted,x\n"
+        if gov_row
+        else ""
+    )
+    (tmp_path / "governments.csv").write_text(header + row, encoding="utf-8")
+
+
+@pytest.mark.parametrize("source", _WORKFLOW_PIN_SOURCES)
+def test_workflow_source_pin_to_a_registry_minted_gov_loads_and_resolves(
+    monkeypatch, tmp_path, source
+):
+    _write_pin_fixture(tmp_path, source)
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        rows = registry.tenant_overrides()["pins.example.org"]
+        assert [r.gov_id for r in rows] == ["rtr:us:zz:pinned-district"]
+        assert registry.government_for_id(rows[0].gov_id)
+        match = resolver.resolve_government(
+            None, tenant_host="pins.example.org", path="/x"
+        )
+        assert match.gov_id == "rtr:us:zz:pinned-district"
+    finally:
+        registry.clear_caches()
+
+
+def test_pin_to_a_nonexistent_minted_gov_is_still_dropped_and_logged(
+    monkeypatch, tmp_path, caplog
+):
+    _write_pin_fixture(tmp_path, "telvue_offline_match_2026-09-29", gov_row=False)
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        with caplog.at_level("WARNING"):
+            assert registry.tenant_overrides().get("pins.example.org", []) == []
+        assert "rtr:us:zz:pinned-district" in caplog.text
+    finally:
+        registry.clear_caches()
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "auto_derived",
+        "auto_derived+inferred_unique_name",
+        "wildcard_http_sweep_1",
+        "wildcard_http_sweep_2",
+    ],
+)
+def test_machine_guess_pin_to_a_minted_gov_is_dropped_even_with_a_registry_row(
+    monkeypatch, tmp_path, source
+):
+    _write_pin_fixture(tmp_path, source)
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        assert registry.tenant_overrides().get("pins.example.org", []) == []
+    finally:
+        registry.clear_caches()
