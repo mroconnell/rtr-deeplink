@@ -268,7 +268,9 @@ async def _ingest(
         # "reject-short" is still honored, and an uncaptioned (tier 3)
         # payload with a dead lookup is still refused.
         caption_length = _captions_length(payload.get("segments"))
-        if probe.verdict == "reject-dead" and caption_length:
+        if caption_length and (
+            probe.verdict == "reject-dead" or probe.probe_method == "unknown-accepted"
+        ):
             probe = replace(
                 probe,
                 probe_method="captions",

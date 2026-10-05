@@ -2108,3 +2108,104 @@ def test_cablecast_api_is_tried_on_a_custom_domain_station_host():
     assert result.probe_method == "cablecast-api"
     assert result.duration_seconds == 5400.0
     assert result.verdict == "accept"
+
+
+# --- Ryan 2026-10-05: Cablecast accepts a meeting when the probe fails ---
+
+_CC_PAGE = "https://reflect-peg-westonfl.cablecast.tv/show/221?site=1"
+_CC_VIDEO = "https://peg-westonfl-cablecast.cablecast.tv/vod/221-Commission/vod.m3u8"
+_CC_404 = {
+    "https://reflect-peg-westonfl.cablecast.tv/cablecastapi/v1/shows/221": None,
+    "https://peg-westonfl-cablecast.cablecast.tv/cablecastapi/v1/shows/221": None,
+}
+
+
+def _cc_routes(status):
+    from tests.aiohttp_mock import FakeResponse
+
+    return {k: FakeResponse(status=status, text="") for k in _CC_404}
+
+
+async def test_cablecast_404_lookup_is_accepted_with_unknown_length():
+    from tests.aiohttp_mock import mock_session
+
+    with mock_session(_cc_routes(404), post_routes={}):
+        r = await queue_probe.probe_queue_entry(
+            _CC_PAGE,
+            video_url=_CC_VIDEO,
+            source_page_url=_CC_PAGE,
+            platform="cablecast",
+        )
+    assert r.verdict == "accept"
+    assert r.probe_method == "unknown-accepted"
+    assert r.duration_seconds is None
+
+
+async def test_cablecast_no_show_id_is_accepted_with_unknown_length():
+    r = await queue_probe.probe_queue_entry(
+        "https://reflect-x.cablecast.tv/home",
+        video_url="https://x-cablecast.cablecast.tv/a/vod.m3u8",
+        source_page_url="https://reflect-x.cablecast.tv/home",
+        platform="cablecast",
+    )
+    assert r.verdict == "accept" and r.probe_method == "unknown-accepted"
+
+
+async def test_cablecast_410_is_still_refused_as_dead():
+    from tests.aiohttp_mock import mock_session
+
+    with mock_session(_cc_routes(410), post_routes={}):
+        r = await queue_probe.probe_queue_entry(
+            _CC_PAGE,
+            video_url=_CC_VIDEO,
+            source_page_url=_CC_PAGE,
+            platform="cablecast",
+        )
+    assert r.verdict == "reject-dead"
+
+
+async def test_non_cablecast_dead_link_is_still_refused():
+    from tests.aiohttp_mock import FakeResponse, mock_session
+
+    url = "https://example.granicus.com/path/dead.m3u8"
+    with mock_session({url: FakeResponse(status=404, text="")}, post_routes={}):
+        r = await queue_probe.probe_queue_entry(
+            "https://example.gov/clip/1",
+            video_url=url,
+            source_page_url="https://example.gov/clip/1",
+            platform="granicus",
+        )
+    assert r.verdict == "reject-dead"
+
+
+async def test_finish_candidate_queues_a_cablecast_meeting_whose_lookup_404s(tmp_path):
+    from tests.aiohttp_mock import mock_session
+
+    paths = _paths(tmp_path)
+    with mock_session(_cc_routes(404), post_routes={}):
+        outcome = await queue_probe.finish_candidate(
+            _CC_PAGE,
+            video_url=_CC_VIDEO,
+            source_url=_CC_PAGE,
+            platform="cablecast",
+            gov_id="us:place:1276582",
+            **paths,
+        )
+    assert outcome.action == "queued"
+    assert _CC_PAGE in paths["queue_path"].read_text()
+
+
+async def test_finish_candidate_still_rejects_non_cablecast_dead_link(tmp_path):
+    from tests.aiohttp_mock import FakeResponse, mock_session
+
+    paths = _paths(tmp_path)
+    url = "https://example.granicus.com/path/dead2.m3u8"
+    with mock_session({url: FakeResponse(status=404, text="")}, post_routes={}):
+        outcome = await queue_probe.finish_candidate(
+            "https://example.gov/clip/2",
+            video_url=url,
+            source_url="https://example.gov/clip/2",
+            platform="granicus",
+            **paths,
+        )
+    assert outcome.action == "rejected"

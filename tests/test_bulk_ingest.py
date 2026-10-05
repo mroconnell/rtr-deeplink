@@ -537,12 +537,67 @@ async def test_ingest_records_caption_length_when_lookup_404s(monkeypatch):
     assert rows[0].verdict == "accept"
 
 
-async def test_ingest_still_refuses_uncaptioned_cablecast_payload_when_lookup_404s(
+async def test_ingest_accepts_uncaptioned_cablecast_payload_when_lookup_404s(
+    monkeypatch,
+):
+    """Ryan 2026-10-05: Cablecast accepts a meeting when the probe fails."""
+    rows = []
+    monkeypatch.setattr(
+        bulk_ingest,
+        "append_probe_row",
+        lambda path, result, *, caller="": rows.append(result),
+    )
+    with mock_session(
+        _WESTON_404, post_routes={_INGEST_URL: FakeResponse(text=_ACCEPT_JSON)}
+    ):
+        async with aiohttp.ClientSession() as session:
+            response = await _ingest(session, _weston_payload([]), _WESTON_PAGE)
+    assert response == {"slug": "x", "url": "/m/x", "created": True}
+    assert rows[0].probe_method == "unknown-accepted"
+    assert rows[0].duration_seconds is None
+
+
+async def test_ingest_refuses_cablecast_payload_when_platform_says_show_is_gone(
     monkeypatch,
 ):
     monkeypatch.setattr(bulk_ingest, "append_probe_row", _noop_append_probe_row)
-    with mock_session(_WESTON_404, post_routes={}):
+    routes = {
+        _WESTON_API: FakeResponse(status=410, text=""),
+        _WESTON_MEDIA_API: FakeResponse(status=410, text=""),
+    }
+    with mock_session(routes, post_routes={}):
         with pytest.raises(IngestGateRejected) as exc_info:
             await _ingest(None, _weston_payload([]), _WESTON_PAGE)
     assert "reject-dead" in str(exc_info.value)
-    assert "404" in str(exc_info.value)
+
+
+async def test_ingest_refuses_cablecast_payload_when_measured_too_short(monkeypatch):
+    monkeypatch.setattr(bulk_ingest, "append_probe_row", _noop_append_probe_row)
+
+    class _Json(FakeResponse):
+        async def json(self, content_type=None):
+            return {"show": {"totalRunTime": 30}}
+
+    with mock_session({_WESTON_API: _Json(status=200, text="x")}, post_routes={}):
+        with pytest.raises(IngestGateRejected) as exc_info:
+            await _ingest(None, _weston_payload([]), _WESTON_PAGE)
+    assert "reject-short" in str(exc_info.value)
+
+
+async def test_ingest_still_refuses_non_cablecast_dead_link_when_uncaptioned(
+    monkeypatch,
+):
+    monkeypatch.setattr(bulk_ingest, "append_probe_row", _noop_append_probe_row)
+    url = "https://example.granicus.com/path/dead.m3u8"
+    payload = {
+        "video_url": url,
+        "source_url": "https://example.gov/MediaPlayer.php?clip_id=9",
+        "platform": "granicus",
+        "segments": [],
+    }
+    with mock_session({url: FakeResponse(status=404, text="")}, post_routes={}):
+        with pytest.raises(IngestGateRejected) as exc_info:
+            await _ingest(
+                None, payload, "https://example.gov/MediaPlayer.php?clip_id=9"
+            )
+    assert "reject-dead" in str(exc_info.value)
