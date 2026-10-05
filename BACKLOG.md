@@ -462,7 +462,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (230)
     [NEEDS-AUDIT] `direct_file.py`'s Google Drive `&confirm=t` bypass…
     [NEEDS-AUDIT] Custom (non-vendor) multi-meeting HTML hub pages…
 
-Reliability, ops & cost  (12)
+Reliability, ops & cost  (13)
+  `[BIG]` Make BACKLOG.md a generated doc: one file per entry
   `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit…
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
@@ -6002,6 +6003,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `rtr-business/research/` conversation, 2026-09-18 (Quincy MA finding); this repo's own hand-read/opt-in-scan conventions in `generic_fallback.py` and `BACKLOG.md`'s Cablecast related-shows entries.
 
 ## Reliability, ops & cost
+
+### `[BIG]` Make BACKLOG.md a generated doc: one file per entry
+
+- **Issue**: BACKLOG.md conflicts on most parallel PRs because entries are edited and moved in place. A union merge is unsafe for it (it would bring back moved or edited entries), and the line-set merge driver does not fit multi-line entries.
+- **Impact**: 128 commits in two weeks touched it; each pair of concurrent PRs risks a hand-resolved conflict.
+- **Next action**: store each entry as its own file (for example `backlog/<section>/<slug>.md`, with the section and title in front matter). Generate BACKLOG.md and its TOC from those files by extending `scripts/build_backlog_toc.py`, and have CI check the generated file is current.
+- **Constraint**: keep the TOC grep protocol working (each TOC line stays a verbatim prefix of a real line). Keep `scripts/check_backlog_done_headings.py` working. Migrate in one PR, when no other backlog PRs are open.
+- **History**: WO-1184 (2026-10-05) added union for BACKLOG_DONE.md and a line-set driver for the queue and pin files; see its entry in `BACKLOG_DONE.md`.
 
 ### `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit pages with no transcript, once the office's Granicus sweep is done (WO-1163)
 

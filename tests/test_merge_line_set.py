@@ -79,8 +79,10 @@ def row(host, gov, source="wo1", match=""):
 
 
 def test_both_edit_same_tenant_row_conflicts_on_that_row_only(tmp_path):
-    a, b, c = row("a.example.net", "us:place:1"), row("b.example.net", "us:place:2"), row(
-        "c.example.net", "us:place:3"
+    a, b, c = (
+        row("a.example.net", "us:place:1"),
+        row("b.example.net", "us:place:2"),
+        row("c.example.net", "us:place:3"),
     )
     base = HDR + a + b
     ours = HDR + a + row("b.example.net", "us:place:20") + c
@@ -188,7 +190,9 @@ def test_comment_lines_in_deferred_file(tmp_path):
     path = "scripts/tier3_long_meetings_deferred.txt"
     c = "# url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>title\n"
     line = lambda n: f"https://example.org/m/{n}\t\tus:place:{n}\tTown\t120\tTitle\n"  # noqa: E731
-    code, out = run(tmp_path, path, c + line(1), c + line(1) + line(2), c + line(1) + line(3))
+    code, out = run(
+        tmp_path, path, c + line(1), c + line(1) + line(2), c + line(1) + line(3)
+    )
     assert code == 0
     assert out == c + line(1) + line(2) + line(3)
 
