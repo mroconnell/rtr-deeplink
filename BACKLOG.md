@@ -224,7 +224,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (28)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (229)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (230)
+  [NEEDS-AUDIT] Near-empty station captions are only guarded on…
   [NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have…
   `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
   [NEEDS-AUDIT] `/internal/ingest` returned a real HTTP 500 on two…
@@ -2529,6 +2530,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Near-empty station captions are only guarded on Cablecast and Swagit (found 2026-10-04, WO-1181).**
+  - **Issue**: `caption_text_is_sparse()` gates Cablecast and (WO-1181) Swagit. Granicus, eScribe, CivicClerk, TelVue and the other caption platforms have no such gate, and only Swagit's stored pages were scanned (1 of 448 under 8 words a minute).
+  - **Impact**: unknown. A near-empty caption feed on those platforms still passes as a good transcript and is never sent to Whisper. About 7,171 sourced pages are stored in total.
+  - **Next action**: scan all sourced default versions for words a minute under 8 (span 10+ minutes) from the Render shell, not from a laptop. Report counts per platform, then gate the adapters that show hits and mark existing pages by hand with `_SPARSE_CAPTIONS_MARKER` via `correct-warnings`.
+  - **Constraint**: the scan reads every `segments` blob; run it on Render, per the bulk-sweep rule. Page 12372's marker is a separate manual step after deploy.
+  - **History**: WO-1181 in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have no government (found 2026-10-03, WO-1176).**
   - **Issue**: while re-keying 70 Whisper-made pages that had an unknown government, 10 more were Cablecast pages on a shared cable-channel host with no `tenant_overrides.csv` pin. A different cause from the missing `gov_id` WO-1176 fixed: no queue line names their government.

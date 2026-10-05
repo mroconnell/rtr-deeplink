@@ -454,7 +454,6 @@ https://reflect-midvalley.cablecast.tv/internetchannel/show/1081	https://reflect
 https://reflect-npctv.cablecast.tv/internetchannel/show/10573	https://reflect-npctv.cablecast.tv/CablecastPublicSite/	us:cousub:2301754000
 https://reflect-pinellas-park-fl.cablecast.tv/internetchannel/show/632	https://reflect-pinellas-park-fl.cablecast.tv/CablecastPublicSite/	us:place:1256975
 https://reflect-surryco-nc.cablecast.tv/internetchannel/show/2008	https://reflect-surryco-nc.cablecast.tv/CablecastPublicSite/	us:county:37171
-https://reflect-surryco-nc.cablecast.tv/internetchannel/show/1954	https://reflect-surryco-nc.cablecast.tv/CablecastPublicSite/	us:place:3751820
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22369	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:cousub:2712369916
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22406	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:place:2739428
 https://reflect-vod-scctv.cablecast.tv/internetchannel/show/22411	https://reflect-vod-scctv.cablecast.tv/CablecastPublicSite/	us:place:2769970
@@ -857,7 +856,6 @@ https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021
 https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	https://reflect-vsctv.cablecast.tv/internetchannel/show/6218?site=1&query=clinton+town+council	us:cousub:0913015350
 https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
-https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/17042?seekto=195&channel=2	us:cousub:3301104500
 https://townhallstreams.com/stream.php?location_id=55&id=76363	https://townhallstreams.com/stream.php?location_id=55&id=76363	us:cousub:3301127140
 https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	us:cousub:4209183696
 https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	us:cousub:4400977000
@@ -881,7 +879,6 @@ https://reflect-swampscottma.cablecast.tv/internetchannel/show/3701	https://refl
 https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	https://reflect-vsctv.cablecast.tv/internetchannel/show/7467	us:cousub:0913015350
 https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	us:county:51031
 https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	us:place:5176432
-https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	https://reflect-vod-bedfordtv.cablecast.tv/internetchannel/show/16875?channel=2	us:cousub:3301104500
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	us:place:4142600
 https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	https://video.isilive.ca/play/nunavut/2026/2026-03-06-eng.mp4	ca:pr:62
 https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	https://newbrighton.granicus.com/MediaPlayer.php?view_id=2&clip_id=1005	us:place:2745430
@@ -941,7 +938,6 @@ https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://jodaviessco
 https://rowancountync.portal.civicclerk.com/event/419/media	https://rowancountync.portal.civicclerk.com/event/419/media	us:county:37159
 https://vimeo.com/646562708	https://vimeo.com/646562708	us:county:37013
 https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
-https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true	us:place:1369000
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
 https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.portal.civicclerk.com/event/176/media	us:place:4833212
@@ -1447,3 +1443,8 @@ https://www.augustamaine.gov/corecode/uploads/document6/uploaded_pdfs/Public%20M
 https://www.simpsonville.com/wp-content/uploads/2026/09/2026-09-22_Committee.mp3		us:place:4566580
 https://www.dropbox.com/scl/fi/csfp43pxu471kb033ezc6/Rogers-City-Council-2026-09-22.mp4?rlkey=uy4xerlglybjw0qywmskqajxi&st=u7skua95&dl=0		us:place:0560410
 https://us06web.zoom.us/rec/share/CgvcJgv57Wt5pR4qSFae_32Wh4bg5prvquNECqGXp7P6bKSeci9bymncN1kFc-Fp.AH84e3UKU1HEp0z1		us:place:3067900
+https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/media/1044901	https://videoplayer.telvue.com/player/zzV8HNURw1G02-ue3glR7BRTpI-bknlL/videos	us:cousub:2500151440
+https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1017026	https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/videos	us:place:2675700
+https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://reflect-portchesterny.cablecast.tv/CablecastPublicSite/	us:place:3659223
+https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
+https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215

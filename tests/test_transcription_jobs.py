@@ -2935,3 +2935,80 @@ async def test_probe_failure_recording_removes_candidate_from_next_backlog_call(
     ids_after = {c["meeting_page_id"] for c in candidates_after}
     for pid in page_ids:
         assert pid not in ids_after
+
+
+async def test_has_good_transcript_treats_sparse_captions_as_not_good():
+    # WO-1181: _SPARSE_CAPTIONS_MARKER. Same "SQL predicate and per-page
+    # helper must agree" shape as the tests above. Wording is the by-hand
+    # correct-warnings text planned for Caroline County MD's page.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warnings(eid: str, warnings: list):
+        url = f"https://example.new.swagit.com/videos/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "swagit",
+                "source_url": url,
+                "external_id": f"swagit:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": warnings,
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    sparse = await _page_with_warnings(
+        "auto-sparse",
+        [
+            "Transcript source note: This transcript was compiled from "
+            "uncorrected Closed Captioning.",
+            "The station's captions hold only 501 words over 104 minutes, "
+            "so they are near-empty at the source.",
+        ],
+    )
+    clean = await _page_with_warnings("auto-clean-sparse", [])
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([sparse, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {sparse: False, clean: True}
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
+def test_sparse_captions_marker_classifies_into_its_own_bucket():
+    warning = (
+        "The station's captions hold only 501 words over 104 minutes, "
+        "so they are near-empty at the source."
+    )
+    assert crud._SPARSE_CAPTIONS_MARKER in warning
+    assert not crud._has_real_warning_free_transcript([warning])
+    outcome = crud._classify_page_outcome(
+        video_url="https://example.com/v.m3u8",
+        agenda_items=[],
+        default_content_hash="a" * 64,
+        default_transcript_warnings=[warning],
+        default_transcript_language="en",
+    )
+    assert outcome == "sparse_captions"
+    assert crud._OUTCOME_LABELS[outcome] == "Captions near-empty at the source"
