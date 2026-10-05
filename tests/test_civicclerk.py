@@ -1,8 +1,9 @@
 import json
 
+import pytest
 import yt_dlp
 
-from app.platforms.base import register
+from app.platforms.base import CalendarPageError, register
 from app.platforms.cablecast import CablecastAssetFinder
 from app.platforms.civicclerk import CivicClerkAssetFinder, _reconstruct_cdn_stream_url
 from app.platforms.youtube import YouTubeAssetFinder
@@ -792,3 +793,42 @@ async def test_resolve_county_slug_with_no_county_signal_names_no_place():
     with mock_session(routes):
         result = await CivicClerkAssetFinder().resolve(CLAYCOMO_URL)
     assert result.jurisdiction is None
+
+
+async def test_portal_root_returns_pick_list_of_meetings_with_video():
+    # Real vallejoca.api.civicclerk.com/v1/Events, fetched live 2026-10-05
+    # (trimmed to the fields the listing reads). vallejo.gov iframes the bare
+    # portal root, which has no /event/<id> -- the case this pick-list serves.
+    # Event 9046 (2x2 Committee Special Meeting, 2026-10-01) has a recording;
+    # 9006 (cancelled) does not and must be left out.
+    routes = {
+        "https://vallejoca.api.civicclerk.com/v1/Events": FakeResponse(
+            status=200, text=load_fixture("civicclerk", "vallejoca_events_listing.json")
+        ),
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicClerkAssetFinder().resolve(
+                "https://vallejoca.portal.civicclerk.com/"
+            )
+    candidates = exc_info.value.candidates
+    assert candidates
+    urls = [c["url"] for c in candidates]
+    assert "https://vallejoca.portal.civicclerk.com/event/9046/media" in urls
+    assert not any("/event/9006/" in u for u in urls)
+    assert all(c["title"] and c["date"] for c in candidates)
+
+
+async def test_portal_root_with_no_events_raises_value_error():
+    # Synthetic: no real CivicClerk tenant with an empty Events list has been
+    # found yet; this only exercises the empty-listing branch.
+    routes = {
+        "https://emptyca.api.civicclerk.com/v1/Events": FakeResponse(
+            status=200, text=json.dumps({"value": []})
+        ),
+    }
+    with mock_session(routes):
+        with pytest.raises(ValueError):
+            await CivicClerkAssetFinder().resolve(
+                "https://emptyca.portal.civicclerk.com/"
+            )

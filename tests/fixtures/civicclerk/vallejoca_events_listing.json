@@ -1,0 +1,171 @@
+{
+ "@odata.context": "https://vallejoca.api.civicclerk.com/v1/$metadata#Events",
+ "value": [
+  {
+   "id": 7717,
+   "eventName": "Planning Commission Regular Meeting Cancelled",
+   "eventDate": "2026-10-05T19:00:00Z",
+   "startDateTime": "2026-10-05T19:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9053,
+   "eventName": "McCune Collection Commission",
+   "eventDate": "2026-10-05T16:30:00Z",
+   "startDateTime": "2026-10-05T16:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9006,
+   "eventName": "Housing and Community Development (HCD) Regular Meeting - CANCELLED",
+   "eventDate": "2026-10-01T19:00:00Z",
+   "startDateTime": "2026-10-01T19:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9046,
+   "eventName": "2x2 Committee Special Meeting",
+   "eventDate": "2026-10-01T16:30:00Z",
+   "startDateTime": "2026-10-01T16:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/093d424474.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/093d424474.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9051,
+   "eventName": "SolTrans Public Advisory Committee Meeting - CANCELED",
+   "eventDate": "2026-09-30T17:30:00Z",
+   "startDateTime": "2026-09-30T17:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9003,
+   "eventName": "Special Council Meeting",
+   "eventDate": "2026-09-29T18:00:00Z",
+   "startDateTime": "2026-09-29T18:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/0e82f6daf1.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/0e82f6daf1.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9049,
+   "eventName": "Commission on Culture & the Arts",
+   "eventDate": "2026-09-28T18:00:00Z",
+   "startDateTime": "2026-09-28T18:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/e5acd048f7.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/e5acd048f7.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 8994,
+   "eventName": "Special Police Oversight & Accountability Commission Meeting",
+   "eventDate": "2026-09-24T18:30:00Z",
+   "startDateTime": "2026-09-24T18:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/31b3d8b366.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/31b3d8b366.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9010,
+   "eventName": "Code Enforcement Appeals Board Regular Meeting - CANCELLED",
+   "eventDate": "2026-09-24T18:00:00Z",
+   "startDateTime": "2026-09-24T18:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9045,
+   "eventName": "2x2 Committee Regular Meeting - CANCELLED",
+   "eventDate": "2026-09-24T16:30:00Z",
+   "startDateTime": "2026-09-24T16:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9048,
+   "eventName": "Deferred Compensation Committee Special Meeting - CANCELLED",
+   "eventDate": "2026-09-24T13:00:00Z",
+   "startDateTime": "2026-09-24T13:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "",
+   "mediaSourcePathMp4": "",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 7662,
+   "eventName": "City Council Regular Meeting",
+   "eventDate": "2026-09-22T19:00:00Z",
+   "startDateTime": "2026-09-22T19:00:00Z",
+   "mediaSourcePath": "stream/VALLEJOCA/fd3c7858-e26d-46d9-9d4e-5d5c3f5e52b0.mp4",
+   "mediaStreamPath": "stream/VALLEJOCA/fd3c7858-e26d-46d9-9d4e-5d5c3f5e52b0.mp4",
+   "mediaSourcePathMp4": "stream/VALLEJOCA/fd3c7858-e26d-46d9-9d4e-5d5c3f5e52b0.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9005,
+   "eventName": "Special Council Meeting",
+   "eventDate": "2026-09-22T17:00:00Z",
+   "startDateTime": "2026-09-22T17:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/ac986d642f.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/ac986d642f.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 7715,
+   "eventName": "Planning Commission Regular Meeting",
+   "eventDate": "2026-09-21T19:00:00Z",
+   "startDateTime": "2026-09-21T19:00:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/daeb748e80.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/daeb748e80.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  },
+  {
+   "id": 9016,
+   "eventName": "Sister City Commission Regular Meeting",
+   "eventDate": "2026-09-21T17:30:00Z",
+   "startDateTime": "2026-09-21T17:30:00Z",
+   "mediaSourcePath": "",
+   "mediaStreamPath": "https://cpmedia.azureedge.net/vallejoca/596ea0417c.mp4",
+   "mediaSourcePathMp4": "https://cpmedia.azureedge.net/vallejoca/596ea0417c.mp4",
+   "externalMediaUrl": "",
+   "youtubeVideoId": ""
+  }
+ ],
+ "@odata.nextLink": "https://vallejoca.api.civicclerk.com/v1/Events?$top=85&$orderby=startDateTime%20desc&$filter=startDateTime%20lt%202026-10-06&$skiptoken=startDateTime-2026-09-21T17%3A30%3A00Z,id-9016"
+}

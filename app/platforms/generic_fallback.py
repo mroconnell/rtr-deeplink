@@ -1134,6 +1134,11 @@ class GenericFallbackAssetFinder(AssetFinder):
             finder = get_finder(platform)
             resolved = await finder.resolve(candidate)
         except CalendarPageError:
+            if platform == "civicclerk":
+                # A government page that iframes its CivicClerk portal root
+                # (vallejo.gov, 2026-10-05): the pick-list IS the answer,
+                # so let it reach the frontend instead of "found nothing".
+                raise
             # Routine, expected outcome (e.g. a Legistar calendar link
             # rather than one specific meeting) -- not logged at warning
             # level, since this fires on every ordinary calendar-shaped
