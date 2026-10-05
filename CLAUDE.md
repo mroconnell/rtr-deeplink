@@ -668,6 +668,21 @@ under everything else. This repo extracts and fixes just that part.
   letting it go unrecorded. This cuts both directions: a local-script
   improvement worth having in the cloud pipeline needs the same check.
 
+- **Record files merge by rule, not by hand (WO-1184, 2026-10-05).**
+  `.gitattributes` marks `BACKLOG_DONE.md`, the tier-3 feed log and
+  `CLAUDE_INBOX_TRIAGE_SEEN.txt` as `merge=union` (add-only: both sides'
+  new lines are kept). The tier-3 queue, `tier3_long_meetings_deferred.txt`,
+  `tenant_overrides.csv`, `curated_governments.csv` and `governments.csv`
+  use `merge=lineset` (`scripts/merge_line_set.py`, one keyed record per
+  line): these have lines *removed* (the feed consumes queue lines) or
+  edited, which union would undo or duplicate. The probe CSV is left on
+  the normal merge on purpose (rewritten rows, repeated URLs), and so is
+  `BACKLOG.md` (see its generated-doc entry). **Run
+  `scripts/setup_merge_drivers.sh` once per clone** (worktrees share it);
+  without it git quietly uses the normal text merge. GitHub's server-side merge ignores .gitattributes. Two throwaway branches each appended a different line to the feed log (a union file). Merged locally they were clean, but the merges API returned 409 Conflict. So a PR can still show a conflict on GitHub; it disappears when you merge origin/main locally, and that is how we resolve it.
+  The driver also falls back to the normal merge for a repeated key
+  (`tenant_overrides.csv` has 39 today).
+
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**
   Real, repeated situation on 2026-08-08: another session was actively

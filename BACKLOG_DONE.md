@@ -1,5 +1,34 @@
 # Backlog — done
 
+## [Done 2026-10-05] WO-1184: union merge for add-only record files; a line-set merge driver for the queue and pin files
+
+**Why this ran.** About 440 commits landed on main in two weeks. The same record files conflicted again and again when a branch merged main in, almost always because both sides added lines at the same spot. Ryan approved two rules.
+
+**What was built.**
+- `.gitattributes` (new). `merge=union` on `BACKLOG_DONE.md`, `scripts/tier3_auto_transcription_queue_feed_log.csv` and `CLAUDE_INBOX_TRIAGE_SEEN.txt`. Each has a comment saying why it is safe.
+- `scripts/merge_line_set.py`, a merge driver. Each line is a record with a key; it merges record by record and only conflicts when both sides changed the same record. Byte-exact (CRLF rows and the trailing-newline state are kept). If a key repeats, a CSV record spans lines, or the path is unknown, it runs plain `git merge-file` instead.
+- `scripts/setup_merge_drivers.sh` registers the driver. Run it once per clone; worktrees share the clone's config.
+- `merge=lineset` on the tier-3 queue file and `tier3_long_meetings_deferred.txt` (key = URL), `tenant_overrides.csv` (key = host + match), `curated_governments.csv` and `governments.csv` (key = `gov_id`; unique and one line per row, checked).
+- `tests/test_merge_line_set.py`, including real `git merge` runs in a temp repo.
+
+**What was checked and dropped.**
+
+| File | Commits | Commits that removed lines | Decision |
+|---|---|---|---|
+| `scripts/tier3_auto_transcription_queue_feed_log.csv` | 49 | 0 | union |
+| `CLAUDE_INBOX_TRIAGE_SEEN.txt` | 34 | 0 | union |
+| `BACKLOG_DONE.md` | 828 | 72 | union, with a caution: entries are sometimes edited in place, so a same-spot edit can leave the old and the new copy of one line. It never loses a line, and the heading check still guards it |
+| `scripts/tier3_auto_transcription_queue_probe.csv` | 292 | 45 | dropped: rows are rewritten and removed, and 1,351 URLs repeat, so union would bring deleted rows back and a keyed merge would always fall back |
+
+**GitHub check.** GitHub's server-side merge ignores .gitattributes. Two throwaway branches each appended a different line to the feed log (a union file). Merged locally they were clean, but the merges API returned 409 Conflict. So a PR can still show a conflict on GitHub; it disappears when you merge origin/main locally, and that is how we resolve it.
+
+**Known limit.** `tenant_overrides.csv` has 39 repeated (host, match) keys today (mostly `www.youtube.com` pins from different WOs). The driver falls back to the normal text merge for that file until those are cleaned up.
+
+**One choice beyond the brief.** A record only theirs added goes after the nearest preceding line from theirs, then past any lines ours added at that spot. That keeps two branches that both append in ours-then-theirs order.
+
+**Rule 3 filed, not built.** BACKLOG.md stays on the normal merge; see its "Make BACKLOG.md a generated doc" entry.
+
+**Also (Ryan, 2026-10-05).** `tenant_overrides.csv` had 39 repeated (tenant_host, match) pairs, which made the line-set driver fall back for the whole file. 38 repeated the same government and were collapsed to one row each. One disagreed: YouTube `v6SgCZWsqD8` ("Sherborn Planning Board of Appeals Meeting October 17, 2025") was pinned to both Sherborn and Dover, MA; the Dover row was removed. The live page was already under Sherborn; its slug (which named Dover) was changed with a redirect. `tests/test_tenant_overrides_unique_keys.py` now fails on any repeat.
 ## Pin precedence: a per-show pin naming the page's own external id beats the station's name [Done 2026-10-05]
 
 **Why this ran.** Archive page 12060, "6-29-26 Pilot Mountain Board Meeting" (Cablecast show 1954 on reflect-surryco-nc.cablecast.tv), was filed under Elkin NC on 2026-10-03 although a per-show pin to Pilot Mountain NC had existed since 2026-09-27 (#1552). Ryan approved the trace as a strategic item.
