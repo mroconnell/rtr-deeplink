@@ -1447,4 +1447,5 @@ https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/101
 https://reflect-portchesterny.cablecast.tv/internetchannel/show/948	https://reflect-portchesterny.cablecast.tv/CablecastPublicSite/	us:place:3659223
 https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
 https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
+https://play.champds.com/lakezurichil/event/206	https://lakezurich.org/260/On-Demand-Meeting-Recordings	us:place:1741742
 https://floresvilletx.portal.civicclerk.com/event/161/media		us:place:4826160	Special City Council Meeting	2026-10-02	City Council
