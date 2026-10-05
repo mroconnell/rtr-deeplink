@@ -1435,3 +1435,7 @@ https://drive.google.com/file/d/1PVI8cDZGRbyFt5aJ2_owJB-SsjXmCxT4/view?usp=shari
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3702/Exsu19/835166c8-8066-4719-a95c-7e529c23b678/NEK_spec_meeting_2025-01-23.mp3?disposition=inline	https://www.ensuvt.org/documents/school-boards/nek-choice-board/board-meeting-recordings/661777	us:sd:5000415
 http://loraine.esc14.net/uploads/1/0/5/2/105225727/september_22_2025.mp3	http://loraine.esc14.net/board-agendasminutes.html	us:sd:4828170
 https://drive.google.com/file/d/1lyDpxBL7HsN61jURil3Peqjd2mNRlqh8/view?usp=sharing	https://dossccsd.org/board-of-trustees/	us:sd:4817400	Board of Trustees
+https://cloud.castus.tv/vod/westfordcat/video/642321b1a13afb00082e2394?page=ALL		us:cousub:2501776135
+https://wacatv.cablecast.tv/internetchannel/show/8316?site=1		us:sd:2502100
+https://newbritain.granicus.com/MediaPlayer.php?view_id=1&clip_id=1045		us:place:0950370
+https://play.champds.com/lincolnwoodil/event/92		us:place:1743744
