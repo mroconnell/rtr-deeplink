@@ -23,6 +23,14 @@ What the government's own page said around the link (`found_context` in `leads.c
 |---|---|---|
 | Colebrook, CT (us:cousub:0916016050) | https://www.youtube.com/channel/UChJ7OLGCllwTv4Ib_1KR6VA | found on https://www.townofcolebrook.org/boards-commissions/board-of-education/ |
 
+## Caution: the owner of this channel is not verified
+
+Colebrook's channel was linked only from the town's Board of Education page. It may be the school board's channel, not the
+Town of Colebrook's. Ryan approved handing it over on 2026-10-05 on that condition: the drip judge checks the owner skeptically
+before using it. The same caution is in the row's note on the rtr-business drip list.
+
+The run also found a 2021 annual town meeting mp4 on the town's site. Ryan skipped it: it was not queued and not length-probed.
+
 ## The pass
 
 Verify every row skeptically: add it only if the channel or video shows clear meetings of this government's board or school district body. Columbus City Schools OH is the good example: an explainer video, on a channel that also carries the board's meetings.
