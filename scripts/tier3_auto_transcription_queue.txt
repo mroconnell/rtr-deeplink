@@ -993,3 +993,8 @@ https://alpinecountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=341
 https://haymarkettownva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2137&Format=Agenda	https://haymarkettownva.iqm2.com/Citizens/Default.aspx	us:place:5135976
 https://bartlettcitytn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1973&Format=Agenda	https://bartlettcitytn.iqm2.com/Citizens/Default.aspx	us:place:4703440
 https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3518&Format=Agenda	https://mundeleinvillageil.iqm2.com/Citizens/Default.aspx	us:place:1751349
+https://vod.easthamptonmedia.org/internetchannel/show/23773?site=4	http://www.easthamptonmedia.org	us:cousub:2501562745
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1034504	https://eastrochesterny.gov/Government/board-meetings	us:place:3622865
+https://newrochelle.granicus.com/MediaPlayer.php?clip_id=2784&view_id=2	https://newrochelle.granicus.com/	us:place:3650617
+https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57565?site=1	https://cablecast.lmcc-tv.org/CablecastPublicSite/?channel=2	us:place:2767130
+https://townhallstreams.com/stream.php?location_id=98&id=76634	https://townhallstreams.com/town.php?id=98	us:cousub:3301360020
