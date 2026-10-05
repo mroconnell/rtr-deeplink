@@ -436,6 +436,7 @@ fernie.civicweb.net,,ca:csd:5901012,fallback,wildcard_http_sweep_2,DNS resolves 
 finneycounty.granicus.com,,us:county:20055,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Finney County
 fishkilltownny.iqm2.com,,us:cousub:3602725978,fallback,landing_page+wo1068,"Fishkill (town), NY -- the host is the town's ('fishkilltown'); its pages are Town Board and Planning Board meetings. Replaces a research-row pin to the village of Fishkill. WO-1068, 2026-09-25."
 flagstaffcounty.escribemeetings.com,,ca:csd:4807031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4807031 Flagstaff County matched with spacing ignored
+floresvilletx.portal.civicclerk.com,,us:place:4826160,fallback,ryan_stated,"Floresville city, TX -- CivicClerk tenant returns a blank location; Ryan gave it as Floresville's meeting-video source 2026-10-05 (hub https://www.floresvilletx.gov/government/meeting-videos/)"
 floydcountyga.portal.civicclerk.com,,us:county:13115,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Floyd County
 folsom.granicus.com,,us:place:0624638,fallback,jurisdiction_overrides, -> registry: us_places.csv Folsom city
 foothillscounty.escribemeetings.com,,ca:csd:4806001,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4806001 Foothills County matched with spacing ignored
@@ -1219,6 +1220,7 @@ sccgov.iqm2.com,,us:county:06085,fallback,ryan_stated+upcoming_roster,"rtr-upcom
 sccoe.new.swagit.com,,rtr:us:ca:santa-clara-county-office-of-education,fallback,ryan_stated,"Santa Clara County Office of Education, CA -- WO-934 (2026-09-21), Ryan's ok mint. sccoe.new.swagit.com is the office's own Swagit site, a separate government from the county. Re-pointed from Santa Clara County (us:county:06085), which the known-domains seed had chosen (app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Santa Clara County)"
 schreiber.civicweb.net,,ca:csd:3558051,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Schreiber
 scugog.escribemeetings.com,,ca:csd:3518020,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Scugog
+scvwd.granicus.com,,rtr:us:ca:santa-clara-valley-water-district,fallback,ryan_stated,"Santa Clara Valley Water District, CA -- its own Granicus account; six pages from it had no government until 2026-10-05 (Ryan)"
 seadrifttx.portal.civicclerk.com,,us:place:4866416,fallback,hub_sweep_wo126,"coverage registry row us:place:4866416 (Seadrift city, TX); hub https://www.seadrifttx.org/AgendaCenter; meeting found via civicclerk at https://seadrifttx.portal.civicclerk.com/event/5/media"
 sealbeach.primegov.com,,us:place:0670686,fallback,ryan_stated,"Seal Beach, CA -- us_places.csv Seal Beach city"
 sechelt.escribemeetings.com,,ca:csd:5929011,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Sechelt

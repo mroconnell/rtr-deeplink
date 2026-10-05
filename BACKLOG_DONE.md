@@ -1,5 +1,24 @@
 # Backlog — done
 
+## WO-1182: unidentified-page review pass; mint Santa Clara Valley Water District; pin Floresville TX and Valley Water; queue Floresville's Oct 2 council meeting [Done 2026-10-05]
+
+**Why this ran.** After WO-1176/1181, Ryan asked for every remaining page with no government (created since 2026-09-20) to be fixed where its title or site names the government, without extra research, and for obvious non-meetings to be removed.
+
+**Done in production (Ryan's go-ahead, dry run first each time).**
+- 64 pages re-keyed with `/internal/jurisdiction/override`. 41 took the `gov_id` from their own tier-3 queue line (they had been made by a path that dropped it, the same cause as WO-1176). 18 were named outright by title and site (for example Cokato MN and Maple Lake MN on Viebit, Trumbull CT and Edison NJ on Cablecast, Salisbury NC on Vimeo). 5 were Cablecast and Randolph pages left from WO-1176, four of whose pins postdated the pages.
+- The queue records corrected two guesses: "Thompson" is Thompson School District R-2J, CO (not CT), and "Lindsay" is Lindsay, OK (not CA).
+- 3 non-meetings deleted with `/internal/admin/delete-pages`: a HugeDomains ad, a Visit Idaho travel video, a Floresville peanut-festival video.
+- Caroline County MD (page 12372) marked near-empty with `correct-warnings` after the WO-1181 deploy; it is now in the transcription backlog.
+
+**This PR.**
+- `curated_governments.csv`: mint `rtr:us:ca:santa-clara-valley-water-district` (Census of Governments 2022 PID6 201443, Santa Clara County). Ryan approved.
+- `tenant_overrides.csv`: `scvwd.granicus.com` to that id; `floresvilletx.portal.civicclerk.com` to Floresville city, TX (`us:place:4826160`; the tenant returns a blank location).
+- Tier-3 queue: Floresville's Special City Council Meeting of 2026-10-02 (CivicClerk event 161, own-hosted mp4, 49 minutes, probe accepted), with title, date and body columns.
+
+**Still to do after deploy.** Re-key the six Valley Water pages to the new id, correct the five whose stored date is wrong (Ryan confirmed page `...2023-11-06-closed-session...` is the April 9, 2024 meeting), reslug them, and add `_SLUG_REDIRECTS` for the old addresses.
+
+**Left for Ryan.** Pages that may not be meetings (promos, trainings, event videos), and pages whose government is not clear without research (Patterson, Salem, Bloomington, Big Lake, Springfield Township, IP-address Cablecast stations, state bodies, untitled YouTube links with no site).
+
 ## WO-1181: Swagit drops near-empty station captions; a near-empty-captions marker; Big Horn County MT pin [Done 2026-10-04]
 
 **Why this ran.** One Swagit page (Caroline County MD, Feb 12 2026 Administrative Charging Committee, page id 12372) held 501 words of station captions over 104 minutes (4.8 words a minute). It was stored as a good sourced transcript, so Whisper never picked it up. A scan of all 448 stored Swagit sourced pages found only this one under 8 words a minute (1 of 448). Cablecast already had the guard (PR #1699); Swagit did not.
@@ -9,7 +28,7 @@
 - `archive/db/crud.py`: new `_SPARSE_CAPTIONS_MARKER = "near-empty at the source"`. It is in a new `_NOT_GOOD_MARKERS` tuple that both `_has_real_warning_free_transcript()` and the raw-SQL `_good_default_transcript_exists()` read, so the two cannot drift. It has its own report bucket `sparse_captions` ("Captions near-empty at the source"), ranked between `truncated_transcript` and `agenda_fallback` (later ranks shifted by one). No adapter writes this marker. `manually_promote_transcript_version(clear_warnings=True)` does not strip it. Tests: `tests/test_transcription_jobs.py` (SQL and Python helper agree; bucket and label).
 - `tenant_overrides.csv`: `bighorncomt.portal.civicclerk.com` pinned to `us:county:30003` (Big Horn County, MT), whole-site, strength `fallback`, source `ryan_stated`. That CivicClerk tenant returns a blank location. Page 10155 was re-keyed by hand to `us:county:30003` on 2026-10-04.
 
-**Still to do, by hand, after deploy.** `POST /internal/transcript-version/correct-warnings` for page 12372 (it replaces the whole warnings list, it does not append) with `["Transcript source note: This transcript was compiled from uncorrected Closed Captioning.", "The station's captions hold only 501 words over 104 minutes, so they are near-empty at the source."]`. The page then stops counting as having a good transcript and Whisper can take it.
+**Done 2026-10-05 (see WO-1182).** **Was still to do, by hand, after deploy:** `POST /internal/transcript-version/correct-warnings` for page 12372 (it replaces the whole warnings list, it does not append) with `["Transcript source note: This transcript was compiled from uncorrected Closed Captioning.", "The station's captions hold only 501 words over 104 minutes, so they are near-empty at the source."]`. The page then stops counting as having a good transcript and Whisper can take it.
 
 **Deploy.** `app/` and `archive/` changes are on `main` but not live until a deploy.
 - Also pinned `parker.granicus.com` to Parker County, TX (us:county:48367), Ryan 2026-10-04: page 5871 had landed under Parker city. Pages 5871, 5443 and 2722 (Sedgwick, whose pin postdates them) were re-keyed by hand the same day.
