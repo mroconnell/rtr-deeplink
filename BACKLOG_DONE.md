@@ -28,6 +28,8 @@
 
 **Rule 3 filed, not built.** BACKLOG.md stays on the normal merge; see its "Make BACKLOG.md a generated doc" entry.
 
+**Also (Ryan, 2026-10-05).** `tenant_overrides.csv` had 39 repeated (tenant_host, match) pairs, which made the line-set driver fall back for the whole file. 38 repeated the same government and were collapsed to one row each. One disagreed: YouTube `v6SgCZWsqD8` ("Sherborn Planning Board of Appeals Meeting October 17, 2025") was pinned to both Sherborn and Dover, MA; the Dover row was removed. The live page was already under Sherborn; its slug (which named Dover) was changed with a redirect. `tests/test_tenant_overrides_unique_keys.py` now fails on any repeat.
+
 ## WO-1182: unidentified-page review pass; mint Santa Clara Valley Water District; pin Floresville TX and Valley Water; queue Floresville's Oct 2 council meeting [Done 2026-10-05]
 
 **Why this ran.** After WO-1176/1181, Ryan asked for every remaining page with no government (created since 2026-09-20) to be fixed where its title or site names the government, without extra research, and for obvious non-meetings to be removed.

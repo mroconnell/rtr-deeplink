@@ -2851,6 +2851,10 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # filed under Owen, WI by a wrong-domain research row. gov_id corrected
     # by /internal/jurisdiction/override, then reslugged by hand (Ryan).
     "owen-wi-2022-04-25-council-meeting-regular": "owen-sound-on-2022-04-25-council-meeting-regular",
+    # 2026-10-05 (WO-1184): a Sherborn, MA meeting whose slug named Dover
+    # (a wrong second pin on the shared Dover-Sherborn channel). gov_id was
+    # already Sherborn; reslugged by hand (Ryan).
+    "dover-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-2025": "sherborn-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-202",
 }
 
 
