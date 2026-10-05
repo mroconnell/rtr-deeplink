@@ -1,5 +1,5 @@
-fastapi>=0.116
-uvicorn[standard]>=0.53.0
+fastapi>=0.142.2
+uvicorn[standard]>=0.54.0
 jinja2>=3.1
 aiohttp>=3.9
 langdetect>=1.0.9
@@ -12,10 +12,10 @@ langdetect>=1.0.9
 # one. Same pin as requirements.in's copy for the resolver, which already
 # has this dependency because its own platform adapters use bs4 directly.
 beautifulsoup4>=4.12
-sqlalchemy[asyncio]>=2.0.54
+sqlalchemy[asyncio]>=2.1.2
 asyncpg>=0.29
 aiosqlite>=0.20
-python-dotenv>=1.0
+python-dotenv>=1.2.4
 alembic>=1.20.0
 # Auth (2026-08-10): Clerk -- verifies the session cookie locally, no
 # network call per request. See requirements.txt's matching comment; no
@@ -23,7 +23,7 @@ alembic>=1.20.0
 clerk-backend-api>=6.0
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern as Clerk above -- see archive/main.py's _init_sentry().
-sentry-sdk>=2.69.2
+sentry-sdk>=2.71.0
 # Jurisdiction repair (2026-08-23, WO-47): the archive's ingest-time
 # finalize_jurisdiction() shares app/utils/jurisdiction_enrich.py with
 # the resolver, and every wordninja-backed tier in it (the validated
