@@ -25,3 +25,12 @@ Verify every row skeptically: add it only if the channel or video shows clear me
 4. A row whose note says "do not walk channel": file the single video only; never walk its channel.
 
 Push results to this branch under this folder. Don't merge; the coordinator folds them into the rtr-business drip list.
+
+## The row is unverified (Ryan, 2026-10-06)
+
+| Address | Government | gov_id | Where it was seen |
+|---|---|---|---|
+| https://www.youtube.com/watch?v=ZS3nzOMmPQE | Haymarket town, VA | us:place:5135976 | Embedded on the town's Municode meeting page "Town Council - Regular Meeting" (legacyhaymarket.teammunicode.com/bc-towncouncil/page/town-council-%E2%80%93-regular-meeting-8) |
+
+Ryan approved this row by hand. YouTube was not read, so the channel, title, date and owner are not checked.
+Please verify it is a Haymarket town VA meeting before using it. Haymarket also has an IQM2 meeting in the tier 3 queue.
