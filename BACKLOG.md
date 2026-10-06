@@ -484,7 +484,8 @@ Reliability, ops & cost  (13)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (31)
+Trust, safety & data quality  (32)
+  Find Meeting's fingerprint comparison: 69 multi-government hosts and…
   No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
   ChampDS customers that carry a second government need per-meeting…
@@ -6346,6 +6347,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### Find Meeting's fingerprint comparison: 69 multi-government hosts and 4 YouTube aliases are outside `MULTI_GOV_HOSTS`, and one path is labeled two ways `[NEEDS-AUDIT]`
+
+- **Issue**: comparing this repo's recognizers with Find Meeting's new fingerprint table (2026-10-06) found 69 hosts whose pins name two or more governments but are not in `registry.MULTI_GOV_HOSTS` (62 Cablecast station hosts, 3 Granicus tenants, `www.utah.gov`, `video.isilive.ca`, `hamburgny.new.swagit.com`, `trms.northmetrotv.com`; 7 already mix blank and match pins), 4 YouTube aliases recognized in `base.py:1034-1038` but not protected, and `/Portal/MeetingInformation.aspx` labeled CivicWeb in `platform_signatures.csv` but CivicClerk in `host_recognition.py:241`.
+- **Impact**: a blank-match (whole-host) pin on any of those hosts would still load and file every page under one government; the path label sends a CivicWeb or Diligent page to the CivicClerk family (Find Meeting's data: 198 CivicWeb and 141 Diligent sites carry the path, no CivicClerk site).
+- **Next action**: read `docs/PLATFORM_FINGERPRINTS_FROM_FINDMEETING.md` (the host list, the contradictions, the missing hosts such as `goboarddocs.com`), then decide per group whether to add exact names or a shape rule (for example any `reflect-*.cablecast.tv`) to `MULTI_GOV_HOSTS`, and fix the path label.
+- **Constraint**: nothing was tested live; check a real page for each change. Counts are from origin/main of 2026-10-06 (commit 35db712).
+- **History**: the table and its sources are in rtr-findmeeting PR #42 (`analysis/platform_fingerprints/`).
 
 ### No endpoint can correct a wrong word or name in a stored transcript
 
