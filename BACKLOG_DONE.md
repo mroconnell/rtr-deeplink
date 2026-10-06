@@ -1,5 +1,36 @@
 # Backlog — done
 
+## [Done 2026-10-06] WO-1185: pin audit, a free rule check that finds pins contradicting each other
+
+**Why this ran.** On 2026-10-05 `sunnyside.primegov.com` was found pinned to Sunnyside NL. Two other pins and the city's YouTube handle said Sunnyside WA, and nothing compared them. Ryan asked for a cheap check, rerun from time to time, that lists pins which contradict each other or look improbable. He chose rules first; Jev (the TypeSafe system-one classifier) comes later only if the rules leave too much undecided.
+
+**What was built.** All read-only; nothing is changed in any store.
+- `scripts/pin_audit_core.py` loads seven pin stores into one list: `tenant_overrides.csv`, the two tier-3 queue files, `civicplus_authorities.csv`, the research file's domains (rtr-business), the rtr-discovery ledger, and Archive pages from the meeting-inventory export. It also finds each government's same-named twins across the national tables, and holds a state and province border table (`scripts/pin_audit_data/state_adjacency.csv`).
+- `scripts/pin_audit_name_rules.py`: R1 (a same-named address pinned to a twin), R2 (a state word in the address names another state), R5 (page titles name the twin's state), R6 (a name-match sweep pin with nothing to check it against; a worklist note, not a finding).
+- `scripts/pin_audit_store_rules.py`: R3 (a video pin far from the rest of its channel), R4 (two stores disagree about one address).
+- `scripts/pin_audit.py --scope pilot|ambiguous|all [--known-wrong]` writes `flags.csv`, `disagreements.csv` (one row per address, every stored claim, no winner named) and `summary.md`.
+- `scripts/pin_audit_known_wrong.py` reads git history for pins later changed to another government (152 so far). `--known-wrong` puts each one back as it was and counts how many the rules catch.
+
+**Result: catching known mistakes.** Each old pin is counted once, under its worst flag.
+
+| Change kind | Known wrong pins | high | medium | low | note or no flag |
+|---|---|---|---|---|---|
+| Moved to another state or province | 52 | 44 | 0 | 0 | 8 |
+| Same state, other government | 40 | 0 | 34 | 0 | 6 |
+| County level vs town level | 33 | 1 | 1 | 27 | 4 |
+| Minted id vs census id | 24 | 2 | 2 | 11 | 9 |
+| One government recorded twice | 3 | 0 | 0 | 0 | 3 |
+
+Caution: Archive pages and research rows written after each fix already point at the right government, so this flatters the rules a little.
+
+**Result: the pilot.** 100 pins (40 from name-match sweeps, 30 from other sources, 30 of Ryan's hand pins). None had a high or medium flag. 37 of the 40 sweep pins had nothing to check them against.
+
+**Result: the ambiguous run.** 35,339 pins whose government has a same-named twin, 9 seconds. 52 addresses have a high disagreement and 383 a medium one. Ryan's own pins: 3 of 423 had a high flag. In 2 the other store is clearly wrong, not his pin (a research row puts Juneau AK's host under Juneau WI; an Archive page puts Wyandotte MI's host under Wyandotte OK). The third (niagarafalls.civicweb.net: his pin says Niagara Falls ON, a research row says NY) is not settled.
+
+**What the hand check found.** The two rule builders read about 50 high flags by hand and the conductor read 25 more. Almost every high flag is a real disagreement between two stores. But the flagged pin is the wrong side only about half the time; the rest are stale research rows, misfiled Archive pages or an old rtr-discovery ledger row. That is why `disagreements.csv` names no winner. The weakest rule is R1: two different real towns with one name (a Canadian CivicWeb town and a US town, say) look the same as one wrong pin.
+
+**Follow-up.** Settling the 52 high rows is a `BACKLOG.md` entry under "Needs a human".
+
 ## [Done 2026-10-05] WO-1184: union merge for add-only record files; a line-set merge driver for the queue and pin files
 
 **Why this ran.** About 440 commits landed on main in two weeks. The same record files conflicted again and again when a branch merged main in, almost always because both sides added lines at the same spot. Ryan approved two rules.
