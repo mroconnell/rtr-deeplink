@@ -369,6 +369,27 @@ def _pinned(
     return None
 
 
+def _exact_external_id_pin(
+    host: str, page_hints: Optional[Dict[str, str]]
+) -> Optional[Tuple[Government, str]]:
+    """The pin whose `match` is exactly this page's own `external_id`
+    (rung 1a), or None. Any strength. A row whose gov_id has no registry
+    row falls through, the same broken-registry rule as `_pinned()`."""
+    external_id = ((page_hints or {}).get("external_id") or "").strip().lower()
+    if not external_id:
+        return None
+    for row in _override_rows_for_host(host):
+        if not row.match or row.match.strip().lower() != external_id:
+            continue
+        gov = registry.government_for_id(row.gov_id)
+        if gov:
+            evidence = f"tenant_overrides.csv {host} match={row.match}"
+            if row.source:
+                evidence += f" source={row.source}"
+            return gov, evidence + "; exact external id beats the name (rung 1a)"
+    return None
+
+
 def _matched_multi_gov_pin(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> Optional[Tuple[Government, str]]:
@@ -2322,6 +2343,38 @@ def _resolve_government_ladder(
         if pinned:
             gov, evidence = pinned
             return _match(gov, TIER_PINNED, evidence, None)
+
+    # 1a. A pin naming THIS meeting by its own external id wins, at any
+    #     strength, on any host (pin-failure trace, 2026-10-05).
+    #
+    #     A per-show Cablecast pin (`match=cablecast:<host>:<show_id>`) is
+    #     a statement about one meeting. It was written `fallback`, so it
+    #     waited for rung 5 -- and on a station whose public site names
+    #     one town for every show, rung 4's national table answered first.
+    #     Real: Archive page 12060, "6-29-26 Pilot Mountain Board Meeting"
+    #     on reflect-surryco-nc.cablecast.tv, arrived with the station's
+    #     name "Town of Elkin, NC", matched Elkin at rung 4, and never
+    #     reached its Pilot Mountain pin. Rung 1b's "a matching per-page
+    #     pin wins first" rule (WO-221) only runs on `MULTI_GOV_HOSTS`,
+    #     and a Cablecast station host is not one.
+    #
+    #     Only an EXACT external-id match counts: it can only ever reach
+    #     the one page it names, so it has none of the scale risk that
+    #     keeps a whole-host or channel `fallback` pin behind the name
+    #     (WO-1068's namesake rules still govern those). Rung 3's type
+    #     guard is not applied: the name it would check is the station's,
+    #     not the meeting's (the same station's "Elkin City Schools"
+    #     meeting also arrives as "Town of Elkin, NC").
+    #
+    #     Not on `MULTI_GOV_HOSTS`: rung 1b below already puts a matching
+    #     per-page pin first there, and its order between a channel pin
+    #     and a per-video pin is left as it is.
+    if host and not registry.is_multi_gov_host(host):
+        exact = _exact_external_id_pin(host, page_hints)
+        if exact:
+            gov, evidence = exact
+            finalized = finalize_jurisdiction(raw_name, netloc=host or None)
+            return _match(gov, TIER_PINNED, evidence, finalized.meeting_body)
 
     # 1b. Multi-government host safeguard (WO-210). Ryan, verbatim:
     #     "We absolutely cannot use pins for the multi-gov hosts like

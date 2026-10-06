@@ -2851,6 +2851,20 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # filed under Owen, WI by a wrong-domain research row. gov_id corrected
     # by /internal/jurisdiction/override, then reslugged by hand (Ryan).
     "owen-wi-2022-04-25-council-meeting-regular": "owen-sound-on-2022-04-25-council-meeting-regular",
+    # 2026-10-05 (WO-1182/1183): five Santa Clara Valley Water District pages
+    # had wrong stored dates frozen into their slugs and no government; the
+    # Oliver, BC page's slug named Oliver County ND. Dates and gov_id fixed,
+    # then reslugged by hand (Ryan).
+    "santa-clara-valley-water-district-2020-12-28-regular-meeting-jan-12th-2021": "santa-clara-valley-water-district-ca-2021-01-12-regular-meeting-jan-12th-2021",
+    "santa-clara-valley-water-district-2022-10-07-closed-session-and-regular-meeting": "santa-clara-valley-water-district-ca-2022-12-13-closed-session-and-regular-meeti",
+    "santa-clara-valley-water-district-2023-03-28-closed-session-and-special-board-me": "santa-clara-valley-water-district-ca-2023-03-16-closed-session-and-special-board",
+    "santa-clara-valley-water-district-2023-11-06-closed-session-and-regular-meeting": "santa-clara-valley-water-district-ca-2024-04-09-closed-session-and-regular-meeti",
+    "santa-clara-valley-water-district-2025-10-20-closed-session-and-regular-meeting": "santa-clara-valley-water-district-ca-2025-10-14-closed-session-and-regular-meeti",
+    "oliver-county-nd-2026-08-31-committee-of-the-whole": "oliver-bc-2026-08-31-committee-of-the-whole",
+    # 2026-10-05 (WO-1184): a Sherborn, MA meeting whose slug named Dover
+    # (a wrong second pin on the shared Dover-Sherborn channel). gov_id was
+    # already Sherborn; reslugged by hand (Ryan).
+    "dover-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-2025": "sherborn-ma-2025-10-17-sherborn-planning-board-of-appeals-meeting-october-17-202",
 }
 
 
