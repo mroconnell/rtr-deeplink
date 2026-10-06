@@ -1,11 +1,11 @@
-# Drip handoff 2026-10-05 off-mission: 9 YouTube leads
+# Drip handoff 2026-10-05 off-mission: 10 YouTube leads
 
 The owner audit found Archive pages that are not meetings (concerts, parades, promos). Ryan approved deleting them. Some of those governments then have no meeting in the Archive, and their only lead is a YouTube channel. Two more leads came from Ryan's hand-checks the same day.
 No YouTube or other web request was made for this handoff. Every address comes from the government's own site, the deleted page's channel, or Ryan.
 
 ## The file
 
-`leads.csv`, one row per address. Count of 9. All 9 are on the rtr-business drip list (`research/youtube_channel_leads.csv`).
+`leads.csv`, one row per address. Count of 10. All 10 are on the rtr-business drip list (`research/youtube_channel_leads.csv`).
 
 | Government | gov_id | Lead | Where it came from |
 |---|---|---|---|
@@ -17,6 +17,7 @@ No YouTube or other web request was made for this handoff. Every address comes f
 | Beach Haven borough, NJ | us:place:3403940 | user/OfficialBeachHaven | linked from beachhaven-nj.gov (weak) |
 | Athens County Board of Developmental Disabilities, OH | rtr:us:oh:athens-county-board-of-developmental-disabilities (new, rtr-deeplink PR 1784) | @acbdd | the off-mission page's channel |
 | West Hartford School District, CT | us:sd:0904920 | one video, 7V9HkrbyC54 | Ryan: the WHCI channel (@whci) carries some school district meetings; this is one |
+| Portland Community College, OR | rtr:us:or:portland-community-college | one video, ZjeAsag9u_U | Ryan (2026-10-06): a Board of Directors meeting; hub https://www.pcc.edu/board/meetings/ links the YouTube recordings. Highest priority. |
 | Falmouth town, ME | us:cousub:2300524495 | user/FalmouthMaine | town site; the town also has a tier-3 queue line, so lowest priority |
 
 ## Things to check
