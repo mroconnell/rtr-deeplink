@@ -10452,3 +10452,14 @@ https://media.isd623.org/index.php/video-category/meetings/,unknown,head+ffprobe
 https://files.smartsites.parentsquare.com/6564/august_2026_regular.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.08,2026-10-05T15:17:28+00:00,,0
 https://drive.google.com/file/d/11L4Drvx1bFF45dGP43cwmW4QRcN7NhyZ/view,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.93,2026-10-05T15:17:32+00:00,,0
 http://boe.syntaxny.com/BOEAssets/114/2022-2023_BOE_Meeting_Audio-Video/92222_Special_Audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-10-05T15:17:34+00:00,,0
+https://builder1.revize.com/revize/bentoncountywa/Documents/Government/Boards%20and%20Commissions/-%20Meeting%20Recordings/BOCC/2026/09%20(September)/Benton%20County%20Commissioners-20260922%201624-1.mp3?t=202609221827230,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-10-06T06:51:57+00:00,,0
+https://usbe.portal.civicclerk.com/event/552/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/c/USBEMedia,0.00,2026-10-06T06:51:59+00:00,,0
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-10-06T06:52:03+00:00,,0
+https://richardsonisdtx.new.swagit.com/videos/402097,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:05+00:00,,0
+https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:09+00:00,,0
+https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/media/920704,telvue,telvue-page-json,2276.00,,,1,accept,,0.40,2026-10-06T06:52:11+00:00,,0
+https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/media/920704,telvue,telvue-page-json,2276.00,,,1,accept,,0.35,2026-10-06T06:52:12+00:00,feed_tier3_auto_transcription,0
+https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC,legistar,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:20+00:00,,0
+https://jupiterislandfl.portal.civicclerk.com/event/347/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-10-06T06:52:23+00:00,,0
+https://vvuhsd.new.swagit.com/videos/395521,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:26+00:00,,0
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:29+00:00,,0

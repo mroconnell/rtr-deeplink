@@ -1,4 +1,3 @@
-https://builder1.revize.com/revize/bentoncountywa/Documents/Government/Boards%20and%20Commissions/-%20Meeting%20Recordings/BOCC/2026/09%20(September)/Benton%20County%20Commissioners-20260922%201624-1.mp3?t=202609221827230	https://www.bentoncountywa.gov/government/elected_officials/commissioners/index.php	us:county:53005
 https://www.youtube.com/watch?v=LXZMkx2gNOY		us:cousub:3300386420
 https://www.youtube.com/watch?v=C-VsHqycao0		ca:csd:4817039
 https://www.youtube.com/watch?v=HNlW4WH8jCo		us:sd:0621330
@@ -17,8 +16,6 @@ https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://vimeo.com/879928833		us:sd:2314809
 https://vimeo.com/921274753?share=copy		us:sd:3610650
 https://hcpss-org.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=2700		us:sd:2400420
-https://usbe.portal.civicclerk.com/event/552/media		rtr:us:ut:state-board-of-education
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
 https://www.youtube.com/watch?v=mK97ehq_aoQ		us:place:0672520
 https://www.youtube.com/watch?v=cOLWYO3hpnA		us:place:0682744
 https://www.youtube.com/watch?v=sNqq1h291l4		us:place:0809555
@@ -83,18 +80,9 @@ https://www.youtube.com/watch?v=ZJ587uO3_XE		ca:csd:2422045
 https://www.youtube.com/watch?v=0wzT0ao-FC8		ca:csd:2427043
 https://www.youtube.com/watch?v=gKOdNdCtQCs		ca:csd:2422005
 https://www.youtube.com/watch?v=SHfi4qwltbo		ca:csd:2473010
-https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
-https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
-https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O/media/920704	https://saugertiesny.gov/	us:place:3665288
 https://vimeo.com/646255429?embedded=true&source=video_title&owner=44401397	https://twp.columbia.mi.us/meeting-videos/	us:cousub:2607517400
-https://lebanonjunctionky.com/wp-content/uploads/2026/02/260105_023659_00-jan-2026.mp3	https://lebanonjunctionky.com/resources/meeting-minutes/	us:place:2144362
-https://townofmaurice.gov/wp-content/uploads/2023/06/PageBG-Broadband-High.mp4	https://townofmaurice.gov/maurice-meeting-schedules-agendas-and-minutes/	us:place:2249240
 https://player.vimeo.com/video/675553234?color&autopause=0&loop=0&muted=0&title=1&portrait=1&byline=1#t=	https://www.combinedlocks.wi.gov/village-board/election-information/	us:place:5516500
-https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
-https://jupiterislandfl.portal.civicclerk.com/event/347/media	https://townofjupiterisland.com/	us:place:1235925
-https://vvuhsd.new.swagit.com/videos/395521		us:sd:0636972
 https://player.vimeo.com/video/411365458		us:sd:1813080
-https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235		us:sd:0904320
 https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
 https://farmington.utah.gov/wp-content/uploads/2026/09/09.15.26-General-Session-Q-SYS.mp3		us:place:4924740
 https://drive.google.com/file/d/186ECbJ6fmMHJvovmKZoCqSkTVmsybo_y/view		us:sd:0904740
@@ -994,3 +982,9 @@ https://eanesisdtx.new.swagit.com/videos/401933		us:sd:4817760
 https://mountpleasantisdtx.new.swagit.com/videos/398878		us:sd:4831760
 https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703		us:sd:0626640
 https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691		us:county:08097
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
+https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
+https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
+https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
+https://vvuhsd.new.swagit.com/videos/395521		us:sd:0636972
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235		us:sd:0904320
