@@ -14,20 +14,8 @@ https://player.vimeo.com/video/1227344029?badge=0&autopause=0&player_id=0&app_id
 https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://vimeo.com/879928833		us:sd:2314809
-https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
-https://allenisd.new.swagit.com/videos/400821		us:sd:4807890
-https://cloud.castus.tv/vod/lincoln/video/6aa41d6f6e26d70002ad5235?page=HOME		us:sd:2506900
 https://vimeo.com/921274753?share=copy		us:sd:3610650
-https://chisd.new.swagit.com/videos/399576		us:sd:4813230
-https://pbtisd.new.swagit.com/videos/400943		us:sd:4834550
-https://eanesisdtx.new.swagit.com/videos/401933		us:sd:4817760
-https://drive.google.com/file/d/1Amr3VNGwPjEfZolz4Z0ff02FCVKgWHIG/view?usp=sharing		us:sd:3400720
-https://mountpleasantisdtx.new.swagit.com/videos/398878		us:sd:4831760
 https://hcpss-org.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=2700		us:sd:2400420
-https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703		us:sd:0626640
-https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691		us:county:08097
-https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045524		us:sd:2505730
-https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/1041008		us:place:3445330
 https://usbe.portal.civicclerk.com/event/552/media		rtr:us:ut:state-board-of-education
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
 https://www.youtube.com/watch?v=mK97ehq_aoQ		us:place:0672520
@@ -998,3 +986,11 @@ https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/103
 https://newrochelle.granicus.com/MediaPlayer.php?clip_id=2784&view_id=2	https://newrochelle.granicus.com/	us:place:3650617
 https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57565?site=1	https://cablecast.lmcc-tv.org/CablecastPublicSite/?channel=2	us:place:2767130
 https://townhallstreams.com/stream.php?location_id=98&id=76634	https://townhallstreams.com/town.php?id=98	us:cousub:3301360020
+https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
+https://allenisd.new.swagit.com/videos/400821		us:sd:4807890
+https://chisd.new.swagit.com/videos/399576		us:sd:4813230
+https://pbtisd.new.swagit.com/videos/400943		us:sd:4834550
+https://eanesisdtx.new.swagit.com/videos/401933		us:sd:4817760
+https://mountpleasantisdtx.new.swagit.com/videos/398878		us:sd:4831760
+https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703		us:sd:0626640
+https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691		us:county:08097

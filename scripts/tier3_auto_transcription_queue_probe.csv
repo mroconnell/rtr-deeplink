@@ -10216,3 +10216,18 @@ https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID
 https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3518&Format=Agenda,iqm2,head+ffprobe,1557.45,2024-12-25,123161009,1,accept,,5.67,2026-10-05T16:37:24+00:00,findmeeting_apply_probe,1
 https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3517&Format=Agenda,iqm2,head+ffprobe,1917.64,2024-12-25,152635905,1,accept,,4.00,2026-10-05T16:38:28+00:00,findmeeting_apply_probe,0
 https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3516&Format=Agenda,iqm2,head+ffprobe,1942.60,2024-12-25,154337424,1,accept,,8.42,2026-10-05T16:39:37+00:00,findmeeting_apply_probe,0
+https://ectorcountyisdtx.new.swagit.com/videos/264402,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.15,2026-10-06T00:20:25+00:00,,0
+https://allenisd.new.swagit.com/videos/400821,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-06T00:20:27+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aa41d6f6e26d70002ad5235?page=HOME,castus,hls-master+variant,11658.00,,,1,accept,,0.37,2026-10-06T00:20:29+00:00,,0
+https://cloud.castus.tv/vod/lincoln/video/6aa41d6f6e26d70002ad5235?page=HOME,castus,hls-master+variant,11658.00,,,1,accept,,0.29,2026-10-06T00:20:29+00:00,feed_tier3_auto_transcription,0
+https://chisd.new.swagit.com/videos/399576,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-06T00:20:33+00:00,,0
+https://pbtisd.new.swagit.com/videos/400943,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-06T00:20:35+00:00,,0
+https://eanesisdtx.new.swagit.com/videos/401933,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-06T00:20:37+00:00,,0
+https://drive.google.com/file/d/1Amr3VNGwPjEfZolz4Z0ff02FCVKgWHIG/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.63,2026-10-06T00:20:40+00:00,,0
+https://mountpleasantisdtx.new.swagit.com/videos/398878,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-06T00:20:42+00:00,,0
+https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.20,2026-10-06T00:20:45+00:00,,0
+https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-06T00:20:47+00:00,,0
+https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045524,telvue,telvue-page-json,1352.00,,,1,accept,,0.35,2026-10-06T00:20:49+00:00,,0
+https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1045524,telvue,telvue-page-json,1352.00,,,1,accept,,0.32,2026-10-06T00:20:50+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/1041008,telvue,telvue-page-json,2027.00,,,1,accept,,0.24,2026-10-06T00:20:52+00:00,,0
+https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm/media/1041008,telvue,telvue-page-json,2027.00,,,1,accept,,0.20,2026-10-06T00:20:52+00:00,feed_tier3_auto_transcription,0
