@@ -117,10 +117,14 @@ async def test_video_rows_first_newest_first_and_capped():
     assert dates == sorted(dates, reverse=True)
     assert len(dates) <= 15
 
-    many = "<html><body>" + "".join(
-        f'<a href="/Citizens/Detail_Meeting.aspx?ID={i}">Jan {i}, 2025 9:00 AM</a>'
-        for i in range(1, 29)
-    ) + "</body></html>"
+    many = (
+        "<html><body>"
+        + "".join(
+            f'<a href="/Citizens/Detail_Meeting.aspx?ID={i}">Jan {i}, 2025 9:00 AM</a>'
+            for i in range(1, 29)
+        )
+        + "</body></html>"
+    )
     iqm2._HUB_CACHE.clear()
     with pytest.raises(CalendarPageError) as exc:
         await _resolve(o + "/Citizens/", today, _routes(o, today, ok(many)))
@@ -137,7 +141,10 @@ async def test_both_windows_empty_returns_old_warning():
 
 async def test_http_error_returns_old_warning_and_is_not_cached():
     routes = _routes(
-        KNOX_O, TODAY, FakeResponse(status=500, text=""), FakeResponse(status=500, text="")
+        KNOX_O,
+        TODAY,
+        FakeResponse(status=500, text=""),
+        FakeResponse(status=500, text=""),
     )
     result = await _resolve(KNOX_O + "/Citizens/", TODAY, routes)
     assert result.video_warnings
@@ -168,6 +175,8 @@ async def test_meeting_url_with_meeting_id_still_resolves_as_before():
         ),
         split: ok("<!-- MEDIA URL: https://x.granicus.com/a/playlist.m3u8-->"),
     }
-    result = await _resolve(f"{o}/Citizens/SplitView.aspx?Mode=Video&MeetingID=4294", TODAY, routes)
+    result = await _resolve(
+        f"{o}/Citizens/SplitView.aspx?Mode=Video&MeetingID=4294", TODAY, routes
+    )
     assert result.video_url == "https://x.granicus.com/a/playlist.m3u8"
     assert result.date == "2026-08-12"

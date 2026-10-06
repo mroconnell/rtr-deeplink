@@ -172,7 +172,20 @@ _HUB_VIDEO_LINK_RE = re.compile(
 _HUB_MONTHS = {
     m: i + 1
     for i, m in enumerate(
-        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
     )
 }
 _HUB_ROW_DATE_RE = re.compile(
@@ -218,7 +231,9 @@ def _parse_calendar_list(html: str, origin: str, today: _dt.date) -> List[dict]:
         if not dm:
             continue
         try:
-            row_date = _dt.date(int(dm.group(3)), _HUB_MONTHS[dm.group(1)], int(dm.group(2)))
+            row_date = _dt.date(
+                int(dm.group(3)), _HUB_MONTHS[dm.group(1)], int(dm.group(2))
+            )
         except ValueError:
             continue
         seen.add(meeting_id)
