@@ -651,6 +651,7 @@ lawa.granicus.com,,rtr:us:ca:l-a-world-airports-board-of-airport-commissioners,a
 lawrenceks.civicweb.net,,us:place:2038900,fallback,identity_join+landing_page,"Lawrence (city), KS -- us_places.csv Lawrence city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 leacountynm.portal.civicclerk.com,,us:county:35025,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Lea County
 leduc.escribemeetings.com,,ca:csd:4811016,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Leduc
+legacyhaymarket.teammunicode.com,,us:place:5135976,fallback,ryan_hand_check_2026-10-06,"Haymarket town, VA -- Ryan hand-checked 2026-10-06: the town council meeting pages on this Municode site (e.g. /bc-towncouncil/page/town-council-%E2%80%93-regular-meeting-8) are the Town of Haymarket's, each with an embedded meeting video; townofhaymarket.org is the town's own domain"
 lennoxandaddington.civicweb.net,,ca:cd:3511,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Lennox and Addington
 lethbridge.escribemeetings.com,,ca:csd:4802012,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lethbridge
 lethcounty.civicweb.net,,ca:csd:4802012,fallback,ryan_stated,"Lethbridge, AB -- ca_csd.csv Lethbridge"
