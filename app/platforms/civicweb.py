@@ -2,12 +2,20 @@ import html as html_module
 import json
 import logging
 import re
+import time
+from datetime import date as _date, datetime
 from typing import Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
-from .base import AssetFinder, UnsupportedPlatformError, resolve_via_platform
+from .base import (
+    AssetFinder,
+    CalendarCandidate,
+    CalendarPageError,
+    UnsupportedPlatformError,
+    resolve_via_platform,
+)
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
@@ -245,6 +253,106 @@ _TITLE_JURISDICTION_RE = re.compile(
     r"<title>\s*([^<]+?)\s*-\s*Meeting Information\s*</title>", re.IGNORECASE
 )
 
+# --- Hub pick list (2026-10-06) -------------------------------------------
+# A pasted tenant hub (Portal/MeetingTypeList.aspx, Portal/MeetingSchedule.aspx
+# or the bare Portal/) names no single meeting, so `resolve()` raises
+# `CalendarPageError` with the newest meetings read off the hub's own pages.
+# Row shape (real, saved fixture niagarafalls_meetingtypelist.html and the
+# Diligent Community nassau fixture): `<a class="list-link"
+# href="/Portal/MeetingInformation.aspx?Id=1928">City Council - 11 Aug 2026</a>`
+# -- the anchor text is "<name> - <date>", date as "11 Aug 2026" or
+# "Jul 20 2026". The Portal/MeetingSchedule.aspx page has no saved copy, so
+# it is read with the same anchor rule only (unverified markup).
+# CivicWeb asks a 120 s crawl delay a user request cannot wait; this makes
+# 1-2 GETs per hub and caches the result per tenant for a few minutes.
+_HUB_PATHS = frozenset(
+    {
+        "/portal",
+        "/portal/",
+        "/portal/meetingtypelist.aspx",
+        "/portal/meetingschedule.aspx",
+    }
+)
+_HUB_LIST_LIMIT = 15
+_HUB_CACHE_TTL_SECONDS = 300
+_HUB_CACHE_MAX = 200
+_hub_cache: Dict[str, tuple] = {}
+_HUB_ANCHOR_RE = re.compile(
+    r"<a\b([^>]*?)href=\"[^\"]*MeetingInformation\.aspx\?[^\"]*?\bId=(\d+)[^\"]*\"([^>]*)>(.*?)</a>",
+    re.IGNORECASE | re.DOTALL,
+)
+_HUB_TAG_RE = re.compile(r"<[^>]+>")
+_HUB_DATE_RES = (
+    (re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b"), "%Y-%m-%d"),
+    (re.compile(r"\b(\d{1,2}\s+[A-Za-z]{3,9}\.?,?\s+\d{4})\b"), "dmy"),
+    (re.compile(r"\b([A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4})\b"), "mdy"),
+)
+
+
+def _parse_hub_date(text: str):
+    """(iso_date or "", matched_span or None) for the first date in `text`."""
+    for regex, kind in _HUB_DATE_RES:
+        m = regex.search(text)
+        if not m:
+            continue
+        raw = m.group(0)
+        if kind == "%Y-%m-%d":
+            candidates = [raw]
+            fmts = ["%Y-%m-%d"]
+        else:
+            cleaned = re.sub(r"[.,]", "", raw)
+            candidates = [cleaned]
+            fmts = (
+                ["%d %b %Y", "%d %B %Y"] if kind == "dmy" else ["%b %d %Y", "%B %d %Y"]
+            )
+        for cand in candidates:
+            for fmt in fmts:
+                try:
+                    return datetime.strptime(cand, fmt).date().isoformat(), m.span()
+                except ValueError:
+                    continue
+    return "", None
+
+
+def _parse_hub_meetings(html: str, origin: str) -> List[CalendarCandidate]:
+    seen = set()
+    rows: List[CalendarCandidate] = []
+    for m in _HUB_ANCHOR_RE.finditer(html):
+        attrs = (m.group(1) + " " + m.group(3)).lower()
+        if "meeting-type-item-title" in attrs:
+            continue  # a meeting-type heading, not a meeting
+        meeting_id = m.group(2)
+        if meeting_id in seen:
+            continue
+        text = html_module.unescape(_HUB_TAG_RE.sub(" ", m.group(4)))
+        text = re.sub(r"\s+", " ", text).strip()
+        if not text:
+            continue
+        seen.add(meeting_id)
+        iso, span = _parse_hub_date(text)
+        title = text
+        if span:
+            title = (text[: span[0]] + " " + text[span[1] :]).strip(" -\u2013,")
+            title = re.sub(r"\s+-\s*$", "", title).strip() or text
+        rows.append(
+            {
+                "title": title,
+                "date": iso,
+                "url": f"{origin}/Portal/MeetingInformation.aspx?Id={meeting_id}",
+            }
+        )
+    today = _date.today().isoformat()
+    past = sorted(
+        (r for r in rows if r["date"] and r["date"] <= today),
+        key=lambda r: r["date"],
+        reverse=True,
+    )
+    future = sorted(
+        (r for r in rows if r["date"] and r["date"] > today), key=lambda r: r["date"]
+    )
+    undated = [r for r in rows if not r["date"]]
+    return (past + future + undated)[:_HUB_LIST_LIMIT]
+
 
 class CivicWebAssetFinder(AssetFinder):
     """iCompass/CivicWeb (Diligent) -- doesn't host video, delegates to
@@ -259,6 +367,8 @@ class CivicWebAssetFinder(AssetFinder):
     async def resolve(self, url: str) -> ResolvedMeeting:
         meeting_id = self._extract_meeting_id(url)
         if not meeting_id:
+            if urlparse(url).path.lower() in _HUB_PATHS:
+                return await self._raise_hub_listing(url)
             # A `/document/{id}/` (or `/filepro/document/{id}/...`) link --
             # see module docstring for the real second URL shape this
             # covers -- has no `Id=` query param at all, only checked once
@@ -504,6 +614,45 @@ class CivicWebAssetFinder(AssetFinder):
                 TranscriptSegment(start=seconds, end=max(end, seconds), text=text)
             )
         return items
+
+    async def _raise_hub_listing(self, url: str) -> ResolvedMeeting:
+        """Tenant hub -> `CalendarPageError` with up to 15 meetings (past
+        first, newest first). Nothing found or fetch failed -> a plain
+        warning result instead (no exception)."""
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        key = parsed.netloc.lower()
+        now = time.monotonic()
+        cached = _hub_cache.get(key)
+        candidates = None
+        if cached and now - cached[0] < _HUB_CACHE_TTL_SECONDS:
+            candidates = cached[1]
+        else:
+            candidates = []
+            async with aiohttp.ClientSession() as session:
+                for path in ("MeetingTypeList.aspx", "MeetingSchedule.aspx"):
+                    html = await self._fetch_text(session, f"{origin}/Portal/{path}")
+                    if html:
+                        candidates = _parse_hub_meetings(html, origin)
+                    if candidates:
+                        break
+            if candidates:
+                if len(_hub_cache) >= _HUB_CACHE_MAX:
+                    _hub_cache.clear()
+                _hub_cache[key] = (now, candidates)
+        if not candidates:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=["No meetings found on this CivicWeb page."],
+            )
+        raise CalendarPageError(
+            message=(
+                "This is a CivicWeb meeting list with multiple meetings, "
+                "not a link to one specific meeting."
+            ),
+            candidates=[dict(c) for c in candidates],
+        )
 
     @staticmethod
     def _extract_meeting_id(url: str) -> Optional[str]:

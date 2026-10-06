@@ -694,3 +694,122 @@ def test_build_agenda_items_skips_a_bare_outline_marker_label():
     items = CivicWebAssetFinder._build_agenda_items(body_html, points)
     assert [i.text for i in items] == ["INVOCATION"]
     assert items[0].start == items[0].end == 419.0
+
+
+# --- Hub pick list (2026-10-06) ---------------------------------------------
+import pytest  # noqa: E402
+
+from app.platforms import civicweb as civicweb_module  # noqa: E402
+from app.platforms.base import CalendarPageError  # noqa: E402
+
+HUB = "https://niagarafalls.civicweb.net"
+TYPELIST_URL = f"{HUB}/Portal/MeetingTypeList.aspx"
+SCHEDULE_URL = f"{HUB}/Portal/MeetingSchedule.aspx"
+
+
+@pytest.fixture(autouse=True)
+def _clear_hub_cache():
+    civicweb_module._hub_cache.clear()
+    yield
+    civicweb_module._hub_cache.clear()
+
+
+def _typelist():
+    return FakeResponse(
+        status=200,
+        raw=load_fixture_bytes("civicweb", "niagarafalls_meetingtypelist.html"),
+    )
+
+
+@pytest.mark.parametrize(
+    "hub_url", [TYPELIST_URL, SCHEDULE_URL, f"{HUB}/Portal/", f"{HUB}/Portal"]
+)
+async def test_hub_urls_give_calendar_page_with_titles_and_dates(hub_url):
+    with mock_session({TYPELIST_URL: _typelist()}):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicWebAssetFinder().resolve(hub_url)
+    cands = exc.value.candidates
+    assert 0 < len(cands) <= 15
+    assert all(c["title"] and c["date"] and c["url"] for c in cands)
+    by_url = {c["url"]: c for c in cands}
+    c = by_url[f"{HUB}/Portal/MeetingInformation.aspx?Id=1928"]
+    assert c["title"] == "City Council"
+    assert c["date"] == "2026-08-11"
+    # newest first among past meetings
+    dates = [c["date"] for c in cands]
+    assert dates == sorted(dates, reverse=True)
+    # meeting-type headings (?type=N) are not meetings
+    assert not any("type=" in c["url"] for c in cands)
+
+
+async def test_hub_parses_month_first_dates():
+    html = (
+        '<a class="list-link" href="/Portal/MeetingInformation.aspx?Id=435">'
+        "School Board Workshop - Jul 20 2026</a>"
+    )
+    with mock_session({TYPELIST_URL: FakeResponse(status=200, text=html)}):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicWebAssetFinder().resolve(TYPELIST_URL)
+    assert exc.value.candidates == [
+        {
+            "title": "School Board Workshop",
+            "date": "2026-07-20",
+            "url": f"{HUB}/Portal/MeetingInformation.aspx?Id=435",
+        }
+    ]
+
+
+async def test_hub_falls_back_to_schedule_page_when_type_list_empty():
+    html = '<a href="/Portal/MeetingInformation.aspx?Id=9">Council - 02 Mar 2026</a>'
+    routes = {
+        TYPELIST_URL: FakeResponse(status=200, text="<html></html>"),
+        SCHEDULE_URL: FakeResponse(status=200, text=html),
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc:
+            await CivicWebAssetFinder().resolve(f"{HUB}/Portal/")
+    assert exc.value.candidates[0]["date"] == "2026-03-02"
+
+
+async def test_hub_empty_returns_warning_not_error():
+    routes = {
+        TYPELIST_URL: FakeResponse(status=200, text="<html></html>"),
+        SCHEDULE_URL: FakeResponse(status=200, text="<html></html>"),
+    }
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(TYPELIST_URL)
+    assert result.video_warnings == ["No meetings found on this CivicWeb page."]
+
+
+async def test_hub_http_error_returns_warning_not_error():
+    routes = {
+        TYPELIST_URL: FakeResponse(status=503, text=""),
+        SCHEDULE_URL: FakeResponse(status=503, text=""),
+    }
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(TYPELIST_URL)
+    assert result.video_warnings == ["No meetings found on this CivicWeb page."]
+
+
+async def test_hub_result_is_cached_per_tenant():
+    with mock_session({TYPELIST_URL: _typelist()}):
+        with pytest.raises(CalendarPageError):
+            await CivicWebAssetFinder().resolve(TYPELIST_URL)
+    # second call: no routes at all, so any request would raise AssertionError
+    with mock_session({}):
+        with pytest.raises(CalendarPageError):
+            await CivicWebAssetFinder().resolve(f"{HUB}/Portal/")
+
+
+async def test_meeting_url_with_id_still_resolves_as_before():
+    routes = {
+        MEETING_URL: FakeResponse(status=200, text=MEETING_HTML),
+        VIDEOLINK_URL: FakeResponse(status=200, text=VIDEOLINK_JSON),
+        MEETING_DATA_URL: FakeResponse(status=200, text=MEETING_DATA_JSON),
+    }
+    with mock_session(routes):
+        try:
+            result = await CivicWebAssetFinder().resolve(MEETING_URL)
+        except CalendarPageError:
+            pytest.fail("a meeting URL with Id must not become a pick list")
+    assert result.title == "Commissioners Court - Aug 04 2026"
