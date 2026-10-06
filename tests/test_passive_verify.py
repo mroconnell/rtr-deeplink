@@ -1345,7 +1345,9 @@ async def test_real_knoxvillecitytn_iqm2_hub_walks_real_candidates_no_video():
     assert result.video_found is False
     assert result.tier == 4
     assert result.candidates_checked == 2
-    assert result.verdict == "listing_walked_no_video"
+    # The adapter itself now answers an IQM2 hub with the pick-a-meeting
+    # list (CalendarPageError), so the verdict is the calendar-page one.
+    assert result.verdict == "calendar_page_no_video"
 
 
 # --- WO-344: townhallstreams.com's real listing walker -----------------
