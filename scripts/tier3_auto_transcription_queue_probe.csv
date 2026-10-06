@@ -10468,3 +10468,16 @@ https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=55&clip_id=52975,grani
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=24&clip_id=53158,granicus,hls-master+variant,3379.68,,,1,accept,,0.66,2026-10-06T14:25:46+00:00,bulk_ingest,0
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=29&clip_id=53126,granicus,hls-master+variant,3198.38,,,1,accept,,2.72,2026-10-06T14:26:02+00:00,bulk_ingest,0
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=29&clip_id=53126,granicus,hls-master+variant,3198.38,,,1,accept,,4.67,2026-10-06T15:38:52+00:00,bulk_ingest,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=3&clip_id=1538,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-06T18:37:14+00:00,,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T18:37:16+00:00,,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=2&clip_id=1542,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T18:37:19+00:00,,0
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=1004,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T18:37:23+00:00,,0
+https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T18:37:26+00:00,,0
+https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T18:37:29+00:00,,0
+https://pinole.granicus.com/MediaPlayer.php?view_id=2&clip_id=2185,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.04,2026-10-06T18:37:32+00:00,,0
+https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T18:37:34+00:00,,0
+https://drive.google.com/file/d/186ECbJ6fmMHJvovmKZoCqSkTVmsybo_y/view,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.54,2026-10-06T18:37:38+00:00,,0
+https://boxcast.tv/view/chardon-township-trustees-meeting-7-15-2026-f4fvsotk6svvaclvazit,boxcast,hls-master+variant,1972.77,,,1,accept,,0.46,2026-10-06T18:37:41+00:00,,0
+https://boxcast.tv/view/chardon-township-trustees-meeting-7-15-2026-f4fvsotk6svvaclvazit,boxcast,hls-master+variant,1972.77,,,1,accept,,0.09,2026-10-06T18:37:41+00:00,feed_tier3_auto_transcription,0
+https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2,cablecast,cablecast-api,8077.00,2023-11-02,,1,accept,,0.03,2026-10-06T18:37:45+00:00,,0
+https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2,cablecast,cablecast-api,8077.00,2023-11-02,,1,accept,,0.02,2026-10-06T18:37:45+00:00,feed_tier3_auto_transcription,0
