@@ -184,18 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-http://108.20.229.83/internetchannel/show/3534?site=3		us:sd:2509930
-https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
-https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
-https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
-https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
-https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
-https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
-https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241
-https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
-https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
-https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
-https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
 https://stlouispark.granicus.com/MediaPlayer.php?view_id=1&clip_id=473
 https://sunvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=1251
 https://westspringfieldma.granicus.com/MediaPlayer.php?view_id=1&clip_id=476
@@ -991,3 +979,14 @@ https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304		rtr:us:ca:m
 https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316		rtr:us:ca:transportation-authority-of-marin	TAM Board of Commissioners Meeting	2026-09-24	TAM Board of Commissioners
 https://pinole.granicus.com/MediaPlayer.php?view_id=2&clip_id=2185		rtr:us:ca:western-contra-costa-transit-authority	Westcat Board of Directors Meeting	2024-05-09	WestCAT Board of Directors
 https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
+https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
+https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
+https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
+https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
+https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
+https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
+https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241
+https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
+https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
+https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
+https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
