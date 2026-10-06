@@ -1,12 +1,14 @@
+import datetime as _dt
 import logging
 import re
-from typing import List, Optional, Tuple
+import time
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarPageError
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, dedupe_rollup_cues, parse_vtt
@@ -144,6 +146,115 @@ _TITLE_RE = re.compile(
 _MEDIA_URL_RE = re.compile(r"MEDIA URL:\s*(\S+?)-->")
 _SEEK_RE = re.compile(r"SetPosition\((\d+(?:\.\d+)?)\)")
 
+# --- Hub ("pick a meeting") support -------------------------------------
+# A pasted tenant hub (Media.aspx, Calendar.aspx, Default.aspx, Boards.aspx,
+# bare /Citizens/, or a SplitView.aspx with no MeetingID) names no meeting.
+# Instead of a warning we read the tenant's own server-rendered
+# `Citizens/calendar.aspx?View=List` page (1 GET, 2 if the first window has
+# no past meetings) and raise CalendarPageError with the newest past
+# meetings. IQM2 asks for a 60 s crawl delay, which a user request cannot
+# wait out, so results are cached per tenant for a few minutes.
+_HUB_PATHS = frozenset(
+    {
+        "",
+        "/citizens",
+        "/citizens/media.aspx",
+        "/citizens/calendar.aspx",
+        "/citizens/default.aspx",
+        "/citizens/boards.aspx",
+        "/citizens/splitview.aspx",
+    }
+)
+_HUB_MEETING_LINK_RE = re.compile(r"Detail_Meeting\.aspx\?ID=(\d+)", re.IGNORECASE)
+_HUB_VIDEO_LINK_RE = re.compile(
+    r"SplitView\.aspx\?[^\"']*Mode=Video[^\"']*MeetingID=(\d+)", re.IGNORECASE
+)
+_HUB_MONTHS = {
+    m: i + 1
+    for i, m in enumerate(
+        [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
+    )
+}
+_HUB_ROW_DATE_RE = re.compile(
+    r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})"
+)
+_HUB_WINDOW_DAYS = 400
+_HUB_FALLBACK_WINDOW_DAYS = 1095
+_HUB_FUTURE_DAYS = 30
+_HUB_MAX_CANDIDATES = 15
+_HUB_CACHE_TTL_SECONDS = 300
+# origin -> (monotonic timestamp, candidates)
+_HUB_CACHE: Dict[str, Tuple[float, List[dict]]] = {}
+
+
+def _today() -> _dt.date:
+    """Injectable in tests (patch `app.platforms.iqm2._today`)."""
+    return _dt.datetime.now(_dt.timezone.utc).date()
+
+
+def _is_hub_url(url: str) -> bool:
+    return urlparse(url).path.rstrip("/").lower() in _HUB_PATHS
+
+
+def _parse_calendar_list(html: str, origin: str, today: _dt.date) -> List[dict]:
+    """Past meetings (date <= today) from one calendar list page, newest
+    first, rows with a video link ahead of rows without when any exist."""
+    soup = BeautifulSoup(html, "html.parser")
+    video_ids = set()
+    for a in soup.find_all("a"):
+        for attr in ("onclick", "href"):
+            m = _HUB_VIDEO_LINK_RE.search(a.get(attr) or "")
+            if m:
+                video_ids.add(m.group(1))
+    seen = set()
+    rows: List[Tuple[_dt.date, str, dict]] = []
+    for a in soup.find_all("a", href=True):
+        m = _HUB_MEETING_LINK_RE.search(a["href"])
+        if not m or m.group(1) in seen:
+            continue
+        meeting_id = m.group(1)
+        text = a.get_text(" ", strip=True)
+        dm = _HUB_ROW_DATE_RE.search(text)
+        if not dm:
+            continue
+        try:
+            row_date = _dt.date(
+                int(dm.group(3)), _HUB_MONTHS[dm.group(1)], int(dm.group(2))
+            )
+        except ValueError:
+            continue
+        seen.add(meeting_id)
+        if row_date > today:
+            continue
+        rows.append(
+            (
+                row_date,
+                meeting_id,
+                {
+                    "title": text,
+                    "date": row_date.isoformat(),
+                    "url": f"{origin}/Citizens/Detail_Meeting.aspx?ID={meeting_id}",
+                },
+            )
+        )
+    rows.sort(key=lambda r: r[0], reverse=True)
+    with_video = [c for d, i, c in rows if i in video_ids]
+    chosen = with_video or [c for _, _, c in rows]
+    return chosen[:_HUB_MAX_CANDIDATES]
+
 
 class IQM2AssetFinder(AssetFinder):
     """IQM2 -- doesn't host video itself, delegates to a real Granicus HLS
@@ -168,6 +279,8 @@ class IQM2AssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         meeting_id = self._extract_meeting_id(url)
+        if not meeting_id and _is_hub_url(url):
+            await self._raise_hub_listing(url)
         if not meeting_id:
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -251,6 +364,47 @@ class IQM2AssetFinder(AssetFinder):
             segments=segments,
             transcript_warnings=transcript_warnings,
         )
+
+    async def _raise_hub_listing(self, url: str) -> None:
+        """Raises CalendarPageError with the tenant's newest past meetings,
+        or returns normally when none can be found (caller then falls
+        through to the old "no meeting id" warning)."""
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        now = time.monotonic()
+        cached = _HUB_CACHE.get(origin)
+        if cached and now - cached[0] < _HUB_CACHE_TTL_SECONDS:
+            candidates = cached[1]
+        else:
+            today = _today()
+            candidates = []
+            fetched_ok = False
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                for window in (_HUB_WINDOW_DAYS, _HUB_FALLBACK_WINDOW_DAYS):
+                    start = today - _dt.timedelta(days=window)
+                    end = today + _dt.timedelta(days=_HUB_FUTURE_DAYS)
+                    list_url = (
+                        f"{origin}/Citizens/calendar.aspx?View=List"
+                        f"&From={start.month}/{start.day}/{start.year}"
+                        f"&To={end.month}/{end.day}/{end.year}"
+                    )
+                    html = await self._fetch_text(session, list_url)
+                    if html is None:
+                        continue
+                    fetched_ok = True
+                    candidates = _parse_calendar_list(html, origin, today)
+                    if candidates:
+                        break
+            if fetched_ok:
+                _HUB_CACHE[origin] = (now, candidates)
+        if candidates:
+            raise CalendarPageError(
+                message=(
+                    "This is an IQM2 meeting portal page with multiple meetings, "
+                    "not a link to one specific meeting."
+                ),
+                candidates=candidates,
+            )
 
     @staticmethod
     def _extract_meeting_id(url: str) -> Optional[str]:

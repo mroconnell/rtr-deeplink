@@ -243,7 +243,9 @@ async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url(
 
 
 async def test_resolve_returns_a_clear_error_when_no_meeting_id_is_in_the_url():
-    result = await IQM2AssetFinder().resolve("https://atlantacityga.iqm2.com/Citizens/")
+    result = await IQM2AssetFinder().resolve(
+        "https://atlantacityga.iqm2.com/Citizens/Detail_Motion.aspx"
+    )
 
     assert result.video_url is None
     assert "meeting id" in result.video_warnings[0].lower()
