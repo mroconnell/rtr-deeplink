@@ -1,0 +1,50 @@
+audit_row,store,where,what_it_says_now,change,right_gov_id,evidence
+1,research_row,"jurisdiction_coverage.csv: Albemarle city, NC",lists albemarle.granicus.com and clip/1452,remove albemarle.granicus.com from domain and example URL,us:county:51003,"Board of Supervisors meetings; 3 Archive pages under Albemarle County VA"
+2,research_row,"jurisdiction_coverage.csv: Armstrong County, TX",example_agenda_or_calendar_url https://armstrong.civicweb.net/,clear that URL,ca:csd:5937028,cityofarmstrong.bc.ca links the portal
+6,research_row,"jurisdiction_coverage.csv: Menifee County, KY",domain cityofmenifee.primegov.com,remove host from domain,us:place:0646842,"5 Archive pages 'Menifee ... City Council'"
+8,research_row,"jurisdiction_coverage.csv: Cooper city, TX",domain cooper.granicus.com and clip/692,remove host and example URL,us:place:1214125,Cooper City FL's own row cites this portal
+9,research_row,"jurisdiction_coverage.csv: Des Moines County, IA",domain desmoines.civicweb.net,remove host from domain,us:place:5317635,Des Moines WA row lists the portal; pages under WA
+9,research_row,"jurisdiction_coverage.csv: Des Moines city, IA",domain desmoines.civicweb.net,clear that domain (own site is dmgov.org),us:place:5317635,Des Moines WA row lists the portal; pages under WA
+12,research_row,"jurisdiction_coverage.csv: Highlands County, FL",domain highlands-nj.municodemeetings.com,remove host and example URL,us:place:3431500,host name says NJ; channel @boroughofhighlands
+15,research_row,"jurisdiction_coverage.csv: Juneau city, WI",domain juneauak.portal.civicclerk.com and event/240,remove host and example URL,us:place:0236400,Ryan's authoritative pin; 'Assembly Committee of the Whole'
+17,research_row,"jurisdiction_coverage.csv: Lambton, QC",domain lambton.civicweb.net and Id=1485,remove host and example URL,ca:cd:3538,'Lambton County Council' pages; @CountyofLambton
+21,research_row,"jurisdiction_coverage.csv: Mapleton School District 1, CO",example_meeting_url mapleton.civicweb.net Id=371,clear that URL (keep mapleton.us),ca:csd:3523033,4 Archive pages 'Regular Council Meeting' @townshipofmapleton
+21,research_row,"jurisdiction_coverage.csv: Mapleton city, IA",example_agenda_or_calendar_url mapleton.civicweb.net,clear that URL,ca:csd:3523033,same
+21,research_row,"jurisdiction_coverage.csv: Mapleton city, MN",example_meeting_url mapleton.civicweb.net Id=359,clear that URL,ca:csd:3523033,same
+23,research_row,"jurisdiction_coverage.csv: Montague County, TX",example_agenda_or_calendar_url https://montague.civicweb.net/,clear that URL and the civicweb provider guess,ca:csd:3509001,Township of Montague ON site links the portal
+24,research_row,"jurisdiction_coverage.csv: Niagara Falls city, NY",domain niagarafalls.civicweb.net,remove host from domain,ca:csd:3526043,Ryan's pin: pages wrongly on NY were fixed 2026-09-04
+25,research_row,"jurisdiction_coverage.csv: Oregon County, MO",domain oregon.granicus.com,remove host and example URL,us:state:41,only page is a state House committee
+26,research_row,"jurisdiction_coverage.csv: Grey, MB",domain pub-grey.escribemeetings.com,remove host and example URL,ca:cd:3542,page 'County of Grey'; video from countygrey
+27,research_row,"jurisdiction_coverage.csv: LaPorte County, IN",alternate_domains pub-laporte.escribemeetings.com,remove from alternate_domains,us:place:4841440,"'604 West Fairmont Parkway, La Porte, Texas'"
+29,research_row,"jurisdiction_coverage.csv: Pulaski County, MO",alternate_domains pulaskigov.com,remove from alternate_domains,us:county:21199,'Fiscal Court' is Kentucky's county board
+29,research_row,"jurisdiction_coverage.csv: Pulaski County, KY",no pulaskigov.com,add pulaskigov.com to alternate_domains,us:county:21199,same
+31,research_row,"jurisdiction_coverage.csv: Santa Rosa County, FL",domain santa-rosa.granicus.com and clip 3422,remove host and example URL,us:place:0670098,landing page reads 'City of Santa Rosa'
+34,research_row,"jurisdiction_coverage.csv: Texarkana city, AR",alternate_domains texarkanatexas.gov,remove from alternate_domains,us:place:4872368,domain names Texas
+36,research_row,"jurisdiction_coverage.csv: Ventura city, IA",domain ventura.primegov.com,remove host and example URL (keep venturaiowa.com),us:county:06111,'Board of Supervisors'; @countyofventuragovernment
+42,research_source,"wo171_channel_verdicts.csv: @CityofNorthMiami",gov_id us:place:4847988 (Miami TX),set gov_id us:place:1249450 North Miami FL,us:place:1249450,oEmbed author 'North Miami FL'; wo171_localview_places.csv has the same slip
+44,research_source,"wo171_channel_verdicts.csv: @DeSotoKansas",gov_id us:place:2919252 (De Soto MO),set gov_id us:place:2017850 De Soto KS,us:place:2017850,handle names Kansas
+8,archive_page,page 284,us:place:4816564 Cooper TX,re-key,us:place:1214125,Cooper City FL portal
+10,archive_page,page 9387,us:place:2921844 Ellington MO,re-key (town; Ryan accepted),us:cousub:0911025360,source www.ellington-ct.gov
+11,archive_page,page 10203,us:place:4929360 Glendale UT,re-key,us:place:0630000,"agenda 'Glendale, CA 91206'"
+12,archive_page,page 1443,us:county:12055 Highlands County FL,re-key,us:place:3431500,@boroughofhighlands
+13,archive_page,page 3172,us:place:5138424 Hopewell VA,re-key,us:place:3433150,'Hopewell Borough Council Meeting'
+14,archive_page,page 1758,ca:csd:3554042 James ON,re-key,us:county:51095,'Board of Supervisors Business Meeting'
+17,archive_page,"pages 1266, 3968, 11613",ca:csd:2430095 Lambton QC,re-key,ca:cd:3538,'Lambton County Council'
+19,archive_page,page 10479,us:place:1240875 Live Oak FL,re-key,us:place:0641936,video path liveoakca
+25,archive_page,page 2230,no gov_id,set,us:state:41,House Interim Committee
+32,archive_page,"pages 7492, 9865, 11201",ca:csd:1001277 Sunnyside NL,re-key,us:place:5368750,Ryan approved 2026-10-05
+35,archive_page,page 9404,ca:csd:3518029 Uxbridge ON,re-key,us:cousub:2502771620,'Spring Annual Town Meeting'; source uxbridge-ma.gov
+39,archive_page,page 7120,us:place:4082250 Wyandotte OK,re-key,us:place:2688900,'Wyandotte Zoning Board'; source wyandottemi.gov
+42,archive_page,page 9984,us:place:4847988 Miami TX,re-key,us:place:1249450,@CityofNorthMiami
+44,archive_page,page 9802,us:place:2919252 De Soto MO,re-key,us:place:2017850,@DeSotoKansas
+46,archive_page,page 10088,us:place:3630026 Granville village NY,re-key,us:cousub:3611530037,the Town's own channel
+30,archive_page,page 11313,"gov already Yarmouth MA, label still 'Yarmouth, NS'",relabel display name only,us:cousub:2500182525,show page names Cape Cod/Barnstable MA
+13,discovery_ledger,"tenants hopewellboroughnj.gov, www.hopewellboroughnj.gov (+ candidate em1HM4Ft4FU)",us:place:5138424 Hopewell VA,set gov_id,us:place:3433150,'Hopewell Borough Council Meeting'
+17,discovery_ledger,tenants lambton.civicweb.net (+ candidate Id=1483),ca:csd:2430095 Lambton QC,set gov_id,ca:cd:3538,'Lambton County Council'
+20,discovery_ledger,tenants lowell.civicweb.net,us:cousub:2301941435 Lowell ME,set gov_id,us:cousub:2608149560,'Charter Township of Lowell'
+25,discovery_ledger,tenants oregon.granicus.com,blank,set gov_id,us:state:41,House Interim Committee
+30,discovery_ledger,tenants reflect-yarmouth.cablecast.tv,ca:cd:1202 Yarmouth NS,set gov_id,us:cousub:2500182525,Cape Cod/Barnstable MA
+32,discovery_ledger,tenants sunnyside.primegov.com (+ its candidates),ca:csd:1001277 Sunnyside NL,set gov_id,us:place:5368750,Ryan approved 2026-10-05
+11,discovery_ledger,candidates on glendale.granicus.com (clips 8539/8529/8528),us:place:4929360 Glendale UT,set gov_id,us:place:0630000,tenant row already CA
+15,discovery_ledger,candidate juneauak event/4899,us:place:5538675 Juneau WI,set gov_id,us:place:0236400,tenant row already AK
+19,discovery_ledger,candidates on liveoakcity.primegov.com (3 City Council 2024),us:place:1240875 Live Oak FL,set gov_id,us:place:0641936,tenant row already CA

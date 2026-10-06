@@ -201,7 +201,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (30)
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
-  Pin audit (WO-1185): 52 addresses where stored pins name different…
+  Pin audit follow-up (WO-1186): 22 research rows, 19 Archive pages and…
   Vimeo blocks Render: every caption fetch gets a challenge page, so no…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
@@ -2195,13 +2195,13 @@ of human step they need.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
 
-### Pin audit (WO-1185): 52 addresses where stored pins name different governments, and someone must pick the right one `[HUMAN]`
+### Pin audit follow-up (WO-1186): 22 research rows, 19 Archive pages and 9 rtr-discovery records still name the wrong government `[HUMAN]`
 
-- **Issue**: `scripts/pin_audit.py --scope ambiguous` (2026-10-06) compared every pin store for governments that share a name with another government. It found 52 addresses with a high disagreement and 383 with a medium one. Each is listed once in `reports/pin_audit_2026-10-06/ambiguous/disagreements.csv`, with every stored claim on that address.
-- **Impact**: a wrong pin files new meetings under the wrong government. Several flagged pins look wrong (`cityofkingston.escribemeetings.com` on Kingston PE, `champlain.escribemeetings.com` on Champlain QC, `cityofdover.civicweb.net` on Dover NL). Often the pin is right and another store is wrong: a research row (Juneau AK pin against a Juneau WI row), an Archive page (Wyandotte MI host with its page filed under Wyandotte OK), or the rtr-discovery ledger (still has `sunnyside.primegov.com` on Sunnyside NL).
-- **Next action**: Ryan settles the 52 high rows, high first. Each answer becomes a pin fix (`apply_pin_worklist.py`), a research-row fix (from an rtr-business session) or an Archive page repair.
-- **Constraint**: the file names no winner on purpose. A hand check found the flagged pin is the wrong side only about half the time. Medium rows are mostly hand-typed research domains disagreeing with each other; skip them until the high rows are done.
-- **History**: `BACKLOG_DONE.md` WO-1185 (how the rules were built and measured).
+- **Issue**: Ryan settled all 52 high pin-audit rows on 2026-10-06. The 17 pin edits and 1 queue line shipped in WO-1186. The fixes for other systems are listed, not applied, in `reports/pin_audit_2026-10-06/ambiguous/handoff_other_stores.csv` (one row per fix, with the right gov_id and the evidence).
+- **Impact**: Archive pages stay filed under the wrong government (Sunnyside NL, Lambton QC, Wyandotte OK and others) until re-keyed. Wrong research rows can seed a wrong pin again on the next sweep.
+- **Next action**: an rtr-business session applies the research-row and `wo171_channel_verdicts.csv` lines; an Archive session re-keys the 19 pages (`POST /internal/jurisdiction/override`); an rtr-discovery session fixes the ledger rows (several may update by themselves once the pin change is deployed, since rtr-discovery copies pins).
+- **Constraint**: the pin edits only take effect after a deploy. Re-key the Archive pages after that, or a re-ingest could file them under the old pin again.
+- **History**: `BACKLOG_DONE.md` WO-1185 (the audit) and WO-1186 (the pin fixes).
 
 ### Vimeo blocks Render: every caption fetch gets a challenge page, so no Vimeo meeting gets a transcript on the server `[HUMAN]` `[WAIT]`
 

@@ -621,6 +621,21 @@ def rule_r1_same_name_split(data: AuditData, judged: Sequence[Pin]) -> List[Flag
 # ---------------------------------------------------------------- R2
 
 
+def _state_word_is_local_place(st: str, state: str) -> bool:
+    """True when a government named like the full state `st` exists inside the
+    pinned government's own `state` (washingtonwilkes.org: Washington is a
+    Georgia city, so "washington" there is a place name, not Washington State)."""
+    idx = core._twin_index()[0]
+    for nm, code in STATE_NAMES.items():
+        if code != st:
+            continue
+        for gid in idx.get(core.base_name(nm), ()):
+            gi = core.gov_info(gid)
+            if gi is not None and gi.state == state:
+                return True
+    return False
+
+
 def rule_r2_state_word(data: AuditData, judged: Sequence[Pin]) -> List[Flag]:
     flags: List[Flag] = []
     for p in judged:
@@ -636,6 +651,10 @@ def rule_r2_state_word(data: AuditData, judged: Sequence[Pin]) -> List[Flag]:
         st, how = res
         if st in g.state.split("/"):
             continue
+        if how == "word" and any(
+            _state_word_is_local_place(st, s) for s in g.state.split("/")
+        ):
+            continue  # the state word is a place name in the pin's own state
         if how != "word" and st in _CA_STATES and g.country != "ca":
             continue  # a bare Canadian code on a US address is usually part of the name
         other = ""

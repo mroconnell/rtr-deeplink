@@ -1751,7 +1751,13 @@ def test_a_stateless_name_ambiguous_between_tables_is_unresolved():
         resolve("Town of Hillsborough", "example-unpinned.granicus.com").tier
         == resolver.TIER_UNRESOLVED
     )
-    assert resolve("Oregon", "oregon.granicus.com").tier == resolver.TIER_UNRESOLVED
+    # WO-1186: `oregon.granicus.com` is now pinned to the State of Oregon
+    # (Ryan, 2026-10-06), so the bare-name ambiguity is checked on an
+    # unpinned host instead.
+    assert (
+        resolve("Oregon", "example-unpinned.granicus.com").tier
+        == resolver.TIER_UNRESOLVED
+    )
 
 
 @pytest.mark.parametrize(
