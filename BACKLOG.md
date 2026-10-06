@@ -225,7 +225,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (29)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (230)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (231)
+  [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
   [NEEDS-AUDIT] Near-empty station captions are only guarded on…
   [NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have…
   `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
@@ -2540,6 +2541,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus archive on a shared host (found 2026-10-05, Bay Area transit run).**
+  - **Issue**: given a `ViewPublisher.php?view_id=N` link on a Granicus host shared by several bodies, `scripts/meeting_finder.py --entry start` ignored the view. Three SamTrans-family views (ids 1, 2, 3) all returned the same old clip (`view_id=1&clip_id=1516`, note "picked by: undated, lister order"); TAM's view 24 returned a Marin County clip; TJPA's view 29 returned a view 2 clip. `granicus.list_recent_video_meetings()` on the same URLs returns the right view, newest first, so the fault is in how the runner picks, not in the lister.
+  - **Impact**: a find on a shared Granicus host can be an old or wrong-body meeting. Identity says "silent" or "disagrees", which only a hand read catches.
+  - **Next action**: find which path the runner takes for a `ViewPublisher` entry (it never reached the lister's newest-first order) and make it list that view's clips, newest first, before picking. Add a fixture test with a shared-host listing of 2+ views.
+  - **Constraint**: until fixed, hand-list each Granicus view with `list_recent_video_meetings()` and resolve the newest clip; always send the government's own `gov_id` (the resolver names the host's owner, e.g. "County of Marin" for TAM).
+  - **History**: found 2026-10-05 in the Bay Area transit session; results in rtr-business `research/bay_area_transit_2026-10-05.md`.
 
 - **[NEEDS-AUDIT] Near-empty station captions are only guarded on Cablecast and Swagit (found 2026-10-04, WO-1181).**
   - **Issue**: `caption_text_is_sparse()` gates Cablecast and (WO-1181) Swagit. Granicus, eScribe, CivicClerk, TelVue and the other caption platforms have no such gate, and only Swagit's stored pages were scanned (1 of 448 under 8 words a minute).
