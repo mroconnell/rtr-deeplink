@@ -10481,3 +10481,16 @@ https://boxcast.tv/view/chardon-township-trustees-meeting-7-15-2026-f4fvsotk6svv
 https://boxcast.tv/view/chardon-township-trustees-meeting-7-15-2026-f4fvsotk6svvaclvazit,boxcast,hls-master+variant,1972.77,,,1,accept,,0.09,2026-10-06T18:37:41+00:00,feed_tier3_auto_transcription,0
 https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2,cablecast,cablecast-api,8077.00,2023-11-02,,1,accept,,0.03,2026-10-06T18:37:45+00:00,,0
 https://reflect-cctv-vod.cablecast.tv/CablecastPublicSite/show/2673?channel=2,cablecast,cablecast-api,8077.00,2023-11-02,,1,accept,,0.02,2026-10-06T18:37:45+00:00,feed_tier3_auto_transcription,0
+http://108.20.229.83/internetchannel/show/3534?site=3,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",15.01,2026-10-06T22:48:14+00:00,,0
+http://108.20.229.83/internetchannel/show/3534?site=3,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",16.01,2026-10-06T22:48:30+00:00,feed_tier3_auto_transcription,0
+https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-10-06T22:48:35+00:00,,0
+https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:48:38+00:00,,0
+https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:48:41+00:00,,0
+https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:48:46+00:00,,0
+https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:48:48+00:00,,0
+https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T22:48:51+00:00,,0
+https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241,granicus,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.07,2026-10-06T22:48:55+00:00,,0
+https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T22:48:57+00:00,,0
+https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:49:01+00:00,,0
+https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:49:04+00:00,,0
+https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:49:08+00:00,,0
