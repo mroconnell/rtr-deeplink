@@ -1,3 +1,4 @@
+https://builder1.revize.com/revize/bentoncountywa/Documents/Government/Boards%20and%20Commissions/-%20Meeting%20Recordings/BOCC/2026/09%20(September)/Benton%20County%20Commissioners-20260922%201624-1.mp3?t=202609221827230	https://www.bentoncountywa.gov/government/elected_officials/commissioners/index.php	us:county:53005
 https://www.youtube.com/watch?v=LXZMkx2gNOY		us:cousub:3300386420
 https://www.youtube.com/watch?v=C-VsHqycao0		ca:csd:4817039
 https://www.youtube.com/watch?v=HNlW4WH8jCo		us:sd:0621330
@@ -973,7 +974,6 @@ https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
 https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
 https://play.champds.com/lakezurichil/event/206	https://lakezurich.org/260/On-Demand-Meeting-Recordings	us:place:1741742
 https://floresvilletx.portal.civicclerk.com/event/161/media		us:place:4826160	Special City Council Meeting	2026-10-02	City Council
-https://builder1.revize.com/revize/bentoncountywa/Documents/Government/Boards%20and%20Commissions/-%20Meeting%20Recordings/BOCC/2026/09%20(September)/Benton%20County%20Commissioners-20260922%201624-1.mp3?t=202609221827230	https://www.bentoncountywa.gov/government/elected_officials/commissioners/index.php	us:county:53005
 https://cms.washingtoncopa.gov/uploads/08_28_2025_BOC_SPECIAL_Mtg_No_1214_aedd9fce16.mp3	https://www.washcopa.gov/board-of-commissioners	us:county:42125
 https://butlercountyoh.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2831&Format=Agenda	https://butlercountyoh.iqm2.com/Citizens/Default.aspx	us:county:39017
 https://roanokecountyva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=Agenda	https://roanokecountyva.iqm2.com/Citizens/Default.aspx	us:county:51161
