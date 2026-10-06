@@ -716,7 +716,8 @@ def _clear_hub_cache():
 
 def _typelist():
     return FakeResponse(
-        status=200, raw=load_fixture_bytes("civicweb", "niagarafalls_meetingtypelist.html")
+        status=200,
+        raw=load_fixture_bytes("civicweb", "niagarafalls_meetingtypelist.html"),
     )
 
 
@@ -759,9 +760,7 @@ async def test_hub_parses_month_first_dates():
 
 
 async def test_hub_falls_back_to_schedule_page_when_type_list_empty():
-    html = (
-        '<a href="/Portal/MeetingInformation.aspx?Id=9">Council - 02 Mar 2026</a>'
-    )
+    html = '<a href="/Portal/MeetingInformation.aspx?Id=9">Council - 02 Mar 2026</a>'
     routes = {
         TYPELIST_URL: FakeResponse(status=200, text="<html></html>"),
         SCHEDULE_URL: FakeResponse(status=200, text=html),

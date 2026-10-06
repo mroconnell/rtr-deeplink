@@ -302,7 +302,9 @@ def _parse_hub_date(text: str):
         else:
             cleaned = re.sub(r"[.,]", "", raw)
             candidates = [cleaned]
-            fmts = ["%d %b %Y", "%d %B %Y"] if kind == "dmy" else ["%b %d %Y", "%B %d %Y"]
+            fmts = (
+                ["%d %b %Y", "%d %B %Y"] if kind == "dmy" else ["%b %d %Y", "%B %d %Y"]
+            )
         for cand in candidates:
             for fmt in fmts:
                 try:
@@ -340,8 +342,14 @@ def _parse_hub_meetings(html: str, origin: str) -> List[CalendarCandidate]:
             }
         )
     today = _date.today().isoformat()
-    past = sorted((r for r in rows if r["date"] and r["date"] <= today), key=lambda r: r["date"], reverse=True)
-    future = sorted((r for r in rows if r["date"] and r["date"] > today), key=lambda r: r["date"])
+    past = sorted(
+        (r for r in rows if r["date"] and r["date"] <= today),
+        key=lambda r: r["date"],
+        reverse=True,
+    )
+    future = sorted(
+        (r for r in rows if r["date"] and r["date"] > today), key=lambda r: r["date"]
+    )
     undated = [r for r in rows if not r["date"]]
     return (past + future + undated)[:_HUB_LIST_LIMIT]
 
