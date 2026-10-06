@@ -1,7 +1,9 @@
 import asyncio
+import html as _html
 import logging
 import random
 import re
+import time
 from datetime import date as _date, datetime, timedelta
 from typing import List, Optional, Dict, Tuple
 from urllib.parse import urlparse, parse_qs, urljoin
@@ -10,7 +12,7 @@ import aiohttp
 import wordninja
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarPageError
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
@@ -781,6 +783,19 @@ class GranicusAssetFinder(AssetFinder):
         return GranicusAssetFinder._pick_video_url(scan_media_urls(html, player_url))
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if _is_view_publisher_hub(url):
+            # A ViewPublisher hub is a list of meetings, not one meeting:
+            # hand the user the pick-list instead of "no playable video".
+            # An empty/unreadable feed falls through to the old behavior.
+            candidates = await list_hub_meetings(url)
+            if candidates:
+                raise CalendarPageError(
+                    message=(
+                        "This is a Granicus meeting list with multiple "
+                        "meetings, not a link to one specific meeting."
+                    ),
+                    candidates=candidates,
+                )
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
         async with aiohttp.ClientSession() as session:
@@ -1444,7 +1459,9 @@ class GranicusAssetFinder(AssetFinder):
 
 
 _RSS_ITEM_RE = re.compile(r"<item>(?:(?!</item>).)*?</item>", re.DOTALL)
-_RSS_ITEM_TITLE_RE = re.compile(r"<title>([^<]*)</title>")
+_RSS_ITEM_TITLE_RE = re.compile(
+    r"<title>\s*(?:<!\[CDATA\[(.*?)\]\]>|([^<]*))\s*</title>", re.DOTALL
+)
 _RSS_ITEM_CLIP_ID_RE = re.compile(r"clip_id=(\d+)")
 
 
@@ -1483,7 +1500,13 @@ async def list_recent_video_meetings(
     if not view_id:
         return []
     domain = urlparse(url).netloc
-    rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
+    return await _fetch_rss_items(domain, view_id, "video", limit)
+
+
+async def _fetch_rss_items(
+    domain: str, view_id: str, mode: str, limit: int
+) -> List[Dict[str, Optional[str]]]:
+    rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode={mode}"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -1491,11 +1514,18 @@ async def list_recent_video_meetings(
             ) as response:
                 if response.status != 200:
                     return []
-                xml = await response.text()
+                xml = await read_capped_text(response)
     except Exception:
-        logger.warning("Granicus video-RSS fetch failed for %s", rss_url, exc_info=True)
+        logger.warning(
+            "Granicus %s-RSS fetch failed for %s", mode, rss_url, exc_info=True
+        )
         return []
+    return _parse_rss_items(xml, domain, view_id, limit)
 
+
+def _parse_rss_items(
+    xml: str, domain: str, view_id: str, limit: int
+) -> List[Dict[str, Optional[str]]]:
     items: List[Dict[str, Optional[str]]] = []
     for item_xml in _RSS_ITEM_RE.findall(xml)[:limit]:
         clip_match = _RSS_ITEM_CLIP_ID_RE.search(item_xml)
@@ -1506,7 +1536,12 @@ async def list_recent_video_meetings(
             continue
         clip_id = clip_match.group(1)
         title_match = _RSS_ITEM_TITLE_RE.search(item_xml)
-        title = title_match.group(1).strip() if title_match else ""
+        title = ""
+        if title_match:
+            raw_title = title_match.group(1)
+            if raw_title is None:
+                raw_title = _html.unescape(title_match.group(2) or "")
+            title = raw_title.strip()
         date = None
         parts_tag = re.search(r"<gran:pubDateParts\b[^>]*/?>", item_xml)
         if parts_tag:
@@ -1524,3 +1559,51 @@ async def list_recent_video_meetings(
             }
         )
     return items
+
+
+_HUB_PATH_RE = re.compile(r"/ViewPublisher(?:RSS)?\.php$", re.IGNORECASE)
+_HUB_LISTING_MAX = 15
+_HUB_CACHE_TTL_SECONDS = 5 * 60
+# rss_url-keyed (monotonic expiry, items). Only successful non-empty
+# listings are stored, so a transient failure is never remembered.
+_hub_cache: Dict[str, Tuple[float, List[Dict[str, Optional[str]]]]] = {}
+
+
+def _is_view_publisher_hub(url: str) -> bool:
+    """True for a Granicus hub address: ViewPublisher.php or
+    ViewPublisherRSS.php with a view_id and no clip_id/event_id/meta_id
+    (any `mode=` allowed)."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if not _HUB_PATH_RE.search(parsed.path or ""):
+        return False
+    query = {k.lower() for k in parse_qs(parsed.query)}
+    if "view_id" not in query:
+        return False
+    return not (query & {"clip_id", "event_id", "meta_id"})
+
+
+async def list_hub_meetings(
+    url: str, *, limit: int = _HUB_LISTING_MAX
+) -> List[Dict[str, Optional[str]]]:
+    """Newest meetings with a clip for a hub address: tries mode=video, then
+    mode=podcast if video yielded nothing (at most 2 requests). Cached
+    in-process for a few minutes. Returns [] when nothing is listed."""
+    query = parse_qs(urlparse(url).query)
+    view_id = next((v[0] for k, v in query.items() if k.lower() == "view_id"), None)
+    if not view_id:
+        return []
+    domain = urlparse(url).netloc
+    key = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}"
+    now = time.monotonic()
+    hit = _hub_cache.get(key)
+    if hit and hit[0] > now:
+        return list(hit[1][:limit])
+    for mode in ("video", "podcast"):
+        items = await _fetch_rss_items(domain, view_id, mode, limit)
+        if items:
+            _hub_cache[key] = (now + _HUB_CACHE_TTL_SECONDS, items)
+            return list(items)
+    return []
