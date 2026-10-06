@@ -1,5 +1,29 @@
 # Backlog — done
 
+## [Done 2026-10-06] WO-1186: pin-audit fixes Ryan approved: 17 pin rows and 1 queue line
+
+**What was decided.** Ryan read the 52 high rows from the WO-1185 pin audit and accepted the proposed fix for 50. He checked the last 2 himself: Woodstock's agenda gives "500 Dundas Street, Woodstock, ON", and the Dover portal does not load.
+
+**Result.** Each of the 52 rows is counted once.
+
+| Outcome | Rows |
+|---|---|
+| Pin was correct (another record was wrong, or a false alarm) | 36 |
+| Pin was wrong, fixed here | 14 |
+| Was unsure; Ryan checked | 2 |
+| Total | 52 |
+
+**What changed in `tenant_overrides.csv`.** 17 rows. Each carries source `ryan_stated+pin_audit_2026-10-06` and its old gov_id in the evidence.
+- 7 name-match sweep pins on the wrong same-named town: Armstrong (to BC), Champlain, Kingston and Lakeshore (to ON), Lambton (to Lambton County ON), Lowell (to Lowell charter township MI), Middleton (to Middleton town WI).
+- `oregon.granicus.com` to the State of Oregon (`us:state:41`).
+- 2 North Miami pins (Miami TX to North Miami FL), 2 De Soto pins (MO to KS), the Hopewell borough NJ channel (was Hopewell VA), 2 pins on one Osage County video (MO to KS).
+- `woodstock.escribemeetings.com` to Woodstock ON (Ryan's check).
+- `cityofdover.civicweb.net` deleted: no real portal, and nothing names it.
+
+**Also.** Queue line for `mapleton.civicweb.net` Id=371 moved from Mapleton School District CO to Mapleton ON. The audit's state-word rule no longer reads "Washington" in `washingtonwilkes.org` as a state, because a Washington exists in the pinned government's own state (Georgia).
+
+**Not done here.** Research rows, Archive pages and rtr-discovery records; see the `BACKLOG.md` WO-1186 entry and `reports/pin_audit_2026-10-06/ambiguous/handoff_other_stores.csv`.
+
 ## [Done 2026-10-06] WO-1185: pin audit, a free rule check that finds pins contradicting each other
 
 **Why this ran.** On 2026-10-05 `sunnyside.primegov.com` was found pinned to Sunnyside NL. Two other pins and the city's YouTube handle said Sunnyside WA, and nothing compared them. Ryan asked for a cheap check, rerun from time to time, that lists pins which contradict each other or look improbable. He chose rules first; Jev (the TypeSafe system-one classifier) comes later only if the rules leave too much undecided.

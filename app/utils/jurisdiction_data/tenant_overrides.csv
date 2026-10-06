@@ -60,7 +60,7 @@ apps.tampagov.net,,us:place:1271000,fallback,known_domains,app/utils/jurisdictio
 ardsleyvillage.civicweb.net,,us:place:3602506,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Ardsley village
 argyle.escribemeetings.com,,ca:csd:4604057,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Argyle
 arkansas-sc.granicus.com,,rtr:us:ar:arkansas-supreme-court,authoritative,ryan_stated,"Arkansas Supreme Court -- the subdomain's 'sc' is the court, not South Carolina. Ryan, 2026-09-10."
-armstrong.civicweb.net,,ca:csd:3554036,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Armstrong
+armstrong.civicweb.net,,ca:csd:5937028,fallback,ryan_stated+pin_audit_2026-10-06,Armstrong BC: cityofarmstrong.bc.ca links this portal 22 times. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:3554036
 arranelderslie.escribemeetings.com,,ca:csd:3541043,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Arran-Elderslie
 artesiaca.cablecast.tv,,us:place:0602896,fallback,auto_derived+visual_confirmed,"city seal reads 'City of Artesia, State of California, Incorporated 1959' (landing.png) [reports/jurisdiction_screens/artesiaca.cablecast.tv/landing.png reports/jurisdiction_screens/artesiaca.cablecast.tv/meeting.png] -> place 0602896 -> registry: us_places.csv Artesia city"
 ascensionparishla.portal.civicclerk.com,,us:county:22005,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Ascension Parish
@@ -206,7 +206,7 @@ centrehastings.civicweb.net,,ca:csd:3512026,fallback,wildcard_http_sweep_2,DNS r
 centrewellington.civicweb.net,,ca:csd:3523025,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Centre Wellington
 cerritos.cablecast.tv,,us:place:0612552,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0612552; 1 weak page(s) e.g. /m/2026-08-18-senior-services-commission-special-meeting-august-18-2026
 champaign.cablecast.tv,,us:place:1712385,fallback,wo153_identity_join,"WebSearch-confirmed real domain champaignil.gov for the Champaign, IL jurisdiction_coverage.csv row that had this cablecast host recorded as its bare domain; host already resolves 4 other archived pages to us:place:1712385 via registry tier, this pin catches the 1 page (Board of Fire and Police Commissioners) whose title carries no place name"
-champlain.escribemeetings.com,,ca:csd:2437220,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Champlain
+champlain.escribemeetings.com,,ca:csd:3502010,fallback,ryan_stated+pin_audit_2026-10-06,Champlain ON: bare host 404s; live pub-champlain agenda reads 'Township of Champlain ... L'Orignal'. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:2437220
 chapelhill.granicus.com,,us:place:3711800,fallback,ryan_stated,"Chapel Hill, NC -- us_places.csv Chapel Hill town"
 chapple.civicweb.net,,ca:csd:3559024,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Chapple
 charlescountymd.cablecast.tv,,us:county:24017,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:24017; 2 weak page(s) e.g. /m/2026-08-17-planning-commission-august-17-2026
@@ -234,7 +234,6 @@ cityofcarterlake.com,,us:place:1911215,fallback,hub_sweep_wo126,"coverage regist
 cityofclintoniowa.civicweb.net,,us:place:1914430,fallback,ryan_stated,"Clinton, IA -- us_places.csv Clinton city"
 cityofdawson.escribemeetings.com,,ca:csd:6001029,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Dawson
 cityofdellrapids.granicus.com,,us:place:4615980,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:4615980; 1 weak page(s) e.g. /m/city-of-dell-rapids-sd-2020-11-16-city-council-regular-meeting
-cityofdover.civicweb.net,,ca:csd:1007057,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Dover
 cityofelgin.granicus.com,,us:place:1723074,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:1723074; 1 weak page(s) e.g. /m/city-of-elgin-il-2021-08-25-city-of-elgin-committee-of-the-whole-meeting-august
 cityofepa.granicus.com,,us:place:0620956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: East Palo Alto, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv East Palo Alto city"
 cityofevanston.civicweb.net,,us:place:1724582,fallback,ryan_stated,"Evanston, IL -- us_places.csv Evanston city"
@@ -242,7 +241,7 @@ cityofharrington.civicweb.net,,ca:csd:2476065,fallback,wildcard_http_sweep_2,DNS
 cityofhawthorne.primegov.com,,us:place:0632548,fallback,ryan_stated,"Hawthorne, CA -- us_places.csv Hawthorne city"
 cityofhighwood.com,,us:place:1734865,fallback,identity_join+landing_page,"Highwood, IL -- us_places.csv Highwood city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 cityofjerseycity.civicweb.net,,us:place:1342184,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Jersey city
-cityofkingston.escribemeetings.com,,ca:csd:1102022,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Kingston
+cityofkingston.escribemeetings.com,,ca:csd:3510010,fallback,ryan_stated+pin_audit_2026-10-06,Kingston ON: bare host 404s; live pub-cityofkingston agenda cites the Province of Ontario. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:1102022
 cityofkyle.primegov.com,,us:place:4839952,fallback,step0_leads_3_4_8_2026-09-27,"corrected from Kyle, SK: Slug fits one government only (slug carries state or kind)"
 cityoflacrosse.granicus.com,,us:place:5540775,fallback,identity_join+landing_page,"La Crosse, WI -- us_places.csv La Crosse city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 cityoflancasterca.primegov.com,,us:place:0640130,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Lancaster city
@@ -629,9 +628,9 @@ lakecountyfl.portal.civicclerk.com,,us:county:12069,fallback,auto_derived+wildca
 lakecowichan.escribemeetings.com,,ca:csd:5919016,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lake Cowichan
 lakeforest.primegov.com,,us:place:0639496,fallback,ryan_stated,"Lake Forest, CA -- us_places.csv Lake Forest city"
 lakeofbays.civicweb.net,,ca:csd:3544027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lake of Bays
-lakeshore.escribemeetings.com,,ca:csd:4617075,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lakeshore
+lakeshore.escribemeetings.com,,ca:csd:3537064,fallback,ryan_stated+pin_audit_2026-10-06,Lakeshore ON: bare host 404s; live pub-lakeshore resolves to Lakeshore ON. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:4617075
 lamarcountyga.civicweb.net,,us:county:13171,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Lamar County
-lambton.civicweb.net,,ca:csd:2430095,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lambton
+lambton.civicweb.net,,ca:cd:3538,fallback,ryan_stated+pin_audit_2026-10-06,"Lambton County ON: Archive pages 1266/3968/11613 titled 'Lambton County Council', channel @CountyofLambton. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:2430095"
 lambtonshores.escribemeetings.com,,ca:csd:3538040,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lambton Shores
 lamontcounty.civicweb.net,,ca:csd:4810058,fallback,wildcard_http_sweep_2+ryan_stated,"DNS resolves -> unverified: minted from 'Lamont County, AB' -- repointed 2026-09-29 (route_resolved): the Archive's pages for this government sit under ca:csd:4810058; rtr:ca:ab:lamont-county was an unverified minted duplicate"
 lanarkhighlands.escribemeetings.com,,ca:csd:3509039,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lanark Highlands
@@ -688,7 +687,7 @@ losgatos-ca.municodemeetings.com,,us:place:0644112,fallback,upcoming_roster,upco
 loswegok12.granicus.com,,us:sd:4107230,fallback,auto_derived+visual_confirmed,'Lake Oswego School District Streaming Media Archive' (landing.png); the only NCES district of that name [reports/jurisdiction_screens/loswegok12.granicus.com/landing.png reports/jurisdiction_screens/loswegok12.granicus.com/meeting.png] -> nces 4107230 -> registry: us_school_districts.csv Lake Oswego School District 7J (unified)
 louisville.granicus.com,,us:place:2148006,fallback,consolidated_government,Every archived page on this host keys to this consolidated city-county already (2026-09-10 audit of ~30 such governments); pinned so a re-spelling can never split it.
 louisvilleky.primegov.com,,us:place:2148006,fallback,consolidated_government,Every archived page on this host keys to this consolidated city-county already (2026-09-10 audit of ~30 such governments); pinned so a re-spelling can never split it.
-lowell.civicweb.net,,us:cousub:2301941435,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_cousubs.csv Lowell town
+lowell.civicweb.net,,us:cousub:2608149560,fallback,ryan_stated+pin_audit_2026-10-06,Lowell charter township MI: portal title 'Charter Township of Lowell'; MI research row lists this host. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:cousub:2301941435
 lowellma.gov,,us:place:2537000,fallback,hub_sweep_wo126,"coverage registry row us:place:2537000 (Lowell city, MA); hub https://lowellma.gov/calendar.aspx?CID=62,64,14; meeting found via youtube at https://lowellma.gov/AgendaCenter"
 loyalist.civicweb.net,,ca:csd:3511005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Loyalist
 lsmo.granicus.com,,us:place:2941348,fallback,ryan_stated,"Lees Summit, MO -- us:place:2941348 Lee's Summit city matched with spacing ignored"
@@ -759,7 +758,7 @@ middlesex.legistar.com,,ca:cd:3539,fallback,wildcard_http_sweep_1,HTTP 200 len=2
 middlesexcentre.escribemeetings.com,,ca:csd:3539033,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Middlesex Centre
 middlesexcounty.escribemeetings.com,,us:county:34023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Middlesex County
 middlesexcountynj.primegov.com,,us:county:34023,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Middlesex County
-middleton.civicweb.net,,ca:csd:1205016,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Middleton
+middleton.civicweb.net,,us:cousub:5502551600,fallback,ryan_stated+pin_audit_2026-10-06,Middleton town WI: town.middleton.wi.us links middleton.civicweb.net/Portal. Ryan approved 2026-10-06 (WO-1185 pin audit); was ca:csd:1205016
 middletown.granicus.com,,us:place:0947290,fallback,ryan_stated,"Middletown, CT -- us_places.csv Middletown city"
 midland.civicweb.net,,ca:csd:3543074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Midland
 midland.granicus.com,,us:place:2653780,fallback,ryan_stated,"Midland, MI -- us_places.csv Midland city"
@@ -899,7 +898,7 @@ onoway.escribemeetings.com,,ca:csd:4813014,fallback,wildcard_http_sweep_2,bare f
 orangecity.civicweb.net,,us:place:1251825,fallback,step0_dns_full_2026-09-28,"corrected from Orange city, TX: page state FL; title 'The City of Orange City - Home'; page names 'The City of Orange City'"
 orangecountync.cablecast.tv,,us:county:37135,fallback,auto_derived+visual_confirmed,'Orange County NC TV'; 'BOCC Business Meeting'; clerk@orangecountync.gov (landing.png) [reports/jurisdiction_screens/orangecountync.cablecast.tv/landing.png reports/jurisdiction_screens/orangecountync.cablecast.tv/meeting.png] -> county 37135 -> registry: us_counties.csv Orange County
 orangeville.escribemeetings.com,,ca:csd:3522014,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Orangeville
-oregon.granicus.com,,rtr:us:or:oregon,fallback,wildcard_http_sweep_1,"HTTP 404 -> unverified: minted from 'Oregon, OR'"
+oregon.granicus.com,,us:state:41,fallback,ryan_stated+pin_audit_2026-10-06,State of Oregon: only page is 'House Interim Committee On Agriculture and Natural Resources'. Ryan approved 2026-10-06 (WO-1185 pin audit); was rtr:us:or:oregon
 orillia.civicweb.net,,ca:csd:3543052,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Orillia
 orindaca.iqm2.com,,us:place:0654232,fallback,landing_page,"landing page https://orindaca.iqm2.com/Citizens/Default.aspx reads ""Orinda"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 oromedonte.civicweb.net,,ca:csd:3543023,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Oro-Medonte
@@ -1556,7 +1555,7 @@ wollaston.civicweb.net,,ca:csd:3512054,fallback,wildcard_http_sweep_2,DNS resolv
 woodburymn.gov,,us:place:2771428,fallback,identity_join+landing_page,"Woodbury, MN -- us_places.csv Woodbury city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 woodland.civicweb.net,,us:place:5379625,fallback,ryan_stated,"Woodland, WA -- us_places.csv Woodland city"
 woodlands.civicweb.net,,ca:csd:4614031,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Woodlands
-woodstock.escribemeetings.com,,rtr:ca:nb:woodstock,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Woodstock, NB'"
+woodstock.escribemeetings.com,,ca:csd:3532042,fallback,ryan_stated+pin_audit_2026-10-06,"Woodstock ON: Ryan read the account's agenda 2026-10-06, address P.O. Box 1539, 500 Dundas Street, Woodstock, ON N4S 0A7; same as pub-woodstock. Was rtr:ca:nb:woodstock (WO-1185 pin audit)"
 woolwich.escribemeetings.com,,ca:csd:3530035,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Woolwich
 worcestercountymd.primegov.com,,us:county:24047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Worcester County
 worthingtonoh.new.swagit.com,,us:place:3986604,fallback,identity_join+landing_page,"Worthington (city), OH -- us_places.csv Worthington city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
@@ -2354,7 +2353,7 @@ www.youtube.com,channel=@CityofMorgantown,us:place:5455756,fallback,wo171_localv
 www.youtube.com,channel=@CityofMountPearl,ca:csd:1001542,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/city-of-mount-pearl-nl-2026-08-18-regular-public-council-meeting; owner title ""City of Mount Pearl"""
 www.youtube.com,channel=@CityofNewUlmMN,us:place:2746042,fallback,wo171_localview,"New Ulm city, MN -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
 www.youtube.com,channel=@CityofNorthKansasCityMissouri,us:place:2953102,fallback,wo171_localview,"North Kansas City city, MO -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
-www.youtube.com,channel=@CityofNorthMiami,us:place:4847988,fallback,wo171_localview,"Miami city, TX -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
+www.youtube.com,channel=@CityofNorthMiami,us:place:1249450,fallback,ryan_stated+pin_audit_2026-10-06,North Miami city FL: channel owner recorded as 'North Miami FL'. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:place:4847988
 www.youtube.com,channel=@CityofOakHarbor,us:place:5350360,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-oak-harbor-wa-2026-08-14-8-13-2026-arts-commission-meeting; owner title ""City of Oak Harbor"""
 www.youtube.com,channel=@CityofOceanside,us:place:0653322,fallback,wo171_localview,"Oceanside city, CA -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
 www.youtube.com,channel=@CityofOneidaNY,us:place:3654837,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/oneida-ny-2026-08-25-special-meeting-8-11-2026; owner title ""City of Oneida, NY"""
@@ -2417,7 +2416,7 @@ www.youtube.com,channel=@CookCountyMN,us:county:27031,fallback,archive_study_202
 www.youtube.com,channel=@CountyofJackson,us:county:26075,fallback,ryan_stated,"Jackson County, MI -- own channel; state from the channel About page / video description (conductor 2026-09-10, Ryan: straightforward from channel name and title)"
 www.youtube.com,channel=@CountyofLambton,ca:csd:2430095,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/lambton-qc-2026-07-02-lambton-county-council-open-session-02-jul-2026; owner title ""CountyofLambton"""
 www.youtube.com,channel=@DarienCableChannel,us:place:1718628,fallback,wo171_localview,"Darien city, IL -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
-www.youtube.com,channel=@DeSotoKansas,us:place:2919252,fallback,wo171_localview,"De Soto city, MO -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
+www.youtube.com,channel=@DeSotoKansas,us:place:2017850,fallback,ryan_stated+pin_audit_2026-10-06,De Soto city KS: handle names Kansas; the city's own home page links the channel. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:place:2919252
 www.youtube.com,channel=@DentonCountyTexas,us:county:48121,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/denton-county-tx-2018-02-05-denton-county-confederate-memorial-advisory-committe; owner title ""Denton County, Texas"""
 www.youtube.com,channel=@DistrictofSquamish,ca:csd:5931006,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/the-district-of-squamish-2026-03-17-regular-council-17-mar-2026; owner title ""DistrictofSquamish"""
 www.youtube.com,channel=@DouglasvilleCITITV,us:place:1323900,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-douglasville-ga-2026-08-03-2026-08-03-city-council-special-meeting-milla; owner title ""Douglasville, Georgia"""
@@ -3030,7 +3029,7 @@ www.youtube.com,channel=@hillsdalenj5879,us:place:3431920,fallback,wo171_localvi
 www.youtube.com,channel=@historictownofeatonville,us:place:1219650,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/eatonville-fl-2026-08-04-town-of-eatonville-council-meeting-8-4-2026; owner title ""Town of Eatonville, FL"""
 www.youtube.com,channel=@holyokemedia8419,us:place:2530840,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-holyoke-ma-2026-03-03-holyoke-city-council-meeting-march-3-2026; owner title ""Holyoke Media"""
 www.youtube.com,channel=@hoopercity4023,us:place:4936400,fallback,archive_study_2026-09-09,"11 solidly-identified archive page(s), e.g. /m/hooper-ut-2026-08-25-august-20-2026-city-council-meeting; owner title ""Hooper City"""
-www.youtube.com,channel=@hopewellboroughNJ,us:place:5138424,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/hopewell-borough-nj-2025-11-30-october-9-2025-hopewell-borough-council-meeting; owner title ""Hopewell Borough, Mercer County New Jersey"""
+www.youtube.com,channel=@hopewellboroughNJ,us:place:3433150,fallback,ryan_stated+pin_audit_2026-10-06,"Hopewell borough NJ: owner title 'Hopewell Borough, Mercer County New Jersey'. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:place:5138424"
 www.youtube.com,channel=@hornlakeboardmeetings1534,us:place:2833700,fallback,wo171_localview,"Horn Lake city, MS -- WO-171 LocalView, own-channel verdict, oEmbed author confirms"
 www.youtube.com,channel=@hugedomains4384,us:county:40117,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/muskogee-county-ok-2021-05-17-hugedomains-com-location-matters; owner title ""HugeDomains"""
 www.youtube.com,channel=@humcodhhs,us:county:06023,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/county-of-humboldt-ca-2026-07-24-humboldt-county-behavioral-health-board-regular; owner title ""Humboldt County DHHS"""
@@ -3388,7 +3387,7 @@ www.youtube.com,ieeL6yr6f_A,us:place:2650560,fallback,wo171_localview,"Madison H
 www.youtube.com,ik_QbMnx5M4,us:place:4873724,fallback,wo171_localview,"Troup city, TX -- WO-171 LocalView, title: 'Troup City Council August 2018'"
 www.youtube.com,ilm3-AloG40,us:county:26129,fallback,wo149_county_ladder_sweep,"Ogemaw County, MI -- WO-134 confirmed hit, gov_id=us:county:26129"
 www.youtube.com,iqMBykB5aZU,us:place:5552200,fallback,wo171_localview,"Milton city, WI -- WO-171 LocalView, title: 'City of Milton, Common Council, 03/03/2026'"
-www.youtube.com,irtYu6lNKb8,us:place:4847988,fallback,wo171_localview,"Miami city, TX -- WO-171 LocalView, title: 'Long Meeting Short with City Clerk Vanessa Joseph, Esq.'"
+www.youtube.com,irtYu6lNKb8,us:place:1249450,fallback,ryan_stated+pin_audit_2026-10-06,North Miami city FL: video on @CityofNorthMiami. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:place:4847988
 www.youtube.com,ivXBSrZPKHI,us:place:3915644,fallback,wo171_localview,"Clayton city, OH -- WO-171 LocalView, title: 'Clayton, Ohio  - City Council Meeting May 15, 2014'"
 www.youtube.com,j6wab7lOUJ4,us:place:4604980,fallback,wo171_localview,"Beresford city, SD -- WO-171 LocalView, title: 'Beresford, SD Council Meeting 01-05-2026'"
 www.youtube.com,j7yZmc3eI0c,us:place:2680420,fallback,wo171_localview,"Trenton city, MI -- WO-171 LocalView, title: 'Trenton City Council Meeting - 2012-8-20'"
@@ -3409,7 +3408,7 @@ www.youtube.com,jzwAgnbiMDc,us:place:2924778,fallback,wo171_localview,"Florissan
 www.youtube.com,k9dZdq5uyQA,us:place:0258660,fallback,wo175_localview_recheck,"Palmer city -- WO-175 LocalView recheck, gov_id=us:place:0258660, title='Palmer Council Meeting 2026 4 14 Part One with Video and Audio'"
 www.youtube.com,kEyLosUDcpk,us:place:0668252,fallback,ryan_stated,"San Mateo, CA (YouTube channel @CityofSanMateo) -- us_places.csv San Mateo city"
 www.youtube.com,kFyb-zLdhI8,us:place:3743480,fallback,wo171_localview,"Mint Hill town, NC -- WO-171 LocalView, title: 'January 8, 2026, Board of Commissioners Meeting'"
-www.youtube.com,kGepCh07dg4,us:county:29151,fallback,ryan_flagged_replacement_2026-09-10,"Osage County, MO -- WO-134 confirmed hit, gov_id=us:county:29151"
+www.youtube.com,kGepCh07dg4,us:county:20139,fallback,ryan_stated+pin_audit_2026-10-06,"Osage County KS: video on @osagecounty1099, pinned to Osage County KS. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:county:29151"
 www.youtube.com,kKKQ_Mxmmp4,us:place:3731400,fallback,wo171_localview,"High Point city, NC -- WO-171 LocalView, title: 'High Point City Council Meeting | 2-16-26 | 5:30 p.m.'"
 www.youtube.com,kZJQsApBQw4,us:place:0159472,fallback,wo150_muni_ladder_sweep,"Phenix City city -- WO-150 muni ladder sweep, gov_id=us:place:0159472"
 www.youtube.com,kg26vFp-oYY,us:place:3737760,fallback,wo147_access_ladder_sweep,"Lenoir city -- WO-134 confirmed hit, gov_id=us:place:3737760"
@@ -3452,7 +3451,7 @@ www.youtube.com,mjryQPNsKnU,us:place:3935098,fallback,wo171_localview,"Hicksvill
 www.youtube.com,mkCkYbVvds0,us:place:3700160,fallback,wo171_localview,"Aberdeen town, NC -- WO-171 LocalView, title: 'Town of Aberdeen Board Work Session 03/13/2023'"
 www.youtube.com,mtaDYIt0G-s,us:place:3654100,fallback,wo147_access_ladder_sweep,"Nyack village -- WO-134 confirmed hit, gov_id=us:place:3654100"
 www.youtube.com,my1pQX-Vhik,us:county:18157,fallback,wo149_county_ladder_sweep,"Tippecanoe County, IN -- WO-134 confirmed hit, gov_id=us:county:18157"
-www.youtube.com,n5OEcV-2kOc,us:place:2919252,fallback,wo171_localview,"De Soto city, MO -- WO-171 LocalView, title: 'August 12, 2025, Special Planning Commission Meeting'"
+www.youtube.com,n5OEcV-2kOc,us:place:2017850,fallback,ryan_stated+pin_audit_2026-10-06,De Soto city KS: video on @DeSotoKansas. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:place:2919252
 www.youtube.com,n68uGArQdKU,us:place:2740688,fallback,wo171_localview,"Marshall city, MN -- WO-171 LocalView, title: '12.01.2025 Marshall Public Schools Board Meeting'"
 www.youtube.com,n6_AWET9sa4,us:place:5506500,fallback,wo171_localview,"Beloit city, WI -- WO-171 LocalView, title: 'Beloit City Council Meeting - February 16th, 2026'"
 www.youtube.com,n9GAArIOJXY,us:place:3768400,fallback,wo171_localview,"Trinity city, NC -- WO-171 LocalView, title: 'City Council Meeting December 8, 2025'"
@@ -3977,7 +3976,7 @@ www.youtube.com,youtube:jus309yshnc,us:county:41005,fallback,wo184_ingest_found,
 www.youtube.com,youtube:k4Rn5FUYaJI,us:place:1849320,fallback,wo179_family_scale,"Milford town, IN -- WO-134 confirmed hit, gov_id=us:place:1849320"
 www.youtube.com,youtube:k5kqyYU4o2k,us:place:1903475,fallback,wo179_family_scale,"Atkins city, IA -- WO-134 confirmed hit, gov_id=us:place:1903475"
 www.youtube.com,youtube:k8Yil4qz_Tg,us:cousub:3610338000,fallback,wo179_family_scale,"Islip town, NY -- WO-134 confirmed hit, gov_id=us:cousub:3610338000"
-www.youtube.com,youtube:kGepCh07dg4,us:county:29151,fallback,ryan_flagged_replacement_2026-09-10,"Osage County, MO -- WO-134 confirmed hit, gov_id=us:county:29151"
+www.youtube.com,youtube:kGepCh07dg4,us:county:20139,fallback,ryan_stated+pin_audit_2026-10-06,"Osage County KS: video on @osagecounty1099, pinned to Osage County KS. Ryan approved 2026-10-06 (WO-1185 pin audit); was us:county:29151"
 www.youtube.com,youtube:kS6fNXK9-4o,us:place:2638180,fallback,wo150_muni_ladder_sweep,"Highland Park city -- WO-150 muni ladder sweep, gov_id=us:place:2638180"
 www.youtube.com,youtube:kW5ttzKE9W0,us:place:2231705,fallback,wo179_family_scale,"Greenwood town, LA -- WO-134 confirmed hit, gov_id=us:place:2231705"
 www.youtube.com,youtube:kg26vFp-oYY,us:place:3737760,fallback,wo147_access_ladder_sweep,"Lenoir city -- WO-134 confirmed hit, gov_id=us:place:3737760"

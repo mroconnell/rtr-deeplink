@@ -197,6 +197,17 @@ def test_r2_two_letters_that_are_part_of_the_name_do_not_fire():
     assert nr.rule_r2_state_word(data([p]), [p]) == []
 
 
+def test_r2_state_word_that_is_a_place_in_the_pins_own_state_does_not_fire():
+    # SYNTHETIC pin, real ids: Wilkes County GA (us:county:13317). Washington
+    # is a real Georgia city (us:place:1380704), so "washingtonwilkes" is a
+    # local place name, not Washington State.
+    p = pin("washingtonwilkes.org", "us:county:13317", source="research_row")
+    assert nr.rule_r2_state_word(data([p]), [p]) == []
+    # Positive control: Sunnyside NL has no Washington place, so this still fires.
+    q = pin("sunnysidewashington.org", NL)
+    assert len(nr.rule_r2_state_word(data([q]), [q])) == 1
+
+
 # ---------------------------------------------------------------- R5 / R6
 
 
