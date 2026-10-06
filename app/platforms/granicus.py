@@ -1516,7 +1516,9 @@ async def _fetch_rss_items(
                     return []
                 xml = await read_capped_text(response)
     except Exception:
-        logger.warning("Granicus %s-RSS fetch failed for %s", mode, rss_url, exc_info=True)
+        logger.warning(
+            "Granicus %s-RSS fetch failed for %s", mode, rss_url, exc_info=True
+        )
         return []
     return _parse_rss_items(xml, domain, view_id, limit)
 
