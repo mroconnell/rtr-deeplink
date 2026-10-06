@@ -680,8 +680,9 @@ under everything else. This repo extracts and fixes just that part.
   `BACKLOG.md` (see its generated-doc entry). **Run
   `scripts/setup_merge_drivers.sh` once per clone** (worktrees share it);
   without it git quietly uses the normal text merge. GitHub's server-side merge ignores .gitattributes. Two throwaway branches each appended a different line to the feed log (a union file). Merged locally they were clean, but the merges API returned 409 Conflict. So a PR can still show a conflict on GitHub; it disappears when you merge origin/main locally, and that is how we resolve it.
-  The driver also falls back to the normal merge for a repeated key
-  (`tenant_overrides.csv` has 39 today).
+  The driver also falls back to the normal merge for a repeated key.
+  `tenant_overrides.csv` has none since 2026-10-05, and
+  `tests/test_tenant_overrides_unique_keys.py` keeps it that way.
 
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**
