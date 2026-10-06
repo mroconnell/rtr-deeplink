@@ -10463,3 +10463,8 @@ https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-
 https://jupiterislandfl.portal.civicclerk.com/event/347/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-10-06T06:52:23+00:00,,0
 https://vvuhsd.new.swagit.com/videos/395521,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:26+00:00,,0
 https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-06T06:52:29+00:00,,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=29&clip_id=53126,granicus,hls-master+variant,3198.38,,,1,accept,,0.15,2026-10-06T14:25:30+00:00,bulk_ingest,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=55&clip_id=52975,granicus,hls-master+variant,6887.85,,,1,accept,,0.28,2026-10-06T14:25:39+00:00,bulk_ingest,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=24&clip_id=53158,granicus,hls-master+variant,3379.68,,,1,accept,,0.66,2026-10-06T14:25:46+00:00,bulk_ingest,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=29&clip_id=53126,granicus,hls-master+variant,3198.38,,,1,accept,,2.72,2026-10-06T14:26:02+00:00,bulk_ingest,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=29&clip_id=53126,granicus,hls-master+variant,3198.38,,,1,accept,,4.67,2026-10-06T15:38:52+00:00,bulk_ingest,0
