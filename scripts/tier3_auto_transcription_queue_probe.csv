@@ -10440,3 +10440,15 @@ https://webstreaming.ctv15.org/viewer.php?streamid=8739,direct_file,head+ffprobe
 https://webstreaming.ctv15.org/viewer.php?streamid=8787,direct_file,head+ffprobe,1437.00,2026-09-21,1398629730,1,accept,,3.27,2026-10-04T19:02:09+00:00,feed_tier3_auto_transcription,0
 https://jacksonms.new.swagit.com/videos/400748,swagit,hls-master+variant,5068.15,,,1,accept,,1.54,2026-10-04T19:05:26+00:00,feed_tier3_auto_transcription,0
 https://pub-whiterockcity.escribemeetings.com/Meeting.aspx?Id=206c1a35-a76b-4cf2-a8cb-af37766e0e81,escribe,hls-master+variant,1639.85,,,1,accept,,0.36,2026-10-04T19:08:47+00:00,feed_tier3_auto_transcription,0
+https://files.smartsites.parentsquare.com/8371/08_17_2026_special_meeting_1.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-10-05T15:17:03+00:00,,0
+https://4.files.edl.io/7227/08/21/26/200320-f694ee39-28c3-49da-bc91-57485c5ad2a4.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-10-05T15:17:04+00:00,,0
+https://ectorcountyisdtx.new.swagit.com/videos/264402,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.07,2026-10-05T15:17:06+00:00,,0
+https://drive.google.com/file/d/1aJloSqfnMm-gdRRpG3LtvVqBQQxbZZwc/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,2.15,2026-10-05T15:17:14+00:00,,0
+https://4.files.edl.io/fedc/05/19/21/192818-a8a9a3ca-3a1b-497b-9097-97692fe4fc22.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-10-05T15:17:16+00:00,,0
+https://allenisd.new.swagit.com/videos/400821,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-05T15:17:19+00:00,,0
+https://www.treynorschools.org/vimages/shared/vnews/stories/587539236e063/Regular%20Board%20Meeting%2007-13-2026.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.25,2026-10-05T15:17:21+00:00,,0
+https://files.smartsites.parentsquare.com/6510/shac-2-10-2026_mp3.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-10-05T15:17:23+00:00,,0
+https://media.isd623.org/index.php/video-category/meetings/,unknown,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.52,2026-10-05T15:17:26+00:00,,0
+https://files.smartsites.parentsquare.com/6564/august_2026_regular.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.08,2026-10-05T15:17:28+00:00,,0
+https://drive.google.com/file/d/11L4Drvx1bFF45dGP43cwmW4QRcN7NhyZ/view,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.93,2026-10-05T15:17:32+00:00,,0
+http://boe.syntaxny.com/BOEAssets/114/2022-2023_BOE_Meeting_Audio-Video/92222_Special_Audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-10-05T15:17:34+00:00,,0
