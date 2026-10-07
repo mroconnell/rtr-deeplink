@@ -832,3 +832,134 @@ async def test_portal_root_with_no_events_raises_value_error():
             await CivicClerkAssetFinder().resolve(
                 "https://emptyca.portal.civicclerk.com/"
             )
+
+
+# --- Portal listing paging (CivicClerk caps every Events page at 15) --------
+
+_PAGING_API = "https://pagedca.api.civicclerk.com/v1/Events"
+
+
+def _paging_event(i: int, **extra) -> dict:
+    # Higher i = newer, so page 1 (newest) holds the highest ids.
+    return {
+        "id": i,
+        "eventName": f"Meeting {i}",
+        "eventDate": f"2026-{(i % 9) + 1:02d}-{(i % 27) + 1:02d}T18:00:00Z",
+        "startDateTime": f"2026-01-01T00:{i // 60:02d}:{i % 60:02d}Z",
+        **extra,
+    }
+
+
+def _paging_routes(pages: list, fail_on: int = None) -> dict:
+    """Page N's nextLink is `<api>?$skiptoken=N+1`; page 1 is the bare URL
+    (the finder passes its query as params, which the mock ignores)."""
+    routes = {}
+    for n, events in enumerate(pages, start=1):
+        url = _PAGING_API if n == 1 else f"{_PAGING_API}?$skiptoken={n}"
+        body = {"value": events}
+        if n < len(pages):
+            body["@odata.nextLink"] = f"{_PAGING_API}?$skiptoken={n + 1}"
+        if n == fail_on:
+            routes[url] = FakeResponse(status=500, text="boom")
+        else:
+            routes[url] = FakeResponse(status=200, text=json.dumps(body))
+    return routes
+
+
+async def _paged_candidates(routes: dict) -> list:
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicClerkAssetFinder().resolve(
+                "https://pagedca.portal.civicclerk.com/"
+            )
+    return exc_info.value.candidates
+
+
+async def test_portal_listing_follows_next_link_across_three_pages_then_stops():
+    pages = [[_paging_event(p * 15 + k) for k in range(15)] for p in (2, 1, 0)]
+    pages[2][0]["hasMedia"] = True  # oldest event, only on page 3
+    routes = _paging_routes(pages)
+    cands = await _paged_candidates(routes)
+    # The page-3 recording is only reachable by following both nextLinks.
+    assert [c["url"].split("/event/")[1] for c in cands] == ["0/media"]
+
+
+async def test_portal_listing_without_media_offers_newest_across_pages():
+    pages = [[_paging_event(p * 15 + k) for k in range(15)] for p in (2, 1, 0)]
+    cands = await _paged_candidates(_paging_routes(pages))
+    ids = [int(c["url"].split("/event/")[1].split("/")[0]) for c in cands]
+    assert len(ids) == 25  # _PORTAL_LISTING_MAX, newest first
+    assert ids == sorted(ids, reverse=True)
+    assert ids[0] == 44
+
+
+async def test_portal_listing_stops_at_scan_cap_and_page_cap():
+    # Endless next links: reads at most 7 pages (105 events), keeps 100.
+    class Counting(dict):
+        hits = 0
+
+        def __contains__(self, k):
+            Counting.hits += 1
+            return super().__contains__(k)
+
+    pages = [[_paging_event(p * 15 + k) for k in range(15)] for p in range(10)]
+    routes = _paging_routes(pages)
+    cands = await _paged_candidates(Counting(routes))
+    assert Counting.hits == 7
+    assert len(cands) == 25
+
+
+async def test_portal_listing_hasmedia_and_mobile_fields_count_as_video():
+    page = [
+        _paging_event(5),
+        _paging_event(4, hasMedia=True),
+        _paging_event(3, mobileMediaStreamPath="https://cdn.example/x.m3u8"),
+        _paging_event(2, mobileMediaSourcePath="https://cdn.example/x.mp4"),
+        _paging_event(1, youtubeVideoId="abc"),
+        _paging_event(0, hasMedia=False, mediaSourcePath=""),
+    ]
+    cands = await _paged_candidates(_paging_routes([page]))
+    ids = [int(c["url"].split("/event/")[1].split("/")[0]) for c in cands]
+    assert ids == [4, 3, 2, 1]  # media first, newest first; 5 and 0 left out
+
+
+async def test_portal_listing_real_page_without_media_falls_back_to_newest():
+    # Real brandonms.api.civicclerk.com/v1/Events page (2026-10-06): 15
+    # events, hasMedia false on all, with a real nextLink to page 2.
+    raw = json.loads(load_fixture("civicclerk", "brandonms_events_page1_nomedia.json"))
+    assert len(raw["value"]) == 15 and raw["@odata.nextLink"]
+    api = "https://brandonms.api.civicclerk.com/v1/Events"
+    routes = {
+        api: FakeResponse(status=200, text=json.dumps(raw)),
+        raw["@odata.nextLink"]: FakeResponse(
+            status=200, text=json.dumps({"value": []})
+        ),
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicClerkAssetFinder().resolve(
+                "https://brandonms.portal.civicclerk.com/"
+            )
+    cands = exc_info.value.candidates
+    assert len(cands) == 15
+    assert cands[0]["url"].endswith("/event/376/media")
+
+
+async def test_portal_listing_http_error_on_page_two_keeps_page_one():
+    pages = [
+        [_paging_event(30 + k) for k in range(15)],
+        [_paging_event(k) for k in range(15)],
+    ]
+    cands = await _paged_candidates(_paging_routes(pages, fail_on=2))
+    assert len(cands) == 15
+    assert all(int(c["url"].split("/event/")[1].split("/")[0]) >= 30 for c in cands)
+
+
+async def test_portal_listing_http_error_on_page_one_still_raises():
+    routes = _paging_routes([[_paging_event(1)]], fail_on=1)
+    with mock_session(routes):
+        with pytest.raises(Exception) as exc_info:
+            await CivicClerkAssetFinder().resolve(
+                "https://pagedca.portal.civicclerk.com/"
+            )
+    assert not isinstance(exc_info.value, CalendarPageError)
