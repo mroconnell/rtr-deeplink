@@ -1,5 +1,14 @@
 # Meeting Finder — design
 
+> **Legacy (Ryan, 2026-10-06).** Meeting Finder is being retired. The
+> logic other code depends on now lives in the neutral package
+> `app/platforms/resolving/` (`models.py`, `pick.py`, `resolve.py`,
+> `fetch.py`, `pacing.py`), moved with no behaviour change. The old
+> `meeting_finder/{models,pick,resolve,fetch,pacing}.py` paths are thin
+> shims that alias the new modules, so existing imports and test patches
+> keep working. New code should import from `app.platforms.resolving`.
+> File names in the rest of this doc refer to the old paths.
+
 **Status:** design agreed with Ryan on 2026-09-23 (WO-1023). WO-1024
 (2026-09-23) built the core: `app/platforms/meeting_finder/` (`models.py`,
 `pick.py`, `resolve.py`, `identity.py`, `verdict.py`, `runner.py`) and the
