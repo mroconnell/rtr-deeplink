@@ -1,6 +1,6 @@
 # Backlog — done
 
-## [Done 2026-10-07] WO-TBD: Coop WebTV (webtv.coop) resolver for Montreal-area council video
+## [Done 2026-10-07] WO-1187: Coop WebTV (webtv.coop) resolver for Montreal-area council video
 
 **What was done.** Added `app/platforms/webtv_coop.py`. Given a webtv.coop video link, it returns the stream address, the length, the date (from the title) and the captions. Both link shapes work: `/channel/video/<slug>/<key>/<n>` and `/video/<slug>/<key>`. `detect_platform()` routes the host. Five government channels are pinned in `tenant_overrides.csv`.
 
