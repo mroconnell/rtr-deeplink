@@ -1088,13 +1088,67 @@ async def _probe_direct_file(
     return _finish(url, platform, method, duration, date, size_bytes, start)
 
 
+def parse_mp4_duration(header: bytes) -> tuple[bool, Optional[float]]:
+    """`(is_mp4, seconds)` from the first bytes of an MP4/MOV file.
+    `is_mp4` is True when the data starts with an ftyp box. `seconds` is
+    the movie header (moov/mvhd) duration, or None when the moov box is
+    not inside `header` (it sits at the end of the file) -- the caller then
+    reports the length as unknown instead of reading more."""
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        return False, None
+    pos = 0
+    while pos + 8 <= len(header):
+        size = int.from_bytes(header[pos : pos + 4], "big")
+        kind = header[pos + 4 : pos + 8]
+        body = pos + 8
+        if size == 1:
+            if pos + 16 > len(header):
+                break
+            size = int.from_bytes(header[pos + 8 : pos + 16], "big")
+            body = pos + 16
+        elif size == 0:
+            size = len(header) - pos
+        if size < body - pos:
+            break
+        if kind == b"moov":
+            end = min(pos + size, len(header))
+            return True, _mvhd_seconds(header, body, end)
+        pos += size
+    return True, None
+
+
+def _mvhd_seconds(data: bytes, pos: int, end: int) -> Optional[float]:
+    while pos + 8 <= end:
+        size = int.from_bytes(data[pos : pos + 4], "big")
+        kind = data[pos + 4 : pos + 8]
+        if size < 8:
+            return None
+        if kind == b"mvhd":
+            body = pos + 8
+            if body >= end:
+                return None
+            version = data[body]
+            if version == 1 and body + 32 <= end:
+                timescale = int.from_bytes(data[body + 20 : body + 24], "big")
+                duration = int.from_bytes(data[body + 24 : body + 32], "big")
+            elif version == 0 and body + 20 <= end:
+                timescale = int.from_bytes(data[body + 12 : body + 16], "big")
+                duration = int.from_bytes(data[body + 16 : body + 20], "big")
+            else:
+                return None
+            return duration / timescale if timescale else None
+        pos += size
+    return None
+
+
 async def _probe_asf_header(
     url: str,
     platform: Optional[str],
     video_url: str,
     start: float,
 ) -> ProbeResult:
-    """Length of an ASF/WMV file from one Range request for its first
+    """(Also reads an MP4 from archive-video.granicus.com the same way.)
+    Length of an ASF/WMV file from one Range request for its first
     256 KB (never the whole file), parsed with `parse_asf_duration()`.
     Generic User-Agent, no Referer, hard timeout. If the header does not
     parse, ffprobe is tried on that same partial file."""
@@ -1144,6 +1198,25 @@ async def _probe_asf_header(
             url, platform, method, start, f"ranged GET on the media file failed: {e}"
         )
 
+    is_mp4, mp4_seconds = parse_mp4_duration(bytes(data))
+    if is_mp4:
+        # MP4 (archive-video.granicus.com): moov/mvhd in the first 256 KB,
+        # else the length is unknown. Nothing more is downloaded.
+        method = "range-mp4-header"
+        if mp4_seconds and mp4_seconds > 0:
+            return _finish(url, platform, method, mp4_seconds, date, size_bytes, start)
+        return ProbeResult(
+            url=url,
+            platform=platform,
+            probe_method=method,
+            duration_seconds=None,
+            date=date,
+            size_bytes=size_bytes,
+            verdict="accept",
+            reason="length unknown, accepted: MP4 index not in the first 256 KB",
+            probe_seconds=time.monotonic() - start,
+            over_nine_minutes=False,
+        )
     duration = parse_asf_duration(bytes(data))
     if duration is None:
         duration = await _ffprobe_partial_file(bytes(data))

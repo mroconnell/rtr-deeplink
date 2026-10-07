@@ -427,3 +427,117 @@ async def test_worker_chunk_keeps_frozen_enclosure_for_a_feed_source_url(
     assert extracted == [ENCLOSURE]
     assert FINDER_CALLS == []
     assert granicus_request_guard == []
+
+
+# --- archive-video.granicus.com mp4 (where DownloadFile.php redirects) --------------
+
+ARCHIVE_MP4 = "https://archive-video.granicus.com/evansville/0f8e7d6c-1234-4abc-9def-abcdef012345.mp4"
+
+
+def _box(kind: bytes, body: bytes) -> bytes:
+    return struct.pack(">I", 8 + len(body)) + kind + body
+
+
+def mp4_header(seconds: float, timescale: int = 1000, moov_first: bool = True) -> bytes:
+    ftyp = _box(b"ftyp", b"isom\x00\x00\x02\x00isomiso2mp41")
+    mvhd = _box(
+        b"mvhd",
+        b"\x00\x00\x00\x00"
+        + struct.pack(">IIII", 0, 0, timescale, int(seconds * timescale))
+        + b"\x00" * 80,
+    )
+    moov = _box(b"moov", mvhd)
+    mdat = _box(b"mdat", b"\x00" * 1000)
+    return ftyp + (moov + mdat if moov_first else mdat)
+
+
+def test_archive_video_host_is_a_direct_file_before_the_granicus_match():
+    assert detect_platform(ARCHIVE_MP4) == "direct_file"
+    assert detect_platform(ARCHIVE_MP4.replace(".mp4", ".wmv")) == "direct_file"
+    # Only media extensions on that host; its other paths stay Granicus pages.
+    assert (
+        detect_platform("https://archive-video.granicus.com/evansville/") == "granicus"
+    )
+
+
+async def test_archive_video_resolve_makes_no_request(granicus_request_guard):
+    result = await get_finder("direct_file").resolve(ARCHIVE_MP4)
+    assert result.video_url == ARCHIVE_MP4
+    assert result.video_format == "mp4"
+    assert granicus_request_guard == []
+
+
+def test_parse_mp4_duration():
+    assert queue_probe.parse_mp4_duration(mp4_header(5400.0)) == (True, 5400.0)
+    # moov at the end of the file: not in the header, length unknown.
+    assert queue_probe.parse_mp4_duration(mp4_header(5400.0, moov_first=False)) == (
+        True,
+        None,
+    )
+    assert queue_probe.parse_mp4_duration(b"<html>nope</html>") == (False, None)
+
+
+async def test_probe_reads_mp4_length_from_the_header(monkeypatch):
+    seen = {}
+    data = mp4_header(3600.0) + b"\x01" * (5 * 1024 * 1024)
+    resp = _Response(206, {"Content-Range": f"bytes 0-262143/{len(data)}"}, data)
+    monkeypatch.setattr(
+        queue_probe.aiohttp, "ClientSession", _fake_session_class(resp, seen)
+    )
+    result = await queue_probe.probe_queue_entry(
+        FEED_ITEM, video_url=ARCHIVE_MP4, platform="direct_file", video_format="mp4"
+    )
+    assert result.verdict == "accept"
+    assert result.duration_seconds == pytest.approx(3600.0)
+    assert result.probe_method == "range-mp4-header"
+    assert seen["request_headers"]["Range"] == "bytes=0-262143"
+    assert seen["session_headers"] == {
+        "User-Agent": "Mozilla/5.0 (compatible; civic-research-bot)"
+    }
+    assert len(resp.content._data) == len(data) - 256 * 1024
+
+
+async def test_probe_mp4_with_moov_at_end_reports_length_unknown(monkeypatch):
+    seen = {}
+    data = mp4_header(3600.0, moov_first=False) + b"\x01" * (2 * 1024 * 1024)
+    resp = _Response(206, {}, data)
+    monkeypatch.setattr(
+        queue_probe.aiohttp, "ClientSession", _fake_session_class(resp, seen)
+    )
+    result = await queue_probe.probe_queue_entry(
+        FEED_ITEM, video_url=ARCHIVE_MP4, platform="direct_file", video_format="mp4"
+    )
+    assert result.verdict == "accept"
+    assert result.duration_seconds is None
+    assert "unknown" in result.reason
+    assert len(resp.content._data) > 1024 * 1024  # nothing more was read
+
+
+async def test_probe_archive_video_403_is_dead_no_retry_with_other_headers(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        queue_probe.aiohttp,
+        "ClientSession",
+        _fake_session_class(_Response(403, {}, b""), seen),
+    )
+    result = await queue_probe.probe_queue_entry(
+        FEED_ITEM, video_url=ARCHIVE_MP4, platform="direct_file", video_format="mp4"
+    )
+    assert result.verdict == "reject-dead" and "403" in result.reason
+    assert seen["session_headers"] == {
+        "User-Agent": "Mozilla/5.0 (compatible; civic-research-bot)"
+    }
+
+
+async def test_reresolve_and_worker_guards_cover_archive_video(granicus_request_guard):
+    from app.platforms.reresolve import reresolve_for_transcription
+
+    result = await reresolve_for_transcription(
+        finder=_ExplodingFinder(),
+        platform="direct_file",
+        source_url=FEED_URL,
+        video_url=ARCHIVE_MP4,
+    )
+    assert result.video_url == ARCHIVE_MP4
+    assert FINDER_CALLS == []
+    assert granicus_request_guard == []

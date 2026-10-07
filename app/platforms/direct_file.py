@@ -615,10 +615,30 @@ def is_asf_media_url(url: str) -> bool:
     return urlparse(url).path.lower().endswith(_ASF_EXTENSIONS)
 
 
+_GRANICUS_ARCHIVE_VIDEO_HOST = "archive-video.granicus.com"
+
+
+def is_granicus_archive_video_url(url: str) -> bool:
+    """True for `https://archive-video.granicus.com/<tenant>/<guid>.mp4`
+    (or .wmv), the file DownloadFile.php redirects to. Only that host and
+    only a media extension; every other Granicus URL stays a page."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().split(":")[0]
+    return host == _GRANICUS_ARCHIVE_VIDEO_HOST and parsed.path.lower().endswith(
+        (".mp4", ".wmv")
+    )
+
+
 def is_asf_direct_media_url(url: str) -> bool:
-    """A Granicus DownloadFile.php enclosure, or any .wmv/.asf URL: ASF
-    media fetched as a file, never resolved as a page."""
-    return is_granicus_download_file_url(url) or is_asf_media_url(url)
+    """A Granicus DownloadFile.php enclosure, the archive-video.granicus.com
+    file it redirects to, or any .wmv/.asf URL: a media file fetched as a
+    file (header-only probe, frozen on re-resolve), never resolved as a
+    page. The name predates the archive-video mp4 case."""
+    return (
+        is_granicus_download_file_url(url)
+        or is_granicus_archive_video_url(url)
+        or is_asf_media_url(url)
+    )
 
 
 def is_direct_file_url(url: str) -> bool:
@@ -898,9 +918,13 @@ class DirectFileAssetFinder(AssetFinder):
                 platform=self.platform_name,
                 source_url=url,
                 video_url=media_url,
-                video_format=_media_format(media_url, None)
-                if is_asf_media_url(media_url)
-                else "wmv",
+                video_format=(
+                    "mp4"
+                    if urlparse(media_url).path.lower().endswith(".mp4")
+                    else _media_format(media_url, None)
+                    if is_asf_media_url(media_url)
+                    else "wmv"
+                ),
             )
         if is_laserfiche_url(media_url):
             # A distinct sub-path -- see module docstring -- since this
