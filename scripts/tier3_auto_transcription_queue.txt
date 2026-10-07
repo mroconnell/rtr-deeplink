@@ -990,3 +990,11 @@ https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
 https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
 https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
 https://play.champds.com/northmiamifl/event/620		us:place:1249450
+https://www.lac-sainte-marie.com/images/proces-verbaux-videos/2026-01-14-pv-video.mp4	https://www.lac-sainte-marie.com/le-conseil/calendrier-des-seances	ca:csd:2483020	Calendrier des séances
+https://saintgabrieldebrandon.com/storage/app/media/municipalite/seances-du-conseil/Dictaphone-14-02-2022.m4a	https://saintgabrieldebrandon.com/municipalite/conseil-municipal/seances-du-conseil-et-proces-verbaux	ca:csd:2452085
+https://www.saint-alexis-des-monts.ca/upload/seances-du-conseil/2026-02-02_seance_ordinaire.mp3	https://www.saint-alexis-des-monts.ca/fr/la-municipalite/seances-du-conseil	ca:csd:2451065	Séances du conseil
+https://mun-stedg.qc.ca/wp2019v2/wp-content/uploads/seance-ordinaire-du-5-juillet-2021-nettoye.mp3?_=1	https://mun-stedg.qc.ca/calendrier-des-seances-ordinaires-et-proces-verbaux/	ca:csd:2451090	Calendrier des séances et procès-verbaux
+https://drive.google.com/file/d/16fNEVHDVx-4M5hWmcQRGStBF1StuH-mu/view?usp=sharing	https://bigforkschools.org/about/board-meetings/	us:sd:3003820
+https://www.dropbox.com/scl/fi/3qiy9q80gyc15hzw5bb7j/Special-Meeting-May-2025.mp4?rlkey=jll7hnwv649oi7hqcr8objjr4&st=6pqvwr0o&dl=0	https://cityofshaniko.gov/agendas-minutes	us:place:4166700
+https://4.files.edl.io/1a54/10/14/25/143031-0db128d6-db67-490b-af0d-1a35abc4169d.m4a	https://www.isisd.net/apps/pages/index.jsp?uREC_ID=2613918&type=d&pREC_ID=2266334	us:sd:4824330
+https://files.smartsites.parentsquare.com/4718/board-audio_reg-exec_09-21-2026.mp3	https://dragons1.k12.ar.us/117861	us:sd:0504110
