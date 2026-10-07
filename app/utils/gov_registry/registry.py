@@ -348,6 +348,11 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # matched against civicmedia.py's `video_channel`.
         "civplus.tikiliveapi.com",
         "wms.civplus.tikiliveapi.com",
+        # Coop WebTV (webtv.coop): one channel per customer, the government
+        # a channel number. Pins are `match=channel=webtv_coop:{n}`,
+        # matched against webtv_coop.py's `video_channel` (the
+        # `/video/<slug>/<key>` address does not name its channel).
+        "webtv.coop",
     }
 )
 

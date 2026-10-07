@@ -5838,6 +5838,10 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "civicmedia": "CivicMedia (CivicPlus/TikiLive)",
     "swagit": "Swagit",
     "viebit": "Viebit",
+    # Coop WebTV (webtv.coop): one channel per customer, Montreal-area
+    # governments. Direct video host; webtv_coop.py keeps its own platform
+    # name on every result.
+    "webtv_coop": "Coop WebTV (webtv.coop)",
     "escribe": "eScribe",
     "cablecast": "Cablecast",
     "champds": "CHAMP/ChampDS",

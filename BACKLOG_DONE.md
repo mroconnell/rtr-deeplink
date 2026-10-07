@@ -1,5 +1,38 @@
 # Backlog — done
 
+## [Done 2026-10-07] WO-1187: Coop WebTV (webtv.coop) resolver for Montreal-area council video
+
+**What was done.** Added `app/platforms/webtv_coop.py`. Given a webtv.coop video link, it returns the stream address, the length, the date (from the title) and the captions. Both link shapes work: `/channel/video/<slug>/<key>/<n>` and `/video/<slug>/<key>`. `detect_platform()` routes the host. Five government channels are pinned in `tenant_overrides.csv`.
+
+**Checks made first (2026-10-07, one request at a time, 3 seconds apart, honest user agent).**
+
+| Question | Answer |
+|---|---|
+| Can the media probe read the stream? | Yes. `media_probe.probe_duration()` read 983.272 s on a video the page calls 983 s, and found a video stream. ffprobe also reads it without our headers. |
+| Does the number after `playlist.m3u8?` expire? | No. It is the time the page was drawn: two pages fetched 4 seconds apart showed values 4 apart. The stream answered the same with that value, with a different one, and with none. |
+| Can a browser play it? | Yes. The stream sends `Access-Control-Allow-Origin: *`. |
+| Does a video with no caption file fail? | No. It resolves with no segments and the warning "No captions found for this video." |
+
+**Pins.** Each channel was checked against the government's own council-meetings page, which links that channel.
+
+| Channel | Government | gov_id | Own page that links it |
+|---|---|---|---|
+| 1 | Beaconsfield | `ca:csd:2466107` | beaconsfield.ca council sessions page |
+| 3 | Baie-D'Urfé | `ca:csd:2466112` | baie-durfe.qc.ca council meetings page |
+| 4 | Pointe-Claire | `ca:csd:2466097` | pointe-claire.ca council sessions page |
+| 5 | Montréal-Est | `ca:csd:2466007` | ville.montreal-est.qc.ca council sessions page |
+| 18 | Sainte-Anne-de-Bellevue | `ca:csd:2466117` | ville.sainte-anne-de-bellevue.qc.ca council sessions page |
+
+Channels 6 and 7 are Montréal boroughs with no id of their own; not pinned (live entry in `BACKLOG.md`).
+
+**Two things the first live run caught.**
+- The site-wide page `/video/<slug>/<key>` does not name its channel. Its `/channel/` links are menu items (12 and 13 on a channel-4 video). The first draft read them and would have pinned the wrong government. The channel now comes only from the address.
+- `is_likely_garbled()` flagged the real Pointe-Claire caption file (7.2% junk, line 6%) because French two-letter words ("de", "le", "la", "du", "à") counted as junk. Added a French word list used only when the language is `fr`, the same fix Spanish got. 47 of 50 flagged words were real French words. Threshold and marker text unchanged.
+
+**Caution.** The captions are machine-made and mix French and English. We do not correct them. Which file wins when a video has two (one has `de` and `fr`) was not checked on a real page: the first listed is the transcript and the rest are kept as alternates.
+
+**Also touched.** `tenant_key.py` (channel number is the key), `registry.py` (webtv.coop is a shared host), `archive/db/crud.py` (`/coverage` row), `scripts/adapter_canary.py` (Pointe-Claire 2026-10-06). On `main` but not deployed: `app/` and `archive/` changes need a deploy.
+
 ## [Done 2026-10-06] WO-1186: pin-audit fixes Ryan approved: 17 pin rows and 1 queue line
 
 **What was decided.** Ryan read the 52 high rows from the WO-1185 pin audit and accepted the proposed fix for 50. He checked the last 2 himself: Woodstock's agenda gives "500 Dundas Street, Woodstock, ON", and the Dover portal does not load.

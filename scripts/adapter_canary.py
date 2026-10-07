@@ -278,6 +278,12 @@ CANARY_URLS: dict[str, list[str]] = {
     "viebit": [
         "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4"
     ],
+    # Pointe-Claire, QC's real 2026-10-06 council meeting on Coop WebTV --
+    # confirmed live 2026-10-07: HLS stream, 7,405 s, a machine-made
+    # `fr_subtitles.vtt` caption file (1,946 cues, French and English mixed).
+    "webtv_coop": [
+        "https://webtv.coop/channel/video/2026-10-06-conseil-de-la-ville-de-pointe-claire/1886702ad1fda24b99dcab99fe8a66ea/4"
+    ],
     # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
     # in the WO-29 investigation confirmed (via a real browser) to have
     # populated English captions inside the Vimeo player. This adapter is
