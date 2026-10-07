@@ -924,7 +924,9 @@ async def test_real_hazelton_escribe_hub_walks_real_candidates_no_video():
     assert result.video_found is False
     assert result.tier == 4
     assert result.candidates_checked == 2
-    assert result.verdict == "listing_walked_no_video"
+    # The eScribe hub now raises CalendarPageError (pick list) from the adapter,
+    # so the generic pick-list walk names the verdict; outcome is unchanged.
+    assert result.verdict == "calendar_page_no_video"
 
 
 # -- WO-341: `_civicplus_walker()` -- Hobart IN, Monroe County FL, Webb

@@ -1,8 +1,10 @@
 import json
+from datetime import date, timedelta
 
 import pytest
 
-from app.platforms.base import NoVideoCandidateFound
+from app.platforms import escribe as escribe_module
+from app.platforms.base import CalendarPageError, NoVideoCandidateFound
 from app.platforms.escribe import EscribeAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -622,75 +624,148 @@ async def test_resolve_non_utf8_response_degrades_instead_of_raising():
     assert result.video_url is None
 
 
-async def test_resolve_bare_tenant_root_discovers_newest_meeting_with_video():
-    # WO-128 (2026-09-09): a bare eScribe tenant root -- no
-    # Meeting.aspx/ISIStandAlonePlayer.aspx path at all, the shape
-    # jurisdiction_coverage.csv's own `domain` column holds for many
-    # Canadian eScribe governments (real examples: pub-southdundas.
-    # escribemeetings.com, pub-hawkesbury.escribemeetings.com) -- used to
-    # "resolve" with zero content instead of finding a real meeting.
-    # This confirms the fix: discover the tenant's own newest HasVideo
-    # meeting via GetCalendarMeetings and actually resolve it.
-    domain = "pub-southdundas.escribemeetings.com"
-    tenant_url = f"https://{domain}/"
-    calendar_url = f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings"
-    meeting_guid = "981f78d7-8211-4b4b-b066-5f93b4fd5e74"
-    meeting_url = f"https://{domain}/Meeting.aspx?Id={meeting_guid}"
+@pytest.fixture(autouse=True)
+def _clear_hub_cache():
+    escribe_module._hub_cache.clear()
+    yield
+    escribe_module._hub_cache.clear()
 
-    calendar_json = json.dumps(
+
+def _calendar_meeting(guid, name, start, has_video):
+    return {
+        "ID": guid,
+        "MeetingName": name,
+        "StartDate": start,
+        "MeetingDocumentLink": [{"HasVideo": has_video}],
+    }
+
+
+HUB_DOMAIN = "pub-southdundas.escribemeetings.com"
+HUB_CALENDAR_URL = f"https://{HUB_DOMAIN}/MeetingsCalendarView.aspx/GetCalendarMeetings"
+
+
+def _hub_post(meetings, status=200):
+    return {
+        HUB_CALENDAR_URL: FakeResponse(status=status, text=json.dumps({"d": meetings}))
+    }
+
+
+@pytest.mark.parametrize(
+    "hub_url",
+    [
+        f"https://{HUB_DOMAIN}/",
+        f"https://{HUB_DOMAIN}",
+        f"https://{HUB_DOMAIN}/MeetingsCalendarView.aspx",
+    ],
+)
+async def test_hub_gives_calendar_page_with_title_date_url(hub_url):
+    meetings = [
+        _calendar_meeting("g1", "City Council Meeting", "2026/07/15 18:00:00", True)
+    ]
+    with mock_session({}, post_routes=_hub_post(meetings)):
+        with pytest.raises(CalendarPageError) as exc:
+            await EscribeAssetFinder().resolve(hub_url)
+    assert exc.value.candidates == [
         {
-            "d": [
-                {
-                    "ID": meeting_guid,
-                    "StartDate": "2026-07-15T00:00:00",
-                    "MeetingDocumentLink": [{"HasVideo": True}],
-                }
-            ]
+            "title": "City Council Meeting",
+            "date": "2026-07-15",
+            "url": f"https://{HUB_DOMAIN}/Meeting.aspx?Id=g1",
         }
-    )
+    ]
+
+
+async def test_hub_video_rows_first_newest_first_and_future_excluded():
+    future = (date.today() + timedelta(days=10)).strftime("%Y/%m/%d 18:00:00")
+    meetings = [
+        _calendar_meeting("nov", "No video newest", "2026/09/01 18:00:00", False),
+        _calendar_meeting("v1", "Video older", "2026/06/01 18:00:00", True),
+        _calendar_meeting("v2", "Video newer", "2026/08/01 18:00:00", True),
+        _calendar_meeting("fut", "Future", future, True),
+        _calendar_meeting("nov2", "No video older", "2026/05/01 18:00:00", False),
+    ]
+    with mock_session({}, post_routes=_hub_post(meetings)):
+        with pytest.raises(CalendarPageError) as exc:
+            await EscribeAssetFinder().resolve(f"https://{HUB_DOMAIN}/")
+    titles = [c["title"] for c in exc.value.candidates]
+    assert titles == [
+        "Video newer",
+        "Video older",
+        "No video newest",
+        "No video older",
+    ]
+
+
+async def test_hub_list_is_capped_at_15():
+    meetings = [
+        _calendar_meeting(f"g{i}", f"M{i}", f"2026/06/{i + 1:02d} 18:00:00", True)
+        for i in range(20)
+    ]
+    with mock_session({}, post_routes=_hub_post(meetings)):
+        with pytest.raises(CalendarPageError) as exc:
+            await EscribeAssetFinder().resolve(f"https://{HUB_DOMAIN}/")
+    assert len(exc.value.candidates) == 15
+
+
+async def test_hub_empty_listing_keeps_no_video_candidate_found():
+    with mock_session({}, post_routes=_hub_post([])):
+        with pytest.raises(NoVideoCandidateFound):
+            await EscribeAssetFinder().resolve(f"https://{HUB_DOMAIN}/")
+
+
+async def test_hub_http_error_keeps_no_video_candidate_found():
+    with mock_session({}, post_routes=_hub_post([], status=503)):
+        with pytest.raises(NoVideoCandidateFound):
+            await EscribeAssetFinder().resolve(f"https://{HUB_DOMAIN}/")
+
+
+async def test_hub_result_is_cached_per_tenant():
+    meetings = [_calendar_meeting("g1", "Council", "2026/07/15 18:00:00", True)]
+    with mock_session({}, post_routes=_hub_post(meetings)):
+        with pytest.raises(CalendarPageError):
+            await EscribeAssetFinder().resolve(f"https://{HUB_DOMAIN}/")
+    # second call: no POST route at all, so any request would fail
+    with mock_session({}, post_routes={}):
+        with pytest.raises(CalendarPageError):
+            await EscribeAssetFinder().resolve(
+                f"https://{HUB_DOMAIN}/MeetingsCalendarView.aspx"
+            )
+
+
+async def test_hub_calendar_fixture_lists_real_rows():
+    raw = load_fixture("escribe", "hazelton_calendar_meetings.json")
+    domain = "pub-hazelton.escribemeetings.com"
+    post = {
+        f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings": FakeResponse(
+            status=200, text=raw
+        )
+    }
+    with mock_session({}, post_routes=post):
+        with pytest.raises(CalendarPageError) as exc:
+            await EscribeAssetFinder().resolve(f"https://{domain}/")
+    cands = exc.value.candidates
+    assert cands and all(c["title"] and c["date"] and c["url"] for c in cands)
+    assert all(c["url"].startswith(f"https://{domain}/Meeting.aspx?Id=") for c in cands)
+
+
+async def test_meeting_url_still_resolves_as_before():
+    domain = "pub-southdundas.escribemeetings.com"
+    meeting_url = f"https://{domain}/Meeting.aspx?Id=981f78d7"
     meeting_html = (
         "<html><head><title>City Council Meeting - July 15, 2026</title></head>"
-        "<body>"
-        '<div id="isi_player" data-client_id="southdundas" '
-        'data-stream_name="clip.mp4"></div>'
-        "</body></html>"
+        '<body><div id="isi_player" data-client_id="southdundas" '
+        'data-stream_name="clip.mp4"></div></body></html>'
     )
-
     routes = {meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url)}
-    # _fetch_vtt() tries every KNOWN_LANGUAGE_SUFFIXES entry -- none
-    # populated here, this test is only about the discovery+resolve
-    # wiring, not captions (already covered by the Bakersfield tests
-    # above).
     for suffix in [None, "fr", "es", "zh", "zh-hant", "tl"]:
-        vtt_url = (
+        routes[
             "https://video.isilive.ca/southdundas/clip.mp4"
             + (f".{suffix}" if suffix else "")
             + ".vtt"
-        )
-        routes[vtt_url] = FakeResponse(status=404)
-    post_routes = {calendar_url: FakeResponse(status=200, text=calendar_json)}
-
-    with mock_session(routes, post_routes=post_routes):
-        result = await EscribeAssetFinder().resolve(tenant_url)
-
+        ] = FakeResponse(status=404)
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(meeting_url)
     assert result.source_url == meeting_url
-    assert result.title == "City Council Meeting"
-    assert result.date == "2026-07-15"
     assert result.video_url is not None
-
-
-async def test_resolve_bare_tenant_root_raises_when_no_video_meeting_found():
-    # No real HasVideo meeting in the lookback window -- a genuine,
-    # confident negative (the same typed signal civicplus.py's own
-    # listing-page case already raises), not a silent empty success.
-    domain = "pub-quietcounty.escribemeetings.com"
-    tenant_url = f"https://{domain}/"
-    calendar_url = f"https://{domain}/MeetingsCalendarView.aspx/GetCalendarMeetings"
-    post_routes = {calendar_url: FakeResponse(status=200, text=json.dumps({"d": []}))}
-
-    with mock_session({}, post_routes=post_routes):
-        with pytest.raises(NoVideoCandidateFound):
-            await EscribeAssetFinder().resolve(tenant_url)
 
 
 # --- WO-1048 (2026-09-24): one county tenant, one name -------------------
