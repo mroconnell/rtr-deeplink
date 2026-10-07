@@ -532,6 +532,10 @@ def detect_platform(url: str) -> str:
     )
     if (
         "/cablecastpublicsite/show/" in path
+        # A self-hosted Cablecast public site (any host, e.g. a city's own
+        # domain) keeps its gallery hubs under the same `/CablecastPublicSite/`
+        # segment. The segment is required, so unrelated sites don't match.
+        or "/cablecastpublicsite/gallery/" in path
         or "/internetchannel/show/" in path
         or "/internetchannel/gallery/" in path
         or ("cablecast.tv" in netloc and _cablecast_bare_show_id.isdigit())

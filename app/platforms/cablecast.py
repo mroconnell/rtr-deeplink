@@ -2,13 +2,14 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime
-from typing import List, Optional
+import time
+from datetime import date as _date, datetime, timezone
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import aiohttp
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarPageError
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from .youtube_channel import parse_title_date
 from ..utils import jurisdiction_enrich
@@ -988,6 +989,18 @@ class CablecastAssetFinder(AssetFinder):
         gallery_match = _GALLERY_ID_RE.search(urlparse(url).path)
         gallery_id = int(gallery_match.group(1))
 
+        parsed_url = urlparse(url)
+        cache_key = f"{parsed_url.netloc.lower()}|{gallery_id}|{parsed_url.query}"
+        hit = _gallery_cache.get(cache_key)
+        if hit and hit[0] > time.monotonic():
+            raise CalendarPageError(
+                message=(
+                    "This is a Cablecast gallery with multiple meetings, not a "
+                    "link to one specific meeting."
+                ),
+                candidates=list(hit[1]),
+            )
+
         fetch_url = self._force_http(url)
         html = await self._fetch_html(fetch_url)
         if not html:
@@ -1019,18 +1032,27 @@ class CablecastAssetFinder(AssetFinder):
                 ],
             )
 
-        newest = max(
-            ready,
-            key=lambda s: (
-                self._parse_gallery_event_date(s.get("eventDate")) or datetime.min
-            ),
+        # A gallery is a list of meetings, not one meeting: hand back the
+        # pick-list (past shows, newest first) instead of guessing the newest.
+        candidates = _gallery_candidates(url, html)
+        if not candidates:
+            # Only future-dated shows: nothing to pick from.
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=["No past video-ready show found in this gallery."],
+            )
+        _gallery_cache[cache_key] = (
+            time.monotonic() + _GALLERY_CACHE_TTL_SECONDS,
+            candidates,
         )
-        show_id = newest.get("showId")
-        parsed = urlparse(fetch_url)
-        canonical = f"{parsed.scheme}://{parsed.netloc}/internetchannel/show/{show_id}"
-        if parsed.query:
-            canonical = f"{canonical}?{parsed.query}"
-        return await self.resolve(canonical)
+        raise CalendarPageError(
+            message=(
+                "This is a Cablecast gallery with multiple meetings, not a "
+                "link to one specific meeting."
+            ),
+            candidates=list(candidates),
+        )
 
     @staticmethod
     def _find_gallery_shows(obj, gallery_id: int) -> Optional[List[dict]]:
@@ -1477,3 +1499,27 @@ def list_gallery_shows(url: str, html: str) -> List[dict]:
         )
     rows.sort(key=lambda r: r["date"] or "", reverse=True)
     return rows
+
+
+_GALLERY_MAX_CANDIDATES = 15
+_GALLERY_CACHE_TTL_SECONDS = 5 * 60
+# netloc|gallery id|query -> (monotonic expiry, candidates). Only successful
+# non-empty listings are stored, so a transient failure is never remembered.
+_gallery_cache: Dict[str, Tuple[float, List[dict]]] = {}
+
+
+def _today() -> _date:
+    """Injectable in tests (patch `app.platforms.cablecast._today`)."""
+    return datetime.now(timezone.utc).date()
+
+
+def _gallery_candidates(url: str, html: str) -> List[dict]:
+    """Pick-list rows (`title`/`date`/`url`) for a gallery page: past
+    video-ready shows, newest first (undated last), at most 15."""
+    today = _today().isoformat()
+    rows = [
+        {"title": r["title"], "date": r["date"], "url": r["url"]}
+        for r in list_gallery_shows(url, html)
+        if not r["date"] or r["date"] <= today
+    ]
+    return rows[:_GALLERY_MAX_CANDIDATES]
