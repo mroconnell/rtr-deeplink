@@ -184,18 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
-https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236
-https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692	https://reflect-citylink-siouxfalls.cablecast.tv/CablecastPublicSite/	us:county:46099
-https://reflect-dennis-yarmouth.cablecast.tv/internetchannel/show/573	https://reflect-dennis-yarmouth.cablecast.tv/CablecastPublicSite/	us:cousub:2500116775
-https://reflect-epsvision.cablecast.tv/internetchannel/show/193	https://reflect-epsvision.cablecast.tv/CablecastPublicSite/	us:sd:4010920
-https://reflect-forestlake.cablecast.tv/internetchannel/show/3184	https://reflect-forestlake.cablecast.tv/CablecastPublicSite/	us:sd:2712270
-https://reflect-lakefront-leesburgflorida.cablecast.tv/internetchannel/show/9936	https://reflect-lakefront-leesburgflorida.cablecast.tv/CablecastPublicSite/	us:place:1239875
-http://reflect-origin-888.cablecast.tv/internetchannel/show/2000	http://reflect-origin-888.cablecast.tv/CablecastPublicSite/	us:sd:3701380
-http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/2833?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:cousub:4200350784
-http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/51?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:place:4216144
-http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/35?site=1	http://reflect-origin-995.cablecast.tv/CablecastPublicSite/	us:cousub:4200317048
-https://reflect-westernhills.cablecast.tv/internetchannel/show/1813	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:cousub:2301749275
 https://reflect-westernhills.cablecast.tv/internetchannel/show/1665	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:cousub:2301729710
 https://bloomfield-mi.cablecast.tv/show/2836?site=1	https://bloomfield-mi.cablecast.tv/	us:sd:2606090
 https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
@@ -1202,3 +1190,4 @@ https://loudoun.granicus.com/player/clip/8231?view_id=44&redirect=true	https://l
 https://wsscwater.granicus.com/player/clip/1528?view_id=2&redirect=true	https://wsscwater.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video	rtr:us:md:washington-suburban-sanitary-commission	WSSC Water Commission Meeting - September 16, 2026 - Sep 16, 2026	2026-09-16
 https://smc-expresslanejpa.granicus.com/player/clip/108?view_id=1&redirect=true	https://smc-expresslanejpa.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video	rtr:us:ca:san-mateo-county-express-lanes-joint-powers-authority	SMC Express Lanes JPA Special Meeting - Dec 05, 2025	2025-12-05
 https://tarboro-nc.granicus.com/player/clip/167?view_id=2&redirect=true	https://tarboro-nc.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video	us:place:3766700	Town Council - Sep 14, 2026	2026-09-14
+https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350

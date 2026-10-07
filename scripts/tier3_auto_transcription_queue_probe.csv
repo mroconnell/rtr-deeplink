@@ -10753,3 +10753,23 @@ https://loudoun.granicus.com/player/clip/8231?view_id=44&redirect=true,granicus,
 https://wsscwater.granicus.com/player/clip/1528?view_id=2&redirect=true,granicus,hand-approved,,2026-09-16,,0,accept,"hand-approved: Ryan 2026-10-07 (chat): ""It's a tier 3 so you add it to the tier 3 queue and a worker will get to it eventually."" queued by player link from subscribed feed; resolved by the worker; length not probed (unknown)",,2026-10-07T20:04:39+00:00
 https://smc-expresslanejpa.granicus.com/player/clip/108?view_id=1&redirect=true,granicus,hand-approved,,2025-12-05,,0,accept,"hand-approved: Ryan 2026-10-07 (chat): ""It's a tier 3 so you add it to the tier 3 queue and a worker will get to it eventually."" queued by player link from subscribed feed; resolved by the worker; length not probed (unknown)",,2026-10-07T20:04:39+00:00
 https://tarboro-nc.granicus.com/player/clip/167?view_id=2&redirect=true,granicus,hand-approved,,2026-09-14,,0,accept,"hand-approved: Ryan 2026-10-07 (chat): ""It's a tier 3 so you add it to the tier 3 queue and a worker will get to it eventually."" queued by player link from subscribed feed; resolved by the worker; length not probed (unknown)",,2026-10-07T20:04:39+00:00
+https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-10-07T23:19:20+00:00,,0
+https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.04,2026-10-07T23:19:25+00:00,,0
+https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692,cablecast,cablecast-api,2668.00,2024-10-03,,1,accept,,0.22,2026-10-07T23:19:27+00:00,,0
+https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692,cablecast,cablecast-api,2668.00,2024-10-03,,1,accept,,0.01,2026-10-07T23:19:27+00:00,feed_tier3_auto_transcription,0
+https://reflect-dennis-yarmouth.cablecast.tv/internetchannel/show/573,cablecast,cablecast-api,817.00,2019-08-26,,1,accept,,0.14,2026-10-07T23:19:30+00:00,,0
+https://reflect-dennis-yarmouth.cablecast.tv/internetchannel/show/573,cablecast,cablecast-api,817.00,2019-08-26,,1,accept,,0.01,2026-10-07T23:19:30+00:00,feed_tier3_auto_transcription,0
+https://reflect-epsvision.cablecast.tv/internetchannel/show/193,cablecast,cablecast-api,5101.00,2020-11-27,,1,accept,,0.12,2026-10-07T23:19:31+00:00,,0
+https://reflect-epsvision.cablecast.tv/internetchannel/show/193,cablecast,cablecast-api,5101.00,2020-11-27,,1,accept,,0.01,2026-10-07T23:19:31+00:00,feed_tier3_auto_transcription,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3184,cablecast,cablecast-api,9004.00,2025-08-12,,1,accept,,0.21,2026-10-07T23:19:35+00:00,,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3184,cablecast,cablecast-api,9004.00,2025-08-12,,1,accept,,0.01,2026-10-07T23:19:35+00:00,feed_tier3_auto_transcription,0
+http://reflect-origin-888.cablecast.tv/internetchannel/show/2000,cablecast,cablecast-api,3110.00,2026-09-01,,1,accept,,15.39,2026-10-07T23:19:54+00:00,,0
+http://reflect-origin-888.cablecast.tv/internetchannel/show/2000,cablecast,cablecast-api,3110.00,2026-09-01,,1,accept,,15.83,2026-10-07T23:20:10+00:00,feed_tier3_auto_transcription,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/2833?site=1,cablecast,cablecast-api,3156.00,2026-08-07,,1,accept,,15.98,2026-10-07T23:21:00+00:00,,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/2833?site=1,cablecast,cablecast-api,3156.00,2026-08-07,,1,accept,,15.85,2026-10-07T23:21:16+00:00,feed_tier3_auto_transcription,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/51?site=1,cablecast,cablecast-api,2165.00,2023-08-15,,1,accept,,15.99,2026-10-07T23:22:06+00:00,,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/51?site=1,cablecast,cablecast-api,2165.00,2023-08-15,,1,accept,,15.85,2026-10-07T23:22:22+00:00,feed_tier3_auto_transcription,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/35?site=1,cablecast,cablecast-api,4850.00,2023-06-28,,1,accept,,15.98,2026-10-07T23:23:11+00:00,,0
+http://reflect-origin-995.cablecast.tv/CablecastPublicSite/show/35?site=1,cablecast,cablecast-api,4850.00,2023-06-28,,1,accept,,15.87,2026-10-07T23:23:27+00:00,feed_tier3_auto_transcription,0
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1813,cablecast,cablecast-api,4985.00,2023-05-24,,1,accept,,0.22,2026-10-07T23:23:32+00:00,,0
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1813,cablecast,cablecast-api,4985.00,2023-05-24,,1,accept,,0.01,2026-10-07T23:23:32+00:00,feed_tier3_auto_transcription,0
