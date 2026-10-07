@@ -1,12 +1,14 @@
 import asyncio
 import logging
 import re
+import time
+from datetime import date as _date
 from typing import List, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarCandidate, CalendarPageError
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import read_capped_bytes
@@ -33,6 +35,17 @@ from ..utils.vtt_parser import (
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
 
 logger = logging.getLogger("rtr_deeplink.champds")
+
+# Hub pick list (2026-10-06): a pasted account page (`play.champds.com/{cust}`,
+# an archive or live page) names no single meeting, so `resolve()` raises
+# `CalendarPageError` with up to 15 past meetings (recorded first, each group
+# newest first) from `list_archive_events`, held to two search requests, and
+# cached per customer and archive for a few minutes. No Meeting Finder import.
+_HUB_LIST_LIMIT = 15
+_HUB_SEARCH_TERMS = ("meeting", "council")
+_HUB_CACHE_TTL_SECONDS = 300
+_HUB_CACHE_MAX = 200
+_hub_cache: dict = {}
 
 # WO-1045: shown when the only video is VOD2 (see ChampDSAssetFinder's
 # docstring). Distinct from "No video found" on purpose -- the video
@@ -343,9 +356,69 @@ class ChampDSAssetFinder(AssetFinder):
             ),
         }
 
+    @staticmethod
+    async def _list_hub_meetings(
+        customer: str, archive_id: int
+    ) -> List[CalendarCandidate]:
+        """Past events for the account (one request per term in
+        `_HUB_SEARCH_TERMS`), recorded ones first, each group newest first,
+        capped at `_HUB_LIST_LIMIT`. Any failure gives []."""
+        try:
+            events = await list_archive_events(
+                customer,
+                archive_id=archive_id,
+                limit=500,
+                search_terms=_HUB_SEARCH_TERMS,
+            )
+        except Exception:
+            logger.warning("ChampDS hub listing failed for %s", customer, exc_info=True)
+            return []
+        today = _date.today().isoformat()
+        recorded: List[CalendarCandidate] = []
+        other: List[CalendarCandidate] = []
+        for e in events:
+            if not e.get("date") or e["date"] > today:
+                continue
+            row: CalendarCandidate = {
+                "title": e.get("title") or "Meeting",
+                "date": e["date"],
+                "url": e["event_url"],
+            }
+            (
+                recorded if e.get("media_class_id") == MEDIA_CLASS_RECORDED else other
+            ).append(row)
+        # list_archive_events returns newest first; keep that order per group.
+        return (recorded + other)[:_HUB_LIST_LIMIT]
+
+    @classmethod
+    async def _raise_hub_pick_list(cls, customer: str, archive_id: int) -> None:
+        """Raise `CalendarPageError` for an account page; return (so the old
+        warning stands) when the listing is empty or fails."""
+        key = f"{customer}/{archive_id}"
+        cached = _hub_cache.get(key)
+        if cached and time.monotonic() - cached[0] < _HUB_CACHE_TTL_SECONDS:
+            candidates = cached[1]
+        else:
+            candidates = await cls._list_hub_meetings(customer, archive_id)
+            if candidates:
+                if len(_hub_cache) >= _HUB_CACHE_MAX:
+                    _hub_cache.clear()
+                _hub_cache[key] = (time.monotonic(), candidates)
+        if candidates:
+            raise CalendarPageError(
+                message=(
+                    "This is a ChampDS list of many meetings, not a link to "
+                    "one specific meeting."
+                ),
+                candidates=[dict(c) for c in candidates],
+            )
+
     async def resolve(self, url: str) -> ResolvedMeeting:
         match = _EVENT_PATH_RE.search(urlparse(url).path)
         if not match:
+            account = parse_account_url(url)
+            if account:
+                await self._raise_hub_pick_list(*account)
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,

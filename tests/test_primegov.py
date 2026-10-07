@@ -1386,3 +1386,130 @@ def test_candidate_years_without_a_page_date_falls_back_to_recent_years():
         CURRENT_YEAR,
         CURRENT_YEAR - 1,
     ]
+
+
+# --- Hub pick list (2026-10-06): a portal home gives a pick list ---
+
+import pytest  # noqa: E402
+
+from app.platforms import primegov as primegov_module  # noqa: E402
+from app.platforms.base import CalendarPageError  # noqa: E402
+
+HUB_HOST = "lacity.primegov.com"
+HUB_API = f"https://{HUB_HOST}/api/v2/PublicPortal"
+HUB_YEARS_URL = f"{HUB_API}/GetArchivedMeetingYears"
+HUB_2026_URL = f"{HUB_API}/ListArchivedMeetings?year=2026"
+
+
+@pytest.fixture(autouse=True)
+def _clear_hub_cache():
+    primegov_module._hub_cache.clear()
+    yield
+    primegov_module._hub_cache.clear()
+
+
+def _hub_years():
+    return json.dumps(
+        json.loads(load_fixture("primegov", "lacity_years.json"))["years"]
+    )
+
+
+def _hub_meetings():
+    return json.loads(load_fixture("primegov", "lacity_list_archived_2026.json"))[
+        "meetings"
+    ]
+
+
+def _hub_routes(meetings=None, status=200, years_status=200):
+    meetings = _hub_meetings() if meetings is None else meetings
+    return {
+        HUB_YEARS_URL: FakeResponse(status=years_status, text=_hub_years()),
+        HUB_2026_URL: FakeResponse(status=status, text=json.dumps(meetings)),
+    }
+
+
+@pytest.mark.parametrize(
+    "hub_url",
+    [
+        f"https://{HUB_HOST}/",
+        f"https://{HUB_HOST}",
+        f"https://{HUB_HOST}/public/portal",
+        f"https://{HUB_HOST}/Portal/",
+    ],
+)
+async def test_hub_gives_calendar_page_with_title_date_url(hub_url):
+    with mock_session(_hub_routes()):
+        with pytest.raises(CalendarPageError) as exc:
+            await PrimeGovAssetFinder().resolve(hub_url)
+    cands = exc.value.candidates
+    assert len(cands) == 5
+    assert all(set(c) == {"title", "date", "url"} for c in cands)
+    assert cands[0]["date"] == "2026-01-06"
+    assert cands[0]["url"].startswith(
+        f"https://{HUB_HOST}/Portal/Meeting?meetingTemplateId="
+    )
+
+
+async def test_hub_video_rows_first():
+    meetings = _hub_meetings()
+    meetings[0]["videoUrl"] = "https://x.new.swagit.com/videos/1"  # oldest row
+    with mock_session(_hub_routes(meetings)):
+        with pytest.raises(CalendarPageError) as exc:
+            await PrimeGovAssetFinder().resolve(f"https://{HUB_HOST}/")
+    assert exc.value.candidates[0]["title"] == meetings[0]["title"]
+    assert exc.value.candidates[0]["date"] == "2026-01-02"
+
+
+async def test_hub_list_is_capped_at_15():
+    base = _hub_meetings()[0]
+    meetings = []
+    for i in range(30):
+        m = json.loads(json.dumps(base))
+        m["dateTime"] = f"2026-01-{i + 1:02d}T09:00:00"
+        m["documentList"][0]["templateId"] = 1000 + i
+        meetings.append(m)
+    with mock_session(_hub_routes(meetings)):
+        with pytest.raises(CalendarPageError) as exc:
+            await PrimeGovAssetFinder().resolve(f"https://{HUB_HOST}/")
+    assert len(exc.value.candidates) == 15
+
+
+async def test_hub_empty_listing_falls_back_to_page_fetch():
+    page = f"https://{HUB_HOST}/"
+    routes = _hub_routes([])
+    routes[page] = FakeResponse(status=200, text="<html><body>portal</body></html>")
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(page)
+    assert result.video_warnings == ["No video found on this PrimeGov page."]
+
+
+async def test_hub_http_error_falls_back_to_page_fetch():
+    page = f"https://{HUB_HOST}/"
+    routes = _hub_routes([], status=500)
+    routes[page] = FakeResponse(status=200, text="<html><body>portal</body></html>")
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(page)
+    assert result.video_warnings == ["No video found on this PrimeGov page."]
+
+
+async def test_hub_result_is_cached_per_tenant():
+    with mock_session(_hub_routes()):
+        with pytest.raises(CalendarPageError):
+            await PrimeGovAssetFinder().resolve(f"https://{HUB_HOST}/")
+    with mock_session({}):  # any request would fail
+        with pytest.raises(CalendarPageError):
+            await PrimeGovAssetFinder().resolve(f"https://{HUB_HOST}/public/portal")
+
+
+async def test_meeting_url_is_not_treated_as_a_hub():
+    from app.platforms.primegov import _is_primegov_hub_url
+
+    assert not _is_primegov_hub_url(
+        f"https://{HUB_HOST}/Portal/Meeting?meetingTemplateId=149492"
+    )
+    assert not _is_primegov_hub_url(
+        f"https://{HUB_HOST}/Portal/Meeting?compiledMeetingDocumentFileId=9911"
+    )
+    assert not _is_primegov_hub_url(
+        f"https://{HUB_HOST}/public/portal?meetingTemplateId=1"
+    )

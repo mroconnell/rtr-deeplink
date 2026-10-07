@@ -746,3 +746,116 @@ async def test_resolve_keeps_normal_density_captions_over_a_long_meeting():
 
     assert result.segments
     assert not any("so they were not used" in w for w in result.transcript_warnings)
+
+
+# --- Hub pick list (2026-10-06): a /views/{id} page gives a pick list ---
+
+import pytest  # noqa: E402
+
+from app.platforms import swagit as swagit_module  # noqa: E402
+from app.platforms.base import CalendarPageError  # noqa: E402
+from conftest import load_fixture  # noqa: E402
+
+DUBLIN_HUB = "https://dublinca.new.swagit.com/views/876/"
+SB_HOST = "https://sanbenitotx.new.swagit.com"
+
+
+@pytest.fixture(autouse=True)
+def _clear_hub_cache():
+    swagit_module._hub_cache.clear()
+    yield
+    swagit_module._hub_cache.clear()
+
+
+def _table_page(n, year_month="2026-06"):
+    from datetime import date as _d, timedelta
+
+    rows = ""
+    for i in range(n):
+        d = _d(2026, 1, 1) + timedelta(days=i % 200)
+        rows += (
+            f'<tr><td><a href="/videos/{1000 + i}">Meeting {i}</a></td>'
+            f"<td>{d.strftime('%b %d, %Y')}</td></tr>"
+        )
+    return f'<html><body><table id="video-table">{rows}</table></body></html>'
+
+
+async def test_hub_views_page_gives_calendar_page():
+    html = load_fixture("swagit", "dublin_views_876.html")
+    with mock_session({DUBLIN_HUB: FakeResponse(status=200, text=html)}):
+        with pytest.raises(CalendarPageError) as exc:
+            await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    cands = exc.value.candidates
+    assert cands and len(cands) <= 15
+    assert all(set(c) == {"title", "date", "url"} for c in cands)
+    assert all("/videos/" in c["url"] for c in cands)
+    dates = [c["date"] for c in cands]
+    assert dates == sorted(dates, reverse=True)
+
+
+async def test_hub_all_tabs_fixture_reads_every_tab():
+    html = load_fixture("swagit", "dublin_views_876_all_tabs.html")
+    with mock_session({DUBLIN_HUB: FakeResponse(status=200, text=html)}):
+        with pytest.raises(CalendarPageError) as exc:
+            await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    assert len({c["url"] for c in exc.value.candidates}) >= 5
+
+
+async def test_hub_index_view_reads_category_page():
+    index_url = f"{SB_HOST}/views/322/"
+    cat_url = f"{SB_HOST}/views/322/commission-meetings"
+    routes = {
+        index_url: FakeResponse(
+            status=200, text=load_fixture("swagit", "sanbenito_views_322_index.html")
+        ),
+        cat_url: FakeResponse(
+            status=200,
+            text=load_fixture("swagit", "sanbenito_views_322_commission_meetings.html"),
+        ),
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc:
+            await SwagitAssetFinder().resolve(index_url)
+    assert exc.value.candidates
+
+
+async def test_hub_list_is_capped_at_15_newest_first():
+    page = _table_page(300)
+    with mock_session({DUBLIN_HUB: FakeResponse(status=200, text=page)}):
+        with pytest.raises(CalendarPageError) as exc:
+            await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    cands = exc.value.candidates
+    assert len(cands) == 15
+    assert cands[0]["date"] == max(c["date"] for c in cands)
+
+
+async def test_hub_empty_listing_keeps_old_no_video_result():
+    page = "<html><body><p>Nothing here</p></body></html>"
+    with mock_session({DUBLIN_HUB: FakeResponse(status=200, text=page)}):
+        result = await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    assert result.video_url is None
+    assert "No playable video found on this page." in result.video_warnings
+
+
+async def test_hub_http_error_keeps_old_behaviour():
+    with mock_session({DUBLIN_HUB: FakeResponse(status=503, text="")}):
+        with pytest.raises(Exception) as exc:
+            await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    assert not isinstance(exc.value, CalendarPageError)
+
+
+async def test_hub_result_is_cached_per_page():
+    page = _table_page(3)
+    with mock_session({DUBLIN_HUB: FakeResponse(status=200, text=page)}):
+        with pytest.raises(CalendarPageError):
+            await SwagitAssetFinder().resolve(DUBLIN_HUB)
+    with mock_session({}):  # any request would fail
+        with pytest.raises(CalendarPageError):
+            await SwagitAssetFinder().resolve(DUBLIN_HUB.rstrip("/"))
+
+
+async def test_video_url_still_resolves_as_before():
+    html = BASE_HTML.format(captions_tag="")
+    with mock_session({PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+    assert result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
