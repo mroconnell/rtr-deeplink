@@ -1,0 +1,8 @@
+gov_id,government,state,lane,lead_url,kind,meeting_source_has_no_video,run,all_youtube_addresses_seen,found_context
+us:cousub:3602721996,East Fishkill town,New York,youtube,https://www.youtube.com/@EF22NY/videos,channel,yes,run_govs_02,https://www.youtube.com/user/EF22NY https://www.youtube.com/@EF22NY/videos,
+us:place:5138280,Honaker town,Virginia,youtube,https://www.youtube.com/@russellcountyvirginia8228,channel,yes,run_govs_02,https://www.youtube.com/@russellcountyvirginia8228,
+us:place:1244075,Melbourne Village town,Florida,youtube,https://youtu.be/tpnLZvgHSPQ,single_video,no,run_govs_02,https://www.youtube.com/CityofMelbourneFL https://youtu.be/tpnLZvgHSPQ https://www.youtube.com/user/CityofMelbourneFL,
+us:place:3863900,Portland city,North Dakota,youtube,https://www.youtube.com/watch?v=Pm3tMWe_Teo,single_video,no,run_govs_02,https://www.youtube.com/watch?v=Pm3tMWe_Teo,
+us:place:4249552,Mill Creek borough,Pennsylvania,youtube,https://www.youtube.com/@millcreektownshippa,channel,yes,run_govs_02,https://www.youtube.com/@millcreektownshippa,
+us:cousub:2502717300,Douglas town,Massachusetts,youtube,https://www.youtube.com/playlist?list=PL-uEXcm6al3iAt1w2rEG7rmwdT3jcQBUd,playlist,yes,run_govs_02,https://douglas-ma.gov/youtube https://www.youtube.com/playlist?list=PL-uEXcm6al3iAt1w2rEG7rmwdT3jcQBUd,
+us:place:1067050,Slaughter Beach town,Delaware,youtube,https://www.youtube.com/playlist?list=PL24B77B88B3B7CE95,playlist,yes,run_govs_02,https://www.youtube.com/user/dukefarmsfdn/live https://www.youtube.com/c/PurpleMartinConservation/live https://www.youtube.com/playlist?list=PL24B77B88B3B7CE95 https://www.youtube.com/watch?v=NDSgZ8_MpS0&feature=emb_title,
