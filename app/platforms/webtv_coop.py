@@ -26,6 +26,10 @@ channel 4; fixtures in `tests/fixtures/webtv_coop/`), never assumed:
 * The stream answers `Access-Control-Allow-Origin: *`, so the reader's
   browser can play it with hls.js (`video_format="m3u8"`). ffprobe reads it
   with `media_probe.realistic_headers()` and without (checked 2026-10-07).
+* Only the channel address names its channel. The site-wide page
+  `/video/<slug>/<key>` does not: its `/channel/` links are site menu items
+  (channels 12 and 13 on a channel-4 video), so `video_channel` stays empty
+  for it and the video is unpinned.
 * The title starts with the meeting date (`2026-10-06 Conseil de la Ville
   de Pointe-Claire`). No date is returned when the title does not start
   with one.

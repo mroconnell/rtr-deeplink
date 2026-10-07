@@ -191,7 +191,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (64)
   CivicPlus hub walking only reaches sweep scripts, not `/api/resolve`…
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
-  Add a resolver for webtv.coop (Coop WebTV), which hosts council video…
+  Pin webtv.coop channels 6 (Saint-Laurent) and 7 (Sud-Ouest), find…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
   [HUMAN] Ryan decides which Granicus feeds from his two lead…
@@ -2134,13 +2134,13 @@ WO-932 and WO-913.
 - **Next action:** catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a plain `video_warnings` message ("Legistar needs the full meeting link, including GUID=...") — the same pattern "No video link found" already uses.
 - **History:** split from the Phoenix canary entry, finished by WO-1112 — see `BACKLOG_DONE.md`.
 
-### Add a resolver for webtv.coop (Coop WebTV), which hosts council video for Montreal-area governments, with captions `[JUST-DO-IT]`
+### Pin webtv.coop channels 6 (Saint-Laurent) and 7 (Sud-Ouest), find Laval's channel, and walk channel listings `[HUMAN]`
 
-- **Issue**: `webtv.coop` is a video host with one channel per customer. Seven channels are governments: Beaconsfield (1), Baie-D'Urfé (3), Pointe-Claire (4), Montréal-Est (5), Saint-Laurent (6), Sud-Ouest (7) and Sainte-Anne-de-Bellevue (18); channel 10 is the English Montreal School Board. rtr-deeplink has no adapter and `detect_platform()` does not route the host, so a webtv.coop meeting link cannot be resolved. Ryan decided 2026-10-07 that the adapter will be built.
-- **Impact**: Quebec Depth wants these meetings for a French-with-English audio request (about 2,000 hours). Measured live 2026-10-07 on Pointe-Claire (channel 4): 176 videos from 2016-01-12 to 2026-10-06, 164 look like council meetings, 272 hours of council video. 62 of the 176 have a caption file on webtv.coop itself (Tier 1); 114 have none (Tier 3). The one caption file read (2026-10-06 council) mixes French and English; Ryan's hand check calls Pointe-Claire's captions "mixed and accurate". The other channels' counts are not measured yet.
-- **Next action**: take a WO number from the conductor, then add `app/platforms/webtv_coop.py` (model it on `viebit.py`): read a video page, return the HLS address (Wowza, `*.streamlock.net/.../playlist.m3u8`), `videoDuration` (seconds), the date from the title, and the caption text from `/webPlayerSubtitles/subtitleFile/key/<32-hex key>/filename/<lang>_subtitles.vtt` when that link is on the page. Route the host in `detect_platform()`. A video with no caption file must resolve with no segments, not fail. Both video-page address shapes must work: `/channel/video/<slug>/<key>/<n>` and `/video/<slug>/<key>`. Tenant is the channel (a keyed host, like `play.champds.com`). Pin the seven government channels in `tenant_overrides.csv`, each checked against the government's own site. Test with real captured fixtures: a channel page, a video page with captions, one without, and a trimmed caption file.
-- **Constraint**: unchecked, so check them first. Whether the transcription worker can fetch the Wowza HLS address (it carries a numeric query value; unknown whether it expires). Which caption file to use when a video has two (one Pointe-Claire video has `de` and `fr`). Laval's channel is not found (its videos show in the site-wide list). Older videos come from a POST to `/media/ajax/component/boxList/title/<slug>/channel/<n>?page=N&page_only=1` that needs the page's own `box-list` settings as `vars[...]`; without them it returns a site-wide list of all channels. `robots.txt` allows these paths. Pace requests 3 seconds apart, one at a time.
-- **History**: found 2026-10-07 by the Quebec Depth session in rtr-discovery (draft in `WO_DRAFT_webtv_coop.md` there). The rtr-discovery walker for webtv.coop channels is a separate PR after this one.
+- **Issue**: the webtv.coop adapter shipped (see `BACKLOG_DONE.md`, "Coop WebTV resolver"). Five government channels are pinned: Beaconsfield (1), Baie-D'Urfé (3), Pointe-Claire (4), Montréal-Est (5), Sainte-Anne-de-Bellevue (18). Channels 6 and 7 are not pinned: Saint-Laurent and Sud-Ouest are boroughs of Montréal and have no id of their own in `ca_csd.csv`. Laval's channel is still not found.
+- **Impact**: videos on those channels resolve but file under no government. The site-wide address `/video/<slug>/<key>` names no channel (its `/channel/` links are site menu), so a walker must use the channel address `/channel/video/<slug>/<key>/<n>` or the video stays unpinned.
+- **Next action**: Ryan decides which gov_id a Montréal borough channel files under (the city, or a minted borough id). Then add `webtv.coop,channel=webtv_coop:6` and `:7` rows. The rtr-discovery walker (a separate PR) lists a channel with the box-list POST (page 12 of channel 4 was the last) and must emit channel addresses.
+- **Constraint**: a video with two caption files has not been seen on a real page; the adapter uses the first one listed and keeps the rest as alternates. Pace requests 3 seconds apart, one at a time, stop on 429.
+- **History**: built 2026-10-07; findings in `BACKLOG_DONE.md`.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
