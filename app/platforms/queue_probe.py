@@ -57,6 +57,7 @@ needed to be.
 
 import asyncio
 import csv
+import json
 import logging
 import re
 import time
@@ -88,6 +89,7 @@ from .base import (
 from .champds import vod2_stream_for_download_url
 from .direct_file import (
     follow_with_cookies,
+    is_asf_direct_media_url,
     is_civicplus_file_library_url,
     is_dropbox_url,
     is_laserfiche_url,
@@ -124,7 +126,47 @@ _POLITE_UA = media_probe._DESKTOP_USER_AGENT
 # uploaded recordings are `https://www.utah.gov/pmn/files/<id>.m4a`, and
 # 277 real queue lines were being rejected "no probe recipe" for that
 # extension alone.
-_DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3", ".m4a")
+_DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3", ".m4a", ".wmv", ".asf")
+
+# An ASF/WMV file (a Granicus feed's own enclosure, `DownloadFile.php`) is
+# measured from its header alone: one Range request for the first 256 KB,
+# then the ASF File Properties Object's Play Duration. The whole file is
+# never downloaded to probe it.
+_ASF_HEADER_BYTES = 256 * 1024
+_ASF_PROBE_TIMEOUT_SECONDS = 30
+_ASF_PROBE_USER_AGENT = "Mozilla/5.0 (compatible; civic-research-bot)"
+_ASF_HEADER_GUID = bytes.fromhex("3026b2758e66cf11a6d900aa0062ce6c")
+_ASF_FILE_PROPERTIES_GUID = bytes.fromhex("a1dcab8c47a9cf118ee400c00c205365")
+
+
+def parse_asf_duration(header: bytes) -> Optional[float]:
+    """Seconds of playable media from the start of an ASF/WMV file, or None
+    when `header` is not ASF or has no complete File Properties Object.
+
+    ASF Header Object: GUID(16) size(8) object-count(4) reserved(2), then
+    sub-objects of GUID(16) size(8) body. File Properties body: File ID(16)
+    File Size(8) Creation Date(8) Data Packets(8) Play Duration(8, 100 ns
+    units) Send Duration(8) Preroll(8, ms). Duration is Play Duration minus
+    Preroll."""
+    if len(header) < 30 or header[:16] != _ASF_HEADER_GUID:
+        return None
+    pos = 30
+    while pos + 24 <= len(header):
+        guid = header[pos : pos + 16]
+        size = int.from_bytes(header[pos + 16 : pos + 24], "little")
+        if size < 24:
+            return None
+        if guid == _ASF_FILE_PROPERTIES_GUID:
+            if pos + 24 + 64 > len(header):
+                return None
+            body = pos + 24
+            play = int.from_bytes(header[body + 40 : body + 48], "little")
+            preroll = int.from_bytes(header[body + 56 : body + 64], "little")
+            seconds = play / 10_000_000 - preroll / 1000
+            return seconds if seconds > 0 else None
+        pos += size
+    return None
+
 
 # WO-937: two real, confirmed delegated media shapes this dispatch had no
 # recipe for at all, even though the underlying file is real and playable
@@ -1046,6 +1088,185 @@ async def _probe_direct_file(
     return _finish(url, platform, method, duration, date, size_bytes, start)
 
 
+def parse_mp4_duration(header: bytes) -> tuple[bool, Optional[float]]:
+    """`(is_mp4, seconds)` from the first bytes of an MP4/MOV file.
+    `is_mp4` is True when the data starts with an ftyp box. `seconds` is
+    the movie header (moov/mvhd) duration, or None when the moov box is
+    not inside `header` (it sits at the end of the file) -- the caller then
+    reports the length as unknown instead of reading more."""
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        return False, None
+    pos = 0
+    while pos + 8 <= len(header):
+        size = int.from_bytes(header[pos : pos + 4], "big")
+        kind = header[pos + 4 : pos + 8]
+        body = pos + 8
+        if size == 1:
+            if pos + 16 > len(header):
+                break
+            size = int.from_bytes(header[pos + 8 : pos + 16], "big")
+            body = pos + 16
+        elif size == 0:
+            size = len(header) - pos
+        if size < body - pos:
+            break
+        if kind == b"moov":
+            end = min(pos + size, len(header))
+            return True, _mvhd_seconds(header, body, end)
+        pos += size
+    return True, None
+
+
+def _mvhd_seconds(data: bytes, pos: int, end: int) -> Optional[float]:
+    while pos + 8 <= end:
+        size = int.from_bytes(data[pos : pos + 4], "big")
+        kind = data[pos + 4 : pos + 8]
+        if size < 8:
+            return None
+        if kind == b"mvhd":
+            body = pos + 8
+            if body >= end:
+                return None
+            version = data[body]
+            if version == 1 and body + 32 <= end:
+                timescale = int.from_bytes(data[body + 20 : body + 24], "big")
+                duration = int.from_bytes(data[body + 24 : body + 32], "big")
+            elif version == 0 and body + 20 <= end:
+                timescale = int.from_bytes(data[body + 12 : body + 16], "big")
+                duration = int.from_bytes(data[body + 16 : body + 20], "big")
+            else:
+                return None
+            return duration / timescale if timescale else None
+        pos += size
+    return None
+
+
+async def _probe_asf_header(
+    url: str,
+    platform: Optional[str],
+    video_url: str,
+    start: float,
+) -> ProbeResult:
+    """(Also reads an MP4 from archive-video.granicus.com the same way.)
+    Length of an ASF/WMV file from one Range request for its first
+    256 KB (never the whole file), parsed with `parse_asf_duration()`.
+    Generic User-Agent, no Referer, hard timeout. If the header does not
+    parse, ffprobe is tried on that same partial file."""
+    method = "range-asf-header"
+    size_bytes = None
+    date = None
+    data = bytearray()
+    try:
+        timeout = aiohttp.ClientTimeout(total=_ASF_PROBE_TIMEOUT_SECONDS)
+        async with aiohttp.ClientSession(
+            headers={"User-Agent": _ASF_PROBE_USER_AGENT}
+        ) as session:
+            async with session.get(
+                video_url,
+                allow_redirects=True,
+                headers={
+                    "Range": f"bytes=0-{_ASF_HEADER_BYTES - 1}",
+                    "Accept-Encoding": "identity",
+                },
+                timeout=timeout,
+            ) as response:
+                if response.status >= 400:
+                    return _dead(
+                        url,
+                        platform,
+                        method,
+                        start,
+                        f"ranged GET on the media file returned HTTP {response.status}",
+                    )
+                size_bytes = _size_from_headers(response.headers)
+                last_modified = response.headers.get("Last-Modified")
+                if last_modified:
+                    date = _date_from_http_date(last_modified)
+                # A server that ignores Range sends the whole file: stop at
+                # 256 KB and let the closed connection end the transfer.
+                while len(data) < _ASF_HEADER_BYTES:
+                    chunk = await response.content.read(_ASF_HEADER_BYTES - len(data))
+                    if not chunk:
+                        break
+                    data.extend(chunk)
+    except asyncio.TimeoutError:
+        return _dead(
+            url, platform, method, start, "ranged GET on the media file timed out"
+        )
+    except aiohttp.ClientError as e:
+        return _dead(
+            url, platform, method, start, f"ranged GET on the media file failed: {e}"
+        )
+
+    is_mp4, mp4_seconds = parse_mp4_duration(bytes(data))
+    if is_mp4:
+        # MP4 (archive-video.granicus.com): moov/mvhd in the first 256 KB,
+        # else the length is unknown. Nothing more is downloaded.
+        method = "range-mp4-header"
+        if mp4_seconds and mp4_seconds > 0:
+            return _finish(url, platform, method, mp4_seconds, date, size_bytes, start)
+        return ProbeResult(
+            url=url,
+            platform=platform,
+            probe_method=method,
+            duration_seconds=None,
+            date=date,
+            size_bytes=size_bytes,
+            verdict="accept",
+            reason="length unknown, accepted: MP4 index not in the first 256 KB",
+            probe_seconds=time.monotonic() - start,
+            over_nine_minutes=False,
+        )
+    duration = parse_asf_duration(bytes(data))
+    if duration is None:
+        duration = await _ffprobe_partial_file(bytes(data))
+        method = "range-header+ffprobe"
+    if duration is None or duration <= 0:
+        return _dead(
+            url,
+            platform,
+            method,
+            start,
+            "could not read a duration from the ASF header",
+        )
+    return _finish(url, platform, method, duration, date, size_bytes, start)
+
+
+async def _ffprobe_partial_file(data: bytes) -> Optional[float]:
+    """ffprobe duration of header bytes saved to a temp file, or None."""
+    if not data:
+        return None
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="rtr_asf_probe_") as tmpdir:
+        path = Path(tmpdir) / "header.asf"
+        path.write_bytes(data)
+        try:
+            returncode, stdout, _stderr = await media_probe._run(
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                "-i",
+                str(path),
+                timeout=30,
+            )
+            if returncode != 0:
+                return None
+            return float(json.loads(stdout)["format"]["duration"])
+        except (
+            FileNotFoundError,
+            asyncio.TimeoutError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ):
+            return None
+
+
 # --- Entry point ---------------------------------------------------------
 
 
@@ -1333,6 +1554,10 @@ async def probe_queue_entry(
         )
 
     media_path = urlparse(video_url).path.lower()
+    if is_asf_direct_media_url(video_url) or (
+        video_format and video_format.lower() in ("wmv", "asf")
+    ):
+        return await _probe_asf_header(url, resolved_platform, video_url, start)
     if media_probe.is_hls(video_url):
         return await _probe_hls(
             url, resolved_platform, video_url, source_page_url, start

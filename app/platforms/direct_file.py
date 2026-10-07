@@ -546,6 +546,8 @@ _URL_EXTENSION_FORMATS = {
     ".mov": "mp4",
     ".m4v": "mp4",
     ".webm": "webm",
+    ".wmv": "wmv",
+    ".asf": "asf",
 }
 
 
@@ -579,12 +581,74 @@ def is_dropbox_url(url: str) -> bool:
     return netloc == "dropbox.com" or netloc.endswith(".dropbox.com")
 
 
+_ASF_EXTENSIONS = (".wmv", ".asf")
+
+
+def _is_granicus_host(url: str) -> bool:
+    host = urlparse(url).netloc.lower().split(":")[0]
+    return host == "granicus.com" or host.endswith(".granicus.com")
+
+
+def is_granicus_feed_url(url: str) -> bool:
+    """A Granicus RSS feed address (`ViewPublisherRSS.php`). It is a queue
+    line's identity, never something a stored-entry re-resolve fetches."""
+    return _is_granicus_host(url) and ("viewpublisherrss" in urlparse(url).path.lower())
+
+
+def is_granicus_download_file_url(url: str) -> bool:
+    """True only for a Granicus feed enclosure: the `/DownloadFile.php`
+    path on a granicus.com host (`https://<tenant>.granicus.com/
+    DownloadFile.php?view_id=N&clip_id=M`, a .wmv). It is the meeting's
+    own video file, taken from the subscribed RSS feed, never a Granicus
+    page. Deliberately narrow: no other Granicus path matches (the
+    MediaPlayer.php and /player/clip pages are robots-disallowed and are
+    never fetched)."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().split(":")[0]
+    if not (host == "granicus.com" or host.endswith(".granicus.com")):
+        return False
+    return parsed.path.lower() == "/downloadfile.php"
+
+
+def is_asf_media_url(url: str) -> bool:
+    """True for a URL whose path ends .wmv or .asf (any host)."""
+    return urlparse(url).path.lower().endswith(_ASF_EXTENSIONS)
+
+
+_GRANICUS_ARCHIVE_VIDEO_HOST = "archive-video.granicus.com"
+
+
+def is_granicus_archive_video_url(url: str) -> bool:
+    """True for `https://archive-video.granicus.com/<tenant>/<guid>.mp4`
+    (or .wmv), the file DownloadFile.php redirects to. Only that host and
+    only a media extension; every other Granicus URL stays a page."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().split(":")[0]
+    return host == _GRANICUS_ARCHIVE_VIDEO_HOST and parsed.path.lower().endswith(
+        (".mp4", ".wmv")
+    )
+
+
+def is_asf_direct_media_url(url: str) -> bool:
+    """A Granicus DownloadFile.php enclosure, the archive-video.granicus.com
+    file it redirects to, or any .wmv/.asf URL: a media file fetched as a
+    file (header-only probe, frozen on re-resolve), never resolved as a
+    page. The name predates the archive-video mp4 case."""
+    return (
+        is_granicus_download_file_url(url)
+        or is_granicus_archive_video_url(url)
+        or is_asf_media_url(url)
+    )
+
+
 def is_direct_file_url(url: str) -> bool:
     """True for a bare first-party/file-sharing video URL this adapter
     can resolve -- called from `detect_platform()` as the LAST check,
     after every known vendor platform, so a video URL that's actually
     served BY a recognized platform never reaches here."""
     if _drive_file_id(url) is not None:
+        return True
+    if is_asf_direct_media_url(url):
         return True
     if is_laserfiche_url(url):
         return True
@@ -833,6 +897,35 @@ class DirectFileAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         media_url = _resolve_direct_media_url(url)
+        if _is_granicus_host(media_url) and not is_asf_direct_media_url(media_url):
+            # Any other Granicus URL is a page (robots.txt-disallowed for
+            # bots): make no request.
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "direct_file: not fetching a Granicus page; only a "
+                    "DownloadFile.php enclosure is read"
+                ],
+            )
+        if is_asf_direct_media_url(media_url):
+            # A Granicus feed enclosure (or any .wmv/.asf): the URL is the
+            # media file itself and Granicus answers bots on pages only
+            # by robots.txt, so make no request here. The length probe in
+            # queue_probe reads the first 256 KB of the file with a Range
+            # request and rejects a dead or non-ASF link there.
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_url=media_url,
+                video_format=(
+                    "mp4"
+                    if urlparse(media_url).path.lower().endswith(".mp4")
+                    else _media_format(media_url, None)
+                    if is_asf_media_url(media_url)
+                    else "wmv"
+                ),
+            )
         if is_laserfiche_url(media_url):
             # A distinct sub-path -- see module docstring -- since this
             # host answers HEAD with a redirect and GET with a generic
