@@ -1,19 +1,48 @@
 import logging
 import re
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date as _date, datetime
 from typing import List, Optional
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder, detect_platform, get_finder
+from .base import (
+    AssetFinder,
+    CalendarCandidate,
+    CalendarPageError,
+    detect_platform,
+    get_finder,
+)
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
 logger = logging.getLogger("rtr_deeplink.primegov")
+
+# Hub pick list (2026-10-06): a pasted portal home (`/`, `/Portal`,
+# `/public/portal`) names no single meeting, so `resolve()` raises
+# `CalendarPageError` with up to 15 past meetings (video first, each group
+# newest first) from two requests -- `GetArchivedMeetingYears`, then
+# `ListArchivedMeetings` for the newest year -- cached per tenant for a few
+# minutes. No Meeting Finder import (legacy).
+_HUB_LIST_LIMIT = 15
+_HUB_CACHE_TTL_SECONDS = 300
+_HUB_CACHE_MAX = 200
+_hub_cache: dict = {}
+_HUB_PATHS = frozenset({"", "/portal", "/public/portal", "/public"})
+_MEETING_ID_PARAMS = ("meetingtemplateid", "compiledmeetingdocumentfileid")
+
+
+def _is_primegov_hub_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.path.lower().rstrip("/") not in _HUB_PATHS:
+        return False
+    query = {k.lower() for k in parse_qs(parsed.query)}
+    return not any(k in query for k in _MEETING_ID_PARAMS)
+
 
 # Real, confirmed-live gap (2026-09-02, Palo Alto): the 11-char id isn't
 # always immediately followed by the closing quote -- some tenants store
@@ -243,7 +272,101 @@ class PrimeGovAssetFinder(AssetFinder):
             ),
         }
 
+    async def _raise_hub_pick_list(self, url: str) -> None:
+        """Raise `CalendarPageError` for a portal home; return (so the old
+        page-fetch path runs) when the listing is empty or fails."""
+        netloc = urlparse(url).netloc.lower()
+        cached = _hub_cache.get(netloc)
+        if cached and time.monotonic() - cached[0] < _HUB_CACHE_TTL_SECONDS:
+            candidates = cached[1]
+        else:
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                candidates = await self._list_hub_meetings(session, netloc)
+            if candidates:
+                if len(_hub_cache) >= _HUB_CACHE_MAX:
+                    _hub_cache.clear()
+                _hub_cache[netloc] = (time.monotonic(), candidates)
+        if candidates:
+            raise CalendarPageError(
+                message=(
+                    "This is a PrimeGov portal with many meetings, not a link "
+                    "to one specific meeting."
+                ),
+                candidates=[dict(c) for c in candidates],
+            )
+
+    async def _list_hub_meetings(
+        self, session: aiohttp.ClientSession, netloc: str
+    ) -> List[CalendarCandidate]:
+        """Past meetings of the tenant's newest archive year (two requests:
+        the years list, then that year). Rows with a video first, then the
+        rest, each newest first; future rows and rows with no template id
+        are dropped; capped at `_HUB_LIST_LIMIT`. Any failure gives []."""
+        years = await self._fetch_archived_years(session, netloc)
+        year = max(years) if years else datetime.now().year
+        api_url = (
+            f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings?year={year}"
+        )
+        try:
+            async with session.get(
+                api_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        "PrimeGov hub listing got HTTP %s for %s",
+                        response.status,
+                        api_url,
+                    )
+                    return []
+                meetings = await response.json(content_type=None)
+        except Exception:
+            logger.warning("PrimeGov hub listing failed for %s", api_url, exc_info=True)
+            return []
+        if not isinstance(meetings, list):
+            return []
+
+        today = _date.today().isoformat()
+        with_video: List[CalendarCandidate] = []
+        without_video: List[CalendarCandidate] = []
+        for m in meetings:
+            if not isinstance(m, dict):
+                continue
+            iso = (m.get("dateTime") or "")[:10]
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", iso):
+                try:
+                    iso = datetime.strptime(m.get("date") or "", "%b %d, %Y").strftime(
+                        "%Y-%m-%d"
+                    )
+                except ValueError:
+                    continue
+            if iso > today:
+                continue
+            template_id = None
+            documents = [d for d in m.get("documentList") or [] if isinstance(d, dict)]
+            for d in documents:
+                if d.get("compileOutputType") == 3 and d.get("templateId"):
+                    template_id = d["templateId"]
+                    break
+            if template_id is None:
+                template_id = next(
+                    (d["templateId"] for d in documents if d.get("templateId")), None
+                )
+            if template_id is None:
+                continue
+            row: CalendarCandidate = {
+                "title": (m.get("title") or "").strip() or "Meeting",
+                "date": iso,
+                "url": f"https://{netloc}/Portal/Meeting?meetingTemplateId={template_id}",
+            }
+            has_video = bool(m.get("videoUrl") or m.get("isShowVideoIcon"))
+            (with_video if has_video else without_video).append(row)
+        with_video.sort(key=lambda r: r["date"], reverse=True)
+        without_video.sort(key=lambda r: r["date"], reverse=True)
+        return (with_video + without_video)[:_HUB_LIST_LIMIT]
+
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if _is_primegov_hub_url(url):
+            await self._raise_hub_pick_list(url)
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(
                 url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
