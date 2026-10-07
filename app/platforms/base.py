@@ -359,7 +359,7 @@ def detect_platform(url: str) -> str:
     from .az_legislature import is_az_legislature_video_url
     from .wistia import parse_wistia_account_url
     from .boxcast import parse_boxcast_id
-    from .direct_file import is_direct_file_url
+    from .direct_file import is_asf_direct_media_url, is_direct_file_url
     from .boarddocs import is_boarddocs_tenant_url
     from .sliq_harmony import is_sliq_harmony_url
     from .tvw import is_tvw_video_url
@@ -379,6 +379,12 @@ def detect_platform(url: str) -> str:
         # is -- none of the checks below would match it either.
         return "unknown"
 
+    if is_asf_direct_media_url(url):
+        # A Granicus feed enclosure (/DownloadFile.php on a granicus.com
+        # host) or any .wmv/.asf file: the media file itself, not a
+        # Granicus page, so it must skip the Granicus page finder below
+        # and is never fetched as HTML.
+        return "direct_file"
     if "granicus.com" in netloc:
         return "granicus"
     if "legistar.com" in netloc:
