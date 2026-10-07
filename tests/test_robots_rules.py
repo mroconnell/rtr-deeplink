@@ -65,3 +65,14 @@ def test_matching_rule_names_the_deciding_rule():
 def test_percent_encoding_spelling_does_not_matter():
     rules = parse_rules("User-agent: *\nDisallow: /~user/\n")
     assert not is_allowed(rules, "/%7Euser/page")
+
+
+def test_a_byte_order_mark_does_not_hide_the_first_line():
+    # documents-on-demand.com tenants serve robots.txt starting with a UTF-8 BOM.
+    for text in (
+        "﻿User-agent: *\r\nDisallow: /",
+        "﻿﻿User-agent: *\nDisallow: /",
+        "User-agent: *\n﻿Disallow: /",
+    ):
+        rules = parse_rules(text)
+        assert not is_allowed(rules, "/meetings/1"), repr(text)

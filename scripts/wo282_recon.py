@@ -658,8 +658,8 @@ def fetch_archived_sitemap_and_robots(domain: str) -> dict:
 
 def parse_robots(text: str) -> dict:
     sitemap_urls, disallow_paths = [], []
-    for line in text.splitlines():
-        line = line.strip()
+    for line in text.lstrip("\ufeff").splitlines():
+        line = line.lstrip("\ufeff").strip()  # a UTF-8 BOM would hide the first field
         if not line or line.startswith("#") or ":" not in line:
             continue
         key, _, value = line.partition(":")
@@ -1163,8 +1163,8 @@ def fetch_homepage(domain: str) -> dict:
 
 
 def parse_crawl_delay(robots_text: str) -> float | None:
-    for line in robots_text.splitlines():
-        line = line.strip()
+    for line in robots_text.lstrip("\ufeff").splitlines():
+        line = line.lstrip("\ufeff").strip()  # a UTF-8 BOM would hide the first field
         if not line or ":" not in line:
             continue
         key, _, value = line.partition(":")
