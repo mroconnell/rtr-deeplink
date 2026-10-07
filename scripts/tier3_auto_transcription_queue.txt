@@ -184,18 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-https://stlouispark.granicus.com/MediaPlayer.php?view_id=1&clip_id=473
-https://sunvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=1251
-https://westspringfieldma.granicus.com/MediaPlayer.php?view_id=1&clip_id=476
-https://windhamweb.granicus.com/MediaPlayer.php?view_id=2&clip_id=1169
-https://transylvaniacounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=8
-https://treasureislandfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1019
-https://unioncountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=474
-https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/669858	https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/videos	us:sd:3305280
-https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1042105	https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/videos	us:county:36095
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57824?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2725918
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57847?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2730842
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57848?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2738006
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57854?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2738222
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57805?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2760016
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57870?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2762014
@@ -998,3 +986,10 @@ https://drive.google.com/file/d/16fNEVHDVx-4M5hWmcQRGStBF1StuH-mu/view?usp=shari
 https://www.dropbox.com/scl/fi/3qiy9q80gyc15hzw5bb7j/Special-Meeting-May-2025.mp4?rlkey=jll7hnwv649oi7hqcr8objjr4&st=6pqvwr0o&dl=0	https://cityofshaniko.gov/agendas-minutes	us:place:4166700
 https://4.files.edl.io/1a54/10/14/25/143031-0db128d6-db67-490b-af0d-1a35abc4169d.m4a	https://www.isisd.net/apps/pages/index.jsp?uREC_ID=2613918&type=d&pREC_ID=2266334	us:sd:4824330
 https://files.smartsites.parentsquare.com/4718/board-audio_reg-exec_09-21-2026.mp3	https://dragons1.k12.ar.us/117861	us:sd:0504110
+https://stlouispark.granicus.com/MediaPlayer.php?view_id=1&clip_id=473
+https://sunvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=1251
+https://westspringfieldma.granicus.com/MediaPlayer.php?view_id=1&clip_id=476
+https://windhamweb.granicus.com/MediaPlayer.php?view_id=2&clip_id=1169
+https://transylvaniacounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=8
+https://treasureislandfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1019
+https://unioncountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=474

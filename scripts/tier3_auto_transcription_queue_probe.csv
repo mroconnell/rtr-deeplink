@@ -10503,3 +10503,20 @@ https://drive.google.com/file/d/16fNEVHDVx-4M5hWmcQRGStBF1StuH-mu/view?usp=shari
 https://www.dropbox.com/scl/fi/3qiy9q80gyc15hzw5bb7j/Special-Meeting-May-2025.mp4?rlkey=jll7hnwv649oi7hqcr8objjr4&st=6pqvwr0o&dl=0,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
 https://4.files.edl.io/1a54/10/14/25/143031-0db128d6-db67-490b-af0d-1a35abc4169d.m4a,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
 https://files.smartsites.parentsquare.com/4718/board-audio_reg-exec_09-21-2026.mp3,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
+https://stlouispark.granicus.com/MediaPlayer.php?view_id=1&clip_id=473,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-10-07T06:29:17+00:00,,0
+https://sunvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=1251,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:21+00:00,,0
+https://westspringfieldma.granicus.com/MediaPlayer.php?view_id=1&clip_id=476,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:24+00:00,,0
+https://windhamweb.granicus.com/MediaPlayer.php?view_id=2&clip_id=1169,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:26+00:00,,0
+https://transylvaniacounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=8,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:28+00:00,,0
+https://treasureislandfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1019,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:31+00:00,,0
+https://unioncountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=474,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-07T06:29:33+00:00,,0
+https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/669858,telvue,telvue-page-json,571.00,,,1,accept,,0.11,2026-10-07T06:29:35+00:00,,0
+https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/669858,telvue,telvue-page-json,571.00,,,1,accept,,0.12,2026-10-07T06:29:35+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1042105,telvue,telvue-page-json,2685.00,,,1,accept,,0.10,2026-10-07T06:29:37+00:00,,0
+https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI/media/1042105,telvue,telvue-page-json,2685.00,,,1,accept,,0.24,2026-10-07T06:29:37+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57824?site=1,cablecast,cablecast-api,4078.00,2026-08-06,,1,accept,,0.02,2026-10-07T06:29:40+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57824?site=1,cablecast,cablecast-api,4078.00,2026-08-06,,1,accept,,0.02,2026-10-07T06:29:40+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57847?site=1,cablecast,cablecast-api,2689.00,2026-09-02,,1,accept,,0.02,2026-10-07T06:29:42+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57847?site=1,cablecast,cablecast-api,2689.00,2026-09-02,,1,accept,,0.01,2026-10-07T06:29:42+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57848?site=1,cablecast,cablecast-api,3654.00,2026-09-02,,1,accept,,0.02,2026-10-07T06:29:44+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57848?site=1,cablecast,cablecast-api,3654.00,2026-09-02,,1,accept,,0.02,2026-10-07T06:29:44+00:00,feed_tier3_auto_transcription,0
