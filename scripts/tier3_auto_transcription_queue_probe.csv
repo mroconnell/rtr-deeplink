@@ -10520,3 +10520,21 @@ https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57847?site=1,cablecas
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57847?site=1,cablecast,cablecast-api,2689.00,2026-09-02,,1,accept,,0.01,2026-10-07T06:29:42+00:00,feed_tier3_auto_transcription,0
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57848?site=1,cablecast,cablecast-api,3654.00,2026-09-02,,1,accept,,0.02,2026-10-07T06:29:44+00:00,,0
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57848?site=1,cablecast,cablecast-api,3654.00,2026-09-02,,1,accept,,0.02,2026-10-07T06:29:44+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57854?site=1,cablecast,cablecast-api,5056.00,2026-09-09,,1,accept,,0.07,2026-10-07T13:56:41+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57854?site=1,cablecast,cablecast-api,5056.00,2026-09-09,,1,accept,,0.04,2026-10-07T13:56:41+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57805?site=1,cablecast,cablecast-api,6394.00,2026-07-14,,1,accept,,0.06,2026-10-07T13:56:43+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57805?site=1,cablecast,cablecast-api,6394.00,2026-07-14,,1,accept,,0.04,2026-10-07T13:56:43+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57870?site=1,cablecast,cablecast-api,2930.00,2026-09-22,,1,accept,,0.05,2026-10-07T13:56:45+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57870?site=1,cablecast,cablecast-api,2930.00,2026-09-22,,1,accept,,0.04,2026-10-07T13:56:45+00:00,feed_tier3_auto_transcription,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57851?site=1,cablecast,cablecast-api,2680.00,2026-09-03,,1,accept,,0.05,2026-10-07T13:56:47+00:00,,0
+https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57851?site=1,cablecast,cablecast-api,2680.00,2026-09-03,,1,accept,,0.04,2026-10-07T13:56:47+00:00,feed_tier3_auto_transcription,0
+https://reflect-surryco-nc.cablecast.tv/internetchannel/show/2008,cablecast,cablecast-api,2717.00,2026-09-09,,1,accept,,0.11,2026-10-07T13:56:49+00:00,,0
+https://reflect-surryco-nc.cablecast.tv/internetchannel/show/2008,cablecast,cablecast-api,2717.00,2026-09-09,,1,accept,,0.05,2026-10-07T13:56:49+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/1045739,telvue,telvue-page-json,3562.00,,,1,accept,,0.22,2026-10-07T13:56:52+00:00,,0
+https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/1045739,telvue,telvue-page-json,3562.00,,,1,accept,,0.31,2026-10-07T13:56:52+00:00,feed_tier3_auto_transcription,0
+https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-10-07T13:56:56+00:00,,0
+https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-10-07T13:56:58+00:00,,0
+https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-10-07T13:57:02+00:00,,0
+https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-07T13:57:04+00:00,,0
+https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-07T13:57:07+00:00,,0
+https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-07T13:57:11+00:00,,0
