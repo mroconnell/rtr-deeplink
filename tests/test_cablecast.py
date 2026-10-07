@@ -11,8 +11,12 @@ only found once a second real customer was checked.
 """
 
 import json
+from datetime import date
 
-from app.platforms.base import detect_platform
+import pytest
+
+from app.platforms import cablecast
+from app.platforms.base import CalendarPageError, detect_platform
 from app.platforms.cablecast import CablecastAssetFinder, list_gallery_shows
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -1357,24 +1361,18 @@ def test_gallery_id_re_matches_both_shapes():
     assert _GALLERY_ID_RE.search("/internetchannel/gallery/22").group(1) == "22"
 
 
-async def test_resolve_bare_gallery_url_delegates_the_same_way_as_the_prefixed_form():
-    # Reuses the real Old Saybrook gallery/show fixtures -- only the
-    # REQUEST URL's shape (bare vs. /internetchannel/-prefixed) differs
-    # from test_resolve_gallery_picks_newest_ready_show_and_delegates_...
-    # above; the underlying Remix data and resolve behavior are identical.
+async def test_resolve_bare_gallery_url_gives_the_same_pick_list(_fixed_today):
     gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
-    show_html = load_fixture("cablecast", "oldsaybrook_show_7480.html")
     bare_url = "https://reflect-vsctv.cablecast.tv/gallery/22?site=1"
     routes = {
         "http://reflect-vsctv.cablecast.tv/gallery/22?site=1": FakeResponse(
             status=200, text=gallery_html
         ),
-        GALLERY_SHOW_URL: FakeResponse(status=200, text=show_html),
     }
     with mock_session(routes):
-        result = await CablecastAssetFinder().resolve(bare_url)
-    assert result.video_url is not None
-    assert result.date == "2026-08-19"
+        with pytest.raises(CalendarPageError) as exc:
+            await CablecastAssetFinder().resolve(bare_url)
+    assert exc.value.candidates[0]["date"] == "2026-08-19"
 
 
 # --- WO-1036: list_gallery_shows() -- every video-ready show in a
@@ -1408,35 +1406,91 @@ def test_list_gallery_shows_returns_empty_when_gallery_not_found_in_page():
     )
 
 
-async def test_resolve_gallery_picks_newest_ready_show_and_delegates_to_its_own_page():
+@pytest.fixture(autouse=True)
+def _clear_gallery_cache():
+    cablecast._gallery_cache.clear()
+    yield
+    cablecast._gallery_cache.clear()
+
+
+@pytest.fixture
+def _fixed_today(monkeypatch):
+    monkeypatch.setattr(cablecast, "_today", lambda: date(2026, 9, 23))
+
+
+async def test_resolve_gallery_returns_pick_list_not_newest_show(_fixed_today):
     gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
-    show_html = load_fixture("cablecast", "oldsaybrook_show_7480.html")
-    routes = {
-        GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html),
-        GALLERY_SHOW_URL: FakeResponse(status=200, text=show_html),
-    }
+    routes = {GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html)}
 
     with mock_session(routes):
-        result = await CablecastAssetFinder().resolve(GALLERY_URL)
+        with pytest.raises(CalendarPageError) as exc:
+            await CablecastAssetFinder().resolve(GALLERY_URL)
 
-    # Real, live-confirmed newest ready show in this gallery page's own
-    # scoped list as of 2026-09-23 -- picking the wrong one (an older
-    # show, or content from a different gallery entirely -- see
-    # `_resolve_gallery()`'s own docstring for a real bug that did
-    # exactly that) would fail this.
-    assert result.title == (
-        "Old Saybrook Joint Zoning Commission Planning Commission "
-        "Regional Housing Plan Workshop - August 19 2026"
+    candidates = exc.value.candidates
+    assert 0 < len(candidates) <= 15
+    assert all(set(c) == {"title", "date", "url"} for c in candidates)
+    dates = [c["date"] for c in candidates if c["date"]]
+    assert dates == sorted(dates, reverse=True)
+    # Newest real show in this gallery (was the one-meeting answer before).
+    assert candidates[0]["date"] == "2026-08-19"
+    assert candidates[0]["url"].endswith("/internetchannel/show/7480?site=1")
+
+
+async def test_resolve_gallery_pick_list_drops_future_shows(monkeypatch):
+    monkeypatch.setattr(cablecast, "_today", lambda: date(2020, 1, 1))
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+    routes = {GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html)}
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(GALLERY_URL)
+    # Nothing is dated on or before 2020: no pick-list, honest warning.
+    assert result.video_url is None
+    assert "no past video-ready show" in result.video_warnings[0].lower()
+
+
+async def test_resolve_gallery_http_error_keeps_old_warning(_fixed_today):
+    routes = {GALLERY_FETCH_URL: FakeResponse(status=500, text="boom")}
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(GALLERY_URL)
+    assert result.video_url is None
+    assert "could not fetch this cablecast gallery page" in (
+        result.video_warnings[0].lower()
     )
+
+
+async def test_resolve_gallery_pick_list_is_cached_per_gallery(_fixed_today):
+    gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
+    routes = {GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html)}
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as first:
+            await CablecastAssetFinder().resolve(GALLERY_URL)
+    # No routes mocked now: a second call must be served from the cache,
+    # not the network.
+    with mock_session({}):
+        with pytest.raises(CalendarPageError) as second:
+            await CablecastAssetFinder().resolve(GALLERY_URL)
+    assert second.value.candidates == first.value.candidates
+
+
+async def test_resolve_specific_show_url_unchanged_by_gallery_change():
+    show_html = load_fixture("cablecast", "oldsaybrook_show_7480.html")
+    routes = {GALLERY_SHOW_URL: FakeResponse(status=200, text=show_html)}
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(
+            "https://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+        )
     assert result.date == "2026-08-19"
     assert result.video_url is not None
-    # source_url reflects the show's own canonical page the gallery walk
-    # delegated to, not the original gallery URL -- correct, matching
-    # every other delegation this adapter already does (e.g. the
-    # root-page fallback for a blocked bare "/show/{id}" URL above).
+
+
+def test_detect_platform_recognizes_self_hosted_publicsite_paths():
+    base = "https://www.cityhall.example.gov/CablecastPublicSite"
+    assert detect_platform(f"{base}/gallery/12") == "cablecast"
+    assert detect_platform(f"{base}/show/345") == "cablecast"
+    # Segment required: same shapes without it stay unknown off cablecast.tv.
+    assert detect_platform("https://www.cityhall.example.gov/gallery/12") == "unknown"
     assert (
-        result.source_url
-        == "http://reflect-vsctv.cablecast.tv/internetchannel/show/7480?site=1"
+        detect_platform("https://www.cityhall.example.gov/Other/gallery/12")
+        == "unknown"
     )
 
 
